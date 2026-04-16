@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.UI.Components;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 
-public class ProjectionFilterBarTests : AdminUITestContext
-{
+public class ProjectionFilterBarTests : AdminUITestContext {
     [Fact]
-    public void ProjectionFilterBar_RendersStatusButtons()
-    {
+    public void ProjectionFilterBar_RendersStatusButtons() {
         IRenderedComponent<ProjectionFilterBar> cut = Render<ProjectionFilterBar>(p => p
             .Add(c => c.SelectedStatus, "All"));
 
@@ -20,26 +18,23 @@ public class ProjectionFilterBarTests : AdminUITestContext
     }
 
     [Fact]
-    public void ProjectionFilterBar_InvokesStatusChanged_WhenButtonClicked()
-    {
+    public void ProjectionFilterBar_InvokesStatusChanged_WhenButtonClicked() {
         string? selectedStatus = null;
 
         IRenderedComponent<ProjectionFilterBar> cut = Render<ProjectionFilterBar>(p => p
             .Add(c => c.SelectedStatus, "All")
             .Add(c => c.SelectedStatusChanged, s => selectedStatus = s));
 
-        var pausedButton = cut.FindAll("button")
+        AngleSharp.Dom.IElement? pausedButton = cut.FindAll("button")
             .FirstOrDefault(b => b.InnerHtml.Contains("Paused"));
-        if (pausedButton is not null)
-        {
+        if (pausedButton is not null) {
             pausedButton.Click();
             selectedStatus.ShouldBe("Paused");
         }
     }
 
     [Fact]
-    public void ProjectionFilterBar_ShowsTenantDropdown_WhenMultipleTenants()
-    {
+    public void ProjectionFilterBar_ShowsTenantDropdown_WhenMultipleTenants() {
         IReadOnlyList<string> tenants = ["tenant-a", "tenant-b", "tenant-c"];
 
         IRenderedComponent<ProjectionFilterBar> cut = Render<ProjectionFilterBar>(p => p
@@ -52,8 +47,7 @@ public class ProjectionFilterBarTests : AdminUITestContext
     }
 
     [Fact]
-    public void ProjectionFilterBar_HidesTenantDropdown_WhenSingleTenant()
-    {
+    public void ProjectionFilterBar_HidesTenantDropdown_WhenSingleTenant() {
         IReadOnlyList<string> tenants = ["tenant-a"];
 
         IRenderedComponent<ProjectionFilterBar> cut = Render<ProjectionFilterBar>(p => p
@@ -62,6 +56,6 @@ public class ProjectionFilterBarTests : AdminUITestContext
 
         // With single tenant, no dropdown needed — should not contain tenant selection UI
         // The component should render without error
-        cut.Markup.ShouldNotBeNull();
+        _ = cut.Markup.ShouldNotBeNull();
     }
 }

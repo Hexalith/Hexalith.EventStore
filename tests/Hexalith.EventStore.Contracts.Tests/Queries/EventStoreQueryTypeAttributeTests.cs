@@ -46,7 +46,7 @@ public class EventStoreQueryTypeAttributeTests {
         var usage = (AttributeUsageAttribute?)Attribute.GetCustomAttribute(
             typeof(EventStoreQueryTypeAttribute), typeof(AttributeUsageAttribute));
 
-        usage.ShouldNotBeNull();
+        _ = usage.ShouldNotBeNull();
         usage.ValidOn.ShouldBe(AttributeTargets.Class);
         usage.AllowMultiple.ShouldBeFalse();
         usage.Inherited.ShouldBeFalse();

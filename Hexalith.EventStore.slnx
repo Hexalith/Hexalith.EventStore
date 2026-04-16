@@ -4,6 +4,9 @@
     <Project Path="samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj" />
     <Project Path="samples/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj" />
   </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj" />
     <Project Path="src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj" />

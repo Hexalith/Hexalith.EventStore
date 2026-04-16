@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Streams;
 
-public class FieldProvenanceTests
-{
+public class FieldProvenanceTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         var prov = new FieldProvenance(
             "Count", "5", "4", 10,
             DateTimeOffset.UtcNow, "CounterIncremented",
@@ -24,8 +22,7 @@ public class FieldProvenanceTests
     }
 
     [Fact]
-    public void Constructor_WithNullStrings_DefaultsToEmpty()
-    {
+    public void Constructor_WithNullStrings_DefaultsToEmpty() {
         var prov = new FieldProvenance(
             null!, null!, null!, 1,
             DateTimeOffset.UtcNow, null!, null!, null!);
@@ -39,8 +36,7 @@ public class FieldProvenanceTests
     }
 
     [Fact]
-    public void ToString_RedactsCurrentAndPreviousValues()
-    {
+    public void ToString_RedactsCurrentAndPreviousValues() {
         var prov = new FieldProvenance(
             "Count", "secret-current", "secret-previous", 5,
             DateTimeOffset.UtcNow, "CounterIncremented", "corr-1", "user-1");
@@ -54,8 +50,7 @@ public class FieldProvenanceTests
     }
 
     [Fact]
-    public void SerializationRoundTrip_PreservesAllFields()
-    {
+    public void SerializationRoundTrip_PreservesAllFields() {
         DateTimeOffset timestamp = new(2026, 3, 27, 10, 0, 0, TimeSpan.Zero);
         var original = new FieldProvenance(
             "Status.IsActive", "true", "false", 42,
@@ -64,7 +59,7 @@ public class FieldProvenanceTests
         string json = JsonSerializer.Serialize(original);
         FieldProvenance? deserialized = JsonSerializer.Deserialize<FieldProvenance>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized!.FieldPath.ShouldBe("Status.IsActive");
         deserialized.CurrentValue.ShouldBe("true");
         deserialized.PreviousValue.ShouldBe("false");

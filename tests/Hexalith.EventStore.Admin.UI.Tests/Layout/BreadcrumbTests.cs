@@ -1,7 +1,6 @@
 using Bunit;
 
 using Hexalith.EventStore.Admin.UI.Layout;
-using Hexalith.EventStore.Admin.UI.Services;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,13 +11,11 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Layout;
 /// bUnit tests for the Breadcrumb component.
 /// Story 15-8: Deep Linking and Context-Aware Breadcrumbs.
 /// </summary>
-public class BreadcrumbTests : AdminUITestContext
-{
+public class BreadcrumbTests : AdminUITestContext {
     // ===== Merge-blocking tests =====
 
     [Fact]
-    public void Breadcrumb_RendersSemanticLabel_ForStreamsRoute()
-    {
+    public void Breadcrumb_RendersSemanticLabel_ForStreamsRoute() {
         // AC 1, 2: Breadcrumb shows "Streams" with capital S (semantic label)
         NavigationManager navMan = Services.GetRequiredService<NavigationManager>();
         navMan.NavigateTo("/streams");
@@ -31,8 +28,7 @@ public class BreadcrumbTests : AdminUITestContext
     }
 
     [Fact]
-    public void Breadcrumb_RendersMultiWordLabel_ForTypeCatalog()
-    {
+    public void Breadcrumb_RendersMultiWordLabel_ForTypeCatalog() {
         // AC 2: Multi-word label "Type Catalog" for /types
         NavigationManager navMan = Services.GetRequiredService<NavigationManager>();
         navMan.NavigateTo("/types");
@@ -43,8 +39,7 @@ public class BreadcrumbTests : AdminUITestContext
     }
 
     [Fact]
-    public void Breadcrumb_RendersDynamicSegments_InMonospace()
-    {
+    public void Breadcrumb_RendersDynamicSegments_InMonospace() {
         // AC 1: Dynamic segments use monospace CSS class
         NavigationManager navMan = Services.GetRequiredService<NavigationManager>();
         navMan.NavigateTo("/streams/tenant-acme/banking/agg-7f3b");
@@ -64,8 +59,7 @@ public class BreadcrumbTests : AdminUITestContext
     }
 
     [Fact]
-    public void Breadcrumb_RendersDeadLettersPath_Correctly()
-    {
+    public void Breadcrumb_RendersDeadLettersPath_Correctly() {
         // AC 1, 2: /health/dead-letters → Home / Health / Dead Letters
         NavigationManager navMan = Services.GetRequiredService<NavigationManager>();
         navMan.NavigateTo("/health/dead-letters");
@@ -79,8 +73,7 @@ public class BreadcrumbTests : AdminUITestContext
     }
 
     [Fact]
-    public void Breadcrumb_RendersNavElement_WithAriaLabel()
-    {
+    public void Breadcrumb_RendersNavElement_WithAriaLabel() {
         // AC 12: Container is <nav> with aria-label="Breadcrumb"
         NavigationManager navMan = Services.GetRequiredService<NavigationManager>();
         navMan.NavigateTo("/streams");
@@ -88,13 +81,12 @@ public class BreadcrumbTests : AdminUITestContext
         IRenderedComponent<Breadcrumb> cut = Render<Breadcrumb>();
 
         AngleSharp.Dom.IElement nav = cut.Find("nav");
-        nav.ShouldNotBeNull();
+        _ = nav.ShouldNotBeNull();
         nav.GetAttribute("aria-label").ShouldBe("Breadcrumb");
     }
 
     [Fact]
-    public void Breadcrumb_FinalSegment_HasAriaCurrentAndIsNotLink()
-    {
+    public void Breadcrumb_FinalSegment_HasAriaCurrentAndIsNotLink() {
         // AC 12: Final segment has aria-current="page" and is not a link
         NavigationManager navMan = Services.GetRequiredService<NavigationManager>();
         navMan.NavigateTo("/streams");
@@ -102,14 +94,13 @@ public class BreadcrumbTests : AdminUITestContext
         IRenderedComponent<Breadcrumb> cut = Render<Breadcrumb>();
 
         AngleSharp.Dom.IElement current = cut.Find("[aria-current='page']");
-        current.ShouldNotBeNull();
+        _ = current.ShouldNotBeNull();
         current.TagName.ShouldBe("SPAN");
         current.TextContent.ShouldBe("Streams");
     }
 
     [Fact]
-    public void Breadcrumb_CopyButton_HasAriaLabel()
-    {
+    public void Breadcrumb_CopyButton_HasAriaLabel() {
         // AC 4, 12: Copy button has proper aria-label
         NavigationManager navMan = Services.GetRequiredService<NavigationManager>();
         navMan.NavigateTo("/streams");
@@ -117,13 +108,12 @@ public class BreadcrumbTests : AdminUITestContext
         IRenderedComponent<Breadcrumb> cut = Render<Breadcrumb>();
 
         AngleSharp.Dom.IElement copyBtn = cut.Find("[aria-label='Copy page URL to clipboard']");
-        copyBtn.ShouldNotBeNull();
+        _ = copyBtn.ShouldNotBeNull();
         copyBtn.GetAttribute("title").ShouldBe("Copy link");
     }
 
     [Fact]
-    public void Breadcrumb_IsNotRendered_OnHomePage()
-    {
+    public void Breadcrumb_IsNotRendered_OnHomePage() {
         // AC 1: No breadcrumb on home page
         IRenderedComponent<Breadcrumb> cut = Render<Breadcrumb>();
 
@@ -133,8 +123,7 @@ public class BreadcrumbTests : AdminUITestContext
     // ===== Recommended tests =====
 
     [Fact]
-    public void Breadcrumb_Truncation_ShowsEllipsisOnNarrowViewport()
-    {
+    public void Breadcrumb_Truncation_ShowsEllipsisOnNarrowViewport() {
         // AC 3: Narrow viewport with 5+ segments shows "..." button
         NavigationManager navMan = Services.GetRequiredService<NavigationManager>();
         navMan.NavigateTo("/streams/tenant-acme/banking/agg-7f3b");
@@ -145,17 +134,15 @@ public class BreadcrumbTests : AdminUITestContext
         ViewportService viewportService = Services.GetRequiredService<ViewportService>();
         viewportService.OnViewportWidthChanged(false);
 
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             AngleSharp.Dom.IElement truncBtn = cut.Find("[aria-label='Show full breadcrumb path']");
-            truncBtn.ShouldNotBeNull();
+            _ = truncBtn.ShouldNotBeNull();
             truncBtn.TextContent.ShouldBe("...");
         });
     }
 
     [Fact]
-    public void Breadcrumb_Truncation_DoesNotShowEllipsis_AtFourSegments()
-    {
+    public void Breadcrumb_Truncation_DoesNotShowEllipsis_AtFourSegments() {
         // AC 3 boundary: exactly 4 segments (Home + 3) should not truncate
         NavigationManager navMan = Services.GetRequiredService<NavigationManager>();
         navMan.NavigateTo("/streams/tenant-acme/banking");
@@ -165,15 +152,11 @@ public class BreadcrumbTests : AdminUITestContext
         ViewportService viewportService = Services.GetRequiredService<ViewportService>();
         viewportService.OnViewportWidthChanged(false);
 
-        cut.WaitForAssertion(() =>
-        {
-            cut.FindAll("[aria-label='Show full breadcrumb path']").Count.ShouldBe(0);
-        });
+        cut.WaitForAssertion(() => cut.FindAll("[aria-label='Show full breadcrumb path']").Count.ShouldBe(0));
     }
 
     [Fact]
-    public void Breadcrumb_Truncation_ExpandsWhenClicked()
-    {
+    public void Breadcrumb_Truncation_ExpandsWhenClicked() {
         // AC 3: Clicking "..." shows all segments
         NavigationManager navMan = Services.GetRequiredService<NavigationManager>();
         navMan.NavigateTo("/streams/tenant-acme/banking/agg-7f3b");
@@ -201,8 +184,7 @@ public class BreadcrumbTests : AdminUITestContext
     }
 
     [Fact]
-    public void Breadcrumb_IntermediateSegments_AreClickableLinks()
-    {
+    public void Breadcrumb_IntermediateSegments_AreClickableLinks() {
         // AC 1: Each segment except the last is a clickable link
         NavigationManager navMan = Services.GetRequiredService<NavigationManager>();
         navMan.NavigateTo("/streams/tenant-acme/banking/agg-7f3b");
@@ -222,8 +204,7 @@ public class BreadcrumbTests : AdminUITestContext
     }
 
     [Fact]
-    public void Breadcrumb_Separator_HasAriaHidden()
-    {
+    public void Breadcrumb_Separator_HasAriaHidden() {
         // AC 12: Separator "/" has aria-hidden="true"
         NavigationManager navMan = Services.GetRequiredService<NavigationManager>();
         navMan.NavigateTo("/streams");
@@ -236,8 +217,7 @@ public class BreadcrumbTests : AdminUITestContext
     }
 
     [Fact]
-    public void Breadcrumb_CopyButton_InvokesJSInterop()
-    {
+    public void Breadcrumb_CopyButton_InvokesJSInterop() {
         // AC 4: Copy button calls JS interop
         NavigationManager navMan = Services.GetRequiredService<NavigationManager>();
         navMan.NavigateTo("/streams");
@@ -248,12 +228,11 @@ public class BreadcrumbTests : AdminUITestContext
         copyBtn.Click();
 
         // JSInterop is in Loose mode, so invocations are accepted without explicit setup
-        JSInterop.VerifyInvoke("hexalithAdmin.copyToClipboard");
+        _ = JSInterop.VerifyInvoke("hexalithAdmin.copyToClipboard");
     }
 
     [Fact]
-    public void Breadcrumb_Truncation_ResetsOnNavigation()
-    {
+    public void Breadcrumb_Truncation_ResetsOnNavigation() {
         // AC 3: Truncation state resets on navigation change
         NavigationManager navMan = Services.GetRequiredService<NavigationManager>();
         navMan.NavigateTo("/streams/tenant-acme/banking/agg-7f3b");
@@ -276,16 +255,14 @@ public class BreadcrumbTests : AdminUITestContext
         navMan.NavigateTo("/streams/tenant-other/finance/agg-abc1");
 
         // After navigation, should be truncated again (not expanded)
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             AngleSharp.Dom.IElement newTruncBtn = cut.Find("[aria-label='Show full breadcrumb path']");
-            newTruncBtn.ShouldNotBeNull();
+            _ = newTruncBtn.ShouldNotBeNull();
         });
     }
 
     [Fact]
-    public void Breadcrumb_UnknownSegments_RenderVerbatimInMonospace()
-    {
+    public void Breadcrumb_UnknownSegments_RenderVerbatimInMonospace() {
         // AC 2: Unknown segments (not in dictionary) render verbatim with monospace
         NavigationManager navMan = Services.GetRequiredService<NavigationManager>();
         navMan.NavigateTo("/streams/my-tenant-id");

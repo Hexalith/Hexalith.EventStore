@@ -13,15 +13,12 @@ using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
-public class DaprTypeCatalogServiceTests
-{
+public class DaprTypeCatalogServiceTests {
     private const string StateStoreName = "statestore";
 
-    private static DaprTypeCatalogService CreateService(DaprClient? daprClient = null)
-    {
+    private static DaprTypeCatalogService CreateService(DaprClient? daprClient = null) {
         daprClient ??= Substitute.For<DaprClient>();
-        IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions
-        {
+        IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             StateStoreName = StateStoreName,
         });
 
@@ -32,8 +29,7 @@ public class DaprTypeCatalogServiceTests
     }
 
     [Fact]
-    public async Task ListEventTypesAsync_ReturnsTypes_WhenIndexExists()
-    {
+    public async Task ListEventTypesAsync_ReturnsTypes_WhenIndexExists() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var types = new List<EventTypeInfo>
         {
@@ -41,7 +37,7 @@ public class DaprTypeCatalogServiceTests
             new("OrderRejected", "orders", true, 1),
         };
 
-        daprClient.GetStateAsync<List<EventTypeInfo>>(
+        _ = daprClient.GetStateAsync<List<EventTypeInfo>>(
             StateStoreName,
             "admin:type-catalog:events:orders",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -56,10 +52,9 @@ public class DaprTypeCatalogServiceTests
     }
 
     [Fact]
-    public async Task ListEventTypesAsync_ReturnsEmpty_WhenIndexNotFound()
-    {
+    public async Task ListEventTypesAsync_ReturnsEmpty_WhenIndexNotFound() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<EventTypeInfo>>(
+        _ = daprClient.GetStateAsync<List<EventTypeInfo>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -73,36 +68,34 @@ public class DaprTypeCatalogServiceTests
     }
 
     [Fact]
-    public async Task ListEventTypesAsync_UsesAllKey_WhenDomainNull()
-    {
+    public async Task ListEventTypesAsync_UsesAllKey_WhenDomainNull() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<EventTypeInfo>>(
+        _ = daprClient.GetStateAsync<List<EventTypeInfo>>(
             StateStoreName,
             "admin:type-catalog:events:all",
             cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(_ => new List<EventTypeInfo>());
+            .Returns(_ => []);
 
         DaprTypeCatalogService service = CreateService(daprClient);
 
         IReadOnlyList<EventTypeInfo> result = await service.ListEventTypesAsync(null);
 
         result.ShouldBeEmpty();
-        await daprClient.Received(1).GetStateAsync<List<EventTypeInfo>>(
+        _ = await daprClient.Received(1).GetStateAsync<List<EventTypeInfo>>(
             StateStoreName,
             "admin:type-catalog:events:all",
             cancellationToken: Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task ListCommandTypesAsync_ReturnsTypes_WhenIndexExists()
-    {
+    public async Task ListCommandTypesAsync_ReturnsTypes_WhenIndexExists() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var types = new List<CommandTypeInfo>
         {
             new("CreateOrder", "orders", "OrderAggregate"),
         };
 
-        daprClient.GetStateAsync<List<CommandTypeInfo>>(
+        _ = daprClient.GetStateAsync<List<CommandTypeInfo>>(
             StateStoreName,
             "admin:type-catalog:commands:orders",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -117,15 +110,14 @@ public class DaprTypeCatalogServiceTests
     }
 
     [Fact]
-    public async Task ListAggregateTypesAsync_ReturnsTypes_WhenIndexExists()
-    {
+    public async Task ListAggregateTypesAsync_ReturnsTypes_WhenIndexExists() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var types = new List<AggregateTypeInfo>
         {
             new("OrderAggregate", "orders", 3, 2, true),
         };
 
-        daprClient.GetStateAsync<List<AggregateTypeInfo>>(
+        _ = daprClient.GetStateAsync<List<AggregateTypeInfo>>(
             StateStoreName,
             "admin:type-catalog:aggregates:orders",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -141,13 +133,12 @@ public class DaprTypeCatalogServiceTests
     }
 
     [Fact]
-    public async Task ListEventTypesAsync_PropagatesCancellation()
-    {
+    public async Task ListEventTypesAsync_PropagatesCancellation() {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<EventTypeInfo>>(
+        _ = daprClient.GetStateAsync<List<EventTypeInfo>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -155,15 +146,14 @@ public class DaprTypeCatalogServiceTests
 
         DaprTypeCatalogService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.ListEventTypesAsync("orders", cts.Token));
     }
 
     [Fact]
-    public async Task ListEventTypesAsync_Throws_WhenDaprThrows()
-    {
+    public async Task ListEventTypesAsync_Throws_WhenDaprThrows() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<EventTypeInfo>>(
+        _ = daprClient.GetStateAsync<List<EventTypeInfo>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -171,15 +161,14 @@ public class DaprTypeCatalogServiceTests
 
         DaprTypeCatalogService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.ListEventTypesAsync("orders"));
     }
 
     [Fact]
-    public async Task ListAggregateTypesAsync_ReturnsEmpty_WhenIndexNotFound()
-    {
+    public async Task ListAggregateTypesAsync_ReturnsEmpty_WhenIndexNotFound() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<AggregateTypeInfo>>(
+        _ = daprClient.GetStateAsync<List<AggregateTypeInfo>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())

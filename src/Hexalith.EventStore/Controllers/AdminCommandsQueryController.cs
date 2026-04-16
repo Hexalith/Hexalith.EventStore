@@ -3,7 +3,6 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Commands;
 
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hexalith.EventStore.Controllers;

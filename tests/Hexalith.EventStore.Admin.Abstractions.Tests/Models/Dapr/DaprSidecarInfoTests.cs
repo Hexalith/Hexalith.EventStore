@@ -2,11 +2,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Dapr;
 
-public class DaprSidecarInfoTests
-{
+public class DaprSidecarInfoTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         var info = new DaprSidecarInfo("my-app", "1.14.0", 5, 3, 2, RemoteMetadataStatus.Available, "http://localhost:3501");
 
         info.AppId.ShouldBe("my-app");
@@ -22,25 +20,18 @@ public class DaprSidecarInfoTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_WithInvalidAppId_ThrowsArgumentException(string? appId)
-    {
-        Should.Throw<ArgumentException>(() =>
-            new DaprSidecarInfo(appId!, "1.14.0", 5, 3, 2, RemoteMetadataStatus.Available, "http://localhost:3501"));
-    }
+    public void Constructor_WithInvalidAppId_ThrowsArgumentException(string? appId) => Should.Throw<ArgumentException>(() =>
+                                                                                                new DaprSidecarInfo(appId!, "1.14.0", 5, 3, 2, RemoteMetadataStatus.Available, "http://localhost:3501"));
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_WithInvalidRuntimeVersion_ThrowsArgumentException(string? runtimeVersion)
-    {
-        Should.Throw<ArgumentException>(() =>
-            new DaprSidecarInfo("my-app", runtimeVersion!, 5, 3, 2, RemoteMetadataStatus.Available, "http://localhost:3501"));
-    }
+    public void Constructor_WithInvalidRuntimeVersion_ThrowsArgumentException(string? runtimeVersion) => Should.Throw<ArgumentException>(() =>
+                                                                                                                  new DaprSidecarInfo("my-app", runtimeVersion!, 5, 3, 2, RemoteMetadataStatus.Available, "http://localhost:3501"));
 
     [Fact]
-    public void Constructor_WithZeroCounts_CreatesInstance()
-    {
+    public void Constructor_WithZeroCounts_CreatesInstance() {
         var info = new DaprSidecarInfo("my-app", "1.14.0", 0, 0, 0, RemoteMetadataStatus.NotConfigured, null);
 
         info.ComponentCount.ShouldBe(0);

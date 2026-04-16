@@ -7,13 +7,11 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Config;
 /// <summary>
 /// Sets or clears the active connection profile.
 /// </summary>
-public static class ConfigUseCommand
-{
+public static class ConfigUseCommand {
     /// <summary>
     /// Creates the config use subcommand.
     /// </summary>
-    public static Command Create()
-    {
+    public static Command Create() {
         Argument<string?> nameArg = new("name") { Description = "Profile name to activate", Arity = ArgumentArity.ZeroOrOne };
         Option<bool> clearOption = new("--clear") { Description = "Clear active profile" };
 
@@ -21,8 +19,7 @@ public static class ConfigUseCommand
         command.Arguments.Add(nameArg);
         command.Options.Add(clearOption);
 
-        command.SetAction((parseResult, _) =>
-        {
+        command.SetAction((parseResult, _) => {
             string? name = parseResult.GetValue(nameArg);
             bool clear = parseResult.GetValue(clearOption);
             return Task.FromResult(Execute(name, clear));
@@ -31,18 +28,14 @@ public static class ConfigUseCommand
         return command;
     }
 
-    internal static int Execute(string? name, bool clear, string? profilePath = null)
-    {
-        if (name is null && !clear)
-        {
+    internal static int Execute(string? name, bool clear, string? profilePath = null) {
+        if (name is null && !clear) {
             Console.Error.WriteLine("Specify a profile name or use --clear to deactivate.");
             return ExitCodes.Error;
         }
 
-        try
-        {
-            if (clear)
-            {
+        try {
+            if (clear) {
                 ProfileStore store = ProfileManager.Load(profilePath);
                 ProfileManager.Save(store with { ActiveProfile = null }, profilePath);
                 Console.Error.WriteLine("Active profile cleared.");
@@ -50,8 +43,7 @@ public static class ConfigUseCommand
             }
 
             ProfileStore profileStore = ProfileManager.Load(profilePath);
-            if (!profileStore.Profiles.ContainsKey(name!))
-            {
+            if (!profileStore.Profiles.ContainsKey(name!)) {
                 Console.Error.WriteLine($"Profile '{name}' not found. Run 'eventstore-admin config profile list' to see available profiles.");
                 return ExitCodes.Error;
             }
@@ -60,8 +52,7 @@ public static class ConfigUseCommand
             Console.Error.WriteLine($"Active profile set to '{name}'.");
             return ExitCodes.Success;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
             Console.Error.WriteLine($"Error updating profile: {ex.Message}");
             return ExitCodes.Error;
         }

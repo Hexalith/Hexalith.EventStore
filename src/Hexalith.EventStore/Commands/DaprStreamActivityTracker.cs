@@ -3,7 +3,6 @@ using Dapr.Client;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Server.Commands;
 
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Commands;

@@ -9,8 +9,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Tenant;
 /// <summary>
 /// The <c>eventstore-admin tenant verify</c> subcommand — validates tenant health.
 /// </summary>
-public static class TenantVerifyCommand
-{
+public static class TenantVerifyCommand {
     internal static readonly List<ColumnDefinition> Columns =
     [
         new("Tenant ID", "TenantId"),
@@ -23,19 +22,19 @@ public static class TenantVerifyCommand
     /// <summary>
     /// Creates the tenant verify subcommand wired to the shared global options.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
+    public static Command Create(GlobalOptionsBinding binding) {
         Argument<string> tenantIdArg = TenantArguments.TenantId();
 
-        Option<bool> quietOption = new("--quiet", "-q") { Description = "Suppress stdout output, only return exit code" };
-        quietOption.DefaultValueFactory = _ => false;
+        Option<bool> quietOption = new("--quiet", "-q") {
+            Description = "Suppress stdout output, only return exit code",
+            DefaultValueFactory = _ => false
+        };
 
         Command command = new("verify", "Verify tenant health");
         command.Arguments.Add(tenantIdArg);
         command.Options.Add(quietOption);
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
+        command.SetAction(async (parseResult, cancellationToken) => {
             GlobalOptions options = binding.Resolve(parseResult);
             string tenantId = parseResult.GetValue(tenantIdArg)!;
             bool quiet = parseResult.GetValue(quietOption);
@@ -48,8 +47,7 @@ public static class TenantVerifyCommand
         GlobalOptions options,
         string tenantId,
         bool quiet,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         using AdminApiClient client = new(options);
         return await ExecuteAsync(client, options, tenantId, quiet, cancellationToken).ConfigureAwait(false);
     }
@@ -59,16 +57,13 @@ public static class TenantVerifyCommand
         GlobalOptions options,
         string tenantId,
         bool quiet,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
+        CancellationToken cancellationToken) {
+        try {
             TenantDetail? detail = await client
                 .TryGetAsync<TenantDetail>($"api/v1/admin/tenants/{Uri.EscapeDataString(tenantId)}", cancellationToken)
                 .ConfigureAwait(false);
 
-            if (detail is null)
-            {
+            if (detail is null) {
                 Console.Error.WriteLine($"Tenant '{tenantId}' not found.");
                 return ExitCodes.Error;
             }
@@ -76,8 +71,7 @@ public static class TenantVerifyCommand
             string verdict = DeriveVerdict(detail.Status);
             int exitCode = MapExitCode(verdict);
 
-            if (!quiet || options.OutputFile is not null)
-            {
+            if (!quiet || options.OutputFile is not null) {
                 TenantVerifyResult result = new(
                     detail.TenantId,
                     detail.Name,
@@ -87,41 +81,35 @@ public static class TenantVerifyCommand
 
                 IOutputFormatter formatter = OutputFormatterFactory.Create(options.Format);
                 string output;
-                if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase))
-                {
+                if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase)) {
                     output = formatter.Format(result);
                 }
-                else
-                {
+                else {
                     output = formatter.Format(result, Columns);
                 }
 
                 OutputWriter writer = new(options.OutputFile);
                 int writeResult = writer.Write(output);
-                if (writeResult != ExitCodes.Success)
-                {
+                if (writeResult != ExitCodes.Success) {
                     return writeResult;
                 }
             }
 
             return exitCode;
         }
-        catch (AdminApiException ex)
-        {
+        catch (AdminApiException ex) {
             Console.Error.WriteLine(ex.Message);
             return ExitCodes.Error;
         }
     }
 
     internal static string DeriveVerdict(TenantStatusType status) =>
-        status switch
-        {
+        status switch {
             TenantStatusType.Disabled => "FAIL",
             _ => "PASS",
         };
 
-    internal static int MapExitCode(string verdict) => verdict switch
-    {
+    internal static int MapExitCode(string verdict) => verdict switch {
         "PASS" => ExitCodes.Success,
         _ => ExitCodes.Error,
     };

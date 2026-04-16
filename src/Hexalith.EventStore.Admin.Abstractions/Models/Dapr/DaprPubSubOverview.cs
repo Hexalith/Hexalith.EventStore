@@ -19,8 +19,7 @@ public record DaprPubSubOverview(
     IReadOnlyList<DaprComponentDetail> PubSubComponents,
     IReadOnlyList<DaprSubscriptionInfo> Subscriptions,
     RemoteMetadataStatus RemoteMetadataStatus,
-    string? RemoteEndpoint)
-{
+    string? RemoteEndpoint) {
     /// <summary>Gets the pub/sub components.</summary>
     public IReadOnlyList<DaprComponentDetail> PubSubComponents { get; } = PubSubComponents
         ?? throw new ArgumentNullException(nameof(PubSubComponents));

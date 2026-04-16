@@ -1,12 +1,9 @@
 using Bunit;
 
-using Hexalith.EventStore.Admin.UI.Services;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 
@@ -25,7 +22,7 @@ public class StubPageTests : AdminUITestContext {
             .Returns(Task.FromResult(new PagedResult<Hexalith.EventStore.Admin.Abstractions.Models.Commands.CommandSummary>([], 0, null)));
         _ = mockStreamApi.GetTenantsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Hexalith.EventStore.Admin.Abstractions.Models.Tenants.TenantSummary>>([]));
-        Services.AddScoped(_ => mockStreamApi);
+        _ = Services.AddScoped(_ => mockStreamApi);
 
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Commands> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Commands>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("No commands processed yet"), TimeSpan.FromSeconds(5));
@@ -41,7 +38,7 @@ public class StubPageTests : AdminUITestContext {
             .Returns(Task.FromResult(new PagedResult<Hexalith.EventStore.Admin.Abstractions.Models.Streams.StreamSummary>([], 0, null)));
         _ = mockStreamApi.GetTenantsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Hexalith.EventStore.Admin.Abstractions.Models.Tenants.TenantSummary>>([]));
-        Services.AddScoped(_ => mockStreamApi);
+        _ = Services.AddScoped(_ => mockStreamApi);
 
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Events> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Events>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("No events recorded yet"), TimeSpan.FromSeconds(5));
@@ -63,7 +60,7 @@ public class StubPageTests : AdminUITestContext {
         _ = mockDeadLetterApi.GetDeadLettersAsync(
             Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new PagedResult<Hexalith.EventStore.Admin.Abstractions.Models.DeadLetters.DeadLetterEntry>([], 0, null)));
-        Services.AddScoped(_ => mockDeadLetterApi);
+        _ = Services.AddScoped(_ => mockDeadLetterApi);
 
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.DeadLetters> cut = Render<Hexalith.EventStore.Admin.UI.Pages.DeadLetters>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("No dead letters. All commands processed successfully."), TimeSpan.FromSeconds(5));
@@ -77,7 +74,7 @@ public class StubPageTests : AdminUITestContext {
             NullLogger<AdminTenantApiClient>.Instance);
         _ = mockTenantApi.ListTenantsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Hexalith.EventStore.Admin.Abstractions.Models.Tenants.TenantSummary>>([]));
-        Services.AddScoped(_ => mockTenantApi);
+        _ = Services.AddScoped(_ => mockTenantApi);
 
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Tenants> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Tenants>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("No tenants configured"), TimeSpan.FromSeconds(5));

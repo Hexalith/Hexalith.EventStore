@@ -7,8 +7,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Projections;
 /// <param name="Timestamp">When the error occurred.</param>
 /// <param name="Message">The error message.</param>
 /// <param name="EventTypeName">The type name of the event that caused the error, if known.</param>
-public record ProjectionError(long Position, DateTimeOffset Timestamp, string Message, string? EventTypeName)
-{
+public record ProjectionError(long Position, DateTimeOffset Timestamp, string Message, string? EventTypeName) {
     /// <summary>Gets the error message.</summary>
     public string Message { get; } = !string.IsNullOrWhiteSpace(Message)
         ? Message

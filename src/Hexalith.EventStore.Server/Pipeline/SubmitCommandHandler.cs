@@ -27,7 +27,7 @@ public partial class SubmitCommandHandler(
         ICommandArchiveStore archiveStore,
         ICommandRouter commandRouter,
         ILogger<SubmitCommandHandler> logger)
-        : this(statusStore, archiveStore, commandRouter, (ICommandActivityTracker?)null, (IStreamActivityTracker?)null, logger) { }
+        : this(statusStore, archiveStore, commandRouter, null, (IStreamActivityTracker?)null, logger) { }
 
     public SubmitCommandHandler(
         ICommandStatusStore statusStore,
@@ -35,7 +35,7 @@ public partial class SubmitCommandHandler(
         ICommandRouter commandRouter,
         IBackpressureTracker backpressureTracker,
         ILogger<SubmitCommandHandler> logger)
-        : this(statusStore, archiveStore, commandRouter, (ICommandActivityTracker?)null, (IStreamActivityTracker?)null, logger) => ArgumentNullException.ThrowIfNull(backpressureTracker);
+        : this(statusStore, archiveStore, commandRouter, null, (IStreamActivityTracker?)null, logger) => ArgumentNullException.ThrowIfNull(backpressureTracker);
 
     public SubmitCommandHandler(
         ICommandStatusStore statusStore,

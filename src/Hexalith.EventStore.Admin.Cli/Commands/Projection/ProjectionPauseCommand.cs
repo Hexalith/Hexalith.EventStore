@@ -9,13 +9,11 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Projection;
 /// <summary>
 /// The <c>eventstore-admin projection pause</c> subcommand — pauses a projection.
 /// </summary>
-public static class ProjectionPauseCommand
-{
+public static class ProjectionPauseCommand {
     /// <summary>
     /// Creates the projection pause subcommand wired to the shared global options.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
+    public static Command Create(GlobalOptionsBinding binding) {
         Argument<string> tenantArg = ProjectionArguments.Tenant();
         Argument<string> nameArg = ProjectionArguments.Name();
 
@@ -23,8 +21,7 @@ public static class ProjectionPauseCommand
         command.Arguments.Add(tenantArg);
         command.Arguments.Add(nameArg);
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
+        command.SetAction(async (parseResult, cancellationToken) => {
             GlobalOptions options = binding.Resolve(parseResult);
             string tenant = parseResult.GetValue(tenantArg)!;
             string name = parseResult.GetValue(nameArg)!;
@@ -37,8 +34,7 @@ public static class ProjectionPauseCommand
         GlobalOptions options,
         string tenant,
         string name,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         using AdminApiClient client = new(options);
         return await ExecuteAsync(client, options, tenant, name, cancellationToken).ConfigureAwait(false);
     }
@@ -48,19 +44,16 @@ public static class ProjectionPauseCommand
         GlobalOptions options,
         string tenant,
         string name,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         IOutputFormatter formatter = OutputFormatterFactory.Create(options.Format);
         OutputWriter writer = new(options.OutputFile);
-        try
-        {
+        try {
             string path = $"api/v1/admin/projections/{Uri.EscapeDataString(tenant)}/{Uri.EscapeDataString(name)}/pause";
             AdminOperationResult result = await client
                 .PostAsync<AdminOperationResult>(path, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (!result.Success)
-            {
+            if (!result.Success) {
                 Console.Error.WriteLine(result.Message ?? "Operation failed.");
                 return ExitCodes.Error;
             }
@@ -71,10 +64,8 @@ public static class ProjectionPauseCommand
             int writeResult = writer.Write(output);
             return writeResult != ExitCodes.Success ? writeResult : ExitCodes.Success;
         }
-        catch (AdminApiException ex)
-        {
-            string message = ex.HttpStatusCode switch
-            {
+        catch (AdminApiException ex) {
+            string message = ex.HttpStatusCode switch {
                 403 => "Access denied. Operator role required to pause projections.",
                 404 => $"Projection '{name}' not found in tenant '{tenant}'.",
                 _ => ex.Message,

@@ -1,15 +1,16 @@
-namespace Hexalith.EventStore.Admin.Mcp.Tools;
 
 using System.ComponentModel;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
+
 using ModelContextProtocol.Server;
 
+namespace Hexalith.EventStore.Admin.Mcp.Tools;
 /// <summary>
 /// MCP tools for querying tenant information.
 /// </summary>
 [McpServerToolType]
-internal static class TenantTools
-{
+internal static class TenantTools {
     /// <summary>
     /// List all tenants with their status.
     /// </summary>
@@ -17,17 +18,14 @@ internal static class TenantTools
     [Description("List all tenants with their name and status (Active/Disabled)")]
     public static async Task<string> ListTenants(
         AdminApiClient adminApiClient,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var result = await adminApiClient
+        CancellationToken cancellationToken = default) {
+        try {
+            IReadOnlyList<TenantSummary> result = await adminApiClient
                 .ListTenantsAsync(cancellationToken)
                 .ConfigureAwait(false);
             return ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }
@@ -40,25 +38,21 @@ internal static class TenantTools
     public static async Task<string> GetTenantDetail(
         AdminApiClient adminApiClient,
         [Description("Tenant ID")] string tenantId,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired((tenantId, "tenantId"));
-        if (validation is not null)
-        {
+        if (validation is not null) {
             return validation;
         }
 
-        try
-        {
-            var result = await adminApiClient
+        try {
+            TenantDetail? result = await adminApiClient
                 .GetTenantDetailAsync(tenantId, cancellationToken)
                 .ConfigureAwait(false);
             return result is null
                 ? ToolHelper.SerializeError("not-found", $"Tenant '{tenantId}' not found")
                 : ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }
@@ -71,23 +65,19 @@ internal static class TenantTools
     public static async Task<string> GetTenantUsers(
         AdminApiClient adminApiClient,
         [Description("Tenant ID")] string tenantId,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired((tenantId, "tenantId"));
-        if (validation is not null)
-        {
+        if (validation is not null) {
             return validation;
         }
 
-        try
-        {
-            var result = await adminApiClient
+        try {
+            IReadOnlyList<TenantUser> result = await adminApiClient
                 .GetTenantUsersAsync(tenantId, cancellationToken)
                 .ConfigureAwait(false);
             return ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }

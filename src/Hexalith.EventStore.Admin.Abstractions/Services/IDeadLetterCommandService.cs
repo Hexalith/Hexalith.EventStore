@@ -5,8 +5,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// <summary>
 /// Service interface for operator-level dead-letter management operations. CQRS-split — writes only.
 /// </summary>
-public interface IDeadLetterCommandService
-{
+public interface IDeadLetterCommandService {
     /// <summary>
     /// Retries the specified dead-letter messages.
     /// </summary>

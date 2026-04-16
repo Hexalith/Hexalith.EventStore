@@ -5,8 +5,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// <summary>
 /// Service interface for querying storage usage and snapshot policies (FR76).
 /// </summary>
-public interface IStorageQueryService
-{
+public interface IStorageQueryService {
     /// <summary>
     /// Gets the storage overview, optionally filtered by tenant.
     /// </summary>

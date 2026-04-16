@@ -4,13 +4,10 @@ using AngleSharp.Dom;
 
 using Bunit;
 
-using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.UI.Components.Shared;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -29,11 +26,11 @@ public class EventsPageTests : AdminUITestContext {
         _mockApiClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
     }
 
     [Fact]
@@ -142,7 +139,7 @@ public class EventsPageTests : AdminUITestContext {
         // Click the rendered data row to verify grid wiring, not just the private handler
         IElement? row = cut.FindAll("tr")
             .FirstOrDefault(r => r.TextContent.Contains("tenant a", StringComparison.OrdinalIgnoreCase));
-        row.ShouldNotBeNull();
+        _ = row.ShouldNotBeNull();
         await cut.InvokeAsync(() => row!.Click());
 
         NavManager.Uri.ShouldEndWith(
@@ -152,7 +149,7 @@ public class EventsPageTests : AdminUITestContext {
     [Fact]
     public async Task EventsPage_RefreshPreservesFiltersPageAndScrollState() {
         // Arrange
-        JSInterop.Setup<double>("hexalithAdmin.getScrollTop", _ => true).SetResult(240d);
+        _ = JSInterop.Setup<double>("hexalithAdmin.getScrollTop", _ => true).SetResult(240d);
 
         StreamSummary stream = new(
             "tenant-a",
@@ -215,7 +212,7 @@ public class EventsPageTests : AdminUITestContext {
         NavManager.Uri.ShouldContain("page=2");
         NavManager.Uri.ShouldContain("tenant=tenant-a");
         NavManager.Uri.ShouldContain("eventType=Create");
-        JSInterop.VerifyInvoke("hexalithAdmin.getScrollTop");
+        _ = JSInterop.VerifyInvoke("hexalithAdmin.getScrollTop");
         cut.WaitForAssertion(() => JSInterop.VerifyInvoke("hexalithAdmin.setScrollTop"), TimeSpan.FromSeconds(5));
         _ = _mockApiClient.Received(2).GetTenantsAsync(Arg.Any<CancellationToken>());
     }
@@ -339,7 +336,7 @@ public class EventsPageTests : AdminUITestContext {
     private static void RaiseRefresh(DashboardRefreshService refreshService, DashboardData data) {
         FieldInfo? eventField = typeof(DashboardRefreshService)
             .GetField("OnDataChanged", BindingFlags.Instance | BindingFlags.NonPublic);
-        Action<DashboardData>? handler = (Action<DashboardData>?)eventField?.GetValue(refreshService);
+        var handler = (Action<DashboardData>?)eventField?.GetValue(refreshService);
         handler?.Invoke(data);
     }
 }

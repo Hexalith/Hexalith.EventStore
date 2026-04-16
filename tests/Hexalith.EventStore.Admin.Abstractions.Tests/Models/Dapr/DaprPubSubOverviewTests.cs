@@ -3,11 +3,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Dapr;
 
-public class DaprPubSubOverviewTests
-{
+public class DaprPubSubOverviewTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         List<DaprComponentDetail> components =
         [
             new DaprComponentDetail("pubsub", "pubsub.redis", DaprComponentCategory.PubSub, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, []),
@@ -26,22 +24,15 @@ public class DaprPubSubOverviewTests
     }
 
     [Fact]
-    public void Constructor_WithNullPubSubComponents_ThrowsArgumentNullException()
-    {
-        Should.Throw<ArgumentNullException>(() =>
-            new DaprPubSubOverview(null!, [], RemoteMetadataStatus.NotConfigured, null));
-    }
+    public void Constructor_WithNullPubSubComponents_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() =>
+                                                                                               new DaprPubSubOverview(null!, [], RemoteMetadataStatus.NotConfigured, null));
 
     [Fact]
-    public void Constructor_WithNullSubscriptions_ThrowsArgumentNullException()
-    {
-        Should.Throw<ArgumentNullException>(() =>
-            new DaprPubSubOverview([], null!, RemoteMetadataStatus.NotConfigured, null));
-    }
+    public void Constructor_WithNullSubscriptions_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() =>
+                                                                                            new DaprPubSubOverview([], null!, RemoteMetadataStatus.NotConfigured, null));
 
     [Fact]
-    public void Constructor_WithEmptyCollections_CreatesInstance()
-    {
+    public void Constructor_WithEmptyCollections_CreatesInstance() {
         var overview = new DaprPubSubOverview([], [], RemoteMetadataStatus.NotConfigured, null);
 
         overview.PubSubComponents.ShouldBeEmpty();

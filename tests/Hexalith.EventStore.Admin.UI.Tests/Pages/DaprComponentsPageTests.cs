@@ -3,7 +3,6 @@ using Bunit;
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,23 +14,20 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the DaprComponents page.
 /// </summary>
-public class DaprComponentsPageTests : AdminUITestContext
-{
+public class DaprComponentsPageTests : AdminUITestContext {
     private readonly AdminDaprApiClient _mockApiClient;
 
-    public DaprComponentsPageTests()
-    {
+    public DaprComponentsPageTests() {
         _mockApiClient = Substitute.For<AdminDaprApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminDaprApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped(_ => _mockApiClient);
     }
 
     // ===== Merge-blocking tests =====
 
     [Fact]
-    public void DaprPage_RendersTitle()
-    {
+    public void DaprPage_RendersTitle() {
         // Arrange
         _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprSidecarInfo?>(CreateSidecarInfo()));
@@ -47,8 +43,7 @@ public class DaprComponentsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprPage_RendersStatCards_WithSidecarInfo()
-    {
+    public void DaprPage_RendersStatCards_WithSidecarInfo() {
         // Arrange
         DaprSidecarInfo sidecar = CreateSidecarInfo();
         _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
@@ -71,8 +66,7 @@ public class DaprComponentsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprPage_RendersComponentGrid()
-    {
+    public void DaprPage_RendersComponentGrid() {
         // Arrange
         _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprSidecarInfo?>(CreateSidecarInfo()));
@@ -92,8 +86,7 @@ public class DaprComponentsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprPage_RendersEmptyState_WhenSidecarUnavailable()
-    {
+    public void DaprPage_RendersEmptyState_WhenSidecarUnavailable() {
         // Arrange
         _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprSidecarInfo?>(null));
@@ -109,8 +102,7 @@ public class DaprComponentsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprPage_RendersRefreshButton()
-    {
+    public void DaprPage_RendersRefreshButton() {
         // Arrange
         _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprSidecarInfo?>(CreateSidecarInfo()));
@@ -126,8 +118,7 @@ public class DaprComponentsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprPage_RendersIssueBanner_WhenApiUnavailable()
-    {
+    public void DaprPage_RendersIssueBanner_WhenApiUnavailable() {
         // Arrange
         _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
             .Returns<DaprSidecarInfo?>(_ => throw new InvalidOperationException("API down"));
@@ -143,8 +134,7 @@ public class DaprComponentsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprPage_RendersFilterControls()
-    {
+    public void DaprPage_RendersFilterControls() {
         // Arrange
         _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprSidecarInfo?>(CreateSidecarInfo()));
@@ -162,8 +152,7 @@ public class DaprComponentsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprPage_RendersEmptyState_WhenSidecarUpButNoComponents()
-    {
+    public void DaprPage_RendersEmptyState_WhenSidecarUpButNoComponents() {
         // Arrange — sidecar available but zero components
         _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprSidecarInfo?>(CreateSidecarInfo()));

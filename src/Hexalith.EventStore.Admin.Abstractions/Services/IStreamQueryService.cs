@@ -7,8 +7,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// <summary>
 /// Service interface for browsing and inspecting event streams.
 /// </summary>
-public interface IStreamQueryService
-{
+public interface IStreamQueryService {
     /// <summary>
     /// Gets recent commands across all streams, optionally filtered by tenant, status, and command type (FR69).
     /// </summary>

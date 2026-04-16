@@ -13,8 +13,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// DAPR-backed implementation of <see cref="IStorageQueryService"/>.
 /// Reads storage metrics and snapshot policies from admin index keys in the state store.
 /// </summary>
-public sealed class DaprStorageQueryService : IStorageQueryService
-{
+public sealed class DaprStorageQueryService : IStorageQueryService {
     private const string StorageOverviewIndexPrefix = "admin:storage-overview:";
     // Optional projection-maintained index used to provide exact stream totals when
     // the StorageOverview payload does not include TotalStreamCount.
@@ -33,8 +32,7 @@ public sealed class DaprStorageQueryService : IStorageQueryService
     public DaprStorageQueryService(
         DaprClient daprClient,
         IOptions<AdminServerOptions> options,
-        ILogger<DaprStorageQueryService> logger)
-    {
+        ILogger<DaprStorageQueryService> logger) {
         ArgumentNullException.ThrowIfNull(daprClient);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(logger);
@@ -46,25 +44,21 @@ public sealed class DaprStorageQueryService : IStorageQueryService
     /// <inheritdoc/>
     public async Task<StorageOverview> GetStorageOverviewAsync(
         string? tenantId,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         string scope = tenantId ?? "all";
         string indexKey = $"{StorageOverviewIndexPrefix}{scope}";
         StorageOverview? result = await _daprClient
             .GetStateAsync<StorageOverview>(_options.StateStoreName, indexKey, cancellationToken: ct)
             .ConfigureAwait(false);
 
-        if (result is null)
-        {
+        if (result is null) {
             _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
             return new StorageOverview(0, null, [], 0);
         }
 
-        if (result.TotalStreamCount is null)
-        {
+        if (result.TotalStreamCount is null) {
             long? streamCount = await TryGetStorageStreamCountAsync(scope, ct).ConfigureAwait(false);
-            if (streamCount is not null)
-            {
+            if (streamCount is not null) {
                 return new StorageOverview(result.TotalEventCount, result.TotalSizeBytes, result.TenantBreakdown, streamCount.Value);
             }
         }
@@ -72,22 +66,19 @@ public sealed class DaprStorageQueryService : IStorageQueryService
         return result;
     }
 
-    private async Task<long?> TryGetStorageStreamCountAsync(string scope, CancellationToken ct)
-    {
+    private async Task<long?> TryGetStorageStreamCountAsync(string scope, CancellationToken ct) {
         string streamCountKey = $"{StorageStreamCountIndexPrefix}{scope}";
 
-        try
-        {
+        try {
             long? streamCount = await _daprClient
                 .GetStateAsync<long?>(_options.StateStoreName, streamCountKey, cancellationToken: ct)
                 .ConfigureAwait(false);
 
-            return streamCount is null || streamCount < 0
+            return streamCount is null or < 0
                 ? null
                 : streamCount;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             _logger.LogDebug(ex, "Unable to read optional stream count index '{IndexKey}'.", streamCountKey);
             return null;
         }
@@ -97,16 +88,14 @@ public sealed class DaprStorageQueryService : IStorageQueryService
     public async Task<IReadOnlyList<StreamStorageInfo>> GetHotStreamsAsync(
         string? tenantId,
         int count,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         string indexKey = $"admin:storage-hot-streams:{tenantId ?? "all"}";
         List<StreamStorageInfo>? result = await _daprClient
             .GetStateAsync<List<StreamStorageInfo>>(_options.StateStoreName, indexKey, cancellationToken: ct)
             .ConfigureAwait(false);
 
-        if (result is null)
-        {
+        if (result is null) {
             _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
             return [];
         }
@@ -117,15 +106,13 @@ public sealed class DaprStorageQueryService : IStorageQueryService
     /// <inheritdoc/>
     public async Task<IReadOnlyList<CompactionJob>> GetCompactionJobsAsync(
         string? tenantId,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         string indexKey = $"admin:storage-compaction-jobs:{tenantId ?? "all"}";
         List<CompactionJob>? result = await _daprClient
             .GetStateAsync<List<CompactionJob>>(_options.StateStoreName, indexKey, cancellationToken: ct)
             .ConfigureAwait(false);
 
-        if (result is null)
-        {
+        if (result is null) {
             _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
             return [];
         }
@@ -136,15 +123,13 @@ public sealed class DaprStorageQueryService : IStorageQueryService
     /// <inheritdoc/>
     public async Task<IReadOnlyList<SnapshotPolicy>> GetSnapshotPoliciesAsync(
         string? tenantId,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         string indexKey = $"admin:storage-snapshot-policies:{tenantId ?? "all"}";
         List<SnapshotPolicy>? result = await _daprClient
             .GetStateAsync<List<SnapshotPolicy>>(_options.StateStoreName, indexKey, cancellationToken: ct)
             .ConfigureAwait(false);
 
-        if (result is null)
-        {
+        if (result is null) {
             _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
             return [];
         }

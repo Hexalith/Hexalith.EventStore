@@ -10,7 +10,6 @@ using Hexalith.EventStore.Admin.Server.Services;
 using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 using Hexalith.EventStore.Contracts.Commands;
 
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -37,7 +36,7 @@ public class DaprStreamQueryServiceTests {
         var handler = new TestHttpMessageHandler();
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost") };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+        _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
 
         var service = new DaprStreamQueryService(
             daprClient,
@@ -58,7 +57,7 @@ public class DaprStreamQueryServiceTests {
             new("tenant1", "orders", "order-2", 3, DateTimeOffset.UtcNow, 3, true, StreamStatus.Idle),
         };
 
-        daprClient.GetStateAsync<List<StreamSummary>>(
+        _ = daprClient.GetStateAsync<List<StreamSummary>>(
             StateStoreName,
             "admin:stream-activity:all",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -75,7 +74,7 @@ public class DaprStreamQueryServiceTests {
     [Fact]
     public async Task GetRecentlyActiveStreamsAsync_ReturnsEmpty_WhenIndexNotFound() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<StreamSummary>>(
+        _ = daprClient.GetStateAsync<List<StreamSummary>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -98,7 +97,7 @@ public class DaprStreamQueryServiceTests {
             new("tenant1", "shipping", "ship-1", 2, DateTimeOffset.UtcNow, 2, false, StreamStatus.Active),
         };
 
-        daprClient.GetStateAsync<List<StreamSummary>>(
+        _ = daprClient.GetStateAsync<List<StreamSummary>>(
             StateStoreName,
             "admin:stream-activity:all",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -122,7 +121,7 @@ public class DaprStreamQueryServiceTests {
             new("tenant-a", "shipping", "ship-1", 2, DateTimeOffset.UtcNow, 2, false, StreamStatus.Active),
         };
 
-        daprClient.GetStateAsync<List<StreamSummary>>(
+        _ = daprClient.GetStateAsync<List<StreamSummary>>(
             StateStoreName,
             "admin:stream-activity:all",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -135,7 +134,7 @@ public class DaprStreamQueryServiceTests {
         result.Items.Count.ShouldBe(2);
         result.Items.ShouldAllBe(s => s.TenantId == "tenant-a");
 
-        await daprClient.Received(1).GetStateAsync<List<StreamSummary>>(
+        _ = await daprClient.Received(1).GetStateAsync<List<StreamSummary>>(
             StateStoreName,
             "admin:stream-activity:all",
             consistencyMode: Arg.Any<ConsistencyMode?>(),
@@ -146,7 +145,7 @@ public class DaprStreamQueryServiceTests {
     [Fact]
     public async Task GetRecentlyActiveStreamsAsync_ThrowsException_WhenDaprThrows() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<StreamSummary>>(
+        _ = daprClient.GetStateAsync<List<StreamSummary>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -154,7 +153,7 @@ public class DaprStreamQueryServiceTests {
 
         (DaprStreamQueryService service, _) = CreateService(daprClient);
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetRecentlyActiveStreamsAsync("tenant1", null));
     }
 
@@ -182,7 +181,7 @@ public class DaprStreamQueryServiceTests {
         (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupException(new HttpRequestException("Connection failed"));
 
-        await Should.ThrowAsync<HttpRequestException>(
+        _ = await Should.ThrowAsync<HttpRequestException>(
             () => service.GetRecentCommandsAsync("tenant1", null, null));
     }
 
@@ -191,14 +190,14 @@ public class DaprStreamQueryServiceTests {
         (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupException(new InvalidOperationException("Service unavailable"));
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetStreamTimelineAsync("tenant1", "orders", "order-1", null, null));
     }
 
     [Fact]
     public async Task GetStreamTimelineAsync_ForwardsBearerToken_AndBuildsExpectedEndpoint() {
         IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
-        authContext.GetToken().Returns("stream-token");
+        _ = authContext.GetToken().Returns("stream-token");
         PagedResult<TimelineEntry> expected = new([], 0, null);
 
         (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService(authContext: authContext);
@@ -214,7 +213,7 @@ public class DaprStreamQueryServiceTests {
 
         result.Items.ShouldBeEmpty();
         result.TotalCount.ShouldBe(0);
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         handler.LastRequest!.Method.ShouldBe(HttpMethod.Get);
         handler.LastRequest.RequestUri!.ToString().ShouldContain("api/v1/admin/streams/tenant1/orders/order-1/timeline");
         handler.LastRequest.RequestUri!.ToString().ShouldContain("from=10");
@@ -228,7 +227,7 @@ public class DaprStreamQueryServiceTests {
         (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupException(new InvalidOperationException("Service unavailable"));
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetAggregateStateAtPositionAsync("tenant1", "orders", "order-1", 5));
     }
 
@@ -237,7 +236,7 @@ public class DaprStreamQueryServiceTests {
         (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupException(new InvalidOperationException("Service unavailable"));
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.DiffAggregateStateAsync("tenant1", "orders", "order-1", 1, 5));
     }
 
@@ -246,7 +245,7 @@ public class DaprStreamQueryServiceTests {
         (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupException(new InvalidOperationException("Service unavailable"));
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.TraceCausationChainAsync("tenant1", "orders", "order-1", 5));
     }
 
@@ -255,7 +254,7 @@ public class DaprStreamQueryServiceTests {
         (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupException(new InvalidOperationException("Service unavailable"));
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetAggregateBlameAsync("tenant1", "orders", "order-1", 5));
     }
 
@@ -265,7 +264,7 @@ public class DaprStreamQueryServiceTests {
         await cts.CancelAsync();
 
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<StreamSummary>>(
+        _ = daprClient.GetStateAsync<List<StreamSummary>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -273,7 +272,7 @@ public class DaprStreamQueryServiceTests {
 
         (DaprStreamQueryService service, _) = CreateService(daprClient);
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.GetRecentlyActiveStreamsAsync("tenant1", null, ct: cts.Token));
     }
 
@@ -282,7 +281,7 @@ public class DaprStreamQueryServiceTests {
         (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupException(new InvalidOperationException("Service unavailable"));
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetEventDetailAsync("tenant1", "orders", "order-1", 5));
     }
 
@@ -290,7 +289,7 @@ public class DaprStreamQueryServiceTests {
     public async Task GetEventStepFrameAsync_ThrowsArgumentException_WhenSequenceNumberLessThanOne() {
         (DaprStreamQueryService service, _) = CreateService();
 
-        await Should.ThrowAsync<ArgumentException>(
+        _ = await Should.ThrowAsync<ArgumentException>(
             () => service.GetEventStepFrameAsync("tenant1", "orders", "order-1", 0));
     }
 
@@ -299,7 +298,7 @@ public class DaprStreamQueryServiceTests {
         (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupException(new InvalidOperationException("Service unavailable"));
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetCorrelationTraceMapAsync("tenant1", "corr-1", null, null));
     }
 
@@ -308,7 +307,7 @@ public class DaprStreamQueryServiceTests {
         (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupException(new InvalidOperationException("Service unavailable"));
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetEventStepFrameAsync("tenant1", "orders", "order-1", 5));
     }
 
@@ -320,7 +319,7 @@ public class DaprStreamQueryServiceTests {
         EventStepFrame result = await service.GetEventStepFrameAsync(
             "tenant1", "orders", "order-1", 5);
 
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.TenantId.ShouldBe("tenant1");
         result.TotalEvents.ShouldBe(0);
     }
@@ -333,7 +332,7 @@ public class DaprStreamQueryServiceTests {
         (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupException(new OperationCanceledException());
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.GetEventStepFrameAsync("tenant1", "orders", "order-1", 5, cts.Token));
     }
 }

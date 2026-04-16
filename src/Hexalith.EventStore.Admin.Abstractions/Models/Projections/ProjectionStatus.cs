@@ -19,8 +19,7 @@ public record ProjectionStatus(
     double Throughput,
     int ErrorCount,
     long LastProcessedPosition,
-    DateTimeOffset LastProcessedUtc)
-{
+    DateTimeOffset LastProcessedUtc) {
     /// <summary>Gets the projection name.</summary>
     public string Name { get; } = !string.IsNullOrWhiteSpace(Name)
         ? Name

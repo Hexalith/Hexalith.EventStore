@@ -3,8 +3,6 @@ using Bunit;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -16,25 +14,22 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the Streams page.
 /// </summary>
-public class StreamsPageTests : AdminUITestContext
-{
+public class StreamsPageTests : AdminUITestContext {
     private readonly AdminStreamApiClient _mockApiClient;
 
-    public StreamsPageTests()
-    {
+    public StreamsPageTests() {
         _mockApiClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
     }
 
     [Fact]
-    public void StreamsPage_RendersDataGridWithColumns()
-    {
+    public void StreamsPage_RendersDataGridWithColumns() {
         // Arrange
         PagedResult<StreamSummary> streams = CreateStreamsResult(3);
         _ = _mockApiClient.GetRecentlyActiveStreamsAsync(
@@ -58,8 +53,7 @@ public class StreamsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StreamsPage_StatusBadge_MapsStreamStatusCorrectly()
-    {
+    public void StreamsPage_StatusBadge_MapsStreamStatusCorrectly() {
         // Arrange
         List<StreamSummary> items =
         [
@@ -85,8 +79,7 @@ public class StreamsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StreamsPage_ShowsEmptyState_WhenNoStreams()
-    {
+    public void StreamsPage_ShowsEmptyState_WhenNoStreams() {
         // Arrange
         _ = _mockApiClient.GetRecentlyActiveStreamsAsync(
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
@@ -103,8 +96,7 @@ public class StreamsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StreamsPage_ShowsPagination_WhenMoreThan25Streams()
-    {
+    public void StreamsPage_ShowsPagination_WhenMoreThan25Streams() {
         // Arrange
         PagedResult<StreamSummary> streams = CreateStreamsResult(30);
         _ = _mockApiClient.GetRecentlyActiveStreamsAsync(
@@ -123,8 +115,7 @@ public class StreamsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StreamsPage_AggregateId_IsTruncated()
-    {
+    public void StreamsPage_AggregateId_IsTruncated() {
         // Arrange
         List<StreamSummary> items =
         [
@@ -146,11 +137,9 @@ public class StreamsPageTests : AdminUITestContext
         cut.Markup.ShouldContain("title=\"abcdefghijklmnop\"");
     }
 
-    private static PagedResult<StreamSummary> CreateStreamsResult(int count)
-    {
+    private static PagedResult<StreamSummary> CreateStreamsResult(int count) {
         List<StreamSummary> items = [];
-        for (int i = 0; i < count; i++)
-        {
+        for (int i = 0; i < count; i++) {
             items.Add(new StreamSummary(
                 $"tenant-{i}",
                 "counter",

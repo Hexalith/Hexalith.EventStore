@@ -2,11 +2,9 @@ using Hexalith.EventStore.Admin.Cli.Formatting;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Formatting;
 
-public class TableOutputFormatterTests
-{
+public class TableOutputFormatterTests {
     [Fact]
-    public void TableFormatter_Collection_ReturnsAlignedColumns()
-    {
+    public void TableFormatter_Collection_ReturnsAlignedColumns() {
         // Arrange
         TableOutputFormatter formatter = new();
         List<TestItem> items = [new("Alpha", 1), new("Beta", 2)];
@@ -25,8 +23,7 @@ public class TableOutputFormatterTests
     }
 
     [Fact]
-    public void TableFormatter_LongValues_AreTruncated()
-    {
+    public void TableFormatter_LongValues_AreTruncated() {
         // Arrange
         TableOutputFormatter formatter = new();
         List<TestItem> items = [new("VeryLongValueThatExceedsTheLimit", 1)];

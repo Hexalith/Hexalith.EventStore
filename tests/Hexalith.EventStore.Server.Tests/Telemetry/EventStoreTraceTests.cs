@@ -1,14 +1,14 @@
 using System.Diagnostics;
 using System.Security.Claims;
 
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Pipeline;
-using Hexalith.EventStore.Telemetry;
-using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Telemetry;
+using Hexalith.EventStore.Telemetry;
 
 using MediatR;
 

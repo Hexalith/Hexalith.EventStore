@@ -17,8 +17,7 @@ public record DaprResiliencySpec(
     IReadOnlyList<DaprResiliencyTargetBinding> TargetBindings,
     bool IsConfigurationAvailable,
     string? RawYamlContent,
-    string? ErrorMessage)
-{
+    string? ErrorMessage) {
     /// <summary>Gets the parsed retry policies.</summary>
     public IReadOnlyList<DaprRetryPolicy> RetryPolicies { get; } = RetryPolicies
         ?? throw new ArgumentNullException(nameof(RetryPolicies));

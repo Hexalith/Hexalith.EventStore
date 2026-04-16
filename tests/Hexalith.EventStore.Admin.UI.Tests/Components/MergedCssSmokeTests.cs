@@ -14,11 +14,9 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 /// at DevTools-inspection time during visual sweep.
 /// Exact-class matches are used per Pre-mortem F5 — no substring or regex fuzzy matching.
 /// </summary>
-public class MergedCssSmokeTests : AdminUITestContext
-{
+public class MergedCssSmokeTests : AdminUITestContext {
     [Fact]
-    public void ProjectionStatusBadge_Renders_WithExpectedClassAttributes()
-    {
+    public void ProjectionStatusBadge_Renders_WithExpectedClassAttributes() {
         // Arrange / Act — ProjectionStatusBadge delegates to StatusBadge which renders
         // <span class="status-badge" ...><span class="status-badge__icon">...</span>
         // <span class="status-badge__label">...</span></span>.
@@ -38,8 +36,7 @@ public class MergedCssSmokeTests : AdminUITestContext
     }
 
     [Fact]
-    public void StateDiffViewer_Renders_WithRootClass()
-    {
+    public void StateDiffViewer_Renders_WithRootClass() {
         // Arrange / Act — StateDiffViewer root element emits <div class="state-diff-viewer" ...>.
         // Without a real ApiClient the component stays in the loading branch, but the
         // root class is emitted before loading completes.
@@ -57,8 +54,7 @@ public class MergedCssSmokeTests : AdminUITestContext
     }
 
     [Fact]
-    public void JsonViewer_Renders_WithSyntaxHighlightClasses()
-    {
+    public void JsonViewer_Renders_WithSyntaxHighlightClasses() {
         // Arrange — minimal valid JSON exercising key/number/string/boolean/null token classes.
         const string json = "{\"k\":1,\"s\":\"x\",\"b\":true,\"n\":null}";
 

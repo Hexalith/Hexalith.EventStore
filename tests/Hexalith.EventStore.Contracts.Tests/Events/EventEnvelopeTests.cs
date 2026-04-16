@@ -45,7 +45,7 @@ public class EventEnvelopeTests {
 
         var envelope = new EventEnvelope(metadata, payload, null);
 
-        envelope.Extensions.ShouldNotBeNull();
+        _ = envelope.Extensions.ShouldNotBeNull();
         envelope.Extensions.ShouldBeEmpty();
     }
 

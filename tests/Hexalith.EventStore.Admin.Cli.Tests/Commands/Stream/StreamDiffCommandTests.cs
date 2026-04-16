@@ -2,7 +2,6 @@ using System.Net;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
-using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Stream;
 using Hexalith.EventStore.Admin.Cli.Formatting;
@@ -10,8 +9,7 @@ using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Stream;
 
-public class StreamDiffCommandTests
-{
+public class StreamDiffCommandTests {
     private static AggregateStateDiff CreateTestDiff()
         => new(5, 10,
         [
@@ -22,11 +20,9 @@ public class StreamDiffCommandTests
     private static GlobalOptions CreateOptions(string format = "table")
         => new("http://localhost:5002", null, format, null);
 
-    private static AdminApiClient CreateMockClient(object? responseBody, HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
+    private static AdminApiClient CreateMockClient(object? responseBody, HttpStatusCode statusCode = HttpStatusCode.OK) {
         HttpResponseMessage response = new(statusCode);
-        if (responseBody is not null)
-        {
+        if (responseBody is not null) {
             string json = JsonSerializer.Serialize(responseBody, JsonDefaults.Options);
             response.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
         }
@@ -37,8 +33,7 @@ public class StreamDiffCommandTests
     }
 
     [Fact]
-    public void StreamDiffCommand_ReturnsFieldChanges()
-    {
+    public void StreamDiffCommand_ReturnsFieldChanges() {
         // Arrange — test formatting directly
         AggregateStateDiff diff = CreateTestDiff();
         IOutputFormatter formatter = new TableOutputFormatter();
@@ -56,8 +51,7 @@ public class StreamDiffCommandTests
     }
 
     [Fact]
-    public async Task StreamDiffCommand_NotFound_PrintsError()
-    {
+    public async Task StreamDiffCommand_NotFound_PrintsError() {
         // Arrange
         using AdminApiClient client = CreateMockClient(null, HttpStatusCode.NotFound);
         GlobalOptions options = CreateOptions("table");
@@ -70,18 +64,17 @@ public class StreamDiffCommandTests
     }
 
     [Fact]
-    public void StreamDiffCommand_RequiresFromAndTo()
-    {
+    public void StreamDiffCommand_RequiresFromAndTo() {
         // Verify command structure has required options
-        GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
+        var binding = GlobalOptionsBinding.Create();
         System.CommandLine.Command command = StreamDiffCommand.Create(binding);
 
         System.CommandLine.Option? fromOption = command.Options.FirstOrDefault(o => o.Name == "--from");
-        fromOption.ShouldNotBeNull();
+        _ = fromOption.ShouldNotBeNull();
         fromOption.Required.ShouldBeTrue();
 
         System.CommandLine.Option? toOption = command.Options.FirstOrDefault(o => o.Name == "--to");
-        toOption.ShouldNotBeNull();
+        _ = toOption.ShouldNotBeNull();
         toOption.Required.ShouldBeTrue();
     }
 }

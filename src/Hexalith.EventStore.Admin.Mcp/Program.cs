@@ -11,27 +11,22 @@ string? adminUrl = Environment.GetEnvironmentVariable("EVENTSTORE_ADMIN_URL");
 string? adminToken = Environment.GetEnvironmentVariable("EVENTSTORE_ADMIN_TOKEN")?.Trim();
 
 List<string> errors = [];
-if (string.IsNullOrWhiteSpace(adminUrl))
-{
+if (string.IsNullOrWhiteSpace(adminUrl)) {
     errors.Add("Missing EVENTSTORE_ADMIN_URL");
 }
 else if (!Uri.TryCreate(adminUrl, UriKind.Absolute, out Uri? parsedUri)
-    || (parsedUri.Scheme != "http" && parsedUri.Scheme != "https"))
-{
+    || (parsedUri.Scheme != "http" && parsedUri.Scheme != "https")) {
     errors.Add($"EVENTSTORE_ADMIN_URL '{adminUrl}' is not a valid absolute HTTP(S) URI");
 }
-else
-{
+else {
     adminUrl = adminUrl.TrimEnd('/');
 }
 
-if (string.IsNullOrWhiteSpace(adminToken))
-{
+if (string.IsNullOrWhiteSpace(adminToken)) {
     errors.Add("Missing EVENTSTORE_ADMIN_TOKEN");
 }
 
-if (errors.Count > 0)
-{
+if (errors.Count > 0) {
     await Console.Error.WriteLineAsync(
         $"Error: {string.Join("; ", errors)}\n"
         + "Usage: Set EVENTSTORE_ADMIN_URL (e.g., https://localhost:5443) "
@@ -52,8 +47,7 @@ builder.Logging.AddConsole(options =>
     options.LogToStandardErrorThreshold = LogLevel.Trace);
 
 // Register AdminApiClient as typed HttpClient
-builder.Services.AddHttpClient<AdminApiClient>(client =>
-{
+builder.Services.AddHttpClient<AdminApiClient>(client => {
     client.BaseAddress = new Uri(adminUrl!);
     client.DefaultRequestHeaders.Authorization =
         new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", adminToken);
@@ -67,14 +61,10 @@ builder.Services.AddSingleton<InvestigationSession>();
 
 // Register MCP server with stdio transport
 builder.Services
-    .AddMcpServer(options =>
-    {
-        options.ServerInfo = new()
-        {
-            Name = "hexalith-eventstore-admin",
-            Version = version,
-            Description = "Hexalith EventStore administration MCP server — query streams, inspect projections, diagnose issues, and manage operations via AI-callable tools",
-        };
+    .AddMcpServer(options => options.ServerInfo = new() {
+        Name = "hexalith-eventstore-admin",
+        Version = version,
+        Description = "Hexalith EventStore administration MCP server — query streams, inspect projections, diagnose issues, and manage operations via AI-callable tools",
     })
     .WithStdioServerTransport()
     .WithToolsFromAssembly();

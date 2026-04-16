@@ -7,8 +7,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Health;
 /// <param name="ComponentType">The DAPR component type (e.g., state.redis, pubsub.redis).</param>
 /// <param name="Status">The current health status.</param>
 /// <param name="LastCheckUtc">When the health was last checked.</param>
-public record DaprComponentHealth(string ComponentName, string ComponentType, HealthStatus Status, DateTimeOffset LastCheckUtc)
-{
+public record DaprComponentHealth(string ComponentName, string ComponentType, HealthStatus Status, DateTimeOffset LastCheckUtc) {
     /// <summary>Gets the DAPR component name.</summary>
     public string ComponentName { get; } = !string.IsNullOrWhiteSpace(ComponentName)
         ? ComponentName

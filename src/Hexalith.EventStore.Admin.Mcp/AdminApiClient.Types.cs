@@ -1,22 +1,19 @@
-namespace Hexalith.EventStore.Admin.Mcp;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog;
 
+namespace Hexalith.EventStore.Admin.Mcp;
 /// <summary>
 /// AdminApiClient partial — type catalog query methods.
 /// </summary>
-internal sealed partial class AdminApiClient
-{
+internal sealed partial class AdminApiClient {
     /// <summary>
     /// Lists all registered event types, optionally filtered by domain.
     /// </summary>
     public async Task<IReadOnlyList<EventTypeInfo>> ListEventTypesAsync(
         string? domain,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         string path = "/api/v1/admin/types/events";
-        if (!string.IsNullOrEmpty(domain))
-        {
+        if (!string.IsNullOrEmpty(domain)) {
             path += $"?domain={Uri.EscapeDataString(domain)}";
         }
 
@@ -28,11 +25,9 @@ internal sealed partial class AdminApiClient
     /// </summary>
     public async Task<IReadOnlyList<CommandTypeInfo>> ListCommandTypesAsync(
         string? domain,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         string path = "/api/v1/admin/types/commands";
-        if (!string.IsNullOrEmpty(domain))
-        {
+        if (!string.IsNullOrEmpty(domain)) {
             path += $"?domain={Uri.EscapeDataString(domain)}";
         }
 
@@ -44,11 +39,9 @@ internal sealed partial class AdminApiClient
     /// </summary>
     public async Task<IReadOnlyList<AggregateTypeInfo>> ListAggregateTypesAsync(
         string? domain,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         string path = "/api/v1/admin/types/aggregates";
-        if (!string.IsNullOrEmpty(domain))
-        {
+        if (!string.IsNullOrEmpty(domain)) {
             path += $"?domain={Uri.EscapeDataString(domain)}";
         }
 

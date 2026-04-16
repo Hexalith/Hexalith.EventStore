@@ -19,8 +19,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 [Tags("Admin - Type Catalog")]
 public class AdminTypeCatalogController(
     ITypeCatalogService typeCatalogService,
-    ILogger<AdminTypeCatalogController> logger) : ControllerBase
-{
+    ILogger<AdminTypeCatalogController> logger) : ControllerBase {
     /// <summary>
     /// Lists all registered event types, optionally filtered by domain.
     /// </summary>
@@ -31,21 +30,17 @@ public class AdminTypeCatalogController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ListEventTypes(
         [FromQuery] string? domain,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             IReadOnlyList<EventTypeInfo> result = await typeCatalogService
                 .ListEventTypesAsync(domain, ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(ListEventTypes), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(ListEventTypes), ex);
         }
     }
@@ -60,21 +55,17 @@ public class AdminTypeCatalogController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ListCommandTypes(
         [FromQuery] string? domain,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             IReadOnlyList<CommandTypeInfo> result = await typeCatalogService
                 .ListCommandTypesAsync(domain, ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(ListCommandTypes), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(ListCommandTypes), ex);
         }
     }
@@ -89,21 +80,17 @@ public class AdminTypeCatalogController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ListAggregateTypes(
         [FromQuery] string? domain,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             IReadOnlyList<AggregateTypeInfo> result = await typeCatalogService
                 .ListAggregateTypesAsync(domain, ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(ListAggregateTypes), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(ListAggregateTypes), ex);
         }
     }
@@ -116,8 +103,7 @@ public class AdminTypeCatalogController(
                 Grpc.Core.StatusCode.Aborted or
                 Grpc.Core.StatusCode.ResourceExhausted);
 
-    private ObjectResult ServiceUnavailable(string method, Exception ex)
-    {
+    private ObjectResult ServiceUnavailable(string method, Exception ex) {
         logger.LogError(ex, "Admin service unavailable: {Method}", method);
         return CreateProblemResult(
             StatusCodes.Status503ServiceUnavailable,
@@ -125,8 +111,7 @@ public class AdminTypeCatalogController(
             "The admin backend service is temporarily unavailable. Retry shortly.");
     }
 
-    private ObjectResult UnexpectedError(string method, Exception ex)
-    {
+    private ObjectResult UnexpectedError(string method, Exception ex) {
         logger.LogError(ex, "Unexpected error in {Method}", method);
         return CreateProblemResult(
             StatusCodes.Status500InternalServerError,
@@ -134,18 +119,15 @@ public class AdminTypeCatalogController(
             "An unexpected error occurred.");
     }
 
-    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null)
-    {
+    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null) {
         string correlationId = HttpContext.Items["CorrelationId"]?.ToString()
             ?? Guid.NewGuid().ToString();
-        return new ObjectResult(new ProblemDetails
-        {
+        return new ObjectResult(new ProblemDetails {
             Status = statusCode,
             Title = title,
             Detail = detail,
             Instance = HttpContext.Request.Path,
             Extensions = { ["correlationId"] = correlationId },
-        })
-        { StatusCode = statusCode };
+        }) { StatusCode = statusCode };
     }
 }

@@ -1,5 +1,3 @@
-using Hexalith.EventStore.Testing;
-
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;

@@ -1,13 +1,10 @@
 using Bunit;
 
-using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog;
 using Hexalith.EventStore.Admin.UI.Components;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -19,21 +16,19 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the StreamDetail page.
 /// </summary>
-public class StreamDetailPageTests : AdminUITestContext
-{
+public class StreamDetailPageTests : AdminUITestContext {
     private readonly AdminStreamApiClient _mockApiClient;
 
-    public StreamDetailPageTests()
-    {
+    public StreamDetailPageTests() {
         _mockApiClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
-        Services.AddScoped<TopologyCacheService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped<TopologyCacheService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
 
         // Default mock: empty tenants and types for TopologyCacheService
         _ = _mockApiClient.GetTenantsAsync(Arg.Any<CancellationToken>())
@@ -43,8 +38,7 @@ public class StreamDetailPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StreamDetail_RendersHeader_WithMonospaceStreamIdentity()
-    {
+    public void StreamDetail_RendersHeader_WithMonospaceStreamIdentity() {
         // Arrange
         SetupTimeline(CreateTimelineResult(5));
 
@@ -61,8 +55,7 @@ public class StreamDetailPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StreamDetail_RendersStatCards_WithStreamSummary()
-    {
+    public void StreamDetail_RendersStatCards_WithStreamSummary() {
         // Arrange
         SetupTimeline(CreateTimelineResult(5));
 
@@ -79,8 +72,7 @@ public class StreamDetailPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StreamDetail_RendersTimelineGrid_WithColumns()
-    {
+    public void StreamDetail_RendersTimelineGrid_WithColumns() {
         // Arrange
         SetupTimeline(CreateTimelineResult(3));
 
@@ -99,8 +91,7 @@ public class StreamDetailPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StreamDetail_TimelineEntryTypeBadge_MapsCorrectly()
-    {
+    public void StreamDetail_TimelineEntryTypeBadge_MapsCorrectly() {
         // Arrange
         List<TimelineEntry> entries =
         [
@@ -122,8 +113,7 @@ public class StreamDetailPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StreamDetail_ShowsEmptyState_OnApiFailure()
-    {
+    public void StreamDetail_ShowsEmptyState_OnApiFailure() {
         // Arrange
         _ = _mockApiClient.GetStreamTimelineAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -139,8 +129,7 @@ public class StreamDetailPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StreamDetail_EventDetailPanel_RendersEventMetadata()
-    {
+    public void StreamDetail_EventDetailPanel_RendersEventMetadata() {
         // Arrange
         List<TimelineEntry> entries =
         [
@@ -174,8 +163,7 @@ public class StreamDetailPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StreamDetail_InlineStatePreview_ShowsUnavailable_OnNull()
-    {
+    public void StreamDetail_InlineStatePreview_ShowsUnavailable_OnNull() {
         // Arrange
         EventDetail detail = new(
             "test-tenant", "counter", "agg-001", 42, "CounterIncremented",
@@ -200,8 +188,7 @@ public class StreamDetailPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StreamDetail_ShowsLoadingSkeleton_Initially()
-    {
+    public void StreamDetail_ShowsLoadingSkeleton_Initially() {
         // Arrange — make the API call hang
         TaskCompletionSource<PagedResult<TimelineEntry>> tcs = new();
         _ = _mockApiClient.GetStreamTimelineAsync(
@@ -216,25 +203,18 @@ public class StreamDetailPageTests : AdminUITestContext
         cut.Markup.ShouldContain("Loading stream...");
     }
 
-    private IRenderedComponent<StreamDetail> RenderStreamDetail()
-    {
-        return Render<StreamDetail>(parameters => parameters
-            .Add(p => p.TenantId, "test-tenant")
-            .Add(p => p.Domain, "counter")
-            .Add(p => p.AggregateId, "agg-001"));
-    }
+    private IRenderedComponent<StreamDetail> RenderStreamDetail() => Render<StreamDetail>(parameters => parameters
+                                                                              .Add(p => p.TenantId, "test-tenant")
+                                                                              .Add(p => p.Domain, "counter")
+                                                                              .Add(p => p.AggregateId, "agg-001"));
 
-    private void SetupTimeline(PagedResult<TimelineEntry> result)
-    {
-        _ = _mockApiClient.GetStreamTimelineAsync(
+    private void SetupTimeline(PagedResult<TimelineEntry> result) => _ = _mockApiClient.GetStreamTimelineAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<long?>(), Arg.Any<long?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(result));
-    }
 
     [Fact]
-    public void StreamDetail_RendersStepThroughButton()
-    {
+    public void StreamDetail_RendersStepThroughButton() {
         // Arrange
         SetupTimeline(CreateTimelineResult(5));
 
@@ -247,8 +227,7 @@ public class StreamDetailPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task StreamDetail_StepThroughButton_OpensDebugger()
-    {
+    public async Task StreamDetail_StepThroughButton_OpensDebugger() {
         // Arrange
         SetupTimeline(CreateTimelineResult(5));
         EventStepFrame frame = new(
@@ -276,11 +255,9 @@ public class StreamDetailPageTests : AdminUITestContext
         cut.Markup.ShouldContain("Event Debugger");
     }
 
-    private static PagedResult<TimelineEntry> CreateTimelineResult(int count)
-    {
+    private static PagedResult<TimelineEntry> CreateTimelineResult(int count) {
         List<TimelineEntry> entries = [];
-        for (int i = 1; i <= count; i++)
-        {
+        for (int i = 1; i <= count; i++) {
             entries.Add(new TimelineEntry(
                 i,
                 DateTimeOffset.UtcNow.AddMinutes(-i),

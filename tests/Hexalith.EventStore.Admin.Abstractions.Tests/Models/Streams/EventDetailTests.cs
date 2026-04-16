@@ -2,11 +2,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Streams;
 
-public class EventDetailTests
-{
+public class EventDetailTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         var detail = new EventDetail("acme", "orders", "order-123", 1, "OrderCreated", DateTimeOffset.UtcNow, "corr-001", "cause-001", "user-1", "{\"amount\":100}");
 
         detail.TenantId.ShouldBe("acme");
@@ -21,8 +19,7 @@ public class EventDetailTests
     }
 
     [Fact]
-    public void ToString_RedactsPayloadJson()
-    {
+    public void ToString_RedactsPayloadJson() {
         var detail = new EventDetail("acme", "orders", "order-123", 1, "OrderCreated", DateTimeOffset.UtcNow, "corr-001", null, null, "{\"secret\":\"value\"}");
 
         string result = detail.ToString();
@@ -33,59 +30,41 @@ public class EventDetailTests
     }
 
     [Fact]
-    public void Constructor_WithNullPayloadJson_ThrowsArgumentNullException()
-    {
-        Should.Throw<ArgumentNullException>(() =>
-            new EventDetail("acme", "orders", "order-123", 1, "OrderCreated", DateTimeOffset.UtcNow, "corr-001", null, null, null!));
-    }
+    public void Constructor_WithNullPayloadJson_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() =>
+                                                                                          new EventDetail("acme", "orders", "order-123", 1, "OrderCreated", DateTimeOffset.UtcNow, "corr-001", null, null, null!));
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_WithInvalidTenantId_ThrowsArgumentException(string? tenantId)
-    {
-        Should.Throw<ArgumentException>(() =>
-            new EventDetail(tenantId!, "orders", "order-123", 1, "OrderCreated", DateTimeOffset.UtcNow, "corr-001", null, null, "{}"));
-    }
+    public void Constructor_WithInvalidTenantId_ThrowsArgumentException(string? tenantId) => Should.Throw<ArgumentException>(() =>
+                                                                                                      new EventDetail(tenantId!, "orders", "order-123", 1, "OrderCreated", DateTimeOffset.UtcNow, "corr-001", null, null, "{}"));
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_WithInvalidDomain_ThrowsArgumentException(string? domain)
-    {
-        Should.Throw<ArgumentException>(() =>
-            new EventDetail("acme", domain!, "order-123", 1, "OrderCreated", DateTimeOffset.UtcNow, "corr-001", null, null, "{}"));
-    }
+    public void Constructor_WithInvalidDomain_ThrowsArgumentException(string? domain) => Should.Throw<ArgumentException>(() =>
+                                                                                                  new EventDetail("acme", domain!, "order-123", 1, "OrderCreated", DateTimeOffset.UtcNow, "corr-001", null, null, "{}"));
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_WithInvalidAggregateId_ThrowsArgumentException(string? aggregateId)
-    {
-        Should.Throw<ArgumentException>(() =>
-            new EventDetail("acme", "orders", aggregateId!, 1, "OrderCreated", DateTimeOffset.UtcNow, "corr-001", null, null, "{}"));
-    }
+    public void Constructor_WithInvalidAggregateId_ThrowsArgumentException(string? aggregateId) => Should.Throw<ArgumentException>(() =>
+                                                                                                            new EventDetail("acme", "orders", aggregateId!, 1, "OrderCreated", DateTimeOffset.UtcNow, "corr-001", null, null, "{}"));
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_WithInvalidEventTypeName_ThrowsArgumentException(string? eventTypeName)
-    {
-        Should.Throw<ArgumentException>(() =>
-            new EventDetail("acme", "orders", "order-123", 1, eventTypeName!, DateTimeOffset.UtcNow, "corr-001", null, null, "{}"));
-    }
+    public void Constructor_WithInvalidEventTypeName_ThrowsArgumentException(string? eventTypeName) => Should.Throw<ArgumentException>(() =>
+                                                                                                                new EventDetail("acme", "orders", "order-123", 1, eventTypeName!, DateTimeOffset.UtcNow, "corr-001", null, null, "{}"));
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_WithInvalidCorrelationId_ThrowsArgumentException(string? correlationId)
-    {
-        Should.Throw<ArgumentException>(() =>
-            new EventDetail("acme", "orders", "order-123", 1, "OrderCreated", DateTimeOffset.UtcNow, correlationId!, null, null, "{}"));
-    }
+    public void Constructor_WithInvalidCorrelationId_ThrowsArgumentException(string? correlationId) => Should.Throw<ArgumentException>(() =>
+                                                                                                                new EventDetail("acme", "orders", "order-123", 1, "OrderCreated", DateTimeOffset.UtcNow, correlationId!, null, null, "{}"));
 }

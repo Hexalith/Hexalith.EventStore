@@ -1,7 +1,6 @@
 using System.Net;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Projections;
-using Hexalith.EventStore.Admin.UI.Services;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
 using Hexalith.EventStore.Testing.Http;
 
@@ -11,20 +10,17 @@ using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Services;
 
-public class AdminProjectionApiClientTests
-{
-    private static AdminProjectionApiClient CreateClient(HttpClient httpClient)
-    {
+public class AdminProjectionApiClientTests {
+    private static AdminProjectionApiClient CreateClient(HttpClient httpClient) {
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
-        factory.CreateClient("AdminApi").Returns(httpClient);
+        _ = factory.CreateClient("AdminApi").Returns(httpClient);
         return new AdminProjectionApiClient(factory, NullLogger<AdminProjectionApiClient>.Instance);
     }
 
     // === ListProjectionsAsync ===
 
     [Fact]
-    public async Task ListProjectionsAsync_ReturnsProjections_WhenApiResponds()
-    {
+    public async Task ListProjectionsAsync_ReturnsProjections_WhenApiResponds() {
         string json = """[{"name":"Counter","tenantId":"t1","status":0,"lag":0,"throughput":10.5,"errorCount":0,"lastProcessedPosition":100,"lastProcessedUtc":"2026-01-01T00:00:00Z"}]""";
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
 
@@ -38,8 +34,7 @@ public class AdminProjectionApiClientTests
     }
 
     [Fact]
-    public async Task ListProjectionsAsync_ReturnsEmpty_WhenApiReturnsError()
-    {
+    public async Task ListProjectionsAsync_ReturnsEmpty_WhenApiReturnsError() {
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.InternalServerError, "{}");
 
         AdminProjectionApiClient client = CreateClient(httpClient);
@@ -50,13 +45,12 @@ public class AdminProjectionApiClientTests
     }
 
     [Fact]
-    public async Task ListProjectionsAsync_ThrowsForbidden_When403()
-    {
+    public async Task ListProjectionsAsync_ThrowsForbidden_When403() {
         using HttpClient httpClient = MockHttpMessageHandler.CreateStatusClient(HttpStatusCode.Forbidden);
 
         AdminProjectionApiClient client = CreateClient(httpClient);
 
-        await Should.ThrowAsync<ForbiddenAccessException>(
+        _ = await Should.ThrowAsync<ForbiddenAccessException>(
             () => client.ListProjectionsAsync(null));
     }
 }

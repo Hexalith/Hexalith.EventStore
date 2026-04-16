@@ -38,7 +38,7 @@ public class IdentityParserTests {
         bool result = IdentityParser.TryParse("acme:payments:order-123", out AggregateIdentity? identity);
 
         result.ShouldBeTrue();
-        identity.ShouldNotBeNull();
+        _ = identity.ShouldNotBeNull();
         identity.TenantId.ShouldBe("acme");
         identity.Domain.ShouldBe("payments");
         identity.AggregateId.ShouldBe("order-123");

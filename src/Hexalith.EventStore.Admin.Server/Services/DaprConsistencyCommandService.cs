@@ -1,6 +1,6 @@
-using Dapr.Client;
-
 using System.Text.Json;
+
+using Dapr.Client;
 
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
@@ -20,8 +20,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// DAPR-backed implementation of <see cref="IConsistencyCommandService"/>.
 /// Triggers and cancels consistency checks using the state store for coordination.
 /// </summary>
-public sealed class DaprConsistencyCommandService : IConsistencyCommandService
-{
+public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
     private const int AnomalyCap = 500;
     private const string CheckKeyPrefix = "admin:consistency:";
     private const int IndexCap = 100;
@@ -46,8 +45,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
         DaprClient daprClient,
         IStreamQueryService streamQueryService,
         IOptions<AdminServerOptions> options,
-        ILogger<DaprConsistencyCommandService> logger)
-    {
+        ILogger<DaprConsistencyCommandService> logger) {
         ArgumentNullException.ThrowIfNull(daprClient);
         ArgumentNullException.ThrowIfNull(streamQueryService);
         ArgumentNullException.ThrowIfNull(options);
@@ -61,29 +59,24 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
     /// <inheritdoc/>
     public async Task<AdminOperationResult> CancelCheckAsync(
         string checkId,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(checkId);
         string key = $"{CheckKeyPrefix}{checkId}";
 
-        try
-        {
+        try {
             ConsistencyCheckResult? existing = await _daprClient
                 .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key, cancellationToken: ct)
                 .ConfigureAwait(false);
 
-            if (existing is null)
-            {
+            if (existing is null) {
                 return new AdminOperationResult(false, checkId, "Consistency check not found.", "NotFound");
             }
 
-            if (existing.Status is not (ConsistencyCheckStatus.Pending or ConsistencyCheckStatus.Running))
-            {
+            if (existing.Status is not (ConsistencyCheckStatus.Pending or ConsistencyCheckStatus.Running)) {
                 return new AdminOperationResult(false, checkId, $"Cannot cancel a check with status '{existing.Status}'.", "InvalidOperation");
             }
 
-            ConsistencyCheckResult cancelled = existing with
-            {
+            ConsistencyCheckResult cancelled = existing with {
                 Status = ConsistencyCheckStatus.Cancelled,
                 CompletedAtUtc = DateTimeOffset.UtcNow,
             };
@@ -93,12 +86,10 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
             _logger.LogInformation("Consistency check '{CheckId}' cancelled.", checkId);
             return new AdminOperationResult(true, checkId, "Consistency check cancelled.", null);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogError(ex, "Failed to cancel consistency check '{CheckId}'.", checkId);
             return new AdminOperationResult(false, checkId, "Failed to cancel consistency check.", "InternalError");
         }
@@ -109,21 +100,17 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
         string? tenantId,
         string? domain,
         IReadOnlyList<ConsistencyCheckType> checkTypes,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         ArgumentNullException.ThrowIfNull(checkTypes);
-        if (checkTypes.Count == 0)
-        {
+        if (checkTypes.Count == 0) {
             return new AdminOperationResult(false, string.Empty, "At least one consistency check type must be selected.", "InvalidOperation");
         }
 
         string checkId = UniqueIdHelper.GenerateSortableUniqueStringId();
 
-        try
-        {
+        try {
             // Concurrency guard: check for active check on same tenant
-            if (await HasActiveCheckForTenantAsync(tenantId, ct).ConfigureAwait(false))
-            {
+            if (await HasActiveCheckForTenantAsync(tenantId, ct).ConfigureAwait(false)) {
                 return new AdminOperationResult(false, checkId, "A check is already active for this tenant.", "Conflict");
             }
 
@@ -155,23 +142,18 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
             _logger.LogInformation("Consistency check '{CheckId}' triggered for tenant '{TenantId}', domain '{Domain}'.", checkId, tenantId ?? "all", domain ?? "all");
             return new AdminOperationResult(true, checkId, "Consistency check started.", null);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogError(ex, "Failed to trigger consistency check.");
             return new AdminOperationResult(false, checkId, "Failed to trigger consistency check.", "InternalError");
         }
     }
 
-    private async Task AppendToIndexAsync(string checkId, CancellationToken ct)
-    {
-        for (int attempt = 0; attempt < MaxETagRetries; attempt++)
-        {
-            try
-            {
+    private async Task AppendToIndexAsync(string checkId, CancellationToken ct) {
+        for (int attempt = 0; attempt < MaxETagRetries; attempt++) {
+            try {
                 (List<string>? existing, string etag) = await _daprClient
                     .GetStateAndETagAsync<List<string>>(_options.StateStoreName, IndexKey, cancellationToken: ct)
                     .ConfigureAwait(false);
@@ -180,8 +162,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
                 index.Insert(0, checkId);
 
                 // Cap at IndexCap entries — drop oldest
-                while (index.Count > IndexCap)
-                {
+                while (index.Count > IndexCap) {
                     index.RemoveAt(index.Count - 1);
                 }
 
@@ -189,19 +170,16 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
                     .TrySaveStateAsync(_options.StateStoreName, IndexKey, index, etag, cancellationToken: ct)
                     .ConfigureAwait(false);
 
-                if (saved)
-                {
+                if (saved) {
                     return;
                 }
 
                 _logger.LogDebug("ETag mismatch on consistency index update, retry {Attempt}.", attempt + 1);
             }
-            catch (OperationCanceledException)
-            {
+            catch (OperationCanceledException) {
                 throw;
             }
-            catch (Exception ex) when (attempt < MaxETagRetries - 1)
-            {
+            catch (Exception ex) when (attempt < MaxETagRetries - 1) {
                 _logger.LogDebug(ex, "Retry {Attempt} for consistency index update.", attempt + 1);
             }
         }
@@ -209,37 +187,30 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
         _logger.LogWarning("Failed to update consistency index after {MaxRetries} retries.", MaxETagRetries);
     }
 
-    private async Task<bool> HasActiveCheckForTenantAsync(string? tenantId, CancellationToken ct)
-    {
-        try
-        {
+    private async Task<bool> HasActiveCheckForTenantAsync(string? tenantId, CancellationToken ct) {
+        try {
             List<string>? index = await _daprClient
                 .GetStateAsync<List<string>>(_options.StateStoreName, IndexKey, cancellationToken: ct)
                 .ConfigureAwait(false);
 
-            if (index is null or { Count: 0 })
-            {
+            if (index is null or { Count: 0 }) {
                 return false;
             }
 
-            foreach (string existingCheckId in index)
-            {
+            foreach (string existingCheckId in index) {
                 string key = $"{CheckKeyPrefix}{existingCheckId}";
                 ConsistencyCheckResult? check = await _daprClient
                     .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key, cancellationToken: ct)
                     .ConfigureAwait(false);
 
-                if (check is null)
-                {
+                if (check is null) {
                     continue;
                 }
 
                 if (check.Status is ConsistencyCheckStatus.Pending or ConsistencyCheckStatus.Running
-                    && check.TenantId == tenantId)
-                {
+                    && check.TenantId == tenantId) {
                     // Also check for timeout
-                    if (check.Status == ConsistencyCheckStatus.Running && DateTimeOffset.UtcNow > check.TimeoutUtc)
-                    {
+                    if (check.Status == ConsistencyCheckStatus.Running && DateTimeOffset.UtcNow > check.TimeoutUtc) {
                         continue; // Timed out — not active
                     }
 
@@ -249,12 +220,10 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
 
             return false;
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to check for active consistency checks. Allowing trigger.");
             return false;
         }
@@ -264,18 +233,15 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
         string checkId,
         string? tenantId,
         string? domain,
-        IReadOnlyList<ConsistencyCheckType> checkTypes)
-    {
+        IReadOnlyList<ConsistencyCheckType> checkTypes) {
         string key = $"{CheckKeyPrefix}{checkId}";
-        try
-        {
+        try {
             // Update status to Running
             ConsistencyCheckResult? current = await _daprClient
                 .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key)
                 .ConfigureAwait(false);
 
-            if (current is null || current.Status == ConsistencyCheckStatus.Cancelled)
-            {
+            if (current is null || current.Status == ConsistencyCheckStatus.Cancelled) {
                 return;
             }
 
@@ -287,8 +253,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
                 .GetRecentlyActiveStreamsAsync(tenantId, domain, count: 1)
                 .ConfigureAwait(false);
 
-            if (sanityCheck is null)
-            {
+            if (sanityCheck is null) {
                 await FailCheckAsync(key, current, "State store read returned null — verify DAPR configuration.").ConfigureAwait(false);
                 return;
             }
@@ -307,22 +272,19 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
             int totalAnomaliesFound = 0;
             int streamsChecked = 0;
 
-            if (projectionCheckRequested)
-            {
+            if (projectionCheckRequested) {
                 List<ConsistencyAnomaly> projectionAnomalies = await CheckProjectionPositionsAsync(tenantId, domain).ConfigureAwait(false);
                 totalAnomaliesFound += projectionAnomalies.Count;
                 anomalies.AddRange(projectionAnomalies);
             }
 
-            foreach (StreamSummary stream in streams.Items)
-            {
+            foreach (StreamSummary stream in streams.Items) {
                 // Check if cancelled
                 ConsistencyCheckResult? latestState = await _daprClient
                     .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key)
                     .ConfigureAwait(false);
 
-                if (latestState?.Status == ConsistencyCheckStatus.Cancelled)
-                {
+                if (latestState?.Status == ConsistencyCheckStatus.Cancelled) {
                     return;
                 }
 
@@ -331,18 +293,15 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
 
                 totalAnomaliesFound += streamAnomalies.Count;
 
-                if (anomalies.Count < AnomalyCap)
-                {
+                if (anomalies.Count < AnomalyCap) {
                     anomalies.AddRange(streamAnomalies);
                 }
 
                 streamsChecked++;
 
                 // Periodic progress update (every 50 streams)
-                if (streamsChecked % 50 == 0)
-                {
-                    current = current with
-                    {
+                if (streamsChecked % 50 == 0) {
+                    current = current with {
                         StreamsChecked = streamsChecked,
                         AnomaliesFound = totalAnomaliesFound,
                     };
@@ -357,8 +316,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
 
             bool truncated = totalAnomaliesFound > AnomalyCap;
 
-            ConsistencyCheckResult completed = current with
-            {
+            ConsistencyCheckResult completed = current with {
                 Status = ConsistencyCheckStatus.Completed,
                 CompletedAtUtc = DateTimeOffset.UtcNow,
                 StreamsChecked = streamsChecked,
@@ -372,22 +330,18 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
                 "Consistency check '{CheckId}' completed. Streams: {Streams}, Anomalies: {Anomalies}.",
                 checkId, streamsChecked, totalAnomaliesFound);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogError(ex, "Consistency check '{CheckId}' failed.", checkId);
-            try
-            {
+            try {
                 ConsistencyCheckResult? current = await _daprClient
                     .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key)
                     .ConfigureAwait(false);
 
-                if (current is not null)
-                {
+                if (current is not null) {
                     await FailCheckAsync(key, current, ex.Message).ConfigureAwait(false);
                 }
             }
-            catch (Exception inner)
-            {
+            catch (Exception inner) {
                 _logger.LogError(inner, "Failed to update check '{CheckId}' to Failed status.", checkId);
             }
         }
@@ -395,16 +349,12 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
 
     private async Task<List<ConsistencyAnomaly>> CheckStreamAsync(
         StreamSummary stream,
-        IReadOnlyList<ConsistencyCheckType> checkTypes)
-    {
+        IReadOnlyList<ConsistencyCheckType> checkTypes) {
         List<ConsistencyAnomaly> anomalies = [];
 
-        foreach (ConsistencyCheckType checkType in checkTypes)
-        {
-            try
-            {
-                switch (checkType)
-                {
+        foreach (ConsistencyCheckType checkType in checkTypes) {
+            try {
+                switch (checkType) {
                     case ConsistencyCheckType.SequenceContinuity:
                         await CheckSequenceContinuityAsync(stream, anomalies).ConfigureAwait(false);
                         break;
@@ -416,8 +366,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
                         break;
                 }
             }
-            catch (Exception ex)
-            {
+            catch (Exception ex) {
                 _logger.LogDebug(ex, "Error checking {CheckType} for stream {Tenant}:{Domain}:{Aggregate}.",
                     checkType, stream.TenantId, stream.Domain, stream.AggregateId);
             }
@@ -426,15 +375,13 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
         return anomalies;
     }
 
-    private async Task<List<ConsistencyAnomaly>> CheckProjectionPositionsAsync(string? tenantId, string? domain)
-    {
+    private async Task<List<ConsistencyAnomaly>> CheckProjectionPositionsAsync(string? tenantId, string? domain) {
         List<ConsistencyAnomaly> anomalies = [];
         string scope = tenantId ?? "all";
         string projectionIndexKey = $"admin:projections:{scope}";
         string storageOverviewKey = $"admin:storage-overview:{scope}";
 
-        try
-        {
+        try {
             List<ProjectionStatus>? projections = await _daprClient
                 .GetStateAsync<List<ProjectionStatus>>(_options.StateStoreName, projectionIndexKey)
                 .ConfigureAwait(false);
@@ -443,8 +390,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
                 .GetStateAsync<StorageOverview>(_options.StateStoreName, storageOverviewKey)
                 .ConfigureAwait(false);
 
-            if (projections is null)
-            {
+            if (projections is null) {
                 anomalies.Add(new ConsistencyAnomaly(
                     UniqueIdHelper.GenerateSortableUniqueStringId(),
                     ConsistencyCheckType.ProjectionPositions,
@@ -460,10 +406,8 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
             }
 
             long? totalEvents = overview?.TotalEventCount;
-            foreach (ProjectionStatus projection in projections)
-            {
-                if (projection.Lag > 1000)
-                {
+            foreach (ProjectionStatus projection in projections) {
+                if (projection.Lag > 1000) {
                     anomalies.Add(new ConsistencyAnomaly(
                         UniqueIdHelper.GenerateSortableUniqueStringId(),
                         ConsistencyCheckType.ProjectionPositions,
@@ -477,8 +421,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
                         projection.Lag));
                 }
 
-                if (totalEvents is long eventCount && projection.LastProcessedPosition > eventCount)
-                {
+                if (totalEvents is long eventCount && projection.LastProcessedPosition > eventCount) {
                     anomalies.Add(new ConsistencyAnomaly(
                         UniqueIdHelper.GenerateSortableUniqueStringId(),
                         ConsistencyCheckType.ProjectionPositions,
@@ -493,8 +436,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
                 }
             }
 
-            if (domain is not null)
-            {
+            if (domain is not null) {
                 anomalies.Add(new ConsistencyAnomaly(
                     UniqueIdHelper.GenerateSortableUniqueStringId(),
                     ConsistencyCheckType.ProjectionPositions,
@@ -508,8 +450,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
                     null));
             }
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogDebug(ex, "Failed to validate projection positions for scope '{Scope}'.", scope);
             anomalies.Add(new ConsistencyAnomaly(
                 UniqueIdHelper.GenerateSortableUniqueStringId(),
@@ -527,24 +468,19 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
         return anomalies;
     }
 
-    private async Task CheckSequenceContinuityAsync(StreamSummary stream, List<ConsistencyAnomaly> anomalies)
-    {
-        if (stream.LastEventSequence <= 0)
-        {
+    private async Task CheckSequenceContinuityAsync(StreamSummary stream, List<ConsistencyAnomaly> anomalies) {
+        if (stream.LastEventSequence <= 0) {
             return;
         }
 
-        for (long sequence = 1; sequence <= stream.LastEventSequence; sequence++)
-        {
+        for (long sequence = 1; sequence <= stream.LastEventSequence; sequence++) {
             string eventKey = $"{stream.TenantId}:{stream.Domain}:{stream.AggregateId}:events:{sequence}";
-            try
-            {
+            try {
                 string? evt = await _daprClient
                     .GetStateAsync<string>(_options.StateStoreName, eventKey)
                     .ConfigureAwait(false);
 
-                if (evt is null)
-                {
+                if (evt is null) {
                     anomalies.Add(new ConsistencyAnomaly(
                         UniqueIdHelper.GenerateSortableUniqueStringId(),
                         ConsistencyCheckType.SequenceContinuity,
@@ -558,14 +494,12 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
                         ActualSequence: null));
                 }
             }
-            catch (Exception ex)
-            {
+            catch (Exception ex) {
                 _logger.LogDebug(ex, "Failed to read event key '{Key}'.", eventKey);
             }
         }
 
-        if (stream.EventCount != stream.LastEventSequence)
-        {
+        if (stream.EventCount != stream.LastEventSequence) {
             anomalies.Add(new ConsistencyAnomaly(
                 UniqueIdHelper.GenerateSortableUniqueStringId(),
                 ConsistencyCheckType.SequenceContinuity,
@@ -580,11 +514,9 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
         }
     }
 
-    private async Task CheckSnapshotIntegrityAsync(StreamSummary stream, List<ConsistencyAnomaly> anomalies)
-    {
+    private async Task CheckSnapshotIntegrityAsync(StreamSummary stream, List<ConsistencyAnomaly> anomalies) {
         // Check: no snapshot for aggregate with > 100 events
-        if (!stream.HasSnapshot && stream.EventCount > 100)
-        {
+        if (!stream.HasSnapshot && stream.EventCount > 100) {
             anomalies.Add(new ConsistencyAnomaly(
                 UniqueIdHelper.GenerateSortableUniqueStringId(),
                 ConsistencyCheckType.SnapshotIntegrity,
@@ -598,20 +530,17 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
                 ActualSequence: null));
         }
 
-        if (!stream.HasSnapshot)
-        {
+        if (!stream.HasSnapshot) {
             return;
         }
 
         string snapshotKey = $"{stream.TenantId}:{stream.Domain}:{stream.AggregateId}:snapshot";
-        try
-        {
+        try {
             object? snapshot = await _daprClient
                 .GetStateAsync<object>(_options.StateStoreName, snapshotKey)
                 .ConfigureAwait(false);
             if (TryExtractLong(snapshot, "sequenceNumber", "SequenceNumber", "sequence", "Sequence", "lastSequence", "LastSequence", "position", "Position") is long snapshotSequence
-                && snapshotSequence > stream.LastEventSequence)
-            {
+                && snapshotSequence > stream.LastEventSequence) {
                 anomalies.Add(new ConsistencyAnomaly(
                     UniqueIdHelper.GenerateSortableUniqueStringId(),
                     ConsistencyCheckType.SnapshotIntegrity,
@@ -625,23 +554,19 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
                     snapshotSequence));
             }
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogDebug(ex, "Failed to read snapshot key '{Key}'.", snapshotKey);
         }
     }
 
-    private async Task CheckMetadataConsistencyAsync(StreamSummary stream, List<ConsistencyAnomaly> anomalies)
-    {
+    private async Task CheckMetadataConsistencyAsync(StreamSummary stream, List<ConsistencyAnomaly> anomalies) {
         string metadataKey = $"{stream.TenantId}:{stream.Domain}:{stream.AggregateId}:metadata";
-        try
-        {
+        try {
             object? metadata = await _daprClient
                 .GetStateAsync<object>(_options.StateStoreName, metadataKey)
                 .ConfigureAwait(false);
 
-            if (metadata is null && stream.EventCount > 0)
-            {
+            if (metadata is null && stream.EventCount > 0) {
                 anomalies.Add(new ConsistencyAnomaly(
                     UniqueIdHelper.GenerateSortableUniqueStringId(),
                     ConsistencyCheckType.MetadataConsistency,
@@ -656,8 +581,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
             }
 
             long? metadataCount = TryExtractLong(metadata, "eventCount", "EventCount", "lastSequence", "LastSequence", "sequence", "Sequence");
-            if (metadataCount is not null && metadataCount.Value != stream.EventCount)
-            {
+            if (metadataCount is not null && metadataCount.Value != stream.EventCount) {
                 anomalies.Add(new ConsistencyAnomaly(
                     UniqueIdHelper.GenerateSortableUniqueStringId(),
                     ConsistencyCheckType.MetadataConsistency,
@@ -671,32 +595,24 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
                     metadataCount.Value));
             }
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogDebug(ex, "Failed to read metadata key '{Key}'.", metadataKey);
         }
     }
 
-    private static long? TryExtractLong(object? source, params string[] candidateNames)
-    {
-        if (source is null)
-        {
+    private static long? TryExtractLong(object? source, params string[] candidateNames) {
+        if (source is null) {
             return null;
         }
 
-        if (source is JsonElement json)
-        {
-            foreach (string name in candidateNames)
-            {
-                if (json.ValueKind == JsonValueKind.Object && json.TryGetProperty(name, out JsonElement property))
-                {
-                    if (property.ValueKind == JsonValueKind.Number && property.TryGetInt64(out long number))
-                    {
+        if (source is JsonElement json) {
+            foreach (string name in candidateNames) {
+                if (json.ValueKind == JsonValueKind.Object && json.TryGetProperty(name, out JsonElement property)) {
+                    if (property.ValueKind == JsonValueKind.Number && property.TryGetInt64(out long number)) {
                         return number;
                     }
 
-                    if (property.ValueKind == JsonValueKind.String && long.TryParse(property.GetString(), out long parsed))
-                    {
+                    if (property.ValueKind == JsonValueKind.String && long.TryParse(property.GetString(), out long parsed)) {
                         return parsed;
                     }
                 }
@@ -706,32 +622,26 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
         }
 
         Type type = source.GetType();
-        foreach (string name in candidateNames)
-        {
+        foreach (string name in candidateNames) {
             System.Reflection.PropertyInfo? property = type.GetProperty(name, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
-            if (property is null)
-            {
+            if (property is null) {
                 continue;
             }
 
             object? value = property.GetValue(source);
-            if (value is null)
-            {
+            if (value is null) {
                 continue;
             }
 
-            if (value is long longValue)
-            {
+            if (value is long longValue) {
                 return longValue;
             }
 
-            if (value is int intValue)
-            {
+            if (value is int intValue) {
                 return intValue;
             }
 
-            if (long.TryParse(value.ToString(), out long parsedValue))
-            {
+            if (long.TryParse(value.ToString(), out long parsedValue)) {
                 return parsedValue;
             }
         }
@@ -739,10 +649,8 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
         return null;
     }
 
-    private async Task FailCheckAsync(string key, ConsistencyCheckResult current, string errorMessage)
-    {
-        ConsistencyCheckResult failed = current with
-        {
+    private async Task FailCheckAsync(string key, ConsistencyCheckResult current, string errorMessage) {
+        ConsistencyCheckResult failed = current with {
             Status = ConsistencyCheckStatus.Failed,
             CompletedAtUtc = DateTimeOffset.UtcNow,
             ErrorMessage = errorMessage,
@@ -750,10 +658,8 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService
         await SaveCheckResultAsync(key, failed, CancellationToken.None).ConfigureAwait(false);
     }
 
-    private async Task SaveCheckResultAsync(string key, ConsistencyCheckResult result, CancellationToken ct)
-    {
-        Dictionary<string, string> metadata = new()
-        {
+    private async Task SaveCheckResultAsync(string key, ConsistencyCheckResult result, CancellationToken ct) {
+        Dictionary<string, string> metadata = new() {
             ["ttlInSeconds"] = (TtlDays * 24 * 60 * 60).ToString(System.Globalization.CultureInfo.InvariantCulture),
         };
 

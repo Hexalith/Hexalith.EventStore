@@ -3,12 +3,12 @@ using System.Diagnostics;
 using Dapr.Actors.Runtime;
 using Dapr.Client;
 
-using Hexalith.EventStore.Middleware;
-using Hexalith.EventStore.Pipeline;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Middleware;
+using Hexalith.EventStore.Pipeline;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;

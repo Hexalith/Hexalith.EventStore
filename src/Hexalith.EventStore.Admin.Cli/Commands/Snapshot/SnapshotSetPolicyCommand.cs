@@ -9,8 +9,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Snapshot;
 /// <summary>
 /// The <c>eventstore-admin snapshot set-policy</c> subcommand — sets a snapshot policy.
 /// </summary>
-public static class SnapshotSetPolicyCommand
-{
+public static class SnapshotSetPolicyCommand {
     internal static readonly List<ColumnDefinition> ResultColumns =
     [
         new("Operation ID", "OperationId"),
@@ -21,8 +20,7 @@ public static class SnapshotSetPolicyCommand
     /// <summary>
     /// Creates the snapshot set-policy subcommand wired to the shared global options.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
+    public static Command Create(GlobalOptionsBinding binding) {
         Argument<string> tenantIdArg = SnapshotArguments.TenantId();
         Argument<string> domainArg = SnapshotArguments.Domain();
         Argument<string> aggregateTypeArg = SnapshotArguments.AggregateType();
@@ -34,8 +32,7 @@ public static class SnapshotSetPolicyCommand
         command.Arguments.Add(aggregateTypeArg);
         command.Arguments.Add(intervalEventsArg);
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
+        command.SetAction(async (parseResult, cancellationToken) => {
             GlobalOptions options = binding.Resolve(parseResult);
             string tenantId = parseResult.GetValue(tenantIdArg)!;
             string domain = parseResult.GetValue(domainArg)!;
@@ -52,8 +49,7 @@ public static class SnapshotSetPolicyCommand
         string domain,
         string aggregateType,
         int intervalEvents,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         using AdminApiClient client = new(options);
         return await ExecuteAsync(client, options, tenantId, domain, aggregateType, intervalEvents, cancellationToken).ConfigureAwait(false);
     }
@@ -65,18 +61,15 @@ public static class SnapshotSetPolicyCommand
         string domain,
         string aggregateType,
         int intervalEvents,
-        CancellationToken cancellationToken)
-    {
-        if (intervalEvents <= 0)
-        {
+        CancellationToken cancellationToken) {
+        if (intervalEvents <= 0) {
             Console.Error.WriteLine("intervalEvents must be a positive integer.");
             return ExitCodes.Error;
         }
 
         IOutputFormatter formatter = OutputFormatterFactory.Create(options.Format);
         OutputWriter writer = new(options.OutputFile);
-        try
-        {
+        try {
             string path = $"api/v1/admin/storage/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateType)}/snapshot-policy?intervalEvents={intervalEvents}";
             AdminOperationResult result = await client
                 .PutAsync<AdminOperationResult>(path, cancellationToken)
@@ -85,22 +78,18 @@ public static class SnapshotSetPolicyCommand
             Console.Error.WriteLine($"Snapshot policy set. Operation ID: {result.OperationId}");
 
             string output;
-            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase))
-            {
+            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase)) {
                 output = formatter.Format(result);
             }
-            else
-            {
+            else {
                 output = formatter.Format(result, ResultColumns);
             }
 
             int writeResult = writer.Write(output);
             return writeResult != ExitCodes.Success ? writeResult : ExitCodes.Success;
         }
-        catch (AdminApiException ex)
-        {
-            string message = ex.HttpStatusCode switch
-            {
+        catch (AdminApiException ex) {
+            string message = ex.HttpStatusCode switch {
                 403 => "Access denied. Operator role required.",
                 _ => ex.Message,
             };

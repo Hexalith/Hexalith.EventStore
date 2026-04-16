@@ -28,7 +28,7 @@ public static class ServiceCollectionExtensions {
         this IServiceCollection services,
         IConfiguration configuration) {
         // 1. Authorization policies (NFR46)
-        services.AddAuthorizationBuilder()
+        _ = services.AddAuthorizationBuilder()
             .AddPolicy(AdminAuthorizationPolicies.ReadOnly, policy =>
                 policy.RequireClaim(AdminClaimTypes.AdminRole))
             .AddPolicy(AdminAuthorizationPolicies.Operator, policy =>
@@ -37,16 +37,16 @@ public static class ServiceCollectionExtensions {
                 policy.RequireClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin)));
 
         // 2. Admin claims transformation (maps existing claims to admin roles)
-        services.AddTransient<IClaimsTransformation, AdminClaimsTransformation>();
+        _ = services.AddTransient<IClaimsTransformation, AdminClaimsTransformation>();
 
         // 3. Tenant authorization filter
-        services.AddScoped<AdminTenantAuthorizationFilter>();
+        _ = services.AddScoped<AdminTenantAuthorizationFilter>();
 
         // 4. Register admin services (from Story 14-2)
-        services.AddAdminServer(configuration);
+        _ = services.AddAdminServer(configuration);
 
         // 5. OpenAPI document generation (Story 14-5)
-        services.AddAdminOpenApi();
+        _ = services.AddAdminOpenApi();
 
         return services;
     }
@@ -59,13 +59,10 @@ public static class ServiceCollectionExtensions {
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddAdminOpenApi(
         this IServiceCollection services) {
-        services.AddOpenApi(options =>
-        {
+        _ = services.AddOpenApi(options => {
             // Document metadata and JWT security scheme
-            options.AddDocumentTransformer((document, context, ct) =>
-            {
-                document.Info = new OpenApiInfo
-                {
+            _ = options.AddDocumentTransformer((document, context, ct) => {
+                document.Info = new OpenApiInfo {
                     Title = "Hexalith EventStore Admin API",
                     Version = "v1",
                     Description = "Administration API for Hexalith EventStore — stream browsing, projection management, type catalog, health monitoring, storage operations, dead-letter management, and tenant administration. Requires JWT Bearer authentication with role-based access control (ReadOnly, Operator, Admin). Error reference documentation is available at /api/v1/admin/problems/{error-type} on this server.",
@@ -74,8 +71,7 @@ public static class ServiceCollectionExtensions {
                 // Add JWT Bearer security scheme (same pattern as EventStore)
                 OpenApiComponents components = document.Components ??= new OpenApiComponents();
                 components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
-                components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
-                {
+                components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme {
                     Type = SecuritySchemeType.Http,
                     Scheme = "bearer",
                     BearerFormat = "JWT",
@@ -93,10 +89,10 @@ public static class ServiceCollectionExtensions {
             });
 
             // Common response codes on all admin operations
-            options.AddOperationTransformer<AdminOperationTransformer>();
+            _ = options.AddOperationTransformer<AdminOperationTransformer>();
 
             // Role descriptions per endpoint
-            options.AddOperationTransformer<AdminRoleDescriptionTransformer>();
+            _ = options.AddOperationTransformer<AdminRoleDescriptionTransformer>();
         });
 
         return services;
@@ -112,7 +108,7 @@ public static class ServiceCollectionExtensions {
         this IServiceCollection services,
         IConfiguration configuration) {
         ArgumentNullException.ThrowIfNull(configuration);
-        services.Configure<AdminServerOptions>(
+        _ = services.Configure<AdminServerOptions>(
             configuration.GetSection(AdminServerOptions.SectionName));
         services.TryAddSingleton<IValidateOptions<AdminServerOptions>, AdminServerOptionsValidator>();
 
@@ -139,13 +135,10 @@ public static class ServiceCollectionExtensions {
         services.TryAddScoped<IDaprInfrastructureQueryService, DaprInfrastructureQueryService>();
 
         // Named HttpClient for remote DAPR sidecar metadata queries (story 19-2)
-        services.AddHttpClient("DaprSidecar", client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(5);
-        });
+        _ = services.AddHttpClient("DaprSidecar", client => client.Timeout = TimeSpan.FromSeconds(5));
 
         // Background health history collector (story 19-5)
-        services.AddHostedService<DaprHealthHistoryCollector>();
+        _ = services.AddHostedService<DaprHealthHistoryCollector>();
 
         return services;
     }

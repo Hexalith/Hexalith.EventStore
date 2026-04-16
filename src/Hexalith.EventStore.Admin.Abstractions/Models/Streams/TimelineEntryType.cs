@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 /// <summary>
 /// Type of entry in a stream timeline.
 /// </summary>
-public enum TimelineEntryType
-{
+public enum TimelineEntryType {
     /// <summary>A command was submitted.</summary>
     Command,
 

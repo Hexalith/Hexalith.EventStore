@@ -6,9 +6,9 @@ using Dapr.Client;
 using Hexalith.EventStore.Admin.Abstractions.Models.Commands;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
-using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
+using Hexalith.EventStore.Contracts.Commands;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -117,7 +117,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
                 filtered = filtered.Where(s => s.Domain.Equals(domain, StringComparison.OrdinalIgnoreCase));
             }
 
-            List<StreamSummary> filteredList = filtered.ToList();
+            var filteredList = filtered.ToList();
             IReadOnlyList<StreamSummary> page = filteredList
                 .OrderByDescending(s => s.LastActivityUtc)
                 .Take(count)
@@ -233,7 +233,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
 
         try {
             // Use 30-second timeout for blame (longer than default because blame replays the entire event stream)
-            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
             AggregateBlameView? result = await InvokeEventStoreAsync<AggregateBlameView>(
@@ -264,7 +264,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
 
         try {
             // Use 30-second timeout (same as blame — single state reconstruction + diff is comparable workload)
-            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
             EventStepFrame? result = await InvokeEventStoreAsync<EventStepFrame>(
@@ -433,7 +433,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
 
         try {
             // Use 30-second timeout (trace map scans potentially large event streams)
-            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(30));
 
             CorrelationTraceMap? result = await InvokeEventStoreAsync<CorrelationTraceMap>(
@@ -498,7 +498,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         string endpoint,
         CancellationToken ct,
         int? timeoutSeconds = null) {
-        using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds ?? _options.ServiceInvocationTimeoutSeconds));
 
         using HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
@@ -512,7 +512,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
 
         HttpClient httpClient = _httpClientFactory.CreateClient();
         using HttpResponseMessage httpResponse = await httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
-        httpResponse.EnsureSuccessStatusCode();
+        _ = httpResponse.EnsureSuccessStatusCode();
         return await httpResponse.Content.ReadFromJsonAsync<TResponse>(cts.Token).ConfigureAwait(false);
     }
 
@@ -521,7 +521,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         TRequest body,
         CancellationToken ct,
         int? timeoutSeconds = null) {
-        using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds ?? _options.ServiceInvocationTimeoutSeconds));
 
         using HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
@@ -537,7 +537,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
 
         HttpClient httpClient2 = _httpClientFactory.CreateClient();
         using HttpResponseMessage httpResponse2 = await httpClient2.SendAsync(request, cts.Token).ConfigureAwait(false);
-        httpResponse2.EnsureSuccessStatusCode();
+        _ = httpResponse2.EnsureSuccessStatusCode();
         return await httpResponse2.Content.ReadFromJsonAsync<TResponse>(cts.Token).ConfigureAwait(false);
     }
 

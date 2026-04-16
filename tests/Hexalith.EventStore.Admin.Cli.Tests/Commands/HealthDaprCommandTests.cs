@@ -10,13 +10,11 @@ using Hexalith.EventStore.Testing.Http;
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands;
 
 [Collection("ConsoleTests")]
-public class HealthDaprCommandTests
-{
+public class HealthDaprCommandTests {
     private static readonly DateTimeOffset _testTime = new(2026, 3, 25, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public async Task HealthDaprCommand_ReturnsComponentTable()
-    {
+    public async Task HealthDaprCommand_ReturnsComponentTable() {
         // Arrange
         List<DaprComponentHealth> components =
         [
@@ -28,8 +26,7 @@ public class HealthDaprCommandTests
         GlobalOptions options = CreateOptions("table");
 
         TextWriter originalOut = Console.Out;
-        try
-        {
+        try {
             using StringWriter sw = new();
             Console.SetOut(sw);
 
@@ -45,15 +42,13 @@ public class HealthDaprCommandTests
             output.ShouldContain("binding-cron");
             output.ShouldContain("Component Name");
         }
-        finally
-        {
+        finally {
             Console.SetOut(originalOut);
         }
     }
 
     [Fact]
-    public async Task HealthDaprCommand_JsonFormat_ReturnsValidJson()
-    {
+    public async Task HealthDaprCommand_JsonFormat_ReturnsValidJson() {
         // Arrange
         List<DaprComponentHealth> components =
         [
@@ -64,8 +59,7 @@ public class HealthDaprCommandTests
         GlobalOptions options = CreateOptions("json");
 
         TextWriter originalOut = Console.Out;
-        try
-        {
+        try {
             using StringWriter sw = new();
             Console.SetOut(sw);
 
@@ -77,26 +71,23 @@ public class HealthDaprCommandTests
             // Assert
             string json = sw.ToString().Trim();
             List<DaprComponentHealth>? deserialized = JsonSerializer.Deserialize<List<DaprComponentHealth>>(json, JsonDefaults.Options);
-            deserialized.ShouldNotBeNull();
+            _ = deserialized.ShouldNotBeNull();
             deserialized.Count.ShouldBe(2);
         }
-        finally
-        {
+        finally {
             Console.SetOut(originalOut);
         }
     }
 
     [Fact]
-    public async Task HealthDaprCommand_EmptyResult_PrintsError()
-    {
+    public async Task HealthDaprCommand_EmptyResult_PrintsError() {
         // Arrange
         List<DaprComponentHealth> components = [];
         using AdminApiClient client = CreateMockClient(components);
         GlobalOptions options = CreateOptions("table");
 
         TextWriter originalErr = Console.Error;
-        try
-        {
+        try {
             using StringWriter errWriter = new();
             Console.SetError(errWriter);
 
@@ -109,15 +100,13 @@ public class HealthDaprCommandTests
             exitCode.ShouldBe(ExitCodes.Error);
             errWriter.ToString().ShouldContain("No DAPR components found.");
         }
-        finally
-        {
+        finally {
             Console.SetError(originalErr);
         }
     }
 
     [Fact]
-    public async Task HealthDaprCommand_ExitCode_AllHealthy_Returns0()
-    {
+    public async Task HealthDaprCommand_ExitCode_AllHealthy_Returns0() {
         // Arrange
         List<DaprComponentHealth> components =
         [
@@ -137,8 +126,7 @@ public class HealthDaprCommandTests
     }
 
     [Fact]
-    public async Task HealthDaprCommand_ExitCode_AnyDegraded_Returns1()
-    {
+    public async Task HealthDaprCommand_ExitCode_AnyDegraded_Returns1() {
         // Arrange
         List<DaprComponentHealth> components =
         [
@@ -158,8 +146,7 @@ public class HealthDaprCommandTests
     }
 
     [Fact]
-    public async Task HealthDaprCommand_ExitCode_AnyUnhealthy_Returns2()
-    {
+    public async Task HealthDaprCommand_ExitCode_AnyUnhealthy_Returns2() {
         // Arrange
         List<DaprComponentHealth> components =
         [
@@ -179,8 +166,7 @@ public class HealthDaprCommandTests
     }
 
     [Fact]
-    public async Task HealthDaprCommand_ComponentFilter_Found_ReturnsComponent()
-    {
+    public async Task HealthDaprCommand_ComponentFilter_Found_ReturnsComponent() {
         // Arrange
         List<DaprComponentHealth> components =
         [
@@ -200,8 +186,7 @@ public class HealthDaprCommandTests
     }
 
     [Fact]
-    public async Task HealthDaprCommand_ComponentFilter_NotFound_ReturnsError()
-    {
+    public async Task HealthDaprCommand_ComponentFilter_NotFound_ReturnsError() {
         // Arrange
         List<DaprComponentHealth> components =
         [
@@ -211,8 +196,7 @@ public class HealthDaprCommandTests
         GlobalOptions options = CreateOptions("json");
 
         TextWriter originalErr = Console.Error;
-        try
-        {
+        try {
             using StringWriter errWriter = new();
             Console.SetError(errWriter);
 
@@ -225,15 +209,13 @@ public class HealthDaprCommandTests
             exitCode.ShouldBe(ExitCodes.Error);
             errWriter.ToString().ShouldContain("DAPR component 'nonexistent' not found.");
         }
-        finally
-        {
+        finally {
             Console.SetError(originalErr);
         }
     }
 
     [Fact]
-    public async Task HealthDaprCommand_ComponentFilter_CaseInsensitive()
-    {
+    public async Task HealthDaprCommand_ComponentFilter_CaseInsensitive() {
         // Arrange
         List<DaprComponentHealth> components =
         [
@@ -254,11 +236,9 @@ public class HealthDaprCommandTests
     private static GlobalOptions CreateOptions(string format = "json")
         => new("http://localhost:5002", null, format, null);
 
-    private static AdminApiClient CreateMockClient(List<DaprComponentHealth> components)
-    {
+    private static AdminApiClient CreateMockClient(List<DaprComponentHealth> components) {
         string json = JsonSerializer.Serialize(components, JsonDefaults.Options);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         });
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost:5002") };

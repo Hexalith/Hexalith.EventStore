@@ -4,7 +4,6 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Projections;
-using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Projection;
 using Hexalith.EventStore.Admin.Cli.Formatting;
@@ -12,13 +11,10 @@ using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Projection;
 
-public class ProjectionListCommandTests
-{
-    private static List<ProjectionStatus> CreateTestResult(int count = 2)
-    {
+public class ProjectionListCommandTests {
+    private static List<ProjectionStatus> CreateTestResult(int count = 2) {
         List<ProjectionStatus> items = [];
-        for (int i = 0; i < count; i++)
-        {
+        for (int i = 0; i < count; i++) {
             items.Add(new ProjectionStatus(
                 $"projection-{i}",
                 $"tenant-{i}",
@@ -38,11 +34,9 @@ public class ProjectionListCommandTests
 
     private static (AdminApiClient Client, MockHttpMessageHandler Handler) CreateMockClientWithHandler(
         object responseBody,
-        HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
+        HttpStatusCode statusCode = HttpStatusCode.OK) {
         string json = JsonSerializer.Serialize(responseBody, JsonDefaults.Options);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         });
         GlobalOptions options = CreateOptions();
@@ -50,8 +44,7 @@ public class ProjectionListCommandTests
     }
 
     [Fact]
-    public void ProjectionListCommand_ReturnsProjectionTable()
-    {
+    public void ProjectionListCommand_ReturnsProjectionTable() {
         // Arrange
         List<ProjectionStatus> result = CreateTestResult();
         IOutputFormatter formatter = new TableOutputFormatter();
@@ -68,8 +61,7 @@ public class ProjectionListCommandTests
     }
 
     [Fact]
-    public async Task ProjectionListCommand_EmptyResult_PrintsNoProjectionsFound()
-    {
+    public async Task ProjectionListCommand_EmptyResult_PrintsNoProjectionsFound() {
         // Arrange
         List<ProjectionStatus> result = [];
         (AdminApiClient client, _) = CreateMockClientWithHandler(result);
@@ -77,8 +69,7 @@ public class ProjectionListCommandTests
 
         // Act
         int exitCode;
-        using (client)
-        {
+        using (client) {
             exitCode = await ProjectionListCommand.ExecuteAsync(client, options, null, CancellationToken.None);
         }
 
@@ -87,8 +78,7 @@ public class ProjectionListCommandTests
     }
 
     [Fact]
-    public void ProjectionListCommand_JsonFormat_ReturnsValidJson()
-    {
+    public void ProjectionListCommand_JsonFormat_ReturnsValidJson() {
         // Arrange
         List<ProjectionStatus> result = CreateTestResult();
         IOutputFormatter formatter = new JsonOutputFormatter();
@@ -98,33 +88,30 @@ public class ProjectionListCommandTests
 
         // Assert
         List<ProjectionStatus>? deserialized = JsonSerializer.Deserialize<List<ProjectionStatus>>(json, JsonDefaults.Options);
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.Count.ShouldBe(2);
     }
 
     [Fact]
-    public async Task ProjectionListCommand_WithTenantFilter_SendsQueryParameter()
-    {
+    public async Task ProjectionListCommand_WithTenantFilter_SendsQueryParameter() {
         // Arrange
         List<ProjectionStatus> result = CreateTestResult();
         (AdminApiClient client, MockHttpMessageHandler handler) = CreateMockClientWithHandler(result);
         GlobalOptions options = CreateOptions("table");
 
         // Act
-        using (client)
-        {
+        using (client) {
             _ = await ProjectionListCommand.ExecuteAsync(client, options, "acme", CancellationToken.None);
         }
 
         // Assert
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         string requestUri = handler.LastRequest.RequestUri!.AbsoluteUri;
         requestUri.ShouldContain("tenantId=acme");
     }
 
     [Fact]
-    public void ProjectionListCommand_CsvFormat_ReturnsHeaderAndRows()
-    {
+    public void ProjectionListCommand_CsvFormat_ReturnsHeaderAndRows() {
         // Arrange
         List<ProjectionStatus> result = CreateTestResult();
         IOutputFormatter formatter = new CsvOutputFormatter();
@@ -143,8 +130,7 @@ public class ProjectionListCommandTests
     }
 
     [Fact]
-    public void ProjectionListCommand_JsonFormat_EnumsSerializeAsStrings()
-    {
+    public void ProjectionListCommand_JsonFormat_EnumsSerializeAsStrings() {
         // Arrange
         ProjectionStatus running = new("proj-1", "t1", ProjectionStatusType.Running, 0, 100.0, 0, 500L, DateTimeOffset.UtcNow);
 
@@ -162,13 +148,11 @@ public class ProjectionListCommandTests
     }
 
     [Fact]
-    public async Task ProjectionCommands_SpecialCharsInArgs_AreUrlEncoded()
-    {
+    public async Task ProjectionCommands_SpecialCharsInArgs_AreUrlEncoded() {
         // Arrange
         AdminOperationResult result = new(true, "op-1", "OK", null);
         string json = JsonSerializer.Serialize(result, JsonDefaults.Options);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         });
         GlobalOptions options = CreateOptions("table");
@@ -178,17 +162,16 @@ public class ProjectionListCommandTests
         _ = await ProjectionPauseCommand.ExecuteAsync(client, options, "acme corp", "my/projection", CancellationToken.None);
 
         // Assert
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         string requestUri = handler.LastRequest.RequestUri!.AbsoluteUri;
         requestUri.ShouldContain("acme%20corp");
         requestUri.ShouldContain("my%2Fprojection");
     }
 
     [Fact]
-    public void ProjectionSubcommands_MissingPositionalArgs_ReturnsError()
-    {
+    public void ProjectionSubcommands_MissingPositionalArgs_ReturnsError() {
         // Arrange — create the status command which requires tenant and name
-        GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
+        var binding = GlobalOptionsBinding.Create();
         Command statusCmd = ProjectionStatusCommand.Create(binding);
 
         // Assert — the command has two required arguments
@@ -198,10 +181,9 @@ public class ProjectionListCommandTests
     }
 
     [Fact]
-    public void ProjectionCommand_NoSubcommand_PrintsHelp()
-    {
+    public void ProjectionCommand_NoSubcommand_PrintsHelp() {
         // Arrange
-        GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
+        var binding = GlobalOptionsBinding.Create();
         Command projectionCmd = ProjectionCommand.Create(binding);
 
         // Assert — parent command has all five sub-subcommands

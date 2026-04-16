@@ -9,13 +9,11 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Projection;
 /// <summary>
 /// The <c>eventstore-admin projection reset</c> subcommand — resets a projection.
 /// </summary>
-public static class ProjectionResetCommand
-{
+public static class ProjectionResetCommand {
     /// <summary>
     /// Creates the projection reset subcommand wired to the shared global options.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
+    public static Command Create(GlobalOptionsBinding binding) {
         Argument<string> tenantArg = ProjectionArguments.Tenant();
         Argument<string> nameArg = ProjectionArguments.Name();
         Option<long?> fromOption = new("--from") { Description = "Position to reset from (omit to reset from beginning)" };
@@ -25,8 +23,7 @@ public static class ProjectionResetCommand
         command.Arguments.Add(nameArg);
         command.Options.Add(fromOption);
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
+        command.SetAction(async (parseResult, cancellationToken) => {
             GlobalOptions options = binding.Resolve(parseResult);
             string tenant = parseResult.GetValue(tenantArg)!;
             string name = parseResult.GetValue(nameArg)!;
@@ -41,8 +38,7 @@ public static class ProjectionResetCommand
         string tenant,
         string name,
         long? fromPosition,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         using AdminApiClient client = new(options);
         return await ExecuteAsync(client, options, tenant, name, fromPosition, cancellationToken).ConfigureAwait(false);
     }
@@ -53,19 +49,16 @@ public static class ProjectionResetCommand
         string tenant,
         string name,
         long? fromPosition,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         IOutputFormatter formatter = OutputFormatterFactory.Create(options.Format);
         OutputWriter writer = new(options.OutputFile);
-        try
-        {
+        try {
             string path = $"api/v1/admin/projections/{Uri.EscapeDataString(tenant)}/{Uri.EscapeDataString(name)}/reset";
             AdminOperationResult result = await client
                 .PostAsync<AdminOperationResult>(path, new { FromPosition = fromPosition }, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (!result.Success)
-            {
+            if (!result.Success) {
                 Console.Error.WriteLine(result.Message ?? "Operation failed.");
                 return ExitCodes.Error;
             }
@@ -77,10 +70,8 @@ public static class ProjectionResetCommand
             int writeResult = writer.Write(output);
             return writeResult != ExitCodes.Success ? writeResult : ExitCodes.Success;
         }
-        catch (AdminApiException ex)
-        {
-            string message = ex.HttpStatusCode switch
-            {
+        catch (AdminApiException ex) {
+            string message = ex.HttpStatusCode switch {
                 403 => "Access denied. Operator role required to reset projections.",
                 404 => $"Projection '{name}' not found in tenant '{tenant}'.",
                 _ => ex.Message,

@@ -6,7 +6,6 @@ using Dapr.Actors;
 using Dapr.Actors.Runtime;
 using Dapr.Client;
 
-using Hexalith.EventStore.Telemetry;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
@@ -16,6 +15,7 @@ using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Telemetry;
+using Hexalith.EventStore.Telemetry;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.Extensions.Logging;

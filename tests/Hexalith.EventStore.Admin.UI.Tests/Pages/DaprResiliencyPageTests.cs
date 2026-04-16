@@ -2,7 +2,6 @@ using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,21 +13,18 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the DaprResiliency page.
 /// </summary>
-public class DaprResiliencyPageTests : AdminUITestContext
-{
+public class DaprResiliencyPageTests : AdminUITestContext {
     private readonly AdminResiliencyApiClient _mockClient;
 
-    public DaprResiliencyPageTests()
-    {
+    public DaprResiliencyPageTests() {
         _mockClient = Substitute.For<AdminResiliencyApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminResiliencyApiClient>.Instance);
-        Services.AddScoped(_ => _mockClient);
+        _ = Services.AddScoped(_ => _mockClient);
     }
 
     [Fact]
-    public void ResiliencyPage_RendersTitle()
-    {
+    public void ResiliencyPage_RendersTitle() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -41,8 +37,7 @@ public class DaprResiliencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void ResiliencyPage_RendersBackLink()
-    {
+    public void ResiliencyPage_RendersBackLink() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -55,8 +50,7 @@ public class DaprResiliencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void ResiliencyPage_RendersStatCards_WithData()
-    {
+    public void ResiliencyPage_RendersStatCards_WithData() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -73,8 +67,7 @@ public class DaprResiliencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void ResiliencyPage_RendersEmptyState_WhenConfigUnavailable()
-    {
+    public void ResiliencyPage_RendersEmptyState_WhenConfigUnavailable() {
         // Arrange
         _ = _mockClient.GetResiliencySpecAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprResiliencySpec?>(DaprResiliencySpec.Unavailable));
@@ -88,10 +81,9 @@ public class DaprResiliencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void ResiliencyPage_RendersIssueBanner_WhenParseError()
-    {
+    public void ResiliencyPage_RendersIssueBanner_WhenParseError() {
         // Arrange
-        DaprResiliencySpec spec = DaprResiliencySpec.ParseError(
+        var spec = DaprResiliencySpec.ParseError(
             "/etc/dapr/resiliency.yaml",
             "invalid: yaml: content",
             "Unexpected token");
@@ -107,8 +99,7 @@ public class DaprResiliencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void ResiliencyPage_RendersReloadButton()
-    {
+    public void ResiliencyPage_RendersReloadButton() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -121,8 +112,7 @@ public class DaprResiliencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void ResiliencyPage_RendersIssueBanner_WhenApiUnavailable()
-    {
+    public void ResiliencyPage_RendersIssueBanner_WhenApiUnavailable() {
         // Arrange
         _ = _mockClient.GetResiliencySpecAsync(Arg.Any<CancellationToken>())
             .Returns<DaprResiliencySpec?>(_ => throw new InvalidOperationException("API down"));
@@ -136,8 +126,7 @@ public class DaprResiliencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void ResiliencyPage_RendersYamlSourceViewer_WhenAvailable()
-    {
+    public void ResiliencyPage_RendersYamlSourceViewer_WhenAvailable() {
         // Arrange
         const string rawYaml = "apiVersion: dapr.io/v1alpha1\nkind: Resiliency\nmetadata:\n  name: myresiliency";
         DaprResiliencySpec spec = new(
@@ -162,8 +151,7 @@ public class DaprResiliencyPageTests : AdminUITestContext
 
     // ===== Helper methods =====
 
-    private void SetupSuccessfulResponse()
-    {
+    private void SetupSuccessfulResponse() {
         DaprResiliencySpec spec = new(
             [new DaprRetryPolicy("defaultRetry", "exponential", 5, null, "15s")],
             [new DaprTimeoutPolicy("daprSidecar", "10s")],

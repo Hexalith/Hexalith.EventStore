@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 /// <summary>
 /// Represents the status of a backup job.
 /// </summary>
-public enum BackupJobStatus
-{
+public enum BackupJobStatus {
     /// <summary>The backup job is queued and waiting to start.</summary>
     Pending,
 

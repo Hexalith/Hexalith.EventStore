@@ -2,11 +2,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Dapr;
 
-public class DaprActorStateEntryTests
-{
+public class DaprActorStateEntryTests {
     [Fact]
-    public void Constructor_WithFoundEntry_CreatesInstance()
-    {
+    public void Constructor_WithFoundEntry_CreatesInstance() {
         var entry = new DaprActorStateEntry("etag", "{\"value\":\"abc\"}", 17, true);
 
         entry.Key.ShouldBe("etag");
@@ -16,8 +14,7 @@ public class DaprActorStateEntryTests
     }
 
     [Fact]
-    public void Constructor_WithNotFoundEntry_CreatesInstance()
-    {
+    public void Constructor_WithNotFoundEntry_CreatesInstance() {
         var entry = new DaprActorStateEntry("snapshot", null, 0, false);
 
         entry.Key.ShouldBe("snapshot");
@@ -30,9 +27,6 @@ public class DaprActorStateEntryTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_WithInvalidKey_ThrowsArgumentException(string? key)
-    {
-        Should.Throw<ArgumentException>(() =>
-            new DaprActorStateEntry(key!, null, 0, false));
-    }
+    public void Constructor_WithInvalidKey_ThrowsArgumentException(string? key) => Should.Throw<ArgumentException>(() =>
+                                                                                            new DaprActorStateEntry(key!, null, 0, false));
 }

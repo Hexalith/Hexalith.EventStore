@@ -19,8 +19,7 @@ public record FieldProvenance(
     DateTimeOffset LastChangedAtTimestamp,
     string LastChangedByEventType,
     string LastChangedByCorrelationId,
-    string LastChangedByUserId)
-{
+    string LastChangedByUserId) {
     /// <summary>Gets the JSON path to the field.</summary>
     public string FieldPath { get; } = FieldPath ?? string.Empty;
 

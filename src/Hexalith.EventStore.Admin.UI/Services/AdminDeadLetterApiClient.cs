@@ -1,12 +1,9 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.DeadLetters;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
-
-using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.Admin.UI.Services;
 
@@ -16,18 +13,15 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 /// </summary>
 public class AdminDeadLetterApiClient(
     IHttpClientFactory httpClientFactory,
-    ILogger<AdminDeadLetterApiClient> logger)
-{
+    ILogger<AdminDeadLetterApiClient> logger) {
     /// <summary>
     /// Gets the total count of dead-letter entries across all tenants.
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The dead-letter count, or null on failure.</returns>
-    public virtual async Task<int?> GetDeadLetterCountAsync(CancellationToken ct = default)
-    {
+    public virtual async Task<int?> GetDeadLetterCountAsync(CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
-        try
-        {
+        try {
             using HttpResponseMessage response = await client
                 .GetAsync("api/v1/admin/dead-letters/count", ct)
                 .ConfigureAwait(false);
@@ -40,8 +34,7 @@ public class AdminDeadLetterApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch dead-letter count");
             return null;
         }
@@ -59,30 +52,25 @@ public class AdminDeadLetterApiClient(
         string? tenantId = null,
         int count = 100,
         string? continuationToken = null,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         List<string> queryParams = [];
-        if (!string.IsNullOrEmpty(tenantId))
-        {
+        if (!string.IsNullOrEmpty(tenantId)) {
             queryParams.Add($"tenantId={Uri.EscapeDataString(tenantId)}");
         }
 
-        if (count != 100)
-        {
+        if (count != 100) {
             queryParams.Add($"count={count}");
         }
 
-        if (!string.IsNullOrEmpty(continuationToken))
-        {
+        if (!string.IsNullOrEmpty(continuationToken)) {
             queryParams.Add($"continuationToken={Uri.EscapeDataString(continuationToken)}");
         }
 
         string url = queryParams.Count > 0
             ? $"api/v1/admin/dead-letters?{string.Join('&', queryParams)}"
             : "api/v1/admin/dead-letters";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             PagedResult<DeadLetterEntry>? result = await response.Content
@@ -94,8 +82,7 @@ public class AdminDeadLetterApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch dead-letter entries from {Url}", url);
             throw new ServiceUnavailableException("Unable to load dead-letter entries.");
         }
@@ -111,12 +98,10 @@ public class AdminDeadLetterApiClient(
     public virtual async Task<AdminOperationResult?> RetryDeadLettersAsync(
         string tenantId,
         IReadOnlyList<string> messageIds,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/dead-letters/{Uri.EscapeDataString(tenantId)}/retry";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client
                 .PostAsJsonAsync(url, new { MessageIds = messageIds }, ct)
                 .ConfigureAwait(false);
@@ -129,8 +114,7 @@ public class AdminDeadLetterApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to retry dead-letter entries at {Url}", url);
             throw new ServiceUnavailableException("Unable to retry dead-letter entries.");
         }
@@ -146,12 +130,10 @@ public class AdminDeadLetterApiClient(
     public virtual async Task<AdminOperationResult?> SkipDeadLettersAsync(
         string tenantId,
         IReadOnlyList<string> messageIds,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/dead-letters/{Uri.EscapeDataString(tenantId)}/skip";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client
                 .PostAsJsonAsync(url, new { MessageIds = messageIds }, ct)
                 .ConfigureAwait(false);
@@ -164,8 +146,7 @@ public class AdminDeadLetterApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to skip dead-letter entries at {Url}", url);
             throw new ServiceUnavailableException("Unable to skip dead-letter entries.");
         }
@@ -181,12 +162,10 @@ public class AdminDeadLetterApiClient(
     public virtual async Task<AdminOperationResult?> ArchiveDeadLettersAsync(
         string tenantId,
         IReadOnlyList<string> messageIds,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/dead-letters/{Uri.EscapeDataString(tenantId)}/archive";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client
                 .PostAsJsonAsync(url, new { MessageIds = messageIds }, ct)
                 .ConfigureAwait(false);
@@ -199,37 +178,30 @@ public class AdminDeadLetterApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to archive dead-letter entries at {Url}", url);
             throw new ServiceUnavailableException("Unable to archive dead-letter entries.");
         }
     }
 
-    private static async Task HandleErrorStatusAsync(HttpResponseMessage response)
-    {
-        if (response.IsSuccessStatusCode)
-        {
+    private static async Task HandleErrorStatusAsync(HttpResponseMessage response) {
+        if (response.IsSuccessStatusCode) {
             return;
         }
 
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
 
-        if (statusCode == HttpStatusCode.UnprocessableEntity)
-        {
+        if (statusCode == HttpStatusCode.UnprocessableEntity) {
             string? errorDetail = null;
-            try
-            {
+            try {
                 string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                using JsonDocument doc = JsonDocument.Parse(body);
-                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail))
-                {
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail)) {
                     errorDetail = detail.GetString();
                 }
             }
-            catch
-            {
+            catch {
                 // Ignore parse failures — fall through to default message
             }
 
@@ -237,8 +209,7 @@ public class AdminDeadLetterApiClient(
                 errorDetail ?? reasonPhrase ?? "The operation was rejected by the server.");
         }
 
-        throw statusCode switch
-        {
+        throw statusCode switch {
             HttpStatusCode.Unauthorized => new UnauthorizedAccessException(
                 "Authentication required. Please sign in again."),
             HttpStatusCode.Forbidden => new ForbiddenAccessException(

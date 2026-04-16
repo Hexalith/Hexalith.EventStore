@@ -5,12 +5,10 @@ using Hexalith.EventStore.Admin.UI.Components;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 
-public class CausationChainViewTests : AdminUITestContext
-{
+public class CausationChainViewTests : AdminUITestContext {
     [Fact]
-    public void CausationChainView_RendersCommandType()
-    {
-        var chain = CreateChain("IncrementCounter");
+    public void CausationChainView_RendersCommandType() {
+        CausationChain chain = CreateChain("IncrementCounter");
 
         IRenderedComponent<CausationChainView> cut = Render<CausationChainView>(p => p
             .Add(c => c.Chain, chain));
@@ -19,9 +17,8 @@ public class CausationChainViewTests : AdminUITestContext
     }
 
     [Fact]
-    public void CausationChainView_RendersCorrelationId()
-    {
-        var chain = CreateChain("IncrementCounter", correlationId: "corr-abc-123");
+    public void CausationChainView_RendersCorrelationId() {
+        CausationChain chain = CreateChain("IncrementCounter", correlationId: "corr-abc-123");
 
         IRenderedComponent<CausationChainView> cut = Render<CausationChainView>(p => p
             .Add(c => c.Chain, chain));
@@ -31,8 +28,7 @@ public class CausationChainViewTests : AdminUITestContext
     }
 
     [Fact]
-    public void CausationChainView_RendersEvents()
-    {
+    public void CausationChainView_RendersEvents() {
         var chain = new CausationChain(
             "IncrementCounter", "cmd-1", "corr-1", "user-1",
             [
@@ -50,8 +46,7 @@ public class CausationChainViewTests : AdminUITestContext
     }
 
     [Fact]
-    public void CausationChainView_RendersAffectedProjections()
-    {
+    public void CausationChainView_RendersAffectedProjections() {
         var chain = new CausationChain(
             "IncrementCounter", "cmd-1", "corr-1", "user-1",
             [new CausationEvent(5, "CounterIncremented", DateTimeOffset.UtcNow)],
@@ -66,9 +61,8 @@ public class CausationChainViewTests : AdminUITestContext
     }
 
     [Fact]
-    public void CausationChainView_InvokesOnCorrelationClick()
-    {
-        var chain = CreateChain("IncrementCounter", correlationId: "corr-click-test");
+    public void CausationChainView_InvokesOnCorrelationClick() {
+        CausationChain chain = CreateChain("IncrementCounter", correlationId: "corr-click-test");
         string? clickedCorrelation = null;
 
         IRenderedComponent<CausationChainView> cut = Render<CausationChainView>(p => p
@@ -76,18 +70,16 @@ public class CausationChainViewTests : AdminUITestContext
             .Add(c => c.OnCorrelationClick, id => clickedCorrelation = id));
 
         // Find the correlation link/button and click it
-        var correlationButton = cut.FindAll("button, a, [role='button']")
+        AngleSharp.Dom.IElement? correlationButton = cut.FindAll("button, a, [role='button']")
             .FirstOrDefault(el => el.InnerHtml.Contains("corr-click"));
-        if (correlationButton is not null)
-        {
+        if (correlationButton is not null) {
             correlationButton.Click();
             clickedCorrelation.ShouldBe("corr-click-test");
         }
     }
 
     [Fact]
-    public void CausationChainView_RendersEmptyEvents_Gracefully()
-    {
+    public void CausationChainView_RendersEmptyEvents_Gracefully() {
         var chain = new CausationChain(
             "IncrementCounter", "cmd-1", "corr-1", "user-1",
             [],
@@ -102,11 +94,8 @@ public class CausationChainViewTests : AdminUITestContext
 
     private static CausationChain CreateChain(
         string commandType = "IncrementCounter",
-        string correlationId = "corr-1")
-    {
-        return new CausationChain(
+        string correlationId = "corr-1") => new(
             commandType, "cmd-1", correlationId, "user-1",
             [new CausationEvent(5, "CounterIncremented", DateTimeOffset.UtcNow)],
             ["CounterSummary"]);
-    }
 }

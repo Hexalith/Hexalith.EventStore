@@ -5,8 +5,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Stream;
 /// <summary>
 /// Shared positional arguments for stream sub-subcommands.
 /// </summary>
-public static class StreamArguments
-{
+public static class StreamArguments {
     /// <summary>Creates the tenant positional argument.</summary>
     public static Argument<string> Tenant() => new("tenant") { Description = "Tenant identifier" };
 

@@ -1,10 +1,10 @@
 
 using System.Text.Json;
 
-using Hexalith.EventStore.Models;
-using Hexalith.EventStore.Validation;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Contracts.Validation;
+using Hexalith.EventStore.Models;
+using Hexalith.EventStore.Validation;
 
 using Shouldly;
 

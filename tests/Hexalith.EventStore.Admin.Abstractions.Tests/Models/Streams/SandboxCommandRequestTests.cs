@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Streams;
 
-public class SandboxCommandRequestTests
-{
+public class SandboxCommandRequestTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         var request = new SandboxCommandRequest(
             "Hexalith.EventStore.Sample.Counter.Commands.IncrementCounter",
             "{\"Amount\":5}",
@@ -24,8 +22,7 @@ public class SandboxCommandRequestTests
     }
 
     [Fact]
-    public void Constructor_WithNullCommandType_DefaultsToEmpty()
-    {
+    public void Constructor_WithNullCommandType_DefaultsToEmpty() {
         var request = new SandboxCommandRequest(
             null!,
             "{\"Amount\":5}",
@@ -41,8 +38,7 @@ public class SandboxCommandRequestTests
     }
 
     [Fact]
-    public void ToString_RedactsPayloadJson()
-    {
+    public void ToString_RedactsPayloadJson() {
         var request = new SandboxCommandRequest(
             "IncrementCounter",
             "{\"Secret\":\"super-secret-value\"}",
@@ -59,8 +55,7 @@ public class SandboxCommandRequestTests
     }
 
     [Fact]
-    public void SerializationRoundTrip_PreservesAllProperties()
-    {
+    public void SerializationRoundTrip_PreservesAllProperties() {
         var original = new SandboxCommandRequest(
             "IncrementCounter",
             "{\"Amount\":10}",
@@ -71,7 +66,7 @@ public class SandboxCommandRequestTests
         string json = JsonSerializer.Serialize(original);
         SandboxCommandRequest? deserialized = JsonSerializer.Deserialize<SandboxCommandRequest>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized!.CommandType.ShouldBe("IncrementCounter");
         deserialized.PayloadJson.ShouldBe("{\"Amount\":10}");
         deserialized.AtSequence.ShouldBe(7);

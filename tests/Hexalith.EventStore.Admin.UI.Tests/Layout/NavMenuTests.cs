@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.UI.Layout;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Layout;
 
-public class NavMenuTests : AdminUITestContext
-{
+public class NavMenuTests : AdminUITestContext {
     [Fact]
-    public void NavMenu_RendersWithoutException()
-    {
+    public void NavMenu_RendersWithoutException() {
         IRenderedComponent<NavMenu> cut = Render<NavMenu>(
             parameters => parameters
                 .Add(p => p.Width, "220px")
@@ -18,16 +16,14 @@ public class NavMenuTests : AdminUITestContext
     }
 
     [Fact]
-    public void NavMenu_ContainsExpectedNavigationLinks()
-    {
+    public void NavMenu_ContainsExpectedNavigationLinks() {
         IRenderedComponent<NavMenu> cut = Render<NavMenu>(
             parameters => parameters
                 .Add(p => p.Width, "220px")
                 .Add(p => p.UserRole, AdminRole.Admin));
 
         // Use WaitForAssertion since topology section loads async
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             string markup = cut.Markup;
 
             // Core navigation
@@ -57,8 +53,7 @@ public class NavMenuTests : AdminUITestContext
     }
 
     [Fact]
-    public void NavMenu_RendersV5StructuralElements()
-    {
+    public void NavMenu_RendersV5StructuralElements() {
         IRenderedComponent<NavMenu> cut = Render<NavMenu>(
             parameters => parameters
                 .Add(p => p.Width, "220px")
@@ -75,15 +70,13 @@ public class NavMenuTests : AdminUITestContext
     }
 
     [Fact]
-    public void NavMenu_SettingsHiddenForNonAdminRole()
-    {
+    public void NavMenu_SettingsHiddenForNonAdminRole() {
         IRenderedComponent<NavMenu> cut = Render<NavMenu>(
             parameters => parameters
                 .Add(p => p.Width, "220px")
                 .Add(p => p.UserRole, AdminRole.ReadOnly));
 
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             // NavMenu should render navigation but NOT the Settings link for ReadOnly role
             string markup = cut.Markup;
             markup.ShouldContain("Home");

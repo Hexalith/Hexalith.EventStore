@@ -6,8 +6,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// <summary>
 /// Service interface for consistency check operations.
 /// </summary>
-public interface IConsistencyCommandService
-{
+public interface IConsistencyCommandService {
     /// <summary>
     /// Triggers a new consistency check for the specified scope.
     /// </summary>

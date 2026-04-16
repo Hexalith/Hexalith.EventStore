@@ -13,51 +13,43 @@ using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Controllers;
 
-public class AdminHealthControllerTests
-{
+public class AdminHealthControllerTests {
     private readonly IHealthQueryService _service = Substitute.For<IHealthQueryService>();
     private readonly AdminHealthController _sut;
 
-    public AdminHealthControllerTests()
-    {
-        _sut = new AdminHealthController(_service, NullLogger<AdminHealthController>.Instance);
-        _sut.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext
-            {
+    public AdminHealthControllerTests() => _sut = new AdminHealthController(_service, NullLogger<AdminHealthController>.Instance) {
+        ControllerContext = new ControllerContext {
+            HttpContext = new DefaultHttpContext {
                 User = CreatePrincipal("ReadOnly"),
             },
-        };
-    }
+        }
+    };
 
     [Fact]
-    public async Task GetSystemHealth_DelegatesToService()
-    {
+    public async Task GetSystemHealth_DelegatesToService() {
         var expected = new SystemHealthReport(HealthStatus.Healthy, 0, 0.0, 0.0, [], new ObservabilityLinks(null, null, null));
-        _service.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+        _ = _service.GetSystemHealthAsync(Arg.Any<CancellationToken>())
             .Returns(expected);
 
         IActionResult result = await _sut.GetSystemHealth();
 
-        var okResult = result.ShouldBeOfType<OkObjectResult>();
+        OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         okResult.Value.ShouldBe(expected);
     }
 
     [Fact]
-    public async Task GetDaprComponentStatus_DelegatesToService()
-    {
+    public async Task GetDaprComponentStatus_DelegatesToService() {
         IReadOnlyList<DaprComponentHealth> expected = [];
-        _service.GetDaprComponentStatusAsync(Arg.Any<CancellationToken>())
+        _ = _service.GetDaprComponentStatusAsync(Arg.Any<CancellationToken>())
             .Returns(expected);
 
         IActionResult result = await _sut.GetDaprComponentStatus();
 
-        var okResult = result.ShouldBeOfType<OkObjectResult>();
+        OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         okResult.Value.ShouldBe(expected);
     }
 
-    private static ClaimsPrincipal CreatePrincipal(string adminRole)
-    {
+    private static ClaimsPrincipal CreatePrincipal(string adminRole) {
         var claims = new List<Claim> { new(AdminClaimTypes.AdminRole, adminRole) };
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
     }

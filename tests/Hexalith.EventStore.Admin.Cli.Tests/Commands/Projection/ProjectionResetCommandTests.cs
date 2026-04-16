@@ -2,7 +2,6 @@ using System.Net;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
-using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Projection;
 using Hexalith.EventStore.Admin.Cli.Formatting;
@@ -10,18 +9,15 @@ using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Projection;
 
-public class ProjectionResetCommandTests
-{
+public class ProjectionResetCommandTests {
     private static GlobalOptions CreateOptions(string format = "table")
         => new("http://localhost:5002", null, format, null);
 
     private static (AdminApiClient Client, MockHttpMessageHandler Handler) CreateMockClientWithHandler(
         object responseBody,
-        HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
+        HttpStatusCode statusCode = HttpStatusCode.OK) {
         string json = JsonSerializer.Serialize(responseBody, JsonDefaults.Options);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         });
         GlobalOptions options = CreateOptions();
@@ -29,8 +25,7 @@ public class ProjectionResetCommandTests
     }
 
     [Fact]
-    public async Task ProjectionResetCommand_Success_PrintsConfirmation()
-    {
+    public async Task ProjectionResetCommand_Success_PrintsConfirmation() {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Arrange
@@ -40,8 +35,7 @@ public class ProjectionResetCommandTests
 
         // Act
         int exitCode;
-        using (client)
-        {
+        using (client) {
             exitCode = await ProjectionResetCommand.ExecuteAsync(client, options, "acme", "counter-view", null, ct);
         }
 
@@ -50,8 +44,7 @@ public class ProjectionResetCommandTests
     }
 
     [Fact]
-    public async Task ProjectionResetCommand_WithFromPosition_SendsRequestBody()
-    {
+    public async Task ProjectionResetCommand_WithFromPosition_SendsRequestBody() {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Arrange
@@ -60,22 +53,20 @@ public class ProjectionResetCommandTests
         GlobalOptions options = CreateOptions("table");
 
         // Act
-        using (client)
-        {
+        using (client) {
             _ = await ProjectionResetCommand.ExecuteAsync(client, options, "acme", "counter-view", 500L, ct);
         }
 
         // Assert
-        handler.LastRequest.ShouldNotBeNull();
-        handler.LastRequest.Content.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.Content.ShouldNotBeNull();
         string body = await handler.LastRequest.Content!.ReadAsStringAsync(ct);
         body.ShouldContain("\"fromPosition\"");
         body.ShouldContain("500");
     }
 
     [Fact]
-    public async Task ProjectionResetCommand_WithoutFromPosition_SendsNullPosition()
-    {
+    public async Task ProjectionResetCommand_WithoutFromPosition_SendsNullPosition() {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Arrange
@@ -84,21 +75,19 @@ public class ProjectionResetCommandTests
         GlobalOptions options = CreateOptions("table");
 
         // Act
-        using (client)
-        {
+        using (client) {
             _ = await ProjectionResetCommand.ExecuteAsync(client, options, "acme", "counter-view", null, ct);
         }
 
         // Assert
-        handler.LastRequest.ShouldNotBeNull();
-        handler.LastRequest.Content.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.Content.ShouldNotBeNull();
         string body = await handler.LastRequest.Content!.ReadAsStringAsync(ct);
         body.ShouldContain("\"fromPosition\": null");
     }
 
     [Fact]
-    public async Task ProjectionResetCommand_Http403_PrintsPermissionError()
-    {
+    public async Task ProjectionResetCommand_Http403_PrintsPermissionError() {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Arrange
@@ -115,8 +104,7 @@ public class ProjectionResetCommandTests
     }
 
     [Fact]
-    public async Task ProjectionResetCommand_Http404_PrintsNotFound()
-    {
+    public async Task ProjectionResetCommand_Http404_PrintsNotFound() {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Arrange

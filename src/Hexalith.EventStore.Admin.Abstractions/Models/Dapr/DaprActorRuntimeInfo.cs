@@ -21,8 +21,7 @@ public record DaprActorRuntimeInfo(
     int TotalActiveActors,
     DaprActorRuntimeConfig Configuration,
     RemoteMetadataStatus RemoteMetadataStatus,
-    string? RemoteEndpoint)
-{
+    string? RemoteEndpoint) {
     /// <summary>Gets the list of registered actor types with their details.</summary>
     public IReadOnlyList<DaprActorTypeInfo> ActorTypes { get; } = ActorTypes
         ?? throw new ArgumentNullException(nameof(ActorTypes));

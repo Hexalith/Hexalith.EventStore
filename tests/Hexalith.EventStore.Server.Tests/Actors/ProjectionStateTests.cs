@@ -13,11 +13,11 @@ public class ProjectionStateTests {
     public void FromJsonElement_CreatesStateWithSerializedBytes() {
         JsonElement state = JsonDocument.Parse("{\"count\":42}").RootElement;
 
-        ProjectionState sut = ProjectionState.FromJsonElement("counter", "tenant-a", state);
+        var sut = ProjectionState.FromJsonElement("counter", "tenant-a", state);
 
         sut.ProjectionType.ShouldBe("counter");
         sut.TenantId.ShouldBe("tenant-a");
-        sut.StateBytes.ShouldNotBeNull();
+        _ = sut.StateBytes.ShouldNotBeNull();
         sut.StateBytes.Length.ShouldBeGreaterThan(0);
     }
 
@@ -25,7 +25,7 @@ public class ProjectionStateTests {
     public void GetState_ReturnsOriginalJsonStructure() {
         JsonElement state = JsonDocument.Parse("{\"count\":42,\"active\":true}").RootElement;
 
-        ProjectionState sut = ProjectionState.FromJsonElement("counter", "tenant-a", state);
+        var sut = ProjectionState.FromJsonElement("counter", "tenant-a", state);
 
         JsonElement restored = sut.GetState();
         restored.GetProperty("count").GetInt32().ShouldBe(42);
@@ -38,7 +38,7 @@ public class ProjectionStateTests {
         // The old JsonElement-based ProjectionState caused InvalidOperationException
         // when the ProjectionUpdateOrchestrator wrote state to the ProjectionActor.
         JsonElement state = JsonDocument.Parse("{\"count\":7,\"label\":\"test\"}").RootElement;
-        ProjectionState original = ProjectionState.FromJsonElement("counter", "tenant-a", state);
+        var original = ProjectionState.FromJsonElement("counter", "tenant-a", state);
 
         var serializer = new DataContractSerializer(typeof(ProjectionState));
         using var stream = new MemoryStream();
@@ -47,7 +47,7 @@ public class ProjectionStateTests {
         stream.Position = 0;
         var deserialized = (ProjectionState?)serializer.ReadObject(stream);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized!.ProjectionType.ShouldBe("counter");
         deserialized.TenantId.ShouldBe("tenant-a");
 
@@ -59,7 +59,7 @@ public class ProjectionStateTests {
     [Fact]
     public void DataContractSerializer_RoundTrip_EmptyJsonObject() {
         JsonElement state = JsonDocument.Parse("{}").RootElement;
-        ProjectionState original = ProjectionState.FromJsonElement("empty", "t1", state);
+        var original = ProjectionState.FromJsonElement("empty", "t1", state);
 
         var serializer = new DataContractSerializer(typeof(ProjectionState));
         using var stream = new MemoryStream();
@@ -68,7 +68,7 @@ public class ProjectionStateTests {
         stream.Position = 0;
         var deserialized = (ProjectionState?)serializer.ReadObject(stream);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized!.GetState().ValueKind.ShouldBe(JsonValueKind.Object);
     }
 }

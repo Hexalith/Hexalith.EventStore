@@ -2,8 +2,6 @@ using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.UI.Components;
-using Hexalith.EventStore.Admin.UI.Services;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,26 +13,23 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 /// <summary>
 /// bUnit tests for the StateDiffViewer component.
 /// </summary>
-public class StateDiffViewerTests : AdminUITestContext
-{
+public class StateDiffViewerTests : AdminUITestContext {
     private readonly AdminStreamApiClient _mockApiClient;
 
-    public StateDiffViewerTests()
-    {
+    public StateDiffViewerTests() {
         _mockApiClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
-        Services.AddScoped<TopologyCacheService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped<TopologyCacheService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
     }
 
     [Fact]
-    public void StateDiffViewer_RendersFieldChangeTable()
-    {
+    public void StateDiffViewer_RendersFieldChangeTable() {
         // Arrange
         List<FieldChange> changes =
         [
@@ -58,8 +53,7 @@ public class StateDiffViewerTests : AdminUITestContext
     }
 
     [Fact]
-    public void StateDiffViewer_ShowsDiffColors()
-    {
+    public void StateDiffViewer_ShowsDiffColors() {
         // Arrange
         List<FieldChange> changes = [new("count", "1", "2")];
         AggregateStateDiff diff = new(5, 10, changes);
@@ -76,8 +70,7 @@ public class StateDiffViewerTests : AdminUITestContext
     }
 
     [Fact]
-    public void StateDiffViewer_ShowsDiffNotAvailable_OnNullDiff()
-    {
+    public void StateDiffViewer_ShowsDiffNotAvailable_OnNullDiff() {
         // Arrange
         _ = _mockApiClient.GetAggregateStateDiffAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -97,8 +90,7 @@ public class StateDiffViewerTests : AdminUITestContext
     }
 
     [Fact]
-    public void StateDiffViewer_ShowsCollapsibleFullStatePanels()
-    {
+    public void StateDiffViewer_ShowsCollapsibleFullStatePanels() {
         // Arrange
         List<FieldChange> changes = [new("x", "1", "2")];
         AggregateStateDiff diff = new(5, 10, changes);
@@ -115,12 +107,10 @@ public class StateDiffViewerTests : AdminUITestContext
     }
 
     [Fact]
-    public void StateDiffViewer_LargeDiff_ShowsShowAllButton()
-    {
+    public void StateDiffViewer_LargeDiff_ShowsShowAllButton() {
         // Arrange — create 110 changes
         List<FieldChange> changes = [];
-        for (int i = 0; i < 110; i++)
-        {
+        for (int i = 0; i < 110; i++) {
             changes.Add(new FieldChange($"field{i}", $"\"{i}\"", $"\"{i + 1}\""));
         }
 
@@ -136,8 +126,7 @@ public class StateDiffViewerTests : AdminUITestContext
     }
 
     [Fact]
-    public void StateDiffViewer_EmptyDiff_ShowsNoDifferences()
-    {
+    public void StateDiffViewer_EmptyDiff_ShowsNoDifferences() {
         // Arrange
         AggregateStateDiff diff = new(5, 10, []);
         SetupDiffMocks(diff, """{"x":1}""", """{"x":1}""");
@@ -151,8 +140,7 @@ public class StateDiffViewerTests : AdminUITestContext
     }
 
     [Fact]
-    public void StateDiffViewer_InitialStateDiff_HandlesFromSequenceZero()
-    {
+    public void StateDiffViewer_InitialStateDiff_HandlesFromSequenceZero() {
         // Arrange — diff from seq 0 (initial state creation)
         List<FieldChange> changes = [new("count", "", "0")];
         AggregateStateDiff diff = new(0, 1, changes);
@@ -177,8 +165,7 @@ public class StateDiffViewerTests : AdminUITestContext
     }
 
     [Fact]
-    public void StateDiffViewer_RendersCompareHeader()
-    {
+    public void StateDiffViewer_RendersCompareHeader() {
         // Arrange
         List<FieldChange> changes = [new("a", "1", "2")];
         AggregateStateDiff diff = new(5, 15, changes);
@@ -195,18 +182,14 @@ public class StateDiffViewerTests : AdminUITestContext
         markup.ShouldContain("Back to Timeline");
     }
 
-    private IRenderedComponent<StateDiffViewer> RenderDiffViewer(long from, long to)
-    {
-        return Render<StateDiffViewer>(p => p
-            .Add(c => c.TenantId, "test-tenant")
-            .Add(c => c.Domain, "counter")
-            .Add(c => c.AggregateId, "agg-001")
-            .Add(c => c.FromSequence, from)
-            .Add(c => c.ToSequence, to));
-    }
+    private IRenderedComponent<StateDiffViewer> RenderDiffViewer(long from, long to) => Render<StateDiffViewer>(p => p
+                                                                                                 .Add(c => c.TenantId, "test-tenant")
+                                                                                                 .Add(c => c.Domain, "counter")
+                                                                                                 .Add(c => c.AggregateId, "agg-001")
+                                                                                                 .Add(c => c.FromSequence, from)
+                                                                                                 .Add(c => c.ToSequence, to));
 
-    private void SetupDiffMocks(AggregateStateDiff diff, string fromStateJson, string toStateJson)
-    {
+    private void SetupDiffMocks(AggregateStateDiff diff, string fromStateJson, string toStateJson) {
         _ = _mockApiClient.GetAggregateStateDiffAsync(
             "test-tenant", "counter", "agg-001", diff.FromSequence, diff.ToSequence, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<AggregateStateDiff?>(diff));

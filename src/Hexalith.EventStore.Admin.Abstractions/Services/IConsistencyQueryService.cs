@@ -5,8 +5,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// <summary>
 /// Service interface for querying consistency check results.
 /// </summary>
-public interface IConsistencyQueryService
-{
+public interface IConsistencyQueryService {
     /// <summary>
     /// Gets consistency check summaries, optionally filtered by tenant.
     /// </summary>

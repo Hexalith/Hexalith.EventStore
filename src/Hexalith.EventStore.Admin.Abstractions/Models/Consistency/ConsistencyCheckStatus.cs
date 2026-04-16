@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
 /// <summary>
 /// Represents the status of a consistency check.
 /// </summary>
-public enum ConsistencyCheckStatus
-{
+public enum ConsistencyCheckStatus {
     /// <summary>The consistency check is queued and waiting to start.</summary>
     Pending,
 

@@ -3,8 +3,6 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Projections;
 
-using Shouldly;
-
 namespace Hexalith.EventStore.Contracts.Tests.Projections;
 
 public class ProjectionContractTests {

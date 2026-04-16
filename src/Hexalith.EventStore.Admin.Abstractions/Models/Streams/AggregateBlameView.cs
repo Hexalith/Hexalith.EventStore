@@ -19,8 +19,7 @@ public record AggregateBlameView(
     DateTimeOffset Timestamp,
     IReadOnlyList<FieldProvenance> Fields,
     bool IsTruncated,
-    bool IsFieldsTruncated)
-{
+    bool IsFieldsTruncated) {
     /// <summary>Gets the tenant identifier.</summary>
     public string TenantId { get; } = TenantId ?? string.Empty;
 

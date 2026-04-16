@@ -15,8 +15,7 @@ public record TimelineEntry(
     TimelineEntryType EntryType,
     string TypeName,
     string CorrelationId,
-    string? UserId)
-{
+    string? UserId) {
     /// <summary>Gets the fully qualified type name.</summary>
     public string TypeName { get; } = !string.IsNullOrWhiteSpace(TypeName)
         ? TypeName

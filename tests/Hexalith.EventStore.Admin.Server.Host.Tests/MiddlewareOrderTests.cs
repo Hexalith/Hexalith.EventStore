@@ -9,7 +9,6 @@ using Dapr.Client;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Services;
-using Hexalith.EventStore.Admin.Server.Authorization;
 using Hexalith.EventStore.Admin.Server.Host.Middleware;
 
 using Microsoft.AspNetCore.Hosting;
@@ -62,20 +61,20 @@ public class MiddlewareOrderTests : IClassFixture<MiddlewareOrderTests.AuthTestF
     public class AuthTestFactory : WebApplicationFactory<Program> {
         protected override void ConfigureWebHost(IWebHostBuilder builder) {
             ArgumentNullException.ThrowIfNull(builder);
-            builder.ConfigureServices(services => {
+            _ = builder.ConfigureServices(services => {
                 // Replace DaprClient with mock
                 ServiceDescriptor? daprDescriptor = services
                     .FirstOrDefault(d => d.ServiceType == typeof(DaprClient));
                 if (daprDescriptor is not null) {
-                    services.Remove(daprDescriptor);
+                    _ = services.Remove(daprDescriptor);
                 }
 
-                services.AddSingleton(Substitute.For<DaprClient>());
+                _ = services.AddSingleton(Substitute.For<DaprClient>());
 
                 // Override DAPR-backed services with mocks
-                services.AddScoped(_ => {
+                _ = services.AddScoped(_ => {
                     IStreamQueryService service = Substitute.For<IStreamQueryService>();
-                    service.GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                    _ = (IServiceProvider)service.GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
                         .Returns(new PagedResult<StreamSummary>(
                         [
                             new StreamSummary(
@@ -93,15 +92,15 @@ public class MiddlewareOrderTests : IClassFixture<MiddlewareOrderTests.AuthTestF
 
                     return service;
                 });
-                services.AddScoped(_ => Substitute.For<IProjectionQueryService>());
-                services.AddScoped(_ => Substitute.For<IProjectionCommandService>());
-                services.AddScoped(_ => Substitute.For<ITypeCatalogService>());
-                services.AddScoped(_ => Substitute.For<IHealthQueryService>());
-                services.AddScoped(_ => Substitute.For<IStorageQueryService>());
-                services.AddScoped(_ => Substitute.For<IStorageCommandService>());
-                services.AddScoped(_ => Substitute.For<IDeadLetterQueryService>());
-                services.AddScoped(_ => Substitute.For<IDeadLetterCommandService>());
-                services.AddScoped(_ => Substitute.For<ITenantQueryService>());
+                _ = services.AddScoped(_ => Substitute.For<IProjectionQueryService>());
+                _ = services.AddScoped(_ => Substitute.For<IProjectionCommandService>());
+                _ = services.AddScoped(_ => Substitute.For<ITypeCatalogService>());
+                _ = services.AddScoped(_ => Substitute.For<IHealthQueryService>());
+                _ = services.AddScoped(_ => Substitute.For<IStorageQueryService>());
+                _ = services.AddScoped(_ => Substitute.For<IStorageCommandService>());
+                _ = services.AddScoped(_ => Substitute.For<IDeadLetterQueryService>());
+                _ = services.AddScoped(_ => Substitute.For<IDeadLetterCommandService>());
+                _ = services.AddScoped(_ => Substitute.For<ITenantQueryService>());
             });
         }
     }

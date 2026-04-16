@@ -19,8 +19,7 @@ public record StreamStorageInfo(
     long EventCount,
     long? SizeBytes,
     bool HasSnapshot,
-    TimeSpan? SnapshotAge)
-{
+    TimeSpan? SnapshotAge) {
     /// <summary>Gets the tenant identifier.</summary>
     public string TenantId { get; } = !string.IsNullOrWhiteSpace(TenantId)
         ? TenantId

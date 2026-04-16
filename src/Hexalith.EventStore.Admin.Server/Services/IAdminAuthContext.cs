@@ -7,8 +7,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// Story 14-3 registers the ASP.NET Core implementation that extracts the token
 /// from IHttpContextAccessor. For Tier 1 tests, mock this interface.
 /// </summary>
-public interface IAdminAuthContext
-{
+public interface IAdminAuthContext {
     /// <summary>
     /// Gets the caller's JWT bearer token, or null if not available.
     /// </summary>

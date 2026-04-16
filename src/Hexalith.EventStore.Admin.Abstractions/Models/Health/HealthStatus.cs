@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Health;
 /// <summary>
 /// Overall health status of a system component.
 /// </summary>
-public enum HealthStatus
-{
+public enum HealthStatus {
     /// <summary>The component is operating normally.</summary>
     Healthy,
 

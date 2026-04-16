@@ -14,39 +14,37 @@ namespace Hexalith.EventStore.Admin.Server.Tests.IntegrationTests;
 /// <summary>
 /// Creates a test server with admin controllers, authorization pipeline, and mock services.
 /// </summary>
-public sealed class AdminTestHost : IDisposable
-{
+public sealed class AdminTestHost : IDisposable {
     private readonly WebApplication _app;
 
-    public AdminTestHost()
-    {
+    public AdminTestHost() {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
 
-        builder.Services.AddAdminApi(builder.Configuration);
-        builder.Services.AddAuthentication(TestAuthHandler.SchemeName)
+        _ = builder.Services.AddAdminApi(builder.Configuration);
+        _ = builder.Services.AddAuthentication(TestAuthHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, null);
-        builder.Services.AddControllers()
+        _ = builder.Services.AddControllers()
             .AddApplicationPart(typeof(AdminStreamsController).Assembly);
 
         // Override DAPR-backed services with NSubstitute mocks
-        builder.Services.AddScoped(_ => Substitute.For<IStreamQueryService>());
-        builder.Services.AddScoped(_ => Substitute.For<IProjectionQueryService>());
-        builder.Services.AddScoped(_ => Substitute.For<IProjectionCommandService>());
-        builder.Services.AddScoped(_ => Substitute.For<ITypeCatalogService>());
-        builder.Services.AddScoped(_ => Substitute.For<IHealthQueryService>());
-        builder.Services.AddScoped(_ => Substitute.For<IStorageQueryService>());
-        builder.Services.AddScoped(_ => Substitute.For<IStorageCommandService>());
-        builder.Services.AddScoped(_ => Substitute.For<IDeadLetterQueryService>());
-        builder.Services.AddScoped(_ => Substitute.For<IDeadLetterCommandService>());
-        builder.Services.AddScoped(_ => Substitute.For<ITenantQueryService>());
-        builder.Services.AddScoped(_ => Substitute.For<ITenantCommandService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IStreamQueryService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IProjectionQueryService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IProjectionCommandService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<ITypeCatalogService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IHealthQueryService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IStorageQueryService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IStorageCommandService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IDeadLetterQueryService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IDeadLetterCommandService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<ITenantQueryService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<ITenantCommandService>());
 
-        builder.WebHost.UseTestServer();
+        _ = builder.WebHost.UseTestServer();
 
         _app = builder.Build();
-        _app.UseAuthentication();
-        _app.UseAuthorization();
-        _app.MapControllers();
+        _ = _app.UseAuthentication();
+        _ = _app.UseAuthorization();
+        _ = _app.MapControllers();
         _app.StartAsync().GetAwaiter().GetResult();
     }
 

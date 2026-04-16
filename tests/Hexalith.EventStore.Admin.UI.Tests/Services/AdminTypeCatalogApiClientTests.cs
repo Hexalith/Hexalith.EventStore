@@ -9,20 +9,17 @@ using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Services;
 
-public class AdminTypeCatalogApiClientTests
-{
-    private static AdminTypeCatalogApiClient CreateClient(HttpClient httpClient)
-    {
+public class AdminTypeCatalogApiClientTests {
+    private static AdminTypeCatalogApiClient CreateClient(HttpClient httpClient) {
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
-        factory.CreateClient("AdminApi").Returns(httpClient);
+        _ = factory.CreateClient("AdminApi").Returns(httpClient);
         return new AdminTypeCatalogApiClient(factory, NullLogger<AdminTypeCatalogApiClient>.Instance);
     }
 
     // === ListEventTypesAsync ===
 
     [Fact]
-    public async Task ListEventTypesAsync_ReturnsTypes_WhenApiResponds()
-    {
+    public async Task ListEventTypesAsync_ReturnsTypes_WhenApiResponds() {
         string json = """[{"typeName":"CounterIncremented","domain":"Counter","isRejection":false,"schemaVersion":1}]""";
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
 
@@ -36,8 +33,7 @@ public class AdminTypeCatalogApiClientTests
     }
 
     [Fact]
-    public async Task ListEventTypesAsync_ReturnsEmpty_WhenApiReturnsError()
-    {
+    public async Task ListEventTypesAsync_ReturnsEmpty_WhenApiReturnsError() {
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.InternalServerError, "{}");
 
         AdminTypeCatalogApiClient client = CreateClient(httpClient);
@@ -50,8 +46,7 @@ public class AdminTypeCatalogApiClientTests
     // === ListCommandTypesAsync ===
 
     [Fact]
-    public async Task ListCommandTypesAsync_ReturnsTypes_WhenApiResponds()
-    {
+    public async Task ListCommandTypesAsync_ReturnsTypes_WhenApiResponds() {
         string json = """[{"typeName":"IncrementCounter","domain":"Counter","targetAggregateType":"CounterAggregate"}]""";
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
 
@@ -67,8 +62,7 @@ public class AdminTypeCatalogApiClientTests
     // === ListAggregateTypesAsync ===
 
     [Fact]
-    public async Task ListAggregateTypesAsync_ReturnsTypes_WhenApiResponds()
-    {
+    public async Task ListAggregateTypesAsync_ReturnsTypes_WhenApiResponds() {
         string json = """[{"typeName":"CounterAggregate","domain":"Counter","eventCount":3,"commandCount":2,"hasProjections":true}]""";
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
 

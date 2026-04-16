@@ -6,8 +6,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// Tenant queries routed through EventStore query pipeline.
 /// EventStore does NOT own tenant state (FR77).
 /// </summary>
-public interface ITenantQueryService
-{
+public interface ITenantQueryService {
     /// <summary>
     /// Lists all tenants.
     /// </summary>

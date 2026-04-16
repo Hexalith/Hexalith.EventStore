@@ -7,8 +7,6 @@ using System.Text.Json;
 
 using eventstore::Hexalith.EventStore.Configuration;
 
-using EventStoreProgram = eventstore::Program;
-
 using Hexalith.EventStore.IntegrationTests.Helpers;
 
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -16,6 +14,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 using Shouldly;
+
+using EventStoreProgram = eventstore::Program;
 
 namespace Hexalith.EventStore.IntegrationTests.EventStore;
 

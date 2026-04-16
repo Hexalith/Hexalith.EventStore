@@ -7,19 +7,16 @@ namespace Hexalith.EventStore.Commands;
 /// Single source of truth for command status filter logic used by the activity tracker
 /// and its tests.
 /// </summary>
-public static class CommandStatusFilterHelper
-{
+public static class CommandStatusFilterHelper {
     /// <summary>
     /// Filters commands by a human-friendly status string.
     /// </summary>
     public static IEnumerable<CommandSummary> ApplyStatusFilter(
         IEnumerable<CommandSummary> commands,
-        string status)
-    {
+        string status) {
         ArgumentNullException.ThrowIfNull(status);
         string normalized = status.Trim().ToLowerInvariant();
-        return normalized switch
-        {
+        return normalized switch {
             "completed" => commands.Where(c => c.Status == CommandStatus.Completed),
             "processing" => commands.Where(c => c.Status is CommandStatus.Received
                 or CommandStatus.Processing

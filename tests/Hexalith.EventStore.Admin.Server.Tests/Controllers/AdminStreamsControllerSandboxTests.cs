@@ -14,45 +14,38 @@ using NSubstitute.ExceptionExtensions;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Controllers;
 
-public class AdminStreamsControllerSandboxTests
-{
+public class AdminStreamsControllerSandboxTests {
     private readonly IStreamQueryService _service = Substitute.For<IStreamQueryService>();
     private readonly AdminStreamsController _sut;
 
-    public AdminStreamsControllerSandboxTests()
-    {
-        _sut = new AdminStreamsController(_service, NullLogger<AdminStreamsController>.Instance);
-        _sut.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext
-            {
+    public AdminStreamsControllerSandboxTests() => _sut = new AdminStreamsController(_service, NullLogger<AdminStreamsController>.Instance) {
+        ControllerContext = new ControllerContext {
+            HttpContext = new DefaultHttpContext {
                 User = new ClaimsPrincipal(new ClaimsIdentity(
-                [
-                    new Claim(AdminClaimTypes.AdminRole, "Admin"),
-                    new Claim(AdminClaimTypes.Tenant, "tenant1"),
-                ], "TestAuth")),
+                    [
+                        new Claim(AdminClaimTypes.AdminRole, "Admin"),
+                        new Claim(AdminClaimTypes.Tenant, "tenant1"),
+                    ], "TestAuth")),
                 Items = { ["CorrelationId"] = "test-correlation" },
             },
-        };
-    }
+        }
+    };
 
     [Fact]
-    public async Task SandboxCommand_WithEmptyCommandType_Returns400()
-    {
+    public async Task SandboxCommand_WithEmptyCommandType_Returns400() {
         var request = new SandboxCommandRequest(string.Empty, "{}", null, null, null);
 
         IActionResult result = await _sut.SandboxCommand("tenant1", "orders", "order-1", request);
 
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
-        var problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
-        problemDetails.Detail.ShouldNotBeNull();
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        _ = problemDetails.Detail.ShouldNotBeNull();
         problemDetails.Detail!.ShouldContain("CommandType");
     }
 
     [Fact]
-    public async Task SandboxCommand_WithValidRequest_ReturnsOkWithResult()
-    {
+    public async Task SandboxCommand_WithValidRequest_ReturnsOkWithResult() {
         var request = new SandboxCommandRequest("IncrementCounter", "{\"Amount\":1}", 5L, "corr-1", "user-1");
         var expected = new SandboxResult(
             "tenant1",
@@ -67,83 +60,78 @@ public class AdminStreamsControllerSandboxTests
             null,
             12L);
 
-        _service.SandboxCommandAsync(
+        _ = _service.SandboxCommandAsync(
             "tenant1", "orders", "order-1", request, Arg.Any<CancellationToken>())
             .Returns(expected);
 
         IActionResult result = await _sut.SandboxCommand("tenant1", "orders", "order-1", request);
 
-        var okResult = result.ShouldBeOfType<OkObjectResult>();
+        OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         okResult.Value.ShouldBe(expected);
     }
 
     [Fact]
-    public async Task SandboxCommand_WithNullResult_Returns404()
-    {
+    public async Task SandboxCommand_WithNullResult_Returns404() {
         var request = new SandboxCommandRequest("IncrementCounter", "{}", null, null, null);
 
-        _service.SandboxCommandAsync(
+        _ = _service.SandboxCommandAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<SandboxCommandRequest>(), Arg.Any<CancellationToken>())
             .Returns((SandboxResult?)null);
 
         IActionResult result = await _sut.SandboxCommand("tenant1", "orders", "order-1", request);
 
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
-        var problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
         problemDetails.Extensions.ShouldContainKey("correlationId");
     }
 
     [Fact]
-    public async Task SandboxCommand_ServiceUnavailable_Returns503()
-    {
+    public async Task SandboxCommand_ServiceUnavailable_Returns503() {
         var request = new SandboxCommandRequest("IncrementCounter", "{}", null, null, null);
 
-        _service.SandboxCommandAsync(
+        _ = _service.SandboxCommandAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<SandboxCommandRequest>(), Arg.Any<CancellationToken>())
             .Throws(new HttpRequestException("Connection refused"));
 
         IActionResult result = await _sut.SandboxCommand("tenant1", "orders", "order-1", request);
 
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
-        var problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
         problemDetails.Extensions.ShouldContainKey("correlationId");
     }
 
     [Fact]
-    public async Task SandboxCommand_UnexpectedError_Returns500()
-    {
+    public async Task SandboxCommand_UnexpectedError_Returns500() {
         var request = new SandboxCommandRequest("IncrementCounter", "{}", null, null, null);
 
-        _service.SandboxCommandAsync(
+        _ = _service.SandboxCommandAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<SandboxCommandRequest>(), Arg.Any<CancellationToken>())
             .Throws(new InvalidOperationException("Something broke"));
 
         IActionResult result = await _sut.SandboxCommand("tenant1", "orders", "order-1", request);
 
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status500InternalServerError);
-        var problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
         problemDetails.Extensions.ShouldContainKey("correlationId");
         problemDetails.Detail.ShouldBe("An unexpected error occurred.");
     }
 
     [Fact]
-    public async Task SandboxCommand_WithNullRequestBody_Returns400()
-    {
+    public async Task SandboxCommand_WithNullRequestBody_Returns400() {
         IActionResult result = await _sut.SandboxCommand("tenant1", "orders", "order-1", null!);
 
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
-        var problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
-        problemDetails.Detail.ShouldNotBeNull();
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        _ = problemDetails.Detail.ShouldNotBeNull();
         problemDetails.Detail!.ShouldContain("Request body");
     }
 
     [Fact]
-    public async Task SandboxCommand_WithAtSequenceZero_ReturnsOkWithResult()
-    {
+    public async Task SandboxCommand_WithAtSequenceZero_ReturnsOkWithResult() {
         var request = new SandboxCommandRequest("CreateOrder", "{}", 0L, null, null);
         var expected = new SandboxResult(
             "tenant1",
@@ -158,14 +146,14 @@ public class AdminStreamsControllerSandboxTests
             null,
             5L);
 
-        _service.SandboxCommandAsync(
+        _ = _service.SandboxCommandAsync(
             "tenant1", "orders", "order-1", request, Arg.Any<CancellationToken>())
             .Returns(expected);
 
         IActionResult result = await _sut.SandboxCommand("tenant1", "orders", "order-1", request);
 
-        var okResult = result.ShouldBeOfType<OkObjectResult>();
-        var sandboxResult = okResult.Value.ShouldBeOfType<SandboxResult>();
+        OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
+        SandboxResult sandboxResult = okResult.Value.ShouldBeOfType<SandboxResult>();
         sandboxResult.AtSequence.ShouldBe(0L);
         sandboxResult.Outcome.ShouldBe("accepted");
     }

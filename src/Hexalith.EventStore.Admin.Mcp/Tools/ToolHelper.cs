@@ -1,19 +1,17 @@
-namespace Hexalith.EventStore.Admin.Mcp.Tools;
 
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+namespace Hexalith.EventStore.Admin.Mcp.Tools;
 /// <summary>
 /// Shared helper for JSON serialization and error handling across all MCP tools.
 /// </summary>
-internal static class ToolHelper
-{
+internal static class ToolHelper {
     /// <summary>
     /// Shared JSON serializer options: camelCase, indented, enums as strings.
     /// </summary>
-    internal static JsonSerializerOptions JsonOptions { get; } = new()
-    {
+    internal static JsonSerializerOptions JsonOptions { get; } = new() {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = true,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
@@ -60,12 +58,9 @@ internal static class ToolHelper
     /// </summary>
     /// <param name="parameters">Tuples of (value, parameterName) to validate.</param>
     /// <returns>An error JSON string, or <c>null</c> if all parameters are valid.</returns>
-    internal static string? ValidateRequired(params (string value, string name)[] parameters)
-    {
-        foreach ((string value, string name) in parameters)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
+    internal static string? ValidateRequired(params (string value, string name)[] parameters) {
+        foreach ((string value, string name) in parameters) {
+            if (string.IsNullOrWhiteSpace(value)) {
                 return SerializeError("invalid-input", $"Parameter '{name}' is required and must not be empty.");
             }
         }
@@ -80,8 +75,7 @@ internal static class ToolHelper
     /// </summary>
     /// <param name="ex">The exception.</param>
     /// <returns>A structured error JSON string.</returns>
-    internal static string HandleException(Exception ex) => ex switch
-    {
+    internal static string HandleException(Exception ex) => ex switch {
         HttpRequestException httpEx => HandleHttpException(httpEx),
         JsonException => SerializeError("server-error", "Server returned non-JSON response"),
         TaskCanceledException => SerializeError("timeout", "Request timed out after 10 seconds"),
@@ -93,8 +87,7 @@ internal static class ToolHelper
     /// </summary>
     /// <param name="ex">The HTTP request exception.</param>
     /// <returns>A structured error JSON string.</returns>
-    internal static string HandleHttpException(HttpRequestException ex) => ex.StatusCode switch
-    {
+    internal static string HandleHttpException(HttpRequestException ex) => ex.StatusCode switch {
         HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
             => SerializeError("unauthorized", "Token may be expired or invalid. Check EVENTSTORE_ADMIN_TOKEN."),
         HttpStatusCode.NotFound

@@ -3,7 +3,6 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
-using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Stream;
 using Hexalith.EventStore.Admin.Cli.Formatting;
@@ -11,13 +10,10 @@ using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Stream;
 
-public class StreamEventsCommandTests
-{
-    private static PagedResult<TimelineEntry> CreateTestTimeline(int count = 2, int totalCount = 2)
-    {
+public class StreamEventsCommandTests {
+    private static PagedResult<TimelineEntry> CreateTestTimeline(int count = 2, int totalCount = 2) {
         List<TimelineEntry> items = [];
-        for (int i = 0; i < count; i++)
-        {
+        for (int i = 0; i < count; i++) {
             items.Add(new TimelineEntry(
                 i + 1,
                 DateTimeOffset.UtcNow,
@@ -35,11 +31,9 @@ public class StreamEventsCommandTests
 
     private static (AdminApiClient Client, MockHttpMessageHandler Handler) CreateMockClientWithHandler(
         object responseBody,
-        HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
+        HttpStatusCode statusCode = HttpStatusCode.OK) {
         string json = JsonSerializer.Serialize(responseBody, JsonDefaults.Options);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         });
         GlobalOptions options = CreateOptions();
@@ -47,8 +41,7 @@ public class StreamEventsCommandTests
     }
 
     [Fact]
-    public async Task StreamEventsCommand_ReturnsTimelineTable()
-    {
+    public async Task StreamEventsCommand_ReturnsTimelineTable() {
         // Arrange
         PagedResult<TimelineEntry> result = CreateTestTimeline();
         (AdminApiClient client, _) = CreateMockClientWithHandler(result);
@@ -56,8 +49,7 @@ public class StreamEventsCommandTests
 
         // Act
         int exitCode;
-        using (client)
-        {
+        using (client) {
             exitCode = await StreamEventsCommand.ExecuteAsync(client, options, "acme", "counter", "01J", null, null, 100, CancellationToken.None);
         }
 
@@ -66,29 +58,26 @@ public class StreamEventsCommandTests
     }
 
     [Fact]
-    public async Task StreamEventsCommand_WithSequenceRange_SendsFromTo()
-    {
+    public async Task StreamEventsCommand_WithSequenceRange_SendsFromTo() {
         // Arrange
         PagedResult<TimelineEntry> result = CreateTestTimeline();
         (AdminApiClient client, MockHttpMessageHandler handler) = CreateMockClientWithHandler(result);
         GlobalOptions options = CreateOptions("table");
 
         // Act
-        using (client)
-        {
+        using (client) {
             _ = await StreamEventsCommand.ExecuteAsync(client, options, "acme", "counter", "01J", 5, 20, 100, CancellationToken.None);
         }
 
         // Assert
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         string requestUri = handler.LastRequest.RequestUri!.ToString();
         requestUri.ShouldContain("fromSequence=5");
         requestUri.ShouldContain("toSequence=20");
     }
 
     [Fact]
-    public void StreamEventsCommand_CsvFormat_ReturnsTimelineRows()
-    {
+    public void StreamEventsCommand_CsvFormat_ReturnsTimelineRows() {
         // Arrange
         PagedResult<TimelineEntry> result = CreateTestTimeline();
         IOutputFormatter formatter = new CsvOutputFormatter();
@@ -105,8 +94,7 @@ public class StreamEventsCommandTests
     }
 
     [Fact]
-    public void StreamEventsCommand_JsonFormat_EntryTypeSerializesAsString()
-    {
+    public void StreamEventsCommand_JsonFormat_EntryTypeSerializesAsString() {
         // Arrange
         TimelineEntry entry = new(1, DateTimeOffset.UtcNow, TimelineEntryType.Command, "SomeType", "corr-1", "user-1");
 

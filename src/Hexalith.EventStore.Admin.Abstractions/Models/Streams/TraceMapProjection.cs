@@ -9,8 +9,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 public record TraceMapProjection(
     string ProjectionName,
     string Status,
-    long? LastProcessedSequence)
-{
+    long? LastProcessedSequence) {
     /// <summary>Gets the projection's registered name.</summary>
     public string ProjectionName { get; } = ProjectionName ?? string.Empty;
 

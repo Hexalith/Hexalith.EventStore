@@ -6,20 +6,17 @@ using Hexalith.EventStore.Admin.Server.Authorization;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.IntegrationTests;
 
-public class AdminAuthorizationIntegrationTests : IDisposable
-{
+public class AdminAuthorizationIntegrationTests : IDisposable {
     private readonly AdminTestHost _host;
     private readonly HttpClient _client;
 
-    public AdminAuthorizationIntegrationTests()
-    {
+    public AdminAuthorizationIntegrationTests() {
         _host = new AdminTestHost();
         _client = _host.CreateClient();
     }
 
     [Fact]
-    public async Task NoAuth_Returns401()
-    {
+    public async Task NoAuth_Returns401() {
         // No claims header → auth handler returns Fail → 401
         HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/streams");
 
@@ -27,8 +24,7 @@ public class AdminAuthorizationIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task ReadOnlyRole_GetStreams_NotForbiddenOrUnauthorized()
-    {
+    public async Task ReadOnlyRole_GetStreams_NotForbiddenOrUnauthorized() {
         SetClaims(
             new Claim(AdminClaimTypes.AdminRole, "ReadOnly"),
             new Claim(AdminClaimTypes.Tenant, "tenant-a"));
@@ -41,8 +37,7 @@ public class AdminAuthorizationIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task ReadOnlyRole_PostProjectionPause_Returns403()
-    {
+    public async Task ReadOnlyRole_PostProjectionPause_Returns403() {
         SetClaims(
             new Claim(AdminClaimTypes.AdminRole, "ReadOnly"),
             new Claim(AdminClaimTypes.Tenant, "tenant-a"));
@@ -55,8 +50,7 @@ public class AdminAuthorizationIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task OperatorRole_PostProjectionPause_NotForbiddenOrUnauthorized()
-    {
+    public async Task OperatorRole_PostProjectionPause_NotForbiddenOrUnauthorized() {
         SetClaims(
             new Claim(AdminClaimTypes.AdminRole, "Operator"),
             new Claim(AdminClaimTypes.Tenant, "tenant-a"));
@@ -72,8 +66,7 @@ public class AdminAuthorizationIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task OperatorRole_GetTenants_NotForbiddenOrUnauthorized()
-    {
+    public async Task OperatorRole_GetTenants_NotForbiddenOrUnauthorized() {
         // Tenant list is a read operation — ReadOnly policy allows Operator access (AC14)
         SetClaims(
             new Claim(AdminClaimTypes.AdminRole, "Operator"),
@@ -86,8 +79,7 @@ public class AdminAuthorizationIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task AdminRole_GetTenants_NotForbiddenOrUnauthorized()
-    {
+    public async Task AdminRole_GetTenants_NotForbiddenOrUnauthorized() {
         SetClaims(
             new Claim(AdminClaimTypes.AdminRole, "Admin"),
             new Claim(AdminClaimTypes.Tenant, "tenant-a"));
@@ -100,8 +92,7 @@ public class AdminAuthorizationIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task ValidRole_WrongTenantClaim_Returns403()
-    {
+    public async Task ValidRole_WrongTenantClaim_Returns403() {
         SetClaims(
             new Claim(AdminClaimTypes.AdminRole, "Operator"),
             new Claim(AdminClaimTypes.Tenant, "tenant-b"));
@@ -114,8 +105,7 @@ public class AdminAuthorizationIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task AdminRole_TenantScopedEndpoint_NotBlockedByTenantFilter()
-    {
+    public async Task AdminRole_TenantScopedEndpoint_NotBlockedByTenantFilter() {
         // Admin users should access any tenant-scoped endpoint even without tenant claims
         SetClaims(
             new Claim(AdminClaimTypes.AdminRole, "Admin"));
@@ -128,16 +118,14 @@ public class AdminAuthorizationIntegrationTests : IDisposable
         response.StatusCode.ShouldNotBe(HttpStatusCode.Unauthorized);
     }
 
-    private void SetClaims(params Claim[] claims)
-    {
+    private void SetClaims(params Claim[] claims) {
         var dtos = claims.Select(c => new { c.Type, c.Value }).ToArray();
         string json = JsonSerializer.Serialize(dtos);
-        _client.DefaultRequestHeaders.Remove(TestAuthHandler.ClaimsHeader);
+        _ = _client.DefaultRequestHeaders.Remove(TestAuthHandler.ClaimsHeader);
         _client.DefaultRequestHeaders.Add(TestAuthHandler.ClaimsHeader, json);
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         _client?.Dispose();
         _host?.Dispose();
         GC.SuppressFinalize(this);

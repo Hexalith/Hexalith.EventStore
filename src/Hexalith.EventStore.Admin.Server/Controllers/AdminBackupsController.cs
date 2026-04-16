@@ -20,8 +20,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 public class AdminBackupsController(
     IBackupQueryService backupQueryService,
     IBackupCommandService backupCommandService,
-    ILogger<AdminBackupsController> logger) : ControllerBase
-{
+    ILogger<AdminBackupsController> logger) : ControllerBase {
     /// <summary>
     /// Gets backup jobs, optionally filtered by tenant.
     /// </summary>
@@ -34,22 +33,18 @@ public class AdminBackupsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetBackupJobs(
         [FromQuery] string? tenantId,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             string? effectiveTenantId = ResolveTenantScope(tenantId);
             IReadOnlyList<BackupJob> result = await backupQueryService
                 .GetBackupJobsAsync(effectiveTenantId, ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetBackupJobs), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetBackupJobs), ex);
         }
     }
@@ -68,21 +63,17 @@ public class AdminBackupsController(
         string tenantId,
         [FromQuery] string? description,
         [FromQuery] bool includeSnapshots = true,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             AdminOperationResult result = await backupCommandService
                 .TriggerBackupAsync(tenantId, description, includeSnapshots, ct)
                 .ConfigureAwait(false);
             return MapAsyncOperationResult(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(TriggerBackup), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(TriggerBackup), ex);
         }
     }
@@ -99,21 +90,17 @@ public class AdminBackupsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ValidateBackup(
         string backupId,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             AdminOperationResult result = await backupCommandService
                 .ValidateBackupAsync(backupId, ct)
                 .ConfigureAwait(false);
             return MapAsyncOperationResult(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(ValidateBackup), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(ValidateBackup), ex);
         }
     }
@@ -132,21 +119,17 @@ public class AdminBackupsController(
         string backupId,
         [FromQuery] DateTimeOffset? pointInTime,
         [FromQuery] bool dryRun = false,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             AdminOperationResult result = await backupCommandService
                 .TriggerRestoreAsync(backupId, pointInTime, dryRun, ct)
                 .ConfigureAwait(false);
             return MapAsyncOperationResult(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(TriggerRestore), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(TriggerRestore), ex);
         }
     }
@@ -162,16 +145,13 @@ public class AdminBackupsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ExportStream(
         [FromBody] StreamExportRequest request,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             ArgumentNullException.ThrowIfNull(request);
 
             // SEC-2: Validate tenant access from request body (filter only checks route/query params)
             if (!User.HasClaim(AdminClaimTypes.AdminRole, nameof(AdminRole.Admin))
-                && !User.HasClaim(AdminClaimTypes.Tenant, request.TenantId))
-            {
+                && !User.HasClaim(AdminClaimTypes.Tenant, request.TenantId)) {
                 return CreateProblemResult(
                     StatusCodes.Status403Forbidden,
                     "Tenant Access Denied",
@@ -183,12 +163,10 @@ public class AdminBackupsController(
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(ExportStream), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(ExportStream), ex);
         }
     }
@@ -206,14 +184,11 @@ public class AdminBackupsController(
     public async Task<IActionResult> ImportStream(
         [FromQuery] string tenantId,
         [FromBody] string content,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             // SEC-2: Validate tenant access from query param (filter only checks route params)
             if (!User.HasClaim(AdminClaimTypes.AdminRole, nameof(AdminRole.Admin))
-                && !User.HasClaim(AdminClaimTypes.Tenant, tenantId))
-            {
+                && !User.HasClaim(AdminClaimTypes.Tenant, tenantId)) {
                 return CreateProblemResult(
                     StatusCodes.Status403Forbidden,
                     "Tenant Access Denied",
@@ -225,45 +200,36 @@ public class AdminBackupsController(
                 .ConfigureAwait(false);
             return MapAsyncOperationResult(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(ImportStream), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(ImportStream), ex);
         }
     }
 
-    private string? ResolveTenantScope(string? requestedTenantId)
-    {
-        if (requestedTenantId is not null)
-        {
+    private string? ResolveTenantScope(string? requestedTenantId) {
+        if (requestedTenantId is not null) {
             return requestedTenantId;
         }
 
-        if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(AdminRole.Admin)))
-        {
+        if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(AdminRole.Admin))) {
             return null;
         }
 
         return User.FindFirst(AdminClaimTypes.Tenant)?.Value;
     }
 
-    private IActionResult MapAsyncOperationResult(AdminOperationResult? result)
-    {
-        if (result is null)
-        {
+    private IActionResult MapAsyncOperationResult(AdminOperationResult? result) {
+        if (result is null) {
             return CreateProblemResult(StatusCodes.Status500InternalServerError, "Internal Server Error", "No result returned from the service.");
         }
 
-        if (result.Success)
-        {
+        if (result.Success) {
             return Accepted(result);
         }
 
-        return result.ErrorCode switch
-        {
+        return result.ErrorCode switch {
             "NotFound" => CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", result.Message),
             "Unauthorized" => CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", result.Message),
             "InvalidOperation" => CreateProblemResult(StatusCodes.Status422UnprocessableEntity, "Invalid Operation", result.Message),
@@ -279,8 +245,7 @@ public class AdminBackupsController(
                 Grpc.Core.StatusCode.Aborted or
                 Grpc.Core.StatusCode.ResourceExhausted);
 
-    private ObjectResult ServiceUnavailable(string method, Exception ex)
-    {
+    private ObjectResult ServiceUnavailable(string method, Exception ex) {
         logger.LogError(ex, "Admin service unavailable: {Method}", method);
         return CreateProblemResult(
             StatusCodes.Status503ServiceUnavailable,
@@ -288,8 +253,7 @@ public class AdminBackupsController(
             "The admin backend service is temporarily unavailable. Retry shortly.");
     }
 
-    private ObjectResult UnexpectedError(string method, Exception ex)
-    {
+    private ObjectResult UnexpectedError(string method, Exception ex) {
         logger.LogError(ex, "Unexpected error in {Method}", method);
         return CreateProblemResult(
             StatusCodes.Status500InternalServerError,
@@ -297,18 +261,15 @@ public class AdminBackupsController(
             "An unexpected error occurred.");
     }
 
-    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null)
-    {
+    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null) {
         string correlationId = HttpContext.Items["CorrelationId"]?.ToString()
             ?? Guid.NewGuid().ToString();
-        return new ObjectResult(new ProblemDetails
-        {
+        return new ObjectResult(new ProblemDetails {
             Status = statusCode,
             Title = title,
             Detail = detail,
             Instance = HttpContext.Request.Path,
             Extensions = { ["correlationId"] = correlationId },
-        })
-        { StatusCode = statusCode };
+        }) { StatusCode = statusCode };
     }
 }

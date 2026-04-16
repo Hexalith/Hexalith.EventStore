@@ -7,8 +7,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// Tenant write operations routed through EventStore command pipeline.
 /// EventStore does NOT own tenant state (FR77).
 /// </summary>
-public interface ITenantCommandService
-{
+public interface ITenantCommandService {
     /// <summary>Creates a new tenant.</summary>
     /// <param name="request">The create tenant request.</param>
     /// <param name="ct">Cancellation token.</param>

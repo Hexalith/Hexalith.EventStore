@@ -1,17 +1,15 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 
-using System.IdentityModel.Tokens.Jwt;
-
 using Dapr.Client;
 
-using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
+using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
-using Hexalith.EventStore.Admin.Server.Controllers;
 using Hexalith.EventStore.Admin.Server.Host.Authentication;
 using Hexalith.EventStore.Admin.Server.Host.Middleware;
 using Hexalith.EventStore.Admin.Server.Services;
@@ -32,15 +30,13 @@ namespace Hexalith.EventStore.Admin.Server.Host.Tests;
 public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHostFactory> {
     private readonly AdminServerHostFactory _factory;
 
-    public HostBootstrapTests(AdminServerHostFactory factory) {
-        _factory = factory;
-    }
+    public HostBootstrapTests(AdminServerHostFactory factory) => _factory = factory;
 
     [Fact]
     public void WebApplicationFactory_Builds_Successfully() {
         // The factory fixture builds the host — if this test runs, the host started.
         using HttpClient client = _factory.CreateClient();
-        client.ShouldNotBeNull();
+        _ = client.ShouldNotBeNull();
     }
 
     [Fact]
@@ -49,9 +45,9 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         IAuthorizationPolicyProvider policyProvider = scope.ServiceProvider
             .GetRequiredService<IAuthorizationPolicyProvider>();
 
-        (await policyProvider.GetPolicyAsync(AdminAuthorizationPolicies.ReadOnly)).ShouldNotBeNull();
-        (await policyProvider.GetPolicyAsync(AdminAuthorizationPolicies.Operator)).ShouldNotBeNull();
-        (await policyProvider.GetPolicyAsync(AdminAuthorizationPolicies.Admin)).ShouldNotBeNull();
+        _ = (await policyProvider.GetPolicyAsync(AdminAuthorizationPolicies.ReadOnly)).ShouldNotBeNull();
+        _ = (await policyProvider.GetPolicyAsync(AdminAuthorizationPolicies.Operator)).ShouldNotBeNull();
+        _ = (await policyProvider.GetPolicyAsync(AdminAuthorizationPolicies.Admin)).ShouldNotBeNull();
     }
 
     [Fact]
@@ -60,7 +56,7 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         IClaimsTransformation transformation = scope.ServiceProvider
             .GetRequiredService<IClaimsTransformation>();
 
-        transformation.ShouldBeOfType<AdminClaimsTransformation>();
+        _ = transformation.ShouldBeOfType<AdminClaimsTransformation>();
     }
 
     [Fact]
@@ -69,7 +65,7 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         AdminTenantAuthorizationFilter filter = scope.ServiceProvider
             .GetRequiredService<AdminTenantAuthorizationFilter>();
 
-        filter.ShouldNotBeNull();
+        _ = filter.ShouldNotBeNull();
     }
 
     [Fact]
@@ -78,7 +74,7 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         IAdminAuthContext authContext = scope.ServiceProvider
             .GetRequiredService<IAdminAuthContext>();
 
-        authContext.ShouldBeOfType<HttpContextAdminAuthContext>();
+        _ = authContext.ShouldBeOfType<HttpContextAdminAuthContext>();
     }
 
     [Fact]
@@ -86,16 +82,16 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         using IServiceScope scope = _factory.Services.CreateScope();
         IServiceProvider sp = scope.ServiceProvider;
 
-        sp.GetService<IStreamQueryService>().ShouldNotBeNull();
-        sp.GetService<IProjectionQueryService>().ShouldNotBeNull();
-        sp.GetService<IProjectionCommandService>().ShouldNotBeNull();
-        sp.GetService<ITypeCatalogService>().ShouldNotBeNull();
-        sp.GetService<IHealthQueryService>().ShouldNotBeNull();
-        sp.GetService<IStorageQueryService>().ShouldNotBeNull();
-        sp.GetService<IStorageCommandService>().ShouldNotBeNull();
-        sp.GetService<IDeadLetterQueryService>().ShouldNotBeNull();
-        sp.GetService<IDeadLetterCommandService>().ShouldNotBeNull();
-        sp.GetService<ITenantQueryService>().ShouldNotBeNull();
+        _ = sp.GetService<IStreamQueryService>().ShouldNotBeNull();
+        _ = sp.GetService<IProjectionQueryService>().ShouldNotBeNull();
+        _ = sp.GetService<IProjectionCommandService>().ShouldNotBeNull();
+        _ = sp.GetService<ITypeCatalogService>().ShouldNotBeNull();
+        _ = sp.GetService<IHealthQueryService>().ShouldNotBeNull();
+        _ = sp.GetService<IStorageQueryService>().ShouldNotBeNull();
+        _ = sp.GetService<IStorageCommandService>().ShouldNotBeNull();
+        _ = sp.GetService<IDeadLetterQueryService>().ShouldNotBeNull();
+        _ = sp.GetService<IDeadLetterCommandService>().ShouldNotBeNull();
+        _ = sp.GetService<ITenantQueryService>().ShouldNotBeNull();
     }
 
     [Fact]
@@ -114,7 +110,7 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         options.TokenValidationParameters.ValidIssuer.ShouldBe("hexalith-dev");
         options.TokenValidationParameters.ValidAudience.ShouldBe("hexalith-eventstore");
         options.RequireHttpsMetadata.ShouldBeFalse();
-        options.TokenValidationParameters.IssuerSigningKey.ShouldNotBeNull();
+        _ = options.TokenValidationParameters.IssuerSigningKey.ShouldNotBeNull();
     }
 
     [Fact]
@@ -206,20 +202,20 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
     public class AdminServerHostFactory : WebApplicationFactory<Program> {
         protected override void ConfigureWebHost(IWebHostBuilder builder) {
             ArgumentNullException.ThrowIfNull(builder);
-            builder.ConfigureServices(services => {
+            _ = builder.ConfigureServices(services => {
                 // Replace DaprClient with mock
                 ServiceDescriptor? daprDescriptor = services
                     .FirstOrDefault(d => d.ServiceType == typeof(DaprClient));
                 if (daprDescriptor is not null) {
-                    services.Remove(daprDescriptor);
+                    _ = services.Remove(daprDescriptor);
                 }
 
-                services.AddSingleton(Substitute.For<DaprClient>());
+                _ = services.AddSingleton(Substitute.For<DaprClient>());
 
                 // Override DAPR-backed services with mocks so controller routes are reachable
-                services.AddScoped(_ => {
+                _ = services.AddScoped(_ => {
                     IStreamQueryService service = Substitute.For<IStreamQueryService>();
-                    service.GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                    _ = (IServiceProvider)service.GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
                         .Returns(callInfo => new PagedResult<StreamSummary>(
                         [
                             new StreamSummary(
@@ -237,15 +233,15 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
 
                     return service;
                 });
-                services.AddScoped(_ => Substitute.For<IProjectionQueryService>());
-                services.AddScoped(_ => Substitute.For<IProjectionCommandService>());
-                services.AddScoped(_ => Substitute.For<ITypeCatalogService>());
-                services.AddScoped(_ => Substitute.For<IHealthQueryService>());
-                services.AddScoped(_ => Substitute.For<IStorageQueryService>());
-                services.AddScoped(_ => Substitute.For<IStorageCommandService>());
-                services.AddScoped(_ => Substitute.For<IDeadLetterQueryService>());
-                services.AddScoped(_ => Substitute.For<IDeadLetterCommandService>());
-                services.AddScoped(_ => Substitute.For<ITenantQueryService>());
+                _ = services.AddScoped(_ => Substitute.For<IProjectionQueryService>());
+                _ = services.AddScoped(_ => Substitute.For<IProjectionCommandService>());
+                _ = services.AddScoped(_ => Substitute.For<ITypeCatalogService>());
+                _ = services.AddScoped(_ => Substitute.For<IHealthQueryService>());
+                _ = services.AddScoped(_ => Substitute.For<IStorageQueryService>());
+                _ = services.AddScoped(_ => Substitute.For<IStorageCommandService>());
+                _ = services.AddScoped(_ => Substitute.For<IDeadLetterQueryService>());
+                _ = services.AddScoped(_ => Substitute.For<IDeadLetterCommandService>());
+                _ = services.AddScoped(_ => Substitute.For<ITenantQueryService>());
             });
         }
     }

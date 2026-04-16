@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Commands;
@@ -9,8 +8,6 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
-
-using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.Admin.UI.Services;
 
@@ -719,11 +716,12 @@ public class AdminStreamApiClient(
             string? errorDetail = null;
             try {
                 string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                using JsonDocument doc = JsonDocument.Parse(body);
+                using var doc = JsonDocument.Parse(body);
                 if (doc.RootElement.TryGetProperty("detail", out JsonElement detail)) {
                     errorDetail = detail.GetString();
                 }
-            } catch {
+            }
+            catch {
                 // Ignore parse failures — fall through to default message
             }
 

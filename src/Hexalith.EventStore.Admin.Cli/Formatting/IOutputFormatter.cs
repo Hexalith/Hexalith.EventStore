@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Admin.Cli.Formatting;
 /// <summary>
 /// Formats data objects for CLI output in various formats (JSON, CSV, table).
 /// </summary>
-public interface IOutputFormatter
-{
+public interface IOutputFormatter {
     /// <summary>
     /// Formats a single object.
     /// </summary>

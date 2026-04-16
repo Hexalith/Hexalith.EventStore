@@ -4,39 +4,32 @@ namespace Hexalith.EventStore.Admin.Cli.Client;
 /// Exception thrown by <see cref="AdminApiClient"/> for all API communication errors,
 /// with a user-friendly message suitable for direct display on stderr.
 /// </summary>
-public class AdminApiException : Exception
-{
+public class AdminApiException : Exception {
     /// <summary>
     /// Initializes a new instance of the <see cref="AdminApiException"/> class.
     /// </summary>
     public AdminApiException(string message)
-        : base(message)
-    {
+        : base(message) {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AdminApiException"/> class.
     /// </summary>
     public AdminApiException(string message, Exception innerException)
-        : base(message, innerException)
-    {
+        : base(message, innerException) {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AdminApiException"/> class with an HTTP status code.
     /// </summary>
     public AdminApiException(string message, int httpStatusCode)
-        : base(message)
-    {
-        HttpStatusCode = httpStatusCode;
-    }
+        : base(message) => HttpStatusCode = httpStatusCode;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AdminApiException"/> class.
     /// </summary>
     public AdminApiException()
-        : base()
-    {
+        : base() {
     }
 
     /// <summary>

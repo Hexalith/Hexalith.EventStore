@@ -15,27 +15,21 @@ using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Controllers;
 
-public class AdminConsistencyControllerTests
-{
+public class AdminConsistencyControllerTests {
     private readonly IConsistencyCommandService _commandService = Substitute.For<IConsistencyCommandService>();
     private readonly IConsistencyQueryService _queryService = Substitute.For<IConsistencyQueryService>();
     private readonly AdminConsistencyController _sut;
 
-    public AdminConsistencyControllerTests()
-    {
-        _sut = new AdminConsistencyController(_queryService, _commandService, NullLogger<AdminConsistencyController>.Instance);
-        _sut.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext
-            {
+    public AdminConsistencyControllerTests() => _sut = new AdminConsistencyController(_queryService, _commandService, NullLogger<AdminConsistencyController>.Instance) {
+        ControllerContext = new ControllerContext {
+            HttpContext = new DefaultHttpContext {
                 User = CreatePrincipal("Operator", "tenant-a"),
             },
-        };
-    }
+        }
+    };
 
     [Fact]
-    public async Task GetChecks_ReturnsOk_WithCheckList()
-    {
+    public async Task GetChecks_ReturnsOk_WithCheckList() {
         IReadOnlyList<ConsistencyCheckSummary> expected =
         [
             new ConsistencyCheckSummary(
@@ -50,7 +44,7 @@ public class AdminConsistencyControllerTests
                 50,
                 2),
         ];
-        _queryService.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _ = _queryService.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expected);
 
         IActionResult result = await _sut.GetChecks("tenant-a");
@@ -60,10 +54,9 @@ public class AdminConsistencyControllerTests
     }
 
     [Fact]
-    public async Task GetChecks_ReturnsOk_WithTenantFilter()
-    {
+    public async Task GetChecks_ReturnsOk_WithTenantFilter() {
         IReadOnlyList<ConsistencyCheckSummary> expected = [];
-        _queryService.GetChecksAsync("tenant-a", Arg.Any<CancellationToken>())
+        _ = _queryService.GetChecksAsync("tenant-a", Arg.Any<CancellationToken>())
             .Returns(expected);
 
         IActionResult result = await _sut.GetChecks("tenant-a");
@@ -73,8 +66,7 @@ public class AdminConsistencyControllerTests
     }
 
     [Fact]
-    public async Task GetCheckResult_ReturnsOk_WhenFound()
-    {
+    public async Task GetCheckResult_ReturnsOk_WhenFound() {
         ConsistencyCheckResult expected = new(
             "check-1",
             ConsistencyCheckStatus.Completed,
@@ -89,7 +81,7 @@ public class AdminConsistencyControllerTests
             [new ConsistencyAnomaly("anom-1", ConsistencyCheckType.SequenceContinuity, AnomalySeverity.Error, "tenant-a", "orders", "order-1", "Gap at seq 5", null, 5, null)],
             false,
             null);
-        _queryService.GetCheckResultAsync("check-1", Arg.Any<CancellationToken>())
+        _ = _queryService.GetCheckResultAsync("check-1", Arg.Any<CancellationToken>())
             .Returns(expected);
 
         IActionResult result = await _sut.GetCheckResult("check-1");
@@ -99,9 +91,8 @@ public class AdminConsistencyControllerTests
     }
 
     [Fact]
-    public async Task GetCheckResult_ReturnsNotFound_WhenMissing()
-    {
-        _queryService.GetCheckResultAsync("check-999", Arg.Any<CancellationToken>())
+    public async Task GetCheckResult_ReturnsNotFound_WhenMissing() {
+        _ = _queryService.GetCheckResultAsync("check-999", Arg.Any<CancellationToken>())
             .Returns((ConsistencyCheckResult?)null);
 
         IActionResult result = await _sut.GetCheckResult("check-999");
@@ -111,10 +102,9 @@ public class AdminConsistencyControllerTests
     }
 
     [Fact]
-    public async Task TriggerCheck_Returns202_ForOperator()
-    {
+    public async Task TriggerCheck_Returns202_ForOperator() {
         var expected = new AdminOperationResult(true, "check-new", "Consistency check started.", null);
-        _commandService.TriggerCheckAsync(
+        _ = _commandService.TriggerCheckAsync(
                 "tenant-a",
                 null,
                 Arg.Any<IReadOnlyList<ConsistencyCheckType>>(),
@@ -124,12 +114,11 @@ public class AdminConsistencyControllerTests
         var request = new ConsistencyCheckRequest("tenant-a", null, [ConsistencyCheckType.SequenceContinuity]);
         IActionResult result = await _sut.TriggerCheck(request);
 
-        result.ShouldBeOfType<AcceptedResult>();
+        _ = result.ShouldBeOfType<AcceptedResult>();
     }
 
     [Fact]
-    public async Task TriggerCheck_Returns403_WhenTenantInBodyDoesNotMatchClaim()
-    {
+    public async Task TriggerCheck_Returns403_WhenTenantInBodyDoesNotMatchClaim() {
         var request = new ConsistencyCheckRequest("tenant-b", null, [ConsistencyCheckType.SequenceContinuity]);
         IActionResult result = await _sut.TriggerCheck(request);
 
@@ -138,10 +127,9 @@ public class AdminConsistencyControllerTests
     }
 
     [Fact]
-    public async Task TriggerCheck_Returns409_WhenCheckAlreadyRunning()
-    {
+    public async Task TriggerCheck_Returns409_WhenCheckAlreadyRunning() {
         var conflict = new AdminOperationResult(false, "check-x", "A check is already active for this tenant.", "Conflict");
-        _commandService.TriggerCheckAsync(
+        _ = _commandService.TriggerCheckAsync(
                 Arg.Any<string?>(),
                 Arg.Any<string?>(),
                 Arg.Any<IReadOnlyList<ConsistencyCheckType>>(),
@@ -156,10 +144,9 @@ public class AdminConsistencyControllerTests
     }
 
     [Fact]
-    public async Task CancelCheck_Returns200_WhenRunning()
-    {
+    public async Task CancelCheck_Returns200_WhenRunning() {
         var expected = new AdminOperationResult(true, "check-1", "Consistency check cancelled.", null);
-        _commandService.CancelCheckAsync("check-1", Arg.Any<CancellationToken>())
+        _ = _commandService.CancelCheckAsync("check-1", Arg.Any<CancellationToken>())
             .Returns(expected);
 
         IActionResult result = await _sut.CancelCheck("check-1");
@@ -169,10 +156,9 @@ public class AdminConsistencyControllerTests
     }
 
     [Fact]
-    public async Task CancelCheck_Returns422_WhenNotRunning()
-    {
+    public async Task CancelCheck_Returns422_WhenNotRunning() {
         var invalid = new AdminOperationResult(false, "check-1", "Cannot cancel a check with status 'Completed'.", "InvalidOperation");
-        _commandService.CancelCheckAsync("check-1", Arg.Any<CancellationToken>())
+        _ = _commandService.CancelCheckAsync("check-1", Arg.Any<CancellationToken>())
             .Returns(invalid);
 
         IActionResult result = await _sut.CancelCheck("check-1");
@@ -181,11 +167,9 @@ public class AdminConsistencyControllerTests
         objectResult.StatusCode.ShouldBe(StatusCodes.Status422UnprocessableEntity);
     }
 
-    private static ClaimsPrincipal CreatePrincipal(string adminRole, params string[] tenants)
-    {
+    private static ClaimsPrincipal CreatePrincipal(string adminRole, params string[] tenants) {
         List<Claim> claims = [new(AdminClaimTypes.AdminRole, adminRole)];
-        foreach (string tenant in tenants)
-        {
+        foreach (string tenant in tenants) {
             claims.Add(new Claim(AdminClaimTypes.Tenant, tenant));
         }
 

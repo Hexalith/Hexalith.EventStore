@@ -1,12 +1,9 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
-
-using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.Admin.UI.Services;
 
@@ -16,8 +13,7 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 /// </summary>
 public class AdminSnapshotApiClient(
     IHttpClientFactory httpClientFactory,
-    ILogger<AdminSnapshotApiClient> logger)
-{
+    ILogger<AdminSnapshotApiClient> logger) {
     /// <summary>
     /// Gets the snapshot policies, optionally filtered by tenant.
     /// </summary>
@@ -26,14 +22,12 @@ public class AdminSnapshotApiClient(
     /// <returns>A list of snapshot policies.</returns>
     public virtual async Task<IReadOnlyList<SnapshotPolicy>> GetSnapshotPoliciesAsync(
         string? tenantId = null,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = string.IsNullOrEmpty(tenantId)
             ? "api/v1/admin/storage/snapshot-policies"
             : $"api/v1/admin/storage/snapshot-policies?tenantId={Uri.EscapeDataString(tenantId)}";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             IReadOnlyList<SnapshotPolicy>? result = await response.Content
@@ -45,8 +39,7 @@ public class AdminSnapshotApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch snapshot policies from {Url}", url);
             throw new ServiceUnavailableException("Unable to load snapshot policies.");
         }
@@ -66,12 +59,10 @@ public class AdminSnapshotApiClient(
         string domain,
         string aggregateType,
         int intervalEvents,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/storage/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateType)}/snapshot-policy?intervalEvents={intervalEvents}";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.PutAsync(url, null, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
@@ -82,8 +73,7 @@ public class AdminSnapshotApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to set snapshot policy at {Url}", url);
             throw new ServiceUnavailableException("Unable to set snapshot policy.");
         }
@@ -101,12 +91,10 @@ public class AdminSnapshotApiClient(
         string tenantId,
         string domain,
         string aggregateId,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/storage/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/snapshot";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.PostAsync(url, null, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
@@ -117,8 +105,7 @@ public class AdminSnapshotApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to create snapshot at {Url}", url);
             throw new ServiceUnavailableException("Unable to create snapshot.");
         }
@@ -136,12 +123,10 @@ public class AdminSnapshotApiClient(
         string tenantId,
         string domain,
         string aggregateType,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/storage/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateType)}/snapshot-policy";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.DeleteAsync(url, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
@@ -152,37 +137,30 @@ public class AdminSnapshotApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to delete snapshot policy at {Url}", url);
             throw new ServiceUnavailableException("Unable to delete snapshot policy.");
         }
     }
 
-    private static async Task HandleErrorStatusAsync(HttpResponseMessage response)
-    {
-        if (response.IsSuccessStatusCode)
-        {
+    private static async Task HandleErrorStatusAsync(HttpResponseMessage response) {
+        if (response.IsSuccessStatusCode) {
             return;
         }
 
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
 
-        if (statusCode == HttpStatusCode.UnprocessableEntity)
-        {
+        if (statusCode == HttpStatusCode.UnprocessableEntity) {
             string? errorDetail = null;
-            try
-            {
+            try {
                 string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                using JsonDocument doc = JsonDocument.Parse(body);
-                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail))
-                {
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail)) {
                     errorDetail = detail.GetString();
                 }
             }
-            catch
-            {
+            catch {
                 // Ignore parse failures — fall through to default message
             }
 
@@ -190,8 +168,7 @@ public class AdminSnapshotApiClient(
                 errorDetail ?? reasonPhrase ?? "The operation was rejected by the server.");
         }
 
-        throw statusCode switch
-        {
+        throw statusCode switch {
             HttpStatusCode.Unauthorized => new UnauthorizedAccessException(
                 "Authentication required. Please sign in again."),
             HttpStatusCode.Forbidden => new ForbiddenAccessException(

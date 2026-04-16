@@ -23,13 +23,11 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// <summary>
 /// Queries tenant data via the EventStore query pipeline using DAPR service invocation.
 /// </summary>
-public sealed class DaprTenantQueryService : ITenantQueryService
-{
+public sealed class DaprTenantQueryService : ITenantQueryService {
     private const int DefaultPageSize = 100;
     private const string QueryEndpoint = "api/v1/queries";
 
-    private static readonly JsonSerializerOptions _options = new()
-    {
+    private static readonly JsonSerializerOptions _options = new() {
         PropertyNameCaseInsensitive = true,
     };
 
@@ -46,8 +44,7 @@ public sealed class DaprTenantQueryService : ITenantQueryService
         IHttpClientFactory httpClientFactory,
         IOptions<AdminServerOptions> options,
         IAdminAuthContext authContext,
-        ILogger<DaprTenantQueryService> logger)
-    {
+        ILogger<DaprTenantQueryService> logger) {
         ArgumentNullException.ThrowIfNull(daprClient);
         ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
@@ -59,18 +56,15 @@ public sealed class DaprTenantQueryService : ITenantQueryService
     }
 
     /// <inheritdoc/>
-    public async Task<TenantDetail?> GetTenantDetailAsync(string tenantId, CancellationToken ct = default)
-    {
-        try
-        {
+    public async Task<TenantDetail?> GetTenantDetailAsync(string tenantId, CancellationToken ct = default) {
+        try {
             SubmitQueryResponse response = await SendQueryAsync(
                 "Tenants", tenantId, "GetTenantDetail",
                 new { tenantId },
                 ct).ConfigureAwait(false);
 
             ContractsTenantDetail? detail = response.Payload.Deserialize<ContractsTenantDetail>(_options);
-            if (detail is null)
-            {
+            if (detail is null) {
                 return null;
             }
 
@@ -81,20 +75,17 @@ public sealed class DaprTenantQueryService : ITenantQueryService
                 MapStatus(detail.Status),
                 detail.CreatedAt);
         }
-        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-        {
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound) {
             return null;
         }
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<TenantUser>> GetTenantUsersAsync(string tenantId, CancellationToken ct = default)
-    {
+    public async Task<IReadOnlyList<TenantUser>> GetTenantUsersAsync(string tenantId, CancellationToken ct = default) {
         List<TenantUser> allUsers = [];
         string? cursor = null;
 
-        do
-        {
+        do {
             SubmitQueryResponse response = await SendQueryAsync(
                 "Tenants", tenantId, "GetTenantMembers",
                 new { tenantId, cursor, pageSize = DefaultPageSize },
@@ -103,10 +94,8 @@ public sealed class DaprTenantQueryService : ITenantQueryService
             Hexalith.Tenants.Contracts.Queries.PaginatedResult<ContractsTenantMember>? page =
                 response.Payload.Deserialize<Hexalith.Tenants.Contracts.Queries.PaginatedResult<ContractsTenantMember>>(_options);
 
-            if (page?.Items is not null)
-            {
-                foreach (ContractsTenantMember m in page.Items)
-                {
+            if (page?.Items is not null) {
+                foreach (ContractsTenantMember m in page.Items) {
                     allUsers.Add(new TenantUser(m.UserId, m.Role.ToString()));
                 }
             }
@@ -119,13 +108,11 @@ public sealed class DaprTenantQueryService : ITenantQueryService
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<TenantSummary>> ListTenantsAsync(CancellationToken ct = default)
-    {
+    public async Task<IReadOnlyList<TenantSummary>> ListTenantsAsync(CancellationToken ct = default) {
         List<TenantSummary> allTenants = [];
         string? cursor = null;
 
-        do
-        {
+        do {
             SubmitQueryResponse response = await SendQueryAsync(
                 "Tenants", "tenant-index", "ListTenants",
                 new { cursor, pageSize = DefaultPageSize },
@@ -134,10 +121,8 @@ public sealed class DaprTenantQueryService : ITenantQueryService
             Hexalith.Tenants.Contracts.Queries.PaginatedResult<ContractsTenantSummary>? page =
                 response.Payload.Deserialize<Hexalith.Tenants.Contracts.Queries.PaginatedResult<ContractsTenantSummary>>(_options);
 
-            if (page?.Items is not null)
-            {
-                foreach (ContractsTenantSummary t in page.Items)
-                {
+            if (page?.Items is not null) {
+                foreach (ContractsTenantSummary t in page.Items) {
                     allTenants.Add(new TenantSummary(t.TenantId, t.Name, MapStatus(t.Status)));
                 }
             }
@@ -149,8 +134,7 @@ public sealed class DaprTenantQueryService : ITenantQueryService
         return allTenants;
     }
 
-    private static TenantStatusType MapStatus(TenantStatus status) => status switch
-    {
+    private static TenantStatusType MapStatus(TenantStatus status) => status switch {
         TenantStatus.Disabled => TenantStatusType.Disabled,
         _ => TenantStatusType.Active,
     };
@@ -160,10 +144,8 @@ public sealed class DaprTenantQueryService : ITenantQueryService
         string aggregateId,
         string queryType,
         object? payload,
-        CancellationToken ct)
-    {
-        try
-        {
+        CancellationToken ct) {
+        try {
             HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
                 HttpMethod.Post, _serverOptions.EventStoreAppId, QueryEndpoint);
 
@@ -176,7 +158,7 @@ public sealed class DaprTenantQueryService : ITenantQueryService
 
             HttpClient httpClient = _httpClientFactory.CreateClient(_serverOptions.EventStoreAppId);
             HttpResponseMessage httpResponse = await httpClient.SendAsync(request, ct).ConfigureAwait(false);
-            httpResponse.EnsureSuccessStatusCode();
+            _ = httpResponse.EnsureSuccessStatusCode();
 
             SubmitQueryResponse? queryResponse = await httpResponse.Content
                 .ReadFromJsonAsync<SubmitQueryResponse>(_options, ct).ConfigureAwait(false);
@@ -184,8 +166,7 @@ public sealed class DaprTenantQueryService : ITenantQueryService
             return queryResponse ?? throw new InvalidOperationException(
                 $"Query response body was null for {domain}/{queryType}.");
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-        {
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
             throw new TimeoutException(
                 $"Query to {_serverOptions.EventStoreAppId} timed out after {_serverOptions.ServiceInvocationTimeoutSeconds}s.");
         }

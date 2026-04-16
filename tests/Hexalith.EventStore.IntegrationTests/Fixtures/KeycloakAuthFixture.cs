@@ -18,7 +18,6 @@ public class KeycloakAuthFixture : IAsyncLifetime {
     private string? _previousAspNetCoreEnvironment;
     private string? _previousDotNetEnvironment;
     private HttpClient? _eventStoreClient;
-    private string? _keycloakTokenEndpoint;
 
     /// <summary>
     /// Gets the HTTP client for the EventStore service.
@@ -35,8 +34,10 @@ public class KeycloakAuthFixture : IAsyncLifetime {
     /// <summary>
     /// Gets the Keycloak token endpoint URL for acquiring real OIDC tokens.
     /// </summary>
-    public string KeycloakTokenEndpoint => _keycloakTokenEndpoint ?? throw new InvalidOperationException(
-        "Keycloak not initialized. Ensure InitializeAsync has completed.");
+    public string KeycloakTokenEndpoint {
+        get => field ?? throw new InvalidOperationException(
+        "Keycloak not initialized. Ensure InitializeAsync has completed."); private set;
+    }
 
     public async ValueTask InitializeAsync() {
         // Enable Keycloak for real OIDC auth testing.
@@ -89,7 +90,7 @@ public class KeycloakAuthFixture : IAsyncLifetime {
 
         // Resolve Keycloak token endpoint from the running container.
         HttpClient keycloakClient = _app.CreateHttpClient("keycloak");
-        _keycloakTokenEndpoint = $"{keycloakClient.BaseAddress}realms/hexalith/protocol/openid-connect/token";
+        KeycloakTokenEndpoint = $"{keycloakClient.BaseAddress}realms/hexalith/protocol/openid-connect/token";
     }
 
     public async ValueTask DisposeAsync() {

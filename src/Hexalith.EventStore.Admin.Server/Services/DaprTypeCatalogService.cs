@@ -13,8 +13,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// DAPR-backed implementation of <see cref="ITypeCatalogService"/>.
 /// Reads type catalog indexes from the state store. Indexes are populated by the event publication pipeline.
 /// </summary>
-public sealed class DaprTypeCatalogService : ITypeCatalogService
-{
+public sealed class DaprTypeCatalogService : ITypeCatalogService {
     private readonly DaprClient _daprClient;
     private readonly ILogger<DaprTypeCatalogService> _logger;
     private readonly AdminServerOptions _options;
@@ -28,8 +27,7 @@ public sealed class DaprTypeCatalogService : ITypeCatalogService
     public DaprTypeCatalogService(
         DaprClient daprClient,
         IOptions<AdminServerOptions> options,
-        ILogger<DaprTypeCatalogService> logger)
-    {
+        ILogger<DaprTypeCatalogService> logger) {
         ArgumentNullException.ThrowIfNull(daprClient);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(logger);
@@ -41,8 +39,7 @@ public sealed class DaprTypeCatalogService : ITypeCatalogService
     /// <inheritdoc/>
     public async Task<IReadOnlyList<EventTypeInfo>> ListEventTypesAsync(
         string? domain,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         string indexKey = $"admin:type-catalog:events:{domain ?? "all"}";
         return await ReadCatalogIndexAsync<EventTypeInfo>(indexKey, ct).ConfigureAwait(false);
     }
@@ -50,8 +47,7 @@ public sealed class DaprTypeCatalogService : ITypeCatalogService
     /// <inheritdoc/>
     public async Task<IReadOnlyList<CommandTypeInfo>> ListCommandTypesAsync(
         string? domain,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         string indexKey = $"admin:type-catalog:commands:{domain ?? "all"}";
         return await ReadCatalogIndexAsync<CommandTypeInfo>(indexKey, ct).ConfigureAwait(false);
     }
@@ -59,20 +55,17 @@ public sealed class DaprTypeCatalogService : ITypeCatalogService
     /// <inheritdoc/>
     public async Task<IReadOnlyList<AggregateTypeInfo>> ListAggregateTypesAsync(
         string? domain,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         string indexKey = $"admin:type-catalog:aggregates:{domain ?? "all"}";
         return await ReadCatalogIndexAsync<AggregateTypeInfo>(indexKey, ct).ConfigureAwait(false);
     }
 
-    private async Task<IReadOnlyList<T>> ReadCatalogIndexAsync<T>(string indexKey, CancellationToken ct)
-    {
+    private async Task<IReadOnlyList<T>> ReadCatalogIndexAsync<T>(string indexKey, CancellationToken ct) {
         List<T>? result = await _daprClient
             .GetStateAsync<List<T>>(_options.StateStoreName, indexKey, cancellationToken: ct)
             .ConfigureAwait(false);
 
-        if (result is null)
-        {
+        if (result is null) {
             _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
             return [];
         }

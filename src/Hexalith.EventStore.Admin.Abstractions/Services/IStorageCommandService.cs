@@ -5,8 +5,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// <summary>
 /// Service interface for operator-level storage management operations.
 /// </summary>
-public interface IStorageCommandService
-{
+public interface IStorageCommandService {
     /// <summary>
     /// Triggers compaction for a tenant, optionally scoped to a specific domain.
     /// </summary>

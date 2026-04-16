@@ -6,8 +6,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// <summary>
 /// Service interface for querying system health and DAPR component status (FR75).
 /// </summary>
-public interface IHealthQueryService
-{
+public interface IHealthQueryService {
     /// <summary>
     /// Gets the overall system health report.
     /// </summary>

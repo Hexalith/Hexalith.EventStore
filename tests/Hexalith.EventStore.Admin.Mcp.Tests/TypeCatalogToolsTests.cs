@@ -1,46 +1,44 @@
-namespace Hexalith.EventStore.Admin.Mcp.Tests;
 
 using System.Net;
 using System.Text.Json;
 
-using Hexalith.EventStore.Testing.Http;
 using Hexalith.EventStore.Admin.Mcp.Tools;
+using Hexalith.EventStore.Testing.Http;
 
-public class TypeCatalogToolsTests
-{
+namespace Hexalith.EventStore.Admin.Mcp.Tests;
+
+public class TypeCatalogToolsTests {
     [Fact]
-    public async Task ListTypes_ReturnsCombinedJson_OnSuccess()
-    {
+    public async Task ListTypes_ReturnsCombinedJson_OnSuccess() {
         CancellationToken ct = TestContext.Current.CancellationToken;
-        var handler = new QueuedMockHttpMessageHandler()
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
             .EnqueueJson(HttpStatusCode.OK, """[{"typeName":"OrderPlaced","domain":"Orders","isRejection":false,"schemaVersion":1}]""")
             .EnqueueJson(HttpStatusCode.OK, """[{"typeName":"PlaceOrder","domain":"Orders","targetAggregateType":"Order"}]""")
             .EnqueueJson(HttpStatusCode.OK, """[{"typeName":"Order","domain":"Orders","eventCount":3,"commandCount":2,"hasProjections":true}]""");
-        using HttpClient httpClient = handler.ToHttpClient();
+        using var httpClient = handler.ToHttpClient();
         var client = new AdminApiClient(httpClient);
 
         string result = await TypeCatalogTools.ListTypes(client, new InvestigationSession(), cancellationToken: ct);
 
-        using JsonDocument doc = JsonDocument.Parse(result);
+        using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("eventTypes").GetArrayLength().ShouldBe(1);
         doc.RootElement.GetProperty("commandTypes").GetArrayLength().ShouldBe(1);
         doc.RootElement.GetProperty("aggregateTypes").GetArrayLength().ShouldBe(1);
     }
 
     [Fact]
-    public async Task ListTypes_HandlesPartialFailure()
-    {
+    public async Task ListTypes_HandlesPartialFailure() {
         CancellationToken ct = TestContext.Current.CancellationToken;
-        var handler = new QueuedMockHttpMessageHandler()
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
             .EnqueueJson(HttpStatusCode.OK, """[{"typeName":"OrderPlaced","domain":"Orders","isRejection":false,"schemaVersion":1}]""")
             .EnqueueException(new HttpRequestException("Connection refused"))
             .EnqueueJson(HttpStatusCode.OK, """[{"typeName":"Order","domain":"Orders","eventCount":3,"commandCount":2,"hasProjections":true}]""");
-        using HttpClient httpClient = handler.ToHttpClient();
+        using var httpClient = handler.ToHttpClient();
         var client = new AdminApiClient(httpClient);
 
         string result = await TypeCatalogTools.ListTypes(client, new InvestigationSession(), cancellationToken: ct);
 
-        using JsonDocument doc = JsonDocument.Parse(result);
+        using var doc = JsonDocument.Parse(result);
         // Successful categories still have their data
         doc.RootElement.GetProperty("eventTypes").GetArrayLength().ShouldBe(1);
         doc.RootElement.GetProperty("aggregateTypes").GetArrayLength().ShouldBe(1);
@@ -49,32 +47,28 @@ public class TypeCatalogToolsTests
     }
 
     [Fact]
-    public async Task ListTypes_ReturnsErrorJson_WhenAllCallsFail()
-    {
+    public async Task ListTypes_ReturnsErrorJson_WhenAllCallsFail() {
         CancellationToken ct = TestContext.Current.CancellationToken;
-        var handler = new QueuedMockHttpMessageHandler()
+        QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
             .EnqueueException(new HttpRequestException("Connection refused"))
             .EnqueueException(new HttpRequestException("Connection refused"))
             .EnqueueException(new HttpRequestException("Connection refused"));
-        using HttpClient httpClient = handler.ToHttpClient();
+        using var httpClient = handler.ToHttpClient();
         var client = new AdminApiClient(httpClient);
 
         string result = await TypeCatalogTools.ListTypes(client, new InvestigationSession(), cancellationToken: ct);
 
-        using JsonDocument doc = JsonDocument.Parse(result);
+        using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unreachable");
     }
 
     [Fact]
-    public async Task ListTypes_PassesDomainFilterParameter()
-    {
+    public async Task ListTypes_PassesDomainFilterParameter() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         List<Uri?> capturedUris = [];
-        var handler = new MockHttpMessageHandler((request, _) =>
-        {
+        var handler = new MockHttpMessageHandler((request, _) => {
             capturedUris.Add(request.RequestUri);
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            {
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) {
                 Content = new StringContent("[]", System.Text.Encoding.UTF8, "application/json"),
             });
         });

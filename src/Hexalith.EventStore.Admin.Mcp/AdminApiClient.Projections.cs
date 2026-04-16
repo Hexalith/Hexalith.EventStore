@@ -1,22 +1,19 @@
-namespace Hexalith.EventStore.Admin.Mcp;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Projections;
 
+namespace Hexalith.EventStore.Admin.Mcp;
 /// <summary>
 /// AdminApiClient partial — projection query methods.
 /// </summary>
-internal sealed partial class AdminApiClient
-{
+internal sealed partial class AdminApiClient {
     /// <summary>
     /// Lists all projections with their current status.
     /// </summary>
     public async Task<IReadOnlyList<ProjectionStatus>> ListProjectionsAsync(
         string? tenantId,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         string path = "/api/v1/admin/projections";
-        if (!string.IsNullOrEmpty(tenantId))
-        {
+        if (!string.IsNullOrEmpty(tenantId)) {
             path += $"?tenantId={Uri.EscapeDataString(tenantId)}";
         }
 
@@ -29,8 +26,7 @@ internal sealed partial class AdminApiClient
     public async Task<ProjectionDetail?> GetProjectionDetailAsync(
         string tenantId,
         string projectionName,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         string path = $"/api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}";
         return await GetAsync<ProjectionDetail>(path, cancellationToken).ConfigureAwait(false);
     }

@@ -23,8 +23,7 @@ public record EventDetail(
     string CorrelationId,
     string? CausationId,
     string? UserId,
-    string PayloadJson)
-{
+    string PayloadJson) {
     /// <summary>Gets the tenant identifier.</summary>
     public string TenantId { get; } = !string.IsNullOrWhiteSpace(TenantId)
         ? TenantId

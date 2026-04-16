@@ -7,19 +7,16 @@ using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Client;
 
-public class AdminApiClientPostTests
-{
+public class AdminApiClientPostTests {
     private record TestResponse(string Id, bool Success);
 
     [Fact]
-    public async Task AdminApiClient_PostAsync_SendsJsonBody()
-    {
+    public async Task AdminApiClient_PostAsync_SendsJsonBody() {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Arrange
         TestResponse expectedResponse = new("test-1", true);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent(
                 JsonSerializer.Serialize(expectedResponse, JsonDefaults.Options),
                 System.Text.Encoding.UTF8,
@@ -32,11 +29,11 @@ public class AdminApiClientPostTests
         TestResponse result = await client.PostAsync<TestResponse>("/test", new { Name = "test" }, ct);
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.Id.ShouldBe("test-1");
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         handler.LastRequest.Method.ShouldBe(HttpMethod.Post);
-        handler.LastRequest.Content.ShouldNotBeNull();
+        _ = handler.LastRequest.Content.ShouldNotBeNull();
         string body = await handler.LastRequest.Content!.ReadAsStringAsync(ct);
         body.ShouldContain("\"name\"");
         body.ShouldContain("\"test\"");
@@ -44,14 +41,12 @@ public class AdminApiClientPostTests
     }
 
     [Fact]
-    public async Task AdminApiClient_PostAsync_Handles202AsSuccess()
-    {
+    public async Task AdminApiClient_PostAsync_Handles202AsSuccess() {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Arrange
         TestResponse expectedResponse = new("op-1", true);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.Accepted)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.Accepted) {
             Content = new StringContent(
                 JsonSerializer.Serialize(expectedResponse, JsonDefaults.Options),
                 System.Text.Encoding.UTF8,
@@ -64,20 +59,18 @@ public class AdminApiClientPostTests
         TestResponse result = await client.PostAsync<TestResponse>("/test", ct);
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.Id.ShouldBe("op-1");
         result.Success.ShouldBeTrue();
     }
 
     [Fact]
-    public async Task AdminApiClient_PostAsync_EmptyBody_SendsEmptyJson()
-    {
+    public async Task AdminApiClient_PostAsync_EmptyBody_SendsEmptyJson() {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Arrange
         TestResponse expectedResponse = new("op-2", true);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent(
                 JsonSerializer.Serialize(expectedResponse, JsonDefaults.Options),
                 System.Text.Encoding.UTF8,
@@ -90,16 +83,15 @@ public class AdminApiClientPostTests
         TestResponse result = await client.PostAsync<TestResponse>("/test", ct);
 
         // Assert
-        result.ShouldNotBeNull();
-        handler.LastRequest.ShouldNotBeNull();
-        handler.LastRequest.Content.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.Content.ShouldNotBeNull();
         string body = await handler.LastRequest.Content!.ReadAsStringAsync(ct);
         body.ShouldBe("{}");
     }
 
     [Fact]
-    public async Task AdminApiClient_PostAsync_Http404_ThrowsApiException()
-    {
+    public async Task AdminApiClient_PostAsync_Http404_ThrowsApiException() {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Arrange
@@ -115,8 +107,7 @@ public class AdminApiClientPostTests
     }
 
     [Fact]
-    public async Task AdminApiClient_PostAsync_Http403_ThrowsAccessDenied()
-    {
+    public async Task AdminApiClient_PostAsync_Http403_ThrowsAccessDenied() {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Arrange
@@ -132,8 +123,7 @@ public class AdminApiClientPostTests
     }
 
     [Fact]
-    public async Task AdminApiClient_PostAsync_ConnectionRefused_ThrowsConnectError()
-    {
+    public async Task AdminApiClient_PostAsync_ConnectionRefused_ThrowsConnectError() {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Arrange

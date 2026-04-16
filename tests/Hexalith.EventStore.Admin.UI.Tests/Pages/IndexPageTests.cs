@@ -2,14 +2,10 @@ using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
-using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
 using Hexalith.EventStore.Admin.UI.Components.Shared;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
@@ -20,25 +16,22 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the landing page (Index.razor).
 /// </summary>
-public class IndexPageTests : AdminUITestContext
-{
+public class IndexPageTests : AdminUITestContext {
     private readonly AdminStreamApiClient _mockApiClient;
 
-    public IndexPageTests()
-    {
+    public IndexPageTests() {
         _mockApiClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
     }
 
     [Fact]
-    public void LandingPage_WithHealthData_ShowsStatCards()
-    {
+    public void LandingPage_WithHealthData_ShowsStatCards() {
         // Verify AdminStreamApiClient mock is wired correctly
         SystemHealthReport health = CreateHealthReport(0, 42.5, 0.05);
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -57,8 +50,7 @@ public class IndexPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void LandingPage_WhenLoading_ShowsSkeletonCards()
-    {
+    public void LandingPage_WhenLoading_ShowsSkeletonCards() {
         // Arrange — API never returns (simulates loading)
         TaskCompletionSource<SystemHealthReport?> tcs = new();
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -72,8 +64,7 @@ public class IndexPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void LandingPage_WhenApiUnavailable_ShowsIssueBanner()
-    {
+    public void LandingPage_WhenApiUnavailable_ShowsIssueBanner() {
         // Arrange
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new ServiceUnavailableException());
@@ -87,8 +78,7 @@ public class IndexPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void LandingPage_WhenZeroEvents_ShowsEmptyState()
-    {
+    public void LandingPage_WhenZeroEvents_ShowsEmptyState() {
         // Arrange
         SystemHealthReport health = CreateHealthReport(0, 0, 0);
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -104,8 +94,7 @@ public class IndexPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void LandingPage_WhenApiTimesOut_ShowsStaleData()
-    {
+    public void LandingPage_WhenApiTimesOut_ShowsStaleData() {
         // Arrange — first call succeeds, second fails
         SystemHealthReport health = CreateHealthReport(500, 10, 0.01);
         PagedResult<StreamSummary> streams = CreateStreamsResult(3);
@@ -121,14 +110,13 @@ public class IndexPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void LandingPage_ErrorRateSeverity_Rendering()
-    {
+    public void LandingPage_ErrorRateSeverity_Rendering() {
         // Verify the error rate severity rendering logic via StatusDisplayConfig
-        StatusBadge.StatusDisplayConfig config = StatusBadge.StatusDisplayConfig.FromStreamStatus(StreamStatus.Active);
+        var config = StatusBadge.StatusDisplayConfig.FromStreamStatus(StreamStatus.Active);
         config.Label.ShouldBe("Active");
         config.CssColor.ShouldContain("success");
 
-        StatusBadge.StatusDisplayConfig tombConfig = StatusBadge.StatusDisplayConfig.FromStreamStatus(StreamStatus.Tombstoned);
+        var tombConfig = StatusBadge.StatusDisplayConfig.FromStreamStatus(StreamStatus.Tombstoned);
         tombConfig.Label.ShouldBe("Tombstoned");
         tombConfig.CssColor.ShouldContain("error");
     }
@@ -142,11 +130,9 @@ public class IndexPageTests : AdminUITestContext
             [],
             new ObservabilityLinks(null, null, null));
 
-    private static PagedResult<StreamSummary> CreateStreamsResult(int count)
-    {
+    private static PagedResult<StreamSummary> CreateStreamsResult(int count) {
         List<StreamSummary> items = [];
-        for (int i = 0; i < count; i++)
-        {
+        for (int i = 0; i < count; i++) {
             items.Add(new StreamSummary(
                 $"tenant-{i}",
                 "counter",

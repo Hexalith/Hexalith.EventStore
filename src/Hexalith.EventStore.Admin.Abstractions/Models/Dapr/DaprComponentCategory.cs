@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 /// <summary>
 /// Categories of DAPR components derived from the component type prefix.
 /// </summary>
-public enum DaprComponentCategory
-{
+public enum DaprComponentCategory {
     /// <summary>Unknown or unrecognized component type.</summary>
     Unknown,
 

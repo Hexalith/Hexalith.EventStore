@@ -7,17 +7,14 @@ using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Client;
 
-public class AdminApiClientPutDeleteTests
-{
+public class AdminApiClientPutDeleteTests {
     private record TestResponse(string Id, bool Success);
 
     [Fact]
-    public async Task PutAsync_Success_ReturnsDeserializedResponse()
-    {
+    public async Task PutAsync_Success_ReturnsDeserializedResponse() {
         // Arrange
         TestResponse expectedResponse = new("put-1", true);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent(
                 JsonSerializer.Serialize(expectedResponse, JsonDefaults.Options),
                 System.Text.Encoding.UTF8,
@@ -30,16 +27,15 @@ public class AdminApiClientPutDeleteTests
         TestResponse result = await client.PutAsync<TestResponse>("/test", CancellationToken.None);
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.Id.ShouldBe("put-1");
         result.Success.ShouldBeTrue();
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         handler.LastRequest.Method.ShouldBe(HttpMethod.Put);
     }
 
     [Fact]
-    public async Task PutAsync_403_ThrowsAdminApiException()
-    {
+    public async Task PutAsync_403_ThrowsAdminApiException() {
         // Arrange
         MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.Forbidden));
         GlobalOptions options = new("http://localhost:5002", null, "json", null);
@@ -53,8 +49,7 @@ public class AdminApiClientPutDeleteTests
     }
 
     [Fact]
-    public async Task PutAsync_ConnectionRefused_ThrowsAdminApiException()
-    {
+    public async Task PutAsync_ConnectionRefused_ThrowsAdminApiException() {
         // Arrange
         MockHttpMessageHandler handler = new(_ =>
             throw new HttpRequestException("Connection refused", new System.Net.Sockets.SocketException()));
@@ -68,12 +63,10 @@ public class AdminApiClientPutDeleteTests
     }
 
     [Fact]
-    public async Task DeleteAsync_Success_ReturnsDeserializedResponse()
-    {
+    public async Task DeleteAsync_Success_ReturnsDeserializedResponse() {
         // Arrange
         TestResponse expectedResponse = new("del-1", true);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent(
                 JsonSerializer.Serialize(expectedResponse, JsonDefaults.Options),
                 System.Text.Encoding.UTF8,
@@ -86,16 +79,15 @@ public class AdminApiClientPutDeleteTests
         TestResponse result = await client.DeleteAsync<TestResponse>("/test", CancellationToken.None);
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.Id.ShouldBe("del-1");
         result.Success.ShouldBeTrue();
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         handler.LastRequest.Method.ShouldBe(HttpMethod.Delete);
     }
 
     [Fact]
-    public async Task DeleteAsync_404_ThrowsAdminApiException()
-    {
+    public async Task DeleteAsync_404_ThrowsAdminApiException() {
         // Arrange
         MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.NotFound));
         GlobalOptions options = new("http://localhost:5002", null, "json", null);
@@ -109,8 +101,7 @@ public class AdminApiClientPutDeleteTests
     }
 
     [Fact]
-    public async Task DeleteAsync_ConnectionRefused_ThrowsAdminApiException()
-    {
+    public async Task DeleteAsync_ConnectionRefused_ThrowsAdminApiException() {
         // Arrange
         MockHttpMessageHandler handler = new(_ =>
             throw new HttpRequestException("Connection refused", new System.Net.Sockets.SocketException()));

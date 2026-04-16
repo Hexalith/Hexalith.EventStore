@@ -13,8 +13,7 @@ public record GlobalOptionsBinding(
     Option<string?> TokenOption,
     Option<string> FormatOption,
     Option<string?> OutputOption,
-    Option<string?> ProfileOption)
-{
+    Option<string?> ProfileOption) {
     /// <summary>
     /// Gets an optional profile path override. When null, uses the default path.
     /// Used for test injection — production callers leave this null.
@@ -24,20 +23,28 @@ public record GlobalOptionsBinding(
     /// <summary>
     /// Creates the global option definitions with environment-variable fallbacks and validation.
     /// </summary>
-    public static GlobalOptionsBinding Create()
-    {
-        Option<string> urlOption = new("--url", "-u") { Description = "Admin API base URL", Recursive = true };
-        urlOption.DefaultValueFactory = _ =>
-            Environment.GetEnvironmentVariable("EVENTSTORE_ADMIN_URL") ?? "http://localhost:5002";
+    public static GlobalOptionsBinding Create() {
+        Option<string> urlOption = new("--url", "-u") {
+            Description = "Admin API base URL",
+            Recursive = true,
+            DefaultValueFactory = _ =>
+                Environment.GetEnvironmentVariable("EVENTSTORE_ADMIN_URL") ?? "http://localhost:5002"
+        };
 
-        Option<string?> tokenOption = new("--token", "-t") { Description = "JWT Bearer token or API key", Recursive = true };
-        tokenOption.DefaultValueFactory = _ =>
-            Environment.GetEnvironmentVariable("EVENTSTORE_ADMIN_TOKEN");
+        Option<string?> tokenOption = new("--token", "-t") {
+            Description = "JWT Bearer token or API key",
+            Recursive = true,
+            DefaultValueFactory = _ =>
+                Environment.GetEnvironmentVariable("EVENTSTORE_ADMIN_TOKEN")
+        };
 
-        Option<string> formatOption = new("--format", "-f") { Description = "Output format", Recursive = true };
-        formatOption.DefaultValueFactory = _ =>
-            Environment.GetEnvironmentVariable("EVENTSTORE_ADMIN_FORMAT") ?? "table";
-        formatOption.AcceptOnlyFromAmong("json", "csv", "table");
+        Option<string> formatOption = new("--format", "-f") {
+            Description = "Output format",
+            Recursive = true,
+            DefaultValueFactory = _ =>
+                Environment.GetEnvironmentVariable("EVENTSTORE_ADMIN_FORMAT") ?? "table"
+        };
+        _ = formatOption.AcceptOnlyFromAmong("json", "csv", "table");
 
         Option<string?> outputOption = new("--output", "-o") { Description = "Redirect output to file", Recursive = true };
 
@@ -49,8 +56,7 @@ public record GlobalOptionsBinding(
     /// <summary>
     /// Resolves parsed option values from a parse result, applying profile-aware 4-layer priority.
     /// </summary>
-    public GlobalOptions Resolve(ParseResult parseResult)
-    {
+    public GlobalOptions Resolve(ParseResult parseResult) {
         (GlobalOptions options, _) = ResolveInternal(parseResult, trackSources: false);
         return options;
     }
@@ -62,11 +68,9 @@ public record GlobalOptionsBinding(
     public (GlobalOptions Options, Dictionary<string, string> Sources) ResolveWithSources(ParseResult parseResult)
         => ResolveInternal(parseResult, trackSources: true);
 
-    private static bool IsExplicitlyProvided(ParseResult parseResult, Option option)
-    {
+    private static bool IsExplicitlyProvided(ParseResult parseResult, Option option) {
         OptionResult? result = parseResult.GetResult(option);
-        if (result is null)
-        {
+        if (result is null) {
             return false;
         }
 
@@ -75,8 +79,7 @@ public record GlobalOptionsBinding(
         return result.Tokens.Count > 0;
     }
 
-    private (GlobalOptions Options, Dictionary<string, string> Sources) ResolveInternal(ParseResult parseResult, bool trackSources)
-    {
+    private (GlobalOptions Options, Dictionary<string, string> Sources) ResolveInternal(ParseResult parseResult, bool trackSources) {
         ArgumentNullException.ThrowIfNull(parseResult);
 
         Dictionary<string, string> sources = [];
@@ -85,38 +88,30 @@ public record GlobalOptionsBinding(
         string? profileName = parseResult.GetValue(ProfileOption);
         ConnectionProfile? profile = null;
 
-        try
-        {
+        try {
             ProfileStore store = ProfileManager.Load(ProfilePath);
 
-            if (profileName is not null)
-            {
+            if (profileName is not null) {
                 // Explicit --profile flag
-                if (!store.Profiles.TryGetValue(profileName, out profile))
-                {
+                if (!store.Profiles.TryGetValue(profileName, out profile)) {
                     throw new ProfileNotFoundException(profileName);
                 }
             }
-            else if (store.ActiveProfile is not null && store.Profiles.TryGetValue(store.ActiveProfile, out profile))
-            {
+            else if (store.ActiveProfile is not null && store.Profiles.TryGetValue(store.ActiveProfile, out profile)) {
                 // Implicit active profile
                 profileName = store.ActiveProfile;
             }
         }
-        catch (ProfileStoreVersionException)
-        {
+        catch (ProfileStoreVersionException) {
             throw;
         }
-        catch (ProfileNotFoundException)
-        {
+        catch (ProfileNotFoundException) {
             throw;
         }
-        catch (InvalidOperationException) when (ProfilePath is null)
-        {
+        catch (InvalidOperationException) when (ProfilePath is null) {
             // Cannot determine home directory — skip profile loading
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
             // File locked, permission denied, etc. — skip profile loading
             Console.Error.WriteLine($"Warning: Could not load profile store: {ex.Message}");
         }
@@ -167,15 +162,12 @@ public record GlobalOptionsBinding(
         string? profileName,
         string fieldName,
         Dictionary<string, string> sources,
-        bool trackSources)
-    {
+        bool trackSources) {
         // Layer 1: explicit CLI flag
-        if (IsExplicitlyProvided(parseResult, option))
-        {
+        if (IsExplicitlyProvided(parseResult, option)) {
             OptionResult? result = parseResult.GetResult(option);
             string? cliValue = result?.GetValueOrDefault<object>()?.ToString();
-            if (trackSources)
-            {
+            if (trackSources) {
                 sources[fieldName] = "cli";
             }
 
@@ -184,10 +176,8 @@ public record GlobalOptionsBinding(
 
         // Layer 2: environment variable (explicit check — DefaultValueFactory combines env+default)
         string? envValue = Environment.GetEnvironmentVariable(envVarName);
-        if (!string.IsNullOrEmpty(envValue))
-        {
-            if (trackSources)
-            {
+        if (!string.IsNullOrEmpty(envValue)) {
+            if (trackSources) {
                 sources[fieldName] = $"env: {envVarName}";
             }
 
@@ -195,10 +185,8 @@ public record GlobalOptionsBinding(
         }
 
         // Layer 3: profile value
-        if (profileValue is not null)
-        {
-            if (trackSources)
-            {
+        if (profileValue is not null) {
+            if (trackSources) {
                 sources[fieldName] = $"profile: {profileName}";
             }
 
@@ -206,8 +194,7 @@ public record GlobalOptionsBinding(
         }
 
         // Layer 4: hardcoded default
-        if (trackSources)
-        {
+        if (trackSources) {
             sources[fieldName] = "default";
         }
 

@@ -34,8 +34,7 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
         // Internal service calls (e.g. TenantBootstrapHostedService) send commands via MediatR
         // without an HTTP request context. Skip API-level authorization for these — domain-level
         // RBAC in aggregate Handle methods still applies.
-        if (httpContextAccessor.HttpContext is not { } httpContext)
-        {
+        if (httpContextAccessor.HttpContext is not { } httpContext) {
             return await next().ConfigureAwait(false);
         }
         System.Security.Claims.ClaimsPrincipal user = httpContext.User

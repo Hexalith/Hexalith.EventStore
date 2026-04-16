@@ -10,18 +10,15 @@ using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Services;
 
-public class AdminSnapshotApiClientTests
-{
-    private static AdminSnapshotApiClient CreateClient(HttpClient httpClient)
-    {
+public class AdminSnapshotApiClientTests {
+    private static AdminSnapshotApiClient CreateClient(HttpClient httpClient) {
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
-        factory.CreateClient("AdminApi").Returns(httpClient);
+        _ = factory.CreateClient("AdminApi").Returns(httpClient);
         return new AdminSnapshotApiClient(factory, NullLogger<AdminSnapshotApiClient>.Instance);
     }
 
     [Fact]
-    public async Task GetSnapshotPoliciesAsync_ReturnsPolicies_WhenApiResponds()
-    {
+    public async Task GetSnapshotPoliciesAsync_ReturnsPolicies_WhenApiResponds() {
         string json = """[{"tenantId":"t1","domain":"Counter","aggregateType":"CounterAggregate","intervalEvents":100,"createdAtUtc":"2026-01-01T00:00:00Z"}]""";
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
 
@@ -36,13 +33,12 @@ public class AdminSnapshotApiClientTests
     }
 
     [Fact]
-    public async Task GetSnapshotPoliciesAsync_ThrowsServiceUnavailable_WhenApiReturnsError()
-    {
+    public async Task GetSnapshotPoliciesAsync_ThrowsServiceUnavailable_WhenApiReturnsError() {
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.InternalServerError, "{}");
 
         AdminSnapshotApiClient client = CreateClient(httpClient);
 
-        await Should.ThrowAsync<ServiceUnavailableException>(
+        _ = await Should.ThrowAsync<ServiceUnavailableException>(
             () => client.GetSnapshotPoliciesAsync());
     }
 }

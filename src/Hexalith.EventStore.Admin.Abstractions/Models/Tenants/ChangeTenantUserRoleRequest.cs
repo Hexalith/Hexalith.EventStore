@@ -8,5 +8,5 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 /// <param name="UserId">The user identifier.</param>
 /// <param name="NewRole">The new role to assign.</param>
 public record ChangeTenantUserRoleRequest(
-    [Required] [MinLength(1)] string UserId,
+    [Required][MinLength(1)] string UserId,
     [Required] string NewRole);

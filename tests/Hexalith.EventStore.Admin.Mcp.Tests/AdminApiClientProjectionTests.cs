@@ -1,14 +1,13 @@
-namespace Hexalith.EventStore.Admin.Mcp.Tests;
 
 using System.Net;
 
 using Hexalith.EventStore.Testing.Http;
 
-public class AdminApiClientProjectionTests
-{
+namespace Hexalith.EventStore.Admin.Mcp.Tests;
+
+public class AdminApiClientProjectionTests {
     [Fact]
-    public async Task ListProjectionsAsync_SendsGetToCorrectPath()
-    {
+    public async Task ListProjectionsAsync_SendsGetToCorrectPath() {
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
             r => capturedUri = r.RequestUri,
@@ -18,13 +17,12 @@ public class AdminApiClientProjectionTests
 
         _ = await client.ListProjectionsAsync(null, CancellationToken.None);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldBe("/api/v1/admin/projections");
     }
 
     [Fact]
-    public async Task ListProjectionsAsync_IncludesTenantIdWhenProvided()
-    {
+    public async Task ListProjectionsAsync_IncludesTenantIdWhenProvided() {
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
             r => capturedUri = r.RequestUri,
@@ -34,13 +32,12 @@ public class AdminApiClientProjectionTests
 
         _ = await client.ListProjectionsAsync("tenant1", CancellationToken.None);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldBe("/api/v1/admin/projections?tenantId=tenant1");
     }
 
     [Fact]
-    public async Task GetProjectionDetailAsync_SendsGetToCorrectPath()
-    {
+    public async Task GetProjectionDetailAsync_SendsGetToCorrectPath() {
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
             r => capturedUri = r.RequestUri,
@@ -50,13 +47,12 @@ public class AdminApiClientProjectionTests
 
         _ = await client.GetProjectionDetailAsync("tenant1", "OrderSummary", CancellationToken.None);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldBe("/api/v1/admin/projections/tenant1/OrderSummary");
     }
 
     [Fact]
-    public async Task GetProjectionDetailAsync_UriEncodesProjectionName()
-    {
+    public async Task GetProjectionDetailAsync_UriEncodesProjectionName() {
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
             r => capturedUri = r.RequestUri,
@@ -66,7 +62,7 @@ public class AdminApiClientProjectionTests
 
         _ = await client.GetProjectionDetailAsync("tenant1", "Order Summary", CancellationToken.None);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldContain("Order%20Summary");
     }
 }

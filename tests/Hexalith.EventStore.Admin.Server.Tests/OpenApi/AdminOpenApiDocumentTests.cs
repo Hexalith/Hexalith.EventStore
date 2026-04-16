@@ -5,19 +5,16 @@ namespace Hexalith.EventStore.Admin.Server.Tests.OpenApi;
 
 [Trait("Category", "Integration")]
 [Trait("Tier", "1")]
-public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicationFactory>
-{
+public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicationFactory> {
     private readonly AdminOpenApiWebApplicationFactory _factory;
 
-    public AdminOpenApiDocumentTests(AdminOpenApiWebApplicationFactory factory)
-    {
+    public AdminOpenApiDocumentTests(AdminOpenApiWebApplicationFactory factory) {
         ArgumentNullException.ThrowIfNull(factory);
         _factory = factory;
     }
 
     [Fact]
-    public async Task OpenApiDocument_ReturnsValidJson()
-    {
+    public async Task OpenApiDocument_ReturnsValidJson() {
         HttpClient client = _factory.CreateClient();
         HttpResponseMessage response = await client.GetAsync("/openapi/v1.json");
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -28,33 +25,29 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
     }
 
     [Fact]
-    public async Task OpenApiDocument_HasCorrectTitle()
-    {
+    public async Task OpenApiDocument_HasCorrectTitle() {
         JsonElement doc = await GetOpenApiDocumentAsync();
         doc.GetProperty("info").GetProperty("title").GetString()
             .ShouldBe("Hexalith EventStore Admin API");
     }
 
     [Fact]
-    public async Task OpenApiDocument_HasCorrectVersion()
-    {
+    public async Task OpenApiDocument_HasCorrectVersion() {
         JsonElement doc = await GetOpenApiDocumentAsync();
         doc.GetProperty("info").GetProperty("version").GetString()
             .ShouldBe("v1");
     }
 
     [Fact]
-    public async Task OpenApiDocument_HasOpenApi31Version()
-    {
+    public async Task OpenApiDocument_HasOpenApi31Version() {
         JsonElement doc = await GetOpenApiDocumentAsync();
         string? version = doc.GetProperty("openapi").GetString();
-        version.ShouldNotBeNull();
+        _ = version.ShouldNotBeNull();
         version.ShouldStartWith("3.1");
     }
 
     [Fact]
-    public async Task OpenApiDocument_ContainsBearerSecurityScheme()
-    {
+    public async Task OpenApiDocument_ContainsBearerSecurityScheme() {
         JsonElement doc = await GetOpenApiDocumentAsync();
 
         JsonElement components = doc.GetProperty("components");
@@ -67,8 +60,7 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
     }
 
     [Fact]
-    public async Task OpenApiDocument_HasGlobalSecurityRequirement()
-    {
+    public async Task OpenApiDocument_HasGlobalSecurityRequirement() {
         JsonElement doc = await GetOpenApiDocumentAsync();
         doc.TryGetProperty("security", out JsonElement security)
             .ShouldBeTrue("OpenAPI document should have global security array");
@@ -79,8 +71,7 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
     }
 
     [Fact]
-    public async Task OpenApiDocument_ContainsExpectedTags()
-    {
+    public async Task OpenApiDocument_ContainsExpectedTags() {
         JsonElement doc = await GetOpenApiDocumentAsync();
 
         doc.TryGetProperty("tags", out JsonElement tags).ShouldBeTrue("OpenAPI document should have tags array");
@@ -100,8 +91,7 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
     }
 
     [Fact]
-    public async Task OpenApiDocument_StreamEndpoints_GroupedUnderStreamsTag()
-    {
+    public async Task OpenApiDocument_StreamEndpoints_GroupedUnderStreamsTag() {
         JsonElement doc = await GetOpenApiDocumentAsync();
         JsonElement paths = doc.GetProperty("paths");
 
@@ -109,8 +99,7 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
     }
 
     [Fact]
-    public async Task OpenApiDocument_ProjectionEndpoints_GroupedUnderProjectionsTag()
-    {
+    public async Task OpenApiDocument_ProjectionEndpoints_GroupedUnderProjectionsTag() {
         JsonElement doc = await GetOpenApiDocumentAsync();
         JsonElement paths = doc.GetProperty("paths");
 
@@ -118,23 +107,18 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
     }
 
     [Fact]
-    public async Task OpenApiDocument_AllOperations_Have401And403Responses()
-    {
+    public async Task OpenApiDocument_AllOperations_Have401And403Responses() {
         JsonElement doc = await GetOpenApiDocumentAsync();
         JsonElement paths = doc.GetProperty("paths");
 
-        foreach (JsonProperty path in paths.EnumerateObject())
-        {
+        foreach (JsonProperty path in paths.EnumerateObject()) {
             // Only check admin endpoints
-            if (!path.Name.StartsWith("/api/v1/admin/", StringComparison.OrdinalIgnoreCase))
-            {
+            if (!path.Name.StartsWith("/api/v1/admin/", StringComparison.OrdinalIgnoreCase)) {
                 continue;
             }
 
-            foreach (JsonProperty method in path.Value.EnumerateObject())
-            {
-                if (!IsHttpMethod(method.Name))
-                {
+            foreach (JsonProperty method in path.Value.EnumerateObject()) {
+                if (!IsHttpMethod(method.Name)) {
                     continue;
                 }
 
@@ -151,22 +135,17 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
     }
 
     [Fact]
-    public async Task OpenApiDocument_AllOperations_Have503Response()
-    {
+    public async Task OpenApiDocument_AllOperations_Have503Response() {
         JsonElement doc = await GetOpenApiDocumentAsync();
         JsonElement paths = doc.GetProperty("paths");
 
-        foreach (JsonProperty path in paths.EnumerateObject())
-        {
-            if (!path.Name.StartsWith("/api/v1/admin/", StringComparison.OrdinalIgnoreCase))
-            {
+        foreach (JsonProperty path in paths.EnumerateObject()) {
+            if (!path.Name.StartsWith("/api/v1/admin/", StringComparison.OrdinalIgnoreCase)) {
                 continue;
             }
 
-            foreach (JsonProperty method in path.Value.EnumerateObject())
-            {
-                if (!IsHttpMethod(method.Name))
-                {
+            foreach (JsonProperty method in path.Value.EnumerateObject()) {
+                if (!IsHttpMethod(method.Name)) {
                     continue;
                 }
 
@@ -180,26 +159,22 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
     }
 
     [Fact]
-    public async Task OpenApiDocument_OperatorEndpoints_DescribeRequiredRole()
-    {
+    public async Task OpenApiDocument_OperatorEndpoints_DescribeRequiredRole() {
         JsonElement doc = await GetOpenApiDocumentAsync();
         JsonElement paths = doc.GetProperty("paths");
 
         // Projection pause is an Operator-level endpoint
         bool foundOperatorEndpoint = false;
-        foreach (JsonProperty path in paths.EnumerateObject())
-        {
+        foreach (JsonProperty path in paths.EnumerateObject()) {
             if (!path.Name.Contains("projections", StringComparison.OrdinalIgnoreCase)
-                || !path.Name.Contains("pause", StringComparison.OrdinalIgnoreCase))
-            {
+                || !path.Name.Contains("pause", StringComparison.OrdinalIgnoreCase)) {
                 continue;
             }
 
             if (path.Value.TryGetProperty("post", out JsonElement post)
-                && post.TryGetProperty("description", out JsonElement desc))
-            {
+                && post.TryGetProperty("description", out JsonElement desc)) {
                 string? description = desc.GetString();
-                description.ShouldNotBeNull();
+                _ = description.ShouldNotBeNull();
                 description.ShouldContain("Operator", Case.Insensitive);
                 foundOperatorEndpoint = true;
             }
@@ -209,8 +184,7 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
     }
 
     [Fact]
-    public async Task OpenApiDocument_HasMinimumExpectedPaths()
-    {
+    public async Task OpenApiDocument_HasMinimumExpectedPaths() {
         JsonElement doc = await GetOpenApiDocumentAsync();
         JsonElement paths = doc.GetProperty("paths");
 
@@ -223,39 +197,31 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
     }
 
     [Fact]
-    public async Task OpenApiDocument_AtLeastOneOperation_HasXmlDocDescription()
-    {
+    public async Task OpenApiDocument_AtLeastOneOperation_HasXmlDocDescription() {
         JsonElement doc = await GetOpenApiDocumentAsync();
         JsonElement paths = doc.GetProperty("paths");
 
         bool foundDescription = false;
-        foreach (JsonProperty path in paths.EnumerateObject())
-        {
-            if (!path.Name.StartsWith("/api/v1/admin/", StringComparison.OrdinalIgnoreCase))
-            {
+        foreach (JsonProperty path in paths.EnumerateObject()) {
+            if (!path.Name.StartsWith("/api/v1/admin/", StringComparison.OrdinalIgnoreCase)) {
                 continue;
             }
 
-            foreach (JsonProperty method in path.Value.EnumerateObject())
-            {
-                if (!IsHttpMethod(method.Name))
-                {
+            foreach (JsonProperty method in path.Value.EnumerateObject()) {
+                if (!IsHttpMethod(method.Name)) {
                     continue;
                 }
 
-                if (method.Value.TryGetProperty("description", out JsonElement desc))
-                {
+                if (method.Value.TryGetProperty("description", out JsonElement desc)) {
                     string? description = desc.GetString();
-                    if (!string.IsNullOrWhiteSpace(description))
-                    {
+                    if (!string.IsNullOrWhiteSpace(description)) {
                         foundDescription = true;
                         break;
                     }
                 }
             }
 
-            if (foundDescription)
-            {
+            if (foundDescription) {
                 break;
             }
         }
@@ -266,8 +232,7 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
     }
 
     [Fact]
-    public async Task OpenApiDocument_StreamEndpoints_Have200And404Responses()
-    {
+    public async Task OpenApiDocument_StreamEndpoints_Have200And404Responses() {
         JsonElement doc = await GetOpenApiDocumentAsync();
         JsonElement paths = doc.GetProperty("paths");
 
@@ -280,17 +245,14 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
 
         // Detail endpoints (containing path parameters) should have 404
         bool foundDetailWith404 = false;
-        foreach (JsonProperty path in paths.EnumerateObject())
-        {
-            if (!path.Name.StartsWith("/api/v1/admin/streams/", StringComparison.OrdinalIgnoreCase))
-            {
+        foreach (JsonProperty path in paths.EnumerateObject()) {
+            if (!path.Name.StartsWith("/api/v1/admin/streams/", StringComparison.OrdinalIgnoreCase)) {
                 continue;
             }
 
             if (path.Value.TryGetProperty("get", out JsonElement detailOp)
                 && detailOp.TryGetProperty("responses", out JsonElement responses)
-                && responses.TryGetProperty("404", out _))
-            {
+                && responses.TryGetProperty("404", out _)) {
                 foundDetailWith404 = true;
                 break;
             }
@@ -300,8 +262,7 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
     }
 
     [Fact]
-    public async Task OpenApiDocument_StreamEndpoints_HaveTypedResponseSchema()
-    {
+    public async Task OpenApiDocument_StreamEndpoints_HaveTypedResponseSchema() {
         JsonElement doc = await GetOpenApiDocumentAsync();
         JsonElement paths = doc.GetProperty("paths");
 
@@ -318,30 +279,24 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
     }
 
     [Fact]
-    public async Task OpenApiDocument_OperationIds_AreReadable()
-    {
+    public async Task OpenApiDocument_OperationIds_AreReadable() {
         JsonElement doc = await GetOpenApiDocumentAsync();
         JsonElement paths = doc.GetProperty("paths");
 
         // Validate that any operation IDs present are human-readable (not auto-generated hashes).
         // Controllers may not define explicit operationIds — that's acceptable for now,
         // but if they exist they must be readable for CLI/MCP consumers.
-        foreach (JsonProperty path in paths.EnumerateObject())
-        {
-            if (!path.Name.StartsWith("/api/v1/admin/", StringComparison.OrdinalIgnoreCase))
-            {
+        foreach (JsonProperty path in paths.EnumerateObject()) {
+            if (!path.Name.StartsWith("/api/v1/admin/", StringComparison.OrdinalIgnoreCase)) {
                 continue;
             }
 
-            foreach (JsonProperty method in path.Value.EnumerateObject())
-            {
-                if (!IsHttpMethod(method.Name))
-                {
+            foreach (JsonProperty method in path.Value.EnumerateObject()) {
+                if (!IsHttpMethod(method.Name)) {
                     continue;
                 }
 
-                if (method.Value.TryGetProperty("operationId", out JsonElement opId))
-                {
+                if (method.Value.TryGetProperty("operationId", out JsonElement opId)) {
                     string? id = opId.GetString();
                     id.ShouldNotBeNullOrWhiteSpace(
                         $"{method.Name.ToUpperInvariant()} {path.Name} operationId should not be empty");
@@ -352,8 +307,7 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
         }
     }
 
-    private async Task<JsonElement> GetOpenApiDocumentAsync()
-    {
+    private async Task<JsonElement> GetOpenApiDocumentAsync() {
         HttpClient client = _factory.CreateClient();
         HttpResponseMessage response = await client.GetAsync("/openapi/v1.json").ConfigureAwait(false);
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -362,12 +316,10 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
         return JsonSerializer.Deserialize<JsonElement>(content);
     }
 
-    private static bool OperationHasTag(JsonElement paths, string path, string method, string expectedTag)
-    {
+    private static bool OperationHasTag(JsonElement paths, string path, string method, string expectedTag) {
         if (!paths.TryGetProperty(path, out JsonElement pathElement)
             || !pathElement.TryGetProperty(method, out JsonElement operation)
-            || !operation.TryGetProperty("tags", out JsonElement tags))
-        {
+            || !operation.TryGetProperty("tags", out JsonElement tags)) {
             return false;
         }
 

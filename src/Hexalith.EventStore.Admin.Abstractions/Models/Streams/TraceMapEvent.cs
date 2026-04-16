@@ -13,8 +13,7 @@ public record TraceMapEvent(
     string EventTypeName,
     DateTimeOffset Timestamp,
     string? CausationId,
-    bool IsRejection)
-{
+    bool IsRejection) {
     /// <summary>Gets the fully qualified event type name.</summary>
     public string EventTypeName { get; } = EventTypeName ?? string.Empty;
 

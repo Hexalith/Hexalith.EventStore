@@ -7,8 +7,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 /// <param name="Value">The timeout duration string (e.g., "5s", "10s", "30s").</param>
 public record DaprTimeoutPolicy(
     string Name,
-    string Value)
-{
+    string Value) {
     /// <summary>Gets the policy identifier.</summary>
     public string Name { get; } = !string.IsNullOrWhiteSpace(Name)
         ? Name

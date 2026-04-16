@@ -1,10 +1,8 @@
 namespace Hexalith.EventStore.Admin.Mcp.Tests;
 
-public class InvestigationSessionTests
-{
+public class InvestigationSessionTests {
     [Fact]
-    public void SetContext_SetsTenantIdAndDomain()
-    {
+    public void SetContext_SetsTenantIdAndDomain() {
         var session = new InvestigationSession();
 
         session.SetContext("acme-corp", "Orders");
@@ -14,8 +12,7 @@ public class InvestigationSessionTests
     }
 
     [Fact]
-    public void SetContext_WithNullTenantId_PreservesExistingTenantId()
-    {
+    public void SetContext_WithNullTenantId_PreservesExistingTenantId() {
         var session = new InvestigationSession();
         session.SetContext("acme-corp", null);
 
@@ -26,8 +23,7 @@ public class InvestigationSessionTests
     }
 
     [Fact]
-    public void SetContext_WithNullDomain_PreservesExistingDomain()
-    {
+    public void SetContext_WithNullDomain_PreservesExistingDomain() {
         var session = new InvestigationSession();
         session.SetContext(null, "Orders");
 
@@ -38,18 +34,16 @@ public class InvestigationSessionTests
     }
 
     [Fact]
-    public void SetContext_InitializesStartedAtUtc_OnFirstCall()
-    {
+    public void SetContext_InitializesStartedAtUtc_OnFirstCall() {
         var session = new InvestigationSession();
 
         session.SetContext("acme-corp", null);
 
-        session.StartedAtUtc.ShouldNotBeNull();
+        _ = session.StartedAtUtc.ShouldNotBeNull();
     }
 
     [Fact]
-    public void SetContext_PreservesStartedAtUtc_OnSubsequentCalls()
-    {
+    public void SetContext_PreservesStartedAtUtc_OnSubsequentCalls() {
         var session = new InvestigationSession();
         session.SetContext("acme-corp", null);
         DateTimeOffset? firstStarted = session.StartedAtUtc;
@@ -60,8 +54,7 @@ public class InvestigationSessionTests
     }
 
     [Fact]
-    public void ClearTenantId_ClearsOnlyTenantId_PreservesDomain()
-    {
+    public void ClearTenantId_ClearsOnlyTenantId_PreservesDomain() {
         var session = new InvestigationSession();
         session.SetContext("acme-corp", "Orders");
 
@@ -72,8 +65,7 @@ public class InvestigationSessionTests
     }
 
     [Fact]
-    public void ClearDomain_ClearsOnlyDomain_PreservesTenantId()
-    {
+    public void ClearDomain_ClearsOnlyDomain_PreservesTenantId() {
         var session = new InvestigationSession();
         session.SetContext("acme-corp", "Orders");
 
@@ -84,8 +76,7 @@ public class InvestigationSessionTests
     }
 
     [Fact]
-    public void ClearTenantId_ClearsStartedAtUtc_WhenDomainAlsoNull()
-    {
+    public void ClearTenantId_ClearsStartedAtUtc_WhenDomainAlsoNull() {
         var session = new InvestigationSession();
         session.SetContext("acme-corp", null);
 
@@ -95,19 +86,17 @@ public class InvestigationSessionTests
     }
 
     [Fact]
-    public void ClearTenantId_PreservesStartedAtUtc_WhenDomainStillSet()
-    {
+    public void ClearTenantId_PreservesStartedAtUtc_WhenDomainStillSet() {
         var session = new InvestigationSession();
         session.SetContext("acme-corp", "Orders");
 
         session.ClearTenantId();
 
-        session.StartedAtUtc.ShouldNotBeNull();
+        _ = session.StartedAtUtc.ShouldNotBeNull();
     }
 
     [Fact]
-    public void Clear_ResetsAllFieldsToNull()
-    {
+    public void Clear_ResetsAllFieldsToNull() {
         var session = new InvestigationSession();
         session.SetContext("acme-corp", "Orders");
 
@@ -119,16 +108,14 @@ public class InvestigationSessionTests
     }
 
     [Fact]
-    public void HasContext_ReturnsFalse_Initially()
-    {
+    public void HasContext_ReturnsFalse_Initially() {
         var session = new InvestigationSession();
 
         session.HasContext.ShouldBeFalse();
     }
 
     [Fact]
-    public void HasContext_ReturnsTrue_AfterSetContext()
-    {
+    public void HasContext_ReturnsTrue_AfterSetContext() {
         var session = new InvestigationSession();
 
         session.SetContext("acme-corp", null);
@@ -137,8 +124,7 @@ public class InvestigationSessionTests
     }
 
     [Fact]
-    public void HasContext_ReturnsFalse_AfterClear()
-    {
+    public void HasContext_ReturnsFalse_AfterClear() {
         var session = new InvestigationSession();
         session.SetContext("acme-corp", "Orders");
 
@@ -148,22 +134,17 @@ public class InvestigationSessionTests
     }
 
     [Fact]
-    public void ThreadSafety_ConcurrentSetContextAndClear_DoesNotCorruptState()
-    {
+    public void ThreadSafety_ConcurrentSetContextAndClear_DoesNotCorruptState() {
         var session = new InvestigationSession();
 
-        Parallel.For(0, 100, i =>
-        {
-            if (i % 3 == 0)
-            {
+        _ = Parallel.For(0, 100, i => {
+            if (i % 3 == 0) {
                 session.SetContext($"tenant-{i}", $"domain-{i}");
             }
-            else if (i % 3 == 1)
-            {
+            else if (i % 3 == 1) {
                 session.Clear();
             }
-            else
-            {
+            else {
                 _ = session.HasContext;
                 _ = session.TenantId;
                 _ = session.Domain;
@@ -173,16 +154,14 @@ public class InvestigationSessionTests
         // After concurrent operations, session should be in a valid state
         // (either has context or doesn't — no corruption)
         bool hasContext = session.HasContext;
-        if (!hasContext)
-        {
+        if (!hasContext) {
             session.TenantId.ShouldBeNull();
             session.Domain.ShouldBeNull();
         }
     }
 
     [Fact]
-    public void GetSnapshot_ReturnsConsistentContextShape()
-    {
+    public void GetSnapshot_ReturnsConsistentContextShape() {
         var session = new InvestigationSession();
         session.SetContext("acme-corp", "Orders");
 
@@ -190,13 +169,12 @@ public class InvestigationSessionTests
 
         snapshot.TenantId.ShouldBe("acme-corp");
         snapshot.Domain.ShouldBe("Orders");
-        snapshot.StartedAtUtc.ShouldNotBeNull();
+        _ = snapshot.StartedAtUtc.ShouldNotBeNull();
         snapshot.HasContext.ShouldBeTrue();
     }
 
     [Fact]
-    public void SetContext_TrimsValuesAndIgnoresWhitespaceOnlyInput()
-    {
+    public void SetContext_TrimsValuesAndIgnoresWhitespaceOnlyInput() {
         var session = new InvestigationSession();
 
         session.SetContext("  acme-corp  ", "  Orders  ");

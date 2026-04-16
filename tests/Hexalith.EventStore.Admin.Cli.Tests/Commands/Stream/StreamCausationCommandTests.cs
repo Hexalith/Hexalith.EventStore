@@ -2,7 +2,6 @@ using System.Net;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
-using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Stream;
 using Hexalith.EventStore.Admin.Cli.Formatting;
@@ -10,8 +9,7 @@ using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Stream;
 
-public class StreamCausationCommandTests
-{
+public class StreamCausationCommandTests {
     private static CausationChain CreateTestChain()
         => new(
             "IncrementCounter",
@@ -27,11 +25,9 @@ public class StreamCausationCommandTests
     private static GlobalOptions CreateOptions(string format = "table")
         => new("http://localhost:5002", null, format, null);
 
-    private static AdminApiClient CreateMockClient(object? responseBody, HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
+    private static AdminApiClient CreateMockClient(object? responseBody, HttpStatusCode statusCode = HttpStatusCode.OK) {
         HttpResponseMessage response = new(statusCode);
-        if (responseBody is not null)
-        {
+        if (responseBody is not null) {
             string json = JsonSerializer.Serialize(responseBody, JsonDefaults.Options);
             response.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
         }
@@ -42,17 +38,15 @@ public class StreamCausationCommandTests
     }
 
     [Fact]
-    public void StreamCausationCommand_ReturnsDualSectionOutput()
-    {
+    public void StreamCausationCommand_ReturnsDualSectionOutput() {
         // Arrange — test formatting directly to avoid Console capture race conditions
         CausationChain chain = CreateTestChain();
         IOutputFormatter formatter = new TableOutputFormatter();
 
-        var overview = new
-        {
-            OriginatingCommandType = chain.OriginatingCommandType,
-            OriginatingCommandId = chain.OriginatingCommandId,
-            CorrelationId = chain.CorrelationId,
+        var overview = new {
+            chain.OriginatingCommandType,
+            chain.OriginatingCommandId,
+            chain.CorrelationId,
             UserId = chain.UserId ?? string.Empty,
             EventCount = chain.Events.Count,
             AffectedProjections = string.Join(", ", chain.AffectedProjections),
@@ -80,8 +74,7 @@ public class StreamCausationCommandTests
     }
 
     [Fact]
-    public void StreamCausationCommand_JsonFormat_ReturnsFullChain()
-    {
+    public void StreamCausationCommand_JsonFormat_ReturnsFullChain() {
         // Arrange — test JSON formatting directly
         CausationChain chain = CreateTestChain();
         IOutputFormatter formatter = new JsonOutputFormatter();
@@ -91,14 +84,13 @@ public class StreamCausationCommandTests
 
         // Assert
         CausationChain? deserialized = JsonSerializer.Deserialize<CausationChain>(json, JsonDefaults.Options);
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.Events.Count.ShouldBe(2);
         deserialized.AffectedProjections.Count.ShouldBe(2);
     }
 
     [Fact]
-    public void StreamCausationCommand_CsvFormat_ReturnsEventsOnly()
-    {
+    public void StreamCausationCommand_CsvFormat_ReturnsEventsOnly() {
         // Arrange — test CSV formatting directly
         CausationChain chain = CreateTestChain();
         IOutputFormatter formatter = new CsvOutputFormatter();
@@ -116,8 +108,7 @@ public class StreamCausationCommandTests
     }
 
     [Fact]
-    public async Task StreamCausationCommand_NotFound_PrintsError()
-    {
+    public async Task StreamCausationCommand_NotFound_PrintsError() {
         // Arrange
         using AdminApiClient client = CreateMockClient(null, HttpStatusCode.NotFound);
         GlobalOptions options = CreateOptions("table");
@@ -130,13 +121,11 @@ public class StreamCausationCommandTests
     }
 
     [Fact]
-    public async Task StreamCommands_SpecialCharsInArgs_AreUrlEncoded()
-    {
+    public async Task StreamCommands_SpecialCharsInArgs_AreUrlEncoded() {
         // Arrange
         CausationChain chain = CreateTestChain();
         string json = JsonSerializer.Serialize(chain, JsonDefaults.Options);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         });
         GlobalOptions options = CreateOptions("table");
@@ -146,7 +135,7 @@ public class StreamCausationCommandTests
         _ = await StreamCausationCommand.ExecuteAsync(client, options, "acme/corp", "my domain", "01J", 1, CancellationToken.None);
 
         // Assert — verify URL encoding in the request
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         string requestUri = handler.LastRequest.RequestUri!.AbsoluteUri;
         // Uri.EscapeDataString encodes / to %2F and space to %20
         // The AbsoluteUri preserves percent-encoding
@@ -155,8 +144,7 @@ public class StreamCausationCommandTests
     }
 
     [Fact]
-    public async Task StreamCommands_Http401_PrintsAuthError()
-    {
+    public async Task StreamCommands_Http401_PrintsAuthError() {
         // Arrange
         MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.Unauthorized));
         GlobalOptions options = CreateOptions("table");
@@ -170,8 +158,7 @@ public class StreamCausationCommandTests
     }
 
     [Fact]
-    public async Task StreamCommands_ConnectionRefused_PrintsConnectError()
-    {
+    public async Task StreamCommands_ConnectionRefused_PrintsConnectError() {
         // Arrange — simulate connection failure
         MockHttpMessageHandler handler = new(_ =>
             throw new HttpRequestException("Connection refused", new System.Net.Sockets.SocketException()));
@@ -186,10 +173,9 @@ public class StreamCausationCommandTests
     }
 
     [Fact]
-    public void StreamCommand_NoSubcommand_PrintsHelp()
-    {
+    public void StreamCommand_NoSubcommand_PrintsHelp() {
         // Verify the parent command has all six subcommands
-        GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
+        var binding = GlobalOptionsBinding.Create();
         System.CommandLine.Command command = StreamCommand.Create(binding);
 
         command.Subcommands.Count.ShouldBe(6);
@@ -202,10 +188,9 @@ public class StreamCausationCommandTests
     }
 
     [Fact]
-    public void StreamSubcommands_MissingPositionalArgs_CommandHasRequiredArguments()
-    {
+    public void StreamSubcommands_MissingPositionalArgs_CommandHasRequiredArguments() {
         // Verify that stream event command requires positional arguments
-        GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
+        var binding = GlobalOptionsBinding.Create();
         System.CommandLine.Command command = StreamEventCommand.Create(binding);
 
         command.Arguments.Count.ShouldBe(4); // tenant, domain, aggregateId, sequenceNumber

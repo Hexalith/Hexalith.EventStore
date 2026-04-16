@@ -3,7 +3,6 @@ using Bunit;
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,21 +14,18 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the DaprHealthHistory page.
 /// </summary>
-public class DaprHealthHistoryPageTests : AdminUITestContext
-{
+public class DaprHealthHistoryPageTests : AdminUITestContext {
     private readonly AdminHealthHistoryApiClient _mockClient;
 
-    public DaprHealthHistoryPageTests()
-    {
+    public DaprHealthHistoryPageTests() {
         _mockClient = Substitute.For<AdminHealthHistoryApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminHealthHistoryApiClient>.Instance);
-        Services.AddScoped(_ => _mockClient);
+        _ = Services.AddScoped(_ => _mockClient);
     }
 
     [Fact]
-    public void HealthHistoryPage_RendersTitle()
-    {
+    public void HealthHistoryPage_RendersTitle() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -42,8 +38,7 @@ public class DaprHealthHistoryPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthHistoryPage_RendersBackLink()
-    {
+    public void HealthHistoryPage_RendersBackLink() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -56,8 +51,7 @@ public class DaprHealthHistoryPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthHistoryPage_RendersStatCards_WithData()
-    {
+    public void HealthHistoryPage_RendersStatCards_WithData() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -74,8 +68,7 @@ public class DaprHealthHistoryPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthHistoryPage_RendersHeatmap_WhenDataAvailable()
-    {
+    public void HealthHistoryPage_RendersHeatmap_WhenDataAvailable() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -89,8 +82,7 @@ public class DaprHealthHistoryPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthHistoryPage_RendersEmptyState_WhenNoData()
-    {
+    public void HealthHistoryPage_RendersEmptyState_WhenNoData() {
         // Arrange
         _ = _mockClient.GetHealthHistoryAsync(
             Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -106,8 +98,7 @@ public class DaprHealthHistoryPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthHistoryPage_RendersTruncationWarning_WhenIsTruncated()
-    {
+    public void HealthHistoryPage_RendersTruncationWarning_WhenIsTruncated() {
         // Arrange
         var timeline = new DaprComponentHealthTimeline(
             [new DaprHealthHistoryEntry("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow)],
@@ -126,8 +117,7 @@ public class DaprHealthHistoryPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthHistoryPage_RendersTimeRangeButtons()
-    {
+    public void HealthHistoryPage_RendersTimeRangeButtons() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -145,8 +135,7 @@ public class DaprHealthHistoryPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthHistoryPage_RendersTransitionLog_WithData()
-    {
+    public void HealthHistoryPage_RendersTransitionLog_WithData() {
         // Arrange
         DateTimeOffset now = DateTimeOffset.UtcNow;
         var timeline = new DaprComponentHealthTimeline(
@@ -168,8 +157,7 @@ public class DaprHealthHistoryPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthHistoryPage_RendersIssueBanner_WhenApiUnavailable()
-    {
+    public void HealthHistoryPage_RendersIssueBanner_WhenApiUnavailable() {
         // Arrange
         _ = _mockClient.GetHealthHistoryAsync(
             Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -184,8 +172,7 @@ public class DaprHealthHistoryPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthHistoryPage_RendersRefreshButton()
-    {
+    public void HealthHistoryPage_RendersRefreshButton() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -199,8 +186,7 @@ public class DaprHealthHistoryPageTests : AdminUITestContext
 
     // ===== Helper methods =====
 
-    private void SetupSuccessfulResponse()
-    {
+    private void SetupSuccessfulResponse() {
         DateTimeOffset now = DateTimeOffset.UtcNow;
         var timeline = new DaprComponentHealthTimeline(
             [

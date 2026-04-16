@@ -4,7 +4,6 @@ using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
-using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
@@ -16,18 +15,15 @@ using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
-public class DaprConsistencyCommandServiceTests
-{
+public class DaprConsistencyCommandServiceTests {
     private const string StateStoreName = "statestore";
 
     private static DaprConsistencyCommandService CreateService(
         DaprClient? daprClient = null,
-        IStreamQueryService? streamQueryService = null)
-    {
+        IStreamQueryService? streamQueryService = null) {
         daprClient ??= Substitute.For<DaprClient>();
         streamQueryService ??= Substitute.For<IStreamQueryService>();
-        IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions
-        {
+        IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             StateStoreName = StateStoreName,
         });
 
@@ -39,22 +35,21 @@ public class DaprConsistencyCommandServiceTests
     }
 
     [Fact]
-    public async Task TriggerCheck_StoresCheckRecord_WithPendingStatus()
-    {
+    public async Task TriggerCheck_StoresCheckRecord_WithPendingStatus() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         IStreamQueryService streamQuery = Substitute.For<IStreamQueryService>();
 
         // Empty index — no active checks
-        daprClient.GetStateAsync<List<string>>(
+        _ = daprClient.GetStateAsync<List<string>>(
                 StateStoreName, "admin:consistency:index", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (List<string>?)null);
 
         // ETag-based index save
-        daprClient.GetStateAndETagAsync<List<string>>(
+        _ = daprClient.GetStateAndETagAsync<List<string>>(
                 StateStoreName, "admin:consistency:index", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (new List<string>(), string.Empty));
 
-        daprClient.TrySaveStateAsync(
+        _ = daprClient.TrySaveStateAsync(
                 StateStoreName, "admin:consistency:index", Arg.Any<List<string>>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -76,13 +71,12 @@ public class DaprConsistencyCommandServiceTests
     }
 
     [Fact]
-    public async Task TriggerCheck_ReturnsConflict_WhenActiveCheckExists()
-    {
+    public async Task TriggerCheck_ReturnsConflict_WhenActiveCheckExists() {
         DaprClient daprClient = Substitute.For<DaprClient>();
 
         // Index with one active check
         List<string> index = ["active-check"];
-        daprClient.GetStateAsync<List<string>>(
+        _ = daprClient.GetStateAsync<List<string>>(
                 StateStoreName, "admin:consistency:index", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => index);
 
@@ -101,7 +95,7 @@ public class DaprConsistencyCommandServiceTests
             false,
             null);
 
-        daprClient.GetStateAsync<ConsistencyCheckResult>(
+        _ = daprClient.GetStateAsync<ConsistencyCheckResult>(
                 StateStoreName, "admin:consistency:active-check", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => activeCheck);
 
@@ -115,19 +109,18 @@ public class DaprConsistencyCommandServiceTests
     }
 
     [Fact]
-    public async Task TriggerCheck_ReturnsOperationResult_WithCheckId()
-    {
+    public async Task TriggerCheck_ReturnsOperationResult_WithCheckId() {
         DaprClient daprClient = Substitute.For<DaprClient>();
 
-        daprClient.GetStateAsync<List<string>>(
+        _ = daprClient.GetStateAsync<List<string>>(
                 StateStoreName, "admin:consistency:index", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (List<string>?)null);
 
-        daprClient.GetStateAndETagAsync<List<string>>(
+        _ = daprClient.GetStateAndETagAsync<List<string>>(
                 StateStoreName, "admin:consistency:index", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (new List<string>(), string.Empty));
 
-        daprClient.TrySaveStateAsync(
+        _ = daprClient.TrySaveStateAsync(
                 StateStoreName, "admin:consistency:index", Arg.Any<List<string>>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -141,37 +134,35 @@ public class DaprConsistencyCommandServiceTests
     }
 
     [Fact]
-    public async Task TriggerCheck_AppendsToIndex_WithETag()
-    {
+    public async Task TriggerCheck_AppendsToIndex_WithETag() {
         DaprClient daprClient = Substitute.For<DaprClient>();
 
-        daprClient.GetStateAsync<List<string>>(
+        _ = daprClient.GetStateAsync<List<string>>(
                 StateStoreName, "admin:consistency:index", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (List<string>?)null);
 
         List<string> existingIndex = ["old-check"];
-        daprClient.GetStateAndETagAsync<List<string>>(
+        _ = daprClient.GetStateAndETagAsync<List<string>>(
                 StateStoreName, "admin:consistency:index", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (existingIndex, "etag-123"));
 
         List<string>? savedIndex = null;
-        daprClient.TrySaveStateAsync(
+        _ = daprClient.TrySaveStateAsync(
                 StateStoreName, "admin:consistency:index", Arg.Do<List<string>>(i => savedIndex = i), "etag-123", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(true);
 
         DaprConsistencyCommandService service = CreateService(daprClient);
 
-        await service.TriggerCheckAsync(
+        _ = await service.TriggerCheckAsync(
             "tenant-a", null, [ConsistencyCheckType.SequenceContinuity]);
 
-        savedIndex.ShouldNotBeNull();
+        _ = savedIndex.ShouldNotBeNull();
         savedIndex.Count.ShouldBe(2); // new check + old-check
         savedIndex[1].ShouldBe("old-check"); // old check moved to position 1
     }
 
     [Fact]
-    public async Task CancelCheck_UpdatesStatus_WhenRunning()
-    {
+    public async Task CancelCheck_UpdatesStatus_WhenRunning() {
         DaprClient daprClient = Substitute.For<DaprClient>();
 
         ConsistencyCheckResult runningCheck = new(
@@ -189,7 +180,7 @@ public class DaprConsistencyCommandServiceTests
             false,
             null);
 
-        daprClient.GetStateAsync<ConsistencyCheckResult>(
+        _ = daprClient.GetStateAsync<ConsistencyCheckResult>(
                 StateStoreName, "admin:consistency:check-1", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => runningCheck);
 
@@ -208,8 +199,7 @@ public class DaprConsistencyCommandServiceTests
     }
 
     [Fact]
-    public async Task CancelCheck_ReturnsError_WhenCompleted()
-    {
+    public async Task CancelCheck_ReturnsError_WhenCompleted() {
         DaprClient daprClient = Substitute.For<DaprClient>();
 
         ConsistencyCheckResult completedCheck = new(
@@ -227,7 +217,7 @@ public class DaprConsistencyCommandServiceTests
             false,
             null);
 
-        daprClient.GetStateAsync<ConsistencyCheckResult>(
+        _ = daprClient.GetStateAsync<ConsistencyCheckResult>(
                 StateStoreName, "admin:consistency:check-1", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => completedCheck);
 
@@ -240,11 +230,10 @@ public class DaprConsistencyCommandServiceTests
     }
 
     [Fact]
-    public async Task CancelCheck_ReturnsNotFound_WhenMissing()
-    {
+    public async Task CancelCheck_ReturnsNotFound_WhenMissing() {
         DaprClient daprClient = Substitute.For<DaprClient>();
 
-        daprClient.GetStateAsync<ConsistencyCheckResult>(
+        _ = daprClient.GetStateAsync<ConsistencyCheckResult>(
                 StateStoreName, "admin:consistency:nonexistent", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (ConsistencyCheckResult?)null);
 

@@ -1,7 +1,7 @@
 using System.Reflection;
 
-using Hexalith.EventStore.Telemetry;
 using Hexalith.EventStore.Server.Telemetry;
+using Hexalith.EventStore.Telemetry;
 
 using Shouldly;
 

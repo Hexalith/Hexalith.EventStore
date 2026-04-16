@@ -21,8 +21,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 public class AdminConsistencyController(
     IConsistencyQueryService queryService,
     IConsistencyCommandService commandService,
-    ILogger<AdminConsistencyController> logger) : ControllerBase
-{
+    ILogger<AdminConsistencyController> logger) : ControllerBase {
     /// <summary>
     /// Gets the full result of a consistency check including anomaly details.
     /// </summary>
@@ -36,27 +35,22 @@ public class AdminConsistencyController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetCheckResult(
         string checkId,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             ConsistencyCheckResult? result = await queryService
                 .GetCheckResultAsync(checkId, ct)
                 .ConfigureAwait(false);
 
-            if (result is null)
-            {
+            if (result is null) {
                 return CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", $"Consistency check '{checkId}' not found.");
             }
 
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetCheckResult), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetCheckResult), ex);
         }
     }
@@ -73,22 +67,18 @@ public class AdminConsistencyController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetChecks(
         [FromQuery] string? tenantId,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             string? effectiveTenantId = ResolveTenantScope(tenantId);
             IReadOnlyList<ConsistencyCheckSummary> result = await queryService
                 .GetChecksAsync(effectiveTenantId, ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetChecks), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetChecks), ex);
         }
     }
@@ -106,14 +96,11 @@ public class AdminConsistencyController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> TriggerCheck(
         [FromBody] ConsistencyCheckRequest request,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             ArgumentNullException.ThrowIfNull(request);
             string? effectiveTenantId = ResolveTenantScopeForBody(request.TenantId);
-            if (request.TenantId is not null && effectiveTenantId != request.TenantId)
-            {
+            if (request.TenantId is not null && effectiveTenantId != request.TenantId) {
                 return CreateProblemResult(
                     StatusCodes.Status403Forbidden,
                     "Forbidden",
@@ -125,12 +112,10 @@ public class AdminConsistencyController(
                 .ConfigureAwait(false);
             return MapAsyncOperationResult(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(TriggerCheck), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(TriggerCheck), ex);
         }
     }
@@ -148,50 +133,40 @@ public class AdminConsistencyController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CancelCheck(
         string checkId,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             AdminOperationResult result = await commandService
                 .CancelCheckAsync(checkId, ct)
                 .ConfigureAwait(false);
             return MapOperationResult(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(CancelCheck), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(CancelCheck), ex);
         }
     }
 
-    private string? ResolveTenantScope(string? requestedTenantId)
-    {
-        if (requestedTenantId is not null)
-        {
+    private string? ResolveTenantScope(string? requestedTenantId) {
+        if (requestedTenantId is not null) {
             return requestedTenantId;
         }
 
-        if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin)))
-        {
+        if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin))) {
             return null;
         }
 
         return User.FindFirst(AdminClaimTypes.Tenant)?.Value;
     }
 
-    private string? ResolveTenantScopeForBody(string? requestedTenantId)
-    {
-        if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin)))
-        {
+    private string? ResolveTenantScopeForBody(string? requestedTenantId) {
+        if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin))) {
             return requestedTenantId;
         }
 
         string? tenantClaim = User.FindFirst(AdminClaimTypes.Tenant)?.Value;
-        if (string.IsNullOrWhiteSpace(tenantClaim))
-        {
+        if (string.IsNullOrWhiteSpace(tenantClaim)) {
             return null;
         }
 
@@ -202,20 +177,16 @@ public class AdminConsistencyController(
                 : null;
     }
 
-    private IActionResult MapOperationResult(AdminOperationResult? result)
-    {
-        if (result is null)
-        {
+    private IActionResult MapOperationResult(AdminOperationResult? result) {
+        if (result is null) {
             return CreateProblemResult(StatusCodes.Status500InternalServerError, "Internal Server Error", "No result returned from the service.");
         }
 
-        if (result.Success)
-        {
+        if (result.Success) {
             return Ok(result);
         }
 
-        return result.ErrorCode switch
-        {
+        return result.ErrorCode switch {
             "NotFound" => CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", result.Message),
             "Unauthorized" => CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", result.Message),
             "InvalidOperation" => CreateProblemResult(StatusCodes.Status422UnprocessableEntity, "Invalid Operation", result.Message),
@@ -224,20 +195,16 @@ public class AdminConsistencyController(
         };
     }
 
-    private IActionResult MapAsyncOperationResult(AdminOperationResult? result)
-    {
-        if (result is null)
-        {
+    private IActionResult MapAsyncOperationResult(AdminOperationResult? result) {
+        if (result is null) {
             return CreateProblemResult(StatusCodes.Status500InternalServerError, "Internal Server Error", "No result returned from the service.");
         }
 
-        if (result.Success)
-        {
+        if (result.Success) {
             return Accepted(result);
         }
 
-        return result.ErrorCode switch
-        {
+        return result.ErrorCode switch {
             "NotFound" => CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", result.Message),
             "Unauthorized" => CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", result.Message),
             "InvalidOperation" => CreateProblemResult(StatusCodes.Status422UnprocessableEntity, "Invalid Operation", result.Message),
@@ -254,8 +221,7 @@ public class AdminConsistencyController(
                 Grpc.Core.StatusCode.Aborted or
                 Grpc.Core.StatusCode.ResourceExhausted);
 
-    private ObjectResult ServiceUnavailable(string method, Exception ex)
-    {
+    private ObjectResult ServiceUnavailable(string method, Exception ex) {
         logger.LogError(ex, "Admin service unavailable: {Method}", method);
         return CreateProblemResult(
             StatusCodes.Status503ServiceUnavailable,
@@ -263,8 +229,7 @@ public class AdminConsistencyController(
             "The admin backend service is temporarily unavailable. Retry shortly.");
     }
 
-    private ObjectResult UnexpectedError(string method, Exception ex)
-    {
+    private ObjectResult UnexpectedError(string method, Exception ex) {
         logger.LogError(ex, "Unexpected error in {Method}", method);
         return CreateProblemResult(
             StatusCodes.Status500InternalServerError,
@@ -272,18 +237,15 @@ public class AdminConsistencyController(
             "An unexpected error occurred.");
     }
 
-    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null)
-    {
+    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null) {
         string correlationId = HttpContext.Items["CorrelationId"]?.ToString()
             ?? Guid.NewGuid().ToString();
-        return new ObjectResult(new ProblemDetails
-        {
+        return new ObjectResult(new ProblemDetails {
             Status = statusCode,
             Title = title,
             Detail = detail,
             Instance = HttpContext.Request.Path,
             Extensions = { ["correlationId"] = correlationId },
-        })
-        { StatusCode = statusCode };
+        }) { StatusCode = statusCode };
     }
 }

@@ -4,8 +4,7 @@ namespace Hexalith.EventStore.Admin.UI.Components;
 /// Squarified treemap layout algorithm (Bruls, Huizing, van Wijk 2000).
 /// Pure function: input items + bounding rectangle → output rectangles.
 /// </summary>
-public static class TreemapLayoutEngine
-{
+public static class TreemapLayoutEngine {
     /// <summary>
     /// Represents a single rectangle in the treemap layout.
     /// </summary>
@@ -32,21 +31,18 @@ public static class TreemapLayoutEngine
         double x,
         double y,
         double width,
-        double height)
-    {
-        if (items is null || items.Count == 0 || width <= 0 || height <= 0)
-        {
+        double height) {
+        if (items is null || items.Count == 0 || width <= 0 || height <= 0) {
             return [];
         }
 
         // Filter out non-positive values and sort descending
-        List<(string Label, long Value)> sorted = items
+        var sorted = items
             .Where(i => i.Value > 0)
             .OrderByDescending(i => i.Value)
             .ToList();
 
-        if (sorted.Count == 0)
-        {
+        if (sorted.Count == 0) {
             return [];
         }
 
@@ -67,16 +63,13 @@ public static class TreemapLayoutEngine
         double height,
         double totalValue,
         double totalArea,
-        List<TreemapRect> result)
-    {
-        if (startIndex >= items.Count || width <= 0 || height <= 0 || totalValue <= 0)
-        {
+        List<TreemapRect> result) {
+        if (startIndex >= items.Count || width <= 0 || height <= 0 || totalValue <= 0) {
             return;
         }
 
         // Only one item left — fill the remaining space
-        if (startIndex == items.Count - 1)
-        {
+        if (startIndex == items.Count - 1) {
             result.Add(new TreemapRect(items[startIndex].Label, items[startIndex].Value, x, y, width, height));
             return;
         }
@@ -90,19 +83,16 @@ public static class TreemapLayoutEngine
         double bestWorstRatio = double.MaxValue;
         double rowValue = 0;
 
-        for (int i = startIndex; i < items.Count; i++)
-        {
-            rowValue += (double)items[i].Value;
-            double rowArea = (rowValue / totalValue) * totalArea;
+        for (int i = startIndex; i < items.Count; i++) {
+            rowValue += items[i].Value;
+            _ = rowValue / totalValue * totalArea;
             double worst = WorstAspectRatio(items, startIndex, i + 1, totalValue, totalArea, shortSide);
 
-            if (worst <= bestWorstRatio)
-            {
+            if (worst <= bestWorstRatio) {
                 bestWorstRatio = worst;
                 bestEnd = i + 1;
             }
-            else
-            {
+            else {
                 // Aspect ratios are getting worse — stop
                 break;
             }
@@ -110,36 +100,30 @@ public static class TreemapLayoutEngine
 
         // Layout the row
         double rowTotal = 0;
-        for (int i = startIndex; i < bestEnd; i++)
-        {
-            rowTotal += (double)items[i].Value;
+        for (int i = startIndex; i < bestEnd; i++) {
+            rowTotal += items[i].Value;
         }
 
-        double rowAreaPixels = (rowTotal / totalValue) * totalArea;
+        double rowAreaPixels = rowTotal / totalValue * totalArea;
         double rowLength = rowAreaPixels / shortSide;
 
-        if (double.IsNaN(rowLength) || double.IsInfinity(rowLength))
-        {
+        if (double.IsNaN(rowLength) || double.IsInfinity(rowLength)) {
             rowLength = 0;
         }
 
         double offset = 0;
-        for (int i = startIndex; i < bestEnd; i++)
-        {
-            double itemFraction = (double)items[i].Value / rowTotal;
+        for (int i = startIndex; i < bestEnd; i++) {
+            double itemFraction = items[i].Value / rowTotal;
             double itemLength = itemFraction * shortSide;
 
-            if (double.IsNaN(itemLength) || double.IsInfinity(itemLength))
-            {
+            if (double.IsNaN(itemLength) || double.IsInfinity(itemLength)) {
                 itemLength = 0;
             }
 
-            if (isHorizontal)
-            {
+            if (isHorizontal) {
                 result.Add(new TreemapRect(items[i].Label, items[i].Value, x, y + offset, rowLength, itemLength));
             }
-            else
-            {
+            else {
                 result.Add(new TreemapRect(items[i].Label, items[i].Value, x + offset, y, itemLength, rowLength));
             }
 
@@ -148,14 +132,12 @@ public static class TreemapLayoutEngine
 
         // Recurse with remaining space
         double remainingValue = totalValue - rowTotal;
-        if (isHorizontal)
-        {
+        if (isHorizontal) {
             double remainingWidth = width - rowLength;
             double remainingArea = remainingWidth * height;
             Squarify(items, bestEnd, x + rowLength, y, remainingWidth, height, remainingValue, remainingArea, result);
         }
-        else
-        {
+        else {
             double remainingHeight = height - rowLength;
             double remainingArea = width * remainingHeight;
             Squarify(items, bestEnd, x, y + rowLength, width, remainingHeight, remainingValue, remainingArea, result);
@@ -168,36 +150,30 @@ public static class TreemapLayoutEngine
         int end,
         double totalValue,
         double totalArea,
-        double shortSide)
-    {
+        double shortSide) {
         double rowTotal = 0;
-        for (int i = start; i < end; i++)
-        {
-            rowTotal += (double)items[i].Value;
+        for (int i = start; i < end; i++) {
+            rowTotal += items[i].Value;
         }
 
-        double rowArea = (rowTotal / totalValue) * totalArea;
+        double rowArea = rowTotal / totalValue * totalArea;
         double rowLength = rowArea / shortSide;
 
-        if (rowLength <= 0 || double.IsNaN(rowLength) || double.IsInfinity(rowLength))
-        {
+        if (rowLength <= 0 || double.IsNaN(rowLength) || double.IsInfinity(rowLength)) {
             return double.MaxValue;
         }
 
         double worst = 0;
-        for (int i = start; i < end; i++)
-        {
-            double itemFraction = (double)items[i].Value / rowTotal;
+        for (int i = start; i < end; i++) {
+            double itemFraction = items[i].Value / rowTotal;
             double itemLength = itemFraction * shortSide;
 
-            if (itemLength <= 0)
-            {
+            if (itemLength <= 0) {
                 continue;
             }
 
             double ratio = Math.Max(rowLength / itemLength, itemLength / rowLength);
-            if (ratio > worst)
-            {
+            if (ratio > worst) {
                 worst = ratio;
             }
         }

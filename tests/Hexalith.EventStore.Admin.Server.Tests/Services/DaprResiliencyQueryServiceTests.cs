@@ -1,12 +1,9 @@
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Server.Services;
 
-using Shouldly;
-
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
-public class DaprResiliencyQueryServiceTests
-{
+public class DaprResiliencyQueryServiceTests {
     private const string ProductionYaml = """
         apiVersion: dapr.io/v1alpha1
         kind: Resiliency
@@ -65,8 +62,7 @@ public class DaprResiliencyQueryServiceTests
         """;
 
     [Fact]
-    public void ParseResiliencyYaml_ProductionFixture_ParsesAllPoliciesAndTargets()
-    {
+    public void ParseResiliencyYaml_ProductionFixture_ParsesAllPoliciesAndTargets() {
         DaprResiliencySpec result = DaprInfrastructureQueryService.ParseResiliencyYaml(ProductionYaml);
 
         // Retry policies
@@ -110,12 +106,11 @@ public class DaprResiliencyQueryServiceTests
 
         result.IsConfigurationAvailable.ShouldBeTrue();
         result.ErrorMessage.ShouldBeNull();
-        result.RawYamlContent.ShouldNotBeNull();
+        _ = result.RawYamlContent.ShouldNotBeNull();
     }
 
     [Fact]
-    public void ParseResiliencyYaml_EmptySpec_ReturnsEmptyPoliciesAndTargets()
-    {
+    public void ParseResiliencyYaml_EmptySpec_ReturnsEmptyPoliciesAndTargets() {
         const string yaml = """
             apiVersion: dapr.io/v1alpha1
             kind: Resiliency
@@ -137,8 +132,7 @@ public class DaprResiliencyQueryServiceTests
     }
 
     [Fact]
-    public void ParseResiliencyYaml_OnlyRetries_ReturnsRetriesWithEmptyTimeoutsAndBreakers()
-    {
+    public void ParseResiliencyYaml_OnlyRetries_ReturnsRetriesWithEmptyTimeoutsAndBreakers() {
         const string yaml = """
             apiVersion: dapr.io/v1alpha1
             kind: Resiliency
@@ -165,8 +159,7 @@ public class DaprResiliencyQueryServiceTests
     }
 
     [Fact]
-    public void ParseResiliencyYaml_MixedTimeoutForms_ParsesBothStringAndNested()
-    {
+    public void ParseResiliencyYaml_MixedTimeoutForms_ParsesBothStringAndNested() {
         const string yaml = """
             apiVersion: dapr.io/v1alpha1
             kind: Resiliency
@@ -190,8 +183,7 @@ public class DaprResiliencyQueryServiceTests
     }
 
     [Fact]
-    public void ParseResiliencyYaml_DirectionalComponent_ProducesTwoBindings()
-    {
+    public void ParseResiliencyYaml_DirectionalComponent_ProducesTwoBindings() {
         const string yaml = """
             apiVersion: dapr.io/v1alpha1
             kind: Resiliency
@@ -237,8 +229,7 @@ public class DaprResiliencyQueryServiceTests
     }
 
     [Fact]
-    public void ParseResiliencyYaml_NonDirectionalComponent_ProducesOneBindingWithNullDirection()
-    {
+    public void ParseResiliencyYaml_NonDirectionalComponent_ProducesOneBindingWithNullDirection() {
         const string yaml = """
             apiVersion: dapr.io/v1alpha1
             kind: Resiliency
@@ -265,8 +256,7 @@ public class DaprResiliencyQueryServiceTests
     }
 
     [Fact]
-    public void ParseResiliencyYaml_AppTarget_ProducesOneBindingWithAppTypeAndNullDirection()
-    {
+    public void ParseResiliencyYaml_AppTarget_ProducesOneBindingWithAppTypeAndNullDirection() {
         const string yaml = """
             apiVersion: dapr.io/v1alpha1
             kind: Resiliency
@@ -293,8 +283,7 @@ public class DaprResiliencyQueryServiceTests
     }
 
     [Fact]
-    public void ParseResiliencyYaml_ProductionFixture_ProducesExactFourTargetRows()
-    {
+    public void ParseResiliencyYaml_ProductionFixture_ProducesExactFourTargetRows() {
         DaprResiliencySpec result = DaprInfrastructureQueryService.ParseResiliencyYaml(ProductionYaml);
 
         // Sorted: App targets first, then Component targets (alphabetical by type then name)
@@ -334,14 +323,13 @@ public class DaprResiliencyQueryServiceTests
     }
 
     [Fact]
-    public void ParseResiliencyYaml_InvalidYaml_ThrowsException()
-    {
+    public void ParseResiliencyYaml_InvalidYaml_ThrowsException() {
         const string invalidYaml = """
             not: valid: yaml: {{{{
             - broken
               indentation
             """;
 
-        Should.Throw<Exception>(() => DaprInfrastructureQueryService.ParseResiliencyYaml(invalidYaml));
+        _ = Should.Throw<Exception>(() => DaprInfrastructureQueryService.ParseResiliencyYaml(invalidYaml));
     }
 }

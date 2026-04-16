@@ -1,9 +1,7 @@
 using Bunit;
 
-using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -18,24 +16,22 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the Compaction page.
 /// </summary>
-public class CompactionPageTests : AdminUITestContext
-{
+public class CompactionPageTests : AdminUITestContext {
     private readonly AdminCompactionApiClient _mockCompactionApi;
 
-    public CompactionPageTests()
-    {
+    public CompactionPageTests() {
         _mockCompactionApi = Substitute.For<AdminCompactionApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminCompactionApiClient>.Instance);
-        Services.AddScoped(_ => _mockCompactionApi);
+        _ = Services.AddScoped(_ => _mockCompactionApi);
 
         // Register AdminStorageApiClient that some shared components might need
-        Services.AddScoped(_ => Substitute.For<AdminStorageApiClient>(
+        _ = Services.AddScoped(_ => Substitute.For<AdminStorageApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStorageApiClient>.Instance));
 
         // Register AdminSnapshotApiClient that some shared components might need
-        Services.AddScoped(_ => Substitute.For<AdminSnapshotApiClient>(
+        _ = Services.AddScoped(_ => Substitute.For<AdminSnapshotApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminSnapshotApiClient>.Instance));
     }
@@ -43,8 +39,7 @@ public class CompactionPageTests : AdminUITestContext
     // ===== Merge-blocking tests (5.1-5.11) =====
 
     [Fact]
-    public void CompactionPage_RendersStatCards_WithCorrectValues()
-    {
+    public void CompactionPage_RendersStatCards_WithCorrectValues() {
         // Arrange
         SetupJobs([
             new CompactionJob("op-1", "tenant-a", null, CompactionJobStatus.Completed,
@@ -65,8 +60,7 @@ public class CompactionPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void CompactionPage_ShowsSkeletonCards_DuringLoading()
-    {
+    public void CompactionPage_ShowsSkeletonCards_DuringLoading() {
         // Arrange — never complete the task
         TaskCompletionSource<IReadOnlyList<CompactionJob>> tcs = new();
         _ = _mockCompactionApi.GetCompactionJobsAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -80,8 +74,7 @@ public class CompactionPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void CompactionPage_JobGrid_RendersAllJobs()
-    {
+    public void CompactionPage_JobGrid_RendersAllJobs() {
         // Arrange
         SetupJobs([
             new CompactionJob("op-1", "tenant-a", null, CompactionJobStatus.Completed,
@@ -102,8 +95,7 @@ public class CompactionPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void CompactionPage_ShowsEmptyState_WhenNoJobs()
-    {
+    public void CompactionPage_ShowsEmptyState_WhenNoJobs() {
         // Arrange
         SetupJobs([]);
 
@@ -117,8 +109,7 @@ public class CompactionPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void CompactionPage_ShowsIssueBanner_OnApiError()
-    {
+    public void CompactionPage_ShowsIssueBanner_OnApiError() {
         // Arrange
         _ = _mockCompactionApi.GetCompactionJobsAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ServiceUnavailableException("test"));
@@ -132,8 +123,7 @@ public class CompactionPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void CompactionPage_HasH1Heading()
-    {
+    public void CompactionPage_HasH1Heading() {
         // Arrange
         SetupJobs([]);
 
@@ -147,8 +137,7 @@ public class CompactionPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void CompactionPage_TriggerButton_HiddenForReadOnlyUsers()
-    {
+    public void CompactionPage_TriggerButton_HiddenForReadOnlyUsers() {
         // Arrange
         SetupReadOnlyUser();
         SetupJobs([]);
@@ -162,8 +151,7 @@ public class CompactionPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void CompactionPage_TriggerButton_VisibleForOperatorUsers()
-    {
+    public void CompactionPage_TriggerButton_VisibleForOperatorUsers() {
         // Arrange — default user is Admin (from AdminUITestContext)
         SetupJobs([]);
 
@@ -176,8 +164,7 @@ public class CompactionPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task CompactionPage_TriggerDialog_CallsTriggerAndReloads()
-    {
+    public async Task CompactionPage_TriggerDialog_CallsTriggerAndReloads() {
         // Arrange
         SetupJobs([]);
         _ = _mockCompactionApi.TriggerCompactionAsync(
@@ -190,7 +177,7 @@ public class CompactionPageTests : AdminUITestContext
         // Act — open dialog
         IRenderedComponent<FluentButton> triggerBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Trigger Compaction"));
-        await triggerBtn.InvokeAsync(() => triggerBtn.Instance.OnClick.InvokeAsync());
+        await triggerBtn.InvokeAsync(triggerBtn.Instance.OnClick.InvokeAsync);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Compaction"), TimeSpan.FromSeconds(5));
 
         // Fill in tenant ID via the dialog's text field
@@ -201,16 +188,15 @@ public class CompactionPageTests : AdminUITestContext
         // Click Start Compaction
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Start Compaction"));
-        await startBtn.InvokeAsync(() => startBtn.Instance.OnClick.InvokeAsync());
+        await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — API invoked
-        await _mockCompactionApi.Received(1).TriggerCompactionAsync(
+        _ = await _mockCompactionApi.Received(1).TriggerCompactionAsync(
             "test-tenant", Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task CompactionPage_TriggerDialog_ShowsErrorToastOnFailure()
-    {
+    public async Task CompactionPage_TriggerDialog_ShowsErrorToastOnFailure() {
         // Arrange
         SetupJobs([]);
         _ = _mockCompactionApi.TriggerCompactionAsync(
@@ -223,7 +209,7 @@ public class CompactionPageTests : AdminUITestContext
         // Act — open dialog
         IRenderedComponent<FluentButton> triggerBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Trigger Compaction"));
-        await triggerBtn.InvokeAsync(() => triggerBtn.Instance.OnClick.InvokeAsync());
+        await triggerBtn.InvokeAsync(triggerBtn.Instance.OnClick.InvokeAsync);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Compaction"), TimeSpan.FromSeconds(5));
 
         // Fill in tenant ID
@@ -234,16 +220,15 @@ public class CompactionPageTests : AdminUITestContext
         // Click Start Compaction
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Start Compaction"));
-        await startBtn.InvokeAsync(() => startBtn.Instance.OnClick.InvokeAsync());
+        await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — API was called
-        await _mockCompactionApi.Received(1).TriggerCompactionAsync(
+        _ = await _mockCompactionApi.Received(1).TriggerCompactionAsync(
             "test-tenant", Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public void CompactionPage_StatusBadges_RenderCorrectAppearance()
-    {
+    public void CompactionPage_StatusBadges_RenderCorrectAppearance() {
         // Arrange
         SetupJobs([
             new CompactionJob("op-1", "tenant-a", null, CompactionJobStatus.Pending,
@@ -272,8 +257,7 @@ public class CompactionPageTests : AdminUITestContext
     // ===== Recommended tests (5.12-5.20) =====
 
     [Fact]
-    public void CompactionPage_UrlParameters_ReadOnInit()
-    {
+    public void CompactionPage_UrlParameters_ReadOnInit() {
         // Arrange
         SetupJobs([
             new CompactionJob("op-1", "tenant-filter", null, CompactionJobStatus.Completed,
@@ -294,8 +278,7 @@ public class CompactionPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task CompactionPage_TriggerDialog_RendersFormFieldsAndWarning()
-    {
+    public async Task CompactionPage_TriggerDialog_RendersFormFieldsAndWarning() {
         // Arrange
         SetupJobs([]);
 
@@ -305,7 +288,7 @@ public class CompactionPageTests : AdminUITestContext
         // Act — open trigger dialog
         IRenderedComponent<FluentButton> triggerBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Trigger Compaction"));
-        await triggerBtn.InvokeAsync(() => triggerBtn.Instance.OnClick.InvokeAsync());
+        await triggerBtn.InvokeAsync(triggerBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — dialog shows form fields and warning
         cut.Markup.ShouldContain("Tenant ID");
@@ -314,8 +297,7 @@ public class CompactionPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task CompactionPage_TriggerDialog_StartDisabledWhenTenantEmpty()
-    {
+    public async Task CompactionPage_TriggerDialog_StartDisabledWhenTenantEmpty() {
         // Arrange
         SetupJobs([]);
 
@@ -325,7 +307,7 @@ public class CompactionPageTests : AdminUITestContext
         // Act — open trigger dialog
         IRenderedComponent<FluentButton> triggerBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Trigger Compaction"));
-        await triggerBtn.InvokeAsync(() => triggerBtn.Instance.OnClick.InvokeAsync());
+        await triggerBtn.InvokeAsync(triggerBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — Start Compaction button is disabled (tenant ID is empty)
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
@@ -334,8 +316,7 @@ public class CompactionPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void CompactionPage_ActiveJobs_ShowsWarningSeverity()
-    {
+    public void CompactionPage_ActiveJobs_ShowsWarningSeverity() {
         // Arrange — 1 running job = warning severity
         SetupJobs([
             new CompactionJob("op-1", "tenant-a", null, CompactionJobStatus.Running,
@@ -351,8 +332,7 @@ public class CompactionPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void CompactionPage_SpaceReclaimed_ShowsNA_WhenNoCompletedJobs()
-    {
+    public void CompactionPage_SpaceReclaimed_ShowsNA_WhenNoCompletedJobs() {
         // Arrange — no completed jobs
         SetupJobs([
             new CompactionJob("op-1", "tenant-a", null, CompactionJobStatus.Running,
@@ -368,8 +348,7 @@ public class CompactionPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void CompactionPage_JobList_FiltersByTenant()
-    {
+    public void CompactionPage_JobList_FiltersByTenant() {
         // Arrange
         SetupJobs([
             new CompactionJob("op-1", "alpha-tenant", null, CompactionJobStatus.Completed,
@@ -390,8 +369,7 @@ public class CompactionPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void CompactionPage_DomainColumn_ShowsAll_WhenDomainNull()
-    {
+    public void CompactionPage_DomainColumn_ShowsAll_WhenDomainNull() {
         // Arrange
         SetupJobs([
             new CompactionJob("op-1", "tenant-a", null, CompactionJobStatus.Completed,
@@ -410,8 +388,7 @@ public class CompactionPageTests : AdminUITestContext
     // ===== Story 21-6: v5 dialog structure contract =====
 
     [Fact]
-    public async Task CompactionPage_TriggerDialog_RendersV5DialogStructure()
-    {
+    public async Task CompactionPage_TriggerDialog_RendersV5DialogStructure() {
         // AC 32a: Locks in the v5 DOM structure contract for FluentDialogBody / TitleTemplate / ActionTemplate.
         // Arrange
         SetupJobs([]);
@@ -422,7 +399,7 @@ public class CompactionPageTests : AdminUITestContext
         // Act — open dialog
         IRenderedComponent<FluentButton> triggerBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Trigger Compaction"));
-        await triggerBtn.InvokeAsync(() => triggerBtn.Instance.OnClick.InvokeAsync());
+        await triggerBtn.InvokeAsync(triggerBtn.Instance.OnClick.InvokeAsync);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Compaction"), TimeSpan.FromSeconds(5));
 
         // Assert — v5 dialog body element is present, no v4 header/footer elements
@@ -438,14 +415,10 @@ public class CompactionPageTests : AdminUITestContext
 
     // ===== Helpers =====
 
-    private void SetupJobs(IReadOnlyList<CompactionJob> jobs)
-    {
-        _ = _mockCompactionApi.GetCompactionJobsAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+    private void SetupJobs(IReadOnlyList<CompactionJob> jobs) => _ = _mockCompactionApi.GetCompactionJobsAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(jobs));
-    }
 
-    private void SetupReadOnlyUser()
-    {
+    private void SetupReadOnlyUser() {
         // Override auth state with ReadOnly user
         Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider =
             Substitute.For<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>();
@@ -455,8 +428,8 @@ public class CompactionPageTests : AdminUITestContext
         ], "TestAuth"));
         _ = authStateProvider.GetAuthenticationStateAsync()
             .Returns(Task.FromResult(new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(user)));
-        Services.AddSingleton(authStateProvider);
-        Services.AddScoped<AdminUserContext>();
+        _ = Services.AddSingleton(authStateProvider);
+        _ = Services.AddScoped<AdminUserContext>();
     }
 
     private Microsoft.AspNetCore.Components.NavigationManager NavManager =>

@@ -14,15 +14,12 @@ using NSubstitute.ExceptionExtensions;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
-public class DaprStorageQueryServiceTests
-{
+public class DaprStorageQueryServiceTests {
     private const string StateStoreName = "statestore";
 
-    private static DaprStorageQueryService CreateService(DaprClient? daprClient = null)
-    {
+    private static DaprStorageQueryService CreateService(DaprClient? daprClient = null) {
         daprClient ??= Substitute.For<DaprClient>();
-        IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions
-        {
+        IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             StateStoreName = StateStoreName,
         });
 
@@ -38,12 +35,11 @@ public class DaprStorageQueryServiceTests
     // === GetStorageOverviewAsync ===
 
     [Fact]
-    public async Task GetStorageOverviewAsync_ReturnsOverview_WhenIndexExists()
-    {
+    public async Task GetStorageOverviewAsync_ReturnsOverview_WhenIndexExists() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new StorageOverview(1000, 50000, [], 10);
 
-        daprClient.GetStateAsync<StorageOverview>(
+        _ = daprClient.GetStateAsync<StorageOverview>(
             StateStoreName,
             "admin:storage-overview:tenant-a",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -59,12 +55,11 @@ public class DaprStorageQueryServiceTests
     }
 
     [Fact]
-    public async Task GetStorageOverviewAsync_UsesAllScope_WhenTenantIdIsNull()
-    {
+    public async Task GetStorageOverviewAsync_UsesAllScope_WhenTenantIdIsNull() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var expected = new StorageOverview(5000, 250000, [], 50);
 
-        daprClient.GetStateAsync<StorageOverview>(
+        _ = daprClient.GetStateAsync<StorageOverview>(
             StateStoreName,
             "admin:storage-overview:all",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -78,10 +73,9 @@ public class DaprStorageQueryServiceTests
     }
 
     [Fact]
-    public async Task GetStorageOverviewAsync_ReturnsEmpty_WhenIndexNotFound()
-    {
+    public async Task GetStorageOverviewAsync_ReturnsEmpty_WhenIndexNotFound() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<StorageOverview>(
+        _ = daprClient.GetStateAsync<StorageOverview>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -96,18 +90,17 @@ public class DaprStorageQueryServiceTests
     }
 
     [Fact]
-    public async Task GetStorageOverviewAsync_FallsBackToStreamCountIndex_WhenTotalStreamCountIsNull()
-    {
+    public async Task GetStorageOverviewAsync_FallsBackToStreamCountIndex_WhenTotalStreamCountIsNull() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var overviewWithoutStreamCount = new StorageOverview(1000, 50000, []);
 
-        daprClient.GetStateAsync<StorageOverview>(
+        _ = daprClient.GetStateAsync<StorageOverview>(
             StateStoreName,
             "admin:storage-overview:tenant-a",
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => overviewWithoutStreamCount);
 
-        daprClient.GetStateAsync<long?>(
+        _ = daprClient.GetStateAsync<long?>(
             StateStoreName,
             "admin:storage-stream-count:tenant-a",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -121,10 +114,9 @@ public class DaprStorageQueryServiceTests
     }
 
     [Fact]
-    public async Task GetStorageOverviewAsync_Throws_WhenExceptionThrown()
-    {
+    public async Task GetStorageOverviewAsync_Throws_WhenExceptionThrown() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<StorageOverview>(
+        _ = daprClient.GetStateAsync<StorageOverview>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -132,18 +124,17 @@ public class DaprStorageQueryServiceTests
 
         DaprStorageQueryService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetStorageOverviewAsync("tenant-a"));
     }
 
     [Fact]
-    public async Task GetStorageOverviewAsync_PropagatesCancellation()
-    {
+    public async Task GetStorageOverviewAsync_PropagatesCancellation() {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<StorageOverview>(
+        _ = daprClient.GetStateAsync<StorageOverview>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -151,15 +142,14 @@ public class DaprStorageQueryServiceTests
 
         DaprStorageQueryService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.GetStorageOverviewAsync("tenant-a", cts.Token));
     }
 
     // === GetHotStreamsAsync ===
 
     [Fact]
-    public async Task GetHotStreamsAsync_ReturnsTopStreams_OrderedByEventCount()
-    {
+    public async Task GetHotStreamsAsync_ReturnsTopStreams_OrderedByEventCount() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var streams = new List<StreamStorageInfo>
         {
@@ -168,7 +158,7 @@ public class DaprStorageQueryServiceTests
             CreateStreamInfo("tenant-a", "counter-3", 200),
         };
 
-        daprClient.GetStateAsync<List<StreamStorageInfo>>(
+        _ = daprClient.GetStateAsync<List<StreamStorageInfo>>(
             StateStoreName,
             "admin:storage-hot-streams:tenant-a",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -184,10 +174,9 @@ public class DaprStorageQueryServiceTests
     }
 
     [Fact]
-    public async Task GetHotStreamsAsync_ReturnsEmpty_WhenIndexNotFound()
-    {
+    public async Task GetHotStreamsAsync_ReturnsEmpty_WhenIndexNotFound() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<StreamStorageInfo>>(
+        _ = daprClient.GetStateAsync<List<StreamStorageInfo>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -201,10 +190,9 @@ public class DaprStorageQueryServiceTests
     }
 
     [Fact]
-    public async Task GetHotStreamsAsync_Throws_WhenExceptionThrown()
-    {
+    public async Task GetHotStreamsAsync_Throws_WhenExceptionThrown() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<StreamStorageInfo>>(
+        _ = daprClient.GetStateAsync<List<StreamStorageInfo>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -212,22 +200,21 @@ public class DaprStorageQueryServiceTests
 
         DaprStorageQueryService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetHotStreamsAsync("tenant-a", 10));
     }
 
     // === GetCompactionJobsAsync ===
 
     [Fact]
-    public async Task GetCompactionJobsAsync_ReturnsJobs_WhenIndexExists()
-    {
+    public async Task GetCompactionJobsAsync_ReturnsJobs_WhenIndexExists() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var jobs = new List<CompactionJob>
         {
             new("op-1", "tenant-a", null, CompactionJobStatus.Completed, DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow, 500, 1024, null),
         };
 
-        daprClient.GetStateAsync<List<CompactionJob>>(
+        _ = daprClient.GetStateAsync<List<CompactionJob>>(
             StateStoreName,
             "admin:storage-compaction-jobs:tenant-a",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -242,10 +229,9 @@ public class DaprStorageQueryServiceTests
     }
 
     [Fact]
-    public async Task GetCompactionJobsAsync_ReturnsEmpty_WhenIndexNotFound()
-    {
+    public async Task GetCompactionJobsAsync_ReturnsEmpty_WhenIndexNotFound() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<CompactionJob>>(
+        _ = daprClient.GetStateAsync<List<CompactionJob>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -261,15 +247,14 @@ public class DaprStorageQueryServiceTests
     // === GetSnapshotPoliciesAsync ===
 
     [Fact]
-    public async Task GetSnapshotPoliciesAsync_ReturnsPolicies_WhenIndexExists()
-    {
+    public async Task GetSnapshotPoliciesAsync_ReturnsPolicies_WhenIndexExists() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var policies = new List<SnapshotPolicy>
         {
             new("tenant-a", "Counter", "CounterAggregate", 100, DateTimeOffset.UtcNow),
         };
 
-        daprClient.GetStateAsync<List<SnapshotPolicy>>(
+        _ = daprClient.GetStateAsync<List<SnapshotPolicy>>(
             StateStoreName,
             "admin:storage-snapshot-policies:tenant-a",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -284,10 +269,9 @@ public class DaprStorageQueryServiceTests
     }
 
     [Fact]
-    public async Task GetSnapshotPoliciesAsync_ReturnsEmpty_WhenIndexNotFound()
-    {
+    public async Task GetSnapshotPoliciesAsync_ReturnsEmpty_WhenIndexNotFound() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<SnapshotPolicy>>(
+        _ = daprClient.GetStateAsync<List<SnapshotPolicy>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())

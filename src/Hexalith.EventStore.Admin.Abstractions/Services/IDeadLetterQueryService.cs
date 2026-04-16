@@ -6,8 +6,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// <summary>
 /// Service interface for querying dead-letter entries (FR78). CQRS-split — reads only.
 /// </summary>
-public interface IDeadLetterQueryService
-{
+public interface IDeadLetterQueryService {
     /// <summary>
     /// Lists dead-letter entries, optionally filtered by tenant.
     /// </summary>

@@ -1,15 +1,14 @@
-namespace Hexalith.EventStore.Admin.Mcp.Tests;
 
 using System.Net;
 
-using Hexalith.EventStore.Testing.Http;
 using Hexalith.EventStore.Admin.Mcp.Tools;
+using Hexalith.EventStore.Testing.Http;
 
-public class SessionContextIntegrationTests
-{
+namespace Hexalith.EventStore.Admin.Mcp.Tests;
+
+public class SessionContextIntegrationTests {
     [Fact]
-    public async Task StreamList_UsesSessionTenantId_WhenParameterIsNull()
-    {
+    public async Task StreamList_UsesSessionTenantId_WhenParameterIsNull() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
@@ -22,13 +21,12 @@ public class SessionContextIntegrationTests
 
         _ = await StreamTools.ListStreams(client, session, tenantId: null, cancellationToken: ct);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldContain("tenantId=acme-corp");
     }
 
     [Fact]
-    public async Task StreamList_UsesExplicitTenantId_WhenBothSessionAndParameterProvided()
-    {
+    public async Task StreamList_UsesExplicitTenantId_WhenBothSessionAndParameterProvided() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
@@ -41,14 +39,13 @@ public class SessionContextIntegrationTests
 
         _ = await StreamTools.ListStreams(client, session, tenantId: "beta-corp", cancellationToken: ct);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldContain("tenantId=beta-corp");
         capturedUri.PathAndQuery.ShouldNotContain("acme-corp");
     }
 
     [Fact]
-    public async Task StreamList_UsesSessionDomain_WhenParameterIsNull()
-    {
+    public async Task StreamList_UsesSessionDomain_WhenParameterIsNull() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
@@ -61,13 +58,12 @@ public class SessionContextIntegrationTests
 
         _ = await StreamTools.ListStreams(client, session, domain: null, cancellationToken: ct);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldContain("domain=Orders");
     }
 
     [Fact]
-    public async Task StreamList_UsesSessionContext_WhenExplicitParametersAreWhitespace()
-    {
+    public async Task StreamList_UsesSessionContext_WhenExplicitParametersAreWhitespace() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
@@ -80,14 +76,13 @@ public class SessionContextIntegrationTests
 
         _ = await StreamTools.ListStreams(client, session, tenantId: "  ", domain: "\t", cancellationToken: ct);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldContain("tenantId=acme-corp");
         capturedUri.PathAndQuery.ShouldContain("domain=Orders");
     }
 
     [Fact]
-    public async Task StreamList_TrimsExplicitTenantAndDomain()
-    {
+    public async Task StreamList_TrimsExplicitTenantAndDomain() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
@@ -99,14 +94,13 @@ public class SessionContextIntegrationTests
 
         _ = await StreamTools.ListStreams(client, session, tenantId: "  beta-corp  ", domain: "  Sales  ", cancellationToken: ct);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldContain("tenantId=beta-corp");
         capturedUri.PathAndQuery.ShouldContain("domain=Sales");
     }
 
     [Fact]
-    public async Task ProjectionList_UsesSessionTenantId_WhenParameterIsNull()
-    {
+    public async Task ProjectionList_UsesSessionTenantId_WhenParameterIsNull() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
@@ -119,13 +113,12 @@ public class SessionContextIntegrationTests
 
         _ = await ProjectionTools.ListProjections(client, session, tenantId: null, cancellationToken: ct);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldContain("tenantId=acme-corp");
     }
 
     [Fact]
-    public async Task ConsistencyList_UsesSessionTenantId_WhenParameterIsNull()
-    {
+    public async Task ConsistencyList_UsesSessionTenantId_WhenParameterIsNull() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
@@ -138,13 +131,12 @@ public class SessionContextIntegrationTests
 
         _ = await ConsistencyTools.ListChecks(client, session, tenantId: null, cancellationToken: ct);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldContain("tenantId=acme-corp");
     }
 
     [Fact]
-    public async Task StorageOverview_UsesSessionTenantId_WhenParameterIsNull()
-    {
+    public async Task StorageOverview_UsesSessionTenantId_WhenParameterIsNull() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
@@ -157,20 +149,17 @@ public class SessionContextIntegrationTests
 
         _ = await StorageTools.GetStorageOverview(client, session, tenantId: null, cancellationToken: ct);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldContain("tenantId=acme-corp");
     }
 
     [Fact]
-    public async Task TypesList_UsesSessionDomain_WhenParameterIsNull()
-    {
+    public async Task TypesList_UsesSessionDomain_WhenParameterIsNull() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         List<Uri?> capturedUris = [];
-        var handler = new MockHttpMessageHandler((request, _) =>
-        {
+        var handler = new MockHttpMessageHandler((request, _) => {
             capturedUris.Add(request.RequestUri);
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            {
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) {
                 Content = new StringContent("[]", System.Text.Encoding.UTF8, "application/json"),
             });
         });
@@ -186,8 +175,7 @@ public class SessionContextIntegrationTests
     }
 
     [Fact]
-    public async Task AllTools_WorkCorrectly_WhenSessionHasNoContext()
-    {
+    public async Task AllTools_WorkCorrectly_WhenSessionHasNoContext() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
@@ -199,7 +187,7 @@ public class SessionContextIntegrationTests
 
         _ = await StreamTools.ListStreams(client, session, cancellationToken: ct);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         // With no session context and no explicit params, no tenantId/domain should be in URL
         capturedUri.PathAndQuery.ShouldNotContain("tenantId=");
         capturedUri.PathAndQuery.ShouldNotContain("domain=");

@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Admin.Mcp.Tools;
 
 using System.ComponentModel;
 
@@ -6,12 +5,12 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 
 using ModelContextProtocol.Server;
 
+namespace Hexalith.EventStore.Admin.Mcp.Tools;
 /// <summary>
 /// MCP tools for approval-gated consistency check operations.
 /// </summary>
 [McpServerToolType]
-internal static class ConsistencyWriteTools
-{
+internal static class ConsistencyWriteTools {
     /// <summary>
     /// Trigger a data integrity check across streams and projections.
     /// </summary>
@@ -23,24 +22,20 @@ internal static class ConsistencyWriteTools
         [Description("Filter by tenant ID")] string? tenantId = null,
         [Description("Filter by domain")] string? domain = null,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired((checkTypes, "checkTypes"));
-        if (validation is not null)
-        {
+        if (validation is not null) {
             return validation;
         }
 
         string[] parsedTypes = checkTypes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parsedTypes.Length == 0)
-        {
+        if (parsedTypes.Length == 0) {
             return ToolHelper.SerializeError(
                 "invalid-input",
                 "At least one check type is required. Valid types: SequenceContinuity, SnapshotIntegrity, ProjectionPositions, MetadataConsistency");
         }
 
-        if (!confirm)
-        {
+        if (!confirm) {
             return ToolHelper.SerializePreview(
                 "consistency-trigger",
                 $"Trigger consistency check ({string.Join(", ", parsedTypes)})"
@@ -51,8 +46,7 @@ internal static class ConsistencyWriteTools
                 "This will trigger a data integrity check. Checks run asynchronously and may take time depending on data volume.");
         }
 
-        try
-        {
+        try {
             AdminOperationResult? result = await adminApiClient
                 .TriggerConsistencyCheckAsync(tenantId, domain, parsedTypes, cancellationToken)
                 .ConfigureAwait(false);
@@ -60,8 +54,7 @@ internal static class ConsistencyWriteTools
                 ? ToolHelper.SerializeError("server-error", "No result returned from the server.")
                 : ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }
@@ -75,16 +68,13 @@ internal static class ConsistencyWriteTools
         AdminApiClient adminApiClient,
         [Description("Consistency check ID")] string checkId,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired((checkId, "checkId"));
-        if (validation is not null)
-        {
+        if (validation is not null) {
             return validation;
         }
 
-        if (!confirm)
-        {
+        if (!confirm) {
             return ToolHelper.SerializePreview(
                 "consistency-cancel",
                 $"Cancel consistency check '{checkId}'",
@@ -93,8 +83,7 @@ internal static class ConsistencyWriteTools
                 "This will cancel the running consistency check. Partial results will be preserved.");
         }
 
-        try
-        {
+        try {
             AdminOperationResult? result = await adminApiClient
                 .CancelConsistencyCheckAsync(checkId, cancellationToken)
                 .ConfigureAwait(false);
@@ -102,8 +91,7 @@ internal static class ConsistencyWriteTools
                 ? ToolHelper.SerializeError("server-error", "No result returned from the server.")
                 : ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }

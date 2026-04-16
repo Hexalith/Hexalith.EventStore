@@ -1,15 +1,14 @@
-namespace Hexalith.EventStore.Admin.Mcp.Tools;
 
 using System.ComponentModel;
 
 using ModelContextProtocol.Server;
 
+namespace Hexalith.EventStore.Admin.Mcp.Tools;
 /// <summary>
 /// MCP tools for managing investigation session context.
 /// </summary>
 [McpServerToolType]
-internal static class SessionTools
-{
+internal static class SessionTools {
     /// <summary>
     /// Set or clear tenant and/or domain scope for subsequent queries.
     /// </summary>
@@ -20,27 +19,23 @@ internal static class SessionTools
         [Description("Tenant ID to scope queries to")] string? tenantId = null,
         [Description("Domain name to scope queries to")] string? domain = null,
         [Description("Set to true to clear the tenant scope")] bool clearTenantId = false,
-        [Description("Set to true to clear the domain scope")] bool clearDomain = false)
-    {
+        [Description("Set to true to clear the domain scope")] bool clearDomain = false) {
         tenantId = NormalizeScopeInput(tenantId);
         domain = NormalizeScopeInput(domain);
 
         // Validate: can't set and clear the same field
-        if (tenantId is not null && clearTenantId)
-        {
+        if (tenantId is not null && clearTenantId) {
             return Task.FromResult(
                 ToolHelper.SerializeError("invalid-input", "Cannot set 'tenantId' and 'clearTenantId' simultaneously."));
         }
 
-        if (domain is not null && clearDomain)
-        {
+        if (domain is not null && clearDomain) {
             return Task.FromResult(
                 ToolHelper.SerializeError("invalid-input", "Cannot set 'domain' and 'clearDomain' simultaneously."));
         }
 
         // Validate: at least one action
-        if (tenantId is null && domain is null && !clearTenantId && !clearDomain)
-        {
+        if (tenantId is null && domain is null && !clearTenantId && !clearDomain) {
             return Task.FromResult(
                 ToolHelper.SerializeError("invalid-input", "At least one of 'tenantId', 'domain', 'clearTenantId', or 'clearDomain' must be provided."));
         }
@@ -49,26 +44,22 @@ internal static class SessionTools
         InvestigationSession.Snapshot previous = session.GetSnapshot();
 
         // Apply clear operations first
-        if (clearTenantId)
-        {
+        if (clearTenantId) {
             session.ClearTenantId();
         }
 
-        if (clearDomain)
-        {
+        if (clearDomain) {
             session.ClearDomain();
         }
 
         // Apply set operations
-        if (tenantId is not null || domain is not null)
-        {
+        if (tenantId is not null || domain is not null) {
             session.SetContext(tenantId, domain);
         }
 
         InvestigationSession.Snapshot current = session.GetSnapshot();
 
-        return Task.FromResult(ToolHelper.SerializeResult(new
-        {
+        return Task.FromResult(ToolHelper.SerializeResult(new {
             contextSet = true,
             tenantId = current.TenantId,
             domain = current.Domain,
@@ -84,12 +75,10 @@ internal static class SessionTools
     [McpServerTool(Name = "session-get-context")]
     [Description("Get the current investigation session context (active tenant and domain scope)")]
     public static Task<string> GetContext(
-        InvestigationSession session)
-    {
+        InvestigationSession session) {
         InvestigationSession.Snapshot snapshot = session.GetSnapshot();
 
-        return Task.FromResult(ToolHelper.SerializeResult(new
-        {
+        return Task.FromResult(ToolHelper.SerializeResult(new {
             tenantId = snapshot.TenantId,
             domain = snapshot.Domain,
             startedAtUtc = snapshot.StartedAtUtc,
@@ -103,12 +92,10 @@ internal static class SessionTools
     [McpServerTool(Name = "session-clear-context")]
     [Description("Clear the investigation session context to remove tenant and domain scope")]
     public static Task<string> ClearContext(
-        InvestigationSession session)
-    {
+        InvestigationSession session) {
         session.Clear();
 
-        return Task.FromResult(ToolHelper.SerializeResult(new
-        {
+        return Task.FromResult(ToolHelper.SerializeResult(new {
             contextCleared = true,
             tenantId = (string?)null,
             domain = (string?)null,

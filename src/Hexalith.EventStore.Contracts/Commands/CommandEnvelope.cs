@@ -1,4 +1,3 @@
-
 using System.Runtime.Serialization;
 
 using Hexalith.EventStore.Contracts.Identity;
@@ -74,7 +73,7 @@ public record CommandEnvelope(
     /// <summary>Gets the extension metadata (null if no extensions). Defensively copied to preserve immutability.</summary>
     [DataMember]
     public Dictionary<string, string>? Extensions { get; init; } = Extensions is not null
-        ? new Dictionary<string, string>(Extensions)
+        ? []
         : null;
 
     /// <summary>

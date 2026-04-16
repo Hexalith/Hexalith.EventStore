@@ -9,8 +9,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Config;
 /// <summary>
 /// Displays details of a single named connection profile.
 /// </summary>
-public static class ProfileShowCommand
-{
+public static class ProfileShowCommand {
     internal static readonly List<ColumnDefinition> Columns =
     [
         new("Property", "Property"),
@@ -20,15 +19,13 @@ public static class ProfileShowCommand
     /// <summary>
     /// Creates the profile show subcommand.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
+    public static Command Create(GlobalOptionsBinding binding) {
         Argument<string> nameArg = new("name") { Description = "Profile name" };
 
         Command command = new("show", "Show details of a named connection profile");
         command.Arguments.Add(nameArg);
 
-        command.SetAction((parseResult, _) =>
-        {
+        command.SetAction((parseResult, _) => {
             string name = parseResult.GetValue(nameArg)!;
             GlobalOptions globals = binding.Resolve(parseResult);
             return Task.FromResult(Execute(name, globals.Format));
@@ -37,18 +34,15 @@ public static class ProfileShowCommand
         return command;
     }
 
-    internal static int Execute(string name, string format, string? profilePath = null)
-    {
+    internal static int Execute(string name, string format, string? profilePath = null) {
         ProfileStore store = ProfileManager.Load(profilePath);
 
-        if (!store.Profiles.TryGetValue(name, out ConnectionProfile? profile))
-        {
+        if (!store.Profiles.TryGetValue(name, out ConnectionProfile? profile)) {
             Console.Error.WriteLine($"Profile '{name}' not found.");
             return ExitCodes.Error;
         }
 
-        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
-        {
+        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase)) {
             string json = JsonSerializer.Serialize(profile, JsonDefaults.Options);
             Console.WriteLine(json);
             return ExitCodes.Success;

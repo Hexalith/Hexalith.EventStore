@@ -20,8 +20,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 [Tags("Admin - Streams")]
 public class AdminStreamsController(
     IStreamQueryService streamQueryService,
-    ILogger<AdminStreamsController> logger) : ControllerBase
-{
+    ILogger<AdminStreamsController> logger) : ControllerBase {
     /// <summary>
     /// Gets recently active streams, optionally filtered by tenant and domain.
     /// </summary>
@@ -35,22 +34,18 @@ public class AdminStreamsController(
         [FromQuery] string? tenantId,
         [FromQuery] string? domain,
         [FromQuery] int count = 1000,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             string? effectiveTenantId = ResolveTenantScope(tenantId);
             PagedResult<StreamSummary> result = await streamQueryService
                 .GetRecentlyActiveStreamsAsync(effectiveTenantId, domain, count, ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetRecentlyActiveStreams), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetRecentlyActiveStreams), ex);
         }
     }
@@ -69,22 +64,18 @@ public class AdminStreamsController(
         [FromQuery] string? status,
         [FromQuery] string? commandType,
         [FromQuery] int count = 1000,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             string? effectiveTenantId = ResolveTenantScope(tenantId);
             PagedResult<CommandSummary> result = await streamQueryService
                 .GetRecentCommandsAsync(effectiveTenantId, status, commandType, count, ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetRecentCommands), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetRecentCommands), ex);
         }
     }
@@ -105,21 +96,17 @@ public class AdminStreamsController(
         [FromQuery] long? fromSequence,
         [FromQuery] long? toSequence,
         [FromQuery] int count = 100,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             PagedResult<TimelineEntry> result = await streamQueryService
                 .GetStreamTimelineAsync(tenantId, domain, aggregateId, fromSequence, toSequence, count, ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetStreamTimeline), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetStreamTimeline), ex);
         }
     }
@@ -139,10 +126,8 @@ public class AdminStreamsController(
         string domain,
         string aggregateId,
         [FromQuery] long sequenceNumber,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             AggregateStateSnapshot result = await streamQueryService
                 .GetAggregateStateAtPositionAsync(tenantId, domain, aggregateId, sequenceNumber, ct)
                 .ConfigureAwait(false);
@@ -150,12 +135,10 @@ public class AdminStreamsController(
                 ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Aggregate state not found at the specified position.")
                 : Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetAggregateState), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetAggregateState), ex);
         }
     }
@@ -176,10 +159,8 @@ public class AdminStreamsController(
         string aggregateId,
         [FromQuery] long fromSequence,
         [FromQuery] long toSequence,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             AggregateStateDiff result = await streamQueryService
                 .DiffAggregateStateAsync(tenantId, domain, aggregateId, fromSequence, toSequence, ct)
                 .ConfigureAwait(false);
@@ -187,12 +168,10 @@ public class AdminStreamsController(
                 ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Aggregate state not found for the specified range.")
                 : Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(DiffAggregateState), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(DiffAggregateState), ex);
         }
     }
@@ -213,15 +192,12 @@ public class AdminStreamsController(
         string domain,
         string aggregateId,
         [FromQuery] long? at,
-        CancellationToken ct = default)
-    {
-        if (at.HasValue && at.Value < 1)
-        {
+        CancellationToken ct = default) {
+        if (at.HasValue && at.Value < 1) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", "Parameter 'at' must be >= 1 when provided.");
         }
 
-        try
-        {
+        try {
             AggregateBlameView result = await streamQueryService
                 .GetAggregateBlameAsync(tenantId, domain, aggregateId, at, ct)
                 .ConfigureAwait(false);
@@ -229,12 +205,10 @@ public class AdminStreamsController(
                 ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Stream not found.")
                 : Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetAggregateBlame), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetAggregateBlame), ex);
         }
     }
@@ -257,20 +231,16 @@ public class AdminStreamsController(
         [FromQuery] long good,
         [FromQuery] long bad,
         [FromQuery] string? fields,
-        CancellationToken ct = default)
-    {
-        if (good < 0)
-        {
+        CancellationToken ct = default) {
+        if (good < 0) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", "Parameter 'good' must be >= 0.");
         }
 
-        if (bad <= 0)
-        {
+        if (bad <= 0) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", "Parameter 'bad' must be > 0.");
         }
 
-        if (good >= bad)
-        {
+        if (good >= bad) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", "Parameter 'good' must be less than 'bad'.");
         }
 
@@ -278,8 +248,7 @@ public class AdminStreamsController(
             ? null
             : fields.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        try
-        {
+        try {
             BisectResult result = await streamQueryService
                 .BisectAsync(tenantId, domain, aggregateId, good, bad, fieldPaths, ct)
                 .ConfigureAwait(false);
@@ -287,16 +256,13 @@ public class AdminStreamsController(
                 ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Stream not found.")
                 : Ok(result);
         }
-        catch (ArgumentException ex)
-        {
+        catch (ArgumentException ex) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(BisectAggregateState), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(BisectAggregateState), ex);
         }
     }
@@ -318,15 +284,12 @@ public class AdminStreamsController(
         string domain,
         string aggregateId,
         [FromQuery] long at,
-        CancellationToken ct = default)
-    {
-        if (at < 1)
-        {
+        CancellationToken ct = default) {
+        if (at < 1) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", "Parameter 'at' must be >= 1.");
         }
 
-        try
-        {
+        try {
             EventStepFrame result = await streamQueryService
                 .GetEventStepFrameAsync(tenantId, domain, aggregateId, at, ct)
                 .ConfigureAwait(false);
@@ -334,16 +297,13 @@ public class AdminStreamsController(
                 ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Stream not found.")
                 : Ok(result);
         }
-        catch (ArgumentException ex)
-        {
+        catch (ArgumentException ex) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetEventStepFrame), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetEventStepFrame), ex);
         }
     }
@@ -363,10 +323,8 @@ public class AdminStreamsController(
         string domain,
         string aggregateId,
         long sequenceNumber,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             EventDetail result = await streamQueryService
                 .GetEventDetailAsync(tenantId, domain, aggregateId, sequenceNumber, ct)
                 .ConfigureAwait(false);
@@ -374,12 +332,10 @@ public class AdminStreamsController(
                 ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Event not found.")
                 : Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetEventDetail), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetEventDetail), ex);
         }
     }
@@ -399,10 +355,8 @@ public class AdminStreamsController(
         string domain,
         string aggregateId,
         [FromQuery] long sequenceNumber,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             CausationChain result = await streamQueryService
                 .TraceCausationChainAsync(tenantId, domain, aggregateId, sequenceNumber, ct)
                 .ConfigureAwait(false);
@@ -410,12 +364,10 @@ public class AdminStreamsController(
                 ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Causation chain not found.")
                 : Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(TraceCausationChain), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(TraceCausationChain), ex);
         }
     }
@@ -435,26 +387,22 @@ public class AdminStreamsController(
         string domain,
         string aggregateId,
         [FromBody] SandboxCommandRequest request,
-        CancellationToken ct = default)
-    {
-        if (request is null)
-        {
+        CancellationToken ct = default) {
+        if (request is null) {
             return CreateProblemResult(
                 StatusCodes.Status400BadRequest,
                 "Bad Request",
                 "Request body is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(request.CommandType))
-        {
+        if (string.IsNullOrWhiteSpace(request.CommandType)) {
             return CreateProblemResult(
                 StatusCodes.Status400BadRequest,
                 "Bad Request",
                 "CommandType is required.");
         }
 
-        try
-        {
+        try {
             SandboxResult? result = await streamQueryService
                 .SandboxCommandAsync(tenantId, domain, aggregateId, request, ct)
                 .ConfigureAwait(false);
@@ -462,26 +410,21 @@ public class AdminStreamsController(
                 ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Stream not found.")
                 : Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(SandboxCommand), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(SandboxCommand), ex);
         }
     }
 
-    private string? ResolveTenantScope(string? requestedTenantId)
-    {
-        if (requestedTenantId is not null)
-        {
+    private string? ResolveTenantScope(string? requestedTenantId) {
+        if (requestedTenantId is not null) {
             return requestedTenantId;
         }
 
         // Admin users can see all tenants
-        if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin)))
-        {
+        if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin))) {
             return null;
         }
 
@@ -497,8 +440,7 @@ public class AdminStreamsController(
                 Grpc.Core.StatusCode.Aborted or
                 Grpc.Core.StatusCode.ResourceExhausted);
 
-    private ObjectResult ServiceUnavailable(string method, Exception ex)
-    {
+    private ObjectResult ServiceUnavailable(string method, Exception ex) {
         logger.LogError(ex, "Admin service unavailable: {Method}", method);
         return CreateProblemResult(
             StatusCodes.Status503ServiceUnavailable,
@@ -506,8 +448,7 @@ public class AdminStreamsController(
             "The admin backend service is temporarily unavailable. Retry shortly.");
     }
 
-    private ObjectResult UnexpectedError(string method, Exception ex)
-    {
+    private ObjectResult UnexpectedError(string method, Exception ex) {
         logger.LogError(ex, "Unexpected error in {Method}", method);
         return CreateProblemResult(
             StatusCodes.Status500InternalServerError,
@@ -515,18 +456,15 @@ public class AdminStreamsController(
             "An unexpected error occurred.");
     }
 
-    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null)
-    {
+    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null) {
         string correlationId = HttpContext.Items["CorrelationId"]?.ToString()
             ?? Guid.NewGuid().ToString();
-        return new ObjectResult(new ProblemDetails
-        {
+        return new ObjectResult(new ProblemDetails {
             Status = statusCode,
             Title = title,
             Detail = detail,
             Instance = HttpContext.Request.Path,
             Extensions = { ["correlationId"] = correlationId },
-        })
-        { StatusCode = statusCode };
+        }) { StatusCode = statusCode };
     }
 }

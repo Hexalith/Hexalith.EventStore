@@ -2,8 +2,6 @@ using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Projections;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,25 +13,22 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the Projections page.
 /// </summary>
-public class ProjectionsPageTests : AdminUITestContext
-{
+public class ProjectionsPageTests : AdminUITestContext {
     private readonly AdminProjectionApiClient _mockApiClient;
 
-    public ProjectionsPageTests()
-    {
+    public ProjectionsPageTests() {
         _mockApiClient = Substitute.For<AdminProjectionApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminProjectionApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
     }
 
     [Fact]
-    public void ProjectionsPage_RendersStatCards_WithCorrectCounts()
-    {
+    public void ProjectionsPage_RendersStatCards_WithCorrectCounts() {
         // Arrange
         IReadOnlyList<ProjectionStatus> projections = CreateProjections();
         _ = _mockApiClient.ListProjectionsAsync(
@@ -53,8 +48,7 @@ public class ProjectionsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void ProjectionsPage_RendersGrid_WithAllColumns()
-    {
+    public void ProjectionsPage_RendersGrid_WithAllColumns() {
         // Arrange
         IReadOnlyList<ProjectionStatus> projections = CreateProjections();
         _ = _mockApiClient.ListProjectionsAsync(
@@ -79,8 +73,7 @@ public class ProjectionsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void ProjectionsPage_ShowsIssueBanner_OnApiFailure()
-    {
+    public void ProjectionsPage_ShowsIssueBanner_OnApiFailure() {
         // Arrange
         _ = _mockApiClient.ListProjectionsAsync(
             Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -95,8 +88,7 @@ public class ProjectionsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void ProjectionsPage_ShowsEmptyState_WhenNoProjections()
-    {
+    public void ProjectionsPage_ShowsEmptyState_WhenNoProjections() {
         // Arrange
         _ = _mockApiClient.ListProjectionsAsync(
             Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -111,8 +103,7 @@ public class ProjectionsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void ProjectionsPage_ErrorCountColumn_ShowsRedWhenPositive()
-    {
+    public void ProjectionsPage_ErrorCountColumn_ShowsRedWhenPositive() {
         // Arrange
         List<ProjectionStatus> projections =
         [
@@ -132,8 +123,7 @@ public class ProjectionsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void ProjectionsPage_StatusBadges_RenderCorrectly()
-    {
+    public void ProjectionsPage_StatusBadges_RenderCorrectly() {
         // Arrange
         IReadOnlyList<ProjectionStatus> projections = CreateProjections();
         _ = _mockApiClient.ListProjectionsAsync(
@@ -152,8 +142,7 @@ public class ProjectionsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void ProjectionsPage_HasRefreshButton()
-    {
+    public void ProjectionsPage_HasRefreshButton() {
         // Arrange
         _ = _mockApiClient.ListProjectionsAsync(
             Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -168,8 +157,7 @@ public class ProjectionsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void ProjectionsPage_GridHasAriaLabel()
-    {
+    public void ProjectionsPage_GridHasAriaLabel() {
         // Arrange
         IReadOnlyList<ProjectionStatus> projections = CreateProjections();
         _ = _mockApiClient.ListProjectionsAsync(
@@ -184,10 +172,7 @@ public class ProjectionsPageTests : AdminUITestContext
         cut.Markup.ShouldContain("Projections list");
     }
 
-    private static IReadOnlyList<ProjectionStatus> CreateProjections()
-    {
-        return
-        [
+    private static IReadOnlyList<ProjectionStatus> CreateProjections() => [
             new("counter-projection", "tenant-1", ProjectionStatusType.Running, 10, 5.2, 0,
                 1000, DateTimeOffset.UtcNow.AddMinutes(-1)),
             new("order-projection", "tenant-1", ProjectionStatusType.Paused, 200, 0.0, 0,
@@ -195,5 +180,4 @@ public class ProjectionsPageTests : AdminUITestContext
             new("inventory-projection", "tenant-2", ProjectionStatusType.Error, 500, 0.0, 3,
                 500, DateTimeOffset.UtcNow.AddMinutes(-30)),
         ];
-    }
 }

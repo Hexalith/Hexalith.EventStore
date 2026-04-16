@@ -1,4 +1,3 @@
-#pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
 
 using Dapr.Client;
 
@@ -17,11 +16,9 @@ using NSubstitute.ExceptionExtensions;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
-public class DaprHealthHistoryCollectorTests
-{
+public class DaprHealthHistoryCollectorTests {
     [Fact]
-    public async Task ExecuteAsync_WhenDisabled_ExitsImmediately()
-    {
+    public async Task ExecuteAsync_WhenDisabled_ExitsImmediately() {
         // Arrange
         var options = new AdminServerOptions { HealthHistoryEnabled = false };
         DaprClient daprClient = Substitute.For<DaprClient>();
@@ -38,15 +35,13 @@ public class DaprHealthHistoryCollectorTests
         await collector.StopAsync(default);
 
         // Assert - infrastructure service should never be called
-        await infraService.DidNotReceive().GetComponentsAsync(Arg.Any<CancellationToken>());
+        _ = await infraService.DidNotReceive().GetComponentsAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenEnabled_CapturesSnapshot()
-    {
+    public async Task ExecuteAsync_WhenEnabled_CapturesSnapshot() {
         // Arrange
-        var options = new AdminServerOptions
-        {
+        var options = new AdminServerOptions {
             HealthHistoryEnabled = true,
             HealthHistoryCaptureIntervalSeconds = 60,
         };
@@ -59,11 +54,11 @@ public class DaprHealthHistoryCollectorTests
             new DaprComponentDetail("statestore", "state.redis", DaprComponentCategory.StateStore, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, []),
         ];
 
-        infraService.GetComponentsAsync(Arg.Any<CancellationToken>())
+        _ = infraService.GetComponentsAsync(Arg.Any<CancellationToken>())
             .Returns(components);
 
         // Return null for existing timeline (first entry today)
-        daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
             Arg.Any<string>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
             .Returns((DaprComponentHealthTimeline)null!);
 
@@ -86,8 +81,7 @@ public class DaprHealthHistoryCollectorTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_SkipsWrite_WhenNoComponentsReturned()
-    {
+    public async Task ExecuteAsync_SkipsWrite_WhenNoComponentsReturned() {
         // Arrange
         var options = new AdminServerOptions { HealthHistoryEnabled = true };
 
@@ -95,8 +89,8 @@ public class DaprHealthHistoryCollectorTests
         IDaprInfrastructureQueryService infraService = Substitute.For<IDaprInfrastructureQueryService>();
 
         // Return empty component list (sidecar unreachable)
-        infraService.GetComponentsAsync(Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<DaprComponentDetail>() as IReadOnlyList<DaprComponentDetail>);
+        _ = infraService.GetComponentsAsync(Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<DaprComponentDetail>());
 
         DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService);
 
@@ -117,8 +111,7 @@ public class DaprHealthHistoryCollectorTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_ContinuesOnWriteFailure()
-    {
+    public async Task ExecuteAsync_ContinuesOnWriteFailure() {
         // Arrange
         var options = new AdminServerOptions { HealthHistoryEnabled = true };
 
@@ -130,15 +123,15 @@ public class DaprHealthHistoryCollectorTests
             new DaprComponentDetail("statestore", "state.redis", DaprComponentCategory.StateStore, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, []),
         ];
 
-        infraService.GetComponentsAsync(Arg.Any<CancellationToken>())
+        _ = infraService.GetComponentsAsync(Arg.Any<CancellationToken>())
             .Returns(components);
 
-        daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
             Arg.Any<string>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
             .Returns((DaprComponentHealthTimeline)null!);
 
         // Fail on save
-        daprClient.SaveStateAsync(
+        _ = daprClient.SaveStateAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DaprComponentHealthTimeline>(),
             cancellationToken: Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Write failed"));
@@ -154,17 +147,16 @@ public class DaprHealthHistoryCollectorTests
         await collector.StopAsync(default);
 
         // Assert - service was called (collector didn't crash)
-        await infraService.Received().GetComponentsAsync(Arg.Any<CancellationToken>());
+        _ = await infraService.Received().GetComponentsAsync(Arg.Any<CancellationToken>());
     }
 
     private static DaprHealthHistoryCollector CreateCollector(
         AdminServerOptions options,
         DaprClient daprClient,
-        IDaprInfrastructureQueryService infraService)
-    {
+        IDaprInfrastructureQueryService infraService) {
         ServiceCollection services = new();
-        services.AddSingleton(daprClient);
-        services.AddSingleton(infraService);
+        _ = services.AddSingleton(daprClient);
+        _ = services.AddSingleton(infraService);
         ServiceProvider provider = services.BuildServiceProvider();
 
         IServiceScopeFactory scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();

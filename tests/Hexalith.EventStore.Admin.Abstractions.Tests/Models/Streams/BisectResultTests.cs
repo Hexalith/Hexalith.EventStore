@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Streams;
 
-public class BisectResultTests
-{
+public class BisectResultTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         DateTimeOffset timestamp = new(2026, 3, 27, 10, 0, 0, TimeSpan.Zero);
         List<FieldChange> changes = [new("Count", "4", "5")];
         List<string> watchedFields = ["Count", "Status"];
@@ -36,8 +34,7 @@ public class BisectResultTests
     }
 
     [Fact]
-    public void Constructor_WithNullStrings_DefaultsToEmpty()
-    {
+    public void Constructor_WithNullStrings_DefaultsToEmpty() {
         var result = new BisectResult(
             null!, null!, null!,
             0, 1, DateTimeOffset.MinValue,
@@ -56,8 +53,7 @@ public class BisectResultTests
     }
 
     [Fact]
-    public void ToString_RedactsFieldValues()
-    {
+    public void ToString_RedactsFieldValues() {
         List<FieldChange> changes = [new("Secret", "secret-old", "secret-new")];
         var result = new BisectResult(
             "tenant1", "orders", "order-1",
@@ -74,8 +70,7 @@ public class BisectResultTests
     }
 
     [Fact]
-    public void SerializationRoundTrip_WithCollections_PreservesAll()
-    {
+    public void SerializationRoundTrip_WithCollections_PreservesAll() {
         DateTimeOffset timestamp = new(2026, 3, 27, 10, 0, 0, TimeSpan.Zero);
         List<FieldChange> changes = [new("Count", "4", "5")];
         List<BisectStep> steps =
@@ -93,7 +88,7 @@ public class BisectResultTests
         string json = JsonSerializer.Serialize(original);
         BisectResult? deserialized = JsonSerializer.Deserialize<BisectResult>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized!.TenantId.ShouldBe("tenant1");
         deserialized.Domain.ShouldBe("domain1");
         deserialized.AggregateId.ShouldBe("agg-1");
@@ -110,8 +105,7 @@ public class BisectResultTests
     }
 
     [Fact]
-    public void EmptyDivergentFieldChanges_IndicatesNoDivergence()
-    {
+    public void EmptyDivergentFieldChanges_IndicatesNoDivergence() {
         var result = new BisectResult(
             "t1", "d1", "a1",
             0, 100, DateTimeOffset.MinValue,

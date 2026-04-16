@@ -1,4 +1,3 @@
-#pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
 
 using System.Net;
 using System.Text;
@@ -14,29 +13,22 @@ using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
-using Shouldly;
-
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
-public class DaprPubSubQueryServiceTests
-{
+public class DaprPubSubQueryServiceTests {
     private readonly DaprClient _daprClient = Substitute.For<DaprClient>();
     private readonly IHttpClientFactory _httpClientFactory = Substitute.For<IHttpClientFactory>();
     private readonly AdminServerOptions _options = new() { EventStoreDaprHttpEndpoint = "http://localhost:3500" };
     private readonly DaprInfrastructureQueryService _sut;
 
-    public DaprPubSubQueryServiceTests()
-    {
-        _sut = new DaprInfrastructureQueryService(
+    public DaprPubSubQueryServiceTests() => _sut = new DaprInfrastructureQueryService(
             _daprClient,
             _httpClientFactory,
             Options.Create(_options),
             NullLogger<DaprInfrastructureQueryService>.Instance);
-    }
 
     [Fact]
-    public async Task GetPubSubOverviewAsync_ReturnsOverview_WithPubSubComponents()
-    {
+    public async Task GetPubSubOverviewAsync_ReturnsOverview_WithPubSubComponents() {
         // Arrange — remote sidecar returns components AND subscriptions in the same payload
         SetupRemoteSidecar("""
         {
@@ -65,8 +57,7 @@ public class DaprPubSubQueryServiceTests
     }
 
     [Fact]
-    public async Task GetPubSubOverviewAsync_ReturnsEmptyComponents_WhenEndpointNotConfigured()
-    {
+    public async Task GetPubSubOverviewAsync_ReturnsEmptyComponents_WhenEndpointNotConfigured() {
         // Arrange — no remote endpoint configured; components are sourced from remote only.
         AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = null };
         DaprInfrastructureQueryService sut = new(
@@ -83,11 +74,10 @@ public class DaprPubSubQueryServiceTests
     }
 
     [Fact]
-    public async Task GetPubSubOverviewAsync_ReturnsEmptyEverything_WhenRemoteSidecarFails()
-    {
+    public async Task GetPubSubOverviewAsync_ReturnsEmptyEverything_WhenRemoteSidecarFails() {
         // Arrange — remote sidecar throws; both components and subscriptions are empty.
         HttpClient httpClient = new(new FakeHandler(HttpStatusCode.InternalServerError, ""));
-        _httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+        _ = _httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
 
         // Act
         DaprPubSubOverview result = await _sut.GetPubSubOverviewAsync();
@@ -99,8 +89,7 @@ public class DaprPubSubQueryServiceTests
     }
 
     [Fact]
-    public async Task GetPubSubOverviewAsync_FiltersOnlyPubSubComponents()
-    {
+    public async Task GetPubSubOverviewAsync_FiltersOnlyPubSubComponents() {
         // Arrange — remote payload has state store + pubsub + binding components.
         SetupRemoteSidecar("""
         {
@@ -121,11 +110,10 @@ public class DaprPubSubQueryServiceTests
     }
 
     [Fact]
-    public async Task GetPubSubOverviewAsync_HandlesSubscriptionsKeyAbsent()
-    {
+    public async Task GetPubSubOverviewAsync_HandlesSubscriptionsKeyAbsent() {
         // Arrange — remote returns metadata without subscriptions key
         DaprMetadata metadata = CreateMetadata([]);
-        _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
 
         SetupRemoteSidecar("""{"actors": []}""");
 
@@ -138,10 +126,9 @@ public class DaprPubSubQueryServiceTests
     }
 
     [Fact]
-    public async Task GetPubSubOverviewAsync_ParsesMultipleSubscriptions()
-    {
+    public async Task GetPubSubOverviewAsync_ParsesMultipleSubscriptions() {
         DaprMetadata metadata = CreateMetadata([]);
-        _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
 
         SetupRemoteSidecar("""
         {
@@ -161,11 +148,10 @@ public class DaprPubSubQueryServiceTests
     }
 
     [Fact]
-    public async Task GetPubSubOverviewAsync_HandlesGracefully_WhenRemoteReturnsMalformedJson()
-    {
+    public async Task GetPubSubOverviewAsync_HandlesGracefully_WhenRemoteReturnsMalformedJson() {
         // Arrange
         DaprMetadata metadata = CreateMetadata([]);
-        _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
         SetupRemoteSidecar("not valid json {{{");
 
         // Act
@@ -177,8 +163,7 @@ public class DaprPubSubQueryServiceTests
     }
 
     [Fact]
-    public async Task GetPubSubOverviewAsync_WhenEndpointNotConfigured_ReturnsNotConfiguredStatus()
-    {
+    public async Task GetPubSubOverviewAsync_WhenEndpointNotConfigured_ReturnsNotConfiguredStatus() {
         // Arrange
         AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = null };
         DaprInfrastructureQueryService sut = new(
@@ -186,7 +171,7 @@ public class DaprPubSubQueryServiceTests
             NullLogger<DaprInfrastructureQueryService>.Instance);
 
         DaprMetadata metadata = CreateMetadata([]);
-        _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
 
         // Act
         DaprPubSubOverview result = await sut.GetPubSubOverviewAsync();
@@ -197,8 +182,7 @@ public class DaprPubSubQueryServiceTests
     }
 
     [Fact]
-    public async Task GetPubSubOverviewAsync_WhenRemoteCallThrows_ReturnsUnreachableStatus()
-    {
+    public async Task GetPubSubOverviewAsync_WhenRemoteCallThrows_ReturnsUnreachableStatus() {
         // Arrange — endpoint configured, HTTP call returns error
         const string endpoint = "http://localhost:3501";
         AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
@@ -207,10 +191,10 @@ public class DaprPubSubQueryServiceTests
             NullLogger<DaprInfrastructureQueryService>.Instance);
 
         DaprMetadata metadata = CreateMetadata([]);
-        _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
 
         HttpClient httpClient = new(new FakeHandler(HttpStatusCode.InternalServerError, "error"));
-        _httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+        _ = _httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
 
         // Act
         DaprPubSubOverview result = await sut.GetPubSubOverviewAsync();
@@ -221,8 +205,7 @@ public class DaprPubSubQueryServiceTests
     }
 
     [Fact]
-    public async Task GetPubSubOverviewAsync_WhenRemoteCallSucceeds_ReturnsAvailableStatus()
-    {
+    public async Task GetPubSubOverviewAsync_WhenRemoteCallSucceeds_ReturnsAvailableStatus() {
         // Arrange — endpoint configured, HTTP call returns subscription metadata
         const string endpoint = "http://localhost:3501";
         AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
@@ -231,11 +214,11 @@ public class DaprPubSubQueryServiceTests
             NullLogger<DaprInfrastructureQueryService>.Instance);
 
         DaprMetadata metadata = CreateMetadata([]);
-        _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
 
         string remoteJson = """{"subscriptions":[{"pubsubName":"pubsub","topic":"*.*.events","type":"DECLARATIVE","deadLetterTopic":"","rules":{"rules":[{"path":"/events/handle"}]}}]}""";
         HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, remoteJson));
-        _httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+        _ = _httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
 
         // Act
         DaprPubSubOverview result = await sut.GetPubSubOverviewAsync();
@@ -248,10 +231,9 @@ public class DaprPubSubQueryServiceTests
 
     // ===== Helpers =====
 
-    private void SetupRemoteSidecar(string jsonResponse)
-    {
+    private void SetupRemoteSidecar(string jsonResponse) {
         HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, jsonResponse));
-        _httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+        _ = _httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
     }
 
     private static DaprMetadata CreateMetadata(List<DaprComponentsMetadata> components) => new(
@@ -260,14 +242,9 @@ public class DaprPubSubQueryServiceTests
         extended: new Dictionary<string, string> { ["daprRuntimeVersion"] = "1.14.0" },
         components: components);
 
-    private sealed class FakeHandler(HttpStatusCode statusCode, string content) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(new HttpResponseMessage(statusCode)
-            {
-                Content = new StringContent(content, Encoding.UTF8, "application/json"),
-            });
-        }
+    private sealed class FakeHandler(HttpStatusCode statusCode, string content) : HttpMessageHandler {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(new HttpResponseMessage(statusCode) {
+            Content = new StringContent(content, Encoding.UTF8, "application/json"),
+        });
     }
 }

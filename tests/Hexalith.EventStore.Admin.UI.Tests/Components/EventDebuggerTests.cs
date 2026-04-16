@@ -2,42 +2,36 @@ using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.UI.Components;
-using Hexalith.EventStore.Admin.UI.Services;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 
 /// <summary>
 /// bUnit tests for the EventDebugger component.
 /// </summary>
-public class EventDebuggerTests : AdminUITestContext
-{
+public class EventDebuggerTests : AdminUITestContext {
     private readonly AdminStreamApiClient _mockApiClient;
 
-    public EventDebuggerTests()
-    {
+    public EventDebuggerTests() {
         _mockApiClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance);
 
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
-        Services.AddScoped<TopologyCacheService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped<TopologyCacheService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
     }
 
     [Fact]
-    public void EventDebugger_RendersFrameOnLoad()
-    {
+    public void EventDebugger_RendersFrameOnLoad() {
         // Arrange
         EventStepFrame frame = CreateTestFrame(3, 10);
         _ = _mockApiClient.GetEventStepFrameAsync(
@@ -57,8 +51,7 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDebugger_ShowsFieldChanges()
-    {
+    public void EventDebugger_ShowsFieldChanges() {
         // Arrange
         EventStepFrame frame = CreateTestFrame(3, 10, [new FieldChange("Count", "2", "3")]);
         _ = _mockApiClient.GetEventStepFrameAsync(
@@ -77,8 +70,7 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDebugger_FirstEvent_ShowsInitialState()
-    {
+    public void EventDebugger_FirstEvent_ShowsInitialState() {
         // Arrange
         EventStepFrame frame = CreateTestFrame(1, 10, [new FieldChange("Count", "", "1")]);
         _ = _mockApiClient.GetEventStepFrameAsync(
@@ -95,8 +87,7 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDebugger_NullFrame_ShowsEmptyStreamMessage()
-    {
+    public void EventDebugger_NullFrame_ShowsEmptyStreamMessage() {
         // Arrange
         _ = _mockApiClient.GetEventStepFrameAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -112,8 +103,7 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDebugger_ShowsError_OnTimeout()
-    {
+    public void EventDebugger_ShowsError_OnTimeout() {
         // Arrange — return a faulted task (not ThrowsAsync, which throws synchronously in bUnit)
         _ = _mockApiClient.GetEventStepFrameAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -129,8 +119,7 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDebugger_ShowsError_OnApiFailure()
-    {
+    public void EventDebugger_ShowsError_OnApiFailure() {
         // Arrange — return a faulted task
         _ = _mockApiClient.GetEventStepFrameAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -146,8 +135,7 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDebugger_DisablesPreviousButton_AtFirstEvent()
-    {
+    public void EventDebugger_DisablesPreviousButton_AtFirstEvent() {
         // Arrange
         EventStepFrame frame = CreateTestFrame(1, 5);
         _ = _mockApiClient.GetEventStepFrameAsync(
@@ -165,8 +153,7 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDebugger_DisablesNextButton_AtLastEvent()
-    {
+    public void EventDebugger_DisablesNextButton_AtLastEvent() {
         // Arrange
         EventStepFrame frame = CreateTestFrame(5, 5);
         _ = _mockApiClient.GetEventStepFrameAsync(
@@ -184,8 +171,7 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDebugger_ShowsViewEventDetailButton()
-    {
+    public void EventDebugger_ShowsViewEventDetailButton() {
         // Arrange
         EventStepFrame frame = CreateTestFrame(3, 10);
         _ = _mockApiClient.GetEventStepFrameAsync(
@@ -202,8 +188,7 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDebugger_ShowsBlameButton_WhenOnNavigateToBlameProvided()
-    {
+    public void EventDebugger_ShowsBlameButton_WhenOnNavigateToBlameProvided() {
         // Arrange
         EventStepFrame frame = CreateTestFrame(3, 10);
         _ = _mockApiClient.GetEventStepFrameAsync(
@@ -225,8 +210,7 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDebugger_ShowsWatchFieldsButton()
-    {
+    public void EventDebugger_ShowsWatchFieldsButton() {
         // Arrange
         EventStepFrame frame = CreateTestFrame(3, 10);
         _ = _mockApiClient.GetEventStepFrameAsync(
@@ -243,8 +227,7 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDebugger_ShowsSpeedSelector()
-    {
+    public void EventDebugger_ShowsSpeedSelector() {
         // Arrange
         EventStepFrame frame = CreateTestFrame(3, 10);
         _ = _mockApiClient.GetEventStepFrameAsync(
@@ -265,8 +248,7 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDebugger_AutoPlay_DisabledAtLastEvent()
-    {
+    public void EventDebugger_AutoPlay_DisabledAtLastEvent() {
         // Arrange — last event, HasNext = false
         EventStepFrame frame = CreateTestFrame(5, 5);
         _ = _mockApiClient.GetEventStepFrameAsync(
@@ -284,8 +266,7 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task EventDebugger_AutoPlay_AdvancesToNextFrame()
-    {
+    public async Task EventDebugger_AutoPlay_AdvancesToNextFrame() {
         // Arrange
         EventStepFrame frame3 = CreateTestFrame(3, 5, [new FieldChange("Count", "2", "3")]);
         EventStepFrame frame4 = CreateTestFrame(4, 5, [new FieldChange("Count", "3", "4")]);
@@ -293,8 +274,7 @@ public class EventDebuggerTests : AdminUITestContext
         _ = _mockApiClient.GetEventStepFrameAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<long>(), Arg.Any<CancellationToken>())
-            .Returns(c =>
-            {
+            .Returns(c => {
                 callCount++;
                 long seq = c.Arg<long>();
                 return Task.FromResult<EventStepFrame?>(seq <= 3 ? frame3 : frame4);
@@ -314,16 +294,14 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task EventDebugger_AutoPlay_PausesOnWatchedFieldChange()
-    {
+    public async Task EventDebugger_AutoPlay_PausesOnWatchedFieldChange() {
         // Arrange
         EventStepFrame frame3 = CreateTestFrame(3, 5);
         EventStepFrame frame4 = CreateTestFrame(4, 5, [new FieldChange("Count", "3", "4")]);
         _ = _mockApiClient.GetEventStepFrameAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<long>(), Arg.Any<CancellationToken>())
-            .Returns(c =>
-            {
+            .Returns(c => {
                 long seq = c.Arg<long>();
                 return Task.FromResult<EventStepFrame?>(seq <= 3 ? frame3 : frame4);
             });
@@ -358,8 +336,7 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDebugger_WatchFields_ShowsHighlightOnSubstringMatch()
-    {
+    public void EventDebugger_WatchFields_ShowsHighlightOnSubstringMatch() {
         // Arrange
         EventStepFrame frame = CreateTestFrame(3, 10, [
             new FieldChange("Count", "2", "3"),
@@ -383,8 +360,7 @@ public class EventDebuggerTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDebugger_WatchFields_ButtonRendersAndOpensPanel()
-    {
+    public void EventDebugger_WatchFields_ButtonRendersAndOpensPanel() {
         // Arrange
         EventStepFrame frame = CreateTestFrame(3, 10);
         _ = _mockApiClient.GetEventStepFrameAsync(
@@ -400,30 +376,24 @@ public class EventDebuggerTests : AdminUITestContext
         cut.Markup.ShouldNotContain("Enter field path to watch");
         AngleSharp.Dom.IElement watchButton = cut.FindAll("fluent-button")
             .First(b => b.GetAttribute("aria-label") == "Watch fields");
-        cut.InvokeAsync(() => watchButton.Click());
+        _ = cut.InvokeAsync(() => watchButton.Click());
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Enter field path to watch"), TimeSpan.FromSeconds(5));
     }
 
-    private IRenderedComponent<EventDebugger> RenderDebugger(long? initialSequence = null)
-    {
-        return Render<EventDebugger>(p => p
-            .Add(c => c.TenantId, "test-tenant")
-            .Add(c => c.Domain, "counter")
-            .Add(c => c.AggregateId, "agg-001")
-            .Add(c => c.InitialSequence, initialSequence));
-    }
+    private IRenderedComponent<EventDebugger> RenderDebugger(long? initialSequence = null) => Render<EventDebugger>(p => p
+                                                                                                       .Add(c => c.TenantId, "test-tenant")
+                                                                                                       .Add(c => c.Domain, "counter")
+                                                                                                       .Add(c => c.AggregateId, "agg-001")
+                                                                                                       .Add(c => c.InitialSequence, initialSequence));
 
     private static EventStepFrame CreateTestFrame(
         long sequenceNumber,
         long totalEvents,
-        List<FieldChange>? changes = null)
-    {
-        return new EventStepFrame(
+        List<FieldChange>? changes = null) => new(
             "test-tenant", "counter", "agg-001",
             sequenceNumber, "CounterIncremented",
             new DateTimeOffset(2026, 3, 27, 10, 0, 0, TimeSpan.Zero),
             "corr-1", "cause-1", "user-1",
             "{\"Amount\":1}", "{\"Count\":" + sequenceNumber + "}",
             changes ?? [], totalEvents);
-    }
 }

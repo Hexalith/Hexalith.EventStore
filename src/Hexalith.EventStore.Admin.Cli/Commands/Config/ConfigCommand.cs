@@ -5,13 +5,11 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Config;
 /// <summary>
 /// Parent command for connection profile management and CLI configuration.
 /// </summary>
-public static class ConfigCommand
-{
+public static class ConfigCommand {
     /// <summary>
     /// Creates the config command with all subcommands.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
+    public static Command Create(GlobalOptionsBinding binding) {
         Command command = new("config", "Manage connection profiles and CLI configuration");
         command.Subcommands.Add(ProfileCommand.Create(binding));
         command.Subcommands.Add(ConfigUseCommand.Create());

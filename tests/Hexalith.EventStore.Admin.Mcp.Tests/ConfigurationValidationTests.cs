@@ -1,16 +1,14 @@
-namespace Hexalith.EventStore.Admin.Mcp.Tests;
 
 using System.Diagnostics;
-using System.Reflection;
 
-public class ConfigurationValidationTests
-{
+namespace Hexalith.EventStore.Admin.Mcp.Tests;
+
+public class ConfigurationValidationTests {
     // Use the MCP project's own output directory (not the test bin) so that
     // the .deps.json resolves transitive dependencies like Microsoft.Extensions.Hosting.
     private static readonly string _mcpDll = ResolveMcpDll();
 
-    private static string ResolveMcpDll()
-    {
+    private static string ResolveMcpDll() {
         // Navigate from test assembly to repo root, then to the MCP project's output.
         // Test bin: tests/Hexalith.EventStore.Admin.Mcp.Tests/bin/<config>/<tfm>/
         // MCP bin:  src/Hexalith.EventStore.Admin.Mcp/bin/<config>/<tfm>/
@@ -23,8 +21,7 @@ public class ConfigurationValidationTests
     }
 
     [Fact]
-    public void BothEnvVarsMissing_ErrorMentionsBothVariableNames()
-    {
+    public void BothEnvVarsMissing_ErrorMentionsBothVariableNames() {
         (string stderr, int exitCode) = RunMcpProcess(envVars: []);
 
         exitCode.ShouldNotBe(0);
@@ -33,10 +30,8 @@ public class ConfigurationValidationTests
     }
 
     [Fact]
-    public void OnlyUrlMissing_ErrorMentionsUrl()
-    {
-        (string stderr, int exitCode) = RunMcpProcess(envVars: new Dictionary<string, string?>
-        {
+    public void OnlyUrlMissing_ErrorMentionsUrl() {
+        (string stderr, int exitCode) = RunMcpProcess(envVars: new Dictionary<string, string?> {
             ["EVENTSTORE_ADMIN_TOKEN"] = "test-token",
         });
 
@@ -45,10 +40,8 @@ public class ConfigurationValidationTests
     }
 
     [Fact]
-    public void OnlyTokenMissing_ErrorMentionsToken()
-    {
-        (string stderr, int exitCode) = RunMcpProcess(envVars: new Dictionary<string, string?>
-        {
+    public void OnlyTokenMissing_ErrorMentionsToken() {
+        (string stderr, int exitCode) = RunMcpProcess(envVars: new Dictionary<string, string?> {
             ["EVENTSTORE_ADMIN_URL"] = "https://localhost:5443",
         });
 
@@ -57,10 +50,8 @@ public class ConfigurationValidationTests
     }
 
     [Fact]
-    public void InvalidUri_ErrorMentionsInvalidUri()
-    {
-        (string stderr, int exitCode) = RunMcpProcess(envVars: new Dictionary<string, string?>
-        {
+    public void InvalidUri_ErrorMentionsInvalidUri() {
+        (string stderr, int exitCode) = RunMcpProcess(envVars: new Dictionary<string, string?> {
             ["EVENTSTORE_ADMIN_URL"] = "not-a-url",
             ["EVENTSTORE_ADMIN_TOKEN"] = "test-token",
         });
@@ -71,10 +62,8 @@ public class ConfigurationValidationTests
     }
 
     [Fact]
-    public void NonHttpScheme_ErrorMentionsInvalidUri()
-    {
-        (string stderr, int exitCode) = RunMcpProcess(envVars: new Dictionary<string, string?>
-        {
+    public void NonHttpScheme_ErrorMentionsInvalidUri() {
+        (string stderr, int exitCode) = RunMcpProcess(envVars: new Dictionary<string, string?> {
             ["EVENTSTORE_ADMIN_URL"] = "ftp://example.com",
             ["EVENTSTORE_ADMIN_TOKEN"] = "test-token",
         });
@@ -85,25 +74,22 @@ public class ConfigurationValidationTests
     }
 
     [Fact]
-    public void ValidConfig_DoesNotExitWithValidationError()
-    {
+    public void ValidConfig_DoesNotExitWithValidationError() {
         // When both env vars are valid, the server should NOT exit with an error.
         // It will block on stdin waiting for MCP input — so we assert it hasn't exited
         // with an error within 2 seconds, then kill it.
-        using Process process = CreateProcess(new Dictionary<string, string?>
-        {
+        using Process process = CreateProcess(new Dictionary<string, string?> {
             ["EVENTSTORE_ADMIN_URL"] = "https://localhost:5443",
             ["EVENTSTORE_ADMIN_TOKEN"] = "test-token",
         });
 
-        process.Start();
+        _ = process.Start();
         bool exited = process.WaitForExit(2000);
 
-        if (!exited)
-        {
+        if (!exited) {
             // Process is still running (blocked on stdin) — this is the expected behavior.
             process.Kill();
-            process.WaitForExit(5000);
+            _ = process.WaitForExit(5000);
 
             // The server did NOT exit with a validation error, which is correct.
             return;
@@ -111,34 +97,28 @@ public class ConfigurationValidationTests
 
         // If it exited, it should NOT have been a validation error (exit code 1 with env var error).
         string stderr = process.StandardError.ReadToEnd();
-        if (process.ExitCode != 0 && stderr.Contains("EVENTSTORE_ADMIN_URL"))
-        {
+        if (process.ExitCode != 0 && stderr.Contains("EVENTSTORE_ADMIN_URL")) {
             Assert.Fail($"Server exited with validation error: {stderr}");
         }
     }
 
-    private static (string Stderr, int ExitCode) RunMcpProcess(Dictionary<string, string?> envVars)
-    {
+    private static (string Stderr, int ExitCode) RunMcpProcess(Dictionary<string, string?> envVars) {
         using Process process = CreateProcess(envVars);
 
-        process.Start();
+        _ = process.Start();
         string stderr = process.StandardError.ReadToEnd();
         bool exited = process.WaitForExit(5000);
-        if (!exited)
-        {
+        if (!exited) {
             process.Kill();
-            process.WaitForExit(5000);
+            _ = process.WaitForExit(5000);
         }
 
         return (stderr, process.ExitCode);
     }
 
-    private static Process CreateProcess(Dictionary<string, string?> envVars)
-    {
-        var process = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
+    private static Process CreateProcess(Dictionary<string, string?> envVars) {
+        var process = new Process {
+            StartInfo = new ProcessStartInfo {
                 FileName = "dotnet",
                 Arguments = $"\"{_mcpDll}\"",
                 RedirectStandardOutput = true,
@@ -153,8 +133,7 @@ public class ConfigurationValidationTests
         process.StartInfo.Environment["EVENTSTORE_ADMIN_URL"] = null;
         process.StartInfo.Environment["EVENTSTORE_ADMIN_TOKEN"] = null;
 
-        foreach (KeyValuePair<string, string?> kvp in envVars)
-        {
+        foreach (KeyValuePair<string, string?> kvp in envVars) {
             process.StartInfo.Environment[kvp.Key] = kvp.Value;
         }
 

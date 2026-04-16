@@ -9,23 +9,18 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 /// Uses Keycloak direct access grants when an authority is configured, otherwise
 /// generates a development HS256 token.
 /// </summary>
-public sealed class AdminApiAccessTokenProvider(IConfiguration configuration)
-{
+public sealed class AdminApiAccessTokenProvider(IConfiguration configuration) {
     private readonly SemaphoreSlim _tokenLock = new(1, 1);
     private AccessTokenCacheEntry? _cachedToken;
 
-    public async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default)
-    {
-        if (_cachedToken is { } cached && cached.ExpiresAtUtc > DateTimeOffset.UtcNow.AddMinutes(1))
-        {
+    public async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default) {
+        if (_cachedToken is { } cached && cached.ExpiresAtUtc > DateTimeOffset.UtcNow.AddMinutes(1)) {
             return cached.Token;
         }
 
         await _tokenLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            if (_cachedToken is { } refreshed && refreshed.ExpiresAtUtc > DateTimeOffset.UtcNow.AddMinutes(1))
-            {
+        try {
+            if (_cachedToken is { } refreshed && refreshed.ExpiresAtUtc > DateTimeOffset.UtcNow.AddMinutes(1)) {
                 return refreshed.Token;
             }
 
@@ -36,14 +31,12 @@ public sealed class AdminApiAccessTokenProvider(IConfiguration configuration)
 
             return _cachedToken.Token;
         }
-        finally
-        {
+        finally {
             _ = _tokenLock.Release();
         }
     }
 
-    private async Task<AccessTokenCacheEntry> RequestKeycloakTokenAsync(string authority, CancellationToken cancellationToken)
-    {
+    private async Task<AccessTokenCacheEntry> RequestKeycloakTokenAsync(string authority, CancellationToken cancellationToken) {
         string clientId = configuration["EventStore:Authentication:ClientId"] ?? "hexalith-eventstore";
         string username = configuration["EventStore:Authentication:Username"]
             ?? throw new InvalidOperationException("EventStore:Authentication:Username is required when Authority is configured.");
@@ -75,8 +68,7 @@ public sealed class AdminApiAccessTokenProvider(IConfiguration configuration)
         return new AccessTokenCacheEntry(token, DateTimeOffset.UtcNow.AddSeconds(expiresIn));
     }
 
-    private AccessTokenCacheEntry CreateDevelopmentToken()
-    {
+    private AccessTokenCacheEntry CreateDevelopmentToken() {
         string issuer = configuration["EventStore:Authentication:Issuer"] ?? "hexalith-dev";
         string audience = configuration["EventStore:Authentication:Audience"] ?? "hexalith-eventstore";
         string signingKey = configuration["EventStore:Authentication:SigningKey"]
@@ -92,14 +84,12 @@ public sealed class AdminApiAccessTokenProvider(IConfiguration configuration)
         DateTimeOffset now = DateTimeOffset.UtcNow;
         DateTimeOffset expiresAt = now.AddHours(1);
 
-        var header = new Dictionary<string, object>
-        {
+        var header = new Dictionary<string, object> {
             ["alg"] = "HS256",
             ["typ"] = "JWT",
         };
 
-        var payload = new Dictionary<string, object>
-        {
+        var payload = new Dictionary<string, object> {
             ["sub"] = subject,
             ["iss"] = issuer,
             ["aud"] = audience,

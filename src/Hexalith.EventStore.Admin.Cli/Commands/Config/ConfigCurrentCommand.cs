@@ -8,8 +8,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Config;
 /// <summary>
 /// Shows the currently active profile and resolved connection settings with source attribution.
 /// </summary>
-public static class ConfigCurrentCommand
-{
+public static class ConfigCurrentCommand {
     internal static readonly List<ColumnDefinition> Columns =
     [
         new("Property", "Property"),
@@ -19,12 +18,10 @@ public static class ConfigCurrentCommand
     /// <summary>
     /// Creates the config current subcommand.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
+    public static Command Create(GlobalOptionsBinding binding) {
         Command command = new("current", "Show resolved connection settings and their sources");
 
-        command.SetAction((parseResult, _) =>
-        {
+        command.SetAction((parseResult, _) => {
             GlobalOptions globals = binding.Resolve(parseResult);
             return Task.FromResult(Execute(binding, parseResult, globals.Format));
         });
@@ -32,18 +29,15 @@ public static class ConfigCurrentCommand
         return command;
     }
 
-    internal static int Execute(GlobalOptionsBinding binding, ParseResult parseResult, string format)
-    {
+    internal static int Execute(GlobalOptionsBinding binding, ParseResult parseResult, string format) {
         (GlobalOptions options, Dictionary<string, string> sources) = binding.ResolveWithSources(parseResult);
 
         string urlSource = sources.GetValueOrDefault("url", "default");
         string tokenSource = sources.GetValueOrDefault("token", "default");
         string formatSource = sources.GetValueOrDefault("format", "default");
 
-        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
-        {
-            var jsonObj = new
-            {
+        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase)) {
+            var jsonObj = new {
                 activeProfile = options.Profile,
                 url = new { value = options.Url, source = urlSource },
                 token = new { value = options.Token, source = tokenSource },

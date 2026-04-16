@@ -188,7 +188,7 @@ public sealed class DaprTenantCommandService : ITenantCommandService {
         TPayload payload,
         CancellationToken ct) {
         try {
-            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
 
             string correlationId = Guid.NewGuid().ToString();
@@ -249,7 +249,7 @@ public sealed class DaprTenantCommandService : ITenantCommandService {
 
             string? userMessage = null;
             try {
-                using JsonDocument doc = JsonDocument.Parse(errorBody);
+                using var doc = JsonDocument.Parse(errorBody);
                 // Extract rejection type name and humanize it (e.g., "TenantAlreadyExistsRejection" → "Tenant already exists")
                 if (doc.RootElement.TryGetProperty("type", out JsonElement typeEl)) {
                     string? typeName = typeEl.GetString();
@@ -268,7 +268,8 @@ public sealed class DaprTenantCommandService : ITenantCommandService {
                         }
                     }
                 }
-            } catch (JsonException) {
+            }
+            catch (JsonException) {
                 // Fall through to default message
             }
 

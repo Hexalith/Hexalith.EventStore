@@ -7,8 +7,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 /// <param name="TotalSizeBytes">The total storage size in bytes, or null if the state store backend does not support size queries (NFR44).</param>
 /// <param name="TenantBreakdown">Per-tenant storage breakdown.</param>
 /// <param name="TotalStreamCount">The total number of streams represented by this overview, or null when not available.</param>
-public record StorageOverview(long TotalEventCount, long? TotalSizeBytes, IReadOnlyList<TenantStorageInfo> TenantBreakdown, long? TotalStreamCount = null)
-{
+public record StorageOverview(long TotalEventCount, long? TotalSizeBytes, IReadOnlyList<TenantStorageInfo> TenantBreakdown, long? TotalStreamCount = null) {
     /// <summary>Gets the per-tenant storage breakdown.</summary>
     public IReadOnlyList<TenantStorageInfo> TenantBreakdown { get; } = TenantBreakdown ?? throw new ArgumentNullException(nameof(TenantBreakdown));
 

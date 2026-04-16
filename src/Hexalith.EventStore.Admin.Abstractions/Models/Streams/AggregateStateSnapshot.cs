@@ -15,8 +15,7 @@ public record AggregateStateSnapshot(
     string AggregateId,
     long SequenceNumber,
     DateTimeOffset Timestamp,
-    string StateJson)
-{
+    string StateJson) {
     /// <summary>Gets the tenant identifier.</summary>
     public string TenantId { get; } = !string.IsNullOrWhiteSpace(TenantId)
         ? TenantId

@@ -11,9 +11,9 @@ using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Models;
 using Hexalith.EventStore.Pipeline;
-using Hexalith.EventStore.Validation;
 using Hexalith.EventStore.Server.Actors.Authorization;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.Validation;
 
 using MediatR;
 

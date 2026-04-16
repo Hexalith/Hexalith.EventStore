@@ -12,8 +12,7 @@ public record SandboxEvent(
     int Index,
     string EventTypeName,
     string PayloadJson,
-    bool IsRejection)
-{
+    bool IsRejection) {
     /// <summary>Gets the event type name.</summary>
     public string EventTypeName { get; } = EventTypeName ?? string.Empty;
 

@@ -10,11 +10,9 @@ using Hexalith.EventStore.Testing.Http;
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands;
 
 [Collection("ConsoleTests")]
-public class HealthCommandStrictTests
-{
+public class HealthCommandStrictTests {
     [Fact]
-    public async Task HealthCommand_Strict_DegradedReturnsExitCode2()
-    {
+    public async Task HealthCommand_Strict_DegradedReturnsExitCode2() {
         // Arrange
         SystemHealthReport report = CreateTestReport(HealthStatus.Degraded);
         using AdminApiClient client = CreateMockClient(report);
@@ -30,8 +28,7 @@ public class HealthCommandStrictTests
     }
 
     [Fact]
-    public async Task HealthCommand_Strict_HealthyReturnsExitCode0()
-    {
+    public async Task HealthCommand_Strict_HealthyReturnsExitCode0() {
         // Arrange
         SystemHealthReport report = CreateTestReport(HealthStatus.Healthy);
         using AdminApiClient client = CreateMockClient(report);
@@ -47,8 +44,7 @@ public class HealthCommandStrictTests
     }
 
     [Fact]
-    public async Task HealthCommand_NoStrict_DegradedReturnsExitCode1()
-    {
+    public async Task HealthCommand_NoStrict_DegradedReturnsExitCode1() {
         // Arrange
         SystemHealthReport report = CreateTestReport(HealthStatus.Degraded);
         using AdminApiClient client = CreateMockClient(report);
@@ -63,9 +59,7 @@ public class HealthCommandStrictTests
         exitCode.ShouldBe(ExitCodes.Degraded);
     }
 
-    private static SystemHealthReport CreateTestReport(HealthStatus overallStatus)
-    {
-        return new SystemHealthReport(
+    private static SystemHealthReport CreateTestReport(HealthStatus overallStatus) => new(
             overallStatus,
             1000,
             42.5,
@@ -75,16 +69,13 @@ public class HealthCommandStrictTests
                 new DaprComponentHealth("pubsub-redis", "pubsub.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow),
             ],
             new ObservabilityLinks(null, null, null));
-    }
 
     private static GlobalOptions CreateOptions(string format = "json")
         => new("http://localhost:5002", null, format, null);
 
-    private static AdminApiClient CreateMockClient(SystemHealthReport report)
-    {
+    private static AdminApiClient CreateMockClient(SystemHealthReport report) {
         string json = JsonSerializer.Serialize(report, JsonDefaults.Options);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         });
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost:5002") };

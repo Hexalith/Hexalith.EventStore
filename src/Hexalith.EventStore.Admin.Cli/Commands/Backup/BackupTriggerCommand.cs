@@ -9,8 +9,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Backup;
 /// <summary>
 /// The <c>eventstore-admin backup trigger</c> subcommand — triggers a backup for a tenant.
 /// </summary>
-public static class BackupTriggerCommand
-{
+public static class BackupTriggerCommand {
     internal static readonly List<ColumnDefinition> ResultColumns =
     [
         new("Operation ID", "OperationId"),
@@ -21,8 +20,7 @@ public static class BackupTriggerCommand
     /// <summary>
     /// Creates the backup trigger subcommand wired to the shared global options.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
+    public static Command Create(GlobalOptionsBinding binding) {
         Argument<string> tenantIdArg = BackupArguments.TenantId();
         Option<string?> descriptionOption = new("--description", "-d") { Description = "Description for the backup" };
         Option<bool> noSnapshotsOption = new("--no-snapshots") { Description = "Exclude snapshots from backup" };
@@ -32,8 +30,7 @@ public static class BackupTriggerCommand
         command.Options.Add(descriptionOption);
         command.Options.Add(noSnapshotsOption);
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
+        command.SetAction(async (parseResult, cancellationToken) => {
             GlobalOptions options = binding.Resolve(parseResult);
             string tenantId = parseResult.GetValue(tenantIdArg)!;
             string? description = parseResult.GetValue(descriptionOption);
@@ -48,8 +45,7 @@ public static class BackupTriggerCommand
         string tenantId,
         string? description,
         bool noSnapshots,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         using AdminApiClient client = new(options);
         return await ExecuteAsync(client, options, tenantId, description, noSnapshots, cancellationToken).ConfigureAwait(false);
     }
@@ -60,23 +56,19 @@ public static class BackupTriggerCommand
         string tenantId,
         string? description,
         bool noSnapshots,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         IOutputFormatter formatter = OutputFormatterFactory.Create(options.Format);
         OutputWriter writer = new(options.OutputFile);
-        try
-        {
+        try {
             string path = $"api/v1/admin/backups/{Uri.EscapeDataString(tenantId)}";
             List<string> queryParams = [];
-            if (description is not null)
-            {
+            if (description is not null) {
                 queryParams.Add($"description={Uri.EscapeDataString(description)}");
             }
 
             bool includeSnapshots = !noSnapshots;
             queryParams.Add($"includeSnapshots={includeSnapshots.ToString().ToLowerInvariant()}");
-            if (queryParams.Count > 0)
-            {
+            if (queryParams.Count > 0) {
                 path += "?" + string.Join("&", queryParams);
             }
 
@@ -87,22 +79,18 @@ public static class BackupTriggerCommand
             Console.Error.WriteLine($"Backup triggered. Operation ID: {result.OperationId}");
 
             string output;
-            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase))
-            {
+            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase)) {
                 output = formatter.Format(result);
             }
-            else
-            {
+            else {
                 output = formatter.Format(result, ResultColumns);
             }
 
             int writeResult = writer.Write(output);
             return writeResult != ExitCodes.Success ? writeResult : ExitCodes.Success;
         }
-        catch (AdminApiException ex)
-        {
-            string message = ex.HttpStatusCode switch
-            {
+        catch (AdminApiException ex) {
+            string message = ex.HttpStatusCode switch {
                 403 => "Access denied. Admin role required.",
                 _ => ex.Message,
             };

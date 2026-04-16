@@ -7,7 +7,7 @@ public class UniqueIdHelperIntegrationTests {
     public void GenerateSortableUniqueStringId_Returns26CharString() {
         string id = UniqueIdHelper.GenerateSortableUniqueStringId();
 
-        id.ShouldNotBeNull();
+        _ = id.ShouldNotBeNull();
         id.Length.ShouldBe(26);
     }
 
@@ -40,8 +40,7 @@ public class UniqueIdHelperIntegrationTests {
             .Select(_ => UniqueIdHelper.GenerateSortableUniqueStringId())
             .ToArray();
 
-        for (int i = 1; i < ids.Length; i++)
-        {
+        for (int i = 1; i < ids.Length; i++) {
             int comparison = string.Compare(ids[i - 1], ids[i], StringComparison.Ordinal);
             (comparison < 0).ShouldBeTrue(
                 $"Expected ids[{i - 1}] '{ids[i - 1]}' < ids[{i}] '{ids[i]}' lexicographically, but comparison was {comparison}");

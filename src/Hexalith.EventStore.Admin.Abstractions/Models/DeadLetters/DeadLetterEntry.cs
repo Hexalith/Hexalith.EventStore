@@ -21,8 +21,7 @@ public record DeadLetterEntry(
     string FailureReason,
     DateTimeOffset FailedAtUtc,
     int RetryCount,
-    string OriginalCommandType)
-{
+    string OriginalCommandType) {
     /// <summary>Gets the unique message identifier.</summary>
     public string MessageId { get; } = !string.IsNullOrWhiteSpace(MessageId)
         ? MessageId

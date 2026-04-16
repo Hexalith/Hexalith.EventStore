@@ -14,7 +14,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
@@ -44,7 +43,7 @@ public class DaprDeadLetterServiceTests {
         var handler = new TestHttpMessageHandler();
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost") };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+        _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
 
         var service = new DaprDeadLetterCommandService(
             daprClient,
@@ -65,7 +64,7 @@ public class DaprDeadLetterServiceTests {
             new("msg-2", "tenant1", "orders", "order-2", "corr-2", "Timeout", DateTimeOffset.UtcNow, 1, "UpdateOrder"),
         };
 
-        daprClient.GetStateAsync<List<DeadLetterEntry>>(
+        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
             StateStoreName,
             "admin:dead-letters:tenant1",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -90,7 +89,7 @@ public class DaprDeadLetterServiceTests {
             new("msg-3", "t1", "d1", "a3", "c3", "err3", DateTimeOffset.UtcNow, 0, "Cmd3"),
         };
 
-        daprClient.GetStateAsync<List<DeadLetterEntry>>(
+        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
             StateStoreName,
             "admin:dead-letters:t1",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -118,7 +117,7 @@ public class DaprDeadLetterServiceTests {
             new("message-two", "tenant-one", "domain-one", "aggregate-two", "correlation-two", "error-two", DateTimeOffset.UtcNow, 0, "RetryDeadLetter"),
         };
 
-        daprClient.GetStateAsync<List<DeadLetterEntry>>(
+        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
             StateStoreName,
             "admin:dead-letters:t1",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -136,7 +135,7 @@ public class DaprDeadLetterServiceTests {
     [Fact]
     public async Task ListDeadLettersAsync_ReturnsEmpty_WhenIndexNotFound() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<DeadLetterEntry>>(
+        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -195,13 +194,12 @@ public class DaprDeadLetterServiceTests {
     }
 
     [Fact]
-    public async Task ListDeadLettersAsync_PropagatesCancellation()
-    {
+    public async Task ListDeadLettersAsync_PropagatesCancellation() {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<DeadLetterEntry>>(
+        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -209,20 +207,19 @@ public class DaprDeadLetterServiceTests {
 
         DaprDeadLetterQueryService service = CreateQueryService(daprClient);
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.ListDeadLettersAsync("tenant1", 10, null, cts.Token));
     }
 
     [Fact]
-    public async Task RetryDeadLettersAsync_PropagatesCancellation()
-    {
+    public async Task RetryDeadLettersAsync_PropagatesCancellation() {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
         (DaprDeadLetterCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
         handler.SetupException(new OperationCanceledException());
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.RetryDeadLettersAsync("tenant1", ["msg-1"], cts.Token));
     }
 

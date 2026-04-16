@@ -11,8 +11,7 @@ public record BisectStep(
     int StepNumber,
     long TestedSequence,
     string Verdict,
-    int DivergentFieldCount)
-{
+    int DivergentFieldCount) {
     /// <summary>Gets the verdict: "good" or "bad".</summary>
     public string Verdict { get; } = Verdict ?? string.Empty;
 

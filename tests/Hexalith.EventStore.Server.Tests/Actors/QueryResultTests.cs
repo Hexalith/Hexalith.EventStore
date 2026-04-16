@@ -13,10 +13,10 @@ public class QueryResultTests {
     public void FromPayload_SetsPayloadBytesAndSuccess() {
         JsonElement payload = JsonDocument.Parse("{\"count\":42}").RootElement;
 
-        QueryResult sut = QueryResult.FromPayload(payload);
+        var sut = QueryResult.FromPayload(payload);
 
         sut.Success.ShouldBeTrue();
-        sut.PayloadBytes.ShouldNotBeNull();
+        _ = sut.PayloadBytes.ShouldNotBeNull();
         sut.PayloadBytes!.Length.ShouldBeGreaterThan(0);
         sut.ErrorMessage.ShouldBeNull();
     }
@@ -25,7 +25,7 @@ public class QueryResultTests {
     public void GetPayload_ReturnsOriginalJsonStructure() {
         JsonElement payload = JsonDocument.Parse("{\"count\":42}").RootElement;
 
-        QueryResult sut = QueryResult.FromPayload(payload);
+        var sut = QueryResult.FromPayload(payload);
 
         JsonElement restored = sut.GetPayload();
         restored.GetProperty("count").GetInt32().ShouldBe(42);
@@ -33,7 +33,7 @@ public class QueryResultTests {
 
     [Fact]
     public void Failure_SetsErrorMessageAndNoPayload() {
-        QueryResult sut = QueryResult.Failure("Something went wrong");
+        var sut = QueryResult.Failure("Something went wrong");
 
         sut.Success.ShouldBeFalse();
         sut.PayloadBytes.ShouldBeNull();
@@ -53,7 +53,7 @@ public class QueryResultTests {
     public void FromPayload_WithProjectionType_SetsProjectionType() {
         JsonElement payload = JsonDocument.Parse("{}").RootElement;
 
-        QueryResult sut = QueryResult.FromPayload(payload, "counter");
+        var sut = QueryResult.FromPayload(payload, "counter");
 
         sut.ProjectionType.ShouldBe("counter");
     }
@@ -63,7 +63,7 @@ public class QueryResultTests {
         // This is the critical regression test: DAPR actor remoting uses DataContractSerializer.
         // The old JsonElement-based QueryResult failed this serialization silently.
         JsonElement payload = JsonDocument.Parse("{\"count\":42,\"name\":\"test\"}").RootElement;
-        QueryResult original = QueryResult.FromPayload(payload, "counter");
+        var original = QueryResult.FromPayload(payload, "counter");
 
         // Serialize with DataContractSerializer (same as DAPR actor remoting)
         var serializer = new DataContractSerializer(typeof(QueryResult));
@@ -74,7 +74,7 @@ public class QueryResultTests {
         stream.Position = 0;
         var deserialized = (QueryResult?)serializer.ReadObject(stream);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized!.Success.ShouldBeTrue();
         deserialized.ProjectionType.ShouldBe("counter");
 
@@ -85,7 +85,7 @@ public class QueryResultTests {
 
     [Fact]
     public void DataContractSerializer_RoundTrip_Failure_PreservesErrorMessage() {
-        QueryResult original = QueryResult.Failure("No projection state");
+        var original = QueryResult.Failure("No projection state");
 
         var serializer = new DataContractSerializer(typeof(QueryResult));
         using var stream = new MemoryStream();
@@ -94,7 +94,7 @@ public class QueryResultTests {
         stream.Position = 0;
         var deserialized = (QueryResult?)serializer.ReadObject(stream);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized!.Success.ShouldBeFalse();
         deserialized.ErrorMessage.ShouldBe("No projection state");
         deserialized.PayloadBytes.ShouldBeNull();

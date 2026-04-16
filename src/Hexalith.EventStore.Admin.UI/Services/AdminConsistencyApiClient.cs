@@ -1,12 +1,9 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
-
-using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.Admin.UI.Services;
 
@@ -16,8 +13,7 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 /// </summary>
 public class AdminConsistencyApiClient(
     IHttpClientFactory httpClientFactory,
-    ILogger<AdminConsistencyApiClient> logger)
-{
+    ILogger<AdminConsistencyApiClient> logger) {
     /// <summary>
     /// Gets the full result of a consistency check including anomaly details.
     /// </summary>
@@ -26,15 +22,12 @@ public class AdminConsistencyApiClient(
     /// <returns>The full check result, or null if not found.</returns>
     public virtual async Task<ConsistencyCheckResult?> GetCheckResultAsync(
         string checkId,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/consistency/checks/{Uri.EscapeDataString(checkId)}";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
+            if (response.StatusCode == HttpStatusCode.NotFound) {
                 return null;
             }
 
@@ -47,8 +40,7 @@ public class AdminConsistencyApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch consistency check result from {Url}", url);
             throw new ServiceUnavailableException("Unable to load consistency check result.");
         }
@@ -62,14 +54,12 @@ public class AdminConsistencyApiClient(
     /// <returns>A list of consistency check summaries.</returns>
     public virtual async Task<IReadOnlyList<ConsistencyCheckSummary>> GetChecksAsync(
         string? tenantId = null,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = string.IsNullOrEmpty(tenantId)
             ? "api/v1/admin/consistency/checks"
             : $"api/v1/admin/consistency/checks?tenantId={Uri.EscapeDataString(tenantId)}";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             IReadOnlyList<ConsistencyCheckSummary>? result = await response.Content
@@ -81,8 +71,7 @@ public class AdminConsistencyApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch consistency checks from {Url}", url);
             throw new ServiceUnavailableException("Unable to load consistency checks.");
         }
@@ -100,12 +89,10 @@ public class AdminConsistencyApiClient(
         string? tenantId,
         string? domain,
         IReadOnlyList<ConsistencyCheckType> checkTypes,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = "api/v1/admin/consistency/checks";
-        try
-        {
+        try {
             var request = new { TenantId = tenantId, Domain = domain, CheckTypes = checkTypes };
             using HttpResponseMessage response = await client
                 .PostAsJsonAsync(url, request, ct)
@@ -115,16 +102,14 @@ public class AdminConsistencyApiClient(
                 .ReadFromJsonAsync<AdminOperationResult>(ct)
                 .ConfigureAwait(false);
         }
-        catch (InvalidOperationException)
-        {
+        catch (InvalidOperationException) {
             throw;
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to trigger consistency check at {Url}", url);
             throw new ServiceUnavailableException("Unable to trigger consistency check.");
         }
@@ -138,12 +123,10 @@ public class AdminConsistencyApiClient(
     /// <returns>The operation result.</returns>
     public virtual async Task<AdminOperationResult?> CancelCheckAsync(
         string checkId,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/consistency/checks/{Uri.EscapeDataString(checkId)}/cancel";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client
                 .PostAsync(url, null, ct)
                 .ConfigureAwait(false);
@@ -156,37 +139,30 @@ public class AdminConsistencyApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to cancel consistency check at {Url}", url);
             throw new ServiceUnavailableException("Unable to cancel consistency check.");
         }
     }
 
-    private static async Task HandleErrorStatusAsync(HttpResponseMessage response)
-    {
-        if (response.IsSuccessStatusCode)
-        {
+    private static async Task HandleErrorStatusAsync(HttpResponseMessage response) {
+        if (response.IsSuccessStatusCode) {
             return;
         }
 
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
 
-        if (statusCode == HttpStatusCode.UnprocessableEntity)
-        {
+        if (statusCode == HttpStatusCode.UnprocessableEntity) {
             string? errorDetail = null;
-            try
-            {
+            try {
                 string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                using JsonDocument doc = JsonDocument.Parse(body);
-                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail))
-                {
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail)) {
                     errorDetail = detail.GetString();
                 }
             }
-            catch
-            {
+            catch {
                 // Ignore parse failures — fall through to default message
             }
 
@@ -194,8 +170,7 @@ public class AdminConsistencyApiClient(
                 errorDetail ?? reasonPhrase ?? "The operation was rejected by the server.");
         }
 
-        throw statusCode switch
-        {
+        throw statusCode switch {
             HttpStatusCode.Unauthorized => new UnauthorizedAccessException(
                 "Authentication required. Please sign in again."),
             HttpStatusCode.Forbidden => new ForbiddenAccessException(

@@ -28,7 +28,7 @@ public class DomainResultTests {
         result.IsSuccess.ShouldBeFalse();
         result.IsRejection.ShouldBeTrue();
         result.IsNoOp.ShouldBeFalse();
-        result.Events.ShouldHaveSingleItem();
+        _ = result.Events.ShouldHaveSingleItem();
     }
 
     [Fact]

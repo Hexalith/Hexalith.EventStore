@@ -2,11 +2,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Dapr;
 
-public class DaprRetryPolicyTests
-{
+public class DaprRetryPolicyTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         var policy = new DaprRetryPolicy(
             "defaultRetry",
             "constant",
@@ -22,8 +20,7 @@ public class DaprRetryPolicyTests
     }
 
     [Fact]
-    public void Constructor_WithNullDuration_CreatesInstance()
-    {
+    public void Constructor_WithNullDuration_CreatesInstance() {
         var policy = new DaprRetryPolicy(
             "exponentialRetry",
             "exponential",
@@ -36,8 +33,7 @@ public class DaprRetryPolicyTests
     }
 
     [Fact]
-    public void Constructor_WithNullMaxInterval_CreatesInstance()
-    {
+    public void Constructor_WithNullMaxInterval_CreatesInstance() {
         var policy = new DaprRetryPolicy(
             "simpleRetry",
             "constant",
@@ -50,8 +46,7 @@ public class DaprRetryPolicyTests
     }
 
     [Fact]
-    public void Constructor_WithBothNullableFieldsNull_CreatesInstance()
-    {
+    public void Constructor_WithBothNullableFieldsNull_CreatesInstance() {
         var policy = new DaprRetryPolicy(
             "minimalRetry",
             "constant",
@@ -70,29 +65,23 @@ public class DaprRetryPolicyTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_WithInvalidName_ThrowsArgumentException(string? name)
-    {
-        Should.Throw<ArgumentException>(() =>
-            new DaprRetryPolicy(
-                name!,
-                "constant",
-                3,
-                "1s",
-                "15s"));
-    }
+    public void Constructor_WithInvalidName_ThrowsArgumentException(string? name) => Should.Throw<ArgumentException>(() =>
+                                                                                              new DaprRetryPolicy(
+                                                                                                  name!,
+                                                                                                  "constant",
+                                                                                                  3,
+                                                                                                  "1s",
+                                                                                                  "15s"));
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_WithInvalidStrategy_ThrowsArgumentException(string? strategy)
-    {
-        Should.Throw<ArgumentException>(() =>
-            new DaprRetryPolicy(
-                "defaultRetry",
-                strategy!,
-                3,
-                "1s",
-                "15s"));
-    }
+    public void Constructor_WithInvalidStrategy_ThrowsArgumentException(string? strategy) => Should.Throw<ArgumentException>(() =>
+                                                                                                      new DaprRetryPolicy(
+                                                                                                          "defaultRetry",
+                                                                                                          strategy!,
+                                                                                                          3,
+                                                                                                          "1s",
+                                                                                                          "15s"));
 }

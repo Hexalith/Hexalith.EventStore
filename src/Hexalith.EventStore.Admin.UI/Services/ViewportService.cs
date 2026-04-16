@@ -6,25 +6,22 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 /// Service for detecting viewport width via JS interop with matchMedia.
 /// Handles JSDisconnectedException gracefully during Blazor Server prerender.
 /// </summary>
-public sealed class ViewportService(IJSRuntime jsRuntime) : IAsyncDisposable, IDisposable
-{
+public sealed class ViewportService(IJSRuntime jsRuntime) : IAsyncDisposable, IDisposable {
     private const int WideBreakpoint = 1280;
     private DotNetObjectReference<ViewportService>? _dotNetRef;
     private string? _listenerId;
-    private bool _isWideViewport = true; // Default to wide for prerender safety
     private bool _initialized;
     private Action? _onViewportChanged;
 
     /// <summary>
     /// Gets whether the viewport is at or above the wide breakpoint (1280px).
     /// </summary>
-    public bool IsWideViewport => _isWideViewport;
+    public bool IsWideViewport { get; private set; } = true;
 
     /// <summary>
     /// Event raised when viewport crosses the wide breakpoint.
     /// </summary>
-    public event Action? OnViewportChanged
-    {
+    public event Action? OnViewportChanged {
         add => _onViewportChanged += value;
         remove => _onViewportChanged -= value;
     }
@@ -32,20 +29,17 @@ public sealed class ViewportService(IJSRuntime jsRuntime) : IAsyncDisposable, ID
     /// <summary>
     /// Initializes viewport detection via JS interop.
     /// </summary>
-    public async Task InitializeAsync()
-    {
-        if (_initialized)
-        {
+    public async Task InitializeAsync() {
+        if (_initialized) {
             return;
         }
 
-        try
-        {
+        try {
             _dotNetRef = DotNetObjectReference.Create(this);
             int width = await jsRuntime
                 .InvokeAsync<int>("hexalithAdmin.getViewportWidth")
                 .ConfigureAwait(false);
-            _isWideViewport = width >= WideBreakpoint;
+            IsWideViewport = width >= WideBreakpoint;
 
             _listenerId = await jsRuntime.InvokeAsync<string>(
                 "hexalithAdmin.registerViewportListener",
@@ -54,15 +48,13 @@ public sealed class ViewportService(IJSRuntime jsRuntime) : IAsyncDisposable, ID
 
             _initialized = true;
         }
-        catch (JSDisconnectedException)
-        {
+        catch (JSDisconnectedException) {
             // Blazor Server prerender — default to wide
-            _isWideViewport = true;
+            IsWideViewport = true;
         }
-        catch (InvalidOperationException)
-        {
+        catch (InvalidOperationException) {
             // JS interop not available yet — default to wide
-            _isWideViewport = true;
+            IsWideViewport = true;
         }
     }
 
@@ -70,44 +62,34 @@ public sealed class ViewportService(IJSRuntime jsRuntime) : IAsyncDisposable, ID
     /// Called from JS when viewport crosses the breakpoint.
     /// </summary>
     [JSInvokable]
-    public void OnViewportWidthChanged(bool isWide)
-    {
-        _isWideViewport = isWide;
+    public void OnViewportWidthChanged(bool isWide) {
+        IsWideViewport = isWide;
         _onViewportChanged?.Invoke();
     }
 
     /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        if (_listenerId is not null)
-        {
-            try
-            {
+    public async ValueTask DisposeAsync() {
+        if (_listenerId is not null) {
+            try {
                 await jsRuntime.InvokeVoidAsync("hexalithAdmin.unregisterViewportListener", _listenerId)
                     .ConfigureAwait(false);
             }
-            catch (JSDisconnectedException)
-            {
+            catch (JSDisconnectedException) {
                 // Already disconnected
             }
-            catch (ObjectDisposedException)
-            {
+            catch (ObjectDisposedException) {
                 // Already disposed
             }
 
             _listenerId = null;
         }
 
-        if (_dotNetRef is not null)
-        {
-            _dotNetRef.Dispose();
-            _dotNetRef = null;
-        }
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
     }
 
     /// <inheritdoc />
-    public void Dispose()
-    {
+    public void Dispose() {
         _dotNetRef?.Dispose();
         _dotNetRef = null;
         _listenerId = null;

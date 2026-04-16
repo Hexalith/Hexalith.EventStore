@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Streams;
 
-public class AggregateBlameViewTests
-{
+public class AggregateBlameViewTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         var fields = new List<FieldProvenance>
         {
             new("Count", "5", "4", 10, DateTimeOffset.UtcNow, "CounterIncremented", "corr-1", "user-1"),
@@ -29,8 +27,7 @@ public class AggregateBlameViewTests
     }
 
     [Fact]
-    public void Constructor_WithNullStrings_DefaultsToEmpty()
-    {
+    public void Constructor_WithNullStrings_DefaultsToEmpty() {
         var view = new AggregateBlameView(
             null!, null!, null!,
             0, DateTimeOffset.MinValue, null!,
@@ -43,8 +40,7 @@ public class AggregateBlameViewTests
     }
 
     [Fact]
-    public void ToString_RedactsFieldValues()
-    {
+    public void ToString_RedactsFieldValues() {
         var fields = new List<FieldProvenance>
         {
             new("Secret", "secret-value", "old-secret", 1, DateTimeOffset.UtcNow, "Evt", "c", "u"),
@@ -64,8 +60,7 @@ public class AggregateBlameViewTests
     }
 
     [Fact]
-    public void SerializationRoundTrip_WithFieldProvenanceList_PreservesAll()
-    {
+    public void SerializationRoundTrip_WithFieldProvenanceList_PreservesAll() {
         DateTimeOffset timestamp = new(2026, 3, 27, 10, 0, 0, TimeSpan.Zero);
         var fields = new List<FieldProvenance>
         {
@@ -80,7 +75,7 @@ public class AggregateBlameViewTests
         string json = JsonSerializer.Serialize(original);
         AggregateBlameView? deserialized = JsonSerializer.Deserialize<AggregateBlameView>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized!.TenantId.ShouldBe("tenant1");
         deserialized.Domain.ShouldBe("domain1");
         deserialized.AggregateId.ShouldBe("agg-1");
@@ -93,8 +88,7 @@ public class AggregateBlameViewTests
     }
 
     [Fact]
-    public void EmptyFields_WhenNoEvents_ReturnsEmptyList()
-    {
+    public void EmptyFields_WhenNoEvents_ReturnsEmptyList() {
         var view = new AggregateBlameView(
             "t1", "d1", "a1", 0,
             DateTimeOffset.MinValue, [], false, false);

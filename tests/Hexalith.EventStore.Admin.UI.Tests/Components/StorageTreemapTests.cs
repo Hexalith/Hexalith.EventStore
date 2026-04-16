@@ -2,24 +2,18 @@ using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.UI.Components;
-using Hexalith.EventStore.Admin.UI.Services;
-
-using Microsoft.Extensions.DependencyInjection;
 
 using Microsoft.AspNetCore.Components;
-
-using NSubstitute;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 
 /// <summary>
 /// bUnit tests for the StorageTreemap component.
 /// </summary>
-public class StorageTreemapTests : AdminUITestContext
-{
+public class StorageTreemapTests : AdminUITestContext {
     [Fact]
-    public void StorageTreemap_RendersSvg_WithRoleAndAriaLabel()
-    {
+    public void StorageTreemap_RendersSvg_WithRoleAndAriaLabel() {
         // Arrange
         IReadOnlyList<StreamStorageInfo> data = CreateSampleData();
 
@@ -33,8 +27,7 @@ public class StorageTreemapTests : AdminUITestContext
     }
 
     [Fact]
-    public void StorageTreemap_FiresOnAggregateTypeSelected_OnRectangleClick()
-    {
+    public void StorageTreemap_FiresOnAggregateTypeSelected_OnRectangleClick() {
         // Arrange
         string? selectedType = null;
         IReadOnlyList<StreamStorageInfo> data = CreateSampleData();
@@ -46,16 +39,15 @@ public class StorageTreemapTests : AdminUITestContext
 
         // Find and click a treemap rectangle
         AngleSharp.Dom.IElement? rectElement = cut.Find("g.treemap-rect");
-        rectElement.ShouldNotBeNull();
+        _ = rectElement.ShouldNotBeNull();
         rectElement.Click();
 
         // Assert — should have been called with an aggregate type
-        selectedType.ShouldNotBeNull();
+        _ = selectedType.ShouldNotBeNull();
     }
 
     [Fact]
-    public void StorageTreemap_RendersHiddenScreenReaderTable()
-    {
+    public void StorageTreemap_RendersHiddenScreenReaderTable() {
         // Arrange
         IReadOnlyList<StreamStorageInfo> data = CreateSampleData();
 
@@ -70,8 +62,7 @@ public class StorageTreemapTests : AdminUITestContext
     }
 
     [Fact]
-    public void StorageTreemap_BarChartFallback_WhenNotWideViewport()
-    {
+    public void StorageTreemap_BarChartFallback_WhenNotWideViewport() {
         // Arrange — set viewport to narrow
         ViewportService viewportService = Services.GetRequiredService<ViewportService>();
         viewportService.OnViewportWidthChanged(false);
@@ -87,12 +78,10 @@ public class StorageTreemapTests : AdminUITestContext
     }
 
     [Fact]
-    public void StorageTreemap_GroupsIntoOtherBucket_WhenOver500Types()
-    {
+    public void StorageTreemap_GroupsIntoOtherBucket_WhenOver500Types() {
         // Arrange — create 501 distinct aggregate types
         List<StreamStorageInfo> data = [];
-        for (int i = 0; i < 501; i++)
-        {
+        for (int i = 0; i < 501; i++) {
             data.Add(new StreamStorageInfo("t1", "Domain", $"agg-{i}", $"Type{i}", 100 + i, null, true, null));
         }
 

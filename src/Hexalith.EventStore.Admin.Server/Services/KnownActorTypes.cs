@@ -15,14 +15,12 @@ public record KnownActorTypeDescriptor(
 /// Static registry of known DAPR actor types and their state keys.
 /// Used by the actor inspector to enumerate readable state keys for a given actor type.
 /// </summary>
-public static class KnownActorTypes
-{
+public static class KnownActorTypes {
     /// <summary>
     /// The known actor types registered in the EventStore server.
     /// </summary>
     public static readonly IReadOnlyDictionary<string, KnownActorTypeDescriptor> Types =
-        new Dictionary<string, KnownActorTypeDescriptor>(StringComparer.Ordinal)
-        {
+        new Dictionary<string, KnownActorTypeDescriptor>(StringComparer.Ordinal) {
             ["AggregateActor"] = new(
                 "Processes commands and persists events for domain aggregates",
                 "tenant:domain:aggregate-id",
@@ -60,8 +58,7 @@ public static class KnownActorTypes
     /// </summary>
     /// <param name="stateKey">The state key to check.</param>
     /// <returns>True if the key is a dynamic family pattern.</returns>
-    public static bool IsDynamicKeyFamily(string stateKey)
-    {
+    public static bool IsDynamicKeyFamily(string stateKey) {
         ArgumentNullException.ThrowIfNull(stateKey);
 
         // Remove all {actorId} occurrences and check if other patterns remain
@@ -76,18 +73,15 @@ public static class KnownActorTypes
     /// <param name="stateKey">The state key pattern.</param>
     /// <param name="actorId">The actor instance ID.</param>
     /// <returns>The resolved key, or null if the key is a dynamic family.</returns>
-    public static string? ResolveStateKey(string stateKey, string actorId)
-    {
+    public static string? ResolveStateKey(string stateKey, string actorId) {
         ArgumentNullException.ThrowIfNull(stateKey);
         ArgumentNullException.ThrowIfNull(actorId);
 
-        if (!stateKey.Contains('{'))
-        {
+        if (!stateKey.Contains('{')) {
             return stateKey;
         }
 
-        if (stateKey.Contains("{actorId}", StringComparison.Ordinal))
-        {
+        if (stateKey.Contains("{actorId}", StringComparison.Ordinal)) {
             string resolved = stateKey.Replace("{actorId}", actorId, StringComparison.Ordinal);
 
             // If after substitution there are still unresolved patterns, it's a family

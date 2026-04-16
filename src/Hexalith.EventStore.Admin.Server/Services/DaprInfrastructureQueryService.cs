@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
@@ -20,8 +19,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// DAPR-backed implementation of <see cref="IDaprInfrastructureQueryService"/>.
 /// Uses DaprClient.GetMetadataAsync() as the sole data source.
 /// </summary>
-public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQueryService
-{
+public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQueryService {
     private readonly DaprClient _daprClient;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<DaprInfrastructureQueryService> _logger;
@@ -38,8 +36,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         DaprClient daprClient,
         IHttpClientFactory httpClientFactory,
         IOptions<AdminServerOptions> options,
-        ILogger<DaprInfrastructureQueryService> logger)
-    {
+        ILogger<DaprInfrastructureQueryService> logger) {
         ArgumentNullException.ThrowIfNull(daprClient);
         ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
@@ -56,12 +53,10 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<DaprComponentDetail>> GetComponentsAsync(CancellationToken ct = default)
-    {
+    public async Task<IReadOnlyList<DaprComponentDetail>> GetComponentsAsync(CancellationToken ct = default) {
         DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
 
-        if (metadata?.Components is null || metadata.Components.Count == 0)
-        {
+        if (metadata?.Components is null || metadata.Components.Count == 0) {
             return [];
         }
 
@@ -78,26 +73,21 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             .ToArray();
 
         // Run health probes for state store components in parallel
-        using CancellationTokenSource probeCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        using var probeCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         probeCts.CancelAfter(TimeSpan.FromSeconds(3));
 
         List<Task> probes = [];
-        for (int i = 0; i < components.Length; i++)
-        {
-            if (components[i].Category == DaprComponentCategory.StateStore)
-            {
+        for (int i = 0; i < components.Length; i++) {
+            if (components[i].Category == DaprComponentCategory.StateStore) {
                 probes.Add(ProbeStateStoreAsync(components, i, probeCts.Token));
             }
         }
 
-        if (probes.Count > 0)
-        {
-            try
-            {
+        if (probes.Count > 0) {
+            try {
                 await Task.WhenAll(probes).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-            {
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
                 // Probe timeout — mark remaining probed components as Degraded
                 _logger.LogWarning("State store health probes timed out after 3 seconds.");
             }
@@ -107,11 +97,9 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
     }
 
     /// <inheritdoc/>
-    public async Task<DaprSidecarInfo?> GetSidecarInfoAsync(CancellationToken ct = default)
-    {
+    public async Task<DaprSidecarInfo?> GetSidecarInfoAsync(CancellationToken ct = default) {
         DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
-        if (metadata is null)
-        {
+        if (metadata is null) {
             return null;
         }
 
@@ -128,46 +116,39 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         int httpEndpointCount = 0;
         bool remoteFetchSucceeded = false;
 
-        if (string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint))
-        {
+        if (string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)) {
             _logger.LogDebug("Skipping remote EventStore sidecar metadata query for sidecar info: endpoint not configured.");
         }
-        else
-        {
-            try
-            {
+        else {
+            try {
                 HttpClient httpClient = _httpClientFactory.CreateClient("DaprSidecar");
 
                 string baseUrl = _options.EventStoreDaprHttpEndpoint.TrimEnd('/');
                 using HttpResponseMessage response = await httpClient
                     .GetAsync($"{baseUrl}/v1.0/metadata", ct)
                     .ConfigureAwait(false);
-                response.EnsureSuccessStatusCode();
+                _ = response.EnsureSuccessStatusCode();
 
                 using JsonDocument doc = await JsonDocument.ParseAsync(
                     await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false),
                     cancellationToken: ct).ConfigureAwait(false);
 
                 if (doc.RootElement.TryGetProperty("subscriptions", out JsonElement subscriptionsElement)
-                    && subscriptionsElement.ValueKind == JsonValueKind.Array)
-                {
+                    && subscriptionsElement.ValueKind == JsonValueKind.Array) {
                     subscriptionCount = subscriptionsElement.GetArrayLength();
                 }
 
                 if (doc.RootElement.TryGetProperty("httpEndpoints", out JsonElement httpEndpointsElement)
-                    && httpEndpointsElement.ValueKind == JsonValueKind.Array)
-                {
+                    && httpEndpointsElement.ValueKind == JsonValueKind.Array) {
                     httpEndpointCount = httpEndpointsElement.GetArrayLength();
                 }
 
                 remoteFetchSucceeded = true;
             }
-            catch (OperationCanceledException)
-            {
+            catch (OperationCanceledException) {
                 throw;
             }
-            catch (Exception ex)
-            {
+            catch (Exception ex) {
                 _logger.LogWarning(
                     ex,
                     "Remote DAPR sidecar metadata unavailable at {Endpoint} for sidecar info. ExceptionType={ExceptionType}.",
@@ -197,8 +178,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
     }
 
     /// <inheritdoc/>
-    public async Task<DaprActorRuntimeInfo> GetActorRuntimeInfoAsync(CancellationToken ct = default)
-    {
+    public async Task<DaprActorRuntimeInfo> GetActorRuntimeInfoAsync(CancellationToken ct = default) {
         // DAPR default actor runtime configuration (no custom values are set in this project)
         DaprActorRuntimeConfig config = new(
             IdleTimeout: TimeSpan.FromMinutes(60),
@@ -211,13 +191,10 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         // Try local sidecar first
         List<DaprActorTypeInfo> actorTypes = [];
 
-        try
-        {
+        try {
             DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
-            if (metadata?.Actors is not null && metadata.Actors.Count > 0)
-            {
-                foreach (DaprActorMetadata actor in metadata.Actors)
-                {
+            if (metadata?.Actors is not null && metadata.Actors.Count > 0) {
+                foreach (DaprActorMetadata actor in metadata.Actors) {
                     KnownActorTypeDescriptor descriptor = KnownActorTypes.GetDescriptor(actor.Type);
                     actorTypes.Add(new DaprActorTypeInfo(
                         actor.Type,
@@ -227,50 +204,41 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 }
             }
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "Local DAPR sidecar metadata unavailable for actor types.");
         }
 
         // If local sidecar has no actors, try remote EventStore server sidecar
         bool remoteFetchSucceeded = false;
-        if (actorTypes.Count == 0)
-        {
-            if (string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint))
-            {
+        if (actorTypes.Count == 0) {
+            if (string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)) {
                 _logger.LogDebug("Skipping remote EventStore sidecar metadata query: endpoint not configured.");
             }
-            else
-            {
-                try
-                {
+            else {
+                try {
                     HttpClient httpClient = _httpClientFactory.CreateClient("DaprSidecar");
 
                     string baseUrl = _options.EventStoreDaprHttpEndpoint.TrimEnd('/');
                     using HttpResponseMessage response = await httpClient
                         .GetAsync($"{baseUrl}/v1.0/metadata", ct)
                         .ConfigureAwait(false);
-                    response.EnsureSuccessStatusCode();
+                    _ = response.EnsureSuccessStatusCode();
 
                     using JsonDocument doc = await JsonDocument.ParseAsync(
                         await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false),
                         cancellationToken: ct).ConfigureAwait(false);
 
-                    if (doc.RootElement.TryGetProperty("actors", out JsonElement actorsElement))
-                    {
-                        foreach (JsonElement actorElement in actorsElement.EnumerateArray())
-                        {
+                    if (doc.RootElement.TryGetProperty("actors", out JsonElement actorsElement)) {
+                        foreach (JsonElement actorElement in actorsElement.EnumerateArray()) {
                             string type = actorElement.GetProperty("type").GetString() ?? string.Empty;
                             int count = actorElement.TryGetProperty("count", out JsonElement countEl)
                                 ? countEl.GetInt32()
                                 : -1;
 
-                            if (!string.IsNullOrEmpty(type))
-                            {
+                            if (!string.IsNullOrEmpty(type)) {
                                 KnownActorTypeDescriptor descriptor = KnownActorTypes.GetDescriptor(type);
                                 actorTypes.Add(new DaprActorTypeInfo(
                                     type,
@@ -278,8 +246,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                                     descriptor.Description,
                                     descriptor.ActorIdFormat));
 
-                                if (!KnownActorTypes.Types.ContainsKey(type))
-                                {
+                                if (!KnownActorTypes.Types.ContainsKey(type)) {
                                     _logger.LogWarning("Unknown actor type '{ActorType}' detected — update KnownActorTypes map", type);
                                 }
                             }
@@ -288,12 +255,10 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                         remoteFetchSucceeded = true;
                     }
                 }
-                catch (OperationCanceledException)
-                {
+                catch (OperationCanceledException) {
                     throw;
                 }
-                catch (Exception ex)
-                {
+                catch (Exception ex) {
                     _logger.LogWarning(
                         ex,
                         "Remote DAPR sidecar metadata unavailable at {Endpoint}. ExceptionType={ExceptionType}. Check whether DAPR sidecar for 'eventstore' is running on that port (port conflicts on 3501 cause silent fallback).",
@@ -327,24 +292,20 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
     /// <inheritdoc/>
     public async Task<DaprActorInstanceState?> GetActorInstanceStateAsync(
-        string actorType, string actorId, CancellationToken ct = default)
-    {
-        if (!KnownActorTypes.Types.TryGetValue(actorType, out KnownActorTypeDescriptor? descriptor))
-        {
+        string actorType, string actorId, CancellationToken ct = default) {
+        if (!KnownActorTypes.Types.TryGetValue(actorType, out KnownActorTypeDescriptor? descriptor)) {
             return null;
         }
 
         // Create a linked CTS with 5-second timeout BEFORE launching tasks
         // so all tasks observe the timeout token.
-        using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
 
         List<Task<DaprActorStateEntry>> tasks = [];
-        foreach (string stateKey in descriptor.StateKeys)
-        {
+        foreach (string stateKey in descriptor.StateKeys) {
             string? resolvedKey = KnownActorTypes.ResolveStateKey(stateKey, actorId);
-            if (resolvedKey is null)
-            {
+            if (resolvedKey is null) {
                 // Dynamic key family — report as not-found with the pattern as the display key
                 tasks.Add(Task.FromResult(new DaprActorStateEntry(stateKey, null, 0, false)));
                 continue;
@@ -354,12 +315,10 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         }
 
         DaprActorStateEntry[] entries;
-        try
-        {
+        try {
             entries = await Task.WhenAll(tasks).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-        {
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
             _logger.LogWarning("Actor state reads timed out after 5 seconds for {ActorType}/{ActorId}.", actorType, actorId);
             entries = tasks
                 .Select(t => t.IsCompletedSuccessfully ? t.Result : new DaprActorStateEntry("timeout", null, 0, false))
@@ -377,8 +336,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
     }
 
     /// <inheritdoc/>
-    public async Task<DaprPubSubOverview> GetPubSubOverviewAsync(CancellationToken ct = default)
-    {
+    public async Task<DaprPubSubOverview> GetPubSubOverviewAsync(CancellationToken ct = default) {
         // Query the EventStore sidecar's metadata once to get BOTH pub/sub components AND
         // subscriptions. We deliberately do NOT read the local Admin.Server sidecar's components
         // here, because the 'eventstore-admin' sidecar (HexalithEventStoreExtensions.cs:97-102)
@@ -389,21 +347,18 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         List<DaprSubscriptionInfo> subscriptions = [];
         bool remoteFetchSucceeded = false;
 
-        if (string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint))
-        {
+        if (string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)) {
             _logger.LogDebug("Skipping remote EventStore sidecar metadata query: endpoint not configured.");
         }
-        else
-        {
-            try
-            {
+        else {
+            try {
                 HttpClient httpClient = _httpClientFactory.CreateClient("DaprSidecar");
 
                 string baseUrl = _options.EventStoreDaprHttpEndpoint.TrimEnd('/');
                 using HttpResponseMessage response = await httpClient
                     .GetAsync($"{baseUrl}/v1.0/metadata", ct)
                     .ConfigureAwait(false);
-                response.EnsureSuccessStatusCode();
+                _ = response.EnsureSuccessStatusCode();
 
                 using JsonDocument doc = await JsonDocument.ParseAsync(
                     await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false),
@@ -411,29 +366,23 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
                 // Extract pub/sub components from the remote sidecar's components array.
                 if (doc.RootElement.TryGetProperty("components", out JsonElement componentsElement)
-                    && componentsElement.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (JsonElement comp in componentsElement.EnumerateArray())
-                    {
+                    && componentsElement.ValueKind == JsonValueKind.Array) {
+                    foreach (JsonElement comp in componentsElement.EnumerateArray()) {
                         string? name = comp.TryGetProperty("name", out JsonElement n) ? n.GetString() : null;
                         string? compType = comp.TryGetProperty("type", out JsonElement tp) ? tp.GetString() : null;
                         string? version = comp.TryGetProperty("version", out JsonElement v) ? v.GetString() : null;
 
                         if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(compType)
-                            || DaprComponentCategoryHelper.FromComponentType(compType) != DaprComponentCategory.PubSub)
-                        {
+                            || DaprComponentCategoryHelper.FromComponentType(compType) != DaprComponentCategory.PubSub) {
                             continue;
                         }
 
                         List<string> capabilities = [];
                         if (comp.TryGetProperty("capabilities", out JsonElement capsEl)
-                            && capsEl.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (JsonElement cap in capsEl.EnumerateArray())
-                            {
+                            && capsEl.ValueKind == JsonValueKind.Array) {
+                            foreach (JsonElement cap in capsEl.EnumerateArray()) {
                                 string? capValue = cap.GetString();
-                                if (!string.IsNullOrEmpty(capValue))
-                                {
+                                if (!string.IsNullOrEmpty(capValue)) {
                                     capabilities.Add(capValue);
                                 }
                             }
@@ -452,10 +401,8 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
                 // Extract subscriptions from the same payload.
                 if (doc.RootElement.TryGetProperty("subscriptions", out JsonElement subscriptionsElement)
-                    && subscriptionsElement.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (JsonElement sub in subscriptionsElement.EnumerateArray())
-                    {
+                    && subscriptionsElement.ValueKind == JsonValueKind.Array) {
+                    foreach (JsonElement sub in subscriptionsElement.EnumerateArray()) {
                         string? pubsubName = sub.TryGetProperty("pubsubName", out JsonElement pn) ? pn.GetString() : null;
                         string? topic = sub.TryGetProperty("topic", out JsonElement t) ? t.GetString() : null;
                         string? type = sub.TryGetProperty("type", out JsonElement ty) ? ty.GetString() : null;
@@ -466,24 +413,19 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                         // a legacy wrapped form '{"rules": {"rules": [...]}}' for backward
                         // compatibility with prior test fixtures.
                         string route = "/";
-                        if (sub.TryGetProperty("rules", out JsonElement rulesElement))
-                        {
+                        if (sub.TryGetProperty("rules", out JsonElement rulesElement)) {
                             JsonElement rulesArray = rulesElement.ValueKind == JsonValueKind.Object
                                 && rulesElement.TryGetProperty("rules", out JsonElement nestedRules)
                                 && nestedRules.ValueKind == JsonValueKind.Array
                                     ? nestedRules
                                     : rulesElement;
 
-                            if (rulesArray.ValueKind == JsonValueKind.Array)
-                            {
-                                foreach (JsonElement rule in rulesArray.EnumerateArray())
-                                {
+                            if (rulesArray.ValueKind == JsonValueKind.Array) {
+                                foreach (JsonElement rule in rulesArray.EnumerateArray()) {
                                     if (rule.ValueKind == JsonValueKind.Object
-                                        && rule.TryGetProperty("path", out JsonElement pathElement))
-                                    {
+                                        && rule.TryGetProperty("path", out JsonElement pathElement)) {
                                         string? path = pathElement.GetString();
-                                        if (!string.IsNullOrEmpty(path))
-                                        {
+                                        if (!string.IsNullOrEmpty(path)) {
                                             route = path;
                                             break;
                                         }
@@ -492,8 +434,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                             }
                         }
 
-                        if (!string.IsNullOrEmpty(pubsubName) && !string.IsNullOrEmpty(topic))
-                        {
+                        if (!string.IsNullOrEmpty(pubsubName) && !string.IsNullOrEmpty(topic)) {
                             subscriptions.Add(new DaprSubscriptionInfo(
                                 pubsubName,
                                 topic,
@@ -506,12 +447,10 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
                 remoteFetchSucceeded = true;
             }
-            catch (OperationCanceledException)
-            {
+            catch (OperationCanceledException) {
                 throw;
             }
-            catch (Exception ex)
-            {
+            catch (Exception ex) {
                 _logger.LogWarning(
                     ex,
                     "Remote DAPR sidecar metadata unavailable at {Endpoint}. ExceptionType={ExceptionType}. Check whether DAPR sidecar for 'eventstore' is running on that port (port conflicts on 3501 cause silent fallback).",
@@ -538,40 +477,33 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         => $"{appId}||{actorType}||{actorId}||{stateKey}";
 
     private async Task<DaprActorStateEntry> ReadActorStateKeyAsync(
-        string actorType, string actorId, string displayKey, string resolvedKey, CancellationToken ct)
-    {
+        string actorType, string actorId, string displayKey, string resolvedKey, CancellationToken ct) {
         string composedKey = ComposeActorStateKey(_options.EventStoreAppId, actorType, actorId, resolvedKey);
-        try
-        {
+        try {
             string? value = await _daprClient
                 .GetStateAsync<string>(_options.StateStoreName, composedKey, cancellationToken: ct)
                 .ConfigureAwait(false);
 
-            if (value is null)
-            {
+            if (value is null) {
                 return new DaprActorStateEntry(displayKey, null, 0, false);
             }
 
             long size = Encoding.UTF8.GetByteCount(value);
             return new DaprActorStateEntry(displayKey, value, size, true);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to read actor state key '{StateKey}' for {ActorType}/{ActorId}.", displayKey, actorType, actorId);
             return new DaprActorStateEntry(displayKey, null, 0, false);
         }
     }
 
     /// <inheritdoc/>
-    public async Task<DaprResiliencySpec> GetResiliencySpecAsync(CancellationToken ct = default)
-    {
+    public async Task<DaprResiliencySpec> GetResiliencySpecAsync(CancellationToken ct = default) {
         string? configPath = _options.ResiliencyConfigPath;
-        if (string.IsNullOrWhiteSpace(configPath))
-        {
+        if (string.IsNullOrWhiteSpace(configPath)) {
             return DaprResiliencySpec.Unavailable;
         }
 
@@ -580,63 +512,52 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             : Path.GetFullPath(configPath, AppContext.BaseDirectory);
 
         string yamlContent;
-        try
-        {
+        try {
             yamlContent = await File.ReadAllTextAsync(resolvedPath, ct).ConfigureAwait(false);
         }
-        catch (FileNotFoundException)
-        {
+        catch (FileNotFoundException) {
             _logger.LogWarning("Resiliency config file not found: {Path}", resolvedPath);
             return DaprResiliencySpec.NotFound(resolvedPath);
         }
-        catch (UnauthorizedAccessException ex)
-        {
+        catch (UnauthorizedAccessException ex) {
             _logger.LogError(ex, "Cannot read resiliency config (access denied or path is a directory): {Path}", resolvedPath);
             return DaprResiliencySpec.ReadError(resolvedPath, ex.Message);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogError(ex, "Failed to read resiliency config: {Path}", resolvedPath);
             return DaprResiliencySpec.ReadError(resolvedPath, ex.Message);
         }
 
         const int MaxFileSizeBytes = 1_048_576; // 1 MB
-        if (yamlContent.Length > MaxFileSizeBytes)
-        {
+        if (yamlContent.Length > MaxFileSizeBytes) {
             _logger.LogWarning("Resiliency config file too large ({Size} bytes): {Path}", yamlContent.Length, resolvedPath);
             return DaprResiliencySpec.ReadError(resolvedPath, $"File exceeds maximum size of {MaxFileSizeBytes / 1024}KB ({yamlContent.Length} bytes)");
         }
 
-        try
-        {
+        try {
             return ParseResiliencyYaml(yamlContent, _logger);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogError(ex, "Failed to parse resiliency YAML: {Path}", resolvedPath);
             return DaprResiliencySpec.ParseError(resolvedPath, yamlContent, ex.Message);
         }
     }
 
-    internal static DaprResiliencySpec ParseResiliencyYaml(string yamlContent, ILogger? logger = null)
-    {
-        YamlStream yaml = new();
+    internal static DaprResiliencySpec ParseResiliencyYaml(string yamlContent, ILogger? logger = null) {
+        YamlStream yaml = [];
         yaml.Load(new StringReader(yamlContent));
 
-        if (yaml.Documents.Count == 0)
-        {
+        if (yaml.Documents.Count == 0) {
             return new DaprResiliencySpec([], [], [], [], IsConfigurationAvailable: true, RawYamlContent: yamlContent, ErrorMessage: null);
         }
 
-        YamlMappingNode root = (YamlMappingNode)yaml.Documents[0].RootNode;
+        var root = (YamlMappingNode)yaml.Documents[0].RootNode;
 
         if (!root.Children.TryGetValue(new YamlScalarNode("spec"), out YamlNode? specNode)
-            || specNode is not YamlMappingNode spec)
-        {
+            || specNode is not YamlMappingNode spec) {
             return new DaprResiliencySpec([], [], [], [], IsConfigurationAvailable: true, RawYamlContent: yamlContent, ErrorMessage: null);
         }
 
@@ -647,18 +568,15 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
         HashSet<string> knownPolicySections = ["retries", "timeouts", "circuitBreakers"];
         if (spec.Children.TryGetValue(new YamlScalarNode("policies"), out YamlNode? policiesNode)
-            && policiesNode is YamlMappingNode policies)
-        {
+            && policiesNode is YamlMappingNode policies) {
             retries = ParseRetryPolicies(policies);
             timeouts = ParseTimeoutPolicies(policies);
             circuitBreakers = ParseCircuitBreakerPolicies(policies);
 
-            foreach (KeyValuePair<YamlNode, YamlNode> entry in policies.Children)
-            {
+            foreach (KeyValuePair<YamlNode, YamlNode> entry in policies.Children) {
                 if (entry.Key is YamlScalarNode keyNode
                     && keyNode.Value is not null
-                    && !knownPolicySections.Contains(keyNode.Value))
-                {
+                    && !knownPolicySections.Contains(keyNode.Value)) {
                     logger?.LogWarning("Unrecognized resiliency policy section: {Section}", keyNode.Value);
                 }
             }
@@ -667,8 +585,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         // Parse targets
         List<DaprResiliencyTargetBinding> targetBindings = [];
         if (spec.Children.TryGetValue(new YamlScalarNode("targets"), out YamlNode? targetsNode)
-            && targetsNode is YamlMappingNode targets)
-        {
+            && targetsNode is YamlMappingNode targets) {
             targetBindings = ParseTargetBindings(targets);
         }
 
@@ -682,20 +599,16 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             ErrorMessage: null);
     }
 
-    private static List<DaprRetryPolicy> ParseRetryPolicies(YamlMappingNode policies)
-    {
+    private static List<DaprRetryPolicy> ParseRetryPolicies(YamlMappingNode policies) {
         List<DaprRetryPolicy> result = [];
         if (!policies.Children.TryGetValue(new YamlScalarNode("retries"), out YamlNode? retriesNode)
-            || retriesNode is not YamlMappingNode retriesMap)
-        {
+            || retriesNode is not YamlMappingNode retriesMap) {
             return result;
         }
 
-        foreach (KeyValuePair<YamlNode, YamlNode> entry in retriesMap.Children)
-        {
+        foreach (KeyValuePair<YamlNode, YamlNode> entry in retriesMap.Children) {
             string name = ((YamlScalarNode)entry.Key).Value!;
-            if (entry.Value is not YamlMappingNode props)
-            {
+            if (entry.Value is not YamlMappingNode props) {
                 continue;
             }
 
@@ -710,27 +623,21 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         return result;
     }
 
-    private static List<DaprTimeoutPolicy> ParseTimeoutPolicies(YamlMappingNode policies)
-    {
+    private static List<DaprTimeoutPolicy> ParseTimeoutPolicies(YamlMappingNode policies) {
         List<DaprTimeoutPolicy> result = [];
         if (!policies.Children.TryGetValue(new YamlScalarNode("timeouts"), out YamlNode? timeoutsNode)
-            || timeoutsNode is not YamlMappingNode timeoutsMap)
-        {
+            || timeoutsNode is not YamlMappingNode timeoutsMap) {
             return result;
         }
 
-        foreach (KeyValuePair<YamlNode, YamlNode> entry in timeoutsMap.Children)
-        {
+        foreach (KeyValuePair<YamlNode, YamlNode> entry in timeoutsMap.Children) {
             string name = ((YamlScalarNode)entry.Key).Value!;
-            if (entry.Value is YamlScalarNode scalar)
-            {
+            if (entry.Value is YamlScalarNode scalar) {
                 result.Add(new DaprTimeoutPolicy(name, scalar.Value!));
             }
-            else if (entry.Value is YamlMappingNode nested)
-            {
+            else if (entry.Value is YamlMappingNode nested) {
                 string? general = GetScalar(nested, "general");
-                if (general is not null)
-                {
+                if (general is not null) {
                     result.Add(new DaprTimeoutPolicy(name, general));
                 }
             }
@@ -739,20 +646,16 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         return result;
     }
 
-    private static List<DaprCircuitBreakerPolicy> ParseCircuitBreakerPolicies(YamlMappingNode policies)
-    {
+    private static List<DaprCircuitBreakerPolicy> ParseCircuitBreakerPolicies(YamlMappingNode policies) {
         List<DaprCircuitBreakerPolicy> result = [];
         if (!policies.Children.TryGetValue(new YamlScalarNode("circuitBreakers"), out YamlNode? cbNode)
-            || cbNode is not YamlMappingNode cbMap)
-        {
+            || cbNode is not YamlMappingNode cbMap) {
             return result;
         }
 
-        foreach (KeyValuePair<YamlNode, YamlNode> entry in cbMap.Children)
-        {
+        foreach (KeyValuePair<YamlNode, YamlNode> entry in cbMap.Children) {
             string name = ((YamlScalarNode)entry.Key).Value!;
-            if (entry.Value is not YamlMappingNode props)
-            {
+            if (entry.Value is not YamlMappingNode props) {
                 continue;
             }
 
@@ -767,19 +670,15 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         return result;
     }
 
-    private static List<DaprResiliencyTargetBinding> ParseTargetBindings(YamlMappingNode targets)
-    {
+    private static List<DaprResiliencyTargetBinding> ParseTargetBindings(YamlMappingNode targets) {
         List<DaprResiliencyTargetBinding> result = [];
 
         // Parse app targets
         if (targets.Children.TryGetValue(new YamlScalarNode("apps"), out YamlNode? appsNode)
-            && appsNode is YamlMappingNode appsMap)
-        {
-            foreach (KeyValuePair<YamlNode, YamlNode> entry in appsMap.Children)
-            {
+            && appsNode is YamlMappingNode appsMap) {
+            foreach (KeyValuePair<YamlNode, YamlNode> entry in appsMap.Children) {
                 string targetName = ((YamlScalarNode)entry.Key).Value!;
-                if (entry.Value is YamlMappingNode props)
-                {
+                if (entry.Value is YamlMappingNode props) {
                     result.Add(new DaprResiliencyTargetBinding(
                         targetName,
                         "App",
@@ -793,21 +692,17 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
         // Parse component targets
         if (targets.Children.TryGetValue(new YamlScalarNode("components"), out YamlNode? componentsNode)
-            && componentsNode is YamlMappingNode componentsMap)
-        {
-            foreach (KeyValuePair<YamlNode, YamlNode> entry in componentsMap.Children)
-            {
+            && componentsNode is YamlMappingNode componentsMap) {
+            foreach (KeyValuePair<YamlNode, YamlNode> entry in componentsMap.Children) {
                 string targetName = ((YamlScalarNode)entry.Key).Value!;
-                if (entry.Value is not YamlMappingNode props)
-                {
+                if (entry.Value is not YamlMappingNode props) {
                     continue;
                 }
 
                 // Check if this component has directional sub-nodes (outbound/inbound)
                 bool hasDirection = false;
                 if (props.Children.TryGetValue(new YamlScalarNode("outbound"), out YamlNode? outNode)
-                    && outNode is YamlMappingNode outbound)
-                {
+                    && outNode is YamlMappingNode outbound) {
                     hasDirection = true;
                     result.Add(new DaprResiliencyTargetBinding(
                         targetName,
@@ -819,8 +714,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 }
 
                 if (props.Children.TryGetValue(new YamlScalarNode("inbound"), out YamlNode? inNode)
-                    && inNode is YamlMappingNode inbound)
-                {
+                    && inNode is YamlMappingNode inbound) {
                     hasDirection = true;
                     result.Add(new DaprResiliencyTargetBinding(
                         targetName,
@@ -832,8 +726,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 }
 
                 // Non-directional component
-                if (!hasDirection)
-                {
+                if (!hasDirection) {
                     result.Add(new DaprResiliencyTargetBinding(
                         targetName,
                         "Component",
@@ -846,8 +739,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         }
 
         // Sort by target type then target name
-        result.Sort((a, b) =>
-        {
+        result.Sort((a, b) => {
             int typeCompare = string.Compare(a.TargetType, b.TargetType, StringComparison.Ordinal);
             return typeCompare != 0 ? typeCompare : string.Compare(a.TargetName, b.TargetName, StringComparison.Ordinal);
         });
@@ -855,33 +747,26 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         return result;
     }
 
-    private static string? GetScalar(YamlMappingNode node, string key)
-    {
-        return node.Children.TryGetValue(new YamlScalarNode(key), out YamlNode? value)
+    private static string? GetScalar(YamlMappingNode node, string key) => node.Children.TryGetValue(new YamlScalarNode(key), out YamlNode? value)
             && value is YamlScalarNode scalar ? scalar.Value : null;
-    }
 
     private async Task ProbeStateStoreAsync(
         DaprComponentDetail[] components,
         int index,
-        CancellationToken ct)
-    {
+        CancellationToken ct) {
         DaprComponentDetail component = components[index];
-        try
-        {
+        try {
             _ = await _daprClient
                 .GetStateAsync<string>(component.ComponentName, "admin:dapr-probe", cancellationToken: ct)
                 .ConfigureAwait(false);
 
             // Success (null return = key missing, but store responded) → Healthy
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             // Probe timed out or was cancelled — mark as Degraded (inconclusive)
             components[index] = component with { Status = HealthStatus.Degraded, LastCheckUtc = DateTimeOffset.UtcNow };
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "State store probe failed for {ComponentName}.", component.ComponentName);
             components[index] = component with { Status = HealthStatus.Unhealthy, LastCheckUtc = DateTimeOffset.UtcNow };
         }

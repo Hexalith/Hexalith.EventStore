@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Streams;
 
-public class CorrelationTraceMapTests
-{
+public class CorrelationTraceMapTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         DateTimeOffset received = new(2026, 3, 27, 10, 0, 0, TimeSpan.Zero);
         DateTimeOffset completed = received.AddMilliseconds(250);
         var events = new List<TraceMapEvent>
@@ -49,8 +47,7 @@ public class CorrelationTraceMapTests
     }
 
     [Fact]
-    public void Constructor_WithNullStrings_DefaultsToEmpty()
-    {
+    public void Constructor_WithNullStrings_DefaultsToEmpty() {
         var trace = new CorrelationTraceMap(
             null!, null!, null!, null!,
             null!, null!, null,
@@ -70,8 +67,7 @@ public class CorrelationTraceMapTests
     }
 
     [Fact]
-    public void ToString_OmitsEventPayloads()
-    {
+    public void ToString_OmitsEventPayloads() {
         var trace = new CorrelationTraceMap(
             "corr-1", "t1", "d1", "a1",
             "Cmd", "Completed", "user-1",
@@ -90,8 +86,7 @@ public class CorrelationTraceMapTests
     }
 
     [Fact]
-    public void SerializationRoundTrip_PreservesAllProperties()
-    {
+    public void SerializationRoundTrip_PreservesAllProperties() {
         DateTimeOffset ts = new(2026, 3, 27, 10, 0, 0, TimeSpan.Zero);
         var original = new CorrelationTraceMap(
             "corr-1", "t1", "d1", "a1",
@@ -105,7 +100,7 @@ public class CorrelationTraceMapTests
         string json = JsonSerializer.Serialize(original);
         CorrelationTraceMap? deserialized = JsonSerializer.Deserialize<CorrelationTraceMap>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized!.CorrelationId.ShouldBe("corr-1");
         deserialized.CommandStatus.ShouldBe("Rejected");
         deserialized.RejectionEventType.ShouldBe("CommandRejected");
@@ -119,8 +114,7 @@ public class CorrelationTraceMapTests
     }
 
     [Fact]
-    public void UnknownStatus_WithEmptyEvents_ReturnsValidInstance()
-    {
+    public void UnknownStatus_WithEmptyEvents_ReturnsValidInstance() {
         var trace = new CorrelationTraceMap(
             "expired-corr", "t1", string.Empty, string.Empty,
             string.Empty, "Unknown", null,

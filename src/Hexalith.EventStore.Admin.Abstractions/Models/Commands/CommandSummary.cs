@@ -23,8 +23,7 @@ public record CommandSummary(
     CommandStatus Status,
     DateTimeOffset Timestamp,
     int? EventCount,
-    string? FailureReason)
-{
+    string? FailureReason) {
     /// <summary>Gets the tenant identifier.</summary>
     public string TenantId { get; } = !string.IsNullOrWhiteSpace(TenantId)
         ? TenantId

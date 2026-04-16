@@ -12,36 +12,28 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
 
-using Shouldly;
-
 namespace Hexalith.EventStore.Admin.Server.Tests.Controllers;
 
-public class AdminDaprControllerPubSubTests
-{
+public class AdminDaprControllerPubSubTests {
     private readonly IDaprInfrastructureQueryService _service = Substitute.For<IDaprInfrastructureQueryService>();
     private readonly AdminDaprController _sut;
 
-    public AdminDaprControllerPubSubTests()
-    {
-        _sut = new AdminDaprController(_service, NullLogger<AdminDaprController>.Instance);
-        _sut.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext
-            {
+    public AdminDaprControllerPubSubTests() => _sut = new AdminDaprController(_service, NullLogger<AdminDaprController>.Instance) {
+        ControllerContext = new ControllerContext {
+            HttpContext = new DefaultHttpContext {
                 User = CreatePrincipal("ReadOnly"),
             },
-        };
-    }
+        }
+    };
 
     [Fact]
-    public async Task GetPubSubOverview_Returns200_WithFullData()
-    {
+    public async Task GetPubSubOverview_Returns200_WithFullData() {
         DaprPubSubOverview expected = new(
             [new DaprComponentDetail("pubsub", "pubsub.redis", DaprComponentCategory.PubSub, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [])],
             [new DaprSubscriptionInfo("pubsub", "*.*.events", "/events/handle", "DECLARATIVE", null)],
             RemoteMetadataStatus.Available,
             "http://localhost:3501");
-        _service.GetPubSubOverviewAsync(Arg.Any<CancellationToken>()).Returns(expected);
+        _ = _service.GetPubSubOverviewAsync(Arg.Any<CancellationToken>()).Returns(expected);
 
         IActionResult result = await _sut.GetPubSubOverviewAsync();
 
@@ -50,14 +42,13 @@ public class AdminDaprControllerPubSubTests
     }
 
     [Fact]
-    public async Task GetPubSubOverview_Returns200_WithPartialData()
-    {
+    public async Task GetPubSubOverview_Returns200_WithPartialData() {
         DaprPubSubOverview expected = new(
             [new DaprComponentDetail("pubsub", "pubsub.redis", DaprComponentCategory.PubSub, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [])],
             [],
             RemoteMetadataStatus.NotConfigured,
             null);
-        _service.GetPubSubOverviewAsync(Arg.Any<CancellationToken>()).Returns(expected);
+        _ = _service.GetPubSubOverviewAsync(Arg.Any<CancellationToken>()).Returns(expected);
 
         IActionResult result = await _sut.GetPubSubOverviewAsync();
 
@@ -67,9 +58,8 @@ public class AdminDaprControllerPubSubTests
     }
 
     [Fact]
-    public async Task GetPubSubOverview_Returns503_WhenServiceUnavailable()
-    {
-        _service.GetPubSubOverviewAsync(Arg.Any<CancellationToken>())
+    public async Task GetPubSubOverview_Returns503_WhenServiceUnavailable() {
+        _ = _service.GetPubSubOverviewAsync(Arg.Any<CancellationToken>())
             .Returns<DaprPubSubOverview>(_ => throw new HttpRequestException("Unavailable"));
 
         IActionResult result = await _sut.GetPubSubOverviewAsync();
@@ -79,9 +69,8 @@ public class AdminDaprControllerPubSubTests
     }
 
     [Fact]
-    public async Task GetPubSubOverview_Returns500_WhenUnexpectedError()
-    {
-        _service.GetPubSubOverviewAsync(Arg.Any<CancellationToken>())
+    public async Task GetPubSubOverview_Returns500_WhenUnexpectedError() {
+        _ = _service.GetPubSubOverviewAsync(Arg.Any<CancellationToken>())
             .Returns<DaprPubSubOverview>(_ => throw new InvalidOperationException("Unexpected"));
 
         IActionResult result = await _sut.GetPubSubOverviewAsync();
@@ -90,8 +79,7 @@ public class AdminDaprControllerPubSubTests
         objectResult.StatusCode.ShouldBe(500);
     }
 
-    private static ClaimsPrincipal CreatePrincipal(string adminRole)
-    {
+    private static ClaimsPrincipal CreatePrincipal(string adminRole) {
         List<Claim> claims = [new(AdminClaimTypes.AdminRole, adminRole)];
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
     }

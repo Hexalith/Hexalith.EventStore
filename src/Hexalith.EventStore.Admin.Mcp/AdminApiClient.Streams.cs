@@ -1,13 +1,12 @@
-namespace Hexalith.EventStore.Admin.Mcp;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
+namespace Hexalith.EventStore.Admin.Mcp;
 /// <summary>
 /// AdminApiClient partial — stream query methods.
 /// </summary>
-internal sealed partial class AdminApiClient
-{
+internal sealed partial class AdminApiClient {
     /// <summary>
     /// Lists recently active event streams with optional filtering.
     /// </summary>
@@ -15,16 +14,13 @@ internal sealed partial class AdminApiClient
         string? tenantId,
         string? domain,
         int count,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         string path = $"/api/v1/admin/streams?count={count}";
-        if (!string.IsNullOrEmpty(tenantId))
-        {
+        if (!string.IsNullOrEmpty(tenantId)) {
             path += $"&tenantId={Uri.EscapeDataString(tenantId)}";
         }
 
-        if (!string.IsNullOrEmpty(domain))
-        {
+        if (!string.IsNullOrEmpty(domain)) {
             path += $"&domain={Uri.EscapeDataString(domain)}";
         }
 
@@ -41,16 +37,13 @@ internal sealed partial class AdminApiClient
         long? fromSequence,
         long? toSequence,
         int count,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         string path = $"/api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/timeline?count={count}";
-        if (fromSequence.HasValue)
-        {
+        if (fromSequence.HasValue) {
             path += $"&fromSequence={fromSequence.Value}";
         }
 
-        if (toSequence.HasValue)
-        {
+        if (toSequence.HasValue) {
             path += $"&toSequence={toSequence.Value}";
         }
 
@@ -65,8 +58,7 @@ internal sealed partial class AdminApiClient
         string domain,
         string aggregateId,
         long sequenceNumber,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         string path = $"/api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/state?sequenceNumber={sequenceNumber}";
         return await GetAsync<AggregateStateSnapshot>(path, cancellationToken).ConfigureAwait(false);
     }
@@ -79,8 +71,7 @@ internal sealed partial class AdminApiClient
         string domain,
         string aggregateId,
         long sequenceNumber,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         string path = $"/api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/events/{sequenceNumber}";
         return await GetAsync<EventDetail>(path, cancellationToken).ConfigureAwait(false);
     }
@@ -94,8 +85,7 @@ internal sealed partial class AdminApiClient
         string aggregateId,
         long fromSequence,
         long toSequence,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         string path = $"/api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/diff?fromSequence={fromSequence}&toSequence={toSequence}";
         return await GetAsync<AggregateStateDiff>(path, cancellationToken).ConfigureAwait(false);
     }
@@ -108,8 +98,7 @@ internal sealed partial class AdminApiClient
         string domain,
         string aggregateId,
         long sequenceNumber,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         string path = $"/api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/causation?sequenceNumber={sequenceNumber}";
         return await GetAsync<CausationChain>(path, cancellationToken).ConfigureAwait(false);
     }

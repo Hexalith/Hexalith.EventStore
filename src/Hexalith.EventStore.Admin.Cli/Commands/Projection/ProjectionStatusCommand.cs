@@ -9,8 +9,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Projection;
 /// <summary>
 /// The <c>eventstore-admin projection status</c> subcommand — displays detailed projection status.
 /// </summary>
-public static class ProjectionStatusCommand
-{
+public static class ProjectionStatusCommand {
     internal static readonly List<ColumnDefinition> OverviewColumns =
     [
         new("Name", "Name"),
@@ -36,8 +35,7 @@ public static class ProjectionStatusCommand
     /// <summary>
     /// Creates the projection status subcommand wired to the shared global options.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
+    public static Command Create(GlobalOptionsBinding binding) {
         Argument<string> tenantArg = ProjectionArguments.Tenant();
         Argument<string> nameArg = ProjectionArguments.Name();
 
@@ -45,8 +43,7 @@ public static class ProjectionStatusCommand
         command.Arguments.Add(tenantArg);
         command.Arguments.Add(nameArg);
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
+        command.SetAction(async (parseResult, cancellationToken) => {
             GlobalOptions options = binding.Resolve(parseResult);
             string tenant = parseResult.GetValue(tenantArg)!;
             string name = parseResult.GetValue(nameArg)!;
@@ -59,8 +56,7 @@ public static class ProjectionStatusCommand
         GlobalOptions options,
         string tenant,
         string name,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         using AdminApiClient client = new(options);
         return await ExecuteAsync(client, options, tenant, name, cancellationToken).ConfigureAwait(false);
     }
@@ -70,39 +66,31 @@ public static class ProjectionStatusCommand
         GlobalOptions options,
         string tenant,
         string name,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         IOutputFormatter formatter = OutputFormatterFactory.Create(options.Format);
         OutputWriter writer = new(options.OutputFile);
-        try
-        {
+        try {
             string path = $"api/v1/admin/projections/{Uri.EscapeDataString(tenant)}/{Uri.EscapeDataString(name)}";
             ProjectionDetail? detail = await client
                 .TryGetAsync<ProjectionDetail>(path, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (detail is null)
-            {
+            if (detail is null) {
                 Console.Error.WriteLine($"Projection '{name}' not found in tenant '{tenant}'.");
                 return ExitCodes.Error;
             }
 
             string output;
-            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase))
-            {
+            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase)) {
                 output = formatter.Format(detail);
             }
-            else if (string.Equals(options.Format, "csv", StringComparison.OrdinalIgnoreCase))
-            {
-                if (detail.Errors.Count > 0)
-                {
+            else if (string.Equals(options.Format, "csv", StringComparison.OrdinalIgnoreCase)) {
+                if (detail.Errors.Count > 0) {
                     output = formatter.FormatCollection(detail.Errors.ToList(), ErrorColumns);
                 }
-                else
-                {
+                else {
                     // AC2: when no errors, render overview as a single CSV row
-                    var overview = new
-                    {
+                    var overview = new {
                         detail.Name,
                         Tenant = detail.TenantId,
                         detail.Status,
@@ -117,11 +105,9 @@ public static class ProjectionStatusCommand
                     output = formatter.FormatCollection(new[] { overview }, OverviewColumns);
                 }
             }
-            else
-            {
+            else {
                 // Table format — dual-section (overview + errors)
-                var overview = new
-                {
+                var overview = new {
                     detail.Name,
                     Tenant = detail.TenantId,
                     detail.Status,
@@ -136,8 +122,7 @@ public static class ProjectionStatusCommand
 
                 output = formatter.Format(overview, OverviewColumns);
 
-                if (detail.Errors.Count > 0)
-                {
+                if (detail.Errors.Count > 0) {
                     output += Environment.NewLine + Environment.NewLine
                         + formatter.FormatCollection(detail.Errors.ToList(), ErrorColumns);
                 }
@@ -146,8 +131,7 @@ public static class ProjectionStatusCommand
             int writeResult = writer.Write(output);
             return writeResult != ExitCodes.Success ? writeResult : ExitCodes.Success;
         }
-        catch (AdminApiException ex)
-        {
+        catch (AdminApiException ex) {
             Console.Error.WriteLine(ex.Message);
             return ExitCodes.Error;
         }

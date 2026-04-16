@@ -9,8 +9,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Stream;
 /// <summary>
 /// The <c>eventstore-admin stream state</c> subcommand — reconstructs aggregate state at a sequence position.
 /// </summary>
-public static class StreamStateCommand
-{
+public static class StreamStateCommand {
     internal static readonly List<ColumnDefinition> Columns =
     [
         new("Tenant", "TenantId"),
@@ -24,8 +23,7 @@ public static class StreamStateCommand
     /// <summary>
     /// Creates the stream state subcommand wired to the shared global options.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
+    public static Command Create(GlobalOptionsBinding binding) {
         Argument<string> tenantArg = StreamArguments.Tenant();
         Argument<string> domainArg = StreamArguments.Domain();
         Argument<string> aggregateIdArg = StreamArguments.AggregateId();
@@ -37,8 +35,7 @@ public static class StreamStateCommand
         command.Arguments.Add(aggregateIdArg);
         command.Options.Add(atOption);
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
+        command.SetAction(async (parseResult, cancellationToken) => {
             GlobalOptions options = binding.Resolve(parseResult);
             string tenant = parseResult.GetValue(tenantArg)!;
             string domain = parseResult.GetValue(domainArg)!;
@@ -55,8 +52,7 @@ public static class StreamStateCommand
         string domain,
         string aggregateId,
         long at,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         using AdminApiClient client = new(options);
         return await ExecuteAsync(client, options, tenant, domain, aggregateId, at, cancellationToken).ConfigureAwait(false);
     }
@@ -68,38 +64,32 @@ public static class StreamStateCommand
         string domain,
         string aggregateId,
         long at,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         IOutputFormatter formatter = OutputFormatterFactory.Create(options.Format);
         OutputWriter writer = new(options.OutputFile);
-        try
-        {
+        try {
             string path = $"api/v1/admin/streams/{Uri.EscapeDataString(tenant)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/state?sequenceNumber={at}";
             AggregateStateSnapshot? snapshot = await client
                 .TryGetAsync<AggregateStateSnapshot>(path, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (snapshot is null)
-            {
+            if (snapshot is null) {
                 Console.Error.WriteLine($"Aggregate state not found at sequence {at}.");
                 return ExitCodes.Error;
             }
 
             string output;
-            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase))
-            {
+            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase)) {
                 output = formatter.Format(snapshot);
             }
-            else
-            {
+            else {
                 output = formatter.Format(snapshot, Columns);
             }
 
             int writeResult = writer.Write(output);
             return writeResult != ExitCodes.Success ? writeResult : ExitCodes.Success;
         }
-        catch (AdminApiException ex)
-        {
+        catch (AdminApiException ex) {
             Console.Error.WriteLine(ex.Message);
             return ExitCodes.Error;
         }

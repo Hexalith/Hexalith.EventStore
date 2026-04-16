@@ -2,7 +2,6 @@ using System.Net;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
-using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Backup;
 using Hexalith.EventStore.Admin.Cli.Formatting;
@@ -10,13 +9,10 @@ using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Backup;
 
-public class BackupListCommandTests
-{
-    private static List<BackupJob> CreateTestResult(int count = 2)
-    {
+public class BackupListCommandTests {
+    private static List<BackupJob> CreateTestResult(int count = 2) {
         List<BackupJob> items = [];
-        for (int i = 0; i < count; i++)
-        {
+        for (int i = 0; i < count; i++) {
             items.Add(new BackupJob(
                 $"bkp-{i}",
                 $"tenant-{i}",
@@ -41,11 +37,9 @@ public class BackupListCommandTests
 
     private static (AdminApiClient Client, MockHttpMessageHandler Handler) CreateMockClientWithHandler(
         object responseBody,
-        HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
+        HttpStatusCode statusCode = HttpStatusCode.OK) {
         string json = JsonSerializer.Serialize(responseBody, JsonDefaults.Options);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         });
         GlobalOptions options = CreateOptions();
@@ -53,8 +47,7 @@ public class BackupListCommandTests
     }
 
     [Fact]
-    public void BackupListCommand_ReturnsTable()
-    {
+    public void BackupListCommand_ReturnsTable() {
         // Arrange
         List<BackupJob> result = CreateTestResult();
         IOutputFormatter formatter = new TableOutputFormatter();
@@ -72,8 +65,7 @@ public class BackupListCommandTests
     }
 
     [Fact]
-    public async Task BackupListCommand_EmptyResult_PrintsNoJobsFound()
-    {
+    public async Task BackupListCommand_EmptyResult_PrintsNoJobsFound() {
         // Arrange
         List<BackupJob> result = [];
         (AdminApiClient client, _) = CreateMockClientWithHandler(result);
@@ -81,8 +73,7 @@ public class BackupListCommandTests
 
         // Act
         int exitCode;
-        using (client)
-        {
+        using (client) {
             exitCode = await BackupListCommand.ExecuteAsync(client, options, null, CancellationToken.None);
         }
 
@@ -91,8 +82,7 @@ public class BackupListCommandTests
     }
 
     [Fact]
-    public void BackupListCommand_JsonFormat_ReturnsValidJson()
-    {
+    public void BackupListCommand_JsonFormat_ReturnsValidJson() {
         // Arrange
         List<BackupJob> result = CreateTestResult();
         IOutputFormatter formatter = new JsonOutputFormatter();
@@ -102,13 +92,12 @@ public class BackupListCommandTests
 
         // Assert
         List<BackupJob>? deserialized = JsonSerializer.Deserialize<List<BackupJob>>(json, JsonDefaults.Options);
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.Count.ShouldBe(2);
     }
 
     [Fact]
-    public void BackupListCommand_EnumsSerializeAsStrings()
-    {
+    public void BackupListCommand_EnumsSerializeAsStrings() {
         // Arrange
         BackupJob completed = new("bkp-1", "t1", null, null, BackupJobType.Backup, BackupJobStatus.Completed, true, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 100L, 5000L, true, null);
 
@@ -123,21 +112,19 @@ public class BackupListCommandTests
     }
 
     [Fact]
-    public async Task BackupListCommand_TenantFilter_PassesQueryParam()
-    {
+    public async Task BackupListCommand_TenantFilter_PassesQueryParam() {
         // Arrange
         List<BackupJob> result = CreateTestResult();
         (AdminApiClient client, MockHttpMessageHandler handler) = CreateMockClientWithHandler(result);
         GlobalOptions options = CreateOptions("table");
 
         // Act
-        using (client)
-        {
+        using (client) {
             _ = await BackupListCommand.ExecuteAsync(client, options, "acme", CancellationToken.None);
         }
 
         // Assert
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         string requestUri = handler.LastRequest.RequestUri!.AbsoluteUri;
         requestUri.ShouldContain("tenantId=acme");
     }

@@ -8,11 +8,9 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 /// <summary>
 /// bUnit tests for the TypeDetailPanel component.
 /// </summary>
-public class TypeDetailPanelTests : AdminUITestContext
-{
+public class TypeDetailPanelTests : AdminUITestContext {
     [Fact]
-    public void TypeDetailPanel_RendersEventDetail_WithRelatedCommands()
-    {
+    public void TypeDetailPanel_RendersEventDetail_WithRelatedCommands() {
         // Arrange
         EventTypeInfo selectedEvent = new("OrderCreated", "ordering", false, 1);
         IReadOnlyList<EventTypeInfo> allEvents =
@@ -48,8 +46,7 @@ public class TypeDetailPanelTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeDetailPanel_RendersCommandDetail_WithTargetAggregateLink()
-    {
+    public void TypeDetailPanel_RendersCommandDetail_WithTargetAggregateLink() {
         // Arrange
         CommandTypeInfo selectedCommand = new("CreateOrder", "ordering", "OrderAggregate");
         IReadOnlyList<EventTypeInfo> allEvents =
@@ -86,8 +83,7 @@ public class TypeDetailPanelTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeDetailPanel_RendersAggregateDetail_WithCountsAndProjectionsBadge()
-    {
+    public void TypeDetailPanel_RendersAggregateDetail_WithCountsAndProjectionsBadge() {
         // Arrange
         AggregateTypeInfo selectedAggregate = new("OrderAggregate", "ordering", 3, 2, true);
         IReadOnlyList<EventTypeInfo> allEvents =
@@ -124,8 +120,7 @@ public class TypeDetailPanelTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeDetailPanel_HasCloseButton()
-    {
+    public void TypeDetailPanel_HasCloseButton() {
         // Arrange
         EventTypeInfo selectedEvent = new("OrderCreated", "ordering", false, 1);
 
@@ -141,8 +136,7 @@ public class TypeDetailPanelTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeDetailPanel_EventDetail_ShowsRejectionBadge()
-    {
+    public void TypeDetailPanel_EventDetail_ShowsRejectionBadge() {
         // Arrange
         EventTypeInfo rejectionEvent = new("OrderRejected", "ordering", true, 1);
 
@@ -158,8 +152,7 @@ public class TypeDetailPanelTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeDetailPanel_AggregateDetail_ShowsNoProjectionsBadge()
-    {
+    public void TypeDetailPanel_AggregateDetail_ShowsNoProjectionsBadge() {
         // Arrange
         AggregateTypeInfo aggregate = new("PaymentAggregate", "payments", 1, 1, false);
 

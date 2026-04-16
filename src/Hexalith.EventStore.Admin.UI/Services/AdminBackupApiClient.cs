@@ -1,13 +1,10 @@
 using System.Net;
-using System.Net.Http.Json;
-using System.Text.Json;
 using System.Text;
+using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
-
-using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.Admin.UI.Services;
 
@@ -17,8 +14,7 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 /// </summary>
 public class AdminBackupApiClient(
     IHttpClientFactory httpClientFactory,
-    ILogger<AdminBackupApiClient> logger)
-{
+    ILogger<AdminBackupApiClient> logger) {
     /// <summary>
     /// Gets backup jobs, optionally filtered by tenant.
     /// </summary>
@@ -27,14 +23,12 @@ public class AdminBackupApiClient(
     /// <returns>A list of backup jobs.</returns>
     public virtual async Task<IReadOnlyList<BackupJob>> GetBackupJobsAsync(
         string? tenantId = null,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = string.IsNullOrEmpty(tenantId)
             ? "api/v1/admin/backups"
             : $"api/v1/admin/backups?tenantId={Uri.EscapeDataString(tenantId)}";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             IReadOnlyList<BackupJob>? result = await response.Content
@@ -46,8 +40,7 @@ public class AdminBackupApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch backup jobs from {Url}", url);
             throw new ServiceUnavailableException("Unable to load backup jobs.");
         }
@@ -65,19 +58,16 @@ public class AdminBackupApiClient(
         string tenantId,
         string? description = null,
         bool includeSnapshots = true,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         StringBuilder urlBuilder = new();
-        urlBuilder.Append($"api/v1/admin/backups/{Uri.EscapeDataString(tenantId)}?includeSnapshots={includeSnapshots}");
-        if (!string.IsNullOrEmpty(description))
-        {
-            urlBuilder.Append($"&description={Uri.EscapeDataString(description)}");
+        _ = urlBuilder.Append($"api/v1/admin/backups/{Uri.EscapeDataString(tenantId)}?includeSnapshots={includeSnapshots}");
+        if (!string.IsNullOrEmpty(description)) {
+            _ = urlBuilder.Append($"&description={Uri.EscapeDataString(description)}");
         }
 
         string url = urlBuilder.ToString();
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.PostAsync(url, null, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
@@ -88,8 +78,7 @@ public class AdminBackupApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to trigger backup at {Url}", url);
             throw new ServiceUnavailableException("Unable to trigger backup.");
         }
@@ -103,12 +92,10 @@ public class AdminBackupApiClient(
     /// <returns>The operation result.</returns>
     public virtual async Task<AdminOperationResult?> ValidateBackupAsync(
         string backupId,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/backups/{Uri.EscapeDataString(backupId)}/validate";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.PostAsync(url, null, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
@@ -119,8 +106,7 @@ public class AdminBackupApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to validate backup at {Url}", url);
             throw new ServiceUnavailableException("Unable to validate backup.");
         }
@@ -138,19 +124,16 @@ public class AdminBackupApiClient(
         string backupId,
         DateTimeOffset? pointInTime = null,
         bool dryRun = false,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         StringBuilder urlBuilder = new();
-        urlBuilder.Append($"api/v1/admin/backups/{Uri.EscapeDataString(backupId)}/restore?dryRun={dryRun}");
-        if (pointInTime.HasValue)
-        {
-            urlBuilder.Append($"&pointInTime={Uri.EscapeDataString(pointInTime.Value.ToString("o"))}");
+        _ = urlBuilder.Append($"api/v1/admin/backups/{Uri.EscapeDataString(backupId)}/restore?dryRun={dryRun}");
+        if (pointInTime.HasValue) {
+            _ = urlBuilder.Append($"&pointInTime={Uri.EscapeDataString(pointInTime.Value.ToString("o"))}");
         }
 
         string url = urlBuilder.ToString();
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.PostAsync(url, null, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
@@ -161,8 +144,7 @@ public class AdminBackupApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to trigger restore at {Url}", url);
             throw new ServiceUnavailableException("Unable to trigger restore.");
         }
@@ -176,12 +158,10 @@ public class AdminBackupApiClient(
     /// <returns>The export result with content.</returns>
     public virtual async Task<StreamExportResult?> ExportStreamAsync(
         StreamExportRequest request,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         const string url = "api/v1/admin/backups/export-stream";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.PostAsJsonAsync(url, request, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
@@ -192,8 +172,7 @@ public class AdminBackupApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to export stream at {Url}", url);
             throw new ServiceUnavailableException("Unable to export stream.");
         }
@@ -209,12 +188,10 @@ public class AdminBackupApiClient(
     public virtual async Task<AdminOperationResult?> ImportStreamAsync(
         string tenantId,
         string content,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/backups/import-stream?tenantId={Uri.EscapeDataString(tenantId)}";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.PostAsync(
                 url,
                 new StringContent(content, Encoding.UTF8, "application/json"),
@@ -228,37 +205,30 @@ public class AdminBackupApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to import stream at {Url}", url);
             throw new ServiceUnavailableException("Unable to import stream.");
         }
     }
 
-    private static async Task HandleErrorStatusAsync(HttpResponseMessage response)
-    {
-        if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Accepted)
-        {
+    private static async Task HandleErrorStatusAsync(HttpResponseMessage response) {
+        if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Accepted) {
             return;
         }
 
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
 
-        if (statusCode == HttpStatusCode.UnprocessableEntity)
-        {
+        if (statusCode == HttpStatusCode.UnprocessableEntity) {
             string? errorDetail = null;
-            try
-            {
+            try {
                 string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                using JsonDocument doc = JsonDocument.Parse(body);
-                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail))
-                {
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail)) {
                     errorDetail = detail.GetString();
                 }
             }
-            catch
-            {
+            catch {
                 // Ignore parse failures — fall through to default message
             }
 
@@ -266,8 +236,7 @@ public class AdminBackupApiClient(
                 errorDetail ?? reasonPhrase ?? "The operation was rejected by the server.");
         }
 
-        throw statusCode switch
-        {
+        throw statusCode switch {
             HttpStatusCode.Unauthorized => new UnauthorizedAccessException(
                 "Authentication required. Please sign in again."),
             HttpStatusCode.Forbidden => new ForbiddenAccessException(

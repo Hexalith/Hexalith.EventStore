@@ -2,8 +2,6 @@ using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.UI.Components;
-using Hexalith.EventStore.Admin.UI.Services;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -16,27 +14,24 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 /// <summary>
 /// bUnit tests for the CommandSandbox component.
 /// </summary>
-public class CommandSandboxTests : AdminUITestContext
-{
+public class CommandSandboxTests : AdminUITestContext {
     private readonly AdminStreamApiClient _mockApiClient;
 
-    public CommandSandboxTests()
-    {
+    public CommandSandboxTests() {
         _mockApiClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance);
 
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
-        Services.AddScoped<TopologyCacheService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped<TopologyCacheService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
     }
 
     [Fact]
-    public void CommandSandbox_RendersInputForm()
-    {
+    public void CommandSandbox_RendersInputForm() {
         IRenderedComponent<CommandSandbox> cut = RenderSandbox();
 
         string markup = cut.Markup;
@@ -49,8 +44,7 @@ public class CommandSandboxTests : AdminUITestContext
     }
 
     [Fact]
-    public void CommandSandbox_ShowsInfoBanner()
-    {
+    public void CommandSandbox_ShowsInfoBanner() {
         IRenderedComponent<CommandSandbox> cut = RenderSandbox();
 
         string markup = cut.Markup;
@@ -59,8 +53,7 @@ public class CommandSandboxTests : AdminUITestContext
     }
 
     [Fact]
-    public void CommandSandbox_ShowsAcceptedOutcome_WithEvents()
-    {
+    public void CommandSandbox_ShowsAcceptedOutcome_WithEvents() {
         // Arrange
         List<SandboxEvent> events = [new(0, "CounterIncremented", "{\"Count\":1}", false)];
         List<FieldChange> changes = [new("Count", "0", "1")];
@@ -92,8 +85,7 @@ public class CommandSandboxTests : AdminUITestContext
     }
 
     [Fact]
-    public void CommandSandbox_ShowsAcceptedNoOp()
-    {
+    public void CommandSandbox_ShowsAcceptedNoOp() {
         // Arrange
         var result = new SandboxResult(
             "test-tenant", "counter", "agg-001",
@@ -117,8 +109,7 @@ public class CommandSandboxTests : AdminUITestContext
     }
 
     [Fact]
-    public void CommandSandbox_ShowsRejectedOutcome()
-    {
+    public void CommandSandbox_ShowsRejectedOutcome() {
         // Arrange
         List<SandboxEvent> events = [new(0, "InsufficientBalance", "{}", true)];
         var result = new SandboxResult(
@@ -143,8 +134,7 @@ public class CommandSandboxTests : AdminUITestContext
     }
 
     [Fact]
-    public void CommandSandbox_ShowsErrorOutcome()
-    {
+    public void CommandSandbox_ShowsErrorOutcome() {
         // Arrange
         var result = new SandboxResult(
             "test-tenant", "counter", "agg-001",
@@ -168,8 +158,7 @@ public class CommandSandboxTests : AdminUITestContext
     }
 
     [Fact]
-    public void CommandSandbox_ShowsTimeoutError()
-    {
+    public void CommandSandbox_ShowsTimeoutError() {
         // Arrange
         _ = _mockApiClient.SandboxCommandAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -188,8 +177,7 @@ public class CommandSandboxTests : AdminUITestContext
     }
 
     [Fact]
-    public void CommandSandbox_ShowsConnectivityError()
-    {
+    public void CommandSandbox_ShowsConnectivityError() {
         // Arrange
         _ = _mockApiClient.SandboxCommandAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -208,8 +196,7 @@ public class CommandSandboxTests : AdminUITestContext
     }
 
     [Fact]
-    public void CommandSandbox_PreFillsInitialSequence()
-    {
+    public void CommandSandbox_PreFillsInitialSequence() {
         IRenderedComponent<CommandSandbox> cut = RenderSandbox(initialSequence: 42);
 
         // The component should pre-fill the sequence field
@@ -217,24 +204,17 @@ public class CommandSandboxTests : AdminUITestContext
         markup.ShouldContain("Command Sandbox");
     }
 
-    private IRenderedComponent<CommandSandbox> RenderSandbox(long? initialSequence = null)
-    {
-        return Render<CommandSandbox>(p => p
-            .Add(c => c.TenantId, "test-tenant")
-            .Add(c => c.Domain, "counter")
-            .Add(c => c.AggregateId, "agg-001")
-            .Add(c => c.InitialSequence, initialSequence));
-    }
+    private IRenderedComponent<CommandSandbox> RenderSandbox(long? initialSequence = null) => Render<CommandSandbox>(p => p
+                                                                                                       .Add(c => c.TenantId, "test-tenant")
+                                                                                                       .Add(c => c.Domain, "counter")
+                                                                                                       .Add(c => c.AggregateId, "agg-001")
+                                                                                                       .Add(c => c.InitialSequence, initialSequence));
 
-    private static void SetCommandType(IRenderedComponent<CommandSandbox> cut, string commandType)
-    {
+    private static void SetCommandType(IRenderedComponent<CommandSandbox> cut, string commandType) {
         // Find the command type text field and set its value
         AngleSharp.Dom.IElement? textField = cut.Find("fluent-text-input");
         textField.Change(commandType);
     }
 
-    private static void ClickRun(IRenderedComponent<CommandSandbox> cut)
-    {
-        cut.Find("fluent-button[appearance='primary']").Click();
-    }
+    private static void ClickRun(IRenderedComponent<CommandSandbox> cut) => cut.Find("fluent-button[appearance='primary']").Click();
 }

@@ -9,8 +9,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Stream;
 /// <summary>
 /// The <c>eventstore-admin stream event</c> subcommand — displays detail for a single event.
 /// </summary>
-public static class StreamEventCommand
-{
+public static class StreamEventCommand {
     internal static readonly List<ColumnDefinition> Columns =
     [
         new("Tenant", "TenantId"),
@@ -28,8 +27,7 @@ public static class StreamEventCommand
     /// <summary>
     /// Creates the stream event subcommand wired to the shared global options.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
+    public static Command Create(GlobalOptionsBinding binding) {
         Argument<string> tenantArg = StreamArguments.Tenant();
         Argument<string> domainArg = StreamArguments.Domain();
         Argument<string> aggregateIdArg = StreamArguments.AggregateId();
@@ -41,8 +39,7 @@ public static class StreamEventCommand
         command.Arguments.Add(aggregateIdArg);
         command.Arguments.Add(seqArg);
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
+        command.SetAction(async (parseResult, cancellationToken) => {
             GlobalOptions options = binding.Resolve(parseResult);
             string tenant = parseResult.GetValue(tenantArg)!;
             string domain = parseResult.GetValue(domainArg)!;
@@ -59,8 +56,7 @@ public static class StreamEventCommand
         string domain,
         string aggregateId,
         long sequenceNumber,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         using AdminApiClient client = new(options);
         return await ExecuteAsync(client, options, tenant, domain, aggregateId, sequenceNumber, cancellationToken).ConfigureAwait(false);
     }
@@ -72,38 +68,32 @@ public static class StreamEventCommand
         string domain,
         string aggregateId,
         long sequenceNumber,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         IOutputFormatter formatter = OutputFormatterFactory.Create(options.Format);
         OutputWriter writer = new(options.OutputFile);
-        try
-        {
+        try {
             string path = $"api/v1/admin/streams/{Uri.EscapeDataString(tenant)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/events/{sequenceNumber}";
             EventDetail? detail = await client
                 .TryGetAsync<EventDetail>(path, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (detail is null)
-            {
+            if (detail is null) {
                 Console.Error.WriteLine($"Event not found at sequence {sequenceNumber} in stream {tenant}:{domain}:{aggregateId}.");
                 return ExitCodes.Error;
             }
 
             string output;
-            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase))
-            {
+            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase)) {
                 output = formatter.Format(detail);
             }
-            else
-            {
+            else {
                 output = formatter.Format(detail, Columns);
             }
 
             int writeResult = writer.Write(output);
             return writeResult != ExitCodes.Success ? writeResult : ExitCodes.Success;
         }
-        catch (AdminApiException ex)
-        {
+        catch (AdminApiException ex) {
             Console.Error.WriteLine(ex.Message);
             return ExitCodes.Error;
         }

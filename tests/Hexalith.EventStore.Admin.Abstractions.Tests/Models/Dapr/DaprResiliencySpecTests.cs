@@ -2,11 +2,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Dapr;
 
-public class DaprResiliencySpecTests
-{
+public class DaprResiliencySpecTests {
     [Fact]
-    public void Constructor_WithValidEmptyCollections_CreatesInstance()
-    {
+    public void Constructor_WithValidEmptyCollections_CreatesInstance() {
         var spec = new DaprResiliencySpec(
             [],
             [],
@@ -26,64 +24,51 @@ public class DaprResiliencySpecTests
     }
 
     [Fact]
-    public void Constructor_WithNullRetryPolicies_ThrowsArgumentNullException()
-    {
-        Should.Throw<ArgumentNullException>(() =>
-            new DaprResiliencySpec(
-                null!,
-                [],
-                [],
-                [],
-                IsConfigurationAvailable: true,
-                RawYamlContent: null,
-                ErrorMessage: null));
-    }
+    public void Constructor_WithNullRetryPolicies_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() =>
+                                                                                            new DaprResiliencySpec(
+                                                                                                null!,
+                                                                                                [],
+                                                                                                [],
+                                                                                                [],
+                                                                                                IsConfigurationAvailable: true,
+                                                                                                RawYamlContent: null,
+                                                                                                ErrorMessage: null));
 
     [Fact]
-    public void Constructor_WithNullTimeoutPolicies_ThrowsArgumentNullException()
-    {
-        Should.Throw<ArgumentNullException>(() =>
-            new DaprResiliencySpec(
-                [],
-                null!,
-                [],
-                [],
-                IsConfigurationAvailable: true,
-                RawYamlContent: null,
-                ErrorMessage: null));
-    }
+    public void Constructor_WithNullTimeoutPolicies_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() =>
+                                                                                              new DaprResiliencySpec(
+                                                                                                  [],
+                                                                                                  null!,
+                                                                                                  [],
+                                                                                                  [],
+                                                                                                  IsConfigurationAvailable: true,
+                                                                                                  RawYamlContent: null,
+                                                                                                  ErrorMessage: null));
 
     [Fact]
-    public void Constructor_WithNullCircuitBreakerPolicies_ThrowsArgumentNullException()
-    {
-        Should.Throw<ArgumentNullException>(() =>
-            new DaprResiliencySpec(
-                [],
-                [],
-                null!,
-                [],
-                IsConfigurationAvailable: true,
-                RawYamlContent: null,
-                ErrorMessage: null));
-    }
+    public void Constructor_WithNullCircuitBreakerPolicies_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() =>
+                                                                                                     new DaprResiliencySpec(
+                                                                                                         [],
+                                                                                                         [],
+                                                                                                         null!,
+                                                                                                         [],
+                                                                                                         IsConfigurationAvailable: true,
+                                                                                                         RawYamlContent: null,
+                                                                                                         ErrorMessage: null));
 
     [Fact]
-    public void Constructor_WithNullTargetBindings_ThrowsArgumentNullException()
-    {
-        Should.Throw<ArgumentNullException>(() =>
-            new DaprResiliencySpec(
-                [],
-                [],
-                [],
-                null!,
-                IsConfigurationAvailable: true,
-                RawYamlContent: null,
-                ErrorMessage: null));
-    }
+    public void Constructor_WithNullTargetBindings_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() =>
+                                                                                             new DaprResiliencySpec(
+                                                                                                 [],
+                                                                                                 [],
+                                                                                                 [],
+                                                                                                 null!,
+                                                                                                 IsConfigurationAvailable: true,
+                                                                                                 RawYamlContent: null,
+                                                                                                 ErrorMessage: null));
 
     [Fact]
-    public void Unavailable_ReturnsSpecWithConfigurationNotAvailable()
-    {
+    public void Unavailable_ReturnsSpecWithConfigurationNotAvailable() {
         DaprResiliencySpec spec = DaprResiliencySpec.Unavailable;
 
         spec.IsConfigurationAvailable.ShouldBeFalse();
@@ -96,9 +81,8 @@ public class DaprResiliencySpecTests
     }
 
     [Fact]
-    public void NotFound_ReturnsSpecWithConfigurationNotAvailable()
-    {
-        DaprResiliencySpec spec = DaprResiliencySpec.NotFound("/etc/dapr/resiliency.yaml");
+    public void NotFound_ReturnsSpecWithConfigurationNotAvailable() {
+        var spec = DaprResiliencySpec.NotFound("/etc/dapr/resiliency.yaml");
 
         spec.IsConfigurationAvailable.ShouldBeFalse();
         spec.RetryPolicies.ShouldBeEmpty();
@@ -106,15 +90,14 @@ public class DaprResiliencySpecTests
         spec.CircuitBreakerPolicies.ShouldBeEmpty();
         spec.TargetBindings.ShouldBeEmpty();
         spec.RawYamlContent.ShouldBeNull();
-        spec.ErrorMessage.ShouldNotBeNull();
+        _ = spec.ErrorMessage.ShouldNotBeNull();
         spec.ErrorMessage.ShouldContain("/etc/dapr/resiliency.yaml");
         spec.ErrorMessage.ShouldContain("not found");
     }
 
     [Fact]
-    public void ReadError_ReturnsSpecWithConfigurationNotAvailable()
-    {
-        DaprResiliencySpec spec = DaprResiliencySpec.ReadError(
+    public void ReadError_ReturnsSpecWithConfigurationNotAvailable() {
+        var spec = DaprResiliencySpec.ReadError(
             "/etc/dapr/resiliency.yaml",
             "Permission denied");
 
@@ -124,17 +107,16 @@ public class DaprResiliencySpecTests
         spec.CircuitBreakerPolicies.ShouldBeEmpty();
         spec.TargetBindings.ShouldBeEmpty();
         spec.RawYamlContent.ShouldBeNull();
-        spec.ErrorMessage.ShouldNotBeNull();
+        _ = spec.ErrorMessage.ShouldNotBeNull();
         spec.ErrorMessage.ShouldContain("/etc/dapr/resiliency.yaml");
         spec.ErrorMessage.ShouldContain("Permission denied");
     }
 
     [Fact]
-    public void ParseError_ReturnsSpecWithConfigurationNotAvailableAndPreservesRawYaml()
-    {
+    public void ParseError_ReturnsSpecWithConfigurationNotAvailableAndPreservesRawYaml() {
         const string rawYaml = "apiVersion: dapr.io/v1alpha1\nkind: Resiliency\ninvalid: yaml: content";
 
-        DaprResiliencySpec spec = DaprResiliencySpec.ParseError(
+        var spec = DaprResiliencySpec.ParseError(
             "/etc/dapr/resiliency.yaml",
             rawYaml,
             "Invalid YAML at line 3");
@@ -145,14 +127,13 @@ public class DaprResiliencySpecTests
         spec.CircuitBreakerPolicies.ShouldBeEmpty();
         spec.TargetBindings.ShouldBeEmpty();
         spec.RawYamlContent.ShouldBe(rawYaml);
-        spec.ErrorMessage.ShouldNotBeNull();
+        _ = spec.ErrorMessage.ShouldNotBeNull();
         spec.ErrorMessage.ShouldContain("/etc/dapr/resiliency.yaml");
         spec.ErrorMessage.ShouldContain("Invalid YAML at line 3");
     }
 
     [Fact]
-    public void Constructor_WithPopulatedCollections_CreatesInstance()
-    {
+    public void Constructor_WithPopulatedCollections_CreatesInstance() {
         var retryPolicies = new List<DaprRetryPolicy>
         {
             new("defaultRetry", "constant", 3, "1s", null),

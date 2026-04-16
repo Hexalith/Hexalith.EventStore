@@ -2,8 +2,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Dapr;
 
-public class DaprActorRuntimeInfoTests
-{
+public class DaprActorRuntimeInfoTests {
     private static DaprActorRuntimeConfig DefaultConfig => new(
         TimeSpan.FromMinutes(60),
         TimeSpan.FromSeconds(30),
@@ -13,8 +12,7 @@ public class DaprActorRuntimeInfoTests
         32);
 
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         List<DaprActorTypeInfo> types =
         [
             new("AggregateActor", 10, "Desc", "format"),
@@ -27,26 +25,19 @@ public class DaprActorRuntimeInfoTests
         info.TotalActiveActors.ShouldBe(15);
         info.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
         info.RemoteEndpoint.ShouldBe("http://localhost:3501");
-        info.Configuration.ShouldNotBeNull();
+        _ = info.Configuration.ShouldNotBeNull();
     }
 
     [Fact]
-    public void Constructor_WithNullActorTypes_ThrowsArgumentNullException()
-    {
-        Should.Throw<ArgumentNullException>(() =>
-            new DaprActorRuntimeInfo(null!, 0, DefaultConfig, RemoteMetadataStatus.NotConfigured, null));
-    }
+    public void Constructor_WithNullActorTypes_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() =>
+                                                                                         new DaprActorRuntimeInfo(null!, 0, DefaultConfig, RemoteMetadataStatus.NotConfigured, null));
 
     [Fact]
-    public void Constructor_WithNullConfiguration_ThrowsArgumentNullException()
-    {
-        Should.Throw<ArgumentNullException>(() =>
-            new DaprActorRuntimeInfo([], 0, null!, RemoteMetadataStatus.NotConfigured, null));
-    }
+    public void Constructor_WithNullConfiguration_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() =>
+                                                                                            new DaprActorRuntimeInfo([], 0, null!, RemoteMetadataStatus.NotConfigured, null));
 
     [Fact]
-    public void Constructor_WithEmptyActorTypes_CreatesInstance()
-    {
+    public void Constructor_WithEmptyActorTypes_CreatesInstance() {
         var info = new DaprActorRuntimeInfo([], 0, DefaultConfig, RemoteMetadataStatus.NotConfigured, null);
 
         info.ActorTypes.ShouldBeEmpty();

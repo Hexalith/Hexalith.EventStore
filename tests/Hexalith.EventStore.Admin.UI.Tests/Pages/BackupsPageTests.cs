@@ -1,9 +1,7 @@
 using Bunit;
 
-using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -18,25 +16,23 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the Backups page.
 /// </summary>
-public class BackupsPageTests : AdminUITestContext
-{
+public class BackupsPageTests : AdminUITestContext {
     private readonly AdminBackupApiClient _mockBackupApi;
 
-    public BackupsPageTests()
-    {
+    public BackupsPageTests() {
         _mockBackupApi = Substitute.For<AdminBackupApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminBackupApiClient>.Instance);
-        Services.AddScoped(_ => _mockBackupApi);
+        _ = Services.AddScoped(_ => _mockBackupApi);
 
         // Register other API clients that shared components might need
-        Services.AddScoped(_ => Substitute.For<AdminStorageApiClient>(
+        _ = Services.AddScoped(_ => Substitute.For<AdminStorageApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStorageApiClient>.Instance));
-        Services.AddScoped(_ => Substitute.For<AdminSnapshotApiClient>(
+        _ = Services.AddScoped(_ => Substitute.For<AdminSnapshotApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminSnapshotApiClient>.Instance));
-        Services.AddScoped(_ => Substitute.For<AdminCompactionApiClient>(
+        _ = Services.AddScoped(_ => Substitute.For<AdminCompactionApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminCompactionApiClient>.Instance));
     }
@@ -44,8 +40,7 @@ public class BackupsPageTests : AdminUITestContext
     // ===== Merge-blocking tests (6.1-6.13) =====
 
     [Fact]
-    public void BackupsPage_RendersStatCards_WithCorrectValues()
-    {
+    public void BackupsPage_RendersStatCards_WithCorrectValues() {
         // Arrange
         SetupJobs([
             CreateJob("bk-1", "tenant-a", BackupJobStatus.Completed, sizeBytes: 1_048_576, eventCount: 5000),
@@ -64,8 +59,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void BackupsPage_ShowsSkeletonCards_DuringLoading()
-    {
+    public void BackupsPage_ShowsSkeletonCards_DuringLoading() {
         // Arrange — never complete the task
         TaskCompletionSource<IReadOnlyList<BackupJob>> tcs = new();
         _ = _mockBackupApi.GetBackupJobsAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -79,8 +73,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void BackupsPage_Grid_RendersAllJobs()
-    {
+    public void BackupsPage_Grid_RendersAllJobs() {
         // Arrange
         SetupJobs([
             CreateJob("bk-1", "tenant-a", BackupJobStatus.Completed, sizeBytes: 1_048_576, eventCount: 5000),
@@ -97,8 +90,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void BackupsPage_ShowsEmptyState_WhenNoBackups()
-    {
+    public void BackupsPage_ShowsEmptyState_WhenNoBackups() {
         // Arrange
         SetupJobs([]);
 
@@ -112,8 +104,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void BackupsPage_ShowsIssueBanner_OnApiError()
-    {
+    public void BackupsPage_ShowsIssueBanner_OnApiError() {
         // Arrange
         _ = _mockBackupApi.GetBackupJobsAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ServiceUnavailableException("test"));
@@ -127,8 +118,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void BackupsPage_HasH1Heading()
-    {
+    public void BackupsPage_HasH1Heading() {
         // Arrange
         SetupJobs([]);
 
@@ -142,8 +132,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void BackupsPage_CreateBackupButton_HiddenForReadOnlyUsers()
-    {
+    public void BackupsPage_CreateBackupButton_HiddenForReadOnlyUsers() {
         // Arrange
         SetupReadOnlyUser();
         SetupJobs([]);
@@ -157,8 +146,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void BackupsPage_CreateBackupButton_VisibleForAdminUsers()
-    {
+    public void BackupsPage_CreateBackupButton_VisibleForAdminUsers() {
         // Arrange — default user is Admin (from AdminUITestContext)
         SetupJobs([]);
 
@@ -171,8 +159,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task BackupsPage_CreateDialog_CallsTriggerAndReloads()
-    {
+    public async Task BackupsPage_CreateDialog_CallsTriggerAndReloads() {
         // Arrange
         SetupJobs([]);
         _ = _mockBackupApi.TriggerBackupAsync(
@@ -185,7 +172,7 @@ public class BackupsPageTests : AdminUITestContext
         // Act — open dialog
         IRenderedComponent<FluentButton> createBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Create Backup"));
-        await createBtn.InvokeAsync(() => createBtn.Instance.OnClick.InvokeAsync());
+        await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Backup"), TimeSpan.FromSeconds(5));
 
         // Fill in tenant ID
@@ -196,16 +183,15 @@ public class BackupsPageTests : AdminUITestContext
         // Click Start Backup
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Start Backup"));
-        await startBtn.InvokeAsync(() => startBtn.Instance.OnClick.InvokeAsync());
+        await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — API invoked
-        await _mockBackupApi.Received(1).TriggerBackupAsync(
+        _ = await _mockBackupApi.Received(1).TriggerBackupAsync(
             "test-tenant", Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task BackupsPage_CreateDialog_ShowsErrorToastOnFailure()
-    {
+    public async Task BackupsPage_CreateDialog_ShowsErrorToastOnFailure() {
         // Arrange
         SetupJobs([]);
         _ = _mockBackupApi.TriggerBackupAsync(
@@ -218,7 +204,7 @@ public class BackupsPageTests : AdminUITestContext
         // Act — open dialog
         IRenderedComponent<FluentButton> createBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Create Backup"));
-        await createBtn.InvokeAsync(() => createBtn.Instance.OnClick.InvokeAsync());
+        await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Backup"), TimeSpan.FromSeconds(5));
 
         // Fill in tenant ID
@@ -229,16 +215,15 @@ public class BackupsPageTests : AdminUITestContext
         // Click Start Backup
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Start Backup"));
-        await startBtn.InvokeAsync(() => startBtn.Instance.OnClick.InvokeAsync());
+        await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — API was called (failure toast is handled by toast service)
-        await _mockBackupApi.Received(1).TriggerBackupAsync(
+        _ = await _mockBackupApi.Received(1).TriggerBackupAsync(
             "test-tenant", Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public void BackupsPage_StatusBadges_RenderCorrectAppearance()
-    {
+    public void BackupsPage_StatusBadges_RenderCorrectAppearance() {
         // Arrange
         SetupJobs([
             CreateJob("bk-1", "tenant-a", BackupJobStatus.Pending),
@@ -259,8 +244,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void BackupsPage_ValidateButton_OnlyOnCompletedBackups()
-    {
+    public void BackupsPage_ValidateButton_OnlyOnCompletedBackups() {
         // Arrange
         SetupJobs([
             CreateJob("bk-1", "tenant-a", BackupJobStatus.Completed, isValidated: false, sizeBytes: 1000, eventCount: 100),
@@ -277,8 +261,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void BackupsPage_RestoreButton_OnlyOnCompletedAndValidatedBackups()
-    {
+    public void BackupsPage_RestoreButton_OnlyOnCompletedAndValidatedBackups() {
         // Arrange
         SetupJobs([
             CreateJob("bk-1", "tenant-a", BackupJobStatus.Completed, isValidated: true, sizeBytes: 1000, eventCount: 100),
@@ -296,8 +279,7 @@ public class BackupsPageTests : AdminUITestContext
     // ===== Recommended tests (6.14-6.24) =====
 
     [Fact]
-    public void BackupsPage_UrlParameters_ReadOnInit()
-    {
+    public void BackupsPage_UrlParameters_ReadOnInit() {
         // Arrange
         SetupJobs([
             CreateJob("bk-1", "tenant-filter", BackupJobStatus.Completed, sizeBytes: 512_000, eventCount: 1000),
@@ -314,8 +296,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task BackupsPage_CreateDialog_RendersFormFieldsAndWarning()
-    {
+    public async Task BackupsPage_CreateDialog_RendersFormFieldsAndWarning() {
         // Arrange
         SetupJobs([]);
 
@@ -325,7 +306,7 @@ public class BackupsPageTests : AdminUITestContext
         // Act — open create dialog
         IRenderedComponent<FluentButton> createBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Create Backup"));
-        await createBtn.InvokeAsync(() => createBtn.Instance.OnClick.InvokeAsync());
+        await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — dialog shows form fields and warning
         cut.Markup.ShouldContain("Tenant ID");
@@ -334,8 +315,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task BackupsPage_CreateDialog_StartDisabledWhenTenantEmpty()
-    {
+    public async Task BackupsPage_CreateDialog_StartDisabledWhenTenantEmpty() {
         // Arrange
         SetupJobs([]);
 
@@ -345,7 +325,7 @@ public class BackupsPageTests : AdminUITestContext
         // Act — open create dialog
         IRenderedComponent<FluentButton> createBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Create Backup"));
-        await createBtn.InvokeAsync(() => createBtn.Instance.OnClick.InvokeAsync());
+        await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — Start Backup button is disabled (tenant ID is empty)
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
@@ -354,8 +334,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void BackupsPage_ActiveBackups_ShowsWarningSeverity()
-    {
+    public void BackupsPage_ActiveBackups_ShowsWarningSeverity() {
         // Arrange — 1 running backup = warning severity
         SetupJobs([
             CreateJob("bk-1", "tenant-a", BackupJobStatus.Running),
@@ -370,8 +349,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void BackupsPage_LastSuccessful_ShowsNever_WhenNoCompletedBackups()
-    {
+    public void BackupsPage_LastSuccessful_ShowsNever_WhenNoCompletedBackups() {
         // Arrange — no completed backups
         SetupJobs([
             CreateJob("bk-1", "tenant-a", BackupJobStatus.Running),
@@ -386,8 +364,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void BackupsPage_BackupList_FiltersByTenant()
-    {
+    public void BackupsPage_BackupList_FiltersByTenant() {
         // Arrange
         SetupJobs([
             CreateJob("bk-1", "alpha-tenant", BackupJobStatus.Completed, sizeBytes: 512_000, eventCount: 1000),
@@ -404,8 +381,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void BackupsPage_ScopeColumn_ShowsFull_WhenStreamIdNull()
-    {
+    public void BackupsPage_ScopeColumn_ShowsFull_WhenStreamIdNull() {
         // Arrange
         SetupJobs([
             CreateJob("bk-1", "tenant-a", BackupJobStatus.Completed, streamId: null, sizeBytes: 512_000, eventCount: 1000),
@@ -420,8 +396,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void BackupsPage_ScopeColumn_ShowsStream_WhenStreamIdPresent()
-    {
+    public void BackupsPage_ScopeColumn_ShowsStream_WhenStreamIdPresent() {
         // Arrange
         SetupJobs([
             new BackupJob("bk-stream", "tenant-a", "stream-123", null, BackupJobType.Backup, BackupJobStatus.Completed,
@@ -438,8 +413,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task BackupsPage_ConcurrentGuard_PreventsCreateForSameTenant()
-    {
+    public async Task BackupsPage_ConcurrentGuard_PreventsCreateForSameTenant() {
         // Arrange — tenant-a has a running backup
         SetupJobs([
             CreateJob("bk-1", "tenant-a", BackupJobStatus.Running),
@@ -451,7 +425,7 @@ public class BackupsPageTests : AdminUITestContext
         // Act — open create dialog
         IRenderedComponent<FluentButton> createBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Create Backup"));
-        await createBtn.InvokeAsync(() => createBtn.Instance.OnClick.InvokeAsync());
+        await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Backup"), TimeSpan.FromSeconds(5));
 
         // Enter the same tenant
@@ -467,8 +441,7 @@ public class BackupsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task BackupsPage_ExportDialog_CallsExportWithCorrectParameters()
-    {
+    public async Task BackupsPage_ExportDialog_CallsExportWithCorrectParameters() {
         // Arrange
         SetupJobs([]);
         _ = _mockBackupApi.ExportStreamAsync(
@@ -482,7 +455,7 @@ public class BackupsPageTests : AdminUITestContext
         // Act — open export dialog
         IRenderedComponent<FluentButton> exportBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Export Stream"));
-        await exportBtn.InvokeAsync(() => exportBtn.Instance.OnClick.InvokeAsync());
+        await exportBtn.InvokeAsync(exportBtn.Instance.OnClick.InvokeAsync);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Tenant ID"), TimeSpan.FromSeconds(5));
 
         // Fill fields
@@ -497,20 +470,17 @@ public class BackupsPageTests : AdminUITestContext
         // Click Export
         IRenderedComponent<FluentButton> submitBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains(">Export<"));
-        await submitBtn.InvokeAsync(() => submitBtn.Instance.OnClick.InvokeAsync());
+        await submitBtn.InvokeAsync(submitBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — API invoked
-        await _mockBackupApi.Received(1).ExportStreamAsync(
+        _ = await _mockBackupApi.Received(1).ExportStreamAsync(
             Arg.Any<StreamExportRequest>(), Arg.Any<CancellationToken>());
     }
 
     // ===== Helpers =====
 
-    private void SetupJobs(IReadOnlyList<BackupJob> jobs)
-    {
-        _ = _mockBackupApi.GetBackupJobsAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+    private void SetupJobs(IReadOnlyList<BackupJob> jobs) => _ = _mockBackupApi.GetBackupJobsAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(jobs));
-    }
 
     private static BackupJob CreateJob(
         string backupId,
@@ -521,8 +491,7 @@ public class BackupsPageTests : AdminUITestContext
         long? eventCount = null,
         bool isValidated = false,
         string? errorMessage = null,
-        BackupJobType jobType = BackupJobType.Backup)
-    {
+        BackupJobType jobType = BackupJobType.Backup) {
         DateTimeOffset created = DateTimeOffset.UtcNow.AddHours(-2);
         DateTimeOffset? completed = status is BackupJobStatus.Completed or BackupJobStatus.Failed
             ? DateTimeOffset.UtcNow.AddHours(-1)
@@ -532,8 +501,7 @@ public class BackupsPageTests : AdminUITestContext
             created, completed, eventCount, sizeBytes, isValidated, errorMessage);
     }
 
-    private void SetupReadOnlyUser()
-    {
+    private void SetupReadOnlyUser() {
         // Override auth state with ReadOnly user
         Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider =
             Substitute.For<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>();
@@ -543,8 +511,8 @@ public class BackupsPageTests : AdminUITestContext
         ], "TestAuth"));
         _ = authStateProvider.GetAuthenticationStateAsync()
             .Returns(Task.FromResult(new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(user)));
-        Services.AddSingleton(authStateProvider);
-        Services.AddScoped<AdminUserContext>();
+        _ = Services.AddSingleton(authStateProvider);
+        _ = Services.AddScoped<AdminUserContext>();
     }
 
     private Microsoft.AspNetCore.Components.NavigationManager NavManager =>

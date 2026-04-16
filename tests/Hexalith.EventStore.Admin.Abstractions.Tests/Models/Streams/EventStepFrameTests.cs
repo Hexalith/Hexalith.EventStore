@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Streams;
 
-public class EventStepFrameTests
-{
+public class EventStepFrameTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         DateTimeOffset timestamp = new(2026, 3, 27, 10, 0, 0, TimeSpan.Zero);
         List<FieldChange> changes = [new("Count", "4", "5")];
 
@@ -35,8 +33,7 @@ public class EventStepFrameTests
     }
 
     [Fact]
-    public void Constructor_WithNullStrings_DefaultsToEmpty()
-    {
+    public void Constructor_WithNullStrings_DefaultsToEmpty() {
         var frame = new EventStepFrame(
             null!, null!, null!,
             1, null!, DateTimeOffset.MinValue,
@@ -56,8 +53,7 @@ public class EventStepFrameTests
     }
 
     [Fact]
-    public void HasPrevious_AtSequenceOne_ReturnsFalse()
-    {
+    public void HasPrevious_AtSequenceOne_ReturnsFalse() {
         var frame = new EventStepFrame(
             "t", "d", "a", 1, "Evt", DateTimeOffset.UtcNow,
             "c", "cs", "u", "{}", "{}", [], 10);
@@ -66,8 +62,7 @@ public class EventStepFrameTests
     }
 
     [Fact]
-    public void HasPrevious_AtSequenceGreaterThanOne_ReturnsTrue()
-    {
+    public void HasPrevious_AtSequenceGreaterThanOne_ReturnsTrue() {
         var frame = new EventStepFrame(
             "t", "d", "a", 5, "Evt", DateTimeOffset.UtcNow,
             "c", "cs", "u", "{}", "{}", [], 10);
@@ -76,8 +71,7 @@ public class EventStepFrameTests
     }
 
     [Fact]
-    public void HasNext_AtLastEvent_ReturnsFalse()
-    {
+    public void HasNext_AtLastEvent_ReturnsFalse() {
         var frame = new EventStepFrame(
             "t", "d", "a", 10, "Evt", DateTimeOffset.UtcNow,
             "c", "cs", "u", "{}", "{}", [], 10);
@@ -86,8 +80,7 @@ public class EventStepFrameTests
     }
 
     [Fact]
-    public void HasNext_BeforeLastEvent_ReturnsTrue()
-    {
+    public void HasNext_BeforeLastEvent_ReturnsTrue() {
         var frame = new EventStepFrame(
             "t", "d", "a", 5, "Evt", DateTimeOffset.UtcNow,
             "c", "cs", "u", "{}", "{}", [], 10);
@@ -96,8 +89,7 @@ public class EventStepFrameTests
     }
 
     [Fact]
-    public void HasPrevious_HasNext_SingleEventStream_BothFalse()
-    {
+    public void HasPrevious_HasNext_SingleEventStream_BothFalse() {
         var frame = new EventStepFrame(
             "t", "d", "a", 1, "Evt", DateTimeOffset.UtcNow,
             "c", "cs", "u", "{}", "{}", [], 1);
@@ -107,8 +99,7 @@ public class EventStepFrameTests
     }
 
     [Fact]
-    public void ToString_RedactsPayloadAndStateAndFieldValues()
-    {
+    public void ToString_RedactsPayloadAndStateAndFieldValues() {
         List<FieldChange> changes = [new("Secret", "secret-old", "secret-new")];
         var frame = new EventStepFrame(
             "tenant1", "orders", "order-1",
@@ -131,8 +122,7 @@ public class EventStepFrameTests
     }
 
     [Fact]
-    public void SerializationRoundTrip_PreservesAllProperties()
-    {
+    public void SerializationRoundTrip_PreservesAllProperties() {
         DateTimeOffset timestamp = new(2026, 3, 27, 10, 0, 0, TimeSpan.Zero);
         List<FieldChange> changes = [new("Count", "4", "5"), new("Status", "\"Draft\"", "\"Active\"")];
 
@@ -146,7 +136,7 @@ public class EventStepFrameTests
         string json = JsonSerializer.Serialize(original);
         EventStepFrame? deserialized = JsonSerializer.Deserialize<EventStepFrame>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized!.TenantId.ShouldBe("tenant1");
         deserialized.Domain.ShouldBe("domain1");
         deserialized.AggregateId.ShouldBe("agg-1");

@@ -2,7 +2,6 @@ using System.Net;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
-using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Stream;
 using Hexalith.EventStore.Admin.Cli.Formatting;
@@ -10,8 +9,7 @@ using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Stream;
 
-public class StreamEventCommandTests
-{
+public class StreamEventCommandTests {
     private static EventDetail CreateTestEvent()
         => new(
             "acme",
@@ -28,11 +26,9 @@ public class StreamEventCommandTests
     private static GlobalOptions CreateOptions(string format = "table", string? outputFile = null)
         => new("http://localhost:5002", null, format, outputFile);
 
-    private static AdminApiClient CreateMockClient(object? responseBody, HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
+    private static AdminApiClient CreateMockClient(object? responseBody, HttpStatusCode statusCode = HttpStatusCode.OK) {
         HttpResponseMessage response = new(statusCode);
-        if (responseBody is not null)
-        {
+        if (responseBody is not null) {
             string json = JsonSerializer.Serialize(responseBody, JsonDefaults.Options);
             response.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
         }
@@ -43,8 +39,7 @@ public class StreamEventCommandTests
     }
 
     [Fact]
-    public void StreamEventCommand_ReturnsEventDetail()
-    {
+    public void StreamEventCommand_ReturnsEventDetail() {
         // Arrange — test formatting directly to avoid Console capture issues
         EventDetail detail = CreateTestEvent();
         IOutputFormatter formatter = new TableOutputFormatter();
@@ -61,8 +56,7 @@ public class StreamEventCommandTests
     }
 
     [Fact]
-    public async Task StreamEventCommand_NotFound_PrintsError()
-    {
+    public async Task StreamEventCommand_NotFound_PrintsError() {
         // Arrange
         using AdminApiClient client = CreateMockClient(null, HttpStatusCode.NotFound);
         GlobalOptions options = CreateOptions("table");
@@ -75,8 +69,7 @@ public class StreamEventCommandTests
     }
 
     [Fact]
-    public void StreamEventCommand_JsonFormat_ReturnsFullEventDetail()
-    {
+    public void StreamEventCommand_JsonFormat_ReturnsFullEventDetail() {
         // Arrange — test JSON formatting directly
         EventDetail detail = CreateTestEvent();
         IOutputFormatter formatter = new JsonOutputFormatter();
@@ -89,18 +82,16 @@ public class StreamEventCommandTests
         json.ShouldContain("amount");
         // Verify it round-trips
         EventDetail? deserialized = JsonSerializer.Deserialize<EventDetail>(json, JsonDefaults.Options);
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.PayloadJson.ShouldContain("amount");
     }
 
     [Fact]
-    public async Task StreamEventCommand_ParsesSequenceNumberArgument()
-    {
+    public async Task StreamEventCommand_ParsesSequenceNumberArgument() {
         // Arrange — verify URL includes sequence number
         EventDetail detail = CreateTestEvent();
         string json = JsonSerializer.Serialize(detail, JsonDefaults.Options);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         });
         GlobalOptions options = CreateOptions("table");
@@ -110,7 +101,7 @@ public class StreamEventCommandTests
         _ = await StreamEventCommand.ExecuteAsync(client, options, "acme", "counter", "01J", 42, CancellationToken.None);
 
         // Assert
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         string requestUri = handler.LastRequest.RequestUri!.AbsoluteUri;
         requestUri.ShouldContain("/events/42");
         requestUri.ShouldContain("/acme/");

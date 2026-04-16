@@ -8,13 +8,11 @@ using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
-public class HttpContextAdminAuthContextTests
-{
+public class HttpContextAdminAuthContextTests {
     // === GetToken ===
 
     [Fact]
-    public void GetToken_ReturnsBearerToken_WhenAuthorizationHeaderPresent()
-    {
+    public void GetToken_ReturnsBearerToken_WhenAuthorizationHeaderPresent() {
         IHttpContextAccessor accessor = CreateAccessorWithAuthHeader("Bearer eyJhbGciOiJSUzI1NiJ9.test");
 
         var sut = new HttpContextAdminAuthContext(accessor);
@@ -23,8 +21,7 @@ public class HttpContextAdminAuthContextTests
     }
 
     [Fact]
-    public void GetToken_ReturnsNull_WhenNoAuthorizationHeader()
-    {
+    public void GetToken_ReturnsNull_WhenNoAuthorizationHeader() {
         IHttpContextAccessor accessor = CreateAccessorWithAuthHeader(null);
 
         var sut = new HttpContextAdminAuthContext(accessor);
@@ -33,8 +30,7 @@ public class HttpContextAdminAuthContextTests
     }
 
     [Fact]
-    public void GetToken_ReturnsNull_WhenAuthorizationHeaderIsEmpty()
-    {
+    public void GetToken_ReturnsNull_WhenAuthorizationHeaderIsEmpty() {
         IHttpContextAccessor accessor = CreateAccessorWithAuthHeader("");
 
         var sut = new HttpContextAdminAuthContext(accessor);
@@ -43,8 +39,7 @@ public class HttpContextAdminAuthContextTests
     }
 
     [Fact]
-    public void GetToken_ReturnsNull_WhenNotBearerScheme()
-    {
+    public void GetToken_ReturnsNull_WhenNotBearerScheme() {
         IHttpContextAccessor accessor = CreateAccessorWithAuthHeader("Basic dXNlcjpwYXNz");
 
         var sut = new HttpContextAdminAuthContext(accessor);
@@ -53,8 +48,7 @@ public class HttpContextAdminAuthContextTests
     }
 
     [Fact]
-    public void GetToken_ReturnsNull_WhenBearerTokenIsBlank()
-    {
+    public void GetToken_ReturnsNull_WhenBearerTokenIsBlank() {
         IHttpContextAccessor accessor = CreateAccessorWithAuthHeader("Bearer   ");
 
         var sut = new HttpContextAdminAuthContext(accessor);
@@ -63,8 +57,7 @@ public class HttpContextAdminAuthContextTests
     }
 
     [Fact]
-    public void GetToken_IsCaseInsensitive_ForBearerPrefix()
-    {
+    public void GetToken_IsCaseInsensitive_ForBearerPrefix() {
         IHttpContextAccessor accessor = CreateAccessorWithAuthHeader("bearer my-token-123");
 
         var sut = new HttpContextAdminAuthContext(accessor);
@@ -73,8 +66,7 @@ public class HttpContextAdminAuthContextTests
     }
 
     [Fact]
-    public void GetToken_TrimsWhitespace_FromToken()
-    {
+    public void GetToken_TrimsWhitespace_FromToken() {
         IHttpContextAccessor accessor = CreateAccessorWithAuthHeader("Bearer  my-token  ");
 
         var sut = new HttpContextAdminAuthContext(accessor);
@@ -83,10 +75,9 @@ public class HttpContextAdminAuthContextTests
     }
 
     [Fact]
-    public void GetToken_ReturnsNull_WhenHttpContextIsNull()
-    {
+    public void GetToken_ReturnsNull_WhenHttpContextIsNull() {
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns((HttpContext?)null);
+        _ = accessor.HttpContext.Returns((HttpContext?)null);
 
         var sut = new HttpContextAdminAuthContext(accessor);
 
@@ -96,8 +87,7 @@ public class HttpContextAdminAuthContextTests
     // === GetUserId ===
 
     [Fact]
-    public void GetUserId_ReturnsSubClaim_WhenPresent()
-    {
+    public void GetUserId_ReturnsSubClaim_WhenPresent() {
         IHttpContextAccessor accessor = CreateAccessorWithClaims(new Claim("sub", "user-abc-123"));
 
         var sut = new HttpContextAdminAuthContext(accessor);
@@ -106,8 +96,7 @@ public class HttpContextAdminAuthContextTests
     }
 
     [Fact]
-    public void GetUserId_FallsBackToNameIdentifier_WhenNoSubClaim()
-    {
+    public void GetUserId_FallsBackToNameIdentifier_WhenNoSubClaim() {
         IHttpContextAccessor accessor = CreateAccessorWithClaims(
             new Claim(ClaimTypes.NameIdentifier, "user-fallback-456"));
 
@@ -117,8 +106,7 @@ public class HttpContextAdminAuthContextTests
     }
 
     [Fact]
-    public void GetUserId_PrefersSubClaim_OverNameIdentifier()
-    {
+    public void GetUserId_PrefersSubClaim_OverNameIdentifier() {
         IHttpContextAccessor accessor = CreateAccessorWithClaims(
             new Claim("sub", "sub-value"),
             new Claim(ClaimTypes.NameIdentifier, "nameid-value"));
@@ -129,8 +117,7 @@ public class HttpContextAdminAuthContextTests
     }
 
     [Fact]
-    public void GetUserId_ReturnsNull_WhenNoClaims()
-    {
+    public void GetUserId_ReturnsNull_WhenNoClaims() {
         IHttpContextAccessor accessor = CreateAccessorWithClaims();
 
         var sut = new HttpContextAdminAuthContext(accessor);
@@ -139,10 +126,9 @@ public class HttpContextAdminAuthContextTests
     }
 
     [Fact]
-    public void GetUserId_ReturnsNull_WhenHttpContextIsNull()
-    {
+    public void GetUserId_ReturnsNull_WhenHttpContextIsNull() {
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns((HttpContext?)null);
+        _ = accessor.HttpContext.Returns((HttpContext?)null);
 
         var sut = new HttpContextAdminAuthContext(accessor);
 
@@ -151,28 +137,24 @@ public class HttpContextAdminAuthContextTests
 
     // === Helpers ===
 
-    private static IHttpContextAccessor CreateAccessorWithAuthHeader(string? authorizationValue)
-    {
+    private static IHttpContextAccessor CreateAccessorWithAuthHeader(string? authorizationValue) {
         DefaultHttpContext httpContext = new();
-        if (authorizationValue is not null)
-        {
+        if (authorizationValue is not null) {
             httpContext.Request.Headers.Authorization = authorizationValue;
         }
 
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
+        _ = accessor.HttpContext.Returns(httpContext);
         return accessor;
     }
 
-    private static IHttpContextAccessor CreateAccessorWithClaims(params Claim[] claims)
-    {
-        DefaultHttpContext httpContext = new()
-        {
+    private static IHttpContextAccessor CreateAccessorWithClaims(params Claim[] claims) {
+        DefaultHttpContext httpContext = new() {
             User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth")),
         };
 
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
-        accessor.HttpContext.Returns(httpContext);
+        _ = accessor.HttpContext.Returns(httpContext);
         return accessor;
     }
 }

@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Streams;
 
-public class TraceMapEventTests
-{
+public class TraceMapEventTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         DateTimeOffset ts = new(2026, 3, 27, 10, 0, 0, TimeSpan.Zero);
 
         var evt = new TraceMapEvent(5, "CounterIncremented", ts, "caus-123", false);
@@ -21,8 +19,7 @@ public class TraceMapEventTests
     }
 
     [Fact]
-    public void Constructor_WithNullStrings_DefaultsToEmpty()
-    {
+    public void Constructor_WithNullStrings_DefaultsToEmpty() {
         var evt = new TraceMapEvent(1, null!, DateTimeOffset.MinValue, null, false);
 
         evt.EventTypeName.ShouldBe(string.Empty);
@@ -30,8 +27,7 @@ public class TraceMapEventTests
     }
 
     [Fact]
-    public void ToString_ContainsAllFields()
-    {
+    public void ToString_ContainsAllFields() {
         var evt = new TraceMapEvent(3, "OrderPlaced", DateTimeOffset.UtcNow, "c-1", false);
 
         string result = evt.ToString();
@@ -42,15 +38,14 @@ public class TraceMapEventTests
     }
 
     [Fact]
-    public void SerializationRoundTrip_PreservesAll()
-    {
+    public void SerializationRoundTrip_PreservesAll() {
         DateTimeOffset ts = new(2026, 3, 27, 10, 0, 0, TimeSpan.Zero);
         var original = new TraceMapEvent(10, "Evt", ts, "caus-1", true);
 
         string json = JsonSerializer.Serialize(original);
         TraceMapEvent? deserialized = JsonSerializer.Deserialize<TraceMapEvent>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized!.SequenceNumber.ShouldBe(10);
         deserialized.EventTypeName.ShouldBe("Evt");
         deserialized.CausationId.ShouldBe("caus-1");

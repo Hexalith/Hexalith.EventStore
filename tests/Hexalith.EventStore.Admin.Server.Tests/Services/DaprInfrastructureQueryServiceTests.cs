@@ -16,17 +16,13 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
-using Shouldly;
-
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
-public class DaprInfrastructureQueryServiceTests
-{
+public class DaprInfrastructureQueryServiceTests {
     private static DaprInfrastructureQueryService CreateService(
         DaprClient? daprClient = null,
         AdminServerOptions? serverOptions = null,
-        IHttpClientFactory? httpClientFactory = null)
-    {
+        IHttpClientFactory? httpClientFactory = null) {
         daprClient ??= Substitute.For<DaprClient>();
         serverOptions ??= new AdminServerOptions();
         httpClientFactory ??= Substitute.For<IHttpClientFactory>();
@@ -46,15 +42,14 @@ public class DaprInfrastructureQueryServiceTests
         components: components);
 
     [Fact]
-    public async Task GetComponentsAsync_ReturnsComponents_WhenMetadataAvailable()
-    {
+    public async Task GetComponentsAsync_ReturnsComponents_WhenMetadataAvailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DaprMetadata metadata = CreateMetadata(
             new DaprComponentsMetadata("statestore", "state.redis", "v1", ["ETAG", "TRANSACTIONAL"]),
             new DaprComponentsMetadata("pubsub", "pubsub.redis", "v1", []));
 
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
-        daprClient.GetStateAsync<string>(
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = daprClient.GetStateAsync<string>(
             "statestore", "admin:dapr-probe",
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (string?)null);
@@ -73,27 +68,25 @@ public class DaprInfrastructureQueryServiceTests
     }
 
     [Fact]
-    public async Task GetComponentsAsync_Throws_WhenSidecarUnavailable()
-    {
+    public async Task GetComponentsAsync_Throws_WhenSidecarUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Sidecar down"));
 
         DaprInfrastructureQueryService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetComponentsAsync());
     }
 
     [Fact]
-    public async Task GetComponentsAsync_MarksStateStoreUnhealthy_WhenProbeFails()
-    {
+    public async Task GetComponentsAsync_MarksStateStoreUnhealthy_WhenProbeFails() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DaprMetadata metadata = CreateMetadata(
             new DaprComponentsMetadata("statestore", "state.redis", "v1", []));
 
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
-        daprClient.GetStateAsync<string>(
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = daprClient.GetStateAsync<string>(
             "statestore", "admin:dapr-probe",
             cancellationToken: Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("State store unreachable"));
@@ -107,14 +100,13 @@ public class DaprInfrastructureQueryServiceTests
     }
 
     [Fact]
-    public async Task GetComponentsAsync_NonStateStoreComponents_AreAlwaysHealthy()
-    {
+    public async Task GetComponentsAsync_NonStateStoreComponents_AreAlwaysHealthy() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DaprMetadata metadata = CreateMetadata(
             new DaprComponentsMetadata("pubsub", "pubsub.redis", "v1", []),
             new DaprComponentsMetadata("secretstore", "secretstores.local.file", "v1", []));
 
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
 
         DaprInfrastructureQueryService service = CreateService(daprClient);
 
@@ -125,36 +117,34 @@ public class DaprInfrastructureQueryServiceTests
     }
 
     [Fact]
-    public async Task GetComponentsAsync_PropagatesCancellation()
-    {
+    public async Task GetComponentsAsync_PropagatesCancellation() {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .Returns<DaprMetadata>(_ => throw new OperationCanceledException());
 
         DaprInfrastructureQueryService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.GetComponentsAsync(cts.Token));
     }
 
     [Fact]
-    public async Task GetSidecarInfoAsync_ReturnsSidecarInfo_WhenMetadataAvailable()
-    {
+    public async Task GetSidecarInfoAsync_ReturnsSidecarInfo_WhenMetadataAvailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DaprMetadata metadata = CreateMetadata(
             new DaprComponentsMetadata("statestore", "state.redis", "v1", []),
             new DaprComponentsMetadata("pubsub", "pubsub.redis", "v1", []));
 
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
 
         DaprInfrastructureQueryService service = CreateService(daprClient);
 
         DaprSidecarInfo? result = await service.GetSidecarInfoAsync();
 
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.AppId.ShouldBe("test-app");
         result.RuntimeVersion.ShouldBe("1.14.0");
         result.ComponentCount.ShouldBe(2);
@@ -165,11 +155,10 @@ public class DaprInfrastructureQueryServiceTests
     }
 
     [Fact]
-    public async Task GetSidecarInfoAsync_PopulatesSubscriptionAndHttpEndpointCounts_FromRemoteSidecar()
-    {
+    public async Task GetSidecarInfoAsync_PopulatesSubscriptionAndHttpEndpointCounts_FromRemoteSidecar() {
         // Arrange — local sidecar metadata + remote eventstore sidecar exposing 2 subs and 3 http endpoints
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
             new DaprComponentsMetadata("statestore", "state.redis", "v1", [])));
 
         const string endpoint = "http://localhost:3501";
@@ -188,7 +177,7 @@ public class DaprInfrastructureQueryServiceTests
             ]
         }
         """));
-        httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
 
         DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
 
@@ -196,7 +185,7 @@ public class DaprInfrastructureQueryServiceTests
         DaprSidecarInfo? result = await service.GetSidecarInfoAsync();
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.SubscriptionCount.ShouldBe(2);
         result.HttpEndpointCount.ShouldBe(3);
         result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
@@ -204,18 +193,17 @@ public class DaprInfrastructureQueryServiceTests
     }
 
     [Fact]
-    public async Task GetSidecarInfoAsync_ReturnsZeroCounts_WhenRemoteSidecarMissingArrays()
-    {
+    public async Task GetSidecarInfoAsync_ReturnsZeroCounts_WhenRemoteSidecarMissingArrays() {
         // Arrange — remote responds 200 with no subscriptions/httpEndpoints arrays
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
             new DaprComponentsMetadata("statestore", "state.redis", "v1", [])));
 
         const string endpoint = "http://localhost:3501";
         AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
         HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """{"actors": []}"""));
-        httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
 
         DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
 
@@ -223,25 +211,24 @@ public class DaprInfrastructureQueryServiceTests
         DaprSidecarInfo? result = await service.GetSidecarInfoAsync();
 
         // Assert
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.SubscriptionCount.ShouldBe(0);
         result.HttpEndpointCount.ShouldBe(0);
         result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
     }
 
     [Fact]
-    public async Task GetSidecarInfoAsync_ReturnsUnreachable_WhenRemoteSidecarFails()
-    {
+    public async Task GetSidecarInfoAsync_ReturnsUnreachable_WhenRemoteSidecarFails() {
         // Arrange
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
             new DaprComponentsMetadata("statestore", "state.redis", "v1", [])));
 
         const string endpoint = "http://localhost:3501";
         AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
         HttpClient httpClient = new(new FakeHandler(HttpStatusCode.InternalServerError, "boom"));
-        httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
 
         DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
 
@@ -249,7 +236,7 @@ public class DaprInfrastructureQueryServiceTests
         DaprSidecarInfo? result = await service.GetSidecarInfoAsync();
 
         // Assert — local metadata still served, but remote unreachable so counts stay 0
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.AppId.ShouldBe("test-app");
         result.SubscriptionCount.ShouldBe(0);
         result.HttpEndpointCount.ShouldBe(0);
@@ -257,49 +244,41 @@ public class DaprInfrastructureQueryServiceTests
         result.RemoteEndpoint.ShouldBe(endpoint);
     }
 
-    private sealed class FakeHandler(HttpStatusCode statusCode, string content) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(new HttpResponseMessage(statusCode)
-            {
-                Content = new StringContent(content, Encoding.UTF8, "application/json"),
-            });
-        }
+    private sealed class FakeHandler(HttpStatusCode statusCode, string content) : HttpMessageHandler {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(new HttpResponseMessage(statusCode) {
+            Content = new StringContent(content, Encoding.UTF8, "application/json"),
+        });
     }
 
     [Fact]
-    public async Task GetSidecarInfoAsync_Throws_WhenSidecarUnavailable()
-    {
+    public async Task GetSidecarInfoAsync_Throws_WhenSidecarUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Sidecar down"));
 
         DaprInfrastructureQueryService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetSidecarInfoAsync());
     }
 
     [Fact]
-    public async Task GetSidecarInfoAsync_PropagatesCancellation()
-    {
+    public async Task GetSidecarInfoAsync_PropagatesCancellation() {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .Returns<DaprMetadata>(_ => throw new OperationCanceledException());
 
         DaprInfrastructureQueryService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.GetSidecarInfoAsync(cts.Token));
     }
 
     [Fact]
-    public async Task GetSidecarInfoAsync_RuntimeVersionFromExtended()
-    {
+    public async Task GetSidecarInfoAsync_RuntimeVersionFromExtended() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DaprMetadata metadata = new(
             id: "my-app",
@@ -307,19 +286,18 @@ public class DaprInfrastructureQueryServiceTests
             extended: new Dictionary<string, string> { ["daprRuntimeVersion"] = "1.15.2" },
             components: []);
 
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
 
         DaprInfrastructureQueryService service = CreateService(daprClient);
 
         DaprSidecarInfo? result = await service.GetSidecarInfoAsync();
 
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.RuntimeVersion.ShouldBe("1.15.2");
     }
 
     [Fact]
-    public async Task GetSidecarInfoAsync_RuntimeVersionUnknown_WhenNotInExtended()
-    {
+    public async Task GetSidecarInfoAsync_RuntimeVersionUnknown_WhenNotInExtended() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DaprMetadata metadata = new(
             id: "my-app",
@@ -327,19 +305,18 @@ public class DaprInfrastructureQueryServiceTests
             extended: new Dictionary<string, string>(),
             components: []);
 
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
 
         DaprInfrastructureQueryService service = CreateService(daprClient);
 
         DaprSidecarInfo? result = await service.GetSidecarInfoAsync();
 
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.RuntimeVersion.ShouldBe("unknown");
     }
 
     [Fact]
-    public async Task GetSidecarInfoAsync_EmptyId_ReturnsUnknownAppId()
-    {
+    public async Task GetSidecarInfoAsync_EmptyId_ReturnsUnknownAppId() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DaprMetadata metadata = new(
             id: "",
@@ -347,27 +324,26 @@ public class DaprInfrastructureQueryServiceTests
             extended: new Dictionary<string, string> { ["daprRuntimeVersion"] = "1.14.0" },
             components: []);
 
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
 
         DaprInfrastructureQueryService service = CreateService(daprClient);
 
         DaprSidecarInfo? result = await service.GetSidecarInfoAsync();
 
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.AppId.ShouldBe("unknown");
     }
 
     [Fact]
-    public async Task GetComponentsAsync_SkipsComponents_WithNullOrEmptyNameOrType()
-    {
+    public async Task GetComponentsAsync_SkipsComponents_WithNullOrEmptyNameOrType() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DaprMetadata metadata = CreateMetadata(
             new DaprComponentsMetadata("statestore", "state.redis", "v1", []),
             new DaprComponentsMetadata("", "pubsub.redis", "v1", []),
             new DaprComponentsMetadata("binding", "", "v1", []));
 
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
-        daprClient.GetStateAsync<string>(
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = daprClient.GetStateAsync<string>(
             "statestore", "admin:dapr-probe",
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (string?)null);

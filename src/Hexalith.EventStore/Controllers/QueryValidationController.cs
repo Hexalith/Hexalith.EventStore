@@ -2,8 +2,8 @@
 using System.Security.Claims;
 
 using Hexalith.EventStore.Authorization;
-using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Contracts.Validation;
+using Hexalith.EventStore.Middleware;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

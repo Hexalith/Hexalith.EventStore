@@ -6,18 +6,13 @@ namespace Hexalith.EventStore.Admin.UI.Tests;
 /// Test 9.11: Blazor Server host bootstraps without errors (AC: 1).
 /// Merge-blocking test.
 /// </summary>
-public class HostBootstrapTests : IClassFixture<WebApplicationFactory<Program>>
-{
+public class HostBootstrapTests : IClassFixture<WebApplicationFactory<Program>> {
     private readonly WebApplicationFactory<Program> _factory;
 
-    public HostBootstrapTests(WebApplicationFactory<Program> factory)
-    {
-        _factory = factory;
-    }
+    public HostBootstrapTests(WebApplicationFactory<Program> factory) => _factory = factory;
 
     [Fact]
-    public async Task BlazorServerHost_BootstrapsWithoutErrors()
-    {
+    public async Task BlazorServerHost_BootstrapsWithoutErrors() {
         // Arrange
         HttpClient client = _factory.CreateClient();
 

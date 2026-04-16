@@ -11,30 +11,22 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
 
-using Shouldly;
-
 namespace Hexalith.EventStore.Admin.Server.Tests.Controllers;
 
-public class AdminDaprControllerResiliencyTests
-{
+public class AdminDaprControllerResiliencyTests {
     private readonly IDaprInfrastructureQueryService _service = Substitute.For<IDaprInfrastructureQueryService>();
     private readonly AdminDaprController _sut;
 
-    public AdminDaprControllerResiliencyTests()
-    {
-        _sut = new AdminDaprController(_service, NullLogger<AdminDaprController>.Instance);
-        _sut.ControllerContext = new ControllerContext
-        {
-            HttpContext = new DefaultHttpContext
-            {
+    public AdminDaprControllerResiliencyTests() => _sut = new AdminDaprController(_service, NullLogger<AdminDaprController>.Instance) {
+        ControllerContext = new ControllerContext {
+            HttpContext = new DefaultHttpContext {
                 User = CreatePrincipal("ReadOnly"),
             },
-        };
-    }
+        }
+    };
 
     [Fact]
-    public async Task GetResiliencySpec_Returns200_WithFullSpec()
-    {
+    public async Task GetResiliencySpec_Returns200_WithFullSpec() {
         DaprResiliencySpec expected = new(
             [new DaprRetryPolicy("defaultRetry", "exponential", 10, null, "15s")],
             [new DaprTimeoutPolicy("daprSidecar", "5s")],
@@ -43,7 +35,7 @@ public class AdminDaprControllerResiliencyTests
             IsConfigurationAvailable: true,
             RawYamlContent: "spec: ...",
             ErrorMessage: null);
-        _service.GetResiliencySpecAsync(Arg.Any<CancellationToken>()).Returns(expected);
+        _ = _service.GetResiliencySpecAsync(Arg.Any<CancellationToken>()).Returns(expected);
 
         IActionResult result = await _sut.GetResiliencySpecAsync();
 
@@ -52,10 +44,9 @@ public class AdminDaprControllerResiliencyTests
     }
 
     [Fact]
-    public async Task GetResiliencySpec_Returns200_WithUnavailableConfig()
-    {
+    public async Task GetResiliencySpec_Returns200_WithUnavailableConfig() {
         DaprResiliencySpec unavailable = DaprResiliencySpec.Unavailable;
-        _service.GetResiliencySpecAsync(Arg.Any<CancellationToken>()).Returns(unavailable);
+        _ = _service.GetResiliencySpecAsync(Arg.Any<CancellationToken>()).Returns(unavailable);
 
         IActionResult result = await _sut.GetResiliencySpecAsync();
 
@@ -69,9 +60,8 @@ public class AdminDaprControllerResiliencyTests
     }
 
     [Fact]
-    public async Task GetResiliencySpec_Returns500_OnUnexpectedException()
-    {
-        _service.GetResiliencySpecAsync(Arg.Any<CancellationToken>())
+    public async Task GetResiliencySpec_Returns500_OnUnexpectedException() {
+        _ = _service.GetResiliencySpecAsync(Arg.Any<CancellationToken>())
             .Returns<DaprResiliencySpec>(_ => throw new InvalidOperationException("Unexpected"));
 
         IActionResult result = await _sut.GetResiliencySpecAsync();
@@ -80,8 +70,7 @@ public class AdminDaprControllerResiliencyTests
         objectResult.StatusCode.ShouldBe(500);
     }
 
-    private static ClaimsPrincipal CreatePrincipal(string adminRole)
-    {
+    private static ClaimsPrincipal CreatePrincipal(string adminRole) {
         List<Claim> claims = [new(AdminClaimTypes.AdminRole, adminRole)];
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
     }

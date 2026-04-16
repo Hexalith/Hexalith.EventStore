@@ -8,8 +8,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 /// <param name="AggregateType">The aggregate type name.</param>
 /// <param name="IntervalEvents">The number of events between automatic snapshots.</param>
 /// <param name="CreatedAtUtc">When the policy was created.</param>
-public record SnapshotPolicy(string TenantId, string Domain, string AggregateType, int IntervalEvents, DateTimeOffset CreatedAtUtc)
-{
+public record SnapshotPolicy(string TenantId, string Domain, string AggregateType, int IntervalEvents, DateTimeOffset CreatedAtUtc) {
     /// <summary>Gets the tenant identifier.</summary>
     public string TenantId { get; } = !string.IsNullOrWhiteSpace(TenantId)
         ? TenantId

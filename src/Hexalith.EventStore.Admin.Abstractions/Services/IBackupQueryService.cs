@@ -5,8 +5,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// <summary>
 /// Service interface for querying backup job history.
 /// </summary>
-public interface IBackupQueryService
-{
+public interface IBackupQueryService {
     /// <summary>
     /// Gets backup jobs, optionally filtered by tenant.
     /// </summary>

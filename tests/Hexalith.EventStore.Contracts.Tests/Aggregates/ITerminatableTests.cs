@@ -7,7 +7,7 @@ public class ITerminatableTests {
     public void ITerminatable_HasIsTerminatedProperty() {
         System.Reflection.PropertyInfo? property = typeof(ITerminatable).GetProperty(nameof(ITerminatable.IsTerminated));
 
-        property.ShouldNotBeNull();
+        _ = property.ShouldNotBeNull();
         property.PropertyType.ShouldBe(typeof(bool));
         property.CanRead.ShouldBeTrue();
     }

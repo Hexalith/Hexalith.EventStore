@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.UI.Components.Shared;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Components.Shared;
 
-public class StatCardTests : AdminUITestContext
-{
+public class StatCardTests : AdminUITestContext {
     [Fact]
-    public void StatCard_RendersLabelAndValue()
-    {
+    public void StatCard_RendersLabelAndValue() {
         IRenderedComponent<StatCard> cut = Render<StatCard>(
             parameters => parameters
                 .Add(p => p.Label, "Total Events")
@@ -24,8 +22,7 @@ public class StatCardTests : AdminUITestContext
     [InlineData("warning", "color: var(--hexalith-status-warning)")]
     [InlineData("error", "color: var(--hexalith-status-error)")]
     [InlineData("neutral", "color: var(--colorNeutralForeground1)")]
-    public void StatCard_AppliesSeverityBasedInlineColorStyle(string severity, string expectedStyle)
-    {
+    public void StatCard_AppliesSeverityBasedInlineColorStyle(string severity, string expectedStyle) {
         IRenderedComponent<StatCard> cut = Render<StatCard>(
             parameters => parameters
                 .Add(p => p.Label, "Metric")
@@ -40,8 +37,7 @@ public class StatCardTests : AdminUITestContext
     }
 
     [Fact]
-    public void StatCard_ShowsSkeletonWhenLoading()
-    {
+    public void StatCard_ShowsSkeletonWhenLoading() {
         IRenderedComponent<StatCard> cut = Render<StatCard>(
             parameters => parameters
                 .Add(p => p.Label, "Loading Metric")
@@ -58,8 +54,7 @@ public class StatCardTests : AdminUITestContext
     }
 
     [Fact]
-    public void StatCard_RendersAccessibilityLiveRegion()
-    {
+    public void StatCard_RendersAccessibilityLiveRegion() {
         IRenderedComponent<StatCard> cut = Render<StatCard>(
             parameters => parameters
                 .Add(p => p.Label, "Active Streams")

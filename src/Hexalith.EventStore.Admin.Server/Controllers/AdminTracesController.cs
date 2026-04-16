@@ -20,8 +20,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 [Tags("Admin - Traces")]
 public class AdminTracesController(
     IStreamQueryService streamQueryService,
-    ILogger<AdminTracesController> logger) : ControllerBase
-{
+    ILogger<AdminTracesController> logger) : ControllerBase {
     /// <summary>
     /// Gets the correlation trace map for a given correlation ID, showing the complete command lifecycle.
     /// </summary>
@@ -37,29 +36,24 @@ public class AdminTracesController(
         string correlationId,
         [FromQuery] string? domain,
         [FromQuery] string? aggregateId,
-        CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(correlationId))
-        {
+        CancellationToken ct = default) {
+        if (string.IsNullOrWhiteSpace(correlationId)) {
             return CreateProblemResult(
                 StatusCodes.Status400BadRequest,
                 "Bad Request",
                 "correlationId is required.");
         }
 
-        try
-        {
+        try {
             CorrelationTraceMap result = await streamQueryService
                 .GetCorrelationTraceMapAsync(tenantId, correlationId, domain, aggregateId, ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetCorrelationTraceMap), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetCorrelationTraceMap), ex);
         }
     }
@@ -72,8 +66,7 @@ public class AdminTracesController(
                 Grpc.Core.StatusCode.Aborted or
                 Grpc.Core.StatusCode.ResourceExhausted);
 
-    private ObjectResult ServiceUnavailable(string method, Exception ex)
-    {
+    private ObjectResult ServiceUnavailable(string method, Exception ex) {
         logger.LogError(ex, "Admin service unavailable: {Method}", method);
         return CreateProblemResult(
             StatusCodes.Status503ServiceUnavailable,
@@ -81,8 +74,7 @@ public class AdminTracesController(
             "The admin backend service is temporarily unavailable. Retry shortly.");
     }
 
-    private ObjectResult UnexpectedError(string method, Exception ex)
-    {
+    private ObjectResult UnexpectedError(string method, Exception ex) {
         logger.LogError(ex, "Unexpected error in {Method}", method);
         return CreateProblemResult(
             StatusCodes.Status500InternalServerError,
@@ -90,18 +82,15 @@ public class AdminTracesController(
             "An unexpected error occurred.");
     }
 
-    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null)
-    {
+    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null) {
         string correlationId = HttpContext.Items["CorrelationId"]?.ToString()
             ?? Guid.NewGuid().ToString();
-        return new ObjectResult(new ProblemDetails
-        {
+        return new ObjectResult(new ProblemDetails {
             Status = statusCode,
             Title = title,
             Detail = detail,
             Instance = HttpContext.Request.Path,
             Extensions = { ["correlationId"] = correlationId },
-        })
-        { StatusCode = statusCode };
+        }) { StatusCode = statusCode };
     }
 }

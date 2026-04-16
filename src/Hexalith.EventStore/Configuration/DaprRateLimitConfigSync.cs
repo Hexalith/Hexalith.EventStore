@@ -18,19 +18,20 @@ public class DaprRateLimitConfigSync(
     IServiceProvider serviceProvider,
     IConfiguration configuration,
     ILogger<DaprRateLimitConfigSync> logger) : BackgroundService {
-    private const string ConfigStoreName = "configstore";
-    private const string KeyPrefix = "ratelimit:";
-    private const string TenantsKey = "ratelimit:tenants";
-    private const string PermitLimitSuffix = ":permit-limit";
-    private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(10);
-    private readonly Dictionary<string, string> _appliedTenantLimits = new(StringComparer.Ordinal);
-    private bool _configStoreUnavailableLogged;
+    private const string _configStoreName = "configstore";
+    private const string _keyPrefix = "ratelimit:";
+    private const string _permitLimitSuffix = ":permit-limit";
+    private const string _tenantsKey = "ratelimit:tenants";
 
     /// <summary>
     /// Timeout for each DAPR config store call. Short to avoid blocking startup or refresh cycles
     /// when the sidecar is unavailable (e.g., in tests or local dev without DAPR).
     /// </summary>
-    private static readonly TimeSpan DaprTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan _daprTimeout = TimeSpan.FromSeconds(5);
+
+    private static readonly TimeSpan _refreshInterval = TimeSpan.FromSeconds(10);
+    private readonly Dictionary<string, string> _appliedTenantLimits = new(StringComparer.Ordinal);
+    private bool _configStoreUnavailableLogged;
 
     /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
@@ -43,7 +44,7 @@ public class DaprRateLimitConfigSync(
 
         await SyncTenantOverridesAsync(daprClient, stoppingToken).ConfigureAwait(false);
 
-        using var timer = new PeriodicTimer(RefreshInterval);
+        using var timer = new PeriodicTimer(_refreshInterval);
 
         try {
             while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false)) {
@@ -55,43 +56,37 @@ public class DaprRateLimitConfigSync(
         }
     }
 
-    private async Task SyncTenantOverridesAsync(DaprClient daprClient, CancellationToken cancellationToken) {
-        try {
-            string[] tenantIds = await LoadTenantIdsAsync(daprClient, cancellationToken).ConfigureAwait(false);
-            Dictionary<string, string> latestTenantLimits = await LoadTenantPermitLimitsAsync(daprClient, tenantIds, cancellationToken).ConfigureAwait(false);
+    private static bool ContainsCancellation(Exception ex) =>
+        ex is OperationCanceledException or TaskCanceledException
+        || (ex.InnerException is not null && ContainsCancellation(ex.InnerException));
 
-            _configStoreUnavailableLogged = false;
+    private static async Task<GetConfigurationResponse> FetchConfigurationAsync(
+        DaprClient daprClient,
+        string[] keys,
+        CancellationToken cancellationToken) {
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(_daprTimeout);
 
-            if (ApplyTenantOverrides(latestTenantLimits) && configuration is IConfigurationRoot configRoot) {
-                configRoot.Reload();
-            }
-        }
-        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested) {
-            logger.LogWarning(
-                ex,
-                "DAPR config store timeout after {TimeoutSeconds}s during rate limit sync. Falling back to appsettings.json values until the next refresh.",
-                DaprTimeout.TotalSeconds);
-        }
-        catch (Exception ex) {
-            if (cancellationToken.IsCancellationRequested && ContainsCancellation(ex)) {
-                return;
-            }
+        return await daprClient
+            .GetConfiguration(_configStoreName, keys, cancellationToken: timeoutCts.Token)
+            .ConfigureAwait(false);
+    }
 
-            // DAPR sidecar unavailable — graceful fallback to appsettings.json values.
-            // This is expected in WebApplicationFactory tests and local development without DAPR.
-            // Log the first occurrence at Warning, then Debug to avoid log noise.
-            if (!_configStoreUnavailableLogged) {
-                _configStoreUnavailableLogged = true;
-                logger.LogWarning(
-                    ex,
-                    "DAPR config store unavailable for rate limit sync. Falling back to appsettings.json values.");
-            }
-            else {
-                logger.LogDebug(
-                    ex,
-                    "DAPR config store still unavailable for rate limit sync.");
-            }
+    private static string GetTenantConfigPath(string tenantId) => $"EventStore:RateLimiting:TenantPermitLimits:{tenantId}";
+
+    private static async Task<string[]> LoadTenantIdsAsync(DaprClient daprClient, CancellationToken cancellationToken) {
+        // DAPR GetConfiguration requires explicit key names — we use a well-known
+        // sentinel key to discover which tenants currently have overrides.
+        GetConfigurationResponse response = await FetchConfigurationAsync(daprClient, [_tenantsKey], cancellationToken).ConfigureAwait(false);
+        if (!response.Items.TryGetValue(_tenantsKey, out ConfigurationItem? tenantsItem)
+            || string.IsNullOrWhiteSpace(tenantsItem.Value)) {
+            return [];
         }
+
+        return tenantsItem.Value
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
     }
 
     private bool ApplyTenantOverrides(IReadOnlyDictionary<string, string> latestTenantLimits) {
@@ -132,12 +127,12 @@ public class DaprRateLimitConfigSync(
             return [];
         }
 
-        string[] keys = tenantIds.Select(t => $"{KeyPrefix}{t}{PermitLimitSuffix}").ToArray();
+        string[] keys = tenantIds.Select(t => $"{_keyPrefix}{t}{_permitLimitSuffix}").ToArray();
         GetConfigurationResponse tenantResponse = await FetchConfigurationAsync(daprClient, keys, cancellationToken).ConfigureAwait(false);
 
         var tenantLimits = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (string tenantId in tenantIds) {
-            string key = $"{KeyPrefix}{tenantId}{PermitLimitSuffix}";
+            string key = $"{_keyPrefix}{tenantId}{_permitLimitSuffix}";
             if (!tenantResponse.Items.TryGetValue(key, out ConfigurationItem? item) || string.IsNullOrWhiteSpace(item.Value)) {
                 logger.LogWarning("DAPR rate limit override missing or empty for tenant {TenantId} (key: {ConfigKey}).", tenantId, key);
                 continue;
@@ -158,36 +153,42 @@ public class DaprRateLimitConfigSync(
         return tenantLimits;
     }
 
-    private static async Task<string[]> LoadTenantIdsAsync(DaprClient daprClient, CancellationToken cancellationToken) {
-        // DAPR GetConfiguration requires explicit key names — we use a well-known
-        // sentinel key to discover which tenants currently have overrides.
-        GetConfigurationResponse response = await FetchConfigurationAsync(daprClient, [TenantsKey], cancellationToken).ConfigureAwait(false);
-        if (!response.Items.TryGetValue(TenantsKey, out ConfigurationItem? tenantsItem)
-            || string.IsNullOrWhiteSpace(tenantsItem.Value)) {
-            return [];
+    private async Task SyncTenantOverridesAsync(DaprClient daprClient, CancellationToken cancellationToken) {
+        try {
+            string[] tenantIds = await LoadTenantIdsAsync(daprClient, cancellationToken).ConfigureAwait(false);
+            Dictionary<string, string> latestTenantLimits = await LoadTenantPermitLimitsAsync(daprClient, tenantIds, cancellationToken).ConfigureAwait(false);
+
+            _configStoreUnavailableLogged = false;
+
+            if (ApplyTenantOverrides(latestTenantLimits) && configuration is IConfigurationRoot configRoot) {
+                configRoot.Reload();
+            }
         }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested) {
+            logger.LogWarning(
+                ex,
+                "DAPR config store timeout after {TimeoutSeconds}s during rate limit sync. Falling back to appsettings.json values until the next refresh.",
+                _daprTimeout.TotalSeconds);
+        }
+        catch (Exception ex) {
+            if (cancellationToken.IsCancellationRequested && ContainsCancellation(ex)) {
+                return;
+            }
 
-        return tenantsItem.Value
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
+            // DAPR sidecar unavailable — graceful fallback to appsettings.json values.
+            // This is expected in WebApplicationFactory tests and local development without DAPR.
+            // Log the first occurrence at Warning, then Debug to avoid log noise.
+            if (!_configStoreUnavailableLogged) {
+                _configStoreUnavailableLogged = true;
+                logger.LogWarning(
+                    ex,
+                    "DAPR config store unavailable for rate limit sync. Falling back to appsettings.json values.");
+            }
+            else {
+                logger.LogDebug(
+                    ex,
+                    "DAPR config store still unavailable for rate limit sync.");
+            }
+        }
     }
-
-    private static async Task<GetConfigurationResponse> FetchConfigurationAsync(
-        DaprClient daprClient,
-        string[] keys,
-        CancellationToken cancellationToken) {
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutCts.CancelAfter(DaprTimeout);
-
-        return await daprClient
-            .GetConfiguration(ConfigStoreName, keys, cancellationToken: timeoutCts.Token)
-            .ConfigureAwait(false);
-    }
-
-    private static bool ContainsCancellation(Exception ex) =>
-        ex is OperationCanceledException or TaskCanceledException
-        || (ex.InnerException is not null && ContainsCancellation(ex.InnerException));
-
-    private static string GetTenantConfigPath(string tenantId) => $"EventStore:RateLimiting:TenantPermitLimits:{tenantId}";
 }

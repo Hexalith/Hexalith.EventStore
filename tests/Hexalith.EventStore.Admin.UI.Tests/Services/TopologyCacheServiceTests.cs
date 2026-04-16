@@ -7,23 +7,31 @@ using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Services;
 
-public class TopologyCacheServiceTests
-{
-    private static AdminStreamApiClient CreateMockApiClient()
-    {
-        return Substitute.For<AdminStreamApiClient>(
-            Substitute.For<IHttpClientFactory>(),
-            NullLogger<AdminStreamApiClient>.Instance);
-    }
+public class TopologyCacheServiceTests {
 
     [Fact]
-    public async Task EnsureLoadedAsync_LoadsTenants_OnFirstCall()
-    {
+    public async Task EnsureLoadedAsync_DoesNotReload_OnSecondCall() {
         AdminStreamApiClient apiClient = CreateMockApiClient();
         List<TenantSummary> tenants = [new("t1", "Tenant One", TenantStatusType.Active)];
         List<AggregateTypeInfo> types = [new("Counter", "Counting", 3, 2, true)];
-        apiClient.GetTenantsAsync(Arg.Any<CancellationToken>()).Returns(tenants);
-        apiClient.GetAggregateTypesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(types);
+        _ = apiClient.GetTenantsAsync(Arg.Any<CancellationToken>()).Returns(tenants);
+        _ = apiClient.GetAggregateTypesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(types);
+
+        TopologyCacheService sut = new(apiClient);
+
+        await sut.EnsureLoadedAsync();
+        await sut.EnsureLoadedAsync();
+
+        _ = await apiClient.Received(1).GetTenantsAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task EnsureLoadedAsync_LoadsTenants_OnFirstCall() {
+        AdminStreamApiClient apiClient = CreateMockApiClient();
+        List<TenantSummary> tenants = [new("t1", "Tenant One", TenantStatusType.Active)];
+        List<AggregateTypeInfo> types = [new("Counter", "Counting", 3, 2, true)];
+        _ = apiClient.GetTenantsAsync(Arg.Any<CancellationToken>()).Returns(tenants);
+        _ = apiClient.GetAggregateTypesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(types);
 
         TopologyCacheService sut = new(apiClient);
 
@@ -37,74 +45,13 @@ public class TopologyCacheServiceTests
     }
 
     [Fact]
-    public async Task EnsureLoadedAsync_DoesNotReload_OnSecondCall()
-    {
-        AdminStreamApiClient apiClient = CreateMockApiClient();
-        List<TenantSummary> tenants = [new("t1", "Tenant One", TenantStatusType.Active)];
-        List<AggregateTypeInfo> types = [new("Counter", "Counting", 3, 2, true)];
-        apiClient.GetTenantsAsync(Arg.Any<CancellationToken>()).Returns(tenants);
-        apiClient.GetAggregateTypesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(types);
-
-        TopologyCacheService sut = new(apiClient);
-
-        await sut.EnsureLoadedAsync();
-        await sut.EnsureLoadedAsync();
-
-        await apiClient.Received(1).GetTenantsAsync(Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task RefreshAsync_ReloadsData()
-    {
-        AdminStreamApiClient apiClient = CreateMockApiClient();
-        List<TenantSummary> tenants1 = [new("t1", "Tenant One", TenantStatusType.Active)];
-        List<TenantSummary> tenants2 = [new("t1", "Tenant One", TenantStatusType.Active), new("t2", "Tenant Two", TenantStatusType.Active)];
-        List<AggregateTypeInfo> types = [new("Counter", "Counting", 3, 2, true)];
-        apiClient.GetTenantsAsync(Arg.Any<CancellationToken>()).Returns(tenants1, tenants2);
-        apiClient.GetAggregateTypesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(types);
-
-        TopologyCacheService sut = new(apiClient);
-
-        await sut.EnsureLoadedAsync();
-        sut.Tenants.Count.ShouldBe(1);
-
-        await sut.RefreshAsync();
-        sut.Tenants.Count.ShouldBe(2);
-    }
-
-    [Fact]
-    public async Task RefreshAsync_KeepsStaleTenants_WhenTenantLoadTimesOut()
-    {
-        AdminStreamApiClient apiClient = CreateMockApiClient();
-        List<TenantSummary> tenants = [new("t1", "Tenant One", TenantStatusType.Active)];
-        List<AggregateTypeInfo> types = [new("Counter", "Counting", 3, 2, true)];
-
-        apiClient.GetTenantsAsync(Arg.Any<CancellationToken>())
-            .Returns(
-                _ => Task.FromResult<IReadOnlyList<TenantSummary>>(tenants),
-                _ => throw new OperationCanceledException());
-        apiClient.GetAggregateTypesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(types);
-
-        TopologyCacheService sut = new(apiClient);
-
-        await sut.EnsureLoadedAsync();
-        await sut.RefreshAsync();
-
-        sut.IsLoaded.ShouldBeTrue();
-        sut.Tenants.Count.ShouldBe(1);
-        sut.Tenants[0].TenantId.ShouldBe("t1");
-    }
-
-    [Fact]
-    public async Task EnsureLoadedAsync_Succeeds_WhenTenantsFailButDomainsLoad()
-    {
+    public async Task EnsureLoadedAsync_Succeeds_WhenTenantsFailButDomainsLoad() {
         AdminStreamApiClient apiClient = CreateMockApiClient();
         List<AggregateTypeInfo> types = [new("Counter", "Counting", 3, 2, true)];
 
-        apiClient.GetTenantsAsync(Arg.Any<CancellationToken>())
+        _ = apiClient.GetTenantsAsync(Arg.Any<CancellationToken>())
             .Returns<Task<IReadOnlyList<TenantSummary>>>(_ => throw new OperationCanceledException());
-        apiClient.GetAggregateTypesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _ = apiClient.GetAggregateTypesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(types);
 
         TopologyCacheService sut = new(apiClient);
@@ -116,4 +63,49 @@ public class TopologyCacheServiceTests
         sut.Domains.Count.ShouldBe(1);
         sut.Domains[0].ShouldBe("Counting");
     }
+
+    [Fact]
+    public async Task RefreshAsync_KeepsStaleTenants_WhenTenantLoadTimesOut() {
+        AdminStreamApiClient apiClient = CreateMockApiClient();
+        List<TenantSummary> tenants = [new("t1", "Tenant One", TenantStatusType.Active)];
+        List<AggregateTypeInfo> types = [new("Counter", "Counting", 3, 2, true)];
+
+        _ = apiClient.GetTenantsAsync(Arg.Any<CancellationToken>())
+            .Returns(
+                _ => Task.FromResult<IReadOnlyList<TenantSummary>>(tenants),
+                _ => throw new OperationCanceledException());
+        _ = apiClient.GetAggregateTypesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(types);
+
+        TopologyCacheService sut = new(apiClient);
+
+        await sut.EnsureLoadedAsync();
+        await sut.RefreshAsync();
+
+        sut.IsLoaded.ShouldBeTrue();
+        sut.Tenants.Count.ShouldBe(1);
+        sut.Tenants[0].TenantId.ShouldBe("t1");
+    }
+
+    [Fact]
+    public async Task RefreshAsync_ReloadsData() {
+        AdminStreamApiClient apiClient = CreateMockApiClient();
+        List<TenantSummary> tenants1 = [new("t1", "Tenant One", TenantStatusType.Active)];
+        List<TenantSummary> tenants2 = [new("t1", "Tenant One", TenantStatusType.Active), new("t2", "Tenant Two", TenantStatusType.Active)];
+        List<AggregateTypeInfo> types = [new("Counter", "Counting", 3, 2, true)];
+        _ = apiClient.GetTenantsAsync(Arg.Any<CancellationToken>()).Returns(tenants1, tenants2);
+        _ = apiClient.GetAggregateTypesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(types);
+
+        TopologyCacheService sut = new(apiClient);
+
+        await sut.EnsureLoadedAsync();
+        sut.Tenants.Count.ShouldBe(1);
+
+        await sut.RefreshAsync();
+        sut.Tenants.Count.ShouldBe(2);
+    }
+
+    private static AdminStreamApiClient CreateMockApiClient() => Substitute.For<AdminStreamApiClient>(
+                                Substitute.For<IHttpClientFactory>(),
+            NullLogger<AdminStreamApiClient>.Instance);
 }

@@ -93,7 +93,7 @@ public partial class ProjectionUpdateOrchestrator(
                 request);
             HttpClient httpClient = httpClientFactory.CreateClient();
             using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
-            httpResponse.EnsureSuccessStatusCode();
+            _ = httpResponse.EnsureSuccessStatusCode();
             ProjectionResponse? response = await httpResponse.Content.ReadFromJsonAsync<ProjectionResponse>(cancellationToken).ConfigureAwait(false);
 
             if (response is null || string.IsNullOrWhiteSpace(response.ProjectionType)) {

@@ -7,8 +7,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 /// <param name="EventCount">The total number of events for this tenant.</param>
 /// <param name="SizeBytes">The storage size in bytes, or null if the state store backend does not support size queries (NFR44).</param>
 /// <param name="GrowthRatePerDay">The daily event growth rate, or null if historical tracking is not available.</param>
-public record TenantStorageInfo(string TenantId, long EventCount, long? SizeBytes, double? GrowthRatePerDay)
-{
+public record TenantStorageInfo(string TenantId, long EventCount, long? SizeBytes, double? GrowthRatePerDay) {
     /// <summary>Gets the tenant identifier.</summary>
     public string TenantId { get; } = !string.IsNullOrWhiteSpace(TenantId)
         ? TenantId

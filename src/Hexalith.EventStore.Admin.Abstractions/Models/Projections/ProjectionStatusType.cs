@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Projections;
 /// <summary>
 /// Status of a projection.
 /// </summary>
-public enum ProjectionStatusType
-{
+public enum ProjectionStatusType {
     /// <summary>The projection is actively processing events.</summary>
     Running,
 

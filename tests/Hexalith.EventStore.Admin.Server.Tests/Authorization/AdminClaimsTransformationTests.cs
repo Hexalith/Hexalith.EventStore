@@ -4,17 +4,13 @@ using Hexalith.EventStore.Admin.Server.Authorization;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
-using NSubstitute;
-
 namespace Hexalith.EventStore.Admin.Server.Tests.Authorization;
 
-public class AdminClaimsTransformationTests
-{
+public class AdminClaimsTransformationTests {
     private readonly AdminClaimsTransformation _sut = new(NullLogger<AdminClaimsTransformation>.Instance);
 
     [Fact]
-    public async Task TransformAsync_GlobalAdminClaim_AddsAdminRole()
-    {
+    public async Task TransformAsync_GlobalAdminClaim_AddsAdminRole() {
         ClaimsPrincipal principal = CreatePrincipal(new Claim("global_admin", "true"));
 
         ClaimsPrincipal result = await _sut.TransformAsync(principal);
@@ -23,8 +19,7 @@ public class AdminClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_IsGlobalAdminClaim_AddsAdminRole()
-    {
+    public async Task TransformAsync_IsGlobalAdminClaim_AddsAdminRole() {
         ClaimsPrincipal principal = CreatePrincipal(new Claim("is_global_admin", "true"));
 
         ClaimsPrincipal result = await _sut.TransformAsync(principal);
@@ -33,8 +28,7 @@ public class AdminClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_RoleClaimGlobalAdministrator_AddsAdminRole()
-    {
+    public async Task TransformAsync_RoleClaimGlobalAdministrator_AddsAdminRole() {
         ClaimsPrincipal principal = CreatePrincipal(new Claim(ClaimTypes.Role, "GlobalAdministrator"));
 
         ClaimsPrincipal result = await _sut.TransformAsync(principal);
@@ -43,8 +37,7 @@ public class AdminClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_RoleClaimGlobalDashAdmin_AddsAdminRole()
-    {
+    public async Task TransformAsync_RoleClaimGlobalDashAdmin_AddsAdminRole() {
         ClaimsPrincipal principal = CreatePrincipal(new Claim("role", "global-admin"));
 
         ClaimsPrincipal result = await _sut.TransformAsync(principal);
@@ -53,8 +46,7 @@ public class AdminClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_RolesClaimJsonArray_AddsAdminRole()
-    {
+    public async Task TransformAsync_RolesClaimJsonArray_AddsAdminRole() {
         ClaimsPrincipal principal = CreatePrincipal(new Claim("roles", "[\"user\",\"GlobalAdministrator\"]"));
 
         ClaimsPrincipal result = await _sut.TransformAsync(principal);
@@ -63,8 +55,7 @@ public class AdminClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_CommandReplayPermission_AddsOperatorRole()
-    {
+    public async Task TransformAsync_CommandReplayPermission_AddsOperatorRole() {
         ClaimsPrincipal principal = CreatePrincipal(new Claim("eventstore:permission", "command:replay"));
 
         ClaimsPrincipal result = await _sut.TransformAsync(principal);
@@ -73,8 +64,7 @@ public class AdminClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_CommandSubmitOnly_AddsReadOnlyNotOperator()
-    {
+    public async Task TransformAsync_CommandSubmitOnly_AddsReadOnlyNotOperator() {
         ClaimsPrincipal principal = CreatePrincipal(
             new Claim("eventstore:permission", "command:submit"),
             new Claim(AdminClaimTypes.Tenant, "tenant-a"));
@@ -86,8 +76,7 @@ public class AdminClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_TenantClaimOnly_AddsReadOnlyRole()
-    {
+    public async Task TransformAsync_TenantClaimOnly_AddsReadOnlyRole() {
         ClaimsPrincipal principal = CreatePrincipal(new Claim(AdminClaimTypes.Tenant, "tenant-a"));
 
         ClaimsPrincipal result = await _sut.TransformAsync(principal);
@@ -96,8 +85,7 @@ public class AdminClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_NoRelevantClaims_NoAdminRoleAdded()
-    {
+    public async Task TransformAsync_NoRelevantClaims_NoAdminRoleAdded() {
         ClaimsPrincipal principal = CreatePrincipal(new Claim("sub", "user1"));
 
         ClaimsPrincipal result = await _sut.TransformAsync(principal);
@@ -106,8 +94,7 @@ public class AdminClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_Idempotency_NoDuplicateAdminRole()
-    {
+    public async Task TransformAsync_Idempotency_NoDuplicateAdminRole() {
         ClaimsPrincipal principal = CreatePrincipal(
             new Claim(AdminClaimTypes.AdminRole, "Admin"),
             new Claim("global_admin", "true"));
@@ -118,8 +105,7 @@ public class AdminClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_UnauthenticatedIdentity_ReturnsUnchanged()
-    {
+    public async Task TransformAsync_UnauthenticatedIdentity_ReturnsUnchanged() {
         var identity = new ClaimsIdentity(); // no auth type = unauthenticated
         var principal = new ClaimsPrincipal(identity);
 
@@ -129,8 +115,7 @@ public class AdminClaimsTransformationTests
     }
 
     [Fact]
-    public async Task TransformAsync_ExceptionSafety_ReturnsIdentityUnchanged()
-    {
+    public async Task TransformAsync_ExceptionSafety_ReturnsIdentityUnchanged() {
         // Use a principal that would normally get a role, but mock a logger that throws
         // Instead, just verify exception-safety conceptually — the implementation wraps in try/catch
         // The fact that we get here without exception proves exception-safety
@@ -138,11 +123,10 @@ public class AdminClaimsTransformationTests
 
         ClaimsPrincipal result = await _sut.TransformAsync(principal);
 
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
     }
 
-    private static ClaimsPrincipal CreatePrincipal(params Claim[] claims)
-    {
+    private static ClaimsPrincipal CreatePrincipal(params Claim[] claims) {
         var identity = new ClaimsIdentity(claims, "TestAuth");
         return new ClaimsPrincipal(identity);
     }

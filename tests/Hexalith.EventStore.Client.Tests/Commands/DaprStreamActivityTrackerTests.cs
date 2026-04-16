@@ -10,8 +10,6 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
-using Shouldly;
-
 namespace Hexalith.EventStore.Client.Tests.Commands;
 
 public class DaprStreamActivityTrackerTests {
@@ -29,7 +27,7 @@ public class DaprStreamActivityTrackerTests {
 
         await tracker.TrackAsync("tenant-a", "Counter", "agg-1", 3, DateTimeOffset.UtcNow);
 
-        await _daprClient.Received(1).TrySaveStateAsync(
+        _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
             Arg.Is<List<StreamSummary>>(items =>
@@ -59,7 +57,7 @@ public class DaprStreamActivityTrackerTests {
 
         await tracker.TrackAsync("tenant-a", "Counter", "agg-1", 2, DateTimeOffset.UtcNow);
 
-        await _daprClient.Received(1).TrySaveStateAsync(
+        _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
             Arg.Is<List<StreamSummary>>(items =>
@@ -79,7 +77,7 @@ public class DaprStreamActivityTrackerTests {
 
         await tracker.TrackAsync("tenant-a", "Counter", "agg-1", 0, DateTimeOffset.UtcNow);
 
-        await _daprClient.DidNotReceive().GetStateAndETagAsync<List<StreamSummary>>(
+        _ = await _daprClient.DidNotReceive().GetStateAndETagAsync<List<StreamSummary>>(
             Arg.Any<string>(),
             Arg.Any<string>(),
             consistencyMode: Arg.Any<ConsistencyMode?>(),
@@ -99,7 +97,7 @@ public class DaprStreamActivityTrackerTests {
 
         await tracker.TrackAsync("tenant-a", "Counter", "agg-2", 1, DateTimeOffset.UtcNow);
 
-        await _daprClient.Received(1).TrySaveStateAsync(
+        _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
             Arg.Is<List<StreamSummary>>(items =>
@@ -124,7 +122,7 @@ public class DaprStreamActivityTrackerTests {
 
         await tracker.TrackAsync("tenant-a", "Counter", "agg-1", 1, DateTimeOffset.UtcNow);
 
-        await _daprClient.Received(1).TrySaveStateAsync(
+        _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
             Arg.Is<List<StreamSummary>>(items =>
@@ -147,8 +145,8 @@ public class DaprStreamActivityTrackerTests {
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(
-                ((List<StreamSummary>, string))([], "etag-1"),
-                ((List<StreamSummary>, string))([], "etag-2"));
+                ([], "etag-1"),
+                ([], "etag-2"));
 
         _ = _daprClient.TrySaveStateAsync(
             "statestore",
@@ -162,7 +160,7 @@ public class DaprStreamActivityTrackerTests {
 
         await tracker.TrackAsync("tenant-a", "Counter", "agg-1", 1, DateTimeOffset.UtcNow);
 
-        await _daprClient.Received(2).TrySaveStateAsync(
+        _ = await _daprClient.Received(2).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
             Arg.Any<List<StreamSummary>>(),
@@ -209,7 +207,7 @@ public class DaprStreamActivityTrackerTests {
 
         await tracker.TrackAsync("tenant-a", "Counter", "agg-new", 1, baseTime.AddMinutes(1));
 
-        await _daprClient.Received(1).TrySaveStateAsync(
+        _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
             Arg.Is<List<StreamSummary>>(items =>
@@ -222,18 +220,15 @@ public class DaprStreamActivityTrackerTests {
             cancellationToken: Arg.Any<CancellationToken>());
     }
 
-    private void SetupGetStateAndEtag(string key, List<StreamSummary>? value, string etag) {
-        _ = _daprClient.GetStateAndETagAsync<List<StreamSummary>>(
+    private void SetupGetStateAndEtag(string key, List<StreamSummary>? value, string etag) => _ = _daprClient.GetStateAndETagAsync<List<StreamSummary>>(
             "statestore",
             key,
             consistencyMode: Arg.Any<ConsistencyMode?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(((List<StreamSummary>, string))(value!, etag));
-    }
 
-    private void SetupTrySave(string key, bool result) {
-        _ = _daprClient.TrySaveStateAsync(
+    private void SetupTrySave(string key, bool result) => _ = _daprClient.TrySaveStateAsync(
             "statestore",
             key,
             Arg.Any<List<StreamSummary>>(),
@@ -242,5 +237,4 @@ public class DaprStreamActivityTrackerTests {
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(result);
-    }
 }

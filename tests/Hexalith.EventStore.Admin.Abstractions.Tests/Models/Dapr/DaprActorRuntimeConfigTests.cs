@@ -2,11 +2,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Dapr;
 
-public class DaprActorRuntimeConfigTests
-{
+public class DaprActorRuntimeConfigTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         var config = new DaprActorRuntimeConfig(
             TimeSpan.FromMinutes(60),
             TimeSpan.FromSeconds(30),
@@ -24,8 +22,7 @@ public class DaprActorRuntimeConfigTests
     }
 
     [Fact]
-    public void Constructor_WithCustomValues_CreatesInstance()
-    {
+    public void Constructor_WithCustomValues_CreatesInstance() {
         var config = new DaprActorRuntimeConfig(
             TimeSpan.FromMinutes(120),
             TimeSpan.FromSeconds(10),

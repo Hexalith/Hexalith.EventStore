@@ -26,8 +26,7 @@ public record ProjectionDetail(
     IReadOnlyList<ProjectionError> Errors,
     string Configuration,
     IReadOnlyList<string> SubscribedEventTypes)
-    : ProjectionStatus(Name, TenantId, Status, Lag, Throughput, ErrorCount, LastProcessedPosition, LastProcessedUtc)
-{
+    : ProjectionStatus(Name, TenantId, Status, Lag, Throughput, ErrorCount, LastProcessedPosition, LastProcessedUtc) {
     /// <summary>Gets the list of structured errors.</summary>
     public IReadOnlyList<ProjectionError> Errors { get; } = Errors ?? throw new ArgumentNullException(nameof(Errors));
 

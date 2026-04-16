@@ -9,8 +9,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Stream;
 /// <summary>
 /// The <c>eventstore-admin stream diff</c> subcommand — shows state changes between two sequence positions.
 /// </summary>
-public static class StreamDiffCommand
-{
+public static class StreamDiffCommand {
     internal static readonly List<ColumnDefinition> Columns =
     [
         new("FieldPath", "FieldPath"),
@@ -21,8 +20,7 @@ public static class StreamDiffCommand
     /// <summary>
     /// Creates the stream diff subcommand wired to the shared global options.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
+    public static Command Create(GlobalOptionsBinding binding) {
         Argument<string> tenantArg = StreamArguments.Tenant();
         Argument<string> domainArg = StreamArguments.Domain();
         Argument<string> aggregateIdArg = StreamArguments.AggregateId();
@@ -36,8 +34,7 @@ public static class StreamDiffCommand
         command.Options.Add(fromOption);
         command.Options.Add(toOption);
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
+        command.SetAction(async (parseResult, cancellationToken) => {
             GlobalOptions options = binding.Resolve(parseResult);
             string tenant = parseResult.GetValue(tenantArg)!;
             string domain = parseResult.GetValue(domainArg)!;
@@ -56,8 +53,7 @@ public static class StreamDiffCommand
         string aggregateId,
         long from,
         long to,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         using AdminApiClient client = new(options);
         return await ExecuteAsync(client, options, tenant, domain, aggregateId, from, to, cancellationToken).ConfigureAwait(false);
     }
@@ -70,36 +66,30 @@ public static class StreamDiffCommand
         string aggregateId,
         long from,
         long to,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         IOutputFormatter formatter = OutputFormatterFactory.Create(options.Format);
         OutputWriter writer = new(options.OutputFile);
-        try
-        {
+        try {
             string path = $"api/v1/admin/streams/{Uri.EscapeDataString(tenant)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/diff?fromSequence={from}&toSequence={to}";
             AggregateStateDiff? diff = await client
                 .TryGetAsync<AggregateStateDiff>(path, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (diff is null)
-            {
+            if (diff is null) {
                 Console.Error.WriteLine("Aggregate state not found for the specified range.");
                 return ExitCodes.Error;
             }
 
-            if (diff.ChangedFields is null || diff.ChangedFields.Count == 0)
-            {
+            if (diff.ChangedFields is null || diff.ChangedFields.Count == 0) {
                 Console.Error.WriteLine($"No changes between sequence {from} and {to}.");
                 return ExitCodes.Success;
             }
 
             string output;
-            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase))
-            {
+            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase)) {
                 output = formatter.Format(diff);
             }
-            else
-            {
+            else {
                 Console.Error.WriteLine($"Diff from sequence {from} to {to}");
                 output = formatter.FormatCollection(diff.ChangedFields.ToList(), Columns);
             }
@@ -107,8 +97,7 @@ public static class StreamDiffCommand
             int writeResult = writer.Write(output);
             return writeResult != ExitCodes.Success ? writeResult : ExitCodes.Success;
         }
-        catch (AdminApiException ex)
-        {
+        catch (AdminApiException ex) {
             Console.Error.WriteLine(ex.Message);
             return ExitCodes.Error;
         }

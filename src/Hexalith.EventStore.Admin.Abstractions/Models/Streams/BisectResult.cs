@@ -32,8 +32,7 @@ public record BisectResult(
     IReadOnlyList<string> WatchedFieldPaths,
     IReadOnlyList<BisectStep> Steps,
     int TotalSteps,
-    bool IsTruncated)
-{
+    bool IsTruncated) {
     /// <summary>Gets the tenant identifier.</summary>
     public string TenantId { get; } = TenantId ?? string.Empty;
 

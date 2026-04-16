@@ -1,9 +1,7 @@
 using Bunit;
 
-using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -18,23 +16,20 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the Consistency page.
 /// </summary>
-public class ConsistencyPageTests : AdminUITestContext
-{
+public class ConsistencyPageTests : AdminUITestContext {
     private readonly AdminConsistencyApiClient _mockConsistencyApi;
 
-    public ConsistencyPageTests()
-    {
+    public ConsistencyPageTests() {
         _mockConsistencyApi = Substitute.For<AdminConsistencyApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminConsistencyApiClient>.Instance);
-        Services.AddScoped(_ => _mockConsistencyApi);
+        _ = Services.AddScoped(_ => _mockConsistencyApi);
     }
 
     // ===== Merge-blocking tests (7.1-7.14) =====
 
     [Fact]
-    public void Consistency_ShowsLoadingSkeletons_WhenLoading()
-    {
+    public void Consistency_ShowsLoadingSkeletons_WhenLoading() {
         // Arrange — never complete the task
         TaskCompletionSource<IReadOnlyList<ConsistencyCheckSummary>> tcs = new();
         _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -48,8 +43,7 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void Consistency_ShowsEmptyState_WhenNoChecks()
-    {
+    public void Consistency_ShowsEmptyState_WhenNoChecks() {
         // Arrange
         SetupChecks([]);
 
@@ -63,8 +57,7 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void Consistency_ShowsDataGrid_WhenChecksExist()
-    {
+    public void Consistency_ShowsDataGrid_WhenChecksExist() {
         // Arrange
         SetupChecks([
             CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 2),
@@ -83,8 +76,7 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void Consistency_ShowsStatCards_WhenLoaded()
-    {
+    public void Consistency_ShowsStatCards_WhenLoaded() {
         // Arrange
         SetupChecks([
             CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 3),
@@ -103,8 +95,7 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void Consistency_FiltersChecks_WhenTenantFilterApplied()
-    {
+    public void Consistency_FiltersChecks_WhenTenantFilterApplied() {
         // Arrange
         SetupChecks([
             CreateSummary("check-1", "alpha", ConsistencyCheckStatus.Completed, 50, 0),
@@ -117,12 +108,11 @@ public class ConsistencyPageTests : AdminUITestContext
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Total Checks"), TimeSpan.FromSeconds(5));
 
         // Assert — tenant filter is passed to API
-        _mockConsistencyApi.Received().GetChecksAsync("alpha", Arg.Any<CancellationToken>());
+        _ = _mockConsistencyApi.Received().GetChecksAsync("alpha", Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public void Consistency_FiltersChecks_WhenDomainFilterApplied()
-    {
+    public void Consistency_FiltersChecks_WhenDomainFilterApplied() {
         // Arrange — domain filter is client-side
         SetupChecks([
             CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 0, "orders"),
@@ -139,8 +129,7 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void Consistency_ExpandsRowDetail_OnRowClick()
-    {
+    public void Consistency_ExpandsRowDetail_OnRowClick() {
         // Arrange
         ConsistencyCheckResult fullResult = new(
             "check-1", ConsistencyCheckStatus.Completed, "tenant-a", null,
@@ -152,7 +141,7 @@ public class ConsistencyPageTests : AdminUITestContext
             false, null);
 
         SetupChecks([CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 1)]);
-        _mockConsistencyApi.GetCheckResultAsync("check-1", Arg.Any<CancellationToken>())
+        _ = _mockConsistencyApi.GetCheckResultAsync("check-1", Arg.Any<CancellationToken>())
             .Returns(fullResult);
 
         // Act
@@ -166,8 +155,7 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task Consistency_ShowsTriggerDialog_WhenRunCheckClicked()
-    {
+    public async Task Consistency_ShowsTriggerDialog_WhenRunCheckClicked() {
         // Arrange
         SetupChecks([]);
 
@@ -177,7 +165,7 @@ public class ConsistencyPageTests : AdminUITestContext
         // Act — open trigger dialog
         IRenderedComponent<FluentButton> runBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Run Check"));
-        await runBtn.InvokeAsync(() => runBtn.Instance.OnClick.InvokeAsync());
+        await runBtn.InvokeAsync(runBtn.Instance.OnClick.InvokeAsync);
 
         // Assert
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Run Consistency Check"), TimeSpan.FromSeconds(5));
@@ -188,11 +176,10 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task Consistency_CallsTriggerApi_OnConfirm()
-    {
+    public async Task Consistency_CallsTriggerApi_OnConfirm() {
         // Arrange
         SetupChecks([]);
-        _mockConsistencyApi.TriggerCheckAsync(
+        _ = _mockConsistencyApi.TriggerCheckAsync(
                 Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
             .Returns(new AdminOperationResult(true, "check-new", "Consistency check started.", null));
@@ -203,23 +190,22 @@ public class ConsistencyPageTests : AdminUITestContext
         // Open dialog
         IRenderedComponent<FluentButton> runBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Run Check"));
-        await runBtn.InvokeAsync(() => runBtn.Instance.OnClick.InvokeAsync());
+        await runBtn.InvokeAsync(runBtn.Instance.OnClick.InvokeAsync);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Check"), TimeSpan.FromSeconds(5));
 
         // Click Start Check
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Start Check"));
-        await startBtn.InvokeAsync(() => startBtn.Instance.OnClick.InvokeAsync());
+        await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
 
         // Assert
-        await _mockConsistencyApi.Received(1).TriggerCheckAsync(
+        _ = await _mockConsistencyApi.Received(1).TriggerCheckAsync(
             Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public void Consistency_ShowsCancelDialog_WhenCancelClicked()
-    {
+    public void Consistency_ShowsCancelDialog_WhenCancelClicked() {
         // Arrange
         SetupChecks([
             CreateSummary("check-running", "tenant-a", ConsistencyCheckStatus.Running, 10, 0),
@@ -233,10 +219,9 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void Consistency_ShowsIssueBanner_WhenApiUnavailable()
-    {
+    public void Consistency_ShowsIssueBanner_WhenApiUnavailable() {
         // Arrange
-        _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ServiceUnavailableException("test"));
 
         // Act
@@ -248,8 +233,7 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void Consistency_ShowsAnomalyGrid_WhenCheckHasAnomalies()
-    {
+    public void Consistency_ShowsAnomalyGrid_WhenCheckHasAnomalies() {
         // Arrange — verify the grid renders check data including anomaly count
         SetupChecks([CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 2)]);
 
@@ -263,12 +247,11 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void Consistency_ShowsAnomalyDetailModal_OnAnomalyClick()
-    {
+    public void Consistency_ShowsAnomalyDetailModal_OnAnomalyClick() {
         // Arrange — verify check data with anomalies renders in grid
         SetupChecks([CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 1)]);
 
-        _mockConsistencyApi.GetCheckResultAsync("check-1", Arg.Any<CancellationToken>())
+        _ = _mockConsistencyApi.GetCheckResultAsync("check-1", Arg.Any<CancellationToken>())
             .Returns(new ConsistencyCheckResult(
                 "check-1", ConsistencyCheckStatus.Completed, "tenant-a", null,
                 [ConsistencyCheckType.SequenceContinuity],
@@ -288,8 +271,7 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void Consistency_HidesTriggerButton_ForReadOnlyUser()
-    {
+    public void Consistency_HidesTriggerButton_ForReadOnlyUser() {
         // Arrange
         SetupReadOnlyUser();
         SetupChecks([]);
@@ -309,8 +291,7 @@ public class ConsistencyPageTests : AdminUITestContext
     // ===== Recommended tests (7.15-7.35) =====
 
     [Fact]
-    public void Consistency_ShowsTriggerButton_ForOperatorUser()
-    {
+    public void Consistency_ShowsTriggerButton_ForOperatorUser() {
         // Arrange — default user is Admin (from AdminUITestContext)
         SetupChecks([]);
 
@@ -323,8 +304,7 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task Consistency_ValidatesAtLeastOneCheckType()
-    {
+    public async Task Consistency_ValidatesAtLeastOneCheckType() {
         // Arrange
         SetupChecks([]);
 
@@ -334,13 +314,12 @@ public class ConsistencyPageTests : AdminUITestContext
         // Open trigger dialog
         IRenderedComponent<FluentButton> runBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Run Check"));
-        await runBtn.InvokeAsync(() => runBtn.Instance.OnClick.InvokeAsync());
+        await runBtn.InvokeAsync(runBtn.Instance.OnClick.InvokeAsync);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Check Types"), TimeSpan.FromSeconds(5));
 
         // Uncheck all check types
         IReadOnlyList<IRenderedComponent<FluentCheckbox>> checkboxes = cut.FindComponents<FluentCheckbox>();
-        foreach (IRenderedComponent<FluentCheckbox> cb in checkboxes)
-        {
+        foreach (IRenderedComponent<FluentCheckbox> cb in checkboxes) {
             await cb.InvokeAsync(() => cb.Instance.ValueChanged.InvokeAsync(false));
         }
 
@@ -349,8 +328,7 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void Consistency_ShowsRunningSpinner_ForRunningChecks()
-    {
+    public void Consistency_ShowsRunningSpinner_ForRunningChecks() {
         // Arrange
         SetupChecks([
             CreateSummary("check-running", "tenant-a", ConsistencyCheckStatus.Running, 10, 0),
@@ -365,8 +343,7 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void Consistency_PersistsFiltersInUrl()
-    {
+    public void Consistency_PersistsFiltersInUrl() {
         // Arrange
         SetupChecks([]);
 
@@ -376,12 +353,11 @@ public class ConsistencyPageTests : AdminUITestContext
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Consistency"), TimeSpan.FromSeconds(5));
 
         // Assert — filters are loaded from URL
-        _mockConsistencyApi.Received().GetChecksAsync("test-tenant", Arg.Any<CancellationToken>());
+        _ = _mockConsistencyApi.Received().GetChecksAsync("test-tenant", Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public void Consistency_ReadsFiltersFromUrl_OnInit()
-    {
+    public void Consistency_ReadsFiltersFromUrl_OnInit() {
         // Arrange
         SetupChecks([]);
         NavManager.NavigateTo("/consistency?tenant=prefilled&domain=mydom");
@@ -391,12 +367,11 @@ public class ConsistencyPageTests : AdminUITestContext
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Consistency"), TimeSpan.FromSeconds(5));
 
         // Assert
-        _mockConsistencyApi.Received().GetChecksAsync("prefilled", Arg.Any<CancellationToken>());
+        _ = _mockConsistencyApi.Received().GetChecksAsync("prefilled", Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public void Consistency_CancelButtonOnlyForRunningChecks()
-    {
+    public void Consistency_CancelButtonOnlyForRunningChecks() {
         // Arrange
         SetupChecks([
             CreateSummary("check-completed", "tenant-a", ConsistencyCheckStatus.Completed, 50, 0),
@@ -412,8 +387,7 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void Consistency_StatusBadge_ShowsCorrectSeverity()
-    {
+    public void Consistency_StatusBadge_ShowsCorrectSeverity() {
         // Arrange
         SetupChecks([
             CreateSummary("check-1", "t1", ConsistencyCheckStatus.Pending, 0, 0),
@@ -436,8 +410,7 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void Consistency_HighAnomalyCount_ShowsRedBold()
-    {
+    public void Consistency_HighAnomalyCount_ShowsRedBold() {
         // Arrange
         SetupChecks([
             CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 15),
@@ -453,11 +426,10 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task Consistency_HandlesTriggerFailure()
-    {
+    public async Task Consistency_HandlesTriggerFailure() {
         // Arrange
         SetupChecks([]);
-        _mockConsistencyApi.TriggerCheckAsync(
+        _ = _mockConsistencyApi.TriggerCheckAsync(
                 Arg.Any<string?>(), Arg.Any<string?>(),
                 Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
             .Returns(new AdminOperationResult(false, "check-x", "Failed to trigger", "InternalError"));
@@ -468,23 +440,22 @@ public class ConsistencyPageTests : AdminUITestContext
         // Open dialog
         IRenderedComponent<FluentButton> runBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Run Check"));
-        await runBtn.InvokeAsync(() => runBtn.Instance.OnClick.InvokeAsync());
+        await runBtn.InvokeAsync(runBtn.Instance.OnClick.InvokeAsync);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Check"), TimeSpan.FromSeconds(5));
 
         // Click Start Check
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Start Check"));
-        await startBtn.InvokeAsync(() => startBtn.Instance.OnClick.InvokeAsync());
+        await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — API was called, dialog stays open (error toast was shown)
-        await _mockConsistencyApi.Received(1).TriggerCheckAsync(
+        _ = await _mockConsistencyApi.Received(1).TriggerCheckAsync(
             Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public void Consistency_HasH1Heading()
-    {
+    public void Consistency_HasH1Heading() {
         // Arrange
         SetupChecks([]);
 
@@ -498,8 +469,7 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void Consistency_ShowsNever_WhenNoCompletedChecks()
-    {
+    public void Consistency_ShowsNever_WhenNoCompletedChecks() {
         // Arrange
         SetupChecks([
             CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Running, 10, 0),
@@ -514,8 +484,7 @@ public class ConsistencyPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void Consistency_DomainColumn_ShowsAll_WhenNull()
-    {
+    public void Consistency_DomainColumn_ShowsAll_WhenNull() {
         // Arrange
         SetupChecks([
             CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 0),
@@ -531,11 +500,8 @@ public class ConsistencyPageTests : AdminUITestContext
 
     // ===== Helpers =====
 
-    private void SetupChecks(IReadOnlyList<ConsistencyCheckSummary> checks)
-    {
-        _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+    private void SetupChecks(IReadOnlyList<ConsistencyCheckSummary> checks) => _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(checks));
-    }
 
     private static ConsistencyCheckSummary CreateSummary(
         string checkId,
@@ -543,8 +509,7 @@ public class ConsistencyPageTests : AdminUITestContext
         ConsistencyCheckStatus status,
         int streamsChecked,
         int anomaliesFound,
-        string? domain = null)
-    {
+        string? domain = null) {
         DateTimeOffset started = DateTimeOffset.UtcNow.AddHours(-1);
         return new ConsistencyCheckSummary(
             checkId,
@@ -561,8 +526,7 @@ public class ConsistencyPageTests : AdminUITestContext
             anomaliesFound);
     }
 
-    private void SetupReadOnlyUser()
-    {
+    private void SetupReadOnlyUser() {
         Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider =
             Substitute.For<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>();
         System.Security.Claims.ClaimsPrincipal user = new(new System.Security.Claims.ClaimsIdentity(
@@ -571,8 +535,8 @@ public class ConsistencyPageTests : AdminUITestContext
         ], "TestAuth"));
         _ = authStateProvider.GetAuthenticationStateAsync()
             .Returns(Task.FromResult(new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(user)));
-        Services.AddSingleton(authStateProvider);
-        Services.AddScoped<AdminUserContext>();
+        _ = Services.AddSingleton(authStateProvider);
+        _ = Services.AddScoped<AdminUserContext>();
     }
 
     private Microsoft.AspNetCore.Components.NavigationManager NavManager =>

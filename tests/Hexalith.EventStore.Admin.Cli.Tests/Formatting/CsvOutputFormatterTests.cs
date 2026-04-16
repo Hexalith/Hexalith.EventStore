@@ -2,11 +2,9 @@ using Hexalith.EventStore.Admin.Cli.Formatting;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Formatting;
 
-public class CsvOutputFormatterTests
-{
+public class CsvOutputFormatterTests {
     [Fact]
-    public void CsvFormatter_Collection_ReturnsHeaderAndRows()
-    {
+    public void CsvFormatter_Collection_ReturnsHeaderAndRows() {
         // Arrange
         CsvOutputFormatter formatter = new();
         List<TestItem> items = [new("Alpha", 1), new("Beta", 2)];
@@ -23,8 +21,7 @@ public class CsvOutputFormatterTests
     }
 
     [Fact]
-    public void CsvFormatter_ValuesWithCommas_AreQuoted()
-    {
+    public void CsvFormatter_ValuesWithCommas_AreQuoted() {
         // Arrange
         CsvOutputFormatter formatter = new();
         List<TestItem> items = [new("Hello, World", 1)];
@@ -38,8 +35,7 @@ public class CsvOutputFormatterTests
     }
 
     [Fact]
-    public void CsvFormatter_SingleObject_ReturnsKeyValuePairs()
-    {
+    public void CsvFormatter_SingleObject_ReturnsKeyValuePairs() {
         // Arrange
         CsvOutputFormatter formatter = new();
         TestItem item = new("Test", 42);

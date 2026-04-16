@@ -1,37 +1,30 @@
-namespace Hexalith.EventStore.Admin.Mcp;
 
 using System.Net.Http.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 
+namespace Hexalith.EventStore.Admin.Mcp;
 /// <summary>
 /// Typed HttpClient wrapper for the EventStore Admin API.
 /// </summary>
-internal sealed partial class AdminApiClient
-{
+internal sealed partial class AdminApiClient {
     private readonly HttpClient _httpClient;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AdminApiClient"/> class.
     /// </summary>
     /// <param name="httpClient">The configured <see cref="HttpClient"/>.</param>
-    public AdminApiClient(HttpClient httpClient)
-    {
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-    }
+    public AdminApiClient(HttpClient httpClient) => _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
 
     /// <summary>
     /// Retrieves the system health report from the Admin API.
     /// </summary>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>The system health report.</returns>
-    public async Task<SystemHealthReport?> GetSystemHealthAsync(CancellationToken cancellationToken)
-    {
-        return await _httpClient
+    public async Task<SystemHealthReport?> GetSystemHealthAsync(CancellationToken cancellationToken) => await _httpClient
             .GetFromJsonAsync<SystemHealthReport>("/api/v1/admin/health", cancellationToken)
             .ConfigureAwait(false);
-    }
 
     /// <summary>
     /// Sends a GET request and deserializes the response as JSON.
@@ -43,12 +36,9 @@ internal sealed partial class AdminApiClient
     /// <param name="path">The request URI path with query string.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>The deserialized response, or <c>null</c> if the JSON body is the literal <c>null</c>.</returns>
-    internal async Task<T?> GetAsync<T>(string path, CancellationToken cancellationToken)
-    {
-        return await _httpClient
+    internal async Task<T?> GetAsync<T>(string path, CancellationToken cancellationToken) => await _httpClient
             .GetFromJsonAsync<T>(path, cancellationToken)
             .ConfigureAwait(false);
-    }
 
     /// <summary>
     /// Sends a POST request with no body and deserializes the response.
@@ -56,12 +46,11 @@ internal sealed partial class AdminApiClient
     /// <param name="path">The request URI path.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>The deserialized operation result, or <c>null</c>.</returns>
-    internal async Task<AdminOperationResult?> PostAsync(string path, CancellationToken cancellationToken)
-    {
+    internal async Task<AdminOperationResult?> PostAsync(string path, CancellationToken cancellationToken) {
         using HttpResponseMessage response = await _httpClient
             .PostAsync(path, content: null, cancellationToken)
             .ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        _ = response.EnsureSuccessStatusCode();
         return await response.Content
             .ReadFromJsonAsync<AdminOperationResult>(cancellationToken)
             .ConfigureAwait(false);
@@ -75,12 +64,11 @@ internal sealed partial class AdminApiClient
     /// <param name="body">The request body to serialize as JSON.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>The deserialized operation result, or <c>null</c>.</returns>
-    internal async Task<AdminOperationResult?> PostAsync<TRequest>(string path, TRequest body, CancellationToken cancellationToken)
-    {
+    internal async Task<AdminOperationResult?> PostAsync<TRequest>(string path, TRequest body, CancellationToken cancellationToken) {
         using HttpResponseMessage response = await _httpClient
             .PostAsJsonAsync(path, body, cancellationToken)
             .ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        _ = response.EnsureSuccessStatusCode();
         return await response.Content
             .ReadFromJsonAsync<AdminOperationResult>(cancellationToken)
             .ConfigureAwait(false);
@@ -93,8 +81,7 @@ internal sealed partial class AdminApiClient
     /// <param name="path">The request URI path with query string.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>The deserialized list, or an empty list.</returns>
-    internal async Task<IReadOnlyList<T>> GetListAsync<T>(string path, CancellationToken cancellationToken)
-    {
+    internal async Task<IReadOnlyList<T>> GetListAsync<T>(string path, CancellationToken cancellationToken) {
         IReadOnlyList<T>? result = await GetAsync<IReadOnlyList<T>>(path, cancellationToken).ConfigureAwait(false);
         return result ?? Array.Empty<T>();
     }

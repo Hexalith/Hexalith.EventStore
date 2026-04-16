@@ -19,8 +19,7 @@ public record DaprComponentDetail(
     string Version,
     HealthStatus Status,
     DateTimeOffset LastCheckUtc,
-    IReadOnlyList<string> Capabilities)
-{
+    IReadOnlyList<string> Capabilities) {
     /// <summary>Gets the DAPR component name.</summary>
     public string ComponentName { get; } = !string.IsNullOrWhiteSpace(ComponentName)
         ? ComponentName

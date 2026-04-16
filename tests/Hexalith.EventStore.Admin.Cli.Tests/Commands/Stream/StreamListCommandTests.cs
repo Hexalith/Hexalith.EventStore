@@ -3,7 +3,6 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
-using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Stream;
 using Hexalith.EventStore.Admin.Cli.Formatting;
@@ -11,13 +10,10 @@ using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Stream;
 
-public class StreamListCommandTests
-{
-    private static PagedResult<StreamSummary> CreateTestResult(int count = 2, int totalCount = 2)
-    {
+public class StreamListCommandTests {
+    private static PagedResult<StreamSummary> CreateTestResult(int count = 2, int totalCount = 2) {
         List<StreamSummary> items = [];
-        for (int i = 0; i < count; i++)
-        {
+        for (int i = 0; i < count; i++) {
             items.Add(new StreamSummary(
                 $"tenant-{i}",
                 $"domain-{i}",
@@ -37,11 +33,9 @@ public class StreamListCommandTests
 
     private static (AdminApiClient Client, MockHttpMessageHandler Handler) CreateMockClientWithHandler(
         object responseBody,
-        HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
+        HttpStatusCode statusCode = HttpStatusCode.OK) {
         string json = JsonSerializer.Serialize(responseBody, JsonDefaults.Options);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         });
         GlobalOptions options = CreateOptions();
@@ -49,8 +43,7 @@ public class StreamListCommandTests
     }
 
     [Fact]
-    public void StreamListCommand_ReturnsStreamTable()
-    {
+    public void StreamListCommand_ReturnsStreamTable() {
         // Arrange — test formatting directly to avoid Console capture issues
         PagedResult<StreamSummary> result = CreateTestResult();
         IOutputFormatter formatter = new TableOutputFormatter();
@@ -66,8 +59,7 @@ public class StreamListCommandTests
     }
 
     [Fact]
-    public async Task StreamListCommand_EmptyResult_PrintsNoStreamsFound()
-    {
+    public async Task StreamListCommand_EmptyResult_PrintsNoStreamsFound() {
         // Arrange
         PagedResult<StreamSummary> result = new([], 0, null);
         (AdminApiClient client, _) = CreateMockClientWithHandler(result);
@@ -75,8 +67,7 @@ public class StreamListCommandTests
 
         // Act
         int exitCode;
-        using (client)
-        {
+        using (client) {
             exitCode = await StreamListCommand.ExecuteAsync(client, options, null, null, 1000, CancellationToken.None);
         }
 
@@ -85,8 +76,7 @@ public class StreamListCommandTests
     }
 
     [Fact]
-    public async Task StreamListCommand_PaginatedResult_ExitCodeSuccess()
-    {
+    public async Task StreamListCommand_PaginatedResult_ExitCodeSuccess() {
         // Arrange
         PagedResult<StreamSummary> result = CreateTestResult(count: 2, totalCount: 50);
         (AdminApiClient client, _) = CreateMockClientWithHandler(result);
@@ -94,8 +84,7 @@ public class StreamListCommandTests
 
         // Act
         int exitCode;
-        using (client)
-        {
+        using (client) {
             exitCode = await StreamListCommand.ExecuteAsync(client, options, null, null, 1000, CancellationToken.None);
         }
 
@@ -104,8 +93,7 @@ public class StreamListCommandTests
     }
 
     [Fact]
-    public void StreamListCommand_JsonFormat_ReturnsValidJson()
-    {
+    public void StreamListCommand_JsonFormat_ReturnsValidJson() {
         // Arrange — test JSON formatting directly
         PagedResult<StreamSummary> result = CreateTestResult();
         IOutputFormatter formatter = new JsonOutputFormatter();
@@ -115,26 +103,24 @@ public class StreamListCommandTests
 
         // Assert
         PagedResult<StreamSummary>? deserialized = JsonSerializer.Deserialize<PagedResult<StreamSummary>>(json, JsonDefaults.Options);
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.Items.Count.ShouldBe(2);
     }
 
     [Fact]
-    public async Task StreamListCommand_WithFilters_SendsQueryParameters()
-    {
+    public async Task StreamListCommand_WithFilters_SendsQueryParameters() {
         // Arrange
         PagedResult<StreamSummary> result = CreateTestResult();
         (AdminApiClient client, MockHttpMessageHandler handler) = CreateMockClientWithHandler(result);
         GlobalOptions options = CreateOptions("table");
 
         // Act
-        using (client)
-        {
+        using (client) {
             _ = await StreamListCommand.ExecuteAsync(client, options, "acme", "counter", 50, CancellationToken.None);
         }
 
         // Assert
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         string requestUri = handler.LastRequest.RequestUri!.AbsoluteUri;
         requestUri.ShouldContain("count=50");
         requestUri.ShouldContain("tenantId=acme");
@@ -142,8 +128,7 @@ public class StreamListCommandTests
     }
 
     [Fact]
-    public void StreamListCommand_TableFormat_ShowsCorrectColumns()
-    {
+    public void StreamListCommand_TableFormat_ShowsCorrectColumns() {
         // Arrange
         PagedResult<StreamSummary> result = CreateTestResult();
         IOutputFormatter formatter = new TableOutputFormatter();
@@ -165,8 +150,7 @@ public class StreamListCommandTests
     }
 
     [Fact]
-    public void StreamListCommand_CsvFormat_ReturnsHeaderAndRows()
-    {
+    public void StreamListCommand_CsvFormat_ReturnsHeaderAndRows() {
         // Arrange
         PagedResult<StreamSummary> result = CreateTestResult();
         IOutputFormatter formatter = new CsvOutputFormatter();
@@ -184,8 +168,7 @@ public class StreamListCommandTests
     }
 
     [Fact]
-    public void StreamListCommand_JsonFormat_EnumsSerializeAsStrings()
-    {
+    public void StreamListCommand_JsonFormat_EnumsSerializeAsStrings() {
         // Arrange
         StreamSummary summary = new("t1", "d1", "a1", 10, DateTimeOffset.UtcNow, 100, false, StreamStatus.Active);
 

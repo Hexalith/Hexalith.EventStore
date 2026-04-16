@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Streams;
 
-public class SandboxResultTests
-{
+public class SandboxResultTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         List<SandboxEvent> events =
         [
             new(0, "CounterIncremented", "{\"Amount\":5}", false),
@@ -43,8 +41,7 @@ public class SandboxResultTests
     }
 
     [Fact]
-    public void Constructor_WithNullStrings_DefaultsToEmpty()
-    {
+    public void Constructor_WithNullStrings_DefaultsToEmpty() {
         var result = new SandboxResult(
             null!,
             null!,
@@ -70,8 +67,7 @@ public class SandboxResultTests
     }
 
     [Fact]
-    public void ToString_RedactsResultingStateJson()
-    {
+    public void ToString_RedactsResultingStateJson() {
         List<SandboxEvent> events = [new(0, "CounterIncremented", "{\"Amount\":5}", false)];
         List<FieldChange> changes = [new("Count", "0", "5")];
 
@@ -96,8 +92,7 @@ public class SandboxResultTests
     }
 
     [Fact]
-    public void ToString_ContainsOutcomeAndCounts()
-    {
+    public void ToString_ContainsOutcomeAndCounts() {
         List<SandboxEvent> events =
         [
             new(0, "CounterIncremented", "{}", false),
@@ -128,8 +123,7 @@ public class SandboxResultTests
     }
 
     [Fact]
-    public void SerializationRoundTrip_PreservesAllProperties()
-    {
+    public void SerializationRoundTrip_PreservesAllProperties() {
         List<SandboxEvent> events =
         [
             new(0, "CounterIncremented", "{\"Amount\":5}", false),
@@ -153,7 +147,7 @@ public class SandboxResultTests
         string json = JsonSerializer.Serialize(original);
         SandboxResult? deserialized = JsonSerializer.Deserialize<SandboxResult>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized!.TenantId.ShouldBe("tenant1");
         deserialized.Domain.ShouldBe("counters");
         deserialized.AggregateId.ShouldBe("counter-1");

@@ -19,46 +19,45 @@ public class AdminTenantsControllerTests {
     private readonly ITenantCommandService _commandService = Substitute.For<ITenantCommandService>();
     private readonly AdminTenantsController _sut;
 
-    public AdminTenantsControllerTests() {
-        _sut = new AdminTenantsController(_service, _commandService, NullLogger<AdminTenantsController>.Instance);
-        _sut.ControllerContext = new ControllerContext {
+    public AdminTenantsControllerTests() => _sut = new AdminTenantsController(_service, _commandService, NullLogger<AdminTenantsController>.Instance) {
+        ControllerContext = new ControllerContext {
             HttpContext = new DefaultHttpContext {
                 User = CreatePrincipal("Admin"),
             },
-        };
-    }
+        }
+    };
 
     [Fact]
     public async Task ListTenants_DelegatesToService() {
         IReadOnlyList<TenantSummary> expected = [];
-        _service.ListTenantsAsync(Arg.Any<CancellationToken>())
+        _ = _service.ListTenantsAsync(Arg.Any<CancellationToken>())
             .Returns(expected);
 
         IActionResult result = await _sut.ListTenants();
 
-        var okResult = result.ShouldBeOfType<OkObjectResult>();
+        OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         okResult.Value.ShouldBe(expected);
     }
 
     [Fact]
     public async Task GetTenantDetail_ReturnsForbidden_WhenQueryPipelineRejectsRequest() {
-        _service.GetTenantDetailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = _service.GetTenantDetailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<TenantDetail?>(new HttpRequestException("Forbidden", null, HttpStatusCode.Forbidden)));
 
         IActionResult result = await _sut.GetTenantDetail("tenant-a");
 
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
     }
 
     [Fact]
     public async Task GetTenantUsers_ReturnsNotFound_WhenQueryPipelineReportsMissingTenant() {
-        _service.GetTenantUsersAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _ = _service.GetTenantUsersAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<IReadOnlyList<TenantUser>>(new HttpRequestException("Not Found", null, HttpStatusCode.NotFound)));
 
         IActionResult result = await _sut.GetTenantUsers("tenant-a");
 
-        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
     }
 

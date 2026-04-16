@@ -10,19 +10,16 @@ using Hexalith.EventStore.Testing.Http;
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands;
 
 [Collection("ConsoleTests")]
-public class HealthCommandWaitTests
-{
+public class HealthCommandWaitTests {
     [Fact]
-    public async Task HealthCommand_Quiet_SuppressesStdout()
-    {
+    public async Task HealthCommand_Quiet_SuppressesStdout() {
         // Arrange
         SystemHealthReport report = CreateTestReport(HealthStatus.Healthy);
         using AdminApiClient client = CreateMockClient(report);
         GlobalOptions options = CreateOptions("json");
 
         TextWriter originalOut = Console.Out;
-        try
-        {
+        try {
             using StringWriter sw = new();
             Console.SetOut(sw);
 
@@ -35,23 +32,20 @@ public class HealthCommandWaitTests
             exitCode.ShouldBe(ExitCodes.Success);
             sw.ToString().ShouldBeEmpty();
         }
-        finally
-        {
+        finally {
             Console.SetOut(originalOut);
         }
     }
 
     [Fact]
-    public async Task HealthCommand_Quiet_StillReturnsCorrectExitCode()
-    {
+    public async Task HealthCommand_Quiet_StillReturnsCorrectExitCode() {
         // Arrange — unhealthy
         SystemHealthReport report = CreateTestReport(HealthStatus.Unhealthy);
         using AdminApiClient client = CreateMockClient(report);
         GlobalOptions options = CreateOptions("json");
 
         TextWriter originalOut = Console.Out;
-        try
-        {
+        try {
             using StringWriter sw = new();
             Console.SetOut(sw);
 
@@ -64,15 +58,13 @@ public class HealthCommandWaitTests
             exitCode.ShouldBe(ExitCodes.Error);
             sw.ToString().ShouldBeEmpty();
         }
-        finally
-        {
+        finally {
             Console.SetOut(originalOut);
         }
     }
 
     [Fact]
-    public async Task HealthCommand_Wait_PollsUntilHealthy()
-    {
+    public async Task HealthCommand_Wait_PollsUntilHealthy() {
         // Arrange — Unhealthy, Unhealthy, then Healthy
         HttpResponseMessage unhealthyResponse1 = CreateMockResponse(HealthStatus.Unhealthy);
         HttpResponseMessage unhealthyResponse2 = CreateMockResponse(HealthStatus.Unhealthy);
@@ -87,8 +79,7 @@ public class HealthCommandWaitTests
         GlobalOptions options = CreateOptions("json");
 
         TextWriter originalErr = Console.Error;
-        try
-        {
+        try {
             using StringWriter errWriter = new();
             Console.SetError(errWriter);
 
@@ -102,15 +93,13 @@ public class HealthCommandWaitTests
             string errOutput = errWriter.ToString();
             errOutput.ShouldContain("Service is healthy.");
         }
-        finally
-        {
+        finally {
             Console.SetError(originalErr);
         }
     }
 
     [Fact]
-    public async Task HealthCommand_Wait_Timeout_ReturnsError()
-    {
+    public async Task HealthCommand_Wait_Timeout_ReturnsError() {
         // Arrange — always unhealthy (repeat-last replays indefinitely), short timeout
         // Use factory to create fresh responses since GetAsync disposes each response
         QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
@@ -120,8 +109,7 @@ public class HealthCommandWaitTests
         GlobalOptions options = CreateOptions("json");
 
         TextWriter originalErr = Console.Error;
-        try
-        {
+        try {
             using StringWriter errWriter = new();
             Console.SetError(errWriter);
 
@@ -135,15 +123,13 @@ public class HealthCommandWaitTests
             string errOutput = errWriter.ToString();
             errOutput.ShouldContain("Timed out waiting for healthy status after 1 seconds.");
         }
-        finally
-        {
+        finally {
             Console.SetError(originalErr);
         }
     }
 
     [Fact]
-    public async Task HealthCommand_Wait_ConnectionError_Retries()
-    {
+    public async Task HealthCommand_Wait_ConnectionError_Retries() {
         // Arrange — connection error then healthy
         HttpResponseMessage healthyResponse = CreateMockResponse(HealthStatus.Healthy);
 
@@ -155,8 +141,7 @@ public class HealthCommandWaitTests
         GlobalOptions options = CreateOptions("json");
 
         TextWriter originalErr = Console.Error;
-        try
-        {
+        try {
             using StringWriter errWriter = new();
             Console.SetError(errWriter);
 
@@ -169,15 +154,13 @@ public class HealthCommandWaitTests
             exitCode.ShouldBe(ExitCodes.Success);
             errWriter.ToString().ShouldContain("Service is healthy.");
         }
-        finally
-        {
+        finally {
             Console.SetError(originalErr);
         }
     }
 
     [Fact]
-    public async Task HealthCommand_Wait_Strict_OnlyAcceptsHealthy()
-    {
+    public async Task HealthCommand_Wait_Strict_OnlyAcceptsHealthy() {
         // Arrange — Degraded, Degraded, then Healthy
         HttpResponseMessage degradedResponse1 = CreateMockResponse(HealthStatus.Degraded);
         HttpResponseMessage degradedResponse2 = CreateMockResponse(HealthStatus.Degraded);
@@ -202,8 +185,7 @@ public class HealthCommandWaitTests
     }
 
     [Fact]
-    public async Task HealthCommand_Wait_NoStrict_AcceptsDegradedAndStopsPolling()
-    {
+    public async Task HealthCommand_Wait_NoStrict_AcceptsDegradedAndStopsPolling() {
         // Arrange — Degraded response should be accepted without --strict
         HttpResponseMessage degradedResponse = CreateMockResponse(HealthStatus.Degraded);
 
@@ -214,8 +196,7 @@ public class HealthCommandWaitTests
         GlobalOptions options = CreateOptions("json");
 
         TextWriter originalErr = Console.Error;
-        try
-        {
+        try {
             using StringWriter errWriter = new();
             Console.SetError(errWriter);
 
@@ -229,15 +210,13 @@ public class HealthCommandWaitTests
             handler.CallCount.ShouldBe(1);
             errWriter.ToString().ShouldContain("Service is healthy.");
         }
-        finally
-        {
+        finally {
             Console.SetError(originalErr);
         }
     }
 
     [Fact]
-    public async Task HealthCommand_Wait_CancellationToken_StopsPolling()
-    {
+    public async Task HealthCommand_Wait_CancellationToken_StopsPolling() {
         // Arrange — always unhealthy (repeat-last replays indefinitely), cancel soon
         // Use factory to create fresh responses since GetAsync disposes each response
         QueuedMockHttpMessageHandler handler = new QueuedMockHttpMessageHandler()
@@ -249,8 +228,7 @@ public class HealthCommandWaitTests
         using CancellationTokenSource cts = new();
 
         TextWriter originalErr = Console.Error;
-        try
-        {
+        try {
             using StringWriter errWriter = new();
             Console.SetError(errWriter);
 
@@ -266,15 +244,12 @@ public class HealthCommandWaitTests
             (ex is OperationCanceledException or AdminApiException).ShouldBeTrue(
                 $"Expected OperationCanceledException or AdminApiException, got {ex.GetType().Name}");
         }
-        finally
-        {
+        finally {
             Console.SetError(originalErr);
         }
     }
 
-    private static SystemHealthReport CreateTestReport(HealthStatus overallStatus)
-    {
-        return new SystemHealthReport(
+    private static SystemHealthReport CreateTestReport(HealthStatus overallStatus) => new(
             overallStatus,
             1000,
             42.5,
@@ -283,14 +258,11 @@ public class HealthCommandWaitTests
                 new DaprComponentHealth("state-redis", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow),
             ],
             new ObservabilityLinks(null, null, null));
-    }
 
-    private static HttpResponseMessage CreateMockResponse(HealthStatus overallStatus)
-    {
+    private static HttpResponseMessage CreateMockResponse(HealthStatus overallStatus) {
         SystemHealthReport report = CreateTestReport(overallStatus);
         string json = JsonSerializer.Serialize(report, JsonDefaults.Options);
-        return new HttpResponseMessage(HttpStatusCode.OK)
-        {
+        return new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         };
     }
@@ -298,11 +270,9 @@ public class HealthCommandWaitTests
     private static GlobalOptions CreateOptions(string format = "json")
         => new("http://localhost:5002", null, format, null);
 
-    private static AdminApiClient CreateMockClient(SystemHealthReport report)
-    {
+    private static AdminApiClient CreateMockClient(SystemHealthReport report) {
         string json = JsonSerializer.Serialize(report, JsonDefaults.Options);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         });
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost:5002") };

@@ -27,8 +27,7 @@ public record SandboxResult(
     string ResultingStateJson,
     IReadOnlyList<FieldChange> StateChanges,
     string? ErrorMessage,
-    long ExecutionTimeMs)
-{
+    long ExecutionTimeMs) {
     /// <summary>Gets the tenant identifier.</summary>
     public string TenantId { get; } = TenantId ?? string.Empty;
 

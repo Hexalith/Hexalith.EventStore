@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Admin.Cli.Formatting;
 /// <summary>
 /// Column alignment direction.
 /// </summary>
-public enum Alignment
-{
+public enum Alignment {
     /// <summary>Left-aligned text.</summary>
     Left,
 

@@ -3,22 +3,18 @@ using Hexalith.EventStore.Admin.Cli.Profiles;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Config;
 
-public class ConfigUseCommandTests : IDisposable
-{
+public class ConfigUseCommandTests : IDisposable {
     private readonly string _tempDir;
     private readonly string _profilePath;
 
-    public ConfigUseCommandTests()
-    {
+    public ConfigUseCommandTests() {
         _tempDir = Path.Combine(Path.GetTempPath(), "eventstore-test-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(_tempDir);
+        _ = Directory.CreateDirectory(_tempDir);
         _profilePath = Path.Combine(_tempDir, "profiles.json");
     }
 
-    public void Dispose()
-    {
-        if (Directory.Exists(_tempDir))
-        {
+    public void Dispose() {
+        if (Directory.Exists(_tempDir)) {
             Directory.Delete(_tempDir, true);
         }
 
@@ -26,10 +22,8 @@ public class ConfigUseCommandTests : IDisposable
     }
 
     [Fact]
-    public void Use_ExistingProfile_SetsActive()
-    {
-        ProfileStore store = new(ProfileStore.CurrentVersion, null, new Dictionary<string, ConnectionProfile>
-        {
+    public void Use_ExistingProfile_SetsActive() {
+        ProfileStore store = new(ProfileStore.CurrentVersion, null, new Dictionary<string, ConnectionProfile> {
             ["prod"] = new("http://prod:5002", null, null),
         });
         ProfileManager.Save(store, _profilePath);
@@ -42,9 +36,8 @@ public class ConfigUseCommandTests : IDisposable
     }
 
     [Fact]
-    public void Use_NonExistentProfile_ReturnsError()
-    {
-        ProfileStore store = new(ProfileStore.CurrentVersion, null, new Dictionary<string, ConnectionProfile>());
+    public void Use_NonExistentProfile_ReturnsError() {
+        ProfileStore store = new(ProfileStore.CurrentVersion, null, []);
         ProfileManager.Save(store, _profilePath);
 
         int exitCode = ConfigUseCommand.Execute("nonexistent", false, _profilePath);
@@ -53,10 +46,8 @@ public class ConfigUseCommandTests : IDisposable
     }
 
     [Fact]
-    public void Use_ClearFlag_ClearsActive()
-    {
-        ProfileStore store = new(ProfileStore.CurrentVersion, "prod", new Dictionary<string, ConnectionProfile>
-        {
+    public void Use_ClearFlag_ClearsActive() {
+        ProfileStore store = new(ProfileStore.CurrentVersion, "prod", new Dictionary<string, ConnectionProfile> {
             ["prod"] = new("http://prod:5002", null, null),
         });
         ProfileManager.Save(store, _profilePath);
@@ -69,8 +60,7 @@ public class ConfigUseCommandTests : IDisposable
     }
 
     [Fact]
-    public void Use_NoNameNoClear_ReturnsError()
-    {
+    public void Use_NoNameNoClear_ReturnsError() {
         int exitCode = ConfigUseCommand.Execute(null, false, _profilePath);
 
         exitCode.ShouldBe(ExitCodes.Error);

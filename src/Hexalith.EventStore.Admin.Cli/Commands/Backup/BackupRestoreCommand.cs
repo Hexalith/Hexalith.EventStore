@@ -9,8 +9,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Backup;
 /// <summary>
 /// The <c>eventstore-admin backup restore</c> subcommand — restores from a backup.
 /// </summary>
-public static class BackupRestoreCommand
-{
+public static class BackupRestoreCommand {
     internal static readonly List<ColumnDefinition> ResultColumns =
     [
         new("Operation ID", "OperationId"),
@@ -21,8 +20,7 @@ public static class BackupRestoreCommand
     /// <summary>
     /// Creates the backup restore subcommand wired to the shared global options.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
+    public static Command Create(GlobalOptionsBinding binding) {
         Argument<string> backupIdArg = BackupArguments.BackupId();
         Option<DateTimeOffset?> pointInTimeOption = new("--point-in-time") { Description = "Point-in-time for restore (ISO 8601 datetime)" };
         Option<bool> dryRunOption = new("--dry-run") { Description = "Validate restore feasibility without writing" };
@@ -32,8 +30,7 @@ public static class BackupRestoreCommand
         command.Options.Add(pointInTimeOption);
         command.Options.Add(dryRunOption);
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
+        command.SetAction(async (parseResult, cancellationToken) => {
             GlobalOptions options = binding.Resolve(parseResult);
             string backupId = parseResult.GetValue(backupIdArg)!;
             DateTimeOffset? pointInTime = parseResult.GetValue(pointInTimeOption);
@@ -48,8 +45,7 @@ public static class BackupRestoreCommand
         string backupId,
         DateTimeOffset? pointInTime,
         bool dryRun,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         using AdminApiClient client = new(options);
         return await ExecuteAsync(client, options, backupId, pointInTime, dryRun, cancellationToken).ConfigureAwait(false);
     }
@@ -60,22 +56,18 @@ public static class BackupRestoreCommand
         string backupId,
         DateTimeOffset? pointInTime,
         bool dryRun,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         IOutputFormatter formatter = OutputFormatterFactory.Create(options.Format);
         OutputWriter writer = new(options.OutputFile);
-        try
-        {
+        try {
             string path = $"api/v1/admin/backups/{Uri.EscapeDataString(backupId)}/restore";
             List<string> queryParams = [];
-            if (pointInTime is not null)
-            {
+            if (pointInTime is not null) {
                 queryParams.Add($"pointInTime={Uri.EscapeDataString(pointInTime.Value.ToString("O"))}");
             }
 
             queryParams.Add($"dryRun={dryRun.ToString().ToLowerInvariant()}");
-            if (queryParams.Count > 0)
-            {
+            if (queryParams.Count > 0) {
                 path += "?" + string.Join("&", queryParams);
             }
 
@@ -83,32 +75,26 @@ public static class BackupRestoreCommand
                 .PostAsync<AdminOperationResult>(path, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (dryRun)
-            {
+            if (dryRun) {
                 Console.Error.WriteLine($"Dry-run restore validated. Operation ID: {result.OperationId}");
             }
-            else
-            {
+            else {
                 Console.Error.WriteLine($"Restore initiated. Operation ID: {result.OperationId}");
             }
 
             string output;
-            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase))
-            {
+            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase)) {
                 output = formatter.Format(result);
             }
-            else
-            {
+            else {
                 output = formatter.Format(result, ResultColumns);
             }
 
             int writeResult = writer.Write(output);
             return writeResult != ExitCodes.Success ? writeResult : ExitCodes.Success;
         }
-        catch (AdminApiException ex)
-        {
-            string message = ex.HttpStatusCode switch
-            {
+        catch (AdminApiException ex) {
+            string message = ex.HttpStatusCode switch {
                 404 => $"Backup '{backupId}' not found.",
                 _ => ex.Message,
             };

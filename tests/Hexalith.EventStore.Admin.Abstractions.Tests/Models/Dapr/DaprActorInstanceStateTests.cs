@@ -2,11 +2,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Dapr;
 
-public class DaprActorInstanceStateTests
-{
+public class DaprActorInstanceStateTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         List<DaprActorStateEntry> entries =
         [
             new("etag", "{\"v\":1}", 7, true),
@@ -27,32 +25,22 @@ public class DaprActorInstanceStateTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_WithInvalidActorType_ThrowsArgumentException(string? actorType)
-    {
-        Should.Throw<ArgumentException>(() =>
-            new DaprActorInstanceState(actorType!, "id", [], 0, DateTimeOffset.UtcNow));
-    }
+    public void Constructor_WithInvalidActorType_ThrowsArgumentException(string? actorType) => Should.Throw<ArgumentException>(() =>
+                                                                                                        new DaprActorInstanceState(actorType!, "id", [], 0, DateTimeOffset.UtcNow));
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_WithInvalidActorId_ThrowsArgumentException(string? actorId)
-    {
-        Should.Throw<ArgumentException>(() =>
-            new DaprActorInstanceState("Type", actorId!, [], 0, DateTimeOffset.UtcNow));
-    }
+    public void Constructor_WithInvalidActorId_ThrowsArgumentException(string? actorId) => Should.Throw<ArgumentException>(() =>
+                                                                                                    new DaprActorInstanceState("Type", actorId!, [], 0, DateTimeOffset.UtcNow));
 
     [Fact]
-    public void Constructor_WithNullStateEntries_ThrowsArgumentNullException()
-    {
-        Should.Throw<ArgumentNullException>(() =>
-            new DaprActorInstanceState("Type", "id", null!, 0, DateTimeOffset.UtcNow));
-    }
+    public void Constructor_WithNullStateEntries_ThrowsArgumentNullException() => Should.Throw<ArgumentNullException>(() =>
+                                                                                           new DaprActorInstanceState("Type", "id", null!, 0, DateTimeOffset.UtcNow));
 
     [Fact]
-    public void Constructor_WithEmptyEntries_CreatesInstance()
-    {
+    public void Constructor_WithEmptyEntries_CreatesInstance() {
         var state = new DaprActorInstanceState("Type", "id", [], 0, DateTimeOffset.UtcNow);
 
         state.StateEntries.ShouldBeEmpty();

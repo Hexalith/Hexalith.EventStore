@@ -61,7 +61,7 @@ public class AdminApiAuthorizationHandlerTests {
     private sealed class TestHandler : HttpMessageHandler {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
             // Verify Bearer token is attached
-            request.Headers.Authorization.ShouldNotBeNull();
+            _ = request.Headers.Authorization.ShouldNotBeNull();
             request.Headers.Authorization!.Scheme.ShouldBe("Bearer");
             request.Headers.Authorization.Parameter.ShouldNotBeNullOrEmpty();
 

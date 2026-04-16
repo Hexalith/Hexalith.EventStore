@@ -11,8 +11,7 @@ public record DaprActorStateEntry(
     string Key,
     string? JsonValue,
     long EstimatedSizeBytes,
-    bool Found)
-{
+    bool Found) {
     /// <summary>Gets the state key name.</summary>
     public string Key { get; } = !string.IsNullOrWhiteSpace(Key)
         ? Key

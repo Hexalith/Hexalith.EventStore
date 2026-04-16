@@ -5,8 +5,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// <summary>
 /// Service interface for operator-level projection management operations (FR73).
 /// </summary>
-public interface IProjectionCommandService
-{
+public interface IProjectionCommandService {
     /// <summary>
     /// Pauses a running projection.
     /// </summary>

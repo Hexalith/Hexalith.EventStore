@@ -12,33 +12,37 @@ namespace Hexalith.EventStore.Admin.Cli.Commands;
 /// Supports CI/CD options: --strict, --wait, --timeout, --quiet.
 /// Also serves as parent command for the <c>health dapr</c> sub-subcommand.
 /// </summary>
-public static class HealthCommand
-{
+public static class HealthCommand {
     /// <summary>
     /// Creates the health command wired to the shared global options.
     /// Includes CI/CD options and the <c>dapr</c> sub-subcommand.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
-        Option<bool> strictOption = new("--strict") { Description = "Treat degraded status as error (exit code 2)" };
-        strictOption.DefaultValueFactory = _ => false;
+    public static Command Create(GlobalOptionsBinding binding) {
+        Option<bool> strictOption = new("--strict") {
+            Description = "Treat degraded status as error (exit code 2)",
+            DefaultValueFactory = _ => false
+        };
 
-        Option<bool> waitOption = new("--wait") { Description = "Poll until healthy or timeout" };
-        waitOption.DefaultValueFactory = _ => false;
+        Option<bool> waitOption = new("--wait") {
+            Description = "Poll until healthy or timeout",
+            DefaultValueFactory = _ => false
+        };
 
-        Option<int> timeoutOption = new("--timeout") { Description = "Maximum wait time in seconds (requires --wait)" };
-        timeoutOption.DefaultValueFactory = _ => 30;
-        timeoutOption.Validators.Add(result =>
-        {
+        Option<int> timeoutOption = new("--timeout") {
+            Description = "Maximum wait time in seconds (requires --wait)",
+            DefaultValueFactory = _ => 30
+        };
+        timeoutOption.Validators.Add(result => {
             int value = result.GetValue(timeoutOption);
-            if (value < 1)
-            {
+            if (value < 1) {
                 result.AddError("Timeout must be at least 1 second.");
             }
         });
 
-        Option<bool> quietOption = new("--quiet", "-q") { Description = "Suppress stdout output, only return exit code" };
-        quietOption.DefaultValueFactory = _ => false;
+        Option<bool> quietOption = new("--quiet", "-q") {
+            Description = "Suppress stdout output, only return exit code",
+            DefaultValueFactory = _ => false
+        };
 
         Command command = new("health", "Show system health status");
         command.Options.Add(strictOption);
@@ -46,8 +50,7 @@ public static class HealthCommand
         command.Options.Add(timeoutOption);
         command.Options.Add(quietOption);
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
+        command.SetAction(async (parseResult, cancellationToken) => {
             GlobalOptions options = binding.Resolve(parseResult);
             bool strict = parseResult.GetValue(strictOption);
             bool wait = parseResult.GetValue(waitOption);
@@ -69,8 +72,7 @@ public static class HealthCommand
         int timeout,
         bool quiet,
         CancellationToken cancellationToken,
-        int pollIntervalMs = 1000)
-    {
+        int pollIntervalMs = 1000) {
         using AdminApiClient client = new(options);
         return await ExecuteAsync(client, options, strict, wait, timeout, quiet, cancellationToken, pollIntervalMs)
             .ConfigureAwait(false);
@@ -84,44 +86,37 @@ public static class HealthCommand
         int timeout,
         bool quiet,
         CancellationToken cancellationToken,
-        int pollIntervalMs = 1000)
-    {
+        int pollIntervalMs = 1000) {
         IOutputFormatter formatter = OutputFormatterFactory.Create(options.Format);
         OutputWriter writer = new(options.OutputFile);
 
-        if (wait)
-        {
+        if (wait) {
             return await ExecuteWaitAsync(client, options, strict, timeout, quiet, formatter, writer, cancellationToken, pollIntervalMs)
                 .ConfigureAwait(false);
         }
 
-        try
-        {
+        try {
             SystemHealthReport report = await client
                 .GetAsync<SystemHealthReport>("/api/v1/admin/health", cancellationToken)
                 .ConfigureAwait(false);
 
-            if (!quiet || options.OutputFile is not null)
-            {
+            if (!quiet || options.OutputFile is not null) {
                 string output = FormatHealthReport(report, options.Format, formatter);
                 int writeResult = writer.Write(output);
-                if (writeResult != ExitCodes.Success)
-                {
+                if (writeResult != ExitCodes.Success) {
                     return writeResult;
                 }
             }
 
             return MapExitCode(report.OverallStatus, strict);
         }
-        catch (AdminApiException ex)
-        {
+        catch (AdminApiException ex) {
             Console.Error.WriteLine(ex.Message);
             return ExitCodes.Error;
         }
     }
 
-    internal static int MapExitCode(HealthStatus status, bool strict) => status switch
-    {
+    internal static int MapExitCode(HealthStatus status, bool strict) => status switch {
         HealthStatus.Healthy => ExitCodes.Success,
         HealthStatus.Degraded => strict ? ExitCodes.Error : ExitCodes.Degraded,
         _ => ExitCodes.Error,
@@ -139,28 +134,22 @@ public static class HealthCommand
         IOutputFormatter formatter,
         OutputWriter writer,
         CancellationToken cancellationToken,
-        int pollIntervalMs)
-    {
-        Stopwatch sw = Stopwatch.StartNew();
+        int pollIntervalMs) {
+        var sw = Stopwatch.StartNew();
         int attempt = 0;
-        while (sw.Elapsed.TotalSeconds < timeout)
-        {
+        while (sw.Elapsed.TotalSeconds < timeout) {
             attempt++;
-            try
-            {
+            try {
                 SystemHealthReport report = await client
                     .GetAsync<SystemHealthReport>("/api/v1/admin/health", cancellationToken)
                     .ConfigureAwait(false);
 
-                if (IsAcceptable(report.OverallStatus, strict))
-                {
+                if (IsAcceptable(report.OverallStatus, strict)) {
                     Console.Error.WriteLine("Service is healthy.");
-                    if (!quiet || options.OutputFile is not null)
-                    {
+                    if (!quiet || options.OutputFile is not null) {
                         string output = FormatHealthReport(report, options.Format, formatter);
                         int writeResult = writer.Write(output);
-                        if (writeResult != ExitCodes.Success)
-                        {
+                        if (writeResult != ExitCodes.Success) {
                             return writeResult;
                         }
                     }
@@ -168,8 +157,7 @@ public static class HealthCommand
                     return MapExitCode(report.OverallStatus, strict);
                 }
             }
-            catch (AdminApiException) when (!cancellationToken.IsCancellationRequested)
-            {
+            catch (AdminApiException) when (!cancellationToken.IsCancellationRequested) {
                 // Connection errors during polling are not fatal — retry
             }
 
@@ -181,14 +169,11 @@ public static class HealthCommand
         return ExitCodes.Error;
     }
 
-    private static string FormatHealthReport(SystemHealthReport report, string format, IOutputFormatter formatter)
-    {
-        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
-        {
+    private static string FormatHealthReport(SystemHealthReport report, string format, IOutputFormatter formatter) {
+        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase)) {
             return formatter.Format(report);
         }
-        else if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
-        {
+        else if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase)) {
             List<ColumnDefinition> columns =
             [
                 new("ComponentName", "ComponentName"),
@@ -198,16 +183,14 @@ public static class HealthCommand
             ];
             return formatter.FormatCollection(report.DaprComponents.ToList(), columns);
         }
-        else
-        {
+        else {
             // Table format — two sections
             int healthyCount = report.DaprComponents.Count(c => c.Status == HealthStatus.Healthy);
             int degradedCount = report.DaprComponents.Count(c => c.Status == HealthStatus.Degraded);
             int unhealthyCount = report.DaprComponents.Count(c => c.Status == HealthStatus.Unhealthy);
 
-            var overview = new
-            {
-                OverallStatus = report.OverallStatus,
+            var overview = new {
+                report.OverallStatus,
                 TotalEvents = report.TotalEventCount,
                 EventsPerSec = report.EventsPerSecond.ToString("F1"),
                 ErrorPercent = report.ErrorPercentage.ToString("F2"),

@@ -30,8 +30,7 @@ public record EventStepFrame(
     string EventPayloadJson,
     string StateJson,
     IReadOnlyList<FieldChange> FieldChanges,
-    long TotalEvents)
-{
+    long TotalEvents) {
     /// <summary>Gets the tenant identifier.</summary>
     public string TenantId { get; } = TenantId ?? string.Empty;
 

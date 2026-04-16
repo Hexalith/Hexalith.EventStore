@@ -2,7 +2,6 @@ using System.Net;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
-using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Stream;
 using Hexalith.EventStore.Admin.Cli.Formatting;
@@ -10,8 +9,7 @@ using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Stream;
 
-public class StreamStateCommandTests
-{
+public class StreamStateCommandTests {
     private static AggregateStateSnapshot CreateTestSnapshot()
         => new(
             "acme",
@@ -24,11 +22,9 @@ public class StreamStateCommandTests
     private static GlobalOptions CreateOptions(string format = "table", string? outputFile = null)
         => new("http://localhost:5002", null, format, outputFile);
 
-    private static AdminApiClient CreateMockClient(object? responseBody, HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
+    private static AdminApiClient CreateMockClient(object? responseBody, HttpStatusCode statusCode = HttpStatusCode.OK) {
         HttpResponseMessage response = new(statusCode);
-        if (responseBody is not null)
-        {
+        if (responseBody is not null) {
             string json = JsonSerializer.Serialize(responseBody, JsonDefaults.Options);
             response.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
         }
@@ -39,8 +35,7 @@ public class StreamStateCommandTests
     }
 
     [Fact]
-    public void StreamStateCommand_ReturnsSnapshot()
-    {
+    public void StreamStateCommand_ReturnsSnapshot() {
         // Arrange — test formatting directly to avoid Console capture race conditions
         AggregateStateSnapshot snapshot = CreateTestSnapshot();
         IOutputFormatter formatter = new TableOutputFormatter();
@@ -55,8 +50,7 @@ public class StreamStateCommandTests
     }
 
     [Fact]
-    public async Task StreamStateCommand_NotFound_PrintsError()
-    {
+    public async Task StreamStateCommand_NotFound_PrintsError() {
         // Arrange
         using AdminApiClient client = CreateMockClient(null, HttpStatusCode.NotFound);
         GlobalOptions options = CreateOptions("table");
@@ -69,14 +63,13 @@ public class StreamStateCommandTests
     }
 
     [Fact]
-    public void StreamStateCommand_RequiresAtOption()
-    {
+    public void StreamStateCommand_RequiresAtOption() {
         // Verify command structure has --at as required
-        GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
+        var binding = GlobalOptionsBinding.Create();
         System.CommandLine.Command command = StreamStateCommand.Create(binding);
 
         System.CommandLine.Option? atOption = command.Options.FirstOrDefault(o => o.Name == "--at");
-        atOption.ShouldNotBeNull();
+        _ = atOption.ShouldNotBeNull();
         atOption.Required.ShouldBeTrue();
     }
 }

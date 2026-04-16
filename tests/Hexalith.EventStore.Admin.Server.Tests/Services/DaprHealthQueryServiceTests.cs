@@ -31,7 +31,7 @@ public class DaprHealthQueryServiceTests {
         var handler = new TestHttpMessageHandler();
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost") };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+        _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
 
         var service = new DaprHealthQueryService(
             daprClient,
@@ -55,12 +55,12 @@ public class DaprHealthQueryServiceTests {
         DaprMetadata metadata = CreateMetadata(
             new DaprComponentsMetadata("statestore", "state.redis", "v1", []));
 
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
-        daprClient.GetStateAsync<string>(
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = daprClient.GetStateAsync<string>(
             "statestore", "admin:health-check",
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (string?)null);
-        daprClient.CreateInvokeMethodRequest(
+        _ = daprClient.CreateInvokeMethodRequest(
             Arg.Any<HttpMethod>(),
             Arg.Any<string>(),
             Arg.Any<string>())
@@ -83,9 +83,9 @@ public class DaprHealthQueryServiceTests {
     [Fact]
     public async Task GetSystemHealthAsync_ReturnsDegraded_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .Returns(CreateMetadata());
-        daprClient.GetStateAsync<string>(
+        _ = daprClient.GetStateAsync<string>(
             "statestore", "admin:health-check",
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (string?)null);
@@ -101,7 +101,7 @@ public class DaprHealthQueryServiceTests {
     [Fact]
     public async Task GetSystemHealthAsync_ReturnsUnhealthy_WhenSidecarUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Sidecar down"));
 
         (DaprHealthQueryService service, _) = CreateService(daprClient);
@@ -118,7 +118,7 @@ public class DaprHealthQueryServiceTests {
             new DaprComponentsMetadata("statestore", "state.redis", "v1", []),
             new DaprComponentsMetadata("pubsub", "pubsub.redis", "v1", []));
 
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
 
         (DaprHealthQueryService service, _) = CreateService(daprClient);
 
@@ -132,35 +132,34 @@ public class DaprHealthQueryServiceTests {
     [Fact]
     public async Task GetDaprComponentStatusAsync_Throws_WhenSidecarUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Sidecar down"));
 
         (DaprHealthQueryService service, _) = CreateService(daprClient);
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetDaprComponentStatusAsync());
     }
 
     [Fact]
-    public async Task GetSystemHealthAsync_PropagatesCancellation()
-    {
+    public async Task GetSystemHealthAsync_PropagatesCancellation() {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .Returns<DaprMetadata>(_ => throw new OperationCanceledException());
 
         (DaprHealthQueryService service, _) = CreateService(daprClient);
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.GetSystemHealthAsync(cts.Token));
     }
 
     [Fact]
     public async Task GetSystemHealthAsync_IncludesObservabilityLinks() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .Returns(CreateMetadata());
 
         var opts = new AdminServerOptions {

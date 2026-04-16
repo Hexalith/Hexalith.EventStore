@@ -1,11 +1,8 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
-
-using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.Admin.UI.Services;
 
@@ -14,8 +11,7 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 /// </summary>
 public class AdminHealthHistoryApiClient(
     IHttpClientFactory httpClientFactory,
-    ILogger<AdminHealthHistoryApiClient> logger)
-{
+    ILogger<AdminHealthHistoryApiClient> logger) {
     /// <summary>
     /// Gets DAPR component health history for a time range.
     /// </summary>
@@ -28,14 +24,11 @@ public class AdminHealthHistoryApiClient(
         DateTimeOffset from,
         DateTimeOffset to,
         string? component = null,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
-        try
-        {
+        try {
             string url = $"api/v1/admin/health/dapr/history?from={Uri.EscapeDataString(from.ToString("O"))}&to={Uri.EscapeDataString(to.ToString("O"))}";
-            if (!string.IsNullOrEmpty(component))
-            {
+            if (!string.IsNullOrEmpty(component)) {
                 url += $"&component={Uri.EscapeDataString(component)}";
             }
 
@@ -47,8 +40,7 @@ public class AdminHealthHistoryApiClient(
                 .ReadFromJsonAsync<DaprComponentHealthTimeline>(ct)
                 .ConfigureAwait(false);
         }
-        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotImplemented)
-        {
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotImplemented) {
             // Server does not support health history (collection disabled) — signal via null
             logger.LogDebug(ex, "Health history not available on server");
             return null;
@@ -57,37 +49,30 @@ public class AdminHealthHistoryApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogWarning(ex, "Failed to fetch health history");
             throw;
         }
     }
 
-    private static async Task HandleErrorStatusAsync(HttpResponseMessage response)
-    {
-        if (response.IsSuccessStatusCode)
-        {
+    private static async Task HandleErrorStatusAsync(HttpResponseMessage response) {
+        if (response.IsSuccessStatusCode) {
             return;
         }
 
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
 
-        if (statusCode == HttpStatusCode.UnprocessableEntity)
-        {
+        if (statusCode == HttpStatusCode.UnprocessableEntity) {
             string? errorDetail = null;
-            try
-            {
+            try {
                 string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                using JsonDocument doc = JsonDocument.Parse(body);
-                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail))
-                {
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail)) {
                     errorDetail = detail.GetString();
                 }
             }
-            catch
-            {
+            catch {
                 // Ignore parse failures — fall through to default message
             }
 
@@ -95,8 +80,7 @@ public class AdminHealthHistoryApiClient(
                 errorDetail ?? reasonPhrase ?? "The operation was rejected by the server.");
         }
 
-        throw statusCode switch
-        {
+        throw statusCode switch {
             HttpStatusCode.Unauthorized => new UnauthorizedAccessException(
                 "Authentication required. Please sign in again."),
             HttpStatusCode.Forbidden => new ForbiddenAccessException(

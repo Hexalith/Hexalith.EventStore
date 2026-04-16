@@ -50,7 +50,7 @@ public class AdminCommandVisibilityTests {
             "IncrementCounter should complete before checking admin visibility");
 
         // Assert — poll admin commands count (eventual consistency via DAPR service invocation)
-        int updatedCount = await PollUntilAdminCountReachesAsync("tenant-a", baselineCount + 1);
+        _ = await PollUntilAdminCountReachesAsync("tenant-a", baselineCount + 1);
     }
 
     // ------------------------------------------------------------------

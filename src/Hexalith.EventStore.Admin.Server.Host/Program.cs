@@ -6,7 +6,6 @@ using Hexalith.EventStore.Admin.Server.Services;
 using Hexalith.EventStore.ServiceDefaults;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -39,11 +38,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // OpenAPI/Swagger UI (gated by configuration)
-if (app.Configuration.GetValue("EventStore:Admin:OpenApi:Enabled", true))
-{
+if (app.Configuration.GetValue("EventStore:Admin:OpenApi:Enabled", true)) {
     _ = app.MapOpenApi();
-    _ = app.UseSwaggerUI(options =>
-    {
+    _ = app.UseSwaggerUI(options => {
         options.SwaggerEndpoint("/openapi/v1.json", "Hexalith EventStore Admin API v1");
         options.RoutePrefix = "swagger";
     });

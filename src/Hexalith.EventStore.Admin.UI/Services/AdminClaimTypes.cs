@@ -4,8 +4,7 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 /// Defines claim type constants for Admin JWT tokens.
 /// Single source of truth for claim names shared between Server and UI.
 /// </summary>
-public static class AdminClaimTypes
-{
+public static class AdminClaimTypes {
     /// <summary>
     /// The claim type for the admin role (ReadOnly, Operator, Admin).
     /// </summary>

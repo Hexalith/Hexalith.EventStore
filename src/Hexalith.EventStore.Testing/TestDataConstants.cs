@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Testing;
 /// <summary>
 /// Shared constants for test data used across all test projects.
 /// </summary>
-public static class TestDataConstants
-{
+public static class TestDataConstants {
     /// <summary>Default test tenant identifier.</summary>
     public const string TenantId = "test-tenant";
 

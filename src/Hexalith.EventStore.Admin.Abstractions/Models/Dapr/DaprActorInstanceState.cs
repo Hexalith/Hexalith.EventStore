@@ -13,8 +13,7 @@ public record DaprActorInstanceState(
     string ActorId,
     IReadOnlyList<DaprActorStateEntry> StateEntries,
     long TotalSizeBytes,
-    DateTimeOffset InspectedAtUtc)
-{
+    DateTimeOffset InspectedAtUtc) {
     /// <summary>Gets the actor type name.</summary>
     public string ActorType { get; } = !string.IsNullOrWhiteSpace(ActorType)
         ? ActorType

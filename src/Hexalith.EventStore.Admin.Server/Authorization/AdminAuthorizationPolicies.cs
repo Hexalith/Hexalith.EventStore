@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Admin.Server.Authorization;
 /// <summary>
 /// Defines authorization policy names for admin API endpoints (NFR46).
 /// </summary>
-public static class AdminAuthorizationPolicies
-{
+public static class AdminAuthorizationPolicies {
     /// <summary>ReadOnly: stream browsing, state inspection, type catalog, health.</summary>
     public const string ReadOnly = "AdminReadOnly";
 

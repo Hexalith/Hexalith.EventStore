@@ -4,8 +4,8 @@ using System.Reflection;
 using System.Security.Claims;
 using System.Text.Json;
 
-using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
 

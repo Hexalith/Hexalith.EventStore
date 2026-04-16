@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Common;
 /// <summary>
 /// Authorization roles for admin operations (NFR46).
 /// </summary>
-public enum AdminRole
-{
+public enum AdminRole {
     /// <summary>Developer-level read-only access: stream browsing, state inspection, type catalog, health dashboard.</summary>
     ReadOnly,
 

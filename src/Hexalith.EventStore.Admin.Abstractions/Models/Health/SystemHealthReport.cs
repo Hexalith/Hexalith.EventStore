@@ -15,8 +15,7 @@ public record SystemHealthReport(
     double EventsPerSecond,
     double ErrorPercentage,
     IReadOnlyList<DaprComponentHealth> DaprComponents,
-    ObservabilityLinks ObservabilityLinks)
-{
+    ObservabilityLinks ObservabilityLinks) {
     /// <summary>Gets the current event throughput.</summary>
     public double EventsPerSecond { get; } = !double.IsNaN(EventsPerSecond) && !double.IsInfinity(EventsPerSecond)
         ? EventsPerSecond

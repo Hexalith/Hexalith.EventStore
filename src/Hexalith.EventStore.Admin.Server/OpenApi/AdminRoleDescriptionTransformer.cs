@@ -11,21 +11,18 @@ namespace Hexalith.EventStore.Admin.Server.OpenApi;
 /// to operation descriptions in the OpenAPI document.
 /// Scoped to api/v1/admin/ prefix to avoid affecting EventStore endpoints in co-hosted scenarios.
 /// </summary>
-public sealed class AdminRoleDescriptionTransformer : IOpenApiOperationTransformer
-{
+public sealed class AdminRoleDescriptionTransformer : IOpenApiOperationTransformer {
     /// <inheritdoc/>
     public Task TransformAsync(
         OpenApiOperation operation,
         OpenApiOperationTransformerContext context,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(operation);
         ArgumentNullException.ThrowIfNull(context);
 
         // Guard: only transform admin endpoints (safe for co-hosted scenarios)
         string? path = context.Description.RelativePath;
-        if (path is null || !path.StartsWith("api/v1/admin/", StringComparison.OrdinalIgnoreCase))
-        {
+        if (path is null || !path.StartsWith("api/v1/admin/", StringComparison.OrdinalIgnoreCase)) {
             return Task.CompletedTask;
         }
 
@@ -38,8 +35,7 @@ public sealed class AdminRoleDescriptionTransformer : IOpenApiOperationTransform
             .Select(a => a.Policy)
             .LastOrDefault(p => p is not null);
 
-        string roleText = policy switch
-        {
+        string roleText = policy switch {
             AdminAuthorizationPolicies.ReadOnly => "**Required role:** ReadOnly (or higher)\n\n",
             AdminAuthorizationPolicies.Operator => "**Required role:** Operator (or Admin)\n\n",
             AdminAuthorizationPolicies.Admin => "**Required role:** Admin only\n\n",

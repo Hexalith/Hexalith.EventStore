@@ -15,8 +15,7 @@ public record CausationChain(
     string CorrelationId,
     string? UserId,
     IReadOnlyList<CausationEvent> Events,
-    IReadOnlyList<string> AffectedProjections)
-{
+    IReadOnlyList<string> AffectedProjections) {
     /// <summary>Gets the type name of the command that started the chain.</summary>
     public string OriginatingCommandType { get; } = !string.IsNullOrWhiteSpace(OriginatingCommandType)
         ? OriginatingCommandType

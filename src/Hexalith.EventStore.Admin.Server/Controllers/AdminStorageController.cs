@@ -20,8 +20,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 public class AdminStorageController(
     IStorageQueryService storageQueryService,
     IStorageCommandService storageCommandService,
-    ILogger<AdminStorageController> logger) : ControllerBase
-{
+    ILogger<AdminStorageController> logger) : ControllerBase {
     /// <summary>
     /// Gets the storage overview, optionally filtered by tenant.
     /// </summary>
@@ -34,22 +33,18 @@ public class AdminStorageController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetStorageOverview(
         [FromQuery] string? tenantId,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             string? effectiveTenantId = ResolveTenantScope(tenantId);
             StorageOverview result = await storageQueryService
                 .GetStorageOverviewAsync(effectiveTenantId, ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetStorageOverview), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetStorageOverview), ex);
         }
     }
@@ -67,22 +62,18 @@ public class AdminStorageController(
     public async Task<IActionResult> GetHotStreams(
         [FromQuery] string? tenantId,
         [FromQuery] int count = 100,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             string? effectiveTenantId = ResolveTenantScope(tenantId);
             IReadOnlyList<StreamStorageInfo> result = await storageQueryService
                 .GetHotStreamsAsync(effectiveTenantId, count, ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetHotStreams), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetHotStreams), ex);
         }
     }
@@ -99,22 +90,18 @@ public class AdminStorageController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetSnapshotPolicies(
         [FromQuery] string? tenantId,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             string? effectiveTenantId = ResolveTenantScope(tenantId);
             IReadOnlyList<SnapshotPolicy> result = await storageQueryService
                 .GetSnapshotPoliciesAsync(effectiveTenantId, ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetSnapshotPolicies), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetSnapshotPolicies), ex);
         }
     }
@@ -131,22 +118,18 @@ public class AdminStorageController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetCompactionJobs(
         [FromQuery] string? tenantId = null,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             string? effectiveTenantId = ResolveTenantScope(tenantId);
             IReadOnlyList<CompactionJob> result = await storageQueryService
                 .GetCompactionJobsAsync(effectiveTenantId, ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetCompactionJobs), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetCompactionJobs), ex);
         }
     }
@@ -164,21 +147,17 @@ public class AdminStorageController(
     public async Task<IActionResult> TriggerCompaction(
         string tenantId,
         [FromQuery] string? domain,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             AdminOperationResult result = await storageCommandService
                 .TriggerCompactionAsync(tenantId, domain, ct)
                 .ConfigureAwait(false);
             return MapAsyncOperationResult(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(TriggerCompaction), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(TriggerCompaction), ex);
         }
     }
@@ -197,21 +176,17 @@ public class AdminStorageController(
         string tenantId,
         string domain,
         string aggregateId,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             AdminOperationResult result = await storageCommandService
                 .CreateSnapshotAsync(tenantId, domain, aggregateId, ct)
                 .ConfigureAwait(false);
             return MapOperationResult(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(CreateSnapshot), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(CreateSnapshot), ex);
         }
     }
@@ -231,21 +206,17 @@ public class AdminStorageController(
         string domain,
         string aggregateType,
         [FromQuery] int intervalEvents,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             AdminOperationResult result = await storageCommandService
                 .SetSnapshotPolicyAsync(tenantId, domain, aggregateType, intervalEvents, ct)
                 .ConfigureAwait(false);
             return MapOperationResult(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(SetSnapshotPolicy), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(SetSnapshotPolicy), ex);
         }
     }
@@ -265,54 +236,43 @@ public class AdminStorageController(
         string tenantId,
         string domain,
         string aggregateType,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             AdminOperationResult result = await storageCommandService
                 .DeleteSnapshotPolicyAsync(tenantId, domain, aggregateType, ct)
                 .ConfigureAwait(false);
             return MapOperationResult(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(DeleteSnapshotPolicy), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(DeleteSnapshotPolicy), ex);
         }
     }
 
-    private string? ResolveTenantScope(string? requestedTenantId)
-    {
-        if (requestedTenantId is not null)
-        {
+    private string? ResolveTenantScope(string? requestedTenantId) {
+        if (requestedTenantId is not null) {
             return requestedTenantId;
         }
 
-        if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin)))
-        {
+        if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin))) {
             return null;
         }
 
         return User.FindFirst(AdminClaimTypes.Tenant)?.Value;
     }
 
-    private IActionResult MapOperationResult(AdminOperationResult? result)
-    {
-        if (result is null)
-        {
+    private IActionResult MapOperationResult(AdminOperationResult? result) {
+        if (result is null) {
             return CreateProblemResult(StatusCodes.Status500InternalServerError, "Internal Server Error", "No result returned from the service.");
         }
 
-        if (result.Success)
-        {
+        if (result.Success) {
             return Ok(result);
         }
 
-        return result.ErrorCode switch
-        {
+        return result.ErrorCode switch {
             "NotFound" => CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", result.Message),
             "Unauthorized" => CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", result.Message),
             "InvalidOperation" => CreateProblemResult(StatusCodes.Status422UnprocessableEntity, "Invalid Operation", result.Message),
@@ -320,20 +280,16 @@ public class AdminStorageController(
         };
     }
 
-    private IActionResult MapAsyncOperationResult(AdminOperationResult? result)
-    {
-        if (result is null)
-        {
+    private IActionResult MapAsyncOperationResult(AdminOperationResult? result) {
+        if (result is null) {
             return CreateProblemResult(StatusCodes.Status500InternalServerError, "Internal Server Error", "No result returned from the service.");
         }
 
-        if (result.Success)
-        {
+        if (result.Success) {
             return Accepted(result);
         }
 
-        return result.ErrorCode switch
-        {
+        return result.ErrorCode switch {
             "NotFound" => CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", result.Message),
             "Unauthorized" => CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", result.Message),
             "InvalidOperation" => CreateProblemResult(StatusCodes.Status422UnprocessableEntity, "Invalid Operation", result.Message),
@@ -349,8 +305,7 @@ public class AdminStorageController(
                 Grpc.Core.StatusCode.Aborted or
                 Grpc.Core.StatusCode.ResourceExhausted);
 
-    private ObjectResult ServiceUnavailable(string method, Exception ex)
-    {
+    private ObjectResult ServiceUnavailable(string method, Exception ex) {
         logger.LogError(ex, "Admin service unavailable: {Method}", method);
         return CreateProblemResult(
             StatusCodes.Status503ServiceUnavailable,
@@ -358,8 +313,7 @@ public class AdminStorageController(
             "The admin backend service is temporarily unavailable. Retry shortly.");
     }
 
-    private ObjectResult UnexpectedError(string method, Exception ex)
-    {
+    private ObjectResult UnexpectedError(string method, Exception ex) {
         logger.LogError(ex, "Unexpected error in {Method}", method);
         return CreateProblemResult(
             StatusCodes.Status500InternalServerError,
@@ -367,18 +321,15 @@ public class AdminStorageController(
             "An unexpected error occurred.");
     }
 
-    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null)
-    {
+    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null) {
         string correlationId = HttpContext.Items["CorrelationId"]?.ToString()
             ?? Guid.NewGuid().ToString();
-        return new ObjectResult(new ProblemDetails
-        {
+        return new ObjectResult(new ProblemDetails {
             Status = statusCode,
             Title = title,
             Detail = detail,
             Instance = HttpContext.Request.Path,
             Extensions = { ["correlationId"] = correlationId },
-        })
-        { StatusCode = statusCode };
+        }) { StatusCode = statusCode };
     }
 }

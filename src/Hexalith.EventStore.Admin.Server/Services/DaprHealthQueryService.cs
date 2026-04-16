@@ -16,8 +16,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// DAPR-backed implementation of <see cref="IHealthQueryService"/>.
 /// Health checks work independently of EventStore — uses DAPR metadata and state store probes directly.
 /// </summary>
-public sealed class DaprHealthQueryService : IHealthQueryService
-{
+public sealed class DaprHealthQueryService : IHealthQueryService {
     private readonly IAdminAuthContext _authContext;
     private readonly DaprClient _daprClient;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -37,8 +36,7 @@ public sealed class DaprHealthQueryService : IHealthQueryService
         IHttpClientFactory httpClientFactory,
         IOptions<AdminServerOptions> options,
         IAdminAuthContext authContext,
-        ILogger<DaprHealthQueryService> logger)
-    {
+        ILogger<DaprHealthQueryService> logger) {
         ArgumentNullException.ThrowIfNull(daprClient);
         ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
@@ -52,19 +50,15 @@ public sealed class DaprHealthQueryService : IHealthQueryService
     }
 
     /// <inheritdoc/>
-    public async Task<SystemHealthReport> GetSystemHealthAsync(CancellationToken ct = default)
-    {
+    public async Task<SystemHealthReport> GetSystemHealthAsync(CancellationToken ct = default) {
         HealthStatus overallStatus = HealthStatus.Healthy;
         List<DaprComponentHealth> components = [];
 
         // 1. DAPR sidecar health via metadata
-        try
-        {
+        try {
             DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
-            if (metadata?.Components is not null)
-            {
-                foreach (DaprComponentsMetadata component in metadata.Components)
-                {
+            if (metadata?.Components is not null) {
+                foreach (DaprComponentsMetadata component in metadata.Components) {
                     components.Add(new DaprComponentHealth(
                         component.Name,
                         component.Type,
@@ -73,70 +67,58 @@ public sealed class DaprHealthQueryService : IHealthQueryService
                 }
             }
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "DAPR sidecar metadata unavailable.");
             overallStatus = HealthStatus.Unhealthy;
         }
 
         // 2. State store connectivity probe
-        try
-        {
+        try {
             _ = await _daprClient
                 .GetStateAsync<string>(_options.StateStoreName, "admin:health-check", cancellationToken: ct)
                 .ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "State store connectivity probe failed.");
             overallStatus = HealthStatus.Unhealthy;
         }
 
         // 3. EventStore reachability (short timeout - degraded, not unhealthy)
-        try
-        {
-            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        try {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(2));
 
             using HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
                 HttpMethod.Get, _options.EventStoreAppId, "health");
 
             string? token = _authContext.GetToken();
-            if (token is not null)
-            {
+            if (token is not null) {
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
 
             HttpClient httpClient = _httpClientFactory.CreateClient();
             using HttpResponseMessage httpResponse = await httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
-            httpResponse.EnsureSuccessStatusCode();
+            _ = httpResponse.EnsureSuccessStatusCode();
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-        {
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
             // EventStore timeout — degraded but not unhealthy
-            if (overallStatus == HealthStatus.Healthy)
-            {
+            if (overallStatus == HealthStatus.Healthy) {
                 overallStatus = HealthStatus.Degraded;
             }
 
             _logger.LogWarning("EventStore health check timed out — marking as Degraded.");
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
-            if (overallStatus == HealthStatus.Healthy)
-            {
+        catch (Exception ex) {
+            if (overallStatus == HealthStatus.Healthy) {
                 overallStatus = HealthStatus.Degraded;
             }
 
@@ -155,11 +137,9 @@ public sealed class DaprHealthQueryService : IHealthQueryService
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<DaprComponentHealth>> GetDaprComponentStatusAsync(CancellationToken ct = default)
-    {
+    public async Task<IReadOnlyList<DaprComponentHealth>> GetDaprComponentStatusAsync(CancellationToken ct = default) {
         DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
-        if (metadata?.Components is null)
-        {
+        if (metadata?.Components is null) {
             return [];
         }
 
@@ -177,14 +157,11 @@ public sealed class DaprHealthQueryService : IHealthQueryService
         DateTimeOffset from,
         DateTimeOffset to,
         string? componentName,
-        CancellationToken ct = default)
-    {
-        try
-        {
+        CancellationToken ct = default) {
+        try {
             // Calculate which day keys to query
             List<string> dayKeys = [];
-            for (DateTimeOffset date = from.UtcDateTime.Date; date.Date <= to.UtcDateTime.Date; date = date.AddDays(1))
-            {
+            for (DateTimeOffset date = from.UtcDateTime.Date; date.Date <= to.UtcDateTime.Date; date = date.AddDays(1)) {
                 dayKeys.Add($"admin:health-history:{date:yyyyMMdd}");
             }
 
@@ -197,7 +174,7 @@ public sealed class DaprHealthQueryService : IHealthQueryService
             DaprComponentHealthTimeline[] results = await Task.WhenAll(tasks).ConfigureAwait(false);
 
             // Merge and filter
-            List<DaprHealthHistoryEntry> allEntries = results
+            var allEntries = results
                 .Where(t => t?.Entries is not null)
                 .SelectMany(t => t!.Entries)
                 .Where(e => e.CapturedAtUtc >= from && e.CapturedAtUtc <= to)
@@ -208,8 +185,7 @@ public sealed class DaprHealthQueryService : IHealthQueryService
 
             // Apply entry cap to prevent excessive memory/payload on large queries
             bool isTruncated = allEntries.Count > _options.MaxHealthHistoryEntriesPerQuery;
-            if (isTruncated)
-            {
+            if (isTruncated) {
                 allEntries = allEntries
                     .OrderByDescending(e => e.CapturedAtUtc)
                     .Take(_options.MaxHealthHistoryEntriesPerQuery)
@@ -219,8 +195,7 @@ public sealed class DaprHealthQueryService : IHealthQueryService
 
             return new DaprComponentHealthTimeline(allEntries.AsReadOnly(), HasData: allEntries.Count > 0, IsTruncated: isTruncated);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
     }

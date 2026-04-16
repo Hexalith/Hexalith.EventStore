@@ -32,8 +32,7 @@ public record DaprSidecarInfo(
     int SubscriptionCount,
     int HttpEndpointCount,
     RemoteMetadataStatus RemoteMetadataStatus,
-    string? RemoteEndpoint)
-{
+    string? RemoteEndpoint) {
     /// <summary>Gets the DAPR app ID.</summary>
     public string AppId { get; } = !string.IsNullOrWhiteSpace(AppId)
         ? AppId

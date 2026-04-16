@@ -1,15 +1,16 @@
-namespace Hexalith.EventStore.Admin.Mcp.Tools;
 
 using System.ComponentModel;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
+
 using ModelContextProtocol.Server;
 
+namespace Hexalith.EventStore.Admin.Mcp.Tools;
 /// <summary>
 /// MCP tools for querying data integrity consistency checks.
 /// </summary>
 [McpServerToolType]
-internal static class ConsistencyTools
-{
+internal static class ConsistencyTools {
     /// <summary>
     /// List data integrity checks with status, scope, and anomaly counts.
     /// </summary>
@@ -19,18 +20,15 @@ internal static class ConsistencyTools
         AdminApiClient adminApiClient,
         InvestigationSession session,
         [Description("Filter by tenant ID (uses session context if omitted)")] string? tenantId = null,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         tenantId = NormalizeOptionalScope(tenantId);
         tenantId ??= session.GetSnapshot().TenantId;
 
-        try
-        {
-            var result = await adminApiClient.GetConsistencyChecksAsync(tenantId, cancellationToken).ConfigureAwait(false);
+        try {
+            IReadOnlyList<ConsistencyCheckSummary> result = await adminApiClient.GetConsistencyChecksAsync(tenantId, cancellationToken).ConfigureAwait(false);
             return ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }
@@ -44,23 +42,19 @@ internal static class ConsistencyTools
         AdminApiClient adminApiClient,
         InvestigationSession session,
         [Description("Consistency check ID")] string checkId,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired((checkId, "checkId"));
-        if (validation is not null)
-        {
+        if (validation is not null) {
             return validation;
         }
 
-        try
-        {
-            var result = await adminApiClient.GetConsistencyCheckResultAsync(checkId, cancellationToken).ConfigureAwait(false);
+        try {
+            ConsistencyCheckResult? result = await adminApiClient.GetConsistencyCheckResultAsync(checkId, cancellationToken).ConfigureAwait(false);
             return result is null
                 ? ToolHelper.SerializeError("not-found", $"No consistency check found with ID '{checkId}'")
                 : ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }

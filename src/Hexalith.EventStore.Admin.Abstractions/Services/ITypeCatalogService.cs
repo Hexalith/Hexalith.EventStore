@@ -6,8 +6,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// Type catalog is tenant-agnostic — event/command/aggregate types are registered globally
 /// via reflection-based assembly scanning, not per-tenant. No tenantId parameter required (FR74).
 /// </summary>
-public interface ITypeCatalogService
-{
+public interface ITypeCatalogService {
     /// <summary>
     /// Lists all registered event types, optionally filtered by domain.
     /// </summary>

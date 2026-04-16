@@ -7,7 +7,6 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Commands;
 
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Commands;
@@ -101,7 +100,7 @@ public sealed class DaprCommandActivityTracker(
                 filtered = filtered.Where(c => c.CommandType.Contains(normalizedCommandType, StringComparison.OrdinalIgnoreCase));
             }
 
-            List<CommandSummary> filteredList = filtered.ToList();
+            var filteredList = filtered.ToList();
             IReadOnlyList<CommandSummary> page = filteredList
                 .OrderByDescending(c => c.Timestamp)
                 .Take(count)

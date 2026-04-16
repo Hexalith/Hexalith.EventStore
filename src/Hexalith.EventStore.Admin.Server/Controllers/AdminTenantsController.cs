@@ -287,12 +287,12 @@ public class AdminTenantsController(
 
     private static bool IsServiceUnavailable(Exception ex)
         => ex is TimeoutException
-            || ex is HttpRequestException httpRequestException
+            || (ex is HttpRequestException httpRequestException
             && (httpRequestException.StatusCode is null
                 or HttpStatusCode.RequestTimeout
                 or HttpStatusCode.BadGateway
                 or HttpStatusCode.ServiceUnavailable
-                or HttpStatusCode.GatewayTimeout)
+                or HttpStatusCode.GatewayTimeout))
             || (ex is Grpc.Core.RpcException rpc && rpc.StatusCode is
                 Grpc.Core.StatusCode.Unavailable or
                 Grpc.Core.StatusCode.DeadlineExceeded or

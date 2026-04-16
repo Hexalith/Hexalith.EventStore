@@ -2,8 +2,6 @@ using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.UI.Components;
-using Hexalith.EventStore.Admin.UI.Services;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -12,26 +10,23 @@ using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 
-public class BlameViewerTests : AdminUITestContext
-{
+public class BlameViewerTests : AdminUITestContext {
     private readonly AdminStreamApiClient _mockApiClient;
 
-    public BlameViewerTests()
-    {
+    public BlameViewerTests() {
         _mockApiClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
-        Services.AddScoped<TopologyCacheService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped<TopologyCacheService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
     }
 
     [Fact]
-    public void BlameViewer_RendersFieldProvenanceTable()
-    {
+    public void BlameViewer_RendersFieldProvenanceTable() {
         List<FieldProvenance> fields =
         [
             new("Count", "5", "4", 10, DateTimeOffset.UtcNow, "CounterIncremented", "corr-1", "user-1"),
@@ -51,8 +46,7 @@ public class BlameViewerTests : AdminUITestContext
     }
 
     [Fact]
-    public void BlameViewer_ShowsEmptyState_WhenNoFields()
-    {
+    public void BlameViewer_ShowsEmptyState_WhenNoFields() {
         var blame = new AggregateBlameView("tenant-a", "Counter", "agg-1", 10, DateTimeOffset.UtcNow, [], false, false);
         SetupBlameMock(blame);
 
@@ -61,8 +55,7 @@ public class BlameViewerTests : AdminUITestContext
     }
 
     [Fact]
-    public void BlameViewer_ShowsTruncationWarning_WhenIsTruncated()
-    {
+    public void BlameViewer_ShowsTruncationWarning_WhenIsTruncated() {
         List<FieldProvenance> fields =
         [
             new("Count", "5", "4", 10, DateTimeOffset.UtcNow, "CounterIncremented", "corr-1", "user-1"),
@@ -75,16 +68,14 @@ public class BlameViewerTests : AdminUITestContext
     }
 
     [Fact]
-    public void BlameViewer_ShowsEmptyOrError_WhenApiReturnsNull()
-    {
+    public void BlameViewer_ShowsEmptyOrError_WhenApiReturnsNull() {
         _ = _mockApiClient.GetAggregateBlameAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<long?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<AggregateBlameView?>(null));
 
         IRenderedComponent<BlameViewer> cut = RenderBlameViewer();
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             string markup = cut.Markup;
             // Should show some state — error, empty, or no-data indicator
             (markup.Contains("No events") || markup.Contains("no fields") ||
@@ -94,8 +85,7 @@ public class BlameViewerTests : AdminUITestContext
     }
 
     [Fact]
-    public void BlameViewer_InvokesOnClose_WhenCloseClicked()
-    {
+    public void BlameViewer_InvokesOnClose_WhenCloseClicked() {
         List<FieldProvenance> fields =
         [
             new("Count", "5", "4", 10, DateTimeOffset.UtcNow, "CounterIncremented", "corr-1", "user-1"),
@@ -113,30 +103,23 @@ public class BlameViewerTests : AdminUITestContext
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Count"), TimeSpan.FromSeconds(5));
 
         // Find and click the close button
-        var closeButton = cut.FindAll("button").FirstOrDefault(b =>
+        AngleSharp.Dom.IElement? closeButton = cut.FindAll("button").FirstOrDefault(b =>
             b.InnerHtml.Contains("Close") || b.InnerHtml.Contains("close") ||
             b.GetAttribute("aria-label")?.Contains("close", StringComparison.OrdinalIgnoreCase) == true ||
             b.InnerHtml.Contains("\u00d7") || b.InnerHtml.Contains("Back"));
-        if (closeButton is not null)
-        {
+        if (closeButton is not null) {
             closeButton.Click();
             closeCalled.ShouldBeTrue();
         }
     }
 
-    private IRenderedComponent<BlameViewer> RenderBlameViewer(long? atSequence = null)
-    {
-        return Render<BlameViewer>(p => p
-            .Add(c => c.TenantId, "tenant-a")
-            .Add(c => c.Domain, "Counter")
-            .Add(c => c.AggregateId, "agg-1")
-            .Add(c => c.AtSequence, atSequence));
-    }
+    private IRenderedComponent<BlameViewer> RenderBlameViewer(long? atSequence = null) => Render<BlameViewer>(p => p
+                                                                                                   .Add(c => c.TenantId, "tenant-a")
+                                                                                                   .Add(c => c.Domain, "Counter")
+                                                                                                   .Add(c => c.AggregateId, "agg-1")
+                                                                                                   .Add(c => c.AtSequence, atSequence));
 
-    private void SetupBlameMock(AggregateBlameView blame)
-    {
-        _ = _mockApiClient.GetAggregateBlameAsync(
+    private void SetupBlameMock(AggregateBlameView blame) => _ = _mockApiClient.GetAggregateBlameAsync(
             "tenant-a", "Counter", "agg-1", Arg.Any<long?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<AggregateBlameView?>(blame));
-    }
 }

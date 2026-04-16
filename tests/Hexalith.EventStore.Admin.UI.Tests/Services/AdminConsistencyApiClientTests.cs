@@ -10,18 +10,15 @@ using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Services;
 
-public class AdminConsistencyApiClientTests
-{
-    private static AdminConsistencyApiClient CreateClient(HttpClient httpClient)
-    {
+public class AdminConsistencyApiClientTests {
+    private static AdminConsistencyApiClient CreateClient(HttpClient httpClient) {
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
-        factory.CreateClient("AdminApi").Returns(httpClient);
+        _ = factory.CreateClient("AdminApi").Returns(httpClient);
         return new AdminConsistencyApiClient(factory, NullLogger<AdminConsistencyApiClient>.Instance);
     }
 
     [Fact]
-    public async Task GetChecksAsync_ReturnsChecks_WhenApiResponds()
-    {
+    public async Task GetChecksAsync_ReturnsChecks_WhenApiResponds() {
         string json = """[{"checkId":"chk-1","status":2,"tenantId":"t1","domain":null,"checkTypes":[0],"startedAtUtc":"2026-01-01T00:00:00Z","completedAtUtc":"2026-01-01T01:00:00Z","timeoutUtc":"2026-01-01T02:00:00Z","streamsChecked":50,"anomaliesFound":0}]""";
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
 
@@ -37,13 +34,12 @@ public class AdminConsistencyApiClientTests
     }
 
     [Fact]
-    public async Task GetChecksAsync_ThrowsServiceUnavailable_WhenApiReturnsError()
-    {
+    public async Task GetChecksAsync_ThrowsServiceUnavailable_WhenApiReturnsError() {
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.InternalServerError, "{}");
 
         AdminConsistencyApiClient client = CreateClient(httpClient);
 
-        await Should.ThrowAsync<ServiceUnavailableException>(
+        _ = await Should.ThrowAsync<ServiceUnavailableException>(
             () => client.GetChecksAsync());
     }
 }

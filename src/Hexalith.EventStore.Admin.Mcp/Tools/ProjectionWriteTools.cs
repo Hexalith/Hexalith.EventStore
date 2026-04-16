@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Admin.Mcp.Tools;
 
 using System.ComponentModel;
 
@@ -6,12 +5,12 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 
 using ModelContextProtocol.Server;
 
+namespace Hexalith.EventStore.Admin.Mcp.Tools;
 /// <summary>
 /// MCP tools for approval-gated projection write operations.
 /// </summary>
 [McpServerToolType]
-internal static class ProjectionWriteTools
-{
+internal static class ProjectionWriteTools {
     /// <summary>
     /// Pause a running projection to stop event processing.
     /// </summary>
@@ -22,17 +21,14 @@ internal static class ProjectionWriteTools
         [Description("Tenant ID")] string tenantId,
         [Description("Projection name")] string projectionName,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired(
             (tenantId, "tenantId"), (projectionName, "projectionName"));
-        if (validation is not null)
-        {
+        if (validation is not null) {
             return validation;
         }
 
-        if (!confirm)
-        {
+        if (!confirm) {
             return ToolHelper.SerializePreview(
                 "projection-pause",
                 $"Pause projection '{projectionName}' for tenant '{tenantId}'",
@@ -41,8 +37,7 @@ internal static class ProjectionWriteTools
                 "This will stop the projection from processing new events until resumed.");
         }
 
-        try
-        {
+        try {
             AdminOperationResult? result = await adminApiClient
                 .PauseProjectionAsync(tenantId, projectionName, cancellationToken)
                 .ConfigureAwait(false);
@@ -50,8 +45,7 @@ internal static class ProjectionWriteTools
                 ? ToolHelper.SerializeError("server-error", "No result returned from the server.")
                 : ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }
@@ -66,17 +60,14 @@ internal static class ProjectionWriteTools
         [Description("Tenant ID")] string tenantId,
         [Description("Projection name")] string projectionName,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired(
             (tenantId, "tenantId"), (projectionName, "projectionName"));
-        if (validation is not null)
-        {
+        if (validation is not null) {
             return validation;
         }
 
-        if (!confirm)
-        {
+        if (!confirm) {
             return ToolHelper.SerializePreview(
                 "projection-resume",
                 $"Resume projection '{projectionName}' for tenant '{tenantId}'",
@@ -85,8 +76,7 @@ internal static class ProjectionWriteTools
                 "This will resume event processing for the projection.");
         }
 
-        try
-        {
+        try {
             AdminOperationResult? result = await adminApiClient
                 .ResumeProjectionAsync(tenantId, projectionName, cancellationToken)
                 .ConfigureAwait(false);
@@ -94,8 +84,7 @@ internal static class ProjectionWriteTools
                 ? ToolHelper.SerializeError("server-error", "No result returned from the server.")
                 : ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }
@@ -111,17 +100,14 @@ internal static class ProjectionWriteTools
         [Description("Projection name")] string projectionName,
         [Description("Event position to reset from (null = beginning)")] long? fromPosition = null,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired(
             (tenantId, "tenantId"), (projectionName, "projectionName"));
-        if (validation is not null)
-        {
+        if (validation is not null) {
             return validation;
         }
 
-        if (!confirm)
-        {
+        if (!confirm) {
             return ToolHelper.SerializePreview(
                 "projection-reset",
                 $"Reset projection '{projectionName}' for tenant '{tenantId}' from position {fromPosition?.ToString() ?? "beginning"}",
@@ -130,8 +116,7 @@ internal static class ProjectionWriteTools
                 "This will clear projection state and rebuild from the specified position. This is a destructive operation.");
         }
 
-        try
-        {
+        try {
             AdminOperationResult? result = await adminApiClient
                 .ResetProjectionAsync(tenantId, projectionName, fromPosition, cancellationToken)
                 .ConfigureAwait(false);
@@ -139,8 +124,7 @@ internal static class ProjectionWriteTools
                 ? ToolHelper.SerializeError("server-error", "No result returned from the server.")
                 : ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }
@@ -157,22 +141,18 @@ internal static class ProjectionWriteTools
         [Description("Start event position")] long fromPosition,
         [Description("End event position")] long toPosition,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired(
             (tenantId, "tenantId"), (projectionName, "projectionName"));
-        if (validation is not null)
-        {
+        if (validation is not null) {
             return validation;
         }
 
-        if (fromPosition > toPosition)
-        {
+        if (fromPosition > toPosition) {
             return ToolHelper.SerializeError("invalid-input", "fromPosition must be less than or equal to toPosition.");
         }
 
-        if (!confirm)
-        {
+        if (!confirm) {
             return ToolHelper.SerializePreview(
                 "projection-replay",
                 $"Replay projection '{projectionName}' for tenant '{tenantId}' from position {fromPosition} to {toPosition}",
@@ -181,8 +161,7 @@ internal static class ProjectionWriteTools
                 "This will replay events between the specified positions. The projection will reprocess these events.");
         }
 
-        try
-        {
+        try {
             AdminOperationResult? result = await adminApiClient
                 .ReplayProjectionAsync(tenantId, projectionName, fromPosition, toPosition, cancellationToken)
                 .ConfigureAwait(false);
@@ -190,8 +169,7 @@ internal static class ProjectionWriteTools
                 ? ToolHelper.SerializeError("server-error", "No result returned from the server.")
                 : ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }

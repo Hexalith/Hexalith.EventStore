@@ -46,7 +46,7 @@ public class DaprCommandActivityTrackerTests {
             "tenant-a", "Counter", "agg-1", "corr-1", "CreateCounter",
             CommandStatus.Received, DateTimeOffset.UtcNow, null, null);
 
-        await _daprClient.Received(1).TrySaveStateAsync(
+        _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
             Arg.Is<List<CommandSummary>>(items => items.Count == 1 && items[0].TenantId == "tenant-a"),
@@ -66,8 +66,8 @@ public class DaprCommandActivityTrackerTests {
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(
-                ((List<CommandSummary>, string))([], "etag-1"),
-                ((List<CommandSummary>, string))([], "etag-2"));
+                ([], "etag-1"),
+                ([], "etag-2"));
 
         _ = _daprClient.TrySaveStateAsync(
             "statestore",
@@ -83,7 +83,7 @@ public class DaprCommandActivityTrackerTests {
             "tenant-a", "Counter", "agg-1", "corr-1", "CreateCounter",
             CommandStatus.Received, DateTimeOffset.UtcNow, null, null);
 
-        await _daprClient.Received(2).TrySaveStateAsync(
+        _ = await _daprClient.Received(2).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
             Arg.Any<List<CommandSummary>>(),
@@ -104,7 +104,7 @@ public class DaprCommandActivityTrackerTests {
             "tenant-a", "Counter", "agg-1", "corr-1", "CreateCounter",
             CommandStatus.Received, DateTimeOffset.UtcNow, null, null);
 
-        await _daprClient.Received(1).TrySaveStateAsync(
+        _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
             Arg.Is<List<CommandSummary>>(items => items.Count == 2 && items.Any(x => x.TenantId == "tenant-a") && items.Any(x => x.TenantId == "tenant-b")),
@@ -342,28 +342,23 @@ public class DaprCommandActivityTrackerTests {
         deserialized.EventCount.ShouldBeNull();
     }
 
-    private void SetupGetState<T>(string key, T value) {
-        _ = _daprClient.GetStateAsync<T>(
+    private void SetupGetState<T>(string key, T value) => _ = _daprClient.GetStateAsync<T>(
             "statestore",
             key,
             consistencyMode: Arg.Any<ConsistencyMode?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(value);
-    }
 
-    private void SetupGetStateAndEtag(string key, List<CommandSummary>? value, string etag) {
-        _ = _daprClient.GetStateAndETagAsync<List<CommandSummary>>(
+    private void SetupGetStateAndEtag(string key, List<CommandSummary>? value, string etag) => _ = _daprClient.GetStateAndETagAsync<List<CommandSummary>>(
             "statestore",
             key,
             consistencyMode: Arg.Any<ConsistencyMode?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(((List<CommandSummary>, string))(value!, etag));
-    }
 
-    private void SetupTrySave(string key, bool result) {
-        _ = _daprClient.TrySaveStateAsync(
+    private void SetupTrySave(string key, bool result) => _ = _daprClient.TrySaveStateAsync(
             "statestore",
             key,
             Arg.Any<List<CommandSummary>>(),
@@ -372,5 +367,4 @@ public class DaprCommandActivityTrackerTests {
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(result);
-    }
 }

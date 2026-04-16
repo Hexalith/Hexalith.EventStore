@@ -40,9 +40,7 @@ builder.Services.AddSingleton(sp => new EventStoreSignalRClientOptions {
 
                 return handler;
             };
-            connectionOptions.WebSocketConfiguration = ws => {
-                ws.RemoteCertificateValidationCallback = (_, _, _, _) => true;
-            };
+            connectionOptions.WebSocketConfiguration = ws => ws.RemoteCertificateValidationCallback = (_, _, _, _) => true;
         }
     },
 });

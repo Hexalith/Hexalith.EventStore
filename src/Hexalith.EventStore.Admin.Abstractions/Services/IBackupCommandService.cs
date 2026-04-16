@@ -6,8 +6,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// <summary>
 /// Service interface for admin-level backup and restore operations.
 /// </summary>
-public interface IBackupCommandService
-{
+public interface IBackupCommandService {
     /// <summary>
     /// Triggers a full tenant backup.
     /// </summary>

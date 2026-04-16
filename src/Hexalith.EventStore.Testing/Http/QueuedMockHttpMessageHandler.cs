@@ -1,16 +1,15 @@
-namespace Hexalith.EventStore.Testing.Http;
 
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
 
+namespace Hexalith.EventStore.Testing.Http;
 /// <summary>
 /// A mock HTTP message handler that returns queued responses in order.
 /// Supports fluent builder pattern for enqueueing responses.
 /// When the queue is exhausted, the last factory is replayed indefinitely.
 /// </summary>
-public sealed class QueuedMockHttpMessageHandler : HttpMessageHandler
-{
+public sealed class QueuedMockHttpMessageHandler : HttpMessageHandler {
     private readonly ConcurrentQueue<Func<HttpRequestMessage, HttpResponseMessage>> _responseQueue = new();
     private Func<HttpRequestMessage, HttpResponseMessage>? _lastFactory;
 
@@ -23,10 +22,8 @@ public sealed class QueuedMockHttpMessageHandler : HttpMessageHandler
     /// <param name="statusCode">The HTTP status code.</param>
     /// <param name="json">The JSON response body.</param>
     /// <returns>This handler for fluent chaining.</returns>
-    public QueuedMockHttpMessageHandler EnqueueJson(HttpStatusCode statusCode, string json)
-    {
-        _responseQueue.Enqueue(_ => new HttpResponseMessage(statusCode)
-        {
+    public QueuedMockHttpMessageHandler EnqueueJson(HttpStatusCode statusCode, string json) {
+        _responseQueue.Enqueue(_ => new HttpResponseMessage(statusCode) {
             Content = new StringContent(json, Encoding.UTF8, "application/json"),
         });
         return this;
@@ -37,8 +34,7 @@ public sealed class QueuedMockHttpMessageHandler : HttpMessageHandler
     /// </summary>
     /// <param name="statusCode">The HTTP status code.</param>
     /// <returns>This handler for fluent chaining.</returns>
-    public QueuedMockHttpMessageHandler EnqueueStatus(HttpStatusCode statusCode)
-    {
+    public QueuedMockHttpMessageHandler EnqueueStatus(HttpStatusCode statusCode) {
         _responseQueue.Enqueue(_ => new HttpResponseMessage(statusCode));
         return this;
     }
@@ -48,8 +44,7 @@ public sealed class QueuedMockHttpMessageHandler : HttpMessageHandler
     /// </summary>
     /// <param name="response">The response to return.</param>
     /// <returns>This handler for fluent chaining.</returns>
-    public QueuedMockHttpMessageHandler EnqueueResponse(HttpResponseMessage response)
-    {
+    public QueuedMockHttpMessageHandler EnqueueResponse(HttpResponseMessage response) {
         _responseQueue.Enqueue(_ => response);
         return this;
     }
@@ -59,8 +54,7 @@ public sealed class QueuedMockHttpMessageHandler : HttpMessageHandler
     /// </summary>
     /// <param name="factory">A factory that returns an <see cref="HttpResponseMessage"/> or throws.</param>
     /// <returns>This handler for fluent chaining.</returns>
-    public QueuedMockHttpMessageHandler EnqueueFactory(Func<HttpResponseMessage> factory)
-    {
+    public QueuedMockHttpMessageHandler EnqueueFactory(Func<HttpResponseMessage> factory) {
         _responseQueue.Enqueue(_ => factory());
         return this;
     }
@@ -70,8 +64,7 @@ public sealed class QueuedMockHttpMessageHandler : HttpMessageHandler
     /// </summary>
     /// <param name="exception">The exception to throw.</param>
     /// <returns>This handler for fluent chaining.</returns>
-    public QueuedMockHttpMessageHandler EnqueueException(Exception exception)
-    {
+    public QueuedMockHttpMessageHandler EnqueueException(Exception exception) {
         _responseQueue.Enqueue(_ => throw exception);
         return this;
     }
@@ -85,17 +78,14 @@ public sealed class QueuedMockHttpMessageHandler : HttpMessageHandler
         => new(this) { BaseAddress = new Uri(baseAddress) };
 
     /// <inheritdoc/>
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
         CallCount++;
 
-        if (_responseQueue.TryDequeue(out Func<HttpRequestMessage, HttpResponseMessage>? factory))
-        {
+        if (_responseQueue.TryDequeue(out Func<HttpRequestMessage, HttpResponseMessage>? factory)) {
             _lastFactory = factory;
         }
-        else if (_lastFactory is null)
-        {
+        else if (_lastFactory is null) {
             throw new InvalidOperationException("No queued responses.");
         }
 

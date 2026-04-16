@@ -1,4 +1,3 @@
-
 namespace Hexalith.EventStore.Client.Configuration;
 
 /// <summary>
@@ -10,11 +9,6 @@ namespace Hexalith.EventStore.Client.Configuration;
 /// for compatibility with <c>IOptions&lt;T&gt;</c>, <c>IOptionsSnapshot&lt;T&gt;</c>, and <c>IOptionsMonitor&lt;T&gt;</c>.
 /// </remarks>
 public class EventStoreOptions {
-    /// <summary>
-    /// Gets or sets a value indicating whether registration diagnostics are enabled.
-    /// This minimal flag exists to validate global options configuration flow and can be expanded in later stories.
-    /// </summary>
-    public bool EnableRegistrationDiagnostics { get; set; }
 
     /// <summary>
     /// Gets or sets the global default suffix for DAPR state store names.
@@ -31,10 +25,16 @@ public class EventStoreOptions {
     public string? DefaultTopicSuffix { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether registration diagnostics are enabled.
+    /// This minimal flag exists to validate global options configuration flow and can be expanded in later stories.
+    /// </summary>
+    public bool EnableRegistrationDiagnostics { get; set; }
+
+    /// <summary>
     /// Gets the per-domain configuration callbacks registered via <see cref="ConfigureDomain"/>.
     /// This is internal storage used by the cascade resolver during <c>UseEventStore()</c>.
     /// </summary>
-    internal Dictionary<string, Action<EventStoreDomainOptions>> DomainConfigurations { get; } = new(StringComparer.OrdinalIgnoreCase);
+    internal Dictionary<string, Action<EventStoreDomainOptions>> DomainConfigurations { get; } = new Dictionary<string, Action<EventStoreDomainOptions>>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Registers an explicit per-domain configuration callback (Layer 5 — highest priority in the cascade).

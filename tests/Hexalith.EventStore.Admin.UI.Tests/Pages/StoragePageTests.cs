@@ -2,7 +2,6 @@ using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,23 +13,20 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the Storage page.
 /// </summary>
-public class StoragePageTests : AdminUITestContext
-{
+public class StoragePageTests : AdminUITestContext {
     private readonly AdminStorageApiClient _mockStorageApi;
 
-    public StoragePageTests()
-    {
+    public StoragePageTests() {
         _mockStorageApi = Substitute.For<AdminStorageApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStorageApiClient>.Instance);
-        Services.AddScoped(_ => _mockStorageApi);
+        _ = Services.AddScoped(_ => _mockStorageApi);
     }
 
     // ===== Merge-blocking tests (5.1-5.10) =====
 
     [Fact]
-    public void StoragePage_RendersStatCards_WithCorrectValues()
-    {
+    public void StoragePage_RendersStatCards_WithCorrectValues() {
         // Arrange
         SetupOverview(150000, 1073741824);
         SetupEmptyHotStreams();
@@ -49,8 +45,7 @@ public class StoragePageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StoragePage_ShowsSkeletonCards_DuringLoading()
-    {
+    public void StoragePage_ShowsSkeletonCards_DuringLoading() {
         // Arrange — never complete the task
         TaskCompletionSource<StorageOverview> tcs = new();
         _ = _mockStorageApi.GetStorageOverviewAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -66,8 +61,7 @@ public class StoragePageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StoragePage_TenantBreakdownGrid_RendersAllTenants()
-    {
+    public void StoragePage_TenantBreakdownGrid_RendersAllTenants() {
         // Arrange
         SetupOverview(200000, 2147483648, [
             new TenantStorageInfo("tenant-alpha", 100000, 1073741824, 500.0),
@@ -87,8 +81,7 @@ public class StoragePageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StoragePage_HotStreamsGrid_RendersStreams()
-    {
+    public void StoragePage_HotStreamsGrid_RendersStreams() {
         // Arrange
         SetupOverview(50000, null);
         SetupHotStreams([
@@ -109,8 +102,7 @@ public class StoragePageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StoragePage_ShowsIssueBanner_OnApiError()
-    {
+    public void StoragePage_ShowsIssueBanner_OnApiError() {
         // Arrange
         _ = _mockStorageApi.GetStorageOverviewAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<StorageOverview>(new Hexalith.EventStore.Admin.UI.Services.Exceptions.ServiceUnavailableException("test")));
@@ -126,8 +118,7 @@ public class StoragePageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StoragePage_ShowsNA_WhenTotalSizeBytesIsNull()
-    {
+    public void StoragePage_ShowsNA_WhenTotalSizeBytesIsNull() {
         // Arrange — all sizes null → should show "Total Streams" instead of "Total Storage"
         SetupOverview(50000, null, [
             new TenantStorageInfo("t1", 50000, null, 100.0),
@@ -143,8 +134,7 @@ public class StoragePageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StoragePage_UsesExactTotalStreamCount_WhenAvailable()
-    {
+    public void StoragePage_UsesExactTotalStreamCount_WhenAvailable() {
         // Arrange
         SetupOverview(50000, null, [
             new TenantStorageInfo("t1", 50000, null, 100.0),
@@ -161,8 +151,7 @@ public class StoragePageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StoragePage_HasH1Heading()
-    {
+    public void StoragePage_HasH1Heading() {
         // Arrange
         SetupOverview(0, null);
         SetupEmptyHotStreams();
@@ -177,8 +166,7 @@ public class StoragePageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StoragePage_TreemapHasSvgWithRoleAndAriaLabel()
-    {
+    public void StoragePage_TreemapHasSvgWithRoleAndAriaLabel() {
         // Arrange
         SetupOverview(10000, null);
         SetupHotStreams([
@@ -196,8 +184,7 @@ public class StoragePageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StoragePage_EmptyState_WhenNoTenants()
-    {
+    public void StoragePage_EmptyState_WhenNoTenants() {
         // Arrange
         SetupOverview(0, null, []);
         SetupEmptyHotStreams();
@@ -211,8 +198,7 @@ public class StoragePageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StoragePage_SnapshotRiskBanner_ShowsCount()
-    {
+    public void StoragePage_SnapshotRiskBanner_ShowsCount() {
         // Arrange
         SetupOverview(50000, null);
         SetupHotStreams([
@@ -233,8 +219,7 @@ public class StoragePageTests : AdminUITestContext
     // ===== Recommended tests (5.11-5.22) =====
 
     [Fact]
-    public void StoragePage_HotStreamsWarningIcon_ForStreamsWithoutSnapshots()
-    {
+    public void StoragePage_HotStreamsWarningIcon_ForStreamsWithoutSnapshots() {
         // Arrange
         SetupOverview(10000, null);
         SetupHotStreams([
@@ -250,8 +235,7 @@ public class StoragePageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StoragePage_GrowthBadgeColors_CorrectSeverity()
-    {
+    public void StoragePage_GrowthBadgeColors_CorrectSeverity() {
         // Arrange
         SetupOverview(100000, null, [
             new TenantStorageInfo("low-growth", 30000, null, 500.0),
@@ -271,8 +255,7 @@ public class StoragePageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StoragePage_FormatBytes_CorrectOutputs()
-    {
+    public void StoragePage_FormatBytes_CorrectOutputs() {
         // Arrange — verify via stat card rendering
         SetupOverview(1000, 1024, [
             new TenantStorageInfo("t1", 1000, 1024, null),
@@ -289,8 +272,7 @@ public class StoragePageTests : AdminUITestContext
     }
 
     [Fact]
-    public void StoragePage_HiddenScreenReaderTable_RenderedWithTreemap()
-    {
+    public void StoragePage_HiddenScreenReaderTable_RenderedWithTreemap() {
         // Arrange
         SetupOverview(10000, null);
         SetupHotStreams([
@@ -308,22 +290,15 @@ public class StoragePageTests : AdminUITestContext
 
     // ===== Helpers =====
 
-    private void SetupOverview(long totalEvents, long? totalSize, IReadOnlyList<TenantStorageInfo>? tenants = null, long? totalStreamCount = null)
-    {
+    private void SetupOverview(long totalEvents, long? totalSize, IReadOnlyList<TenantStorageInfo>? tenants = null, long? totalStreamCount = null) {
         StorageOverview overview = new(totalEvents, totalSize, tenants ?? [new TenantStorageInfo("default", totalEvents, totalSize, 100.0)], totalStreamCount);
         _ = _mockStorageApi.GetStorageOverviewAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(overview));
     }
 
-    private void SetupEmptyHotStreams()
-    {
-        _ = _mockStorageApi.GetHotStreamsAsync(Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+    private void SetupEmptyHotStreams() => _ = _mockStorageApi.GetHotStreamsAsync(Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<StreamStorageInfo>>([]));
-    }
 
-    private void SetupHotStreams(IReadOnlyList<StreamStorageInfo> streams)
-    {
-        _ = _mockStorageApi.GetHotStreamsAsync(Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+    private void SetupHotStreams(IReadOnlyList<StreamStorageInfo> streams) => _ = _mockStorageApi.GetHotStreamsAsync(Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(streams));
-    }
 }

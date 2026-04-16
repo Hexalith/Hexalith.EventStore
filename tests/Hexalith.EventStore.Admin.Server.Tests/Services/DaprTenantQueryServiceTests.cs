@@ -9,7 +9,6 @@ using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
 using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 using Hexalith.EventStore.Contracts.Queries;
-
 using Hexalith.Tenants.Contracts.Enums;
 
 using Microsoft.Extensions.Logging.Abstractions;
@@ -17,10 +16,9 @@ using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
-using ContractsTenantSummary = Hexalith.Tenants.Contracts.Queries.TenantSummary;
-using ContractsTenantDetail = Hexalith.Tenants.Contracts.Queries.TenantDetail;
 using ContractsTenantMember = Hexalith.Tenants.Contracts.Queries.TenantMember;
 using ContractsTenantMemberPage = Hexalith.Tenants.Contracts.Queries.PaginatedResult<Hexalith.Tenants.Contracts.Queries.TenantMember>;
+using ContractsTenantSummary = Hexalith.Tenants.Contracts.Queries.TenantSummary;
 using ContractsTenantSummaryPage = Hexalith.Tenants.Contracts.Queries.PaginatedResult<Hexalith.Tenants.Contracts.Queries.TenantSummary>;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
@@ -32,7 +30,7 @@ public class DaprTenantQueryServiceTests {
         DaprClient? daprClient = null,
         IAdminAuthContext? authContext = null) {
         daprClient ??= Substitute.For<DaprClient>();
-        daprClient.CreateInvokeMethodRequest(Arg.Any<HttpMethod>(), Arg.Any<string>(), Arg.Any<string>())
+        _ = daprClient.CreateInvokeMethodRequest(Arg.Any<HttpMethod>(), Arg.Any<string>(), Arg.Any<string>())
             .Returns(callInfo => new HttpRequestMessage(
                 callInfo.ArgAt<HttpMethod>(0),
                 callInfo.ArgAt<string>(2)));
@@ -45,7 +43,7 @@ public class DaprTenantQueryServiceTests {
         var handler = new TestHttpMessageHandler();
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost") };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+        _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
 
         var service = new DaprTenantQueryService(
             daprClient,
@@ -152,7 +150,7 @@ public class DaprTenantQueryServiceTests {
         (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupException(new InvalidOperationException("Tenants service down"));
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.ListTenantsAsync());
     }
 
@@ -161,7 +159,7 @@ public class DaprTenantQueryServiceTests {
         (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupException(new OperationCanceledException());
 
-        await Should.ThrowAsync<TimeoutException>(
+        _ = await Should.ThrowAsync<TimeoutException>(
             () => service.ListTenantsAsync());
     }
 
@@ -170,7 +168,7 @@ public class DaprTenantQueryServiceTests {
         (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupNullJsonResponse();
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.ListTenantsAsync());
     }
 
@@ -182,7 +180,7 @@ public class DaprTenantQueryServiceTests {
         (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupException(new OperationCanceledException());
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.ListTenantsAsync(cts.Token));
     }
 }

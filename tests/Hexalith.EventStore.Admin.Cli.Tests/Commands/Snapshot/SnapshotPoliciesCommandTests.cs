@@ -1,9 +1,7 @@
-using System.CommandLine;
 using System.Net;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
-using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Snapshot;
 using Hexalith.EventStore.Admin.Cli.Formatting;
@@ -11,13 +9,10 @@ using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Snapshot;
 
-public class SnapshotPoliciesCommandTests
-{
-    private static List<SnapshotPolicy> CreateTestResult(int count = 2)
-    {
+public class SnapshotPoliciesCommandTests {
+    private static List<SnapshotPolicy> CreateTestResult(int count = 2) {
         List<SnapshotPolicy> items = [];
-        for (int i = 0; i < count; i++)
-        {
+        for (int i = 0; i < count; i++) {
             items.Add(new SnapshotPolicy(
                 $"tenant-{i}",
                 $"domain-{i}",
@@ -34,11 +29,9 @@ public class SnapshotPoliciesCommandTests
 
     private static (AdminApiClient Client, MockHttpMessageHandler Handler) CreateMockClientWithHandler(
         object responseBody,
-        HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
+        HttpStatusCode statusCode = HttpStatusCode.OK) {
         string json = JsonSerializer.Serialize(responseBody, JsonDefaults.Options);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         });
         GlobalOptions options = CreateOptions();
@@ -46,8 +39,7 @@ public class SnapshotPoliciesCommandTests
     }
 
     [Fact]
-    public void SnapshotPoliciesCommand_ReturnsTable()
-    {
+    public void SnapshotPoliciesCommand_ReturnsTable() {
         // Arrange
         List<SnapshotPolicy> result = CreateTestResult();
         IOutputFormatter formatter = new TableOutputFormatter();
@@ -65,8 +57,7 @@ public class SnapshotPoliciesCommandTests
     }
 
     [Fact]
-    public async Task SnapshotPoliciesCommand_EmptyResult_PrintsNoPoliciesFound()
-    {
+    public async Task SnapshotPoliciesCommand_EmptyResult_PrintsNoPoliciesFound() {
         // Arrange
         List<SnapshotPolicy> result = [];
         (AdminApiClient client, _) = CreateMockClientWithHandler(result);
@@ -74,8 +65,7 @@ public class SnapshotPoliciesCommandTests
 
         // Act
         int exitCode;
-        using (client)
-        {
+        using (client) {
             exitCode = await SnapshotPoliciesCommand.ExecuteAsync(client, options, null, CancellationToken.None);
         }
 
@@ -84,8 +74,7 @@ public class SnapshotPoliciesCommandTests
     }
 
     [Fact]
-    public void SnapshotPoliciesCommand_JsonFormat_ReturnsValidJson()
-    {
+    public void SnapshotPoliciesCommand_JsonFormat_ReturnsValidJson() {
         // Arrange
         List<SnapshotPolicy> result = CreateTestResult();
         IOutputFormatter formatter = new JsonOutputFormatter();
@@ -95,26 +84,24 @@ public class SnapshotPoliciesCommandTests
 
         // Assert
         List<SnapshotPolicy>? deserialized = JsonSerializer.Deserialize<List<SnapshotPolicy>>(json, JsonDefaults.Options);
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.Count.ShouldBe(2);
     }
 
     [Fact]
-    public async Task SnapshotPoliciesCommand_TenantFilter_PassesQueryParam()
-    {
+    public async Task SnapshotPoliciesCommand_TenantFilter_PassesQueryParam() {
         // Arrange
         List<SnapshotPolicy> result = CreateTestResult();
         (AdminApiClient client, MockHttpMessageHandler handler) = CreateMockClientWithHandler(result);
         GlobalOptions options = CreateOptions("table");
 
         // Act
-        using (client)
-        {
+        using (client) {
             _ = await SnapshotPoliciesCommand.ExecuteAsync(client, options, "acme", CancellationToken.None);
         }
 
         // Assert
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         string requestUri = handler.LastRequest.RequestUri!.AbsoluteUri;
         requestUri.ShouldContain("tenantId=acme");
     }

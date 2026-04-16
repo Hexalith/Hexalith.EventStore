@@ -22,7 +22,7 @@ public class DaprTenantCommandServiceTests {
         DaprClient? daprClient = null,
         IAdminAuthContext? authContext = null) {
         daprClient ??= Substitute.For<DaprClient>();
-        daprClient.CreateInvokeMethodRequest(Arg.Any<HttpMethod>(), Arg.Any<string>(), Arg.Any<string>())
+        _ = daprClient.CreateInvokeMethodRequest(Arg.Any<HttpMethod>(), Arg.Any<string>(), Arg.Any<string>())
             .Returns(callInfo => new HttpRequestMessage(
                 callInfo.ArgAt<HttpMethod>(0),
                 callInfo.ArgAt<string>(2)));
@@ -35,7 +35,7 @@ public class DaprTenantCommandServiceTests {
         var handler = new TestHttpMessageHandler();
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost") };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+        _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
 
         var service = new DaprTenantCommandService(
             daprClient,
@@ -64,15 +64,15 @@ public class DaprTenantCommandServiceTests {
     [Fact]
     public async Task CreateTenantAsync_ForwardsJwtToken() {
         IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
-        authContext.GetToken().Returns("tenant-admin-token");
+        _ = authContext.GetToken().Returns("tenant-admin-token");
 
         (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService(authContext: authContext);
         handler.SetupEmptyResponse(HttpStatusCode.Accepted);
 
-        await service.CreateTenantAsync(
+        _ = await service.CreateTenantAsync(
             new CreateTenantRequest("acme-corp", "Acme Corp", null));
 
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         handler.LastRequest!.Headers.Authorization!.Parameter.ShouldBe("tenant-admin-token");
     }
 
@@ -85,7 +85,7 @@ public class DaprTenantCommandServiceTests {
             new CreateTenantRequest("acme-corp", "Acme Corp", null));
 
         result.Success.ShouldBeFalse();
-        result.ErrorCode.ShouldNotBeNull();
+        _ = result.ErrorCode.ShouldNotBeNull();
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public class DaprTenantCommandServiceTests {
         (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupException(new OperationCanceledException());
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.CreateTenantAsync(
                 new CreateTenantRequest("acme-corp", "Acme Corp", null), cts.Token));
     }
@@ -234,7 +234,7 @@ public class DaprTenantCommandServiceTests {
             new CreateTenantRequest("acme-corp", "Acme Corp", null));
 
         result.Success.ShouldBeFalse();
-        result.Message.ShouldNotBeNull();
+        _ = result.Message.ShouldNotBeNull();
         result.Message.ShouldContain("409");
         result.Message.ShouldNotContain("sensitive backend details");
     }

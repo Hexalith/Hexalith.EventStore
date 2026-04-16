@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.UI.Components;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 
-public class ThemeToggleTests : AdminUITestContext
-{
+public class ThemeToggleTests : AdminUITestContext {
     [Fact]
-    public void ThemeToggle_RendersWithoutError()
-    {
+    public void ThemeToggle_RendersWithoutError() {
         // ThemeToggle uses JS interop for localStorage (Loose mode in base context)
         IRenderedComponent<ThemeToggle> cut = Render<ThemeToggle>();
 
@@ -16,8 +14,7 @@ public class ThemeToggleTests : AdminUITestContext
     }
 
     [Fact]
-    public void ThemeToggle_RendersThemeIcon()
-    {
+    public void ThemeToggle_RendersThemeIcon() {
         IRenderedComponent<ThemeToggle> cut = Render<ThemeToggle>();
 
         // Should contain one of the theme icons (sun, moon, gear)

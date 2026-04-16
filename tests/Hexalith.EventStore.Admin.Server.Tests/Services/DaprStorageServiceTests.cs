@@ -46,7 +46,7 @@ public class DaprStorageServiceTests {
         var handler = new TestHttpMessageHandler();
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost") };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+        _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
 
         var service = new DaprStorageCommandService(
             daprClient,
@@ -63,7 +63,7 @@ public class DaprStorageServiceTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var overview = new StorageOverview(1000, 50000, [], 125);
 
-        daprClient.GetStateAsync<StorageOverview>(
+        _ = daprClient.GetStateAsync<StorageOverview>(
             StateStoreName,
             "admin:storage-overview:tenant1",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -79,18 +79,17 @@ public class DaprStorageServiceTests {
     }
 
     [Fact]
-    public async Task GetStorageOverviewAsync_UsesOptionalStreamCountIndex_WhenOverviewStreamCountMissing()
-    {
+    public async Task GetStorageOverviewAsync_UsesOptionalStreamCountIndex_WhenOverviewStreamCountMissing() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var overview = new StorageOverview(1000, 50000, []);
 
-        daprClient.GetStateAsync<StorageOverview>(
+        _ = daprClient.GetStateAsync<StorageOverview>(
             StateStoreName,
             "admin:storage-overview:tenant1",
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => overview);
 
-        daprClient.GetStateAsync<long?>(
+        _ = daprClient.GetStateAsync<long?>(
             StateStoreName,
             "admin:storage-stream-count:tenant1",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -104,18 +103,17 @@ public class DaprStorageServiceTests {
     }
 
     [Fact]
-    public async Task GetStorageOverviewAsync_IgnoresOptionalStreamCount_WhenInvalid()
-    {
+    public async Task GetStorageOverviewAsync_IgnoresOptionalStreamCount_WhenInvalid() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var overview = new StorageOverview(1000, 50000, []);
 
-        daprClient.GetStateAsync<StorageOverview>(
+        _ = daprClient.GetStateAsync<StorageOverview>(
             StateStoreName,
             "admin:storage-overview:tenant1",
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => overview);
 
-        daprClient.GetStateAsync<long?>(
+        _ = daprClient.GetStateAsync<long?>(
             StateStoreName,
             "admin:storage-stream-count:tenant1",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -129,18 +127,17 @@ public class DaprStorageServiceTests {
     }
 
     [Fact]
-    public async Task GetStorageOverviewAsync_IgnoresOptionalStreamCount_WhenLookupFails()
-    {
+    public async Task GetStorageOverviewAsync_IgnoresOptionalStreamCount_WhenLookupFails() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var overview = new StorageOverview(1000, 50000, []);
 
-        daprClient.GetStateAsync<StorageOverview>(
+        _ = daprClient.GetStateAsync<StorageOverview>(
             StateStoreName,
             "admin:storage-overview:tenant1",
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => overview);
 
-        daprClient.GetStateAsync<long?>(
+        _ = daprClient.GetStateAsync<long?>(
             StateStoreName,
             "admin:storage-stream-count:tenant1",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -158,7 +155,7 @@ public class DaprStorageServiceTests {
     [Fact]
     public async Task GetStorageOverviewAsync_ReturnsEmpty_WhenIndexNotFound() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<StorageOverview>(
+        _ = daprClient.GetStateAsync<StorageOverview>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -184,7 +181,7 @@ public class DaprStorageServiceTests {
             new("t1", "d1", "a3", "OrderAggregate", 200, null, false, null),
         };
 
-        daprClient.GetStateAsync<List<StreamStorageInfo>>(
+        _ = daprClient.GetStateAsync<List<StreamStorageInfo>>(
             StateStoreName,
             "admin:storage-hot-streams:t1",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -236,7 +233,7 @@ public class DaprStorageServiceTests {
     public async Task SetSnapshotPolicyAsync_DelegatesToEventStore() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
-        authContext.GetToken().Returns("storage-token");
+        _ = authContext.GetToken().Returns("storage-token");
 
         var expected = new AdminOperationResult(true, "op-1", null, null);
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService(daprClient, authContext);
@@ -245,34 +242,32 @@ public class DaprStorageServiceTests {
         AdminOperationResult result = await service.SetSnapshotPolicyAsync("tenant1", "orders", "OrderAggregate", 100);
 
         result.Success.ShouldBeTrue();
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         handler.LastRequest!.Method.ShouldBe(HttpMethod.Put);
-        handler.LastRequest.RequestUri.ShouldNotBeNull();
+        _ = handler.LastRequest.RequestUri.ShouldNotBeNull();
         handler.LastRequest.RequestUri!.ToString().ShouldContain("api/v1/admin/storage/snapshot-policy");
-        handler.LastRequest.Headers.Authorization.ShouldNotBeNull();
+        _ = handler.LastRequest.Headers.Authorization.ShouldNotBeNull();
         handler.LastRequest.Headers.Authorization!.Scheme.ShouldBe("Bearer");
         handler.LastRequest.Headers.Authorization.Parameter.ShouldBe("storage-token");
     }
 
     [Fact]
-    public async Task TriggerCompactionAsync_PropagatesCancellation()
-    {
+    public async Task TriggerCompactionAsync_PropagatesCancellation() {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
         handler.SetupException(new OperationCanceledException());
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.TriggerCompactionAsync("tenant1", null, cts.Token));
     }
 
     [Fact]
-    public async Task GetHotStreamsAsync_ThrowsOnZeroCount()
-    {
+    public async Task GetHotStreamsAsync_ThrowsOnZeroCount() {
         DaprStorageQueryService service = CreateQueryService();
 
-        await Should.ThrowAsync<ArgumentOutOfRangeException>(
+        _ = await Should.ThrowAsync<ArgumentOutOfRangeException>(
             () => service.GetHotStreamsAsync("tenant1", 0));
     }
 
@@ -295,7 +290,7 @@ public class DaprStorageServiceTests {
             new("tenant1", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow),
         };
 
-        daprClient.GetStateAsync<List<SnapshotPolicy>>(
+        _ = daprClient.GetStateAsync<List<SnapshotPolicy>>(
             StateStoreName,
             "admin:storage-snapshot-policies:tenant1",
             cancellationToken: Arg.Any<CancellationToken>())

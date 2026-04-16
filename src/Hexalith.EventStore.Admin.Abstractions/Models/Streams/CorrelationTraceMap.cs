@@ -40,8 +40,7 @@ public record CorrelationTraceMap(
     string? ExternalTraceUrl,
     long TotalStreamEvents,
     bool ScanCapped,
-    string? ScanCapMessage)
-{
+    string? ScanCapMessage) {
     /// <summary>Gets the correlation ID being traced.</summary>
     public string CorrelationId { get; } = CorrelationId ?? string.Empty;
 

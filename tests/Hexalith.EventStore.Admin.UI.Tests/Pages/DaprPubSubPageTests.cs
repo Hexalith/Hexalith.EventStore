@@ -3,7 +3,6 @@ using Bunit;
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,14 +14,12 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the DaprPubSub page.
 /// </summary>
-public class DaprPubSubPageTests : AdminUITestContext
-{
+public class DaprPubSubPageTests : AdminUITestContext {
     private readonly AdminPubSubApiClient _mockPubSubClient;
     private readonly AdminDeadLetterApiClient _mockDeadLetterClient;
     private readonly AdminStreamApiClient _mockStreamClient;
 
-    public DaprPubSubPageTests()
-    {
+    public DaprPubSubPageTests() {
         _mockPubSubClient = Substitute.For<AdminPubSubApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminPubSubApiClient>.Instance);
@@ -32,14 +29,13 @@ public class DaprPubSubPageTests : AdminUITestContext
         _mockStreamClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance);
-        Services.AddScoped(_ => _mockPubSubClient);
-        Services.AddScoped(_ => _mockDeadLetterClient);
-        Services.AddScoped(_ => _mockStreamClient);
+        _ = Services.AddScoped(_ => _mockPubSubClient);
+        _ = Services.AddScoped(_ => _mockDeadLetterClient);
+        _ = Services.AddScoped(_ => _mockStreamClient);
     }
 
     [Fact]
-    public void PubSubPage_RendersTitle()
-    {
+    public void PubSubPage_RendersTitle() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -52,8 +48,7 @@ public class DaprPubSubPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void PubSubPage_RendersBackLink()
-    {
+    public void PubSubPage_RendersBackLink() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -66,8 +61,7 @@ public class DaprPubSubPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void PubSubPage_RendersStatCards_WithOverviewData()
-    {
+    public void PubSubPage_RendersStatCards_WithOverviewData() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -84,8 +78,7 @@ public class DaprPubSubPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void PubSubPage_RendersEmptyState_WhenNoPubSubComponents()
-    {
+    public void PubSubPage_RendersEmptyState_WhenNoPubSubComponents() {
         // Arrange
         DaprPubSubOverview overview = new([], [], RemoteMetadataStatus.Available, "http://localhost:3501");
         _ = _mockPubSubClient.GetPubSubOverviewAsync(Arg.Any<CancellationToken>())
@@ -102,8 +95,7 @@ public class DaprPubSubPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void PubSubPage_RendersIssueBanner_WhenRemoteMetadataUnavailable()
-    {
+    public void PubSubPage_RendersIssueBanner_WhenRemoteMetadataUnavailable() {
         // Arrange
         DaprPubSubOverview overview = new(
             [CreatePubSubComponent()],
@@ -124,8 +116,7 @@ public class DaprPubSubPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void PubSubPage_RendersSubscriptionGrid_WithData()
-    {
+    public void PubSubPage_RendersSubscriptionGrid_WithData() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -141,8 +132,7 @@ public class DaprPubSubPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void PubSubPage_RendersComponentCards()
-    {
+    public void PubSubPage_RendersComponentCards() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -157,8 +147,7 @@ public class DaprPubSubPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void PubSubPage_RendersIssueBanner_WhenApiUnavailable()
-    {
+    public void PubSubPage_RendersIssueBanner_WhenApiUnavailable() {
         // Arrange
         _ = _mockPubSubClient.GetPubSubOverviewAsync(Arg.Any<CancellationToken>())
             .Returns<DaprPubSubOverview?>(_ => throw new InvalidOperationException("API down"));
@@ -174,8 +163,7 @@ public class DaprPubSubPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void PubSubPage_RendersDeadLetterManagementCard()
-    {
+    public void PubSubPage_RendersDeadLetterManagementCard() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -189,8 +177,7 @@ public class DaprPubSubPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void PubSubPage_RendersRefreshButton()
-    {
+    public void PubSubPage_RendersRefreshButton() {
         // Arrange
         SetupSuccessfulResponse();
 
@@ -203,8 +190,7 @@ public class DaprPubSubPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void PubSubPage_RendersObservabilityLinks_WhenUrlsConfigured()
-    {
+    public void PubSubPage_RendersObservabilityLinks_WhenUrlsConfigured() {
         // Arrange
         SetupSuccessfulResponse();
         ObservabilityLinks links = new("https://traces.example.com", "https://metrics.example.com", "https://logs.example.com");
@@ -224,8 +210,7 @@ public class DaprPubSubPageTests : AdminUITestContext
 
     // ===== Helper methods =====
 
-    private void SetupSuccessfulResponse()
-    {
+    private void SetupSuccessfulResponse() {
         DaprPubSubOverview overview = new(
             [CreatePubSubComponent()],
             [new DaprSubscriptionInfo("pubsub-events", "*.*.events", "/events/handle", "DECLARATIVE", null)],

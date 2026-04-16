@@ -1,4 +1,3 @@
-namespace Hexalith.EventStore.Admin.Mcp.Tools;
 
 using System.ComponentModel;
 
@@ -6,12 +5,12 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 
 using ModelContextProtocol.Server;
 
+namespace Hexalith.EventStore.Admin.Mcp.Tools;
 /// <summary>
 /// MCP tools for approval-gated backup operations.
 /// </summary>
 [McpServerToolType]
-internal static class BackupWriteTools
-{
+internal static class BackupWriteTools {
     /// <summary>
     /// Trigger a full backup for a tenant.
     /// </summary>
@@ -23,16 +22,13 @@ internal static class BackupWriteTools
         [Description("Optional backup description")] string? description = null,
         [Description("Include snapshots in backup")] bool includeSnapshots = true,
         [Description("Set to true to execute; false returns a preview")] bool confirm = false,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired((tenantId, "tenantId"));
-        if (validation is not null)
-        {
+        if (validation is not null) {
             return validation;
         }
 
-        if (!confirm)
-        {
+        if (!confirm) {
             return ToolHelper.SerializePreview(
                 "backup-trigger",
                 $"Trigger full backup for tenant '{tenantId}'" + (!string.IsNullOrWhiteSpace(description) ? $" ({description})" : string.Empty),
@@ -42,8 +38,7 @@ internal static class BackupWriteTools
                 "This will initiate a full tenant backup. The operation runs asynchronously.");
         }
 
-        try
-        {
+        try {
             AdminOperationResult? result = await adminApiClient
                 .TriggerBackupAsync(tenantId, description, includeSnapshots, cancellationToken)
                 .ConfigureAwait(false);
@@ -51,8 +46,7 @@ internal static class BackupWriteTools
                 ? ToolHelper.SerializeError("server-error", "No result returned from the server.")
                 : ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }

@@ -1,12 +1,9 @@
 using Bunit;
 
-using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog;
 using Hexalith.EventStore.Admin.UI.Components;
-using Hexalith.EventStore.Admin.UI.Services;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -18,21 +15,19 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 /// <summary>
 /// bUnit tests for StreamTimelineGrid compare mode.
 /// </summary>
-public class StreamTimelineCompareTests : AdminUITestContext
-{
+public class StreamTimelineCompareTests : AdminUITestContext {
     private readonly AdminStreamApiClient _mockApiClient;
 
-    public StreamTimelineCompareTests()
-    {
+    public StreamTimelineCompareTests() {
         _mockApiClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
-        Services.AddScoped<TopologyCacheService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped<TopologyCacheService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
 
         _ = _mockApiClient.GetTenantsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<TenantSummary>>([]));
@@ -41,8 +36,7 @@ public class StreamTimelineCompareTests : AdminUITestContext
     }
 
     [Fact]
-    public void CompareMode_ShowsCheckboxes_WhenEnabled()
-    {
+    public void CompareMode_ShowsCheckboxes_WhenEnabled() {
         // Arrange
         List<TimelineEntry> entries = CreateEntries(3);
 
@@ -59,8 +53,7 @@ public class StreamTimelineCompareTests : AdminUITestContext
     }
 
     [Fact]
-    public void CompareMode_HidesCheckboxes_WhenDisabled()
-    {
+    public void CompareMode_HidesCheckboxes_WhenDisabled() {
         // Arrange
         List<TimelineEntry> entries = CreateEntries(3);
 
@@ -75,8 +68,7 @@ public class StreamTimelineCompareTests : AdminUITestContext
     }
 
     [Fact]
-    public void CompareMode_ViewDiffButton_NotShownWithLessThanTwoSelections()
-    {
+    public void CompareMode_ViewDiffButton_NotShownWithLessThanTwoSelections() {
         // Arrange
         List<TimelineEntry> entries = CreateEntries(3);
 
@@ -91,8 +83,7 @@ public class StreamTimelineCompareTests : AdminUITestContext
     }
 
     [Fact]
-    public void CompareMode_ShowsProgressiveBannerText()
-    {
+    public void CompareMode_ShowsProgressiveBannerText() {
         // Arrange
         List<TimelineEntry> entries = CreateEntries(3);
 
@@ -108,8 +99,7 @@ public class StreamTimelineCompareTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDetailPanel_ShowsInspectStateButton()
-    {
+    public void EventDetailPanel_ShowsInspectStateButton() {
         // Arrange
         EventDetail detail = new(
             "test-tenant", "counter", "agg-001", 42, "CounterIncremented",
@@ -133,8 +123,7 @@ public class StreamTimelineCompareTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDetailPanel_ShowsDiffWithPrevious_WhenSequenceGe1()
-    {
+    public void EventDetailPanel_ShowsDiffWithPrevious_WhenSequenceGe1() {
         // Arrange
         EventDetail detail = new(
             "test-tenant", "counter", "agg-001", 5, "CounterIncremented",
@@ -158,8 +147,7 @@ public class StreamTimelineCompareTests : AdminUITestContext
     }
 
     [Fact]
-    public void EventDetailPanel_HidesDiffWithPrevious_WhenSequenceIs0()
-    {
+    public void EventDetailPanel_HidesDiffWithPrevious_WhenSequenceIs0() {
         // Arrange
         EventDetail detail = new(
             "test-tenant", "counter", "agg-001", 0, "CounterCreated",
@@ -183,11 +171,9 @@ public class StreamTimelineCompareTests : AdminUITestContext
         cut.Markup.ShouldNotContain("Diff with Previous");
     }
 
-    private static List<TimelineEntry> CreateEntries(int count)
-    {
+    private static List<TimelineEntry> CreateEntries(int count) {
         List<TimelineEntry> entries = [];
-        for (int i = 1; i <= count; i++)
-        {
+        for (int i = 1; i <= count; i++) {
             entries.Add(new TimelineEntry(
                 i,
                 DateTimeOffset.UtcNow.AddMinutes(-i),

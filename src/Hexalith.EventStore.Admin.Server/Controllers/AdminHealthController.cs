@@ -20,8 +20,7 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 [Tags("Admin - Health")]
 public class AdminHealthController(
     IHealthQueryService healthQueryService,
-    ILogger<AdminHealthController> logger) : ControllerBase
-{
+    ILogger<AdminHealthController> logger) : ControllerBase {
     /// <summary>
     /// Gets the overall system health report.
     /// </summary>
@@ -30,21 +29,17 @@ public class AdminHealthController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetSystemHealth(CancellationToken ct = default)
-    {
-        try
-        {
+    public async Task<IActionResult> GetSystemHealth(CancellationToken ct = default) {
+        try {
             SystemHealthReport result = await healthQueryService
                 .GetSystemHealthAsync(ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetSystemHealth), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetSystemHealth), ex);
         }
     }
@@ -57,21 +52,17 @@ public class AdminHealthController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetDaprComponentStatus(CancellationToken ct = default)
-    {
-        try
-        {
+    public async Task<IActionResult> GetDaprComponentStatus(CancellationToken ct = default) {
+        try {
             IReadOnlyList<DaprComponentHealth> result = await healthQueryService
                 .GetDaprComponentStatusAsync(ct)
                 .ConfigureAwait(false);
             return Ok(result);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetDaprComponentStatus), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetDaprComponentStatus), ex);
         }
     }
@@ -89,44 +80,36 @@ public class AdminHealthController(
         [FromQuery] DateTimeOffset? from = null,
         [FromQuery] DateTimeOffset? to = null,
         [FromQuery] string? component = null,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         DateTimeOffset effectiveFrom = from ?? DateTimeOffset.UtcNow.AddHours(-24);
         DateTimeOffset effectiveTo = to ?? DateTimeOffset.UtcNow;
 
-        if (effectiveFrom > effectiveTo)
-        {
-            return BadRequest(new ProblemDetails
-            {
+        if (effectiveFrom > effectiveTo) {
+            return BadRequest(new ProblemDetails {
                 Title = "Invalid time range",
                 Detail = "'from' must be earlier than 'to'.",
                 Status = StatusCodes.Status400BadRequest,
             });
         }
 
-        if ((effectiveTo - effectiveFrom).TotalDays > 7)
-        {
-            return BadRequest(new ProblemDetails
-            {
+        if ((effectiveTo - effectiveFrom).TotalDays > 7) {
+            return BadRequest(new ProblemDetails {
                 Title = "Time range too large",
                 Detail = "Maximum queryable range is 7 days.",
                 Status = StatusCodes.Status400BadRequest,
             });
         }
 
-        try
-        {
+        try {
             DaprComponentHealthTimeline timeline = await healthQueryService
                 .GetComponentHealthHistoryAsync(effectiveFrom, effectiveTo, component, ct)
                 .ConfigureAwait(false);
             return Ok(timeline);
         }
-        catch (Exception ex) when (IsServiceUnavailable(ex))
-        {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetComponentHealthHistoryAsync), ex);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(GetComponentHealthHistoryAsync), ex);
         }
     }
@@ -139,8 +122,7 @@ public class AdminHealthController(
                 Grpc.Core.StatusCode.Aborted or
                 Grpc.Core.StatusCode.ResourceExhausted);
 
-    private ObjectResult ServiceUnavailable(string method, Exception ex)
-    {
+    private ObjectResult ServiceUnavailable(string method, Exception ex) {
         logger.LogError(ex, "Admin service unavailable: {Method}", method);
         return CreateProblemResult(
             StatusCodes.Status503ServiceUnavailable,
@@ -148,8 +130,7 @@ public class AdminHealthController(
             "The admin backend service is temporarily unavailable. Retry shortly.");
     }
 
-    private ObjectResult UnexpectedError(string method, Exception ex)
-    {
+    private ObjectResult UnexpectedError(string method, Exception ex) {
         logger.LogError(ex, "Unexpected error in {Method}", method);
         return CreateProblemResult(
             StatusCodes.Status500InternalServerError,
@@ -157,18 +138,15 @@ public class AdminHealthController(
             "An unexpected error occurred.");
     }
 
-    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null)
-    {
+    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null) {
         string correlationId = HttpContext.Items["CorrelationId"]?.ToString()
             ?? Guid.NewGuid().ToString();
-        return new ObjectResult(new ProblemDetails
-        {
+        return new ObjectResult(new ProblemDetails {
             Status = statusCode,
             Title = title,
             Detail = detail,
             Instance = HttpContext.Request.Path,
             Extensions = { ["correlationId"] = correlationId },
-        })
-        { StatusCode = statusCode };
+        }) { StatusCode = statusCode };
     }
 }

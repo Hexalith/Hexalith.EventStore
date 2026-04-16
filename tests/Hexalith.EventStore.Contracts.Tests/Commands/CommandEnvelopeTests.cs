@@ -84,7 +84,7 @@ public class CommandEnvelopeTests {
             UserId: "u1",
             Extensions: extensions);
 
-        envelope.Extensions.ShouldNotBeNull();
+        _ = envelope.Extensions.ShouldNotBeNull();
         envelope.Extensions["key"].ShouldBe("value");
     }
 

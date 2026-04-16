@@ -16,8 +16,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// DAPR-backed implementation of <see cref="IProjectionQueryService"/>.
 /// Projection registry reads use state store; detail reads delegate to EventStore.
 /// </summary>
-public sealed class DaprProjectionQueryService : IProjectionQueryService
-{
+public sealed class DaprProjectionQueryService : IProjectionQueryService {
     private readonly IAdminAuthContext _authContext;
     private readonly DaprClient _daprClient;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -37,8 +36,7 @@ public sealed class DaprProjectionQueryService : IProjectionQueryService
         IHttpClientFactory httpClientFactory,
         IOptions<AdminServerOptions> options,
         IAdminAuthContext authContext,
-        ILogger<DaprProjectionQueryService> logger)
-    {
+        ILogger<DaprProjectionQueryService> logger) {
         ArgumentNullException.ThrowIfNull(daprClient);
         ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
@@ -54,15 +52,13 @@ public sealed class DaprProjectionQueryService : IProjectionQueryService
     /// <inheritdoc/>
     public async Task<IReadOnlyList<ProjectionStatus>> ListProjectionsAsync(
         string? tenantId,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         string indexKey = $"admin:projections:{tenantId ?? "all"}";
         List<ProjectionStatus>? result = await _daprClient
             .GetStateAsync<List<ProjectionStatus>>(_options.StateStoreName, indexKey, cancellationToken: ct)
             .ConfigureAwait(false);
 
-        if (result is null)
-        {
+        if (result is null) {
             _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
             return [];
         }
@@ -74,10 +70,9 @@ public sealed class DaprProjectionQueryService : IProjectionQueryService
     public async Task<ProjectionDetail> GetProjectionDetailAsync(
         string tenantId,
         string projectionName,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         string endpoint = $"api/v1/admin/projections/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(projectionName)}";
-        using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
 
         using HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
@@ -85,14 +80,13 @@ public sealed class DaprProjectionQueryService : IProjectionQueryService
             ?? new HttpRequestMessage(HttpMethod.Get, endpoint);
 
         string? token = _authContext.GetToken();
-        if (token is not null)
-        {
+        if (token is not null) {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
         HttpClient httpClient = _httpClientFactory.CreateClient();
         using HttpResponseMessage httpResponse = await httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
-        httpResponse.EnsureSuccessStatusCode();
+        _ = httpResponse.EnsureSuccessStatusCode();
         ProjectionDetail? result = await httpResponse.Content.ReadFromJsonAsync<ProjectionDetail>(cts.Token).ConfigureAwait(false);
 
         return result ?? CreateEmptyProjectionDetail(tenantId, projectionName, "not-found");

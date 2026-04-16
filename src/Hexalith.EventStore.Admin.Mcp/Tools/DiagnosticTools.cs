@@ -1,15 +1,16 @@
-namespace Hexalith.EventStore.Admin.Mcp.Tools;
 
 using System.ComponentModel;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
+
 using ModelContextProtocol.Server;
 
+namespace Hexalith.EventStore.Admin.Mcp.Tools;
 /// <summary>
 /// MCP tools for stream-level diagnostics: state diff and causation chain tracing.
 /// </summary>
 [McpServerToolType]
-internal static class DiagnosticTools
-{
+internal static class DiagnosticTools {
     /// <summary>
     /// Diff aggregate state between two sequence positions, showing which fields changed and their before/after values.
     /// </summary>
@@ -22,23 +23,19 @@ internal static class DiagnosticTools
         [Description("Aggregate ID")] string aggregateId,
         [Description("Start sequence number")] long fromSequence,
         [Description("End sequence number")] long toSequence,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired((tenantId, "tenantId"), (domain, "domain"), (aggregateId, "aggregateId"));
-        if (validation is not null)
-        {
+        if (validation is not null) {
             return validation;
         }
 
-        try
-        {
-            var result = await adminApiClient.DiffAggregateStateAsync(tenantId, domain, aggregateId, fromSequence, toSequence, cancellationToken).ConfigureAwait(false);
+        try {
+            AggregateStateDiff? result = await adminApiClient.DiffAggregateStateAsync(tenantId, domain, aggregateId, fromSequence, toSequence, cancellationToken).ConfigureAwait(false);
             return result is null
                 ? ToolHelper.SerializeError("not-found", $"No diff found for {domain}/{aggregateId} between sequences {fromSequence} and {toSequence}")
                 : ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }
@@ -54,23 +51,19 @@ internal static class DiagnosticTools
         [Description("Domain name")] string domain,
         [Description("Aggregate ID")] string aggregateId,
         [Description("Event sequence number to trace from")] long sequenceNumber,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired((tenantId, "tenantId"), (domain, "domain"), (aggregateId, "aggregateId"));
-        if (validation is not null)
-        {
+        if (validation is not null) {
             return validation;
         }
 
-        try
-        {
-            var result = await adminApiClient.TraceCausationChainAsync(tenantId, domain, aggregateId, sequenceNumber, cancellationToken).ConfigureAwait(false);
+        try {
+            CausationChain? result = await adminApiClient.TraceCausationChainAsync(tenantId, domain, aggregateId, sequenceNumber, cancellationToken).ConfigureAwait(false);
             return result is null
                 ? ToolHelper.SerializeError("not-found", $"No causation chain found for {domain}/{aggregateId} at sequence {sequenceNumber}")
                 : ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }

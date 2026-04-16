@@ -15,24 +15,19 @@ namespace Hexalith.EventStore.Admin.Server.Tests.IntegrationTests;
 public class TestAuthHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger,
-    UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
-{
+    UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder) {
     public const string SchemeName = "Test";
     public const string ClaimsHeader = "X-Test-Claims";
 
-    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
-    {
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync() {
         if (!Request.Headers.TryGetValue(ClaimsHeader, out Microsoft.Extensions.Primitives.StringValues headerValue)
-            || string.IsNullOrEmpty(headerValue))
-        {
+            || string.IsNullOrEmpty(headerValue)) {
             return Task.FromResult(AuthenticateResult.Fail("No test claims header found."));
         }
 
-        try
-        {
+        try {
             ClaimDto[]? claimDtos = JsonSerializer.Deserialize<ClaimDto[]>(headerValue.ToString());
-            if (claimDtos is null || claimDtos.Length == 0)
-            {
+            if (claimDtos is null || claimDtos.Length == 0) {
                 return Task.FromResult(AuthenticateResult.Fail("Empty claims in header."));
             }
 
@@ -42,8 +37,7 @@ public class TestAuthHandler(
             var ticket = new AuthenticationTicket(principal, SchemeName);
             return Task.FromResult(AuthenticateResult.Success(ticket));
         }
-        catch (JsonException)
-        {
+        catch (JsonException) {
             return Task.FromResult(AuthenticateResult.Fail("Invalid claims JSON."));
         }
     }

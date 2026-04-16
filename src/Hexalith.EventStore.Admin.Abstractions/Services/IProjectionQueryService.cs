@@ -5,8 +5,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// <summary>
 /// Service interface for querying projection status and details (FR73).
 /// </summary>
-public interface IProjectionQueryService
-{
+public interface IProjectionQueryService {
     /// <summary>
     /// Lists all projections, optionally filtered by tenant.
     /// </summary>

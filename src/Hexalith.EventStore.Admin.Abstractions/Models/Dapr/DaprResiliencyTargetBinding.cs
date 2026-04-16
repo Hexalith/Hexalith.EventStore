@@ -15,8 +15,7 @@ public record DaprResiliencyTargetBinding(
     string? Direction,
     string? RetryPolicy,
     string? TimeoutPolicy,
-    string? CircuitBreakerPolicy)
-{
+    string? CircuitBreakerPolicy) {
     /// <summary>Gets the target name.</summary>
     public string TargetName { get; } = !string.IsNullOrWhiteSpace(TargetName)
         ? TargetName

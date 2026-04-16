@@ -4,19 +4,16 @@ namespace Hexalith.EventStore.Admin.Server.Tests.OpenApi;
 
 [Trait("Category", "Integration")]
 [Trait("Tier", "1")]
-public class AdminSwaggerUiTests : IClassFixture<AdminOpenApiWebApplicationFactory>
-{
+public class AdminSwaggerUiTests : IClassFixture<AdminOpenApiWebApplicationFactory> {
     private readonly AdminOpenApiWebApplicationFactory _factory;
 
-    public AdminSwaggerUiTests(AdminOpenApiWebApplicationFactory factory)
-    {
+    public AdminSwaggerUiTests(AdminOpenApiWebApplicationFactory factory) {
         ArgumentNullException.ThrowIfNull(factory);
         _factory = factory;
     }
 
     [Fact]
-    public async Task SwaggerUi_ReturnsHtml()
-    {
+    public async Task SwaggerUi_ReturnsHtml() {
         HttpClient client = _factory.CreateClient();
 
         HttpResponseMessage response = await client.GetAsync("/swagger/index.html");
@@ -28,8 +25,7 @@ public class AdminSwaggerUiTests : IClassFixture<AdminOpenApiWebApplicationFacto
     }
 
     [Fact]
-    public async Task SwaggerUi_InitializerJs_ReturnsJs()
-    {
+    public async Task SwaggerUi_InitializerJs_ReturnsJs() {
         HttpClient client = _factory.CreateClient();
 
         HttpResponseMessage response = await client.GetAsync("/swagger/swagger-initializer.js");

@@ -4,12 +4,10 @@ using Hexalith.EventStore.Admin.Cli.Commands.Backup;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Backup;
 
-public class BackupCommandTests
-{
+public class BackupCommandTests {
     [Fact]
-    public void Create_ReturnsCommandWithCorrectName()
-    {
-        GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
+    public void Create_ReturnsCommandWithCorrectName() {
+        var binding = GlobalOptionsBinding.Create();
 
         Command command = BackupCommand.Create(binding);
 
@@ -17,9 +15,8 @@ public class BackupCommandTests
     }
 
     [Fact]
-    public void Create_HasExpectedSubcommands()
-    {
-        GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
+    public void Create_HasExpectedSubcommands() {
+        var binding = GlobalOptionsBinding.Create();
 
         Command command = BackupCommand.Create(binding);
 
@@ -30,9 +27,8 @@ public class BackupCommandTests
     }
 
     [Fact]
-    public void Create_HasDescription()
-    {
-        GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
+    public void Create_HasDescription() {
+        var binding = GlobalOptionsBinding.Create();
 
         Command command = BackupCommand.Create(binding);
 

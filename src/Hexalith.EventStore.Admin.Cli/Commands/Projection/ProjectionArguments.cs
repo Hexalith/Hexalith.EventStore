@@ -5,8 +5,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Projection;
 /// <summary>
 /// Shared positional arguments for projection sub-subcommands.
 /// </summary>
-public static class ProjectionArguments
-{
+public static class ProjectionArguments {
     /// <summary>Creates the tenant positional argument.</summary>
     public static Argument<string> Tenant() => new("tenant") { Description = "Tenant identifier" };
 

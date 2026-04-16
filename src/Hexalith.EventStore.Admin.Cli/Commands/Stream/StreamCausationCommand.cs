@@ -9,8 +9,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Stream;
 /// <summary>
 /// The <c>eventstore-admin stream causation</c> subcommand — traces the causation chain for an event.
 /// </summary>
-public static class StreamCausationCommand
-{
+public static class StreamCausationCommand {
     internal static readonly List<ColumnDefinition> EventColumns =
     [
         new("Seq", "SequenceNumber", Align: Alignment.Right),
@@ -21,8 +20,7 @@ public static class StreamCausationCommand
     /// <summary>
     /// Creates the stream causation subcommand wired to the shared global options.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
+    public static Command Create(GlobalOptionsBinding binding) {
         Argument<string> tenantArg = StreamArguments.Tenant();
         Argument<string> domainArg = StreamArguments.Domain();
         Argument<string> aggregateIdArg = StreamArguments.AggregateId();
@@ -34,8 +32,7 @@ public static class StreamCausationCommand
         command.Arguments.Add(aggregateIdArg);
         command.Options.Add(atOption);
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
+        command.SetAction(async (parseResult, cancellationToken) => {
             GlobalOptions options = binding.Resolve(parseResult);
             string tenant = parseResult.GetValue(tenantArg)!;
             string domain = parseResult.GetValue(domainArg)!;
@@ -52,8 +49,7 @@ public static class StreamCausationCommand
         string domain,
         string aggregateId,
         long at,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         using AdminApiClient client = new(options);
         return await ExecuteAsync(client, options, tenant, domain, aggregateId, at, cancellationToken).ConfigureAwait(false);
     }
@@ -65,40 +61,33 @@ public static class StreamCausationCommand
         string domain,
         string aggregateId,
         long at,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         IOutputFormatter formatter = OutputFormatterFactory.Create(options.Format);
         OutputWriter writer = new(options.OutputFile);
-        try
-        {
+        try {
             string path = $"api/v1/admin/streams/{Uri.EscapeDataString(tenant)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/causation?sequenceNumber={at}";
             CausationChain? chain = await client
                 .TryGetAsync<CausationChain>(path, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (chain is null)
-            {
+            if (chain is null) {
                 Console.Error.WriteLine("Causation chain not found.");
                 return ExitCodes.Error;
             }
 
             string output;
-            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase))
-            {
+            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase)) {
                 output = formatter.Format(chain);
             }
-            else if (string.Equals(options.Format, "csv", StringComparison.OrdinalIgnoreCase))
-            {
+            else if (string.Equals(options.Format, "csv", StringComparison.OrdinalIgnoreCase)) {
                 output = formatter.FormatCollection(chain.Events.ToList(), EventColumns);
             }
-            else
-            {
+            else {
                 // Table format — dual-section (same pattern as HealthCommand)
-                var overview = new
-                {
-                    OriginatingCommandType = chain.OriginatingCommandType,
-                    OriginatingCommandId = chain.OriginatingCommandId,
-                    CorrelationId = chain.CorrelationId,
+                var overview = new {
+                    chain.OriginatingCommandType,
+                    chain.OriginatingCommandId,
+                    chain.CorrelationId,
                     UserId = chain.UserId ?? string.Empty,
                     EventCount = chain.Events.Count,
                     AffectedProjections = string.Join(", ", chain.AffectedProjections),
@@ -114,8 +103,7 @@ public static class StreamCausationCommand
             int writeResult = writer.Write(output);
             return writeResult != ExitCodes.Success ? writeResult : ExitCodes.Success;
         }
-        catch (AdminApiException ex)
-        {
+        catch (AdminApiException ex) {
             Console.Error.WriteLine(ex.Message);
             return ExitCodes.Error;
         }

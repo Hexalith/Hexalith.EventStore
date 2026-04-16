@@ -7,8 +7,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog;
 /// <param name="Domain">The domain that owns this event type.</param>
 /// <param name="IsRejection">Whether this is a rejection event.</param>
 /// <param name="SchemaVersion">The schema version of the event type.</param>
-public record EventTypeInfo(string TypeName, string Domain, bool IsRejection, int SchemaVersion)
-{
+public record EventTypeInfo(string TypeName, string Domain, bool IsRejection, int SchemaVersion) {
     /// <summary>Gets the fully qualified event type name.</summary>
     public string TypeName { get; } = !string.IsNullOrWhiteSpace(TypeName)
         ? TypeName

@@ -5,11 +5,9 @@ using Hexalith.EventStore.Admin.UI.Components;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 
-public class StreamFilterBarTests : AdminUITestContext
-{
+public class StreamFilterBarTests : AdminUITestContext {
     [Fact]
-    public void StreamFilterBar_RendersStatusButtons()
-    {
+    public void StreamFilterBar_RendersStatusButtons() {
         IRenderedComponent<StreamFilterBar> cut = Render<StreamFilterBar>(p => p
             .Add(c => c.SelectedStatus, "All"));
 
@@ -20,26 +18,23 @@ public class StreamFilterBarTests : AdminUITestContext
     }
 
     [Fact]
-    public void StreamFilterBar_InvokesStatusChanged()
-    {
+    public void StreamFilterBar_InvokesStatusChanged() {
         string? selectedStatus = null;
 
         IRenderedComponent<StreamFilterBar> cut = Render<StreamFilterBar>(p => p
             .Add(c => c.SelectedStatus, "All")
             .Add(c => c.SelectedStatusChanged, s => selectedStatus = s));
 
-        var activeButton = cut.FindAll("button")
+        AngleSharp.Dom.IElement? activeButton = cut.FindAll("button")
             .FirstOrDefault(b => b.InnerHtml.Contains("Active"));
-        if (activeButton is not null)
-        {
+        if (activeButton is not null) {
             activeButton.Click();
             selectedStatus.ShouldBe("Active");
         }
     }
 
     [Fact]
-    public void StreamFilterBar_RendersTenantDropdown_WhenMultipleTenants()
-    {
+    public void StreamFilterBar_RendersTenantDropdown_WhenMultipleTenants() {
         IReadOnlyList<TenantSummary> tenants =
         [
             new("tenant-a", "Acme Corp", TenantStatusType.Active),
@@ -55,8 +50,7 @@ public class StreamFilterBarTests : AdminUITestContext
     }
 
     [Fact]
-    public void StreamFilterBar_RendersDomainDropdown_WhenDomainsAvailable()
-    {
+    public void StreamFilterBar_RendersDomainDropdown_WhenDomainsAvailable() {
         IReadOnlyList<string> domains = ["Counter", "Orders", "Payments"];
 
         IRenderedComponent<StreamFilterBar> cut = Render<StreamFilterBar>(p => p

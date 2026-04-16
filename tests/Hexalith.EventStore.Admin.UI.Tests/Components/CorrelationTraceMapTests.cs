@@ -1,8 +1,6 @@
 using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
-using Hexalith.EventStore.Admin.UI.Services;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,27 +12,24 @@ using CorrelationTraceMapModel = Hexalith.EventStore.Admin.Abstractions.Models.S
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 
-public class CorrelationTraceMapTests : AdminUITestContext
-{
+public class CorrelationTraceMapTests : AdminUITestContext {
     private readonly AdminStreamApiClient _mockApiClient;
 
-    public CorrelationTraceMapTests()
-    {
+    public CorrelationTraceMapTests() {
         _mockApiClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
-        Services.AddScoped<TopologyCacheService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped<TopologyCacheService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
     }
 
     [Fact]
-    public void CorrelationTraceMap_RendersPipelineVisualization_WhenCompleted()
-    {
-        var traceMap = CreateCompletedTrace();
+    public void CorrelationTraceMap_RendersPipelineVisualization_WhenCompleted() {
+        CorrelationTraceMapModel traceMap = CreateCompletedTrace();
         SetupTraceMock(traceMap);
 
         IRenderedComponent<CorrelationTraceMapComponent> cut = RenderTraceMap();
@@ -46,8 +41,7 @@ public class CorrelationTraceMapTests : AdminUITestContext
     }
 
     [Fact]
-    public void CorrelationTraceMap_ShowsRejectedStatus()
-    {
+    public void CorrelationTraceMap_ShowsRejectedStatus() {
         var traceMap = new CorrelationTraceMapModel(
             "corr-456", "tenant-a", "Counter", "agg-1",
             "IncrementCounter", "Rejected", "user-1",
@@ -62,9 +56,8 @@ public class CorrelationTraceMapTests : AdminUITestContext
     }
 
     [Fact]
-    public void CorrelationTraceMap_ShowsProducedEvents()
-    {
-        var traceMap = CreateCompletedTrace();
+    public void CorrelationTraceMap_ShowsProducedEvents() {
+        CorrelationTraceMapModel traceMap = CreateCompletedTrace();
         SetupTraceMock(traceMap);
 
         IRenderedComponent<CorrelationTraceMapComponent> cut = RenderTraceMap();
@@ -74,9 +67,8 @@ public class CorrelationTraceMapTests : AdminUITestContext
     }
 
     [Fact]
-    public void CorrelationTraceMap_ShowsAffectedProjections()
-    {
-        var traceMap = CreateCompletedTrace();
+    public void CorrelationTraceMap_ShowsAffectedProjections() {
+        CorrelationTraceMapModel traceMap = CreateCompletedTrace();
         SetupTraceMock(traceMap);
 
         IRenderedComponent<CorrelationTraceMapComponent> cut = RenderTraceMap();
@@ -86,8 +78,7 @@ public class CorrelationTraceMapTests : AdminUITestContext
     }
 
     [Fact]
-    public void CorrelationTraceMap_ShowsScanCappedWarning()
-    {
+    public void CorrelationTraceMap_ShowsScanCappedWarning() {
         var traceMap = new CorrelationTraceMapModel(
             "corr-123", "tenant-a", "Counter", "agg-1",
             "IncrementCounter", "Completed", "user-1",
@@ -103,39 +94,29 @@ public class CorrelationTraceMapTests : AdminUITestContext
     }
 
     [Fact]
-    public void CorrelationTraceMap_ShowsError_WhenApiReturnsNull()
-    {
+    public void CorrelationTraceMap_ShowsError_WhenApiReturnsNull() {
         _ = _mockApiClient.GetCorrelationTraceMapAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<CorrelationTraceMapModel?>(null));
 
         IRenderedComponent<CorrelationTraceMapComponent> cut = RenderTraceMap();
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             string markup = cut.Markup;
             (markup.Contains("not found") || markup.Contains("No trace") || markup.Contains("error")).ShouldBeTrue();
         }, TimeSpan.FromSeconds(5));
     }
 
-    private IRenderedComponent<CorrelationTraceMapComponent> RenderTraceMap(string correlationId = "corr-123")
-    {
-        return Render<CorrelationTraceMapComponent>(p => p
-            .Add(c => c.TenantId, "tenant-a")
-            .Add(c => c.CorrelationId, correlationId));
-    }
+    private IRenderedComponent<CorrelationTraceMapComponent> RenderTraceMap(string correlationId = "corr-123") => Render<CorrelationTraceMapComponent>(p => p
+                                                                                                                           .Add(c => c.TenantId, "tenant-a")
+                                                                                                                           .Add(c => c.CorrelationId, correlationId));
 
-    private void SetupTraceMock(CorrelationTraceMapModel traceMap)
-    {
-        _ = _mockApiClient.GetCorrelationTraceMapAsync(
+    private void SetupTraceMock(CorrelationTraceMapModel traceMap) => _ = _mockApiClient.GetCorrelationTraceMapAsync(
             traceMap.TenantId, traceMap.CorrelationId,
             Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<CorrelationTraceMapModel?>(traceMap));
-    }
 
-    private static CorrelationTraceMapModel CreateCompletedTrace()
-    {
-        return new CorrelationTraceMapModel(
+    private static CorrelationTraceMapModel CreateCompletedTrace() => new(
             "corr-123", "tenant-a", "Counter", "agg-1",
             "IncrementCounter", "Completed", "user-1",
             DateTimeOffset.UtcNow.AddSeconds(-1), DateTimeOffset.UtcNow, 1000,
@@ -143,5 +124,4 @@ public class CorrelationTraceMapTests : AdminUITestContext
             [new TraceMapProjection("CounterSummary", "UpToDate", 5)],
             null, null, null,
             100, false, null);
-    }
 }

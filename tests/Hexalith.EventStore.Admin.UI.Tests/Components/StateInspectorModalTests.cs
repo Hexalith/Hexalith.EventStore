@@ -2,8 +2,6 @@ using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.UI.Components;
-using Hexalith.EventStore.Admin.UI.Services;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,26 +13,23 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 /// <summary>
 /// bUnit tests for the StateInspectorModal component.
 /// </summary>
-public class StateInspectorModalTests : AdminUITestContext
-{
+public class StateInspectorModalTests : AdminUITestContext {
     private readonly AdminStreamApiClient _mockApiClient;
 
-    public StateInspectorModalTests()
-    {
+    public StateInspectorModalTests() {
         _mockApiClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
-        Services.AddScoped<TopologyCacheService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped<TopologyCacheService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
     }
 
     [Fact]
-    public void StateInspectorModal_RendersWithPreFilledSequence()
-    {
+    public void StateInspectorModal_RendersWithPreFilledSequence() {
         // Arrange & Act
         IRenderedComponent<StateInspectorModal> cut = RenderInspector(42L);
 
@@ -45,8 +40,7 @@ public class StateInspectorModalTests : AdminUITestContext
     }
 
     [Fact]
-    public void StateInspectorModal_FetchesStateOnSubmit()
-    {
+    public void StateInspectorModal_FetchesStateOnSubmit() {
         // Arrange
         AggregateStateSnapshot snapshot = new(
             "test-tenant", "counter", "agg-001", 42,
@@ -66,8 +60,7 @@ public class StateInspectorModalTests : AdminUITestContext
     }
 
     [Fact]
-    public void StateInspectorModal_ShowsNoStateAvailable_OnNullResponse()
-    {
+    public void StateInspectorModal_ShowsNoStateAvailable_OnNullResponse() {
         // Arrange
         _ = _mockApiClient.GetAggregateStateAtPositionAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
@@ -84,8 +77,7 @@ public class StateInspectorModalTests : AdminUITestContext
     }
 
     [Fact]
-    public void StateInspectorModal_RendersToggleForTimestampMode()
-    {
+    public void StateInspectorModal_RendersToggleForTimestampMode() {
         // Arrange & Act
         IRenderedComponent<StateInspectorModal> cut = RenderInspector(1L);
 
@@ -97,8 +89,7 @@ public class StateInspectorModalTests : AdminUITestContext
     }
 
     [Fact]
-    public void StateInspectorModal_StaysOpenAfterSubmit()
-    {
+    public void StateInspectorModal_StaysOpenAfterSubmit() {
         // Arrange
         AggregateStateSnapshot snapshot = new(
             "test-tenant", "counter", "agg-001", 5,
@@ -114,19 +105,15 @@ public class StateInspectorModalTests : AdminUITestContext
         inspectBtn.Click();
 
         // Assert — modal stays open with result and title still visible
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             cut.Markup.ShouldContain("State at Sequence");
             cut.Markup.ShouldContain("State Inspector");
         }, TimeSpan.FromSeconds(5));
     }
 
-    private IRenderedComponent<StateInspectorModal> RenderInspector(long? seq)
-    {
-        return Render<StateInspectorModal>(p => p
-            .Add(c => c.TenantId, "test-tenant")
-            .Add(c => c.Domain, "counter")
-            .Add(c => c.AggregateId, "agg-001")
-            .Add(c => c.InitialSequenceNumber, seq));
-    }
+    private IRenderedComponent<StateInspectorModal> RenderInspector(long? seq) => Render<StateInspectorModal>(p => p
+                                                                                           .Add(c => c.TenantId, "test-tenant")
+                                                                                           .Add(c => c.Domain, "counter")
+                                                                                           .Add(c => c.AggregateId, "agg-001")
+                                                                                           .Add(c => c.InitialSequenceNumber, seq));
 }

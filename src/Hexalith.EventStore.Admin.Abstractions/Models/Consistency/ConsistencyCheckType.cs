@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
 /// <summary>
 /// Types of consistency checks that can be performed on the event store.
 /// </summary>
-public enum ConsistencyCheckType
-{
+public enum ConsistencyCheckType {
     /// <summary>Verifies events exist at sequential positions (1, 2, 3, ..., N) with no gaps.</summary>
     SequenceContinuity,
 

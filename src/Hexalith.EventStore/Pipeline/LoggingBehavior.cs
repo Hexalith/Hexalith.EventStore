@@ -2,9 +2,9 @@
 using System.Diagnostics;
 
 using Hexalith.EventStore.Middleware;
-using Hexalith.EventStore.Telemetry;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Telemetry;
+using Hexalith.EventStore.Telemetry;
 
 using MediatR;
 

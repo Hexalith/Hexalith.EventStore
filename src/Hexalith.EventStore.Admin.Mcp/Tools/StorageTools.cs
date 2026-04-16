@@ -1,15 +1,16 @@
-namespace Hexalith.EventStore.Admin.Mcp.Tools;
 
 using System.ComponentModel;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
+
 using ModelContextProtocol.Server;
 
+namespace Hexalith.EventStore.Admin.Mcp.Tools;
 /// <summary>
 /// MCP tools for storage usage and metrics.
 /// </summary>
 [McpServerToolType]
-internal static class StorageTools
-{
+internal static class StorageTools {
     /// <summary>
     /// Get storage usage overview including event counts, sizes, and per-tenant breakdown.
     /// </summary>
@@ -19,20 +20,17 @@ internal static class StorageTools
         AdminApiClient adminApiClient,
         InvestigationSession session,
         [Description("Filter by tenant ID (uses session context if omitted)")] string? tenantId = null,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         tenantId = NormalizeOptionalScope(tenantId);
         tenantId ??= session.GetSnapshot().TenantId;
 
-        try
-        {
-            var result = await adminApiClient.GetStorageOverviewAsync(tenantId, cancellationToken).ConfigureAwait(false);
+        try {
+            StorageOverview? result = await adminApiClient.GetStorageOverviewAsync(tenantId, cancellationToken).ConfigureAwait(false);
             return result is null
                 ? ToolHelper.SerializeError("not-found", "No storage overview data returned")
                 : ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }

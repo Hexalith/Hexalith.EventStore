@@ -9,8 +9,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 public record DaprComponentHealthTimeline(
     IReadOnlyList<DaprHealthHistoryEntry> Entries,
     bool HasData,
-    bool IsTruncated = false)
-{
+    bool IsTruncated = false) {
     /// <summary>
     /// Gets an empty timeline indicating no data is available.
     /// </summary>

@@ -4,7 +4,6 @@ using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -16,24 +15,21 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the Health page.
 /// </summary>
-public class HealthPageTests : AdminUITestContext
-{
+public class HealthPageTests : AdminUITestContext {
     private readonly AdminStreamApiClient _mockApiClient;
 
-    public HealthPageTests()
-    {
+    public HealthPageTests() {
         _mockApiClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
     }
 
     // ===== Merge-blocking tests =====
 
     [Fact]
-    public void HealthPage_RendersStatCards_WithCorrectValues()
-    {
+    public void HealthPage_RendersStatCards_WithCorrectValues() {
         // Arrange
         SystemHealthReport report = CreateHealthyReport();
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -52,15 +48,14 @@ public class HealthPageTests : AdminUITestContext
         // EventsPerSecond formatted to F1 (culture-dependent: "42.5" or "42,5")
         markup.ShouldContain(42.5.ToString("F1"));
         // ErrorPercentage
-        markup.ShouldContain($"{0.3.ToString("F1")}%");
+        markup.ShouldContain($"{0.3:F1}%");
     }
 
     [Theory]
     [InlineData(HealthStatus.Healthy, "Healthy")]
     [InlineData(HealthStatus.Degraded, "Degraded")]
     [InlineData(HealthStatus.Unhealthy, "Unhealthy")]
-    public void HealthPage_RendersOverallStatusBadge_WithCorrectText(HealthStatus status, string expectedLabel)
-    {
+    public void HealthPage_RendersOverallStatusBadge_WithCorrectText(HealthStatus status, string expectedLabel) {
         // Arrange
         SystemHealthReport report = CreateReportWithStatus(status);
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -75,8 +70,7 @@ public class HealthPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthPage_RendersDaprComponentGrid_WithAllColumns()
-    {
+    public void HealthPage_RendersDaprComponentGrid_WithAllColumns() {
         // Arrange
         SystemHealthReport report = CreateHealthyReport();
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -97,8 +91,7 @@ public class HealthPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthPage_ShowsIssueBanner_OnApiFailure()
-    {
+    public void HealthPage_ShowsIssueBanner_OnApiFailure() {
         // Arrange
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<SystemHealthReport?>(null));
@@ -112,8 +105,7 @@ public class HealthPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthPage_ShowsStaleIndicator_WhenRefreshFailsAfterSuccessfulLoad()
-    {
+    public void HealthPage_ShowsStaleIndicator_WhenRefreshFailsAfterSuccessfulLoad() {
         // Arrange
         SystemHealthReport report = CreateHealthyReport();
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -129,7 +121,7 @@ public class HealthPageTests : AdminUITestContext
 
         FieldInfo? eventField = typeof(DashboardRefreshService)
             .GetField("OnDataChanged", BindingFlags.Instance | BindingFlags.NonPublic);
-        Action<DashboardData>? handler = (Action<DashboardData>?)eventField?.GetValue(refreshService);
+        var handler = (Action<DashboardData>?)eventField?.GetValue(refreshService);
         handler?.Invoke(staleData);
 
         // Assert — cached data still visible and stale banner shown
@@ -138,8 +130,7 @@ public class HealthPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthPage_RendersObservabilityButtons_WhenUrlsConfigured()
-    {
+    public void HealthPage_RendersObservabilityButtons_WhenUrlsConfigured() {
         // Arrange
         SystemHealthReport report = CreateReportWithObservabilityLinks();
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -163,8 +154,7 @@ public class HealthPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthPage_HidesObservabilityButtons_WhenUrlsNull()
-    {
+    public void HealthPage_HidesObservabilityButtons_WhenUrlsNull() {
         // Arrange
         SystemHealthReport report = CreateHealthyReport(); // has null URLs
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -180,8 +170,7 @@ public class HealthPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthPage_RefreshHandler_UpdatesDisplayedData()
-    {
+    public void HealthPage_RefreshHandler_UpdatesDisplayedData() {
         // Arrange — initial data
         SystemHealthReport initialReport = CreateHealthyReport();
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -202,8 +191,7 @@ public class HealthPageTests : AdminUITestContext
     [InlineData(0.5, "success")]
     [InlineData(2.5, "warning")]
     [InlineData(7.0, "error")]
-    public void HealthPage_ErrorRateSeverity_MapsCorrectly(double errorPercentage, string expectedSeverity)
-    {
+    public void HealthPage_ErrorRateSeverity_MapsCorrectly(double errorPercentage, string expectedSeverity) {
         // Arrange
         SystemHealthReport report = new(
             HealthStatus.Healthy,
@@ -225,8 +213,7 @@ public class HealthPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthPage_DaprComponentsStatCard_ShowsCorrectFormat()
-    {
+    public void HealthPage_DaprComponentsStatCard_ShowsCorrectFormat() {
         // Arrange
         SystemHealthReport report = CreateMixedHealthReport();
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -241,8 +228,7 @@ public class HealthPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthPage_DaprComponentStatusBadge_RendersCorrectSeverity()
-    {
+    public void HealthPage_DaprComponentStatusBadge_RendersCorrectSeverity() {
         // Arrange
         SystemHealthReport report = CreateMixedHealthReport();
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -260,8 +246,7 @@ public class HealthPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthPage_ShowsSkeletonCards_DuringLoading()
-    {
+    public void HealthPage_ShowsSkeletonCards_DuringLoading() {
         // Arrange — never complete the task to keep loading state
         TaskCompletionSource<SystemHealthReport?> tcs = new();
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -275,8 +260,7 @@ public class HealthPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthPage_ShowsEmptyState_WhenDaprComponentsEmpty()
-    {
+    public void HealthPage_ShowsEmptyState_WhenDaprComponentsEmpty() {
         // Arrange
         SystemHealthReport report = new(
             HealthStatus.Healthy,
@@ -297,8 +281,7 @@ public class HealthPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthPage_HidesEntireObservabilitySection_WhenAllUrlsNull()
-    {
+    public void HealthPage_HidesEntireObservabilitySection_WhenAllUrlsNull() {
         // Arrange
         SystemHealthReport report = CreateHealthyReport(); // all URLs null
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -313,8 +296,7 @@ public class HealthPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthPage_StatCards_UseCorrectGridSpans()
-    {
+    public void HealthPage_StatCards_UseCorrectGridSpans() {
         // Arrange
         SystemHealthReport report = CreateHealthyReport();
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -333,8 +315,7 @@ public class HealthPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthPage_GridHasAriaLabel()
-    {
+    public void HealthPage_GridHasAriaLabel() {
         // Arrange
         SystemHealthReport report = CreateHealthyReport();
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -349,8 +330,7 @@ public class HealthPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthPage_HasRefreshButton()
-    {
+    public void HealthPage_HasRefreshButton() {
         // Arrange
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<SystemHealthReport?>(CreateHealthyReport()));
@@ -364,8 +344,7 @@ public class HealthPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void HealthPage_ComponentTypeSubtitle_ShowsCount()
-    {
+    public void HealthPage_ComponentTypeSubtitle_ShowsCount() {
         // Arrange
         SystemHealthReport report = CreateMixedHealthReport();
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
@@ -381,9 +360,7 @@ public class HealthPageTests : AdminUITestContext
 
     // ===== Test data helpers =====
 
-    private static SystemHealthReport CreateHealthyReport()
-    {
-        return new SystemHealthReport(
+    private static SystemHealthReport CreateHealthyReport() => new(
             HealthStatus.Healthy,
             1000,
             42.5,
@@ -393,22 +370,16 @@ public class HealthPageTests : AdminUITestContext
                 new DaprComponentHealth("pubsub", "pubsub.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow.AddMinutes(-2)),
             ],
             new ObservabilityLinks(null, null, null));
-    }
 
-    private static SystemHealthReport CreateReportWithStatus(HealthStatus status)
-    {
-        return new SystemHealthReport(
+    private static SystemHealthReport CreateReportWithStatus(HealthStatus status) => new(
             status,
             500,
             10.0,
             status == HealthStatus.Unhealthy ? 8.0 : 0.5,
             [new DaprComponentHealth("store", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow)],
             new ObservabilityLinks(null, null, null));
-    }
 
-    private static SystemHealthReport CreateReportWithObservabilityLinks()
-    {
-        return new SystemHealthReport(
+    private static SystemHealthReport CreateReportWithObservabilityLinks() => new(
             HealthStatus.Healthy,
             2000,
             50.0,
@@ -418,11 +389,8 @@ public class HealthPageTests : AdminUITestContext
                 "https://zipkin.example.com",
                 "https://grafana.example.com",
                 "https://seq.example.com"));
-    }
 
-    private static SystemHealthReport CreateMixedHealthReport()
-    {
-        return new SystemHealthReport(
+    private static SystemHealthReport CreateMixedHealthReport() => new(
             HealthStatus.Degraded,
             3000,
             25.0,
@@ -433,5 +401,4 @@ public class HealthPageTests : AdminUITestContext
                 new DaprComponentHealth("configstore", "configuration.redis", HealthStatus.Unhealthy, DateTimeOffset.UtcNow.AddMinutes(-10)),
             ],
             new ObservabilityLinks(null, null, null));
-    }
 }

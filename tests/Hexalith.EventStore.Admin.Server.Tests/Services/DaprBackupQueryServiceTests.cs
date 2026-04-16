@@ -14,15 +14,12 @@ using NSubstitute.ExceptionExtensions;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
-public class DaprBackupQueryServiceTests
-{
+public class DaprBackupQueryServiceTests {
     private const string StateStoreName = "statestore";
 
-    private static DaprBackupQueryService CreateService(DaprClient? daprClient = null)
-    {
+    private static DaprBackupQueryService CreateService(DaprClient? daprClient = null) {
         daprClient ??= Substitute.For<DaprClient>();
-        IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions
-        {
+        IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             StateStoreName = StateStoreName,
         });
 
@@ -33,8 +30,7 @@ public class DaprBackupQueryServiceTests
     }
 
     [Fact]
-    public async Task GetBackupJobsAsync_ReturnsTenantJobs_WhenTenantIdProvided()
-    {
+    public async Task GetBackupJobsAsync_ReturnsTenantJobs_WhenTenantIdProvided() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var jobs = new List<BackupJob>
         {
@@ -42,7 +38,7 @@ public class DaprBackupQueryServiceTests
                 true, DateTimeOffset.UtcNow.AddHours(-2), DateTimeOffset.UtcNow, 1000, 50000, true, null),
         };
 
-        daprClient.GetStateAsync<IReadOnlyList<BackupJob>>(
+        _ = daprClient.GetStateAsync<IReadOnlyList<BackupJob>>(
             StateStoreName,
             "admin:backup-jobs:tenant-a",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -58,8 +54,7 @@ public class DaprBackupQueryServiceTests
     }
 
     [Fact]
-    public async Task GetBackupJobsAsync_ReturnsAllJobs_WhenTenantIdIsNull()
-    {
+    public async Task GetBackupJobsAsync_ReturnsAllJobs_WhenTenantIdIsNull() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var jobs = new List<BackupJob>
         {
@@ -69,7 +64,7 @@ public class DaprBackupQueryServiceTests
                 false, DateTimeOffset.UtcNow, null, null, null, false, null),
         };
 
-        daprClient.GetStateAsync<IReadOnlyList<BackupJob>>(
+        _ = daprClient.GetStateAsync<IReadOnlyList<BackupJob>>(
             StateStoreName,
             "admin:backup-jobs:all",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -83,10 +78,9 @@ public class DaprBackupQueryServiceTests
     }
 
     [Fact]
-    public async Task GetBackupJobsAsync_ReturnsEmpty_WhenIndexNotFound()
-    {
+    public async Task GetBackupJobsAsync_ReturnsEmpty_WhenIndexNotFound() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<IReadOnlyList<BackupJob>>(
+        _ = daprClient.GetStateAsync<IReadOnlyList<BackupJob>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -100,10 +94,9 @@ public class DaprBackupQueryServiceTests
     }
 
     [Fact]
-    public async Task GetBackupJobsAsync_Throws_WhenExceptionThrown()
-    {
+    public async Task GetBackupJobsAsync_Throws_WhenExceptionThrown() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<IReadOnlyList<BackupJob>>(
+        _ = daprClient.GetStateAsync<IReadOnlyList<BackupJob>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -111,18 +104,17 @@ public class DaprBackupQueryServiceTests
 
         DaprBackupQueryService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetBackupJobsAsync("tenant-a"));
     }
 
     [Fact]
-    public async Task GetBackupJobsAsync_PropagatesCancellation()
-    {
+    public async Task GetBackupJobsAsync_PropagatesCancellation() {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<IReadOnlyList<BackupJob>>(
+        _ = daprClient.GetStateAsync<IReadOnlyList<BackupJob>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -130,7 +122,7 @@ public class DaprBackupQueryServiceTests
 
         DaprBackupQueryService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.GetBackupJobsAsync("tenant-a", cts.Token));
     }
 }

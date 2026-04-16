@@ -1,6 +1,6 @@
 
-using Hexalith.EventStore.Validation;
 using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.Validation;
 
 using Shouldly;
 

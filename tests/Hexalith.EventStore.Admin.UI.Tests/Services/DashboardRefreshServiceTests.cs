@@ -1,5 +1,4 @@
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
-using Hexalith.EventStore.Admin.UI.Services;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -10,11 +9,9 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Services;
 /// <summary>
 /// Unit tests for the DashboardRefreshService.
 /// </summary>
-public class DashboardRefreshServiceTests
-{
+public class DashboardRefreshServiceTests {
     [Fact]
-    public async Task TriggerImmediateRefresh_FiresOnDataChanged()
-    {
+    public async Task TriggerImmediateRefresh_FiresOnDataChanged() {
         // Arrange
         AdminStreamApiClient mockClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
@@ -33,16 +30,15 @@ public class DashboardRefreshServiceTests
         await service.TriggerImmediateRefreshAsync().ConfigureAwait(true);
 
         // Assert
-        receivedData.ShouldNotBeNull();
-        receivedData.Health.ShouldNotBeNull();
+        _ = receivedData.ShouldNotBeNull();
+        _ = receivedData.Health.ShouldNotBeNull();
         receivedData.Health.TotalEventCount.ShouldBe(100);
 
         await service.DisposeAsync().ConfigureAwait(true);
     }
 
     [Fact]
-    public async Task TriggerImmediateRefresh_OnError_FiresOnErrorEvent()
-    {
+    public async Task TriggerImmediateRefresh_OnError_FiresOnErrorEvent() {
         // Arrange
         AdminStreamApiClient mockClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
@@ -58,15 +54,14 @@ public class DashboardRefreshServiceTests
         await service.TriggerImmediateRefreshAsync().ConfigureAwait(true);
 
         // Assert
-        receivedError.ShouldNotBeNull();
-        receivedError.ShouldBeOfType<HttpRequestException>();
+        _ = receivedError.ShouldNotBeNull();
+        _ = receivedError.ShouldBeOfType<HttpRequestException>();
 
         await service.DisposeAsync().ConfigureAwait(true);
     }
 
     [Fact]
-    public async Task Dispose_CleansUpWithoutError()
-    {
+    public async Task Dispose_CleansUpWithoutError() {
         // Arrange
         AdminStreamApiClient mockClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
@@ -78,8 +73,7 @@ public class DashboardRefreshServiceTests
     }
 
     [Fact]
-    public async Task Start_BeginsPollLoop_AndDisposeCancels()
-    {
+    public async Task Start_BeginsPollLoop_AndDisposeCancels() {
         // Arrange
         AdminStreamApiClient mockClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
@@ -102,8 +96,7 @@ public class DashboardRefreshServiceTests
     }
 
     [Fact]
-    public async Task Start_CalledTwice_DoesNotCreateDuplicateLoop()
-    {
+    public async Task Start_CalledTwice_DoesNotCreateDuplicateLoop() {
         // Arrange
         AdminStreamApiClient mockClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
@@ -119,8 +112,7 @@ public class DashboardRefreshServiceTests
     }
 
     [Fact]
-    public async Task ConcurrentTriggers_ReentrancyGuardPreventsDoubleRefresh()
-    {
+    public async Task ConcurrentTriggers_ReentrancyGuardPreventsDoubleRefresh() {
         // Arrange
         AdminStreamApiClient mockClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
@@ -153,8 +145,7 @@ public class DashboardRefreshServiceTests
     }
 
     [Fact]
-    public async Task Dispose_SynchronousDispose_DoesNotThrow()
-    {
+    public async Task Dispose_SynchronousDispose_DoesNotThrow() {
         // Arrange
         AdminStreamApiClient mockClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),

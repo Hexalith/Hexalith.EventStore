@@ -9,6 +9,6 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 /// <param name="Name">The tenant name.</param>
 /// <param name="Description">Optional tenant description.</param>
 public record CreateTenantRequest(
-    [Required] [RegularExpression(@"^[a-z0-9]+(-[a-z0-9]+)*$")] string TenantId,
+    [Required][RegularExpression(@"^[a-z0-9]+(-[a-z0-9]+)*$")] string TenantId,
     [Required] string Name,
     string? Description);

@@ -1,7 +1,5 @@
 #pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
 
-using System.Net;
-
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Projections;
@@ -32,7 +30,7 @@ public class DaprProjectionQueryServiceTests {
         var handler = new TestHttpMessageHandler();
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost") };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+        _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
 
         var service = new DaprProjectionQueryService(
             daprClient,
@@ -53,7 +51,7 @@ public class DaprProjectionQueryServiceTests {
             new("ShippingView", "tenant1", ProjectionStatusType.Paused, 50, 0, 1, 50, DateTimeOffset.UtcNow),
         };
 
-        daprClient.GetStateAsync<List<ProjectionStatus>>(
+        _ = daprClient.GetStateAsync<List<ProjectionStatus>>(
             StateStoreName,
             "admin:projections:tenant1",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -70,7 +68,7 @@ public class DaprProjectionQueryServiceTests {
     [Fact]
     public async Task ListProjectionsAsync_ReturnsEmpty_WhenIndexNotFound() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<ProjectionStatus>>(
+        _ = daprClient.GetStateAsync<List<ProjectionStatus>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -91,7 +89,7 @@ public class DaprProjectionQueryServiceTests {
 
         ProjectionDetail result = await service.GetProjectionDetailAsync("tenant1", "OrderSummary");
 
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.Name.ShouldBe("OrderSummary");
         result.TenantId.ShouldBe("tenant1");
         result.Errors.Count.ShouldBe(1);
@@ -99,10 +97,9 @@ public class DaprProjectionQueryServiceTests {
     }
 
     [Fact]
-    public async Task ListProjectionsAsync_Throws_WhenDaprThrows()
-    {
+    public async Task ListProjectionsAsync_Throws_WhenDaprThrows() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<ProjectionStatus>>(
+        _ = daprClient.GetStateAsync<List<ProjectionStatus>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -110,18 +107,17 @@ public class DaprProjectionQueryServiceTests {
 
         (DaprProjectionQueryService service, _) = CreateService(daprClient);
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.ListProjectionsAsync("tenant1"));
     }
 
     [Fact]
-    public async Task ListProjectionsAsync_PropagatesCancellation()
-    {
+    public async Task ListProjectionsAsync_PropagatesCancellation() {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<ProjectionStatus>>(
+        _ = daprClient.GetStateAsync<List<ProjectionStatus>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -129,7 +125,7 @@ public class DaprProjectionQueryServiceTests {
 
         (DaprProjectionQueryService service, _) = CreateService(daprClient);
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.ListProjectionsAsync("tenant1", cts.Token));
     }
 
@@ -137,7 +133,7 @@ public class DaprProjectionQueryServiceTests {
     public async Task GetProjectionDetailAsync_ReturnsProjectionDetail_WhenEventStoreSucceeds() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
-        authContext.GetToken().Returns("projection-token");
+        _ = authContext.GetToken().Returns("projection-token");
         ProjectionDetail expected = new(
             "OrderSummary",
             "tenant1",
@@ -163,7 +159,7 @@ public class DaprProjectionQueryServiceTests {
         result.LastProcessedPosition.ShouldBe(expected.LastProcessedPosition);
         result.SubscribedEventTypes.Count.ShouldBe(1);
         result.SubscribedEventTypes[0].ShouldBe("OrderCreated");
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         handler.LastRequest!.Method.ShouldBe(HttpMethod.Get);
         handler.LastRequest.RequestUri!.ToString().ShouldContain("api/v1/admin/projections/tenant1/OrderSummary");
         handler.LastRequest.Headers.Authorization!.Parameter.ShouldBe("projection-token");

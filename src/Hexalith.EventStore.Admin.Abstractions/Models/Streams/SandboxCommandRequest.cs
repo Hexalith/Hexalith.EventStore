@@ -15,8 +15,7 @@ public record SandboxCommandRequest(
     string? PayloadJson,
     long? AtSequence,
     string? CorrelationId,
-    string? UserId)
-{
+    string? UserId) {
     /// <summary>Gets the fully qualified command type name.</summary>
     public string CommandType { get; } = CommandType ?? string.Empty;
 

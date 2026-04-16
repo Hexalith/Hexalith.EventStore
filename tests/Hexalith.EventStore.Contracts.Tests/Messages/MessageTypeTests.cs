@@ -78,7 +78,7 @@ public class MessageTypeTests {
         bool success = MessageType.TryParse("tenants-create-tenant-v1", out MessageType? result);
 
         success.ShouldBeTrue();
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.Domain.ShouldBe("tenants");
     }
 
@@ -229,7 +229,7 @@ public class MessageTypeTests {
 
         MessageType? mt = JsonSerializer.Deserialize<MessageType>(json);
 
-        mt.ShouldNotBeNull();
+        _ = mt.ShouldNotBeNull();
         mt.Domain.ShouldBe("tenants");
         mt.Name.ShouldBe("create-tenant");
         mt.Version.ShouldBe(1);

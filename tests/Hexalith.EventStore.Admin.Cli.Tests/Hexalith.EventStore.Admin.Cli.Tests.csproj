@@ -1,4 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <NoWarn>$(NoWarn);IDE1006</NoWarn>
+    </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hexalith.EventStore.Admin.Cli\Hexalith.EventStore.Admin.Cli.csproj" />

@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.UI.Components.Shared;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Components.Shared;
 
-public class HeaderStatusIndicatorTests : AdminUITestContext
-{
+public class HeaderStatusIndicatorTests : AdminUITestContext {
     [Fact]
-    public void HeaderStatusIndicator_RendersGhostAppearanceWhenDisconnected()
-    {
+    public void HeaderStatusIndicator_RendersGhostAppearanceWhenDisconnected() {
         IRenderedComponent<HeaderStatusIndicator> cut = Render<HeaderStatusIndicator>(
             parameters => parameters
                 .Add(p => p.ConnectionStatus, HeaderStatusIndicator.ConnectionStatusType.Disconnected));
@@ -19,8 +17,7 @@ public class HeaderStatusIndicatorTests : AdminUITestContext
     }
 
     [Fact]
-    public void HeaderStatusIndicator_RendersFilledAppearanceWhenConnected()
-    {
+    public void HeaderStatusIndicator_RendersFilledAppearanceWhenConnected() {
         IRenderedComponent<HeaderStatusIndicator> cut = Render<HeaderStatusIndicator>(
             parameters => parameters
                 .Add(p => p.ConnectionStatus, HeaderStatusIndicator.ConnectionStatusType.Connected));

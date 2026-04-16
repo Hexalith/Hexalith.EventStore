@@ -15,9 +15,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.DomainServices;
 
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 using ServerEventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
@@ -35,121 +33,11 @@ namespace Hexalith.EventStore.Controllers;
 public class AdminStreamQueryController(
     IActorProxyFactory actorProxyFactory,
     IDomainServiceInvoker domainServiceInvoker,
-    ILogger<AdminStreamQueryController> logger) : ControllerBase
-{
-    private const int DefaultMaxBisectFields = 1_000;
-    private const int DefaultMaxBisectSteps = 30;
-    private const int DefaultMaxEvents = 10_000;
-    private const int DefaultMaxFields = 5_000;
-
-    /// <summary>
-    /// Computes per-field blame (provenance) for an aggregate's state at a given sequence position.
-    /// Uses an incremental O(N) algorithm: replay events, diff state after each apply, track blame.
-    /// </summary>
-    [HttpGet("{tenantId}/{domain}/{aggregateId}/blame")]
-    [ProducesResponseType(typeof(AggregateBlameView), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetAggregateBlame(
-        string tenantId,
-        string domain,
-        string aggregateId,
-        [FromQuery] long? at,
-        [FromQuery] int maxEvents = DefaultMaxEvents,
-        [FromQuery] int maxFields = DefaultMaxFields,
-        CancellationToken ct = default)
-    {
-        if (at.HasValue && at.Value < 1)
-        {
-            return Problem(
-                statusCode: StatusCodes.Status400BadRequest,
-                title: "Bad Request",
-                detail: "Parameter 'at' must be >= 1 when provided.");
-        }
-
-        if (maxEvents <= 0)
-        {
-            maxEvents = DefaultMaxEvents;
-        }
-
-        if (maxFields <= 0)
-        {
-            maxFields = DefaultMaxFields;
-        }
-
-        try
-        {
-            var identity = new AggregateIdentity(tenantId, domain, aggregateId);
-            IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
-                new ActorId(identity.ActorId), "AggregateActor");
-
-            ServerEventEnvelope[] allEvents = await actor.GetEventsAsync(0).ConfigureAwait(false);
-
-            if (allEvents.Length == 0)
-            {
-                return Ok(new AggregateBlameView(
-                    tenantId, domain, aggregateId,
-                    AtSequence: 0,
-                    Timestamp: DateTimeOffset.MinValue,
-                    Fields: [],
-                    IsTruncated: false,
-                    IsFieldsTruncated: false));
-            }
-
-            long actualMaxSequence = allEvents[^1].SequenceNumber;
-            long atSequence = Math.Min(at ?? actualMaxSequence, actualMaxSequence);
-
-            // Filter events up to atSequence
-            ServerEventEnvelope[] eventsInRange = allEvents
-                .Where(e => e.SequenceNumber <= atSequence)
-                .OrderBy(e => e.SequenceNumber)
-                .ToArray();
-
-            if (eventsInRange.Length == 0)
-            {
-                return Problem(
-                    statusCode: StatusCodes.Status404NotFound,
-                    title: "Not Found",
-                    detail: "No events found at or before the specified sequence.");
-            }
-
-            // Truncation: if more events than maxEvents, start from a later position
-            bool isTruncated = eventsInRange.Length > maxEvents;
-            long startSequence = 1;
-            if (isTruncated)
-            {
-                startSequence = atSequence - maxEvents + 1;
-                if (startSequence < 1)
-                {
-                    startSequence = 1;
-                }
-
-                eventsInRange = eventsInRange
-                    .Where(e => e.SequenceNumber >= startSequence)
-                    .ToArray();
-            }
-
-            // Incremental O(N) blame algorithm using JSON-level state tracking
-            AggregateBlameView result = ComputeBlame(
-                tenantId, domain, aggregateId,
-                eventsInRange, atSequence, isTruncated, maxFields);
-
-            return Ok(result);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to compute blame for {TenantId}/{Domain}/{AggregateId} at {AtSequence}.",
-                tenantId, domain, aggregateId, at);
-            return Problem(
-                statusCode: StatusCodes.Status500InternalServerError,
-                title: "Internal Server Error",
-                detail: "Failed to compute blame view.");
-        }
-    }
+    ILogger<AdminStreamQueryController> logger) : ControllerBase {
+    private const int _defaultMaxBisectFields = 1_000;
+    private const int _defaultMaxBisectSteps = 30;
+    private const int _defaultMaxEvents = 10_000;
+    private const int _defaultMaxFields = 5_000;
 
     /// <summary>
     /// Performs a binary search through event history to find the exact event where aggregate state
@@ -159,49 +47,43 @@ public class AdminStreamQueryController(
     [ProducesResponseType(typeof(BisectResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> BisectAggregateState(
+    public async Task<IActionResult> BisectAggregateStateAsync(
         string tenantId,
         string domain,
         string aggregateId,
         [FromQuery] long good,
         [FromQuery] long bad,
         [FromQuery] string? fields,
-        [FromQuery] int maxSteps = DefaultMaxBisectSteps,
-        [FromQuery] int maxFields = DefaultMaxBisectFields,
-        CancellationToken ct = default)
-    {
-        if (good < 0)
-        {
+        [FromQuery] int maxSteps = _defaultMaxBisectSteps,
+        [FromQuery] int maxFields = _defaultMaxBisectFields,
+        CancellationToken ct = default) {
+        if (good < 0) {
             return Problem(
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "Bad Request",
                 detail: "Parameter 'good' must be >= 0.");
         }
 
-        if (bad <= 0)
-        {
+        if (bad <= 0) {
             return Problem(
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "Bad Request",
                 detail: "Parameter 'bad' must be > 0.");
         }
 
-        if (good >= bad)
-        {
+        if (good >= bad) {
             return Problem(
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "Bad Request",
                 detail: "Parameter 'good' must be less than 'bad'.");
         }
 
-        if (maxSteps <= 0)
-        {
-            maxSteps = DefaultMaxBisectSteps;
+        if (maxSteps <= 0) {
+            maxSteps = _defaultMaxBisectSteps;
         }
 
-        if (maxFields <= 0)
-        {
-            maxFields = DefaultMaxBisectFields;
+        if (maxFields <= 0) {
+            maxFields = _defaultMaxBisectFields;
         }
 
         // Parse comma-separated field paths
@@ -209,16 +91,14 @@ public class AdminStreamQueryController(
             ? []
             : fields.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        try
-        {
+        try {
             var identity = new AggregateIdentity(tenantId, domain, aggregateId);
             IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(identity.ActorId), "AggregateActor");
 
             ServerEventEnvelope[] allEvents = await actor.GetEventsAsync(0).ConfigureAwait(false);
 
-            if (allEvents.Length == 0)
-            {
+            if (allEvents.Length == 0) {
                 return Problem(
                     statusCode: StatusCodes.Status404NotFound,
                     title: "Not Found",
@@ -226,16 +106,14 @@ public class AdminStreamQueryController(
             }
 
             long actualMaxSequence = allEvents[^1].SequenceNumber;
-            if (good > actualMaxSequence)
-            {
+            if (good > actualMaxSequence) {
                 return Problem(
                     statusCode: StatusCodes.Status400BadRequest,
                     title: "Bad Request",
                     detail: $"Parameter 'good' ({good}) exceeds stream length ({actualMaxSequence}).");
             }
 
-            if (bad > actualMaxSequence)
-            {
+            if (bad > actualMaxSequence) {
                 bad = actualMaxSequence;
             }
 
@@ -245,23 +123,19 @@ public class AdminStreamQueryController(
 
             // If good state is empty (e.g., good=0), use bad state's fields as the watch set
             // to avoid vacuous comparisons where all midpoints report "good"
-            if (allLeafFields.Count == 0 && fieldPaths.Count == 0)
-            {
+            if (allLeafFields.Count == 0 && fieldPaths.Count == 0) {
                 JsonObject badState = ReconstructState(allEvents, bad);
                 allLeafFields = FlattenJson(badState, string.Empty);
             }
 
             // Determine watched fields
             List<string> watchedFieldPaths;
-            if (fieldPaths.Count > 0)
-            {
+            if (fieldPaths.Count > 0) {
                 watchedFieldPaths = fieldPaths.ToList();
             }
-            else
-            {
+            else {
                 // All leaf fields
-                if (allLeafFields.Count > maxFields)
-                {
+                if (allLeafFields.Count > maxFields) {
                     return Problem(
                         statusCode: StatusCodes.Status400BadRequest,
                         title: "Bad Request",
@@ -280,8 +154,7 @@ public class AdminStreamQueryController(
             var steps = new List<BisectStep>();
             int step = 0;
 
-            while (badSeq - goodSeq > 1 && step < maxSteps)
-            {
+            while (badSeq - goodSeq > 1 && step < maxSteps) {
                 ct.ThrowIfCancellationRequested();
 
                 step++;
@@ -294,13 +167,11 @@ public class AdminStreamQueryController(
                 // Compare field values using JsonElement.DeepEquals
                 int divergentCount = CountDivergentFields(midValues, expectedValues);
 
-                if (divergentCount == 0)
-                {
+                if (divergentCount == 0) {
                     steps.Add(new BisectStep(step, mid, "good", 0));
                     goodSeq = mid;
                 }
-                else
-                {
+                else {
                     steps.Add(new BisectStep(step, mid, "bad", divergentCount));
                     badSeq = mid;
                 }
@@ -312,8 +183,7 @@ public class AdminStreamQueryController(
             ServerEventEnvelope? divergentEvent = allEvents.FirstOrDefault(e => e.SequenceNumber == badSeq);
             List<FieldChange> divergentFieldChanges = [];
 
-            if (divergentEvent is not null)
-            {
+            if (divergentEvent is not null) {
                 // Diff state at badSeq-1 vs badSeq to get the exact field changes at the divergent event
                 JsonObject stateBeforeDivergent = ReconstructState(allEvents, badSeq - 1);
                 JsonObject stateAtDivergent = ReconstructState(allEvents, badSeq);
@@ -324,10 +194,8 @@ public class AdminStreamQueryController(
                     string.Empty);
 
                 // Filter to only watched fields
-                foreach (KeyValuePair<string, (string NewValue, string OldValue)> change in allChanges)
-                {
-                    if (watchedFieldPaths.Count == 0 || watchedFieldPaths.Contains(change.Key, StringComparer.Ordinal))
-                    {
+                foreach (KeyValuePair<string, (string NewValue, string OldValue)> change in allChanges) {
+                    if (watchedFieldPaths.Count == 0 || watchedFieldPaths.Contains(change.Key, StringComparer.Ordinal)) {
                         divergentFieldChanges.Add(new FieldChange(
                             change.Key,
                             change.Value.OldValue,
@@ -354,18 +222,114 @@ public class AdminStreamQueryController(
 
             return Ok(result);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             logger.LogError(ex, "Failed to bisect aggregate state for {TenantId}/{Domain}/{AggregateId} (good={Good}, bad={Bad}).",
                 tenantId, domain, aggregateId, good, bad);
             return Problem(
                 statusCode: StatusCodes.Status500InternalServerError,
                 title: "Internal Server Error",
                 detail: "Failed to compute bisect result.");
+        }
+    }
+
+    /// <summary>
+    /// Computes per-field blame (provenance) for an aggregate's state at a given sequence position.
+    /// Uses an incremental O(N) algorithm: replay events, diff state after each apply, track blame.
+    /// </summary>
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/blame")]
+    [ProducesResponseType(typeof(AggregateBlameView), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetAggregateBlameAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromQuery] long? at,
+        [FromQuery] int maxEvents = _defaultMaxEvents,
+        [FromQuery] int maxFields = _defaultMaxFields,
+        CancellationToken _ = default) {
+        if (at.HasValue && at.Value < 1) {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "Parameter 'at' must be >= 1 when provided.");
+        }
+
+        if (maxEvents <= 0) {
+            maxEvents = _defaultMaxEvents;
+        }
+
+        if (maxFields <= 0) {
+            maxFields = _defaultMaxFields;
+        }
+
+        try {
+            var identity = new AggregateIdentity(tenantId, domain, aggregateId);
+            IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+                new ActorId(identity.ActorId), "AggregateActor");
+
+            ServerEventEnvelope[] allEvents = await actor.GetEventsAsync(0).ConfigureAwait(false);
+
+            if (allEvents.Length == 0) {
+                return Ok(new AggregateBlameView(
+                    tenantId, domain, aggregateId,
+                    AtSequence: 0,
+                    Timestamp: DateTimeOffset.MinValue,
+                    Fields: [],
+                    IsTruncated: false,
+                    IsFieldsTruncated: false));
+            }
+
+            long actualMaxSequence = allEvents[^1].SequenceNumber;
+            long atSequence = Math.Min(at ?? actualMaxSequence, actualMaxSequence);
+
+            // Filter events up to atSequence
+            ServerEventEnvelope[] eventsInRange = allEvents
+                .Where(e => e.SequenceNumber <= atSequence)
+                .OrderBy(e => e.SequenceNumber)
+                .ToArray();
+
+            if (eventsInRange.Length == 0) {
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "No events found at or before the specified sequence.");
+            }
+
+            // Truncation: if more events than maxEvents, start from a later position
+            bool isTruncated = eventsInRange.Length > maxEvents;
+            long startSequence = 1;
+            if (isTruncated) {
+                startSequence = atSequence - maxEvents + 1;
+                if (startSequence < 1) {
+                    startSequence = 1;
+                }
+
+                eventsInRange = eventsInRange
+                    .Where(e => e.SequenceNumber >= startSequence)
+                    .ToArray();
+            }
+
+            // Incremental O(N) blame algorithm using JSON-level state tracking
+            AggregateBlameView result = ComputeBlame(
+                tenantId, domain, aggregateId,
+                eventsInRange, atSequence, isTruncated, maxFields);
+
+            return Ok(result);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            logger.LogError(ex, "Failed to compute blame for {TenantId}/{Domain}/{AggregateId} at {AtSequence}.",
+                tenantId, domain, aggregateId, at);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "Failed to compute blame view.");
         }
     }
 
@@ -377,31 +341,27 @@ public class AdminStreamQueryController(
     [ProducesResponseType(typeof(EventStepFrame), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetEventStepFrame(
+    public async Task<IActionResult> GetEventStepFrameAsync(
         string tenantId,
         string domain,
         string aggregateId,
         [FromQuery] long at,
-        CancellationToken ct = default)
-    {
-        if (at < 1)
-        {
+        CancellationToken ct = default) {
+        if (at < 1) {
             return Problem(
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "Bad Request",
                 detail: "Parameter 'at' must be >= 1.");
         }
 
-        try
-        {
+        try {
             var identity = new AggregateIdentity(tenantId, domain, aggregateId);
             IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(identity.ActorId), "AggregateActor");
 
             ServerEventEnvelope[] allEvents = await actor.GetEventsAsync(0).ConfigureAwait(false);
 
-            if (allEvents.Length == 0)
-            {
+            if (allEvents.Length == 0) {
                 return Problem(
                     statusCode: StatusCodes.Status404NotFound,
                     title: "Not Found",
@@ -409,8 +369,7 @@ public class AdminStreamQueryController(
             }
 
             long totalEvents = allEvents[^1].SequenceNumber;
-            if (at > totalEvents)
-            {
+            if (at > totalEvents) {
                 return Problem(
                     statusCode: StatusCodes.Status400BadRequest,
                     title: "Bad Request",
@@ -421,8 +380,7 @@ public class AdminStreamQueryController(
 
             // Find the event at the requested sequence
             ServerEventEnvelope? targetEvent = allEvents.FirstOrDefault(e => e.SequenceNumber == at);
-            if (targetEvent is null)
-            {
+            if (targetEvent is null) {
                 return Problem(
                     statusCode: StatusCodes.Status404NotFound,
                     title: "Not Found",
@@ -430,33 +388,27 @@ public class AdminStreamQueryController(
             }
 
             // Single-pass optimization: reconstruct state at N and capture state at N-1 during the same replay
-            JsonObject stateAtPrev = new();
-            JsonObject stateAtCurrent = new();
-            foreach (ServerEventEnvelope evt in allEvents)
-            {
-                if (evt.SequenceNumber > at)
-                {
+            JsonObject stateAtPrev = [];
+            JsonObject stateAtCurrent = [];
+            foreach (ServerEventEnvelope evt in allEvents) {
+                if (evt.SequenceNumber > at) {
                     break;
                 }
 
                 ct.ThrowIfCancellationRequested();
 
-                if (evt.SequenceNumber == at)
-                {
+                if (evt.SequenceNumber == at) {
                     // Capture state at N-1 before applying the last event
-                    stateAtPrev = (JsonObject?)JsonNode.Parse(stateAtCurrent.ToJsonString()) ?? new JsonObject();
+                    stateAtPrev = (JsonObject?)JsonNode.Parse(stateAtCurrent.ToJsonString()) ?? [];
                 }
 
-                try
-                {
-                    JsonNode? eventPayload = JsonNode.Parse(evt.Payload);
-                    if (eventPayload is JsonObject payloadObj)
-                    {
+                try {
+                    var eventPayload = JsonNode.Parse(evt.Payload);
+                    if (eventPayload is JsonObject payloadObj) {
                         DeepMerge(stateAtCurrent, payloadObj);
                     }
                 }
-                catch (JsonException)
-                {
+                catch (JsonException) {
                     continue;
                 }
             }
@@ -465,19 +417,17 @@ public class AdminStreamQueryController(
 
             // Compute field changes between previous state and current state
             Dictionary<string, (string NewValue, string OldValue)> changes = JsonDiff(stateAtPrev, stateAtCurrent, string.Empty);
-            List<FieldChange> fieldChanges = changes
+            var fieldChanges = changes
                 .Select(c => new FieldChange(c.Key, c.Value.OldValue, c.Value.NewValue))
                 .OrderBy(fc => fc.FieldPath, StringComparer.Ordinal)
                 .ToList();
 
             // Get event payload as JSON string
             string eventPayloadJson;
-            try
-            {
+            try {
                 eventPayloadJson = System.Text.Encoding.UTF8.GetString(targetEvent.Payload);
             }
-            catch
-            {
+            catch {
                 eventPayloadJson = "{}";
             }
 
@@ -498,12 +448,10 @@ public class AdminStreamQueryController(
 
             return Ok(frame);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             logger.LogError(ex, "Failed to compute step frame for {TenantId}/{Domain}/{AggregateId} at {At}.",
                 tenantId, domain, aggregateId, at);
             return Problem(
@@ -522,23 +470,20 @@ public class AdminStreamQueryController(
     [ProducesResponseType(typeof(SandboxResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> SandboxCommand(
+    public async Task<IActionResult> SandboxCommandAsync(
         string tenantId,
         string domain,
         string aggregateId,
         [FromBody] SandboxCommandRequest request,
-        CancellationToken ct = default)
-    {
-        if (request is null)
-        {
+        CancellationToken ct = default) {
+        if (request is null) {
             return Problem(
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "Bad Request",
                 detail: "Request body is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(request.CommandType))
-        {
+        if (string.IsNullOrWhiteSpace(request.CommandType)) {
             return Problem(
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "Bad Request",
@@ -549,20 +494,17 @@ public class AdminStreamQueryController(
         string payloadJson = string.IsNullOrEmpty(request.PayloadJson) ? "{}" : request.PayloadJson;
 
         // Validate payload is valid JSON
-        try
-        {
-            using JsonDocument doc = JsonDocument.Parse(payloadJson);
+        try {
+            using var doc = JsonDocument.Parse(payloadJson);
         }
-        catch (JsonException)
-        {
+        catch (JsonException) {
             return Problem(
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "Bad Request",
                 detail: "PayloadJson is not valid JSON.");
         }
 
-        if (request.AtSequence.HasValue && request.AtSequence.Value < 0)
-        {
+        if (request.AtSequence.HasValue && request.AtSequence.Value < 0) {
             return Problem(
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "Bad Request",
@@ -571,30 +513,26 @@ public class AdminStreamQueryController(
 
         long sw = Stopwatch.GetTimestamp();
 
-        try
-        {
+        try {
             // Step 2: Reconstruct state
             ServerEventEnvelope[] allEvents;
             JsonObject inputState;
             long atSequence;
 
-            if (request.AtSequence == 0)
-            {
+            if (request.AtSequence == 0) {
                 // Empty initial state — no stream lookup needed
                 allEvents = [];
-                inputState = new JsonObject();
+                inputState = [];
                 atSequence = 0;
             }
-            else
-            {
+            else {
                 var identity = new AggregateIdentity(tenantId, domain, aggregateId);
                 IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                     new ActorId(identity.ActorId), "AggregateActor");
 
                 allEvents = await actor.GetEventsAsync(0).ConfigureAwait(false);
 
-                if (allEvents.Length == 0)
-                {
+                if (allEvents.Length == 0) {
                     return Problem(
                         statusCode: StatusCodes.Status404NotFound,
                         title: "Not Found",
@@ -603,19 +541,16 @@ public class AdminStreamQueryController(
 
                 long actualMaxSequence = allEvents[^1].SequenceNumber;
 
-                if (request.AtSequence.HasValue)
-                {
+                if (request.AtSequence.HasValue) {
                     atSequence = request.AtSequence.Value;
-                    if (atSequence > actualMaxSequence)
-                    {
+                    if (atSequence > actualMaxSequence) {
                         return Problem(
                             statusCode: StatusCodes.Status400BadRequest,
                             title: "Bad Request",
                             detail: $"AtSequence ({atSequence}) exceeds stream length ({actualMaxSequence}).");
                     }
                 }
-                else
-                {
+                else {
                     atSequence = actualMaxSequence;
                 }
 
@@ -638,13 +573,11 @@ public class AdminStreamQueryController(
                 Extensions: null);
 
             DomainResult domainResult;
-            try
-            {
+            try {
                 object? currentState = atSequence == 0 ? null : inputState;
                 domainResult = await domainServiceInvoker.InvokeAsync(commandEnvelope, currentState, ct).ConfigureAwait(false);
             }
-            catch (DomainServiceNotFoundException ex)
-            {
+            catch (DomainServiceNotFoundException ex) {
                 long elapsedError = (long)Stopwatch.GetElapsedTime(sw).TotalMilliseconds;
                 return Ok(new SandboxResult(
                     TenantId: tenantId,
@@ -659,12 +592,10 @@ public class AdminStreamQueryController(
                     ErrorMessage: $"No domain service registered for domain '{domain}' in tenant '{tenantId}'. {ex.Message}",
                     ExecutionTimeMs: elapsedError));
             }
-            catch (OperationCanceledException)
-            {
+            catch (OperationCanceledException) {
                 throw;
             }
-            catch (Exception ex)
-            {
+            catch (Exception ex) {
                 long elapsedError = (long)Stopwatch.GetElapsedTime(sw).TotalMilliseconds;
                 return Ok(new SandboxResult(
                     TenantId: tenantId,
@@ -686,36 +617,29 @@ public class AdminStreamQueryController(
             string resultingStateJson = string.Empty;
             List<FieldChange> stateChanges = [];
 
-            if (domainResult.IsRejection)
-            {
+            if (domainResult.IsRejection) {
                 outcome = "rejected";
                 producedEvents = ExtractSandboxEvents(domainResult.Events);
             }
-            else if (domainResult.IsNoOp)
-            {
+            else if (domainResult.IsNoOp) {
                 outcome = "accepted";
                 resultingStateJson = inputState.ToJsonString();
             }
-            else
-            {
+            else {
                 // Success — apply events and compute diff
                 outcome = "accepted";
                 producedEvents = ExtractSandboxEvents(domainResult.Events);
 
                 // Apply produced events to input state to compute resulting state
-                JsonObject resultingState = (JsonObject?)JsonNode.Parse(inputState.ToJsonString()) ?? new JsonObject();
-                foreach (SandboxEvent sandboxEvent in producedEvents)
-                {
-                    try
-                    {
-                        JsonNode? eventNode = JsonNode.Parse(sandboxEvent.PayloadJson);
-                        if (eventNode is JsonObject eventObj)
-                        {
+                JsonObject resultingState = (JsonObject?)JsonNode.Parse(inputState.ToJsonString()) ?? [];
+                foreach (SandboxEvent sandboxEvent in producedEvents) {
+                    try {
+                        var eventNode = JsonNode.Parse(sandboxEvent.PayloadJson);
+                        if (eventNode is JsonObject eventObj) {
                             DeepMerge(resultingState, eventObj);
                         }
                     }
-                    catch (JsonException)
-                    {
+                    catch (JsonException) {
                         // Skip malformed event payloads
                         continue;
                     }
@@ -748,12 +672,10 @@ public class AdminStreamQueryController(
 
             return Ok(result);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             logger.LogError(ex, "Failed to execute sandbox command for {TenantId}/{Domain}/{AggregateId}.",
                 tenantId, domain, aggregateId);
             return Problem(
@@ -761,40 +683,6 @@ public class AdminStreamQueryController(
                 title: "Internal Server Error",
                 detail: "Failed to execute sandbox command.");
         }
-    }
-
-    /// <summary>
-    /// Extracts sandbox event representations from domain result events.
-    /// Falls back to the event's runtime type name when <see cref="ISerializedEventPayload"/> is not implemented.
-    /// </summary>
-    private static List<SandboxEvent> ExtractSandboxEvents(IReadOnlyList<IEventPayload> events)
-    {
-        List<SandboxEvent> result = new(events.Count);
-        for (int i = 0; i < events.Count; i++)
-        {
-            IEventPayload evt = events[i];
-            string eventTypeName;
-            string eventPayloadJson;
-
-            if (evt is ISerializedEventPayload serialized)
-            {
-                eventTypeName = serialized.EventTypeName;
-                eventPayloadJson = Encoding.UTF8.GetString(serialized.PayloadBytes);
-            }
-            else
-            {
-                eventTypeName = evt.GetType().Name;
-                eventPayloadJson = "{}";
-            }
-
-            result.Add(new SandboxEvent(
-                Index: i,
-                EventTypeName: eventTypeName,
-                PayloadJson: eventPayloadJson,
-                IsRejection: evt is IRejectionEvent));
-        }
-
-        return result;
     }
 
     /// <summary>
@@ -809,29 +697,24 @@ public class AdminStreamQueryController(
         ServerEventEnvelope[] events,
         long atSequence,
         bool isTruncated,
-        int maxFields)
-    {
+        int maxFields) {
         // blame_map: fieldPath -> FieldProvenance
         var blameMap = new Dictionary<string, FieldProvenance>(StringComparer.Ordinal);
-        JsonNode? previousState = JsonNode.Parse("{}");
-        JsonNode? currentState = JsonNode.Parse("{}");
+        var previousState = JsonNode.Parse("{}");
+        var currentState = JsonNode.Parse("{}");
         DateTimeOffset lastTimestamp = DateTimeOffset.MinValue;
 
-        foreach (ServerEventEnvelope evt in events)
-        {
+        foreach (ServerEventEnvelope evt in events) {
             previousState = currentState?.DeepClone();
 
             // Apply event payload to state using JSON merge
-            try
-            {
-                JsonNode? eventPayload = JsonNode.Parse(evt.Payload);
-                if (eventPayload is JsonObject payloadObj && currentState is JsonObject stateObj)
-                {
+            try {
+                var eventPayload = JsonNode.Parse(evt.Payload);
+                if (eventPayload is JsonObject payloadObj && currentState is JsonObject stateObj) {
                     DeepMerge(stateObj, payloadObj);
                 }
             }
-            catch (JsonException)
-            {
+            catch (JsonException) {
                 // Event payload is not valid JSON (e.g., binary format) — skip this event
                 continue;
             }
@@ -842,8 +725,7 @@ public class AdminStreamQueryController(
                 currentState as JsonObject,
                 prefix: string.Empty);
 
-            foreach (KeyValuePair<string, (string NewValue, string OldValue)> change in changes)
-            {
+            foreach (KeyValuePair<string, (string NewValue, string OldValue)> change in changes) {
                 blameMap[change.Key] = new FieldProvenance(
                     FieldPath: change.Key,
                     CurrentValue: change.Value.NewValue,
@@ -860,13 +742,10 @@ public class AdminStreamQueryController(
 
         // If truncated, include fields from current state that aren't in the blame map
         // with LastChangedAtSequence = -1 (changed before the analysis window)
-        if (isTruncated && currentState is JsonObject finalState)
-        {
+        if (isTruncated && currentState is JsonObject finalState) {
             Dictionary<string, string> allFields = FlattenJson(finalState, prefix: string.Empty);
-            foreach (KeyValuePair<string, string> field in allFields)
-            {
-                if (!blameMap.ContainsKey(field.Key))
-                {
+            foreach (KeyValuePair<string, string> field in allFields) {
+                if (!blameMap.ContainsKey(field.Key)) {
                     blameMap[field.Key] = new FieldProvenance(
                         FieldPath: field.Key,
                         CurrentValue: field.Value,
@@ -881,14 +760,13 @@ public class AdminStreamQueryController(
         }
 
         // Sort by FieldPath
-        List<FieldProvenance> fields = blameMap.Values
+        var fields = blameMap.Values
             .OrderBy(f => f.FieldPath, StringComparer.Ordinal)
             .ToList();
 
         // Field truncation: keep only the most recently changed fields
         bool isFieldsTruncated = fields.Count > maxFields;
-        if (isFieldsTruncated)
-        {
+        if (isFieldsTruncated) {
             fields = fields
                 .OrderByDescending(f => f.LastChangedAtSequence)
                 .Take(maxFields)
@@ -911,23 +789,18 @@ public class AdminStreamQueryController(
     /// </summary>
     private static int CountDivergentFields(
         Dictionary<string, JsonElement> midValues,
-        Dictionary<string, JsonElement> expectedValues)
-    {
+        Dictionary<string, JsonElement> expectedValues) {
         int count = 0;
-        foreach (KeyValuePair<string, JsonElement> expected in expectedValues)
-        {
+        foreach (KeyValuePair<string, JsonElement> expected in expectedValues) {
             if (!midValues.TryGetValue(expected.Key, out JsonElement midValue)
-                || !JsonElement.DeepEquals(midValue, expected.Value))
-            {
+                || !JsonElement.DeepEquals(midValue, expected.Value)) {
                 count++;
             }
         }
 
         // Also count fields present in midValues but not in expectedValues
-        foreach (string key in midValues.Keys)
-        {
-            if (!expectedValues.ContainsKey(key))
-            {
+        foreach (string key in midValues.Keys) {
+            if (!expectedValues.ContainsKey(key)) {
                 count++;
             }
         }
@@ -936,29 +809,39 @@ public class AdminStreamQueryController(
     }
 
     /// <summary>
+    /// Deep-merges source into target (JSON object level).
+    /// </summary>
+    private static void DeepMerge(JsonObject target, JsonObject source) {
+        foreach (KeyValuePair<string, JsonNode?> property in source) {
+            if (property.Value is JsonObject sourceChild
+                && target[property.Key] is JsonObject targetChild) {
+                DeepMerge(targetChild, sourceChild);
+            }
+            else {
+                target[property.Key] = property.Value?.DeepClone();
+            }
+        }
+    }
+
+    /// <summary>
     /// Extracts field values from a JSON state object for the specified field paths.
     /// Parses each leaf value as a <see cref="JsonElement"/> for semantic comparison.
     /// </summary>
     private static Dictionary<string, JsonElement> ExtractFieldValues(
         JsonObject state,
-        IReadOnlyList<string> fieldPaths)
-    {
+        IReadOnlyList<string> fieldPaths) {
         Dictionary<string, string> allLeafFields = FlattenJson(state, string.Empty);
         var result = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
 
-        foreach (string fieldPath in fieldPaths)
-        {
-            if (allLeafFields.TryGetValue(fieldPath, out string? jsonValue))
-            {
-                try
-                {
-                    using JsonDocument doc = JsonDocument.Parse(jsonValue);
+        foreach (string fieldPath in fieldPaths) {
+            if (allLeafFields.TryGetValue(fieldPath, out string? jsonValue)) {
+                try {
+                    using var doc = JsonDocument.Parse(jsonValue);
                     result[fieldPath] = doc.RootElement.Clone();
                 }
-                catch (JsonException)
-                {
+                catch (JsonException) {
                     // If the value cannot be parsed, treat as a raw string
-                    using JsonDocument fallbackDoc = JsonDocument.Parse($"\"{jsonValue}\"");
+                    using var fallbackDoc = JsonDocument.Parse($"\"{jsonValue}\"");
                     result[fieldPath] = fallbackDoc.RootElement.Clone();
                 }
             }
@@ -968,54 +851,53 @@ public class AdminStreamQueryController(
     }
 
     /// <summary>
-    /// Reconstructs aggregate state by replaying events up to the specified sequence number.
-    /// Uses the same JSON merge strategy as the blame algorithm.
+    /// Extracts sandbox event representations from domain result events.
+    /// Falls back to the event's runtime type name when <see cref="ISerializedEventPayload"/> is not implemented.
     /// </summary>
-    private static JsonObject ReconstructState(ServerEventEnvelope[] allEvents, long upToSequence)
-    {
-        var state = new JsonObject();
-        foreach (ServerEventEnvelope evt in allEvents)
-        {
-            if (evt.SequenceNumber > upToSequence)
-            {
-                break;
+    private static List<SandboxEvent> ExtractSandboxEvents(IReadOnlyList<IEventPayload> events) {
+        List<SandboxEvent> result = new(events.Count);
+        for (int i = 0; i < events.Count; i++) {
+            IEventPayload evt = events[i];
+            string eventTypeName;
+            string eventPayloadJson;
+
+            if (evt is ISerializedEventPayload serialized) {
+                eventTypeName = serialized.EventTypeName;
+                eventPayloadJson = Encoding.UTF8.GetString(serialized.PayloadBytes);
+            }
+            else {
+                eventTypeName = evt.GetType().Name;
+                eventPayloadJson = "{}";
             }
 
-            try
-            {
-                JsonNode? eventPayload = JsonNode.Parse(evt.Payload);
-                if (eventPayload is JsonObject payloadObj)
-                {
-                    DeepMerge(state, payloadObj);
-                }
-            }
-            catch (JsonException)
-            {
-                // Event payload is not valid JSON — skip
-                continue;
-            }
+            result.Add(new SandboxEvent(
+                Index: i,
+                EventTypeName: eventTypeName,
+                PayloadJson: eventPayloadJson,
+                IsRejection: evt is IRejectionEvent));
         }
 
-        return state;
+        return result;
     }
 
     /// <summary>
-    /// Deep-merges source into target (JSON object level).
+    /// Flattens a JSON object into leaf field paths and their values.
     /// </summary>
-    private static void DeepMerge(JsonObject target, JsonObject source)
-    {
-        foreach (KeyValuePair<string, JsonNode?> property in source)
-        {
-            if (property.Value is JsonObject sourceChild
-                && target[property.Key] is JsonObject targetChild)
-            {
-                DeepMerge(targetChild, sourceChild);
+    private static Dictionary<string, string> FlattenJson(JsonObject obj, string prefix) {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (KeyValuePair<string, JsonNode?> prop in obj) {
+            string fieldPath = string.IsNullOrEmpty(prefix) ? prop.Key : $"{prefix}.{prop.Key}";
+            if (prop.Value is JsonObject childObj) {
+                foreach (KeyValuePair<string, string> nested in FlattenJson(childObj, fieldPath)) {
+                    result[nested.Key] = nested.Value;
+                }
             }
-            else
-            {
-                target[property.Key] = property.Value?.DeepClone();
+            else {
+                result[fieldPath] = prop.Value?.ToJsonString() ?? "null";
             }
         }
+
+        return result;
     }
 
     /// <summary>
@@ -1024,53 +906,43 @@ public class AdminStreamQueryController(
     private static Dictionary<string, (string NewValue, string OldValue)> JsonDiff(
         JsonObject? before,
         JsonObject? after,
-        string prefix)
-    {
+        string prefix) {
         var changes = new Dictionary<string, (string NewValue, string OldValue)>(StringComparer.Ordinal);
 
-        if (after is null)
-        {
+        if (after is null) {
             return changes;
         }
 
-        foreach (KeyValuePair<string, JsonNode?> prop in after)
-        {
+        foreach (KeyValuePair<string, JsonNode?> prop in after) {
             string fieldPath = string.IsNullOrEmpty(prefix) ? prop.Key : $"{prefix}.{prop.Key}";
             JsonNode? beforeValue = before?[prop.Key];
             JsonNode? afterValue = prop.Value;
 
-            if (afterValue is JsonObject afterObj)
-            {
+            if (afterValue is JsonObject afterObj) {
                 // Recurse into nested objects
                 Dictionary<string, (string NewValue, string OldValue)> nested = JsonDiff(
                     beforeValue as JsonObject,
                     afterObj,
                     fieldPath);
-                foreach (KeyValuePair<string, (string NewValue, string OldValue)> n in nested)
-                {
+                foreach (KeyValuePair<string, (string NewValue, string OldValue)> n in nested) {
                     changes[n.Key] = n.Value;
                 }
             }
-            else
-            {
+            else {
                 string afterStr = afterValue?.ToJsonString() ?? "null";
                 string beforeStr = beforeValue?.ToJsonString() ?? "null";
 
-                if (!string.Equals(afterStr, beforeStr, StringComparison.Ordinal))
-                {
+                if (!string.Equals(afterStr, beforeStr, StringComparison.Ordinal)) {
                     changes[fieldPath] = (afterStr, beforeStr == "null" ? string.Empty : beforeStr);
                 }
             }
         }
 
         // Check for fields removed in 'after' (present in before, missing in after)
-        if (before is not null)
-        {
-            foreach (KeyValuePair<string, JsonNode?> prop in before)
-            {
+        if (before is not null) {
+            foreach (KeyValuePair<string, JsonNode?> prop in before) {
                 string fieldPath = string.IsNullOrEmpty(prefix) ? prop.Key : $"{prefix}.{prop.Key}";
-                if (!after.ContainsKey(prop.Key) && prop.Value is not null)
-                {
+                if (!after.ContainsKey(prop.Key) && prop.Value is not null) {
                     changes[fieldPath] = ("null", prop.Value.ToJsonString());
                 }
             }
@@ -1080,27 +952,28 @@ public class AdminStreamQueryController(
     }
 
     /// <summary>
-    /// Flattens a JSON object into leaf field paths and their values.
+    /// Reconstructs aggregate state by replaying events up to the specified sequence number.
+    /// Uses the same JSON merge strategy as the blame algorithm.
     /// </summary>
-    private static Dictionary<string, string> FlattenJson(JsonObject obj, string prefix)
-    {
-        var result = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (KeyValuePair<string, JsonNode?> prop in obj)
-        {
-            string fieldPath = string.IsNullOrEmpty(prefix) ? prop.Key : $"{prefix}.{prop.Key}";
-            if (prop.Value is JsonObject childObj)
-            {
-                foreach (KeyValuePair<string, string> nested in FlattenJson(childObj, fieldPath))
-                {
-                    result[nested.Key] = nested.Value;
+    private static JsonObject ReconstructState(ServerEventEnvelope[] allEvents, long upToSequence) {
+        var state = new JsonObject();
+        foreach (ServerEventEnvelope evt in allEvents) {
+            if (evt.SequenceNumber > upToSequence) {
+                break;
+            }
+
+            try {
+                var eventPayload = JsonNode.Parse(evt.Payload);
+                if (eventPayload is JsonObject payloadObj) {
+                    DeepMerge(state, payloadObj);
                 }
             }
-            else
-            {
-                result[fieldPath] = prop.Value?.ToJsonString() ?? "null";
+            catch (JsonException) {
+                // Event payload is not valid JSON — skip
+                continue;
             }
         }
 
-        return result;
+        return state;
     }
 }

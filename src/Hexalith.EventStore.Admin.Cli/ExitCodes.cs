@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Admin.Cli;
 /// <summary>
 /// Standardized exit codes per UX-DR52.
 /// </summary>
-public static class ExitCodes
-{
+public static class ExitCodes {
     /// <summary>Success / healthy.</summary>
     public const int Success = 0;
 

@@ -2,10 +2,10 @@
 using System.Security.Claims;
 
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Validation;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
-using Hexalith.EventStore.Contracts.Validation;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

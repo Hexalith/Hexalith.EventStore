@@ -1,6 +1,3 @@
-
-using Dapr.Actors.Runtime;
-
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 

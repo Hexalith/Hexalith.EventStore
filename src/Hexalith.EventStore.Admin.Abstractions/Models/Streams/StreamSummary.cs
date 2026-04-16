@@ -19,8 +19,7 @@ public record StreamSummary(
     DateTimeOffset LastActivityUtc,
     long EventCount,
     bool HasSnapshot,
-    StreamStatus StreamStatus)
-{
+    StreamStatus StreamStatus) {
     /// <summary>Gets the tenant identifier.</summary>
     public string TenantId { get; } = !string.IsNullOrWhiteSpace(TenantId)
         ? TenantId

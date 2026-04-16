@@ -1,4 +1,3 @@
-#pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
 
 using Dapr.Client;
 
@@ -15,12 +14,10 @@ using NSubstitute.ExceptionExtensions;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
-public class DaprHealthQueryServiceHistoryTests
-{
+public class DaprHealthQueryServiceHistoryTests {
     private static DaprHealthQueryService CreateService(
         DaprClient? daprClient = null,
-        AdminServerOptions? serverOptions = null)
-    {
+        AdminServerOptions? serverOptions = null) {
         daprClient ??= Substitute.For<DaprClient>();
         serverOptions ??= new AdminServerOptions();
 
@@ -35,8 +32,7 @@ public class DaprHealthQueryServiceHistoryTests
     }
 
     [Fact]
-    public async Task GetComponentHealthHistoryAsync_ReturnsMergedEntries_FromMultipleDays()
-    {
+    public async Task GetComponentHealthHistoryAsync_ReturnsMergedEntries_FromMultipleDays() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DateTimeOffset now = DateTimeOffset.UtcNow;
         DateTimeOffset yesterday = now.AddDays(-1);
@@ -53,11 +49,11 @@ public class DaprHealthQueryServiceHistoryTests
         string todayKey = $"admin:health-history:{now:yyyyMMdd}";
         string yesterdayKey = $"admin:health-history:{yesterday:yyyyMMdd}";
 
-        daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
             "statestore", todayKey, cancellationToken: Arg.Any<CancellationToken>())
             .Returns(todayTimeline);
 
-        daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
             "statestore", yesterdayKey, cancellationToken: Arg.Any<CancellationToken>())
             .Returns(yesterdayTimeline);
 
@@ -71,8 +67,7 @@ public class DaprHealthQueryServiceHistoryTests
     }
 
     [Fact]
-    public async Task GetComponentHealthHistoryAsync_FiltersByComponentName_CaseInsensitive()
-    {
+    public async Task GetComponentHealthHistoryAsync_FiltersByComponentName_CaseInsensitive() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DateTimeOffset now = DateTimeOffset.UtcNow;
 
@@ -84,7 +79,7 @@ public class DaprHealthQueryServiceHistoryTests
             HasData: true);
 
         string dayKey = $"admin:health-history:{now:yyyyMMdd}";
-        daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
             "statestore", dayKey, cancellationToken: Arg.Any<CancellationToken>())
             .Returns(timeline);
 
@@ -98,8 +93,7 @@ public class DaprHealthQueryServiceHistoryTests
     }
 
     [Fact]
-    public async Task GetComponentHealthHistoryAsync_FiltersByTimeRange()
-    {
+    public async Task GetComponentHealthHistoryAsync_FiltersByTimeRange() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DateTimeOffset now = DateTimeOffset.UtcNow;
 
@@ -111,7 +105,7 @@ public class DaprHealthQueryServiceHistoryTests
             HasData: true);
 
         string dayKey = $"admin:health-history:{now:yyyyMMdd}";
-        daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
             "statestore", dayKey, cancellationToken: Arg.Any<CancellationToken>())
             .Returns(timeline);
 
@@ -126,13 +120,12 @@ public class DaprHealthQueryServiceHistoryTests
     }
 
     [Fact]
-    public async Task GetComponentHealthHistoryAsync_ReturnsEmptyTimeline_WhenNoData()
-    {
+    public async Task GetComponentHealthHistoryAsync_ReturnsEmptyTimeline_WhenNoData() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DateTimeOffset now = DateTimeOffset.UtcNow;
 
         string dayKey = $"admin:health-history:{now:yyyyMMdd}";
-        daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
             "statestore", dayKey, cancellationToken: Arg.Any<CancellationToken>())
             .Returns((DaprComponentHealthTimeline)null!);
 
@@ -146,8 +139,7 @@ public class DaprHealthQueryServiceHistoryTests
     }
 
     [Fact]
-    public async Task GetComponentHealthHistoryAsync_TruncatesResults_WhenExceedingCap()
-    {
+    public async Task GetComponentHealthHistoryAsync_TruncatesResults_WhenExceedingCap() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DateTimeOffset now = DateTimeOffset.UtcNow;
 
@@ -159,7 +151,7 @@ public class DaprHealthQueryServiceHistoryTests
         var timeline = new DaprComponentHealthTimeline(entries.AsReadOnly(), HasData: true);
 
         string dayKey = $"admin:health-history:{now:yyyyMMdd}";
-        daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
             "statestore", dayKey, cancellationToken: Arg.Any<CancellationToken>())
             .Returns(timeline);
 
@@ -175,26 +167,24 @@ public class DaprHealthQueryServiceHistoryTests
     }
 
     [Fact]
-    public async Task GetComponentHealthHistoryAsync_Throws_WhenStateStoreUnavailable()
-    {
+    public async Task GetComponentHealthHistoryAsync_Throws_WhenStateStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DateTimeOffset now = DateTimeOffset.UtcNow;
 
         string dayKey = $"admin:health-history:{now:yyyyMMdd}";
-        daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
             "statestore", dayKey, cancellationToken: Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("State store unavailable"));
 
         DaprHealthQueryService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.GetComponentHealthHistoryAsync(
                 now.AddHours(-1), now, null, default));
     }
 
     [Fact]
-    public async Task GetComponentHealthHistoryAsync_PropagatesCancellation()
-    {
+    public async Task GetComponentHealthHistoryAsync_PropagatesCancellation() {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
@@ -202,13 +192,13 @@ public class DaprHealthQueryServiceHistoryTests
         DateTimeOffset now = DateTimeOffset.UtcNow;
 
         string dayKey = $"admin:health-history:{now:yyyyMMdd}";
-        daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
             "statestore", dayKey, cancellationToken: Arg.Any<CancellationToken>())
             .Returns<DaprComponentHealthTimeline>(_ => throw new OperationCanceledException());
 
         DaprHealthQueryService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.GetComponentHealthHistoryAsync(
                 now.AddHours(-1), now, null, cts.Token));
     }

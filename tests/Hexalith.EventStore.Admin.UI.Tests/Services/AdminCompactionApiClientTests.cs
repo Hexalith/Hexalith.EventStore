@@ -10,18 +10,15 @@ using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Services;
 
-public class AdminCompactionApiClientTests
-{
-    private static AdminCompactionApiClient CreateClient(HttpClient httpClient)
-    {
+public class AdminCompactionApiClientTests {
+    private static AdminCompactionApiClient CreateClient(HttpClient httpClient) {
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
-        factory.CreateClient("AdminApi").Returns(httpClient);
+        _ = factory.CreateClient("AdminApi").Returns(httpClient);
         return new AdminCompactionApiClient(factory, NullLogger<AdminCompactionApiClient>.Instance);
     }
 
     [Fact]
-    public async Task GetCompactionJobsAsync_ReturnsJobs_WhenApiResponds()
-    {
+    public async Task GetCompactionJobsAsync_ReturnsJobs_WhenApiResponds() {
         string json = """[{"operationId":"op-1","tenantId":"t1","domain":null,"status":2,"startedAtUtc":"2026-01-01T00:00:00Z","completedAtUtc":"2026-01-01T01:00:00Z","eventsCompacted":500,"spaceReclaimedBytes":1024,"errorMessage":null}]""";
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
 
@@ -36,13 +33,12 @@ public class AdminCompactionApiClientTests
     }
 
     [Fact]
-    public async Task GetCompactionJobsAsync_ThrowsServiceUnavailable_WhenApiReturnsError()
-    {
+    public async Task GetCompactionJobsAsync_ThrowsServiceUnavailable_WhenApiReturnsError() {
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.InternalServerError, "{}");
 
         AdminCompactionApiClient client = CreateClient(httpClient);
 
-        await Should.ThrowAsync<ServiceUnavailableException>(
+        _ = await Should.ThrowAsync<ServiceUnavailableException>(
             () => client.GetCompactionJobsAsync());
     }
 }

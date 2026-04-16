@@ -1,10 +1,7 @@
 using Bunit;
 
-using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.UI.Components;
-using Hexalith.EventStore.Admin.UI.Services;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,12 +15,10 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 /// <summary>
 /// bUnit tests for the BisectTool component.
 /// </summary>
-public class BisectToolTests : AdminUITestContext
-{
+public class BisectToolTests : AdminUITestContext {
     private readonly AdminStreamApiClient _mockApiClient;
 
-    public BisectToolTests()
-    {
+    public BisectToolTests() {
         _mockApiClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance);
@@ -35,17 +30,16 @@ public class BisectToolTests : AdminUITestContext
             Arg.Any<CancellationToken>())
             .Returns(new PagedResult<TimelineEntry>([], 100, null));
 
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
-        Services.AddScoped<TopologyCacheService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped<TopologyCacheService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
     }
 
     [Fact]
-    public void BisectTool_RendersSetupPhase()
-    {
+    public void BisectTool_RendersSetupPhase() {
         // Act
         IRenderedComponent<BisectTool> cut = RenderBisectTool();
 
@@ -59,8 +53,7 @@ public class BisectToolTests : AdminUITestContext
     }
 
     [Fact]
-    public void BisectTool_PreFillsFromParameters()
-    {
+    public void BisectTool_PreFillsFromParameters() {
         // Act
         IRenderedComponent<BisectTool> cut = RenderBisectTool(goodSeq: 0, badSeq: 100);
 
@@ -71,8 +64,7 @@ public class BisectToolTests : AdminUITestContext
     }
 
     [Fact]
-    public void BisectTool_ShowsResult_OnSuccessfulBisect()
-    {
+    public void BisectTool_ShowsResult_OnSuccessfulBisect() {
         // Arrange
         DateTimeOffset timestamp = new(2026, 3, 27, 10, 0, 0, TimeSpan.Zero);
         List<FieldChange> changes = [new("Count", "4", "5")];
@@ -110,8 +102,7 @@ public class BisectToolTests : AdminUITestContext
     }
 
     [Fact]
-    public void BisectTool_ShowsNoDivergence_WhenFieldChangesEmpty()
-    {
+    public void BisectTool_ShowsNoDivergence_WhenFieldChangesEmpty() {
         // Arrange
         var bisectResult = new BisectResult(
             "test-tenant", "counter", "agg-001",
@@ -135,8 +126,7 @@ public class BisectToolTests : AdminUITestContext
     }
 
     [Fact]
-    public void BisectTool_ShowsError_OnApiFailure()
-    {
+    public void BisectTool_ShowsError_OnApiFailure() {
         // Arrange
         _ = _mockApiClient.BisectAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -154,8 +144,7 @@ public class BisectToolTests : AdminUITestContext
     }
 
     [Fact]
-    public void BisectTool_ShowsTimeoutError_OnOperationCanceled()
-    {
+    public void BisectTool_ShowsTimeoutError_OnOperationCanceled() {
         // Arrange
         _ = _mockApiClient.BisectAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -173,8 +162,7 @@ public class BisectToolTests : AdminUITestContext
     }
 
     [Fact]
-    public void BisectTool_ShowsTruncationWarning_WhenIsTruncated()
-    {
+    public void BisectTool_ShowsTruncationWarning_WhenIsTruncated() {
         // Arrange
         var bisectResult = new BisectResult(
             "test-tenant", "counter", "agg-001",
@@ -198,8 +186,7 @@ public class BisectToolTests : AdminUITestContext
     }
 
     [Fact]
-    public void BisectTool_ShowsBlameButton_WhenOnNavigateToBlameProvided()
-    {
+    public void BisectTool_ShowsBlameButton_WhenOnNavigateToBlameProvided() {
         // Arrange
         DateTimeOffset timestamp = new(2026, 3, 27, 10, 0, 0, TimeSpan.Zero);
         var bisectResult = new BisectResult(
@@ -230,13 +217,10 @@ public class BisectToolTests : AdminUITestContext
         cut.Markup.ShouldContain("Run Blame at This Event");
     }
 
-    private IRenderedComponent<BisectTool> RenderBisectTool(long? goodSeq = null, long? badSeq = null)
-    {
-        return Render<BisectTool>(p => p
-            .Add(c => c.TenantId, "test-tenant")
-            .Add(c => c.Domain, "counter")
-            .Add(c => c.AggregateId, "agg-001")
-            .Add(c => c.InitialGoodSequence, goodSeq)
-            .Add(c => c.InitialBadSequence, badSeq));
-    }
+    private IRenderedComponent<BisectTool> RenderBisectTool(long? goodSeq = null, long? badSeq = null) => Render<BisectTool>(p => p
+                                                                                                                   .Add(c => c.TenantId, "test-tenant")
+                                                                                                                   .Add(c => c.Domain, "counter")
+                                                                                                                   .Add(c => c.AggregateId, "agg-001")
+                                                                                                                   .Add(c => c.InitialGoodSequence, goodSeq)
+                                                                                                                   .Add(c => c.InitialBadSequence, badSeq));
 }

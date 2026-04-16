@@ -11,8 +11,7 @@ public record DaprActorTypeInfo(
     string TypeName,
     int ActiveCount,
     string Description,
-    string ActorIdFormat)
-{
+    string ActorIdFormat) {
     /// <summary>Gets the actor type name as registered with DAPR.</summary>
     public string TypeName { get; } = !string.IsNullOrWhiteSpace(TypeName)
         ? TypeName

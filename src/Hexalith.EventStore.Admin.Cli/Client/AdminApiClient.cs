@@ -8,24 +8,20 @@ namespace Hexalith.EventStore.Admin.Cli.Client;
 /// <summary>
 /// HTTP client wrapper for calling the Admin REST API.
 /// </summary>
-public class AdminApiClient : IDisposable
-{
+public class AdminApiClient : IDisposable {
     private readonly HttpClient _httpClient;
     private readonly bool _ownsClient;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AdminApiClient"/> class with options from global CLI options.
     /// </summary>
-    public AdminApiClient(GlobalOptions options)
-    {
+    public AdminApiClient(GlobalOptions options) {
         ArgumentNullException.ThrowIfNull(options);
-        _httpClient = new HttpClient
-        {
+        _httpClient = new HttpClient {
             BaseAddress = new Uri(options.Url),
             Timeout = TimeSpan.FromSeconds(10),
         };
-        if (options.Token is not null)
-        {
+        if (options.Token is not null) {
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", options.Token);
         }
 
@@ -35,19 +31,16 @@ public class AdminApiClient : IDisposable
     /// <summary>
     /// Initializes a new instance of the <see cref="AdminApiClient"/> class with options and a custom handler (for testing).
     /// </summary>
-    internal AdminApiClient(GlobalOptions options, HttpMessageHandler handler)
-    {
+    internal AdminApiClient(GlobalOptions options, HttpMessageHandler handler) {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(handler);
 
-        _httpClient = new HttpClient(handler)
-        {
+        _httpClient = new HttpClient(handler) {
             BaseAddress = new Uri(options.Url),
             Timeout = TimeSpan.FromSeconds(10),
         };
 
-        if (options.Token is not null)
-        {
+        if (options.Token is not null) {
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", options.Token);
         }
 
@@ -57,8 +50,7 @@ public class AdminApiClient : IDisposable
     /// <summary>
     /// Initializes a new instance of the <see cref="AdminApiClient"/> class with a pre-configured HTTP client (for testing).
     /// </summary>
-    internal AdminApiClient(HttpClient httpClient)
-    {
+    internal AdminApiClient(HttpClient httpClient) {
         _httpClient = httpClient;
         _ownsClient = false;
     }
@@ -67,37 +59,29 @@ public class AdminApiClient : IDisposable
     /// Sends a GET request and deserializes the JSON response.
     /// </summary>
     /// <exception cref="AdminApiException">Thrown for all API communication errors with user-friendly messages.</exception>
-    public async Task<T> GetAsync<T>(string path, CancellationToken cancellationToken)
-    {
+    public async Task<T> GetAsync<T>(string path, CancellationToken cancellationToken) {
         string resolvedUrl = _httpClient.BaseAddress?.ToString().TrimEnd('/') ?? "unknown";
         HttpResponseMessage response;
-        try
-        {
+        try {
             response = await _httpClient.GetAsync(path, cancellationToken).ConfigureAwait(false);
         }
-        catch (HttpRequestException ex) when (ex.InnerException is System.Net.Sockets.SocketException)
-        {
+        catch (HttpRequestException ex) when (ex.InnerException is System.Net.Sockets.SocketException) {
             throw new AdminApiException($"Cannot connect to Admin API at {resolvedUrl}. Is the server running?", ex);
         }
-        catch (HttpRequestException ex)
-        {
+        catch (HttpRequestException ex) {
             throw new AdminApiException($"Cannot connect to Admin API at {resolvedUrl}. Is the server running?", ex);
         }
-        catch (TaskCanceledException ex)
-        {
-            if (cancellationToken.IsCancellationRequested)
-            {
+        catch (TaskCanceledException ex) {
+            if (cancellationToken.IsCancellationRequested) {
                 throw new AdminApiException($"Request was canceled. (URL: {resolvedUrl})", ex);
             }
 
             throw new AdminApiException($"Request timed out after 10 seconds. (URL: {resolvedUrl})", ex);
         }
 
-        using (response)
-        {
+        using (response) {
             int statusCode = (int)response.StatusCode;
-            switch (statusCode)
-            {
+            switch (statusCode) {
                 case 401:
                     throw new AdminApiException($"Authentication required. Use --token to provide a JWT token. (URL: {resolvedUrl})");
                 case 403:
@@ -111,13 +95,11 @@ public class AdminApiClient : IDisposable
             _ = response.EnsureSuccessStatusCode();
 
             string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
+            try {
                 return JsonSerializer.Deserialize<T>(json, JsonDefaults.Options)
                     ?? throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.");
             }
-            catch (JsonException ex)
-            {
+            catch (JsonException ex) {
                 throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.", ex);
             }
         }
@@ -129,37 +111,29 @@ public class AdminApiClient : IDisposable
     /// </summary>
     /// <exception cref="AdminApiException">Thrown for all API communication errors except 404.</exception>
     public async Task<T?> TryGetAsync<T>(string path, CancellationToken cancellationToken)
-        where T : class
-    {
+        where T : class {
         string resolvedUrl = _httpClient.BaseAddress?.ToString().TrimEnd('/') ?? "unknown";
         HttpResponseMessage response;
-        try
-        {
+        try {
             response = await _httpClient.GetAsync(path, cancellationToken).ConfigureAwait(false);
         }
-        catch (HttpRequestException ex) when (ex.InnerException is System.Net.Sockets.SocketException)
-        {
+        catch (HttpRequestException ex) when (ex.InnerException is System.Net.Sockets.SocketException) {
             throw new AdminApiException($"Cannot connect to Admin API at {resolvedUrl}. Is the server running?", ex);
         }
-        catch (HttpRequestException ex)
-        {
+        catch (HttpRequestException ex) {
             throw new AdminApiException($"Cannot connect to Admin API at {resolvedUrl}. Is the server running?", ex);
         }
-        catch (TaskCanceledException ex)
-        {
-            if (cancellationToken.IsCancellationRequested)
-            {
+        catch (TaskCanceledException ex) {
+            if (cancellationToken.IsCancellationRequested) {
                 throw new AdminApiException($"Request was canceled. (URL: {resolvedUrl})", ex);
             }
 
             throw new AdminApiException($"Request timed out after 10 seconds. (URL: {resolvedUrl})", ex);
         }
 
-        using (response)
-        {
+        using (response) {
             int statusCode = (int)response.StatusCode;
-            switch (statusCode)
-            {
+            switch (statusCode) {
                 case 401:
                     throw new AdminApiException($"Authentication required. Use --token to provide a JWT token. (URL: {resolvedUrl})");
                 case 403:
@@ -173,13 +147,11 @@ public class AdminApiClient : IDisposable
             _ = response.EnsureSuccessStatusCode();
 
             string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
+            try {
                 return JsonSerializer.Deserialize<T>(json, JsonDefaults.Options)
                     ?? throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.");
             }
-            catch (JsonException ex)
-            {
+            catch (JsonException ex) {
                 throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.", ex);
             }
         }
@@ -190,12 +162,10 @@ public class AdminApiClient : IDisposable
     /// Treats both HTTP 200 and 202 as success.
     /// </summary>
     /// <exception cref="AdminApiException">Thrown for all API communication errors with user-friendly messages.</exception>
-    public async Task<TResponse> PostAsync<TResponse>(string path, object? body, CancellationToken cancellationToken)
-    {
+    public async Task<TResponse> PostAsync<TResponse>(string path, object? body, CancellationToken cancellationToken) {
         string resolvedUrl = _httpClient.BaseAddress?.ToString().TrimEnd('/') ?? "unknown";
         HttpResponseMessage response;
-        try
-        {
+        try {
             StringContent content = new(
                 body is not null
                     ? JsonSerializer.Serialize(body, JsonDefaults.Options)
@@ -204,29 +174,23 @@ public class AdminApiClient : IDisposable
                 "application/json");
             response = await _httpClient.PostAsync(path, content, cancellationToken).ConfigureAwait(false);
         }
-        catch (HttpRequestException ex) when (ex.InnerException is System.Net.Sockets.SocketException)
-        {
+        catch (HttpRequestException ex) when (ex.InnerException is System.Net.Sockets.SocketException) {
             throw new AdminApiException($"Cannot connect to Admin API at {resolvedUrl}. Is the server running?", ex);
         }
-        catch (HttpRequestException ex)
-        {
+        catch (HttpRequestException ex) {
             throw new AdminApiException($"Cannot connect to Admin API at {resolvedUrl}. Is the server running?", ex);
         }
-        catch (TaskCanceledException ex)
-        {
-            if (cancellationToken.IsCancellationRequested)
-            {
+        catch (TaskCanceledException ex) {
+            if (cancellationToken.IsCancellationRequested) {
                 throw new AdminApiException($"Request was canceled. (URL: {resolvedUrl})", ex);
             }
 
             throw new AdminApiException($"Request timed out after 10 seconds. (URL: {resolvedUrl})", ex);
         }
 
-        using (response)
-        {
+        using (response) {
             int statusCode = (int)response.StatusCode;
-            switch (statusCode)
-            {
+            switch (statusCode) {
                 case 401:
                     throw new AdminApiException($"Authentication required. Use --token to provide a JWT token. (URL: {resolvedUrl})", 401);
                 case 403:
@@ -238,19 +202,16 @@ public class AdminApiClient : IDisposable
             }
 
             // Treat both 200 and 202 as success
-            if (statusCode is not (200 or 202))
-            {
+            if (statusCode is not (200 or 202)) {
                 _ = response.EnsureSuccessStatusCode();
             }
 
             string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
+            try {
                 return JsonSerializer.Deserialize<TResponse>(json, JsonDefaults.Options)
                     ?? throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.");
             }
-            catch (JsonException ex)
-            {
+            catch (JsonException ex) {
                 throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.", ex);
             }
         }
@@ -268,37 +229,29 @@ public class AdminApiClient : IDisposable
     /// Treats both HTTP 200 and 202 as success.
     /// </summary>
     /// <exception cref="AdminApiException">Thrown for all API communication errors.</exception>
-    public async Task<TResponse> PutAsync<TResponse>(string path, CancellationToken cancellationToken)
-    {
+    public async Task<TResponse> PutAsync<TResponse>(string path, CancellationToken cancellationToken) {
         string resolvedUrl = _httpClient.BaseAddress?.ToString().TrimEnd('/') ?? "unknown";
         HttpResponseMessage response;
-        try
-        {
+        try {
             response = await _httpClient.PutAsync(path, null, cancellationToken).ConfigureAwait(false);
         }
-        catch (HttpRequestException ex) when (ex.InnerException is System.Net.Sockets.SocketException)
-        {
+        catch (HttpRequestException ex) when (ex.InnerException is System.Net.Sockets.SocketException) {
             throw new AdminApiException($"Cannot connect to Admin API at {resolvedUrl}. Is the server running?", ex);
         }
-        catch (HttpRequestException ex)
-        {
+        catch (HttpRequestException ex) {
             throw new AdminApiException($"Cannot connect to Admin API at {resolvedUrl}. Is the server running?", ex);
         }
-        catch (TaskCanceledException ex)
-        {
-            if (cancellationToken.IsCancellationRequested)
-            {
+        catch (TaskCanceledException ex) {
+            if (cancellationToken.IsCancellationRequested) {
                 throw new AdminApiException($"Request was canceled. (URL: {resolvedUrl})", ex);
             }
 
             throw new AdminApiException($"Request timed out after 10 seconds. (URL: {resolvedUrl})", ex);
         }
 
-        using (response)
-        {
+        using (response) {
             int statusCode = (int)response.StatusCode;
-            switch (statusCode)
-            {
+            switch (statusCode) {
                 case 401:
                     throw new AdminApiException($"Authentication required. Use --token to provide a JWT token. (URL: {resolvedUrl})", 401);
                 case 403:
@@ -309,19 +262,16 @@ public class AdminApiClient : IDisposable
                     throw new AdminApiException($"Admin API server error: {statusCode}. (URL: {resolvedUrl})", statusCode);
             }
 
-            if (statusCode is not (200 or 202))
-            {
+            if (statusCode is not (200 or 202)) {
                 _ = response.EnsureSuccessStatusCode();
             }
 
             string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
+            try {
                 return JsonSerializer.Deserialize<TResponse>(json, JsonDefaults.Options)
                     ?? throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.");
             }
-            catch (JsonException ex)
-            {
+            catch (JsonException ex) {
                 throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.", ex);
             }
         }
@@ -332,37 +282,29 @@ public class AdminApiClient : IDisposable
     /// Treats both HTTP 200 and 202 as success.
     /// </summary>
     /// <exception cref="AdminApiException">Thrown for all API communication errors.</exception>
-    public async Task<TResponse> DeleteAsync<TResponse>(string path, CancellationToken cancellationToken)
-    {
+    public async Task<TResponse> DeleteAsync<TResponse>(string path, CancellationToken cancellationToken) {
         string resolvedUrl = _httpClient.BaseAddress?.ToString().TrimEnd('/') ?? "unknown";
         HttpResponseMessage response;
-        try
-        {
+        try {
             response = await _httpClient.DeleteAsync(path, cancellationToken).ConfigureAwait(false);
         }
-        catch (HttpRequestException ex) when (ex.InnerException is System.Net.Sockets.SocketException)
-        {
+        catch (HttpRequestException ex) when (ex.InnerException is System.Net.Sockets.SocketException) {
             throw new AdminApiException($"Cannot connect to Admin API at {resolvedUrl}. Is the server running?", ex);
         }
-        catch (HttpRequestException ex)
-        {
+        catch (HttpRequestException ex) {
             throw new AdminApiException($"Cannot connect to Admin API at {resolvedUrl}. Is the server running?", ex);
         }
-        catch (TaskCanceledException ex)
-        {
-            if (cancellationToken.IsCancellationRequested)
-            {
+        catch (TaskCanceledException ex) {
+            if (cancellationToken.IsCancellationRequested) {
                 throw new AdminApiException($"Request was canceled. (URL: {resolvedUrl})", ex);
             }
 
             throw new AdminApiException($"Request timed out after 10 seconds. (URL: {resolvedUrl})", ex);
         }
 
-        using (response)
-        {
+        using (response) {
             int statusCode = (int)response.StatusCode;
-            switch (statusCode)
-            {
+            switch (statusCode) {
                 case 401:
                     throw new AdminApiException($"Authentication required. Use --token to provide a JWT token. (URL: {resolvedUrl})", 401);
                 case 403:
@@ -373,29 +315,24 @@ public class AdminApiClient : IDisposable
                     throw new AdminApiException($"Admin API server error: {statusCode}. (URL: {resolvedUrl})", statusCode);
             }
 
-            if (statusCode is not (200 or 202))
-            {
+            if (statusCode is not (200 or 202)) {
                 _ = response.EnsureSuccessStatusCode();
             }
 
             string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
+            try {
                 return JsonSerializer.Deserialize<TResponse>(json, JsonDefaults.Options)
                     ?? throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.");
             }
-            catch (JsonException ex)
-            {
+            catch (JsonException ex) {
                 throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.", ex);
             }
         }
     }
 
     /// <inheritdoc/>
-    public void Dispose()
-    {
-        if (_ownsClient)
-        {
+    public void Dispose() {
+        if (_ownsClient) {
             _httpClient.Dispose();
         }
 

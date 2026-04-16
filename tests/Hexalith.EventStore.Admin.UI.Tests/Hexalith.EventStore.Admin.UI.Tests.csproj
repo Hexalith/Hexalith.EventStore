@@ -6,6 +6,7 @@
     <RootNamespace>Hexalith.EventStore.Admin.UI.Tests</RootNamespace>
     <!-- bUnit 2.0.33-preview pulls in a vulnerable transitive dependency (Microsoft.Extensions.Caching.Memory 9.0.0-preview.6) -->
     <NuGetAuditMode>direct</NuGetAuditMode>
+      <NoWarn>$(NoWarn);IDE1006</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

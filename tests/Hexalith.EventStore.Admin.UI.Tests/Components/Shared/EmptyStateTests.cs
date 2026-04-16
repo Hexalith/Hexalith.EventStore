@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.UI.Components.Shared;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Components.Shared;
 
-public class EmptyStateTests : AdminUITestContext
-{
+public class EmptyStateTests : AdminUITestContext {
     [Fact]
-    public void EmptyState_RendersTitleAndDescription()
-    {
+    public void EmptyState_RendersTitleAndDescription() {
         IRenderedComponent<EmptyState> cut = Render<EmptyState>(
             parameters => parameters
                 .Add(p => p.Title, "No Streams Found")
@@ -20,8 +18,7 @@ public class EmptyStateTests : AdminUITestContext
     }
 
     [Fact]
-    public void EmptyState_RendersFluentAnchorButtonWithPrimaryAppearance()
-    {
+    public void EmptyState_RendersFluentAnchorButtonWithPrimaryAppearance() {
         // v5 migration marker: the previous FluentAnchor with Appearance.Accent
         // has been replaced by FluentAnchorButton with ButtonAppearance.Primary.
         IRenderedComponent<EmptyState> cut = Render<EmptyState>(
@@ -39,8 +36,7 @@ public class EmptyStateTests : AdminUITestContext
     }
 
     [Fact]
-    public void EmptyState_HidesActionLinkWhenNotProvided()
-    {
+    public void EmptyState_HidesActionLinkWhenNotProvided() {
         IRenderedComponent<EmptyState> cut = Render<EmptyState>(
             parameters => parameters
                 .Add(p => p.Title, "Empty")

@@ -1,7 +1,5 @@
 using Bunit;
 
-using Microsoft.AspNetCore.Components;
-
 namespace Hexalith.EventStore.Admin.UI.Tests.Layout;
 
 /// <summary>
@@ -12,7 +10,7 @@ public class MainLayoutTests : AdminUITestContext {
     [Fact]
     public void MainLayout_RendersFluentLayout() {
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Layout.MainLayout> cut = Render<Hexalith.EventStore.Admin.UI.Layout.MainLayout>(
-            parameters => parameters.Add(p => p.Body, (RenderFragment)(builder => builder.AddContent(0, "Test Content"))));
+            parameters => parameters.Add(p => p.Body, builder => builder.AddContent(0, "Test Content")));
 
         string markup = cut.Markup;
         markup.ShouldContain("Hexalith EventStore Admin");
@@ -22,7 +20,7 @@ public class MainLayoutTests : AdminUITestContext {
     [Fact]
     public void MainLayout_RendersSkipToMainContentLink() {
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Layout.MainLayout> cut = Render<Hexalith.EventStore.Admin.UI.Layout.MainLayout>(
-            parameters => parameters.Add(p => p.Body, (RenderFragment)(builder => builder.AddContent(0, "Content"))));
+            parameters => parameters.Add(p => p.Body, builder => builder.AddContent(0, "Content")));
 
         string markup = cut.Markup;
         markup.ShouldContain("Skip to main content");
@@ -32,7 +30,7 @@ public class MainLayoutTests : AdminUITestContext {
     [Fact]
     public void MainLayout_RendersNavMenu() {
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Layout.MainLayout> cut = Render<Hexalith.EventStore.Admin.UI.Layout.MainLayout>(
-            parameters => parameters.Add(p => p.Body, (RenderFragment)(builder => builder.AddContent(0, "Content"))));
+            parameters => parameters.Add(p => p.Body, builder => builder.AddContent(0, "Content")));
 
         string markup = cut.Markup;
         markup.ShouldContain("Home");
@@ -47,15 +45,15 @@ public class MainLayoutTests : AdminUITestContext {
     [Fact]
     public void MainLayout_RendersMainContentArea() {
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Layout.MainLayout> cut = Render<Hexalith.EventStore.Admin.UI.Layout.MainLayout>(
-            parameters => parameters.Add(p => p.Body, (RenderFragment)(builder => builder.AddContent(0, "Content"))));
+            parameters => parameters.Add(p => p.Body, builder => builder.AddContent(0, "Content")));
 
-        cut.Find("#main-content").ShouldNotBeNull();
+        _ = cut.Find("#main-content").ShouldNotBeNull();
     }
 
     [Fact]
     public void MainLayout_DoesNotRenderBreadcrumbOnHomePage() {
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Layout.MainLayout> cut = Render<Hexalith.EventStore.Admin.UI.Layout.MainLayout>(
-            parameters => parameters.Add(p => p.Body, (RenderFragment)(builder => builder.AddContent(0, "Content"))));
+            parameters => parameters.Add(p => p.Body, builder => builder.AddContent(0, "Content")));
 
         cut.Markup.ShouldNotContain("admin-breadcrumb");
     }

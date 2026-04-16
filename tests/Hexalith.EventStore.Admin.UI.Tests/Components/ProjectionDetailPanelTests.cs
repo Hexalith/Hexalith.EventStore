@@ -2,8 +2,6 @@ using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Projections;
 using Hexalith.EventStore.Admin.UI.Components;
-using Hexalith.EventStore.Admin.UI.Services;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,25 +14,22 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 /// <summary>
 /// bUnit tests for the ProjectionDetailPanel component.
 /// </summary>
-public class ProjectionDetailPanelTests : AdminUITestContext
-{
+public class ProjectionDetailPanelTests : AdminUITestContext {
     private readonly AdminProjectionApiClient _mockApiClient;
 
-    public ProjectionDetailPanelTests()
-    {
+    public ProjectionDetailPanelTests() {
         _mockApiClient = Substitute.For<AdminProjectionApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminProjectionApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
     }
 
     [Fact]
-    public void DetailPanel_RendersProjectionMetrics()
-    {
+    public void DetailPanel_RendersProjectionMetrics() {
         // Arrange
         ProjectionDetail detail = CreateDetail();
         _ = _mockApiClient.GetProjectionDetailAsync(
@@ -57,8 +52,7 @@ public class ProjectionDetailPanelTests : AdminUITestContext
     }
 
     [Fact]
-    public void DetailPanel_RendersSubscribedEventTypes()
-    {
+    public void DetailPanel_RendersSubscribedEventTypes() {
         // Arrange
         ProjectionDetail detail = CreateDetail();
         _ = _mockApiClient.GetProjectionDetailAsync(
@@ -80,8 +74,7 @@ public class ProjectionDetailPanelTests : AdminUITestContext
     }
 
     [Fact]
-    public void DetailPanel_RendersErrorList()
-    {
+    public void DetailPanel_RendersErrorList() {
         // Arrange
         ProjectionDetail detail = CreateDetailWithErrors();
         _ = _mockApiClient.GetProjectionDetailAsync(
@@ -105,8 +98,7 @@ public class ProjectionDetailPanelTests : AdminUITestContext
     }
 
     [Fact]
-    public void DetailPanel_ShowsNoErrorsRecorded_WhenEmpty()
-    {
+    public void DetailPanel_ShowsNoErrorsRecorded_WhenEmpty() {
         // Arrange
         ProjectionDetail detail = CreateDetail();
         _ = _mockApiClient.GetProjectionDetailAsync(
@@ -125,8 +117,7 @@ public class ProjectionDetailPanelTests : AdminUITestContext
     }
 
     [Fact]
-    public void DetailPanel_PauseButton_VisibleForRunningProjection()
-    {
+    public void DetailPanel_PauseButton_VisibleForRunningProjection() {
         // Arrange
         ProjectionDetail detail = CreateDetail();
         _ = _mockApiClient.GetProjectionDetailAsync(
@@ -146,8 +137,7 @@ public class ProjectionDetailPanelTests : AdminUITestContext
     }
 
     [Fact]
-    public void DetailPanel_ResumeButton_VisibleForPausedProjection()
-    {
+    public void DetailPanel_ResumeButton_VisibleForPausedProjection() {
         // Arrange
         ProjectionDetail detail = CreatePausedDetail();
         _ = _mockApiClient.GetProjectionDetailAsync(
@@ -166,8 +156,7 @@ public class ProjectionDetailPanelTests : AdminUITestContext
     }
 
     [Fact]
-    public void DetailPanel_RendersConfigurationJson()
-    {
+    public void DetailPanel_RendersConfigurationJson() {
         // Arrange
         ProjectionDetail detail = CreateDetail();
         _ = _mockApiClient.GetProjectionDetailAsync(
@@ -186,8 +175,7 @@ public class ProjectionDetailPanelTests : AdminUITestContext
     }
 
     [Fact]
-    public void DetailPanel_ShowsNotFound_WhenNull()
-    {
+    public void DetailPanel_ShowsNotFound_WhenNull() {
         // Arrange
         _ = _mockApiClient.GetProjectionDetailAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -206,8 +194,7 @@ public class ProjectionDetailPanelTests : AdminUITestContext
     }
 
     [Fact]
-    public void DetailPanel_ErrorTable_HasAriaLabel()
-    {
+    public void DetailPanel_ErrorTable_HasAriaLabel() {
         // Arrange
         ProjectionDetail detail = CreateDetailWithErrors();
         _ = _mockApiClient.GetProjectionDetailAsync(
@@ -226,12 +213,10 @@ public class ProjectionDetailPanelTests : AdminUITestContext
     }
 
     [Fact]
-    public void DetailPanel_ShowAllErrors_WhenMoreThan20()
-    {
+    public void DetailPanel_ShowAllErrors_WhenMoreThan20() {
         // Arrange
         List<ProjectionError> errors = [];
-        for (int i = 0; i < 25; i++)
-        {
+        for (int i = 0; i < 25; i++) {
             errors.Add(new ProjectionError(i, DateTimeOffset.UtcNow.AddMinutes(-i), $"Error {i}", "SomeEvent"));
         }
 
@@ -255,8 +240,7 @@ public class ProjectionDetailPanelTests : AdminUITestContext
     }
 
     [Fact]
-    public void DetailPanel_BackToList_Button_Exists()
-    {
+    public void DetailPanel_BackToList_Button_Exists() {
         // Arrange
         ProjectionDetail detail = CreateDetail();
         _ = _mockApiClient.GetProjectionDetailAsync(
@@ -321,12 +305,10 @@ public class ProjectionDetailPanelTests : AdminUITestContext
 /// Tests that projection controls are hidden when user lacks Operator role.
 /// Merge-blocking test (spec task 6.8, AC: 7, 8, 9).
 /// </summary>
-public class ProjectionDetailPanelReadOnlyTests : AdminUITestContext
-{
+public class ProjectionDetailPanelReadOnlyTests : AdminUITestContext {
     private readonly AdminProjectionApiClient _mockApiClient;
 
-    public ProjectionDetailPanelReadOnlyTests()
-    {
+    public ProjectionDetailPanelReadOnlyTests() {
         // Override auth state with ReadOnly role
         AuthenticationStateProvider readOnlyAuth = Substitute.For<AuthenticationStateProvider>();
         System.Security.Claims.ClaimsPrincipal readOnlyUser = new(new System.Security.Claims.ClaimsIdentity(
@@ -335,10 +317,9 @@ public class ProjectionDetailPanelReadOnlyTests : AdminUITestContext
         ], "TestAuth"));
         _ = readOnlyAuth.GetAuthenticationStateAsync()
             .Returns(Task.FromResult(new AuthenticationState(readOnlyUser)));
-        Services.AddSingleton(readOnlyAuth);
-        Services.AddScoped<AdminUserContext>();
-        Services.AddCascadingValue(sp =>
-        {
+        _ = Services.AddSingleton(readOnlyAuth);
+        _ = Services.AddScoped<AdminUserContext>();
+        _ = Services.AddCascadingValue(sp => {
             AuthenticationStateProvider asp = sp.GetRequiredService<AuthenticationStateProvider>();
             return asp.GetAuthenticationStateAsync();
         });
@@ -346,16 +327,15 @@ public class ProjectionDetailPanelReadOnlyTests : AdminUITestContext
         _mockApiClient = Substitute.For<AdminProjectionApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminProjectionApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
     }
 
     [Fact]
-    public void DetailPanel_ControlsHidden_WhenUserLacksOperatorRole()
-    {
+    public void DetailPanel_ControlsHidden_WhenUserLacksOperatorRole() {
         // Arrange
         ProjectionDetail detail = new(
             "counter-projection", "tenant-1", ProjectionStatusType.Running,

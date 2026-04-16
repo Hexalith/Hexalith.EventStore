@@ -13,8 +13,7 @@ public record DaprSubscriptionInfo(
     string Topic,
     string Route,
     string SubscriptionType,
-    string? DeadLetterTopic)
-{
+    string? DeadLetterTopic) {
     /// <summary>Gets the pub/sub component name.</summary>
     public string PubSubName { get; } = !string.IsNullOrWhiteSpace(PubSubName)
         ? PubSubName

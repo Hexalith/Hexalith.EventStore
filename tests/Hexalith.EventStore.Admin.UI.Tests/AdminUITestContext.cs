@@ -1,8 +1,6 @@
 using Bunit;
 
-using Hexalith.EventStore.Admin.UI.Services;
 using Hexalith.EventStore.Admin.UI.Tests.Services;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
@@ -22,26 +20,26 @@ namespace Hexalith.EventStore.Admin.UI.Tests;
 public class AdminUITestContext : BunitContext {
     public AdminUITestContext() {
         // Register FluentUI components
-        Services.AddFluentUIComponents();
+        _ = Services.AddFluentUIComponents();
 
         // Replace the real IToastService with a test fake to avoid requiring a FluentToastProvider
         // in the render tree for unit tests. Tests that need to inspect toasts can resolve
         // TestToastService from DI instead.
-        Services.RemoveAll<IToastService>();
-        Services.AddSingleton<TestToastService>();
-        Services.AddSingleton<IToastService>(sp => sp.GetRequiredService<TestToastService>());
+        _ = Services.RemoveAll<IToastService>();
+        _ = Services.AddSingleton<TestToastService>();
+        _ = Services.AddSingleton<IToastService>(sp => sp.GetRequiredService<TestToastService>());
 
         // Mock JSInterop for FluentUI and custom interop
-        JSInterop.Setup<string>("hexalithAdmin.registerShortcuts", _ => true).SetResult("shortcut-test");
-        JSInterop.SetupVoid("hexalithAdmin.unregisterShortcuts", _ => true).SetVoidResult();
-        JSInterop.Setup<string?>("hexalithAdmin.getLocalStorage", _ => true).SetResult(null);
-        JSInterop.SetupVoid("hexalithAdmin.setLocalStorage", _ => true).SetVoidResult();
-        JSInterop.Setup<int>("hexalithAdmin.getViewportWidth", _ => true).SetResult(1920);
-        JSInterop.Setup<double>("hexalithAdmin.getScrollTop", _ => true).SetResult(0d);
-        JSInterop.SetupVoid("hexalithAdmin.setScrollTop", _ => true).SetVoidResult();
-        JSInterop.Setup<string>("hexalithAdmin.registerViewportListener", _ => true).SetResult("vp-test-1");
-        JSInterop.SetupVoid("hexalithAdmin.unregisterViewportListener", _ => true).SetVoidResult();
-        JSInterop.SetupVoid("hexalithAdmin.focusCommandPaletteSearch", _ => true).SetVoidResult();
+        _ = JSInterop.Setup<string>("hexalithAdmin.registerShortcuts", _ => true).SetResult("shortcut-test");
+        _ = JSInterop.SetupVoid("hexalithAdmin.unregisterShortcuts", _ => true).SetVoidResult();
+        _ = JSInterop.Setup<string?>("hexalithAdmin.getLocalStorage", _ => true).SetResult(null);
+        _ = JSInterop.SetupVoid("hexalithAdmin.setLocalStorage", _ => true).SetVoidResult();
+        _ = JSInterop.Setup<int>("hexalithAdmin.getViewportWidth", _ => true).SetResult(1920);
+        _ = JSInterop.Setup<double>("hexalithAdmin.getScrollTop", _ => true).SetResult(0d);
+        _ = JSInterop.SetupVoid("hexalithAdmin.setScrollTop", _ => true).SetVoidResult();
+        _ = JSInterop.Setup<string>("hexalithAdmin.registerViewportListener", _ => true).SetResult("vp-test-1");
+        _ = JSInterop.SetupVoid("hexalithAdmin.unregisterViewportListener", _ => true).SetVoidResult();
+        _ = JSInterop.SetupVoid("hexalithAdmin.focusCommandPaletteSearch", _ => true).SetVoidResult();
         JSInterop.Mode = JSRuntimeMode.Loose;
 
         // Mock authentication state provider
@@ -53,29 +51,29 @@ public class AdminUITestContext : BunitContext {
         _ = authStateProvider.GetAuthenticationStateAsync()
             .Returns(Task.FromResult(new AuthenticationState(user)));
 
-        Services.AddSingleton(authStateProvider);
-        Services.AddScoped<AdminUserContext>();
-        Services.AddScoped<ThemeState>();
+        _ = Services.AddSingleton(authStateProvider);
+        _ = Services.AddScoped<AdminUserContext>();
+        _ = Services.AddScoped<ThemeState>();
 
         // Mock AdminStreamApiClient for pages that inject it (tests can override)
-        Services.AddScoped(_ => Substitute.For<AdminStreamApiClient>(
+        _ = Services.AddScoped(_ => Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance));
-        Services.AddScoped<DashboardRefreshService>();
-        Services.AddScoped<TopologyCacheService>();
-        Services.AddScoped<ViewportService>();
+        _ = Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped<TopologyCacheService>();
+        _ = Services.AddScoped<ViewportService>();
 
         // SignalR client with test-safe disposal
         TestSignalRClient testSignalRClient = new();
-        Services.AddSingleton(testSignalRClient);
-        Services.AddSingleton(testSignalRClient.Inner);
-        Services.AddSingleton<IConfiguration>(_ => new ConfigurationBuilder()
+        _ = Services.AddSingleton(testSignalRClient);
+        _ = Services.AddSingleton(testSignalRClient.Inner);
+        _ = Services.AddSingleton<IConfiguration>(_ => new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> {
                 ["EventStore:AdminServer:SwaggerUrl"] = "https://localhost:8091/swagger/index.html",
                 ["EventStore:AdminServer:BaseUrl"] = "https://eventstore-admin",
             })
             .Build());
-        Services.AddCascadingValue(sp => {
+        _ = Services.AddCascadingValue(sp => {
             AuthenticationStateProvider asp = sp.GetRequiredService<AuthenticationStateProvider>();
             return asp.GetAuthenticationStateAsync();
         });

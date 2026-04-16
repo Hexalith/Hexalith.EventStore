@@ -3,8 +3,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 /// <summary>
 /// Status of an event stream.
 /// </summary>
-public enum StreamStatus
-{
+public enum StreamStatus {
     /// <summary>The stream is actively receiving events.</summary>
     Active,
 

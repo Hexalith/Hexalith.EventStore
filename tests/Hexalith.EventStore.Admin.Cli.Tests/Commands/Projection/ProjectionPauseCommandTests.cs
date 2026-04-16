@@ -2,7 +2,6 @@ using System.Net;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
-using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Projection;
 using Hexalith.EventStore.Admin.Cli.Formatting;
@@ -10,18 +9,15 @@ using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Projection;
 
-public class ProjectionPauseCommandTests
-{
+public class ProjectionPauseCommandTests {
     private static GlobalOptions CreateOptions(string format = "table")
         => new("http://localhost:5002", null, format, null);
 
     private static (AdminApiClient Client, MockHttpMessageHandler Handler) CreateMockClientWithHandler(
         object responseBody,
-        HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
+        HttpStatusCode statusCode = HttpStatusCode.OK) {
         string json = JsonSerializer.Serialize(responseBody, JsonDefaults.Options);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         });
         GlobalOptions options = CreateOptions();
@@ -29,8 +25,7 @@ public class ProjectionPauseCommandTests
     }
 
     [Fact]
-    public async Task ProjectionPauseCommand_Success_PrintsConfirmation()
-    {
+    public async Task ProjectionPauseCommand_Success_PrintsConfirmation() {
         // Arrange
         AdminOperationResult result = new(true, "op-123", "Projection paused", null);
         (AdminApiClient client, _) = CreateMockClientWithHandler(result);
@@ -38,8 +33,7 @@ public class ProjectionPauseCommandTests
 
         // Act
         int exitCode;
-        using (client)
-        {
+        using (client) {
             exitCode = await ProjectionPauseCommand.ExecuteAsync(client, options, "acme", "counter-view", CancellationToken.None);
         }
 
@@ -48,8 +42,7 @@ public class ProjectionPauseCommandTests
     }
 
     [Fact]
-    public async Task ProjectionPauseCommand_OperationFailure_PrintsError()
-    {
+    public async Task ProjectionPauseCommand_OperationFailure_PrintsError() {
         // Arrange
         AdminOperationResult result = new(false, "op-456", "Projection is already paused", "AlreadyPaused");
         (AdminApiClient client, _) = CreateMockClientWithHandler(result);
@@ -57,8 +50,7 @@ public class ProjectionPauseCommandTests
 
         // Act
         int exitCode;
-        using (client)
-        {
+        using (client) {
             exitCode = await ProjectionPauseCommand.ExecuteAsync(client, options, "acme", "counter-view", CancellationToken.None);
         }
 
@@ -67,8 +59,7 @@ public class ProjectionPauseCommandTests
     }
 
     [Fact]
-    public async Task ProjectionPauseCommand_Http403_PrintsPermissionError()
-    {
+    public async Task ProjectionPauseCommand_Http403_PrintsPermissionError() {
         // Arrange
         MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.Forbidden));
         GlobalOptions options = CreateOptions("table");
@@ -83,8 +74,7 @@ public class ProjectionPauseCommandTests
     }
 
     [Fact]
-    public async Task ProjectionPauseCommand_Http404_PrintsNotFound()
-    {
+    public async Task ProjectionPauseCommand_Http404_PrintsNotFound() {
         // Arrange
         MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.NotFound));
         GlobalOptions options = CreateOptions("table");
@@ -99,8 +89,7 @@ public class ProjectionPauseCommandTests
     }
 
     [Fact]
-    public void ProjectionPauseCommand_JsonFormat_ReturnsOperationResult()
-    {
+    public void ProjectionPauseCommand_JsonFormat_ReturnsOperationResult() {
         // Arrange
         AdminOperationResult result = new(true, "op-789", "Projection paused", null);
         IOutputFormatter formatter = new JsonOutputFormatter();
@@ -110,7 +99,7 @@ public class ProjectionPauseCommandTests
 
         // Assert
         AdminOperationResult? deserialized = JsonSerializer.Deserialize<AdminOperationResult>(json, JsonDefaults.Options);
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.Success.ShouldBeTrue();
         deserialized.OperationId.ShouldBe("op-789");
     }

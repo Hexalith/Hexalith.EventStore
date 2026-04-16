@@ -13,8 +13,7 @@ public record TenantDetail(
     string Name,
     string? Description,
     TenantStatusType Status,
-    DateTimeOffset CreatedAt)
-{
+    DateTimeOffset CreatedAt) {
     /// <summary>Gets the tenant identifier.</summary>
     public string TenantId { get; } = !string.IsNullOrWhiteSpace(TenantId)
         ? TenantId

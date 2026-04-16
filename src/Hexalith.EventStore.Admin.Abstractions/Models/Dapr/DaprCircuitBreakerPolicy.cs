@@ -13,8 +13,7 @@ public record DaprCircuitBreakerPolicy(
     int MaxRequests,
     string Interval,
     string Timeout,
-    string Trip)
-{
+    string Trip) {
     /// <summary>Gets the policy identifier.</summary>
     public string Name { get; } = !string.IsNullOrWhiteSpace(Name)
         ? Name

@@ -5,8 +5,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Services;
 /// <summary>
 /// Service interface for querying DAPR infrastructure details — components, sidecar info, and health probes.
 /// </summary>
-public interface IDaprInfrastructureQueryService
-{
+public interface IDaprInfrastructureQueryService {
     /// <summary>
     /// Gets detailed information about all registered DAPR components, including health probes.
     /// </summary>

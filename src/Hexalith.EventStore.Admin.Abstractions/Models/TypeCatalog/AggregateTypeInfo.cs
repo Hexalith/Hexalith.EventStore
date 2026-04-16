@@ -8,8 +8,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog;
 /// <param name="EventCount">The number of event types associated with this aggregate.</param>
 /// <param name="CommandCount">The number of command types associated with this aggregate.</param>
 /// <param name="HasProjections">Whether any projections subscribe to events from this aggregate.</param>
-public record AggregateTypeInfo(string TypeName, string Domain, int EventCount, int CommandCount, bool HasProjections)
-{
+public record AggregateTypeInfo(string TypeName, string Domain, int EventCount, int CommandCount, bool HasProjections) {
     /// <summary>Gets the fully qualified aggregate type name.</summary>
     public string TypeName { get; } = !string.IsNullOrWhiteSpace(TypeName)
         ? TypeName

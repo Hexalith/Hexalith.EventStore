@@ -2,9 +2,9 @@ using Hexalith.EventStore.Extensions;
 using Hexalith.EventStore.HealthChecks;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.OpenApi;
-using Hexalith.EventStore.SignalRHub;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.ServiceDefaults;
+using Hexalith.EventStore.SignalRHub;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 

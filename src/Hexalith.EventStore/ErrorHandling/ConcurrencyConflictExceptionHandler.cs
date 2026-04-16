@@ -1,8 +1,8 @@
 
 using System.Text.Json;
 
-using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Server.Commands;
 
 using Microsoft.AspNetCore.Diagnostics;

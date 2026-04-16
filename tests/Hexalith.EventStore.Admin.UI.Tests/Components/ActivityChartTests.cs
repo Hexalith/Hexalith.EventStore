@@ -8,16 +8,13 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 /// <summary>
 /// bUnit tests for the ActivityChart component.
 /// </summary>
-public class ActivityChartTests : AdminUITestContext
-{
+public class ActivityChartTests : AdminUITestContext {
     [Fact]
-    public void ActivityChart_WithBuckets_RendersCorrectNumberOfBars()
-    {
+    public void ActivityChart_WithBuckets_RendersCorrectNumberOfBars() {
         // Arrange
         DateTimeOffset now = DateTimeOffset.UtcNow;
         List<ActivityBucket> buckets = [];
-        for (int i = 0; i < 24; i++)
-        {
+        for (int i = 0; i < 24; i++) {
             buckets.Add(new ActivityBucket(
                 now.AddHours(-24 + i),
                 now.AddHours(-23 + i),
@@ -33,8 +30,7 @@ public class ActivityChartTests : AdminUITestContext
     }
 
     [Fact]
-    public void ActivityChart_WithBuckets_HasAriaLabels()
-    {
+    public void ActivityChart_WithBuckets_HasAriaLabels() {
         // Arrange
         DateTimeOffset now = new(2026, 3, 23, 14, 0, 0, TimeSpan.Zero);
         List<ActivityBucket> buckets =
@@ -52,8 +48,7 @@ public class ActivityChartTests : AdminUITestContext
     }
 
     [Fact]
-    public void ActivityChart_WithBuckets_HasTitleTooltips()
-    {
+    public void ActivityChart_WithBuckets_HasTitleTooltips() {
         // Arrange
         DateTimeOffset now = new(2026, 3, 23, 10, 0, 0, TimeSpan.Zero);
         List<ActivityBucket> buckets =
@@ -70,13 +65,11 @@ public class ActivityChartTests : AdminUITestContext
     }
 
     [Fact]
-    public void ActivityChart_AllZeroBuckets_ShowsEmptyState()
-    {
+    public void ActivityChart_AllZeroBuckets_ShowsEmptyState() {
         // Arrange
         DateTimeOffset now = DateTimeOffset.UtcNow;
         List<ActivityBucket> buckets = [];
-        for (int i = 0; i < 24; i++)
-        {
+        for (int i = 0; i < 24; i++) {
             buckets.Add(new ActivityBucket(now.AddHours(-24 + i), now.AddHours(-23 + i), 0));
         }
 
@@ -90,8 +83,7 @@ public class ActivityChartTests : AdminUITestContext
     }
 
     [Fact]
-    public void ActivityChart_Loading_ShowsSkeletonBars()
-    {
+    public void ActivityChart_Loading_ShowsSkeletonBars() {
         // Act
         IRenderedComponent<ActivityChart> cut = Render<ActivityChart>(
             p => p.Add(c => c.IsLoading, true));

@@ -18,23 +18,20 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the DeadLetters page.
 /// </summary>
-public class DeadLettersPageTests : AdminUITestContext
-{
+public class DeadLettersPageTests : AdminUITestContext {
     private readonly AdminDeadLetterApiClient _mockDeadLetterApi;
 
-    public DeadLettersPageTests()
-    {
+    public DeadLettersPageTests() {
         _mockDeadLetterApi = Substitute.For<AdminDeadLetterApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminDeadLetterApiClient>.Instance);
-        Services.AddScoped(_ => _mockDeadLetterApi);
+        _ = Services.AddScoped(_ => _mockDeadLetterApi);
     }
 
     // ===== Merge-blocking tests (4.1-4.13) =====
 
     [Fact]
-    public void DeadLetters_ShowsLoadingSkeletons_WhenLoading()
-    {
+    public void DeadLetters_ShowsLoadingSkeletons_WhenLoading() {
         // Arrange — never complete the task
         TaskCompletionSource<PagedResult<DeadLetterEntry>> tcs = new();
         _ = _mockDeadLetterApi.GetDeadLettersAsync(
@@ -49,8 +46,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_ShowsEmptyState_WhenNoEntries()
-    {
+    public void DeadLetters_ShowsEmptyState_WhenNoEntries() {
         // Arrange
         SetupEntries([], 0);
 
@@ -64,8 +60,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_ShowsDataGrid_WhenEntriesExist()
-    {
+    public void DeadLetters_ShowsDataGrid_WhenEntriesExist() {
         // Arrange
         SetupEntries(CreateSampleEntries(), 2);
 
@@ -82,8 +77,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_ShowsStatCards_WhenLoaded()
-    {
+    public void DeadLetters_ShowsStatCards_WhenLoaded() {
         // Arrange
         SetupEntries(CreateSampleEntries(), 2);
 
@@ -99,8 +93,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_FiltersVisibleEntries_WhenTenantFilterApplied()
-    {
+    public void DeadLetters_FiltersVisibleEntries_WhenTenantFilterApplied() {
         // Arrange — set up filtered result for when tenant filter is applied
         _ = _mockDeadLetterApi.GetDeadLettersAsync(
             "tenant-a", Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -117,8 +110,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_FiltersVisibleEntries_WhenSearchFilterApplied()
-    {
+    public void DeadLetters_FiltersVisibleEntries_WhenSearchFilterApplied() {
         // Arrange
         SetupEntries(CreateSampleEntries(), 2);
 
@@ -132,8 +124,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_ExpandsRowDetail_OnRowClick()
-    {
+    public void DeadLetters_ExpandsRowDetail_OnRowClick() {
         // Arrange
         List<DeadLetterEntry> entries = CreateSampleEntries();
         SetupEntries(entries, 2);
@@ -148,7 +139,7 @@ public class DeadLettersPageTests : AdminUITestContext
 
         // Act - click a data row
         IElement? row = cut.FindAll("tr").FirstOrDefault(r => r.TextContent.Contains("tenant-a", StringComparison.OrdinalIgnoreCase));
-        row.ShouldNotBeNull();
+        _ = row.ShouldNotBeNull();
         row!.Click();
 
         // Assert - inline detail is displayed for expanded row
@@ -156,8 +147,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_ShowsRetryDialog_WhenRetryClicked()
-    {
+    public void DeadLetters_ShowsRetryDialog_WhenRetryClicked() {
         // Arrange
         List<DeadLetterEntry> entries = CreateSampleEntries();
         SetupEntries(entries, 2);
@@ -178,8 +168,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task DeadLetters_CallsRetryApi_OnConfirm()
-    {
+    public async Task DeadLetters_CallsRetryApi_OnConfirm() {
         // Arrange
         List<DeadLetterEntry> entries = CreateSampleEntries();
         SetupEntries(entries, 2);
@@ -202,18 +191,17 @@ public class DeadLettersPageTests : AdminUITestContext
         // Confirm retry — find dialog Retry button (not "Retry Selected")
         IRenderedComponent<FluentButton> confirmBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains(">Retry<"));
-        await confirmBtn.InvokeAsync(() => confirmBtn.Instance.OnClick.InvokeAsync());
+        await confirmBtn.InvokeAsync(confirmBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — API invoked with correct tenant
-        await _mockDeadLetterApi.Received(1).RetryDeadLettersAsync(
+        _ = await _mockDeadLetterApi.Received(1).RetryDeadLettersAsync(
             entries[0].TenantId,
             Arg.Any<IReadOnlyList<string>>(),
             Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public void DeadLetters_ShowsSkipDialog_WhenSkipClicked()
-    {
+    public void DeadLetters_ShowsSkipDialog_WhenSkipClicked() {
         // Arrange
         List<DeadLetterEntry> entries = CreateSampleEntries();
         SetupEntries(entries, 2);
@@ -234,8 +222,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_ShowsArchiveDialog_WhenArchiveClicked()
-    {
+    public void DeadLetters_ShowsArchiveDialog_WhenArchiveClicked() {
         // Arrange
         List<DeadLetterEntry> entries = CreateSampleEntries();
         SetupEntries(entries, 2);
@@ -256,8 +243,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_ShowsIssueBanner_WhenApiUnavailable()
-    {
+    public void DeadLetters_ShowsIssueBanner_WhenApiUnavailable() {
         // Arrange
         _ = _mockDeadLetterApi.GetDeadLettersAsync(
             Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -272,8 +258,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_CheckboxClick_DoesNotTriggerRowExpansion()
-    {
+    public void DeadLetters_CheckboxClick_DoesNotTriggerRowExpansion() {
         // Arrange
         List<DeadLetterEntry> entries = CreateSampleEntries();
         SetupEntries(entries, 2);
@@ -292,8 +277,7 @@ public class DeadLettersPageTests : AdminUITestContext
     // ===== Recommended tests (4.14-4.26) =====
 
     [Fact]
-    public void DeadLetters_SelectAll_TogglesAllVisibleCheckboxes()
-    {
+    public void DeadLetters_SelectAll_TogglesAllVisibleCheckboxes() {
         // Arrange
         List<DeadLetterEntry> entries = CreateSampleEntries();
         SetupEntries(entries, 2);
@@ -310,8 +294,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_IndividualCheckbox_TogglesSelection()
-    {
+    public void DeadLetters_IndividualCheckbox_TogglesSelection() {
         // Arrange
         List<DeadLetterEntry> entries = CreateSampleEntries();
         SetupEntries(entries, 2);
@@ -327,8 +310,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_SelectionBar_ShowsCountAndButtons()
-    {
+    public void DeadLetters_SelectionBar_ShowsCountAndButtons() {
         // Arrange
         List<DeadLetterEntry> entries = CreateSampleEntries();
         SetupEntries(entries, 2);
@@ -346,8 +328,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_HidesActionButtons_ForReadOnlyUser()
-    {
+    public void DeadLetters_HidesActionButtons_ForReadOnlyUser() {
         // Arrange
         SetupReadOnlyUser();
         List<DeadLetterEntry> entries = CreateSampleEntries();
@@ -364,8 +345,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_ShowsActionButtons_ForOperatorUser()
-    {
+    public void DeadLetters_ShowsActionButtons_ForOperatorUser() {
         // Arrange — default is Admin which >= Operator
         List<DeadLetterEntry> entries = CreateSampleEntries();
         SetupEntries(entries, 2);
@@ -383,8 +363,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task DeadLetters_LoadMore_AppendsEntries()
-    {
+    public async Task DeadLetters_LoadMore_AppendsEntries() {
         // Arrange — first page with continuation token
         List<DeadLetterEntry> page1 = [CreateSampleEntries()[0]];
         _ = _mockDeadLetterApi.GetDeadLettersAsync(
@@ -406,15 +385,14 @@ public class DeadLettersPageTests : AdminUITestContext
         // Act — click Load More
         IRenderedComponent<FluentButton> loadMoreBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Load More"));
-        await loadMoreBtn.InvokeAsync(() => loadMoreBtn.Instance.OnClick.InvokeAsync());
+        await loadMoreBtn.InvokeAsync(loadMoreBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — second page appended
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-b"), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
-    public void DeadLetters_HidesLoadMore_WhenNoContinuationToken()
-    {
+    public void DeadLetters_HidesLoadMore_WhenNoContinuationToken() {
         // Arrange — no continuation token
         SetupEntries(CreateSampleEntries(), 2);
 
@@ -427,8 +405,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_PersistsFiltersInUrl()
-    {
+    public void DeadLetters_PersistsFiltersInUrl() {
         // Arrange
         SetupEntries(CreateSampleEntries(), 2);
 
@@ -444,8 +421,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_ReadsFiltersFromUrl_OnInit()
-    {
+    public void DeadLetters_ReadsFiltersFromUrl_OnInit() {
         // Arrange — set up filtered result
         _ = _mockDeadLetterApi.GetDeadLettersAsync(
             "my-tenant", Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -462,8 +438,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task DeadLetters_HandlesPartialFailure_OnRetry()
-    {
+    public async Task DeadLetters_HandlesPartialFailure_OnRetry() {
         // Arrange — two tenants, one fails
         List<DeadLetterEntry> entries =
         [
@@ -499,18 +474,17 @@ public class DeadLettersPageTests : AdminUITestContext
         // Confirm
         IRenderedComponent<FluentButton> confirmBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains(">Retry<"));
-        await confirmBtn.InvokeAsync(() => confirmBtn.Instance.OnClick.InvokeAsync());
+        await confirmBtn.InvokeAsync(confirmBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — both tenants called
-        await _mockDeadLetterApi.Received(1).RetryDeadLettersAsync(
+        _ = await _mockDeadLetterApi.Received(1).RetryDeadLettersAsync(
             "tenant-a", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
-        await _mockDeadLetterApi.Received(1).RetryDeadLettersAsync(
+        _ = await _mockDeadLetterApi.Received(1).RetryDeadLettersAsync(
             "tenant-b", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public void DeadLetters_SelectionClearsOnFilterChange()
-    {
+    public void DeadLetters_SelectionClearsOnFilterChange() {
         // Arrange
         SetupEntries(CreateSampleEntries(), 2);
 
@@ -530,8 +504,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task DeadLetters_ClearsGridRows_WhenRefreshFailsAfterSuccess()
-    {
+    public async Task DeadLetters_ClearsGridRows_WhenRefreshFailsAfterSuccess() {
         // Arrange - first load succeeds, refresh fails
         _ = _mockDeadLetterApi.GetDeadLettersAsync(
             Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -552,8 +525,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DeadLetters_TenantFilterResetsPagination()
-    {
+    public void DeadLetters_TenantFilterResetsPagination() {
         // Arrange
         _ = _mockDeadLetterApi.GetDeadLettersAsync(
             Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -569,8 +541,7 @@ public class DeadLettersPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task DeadLetters_SkipAndArchive_GroupByTenantLikeRetry()
-    {
+    public async Task DeadLetters_SkipAndArchive_GroupByTenantLikeRetry() {
         // Arrange
         List<DeadLetterEntry> entries = CreateSampleEntries();
         SetupEntries(entries, 2);
@@ -594,18 +565,17 @@ public class DeadLettersPageTests : AdminUITestContext
         // Confirm skip
         IRenderedComponent<FluentButton> confirmBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains(">Skip<"));
-        await confirmBtn.InvokeAsync(() => confirmBtn.Instance.OnClick.InvokeAsync());
+        await confirmBtn.InvokeAsync(confirmBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — API called with correct tenant
-        await _mockDeadLetterApi.Received(1).SkipDeadLettersAsync(
+        _ = await _mockDeadLetterApi.Received(1).SkipDeadLettersAsync(
             entries[0].TenantId,
             Arg.Any<IReadOnlyList<string>>(),
             Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task DeadLettersPage_CategoryFilterBindsValueAndFiresAfterCallback()
-    {
+    public async Task DeadLettersPage_CategoryFilterBindsValueAndFiresAfterCallback() {
         // Regression lock for Story 21-5: @bind-SelectedOption → @bind-Value migration.
         // Picking a category must (a) update the page's _failureCategory field, and
         // (b) invoke OnCategoryChanged — which re-calls GetDeadLettersAsync with the
@@ -634,10 +604,9 @@ public class DeadLettersPageTests : AdminUITestContext
         System.Reflection.MethodInfo method = typeof(DeadLetters).GetMethod("OnCategoryChanged", flags)
             ?? throw new InvalidOperationException("OnCategoryChanged method missing — :after callback not wired up.");
 
-        await cut.InvokeAsync(() =>
-        {
+        await cut.InvokeAsync(() => {
             field.SetValue(page, "Deserialization");
-            method.Invoke(page, null);
+            _ = method.Invoke(page, null);
         });
 
         // Asserting the observable side-effect: OnCategoryChanged maps the category to _searchFilter.
@@ -657,36 +626,29 @@ public class DeadLettersPageTests : AdminUITestContext
             "Hexalith.Orders.Commands.SubmitOrder"),
     ];
 
-    private void SetupEntries(IReadOnlyList<DeadLetterEntry> entries, int totalCount, string? continuationToken = null)
-    {
-        _ = _mockDeadLetterApi.GetDeadLettersAsync(
+    private void SetupEntries(IReadOnlyList<DeadLetterEntry> entries, int totalCount, string? continuationToken = null) => _ = _mockDeadLetterApi.GetDeadLettersAsync(
             Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new PagedResult<DeadLetterEntry>(entries, totalCount, continuationToken)));
-    }
 
-    private static void SelectRowCheckbox(IRenderedComponent<DeadLetters> cut, string messageId)
-    {
+    private static void SelectRowCheckbox(IRenderedComponent<DeadLetters> cut, string messageId) {
         IRenderedComponent<FluentCheckbox> checkbox = cut.FindComponents<FluentCheckbox>()
             .First(c => c.Markup.Contains($"Select {messageId}", StringComparison.Ordinal));
         _ = checkbox.InvokeAsync(() => checkbox.Instance.ValueChanged.InvokeAsync(true));
     }
 
-    private static void SelectAllVisible(IRenderedComponent<DeadLetters> cut, bool? state)
-    {
+    private static void SelectAllVisible(IRenderedComponent<DeadLetters> cut, bool? state) {
         IRenderedComponent<FluentCheckbox> headerCheckbox = cut.FindComponents<FluentCheckbox>()
             .First(c => c.Markup.Contains("Select all visible entries", StringComparison.Ordinal));
         _ = headerCheckbox.InvokeAsync(() => headerCheckbox.Instance.CheckStateChanged.InvokeAsync(state));
     }
 
-    private static void ClickButton(IRenderedComponent<DeadLetters> cut, string text)
-    {
+    private static void ClickButton(IRenderedComponent<DeadLetters> cut, string text) {
         IRenderedComponent<FluentButton> btn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains(text));
         btn.Find("fluent-button").Click();
     }
 
-    private void SetupReadOnlyUser()
-    {
+    private void SetupReadOnlyUser() {
         Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider =
             Substitute.For<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>();
         System.Security.Claims.ClaimsPrincipal user = new(new System.Security.Claims.ClaimsIdentity(
@@ -695,8 +657,8 @@ public class DeadLettersPageTests : AdminUITestContext
         ], "TestAuth"));
         _ = authStateProvider.GetAuthenticationStateAsync()
             .Returns(Task.FromResult(new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(user)));
-        Services.AddSingleton(authStateProvider);
-        Services.AddScoped<AdminUserContext>();
+        _ = Services.AddSingleton(authStateProvider);
+        _ = Services.AddScoped<AdminUserContext>();
     }
 
     private Microsoft.AspNetCore.Components.NavigationManager NavManager =>

@@ -2,16 +2,13 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
-using Microsoft.Extensions.Logging;
-
 namespace Hexalith.EventStore.Admin.UI.Services;
 
 /// <summary>
 /// Scoped service that polls Admin.Server for health and stream data at a fixed 30-second interval.
 /// SignalR signals can trigger an immediate refresh via <see cref="TriggerImmediateRefreshAsync"/>.
 /// </summary>
-public sealed class DashboardRefreshService : IAsyncDisposable, IDisposable
-{
+public sealed class DashboardRefreshService : IAsyncDisposable, IDisposable {
     private readonly AdminStreamApiClient _apiClient;
     private readonly CancellationTokenSource _cts = new();
     private readonly ILogger<DashboardRefreshService> _logger;
@@ -26,8 +23,7 @@ public sealed class DashboardRefreshService : IAsyncDisposable, IDisposable
     /// <param name="logger">Logger for diagnostics.</param>
     public DashboardRefreshService(
         AdminStreamApiClient apiClient,
-        ILogger<DashboardRefreshService> logger)
-    {
+        ILogger<DashboardRefreshService> logger) {
         _apiClient = apiClient;
         _logger = logger;
         _timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
@@ -44,18 +40,14 @@ public sealed class DashboardRefreshService : IAsyncDisposable, IDisposable
     public event Action<Exception>? OnError;
 
     /// <inheritdoc/>
-    public async ValueTask DisposeAsync()
-    {
+    public async ValueTask DisposeAsync() {
         await _cts.CancelAsync().ConfigureAwait(false);
         _timer.Dispose();
-        if (_timerLoop is not null)
-        {
-            try
-            {
+        if (_timerLoop is not null) {
+            try {
                 await _timerLoop.ConfigureAwait(false);
             }
-            catch (OperationCanceledException)
-            {
+            catch (OperationCanceledException) {
             }
         }
 
@@ -64,18 +56,14 @@ public sealed class DashboardRefreshService : IAsyncDisposable, IDisposable
     }
 
     /// <inheritdoc/>
-    public void Dispose()
-    {
+    public void Dispose() {
         _cts.Cancel();
         _timer.Dispose();
-        if (_timerLoop is not null)
-        {
-            try
-            {
+        if (_timerLoop is not null) {
+            try {
                 _timerLoop.GetAwaiter().GetResult();
             }
-            catch (OperationCanceledException)
-            {
+            catch (OperationCanceledException) {
             }
         }
 
@@ -86,10 +74,8 @@ public sealed class DashboardRefreshService : IAsyncDisposable, IDisposable
     /// <summary>
     /// Starts the polling timer loop.
     /// </summary>
-    public void Start()
-    {
-        if (_timerLoop is not null)
-        {
+    public void Start() {
+        if (_timerLoop is not null) {
             return;
         }
 
@@ -100,26 +86,19 @@ public sealed class DashboardRefreshService : IAsyncDisposable, IDisposable
     /// Triggers an immediate refresh, bypassing the polling interval.
     /// Called by SignalR signal handlers to provide near-real-time updates.
     /// </summary>
-    public async Task TriggerImmediateRefreshAsync()
-    {
-        await RefreshAsync().ConfigureAwait(false);
-    }
+    public async Task TriggerImmediateRefreshAsync() => await RefreshAsync().ConfigureAwait(false);
 
-    private async Task RefreshAsync()
-    {
-        if (Interlocked.CompareExchange(ref _isRefreshing, 1, 0) != 0)
-        {
+    private async Task RefreshAsync() {
+        if (Interlocked.CompareExchange(ref _isRefreshing, 1, 0) != 0) {
             return;
         }
 
-        try
-        {
+        try {
             SystemHealthReport? health = await _apiClient
                 .GetSystemHealthAsync(_cts.Token)
                 .ConfigureAwait(false);
             PagedResult<StreamSummary>? streams = null;
-            if (health is not null && health.TotalEventCount > 0)
-            {
+            if (health is not null && health.TotalEventCount > 0) {
                 streams = await _apiClient
                     .GetRecentlyActiveStreamsAsync(null, null, 100, _cts.Token)
                     .ConfigureAwait(false);
@@ -127,32 +106,25 @@ public sealed class DashboardRefreshService : IAsyncDisposable, IDisposable
 
             OnDataChanged?.Invoke(new DashboardData(health, streams));
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             // Service is disposing — do not fire error event
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(ex, "Dashboard refresh failed");
             OnError?.Invoke(ex);
         }
-        finally
-        {
-            Interlocked.Exchange(ref _isRefreshing, 0);
+        finally {
+            _ = Interlocked.Exchange(ref _isRefreshing, 0);
         }
     }
 
-    private async Task RunTimerLoopAsync()
-    {
-        try
-        {
-            while (await _timer.WaitForNextTickAsync(_cts.Token).ConfigureAwait(false))
-            {
+    private async Task RunTimerLoopAsync() {
+        try {
+            while (await _timer.WaitForNextTickAsync(_cts.Token).ConfigureAwait(false)) {
                 await RefreshAsync().ConfigureAwait(false);
             }
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             // Expected on dispose
         }
     }

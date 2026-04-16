@@ -2,7 +2,6 @@ using System.Net;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
-using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Tenant;
 using Hexalith.EventStore.Admin.Cli.Formatting;
@@ -10,13 +9,10 @@ using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Tenant;
 
-public class TenantListCommandTests
-{
-    private static List<TenantSummary> CreateTestResult(int count = 2)
-    {
+public class TenantListCommandTests {
+    private static List<TenantSummary> CreateTestResult(int count = 2) {
         List<TenantSummary> items = [];
-        for (int i = 0; i < count; i++)
-        {
+        for (int i = 0; i < count; i++) {
             items.Add(new TenantSummary(
                 $"tenant-{i}",
                 $"Tenant {i}",
@@ -31,11 +27,9 @@ public class TenantListCommandTests
 
     private static (AdminApiClient Client, MockHttpMessageHandler Handler) CreateMockClientWithHandler(
         object responseBody,
-        HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
+        HttpStatusCode statusCode = HttpStatusCode.OK) {
         string json = JsonSerializer.Serialize(responseBody, JsonDefaults.Options);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         });
         GlobalOptions options = CreateOptions();
@@ -43,8 +37,7 @@ public class TenantListCommandTests
     }
 
     [Fact]
-    public void TenantListCommand_ReturnsTable()
-    {
+    public void TenantListCommand_ReturnsTable() {
         // Arrange
         List<TenantSummary> result = CreateTestResult();
         IOutputFormatter formatter = new TableOutputFormatter();
@@ -61,8 +54,7 @@ public class TenantListCommandTests
     }
 
     [Fact]
-    public async Task TenantListCommand_EmptyResult_PrintsNoTenantsFound()
-    {
+    public async Task TenantListCommand_EmptyResult_PrintsNoTenantsFound() {
         // Arrange
         List<TenantSummary> result = [];
         (AdminApiClient client, _) = CreateMockClientWithHandler(result);
@@ -70,8 +62,7 @@ public class TenantListCommandTests
 
         // Act
         int exitCode;
-        using (client)
-        {
+        using (client) {
             exitCode = await TenantListCommand.ExecuteAsync(client, options, CancellationToken.None);
         }
 
@@ -80,8 +71,7 @@ public class TenantListCommandTests
     }
 
     [Fact]
-    public void TenantListCommand_JsonFormat_ReturnsValidJson()
-    {
+    public void TenantListCommand_JsonFormat_ReturnsValidJson() {
         // Arrange
         List<TenantSummary> result = CreateTestResult();
         IOutputFormatter formatter = new JsonOutputFormatter();
@@ -91,13 +81,12 @@ public class TenantListCommandTests
 
         // Assert
         List<TenantSummary>? deserialized = JsonSerializer.Deserialize<List<TenantSummary>>(json, JsonDefaults.Options);
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized.Count.ShouldBe(2);
     }
 
     [Fact]
-    public void TenantListCommand_CsvFormat_ReturnsHeaderAndRows()
-    {
+    public void TenantListCommand_CsvFormat_ReturnsHeaderAndRows() {
         // Arrange
         List<TenantSummary> result = CreateTestResult();
         IOutputFormatter formatter = new CsvOutputFormatter();
@@ -115,8 +104,7 @@ public class TenantListCommandTests
     }
 
     [Fact]
-    public void TenantListCommand_EnumsSerializeAsStrings()
-    {
+    public void TenantListCommand_EnumsSerializeAsStrings() {
         // Arrange
         TenantSummary active = new("t1", "Tenant 1", TenantStatusType.Active);
 
@@ -134,11 +122,9 @@ public class TenantListCommandTests
     }
 
     [Fact]
-    public async Task TenantListCommand_Unauthorized_ReturnsError()
-    {
+    public async Task TenantListCommand_Unauthorized_ReturnsError() {
         // Arrange
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.Unauthorized)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.Unauthorized) {
             Content = new StringContent("Unauthorized", System.Text.Encoding.UTF8, "text/plain"),
         });
         GlobalOptions options = CreateOptions("table");

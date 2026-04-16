@@ -1,15 +1,13 @@
 using System.CommandLine;
 
-using Hexalith.EventStore.Admin.Cli;
-
 namespace Hexalith.EventStore.Admin.Cli.Tests;
 
 /// <summary>
 /// Tests for global option parsing, defaults, and environment variable fallback.
 /// </summary>
 [Collection("EnvironmentVariableTests")]
-public class GlobalOptionsTests : IDisposable
-{
+public class GlobalOptionsTests : IDisposable {
+
     private readonly string[] _envVarsToClean =
     [
         "EVENTSTORE_ADMIN_URL",
@@ -17,19 +15,15 @@ public class GlobalOptionsTests : IDisposable
         "EVENTSTORE_ADMIN_FORMAT",
     ];
 
-    public GlobalOptionsTests()
-    {
+    public GlobalOptionsTests() {
         // Clean env vars before each test
-        foreach (string v in _envVarsToClean)
-        {
+        foreach (string v in _envVarsToClean) {
             Environment.SetEnvironmentVariable(v, null);
         }
     }
 
-    public void Dispose()
-    {
-        foreach (string v in _envVarsToClean)
-        {
+    public void Dispose() {
+        foreach (string v in _envVarsToClean) {
             Environment.SetEnvironmentVariable(v, null);
         }
 
@@ -37,10 +31,9 @@ public class GlobalOptionsTests : IDisposable
     }
 
     [Fact]
-    public void GlobalOptions_DefaultValues_AreCorrect()
-    {
+    public void GlobalOptions_DefaultValues_AreCorrect() {
         // Arrange
-        GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
+        var binding = GlobalOptionsBinding.Create();
         RootCommand root = BuildRootCommand(binding);
 
         // Act
@@ -55,32 +48,14 @@ public class GlobalOptionsTests : IDisposable
     }
 
     [Fact]
-    public void GlobalOptions_ExplicitArguments_OverrideDefaults()
-    {
-        // Arrange
-        GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
-        RootCommand root = BuildRootCommand(binding);
-
-        // Act
-        ParseResult result = root.Parse(["--url", "https://prod:8080", "--token", "abc", "--format", "json"]);
-        GlobalOptions options = binding.Resolve(result);
-
-        // Assert
-        options.Url.ShouldBe("https://prod:8080");
-        options.Token.ShouldBe("abc");
-        options.Format.ShouldBe("json");
-    }
-
-    [Fact]
-    public void GlobalOptions_EnvironmentVariables_FallbackWhenNoArgument()
-    {
+    public void GlobalOptions_EnvironmentVariables_FallbackWhenNoArgument() {
         // Arrange
         Environment.SetEnvironmentVariable("EVENTSTORE_ADMIN_URL", "https://env-url:9090");
         Environment.SetEnvironmentVariable("EVENTSTORE_ADMIN_TOKEN", "env-token");
         Environment.SetEnvironmentVariable("EVENTSTORE_ADMIN_FORMAT", "csv");
 
         // Must create binding AFTER setting env vars (factory reads them)
-        GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
+        var binding = GlobalOptionsBinding.Create();
         RootCommand root = BuildRootCommand(binding);
 
         // Act
@@ -94,12 +69,11 @@ public class GlobalOptionsTests : IDisposable
     }
 
     [Fact]
-    public void GlobalOptions_ExplicitArgument_OverridesEnvironmentVariable()
-    {
+    public void GlobalOptions_ExplicitArgument_OverridesEnvironmentVariable() {
         // Arrange
         Environment.SetEnvironmentVariable("EVENTSTORE_ADMIN_URL", "https://env-url:9090");
 
-        GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
+        var binding = GlobalOptionsBinding.Create();
         RootCommand root = BuildRootCommand(binding);
 
         // Act
@@ -111,10 +85,25 @@ public class GlobalOptionsTests : IDisposable
     }
 
     [Fact]
-    public void GlobalOptions_InvalidFormat_ReturnsError()
-    {
+    public void GlobalOptions_ExplicitArguments_OverrideDefaults() {
         // Arrange
-        GlobalOptionsBinding binding = GlobalOptionsBinding.Create();
+        var binding = GlobalOptionsBinding.Create();
+        RootCommand root = BuildRootCommand(binding);
+
+        // Act
+        ParseResult result = root.Parse(["--url", "https://prod:8080", "--token", "abc", "--format", "json"]);
+        GlobalOptions options = binding.Resolve(result);
+
+        // Assert
+        options.Url.ShouldBe("https://prod:8080");
+        options.Token.ShouldBe("abc");
+        options.Format.ShouldBe("json");
+    }
+
+    [Fact]
+    public void GlobalOptions_InvalidFormat_ReturnsError() {
+        // Arrange
+        var binding = GlobalOptionsBinding.Create();
         RootCommand root = BuildRootCommand(binding);
 
         // Act
@@ -124,8 +113,7 @@ public class GlobalOptionsTests : IDisposable
         result.Errors.ShouldNotBeEmpty();
     }
 
-    private static RootCommand BuildRootCommand(GlobalOptionsBinding binding)
-    {
+    private static RootCommand BuildRootCommand(GlobalOptionsBinding binding) {
         RootCommand root = new("test");
         root.Options.Add(binding.UrlOption);
         root.Options.Add(binding.TokenOption);

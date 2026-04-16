@@ -2,9 +2,7 @@ using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
 
-using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -15,21 +13,18 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the TypeCatalog page.
 /// </summary>
-public class TypeCatalogPageTests : AdminUITestContext
-{
+public class TypeCatalogPageTests : AdminUITestContext {
     private readonly AdminTypeCatalogApiClient _mockApiClient;
 
-    public TypeCatalogPageTests()
-    {
+    public TypeCatalogPageTests() {
         _mockApiClient = Substitute.For<AdminTypeCatalogApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminTypeCatalogApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped(_ => _mockApiClient);
     }
 
     [Fact]
-    public void TypeCatalogPage_RendersStatCards_WithCorrectCounts()
-    {
+    public void TypeCatalogPage_RendersStatCards_WithCorrectCounts() {
         // Arrange
         SetupMockData();
 
@@ -48,8 +43,7 @@ public class TypeCatalogPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeCatalogPage_RendersEventsGrid_WithAllColumns()
-    {
+    public void TypeCatalogPage_RendersEventsGrid_WithAllColumns() {
         // Arrange
         SetupMockData();
 
@@ -67,8 +61,7 @@ public class TypeCatalogPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeCatalogPage_RendersCommandsGrid_WithAllColumns()
-    {
+    public void TypeCatalogPage_RendersCommandsGrid_WithAllColumns() {
         // Arrange
         SetupMockData();
 
@@ -80,7 +73,7 @@ public class TypeCatalogPageTests : AdminUITestContext
         IRenderedComponent<Microsoft.FluentUI.AspNetCore.Components.FluentTab> commandsTab = cut
             .FindComponents<Microsoft.FluentUI.AspNetCore.Components.FluentTab>()
             .First(t => t.Instance.Id == "commands");
-        cut.InvokeAsync(() => cut.Instance.GetType()
+        _ = cut.InvokeAsync(() => cut.Instance.GetType()
             .GetMethod("OnTabChanged", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
             ?.Invoke(cut.Instance, ["commands"]));
         cut.Render();
@@ -92,8 +85,7 @@ public class TypeCatalogPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeCatalogPage_RendersAggregatesGrid_WithAllColumns()
-    {
+    public void TypeCatalogPage_RendersAggregatesGrid_WithAllColumns() {
         // Arrange
         SetupMockData();
 
@@ -102,7 +94,7 @@ public class TypeCatalogPageTests : AdminUITestContext
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Event Types"), TimeSpan.FromSeconds(5));
 
         // Switch to aggregates tab
-        cut.InvokeAsync(() => cut.Instance.GetType()
+        _ = cut.InvokeAsync(() => cut.Instance.GetType()
             .GetMethod("OnTabChanged", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
             ?.Invoke(cut.Instance, ["aggregates"]));
         cut.Render();
@@ -116,8 +108,7 @@ public class TypeCatalogPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeCatalogPage_ShowsIssueBanner_OnApiFailure()
-    {
+    public void TypeCatalogPage_ShowsIssueBanner_OnApiFailure() {
         // Arrange
         _ = _mockApiClient.ListEventTypesAsync(
             Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -138,8 +129,7 @@ public class TypeCatalogPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeCatalogPage_ShowsEmptyState_WhenNoTypesReturned()
-    {
+    public void TypeCatalogPage_ShowsEmptyState_WhenNoTypesReturned() {
         // Arrange
         _ = _mockApiClient.ListEventTypesAsync(
             Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -160,8 +150,7 @@ public class TypeCatalogPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeCatalogPage_RejectionBadge_RendersForRejectionEvents()
-    {
+    public void TypeCatalogPage_RejectionBadge_RendersForRejectionEvents() {
         // Arrange
         SetupMockData();
 
@@ -174,8 +163,7 @@ public class TypeCatalogPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeCatalogPage_HasProjectionsBadge_RendersCorrectly()
-    {
+    public void TypeCatalogPage_HasProjectionsBadge_RendersCorrectly() {
         // Arrange
         SetupMockData();
 
@@ -184,7 +172,7 @@ public class TypeCatalogPageTests : AdminUITestContext
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Aggregate Types"), TimeSpan.FromSeconds(5));
 
         // Switch to aggregates tab
-        cut.InvokeAsync(() => cut.Instance.GetType()
+        _ = cut.InvokeAsync(() => cut.Instance.GetType()
             .GetMethod("OnTabChanged", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
             ?.Invoke(cut.Instance, ["aggregates"]));
         cut.Render();
@@ -196,8 +184,7 @@ public class TypeCatalogPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeCatalogPage_GridHasAriaLabel()
-    {
+    public void TypeCatalogPage_GridHasAriaLabel() {
         // Arrange
         SetupMockData();
 
@@ -210,8 +197,7 @@ public class TypeCatalogPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeCatalogPage_HasRefreshButton()
-    {
+    public void TypeCatalogPage_HasRefreshButton() {
         // Arrange
         SetupMockData();
 
@@ -224,8 +210,7 @@ public class TypeCatalogPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeCatalogPage_HasSearchInput()
-    {
+    public void TypeCatalogPage_HasSearchInput() {
         // Arrange
         SetupMockData();
 
@@ -238,8 +223,7 @@ public class TypeCatalogPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeCatalogPage_HasDomainFilter()
-    {
+    public void TypeCatalogPage_HasDomainFilter() {
         // Arrange
         SetupMockData();
 
@@ -254,8 +238,7 @@ public class TypeCatalogPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeCatalogPage_HasTabpanelRole()
-    {
+    public void TypeCatalogPage_HasTabpanelRole() {
         // Arrange
         SetupMockData();
 
@@ -268,8 +251,7 @@ public class TypeCatalogPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void TypeCatalogPage_HasVisibleSubtitles()
-    {
+    public void TypeCatalogPage_HasVisibleSubtitles() {
         // Arrange
         SetupMockData();
 
@@ -282,8 +264,7 @@ public class TypeCatalogPageTests : AdminUITestContext
         cut.Markup.ShouldContain("1 with projections");
     }
 
-    private void SetupMockData()
-    {
+    private void SetupMockData() {
         IReadOnlyList<EventTypeInfo> events =
         [
             new("OrderCreated", "ordering", false, 1),

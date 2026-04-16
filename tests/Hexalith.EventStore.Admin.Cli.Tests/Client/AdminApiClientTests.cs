@@ -1,32 +1,26 @@
 using System.Net;
-using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Cli.Client;
-using Hexalith.EventStore.Admin.Cli.Formatting;
 using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Client;
 
-public class AdminApiClientTests
-{
+public class AdminApiClientTests {
     [Fact]
-    public void AdminApiClient_SetsBaseUrl_FromGlobalOptions()
-    {
+    public void AdminApiClient_SetsBaseUrl_FromGlobalOptions() {
         // Arrange & Act
         using AdminApiClient client = new(new GlobalOptions("https://myserver:8080", null, "json", null));
 
         // The base URL is set internally; verify via a mock request
         // Since we can't inspect _httpClient directly, we test indirectly
         // by checking the constructor doesn't throw
-        client.ShouldNotBeNull();
+        _ = client.ShouldNotBeNull();
     }
 
     [Fact]
-    public async Task AdminApiClient_AddsAuthHeader_WhenTokenProvided()
-    {
+    public async Task AdminApiClient_AddsAuthHeader_WhenTokenProvided() {
         // Arrange
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent("{\"name\":\"test\"}", System.Text.Encoding.UTF8, "application/json"),
         });
         using HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost:5002") };
@@ -34,21 +28,19 @@ public class AdminApiClientTests
         using AdminApiClient client = new(httpClient);
 
         // Act
-        await client.GetAsync<object>("/test", CancellationToken.None);
+        _ = await client.GetAsync<object>("/test", CancellationToken.None);
 
         // Assert
-        handler.LastRequest.ShouldNotBeNull();
-        handler.LastRequest!.Headers.Authorization.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest!.Headers.Authorization.ShouldNotBeNull();
         handler.LastRequest.Headers.Authorization!.Scheme.ShouldBe("Bearer");
         handler.LastRequest.Headers.Authorization.Parameter.ShouldBe("my-token");
     }
 
     [Fact]
-    public async Task AdminApiClient_AddsAuthHeader_FromGlobalOptionsConstructor()
-    {
+    public async Task AdminApiClient_AddsAuthHeader_FromGlobalOptionsConstructor() {
         // Arrange
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json"),
         });
         using AdminApiClient client = new(new GlobalOptions("http://localhost:5002", "ctor-token", "json", null), handler);
@@ -57,34 +49,31 @@ public class AdminApiClientTests
         _ = await client.GetAsync<object>("/test", CancellationToken.None).ConfigureAwait(true);
 
         // Assert
-        handler.LastRequest.ShouldNotBeNull();
-        handler.LastRequest!.Headers.Authorization.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest!.Headers.Authorization.ShouldNotBeNull();
         handler.LastRequest.Headers.Authorization!.Scheme.ShouldBe("Bearer");
         handler.LastRequest.Headers.Authorization!.Parameter.ShouldBe("ctor-token");
     }
 
     [Fact]
-    public async Task AdminApiClient_NoAuthHeader_WhenTokenNull()
-    {
+    public async Task AdminApiClient_NoAuthHeader_WhenTokenNull() {
         // Arrange
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent("{\"name\":\"test\"}", System.Text.Encoding.UTF8, "application/json"),
         });
         using HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost:5002") };
         using AdminApiClient client = new(httpClient);
 
         // Act
-        await client.GetAsync<object>("/test", CancellationToken.None);
+        _ = await client.GetAsync<object>("/test", CancellationToken.None);
 
         // Assert
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         handler.LastRequest!.Headers.Authorization.ShouldBeNull();
     }
 
     [Fact]
-    public async Task AdminApiClient_Http401_ThrowsAuthError()
-    {
+    public async Task AdminApiClient_Http401_ThrowsAuthError() {
         // Arrange
         MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.Unauthorized));
         using HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost:5002") };
@@ -98,8 +87,7 @@ public class AdminApiClientTests
     }
 
     [Fact]
-    public async Task AdminApiClient_ConnectionRefused_ThrowsConnectError()
-    {
+    public async Task AdminApiClient_ConnectionRefused_ThrowsConnectError() {
         // Arrange
         MockHttpMessageHandler handler = new(_ =>
             throw new HttpRequestException("Connection refused", new System.Net.Sockets.SocketException()));
@@ -114,8 +102,7 @@ public class AdminApiClientTests
     }
 
     [Fact]
-    public async Task AdminApiClient_Http404_ThrowsEndpointNotFound()
-    {
+    public async Task AdminApiClient_Http404_ThrowsEndpointNotFound() {
         // Arrange
         MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.NotFound));
         using HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost:5002") };
@@ -129,11 +116,9 @@ public class AdminApiClientTests
     }
 
     [Fact]
-    public async Task AdminApiClient_JsonException_ThrowsVersionMismatch()
-    {
+    public async Task AdminApiClient_JsonException_ThrowsVersionMismatch() {
         // Arrange
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent("not-valid-json", System.Text.Encoding.UTF8, "application/json"),
         });
         using HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost:5002") };

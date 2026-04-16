@@ -3,7 +3,6 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
-using Hexalith.EventStore.Admin.Cli;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Backup;
 using Hexalith.EventStore.Admin.Cli.Formatting;
@@ -11,8 +10,7 @@ using Hexalith.EventStore.Testing.Http;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Backup;
 
-public class BackupExportImportCommandTests : IDisposable
-{
+public class BackupExportImportCommandTests : IDisposable {
     private readonly List<string> _tempFiles = [];
 
     private static GlobalOptions CreateOptions(string format = "table")
@@ -20,11 +18,9 @@ public class BackupExportImportCommandTests : IDisposable
 
     private static (AdminApiClient Client, MockHttpMessageHandler Handler) CreateMockClientWithHandler(
         object responseBody,
-        HttpStatusCode statusCode = HttpStatusCode.OK)
-    {
+        HttpStatusCode statusCode = HttpStatusCode.OK) {
         string json = JsonSerializer.Serialize(responseBody, JsonDefaults.Options);
-        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode)
-        {
+        MockHttpMessageHandler handler = new(new HttpResponseMessage(statusCode) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
         });
         GlobalOptions options = CreateOptions();
@@ -32,8 +28,7 @@ public class BackupExportImportCommandTests : IDisposable
     }
 
     [Fact]
-    public async Task BackupExportStreamCommand_Success_ReturnsSummary()
-    {
+    public async Task BackupExportStreamCommand_Success_ReturnsSummary() {
         // Arrange
         StreamExportResult result = new(true, "acme", "counter", "order-123", 42, "[{\"type\":\"OrderCreated\"}]", "acme_counter_order-123.json", null);
         (AdminApiClient client, _) = CreateMockClientWithHandler(result);
@@ -41,8 +36,7 @@ public class BackupExportImportCommandTests : IDisposable
 
         // Act
         int exitCode;
-        using (client)
-        {
+        using (client) {
             exitCode = await BackupExportStreamCommand.ExecuteAsync(client, options, "acme", "counter", "order-123", "JSON", CancellationToken.None);
         }
 
@@ -51,8 +45,7 @@ public class BackupExportImportCommandTests : IDisposable
     }
 
     [Fact]
-    public async Task BackupExportStreamCommand_Failed_ReturnsError()
-    {
+    public async Task BackupExportStreamCommand_Failed_ReturnsError() {
         // Arrange
         StreamExportResult result = new(false, "acme", "counter", "order-123", 0, null, null, "Aggregate not found");
         (AdminApiClient client, _) = CreateMockClientWithHandler(result);
@@ -60,8 +53,7 @@ public class BackupExportImportCommandTests : IDisposable
 
         // Act
         int exitCode;
-        using (client)
-        {
+        using (client) {
             exitCode = await BackupExportStreamCommand.ExecuteAsync(client, options, "acme", "counter", "order-123", "JSON", CancellationToken.None);
         }
 
@@ -70,29 +62,26 @@ public class BackupExportImportCommandTests : IDisposable
     }
 
     [Fact]
-    public async Task BackupExportStreamCommand_ExportFormat_PassesInBody()
-    {
+    public async Task BackupExportStreamCommand_ExportFormat_PassesInBody() {
         // Arrange
         StreamExportResult result = new(true, "acme", "counter", "order-123", 10, "content", "file.json", null);
         (AdminApiClient client, MockHttpMessageHandler handler) = CreateMockClientWithHandler(result);
         GlobalOptions options = CreateOptions("table");
 
         // Act
-        using (client)
-        {
+        using (client) {
             _ = await BackupExportStreamCommand.ExecuteAsync(client, options, "acme", "counter", "order-123", "CloudEvents", CancellationToken.None);
         }
 
         // Assert
-        handler.LastRequest.ShouldNotBeNull();
-        handler.LastRequest.Content.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.Content.ShouldNotBeNull();
         string body = await handler.LastRequest.Content!.ReadAsStringAsync();
         body.ShouldContain("CloudEvents");
     }
 
     [Fact]
-    public async Task BackupImportStreamCommand_Success_ReturnsOperationResult()
-    {
+    public async Task BackupImportStreamCommand_Success_ReturnsOperationResult() {
         // Arrange
         AdminOperationResult result = new(true, "op-1", "Imported", null);
         (AdminApiClient client, MockHttpMessageHandler handler) = CreateMockClientWithHandler(result);
@@ -104,19 +93,17 @@ public class BackupExportImportCommandTests : IDisposable
 
         // Act
         int exitCode;
-        using (client)
-        {
+        using (client) {
             exitCode = await BackupImportStreamCommand.ExecuteAsync(client, options, "acme", tempFile, CancellationToken.None);
         }
 
         // Assert
         exitCode.ShouldBe(ExitCodes.Success);
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
     }
 
     [Fact]
-    public async Task BackupImportStreamCommand_FileNotFound_ReturnsError()
-    {
+    public async Task BackupImportStreamCommand_FileNotFound_ReturnsError() {
         // Arrange
         AdminOperationResult result = new(true, "op-1", "OK", null);
         (AdminApiClient client, _) = CreateMockClientWithHandler(result);
@@ -124,8 +111,7 @@ public class BackupExportImportCommandTests : IDisposable
 
         // Act
         int exitCode;
-        using (client)
-        {
+        using (client) {
             exitCode = await BackupImportStreamCommand.ExecuteAsync(client, options, "acme", "/nonexistent/file.json", CancellationToken.None);
         }
 
@@ -134,8 +120,7 @@ public class BackupExportImportCommandTests : IDisposable
     }
 
     [Fact]
-    public async Task BackupImportStreamCommand_PassesTenantIdInQueryString()
-    {
+    public async Task BackupImportStreamCommand_PassesTenantIdInQueryString() {
         // Arrange
         AdminOperationResult result = new(true, "op-1", "Imported", null);
         (AdminApiClient client, MockHttpMessageHandler handler) = CreateMockClientWithHandler(result);
@@ -146,27 +131,22 @@ public class BackupExportImportCommandTests : IDisposable
         await File.WriteAllTextAsync(tempFile, "[]");
 
         // Act
-        using (client)
-        {
+        using (client) {
             _ = await BackupImportStreamCommand.ExecuteAsync(client, options, "acme-corp", tempFile, CancellationToken.None);
         }
 
         // Assert
-        handler.LastRequest.ShouldNotBeNull();
+        _ = handler.LastRequest.ShouldNotBeNull();
         string requestUri = handler.LastRequest.RequestUri!.AbsoluteUri;
         requestUri.ShouldContain("tenantId=acme-corp");
     }
 
-    public void Dispose()
-    {
-        foreach (string file in _tempFiles)
-        {
-            try
-            {
+    public void Dispose() {
+        foreach (string file in _tempFiles) {
+            try {
                 File.Delete(file);
             }
-            catch
-            {
+            catch {
                 // Ignore cleanup failures in tests
             }
         }

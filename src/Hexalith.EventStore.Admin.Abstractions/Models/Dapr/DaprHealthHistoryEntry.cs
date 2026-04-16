@@ -13,8 +13,7 @@ public record DaprHealthHistoryEntry(
     string ComponentName,
     string ComponentType,
     HealthStatus Status,
-    DateTimeOffset CapturedAtUtc)
-{
+    DateTimeOffset CapturedAtUtc) {
     /// <summary>Gets the DAPR component name.</summary>
     public string ComponentName { get; } = ComponentName ?? string.Empty;
 

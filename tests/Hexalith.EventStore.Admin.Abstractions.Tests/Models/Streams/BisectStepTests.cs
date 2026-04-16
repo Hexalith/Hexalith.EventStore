@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Streams;
 
-public class BisectStepTests
-{
+public class BisectStepTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         var step = new BisectStep(1, 50, "good", 0);
 
         step.StepNumber.ShouldBe(1);
@@ -18,8 +16,7 @@ public class BisectStepTests
     }
 
     [Fact]
-    public void Constructor_WithBadVerdict_CreatesInstance()
-    {
+    public void Constructor_WithBadVerdict_CreatesInstance() {
         var step = new BisectStep(3, 75, "bad", 5);
 
         step.StepNumber.ShouldBe(3);
@@ -29,16 +26,14 @@ public class BisectStepTests
     }
 
     [Fact]
-    public void Constructor_WithNullVerdict_DefaultsToEmpty()
-    {
+    public void Constructor_WithNullVerdict_DefaultsToEmpty() {
         var step = new BisectStep(1, 50, null!, 0);
 
         step.Verdict.ShouldBe(string.Empty);
     }
 
     [Fact]
-    public void ToString_ReturnsExpectedFormat()
-    {
+    public void ToString_ReturnsExpectedFormat() {
         var step = new BisectStep(2, 100, "bad", 3);
 
         string result = step.ToString();
@@ -47,14 +42,13 @@ public class BisectStepTests
     }
 
     [Fact]
-    public void SerializationRoundTrip_PreservesAllFields()
-    {
+    public void SerializationRoundTrip_PreservesAllFields() {
         var original = new BisectStep(5, 512, "good", 0);
 
         string json = JsonSerializer.Serialize(original);
         BisectStep? deserialized = JsonSerializer.Deserialize<BisectStep>(json);
 
-        deserialized.ShouldNotBeNull();
+        _ = deserialized.ShouldNotBeNull();
         deserialized!.StepNumber.ShouldBe(5);
         deserialized.TestedSequence.ShouldBe(512);
         deserialized.Verdict.ShouldBe("good");

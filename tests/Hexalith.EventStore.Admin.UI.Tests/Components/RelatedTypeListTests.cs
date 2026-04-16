@@ -4,11 +4,9 @@ using Hexalith.EventStore.Admin.UI.Components;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 
-public class RelatedTypeListTests : AdminUITestContext
-{
+public class RelatedTypeListTests : AdminUITestContext {
     [Fact]
-    public void RelatedTypeList_RendersAllItems_WhenBelowMaxVisible()
-    {
+    public void RelatedTypeList_RendersAllItems_WhenBelowMaxVisible() {
         IReadOnlyList<string> items = ["CounterIncremented", "CounterReset", "ThresholdReached"];
 
         IRenderedComponent<RelatedTypeList> cut = Render<RelatedTypeList>(p => p
@@ -21,12 +19,10 @@ public class RelatedTypeListTests : AdminUITestContext
     }
 
     [Fact]
-    public void RelatedTypeList_CollapsesItems_WhenAboveMaxVisible()
-    {
+    public void RelatedTypeList_CollapsesItems_WhenAboveMaxVisible() {
         // MaxVisible is 10 by default
         List<string> items = [];
-        for (int i = 0; i < 15; i++)
-        {
+        for (int i = 0; i < 15; i++) {
             items.Add($"EventType{i}");
         }
 
@@ -42,20 +38,18 @@ public class RelatedTypeListTests : AdminUITestContext
     }
 
     [Fact]
-    public void RelatedTypeList_RendersEmpty_WhenNoItems()
-    {
+    public void RelatedTypeList_RendersEmpty_WhenNoItems() {
         IReadOnlyList<string> items = [];
 
         IRenderedComponent<RelatedTypeList> cut = Render<RelatedTypeList>(p => p
             .Add(c => c.Items, items));
 
         // Should not throw, and should have minimal markup
-        cut.Markup.ShouldNotBeNull();
+        _ = cut.Markup.ShouldNotBeNull();
     }
 
     [Fact]
-    public void RelatedTypeList_InvokesOnItemClick()
-    {
+    public void RelatedTypeList_InvokesOnItemClick() {
         IReadOnlyList<string> items = ["CounterIncremented"];
         string? clickedItem = null;
 
@@ -64,10 +58,9 @@ public class RelatedTypeListTests : AdminUITestContext
             .Add(c => c.OnItemClick, item => clickedItem = item));
 
         // Find the badge/button for the item and click it
-        var itemElement = cut.FindAll("button, a, span[role='button'], [style*='cursor']")
+        AngleSharp.Dom.IElement? itemElement = cut.FindAll("button, a, span[role='button'], [style*='cursor']")
             .FirstOrDefault(el => el.InnerHtml.Contains("CounterIncremented"));
-        if (itemElement is not null)
-        {
+        if (itemElement is not null) {
             itemElement.Click();
             clickedItem.ShouldBe("CounterIncremented");
         }

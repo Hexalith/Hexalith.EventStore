@@ -8,11 +8,9 @@ using Microsoft.AspNetCore.Components;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Components.Shared;
 
-public class NumericInputTests : AdminUITestContext
-{
+public class NumericInputTests : AdminUITestContext {
     [Fact]
-    public void NumericInput_RendersWithInitialValue()
-    {
+    public void NumericInput_RendersWithInitialValue() {
         IRenderedComponent<NumericInput<long>> cut = Render<NumericInput<long>>(
             parameters => parameters
                 .Add(p => p.Value, 42L)
@@ -27,8 +25,7 @@ public class NumericInputTests : AdminUITestContext
     }
 
     [Fact]
-    public void NumericInput_RejectsNonNumericInputAndShowsError()
-    {
+    public void NumericInput_RejectsNonNumericInputAndShowsError() {
         IRenderedComponent<NumericInput<long>> cut = Render<NumericInput<long>>(
             parameters => parameters
                 .Add(p => p.Value, 1L));
@@ -40,8 +37,7 @@ public class NumericInputTests : AdminUITestContext
     }
 
     [Fact]
-    public void NumericInput_FiresValueChangedCallback()
-    {
+    public void NumericInput_FiresValueChangedCallback() {
         long? received = null;
         IRenderedComponent<NumericInput<long>> cut = Render<NumericInput<long>>(
             parameters => parameters
@@ -54,11 +50,9 @@ public class NumericInputTests : AdminUITestContext
     }
 
     [Fact]
-    public void NumericInput_PreservesInvariantCultureParsing()
-    {
+    public void NumericInput_PreservesInvariantCultureParsing() {
         CultureInfo original = CultureInfo.CurrentCulture;
-        try
-        {
+        try {
             // Switch to a culture that uses ',' as decimal separator so "1000.5"
             // would NOT parse under CurrentCulture.
             CultureInfo.CurrentCulture = new CultureInfo("fr-FR");
@@ -75,18 +69,15 @@ public class NumericInputTests : AdminUITestContext
             cut.Find("fluent-text-input").Change("1000");
             received.ShouldBe(1000m);
         }
-        finally
-        {
+        finally {
             CultureInfo.CurrentCulture = original;
         }
     }
 
     [Fact]
-    public void NumericInput_RoundTripsValueThroughChange()
-    {
+    public void NumericInput_RoundTripsValueThroughChange() {
         CultureInfo original = CultureInfo.CurrentCulture;
-        try
-        {
+        try {
             CultureInfo.CurrentCulture = new CultureInfo("fr-FR");
 
             long? received = null;
@@ -103,8 +94,7 @@ public class NumericInputTests : AdminUITestContext
             cut.Markup.ShouldContain("value=\"100\"");
             cut.Markup.ShouldNotContain("100,00");
         }
-        finally
-        {
+        finally {
             CultureInfo.CurrentCulture = original;
         }
     }

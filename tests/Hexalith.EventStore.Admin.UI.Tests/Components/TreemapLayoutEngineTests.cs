@@ -5,11 +5,9 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 /// <summary>
 /// Unit tests for the squarified treemap layout algorithm.
 /// </summary>
-public class TreemapLayoutEngineTests
-{
+public class TreemapLayoutEngineTests {
     [Fact]
-    public void ComputeLayout_ReturnsCorrectNumberOfRectangles()
-    {
+    public void ComputeLayout_ReturnsCorrectNumberOfRectangles() {
         // Arrange
         List<(string Label, long Value)> items =
         [
@@ -26,8 +24,7 @@ public class TreemapLayoutEngineTests
     }
 
     [Fact]
-    public void ComputeLayout_RectangleAreasAreProportionalToValues()
-    {
+    public void ComputeLayout_RectangleAreasAreProportionalToValues() {
         // Arrange
         List<(string Label, long Value)> items =
         [
@@ -51,8 +48,7 @@ public class TreemapLayoutEngineTests
     }
 
     [Fact]
-    public void ComputeLayout_AreaConservation_SumEqualsContainerArea()
-    {
+    public void ComputeLayout_AreaConservation_SumEqualsContainerArea() {
         // Arrange
         List<(string Label, long Value)> items =
         [
@@ -72,8 +68,7 @@ public class TreemapLayoutEngineTests
     }
 
     [Fact]
-    public void ComputeLayout_NoOverlappingRectangles()
-    {
+    public void ComputeLayout_NoOverlappingRectangles() {
         // Arrange
         List<(string Label, long Value)> items =
         [
@@ -87,10 +82,8 @@ public class TreemapLayoutEngineTests
         IReadOnlyList<TreemapLayoutEngine.TreemapRect> result = TreemapLayoutEngine.ComputeLayout(items, 0, 0, 1600, 900);
 
         // Assert — no two rectangles overlap
-        for (int i = 0; i < result.Count; i++)
-        {
-            for (int j = i + 1; j < result.Count; j++)
-            {
+        for (int i = 0; i < result.Count; i++) {
+            for (int j = i + 1; j < result.Count; j++) {
                 TreemapLayoutEngine.TreemapRect a = result[i];
                 TreemapLayoutEngine.TreemapRect b = result[j];
 
@@ -105,8 +98,7 @@ public class TreemapLayoutEngineTests
     }
 
     [Fact]
-    public void ComputeLayout_HandlesZeroValueItems()
-    {
+    public void ComputeLayout_HandlesZeroValueItems() {
         // Arrange — zero-value items should be filtered out
         List<(string Label, long Value)> items =
         [
@@ -126,8 +118,7 @@ public class TreemapLayoutEngineTests
     }
 
     [Fact]
-    public void ComputeLayout_EmptyInput_ReturnsEmptyList()
-    {
+    public void ComputeLayout_EmptyInput_ReturnsEmptyList() {
         // Act
         IReadOnlyList<TreemapLayoutEngine.TreemapRect> result = TreemapLayoutEngine.ComputeLayout([], 0, 0, 1600, 900);
 
@@ -136,8 +127,7 @@ public class TreemapLayoutEngineTests
     }
 
     [Fact]
-    public void ComputeLayout_SingleItem_FillsEntireSpace()
-    {
+    public void ComputeLayout_SingleItem_FillsEntireSpace() {
         // Arrange
         List<(string Label, long Value)> items = [("Only", 100)];
 
@@ -153,8 +143,7 @@ public class TreemapLayoutEngineTests
     }
 
     [Fact]
-    public void ComputeLayout_AllRectanglesWithinBounds()
-    {
+    public void ComputeLayout_AllRectanglesWithinBounds() {
         // Arrange
         List<(string Label, long Value)> items =
         [
@@ -169,8 +158,7 @@ public class TreemapLayoutEngineTests
         IReadOnlyList<TreemapLayoutEngine.TreemapRect> result = TreemapLayoutEngine.ComputeLayout(items, 10, 20, 800, 600);
 
         // Assert — all rectangles should be within bounds
-        foreach (TreemapLayoutEngine.TreemapRect rect in result)
-        {
+        foreach (TreemapLayoutEngine.TreemapRect rect in result) {
             rect.X.ShouldBeGreaterThanOrEqualTo(10 - 0.01);
             rect.Y.ShouldBeGreaterThanOrEqualTo(20 - 0.01);
             (rect.X + rect.Width).ShouldBeLessThanOrEqualTo(810 + 0.01);
@@ -179,8 +167,7 @@ public class TreemapLayoutEngineTests
     }
 
     [Fact]
-    public void ComputeLayout_NullInput_ReturnsEmptyList()
-    {
+    public void ComputeLayout_NullInput_ReturnsEmptyList() {
         // Act
         IReadOnlyList<TreemapLayoutEngine.TreemapRect> result = TreemapLayoutEngine.ComputeLayout(null!, 0, 0, 1600, 900);
 
@@ -189,8 +176,7 @@ public class TreemapLayoutEngineTests
     }
 
     [Fact]
-    public void ComputeLayout_ZeroDimensions_ReturnsEmptyList()
-    {
+    public void ComputeLayout_ZeroDimensions_ReturnsEmptyList() {
         // Arrange
         List<(string Label, long Value)> items = [("A", 100)];
 

@@ -9,18 +9,15 @@ using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Services;
 
-public class AdminHealthHistoryApiClientTests
-{
-    private static AdminHealthHistoryApiClient CreateClient(HttpClient httpClient)
-    {
+public class AdminHealthHistoryApiClientTests {
+    private static AdminHealthHistoryApiClient CreateClient(HttpClient httpClient) {
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
-        factory.CreateClient("AdminApi").Returns(httpClient);
+        _ = factory.CreateClient("AdminApi").Returns(httpClient);
         return new AdminHealthHistoryApiClient(factory, NullLogger<AdminHealthHistoryApiClient>.Instance);
     }
 
     [Fact]
-    public async Task GetHealthHistoryAsync_ReturnsHistory_WhenApiResponds()
-    {
+    public async Task GetHealthHistoryAsync_ReturnsHistory_WhenApiResponds() {
         string json = """{"entries":[{"componentName":"statestore","componentType":"state.redis","status":0,"capturedAtUtc":"2026-01-01T00:00:00Z"}],"hasData":true,"isTruncated":false}""";
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
 
@@ -30,15 +27,14 @@ public class AdminHealthHistoryApiClientTests
             DateTimeOffset.UtcNow.AddHours(-1),
             DateTimeOffset.UtcNow);
 
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.HasData.ShouldBeTrue();
         result.Entries.Count.ShouldBe(1);
         result.Entries[0].ComponentName.ShouldBe("statestore");
     }
 
     [Fact]
-    public async Task GetHealthHistoryAsync_ReturnsNull_WhenApiReturnsNotImplemented()
-    {
+    public async Task GetHealthHistoryAsync_ReturnsNull_WhenApiReturnsNotImplemented() {
         using HttpClient httpClient = MockHttpMessageHandler.CreateStatusClient(HttpStatusCode.NotImplemented);
 
         AdminHealthHistoryApiClient client = CreateClient(httpClient);

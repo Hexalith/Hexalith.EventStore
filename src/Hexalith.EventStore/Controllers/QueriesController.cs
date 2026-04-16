@@ -1,8 +1,8 @@
 
 using System.Text.Json;
 
-using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
 

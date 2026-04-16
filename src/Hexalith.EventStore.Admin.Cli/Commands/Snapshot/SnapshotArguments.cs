@@ -5,8 +5,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Snapshot;
 /// <summary>
 /// Shared positional arguments for snapshot sub-subcommands.
 /// </summary>
-public static class SnapshotArguments
-{
+public static class SnapshotArguments {
     /// <summary>Creates the tenant positional argument.</summary>
     public static Argument<string> TenantId() => new("tenantId") { Description = "Tenant identifier" };
 

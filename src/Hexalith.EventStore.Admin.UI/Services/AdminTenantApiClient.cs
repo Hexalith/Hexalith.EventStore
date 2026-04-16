@@ -1,12 +1,9 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
-
-using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.Admin.UI.Services;
 
@@ -16,8 +13,7 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 /// </summary>
 public class AdminTenantApiClient(
     IHttpClientFactory httpClientFactory,
-    ILogger<AdminTenantApiClient> logger)
-{
+    ILogger<AdminTenantApiClient> logger) {
     // ---- Read methods ----
 
     /// <summary>
@@ -25,12 +21,10 @@ public class AdminTenantApiClient(
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>A list of tenant summaries.</returns>
-    public virtual async Task<IReadOnlyList<TenantSummary>> ListTenantsAsync(CancellationToken ct = default)
-    {
+    public virtual async Task<IReadOnlyList<TenantSummary>> ListTenantsAsync(CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         const string url = "api/v1/admin/tenants";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             IReadOnlyList<TenantSummary>? result = await response.Content
@@ -42,8 +36,7 @@ public class AdminTenantApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch tenants from {Url}", url);
             throw new ServiceUnavailableException("Unable to load tenants.");
         }
@@ -55,15 +48,12 @@ public class AdminTenantApiClient(
     /// <param name="tenantId">The tenant identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The tenant detail, or null if not found.</returns>
-    public virtual async Task<TenantDetail?> GetTenantDetailAsync(string tenantId, CancellationToken ct = default)
-    {
+    public virtual async Task<TenantDetail?> GetTenantDetailAsync(string tenantId, CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/tenants/{Uri.EscapeDataString(tenantId)}";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
+            if (response.StatusCode == HttpStatusCode.NotFound) {
                 return null;
             }
 
@@ -76,8 +66,7 @@ public class AdminTenantApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch tenant detail from {Url}", url);
             throw new ServiceUnavailableException("Unable to load tenant details.");
         }
@@ -89,12 +78,10 @@ public class AdminTenantApiClient(
     /// <param name="tenantId">The tenant identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>A list of tenant users.</returns>
-    public virtual async Task<IReadOnlyList<TenantUser>> GetTenantUsersAsync(string tenantId, CancellationToken ct = default)
-    {
+    public virtual async Task<IReadOnlyList<TenantUser>> GetTenantUsersAsync(string tenantId, CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/tenants/{Uri.EscapeDataString(tenantId)}/users";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             IReadOnlyList<TenantUser>? result = await response.Content
@@ -106,8 +93,7 @@ public class AdminTenantApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch tenant users from {Url}", url);
             throw new ServiceUnavailableException("Unable to load tenant users.");
         }
@@ -121,12 +107,10 @@ public class AdminTenantApiClient(
     /// <param name="request">The create tenant request.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
-    public virtual async Task<AdminOperationResult?> CreateTenantAsync(CreateTenantRequest request, CancellationToken ct = default)
-    {
+    public virtual async Task<AdminOperationResult?> CreateTenantAsync(CreateTenantRequest request, CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         const string url = "api/v1/admin/tenants";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.PostAsJsonAsync(url, request, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
@@ -137,8 +121,7 @@ public class AdminTenantApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to create tenant at {Url}", url);
             throw new ServiceUnavailableException("Unable to create tenant.");
         }
@@ -150,12 +133,10 @@ public class AdminTenantApiClient(
     /// <param name="tenantId">The tenant identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
-    public virtual async Task<AdminOperationResult?> DisableTenantAsync(string tenantId, CancellationToken ct = default)
-    {
+    public virtual async Task<AdminOperationResult?> DisableTenantAsync(string tenantId, CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/tenants/{Uri.EscapeDataString(tenantId)}/disable";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.PostAsync(url, null, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
@@ -166,8 +147,7 @@ public class AdminTenantApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to disable tenant at {Url}", url);
             throw new ServiceUnavailableException("Unable to disable tenant.");
         }
@@ -179,12 +159,10 @@ public class AdminTenantApiClient(
     /// <param name="tenantId">The tenant identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
-    public virtual async Task<AdminOperationResult?> EnableTenantAsync(string tenantId, CancellationToken ct = default)
-    {
+    public virtual async Task<AdminOperationResult?> EnableTenantAsync(string tenantId, CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/tenants/{Uri.EscapeDataString(tenantId)}/enable";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.PostAsync(url, null, ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
@@ -195,8 +173,7 @@ public class AdminTenantApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to enable tenant at {Url}", url);
             throw new ServiceUnavailableException("Unable to enable tenant.");
         }
@@ -210,12 +187,10 @@ public class AdminTenantApiClient(
     /// <param name="role">The user's role.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
-    public virtual async Task<AdminOperationResult?> AddUserToTenantAsync(string tenantId, string userId, string role, CancellationToken ct = default)
-    {
+    public virtual async Task<AdminOperationResult?> AddUserToTenantAsync(string tenantId, string userId, string role, CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/tenants/{Uri.EscapeDataString(tenantId)}/users";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.PostAsJsonAsync(url, new AddTenantUserRequest(userId, role), ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
@@ -226,8 +201,7 @@ public class AdminTenantApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to add user to tenant at {Url}", url);
             throw new ServiceUnavailableException("Unable to add user to tenant.");
         }
@@ -240,12 +214,10 @@ public class AdminTenantApiClient(
     /// <param name="userId">The user identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
-    public virtual async Task<AdminOperationResult?> RemoveUserFromTenantAsync(string tenantId, string userId, CancellationToken ct = default)
-    {
+    public virtual async Task<AdminOperationResult?> RemoveUserFromTenantAsync(string tenantId, string userId, CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/tenants/{Uri.EscapeDataString(tenantId)}/remove-user";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.PostAsJsonAsync(url, new RemoveTenantUserRequest(userId), ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
@@ -256,8 +228,7 @@ public class AdminTenantApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to remove user from tenant at {Url}", url);
             throw new ServiceUnavailableException("Unable to remove user from tenant.");
         }
@@ -271,12 +242,10 @@ public class AdminTenantApiClient(
     /// <param name="newRole">The new role to assign.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
-    public virtual async Task<AdminOperationResult?> ChangeUserRoleAsync(string tenantId, string userId, string newRole, CancellationToken ct = default)
-    {
+    public virtual async Task<AdminOperationResult?> ChangeUserRoleAsync(string tenantId, string userId, string newRole, CancellationToken ct = default) {
         HttpClient client = httpClientFactory.CreateClient("AdminApi");
         string url = $"api/v1/admin/tenants/{Uri.EscapeDataString(tenantId)}/change-role";
-        try
-        {
+        try {
             using HttpResponseMessage response = await client.PostAsJsonAsync(url, new ChangeTenantUserRoleRequest(userId, newRole), ct).ConfigureAwait(false);
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
@@ -287,37 +256,30 @@ public class AdminTenantApiClient(
             and not ForbiddenAccessException
             and not InvalidOperationException
             and not ServiceUnavailableException
-            and not OperationCanceledException)
-        {
+            and not OperationCanceledException) {
             logger.LogError(ex, "Failed to change user role at {Url}", url);
             throw new ServiceUnavailableException("Unable to change user role.");
         }
     }
 
-    private static async Task HandleErrorStatusAsync(HttpResponseMessage response)
-    {
-        if (response.IsSuccessStatusCode)
-        {
+    private static async Task HandleErrorStatusAsync(HttpResponseMessage response) {
+        if (response.IsSuccessStatusCode) {
             return;
         }
 
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
 
-        if (statusCode == HttpStatusCode.UnprocessableEntity)
-        {
+        if (statusCode == HttpStatusCode.UnprocessableEntity) {
             string? errorDetail = null;
-            try
-            {
+            try {
                 string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                using JsonDocument doc = JsonDocument.Parse(body);
-                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail))
-                {
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail)) {
                     errorDetail = detail.GetString();
                 }
             }
-            catch
-            {
+            catch {
                 // Ignore parse failures — fall through to default message
             }
 
@@ -325,8 +287,7 @@ public class AdminTenantApiClient(
                 errorDetail ?? reasonPhrase ?? "The operation was rejected by the server.");
         }
 
-        throw statusCode switch
-        {
+        throw statusCode switch {
             HttpStatusCode.Unauthorized => new UnauthorizedAccessException(
                 "Authentication required. Please sign in again."),
             HttpStatusCode.Forbidden => new ForbiddenAccessException(

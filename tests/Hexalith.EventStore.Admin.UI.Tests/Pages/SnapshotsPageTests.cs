@@ -1,9 +1,7 @@
 using Bunit;
 
-using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -18,19 +16,17 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the Snapshots page.
 /// </summary>
-public class SnapshotsPageTests : AdminUITestContext
-{
+public class SnapshotsPageTests : AdminUITestContext {
     private readonly AdminSnapshotApiClient _mockSnapshotApi;
 
-    public SnapshotsPageTests()
-    {
+    public SnapshotsPageTests() {
         _mockSnapshotApi = Substitute.For<AdminSnapshotApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminSnapshotApiClient>.Instance);
-        Services.AddScoped(_ => _mockSnapshotApi);
+        _ = Services.AddScoped(_ => _mockSnapshotApi);
 
         // Register AdminStorageApiClient that some shared components might need
-        Services.AddScoped(_ => Substitute.For<AdminStorageApiClient>(
+        _ = Services.AddScoped(_ => Substitute.For<AdminStorageApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStorageApiClient>.Instance));
     }
@@ -38,8 +34,7 @@ public class SnapshotsPageTests : AdminUITestContext
     // ===== Merge-blocking tests (4.1-4.11) =====
 
     [Fact]
-    public void SnapshotsPage_RendersStatCards_WithCorrectValues()
-    {
+    public void SnapshotsPage_RendersStatCards_WithCorrectValues() {
         // Arrange
         SetupPolicies([
             new SnapshotPolicy("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5)),
@@ -58,8 +53,7 @@ public class SnapshotsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void SnapshotsPage_ShowsSkeletonCards_DuringLoading()
-    {
+    public void SnapshotsPage_ShowsSkeletonCards_DuringLoading() {
         // Arrange — never complete the task
         TaskCompletionSource<IReadOnlyList<SnapshotPolicy>> tcs = new();
         _ = _mockSnapshotApi.GetSnapshotPoliciesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
@@ -73,8 +67,7 @@ public class SnapshotsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void SnapshotsPage_PolicyGrid_RendersAllPolicies()
-    {
+    public void SnapshotsPage_PolicyGrid_RendersAllPolicies() {
         // Arrange
         SetupPolicies([
             new SnapshotPolicy("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5)),
@@ -95,8 +88,7 @@ public class SnapshotsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void SnapshotsPage_ShowsEmptyState_WhenNoPolicies()
-    {
+    public void SnapshotsPage_ShowsEmptyState_WhenNoPolicies() {
         // Arrange
         SetupPolicies([]);
 
@@ -109,8 +101,7 @@ public class SnapshotsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void SnapshotsPage_ShowsIssueBanner_OnApiError()
-    {
+    public void SnapshotsPage_ShowsIssueBanner_OnApiError() {
         // Arrange
         _ = _mockSnapshotApi.GetSnapshotPoliciesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ServiceUnavailableException("test"));
@@ -124,8 +115,7 @@ public class SnapshotsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void SnapshotsPage_HasH1Heading()
-    {
+    public void SnapshotsPage_HasH1Heading() {
         // Arrange
         SetupPolicies([]);
 
@@ -139,8 +129,7 @@ public class SnapshotsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void SnapshotsPage_AddPolicyButton_HiddenForReadOnlyUsers()
-    {
+    public void SnapshotsPage_AddPolicyButton_HiddenForReadOnlyUsers() {
         // Arrange — set up ReadOnly user
         SetupReadOnlyUser();
         SetupPolicies([]);
@@ -154,8 +143,7 @@ public class SnapshotsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void SnapshotsPage_AddPolicyButton_VisibleForOperatorUsers()
-    {
+    public void SnapshotsPage_AddPolicyButton_VisibleForOperatorUsers() {
         // Arrange — default user is Admin (from AdminUITestContext)
         SetupPolicies([]);
 
@@ -168,8 +156,7 @@ public class SnapshotsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task SnapshotsPage_CreatePolicyDialog_OpensViaUrlPreFill_AndCreatesPolicy()
-    {
+    public async Task SnapshotsPage_CreatePolicyDialog_OpensViaUrlPreFill_AndCreatesPolicy() {
         // Arrange — use URL pre-fill to auto-open create dialog
         SetupPolicies([]);
         _ = _mockSnapshotApi.SetSnapshotPolicyAsync(
@@ -190,17 +177,16 @@ public class SnapshotsPageTests : AdminUITestContext
         // Act — submit create policy
         IRenderedComponent<FluentButton> createBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Create Policy"));
-        await createBtn.InvokeAsync(() => createBtn.Instance.OnClick.InvokeAsync());
+        await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — API invoked and dialog closes on success
-        await _mockSnapshotApi.Received(1).SetSnapshotPolicyAsync(
+        _ = await _mockSnapshotApi.Received(1).SetSnapshotPolicyAsync(
             "tenant-x", "sales", "OrderAggregate", Arg.Any<int>(), Arg.Any<CancellationToken>());
         cut.WaitForAssertion(() => cut.Markup.ShouldNotContain("Create Snapshot Policy"), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
-    public async Task SnapshotsPage_CreatePolicyDialog_ShowsErrorToastOnFailure()
-    {
+    public async Task SnapshotsPage_CreatePolicyDialog_ShowsErrorToastOnFailure() {
         // Arrange — use URL pre-fill, mock failure
         SetupPolicies([]);
         _ = _mockSnapshotApi.SetSnapshotPolicyAsync(
@@ -214,17 +200,16 @@ public class SnapshotsPageTests : AdminUITestContext
         // Act — click create button (form pre-filled from URL)
         IRenderedComponent<FluentButton> createBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Create Policy"));
-        await createBtn.InvokeAsync(() => createBtn.Instance.OnClick.InvokeAsync());
+        await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — dialog should remain open on failure
         cut.Markup.ShouldContain("Create Snapshot Policy");
-        await _mockSnapshotApi.Received(1).SetSnapshotPolicyAsync(
+        _ = await _mockSnapshotApi.Received(1).SetSnapshotPolicyAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task SnapshotsPage_DeleteDialog_CallsDeleteSnapshotPolicyAsync()
-    {
+    public async Task SnapshotsPage_DeleteDialog_CallsDeleteSnapshotPolicyAsync() {
         // Arrange
         SnapshotPolicy policy = new("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5));
         SetupPolicies([policy]);
@@ -238,24 +223,23 @@ public class SnapshotsPageTests : AdminUITestContext
         // Act — click delete button
         IRenderedComponent<FluentButton> deleteButton = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Delete") && !b.Markup.Contains("Delete Snapshot Policy"));
-        await deleteButton.InvokeAsync(() => deleteButton.Instance.OnClick.InvokeAsync());
+        await deleteButton.InvokeAsync(deleteButton.Instance.OnClick.InvokeAsync);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Delete Snapshot Policy"), TimeSpan.FromSeconds(5));
 
         // Confirm delete
         IRenderedComponent<FluentButton> confirmBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Delete Policy"));
-        await confirmBtn.InvokeAsync(() => confirmBtn.Instance.OnClick.InvokeAsync());
+        await confirmBtn.InvokeAsync(confirmBtn.Instance.OnClick.InvokeAsync);
 
         // Assert
-        await _mockSnapshotApi.Received(1).DeleteSnapshotPolicyAsync(
+        _ = await _mockSnapshotApi.Received(1).DeleteSnapshotPolicyAsync(
             "tenant-a", "orders", "OrderAggregate", Arg.Any<CancellationToken>());
     }
 
     // ===== Recommended tests (4.12-4.21) =====
 
     [Fact]
-    public void SnapshotsPage_UrlParameters_ReadOnInit()
-    {
+    public void SnapshotsPage_UrlParameters_ReadOnInit() {
         // Arrange
         SetupPolicies([
             new SnapshotPolicy("tenant-filter", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5)),
@@ -272,8 +256,7 @@ public class SnapshotsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task SnapshotsPage_CreateDialogRendersFormFields()
-    {
+    public async Task SnapshotsPage_CreateDialogRendersFormFields() {
         // Arrange
         SetupPolicies([]);
 
@@ -283,7 +266,7 @@ public class SnapshotsPageTests : AdminUITestContext
         // Act — open create dialog
         IRenderedComponent<FluentButton> addButton = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Add Policy"));
-        await addButton.InvokeAsync(() => addButton.Instance.OnClick.InvokeAsync());
+        await addButton.InvokeAsync(addButton.Instance.OnClick.InvokeAsync);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Snapshot Policy"), TimeSpan.FromSeconds(5));
 
         // Assert — form fields present
@@ -294,8 +277,7 @@ public class SnapshotsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void SnapshotsPage_EditDialog_PrefillsValues()
-    {
+    public void SnapshotsPage_EditDialog_PrefillsValues() {
         // Arrange
         SetupPolicies([
             new SnapshotPolicy("tenant-a", "orders", "OrderAggregate", 150, DateTimeOffset.UtcNow.AddDays(-5)),
@@ -311,8 +293,7 @@ public class SnapshotsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public async Task SnapshotsPage_DeleteDialog_ShowsPolicyDetails()
-    {
+    public async Task SnapshotsPage_DeleteDialog_ShowsPolicyDetails() {
         // Arrange
         SetupPolicies([
             new SnapshotPolicy("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5)),
@@ -324,7 +305,7 @@ public class SnapshotsPageTests : AdminUITestContext
         // Act — click delete button
         IRenderedComponent<FluentButton> deleteButton = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Delete") && !b.Markup.Contains("Delete Snapshot Policy"));
-        await deleteButton.InvokeAsync(() => deleteButton.Instance.OnClick.InvokeAsync());
+        await deleteButton.InvokeAsync(deleteButton.Instance.OnClick.InvokeAsync);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Delete Snapshot Policy"), TimeSpan.FromSeconds(5));
 
         // Assert — dialog shows policy details
@@ -335,8 +316,7 @@ public class SnapshotsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void SnapshotsPage_CreateSnapshotButton_HiddenForReadOnlyUsers()
-    {
+    public void SnapshotsPage_CreateSnapshotButton_HiddenForReadOnlyUsers() {
         // Arrange
         SetupReadOnlyUser();
         SetupPolicies([]);
@@ -350,8 +330,7 @@ public class SnapshotsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void SnapshotsPage_PolicyListFilters_ByTenantFilter()
-    {
+    public void SnapshotsPage_PolicyListFilters_ByTenantFilter() {
         // Arrange
         SetupPolicies([
             new SnapshotPolicy("alpha-tenant", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5)),
@@ -368,8 +347,7 @@ public class SnapshotsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void SnapshotsPage_TenantsCovered_ShowsDistinctCount()
-    {
+    public void SnapshotsPage_TenantsCovered_ShowsDistinctCount() {
         // Arrange — two policies for same tenant = 1 distinct
         SetupPolicies([
             new SnapshotPolicy("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5)),
@@ -385,8 +363,7 @@ public class SnapshotsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void SnapshotsPage_AvgInterval_ShowsNA_WhenNoPolicies()
-    {
+    public void SnapshotsPage_AvgInterval_ShowsNA_WhenNoPolicies() {
         // Arrange
         SetupPolicies([]);
 
@@ -400,14 +377,10 @@ public class SnapshotsPageTests : AdminUITestContext
 
     // ===== Helpers =====
 
-    private void SetupPolicies(IReadOnlyList<SnapshotPolicy> policies)
-    {
-        _ = _mockSnapshotApi.GetSnapshotPoliciesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+    private void SetupPolicies(IReadOnlyList<SnapshotPolicy> policies) => _ = _mockSnapshotApi.GetSnapshotPoliciesAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(policies));
-    }
 
-    private void SetupReadOnlyUser()
-    {
+    private void SetupReadOnlyUser() {
         // Override auth state with ReadOnly user
         Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider =
             Substitute.For<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>();
@@ -417,8 +390,8 @@ public class SnapshotsPageTests : AdminUITestContext
         ], "TestAuth"));
         _ = authStateProvider.GetAuthenticationStateAsync()
             .Returns(Task.FromResult(new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(user)));
-        Services.AddSingleton(authStateProvider);
-        Services.AddScoped<AdminUserContext>();
+        _ = Services.AddSingleton(authStateProvider);
+        _ = Services.AddScoped<AdminUserContext>();
     }
 
     private Microsoft.AspNetCore.Components.NavigationManager NavManager =>

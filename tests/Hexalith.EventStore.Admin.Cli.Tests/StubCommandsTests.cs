@@ -5,15 +5,14 @@ using Hexalith.EventStore.Admin.Cli.Commands;
 namespace Hexalith.EventStore.Admin.Cli.Tests;
 
 [Collection("ConsoleTests")]
-public class StubCommandsTests
-{
+public class StubCommandsTests {
+
     [Theory]
     [InlineData("projection", "List, pause, resume, and reset projections")]
     [InlineData("tenant", "List tenants, view quotas, and verify isolation")]
     [InlineData("snapshot", "Manage aggregate snapshots")]
     [InlineData("backup", "Trigger and manage backups")]
-    public async Task StubCommands_PrintNotImplemented_AndReturnZero(string name, string description)
-    {
+    public async Task StubCommands_PrintNotImplemented_AndReturnZero(string name, string description) {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Arrange
@@ -25,8 +24,7 @@ public class StubCommandsTests
         StringWriter stderr = new();
         Console.SetError(stderr);
 
-        try
-        {
+        try {
             // Act
             int exitCode = await root.Parse([name]).InvokeAsync(null, ct);
 
@@ -34,8 +32,7 @@ public class StubCommandsTests
             exitCode.ShouldBe(ExitCodes.Success);
             stderr.ToString().ShouldContain("Not yet implemented");
         }
-        finally
-        {
+        finally {
             Console.SetError(new StreamWriter(Console.OpenStandardError()) { AutoFlush = true });
         }
     }

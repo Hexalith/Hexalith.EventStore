@@ -3,11 +3,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Dapr;
 
-public class DaprHealthHistoryEntryTests
-{
+public class DaprHealthHistoryEntryTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         DateTimeOffset now = DateTimeOffset.UtcNow;
         var entry = new DaprHealthHistoryEntry(
             "statestore",
@@ -22,8 +20,7 @@ public class DaprHealthHistoryEntryTests
     }
 
     [Fact]
-    public void Constructor_WithNullComponentName_DefaultsToEmpty()
-    {
+    public void Constructor_WithNullComponentName_DefaultsToEmpty() {
         var entry = new DaprHealthHistoryEntry(
             null!,
             "state.redis",
@@ -34,8 +31,7 @@ public class DaprHealthHistoryEntryTests
     }
 
     [Fact]
-    public void Constructor_WithNullComponentType_DefaultsToEmpty()
-    {
+    public void Constructor_WithNullComponentType_DefaultsToEmpty() {
         var entry = new DaprHealthHistoryEntry(
             "statestore",
             null!,
@@ -49,8 +45,7 @@ public class DaprHealthHistoryEntryTests
     [InlineData(HealthStatus.Healthy)]
     [InlineData(HealthStatus.Degraded)]
     [InlineData(HealthStatus.Unhealthy)]
-    public void Constructor_WithAllHealthStatuses_CreatesInstance(HealthStatus status)
-    {
+    public void Constructor_WithAllHealthStatuses_CreatesInstance(HealthStatus status) {
         var entry = new DaprHealthHistoryEntry(
             "statestore",
             "state.redis",

@@ -30,7 +30,7 @@ public class DaprProjectionCommandServiceTests {
         var handler = new TestHttpMessageHandler();
         HttpClient httpClient = new(handler) { BaseAddress = new Uri("http://localhost") };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
+        _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
 
         var service = new DaprProjectionCommandService(
             daprClient,
@@ -98,15 +98,14 @@ public class DaprProjectionCommandServiceTests {
     }
 
     [Fact]
-    public async Task PauseProjectionAsync_PropagatesCancellation()
-    {
+    public async Task PauseProjectionAsync_PropagatesCancellation() {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
         (DaprProjectionCommandService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupException(new OperationCanceledException());
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.PauseProjectionAsync("tenant1", "OrderSummary", cts.Token));
     }
 

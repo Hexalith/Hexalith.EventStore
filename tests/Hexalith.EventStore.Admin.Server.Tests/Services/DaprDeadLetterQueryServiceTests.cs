@@ -15,15 +15,12 @@ using NSubstitute.ExceptionExtensions;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
-public class DaprDeadLetterQueryServiceTests
-{
+public class DaprDeadLetterQueryServiceTests {
     private const string StateStoreName = "statestore";
 
-    private static DaprDeadLetterQueryService CreateService(DaprClient? daprClient = null)
-    {
+    private static DaprDeadLetterQueryService CreateService(DaprClient? daprClient = null) {
         daprClient ??= Substitute.For<DaprClient>();
-        IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions
-        {
+        IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             StateStoreName = StateStoreName,
         });
 
@@ -48,8 +45,7 @@ public class DaprDeadLetterQueryServiceTests
     // === GetDeadLetterCountAsync ===
 
     [Fact]
-    public async Task GetDeadLetterCountAsync_ReturnsCount_WhenIndexExists()
-    {
+    public async Task GetDeadLetterCountAsync_ReturnsCount_WhenIndexExists() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var entries = new List<DeadLetterEntry>
         {
@@ -58,7 +54,7 @@ public class DaprDeadLetterQueryServiceTests
             CreateDeadLetter("msg-3", "tenant-b"),
         };
 
-        daprClient.GetStateAsync<List<DeadLetterEntry>>(
+        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
             StateStoreName,
             "admin:dead-letters:all",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -72,10 +68,9 @@ public class DaprDeadLetterQueryServiceTests
     }
 
     [Fact]
-    public async Task GetDeadLetterCountAsync_ReturnsZero_WhenIndexNotFound()
-    {
+    public async Task GetDeadLetterCountAsync_ReturnsZero_WhenIndexNotFound() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<DeadLetterEntry>>(
+        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
             StateStoreName,
             "admin:dead-letters:all",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -91,8 +86,7 @@ public class DaprDeadLetterQueryServiceTests
     // === ListDeadLettersAsync ===
 
     [Fact]
-    public async Task ListDeadLettersAsync_ReturnsTenantEntries_WhenTenantIdProvided()
-    {
+    public async Task ListDeadLettersAsync_ReturnsTenantEntries_WhenTenantIdProvided() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var entries = new List<DeadLetterEntry>
         {
@@ -100,7 +94,7 @@ public class DaprDeadLetterQueryServiceTests
             CreateDeadLetter("msg-2", "tenant-a"),
         };
 
-        daprClient.GetStateAsync<List<DeadLetterEntry>>(
+        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
             StateStoreName,
             "admin:dead-letters:tenant-a",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -115,8 +109,7 @@ public class DaprDeadLetterQueryServiceTests
     }
 
     [Fact]
-    public async Task ListDeadLettersAsync_ReturnsAllEntries_WhenTenantIdIsNull()
-    {
+    public async Task ListDeadLettersAsync_ReturnsAllEntries_WhenTenantIdIsNull() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var entries = new List<DeadLetterEntry>
         {
@@ -124,7 +117,7 @@ public class DaprDeadLetterQueryServiceTests
             CreateDeadLetter("msg-2", "tenant-b"),
         };
 
-        daprClient.GetStateAsync<List<DeadLetterEntry>>(
+        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
             StateStoreName,
             "admin:dead-letters:all",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -138,10 +131,9 @@ public class DaprDeadLetterQueryServiceTests
     }
 
     [Fact]
-    public async Task ListDeadLettersAsync_ReturnsEmpty_WhenIndexNotFound()
-    {
+    public async Task ListDeadLettersAsync_ReturnsEmpty_WhenIndexNotFound() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<DeadLetterEntry>>(
+        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -156,10 +148,9 @@ public class DaprDeadLetterQueryServiceTests
     }
 
     [Fact]
-    public async Task ListDeadLettersAsync_Throws_WhenExceptionThrown()
-    {
+    public async Task ListDeadLettersAsync_Throws_WhenExceptionThrown() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<DeadLetterEntry>>(
+        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -167,13 +158,12 @@ public class DaprDeadLetterQueryServiceTests
 
         DaprDeadLetterQueryService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<InvalidOperationException>(
+        _ = await Should.ThrowAsync<InvalidOperationException>(
             () => service.ListDeadLettersAsync("tenant-a", 10, null));
     }
 
     [Fact]
-    public async Task ListDeadLettersAsync_PaginatesCorrectly_WithContinuationToken()
-    {
+    public async Task ListDeadLettersAsync_PaginatesCorrectly_WithContinuationToken() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var entries = new List<DeadLetterEntry>
         {
@@ -184,7 +174,7 @@ public class DaprDeadLetterQueryServiceTests
             CreateDeadLetter("msg-5", "tenant-a"),
         };
 
-        daprClient.GetStateAsync<List<DeadLetterEntry>>(
+        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
             StateStoreName,
             "admin:dead-letters:tenant-a",
             cancellationToken: Arg.Any<CancellationToken>())
@@ -196,12 +186,12 @@ public class DaprDeadLetterQueryServiceTests
         PagedResult<DeadLetterEntry> page1 = await service.ListDeadLettersAsync("tenant-a", 2, null);
         page1.Items.Count.ShouldBe(2);
         page1.TotalCount.ShouldBe(5);
-        page1.ContinuationToken.ShouldNotBeNull();
+        _ = page1.ContinuationToken.ShouldNotBeNull();
 
         // Second page
         PagedResult<DeadLetterEntry> page2 = await service.ListDeadLettersAsync("tenant-a", 2, page1.ContinuationToken);
         page2.Items.Count.ShouldBe(2);
-        page2.ContinuationToken.ShouldNotBeNull();
+        _ = page2.ContinuationToken.ShouldNotBeNull();
 
         // Last page
         PagedResult<DeadLetterEntry> page3 = await service.ListDeadLettersAsync("tenant-a", 2, page2.ContinuationToken);
@@ -210,13 +200,12 @@ public class DaprDeadLetterQueryServiceTests
     }
 
     [Fact]
-    public async Task ListDeadLettersAsync_PropagatesCancellation()
-    {
+    public async Task ListDeadLettersAsync_PropagatesCancellation() {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<DeadLetterEntry>>(
+        _ = daprClient.GetStateAsync<List<DeadLetterEntry>>(
             StateStoreName,
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>())
@@ -224,7 +213,7 @@ public class DaprDeadLetterQueryServiceTests
 
         DaprDeadLetterQueryService service = CreateService(daprClient);
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.ListDeadLettersAsync("tenant-a", 10, null, cts.Token));
     }
 }

@@ -3,14 +3,9 @@
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 // </copyright>
 
-namespace Hexalith.EventStore.Admin.UI.Tests.Services;
-
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-
 using Microsoft.FluentUI.AspNetCore.Components;
 
+namespace Hexalith.EventStore.Admin.UI.Tests.Services;
 /// <summary>
 /// Hand-rolled <see cref="IToastService"/> fake that inherits <see cref="FluentServiceBase{TComponent}"/>.
 /// Replaces <c>Substitute.For&lt;IToastService&gt;()</c> — Castle.DynamicProxy/DispatchProxy both fail in v5
@@ -18,8 +13,7 @@ using Microsoft.FluentUI.AspNetCore.Components;
 /// Items getter, OnUpdatedAsync get/set) that cannot be proxied from outside the Microsoft.FluentUI
 /// assembly. Inheriting the provided base class delegates those internals to Microsoft's implementation.
 /// </summary>
-internal sealed class TestToastService : FluentServiceBase<IToastInstance>, IToastService
-{
+internal sealed class TestToastService : FluentServiceBase<IToastInstance>, IToastService {
     private readonly List<ToastOptions> _capturedOptions = [];
     private Func<Action<ToastOptions>, Task<ToastCloseReason>>? _onShowToast;
 
@@ -33,8 +27,7 @@ internal sealed class TestToastService : FluentServiceBase<IToastInstance>, IToa
     public void SetupShowToast(Func<Action<ToastOptions>, Task<ToastCloseReason>> handler)
         => _onShowToast = handler;
 
-    public Task<ToastCloseReason> ShowToastAsync(Action<ToastOptions> options)
-    {
+    public Task<ToastCloseReason> ShowToastAsync(Action<ToastOptions> options) {
         ArgumentNullException.ThrowIfNull(options);
 
         ToastOptions captured = new();
@@ -46,10 +39,8 @@ internal sealed class TestToastService : FluentServiceBase<IToastInstance>, IToa
             : _onShowToast(options);
     }
 
-    public Task<ToastCloseReason> ShowToastAsync(ToastOptions? options = null)
-    {
-        if (options is not null)
-        {
+    public Task<ToastCloseReason> ShowToastAsync(ToastOptions? options = null) {
+        if (options is not null) {
             _capturedOptions.Add(options);
         }
 

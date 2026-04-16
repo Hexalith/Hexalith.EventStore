@@ -59,7 +59,7 @@ public partial class DaprDomainServiceInvoker(
                 request);
             HttpClient httpClient = httpClientFactory.CreateClient();
             using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
-            httpResponse.EnsureSuccessStatusCode();
+            _ = httpResponse.EnsureSuccessStatusCode();
             wireResult = await httpResponse.Content.ReadFromJsonAsync<DomainServiceWireResult>(cancellationToken).ConfigureAwait(false)
                 ?? throw new DomainServiceException(
                     command.TenantId,

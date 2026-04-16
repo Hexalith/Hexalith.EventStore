@@ -6,8 +6,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 /// <param name="FieldPath">The JSON path to the changed field.</param>
 /// <param name="OldValue">The previous value as opaque JSON scalar.</param>
 /// <param name="NewValue">The new value as opaque JSON scalar.</param>
-public record FieldChange(string FieldPath, string OldValue, string NewValue)
-{
+public record FieldChange(string FieldPath, string OldValue, string NewValue) {
     /// <summary>Gets the JSON path to the changed field.</summary>
     public string FieldPath { get; } = !string.IsNullOrWhiteSpace(FieldPath)
         ? FieldPath

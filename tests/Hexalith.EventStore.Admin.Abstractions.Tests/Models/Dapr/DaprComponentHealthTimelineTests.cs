@@ -3,11 +3,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Dapr;
 
-public class DaprComponentHealthTimelineTests
-{
+public class DaprComponentHealthTimelineTests {
     [Fact]
-    public void Empty_ReturnsTimelineWithNoData()
-    {
+    public void Empty_ReturnsTimelineWithNoData() {
         DaprComponentHealthTimeline empty = DaprComponentHealthTimeline.Empty;
 
         empty.Entries.ShouldBeEmpty();
@@ -16,8 +14,7 @@ public class DaprComponentHealthTimelineTests
     }
 
     [Fact]
-    public void Constructor_WithEntries_SetsHasDataTrue()
-    {
+    public void Constructor_WithEntries_SetsHasDataTrue() {
         var entries = new List<DaprHealthHistoryEntry>
         {
             new("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow),
@@ -31,8 +28,7 @@ public class DaprComponentHealthTimelineTests
     }
 
     [Fact]
-    public void Constructor_WithTruncated_SetsIsTruncatedTrue()
-    {
+    public void Constructor_WithTruncated_SetsIsTruncatedTrue() {
         var entries = new List<DaprHealthHistoryEntry>
         {
             new("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow),
@@ -44,8 +40,7 @@ public class DaprComponentHealthTimelineTests
     }
 
     [Fact]
-    public void Constructor_WithEmptyEntries_SetsHasDataFalse()
-    {
+    public void Constructor_WithEmptyEntries_SetsHasDataFalse() {
         var timeline = new DaprComponentHealthTimeline([], HasData: false);
 
         timeline.Entries.ShouldBeEmpty();

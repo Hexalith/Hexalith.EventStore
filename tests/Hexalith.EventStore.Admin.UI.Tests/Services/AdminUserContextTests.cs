@@ -10,8 +10,7 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Services;
 /// Test 9.13: AdminUserContext extracts correct AdminRole from claims (AC: 11).
 /// Merge-blocking test.
 /// </summary>
-public class AdminUserContextTests
-{
+public class AdminUserContextTests {
     [Theory]
     [InlineData("Admin", AdminRole.Admin)]
     [InlineData("Operator", AdminRole.Operator)]
@@ -19,8 +18,7 @@ public class AdminUserContextTests
     [InlineData("admin", AdminRole.Admin)]
     [InlineData("operator", AdminRole.Operator)]
     [InlineData("readonly", AdminRole.ReadOnly)]
-    public async Task GetRoleAsync_ExtractsCorrectRole(string claimValue, AdminRole expectedRole)
-    {
+    public async Task GetRoleAsync_ExtractsCorrectRole(string claimValue, AdminRole expectedRole) {
         // Arrange
         AuthenticationStateProvider authProvider = CreateAuthProvider(claimValue);
         var context = new AdminUserContext(authProvider);
@@ -33,8 +31,7 @@ public class AdminUserContextTests
     }
 
     [Fact]
-    public async Task GetRoleAsync_ReturnsReadOnly_WhenNoRoleClaim()
-    {
+    public async Task GetRoleAsync_ReturnsReadOnly_WhenNoRoleClaim() {
         // Arrange
         AuthenticationStateProvider authProvider = Substitute.For<AuthenticationStateProvider>();
         ClaimsPrincipal user = new(new ClaimsIdentity([], "TestAuth"));
@@ -59,8 +56,7 @@ public class AdminUserContextTests
     [InlineData("ReadOnly", AdminRole.Admin, false)]
     [InlineData("ReadOnly", AdminRole.Operator, false)]
     [InlineData("ReadOnly", AdminRole.ReadOnly, true)]
-    public async Task HasMinimumRoleAsync_ReturnsCorrectResult(string claimValue, AdminRole minimumRole, bool expected)
-    {
+    public async Task HasMinimumRoleAsync_ReturnsCorrectResult(string claimValue, AdminRole minimumRole, bool expected) {
         // Arrange
         AuthenticationStateProvider authProvider = CreateAuthProvider(claimValue);
         var context = new AdminUserContext(authProvider);
@@ -72,8 +68,7 @@ public class AdminUserContextTests
         result.ShouldBe(expected);
     }
 
-    private static AuthenticationStateProvider CreateAuthProvider(string roleValue)
-    {
+    private static AuthenticationStateProvider CreateAuthProvider(string roleValue) {
         AuthenticationStateProvider authProvider = Substitute.For<AuthenticationStateProvider>();
         ClaimsPrincipal user = new(new ClaimsIdentity(
         [

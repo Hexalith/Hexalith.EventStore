@@ -9,8 +9,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Snapshot;
 /// <summary>
 /// The <c>eventstore-admin snapshot delete-policy</c> subcommand — deletes a snapshot policy.
 /// </summary>
-public static class SnapshotDeletePolicyCommand
-{
+public static class SnapshotDeletePolicyCommand {
     internal static readonly List<ColumnDefinition> ResultColumns =
     [
         new("Operation ID", "OperationId"),
@@ -21,8 +20,7 @@ public static class SnapshotDeletePolicyCommand
     /// <summary>
     /// Creates the snapshot delete-policy subcommand wired to the shared global options.
     /// </summary>
-    public static Command Create(GlobalOptionsBinding binding)
-    {
+    public static Command Create(GlobalOptionsBinding binding) {
         Argument<string> tenantIdArg = SnapshotArguments.TenantId();
         Argument<string> domainArg = SnapshotArguments.Domain();
         Argument<string> aggregateTypeArg = SnapshotArguments.AggregateType();
@@ -32,8 +30,7 @@ public static class SnapshotDeletePolicyCommand
         command.Arguments.Add(domainArg);
         command.Arguments.Add(aggregateTypeArg);
 
-        command.SetAction(async (parseResult, cancellationToken) =>
-        {
+        command.SetAction(async (parseResult, cancellationToken) => {
             GlobalOptions options = binding.Resolve(parseResult);
             string tenantId = parseResult.GetValue(tenantIdArg)!;
             string domain = parseResult.GetValue(domainArg)!;
@@ -48,8 +45,7 @@ public static class SnapshotDeletePolicyCommand
         string tenantId,
         string domain,
         string aggregateType,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         using AdminApiClient client = new(options);
         return await ExecuteAsync(client, options, tenantId, domain, aggregateType, cancellationToken).ConfigureAwait(false);
     }
@@ -60,12 +56,10 @@ public static class SnapshotDeletePolicyCommand
         string tenantId,
         string domain,
         string aggregateType,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         IOutputFormatter formatter = OutputFormatterFactory.Create(options.Format);
         OutputWriter writer = new(options.OutputFile);
-        try
-        {
+        try {
             string path = $"api/v1/admin/storage/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateType)}/snapshot-policy";
             AdminOperationResult result = await client
                 .DeleteAsync<AdminOperationResult>(path, cancellationToken)
@@ -74,22 +68,18 @@ public static class SnapshotDeletePolicyCommand
             Console.Error.WriteLine($"Snapshot policy deleted. Operation ID: {result.OperationId}");
 
             string output;
-            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase))
-            {
+            if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase)) {
                 output = formatter.Format(result);
             }
-            else
-            {
+            else {
                 output = formatter.Format(result, ResultColumns);
             }
 
             int writeResult = writer.Write(output);
             return writeResult != ExitCodes.Success ? writeResult : ExitCodes.Success;
         }
-        catch (AdminApiException ex)
-        {
-            string message = ex.HttpStatusCode switch
-            {
+        catch (AdminApiException ex) {
+            string message = ex.HttpStatusCode switch {
                 403 => "Access denied. Operator role required.",
                 404 => "Snapshot policy not found.",
                 _ => ex.Message,

@@ -2,7 +2,6 @@ using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,8 +13,7 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 /// <summary>
 /// bUnit tests for the DaprActors page.
 /// </summary>
-public class DaprActorsPageTests : AdminUITestContext
-{
+public class DaprActorsPageTests : AdminUITestContext {
     private static readonly DaprActorRuntimeConfig _defaultConfig = new(
         TimeSpan.FromMinutes(60),
         TimeSpan.FromSeconds(30),
@@ -26,17 +24,15 @@ public class DaprActorsPageTests : AdminUITestContext
 
     private readonly AdminActorApiClient _mockApiClient;
 
-    public DaprActorsPageTests()
-    {
+    public DaprActorsPageTests() {
         _mockApiClient = Substitute.For<AdminActorApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminActorApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped(_ => _mockApiClient);
     }
 
     [Fact]
-    public void DaprActorsPage_RendersTitle()
-    {
+    public void DaprActorsPage_RendersTitle() {
         _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprActorRuntimeInfo?>(CreateRuntimeInfo()));
 
@@ -47,8 +43,7 @@ public class DaprActorsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprActorsPage_RendersBackLink()
-    {
+    public void DaprActorsPage_RendersBackLink() {
         _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprActorRuntimeInfo?>(CreateRuntimeInfo()));
 
@@ -59,8 +54,7 @@ public class DaprActorsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprActorsPage_RendersStatCards()
-    {
+    public void DaprActorsPage_RendersStatCards() {
         _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprActorRuntimeInfo?>(CreateRuntimeInfo()));
 
@@ -74,8 +68,7 @@ public class DaprActorsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprActorsPage_RendersActorTypeGrid()
-    {
+    public void DaprActorsPage_RendersActorTypeGrid() {
         _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprActorRuntimeInfo?>(CreateRuntimeInfo()));
 
@@ -90,8 +83,7 @@ public class DaprActorsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprActorsPage_RendersConfigurationCard()
-    {
+    public void DaprActorsPage_RendersConfigurationCard() {
         _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprActorRuntimeInfo?>(CreateRuntimeInfo()));
 
@@ -106,8 +98,7 @@ public class DaprActorsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprActorsPage_RendersLookupForm()
-    {
+    public void DaprActorsPage_RendersLookupForm() {
         _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprActorRuntimeInfo?>(CreateRuntimeInfo()));
 
@@ -122,8 +113,7 @@ public class DaprActorsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprActorsPage_RendersEmptyState_WhenNoActorTypes()
-    {
+    public void DaprActorsPage_RendersEmptyState_WhenNoActorTypes() {
         DaprActorRuntimeInfo emptyInfo = new([], 0, _defaultConfig, RemoteMetadataStatus.NotConfigured, null);
         _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprActorRuntimeInfo?>(emptyInfo));
@@ -136,8 +126,7 @@ public class DaprActorsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprActorsPage_RendersEmptyState_WhenNoActorsButMetadataAvailable()
-    {
+    public void DaprActorsPage_RendersEmptyState_WhenNoActorsButMetadataAvailable() {
         DaprActorRuntimeInfo emptyInfo = new([], 0, _defaultConfig, RemoteMetadataStatus.Available, "http://localhost:3501");
         _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprActorRuntimeInfo?>(emptyInfo));
@@ -149,8 +138,7 @@ public class DaprActorsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprActorsPage_RendersIssueBanner_WhenApiUnavailable()
-    {
+    public void DaprActorsPage_RendersIssueBanner_WhenApiUnavailable() {
         _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
             .Returns<DaprActorRuntimeInfo?>(_ => throw new InvalidOperationException("API down"));
 
@@ -161,8 +149,7 @@ public class DaprActorsPageTests : AdminUITestContext
     }
 
     [Fact]
-    public void DaprActorsPage_RendersPlacementNote()
-    {
+    public void DaprActorsPage_RendersPlacementNote() {
         _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprActorRuntimeInfo?>(CreateRuntimeInfo()));
 

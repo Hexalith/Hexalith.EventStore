@@ -5,22 +5,17 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 /// <summary>
 /// Stores the current Fluent UI theme mode for the active circuit.
 /// </summary>
-public sealed class ThemeState
-{
-    private ThemeMode _mode = ThemeMode.System;
-
+public sealed class ThemeState {
     public event Action? Changed;
 
-    public ThemeMode Mode => _mode;
+    public ThemeMode Mode { get; private set; } = ThemeMode.System;
 
-    public void SetMode(ThemeMode mode)
-    {
-        if (_mode == mode)
-        {
+    public void SetMode(ThemeMode mode) {
+        if (Mode == mode) {
             return;
         }
 
-        _mode = mode;
+        Mode = mode;
         Changed?.Invoke();
     }
 }

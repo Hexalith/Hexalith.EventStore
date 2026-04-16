@@ -12,8 +12,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// DAPR-backed implementation of <see cref="IConsistencyQueryService"/>.
 /// Reads consistency check records from admin index keys in the state store.
 /// </summary>
-public sealed class DaprConsistencyQueryService : IConsistencyQueryService
-{
+public sealed class DaprConsistencyQueryService : IConsistencyQueryService {
     private const string CheckKeyPrefix = "admin:consistency:";
     private const string IndexKey = "admin:consistency:index";
 
@@ -27,8 +26,7 @@ public sealed class DaprConsistencyQueryService : IConsistencyQueryService
     /// <param name="options">The admin server options.</param>
     public DaprConsistencyQueryService(
         DaprClient daprClient,
-        IOptions<AdminServerOptions> options)
-    {
+        IOptions<AdminServerOptions> options) {
         ArgumentNullException.ThrowIfNull(daprClient);
         ArgumentNullException.ThrowIfNull(options);
         _daprClient = daprClient;
@@ -38,8 +36,7 @@ public sealed class DaprConsistencyQueryService : IConsistencyQueryService
     /// <inheritdoc/>
     public async Task<ConsistencyCheckResult?> GetCheckResultAsync(
         string checkId,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(checkId);
         string key = $"{CheckKeyPrefix}{checkId}";
         ConsistencyCheckResult? result = await _daprClient
@@ -52,34 +49,29 @@ public sealed class DaprConsistencyQueryService : IConsistencyQueryService
     /// <inheritdoc/>
     public async Task<IReadOnlyList<ConsistencyCheckSummary>> GetChecksAsync(
         string? tenantId,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         List<string>? index = await _daprClient
             .GetStateAsync<List<string>>(_options.StateStoreName, IndexKey, cancellationToken: ct)
             .ConfigureAwait(false);
 
-        if (index is null or { Count: 0 })
-        {
+        if (index is null or { Count: 0 }) {
             return [];
         }
 
         List<ConsistencyCheckSummary> summaries = [];
-        foreach (string checkId in index)
-        {
+        foreach (string checkId in index) {
             string key = $"{CheckKeyPrefix}{checkId}";
             ConsistencyCheckResult? result = await _daprClient
                 .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key, cancellationToken: ct)
                 .ConfigureAwait(false);
 
-            if (result is null)
-            {
+            if (result is null) {
                 continue;
             }
 
             result = ProjectTimeoutStatus(result);
 
-            if (tenantId is not null && result.TenantId != tenantId)
-            {
+            if (tenantId is not null && result.TenantId != tenantId) {
                 continue;
             }
 
@@ -101,12 +93,9 @@ public sealed class DaprConsistencyQueryService : IConsistencyQueryService
             .ToList();
     }
 
-    private static ConsistencyCheckResult ProjectTimeoutStatus(ConsistencyCheckResult result)
-    {
-        if (result.Status == ConsistencyCheckStatus.Running && DateTimeOffset.UtcNow > result.TimeoutUtc)
-        {
-            return result with
-            {
+    private static ConsistencyCheckResult ProjectTimeoutStatus(ConsistencyCheckResult result) {
+        if (result.Status == ConsistencyCheckStatus.Running && DateTimeOffset.UtcNow > result.TimeoutUtc) {
+            return result with {
                 Status = ConsistencyCheckStatus.Failed,
                 ErrorMessage = "Timed out",
                 CompletedAtUtc = result.TimeoutUtc,

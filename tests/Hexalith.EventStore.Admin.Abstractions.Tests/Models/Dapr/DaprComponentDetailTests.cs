@@ -3,11 +3,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Dapr;
 
-public class DaprComponentDetailTests
-{
+public class DaprComponentDetailTests {
     [Fact]
-    public void Constructor_WithValidInputs_CreatesInstance()
-    {
+    public void Constructor_WithValidInputs_CreatesInstance() {
         var detail = new DaprComponentDetail(
             "statestore",
             "state.redis",
@@ -29,39 +27,32 @@ public class DaprComponentDetailTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_WithInvalidComponentName_ThrowsArgumentException(string? componentName)
-    {
-        Should.Throw<ArgumentException>(() =>
-            new DaprComponentDetail(
-                componentName!,
-                "state.redis",
-                DaprComponentCategory.StateStore,
-                "v1",
-                HealthStatus.Healthy,
-                DateTimeOffset.UtcNow,
-                []));
-    }
+    public void Constructor_WithInvalidComponentName_ThrowsArgumentException(string? componentName) => Should.Throw<ArgumentException>(() =>
+                                                                                                                new DaprComponentDetail(
+                                                                                                                    componentName!,
+                                                                                                                    "state.redis",
+                                                                                                                    DaprComponentCategory.StateStore,
+                                                                                                                    "v1",
+                                                                                                                    HealthStatus.Healthy,
+                                                                                                                    DateTimeOffset.UtcNow,
+                                                                                                                    []));
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_WithInvalidComponentType_ThrowsArgumentException(string? componentType)
-    {
-        Should.Throw<ArgumentException>(() =>
-            new DaprComponentDetail(
-                "statestore",
-                componentType!,
-                DaprComponentCategory.StateStore,
-                "v1",
-                HealthStatus.Healthy,
-                DateTimeOffset.UtcNow,
-                []));
-    }
+    public void Constructor_WithInvalidComponentType_ThrowsArgumentException(string? componentType) => Should.Throw<ArgumentException>(() =>
+                                                                                                                new DaprComponentDetail(
+                                                                                                                    "statestore",
+                                                                                                                    componentType!,
+                                                                                                                    DaprComponentCategory.StateStore,
+                                                                                                                    "v1",
+                                                                                                                    HealthStatus.Healthy,
+                                                                                                                    DateTimeOffset.UtcNow,
+                                                                                                                    []));
 
     [Fact]
-    public void Constructor_WithEmptyVersion_CreatesInstance()
-    {
+    public void Constructor_WithEmptyVersion_CreatesInstance() {
         var detail = new DaprComponentDetail(
             "statestore",
             "state.redis",
@@ -75,8 +66,7 @@ public class DaprComponentDetailTests
     }
 
     [Fact]
-    public void Constructor_WithEmptyCapabilities_CreatesInstance()
-    {
+    public void Constructor_WithEmptyCapabilities_CreatesInstance() {
         var detail = new DaprComponentDetail(
             "statestore",
             "state.redis",

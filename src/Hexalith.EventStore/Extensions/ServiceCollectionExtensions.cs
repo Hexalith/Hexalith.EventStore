@@ -6,16 +6,16 @@ using FluentValidation;
 
 using Hexalith.EventStore.Authentication;
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Commands;
 using Hexalith.EventStore.Configuration;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Filters;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.OpenApi;
 using Hexalith.EventStore.Pipeline;
-using Hexalith.EventStore.Validation;
-using Hexalith.EventStore.Commands;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Pipeline;
+using Hexalith.EventStore.Validation;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;

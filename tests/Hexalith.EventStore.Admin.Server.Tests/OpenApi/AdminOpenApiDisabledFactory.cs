@@ -16,56 +16,51 @@ namespace Hexalith.EventStore.Admin.Server.Tests.OpenApi;
 /// <summary>
 /// Test host variant with OpenAPI disabled via configuration.
 /// </summary>
-public sealed class AdminOpenApiDisabledFactory : IAsyncLifetime
-{
+public sealed class AdminOpenApiDisabledFactory : IAsyncLifetime {
     private WebApplication? _app;
 
     /// <inheritdoc/>
-    public async ValueTask InitializeAsync()
-    {
+    public async ValueTask InitializeAsync() {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
 
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-        {
+        _ = builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?> {
             ["EventStore:Admin:OpenApi:Enabled"] = "false",
         });
 
-        builder.Services.AddAdminApi(builder.Configuration);
-        builder.Services.AddAuthentication(TestAuthHandler.SchemeName)
+        _ = builder.Services.AddAdminApi(builder.Configuration);
+        _ = builder.Services.AddAuthentication(TestAuthHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, null);
-        builder.Services.AddControllers()
+        _ = builder.Services.AddControllers()
             .AddApplicationPart(typeof(AdminStreamsController).Assembly);
 
         // Override DAPR-backed services with NSubstitute mocks
-        builder.Services.AddScoped(_ => Substitute.For<IStreamQueryService>());
-        builder.Services.AddScoped(_ => Substitute.For<IProjectionQueryService>());
-        builder.Services.AddScoped(_ => Substitute.For<IProjectionCommandService>());
-        builder.Services.AddScoped(_ => Substitute.For<ITypeCatalogService>());
-        builder.Services.AddScoped(_ => Substitute.For<IHealthQueryService>());
-        builder.Services.AddScoped(_ => Substitute.For<IStorageQueryService>());
-        builder.Services.AddScoped(_ => Substitute.For<IStorageCommandService>());
-        builder.Services.AddScoped(_ => Substitute.For<IDeadLetterQueryService>());
-        builder.Services.AddScoped(_ => Substitute.For<IDeadLetterCommandService>());
-        builder.Services.AddScoped(_ => Substitute.For<ITenantQueryService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IStreamQueryService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IProjectionQueryService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IProjectionCommandService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<ITypeCatalogService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IHealthQueryService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IStorageQueryService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IStorageCommandService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IDeadLetterQueryService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<IDeadLetterCommandService>());
+        _ = builder.Services.AddScoped(_ => Substitute.For<ITenantQueryService>());
 
-        builder.WebHost.UseTestServer();
+        _ = builder.WebHost.UseTestServer();
 
         _app = builder.Build();
-        _app.UseAuthentication();
-        _app.UseAuthorization();
+        _ = _app.UseAuthentication();
+        _ = _app.UseAuthorization();
 
         // Gated: only map OpenAPI/Swagger if enabled (same logic as real host)
-        if (_app.Configuration.GetValue("EventStore:Admin:OpenApi:Enabled", true))
-        {
+        if (_app.Configuration.GetValue("EventStore:Admin:OpenApi:Enabled", true)) {
             _ = _app.MapOpenApi();
-            _ = _app.UseSwaggerUI(options =>
-            {
+            _ = _app.UseSwaggerUI(options => {
                 options.SwaggerEndpoint("/openapi/v1.json", "Hexalith EventStore Admin API v1");
                 options.RoutePrefix = "swagger";
             });
         }
 
-        _app.MapControllers();
+        _ = _app.MapControllers();
         await _app.StartAsync().ConfigureAwait(false);
     }
 
@@ -75,10 +70,8 @@ public sealed class AdminOpenApiDisabledFactory : IAsyncLifetime
     public HttpClient CreateClient() => _app!.GetTestClient();
 
     /// <inheritdoc/>
-    public async ValueTask DisposeAsync()
-    {
-        if (_app is not null)
-        {
+    public async ValueTask DisposeAsync() {
+        if (_app is not null) {
             await _app.DisposeAsync().ConfigureAwait(false);
         }
     }

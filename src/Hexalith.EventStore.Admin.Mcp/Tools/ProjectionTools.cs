@@ -1,15 +1,16 @@
-namespace Hexalith.EventStore.Admin.Mcp.Tools;
 
 using System.ComponentModel;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Projections;
+
 using ModelContextProtocol.Server;
 
+namespace Hexalith.EventStore.Admin.Mcp.Tools;
 /// <summary>
 /// MCP tools for querying projections.
 /// </summary>
 [McpServerToolType]
-internal static class ProjectionTools
-{
+internal static class ProjectionTools {
     /// <summary>
     /// List all projections with their current status, lag, and error counts.
     /// </summary>
@@ -19,18 +20,15 @@ internal static class ProjectionTools
         AdminApiClient adminApiClient,
         InvestigationSession session,
         [Description("Filter by tenant ID (uses session context if omitted)")] string? tenantId = null,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         tenantId = NormalizeOptionalScope(tenantId);
         tenantId ??= session.GetSnapshot().TenantId;
 
-        try
-        {
-            var result = await adminApiClient.ListProjectionsAsync(tenantId, cancellationToken).ConfigureAwait(false);
+        try {
+            IReadOnlyList<ProjectionStatus> result = await adminApiClient.ListProjectionsAsync(tenantId, cancellationToken).ConfigureAwait(false);
             return ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }
@@ -45,23 +43,19 @@ internal static class ProjectionTools
         InvestigationSession session,
         [Description("Tenant ID")] string tenantId,
         [Description("Projection name")] string projectionName,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         string? validation = ToolHelper.ValidateRequired((tenantId, "tenantId"), (projectionName, "projectionName"));
-        if (validation is not null)
-        {
+        if (validation is not null) {
             return validation;
         }
 
-        try
-        {
-            var result = await adminApiClient.GetProjectionDetailAsync(tenantId, projectionName, cancellationToken).ConfigureAwait(false);
+        try {
+            ProjectionDetail? result = await adminApiClient.GetProjectionDetailAsync(tenantId, projectionName, cancellationToken).ConfigureAwait(false);
             return result is null
                 ? ToolHelper.SerializeError("not-found", $"Projection '{projectionName}' not found for tenant '{tenantId}'")
                 : ToolHelper.SerializeResult(result);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return ToolHelper.HandleException(ex);
         }
     }

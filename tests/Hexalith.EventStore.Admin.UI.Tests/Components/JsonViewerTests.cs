@@ -7,11 +7,9 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 /// <summary>
 /// bUnit tests for the JsonViewer component.
 /// </summary>
-public class JsonViewerTests : AdminUITestContext
-{
+public class JsonViewerTests : AdminUITestContext {
     [Fact]
-    public void JsonViewer_RendersIndentedJson_WithSyntaxHighlighting()
-    {
+    public void JsonViewer_RendersIndentedJson_WithSyntaxHighlighting() {
         // Arrange
         string json = """{"name":"test","count":42,"active":true,"data":null}""";
 
@@ -29,19 +27,17 @@ public class JsonViewerTests : AdminUITestContext
     }
 
     [Fact]
-    public void JsonViewer_ShowsNoData_WhenJsonIsNull()
-    {
+    public void JsonViewer_ShowsNoData_WhenJsonIsNull() {
         // Act
         IRenderedComponent<JsonViewer> cut = Render<JsonViewer>(parameters => parameters
-            .Add(p => p.Json, null as string));
+            .Add(p => p.Json, null));
 
         // Assert
         cut.Markup.ShouldContain("No data");
     }
 
     [Fact]
-    public void JsonViewer_ShowsNoData_WhenJsonIsEmpty()
-    {
+    public void JsonViewer_ShowsNoData_WhenJsonIsEmpty() {
         // Act
         IRenderedComponent<JsonViewer> cut = Render<JsonViewer>(parameters => parameters
             .Add(p => p.Json, ""));
@@ -51,8 +47,7 @@ public class JsonViewerTests : AdminUITestContext
     }
 
     [Fact]
-    public void JsonViewer_ShowsWarning_WhenJsonIsInvalid()
-    {
+    public void JsonViewer_ShowsWarning_WhenJsonIsInvalid() {
         // Arrange
         string invalidJson = "not valid json {{{";
 
@@ -67,8 +62,7 @@ public class JsonViewerTests : AdminUITestContext
     }
 
     [Fact]
-    public void JsonViewer_RendersLineNumbers()
-    {
+    public void JsonViewer_RendersLineNumbers() {
         // Arrange
         string json = """{"a":1,"b":2}""";
 

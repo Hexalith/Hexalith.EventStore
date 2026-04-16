@@ -8,18 +8,18 @@ using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Configuration;
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Models;
 using Hexalith.EventStore.Pipeline;
-using Hexalith.EventStore.Validation;
-using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.Validation;
 
 using MediatR;
 

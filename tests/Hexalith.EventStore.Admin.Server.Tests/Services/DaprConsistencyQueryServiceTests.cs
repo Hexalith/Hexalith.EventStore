@@ -6,22 +6,18 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
 
-
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
-public class DaprConsistencyQueryServiceTests
-{
+public class DaprConsistencyQueryServiceTests {
     private const string StateStoreName = "statestore";
 
-    private static DaprConsistencyQueryService CreateService(DaprClient? daprClient = null)
-    {
+    private static DaprConsistencyQueryService CreateService(DaprClient? daprClient = null) {
         daprClient ??= Substitute.For<DaprClient>();
-        IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions
-        {
+        IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             StateStoreName = StateStoreName,
         });
 
@@ -31,21 +27,20 @@ public class DaprConsistencyQueryServiceTests
     }
 
     [Fact]
-    public async Task GetChecks_ReadsIndex_ThenFetchesEachCheck()
-    {
+    public async Task GetChecks_ReadsIndex_ThenFetchesEachCheck() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         List<string> index = ["check-1", "check-2"];
-        daprClient.GetStateAsync<List<string>>(
+        _ = daprClient.GetStateAsync<List<string>>(
                 StateStoreName, "admin:consistency:index", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => index);
 
         ConsistencyCheckResult check1 = CreateCheckResult("check-1", "tenant-a", ConsistencyCheckStatus.Completed);
         ConsistencyCheckResult check2 = CreateCheckResult("check-2", "tenant-a", ConsistencyCheckStatus.Completed);
 
-        daprClient.GetStateAsync<ConsistencyCheckResult>(
+        _ = daprClient.GetStateAsync<ConsistencyCheckResult>(
                 StateStoreName, "admin:consistency:check-1", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => check1);
-        daprClient.GetStateAsync<ConsistencyCheckResult>(
+        _ = daprClient.GetStateAsync<ConsistencyCheckResult>(
                 StateStoreName, "admin:consistency:check-2", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => check2);
 
@@ -57,11 +52,10 @@ public class DaprConsistencyQueryServiceTests
     }
 
     [Fact]
-    public async Task GetChecks_ReportsTimedOut_WhenRunningPastTimeout()
-    {
+    public async Task GetChecks_ReportsTimedOut_WhenRunningPastTimeout() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         List<string> index = ["check-timeout"];
-        daprClient.GetStateAsync<List<string>>(
+        _ = daprClient.GetStateAsync<List<string>>(
                 StateStoreName, "admin:consistency:index", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => index);
 
@@ -80,7 +74,7 @@ public class DaprConsistencyQueryServiceTests
             false,
             null);
 
-        daprClient.GetStateAsync<ConsistencyCheckResult>(
+        _ = daprClient.GetStateAsync<ConsistencyCheckResult>(
                 StateStoreName, "admin:consistency:check-timeout", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => timedOut);
 
@@ -93,10 +87,9 @@ public class DaprConsistencyQueryServiceTests
     }
 
     [Fact]
-    public async Task GetCheckResult_ReturnsNull_WhenKeyMissing()
-    {
+    public async Task GetCheckResult_ReturnsNull_WhenKeyMissing() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<ConsistencyCheckResult>(
+        _ = daprClient.GetStateAsync<ConsistencyCheckResult>(
                 StateStoreName, "admin:consistency:nonexistent", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (ConsistencyCheckResult?)null);
 
@@ -108,10 +101,9 @@ public class DaprConsistencyQueryServiceTests
     }
 
     [Fact]
-    public async Task GetChecks_ReturnsEmptyList_WhenIndexMissing()
-    {
+    public async Task GetChecks_ReturnsEmptyList_WhenIndexMissing() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.GetStateAsync<List<string>>(
+        _ = daprClient.GetStateAsync<List<string>>(
                 StateStoreName, "admin:consistency:index", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => (List<string>?)null);
 
@@ -123,21 +115,20 @@ public class DaprConsistencyQueryServiceTests
     }
 
     [Fact]
-    public async Task GetChecks_FiltersByTenantId()
-    {
+    public async Task GetChecks_FiltersByTenantId() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         List<string> index = ["check-a", "check-b"];
-        daprClient.GetStateAsync<List<string>>(
+        _ = daprClient.GetStateAsync<List<string>>(
                 StateStoreName, "admin:consistency:index", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => index);
 
         ConsistencyCheckResult checkA = CreateCheckResult("check-a", "tenant-a", ConsistencyCheckStatus.Completed);
         ConsistencyCheckResult checkB = CreateCheckResult("check-b", "tenant-b", ConsistencyCheckStatus.Completed);
 
-        daprClient.GetStateAsync<ConsistencyCheckResult>(
+        _ = daprClient.GetStateAsync<ConsistencyCheckResult>(
                 StateStoreName, "admin:consistency:check-a", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => checkA);
-        daprClient.GetStateAsync<ConsistencyCheckResult>(
+        _ = daprClient.GetStateAsync<ConsistencyCheckResult>(
                 StateStoreName, "admin:consistency:check-b", cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => checkB);
 
@@ -149,9 +140,7 @@ public class DaprConsistencyQueryServiceTests
         result[0].CheckId.ShouldBe("check-a");
     }
 
-    private static ConsistencyCheckResult CreateCheckResult(string checkId, string tenantId, ConsistencyCheckStatus status)
-    {
-        return new ConsistencyCheckResult(
+    private static ConsistencyCheckResult CreateCheckResult(string checkId, string tenantId, ConsistencyCheckStatus status) => new(
             checkId,
             status,
             tenantId,
@@ -165,5 +154,4 @@ public class DaprConsistencyQueryServiceTests
             [],
             false,
             null);
-    }
 }

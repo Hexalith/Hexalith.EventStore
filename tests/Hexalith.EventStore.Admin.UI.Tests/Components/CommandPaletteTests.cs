@@ -16,7 +16,7 @@ public class CommandPaletteTests : AdminUITestContext {
     public async Task CommandPalette_Open_ShowsCatalogAndRequestsFocus() {
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Components.CommandPalette> cut = Render<Hexalith.EventStore.Admin.UI.Components.CommandPalette>();
 
-        await cut.InvokeAsync(() => cut.Instance.OpenAsync());
+        await cut.InvokeAsync(cut.Instance.OpenAsync);
 
         // v5 FluentDialog markup does not include inline children until opened via JS;
         // assert via the component's filtered-results state instead.
@@ -32,7 +32,7 @@ public class CommandPaletteTests : AdminUITestContext {
         // removes the flag or the JS call target name, this still catches the former.
         System.Reflection.FieldInfo focusField = GetRequiredPrivateField("_focusSearchRequested");
         object? focusValue = focusField.GetValue(cut.Instance);
-        focusValue.ShouldNotBeNull();
+        _ = focusValue.ShouldNotBeNull();
         ((bool)focusValue).ShouldBeTrue();
     }
 
@@ -40,7 +40,7 @@ public class CommandPaletteTests : AdminUITestContext {
         Hexalith.EventStore.Admin.UI.Components.CommandPalette palette) {
         System.Reflection.FieldInfo field = GetRequiredPrivateField("_filteredResults");
         object? value = field.GetValue(palette);
-        value.ShouldNotBeNull();
+        _ = value.ShouldNotBeNull();
         return (IReadOnlyList<Hexalith.EventStore.Admin.UI.Components.CommandPaletteItem>)value;
     }
 
@@ -68,14 +68,14 @@ public class CommandPaletteTests : AdminUITestContext {
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Components.CommandPalette> cut = Render<Hexalith.EventStore.Admin.UI.Components.CommandPalette>();
 
         // Open returns Task — `await` proves the API is async (would not compile against void or `async void`).
-        await cut.InvokeAsync(() => cut.Instance.OpenAsync());
+        await cut.InvokeAsync(cut.Instance.OpenAsync);
 
         // v5 FluentDialog markup does not include inline children until opened via JS.
         cut.WaitForAssertion(() =>
             GetFilteredResults(cut.Instance).Select(i => i.Label).ShouldContain("Health Dashboard"));
 
         // Close returns Task — `await` proves the API is async.
-        await cut.InvokeAsync(() => cut.Instance.CloseAsync());
+        await cut.InvokeAsync(cut.Instance.CloseAsync);
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public class CommandPaletteTests : AdminUITestContext {
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Components.CommandPalette> cut = Render<Hexalith.EventStore.Admin.UI.Components.CommandPalette>();
         NavigationManager navigationManager = Services.GetRequiredService<NavigationManager>();
 
-        await cut.InvokeAsync(() => cut.Instance.OpenAsync());
+        await cut.InvokeAsync(cut.Instance.OpenAsync);
 
         // v5 FluentDialog does not render ChildContent to markup until actually opened via JS
         // (which bUnit's loose JSInterop cannot drive), so the result-list <fluent-button>s are
@@ -93,7 +93,7 @@ public class CommandPaletteTests : AdminUITestContext {
             .First(i => i.Label.Equals("Commands", StringComparison.Ordinal));
         System.Reflection.MethodInfo navigateMethod = GetRequiredPrivateMethod("NavigateToAsync");
         object? invokeResult = navigateMethod.Invoke(cut.Instance, new object[] { commandsItem.Href });
-        invokeResult.ShouldNotBeNull();
+        _ = invokeResult.ShouldNotBeNull();
         _ = invokeResult.ShouldBeAssignableTo<Task>();
         await cut.InvokeAsync(() => (Task)invokeResult);
 

@@ -8,8 +8,7 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 /// <summary>
 /// bUnit tests for the ProjectionStatusBadge component.
 /// </summary>
-public class ProjectionStatusBadgeTests : AdminUITestContext
-{
+public class ProjectionStatusBadgeTests : AdminUITestContext {
     [Theory]
     [InlineData(ProjectionStatusType.Running, "Running", "\u2714")]
     [InlineData(ProjectionStatusType.Paused, "Paused", "\u23F8")]
@@ -18,8 +17,7 @@ public class ProjectionStatusBadgeTests : AdminUITestContext
     public void ProjectionStatusBadge_RendersCorrectIconAndLabel(
         ProjectionStatusType status,
         string expectedLabel,
-        string expectedIcon)
-    {
+        string expectedIcon) {
         // Act
         IRenderedComponent<ProjectionStatusBadge> cut = Render<ProjectionStatusBadge>(
             parameters => parameters.Add(p => p.Status, status));
@@ -31,8 +29,7 @@ public class ProjectionStatusBadgeTests : AdminUITestContext
     }
 
     [Fact]
-    public void ProjectionStatusBadge_Running_UsesSuccessColor()
-    {
+    public void ProjectionStatusBadge_Running_UsesSuccessColor() {
         // Act
         IRenderedComponent<ProjectionStatusBadge> cut = Render<ProjectionStatusBadge>(
             parameters => parameters.Add(p => p.Status, ProjectionStatusType.Running));
@@ -42,8 +39,7 @@ public class ProjectionStatusBadgeTests : AdminUITestContext
     }
 
     [Fact]
-    public void ProjectionStatusBadge_Error_UsesErrorColor()
-    {
+    public void ProjectionStatusBadge_Error_UsesErrorColor() {
         // Act
         IRenderedComponent<ProjectionStatusBadge> cut = Render<ProjectionStatusBadge>(
             parameters => parameters.Add(p => p.Status, ProjectionStatusType.Error));
@@ -53,8 +49,7 @@ public class ProjectionStatusBadgeTests : AdminUITestContext
     }
 
     [Fact]
-    public void ProjectionStatusBadge_HasAriaLabel()
-    {
+    public void ProjectionStatusBadge_HasAriaLabel() {
         // Act
         IRenderedComponent<ProjectionStatusBadge> cut = Render<ProjectionStatusBadge>(
             parameters => parameters.Add(p => p.Status, ProjectionStatusType.Running));

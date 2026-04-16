@@ -14,8 +14,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// DAPR-backed implementation of <see cref="IDeadLetterQueryService"/>.
 /// Reads dead-letter index from the state store. The index is maintained by the DeadLetterPublisher in Server.
 /// </summary>
-public sealed class DaprDeadLetterQueryService : IDeadLetterQueryService
-{
+public sealed class DaprDeadLetterQueryService : IDeadLetterQueryService {
     private readonly DaprClient _daprClient;
     private readonly ILogger<DaprDeadLetterQueryService> _logger;
     private readonly AdminServerOptions _options;
@@ -29,8 +28,7 @@ public sealed class DaprDeadLetterQueryService : IDeadLetterQueryService
     public DaprDeadLetterQueryService(
         DaprClient daprClient,
         IOptions<AdminServerOptions> options,
-        ILogger<DaprDeadLetterQueryService> logger)
-    {
+        ILogger<DaprDeadLetterQueryService> logger) {
         ArgumentNullException.ThrowIfNull(daprClient);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(logger);
@@ -40,8 +38,7 @@ public sealed class DaprDeadLetterQueryService : IDeadLetterQueryService
     }
 
     /// <inheritdoc/>
-    public async Task<int> GetDeadLetterCountAsync(CancellationToken ct = default)
-    {
+    public async Task<int> GetDeadLetterCountAsync(CancellationToken ct = default) {
         List<DeadLetterEntry>? result = await _daprClient
             .GetStateAsync<List<DeadLetterEntry>>(_options.StateStoreName, "admin:dead-letters:all", cancellationToken: ct)
             .ConfigureAwait(false);
@@ -53,27 +50,24 @@ public sealed class DaprDeadLetterQueryService : IDeadLetterQueryService
         string? tenantId,
         int count,
         string? continuationToken,
-        CancellationToken ct = default)
-    {
+        CancellationToken ct = default) {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         string indexKey = $"admin:dead-letters:{tenantId ?? "all"}";
         List<DeadLetterEntry>? result = await _daprClient
             .GetStateAsync<List<DeadLetterEntry>>(_options.StateStoreName, indexKey, cancellationToken: ct)
             .ConfigureAwait(false);
 
-        if (result is null)
-        {
+        if (result is null) {
             _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
             return new PagedResult<DeadLetterEntry>([], 0, null);
         }
 
         int skip = 0;
-        if (continuationToken is not null && int.TryParse(continuationToken, out int offset) && offset >= 0)
-        {
+        if (continuationToken is not null && int.TryParse(continuationToken, out int offset) && offset >= 0) {
             skip = offset;
         }
 
-        List<DeadLetterEntry> page = result.Skip(skip).Take(count).ToList();
+        var page = result.Skip(skip).Take(count).ToList();
         string? nextToken = skip + count < result.Count ? (skip + count).ToString() : null;
 
         return new PagedResult<DeadLetterEntry>(page, result.Count, nextToken);

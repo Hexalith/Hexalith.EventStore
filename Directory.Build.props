@@ -1,47 +1,47 @@
 <Project>
 
-  <PropertyGroup>
-    <!-- Resolve Hexalith.Tenants source path: when nested inside the Hexalith.Tenants repo,
+    <PropertyGroup>
+        <!-- Resolve Hexalith.Tenants source path: when nested inside the Hexalith.Tenants repo,
          use the parent repo's src/; otherwise use the own Hexalith.Tenants submodule -->
-    <HexalithTenantsBasePath Condition="Exists('$(MSBuildThisFileDirectory)../src/Hexalith.Tenants.Contracts/')">$(MSBuildThisFileDirectory)../src</HexalithTenantsBasePath>
-    <HexalithTenantsBasePath Condition="'$(HexalithTenantsBasePath)' == ''">$(MSBuildThisFileDirectory)Hexalith.Tenants/src</HexalithTenantsBasePath>
-  </PropertyGroup>
+        <HexalithTenantsBasePath Condition="Exists('$(MSBuildThisFileDirectory)../src/Hexalith.Tenants.Contracts/')">$(MSBuildThisFileDirectory)../src</HexalithTenantsBasePath>
+        <HexalithTenantsBasePath Condition="'$(HexalithTenantsBasePath)' == ''">$(MSBuildThisFileDirectory)Hexalith.Tenants/src</HexalithTenantsBasePath>
+        <NoWarn>$(NoWarn);IDE0028</NoWarn>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
-    <!-- NuGet Package Defaults (overridden by host/test projects) -->
-    <IsPackable>true</IsPackable>
-    <IsPublishable>false</IsPublishable>
+        <!-- NuGet Package Defaults (overridden by host/test projects) -->
+        <IsPackable>true</IsPackable>
+        <IsPublishable>false</IsPublishable>
 
-    <!-- NuGet Metadata -->
-    <Authors>Hexalith Contributors</Authors>
-    <Company>Hexalith</Company>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/Hexalith/Hexalith.EventStore</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Hexalith/Hexalith.EventStore</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <Description>DAPR-native event sourcing server for .NET</Description>
-    <PackageTags>eventsourcing;dapr;cqrs;eventstore;dotnet</PackageTags>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-  </PropertyGroup>
+        <!-- NuGet Metadata -->
+        <Authors>Hexalith Contributors</Authors>
+        <Company>Hexalith</Company>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/Hexalith/Hexalith.EventStore</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/Hexalith/Hexalith.EventStore</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <Description>DAPR-native event sourcing server for .NET</Description>
+        <PackageTags>eventsourcing;dapr;cqrs;eventstore;dotnet</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+    </PropertyGroup>
 
-  <!-- XML documentation is generated only for explicit API reference builds on packable projects. -->
-  <PropertyGroup Condition="'$(IsPackable)' == 'true' and '$(ApiReferenceBuild)' == 'true'">
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-  </PropertyGroup>
+    <!-- XML documentation is generated only for explicit API reference builds on packable projects. -->
+    <PropertyGroup Condition="'$(IsPackable)' == 'true' and '$(ApiReferenceBuild)' == 'true'">
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
 
-  <!-- Suppress CS1591 only for API reference generation so normal builds keep their usual warning
+    <!-- Suppress CS1591 only for API reference generation so normal builds keep their usual warning
   behavior. -->
-  <PropertyGroup Condition="'$(ApiReferenceBuild)' == 'true'">
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
-  </PropertyGroup>
+    <PropertyGroup Condition="'$(ApiReferenceBuild)' == 'true'">
+        <NoWarn>$(NoWarn);CS1591;CS8826;IDE0028</NoWarn>
+    </PropertyGroup>
 
-  <ItemGroup Condition="'$(IsPackable)' == 'true'">
-    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" />
-  </ItemGroup>
-
+    <ItemGroup Condition="'$(IsPackable)' == 'true'">
+        <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
 </Project>

@@ -7,7 +7,6 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.UI.Components.Shared;
 using Hexalith.EventStore.Admin.UI.Pages;
 using Hexalith.EventStore.Contracts.Commands;
-using Hexalith.EventStore.SignalR;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -26,11 +25,11 @@ public class CommandsPageTests : AdminUITestContext {
         _mockApiClient = Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance);
-        Services.AddScoped(_ => _mockApiClient);
-        Services.AddScoped<DashboardRefreshService>();
+        _ = Services.AddScoped(_ => _mockApiClient);
+        _ = Services.AddScoped<DashboardRefreshService>();
         TestSignalRClient testClient = new();
-        Services.AddSingleton(testClient);
-        Services.AddSingleton(testClient.Inner);
+        _ = Services.AddSingleton(testClient);
+        _ = Services.AddSingleton(testClient.Inner);
     }
 
     [Fact]
@@ -274,8 +273,8 @@ public class CommandsPageTests : AdminUITestContext {
     public void CommandsPage_FromCommandStatus_CoversAllEnumValues() {
         // Assert every CommandStatus value maps to a valid config
         foreach (CommandStatus status in Enum.GetValues<CommandStatus>()) {
-            StatusBadge.StatusDisplayConfig config = StatusBadge.StatusDisplayConfig.FromCommandStatus(status);
-            config.ShouldNotBeNull();
+            var config = StatusBadge.StatusDisplayConfig.FromCommandStatus(status);
+            _ = config.ShouldNotBeNull();
             config.Label.ShouldNotBeNullOrWhiteSpace();
             config.Icon.ShouldNotBeNullOrWhiteSpace();
             config.CssColor.ShouldNotBeNullOrWhiteSpace();
@@ -346,7 +345,7 @@ public class CommandsPageTests : AdminUITestContext {
     [Fact]
     public async Task CommandsPage_RefreshPreservesFiltersPageAndScrollState() {
         // Arrange
-        JSInterop.Setup<double>("hexalithAdmin.getScrollTop", _ => true).SetResult(240d);
+        _ = JSInterop.Setup<double>("hexalithAdmin.getScrollTop", _ => true).SetResult(240d);
         PagedResult<CommandSummary> initial = CreateUniformCommandsResult(
             30,
             "tenant-a",
@@ -389,7 +388,7 @@ public class CommandsPageTests : AdminUITestContext {
         NavManager.Uri.ShouldContain("status=processing");
         NavManager.Uri.ShouldContain("tenant=tenant-a");
         NavManager.Uri.ShouldContain("commandType=Create");
-        JSInterop.VerifyInvoke("hexalithAdmin.getScrollTop");
+        _ = JSInterop.VerifyInvoke("hexalithAdmin.getScrollTop");
     }
 
     private void SetupMocks(PagedResult<CommandSummary> commands) {
@@ -416,7 +415,7 @@ public class CommandsPageTests : AdminUITestContext {
     private static void RaiseRefresh(DashboardRefreshService refreshService, DashboardData data) {
         FieldInfo? eventField = typeof(DashboardRefreshService)
             .GetField("OnDataChanged", BindingFlags.Instance | BindingFlags.NonPublic);
-        Action<DashboardData>? handler = (Action<DashboardData>?)eventField?.GetValue(refreshService);
+        var handler = (Action<DashboardData>?)eventField?.GetValue(refreshService);
         handler?.Invoke(data);
     }
 

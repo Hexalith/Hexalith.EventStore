@@ -1,10 +1,10 @@
 
 using System.Security.Claims;
 
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Models;
-using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Testing.Fakes;
 

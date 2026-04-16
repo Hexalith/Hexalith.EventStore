@@ -13,8 +13,7 @@ public record DaprRetryPolicy(
     string Strategy,
     int MaxRetries,
     string? Duration,
-    string? MaxInterval)
-{
+    string? MaxInterval) {
     /// <summary>Gets the policy identifier.</summary>
     public string Name { get; } = !string.IsNullOrWhiteSpace(Name)
         ? Name

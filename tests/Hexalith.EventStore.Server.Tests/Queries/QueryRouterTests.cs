@@ -142,7 +142,7 @@ public class QueryRouterTests {
     [Fact]
     public async Task RouteQueryAsync_ProjectionActorReturnsFailure_ReturnsFailedResult() {
         // Arrange
-        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        _ = JsonDocument.Parse("{}").RootElement;
         IProjectionActor actor = Substitute.For<IProjectionActor>();
         _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(QueryResult.Failure("projection unavailable"));
 

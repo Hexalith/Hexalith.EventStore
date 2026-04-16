@@ -1,14 +1,13 @@
-namespace Hexalith.EventStore.Admin.Mcp.Tests;
 
 using System.Net;
 
 using Hexalith.EventStore.Testing.Http;
 
-public class AdminApiClientStorageTests
-{
+namespace Hexalith.EventStore.Admin.Mcp.Tests;
+
+public class AdminApiClientStorageTests {
     [Fact]
-    public async Task GetDaprComponentStatusAsync_SendsGetToCorrectPath()
-    {
+    public async Task GetDaprComponentStatusAsync_SendsGetToCorrectPath() {
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
             r => capturedUri = r.RequestUri,
@@ -18,13 +17,12 @@ public class AdminApiClientStorageTests
 
         _ = await client.GetDaprComponentStatusAsync(CancellationToken.None);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldBe("/api/v1/admin/health/dapr");
     }
 
     [Fact]
-    public async Task GetStorageOverviewAsync_SendsGetToCorrectPath()
-    {
+    public async Task GetStorageOverviewAsync_SendsGetToCorrectPath() {
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
             r => capturedUri = r.RequestUri,
@@ -34,13 +32,12 @@ public class AdminApiClientStorageTests
 
         _ = await client.GetStorageOverviewAsync(null, CancellationToken.None);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldBe("/api/v1/admin/storage/overview");
     }
 
     [Fact]
-    public async Task GetStorageOverviewAsync_IncludesTenantIdWhenProvided()
-    {
+    public async Task GetStorageOverviewAsync_IncludesTenantIdWhenProvided() {
         Uri? capturedUri = null;
         using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
             r => capturedUri = r.RequestUri,
@@ -50,7 +47,7 @@ public class AdminApiClientStorageTests
 
         _ = await client.GetStorageOverviewAsync("tenant1", CancellationToken.None);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri.PathAndQuery.ShouldBe("/api/v1/admin/storage/overview?tenantId=tenant1");
     }
 }

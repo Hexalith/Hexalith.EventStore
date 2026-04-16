@@ -5,8 +5,7 @@ namespace Hexalith.EventStore.Admin.Cli.Commands.Backup;
 /// <summary>
 /// Shared positional arguments for backup sub-subcommands.
 /// </summary>
-public static class BackupArguments
-{
+public static class BackupArguments {
     /// <summary>Creates the tenant positional argument.</summary>
     public static Argument<string> TenantId() => new("tenantId") { Description = "Tenant identifier" };
 

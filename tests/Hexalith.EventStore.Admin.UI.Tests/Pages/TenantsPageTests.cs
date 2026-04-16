@@ -8,7 +8,6 @@ using Hexalith.EventStore.Admin.UI.Services.Exceptions;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.FluentUI.AspNetCore.Components;
 
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -25,19 +24,19 @@ public class TenantsPageTests : AdminUITestContext {
         _mockTenantApi = Substitute.For<AdminTenantApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminTenantApiClient>.Instance);
-        Services.AddScoped(_ => _mockTenantApi);
+        _ = Services.AddScoped(_ => _mockTenantApi);
 
         // Register other API clients that shared components might need
-        Services.AddScoped(_ => Substitute.For<AdminStorageApiClient>(
+        _ = Services.AddScoped(_ => Substitute.For<AdminStorageApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStorageApiClient>.Instance));
-        Services.AddScoped(_ => Substitute.For<AdminSnapshotApiClient>(
+        _ = Services.AddScoped(_ => Substitute.For<AdminSnapshotApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminSnapshotApiClient>.Instance));
-        Services.AddScoped(_ => Substitute.For<AdminCompactionApiClient>(
+        _ = Services.AddScoped(_ => Substitute.For<AdminCompactionApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminCompactionApiClient>.Instance));
-        Services.AddScoped(_ => Substitute.For<AdminBackupApiClient>(
+        _ = Services.AddScoped(_ => Substitute.For<AdminBackupApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminBackupApiClient>.Instance));
     }
@@ -190,13 +189,11 @@ public class TenantsPageTests : AdminUITestContext {
 
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnCreateTenantConfirm"));
 
-        cut.WaitForAssertion(() => {
-            _ = _mockTenantApi.Received(1).CreateTenantAsync(
+        cut.WaitForAssertion(() => _ = _mockTenantApi.Received(1).CreateTenantAsync(
                 Arg.Is<CreateTenantRequest>(request => request.TenantId == "acme-corp"
                     && request.Name == "Acme Corp"
                     && request.Description == "Primary tenant"),
-                Arg.Any<CancellationToken>());
-        }, TimeSpan.FromSeconds(2));
+                Arg.Any<CancellationToken>()), TimeSpan.FromSeconds(2));
 
         _ = _mockTenantApi.DidNotReceive().AddUserToTenantAsync(
             Arg.Any<string>(),
@@ -458,13 +455,11 @@ public class TenantsPageTests : AdminUITestContext {
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnAddUserConfirm"));
 
         // Assert
-        cut.WaitForAssertion(() => {
-            _ = _mockTenantApi.Received(1).AddUserToTenantAsync(
+        cut.WaitForAssertion(() => _ = _mockTenantApi.Received(1).AddUserToTenantAsync(
                 "t-1",
                 "user-001",
                 "TenantContributor",
-                Arg.Any<CancellationToken>());
-        }, TimeSpan.FromSeconds(2));
+                Arg.Any<CancellationToken>()), TimeSpan.FromSeconds(2));
     }
 
     [Fact]
@@ -493,12 +488,10 @@ public class TenantsPageTests : AdminUITestContext {
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnRemoveUserConfirm"));
 
         // Assert
-        cut.WaitForAssertion(() => {
-            _ = _mockTenantApi.Received(1).RemoveUserFromTenantAsync(
+        cut.WaitForAssertion(() => _ = _mockTenantApi.Received(1).RemoveUserFromTenantAsync(
                 "t-1",
                 "user-001",
-                Arg.Any<CancellationToken>());
-        }, TimeSpan.FromSeconds(2));
+                Arg.Any<CancellationToken>()), TimeSpan.FromSeconds(2));
     }
 
     [Fact]
@@ -528,13 +521,11 @@ public class TenantsPageTests : AdminUITestContext {
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnChangeRoleConfirm"));
 
         // Assert
-        cut.WaitForAssertion(() => {
-            _ = _mockTenantApi.Received(1).ChangeUserRoleAsync(
+        cut.WaitForAssertion(() => _ = _mockTenantApi.Received(1).ChangeUserRoleAsync(
                 "t-1",
                 "user-001",
                 "TenantContributor",
-                Arg.Any<CancellationToken>());
-        }, TimeSpan.FromSeconds(2));
+                Arg.Any<CancellationToken>()), TimeSpan.FromSeconds(2));
     }
 
     [Fact]
@@ -562,10 +553,8 @@ public class TenantsPageTests : AdminUITestContext {
 
     // ===== Helper methods =====
 
-    private void SetupTenants(IReadOnlyList<TenantSummary> tenants) {
-        _ = _mockTenantApi.ListTenantsAsync(Arg.Any<CancellationToken>())
+    private void SetupTenants(IReadOnlyList<TenantSummary> tenants) => _ = _mockTenantApi.ListTenantsAsync(Arg.Any<CancellationToken>())
             .Returns(tenants);
-    }
 
     private void SetupReadOnlyUser() {
         // Replace auth with ReadOnly user
@@ -578,8 +567,8 @@ public class TenantsPageTests : AdminUITestContext {
         _ = authStateProvider.GetAuthenticationStateAsync()
             .Returns(Task.FromResult(new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(user)));
 
-        Services.AddSingleton(authStateProvider);
-        Services.AddScoped<AdminUserContext>();
+        _ = Services.AddSingleton(authStateProvider);
+        _ = Services.AddScoped<AdminUserContext>();
     }
 
     private Microsoft.AspNetCore.Components.NavigationManager NavManager =>

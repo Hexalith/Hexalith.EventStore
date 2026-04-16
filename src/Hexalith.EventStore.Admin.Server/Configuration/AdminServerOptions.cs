@@ -4,8 +4,7 @@ namespace Hexalith.EventStore.Admin.Server.Configuration;
 /// Configuration options for the Admin.Server DAPR-backed service implementations.
 /// Bound from configuration section "AdminServer".
 /// </summary>
-public sealed class AdminServerOptions
-{
+public sealed class AdminServerOptions {
     /// <summary>
     /// The configuration section name.
     /// </summary>
