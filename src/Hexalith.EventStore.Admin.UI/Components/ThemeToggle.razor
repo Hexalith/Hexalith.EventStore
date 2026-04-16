@@ -1,6 +1,7 @@
 @using Hexalith.EventStore.Admin.UI.Services
 @implements IDisposable
 @inject IJSRuntime JSRuntime
+@inject IThemeService ThemeService
 @inject ThemeState ThemeState
 
 <FluentButton Appearance="ButtonAppearance.Subtle"
@@ -69,6 +70,10 @@
 
     private async Task ApplyColorSchemeAsync(ThemeMode mode)
     {
+        // Set project-owned CSS tokens (--hexalith-status-*, --hexalith-brand) via data-theme attribute
+        // and browser UA styles (scrollbars, form controls) via color-scheme property.
+        // Called FIRST because it's a synchronous DOM update — project tokens are ready
+        // before FluentUI's async token recalculation completes.
         switch (mode)
         {
             case ThemeMode.Light:
@@ -81,6 +86,9 @@
                 await JSRuntime.InvokeVoidAsync("hexalithAdmin.removeColorScheme").ConfigureAwait(false);
                 break;
         }
+
+        // Set FluentUI v5 theme tokens (--colorNeutralBackground1, etc.) via IThemeService
+        await ThemeService.SetThemeAsync(mode).ConfigureAwait(false);
     }
 
     public void Dispose()

@@ -24,8 +24,32 @@ body {
     overflow-x: hidden;
 }
 
+/* Note: [data-theme="light"] is intentionally not targeted — light is the :root default.
+   The attribute exists as a semantic DOM marker only. */
+
+/* Explicit dark mode via toggle */
+[data-theme="dark"] {
+    --hexalith-status-success: #2EA043;
+    --hexalith-status-inflight: #58A6FF;
+    --hexalith-status-warning: #D29922;
+    --hexalith-status-error: #F85149;
+    --hexalith-status-neutral: #8B949E;
+    --hexalith-brand: #4A9EFF;
+
+    /* Fluent UI v5 brand tokens — dark mode */
+    --colorBrandBackground: #4A9EFF;
+    --colorBrandBackgroundHover: #5EABFF;
+    --colorBrandBackgroundPressed: #3B8FEF;
+    --colorBrandBackgroundSelected: #5EABFF;
+    --colorBrandForegroundLink: #4A9EFF;
+    --colorBrandForegroundLinkHover: #5EABFF;
+    --colorBrandForegroundLinkPressed: #3B8FEF;
+}
+
+/* System mode: follow OS preference when no explicit theme is set */
+/* Keep in sync with [data-theme="dark"] above */
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme]) {
         --hexalith-status-success: #2EA043;
         --hexalith-status-inflight: #58A6FF;
         --hexalith-status-warning: #D29922;
@@ -783,12 +807,21 @@ body {
 .json-boolean { color: #0000ff; }
 .json-null { color: #808080; }
 
+/* Explicit dark mode via toggle */
+[data-theme="dark"] .json-key { color: #9cdcfe; }
+[data-theme="dark"] .json-string { color: #ce9178; }
+[data-theme="dark"] .json-number { color: #b5cea8; }
+[data-theme="dark"] .json-boolean { color: #569cd6; }
+[data-theme="dark"] .json-null { color: #808080; }
+
+/* System mode: follow OS preference when no explicit theme is set */
+/* Keep in sync with [data-theme="dark"] above */
 @media (prefers-color-scheme: dark) {
-    .json-key { color: #9cdcfe; }
-    .json-string { color: #ce9178; }
-    .json-number { color: #b5cea8; }
-    .json-boolean { color: #569cd6; }
-    .json-null { color: #808080; }
+    :root:not([data-theme]) .json-key { color: #9cdcfe; }
+    :root:not([data-theme]) .json-string { color: #ce9178; }
+    :root:not([data-theme]) .json-number { color: #b5cea8; }
+    :root:not([data-theme]) .json-boolean { color: #569cd6; }
+    :root:not([data-theme]) .json-null { color: #808080; }
 }
 
 .json-viewer__show-all {
@@ -840,12 +873,23 @@ body {
     font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
 }
 
+/* Explicit dark mode via toggle */
+[data-theme="dark"] .diff-old-value {
+    background: rgba(248, 81, 73, 0.1);
+}
+
+[data-theme="dark"] .diff-new-value {
+    background: rgba(46, 160, 67, 0.1);
+}
+
+/* System mode: follow OS preference when no explicit theme is set */
+/* Keep in sync with [data-theme="dark"] above */
 @media (prefers-color-scheme: dark) {
-    .diff-old-value {
+    :root:not([data-theme]) .diff-old-value {
         background: rgba(248, 81, 73, 0.1);
     }
 
-    .diff-new-value {
+    :root:not([data-theme]) .diff-new-value {
         background: rgba(46, 160, 67, 0.1);
     }
 }
