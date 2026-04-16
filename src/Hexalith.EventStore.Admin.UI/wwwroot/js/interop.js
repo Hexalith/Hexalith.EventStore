@@ -116,11 +116,16 @@ window.hexalithAdmin = {
     },
 
     // Theme color-scheme helpers for v5 migration
+    // Sets data-theme attribute (triggers project CSS custom property recalc via [data-theme] selectors)
+    // AND color-scheme property (triggers FluentUI v5 web component repaint).
+    // Attribute set first so project tokens are ready before FluentUI repaints.
     setColorScheme: function (scheme) {
+        document.documentElement.setAttribute('data-theme', scheme);
         document.documentElement.style.setProperty('color-scheme', scheme);
     },
 
     removeColorScheme: function () {
+        document.documentElement.removeAttribute('data-theme');
         document.documentElement.style.removeProperty('color-scheme');
     },
 };
