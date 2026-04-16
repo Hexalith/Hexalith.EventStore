@@ -100,3 +100,9 @@
 
 - **Manual browser validation gates still pending execution** — ACs/tasks covering the visual sweep, runtime grid interactions, accessibility audit, and dialog/toast verification are intentionally deferred to a dedicated browser session and were not executed in this code-only review pass.
 - ✅ **[RESOLVED-IN-21-9-5 on 2026-04-15]** Admin.UI.Tests compile failures deferred from story 21-9 are now resolved. **Resolution:** Story 21-9.5 brought Admin.UI.Tests from 86 → 0 compile errors and slnx 122 → 36 (36 = 21-10 Sample.BlazorUI scope). AC 8 partially passed (3 MergedCssSmokeTests first-run green); 62 latent bUnit runtime failures unmasked by compile-green are deferred to new follow-up **21-9.5.7-admin-ui-tests-v5-runtime-migration**.
+
+## Deferred from: code review of 21-9-datagrid-remaining-enum-renames (2026-04-16, final review)
+
+- **`FluentLabel Typo=` removed property in v5** — `CommandSandbox.razor:200` uses `<FluentLabel Typo="Typography.PaneHeader">` but `Typo` was removed from `FluentLabel` in v5. Should be migrated to `<FluentText Typo="Typography.PaneHeader">`. Pre-existing, not caused by 21-9.
+- **Stale "Fluent UI v4" comment** — `AdminUIServiceExtensions.cs:27` says "Fluent UI v4 components" but the project uses v5 (`5.0.0-rc.2`). Misleading for future maintainers.
+- **`FluentDialog aria-label` splatted attribute in v5** — `CommandPalette.razor:4`, `CommandSandbox.razor:197`, `EventDebugger.razor:261` use lowercase HTML `aria-label` on `<FluentDialog>`. v5 removed the component-level `AriaLabel` property; splatted attributes should still work but need runtime ARIA verification to confirm the label reaches the correct DOM element.

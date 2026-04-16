@@ -634,8 +634,8 @@ Breakthrough debugging features: blame view (per-field provenance), bisect tool 
 Upgrade all Blazor UI projects from Fluent UI Blazor v4.14.0 to v5.0.0. Covers bUnit baseline smoke tests, package version bump, layout + navigation restructure (FluentLayout/FluentLayoutItem/FluentNav), provider consolidation (FluentProviders), theme migration (CSS variables + localStorage persistence), dialog API restructure (FluentDialogBody TitleTemplate/ActionTemplate + ShowAsync/HideAsync), toast API update, component renames (FluentTextInput with NumericInput wrapper, FluentSpinner, FluentLink), appearance enum split (ButtonAppearance/BadgeAppearance/LinkAppearance), FluentSelect dual type params, CSS Fluent 2 token rename, and scoped CSS removal.
 **Dependencies:** Epics 15, 16, 19, 20 (all completed UI work)
 **MIGRATION GATE:** Complete Epic 21 before starting any new UI stories
-**Sprint Change Proposal:** sprint-change-proposal-2026-04-13-fluent-ui-v5-migration.md
-**Stories (11):** 21-0 bUnit baseline, 21-1 packages/csproj, 21-2 layout+navigation, 21-3 ButtonAppearance, 21-4 BadgeAppearance+LinkAppearance, 21-5 component renames, 21-6 dialog restructure, 21-7 toast API, 21-8 CSS tokens, 21-9 DataGrid/remaining, 21-10 Sample alignment
+**Sprint Change Proposals:** sprint-change-proposal-2026-04-13-fluent-ui-v5-migration.md, sprint-change-proposal-2026-04-16-epic-21-post-boot-fixes.md
+**Stories (14):** 21-0 bUnit baseline, 21-1 packages/csproj, 21-2 layout+navigation, 21-3 ButtonAppearance, 21-4 BadgeAppearance+LinkAppearance, 21-5 component renames, 21-6 dialog restructure, 21-7 toast API, 21-8 CSS tokens, 21-9 DataGrid/remaining, 21-10 Sample alignment, 21-11 NavMenu v5 fix, 21-12 FluentDesignTheme integration, 21-13 UI bug fixes batch
 
 ## Epic 1: Domain Contract Foundation
 

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Axe Accessibility Audit &mdash; Index (Dark)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.5rem; }
+    .summary { background: #f0f0f0; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; }
+    .violation { border: 1px solid #ddd; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; }
+    .violation h3 { margin-top: 0; }
+    .critical { border-left: 4px solid #d32f2f; }
+    .serious { border-left: 4px solid #f57c00; }
+    .moderate { border-left: 4px solid #fbc02d; }
+    .minor { border-left: 4px solid #388e3c; }
+    code { background: #e8e8e8; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+    .source { background: #f8f8f8; padding: 0.5rem; border-radius: 4px; overflow-x: auto; font-size: 0.85em; margin-top: 0.5rem; }
+    .tags { color: #666; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <h1>Axe Accessibility Audit &mdash; Index (Dark)</h1>
+  <div class="summary">
+    <p><strong>URL:</strong> https://localhost:60034/</p>
+    <p><strong>Page Title:</strong> Hexalith EventStore Admin</p>
+    <p><strong>Axe Version:</strong> 4.11.1</p>
+    <p><strong>Date:</strong> 2026-04-16T08:56:44.994Z</p>
+    <p><strong>Total Violations:</strong> 2</p>
+  </div>
+  <h2>Violations</h2>
+  <ul class="violations">
+    
+    <li class="violation serious">
+      <h3><code>aria-prohibited-attr</code> &mdash; serious</h3>
+      <p>Ensure ARIA attributes are not prohibited for an element&#039;s role</p>
+      <p><strong>Help:</strong> Elements must only use permitted ARIA attributes</p>
+      <p><strong>Selector:</strong> <code>fluent-button[aria-label=&quot;Menu&quot;]</code></p>
+      <p><strong>Summary:</strong> Fix all of the following:<br>  aria-label attribute cannot be used on a fluent-button with no valid role attribute.</p>
+      <div class="source"><pre>&lt;fluent-button style=&quot;color: var(--colorNeutralForegroundOnBrand);&quot; icon-only=&quot;&quot; aria-label=&quot;Menu&quot; title=&quot;Menu&quot; appearance=&quot;transparent&quot; tabindex=&quot;0&quot;&gt;</pre></div>
+      <p class="tags"><strong>Tags:</strong> cat.aria, wcag2a, wcag412, EN-301-549, EN-9.4.1.2, RGAAv4, RGAA-7.1.1</p>
+    </li>
+    <li class="violation serious">
+      <h3><code>aria-prohibited-attr</code> &mdash; serious</h3>
+      <p>Ensure ARIA attributes are not prohibited for an element&#039;s role</p>
+      <p><strong>Help:</strong> Elements must only use permitted ARIA attributes</p>
+      <p><strong>Selector:</strong> <code>#f24fe910</code></p>
+      <p><strong>Summary:</strong> Fix all of the following:<br>  aria-label attribute cannot be used on a fluent-dialog with no valid role attribute.</p>
+      <div class="source"><pre>&lt;fluent-dialog fuib=&quot;&quot; id=&quot;f24fe910&quot; style=&quot;width: 560px; max-height: 480px;&quot; type=&quot;alert&quot; aria-label=&quot;Command palette&quot;&gt;</pre></div>
+      <p class="tags"><strong>Tags:</strong> cat.aria, wcag2a, wcag412, EN-301-549, EN-9.4.1.2, RGAAv4, RGAA-7.1.1</p>
+    </li>
+  </ul>
+</body>
+</html>

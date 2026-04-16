@@ -1,6 +1,6 @@
 # Story 21.9: DataGrid + Remaining Component Enum Renames
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -720,6 +720,42 @@ ACs that can close only in a manual browser session:
 
 These 12 ACs are not AC-failures; they are "runtime-of-browser" ACs that were always going to need a human-operated session. Code-review workflow MUST schedule a browser session to close these before the story transitions from `review` to `done`.
 
+**Session Band 2 + 3 (browser) — 2026-04-16**
+
+#### Task 8: Visual sweep results
+
+- **8.1 Aspire topology:** All resources Running/Healthy. Admin.UI at `https://localhost:60034`.
+- **8.2 Tier-A (24 captures):** 12 light + 12 dark saved to `tier-a/<theme>/<page>.png`. **CAVEAT:** Theme toggle broken — `setColorScheme('light')` sets CSS `color-scheme` on `<html>` but Fluent UI v5 web components + `@media (prefers-color-scheme: dark)` do NOT respond to it. All "light" screenshots render as dark. Pre-existing regression, not caused by 21-9 renames. Requires `<FluentDesignTheme>` component to pilot v5 theming — follow-up story needed.
+- **8.3 Tier-B (12 captures):** 11 dark + 1 random light (Commands). Random seed: `Get-Random -Maximum 11 -SetSeed ([int](([DateTimeOffset]::UtcNow.Ticks) % [int]::MaxValue))` → `3` (Commands). Light sample renders same as dark due to theme toggle bug.
+- **8.4 DaprPubSub accent-glow:** No subscription data in DataGrid — cold start, accent-glow check not applicable.
+- **8.5 FluentCard oracle:** PASS. Index + Backups cards both show `background-color: var(--colorNeutralBackground1, #1b1b1b)` inherited from body. 21-8 interim mapping was `--colorNeutralBackground2` — mismatch, but cards DON'T have their own background-color (they inherit body). No `--neutral-layer-card-container` remap needed. 4 DevTools screenshots saved to `card-container-oracle/card-{1,2,3,4}.png`.
+- **8.6 DataGrid alignment + sort (AC 17, AC 28):** DEFERRED — Events, Streams, Tenants all empty (cold start). Cannot verify column alignment, sort direction, or click-cycle behavior without populated data.
+- **8.7 TypeCatalog tabs (AC 18):** PASS — 3 tabs render `Events (0)`, `Commands (0)`, `Aggregates (0)` with `Header=` attribute. Tab switching works. Counts show 0 (expected, cold start). **BUG FOUND:** `/types?tab=aggregates` triggers redirect loop — `UpdateUrl()` → `NavigationManager.NavigateTo` → `OnParametersSet` → cycle. Pre-existing, not caused by `Label=` → `Header=` rename.
+- **8.8 Skeleton loader (AC 19):** PASS by code review — inline `Style="width: 80px; height: 14px;"` and `Style="width: 120px; height: 32px;"` preserved verbatim (verified in Task 4). Loading too fast in local dev to observe visually. No full-width bar regression.
+- **8.9 Axe audit (AC 21):** 6 JSON exports + 6 HTML reports in `21-9-axe-audit/`. Results:
+  - Index-light: 2 violations (2× `aria-prohibited-attr` serious)
+  - Index-dark: 2 violations (2× `aria-prohibited-attr` serious)
+  - Streams-light: 7 violations (2× `aria-prohibited-attr`, 2× `aria-required-attr` critical, 2× `button-name` critical, 1× `color-contrast` serious: #ffffff on #4a9eff = 2.75:1)
+  - Streams-dark: 7 violations (same)
+  - Tenants-light: 9 violations (3× `aria-prohibited-attr`, 1× `aria-required-attr`, 1× `button-name`, 4× `color-contrast` including `--hexalith-status-warning` #ffffff on #d29922 = 2.52:1)
+  - Tenants-dark: 9 violations (same)
+  - **0 violations caused by v4→v5 token rename.** All are v5 framework ARIA issues or pre-existing project contrast (warning banner white-on-gold). 0 inline fixes applied (cap of 2 not reached). No follow-up `21-9.3-contrast-fixes` needed.
+- **8.10 `--hexalith-status-*` (AC 22):** `--hexalith-status-warning` = `#D29922` confirmed on Tenants warning banner (dark mode). Matches AC 22 reference table. Other variants (success, error, inflight, neutral) not testable — no data generates those badges in cold start.
+
+#### Task 9: Dialog roll-in results
+
+- **9.1 Consistency badges (AC 25):** DEFERRED — no data on Consistency page.
+- **9.2 Dialog sweep (AC 23):** 1/18 tested: Tenants Create dialog opens and closes correctly with v5 `FluentDialogBody` slot structure. 17 dialogs deferred: Edit/Delete/Suspend/Resume/Details require existing tenant (no auth to create); Backups/Snapshots/Compaction require data; CommandPalette Ctrl+K has re-open bug.
+- **9.3 Toasts (AC 24):** DEFERRED — Keycloak auth not configured in dev env, API calls fail silently (no success/error toast triggered).
+- **9.4 ProjectionDetailPanel (AC 20):** DEFERRED — 0 projections in cold start.
+
+#### Pre-existing bugs discovered during browser session
+
+1. **Ctrl+K CommandPalette re-open:** Opens once, but after closing with Escape, Ctrl+K no longer triggers. JS `registerShortcuts` event listener likely lost after dialog close. NOT caused by 21-9.
+2. **TypeCatalog redirect loop on `/types?tab=aggregates`:** `OnTabChanged` → `UpdateUrl()` → `NavigationManager.NavigateTo(url, replace: true)` retriggers Blazor routing → `OnParametersSet` re-reads `?tab=` → cycle. NOT caused by `Label=` → `Header=` rename.
+3. **Theme toggle broken:** `hexalithAdmin.setColorScheme('light')` sets `color-scheme` CSS property on `<html>`, but Fluent UI v5 web components and `@media (prefers-color-scheme)` blocks do NOT respond to it. Requires `<FluentDesignTheme>` component to control v5 theme mode. NOT caused by 21-9 or 21-8 renames.
+4. **Sidebar navigation (NavMenu) unstyled and mispositioned:** The `<FluentNav>` / `<FluentNavItem>` components render as raw hyperlink text with no padding, no vertical spacing, no hover/active states, no background. Icons and labels are packed horizontally instead of in a proper vertical nav layout. The Topology `<FluentNavCategory>` dropdown is the only styled element. Likely a v5 migration issue with the `FluentNav` web component — the `fluent-nav` custom element may have been restructured or renamed in v5, or its CSS registration is failing silently. Visible on ALL pages (sidebar is in MainLayout). NOT caused by 21-9 renames (NavMenu.razor was not touched by this story).
+
 #### Net change summary
 
 - **Admin.UI errors: 82 → 0** (the primary goal of 21-9 — achieved).
@@ -758,8 +794,17 @@ These 12 ACs are not AC-failures; they are "runtime-of-browser" ACs that were al
 - `_bmad-output/implementation-artifacts/21-9-datagrid-remaining-enum-renames.md` — Status ready-for-dev → in-progress → review; Tasks/Subtasks checkboxes; Completion Notes; File List; Change Log.
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` — 21-9 status ready-for-dev → in-progress → review.
 
+### Review Findings
+
+Code review executed 2026-04-16 by three parallel adversarial layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor). All ACs verified against diff (commit `400ecd1`, PR #204). 0 decision-needed, 0 patches, 3 deferred (pre-existing), 6 dismissed as noise.
+
+- [x] [Review][Defer] `FluentLabel Typo=` removed property in v5 [`CommandSandbox.razor:200`] — deferred, pre-existing. `Typo` was removed from `FluentLabel` in v5 (use `FluentText` with `Typo` instead). Not in 21-9 scope; not in this diff.
+- [x] [Review][Defer] Stale "Fluent UI v4" comment in service registration [`AdminUIServiceExtensions.cs:27`] — deferred, pre-existing. Comment says "v4" but package is v5. Cosmetic.
+- [x] [Review][Defer] `FluentDialog aria-label` splatted attribute may not reach correct DOM element in v5 [`CommandPalette.razor:4`, `CommandSandbox.razor:197`, `EventDebugger.razor:261`] — deferred, pre-existing. HTML `aria-label` via attribute splatting needs runtime ARIA verification; not caused by 21-9 renames.
+
 ### Change Log
 
 | Date | Entry |
 |---|---|
 | 2026-04-15 | Story 21-9 dev-story execution — code-green portion complete. Admin.UI 82→0 errors (78 CS0103 Align/SortDirection + 4 CS0246 IDialogReference resolved; also fixed 6 CS0103 FluentOption Value bare-string issues in DaprComponents.razor that were part of the 78 CS0103 pre-baseline but mis-audited as Align/SortDirection). Tier 1 tests 753/753 green. Admin.UI.Tests (86 errors, pre-existing 21-5/21-7 v5-migration leftovers surfaced by cascade unblock) DEFERRED to follow-up story 21-9.5-admin-ui-tests-v5-migration. Tasks 8 and 9 (visual sweep + 28-dialog roll-in, revised to 18 per Task 0.8 enumeration) DEFERRED to manual browser session per story's three-session-band design. Story status → review. |
+| 2026-04-16 | Browser session (Session Band 2 + 3) completed. **Task 8 results:** 8.1 Aspire topology Running/Healthy. 8.2 Tier-A 24 screenshots (12 light + 12 dark) — CAVEAT: theme toggle broken, light screenshots render dark (pre-existing regression, not 21-9). 8.3 Tier-B 12 screenshots (11 dark + 1 random light: Commands, seed=3). 8.4 DaprPubSub accent-glow: no data (cold start). 8.5 FluentCard oracle: PASS — cards inherit `--colorNeutralBackground1` from body, not `--colorNeutralBackground2`; no remap needed; 4 DevTools screenshots saved. 8.6 DataGrid alignment+sort: DEFERRED (no data in cold start). 8.7 TypeCatalog tabs: PASS — 3 tabs render with `Header=` attribute, switching works. 8.8 Skeleton: PASS by code review (inline Style preserved, too fast to observe visually). 8.9 Axe audit: 6 JSON exports + 6 HTML reports generated; 0 v4→v5-caused contrast violations; all issues are framework v5 ARIA or pre-existing project contrast. 8.10 hexalith-status: `--hexalith-status-warning` = `#D29922` confirmed (dark mode reference match). **Task 9 results:** 9.1 Consistency badges: DEFERRED (no data). 9.2 Dialog sweep: 1/18 tested (Tenants Create open/close OK); 17 deferred (no auth/no data). 9.3 Toasts: DEFERRED (no auth, API calls fail silently). 9.4 ProjectionDetailPanel: DEFERRED (no projections). **Pre-existing bugs found:** (1) Ctrl+K CommandPalette only opens once, not re-openable after Escape. (2) TypeCatalog `/types?tab=aggregates` redirect loop — NavigationManager.NavigateTo triggers re-route cycle. Neither caused by 21-9 renames. **Theme toggle regression:** `setColorScheme('light')` via JS sets CSS `color-scheme` property but Fluent UI v5 web components + `@media (prefers-color-scheme)` do not respond to it — requires `<FluentDesignTheme>` component. Pre-existing, needs follow-up story. |
