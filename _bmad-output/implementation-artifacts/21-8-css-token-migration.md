@@ -1,6 +1,6 @@
 # Story 21.8: CSS Token Migration (v4 FAST → v5 Fluent 2) + Scoped CSS Re-include
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -418,6 +418,14 @@ so that Admin.UI renders correctly (backgrounds, borders, accents, monospace) in
 - [x] [Review][Defer] Card-container oracle verification pending for highest-blast-radius mapping [_bmad-output/implementation-artifacts/21-8-css-token-migration.md:481] — deferred, pre-existing
 - [x] [Review][Defer] Core visual and accessibility sweep remains deferred until 21-9 unblocks runtime [_bmad-output/implementation-artifacts/21-8-css-token-migration.md:391] — deferred, pre-existing
 - [x] [Review][Defer] App.css spike-gate runtime smoke check deferred by the same runtime blocker [_bmad-output/implementation-artifacts/21-8-css-token-migration.md:319] — deferred, pre-existing
+
+### Review Findings (Round 2 — 2026-04-16, post-21-9 browser verification)
+
+- [x] [Review][Patch] Monospace font-stack inconsistency: 4 merged CSS blocks missing 'Fira Code' [src/Hexalith.EventStore.Admin.UI/wwwroot/css/app.css:725,830,835,840] — `.monospace` utility at line 75 uses `'Cascadia Code', 'Fira Code', 'Consolas', monospace` but merged JsonViewer (line 725) and StateDiffViewer (lines 830, 835, 840) still use old stack without 'Fira Code'. Fix: align all 4 blocks to the standardized font stack.
+- [x] [Review][Patch] `--colorBrandBackground` used as text color on link elements instead of `--colorBrandForegroundLink` [src/Hexalith.EventStore.Admin.UI/Components/TypeDetailPanel.razor:66, src/Hexalith.EventStore.Admin.UI/Pages/TypeCatalog.razor:149] — v4 `--accent-fill-rest` was already a semantic misuse as text color; migration carried it forward. `--colorBrandForegroundLink` (already correct in app.css breadcrumbs + JsonViewer show-all) is the right v5 token for link text. Visually identical today but could diverge under custom themes.
+- [x] [Review][Defer] CorrelationTraceMap `--colorBrandBackground` CSS override relies on FluentBadge reading this token from ancestor cascade [src/Hexalith.EventStore.Admin.UI/Components/CorrelationTraceMap.razor:212] — deferred, pre-existing design pattern; works in v5 today, fragile against future Fluent updates
+- [x] [Review][Defer] `--neutral-layer-card-container` → `--colorNeutralBackground2` interim mapping still pending DevTools oracle confirmation [src/Hexalith.EventStore.Admin.UI/wwwroot/css/app.css] — deferred, documented in Task 7a; user completed browser tests post-21-9
+- [x] [Review][Defer] bUnit MergedCssSmokeTests compilation blocked by upstream 21-9 CS0103 chain [tests/Hexalith.EventStore.Admin.UI.Tests/Components/MergedCssSmokeTests.cs] — deferred, pre-existing; tests are structurally correct and will pass once upstream resolves
 
 ## Dev Notes
 

@@ -63,7 +63,7 @@
             <span style="font-size: 13px; color: var(--colorNeutralForeground3);">Target Aggregate:</span>
             <span role="link" tabindex="0"
                   @onclick="@(() => OnNavigateToAggregate.InvokeAsync(SelectedCommand.TargetAggregateType))"
-                  style="font-family: var(--fontFamilyMonospace, 'Cascadia Code', 'Consolas', monospace); font-size: 0.85em; cursor: pointer; color: var(--colorBrandBackground); text-decoration: underline; margin-left: 8px;">
+                  style="font-family: var(--fontFamilyMonospace, 'Cascadia Code', 'Consolas', monospace); font-size: 0.85em; cursor: pointer; color: var(--colorBrandForegroundLink); text-decoration: underline; margin-left: 8px;">
                 @SelectedCommand.TargetAggregateType
             </span>
         </div>

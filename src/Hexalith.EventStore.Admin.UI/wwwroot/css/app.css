@@ -722,7 +722,7 @@ body {
 
 /* === JsonViewer (merged from Components/Shared/JsonViewer.razor.css) === */
 .json-viewer {
-    font-family: 'Cascadia Code', Consolas, monospace;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
     font-size: 13px;
     line-height: 1.5;
     border: 1px solid var(--colorNeutralStroke2);
@@ -827,17 +827,17 @@ body {
 }
 
 .diff-field-path {
-    font-family: 'Cascadia Code', Consolas, monospace;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
 }
 
 .diff-old-value {
     background: rgba(207, 34, 46, 0.1);
-    font-family: 'Cascadia Code', Consolas, monospace;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
 }
 
 .diff-new-value {
     background: rgba(26, 127, 55, 0.1);
-    font-family: 'Cascadia Code', Consolas, monospace;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
 }
 
 @media (prefers-color-scheme: dark) {
