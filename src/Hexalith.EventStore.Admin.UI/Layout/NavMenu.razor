@@ -5,8 +5,8 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<FluentNav Width="@Width">
-    <FluentNavItem Href="/" IconRest="@(new Icons.Regular.Size20.Home())">Home</FluentNavItem>
+<FluentNav Width="@Width" Padding="@Padding.All2" Style="height: 100%;">
+    <FluentNavItem Href="/" Match="NavLinkMatch.All" IconRest="@(new Icons.Regular.Size20.Home())">Home</FluentNavItem>
     <FluentNavItem Href="/commands" IconRest="@(new Icons.Regular.Size20.List())">Commands</FluentNavItem>
     <FluentNavItem Href="/events" IconRest="@(new Icons.Regular.Size20.Timeline())">Events</FluentNavItem>
     <FluentNavItem Href="/streams" IconRest="@(new Icons.Regular.Size20.DataLine())">Streams</FluentNavItem>
@@ -29,30 +29,29 @@
     <FluentNavCategory Title="Topology" IconRest="@(new Icons.Regular.Size20.BranchFork())" Expanded="false">
         @if (!TopologyCache.IsLoaded)
         {
-            <FluentTreeView>
-                <FluentTreeItem Text="Loading..." Disabled="true" />
-            </FluentTreeView>
+            <FluentNavItem Disabled="true">Loading...</FluentNavItem>
         }
         else if (TopologyCache.Tenants.Count == 0)
         {
-            <FluentTreeView>
-                <FluentTreeItem Text="No tenants" Disabled="true" />
-            </FluentTreeView>
+            <FluentNavItem Disabled="true">No tenants</FluentNavItem>
+        }
+        else if (TopologyCache.Domains.Count == 0)
+        {
+            <FluentNavItem Disabled="true">No domains</FluentNavItem>
         }
         else
         {
-            <FluentTreeView>
-                @foreach (var tenant in TopologyCache.Tenants)
+            @foreach (var tenant in TopologyCache.Tenants)
+            {
+                <FluentNavSectionHeader>@tenant.TenantId</FluentNavSectionHeader>
+
+                @foreach (string domain in TopologyCache.Domains)
                 {
-                    <FluentTreeItem Text="@tenant.TenantId" Expanded="false">
-                        @foreach (string domain in TopologyCache.Domains)
-                        {
-                            <FluentTreeItem Text="@domain"
-                                            @onclick="@(() => NavigateToStreams(tenant.TenantId, domain))" />
-                        }
-                    </FluentTreeItem>
+                    <FluentNavItem OnClick="@(() => NavigateToStreams(tenant.TenantId, domain))">
+                        @domain
+                    </FluentNavItem>
                 }
-            </FluentTreeView>
+            }
         }
     </FluentNavCategory>
 </FluentNav>

@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-16 (21-8 code review round 2 complete, story closed)
+# last_updated: 2026-04-16 (21-12 story created — ready-for-dev)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-04-16 (21-8 code review round 2 complete, story closed)
+last_updated: 2026-04-16 (21-12 story created — ready-for-dev)
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -251,7 +251,7 @@ development_status:
   21-9-5-admin-ui-tests-v5-migration: done  # 2026-04-15: code-review complete — AC 1-7,9,10,11 PASS; AC 8 partial accepted with follow-up 21-9.5.7 for 62 latent runtime failures. Compile-green achieved 86→0, slnx 122→36. Decision: 21-9 remains in-progress by explicit exception.
   21-9-5-7-admin-ui-tests-v5-runtime-migration: done  # 2026-04-15: code-review patches applied and validated — Admin.UI.Tests remains 611/611 green.
   21-10-sample-blazorui-alignment: done  # 2026-04-15: code-review patch applied — AC 9 / Task 6.8 deterministic trigger now uses EventStore:EventStoreUrl (runtime key consumed by Program.cs).
-  21-11-navmenu-v5-fix: backlog  # 2026-04-16: SCP approved. NavMenu unstyled in v5 — FluentNav web component restructured. Scope: NavMenu.razor, MainLayout.razor. No dependencies.
-  21-12-fluentdesigntheme-integration: backlog  # 2026-04-16: SCP approved. Theme toggle broken — v5 requires FluentDesignTheme. SPIKE-FIRST. DEPENDS ON 21-11 (shared MainLayout.razor). Scope: App.razor, MainLayout.razor, ThemeToggle.razor, ThemeState.cs, app.css.
+  21-11-navmenu-v5-fix: done  # 2026-04-16: all ACs verified — hover states, active indicator, responsive hamburger drawer, topology expand/collapse. 5 browser screenshots in test-artifacts/21-11-navmenu/.
+  21-12-fluentdesigntheme-integration: ready-for-dev  # 2026-04-16: Story created. MCP finding: FluentDesignTheme REMOVED in v5 — fix is CSS selector conversion (data-theme attribute) + JS interop update. SPIKE-FIRST. Scope: interop.js, app.css (3 media-query blocks). ThemeToggle.razor and ThemeState.cs unchanged.
   21-13-ui-bug-fixes-batch: backlog  # 2026-04-16: SCP approved. Ctrl+K re-open (2h cap), TypeCatalog redirect loop, FluentLabel Typo→FluentText, stale v4 comment, FluentDialog aria-label. Ctrl+K: verify after 21-12.
   epic-21-retrospective: optional

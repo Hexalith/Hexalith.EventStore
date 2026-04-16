@@ -112,3 +112,8 @@
 - **CorrelationTraceMap `--colorBrandBackground` CSS override relies on FluentBadge internals** — `.pipeline-stage-failed` overrides `--colorBrandBackground` to inject error-red into filled badges. Works in v5 today but fragile against future Fluent releases that change internal token consumption. Consider `BackgroundColor=` parameter or `BadgeColor.Danger` in a future cleanup.
 - **`--neutral-layer-card-container` → `--colorNeutralBackground2` interim mapping pending DevTools oracle** — Both `--neutral-layer-2` and `--neutral-layer-card-container` map to the same v5 token. User completed browser tests; if cards looked correct, mapping is validated. If not, sed-replace to `--colorNeutralBackground1Hover`.
 - **bUnit MergedCssSmokeTests compilation blocked by upstream stories** — 3 new smoke tests structurally correct but cannot run until upstream CS0103 chain resolves. Tests were written compile-ready per spec.
+
+## Deferred from: code review of 21-11-navmenu-v5-fix.md (2026-04-16)
+
+- **Tier 1 gate remains 751/753 (pre-existing, unrelated to 21-11)** — AC target is 753/753, but the two known Contracts failures predate this story and were not introduced by NavMenu changes.
+- **Interactive visual evidence gate (AC2/AC6/AC12) deferred by user request** — User requested to skip this decision path ("passons ça"). Hover-state, responsive resize, and screenshot proof remain to be completed in a reviewer browser session before story closure.
