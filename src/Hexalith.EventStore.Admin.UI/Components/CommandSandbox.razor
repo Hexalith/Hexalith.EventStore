@@ -197,9 +197,9 @@
     <FluentDialog @ref="_payloadDialog" Modal="true" aria-label="Event payload">
         <FluentDialogBody>
             <TitleTemplate>
-                <FluentLabel Typo="Typography.PaneHeader">
+                <FluentText As="@TextTag.H2" Size="TextSize.Size500" Weight="TextWeight.Semibold">
                     Event Payload — @_selectedEventTypeName
-                </FluentLabel>
+                </FluentText>
             </TitleTemplate>
             <ChildContent>
                 <JsonViewer Json="@_selectedEventPayload" AriaLabel="Event payload" MaxHeight="500" />

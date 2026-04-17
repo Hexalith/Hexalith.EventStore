@@ -380,6 +380,24 @@ public class EventDebuggerTests : AdminUITestContext {
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Enter field path to watch"), TimeSpan.FromSeconds(5));
     }
 
+    [Fact]
+    public void EventDebugger_PayloadDialog_CarriesAriaLabel() {
+        // Regression signal only — does NOT prove runtime ARIA correctness (FluentDialog v5 may
+        // render the attribute into shadow DOM which bUnit does not traverse). Task 5.6 AT pass
+        // is the real verifier. This catches the case where `aria-label="Event payload"` is
+        // accidentally removed from EventDebugger.razor source.
+        EventStepFrame frame = CreateTestFrame(1, 5);
+        _ = _mockApiClient.GetEventStepFrameAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<EventStepFrame?>(frame));
+
+        IRenderedComponent<EventDebugger> cut = RenderDebugger(initialSequence: 1);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Event 1 of 5"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("aria-label=\"Event payload\"");
+    }
+
     private IRenderedComponent<EventDebugger> RenderDebugger(long? initialSequence = null) => Render<EventDebugger>(p => p
                                                                                                        .Add(c => c.TenantId, "test-tenant")
                                                                                                        .Add(c => c.Domain, "counter")

@@ -196,6 +196,19 @@ public class CommandSandboxTests : AdminUITestContext {
     }
 
     [Fact]
+    public void CommandSandbox_PayloadDialog_CarriesAriaLabel() {
+        // Regression signal only — does NOT prove runtime ARIA correctness (FluentDialog v5 may
+        // render the attribute into shadow DOM which bUnit does not traverse). Task 5.6 AT pass
+        // is the real verifier. This catches the case where `aria-label="Event payload"` is
+        // accidentally removed from CommandSandbox.razor source.
+        IRenderedComponent<CommandSandbox> cut = RenderSandbox();
+
+        AngleSharp.Dom.IElement dialog = cut.Find("fluent-dialog[aria-label='Event payload']");
+        dialog.GetAttribute("aria-label").ShouldBe("Event payload");
+        cut.FindAll("fluent-dialog[aria-label='Event payload']").Count.ShouldBe(1);
+    }
+
+    [Fact]
     public void CommandSandbox_PreFillsInitialSequence() {
         IRenderedComponent<CommandSandbox> cut = RenderSandbox(initialSequence: 42);
 

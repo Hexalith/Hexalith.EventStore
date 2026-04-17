@@ -24,7 +24,7 @@ public static class AdminUIServiceExtensions {
         _ = builder.Services.AddRazorComponents()
             .AddInteractiveServerComponents();
 
-        // Fluent UI v4 components
+        // Fluent UI v5 components
         _ = builder.Services.AddFluentUIComponents();
 
         // Authentication & authorization

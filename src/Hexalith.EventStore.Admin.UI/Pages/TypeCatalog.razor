@@ -469,7 +469,7 @@ else
         }
 
         _isCrossTabNavigation = false;
-        UpdateUrl();
+        UpdateUrl(pushHistory: true);
     }
 
     // P-1 + P-2: Proper debounce with CTS disposal
@@ -558,7 +558,7 @@ else
         ApplyFilters();
         _selectedAggregate = _filteredAggregates.FirstOrDefault(a =>
             string.Equals(a.TypeName, aggregateTypeName, StringComparison.OrdinalIgnoreCase));
-        UpdateUrl();
+        UpdateUrl(pushHistory: true);
     }
 
     private void NavigateToEvent(string eventTypeName)
@@ -572,7 +572,7 @@ else
         ApplyFilters();
         _selectedEvent = _filteredEvents.FirstOrDefault(e =>
             string.Equals(e.TypeName, eventTypeName, StringComparison.OrdinalIgnoreCase));
-        UpdateUrl();
+        UpdateUrl(pushHistory: true);
     }
 
     private void NavigateToCommand(string commandTypeName)
@@ -586,7 +586,7 @@ else
         ApplyFilters();
         _selectedCommand = _filteredCommands.FirstOrDefault(c =>
             string.Equals(c.TypeName, commandTypeName, StringComparison.OrdinalIgnoreCase));
-        UpdateUrl();
+        UpdateUrl(pushHistory: true);
     }
 
     private void ClearSelection()
@@ -607,7 +607,7 @@ else
         await LoadDataAsync().ConfigureAwait(false);
     }
 
-    private void UpdateUrl()
+    private void UpdateUrl(bool pushHistory = false)
     {
         List<string> queryParts = [];
 
@@ -635,6 +635,21 @@ else
         string url = queryParts.Count > 0
             ? $"/types?{string.Join('&', queryParts)}"
             : "/types";
-        NavigationManager.NavigateTo(url, forceLoad: false, replace: true);
+
+        // Guard against redirect loops: if the target URL already matches the current URL,
+        // skip NavigateTo. Some FluentTabs v5 render paths re-fire ActiveTabIdChanged after
+        // a replace-navigation, which would otherwise cycle through UpdateUrl indefinitely.
+        // Path is compared case-insensitive (/Types vs /types from external links) but query
+        // values are case-sensitive (type=UserCreated and type=usercreated are distinct).
+        Uri currentUri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        Uri targetUri = NavigationManager.ToAbsoluteUri(url);
+        bool pathMatches = string.Equals(currentUri.AbsolutePath, targetUri.AbsolutePath, StringComparison.OrdinalIgnoreCase);
+        bool queryMatches = string.Equals(currentUri.Query, targetUri.Query, StringComparison.Ordinal);
+        if (pathMatches && queryMatches)
+        {
+            return;
+        }
+
+        NavigationManager.NavigateTo(url, forceLoad: false, replace: !pushHistory);
     }
 }
