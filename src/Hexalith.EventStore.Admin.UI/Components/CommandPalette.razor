@@ -57,6 +57,7 @@
 @code {
     private FluentDialog? _dialog;
     private bool _isOpen;
+    private DialogState _dialogState = DialogState.Closed;
     private bool _isTransitioning;
     private bool _focusSearchRequested;
     private string? _searchQuery;
@@ -64,7 +65,14 @@
 
     public async Task OpenAsync()
     {
-        if (_isTransitioning || _isOpen)
+        if (_isTransitioning)
+        {
+            return;
+        }
+
+        // UX contract: no-op when the dialog is genuinely open.
+        // Recovery path: if _isOpen is stale but state says Closing/Closed, allow re-open.
+        if (_isOpen && _dialogState is DialogState.Open or DialogState.Opening)
         {
             return;
         }
@@ -77,6 +85,7 @@
             _focusSearchRequested = true;
             if (_dialog is not null)
             {
+                _dialogState = DialogState.Opening;
                 await _dialog.ShowAsync().ConfigureAwait(false);
                 _isOpen = true;
             }
@@ -126,7 +135,13 @@
 
     private Task OnDialogStateChangeAsync(DialogEventArgs args)
     {
-        if (args.State == DialogState.Closed)
+        _dialogState = args.State;
+
+        if (args.State is DialogState.Open or DialogState.Opening)
+        {
+            _isOpen = true;
+        }
+        else if (args.State is DialogState.Closing or DialogState.Closed)
         {
             _isOpen = false;
             _isTransitioning = false;

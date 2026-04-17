@@ -264,6 +264,61 @@ public class TypeCatalogPageTests : AdminUITestContext {
         cut.Markup.ShouldContain("1 with projections");
     }
 
+    [Fact]
+    public void TypeCatalogPage_DeepLink_SetsActiveTabToAggregatesWithoutRedirectLoop() {
+        // Regression test for Story 21-13 Bug #2 (TypeCatalog redirect loop on /types?tab=aggregates).
+        // The fix is an idempotency guard in UpdateUrl that short-circuits NavigateTo when the
+        // target URL already matches the current URL. Starting with a URL that already has
+        // ?tab=aggregates proves the guard prevents the replace-navigation loop.
+        SetupMockData();
+
+        Microsoft.AspNetCore.Components.NavigationManager nav = Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
+        nav.NavigateTo("/types?tab=aggregates");
+
+        int navigationCount = 0;
+        nav.LocationChanged += (_, _) => navigationCount++;
+
+        IRenderedComponent<TypeCatalog> cut = Render<TypeCatalog>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Aggregates"), TimeSpan.FromSeconds(5));
+
+        // Active tab should be "aggregates" after reading URL params in OnInitializedAsync.
+        System.Reflection.FieldInfo activeTabField = typeof(TypeCatalog)
+            .GetField("_activeTab", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        ((string?)activeTabField.GetValue(cut.Instance)).ShouldBe("aggregates");
+
+        // The URL already matches — UpdateUrl's idempotency guard must have short-circuited
+        // every scheduled NavigateTo during render. No LocationChanged should have fired.
+        navigationCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task TypeCatalogPage_UpdateUrl_IsIdempotent_WhenTargetEqualsCurrentUrl() {
+        // Lower-level regression test: invoking UpdateUrl() when the target URL already
+        // matches NavigationManager.Uri must NOT trigger LocationChanged.
+        SetupMockData();
+
+        Microsoft.AspNetCore.Components.NavigationManager nav = Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
+
+        IRenderedComponent<TypeCatalog> cut = Render<TypeCatalog>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Event Types"), TimeSpan.FromSeconds(5));
+
+        // Navigate to a URL that matches the default state (tab=events means no query — so /types bare).
+        nav.NavigateTo("/types");
+
+        int navigationCount = 0;
+        nav.LocationChanged += (_, _) => navigationCount++;
+
+        // Invoke UpdateUrl via reflection — since state is default, target URL == "/types" == current.
+        System.Reflection.MethodInfo updateUrl = typeof(TypeCatalog)
+            .GetMethod("UpdateUrl", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        await cut.InvokeAsync(() =>
+        {
+            _ = updateUrl.Invoke(cut.Instance, new object?[] { false });
+        });
+
+        cut.WaitForAssertion(() => navigationCount.ShouldBe(0), TimeSpan.FromMilliseconds(200));
+    }
+
     private void SetupMockData() {
         IReadOnlyList<EventTypeInfo> events =
         [

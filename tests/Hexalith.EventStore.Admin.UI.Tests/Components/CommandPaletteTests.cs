@@ -79,6 +79,77 @@ public class CommandPaletteTests : AdminUITestContext {
     }
 
     [Fact]
+    public void CommandPalette_FluentDialog_CarriesAriaLabel() {
+        // Regression signal only — does NOT prove runtime ARIA correctness (FluentDialog v5 may
+        // render the attribute into shadow DOM which bUnit does not traverse). Task 5.6 AT pass
+        // is the real verifier. This catches the case where the `aria-label="Command palette"`
+        // attribute is accidentally removed from CommandPalette.razor source.
+        IRenderedComponent<Hexalith.EventStore.Admin.UI.Components.CommandPalette> cut = Render<Hexalith.EventStore.Admin.UI.Components.CommandPalette>();
+
+        cut.Markup.ShouldContain("aria-label=\"Command palette\"");
+    }
+
+    [Fact]
+    public async Task CommandPalette_OpenAsync_DoesNotEarlyReturnWhenIsOpenStuckTrue() {
+        // Regression test for Story 21-13 Bug #1 (Ctrl+K re-open).
+        // If FluentDialog v5 misses emitting DialogState.Closed (Escape-triggered close),
+        // `_isOpen` can stay true while state has already moved to Closing/Closed.
+        // The fix preserves a recovery path for that stale-open state.
+        // This test simulates that stranded state and verifies OpenAsync still progresses
+        // past the guard — e.g., it re-populates _filteredResults and requests focus.
+        IRenderedComponent<Hexalith.EventStore.Admin.UI.Components.CommandPalette> cut = Render<Hexalith.EventStore.Admin.UI.Components.CommandPalette>();
+
+        // Simulate the stuck-true state that v5 Escape-close can leave behind.
+        System.Reflection.FieldInfo isOpenField = GetRequiredPrivateField("_isOpen");
+        System.Reflection.FieldInfo dialogStateField = GetRequiredPrivateField("_dialogState");
+        System.Reflection.FieldInfo focusField = GetRequiredPrivateField("_focusSearchRequested");
+        isOpenField.SetValue(cut.Instance, true);
+        dialogStateField.SetValue(cut.Instance, Microsoft.FluentUI.AspNetCore.Components.DialogState.Closed);
+        focusField.SetValue(cut.Instance, false);
+
+        // Clear _filteredResults so we can see if OpenAsync re-populates them (proves it didn't early-return).
+        System.Reflection.FieldInfo resultsField = GetRequiredPrivateField("_filteredResults");
+        resultsField.SetValue(cut.Instance, new List<Hexalith.EventStore.Admin.UI.Components.CommandPaletteItem>());
+
+        await cut.InvokeAsync(cut.Instance.OpenAsync);
+
+        // If the guard blocked the call, _filteredResults would still be empty and focus would not be requested.
+        GetFilteredResults(cut.Instance).ShouldNotBeEmpty();
+        ((bool)focusField.GetValue(cut.Instance)!).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task CommandPalette_OpenAsync_NoOpsWhenDialogIsActuallyOpen() {
+        IRenderedComponent<Hexalith.EventStore.Admin.UI.Components.CommandPalette> cut = Render<Hexalith.EventStore.Admin.UI.Components.CommandPalette>();
+
+        System.Reflection.FieldInfo isOpenField = GetRequiredPrivateField("_isOpen");
+        System.Reflection.FieldInfo dialogStateField = GetRequiredPrivateField("_dialogState");
+        System.Reflection.FieldInfo queryField = GetRequiredPrivateField("_searchQuery");
+        System.Reflection.FieldInfo focusField = GetRequiredPrivateField("_focusSearchRequested");
+        System.Reflection.FieldInfo resultsField = GetRequiredPrivateField("_filteredResults");
+
+        List<Hexalith.EventStore.Admin.UI.Components.CommandPaletteItem> seededResults =
+        [
+            new("Pages", "Keep Item", "/keep"),
+        ];
+
+        isOpenField.SetValue(cut.Instance, true);
+        dialogStateField.SetValue(cut.Instance, Microsoft.FluentUI.AspNetCore.Components.DialogState.Open);
+        queryField.SetValue(cut.Instance, "keep-me");
+        focusField.SetValue(cut.Instance, false);
+        resultsField.SetValue(cut.Instance, seededResults);
+
+        await cut.InvokeAsync(cut.Instance.OpenAsync);
+
+        ((string?)queryField.GetValue(cut.Instance)).ShouldBe("keep-me");
+        ((bool)focusField.GetValue(cut.Instance)!).ShouldBeFalse();
+
+        IReadOnlyList<Hexalith.EventStore.Admin.UI.Components.CommandPaletteItem> results = GetFilteredResults(cut.Instance);
+        results.Count.ShouldBe(1);
+        results[0].Label.ShouldBe("Keep Item");
+    }
+
+    [Fact]
     public async Task CommandPalette_ClickingResult_NavigatesToSelectedRoute() {
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Components.CommandPalette> cut = Render<Hexalith.EventStore.Admin.UI.Components.CommandPalette>();
         NavigationManager navigationManager = Services.GetRequiredService<NavigationManager>();
