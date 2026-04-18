@@ -21,9 +21,8 @@ if (args.Length == 1 && (args[0] == "--version" || args[0] == "-v")) {
 
 var binding = GlobalOptionsBinding.Create();
 
-#pragma warning disable IDE0028 // Simplify collection initialization
 RootCommand rootCommand = new("Hexalith EventStore administration CLI");
-#pragma warning restore IDE0028 // Simplify collection initialization
+
 rootCommand.Options.Add(binding.UrlOption);
 rootCommand.Options.Add(binding.TokenOption);
 rootCommand.Options.Add(binding.FormatOption);

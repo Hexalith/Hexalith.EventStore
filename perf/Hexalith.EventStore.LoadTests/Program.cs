@@ -6,12 +6,10 @@ using NBomber.CSharp;
 
 namespace Hexalith.EventStore.LoadTests;
 
-internal static class Program
-{
+internal static class Program {
     private const string DefaultBaseUrl = "http://localhost:5170";
 
-    private static int Main(string[] args)
-    {
+    private static int Main(string[] args) {
         Uri baseAddress = ResolveBaseAddress();
         IReadOnlyCollection<string> selected = ResolveSelectedScenarios(args);
 
@@ -21,8 +19,7 @@ internal static class Program
 
         ScenarioProps[] scenarios = [.. BuildScenarios(baseAddress, selected)];
 
-        if (scenarios.Length == 0)
-        {
+        if (scenarios.Length == 0) {
             Console.Error.WriteLine("No scenarios selected. Set LOAD_TEST_SCENARIOS or pass scenario names as args.");
             return 1;
         }
@@ -39,22 +36,18 @@ internal static class Program
         return stats.AllFailCount > 0 ? 2 : 0;
     }
 
-    private static Uri ResolveBaseAddress()
-    {
+    private static Uri ResolveBaseAddress() {
         string raw = Environment.GetEnvironmentVariable("EVENTSTORE_BASE_URL")?.Trim() ?? DefaultBaseUrl;
         return new Uri(raw, UriKind.Absolute);
     }
 
-    private static IReadOnlyCollection<string> ResolveSelectedScenarios(string[] args)
-    {
-        if (args.Length > 0)
-        {
+    private static IReadOnlyCollection<string> ResolveSelectedScenarios(string[] args) {
+        if (args.Length > 0) {
             return args;
         }
 
         string? envSelection = Environment.GetEnvironmentVariable("LOAD_TEST_SCENARIOS");
-        if (!string.IsNullOrWhiteSpace(envSelection))
-        {
+        if (!string.IsNullOrWhiteSpace(envSelection)) {
             return envSelection.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         }
 
@@ -62,13 +55,10 @@ internal static class Program
         return ["nfr7"];
     }
 
-    private static List<ScenarioProps> BuildScenarios(Uri baseAddress, IReadOnlyCollection<string> selected)
-    {
+    private static List<ScenarioProps> BuildScenarios(Uri baseAddress, IReadOnlyCollection<string> selected) {
         var scenarios = new List<ScenarioProps>();
-        foreach (string name in selected)
-        {
-            switch (name.ToLowerInvariant())
-            {
+        foreach (string name in selected) {
+            switch (name.ToLowerInvariant()) {
                 case "nfr7":
                     scenarios.Add(Nfr7CommandSubmissionScenario.Build(baseAddress));
                     break;

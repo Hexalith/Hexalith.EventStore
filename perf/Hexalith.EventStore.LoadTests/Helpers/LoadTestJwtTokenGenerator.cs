@@ -13,8 +13,7 @@ namespace Hexalith.EventStore.LoadTests.Helpers;
 /// — kept inline here to keep the perf project free of test-project dependencies.
 /// Only valid against an EventStore configured with the dev signing key.
 /// </summary>
-internal static class LoadTestJwtTokenGenerator
-{
+internal static class LoadTestJwtTokenGenerator {
     public const string SigningKey = "DevOnlySigningKey-AtLeast32Chars!";
     public const string Issuer = "hexalith-dev";
     public const string Audience = "hexalith-eventstore";
@@ -26,30 +25,25 @@ internal static class LoadTestJwtTokenGenerator
         string subject = "load-test-user",
         string[]? tenants = null,
         string[]? domains = null,
-        string[]? permissions = null)
-    {
+        string[]? permissions = null) {
         var claims = new List<Claim>
         {
             new("sub", subject),
         };
 
-        if (tenants is not null)
-        {
+        if (tenants is not null) {
             claims.Add(new Claim("tenants", JsonSerializer.Serialize(tenants)));
         }
 
-        if (domains is not null)
-        {
+        if (domains is not null) {
             claims.Add(new Claim("domains", JsonSerializer.Serialize(domains)));
         }
 
-        if (permissions is not null)
-        {
+        if (permissions is not null) {
             claims.Add(new Claim("permissions", JsonSerializer.Serialize(permissions)));
         }
 
-        var descriptor = new SecurityTokenDescriptor
-        {
+        var descriptor = new SecurityTokenDescriptor {
             Subject = new ClaimsIdentity(claims),
             NotBefore = DateTime.UtcNow,
             Expires = DateTime.UtcNow.AddHours(1),

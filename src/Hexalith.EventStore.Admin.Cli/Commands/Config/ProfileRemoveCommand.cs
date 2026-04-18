@@ -35,9 +35,7 @@ public static class ProfileRemoveCommand {
                 return ExitCodes.Error;
             }
 
-#pragma warning disable IDE0028 // Simplify collection initialization
             Dictionary<string, ConnectionProfile> profiles = new(store.Profiles);
-#pragma warning restore IDE0028 // Simplify collection initialization
             _ = profiles.Remove(name);
 
             string? activeProfile = store.ActiveProfile;

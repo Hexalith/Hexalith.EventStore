@@ -12,10 +12,8 @@ namespace Hexalith.EventStore.Admin.Cli.Profiles;
 public static partial class ProfileManager {
     private static readonly Regex _profileNameRegex = ProfileNameRegex();
 #pragma warning disable IDE0090 // Use 'new(...)'
-#pragma warning disable IDE0028 // Simplify collection initialization
 
     private static readonly HashSet<string> _reservedNames = new HashSet<string>(
-#pragma warning restore IDE0028 // Simplify collection initialization
 #pragma warning restore IDE0090 // Use 'new(...)'
    [
         "version",

@@ -311,8 +311,7 @@ public class TypeCatalogPageTests : AdminUITestContext {
         // Invoke UpdateUrl via reflection — since state is default, target URL == "/types" == current.
         System.Reflection.MethodInfo updateUrl = typeof(TypeCatalog)
             .GetMethod("UpdateUrl", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
-        await cut.InvokeAsync(() =>
-        {
+        await cut.InvokeAsync(() => {
             _ = updateUrl.Invoke(cut.Instance, new object?[] { false });
         });
 

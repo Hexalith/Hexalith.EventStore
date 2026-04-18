@@ -1,8 +1,8 @@
 using Bunit;
 
-using Hexalith.EventStore.Admin.UI.Layout;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog;
+using Hexalith.EventStore.Admin.UI.Layout;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -71,9 +71,9 @@ public class NavMenuTests : AdminUITestContext {
         // v4: <fluent-nav-menu>/<fluent-nav-link>/<fluent-nav-group>
         // v5: <nav class="fluent-nav"> / <a class="fluent-navitem"> / <button class="fluent-navcategoryitem">
         // Use CSS selectors instead of exact class attribute strings — Padding adds extra classes (e.g., "pa-2").
-        cut.Find("nav.fluent-nav").ShouldNotBeNull();
-        cut.Find(".fluent-navitem").ShouldNotBeNull();
-        cut.Find(".fluent-navcategoryitem").ShouldNotBeNull();
+        _ = cut.Find("nav.fluent-nav").ShouldNotBeNull();
+        _ = cut.Find(".fluent-navitem").ShouldNotBeNull();
+        _ = cut.Find(".fluent-navcategoryitem").ShouldNotBeNull();
     }
 
     [Fact]

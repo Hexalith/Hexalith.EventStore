@@ -20,13 +20,9 @@ public static class SubmitCommandExtensions {
     /// <returns>A command envelope with all fields mapped.</returns>
     public static CommandEnvelope ToCommandEnvelope(this SubmitCommand command) {
         ArgumentNullException.ThrowIfNull(command);
-
-#pragma warning disable IDE0028 // Simplify collection initialization
         Dictionary<string, string> extensions = command.Extensions is null
             ? new(StringComparer.OrdinalIgnoreCase)
             : new Dictionary<string, string>(command.Extensions, StringComparer.OrdinalIgnoreCase);
-#pragma warning restore IDE0028 // Simplify collection initialization
-
         _ = extensions.Remove(_globalAdminExtensionKey);
 
         if (command.IsGlobalAdmin) {

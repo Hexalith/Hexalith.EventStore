@@ -3,6 +3,8 @@ using CommunityToolkit.Aspire.Hosting.Dapr;
 using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.Aspire;
 
+const string FalseLiteral = "false";
+
 PrerequisiteValidator.Validate();
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
@@ -40,7 +42,7 @@ HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(
 // (falls back to symmetric key auth via Authentication:JwtBearer:SigningKey).
 IResourceBuilder<KeycloakResource>? keycloak = null;
 ReferenceExpression? realmUrl = null;
-if (!string.Equals(builder.Configuration["EnableKeycloak"], "false", StringComparison.OrdinalIgnoreCase)) {
+if (!string.Equals(builder.Configuration["EnableKeycloak"], FalseLiteral, StringComparison.OrdinalIgnoreCase)) {
     // Realm-as-code: hexalith-realm.json auto-imported on container start.
     // Port 8180 avoids conflict with eventstore on 8080.
     keycloak = builder.AddKeycloak("keycloak", 8180)
@@ -57,7 +59,7 @@ if (!string.Equals(builder.Configuration["EnableKeycloak"], "false", StringCompa
         .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
         .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl)
         .WithEnvironment("Authentication__JwtBearer__Audience", "hexalith-eventstore")
-        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", "false")
+        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", FalseLiteral)
         // Explicitly clear SigningKey to prevent dual-mode auth conflict.
         // If SigningKey exists in appsettings/secrets, clearing it ensures
         // ConfigureJwtBearerOptions.cs uses OIDC discovery (Authority) mode only.
@@ -111,7 +113,7 @@ if (keycloak is not null && realmUrl is not null) {
         .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
         .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl)
         .WithEnvironment("Authentication__JwtBearer__Audience", "hexalith-eventstore")
-        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", "false")
+        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", FalseLiteral)
         .WithEnvironment("Authentication__JwtBearer__SigningKey", "");
 
     _ = adminServer
@@ -120,7 +122,7 @@ if (keycloak is not null && realmUrl is not null) {
         .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
         .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl)
         .WithEnvironment("Authentication__JwtBearer__Audience", "hexalith-eventstore")
-        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", "false")
+        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", FalseLiteral)
         .WithEnvironment("Authentication__JwtBearer__SigningKey", "");
 
     _ = blazorUi
