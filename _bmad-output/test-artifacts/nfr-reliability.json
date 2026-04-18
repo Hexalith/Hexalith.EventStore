@@ -1,95 +1,181 @@
 {
   "domain": "reliability",
-  "risk_level": "LOW",
+  "assessment_date": "2026-04-18",
+  "risk_level": "MEDIUM",
+  "overall_gate": "CONCERNS",
   "findings": [
     {
-      "category": "Error Handling",
-      "status": "PASS",
-      "description": "10 registered exception handlers covering all error categories: validation (400), authorization (403), not-found (404), concurrency conflict (409), rate limiting (429), backpressure (429), DAPR unavailable (503), and global fallback (500). All return ProblemDetails with Retry-After headers where appropriate. Advisory status writes (non-blocking) prevent cascade failures.",
+      "nfr_id": "NFR21",
+      "category": "Availability / SLA 99.9%",
+      "threshold": "99.9%+ availability via HA DAPR control plane + multi-replica deployment",
+      "status": "NOT-TESTABLE",
+      "description": "Production SLO cannot be asserted by in-repo unit/integration tests. Validated indirectly via four DAPR building-block health checks (sidecar, state store, pub/sub, config store) wired centrally in HealthCheckBuilderExtensions.AddEventStoreDaprHealthChecks, 3s per-check timeout, 'ready' probe tag for K8s, plus chaos tests proving recovery. HA topology/multi-replica deployment is a runtime (Helm/K8s) concern not covered here.",
       "evidence": [
-        "src/Hexalith.EventStore/ErrorHandling/ (10 exception handler files)",
-        "src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs:35-45 (handler registration)",
-        "src/Hexalith.EventStore/ErrorHandling/DaprSidecarUnavailableHandler.cs (165 lines, SocketException detection)",
-        "src/Hexalith.EventStore/ErrorHandling/ConcurrencyConflictExceptionHandler.cs (409 + Retry-After:1s)",
-        "src/Hexalith.EventStore/ErrorHandling/BackpressureExceptionHandler.cs (429 + configurable Retry-After)"
+        "D:/Hexalith.EventStore/src/Hexalith.EventStore/HealthChecks/HealthCheckBuilderExtensions.cs — registers dapr-sidecar (Unhealthy), dapr-statestore (Unhealthy), dapr-pubsub (Degraded), dapr-configstore (Degraded) with 3s timeout and 'ready' tag",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprSidecarHealthCheckTests.cs — sidecar probe assertions",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprStateStoreHealthCheckTests.cs — state store probe assertions",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprPubSubHealthCheckTests.cs — pub/sub probe assertions",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/HealthChecks/DaprConfigStoreHealthCheckTests.cs — config store probe assertions",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/HealthChecks/HealthCheckRegistrationTests.cs — 'ready' tag wiring for orchestrator liveness/readiness",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.IntegrationTests/ContractTests/ChaosResilienceTests.cs — Redis stop/start cycle confirms recovery to healthy state"
+      ],
+      "recommendations": [
+        "Add runtime SLO monitoring (OTLP → Prometheus SLO alerts) to tie synthetic probes to SLA.",
+        "Document HA K8s topology (2+ replicas, PDB, anti-affinity) as a deployment runbook."
+      ]
+    },
+    {
+      "nfr_id": "NFR22",
+      "category": "Zero Event Loss",
+      "threshold": "No event loss under any failure scenario (state store crash, actor crash, pub/sub down, partition)",
+      "status": "PASS",
+      "description": "Persist-then-publish state machine (ADR-P2) guarantees events land in state store before publish is attempted; failure to publish stores an UnpublishedEventsRecord and registers a drain reminder — events are never dropped. Tests explicitly assert 'events still in state store' after publish failure, and chaos tests restart Redis mid-flight with subsequent commands completing.",
+      "evidence": [
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Events/AtLeastOnceDeliveryTests.cs — PublishEventsAsync_TotalFailure_EventsSafeInStateStore (line 126) asserts events remain safe when pub/sub unavailable; AggregateActor_PublishFailed_EventsNotLostInStateStore (line 153) asserts SaveStateAsync invoked before publish",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Events/PersistThenPublishResilienceTests.cs — ProcessCommand_PublishFailed_EventsStillInStateStore (line 317) asserts events: key persisted even when publish fails",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.IntegrationTests/ContractTests/ChaosResilienceTests.cs — StateStoreRestart_CommandsBeforeAndAfter_AllComplete, StateStoreOutage_CommandDuringOutage_FailsGracefully assert no silent event drop"
       ],
       "recommendations": []
     },
     {
-      "category": "Monitoring & Observability",
+      "nfr_id": "NFR23",
+      "category": "Deterministic Replay Post-Recovery",
+      "threshold": "Deterministic replay from last checkpoint after state-store recovery — no manual steps",
       "status": "PASS",
-      "description": "OpenTelemetry SDK fully integrated: 3 custom ActivitySources, 11 span names, OTLP exporter, JSON structured logging with LoggerMessage attributes (10+ EventIds), correlation ID middleware, CloudEvents trace propagation. Health checks: 3 endpoints (/health, /alive, /ready) with 4 DAPR component probes.",
+      "description": "ActorStateMachine writes an 8-stage PipelineState checkpoint keyed per correlationId. On rehydration the actor loads the pipeline checkpoint and resumes from the last persisted stage (e.g., EventsStored → Publish retry). Chaos test StateStoreRestart_ExistingAggregate_RehydratesCorrectly confirms snapshot + tail events reload and a third command progresses to Completed. No manual intervention required.",
       "evidence": [
-        "src/Hexalith.EventStore.ServiceDefaults/Extensions.cs (OTel setup + health checks)",
-        "src/Hexalith.EventStore.Server/Telemetry/EventStoreActivitySource.cs (11 span names)",
-        "src/Hexalith.EventStore/Telemetry/EventStoreActivitySources.cs (3 activity sources)",
-        "src/Hexalith.EventStore/Pipeline/LoggingBehavior.cs (structured logging)",
-        "src/Hexalith.EventStore/Middleware/CorrelationIdMiddleware.cs",
-        "src/Hexalith.EventStore/HealthChecks/ (4 DAPR component health checks)"
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Actors/ActorStateMachineTests.cs — Checkpoint/LoadPipelineState/Cleanup/Overwrite tests (covers Processing, EventsStored transitions; state machine enforces key convention {tenant}:{domain}:{aggId}:pipeline:{corrId})",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Actors/StateMachineIntegrationTests.cs — integration across stages",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Events/PersistThenPublishResilienceTests.cs — ResumeFromEventsStored_PublishFails_UnpublishedRecordStored (line 368) proves pipeline resumes at EventsStored after simulated crash",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.IntegrationTests/ContractTests/ChaosResilienceTests.cs — StateStoreRestart_ExistingAggregate_RehydratesCorrectly proves post-Redis-restart rehydration"
       ],
       "recommendations": [
-        "MINOR: Add dynamic log level toggle (currently requires restart for log level changes)",
-        "OPTIONAL: Add custom metrics endpoint (/metrics) for Prometheus scraping"
+        "ActorStateMachineTests explicitly exercises Processing and EventsStored stages only; extend unit coverage to enumerate all 8 CommandStatus values (Processing, EventsStored, Published, PublishFailed, and the 4 terminal states) for auditable completeness."
       ]
     },
     {
-      "category": "Fault Tolerance",
+      "nfr_id": "NFR24",
+      "category": "At-Least-Once Delivery During Pub/Sub Outage",
+      "threshold": "All events persisted during pub/sub outage delivered post-recovery via DAPR retry policies",
       "status": "PASS",
-      "description": "Persist-then-publish state machine (ActorStateMachine.cs) with checkpoint stages ensures crash recovery. DAPR resiliency policies: 3 retry policies (constant/exponential), 2 circuit breakers, 3 timeout policies. Dead-letter routing for infrastructure failures. Event drain recovery via IRemindable for unpublished events after pub/sub outage.",
+      "description": "When publish fails, the actor checkpoints an UnpublishedEventsRecord (correlationId, start/end sequence, retry count, reason) and registers a drain reminder using EventDrainOptions with MaxDrainPeriod clamping and boundary handling. Drain retries via DAPR sidecar retry/circuit-breaker policies. ResiliencyConfigurationTests verifies the DAPR-native policy wiring (per rule #4: no custom retry logic).",
       "evidence": [
-        "src/Hexalith.EventStore.Server/Actors/ActorStateMachine.cs (checkpoint/resume/cleanup)",
-        "src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:112-143 (resume detection)",
-        "src/Hexalith.EventStore.AppHost/DaprComponents/resiliency.yaml (retry, circuit breaker, timeout)",
-        "src/Hexalith.EventStore.Server/Events/DeadLetterPublisher.cs (per-tenant dead-letter topics)",
-        "src/Hexalith.EventStore.Server/Events/EventPublisher.cs (pub/sub failure handling)"
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Events/AtLeastOnceDeliveryTests.cs — partial failure, total failure, circuit breaker fast-fail all transition to PublishFailed without event loss",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Events/PersistThenPublishResilienceTests.cs — DrainReminderRegistered, DrainReminderUsesConfiguredTiming, DrainReminderClampsToMaxPeriod, boundary-value theories for InitialDrainDelay/DrainPeriod",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Configuration/ResiliencyConfigurationTests.cs — DAPR retry/circuit-breaker/timeout policy configuration validated",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.IntegrationTests/ContractTests/ChaosResilienceTests.cs — StateStoreOutage_CommandDuringOutage_FailsGracefully validates graceful degradation"
       ],
       "recommendations": []
     },
     {
-      "category": "Disaster Recovery",
-      "status": "CONCERN",
-      "description": "Zero data loss architecture (persist-then-publish, deterministic replay, checkpointed recovery) but RTO/RPO targets are UNDEFINED. No backup/restore procedures tested. No failover drills documented. Admin tooling provides backup/restore UI but no automated DR tested.",
+      "nfr_id": "NFR25",
+      "category": "No Duplicate Persistence on Actor Crash",
+      "threshold": "Actor crash between persist and publish → no duplicate persistence (checkpointed state machine)",
+      "status": "PASS",
+      "description": "IdempotencyRecord is checked on actor entry; resuming from a PipelineState in EventsStored skips re-invoking the domain and re-persisting events, instead loading existing events from state store and retrying only the publish step. ResumeFromEventsStored_PrepareFails_MetadataUnavailable explicitly throws rather than silently re-persisting, proving the state machine refuses to double-write. Write-once event keys (rule #11) provide defense in depth.",
       "evidence": [
-        "PRD NFR22: Zero data loss (architecture supports this via persist-then-publish)",
-        "PRD NFR23: Deterministic replay from checkpoint (implemented in ActorStateMachine)",
-        "PRD NFR24: Pub/sub recovery via DAPR retry policies (configured in resiliency.yaml)",
-        "GAP: No RTO/RPO targets defined in PRD or architecture doc",
-        "GAP: No backup restore test evidence",
-        "GAP: No failover drill documentation"
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Events/PersistThenPublishResilienceTests.cs — ResumeFromEventsStored_PublishFails_UnpublishedRecordStored (line 368), ResumeFromEventsStored_PublishFails_MetadataMissingAfterLoad_StillStoresRecordFromLoadedEvents (line 474), ResumeFromEventsStored_PrepareFails_MetadataUnavailable_ThrowsInsteadOfSilentPublishFailed (line 529) — proves resume path loads existing events from state store and does not re-invoke domain"
+      ],
+      "recommendations": []
+    },
+    {
+      "nfr_id": "NFR26",
+      "category": "Optimistic Concurrency Conflict → HTTP 409",
+      "threshold": "Optimistic concurrency conflicts never silently overwrite; client receives HTTP 409 Conflict",
+      "status": "PASS",
+      "description": "ETag-based concurrency on the aggregate metadata key rejects stale-ETag writes (MetadataKey_StaleEtagUpdate_IsRejected). The ConcurrencyConflictExceptionHandler maps the exception to 409 ProblemDetails with correlationId, and UX-DR10 hardening suppresses aggregateId/tenantId/conflictSource leak in the 409 body.",
+      "evidence": [
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Actors/ActorConcurrencyConflictTests.cs — MetadataKey_StaleEtagUpdate_IsRejected (line 107) asserts stale-ETag second write returns non-success at the state-store boundary",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Commands/ConcurrencyConflictExceptionHandlerTests.cs — TryHandleAsync_ConcurrencyConflictException_Returns409ProblemDetails (line 36) asserts StatusCode 409, Title 'Conflict', Type ProblemTypeUris.ConcurrencyConflict; additional tests assert UX-DR10 information-leak suppression",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.IntegrationTests/EventStore/ConcurrencyConflictIntegrationTests.cs — end-to-end 409 contract"
+      ],
+      "recommendations": []
+    },
+    {
+      "nfr_id": "DR-RTO-RPO",
+      "category": "Disaster Recovery — RTO/RPO",
+      "threshold": "Defined Recovery Time Objective and Recovery Point Objective",
+      "status": "FAIL",
+      "description": "GAP-14 in architecture.md explicitly defers DR SLOs to v2/v3 operational readiness. No RTO/RPO targets are specified in PRD/architecture. No test validates recovery-time bounds. This is a GA blocker if the product is sold with availability/DR commitments.",
+      "evidence": [
+        "Architecture GAP-14 — DR explicitly deferred",
+        "No test file in D:/Hexalith.EventStore/tests references RTO, RPO, or disaster-recovery timing assertions (grep for backup|restore|failover|disaster returned only the Admin.Cli *tenant event archive* feature, not infrastructure DR)"
       ],
       "recommendations": [
-        "HIGH: Define RTO and RPO targets (e.g., RTO <4h, RPO <1h)",
-        "HIGH: Test backup/restore procedure end-to-end",
-        "MEDIUM: Document and practice failover drills quarterly",
-        "MEDIUM: Add chaos engineering tests (state store crash, pub/sub outage) to Tier 3"
+        "Define RTO/RPO targets (e.g., RTO 15 min, RPO 5 min) for v1 GA or document the deferred-to-v2 SLA carve-out in the customer-facing SLA.",
+        "Add a load-bearing DR runbook and measure actual recovery time in a chaos test that exercises regional failover."
       ]
     },
     {
-      "category": "Uptime & Availability",
-      "status": "CONCERN",
-      "description": "99.9% availability target (NFR21) defined but unvalidated. Architecture supports HA via DAPR multi-replica + actor placement. Health probes configured for Kubernetes (startup, readiness, liveness). No historical uptime data or incident response procedures documented.",
+      "nfr_id": "DR-Failover",
+      "category": "Disaster Recovery — Failover",
+      "threshold": "Multi-region/multi-AZ failover exercised; control-plane HA verified under node loss",
+      "status": "FAIL",
+      "description": "No failover test exists. ChaosResilienceTests covers single-instance Redis stop/start (recovery from outage in the same cluster), not topology-level failover. GAP-14 confirms mechanism is undefined. 99.9% SLO is implied but unvalidated.",
       "evidence": [
-        "PRD NFR21: 99.9%+ availability target",
-        "Kubernetes health probes defined (startup 60s, readiness /ready, liveness /alive)",
-        "DAPR placement service for actor distribution",
-        "NO uptime monitoring or SLA tracking in production"
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.IntegrationTests/ContractTests/ChaosResilienceTests.cs — scope is single-node Redis lifecycle, not regional/AZ failover",
+        "No test file matches failover|multi-region|multi-az in tests/"
       ],
       "recommendations": [
-        "MEDIUM: Set up uptime monitoring (e.g., Grafana SLO dashboards)",
-        "MEDIUM: Document incident response procedures"
+        "Document the intended failover topology (DAPR control-plane HA, state-store replication strategy: Redis Sentinel/Cluster, CosmosDB multi-region, etc.).",
+        "Add a Tier-3 chaos test that kills a DAPR control-plane node (placement/actor service) and confirms actor reassignment completes within target RTO."
+      ]
+    },
+    {
+      "nfr_id": "DR-Backups",
+      "category": "Disaster Recovery — Backup Immutability & Restore Integrity",
+      "threshold": "Infrastructure backups are immutable, restore succeeds with byte-identical data",
+      "status": "FAIL",
+      "description": "No infrastructure backup/restore tests exist. The Admin.Cli 'Backup' commands (BackupCommandTests, DaprBackupCommandServiceTests, BackupsPageTests) are TENANT-LEVEL event-archive operations for auditability/export, not disaster-recovery of the underlying state store. Backup immutability and restore integrity are explicitly deferred (GAP-14).",
+      "evidence": [
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Admin.Cli.Tests/Commands/Backup/* — tenant event-export commands, not DR",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprBackupCommandServiceTests.cs — admin-plane archive service, not DR",
+        "No tests assert WORM/object-lock, encryption-at-rest of backups, or restore-integrity hash comparisons"
+      ],
+      "recommendations": [
+        "Add a backup policy definition (frequency, retention, immutability mode: S3 Object Lock / Azure immutable blobs).",
+        "Add a restore-integrity test: snapshot event log → restore to fresh cluster → replay → assert hash of events matches source."
+      ]
+    },
+    {
+      "nfr_id": "NFR31-crossover",
+      "category": "Observability (Reliability Debugging Enabler)",
+      "threshold": "OpenTelemetry → OTLP collector validated in Aspire + Jaeger + Grafana/Tempo",
+      "status": "CONCERN",
+      "description": "Aspire OTLP wiring is validated via OpenTelemetryRegistrationTests and the Observability test folder. Jaeger/Grafana/Tempo targets are configured but not exercised in CI, so drift between config and reality is not detected automatically. Traceability report flags this PARTIAL.",
+      "evidence": [
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Telemetry/OpenTelemetryRegistrationTests.cs — Aspire/OTLP registration validated",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Observability/ — folder present",
+        "D:/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/Logging/PayloadProtectionTests.cs — structured logging / payload redaction"
+      ],
+      "recommendations": [
+        "Add a CI job that spins up Jaeger/Tempo containers, submits a command, and asserts at least one span lands in the collector."
       ]
     }
   ],
+  "dr_gap_assessment": {
+    "rto_rpo_defined": false,
+    "failover_tested": false,
+    "backup_restore_tested": false,
+    "gate": "CONCERNS",
+    "note": "GAP-14 explicitly defers DR to v2/v3 operational readiness. Admin.Cli 'backup' features are tenant event-archive operations, not infrastructure DR. No RTO/RPO targets, no failover tests, no backup immutability/restore-integrity tests. If v1 GA is sold with an availability or DR commitment, this is a BLOCKER; otherwise it is a documented v2 deferral."
+  },
+  "ci_flags": {
+    "tier3_continue_on_error": "true — .github/workflows/ci.yml line 322 sets continue-on-error: true on the aspire-tests job (Tier 3 Aspire Contract Tests, which includes ChaosResilienceTests)",
+    "impact": "A chaos-test regression (e.g., post-Redis-restart rehydration silently fails) will NOT break the build nor block merge to main. Reliability invariants NFR22-NFR25 are protected by Tier 2 unit tests (required), but the end-to-end proof under real Aspire/Docker/Redis is advisory-only. This is acceptable for flaky-infra tolerance during bring-up but should be revisited before GA.",
+    "additional_notes": "Tier 1 + Tier 2 (build-and-test job) are NOT marked continue-on-error — core reliability unit and integration tests do block the build."
+  },
   "compliance": {
-    "SLA_99.9": "CONCERN",
-    "Zero_data_loss": "PASS",
-    "DR_plan": "CONCERN"
+    "SLA_99.9": "CONCERNS",
+    "zero_data_loss": "PASS"
   },
   "priority_actions": [
-    "HIGH: Define RTO/RPO targets and test backup/restore procedure",
-    "HIGH: Validate 99.9% availability architecture under failure scenarios",
-    "MEDIUM: Add chaos engineering tests to Tier 3 suite",
-    "MINOR: Add dynamic log level toggle and /metrics endpoint"
+    "P0 — Define RTO/RPO for v1 GA or explicitly document the DR carve-out in the customer SLA (GAP-14 unblocker).",
+    "P0 — Add backup immutability policy (WORM / object-lock) and a restore-integrity test for the state store.",
+    "P1 — Add a DAPR control-plane failover chaos test (kill placement service, assert actor reassignment within target RTO).",
+    "P1 — Remove continue-on-error: true from the aspire-tests CI job, or gate on a required subset of chaos tests, before GA so reliability regressions fail the build.",
+    "P2 — Extend ActorStateMachineTests to explicitly enumerate all 8 CommandStatus stages (4 non-terminal + 4 terminal) for audit completeness.",
+    "P2 — Add a CI job that runs Jaeger/Tempo containers and asserts OTLP spans are received (close NFR31 PARTIAL gap)."
   ],
-  "summary": "Reliability posture is LOW risk for core operations — excellent error handling (10 handlers), full observability (OTel + structured logs + health checks), robust fault tolerance (persist-then-publish + DAPR resiliency). CONCERNS around disaster recovery (undefined RTO/RPO, untested backup/restore) and availability validation (99.9% target untested)."
+  "summary": "Reliability is architecturally strong: zero-event-loss (NFR22), deterministic replay (NFR23), at-least-once delivery (NFR24), no-duplicate-persist on crash (NFR25), and 409 on concurrency (NFR26) are all PASS with concrete unit + integration + chaos evidence. The GA risk concentrates in disaster recovery — GAP-14 defers RTO/RPO, failover, and backup immutability with no compensating tests; combined with Tier-3 chaos tests running continue-on-error in CI, operational resilience is under-tested at the topology layer. Recommend gating GA on defining RTO/RPO, adding a restore-integrity test, and hardening the CI reliability signal."
 }

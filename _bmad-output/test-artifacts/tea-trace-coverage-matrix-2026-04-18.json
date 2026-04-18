@@ -1,0 +1,102 @@
+{
+  "phase": "PHASE_1_COMPLETE",
+  "generated_at": "2026-04-18T00:00:00Z",
+  "project": "Hexalith.EventStore",
+  "scope": "full-repo-re-trace",
+  "coverage_statistics": {
+    "total_requirements": 128,
+    "fully_covered": 98,
+    "partially_covered": 18,
+    "unit_only": 0,
+    "uncovered": 3,
+    "not_testable": 9,
+    "effective_covered": 107,
+    "full_coverage_percentage": 76.6,
+    "effective_coverage_percentage": 83.6,
+    "priority_breakdown": {
+      "P0": { "total": 81, "full": 69, "partial": 8, "none": 0, "not_testable": 4, "full_pct": 85.2, "effective_pct": 90.1 },
+      "P1": { "total": 42, "full": 26, "partial": 10, "none": 3, "not_testable": 3, "full_pct": 61.9, "effective_pct": 69.0 },
+      "P2": { "total": 5, "full": 2, "partial": 1, "none": 0, "not_testable": 2, "full_pct": 40.0, "effective_pct": 80.0 },
+      "P3": { "total": 0, "full": 0, "partial": 0, "none": 0, "not_testable": 0, "full_pct": 100.0, "effective_pct": 100.0 }
+    }
+  },
+  "gap_analysis": {
+    "critical_gaps_p0_none": [],
+    "high_gaps_p1_none": [
+      { "id": "NFR17", "title": "≥10,000 active aggregates per instance", "recommendation": "Volume/scale test in perf lab" },
+      { "id": "NFR39", "title": "≥1,000 concurrent queries/sec", "recommendation": "Load test in perf lab" },
+      { "id": "NFR45", "title": "≥10 concurrent admin users without degradation", "recommendation": "Concurrent UI load test" }
+    ],
+    "partial_coverage_p0": [
+      { "id": "NFR1", "title": "Command submit <50ms p99", "gap": "Automated p99 benchmark missing from CI" },
+      { "id": "NFR2", "title": "End-to-end lifecycle <200ms p99", "gap": "Automated p99 benchmark missing from CI" },
+      { "id": "NFR3", "title": "Event append <10ms p99", "gap": "Automated p99 benchmark missing from CI" },
+      { "id": "NFR7", "title": "≥100 concurrent submissions/sec", "gap": "Sustained-load test deferred" },
+      { "id": "NFR16", "title": "Horizontal scaling via DAPR placement", "gap": "Multi-replica scale test deferred" },
+      { "id": "NFR27", "title": "Works with Redis + Postgres state stores", "gap": "Postgres variant not exercised in CI" },
+      { "id": "NFR35", "title": "ETag pre-check <5ms p99 warm", "gap": "p99 benchmark missing from CI" },
+      { "id": "NFR36", "title": "Query-actor cache hit <10ms p99", "gap": "p99 benchmark missing from CI" }
+    ],
+    "partial_coverage_p1": [
+      { "id": "NFR4", "title": "Actor cold activation <50ms p99" },
+      { "id": "NFR5", "title": "Pub/sub delivery <50ms p99" },
+      { "id": "NFR18", "title": "≥10 tenants without cross-interference" },
+      { "id": "NFR28", "title": "Works with RabbitMQ + ASB" },
+      { "id": "NFR31", "title": "OTLP export (Jaeger/Tempo)" },
+      { "id": "NFR37", "title": "Query cache miss <200ms p99" },
+      { "id": "NFR38", "title": "SignalR delivery <100ms p99" },
+      { "id": "NFR40", "title": "Admin API <500ms/2s p99" },
+      { "id": "NFR41", "title": "Admin UI <2s initial / <200ms updates" },
+      { "id": "NFR43", "title": "Admin MCP <1s p99" }
+    ],
+    "not_testable_items": [
+      { "id": "FR43", "priority": "P1", "validation": "DAPR component variants" },
+      { "id": "FR44", "priority": "P1", "validation": "Aspire publisher manifests + CD SDK container pipeline" },
+      { "id": "FR64", "priority": "P2", "validation": "Documentation guidance" },
+      { "id": "NFR8", "priority": "P2", "validation": "DAPR infrastructure property" },
+      { "id": "NFR9", "priority": "P0", "validation": "TLS — deployment property" },
+      { "id": "NFR14", "priority": "P0", "validation": "Secret scanning + code review" },
+      { "id": "NFR21", "priority": "P0", "validation": "Production SLO; chaos tests cover failure modes" },
+      { "id": "NFR29", "priority": "P0", "validation": "Validated by DAPR component variant files" },
+      { "id": "NFR32", "priority": "P1", "validation": "Aspire publisher manifests" }
+    ]
+  },
+  "coverage_heuristics": {
+    "endpoints_without_tests": [],
+    "auth_missing_negative_paths": [],
+    "happy_path_only_criteria": [],
+    "counts": {
+      "endpoints_without_tests": 0,
+      "auth_missing_negative_paths": 0,
+      "happy_path_only_criteria": 0
+    }
+  },
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "action": "Add perf-lab automation for p99 NFR gates (NFR1/2/3/7/16/27/35/36 partial, NFR17/39/45 missing)",
+      "rationale": "Only measured NFR gap across all 21 epics; FR side is 100% covered on P0.",
+      "target_workflow": "*nfr-assess + dedicated perf-lab job"
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Exercise Postgres state store variant in scheduled CI nightly (NFR27)",
+      "rationale": "Default Redis path tested; Postgres variant exists in dapr/ but not CI-run."
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Add scheduled RabbitMQ + Azure Service Bus verification runs (NFR28)",
+      "rationale": "Variants configured; ensure DAPR-agnostic claim stays testable."
+    },
+    {
+      "priority": "LOW",
+      "action": "Document TLS/secret-scan/chaos-coverage as NOT-TESTABLE validators in docs",
+      "rationale": "Avoid recurring audit questions on NFR9/14/21/29/32."
+    },
+    {
+      "priority": "LOW",
+      "action": "Run /bmad:tea:test-review on latest +1,104 test delta to audit quality",
+      "rationale": "27% growth in methods since last trace; flakiness/duplication check recommended."
+    }
+  ]
+}

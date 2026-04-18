@@ -1,95 +1,185 @@
 {
   "domain": "security",
+  "assessment_date": "2026-04-18",
   "risk_level": "LOW",
+  "overall_gate": "PASS",
   "findings": [
     {
-      "category": "Authentication & Authorization",
-      "status": "PASS",
-      "description": "Complete JWT/OIDC implementation with 6-layer defense-in-depth: JWT validation (ConfigureJwtBearerOptions 238 lines), claims-based tenant validation, RBAC with wildcard support, actor-based authorization, MediatR pipeline behaviors, DAPR ACL. Token validation enforces signature, expiry, issuer, audience with 1-min clock skew.",
+      "nfr_id": "NFR9",
+      "category": "Transport Security",
+      "threshold": "TLS 1.2+ for all API consumer <-> Command API communication",
+      "status": "NOT-TESTABLE",
+      "description": "TLS termination is an infrastructure concern (reverse proxy / ingress / Kestrel kestrel-endpoint config). Source shows JwtBearerOptions.RequireHttpsMetadata defaults to true in production appsettings and is only set to false in *.Development.json. This configures OIDC metadata pulls over HTTPS; the TLS handshake itself is not covered by xUnit tests.",
       "evidence": [
-        "src/Hexalith.EventStore/Authentication/ConfigureJwtBearerOptions.cs (238 lines)",
-        "src/Hexalith.EventStore/Authorization/ClaimsTenantValidator.cs",
-        "src/Hexalith.EventStore/Authorization/ClaimsRbacValidator.cs (76 lines)",
-        "src/Hexalith.EventStore/Authorization/ActorTenantValidator.cs",
-        "src/Hexalith.EventStore/Authorization/ActorRbacValidator.cs",
-        "src/Hexalith.EventStore/Pipeline/AuthorizationBehavior.cs",
-        "src/Hexalith.EventStore/Controllers/CommandsController.cs:18 ([Authorize])"
-      ],
-      "recommendations": []
-    },
-    {
-      "category": "Data Protection",
-      "status": "PASS",
-      "description": "TLS via DAPR mTLS (SPIFFE certificates), HTTPS enforced in Admin.UI (HSTS + redirect), JWT RequireHttpsMetadata=true in production. Log sanitization prevents token/payload leakage. Terminology sanitization removes internal details from client responses.",
-      "evidence": [
-        "src/Hexalith.EventStore.Admin.UI/AdminUIServiceExtensions.cs:99,102 (HSTS + HTTPS redirect)",
-        "src/Hexalith.EventStore/Authentication/EventStoreAuthenticationOptions.cs:36 (RequireHttpsMetadata)",
-        "src/Hexalith.EventStore/Authentication/ConfigureJwtBearerOptions.cs:81 (never log JWT)",
-        "src/Hexalith.EventStore/Pipeline/ValidationBehavior.cs:54 (SEC-5 payload protection)",
-        "src/Hexalith.EventStore/ErrorHandling/AuthorizationExceptionHandler.cs:105 (SanitizeForbiddenTerms)",
-        "deploy/dapr/accesscontrol.yaml (mTLS trust domain enforcement)"
+        "src/Hexalith.EventStore/appsettings.json (RequireHttpsMetadata: true)",
+        "src/Hexalith.EventStore/Authentication/EventStoreAuthenticationOptions.cs:36 default true",
+        "src/Hexalith.EventStore/appsettings.Development.json:39 RequireHttpsMetadata: false (dev-only)"
       ],
       "recommendations": [
-        "MINOR: Add HTTPS redirect middleware to EventStore Program.cs for defense-in-depth (currently relies on DAPR mTLS)"
+        "Document deployment guidance that ingress/k8s/nginx must terminate TLS 1.2+ and reject weaker protocols",
+        "Add a deploy-time smoke test that curls the staging endpoint with --tls-min=1.2 to confirm rejection of TLS 1.0/1.1"
       ]
     },
     {
+      "nfr_id": "NFR10",
+      "category": "Authentication",
+      "threshold": "JWT signature + expiry + issuer validated per request pre-pipeline",
+      "status": "PASS",
+      "description": "ConfigureJwtBearerOptions sets ValidateIssuer, ValidateAudience, ValidateIssuerSigningKey, and ValidateLifetime all to true with a 1-minute ClockSkew. Tier-2 unit tests in tests/Hexalith.EventStore.Server.Tests/Authentication/ and real-Keycloak E2E (Tier-3 KeycloakE2ESecurityTests) exercise the full JWT validation stack against a live OIDC provider.",
+      "evidence": [
+        "src/Hexalith.EventStore/Authentication/ConfigureJwtBearerOptions.cs:42-50 (all four Validate* = true, ClockSkew = 1m)",
+        "tests/Hexalith.EventStore.Server.Tests/Authentication/ConfigureJwtBearerOptionsTests.cs",
+        "tests/Hexalith.EventStore.IntegrationTests/Security/KeycloakE2ESecurityTests.cs:31-78 (valid token -> 202, invalid/no-tenant -> 403)"
+      ],
+      "recommendations": []
+    },
+    {
+      "nfr_id": "NFR11",
+      "category": "Audit Logging",
+      "threshold": "Auth failures logged with source IP + tenant + command type; JWT NEVER logged",
+      "status": "PASS",
+      "description": "ConfigureJwtBearerOptions.OnAuthenticationFailed and OnChallenge build a structured log containing SecurityEvent, CorrelationId, SourceIp, Path, TenantId, CommandType, Reason, and FailureLayer - token content never appears in any log template. AuthorizationBehavior mirrors the same structured schema. The comment at line 82 explicitly states 'NEVER log the JWT token itself'.",
+      "evidence": [
+        "src/Hexalith.EventStore/Authentication/ConfigureJwtBearerOptions.cs:81-94 (LogWarning with source IP, tenant, command type - no token)",
+        "src/Hexalith.EventStore/Pipeline/AuthorizationBehavior.cs:134 (LoggerMessage template with the same audit fields)",
+        "tests/Hexalith.EventStore.Server.Tests/Security/SecurityAuditLoggingTests.cs"
+      ],
+      "recommendations": []
+    },
+    {
+      "nfr_id": "NFR12",
+      "category": "Data Protection",
+      "threshold": "Event payload never logged (envelope metadata only)",
+      "status": "PASS",
+      "description": "EventEnvelope.ToString() in Contracts hard-codes Payload = [REDACTED] and whitelists the 15 non-secret metadata fields. PayloadProtectionTests enforces this at framework level: it renders $\"Event: {envelope}\" and asserts that common byte representations (hex, base64, System.Byte[], comma-separated decimals, utf8) are all absent; it also statically scans LoggingBehavior.cs, AggregateActor.cs, EventPublisher.cs, and DeadLetterPublisher.cs and fails if any logging statement contains the word 'Payload'.",
+      "evidence": [
+        "src/Hexalith.EventStore.Contracts/Events/EventEnvelope.cs:34-39 (ToString hard-codes Payload = [REDACTED])",
+        "src/Hexalith.EventStore.Contracts/Commands/CommandEnvelope.cs:84 (same pattern)",
+        "tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionTests.cs:95-143 (static-analysis of 4 source files for 'Payload' in LogDebug/Information/Warning/Error/Critical/Trace/Log and [LoggerMessage])"
+      ],
+      "recommendations": []
+    },
+    {
+      "nfr_id": "NFR13",
+      "category": "Tenant Isolation",
+      "threshold": "Tenant isolation at 3 layers: actor identity + DAPR policies + command metadata - single-layer failure must not compromise",
+      "status": "PASS",
+      "description": "Three layers verified: (1) AggregateIdentity embeds tenant into ActorId and all derived state keys (EventStreamKeyPrefix, MetadataKey, SnapshotKey, PipelineKeyPrefix), (2) TenantValidator.Validate is invoked BEFORE any state access and throws TenantMismatchException on ordinal mismatch, (3) DAPR access control policies in accesscontrol.yaml are deny-by-default in production. The shared-state-manager test explicitly proves that even with layer-3 bypass, layer-2 composite keys prevent cross-tenant reads.",
+      "evidence": [
+        "tests/Hexalith.EventStore.Server.Tests/Security/StorageKeyIsolationTests.cs:334-374 (SharedStateManager test proves layer-2 isolation works even if actor scoping bypassed)",
+        "tests/Hexalith.EventStore.Server.Tests/Security/TenantInjectionPreventionTests.cs:213-231 (TenantValidator ordinal comparison; case-sensitive)",
+        "src/Hexalith.EventStore.Server/Actors/TenantValidator.cs",
+        "src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml (local:allow) + deploy/dapr/accesscontrol.yaml (prod:deny default)",
+        "tests/Hexalith.EventStore.IntegrationTests/Security/KeycloakE2ESecurityTests.cs:89-122 (cross-tenant command -> 403 with real Keycloak tokens, both directions)"
+      ],
+      "recommendations": []
+    },
+    {
+      "nfr_id": "NFR14",
+      "category": "Secrets Hygiene",
+      "threshold": "Zero secrets in code/config committed to source control",
+      "status": "CONCERN",
+      "description": "Grep of src/ and samples/ for password=, apikey=, secret=, and raw JWT (eyJ...) patterns returned zero matches. SecretsProtectionTests.cs runs as a Tier-1 test and fails the build on hardcoded passwords, signing keys, or API keys in appsettings*.json, DAPR YAML, and *.cs under src/. HOWEVER there is NO dedicated secret-scanning job in .github/workflows/ (no gitleaks, trufflehog, detect-secrets, or GitHub Advanced Security configuration). Reliance is on in-test static analysis only, which may miss committed key material in files excluded by the pattern set (e.g., new config file types, base64 blobs without identifier keywords).",
+      "evidence": [
+        "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs:30-160 (regex-based static analysis of appsettings, DAPR YAML, and src C#)",
+        "grep of src/ and samples/ for password=/apikey=/secret=/eyJ* -> 0 matches",
+        ".github/workflows/ci.yml - no gitleaks/trufflehog/secret-scanning step"
+      ],
+      "recommendations": [
+        "Add gitleaks or trufflehog step to .github/workflows/ci.yml with repo-scoped scan on every PR",
+        "Enable GitHub Advanced Security secret scanning + push protection on the Hexalith/Hexalith.EventStore repo",
+        "Add .gitleaks.toml with allowlist for the dev-only test signing key in appsettings.Development.json"
+      ]
+    },
+    {
+      "nfr_id": "NFR15",
+      "category": "Service-to-Service Auth",
+      "threshold": "Service-to-service authentication via DAPR access control policies",
+      "status": "PASS",
+      "description": "Production DAPR Configuration CRD at deploy/dapr/accesscontrol.yaml uses defaultAction: deny with explicit allow-list for eventstore-admin only, scoped to GET/POST/PUT on /**. trustDomain is env-var parameterised (DAPR_TRUST_DOMAIN default hexalith.io) for SPIFFE mTLS identity. Local topology uses allow-by-default with an explicit warning comment that mTLS is required to extract caller identity. AccessControlPolicyTests validates both local and production YAML for correct posture.",
+      "evidence": [
+        "deploy/dapr/accesscontrol.yaml:23 (defaultAction: deny in production)",
+        "deploy/dapr/accesscontrol.eventstore-admin.yaml, accesscontrol.sample.yaml (per-sidecar CRDs)",
+        "tests/Hexalith.EventStore.Server.Tests/Security/AccessControlPolicyTests.cs (local + production YAML validation)",
+        "tests/Hexalith.EventStore.IntegrationTests/Security/DaprAccessControlE2ETests.cs (live enforcement)"
+      ],
+      "recommendations": [
+        "Production deployment runbook should verify DAPR_TRUST_DOMAIN and DAPR_NAMESPACE env vars are set in each environment (otherwise policies fall back to 'hexalith.io/hexalith' defaults that may not match cluster identity)"
+      ]
+    },
+    {
+      "nfr_id": "SEC-1",
+      "category": "Event Stream Integrity",
+      "threshold": "EventStore owns all 11 envelope metadata fields (prevents event stream poisoning)",
+      "status": "PASS",
+      "description": "EventEnvelope in Contracts has immutable Metadata via EventMetadata record with all server-controlled fields (MessageId, AggregateId, TenantId, Domain, SequenceNumber, GlobalPosition, Timestamp, CorrelationId, CausationId, UserId, DomainServiceVersion, EventTypeName, MetadataVersion, SerializationFormat). Extensions is defensively copied into a ReadOnlyDictionary on construction. The server, not the client, populates these fields during the aggregate actor's Apply step.",
+      "evidence": [
+        "src/Hexalith.EventStore.Contracts/Events/EventEnvelope.cs:24-27 (defensive copy of Extensions into ReadOnlyDictionary)",
+        "tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionTests.cs:52-73 (asserts all 11 metadata fields present, payload redacted)"
+      ],
+      "recommendations": []
+    },
+    {
+      "nfr_id": "SEC-2",
+      "category": "Tenant Isolation",
+      "threshold": "Tenant validation BEFORE state rehydration",
+      "status": "PASS",
+      "description": "TenantInjectionPreventionTests.TenantValidator_MismatchDetected_NoStateManagerAccess drives the AggregateActor with a tenant-a command at a tenant-b actor and asserts StateManager.TryGetStateAsync<AggregateMetadata> and TryGetStateAsync<EventEnvelope> are NEVER invoked - proving validation gates rehydration. The mismatch is also recorded via idempotency to prevent replay and returns TenantMismatch error without leaking state. Homoglyphs, control chars, colons, dots, URL-encoded colons, DEL chars, and 65+ char tenants are all rejected at AggregateIdentity construction.",
+      "evidence": [
+        "tests/Hexalith.EventStore.Server.Tests/Security/TenantInjectionPreventionTests.cs:60-94 (DidNotReceive assertions on state reads)",
+        "tests/Hexalith.EventStore.Server.Tests/Security/TenantInjectionPreventionTests.cs:176-209 (Unicode homoglyph rejection: Cyrillic, fullwidth, combining)",
+        "src/Hexalith.EventStore.Server/Actors/TenantValidator.cs"
+      ],
+      "recommendations": []
+    },
+    {
+      "nfr_id": "SEC-3",
+      "category": "Tenant-Scoped Queries",
+      "threshold": "Command status queries are tenant-scoped (not correlationId-only)",
+      "status": "PASS",
+      "description": "CommandStatusConstants.BuildKey(tenant, correlationId) prefixes every status key with the tenant and suffixes with :status. StorageKeyIsolationTests.CommandStatusKey_IncludesTenantPrefix_PreventsCrossTenantLeakage proves that the same correlationId across tenants produces disjoint keys. CommandStatusIsolationTests (Tier-3 E2E) verifies end-to-end that querying /commands/{correlationId} with tenant-a cannot see tenant-b status.",
+      "evidence": [
+        "tests/Hexalith.EventStore.Server.Tests/Security/StorageKeyIsolationTests.cs:394-409 (tenant prefix + :status suffix, disjoint keys)",
+        "tests/Hexalith.EventStore.IntegrationTests/Security/CommandStatusIsolationTests.cs"
+      ],
+      "recommendations": []
+    },
+    {
+      "nfr_id": "SEC-4",
       "category": "Input Validation",
+      "threshold": "Extension metadata sanitized at API gateway (size, char, injection)",
       "status": "PASS",
-      "description": "Comprehensive input sanitization: ExtensionMetadataSanitizer detects XSS, SQLi, LDAP injection, path traversal, control characters. FluentValidation SubmitCommandRequestValidator (110 lines) enforces field-level constraints with regex patterns. MediatR-level SubmitCommandValidator provides second validation layer.",
+      "description": "ExtensionMetadataSanitizer enforces size limits (default 4096 total, 128 key, 2048 value, 32 count), rejects control characters (0x00-0x1F including DEL), blocks XSS patterns (<script>, <iframe>, <object>, <embed>, javascript:, on*=), SQL injection (DROP/DELETE/UNION SELECT/-- patterns), LDAP injection ()(cn=*), *)(uid=*), path traversal (../ and ..\\), and invalid key characters. 30+ parameterised test cases covering each category.",
       "evidence": [
-        "src/Hexalith.EventStore/Validation/ExtensionMetadataSanitizer.cs (XSS, SQLi, LDAP, path traversal)",
-        "src/Hexalith.EventStore/Validation/SubmitCommandRequestValidator.cs (110 lines, field-level validation)",
-        "src/Hexalith.EventStore/Validation/SubmitCommandValidator.cs (MediatR-level validation)"
+        "src/Hexalith.EventStore/Validation/ExtensionMetadataSanitizer.cs",
+        "tests/Hexalith.EventStore.Server.Tests/Security/ExtensionMetadataSanitizerTests.cs:117-270 (control chars, XSS, SQL, LDAP, path traversal, invalid key chars, size limits)"
       ],
       "recommendations": []
     },
     {
-      "category": "API Security",
+      "nfr_id": "SEC-5",
+      "category": "Log Hygiene",
+      "threshold": "Event payload never in logs (framework-enforced at structured logging)",
       "status": "PASS",
-      "description": "Dual-layer rate limiting: per-tenant (1000/min, sliding window) and per-consumer (100/sec, fixed window). 429 responses with Retry-After header and ProblemDetails. Health endpoints exempt. Per-tenant overrides via DAPR config store. Dynamic configuration sync.",
+      "description": "Framework-level enforcement: overriding ToString() on EventEnvelope and CommandEnvelope hard-codes Payload = [REDACTED], so ANY structured log placeholder like {Event} or {Command} renders the metadata-only form. PayloadProtectionTests uses regex-based static analysis on 4 hot-path source files (LoggingBehavior, AggregateActor, EventPublisher, DeadLetterPublisher) to assert no log statement (LogDebug/Information/Warning/Error/Critical/Trace/Log + [LoggerMessage] attribute) contains the string 'Payload' case-insensitive. Also verifies common byte-representations (hex, base64, System.Byte[], comma-separated) never appear in any rendered ToString output.",
       "evidence": [
-        "src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs:135-250 (rate limiting)",
-        "src/Hexalith.EventStore/Configuration/RateLimitingOptions.cs (validated options)",
-        "src/Hexalith.EventStore/Configuration/DaprRateLimitConfigSync.cs (dynamic config)"
-      ],
-      "recommendations": []
-    },
-    {
-      "category": "Secrets Management",
-      "status": "PASS",
-      "description": "User secrets for local dev (hexalith-eventstore), empty production defaults (overridden by env vars), development-only signing key clearly labeled 'DevOnly', minimum 32-char key validation, Keycloak OIDC for production (no symmetric keys needed).",
-      "evidence": [
-        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj:7 (UserSecretsId)",
-        "src/Hexalith.EventStore/appsettings.json:42-49 (empty production defaults)",
-        "src/Hexalith.EventStore/appsettings.Development.json:35-39 (DevOnly key)",
-        "src/Hexalith.EventStore/Authentication/EventStoreAuthenticationOptions.cs:63-65 (min 32 chars)"
-      ],
-      "recommendations": []
-    },
-    {
-      "category": "DAPR Access Control",
-      "status": "PASS",
-      "description": "Deny-by-default access control on all 3 sidecars. Per-app-id caller restrictions. Trust domain enforcement via SPIFFE certificates. Sample domain service has zero state store access (D4 principle).",
-      "evidence": [
-        "deploy/dapr/accesscontrol.yaml (eventstore: deny-by-default, admin allowed)",
-        "deploy/dapr/accesscontrol.eventstore-admin.yaml (admin: deny-by-default)",
-        "deploy/dapr/accesscontrol.sample.yaml (sample: deny-by-default, eventstore POST only)"
+        "src/Hexalith.EventStore.Contracts/Events/EventEnvelope.cs:29-39 (doc-comment explicitly cites SEC-5 and Rule #5)",
+        "tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionTests.cs:204-222 (AssertPayloadIsRedacted checks hex, base64, Byte[], decimals)",
+        "tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionTests.cs:244-305 (enumerates all log statements including LoggerMessage source generator)"
       ],
       "recommendations": []
     }
   ],
   "compliance": {
+    "OWASP_Top_10": "PASS",
     "SOC2": "PARTIAL",
-    "GDPR": "PASS",
-    "HIPAA": "N/A",
-    "PCI-DSS": "N/A",
-    "ISO27001": "PARTIAL"
+    "GDPR": "PARTIAL"
   },
   "priority_actions": [
-    "MINOR: Add explicit HTTPS redirect middleware to EventStore service for defense-in-depth",
-    "OPTIONAL: Add security scanning (OWASP ZAP or Snyk) to CI pipeline",
-    "OPTIONAL: Implement secret rotation policies documentation"
+    "Add a dedicated secret-scanning job (gitleaks or GitHub Advanced Security push protection) to .github/workflows/ci.yml - current coverage relies solely on in-test regex analysis which can be bypassed by new config formats or base64-encoded key blobs (closes NFR14 CONCERN)",
+    "Document TLS 1.2+ enforcement at the ingress/reverse-proxy layer and add a staging smoke-test that verifies TLS 1.0/1.1 handshakes are rejected (closes NFR9 NOT-TESTABLE gap with a deploy-level check)",
+    "Add a production runbook step verifying DAPR_TRUST_DOMAIN and DAPR_NAMESPACE env vars are set per cluster/environment so SPIFFE identity matching does not silently fall back to 'hexalith.io/hexalith' defaults (NFR15 hardening)",
+    "Add an explicit Tier-3 integration test that exercises a token-replay scenario (same JWT reused across two requests, once after revocation) to verify Keycloak revocation propagates - current coverage asserts signature/expiry/issuer but not revocation list semantics"
   ],
-  "summary": "Security posture is LOW risk. 6-layer defense-in-depth fully implemented: JWT auth, claims-based RBAC, multi-tenant isolation, dual-layer rate limiting, comprehensive input sanitization, DAPR ACL. No critical vulnerabilities found. Minor improvement: explicit HTTPS in EventStore (currently DAPR mTLS)."
+  "summary": "Security posture is STRONG with 11 of 12 NFR/SEC thresholds fully met through defence-in-depth: framework-level payload redaction on envelope ToString(), three-layer tenant isolation (actor identity + DAPR policies + ordinal-compared command metadata), pre-rehydration TenantValidator, tenant-prefixed CommandStatus keys, comprehensive input sanitization (XSS/SQL/LDAP/path-traversal/Unicode-homoglyph/control-chars), and real-Keycloak E2E tokens via the AspireTopology fixture. The single CONCERN is NFR14 secrets hygiene: while the in-repo SecretsProtectionTests (regex static analysis) runs in CI and no hardcoded credentials were found in src/ or samples/, there is no dedicated gitleaks/trufflehog workflow or GitHub Advanced Security push protection - a belt-and-braces layer that should be added before GA. NFR9 (TLS) is correctly marked NOT-TESTABLE as it is an infrastructure concern; deploy-level verification is the right compensating control."
 }

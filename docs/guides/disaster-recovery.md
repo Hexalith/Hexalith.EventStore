@@ -6,6 +6,28 @@ This page covers backup strategies, recovery procedures, and data verification f
 
 > **Prerequisites:** [Prerequisites and Local Dev Environment](../getting-started/prerequisites.md), [Deployment Progression Guide](deployment-progression.md)
 
+## v1 GA Scope and SLA Carve-Out
+
+Hexalith.EventStore v1 ships **without a product-level disaster recovery SLA**. The framework guarantees zero loss for committed events at the application layer (persist-then-publish, write-once event keys, checkpointed state machine — see [Reliability NFRs](../../_bmad-output/planning-artifacts/prd.md)), but **infrastructure-level RTO/RPO is the operator's responsibility** and inherits the characteristics of the chosen DAPR state store backend.
+
+What v1 provides:
+
+- **Backend-native recovery primitives** — fully documented per backend in this guide (Redis RDB/AOF, PostgreSQL WAL/PITR, Azure Cosmos DB continuous backup).
+- **Application-layer integrity guarantees** — every committed event is durable in the state store before any side effect; restoring the state store deterministically restores the system.
+- **Operational runbook** — four scenario-driven recovery procedures with explicit verification steps (see [Disaster Recovery Runbook](#disaster-recovery-runbook)).
+- **Data verification toolkit** — SQL queries that detect sequence gaps, metadata drift, and tenant leakage post-restore.
+
+What v1 explicitly **does not** provide:
+
+- **Contractual RTO/RPO** — the targets in the table below are *operator-achievable* with correct backend configuration; they are not guaranteed by the EventStore product.
+- **Automated failover orchestration** — multi-region/AZ failover relies on the underlying backend's capabilities (e.g. Cosmos DB automatic failover, PostgreSQL replication failover); EventStore does not automate cross-region promotion.
+- **Backup immutability enforcement** — operators must configure write-once protection (S3 Object Lock, Azure immutable blobs, PostgreSQL WAL archive write-protection) at the infrastructure layer.
+- **Automated restore-integrity testing** — EventStore ships verification SQL queries; periodic snapshot→restore→replay→hash drills are an operator process.
+
+This carve-out closes architecture **GAP-14** by making the v1 scope explicit. **v2 will introduce** a product-level DR SLA, automated multi-region failover, an automated restore-integrity test in the Tier-3 chaos suite, and backup-immutability validation — see the [roadmap](../community/roadmap.md).
+
+> **Customer guidance:** If your deployment requires a contractual DR SLA for v1, treat the operator-provided RTO/RPO targets as a *capability statement*, not a *commitment*, and validate them in your environment before signing off. For regulated workloads requiring guaranteed RTO/RPO, defer adoption to v2 or contract directly for a managed-service tier.
+
 ## Understanding the Data Model
 
 Before planning your backup strategy, you need to understand what the event store persists and what is critical for recovery.
@@ -424,6 +446,81 @@ Inspect dead-letter topics for failed messages:
 ```
 
 Dead-letter messages retain the full CloudEvents 1.0 envelope, including the original event data, correlation ID, and failure reason. Process them by fixing the underlying subscriber issue and then resubmitting.
+
+## Backup Immutability (Operator Responsibility)
+
+A backup is only as trustworthy as its protection against tampering and accidental deletion. Ransomware, insider threats, and operator error can destroy mutable backups in seconds — making the original event store unrecoverable. Configure write-once protection at the storage layer for every production backup destination.
+
+> **v1 scope reminder:** EventStore does not enforce immutability — see [v1 GA Scope and SLA Carve-Out](#v1-ga-scope-and-sla-carve-out). The configuration below is the operator's responsibility, and v2 will introduce a startup-time check that verifies the configured backup destination has immutability enabled.
+
+### PostgreSQL WAL Archive Protection
+
+WAL archives are continuously written by PostgreSQL and must remain unmodified once archived. Two layers of protection are recommended:
+
+1. **Filesystem-level write-once permissions.** After a WAL file lands in the archive directory, strip write permission so neither the database user nor backup tooling can mutate it:
+
+    ```bash
+    # In postgresql.conf — script runs after WAL file is archived
+    archive_command = 'cp %p /archive/wal/%f && chmod 0440 /archive/wal/%f'
+    ```
+
+2. **Off-host immutable storage.** Replicate WAL files to immutable object storage as soon as they are written:
+
+    - **AWS S3 with Object Lock (Compliance mode):** prevents deletion until the retention period expires, even by the root account.
+
+        ```bash
+        $ aws s3api put-object-lock-configuration \
+            --bucket eventstore-wal-archive \
+            --object-lock-configuration '{"ObjectLockEnabled":"Enabled","Rule":{"DefaultRetention":{"Mode":"COMPLIANCE","Days":30}}}'
+        ```
+
+    - **Azure Blob Storage with immutable policies (legal hold or time-based):**
+
+        ```bash
+        $ az storage container immutability-policy create \
+            --resource-group <rg> --account-name <storage> \
+            --container-name wal-archive --period 30
+        ```
+
+3. **Base backups (`pg_basebackup` output)** should land in the same immutable destination — the WAL archive alone is insufficient without a base.
+
+### Azure Cosmos DB Backup Immutability
+
+Cosmos DB **continuous backup** is automatically write-protected by the Azure platform — restore points within the retention window cannot be deleted by operators. To harden further:
+
+- **Enforce continuous backup at account creation** (not periodic) and disable downgrade via Azure Policy:
+
+    ```bash
+    $ az cosmosdb update \
+        --name <cosmos-account> --resource-group <rg> \
+        --backup-policy-type Continuous \
+        --continuous-tier Continuous30Days
+    ```
+
+- **Lock the resource group** to prevent account deletion:
+
+    ```bash
+    $ az lock create --name "eventstore-cosmos-no-delete" \
+        --resource-group <rg> --lock-type CanNotDelete
+    ```
+
+- For **periodic backup mode** (default), backups are platform-managed but invisible to the customer — restore requires an Azure support request. Treat this as a *last-resort* tier and prefer continuous backup for production.
+
+### Redis Backup Immutability (Development Only)
+
+Redis backups (`dump.rdb`, `appendonly.aof`) are file copies and inherit zero immutability protection. Because Redis is **not recommended for production event store data** (see the [RTO/RPO table](#rtorpo-considerations)), no operational immutability requirement applies. If you must persist development backups for regression testing, store them under filesystem write-once permissions (`chmod 0440`) on a separate host.
+
+### Restore-Integrity Verification
+
+The [Data Verification Procedures](#data-verification-procedures) section provides SQL queries to detect sequence gaps, metadata drift, and tenant leakage **after** a restore. For v1, operators should run these queries as part of every restore drill. Run a full restore drill in a non-production environment at least quarterly:
+
+1. Snapshot a known-good production backup
+2. Restore into an isolated environment (separate network, separate DAPR sidecar)
+3. Run all queries from the [Event Stream Integrity Checks](#event-stream-integrity-checks) section
+4. Verify a sample of aggregates rehydrates and accepts a no-op command
+5. Compare a SHA-256 hash of the restored event payload set against the source
+
+> v2 will automate steps 1-5 as a Tier-3 chaos test.
 
 ## Disaster Recovery Runbook
 

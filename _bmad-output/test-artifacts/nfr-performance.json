@@ -1,79 +1,294 @@
 {
   "domain": "performance",
+  "assessment_date": "2026-04-18",
   "risk_level": "HIGH",
+  "overall_gate": "CONCERNS",
   "findings": [
     {
-      "category": "Response Times",
+      "nfr_id": "NFR1",
+      "path": "command",
+      "threshold": "p99 <= 50ms command submission (REST -> 202 Accepted, normal load)",
       "status": "CONCERN",
-      "description": "Comprehensive latency targets defined (NFR1-8, NFR35-39) but NO load test evidence exists. Targets: command submission <50ms p99, E2E lifecycle <200ms p99, event append <10ms p99, actor activation <50ms p99, ETag pre-check <5ms p99, query cache hit <10ms p99. All targets are code-documented but unvalidated.",
       "evidence": [
-        "PRD NFR1-NFR8: Detailed p99 targets defined",
-        "PRD NFR35-NFR39: Query pipeline p99 targets defined",
-        "NO k6, BenchmarkDotNet, or load test results found in repository",
-        "NO performance test scripts in .github/workflows/ or tests/"
+        "tests/Hexalith.EventStore.Server.Tests/Controllers/CommandStatusControllerTests.cs - functional-only, no latency assertions",
+        "tests/Hexalith.EventStore.IntegrationTests/ContractTests/CommandLifecycleTests.cs - E2E contract tests, no p99 percentile calculation"
       ],
+      "load_validation": "absent",
+      "description": "No controller-level bounded-timing assertion for command submission and no sustained-load harness. Telemetry wiring (EventStoreActivitySource.ProcessCommand, Submit) is in place for in-prod measurement, but pre-release latency under the stated 100 cmd/sec envelope is uncharacterized.",
       "recommendations": [
-        "CRITICAL: Implement k6 load test suite validating NFR1-NFR8 targets",
-        "CRITICAL: Add BenchmarkDotNet microbenchmarks for event append (NFR3) and actor activation (NFR4)",
-        "Add performance regression tests to CI pipeline (threshold-based pass/fail)",
-        "Establish baselines before GA release"
+        "Add a dedicated k6/NBomber scenario hitting /commands at 100 cmd/sec with p99 <= 50ms assertion",
+        "Tag histogram metric eventstore.command.submit.duration and alert on p99 > 50ms in staging",
+        "Stand up a CI perf-lab job (separate workflow) that runs the scenario against the Aspire topology"
       ]
     },
     {
-      "category": "Throughput",
+      "nfr_id": "NFR2",
+      "path": "command",
+      "threshold": "p99 <= 200ms E2E command lifecycle (API receipt -> pub/sub event published)",
       "status": "CONCERN",
-      "description": "Target: 100 cmd/sec/instance (NFR7), 1000 queries/sec (NFR39). Architecture supports horizontal scaling via DAPR actor placement, but throughput has never been validated under load. DAPR sidecar overhead target (<2ms p99, NFR8) is untested.",
       "evidence": [
-        "PRD NFR7: 100 concurrent cmd/sec target",
-        "PRD NFR39: 1000 concurrent queries/sec target",
-        "PRD NFR8: DAPR overhead <2ms p99",
-        "Stateless architecture theoretically supports horizontal scaling",
-        "NO concurrent load testing performed"
+        "tests/Hexalith.EventStore.IntegrationTests/ContractTests/CommandLifecycleTests.cs - validates lifecycle correctness, not latency distribution"
       ],
+      "load_validation": "absent",
+      "description": "Lifecycle is functionally verified end-to-end, but no test measures the distribution of receipt-to-publish latencies under load. Without a load harness the 200ms p99 threshold is unvalidated.",
       "recommendations": [
-        "CRITICAL: Run k6 stress test with ramp-up to 100 cmd/sec per instance",
-        "Measure DAPR sidecar overhead in isolation",
-        "Test query pipeline at 1000 req/sec with ETag cache hit ratio measurement"
+        "Extend command-path load scenario to measure end-to-end span (EventStore.Submit -> EventStore.Events.EventsPublish) via OpenTelemetry traces",
+        "Export OTLP to a lab collector and compute p99 over >= 5 minute steady-state window"
       ]
     },
     {
-      "category": "Resource Usage",
+      "nfr_id": "NFR3",
+      "path": "command",
+      "threshold": "p99 <= 10ms event append (actor persist -> state store ack)",
       "status": "CONCERN",
-      "description": "Kubernetes resource limits defined (EventStore: 250m-1000m CPU, 256-512Mi RAM; Sample: 100m-500m CPU, 128-256Mi RAM) but no profiling evidence under load. Actor memory consumption untested for 10K+ active aggregates (NFR17).",
       "evidence": [
-        "samples/deploy/kubernetes/dapr-annotations-example.yaml (resource limits defined)",
-        "NO memory profiling under load",
-        "NO CPU profiling under sustained throughput"
+        "tests/Hexalith.EventStore.Server.Tests/Events/EventPersisterTests.cs - functional/correctness only, no timing assertion"
       ],
+      "load_validation": "absent",
+      "description": "EventPersister has unit coverage for sequence number integrity, concurrency conflict handling, and envelope construction, but no latency assertion. 10ms is aggressive and must be validated against the real DAPR state store under load.",
       "recommendations": [
-        "Profile memory under 10K active actors",
-        "Measure GC pressure during sustained command processing",
-        "Validate snapshot strategy prevents unbounded memory growth"
+        "Add BenchmarkDotNet micro-benchmark for EventPersister.PersistAsync against an in-memory IActorStateManager",
+        "Add an integration perf test against real DAPR state store (Redis) measuring ack latency under 100 cmd/sec"
       ]
     },
     {
-      "category": "Optimization",
-      "status": "PASS",
-      "description": "Caching architecture well-designed: ETag-based query caching with HTTP 304, self-routing ETag actors, projection change notification via SignalR, snapshot strategy for aggregate replay optimization (NFR19). DAPR resiliency policies provide connection pooling and retry optimization.",
+      "nfr_id": "NFR4",
+      "path": "command",
+      "threshold": "p99 <= 50ms actor cold activation (snapshot + tail events)",
+      "status": "CONCERN",
       "evidence": [
-        "ETag actors for query cache (PRD FR50-FR60)",
-        "Snapshot strategy bounds replay time (NFR19)",
-        "DAPR resiliency policies (resiliency.yaml)",
-        "ServiceDefaults AddStandardResilienceHandler() for HTTP clients"
+        "tests/Hexalith.EventStore.Server.Tests/Events/EventStreamReaderTests.cs:443 - sw.ElapsedMilliseconds.ShouldBeLessThan(50) for snapshot+20 tail events",
+        "tests/Hexalith.EventStore.Server.Tests/Events/EventStreamReaderTests.cs:481 - comparative timing (snapshot path <= full replay)",
+        "tests/Hexalith.EventStore.Server.Tests/Actors/ActorStateMachineTests.cs - functional pipeline-state checkpointing only, no cold-activation timing"
       ],
-      "recommendations": []
+      "load_validation": "bounded-timing-in-functional-test",
+      "description": "Single-sample stopwatch assertion with NSubstitute mock state manager is a micro-benchmark on mock I/O, not an NFR validation. Real cold activation involves DAPR state store reads for metadata + snapshot + tail events, plus actor runtime overhead. ActorStateMachineTests cover state machine correctness but do not time cold activation.",
+      "recommendations": [
+        "Replace mock-based timing with a BenchmarkDotNet benchmark against InMemoryStateManager at minimum",
+        "Add an integration test measuring the full AggregateActor OnActivateAsync against real DAPR, with p99 computed over >= 100 samples"
+      ]
+    },
+    {
+      "nfr_id": "NFR5",
+      "path": "command",
+      "threshold": "p99 <= 50ms pub/sub delivery (persistence -> subscriber delivery ack)",
+      "status": "CONCERN",
+      "evidence": [
+        "tests/Hexalith.EventStore.Server.Tests/Events/PersistThenPublishResilienceTests.cs - ordering/resilience only",
+        "tests/Hexalith.EventStore.IntegrationTests/EventStore/* - functional pub/sub contracts"
+      ],
+      "load_validation": "absent",
+      "description": "Pub/sub delivery is dominated by DAPR sidecar + broker (Redis/Kafka) which is untested for p99 latency in this repo. Telemetry activity EventStoreActivitySource.EventsPublish exists, enabling in-prod measurement.",
+      "recommendations": [
+        "Add integration perf scenario that publishes 1000+ events and measures persistence-timestamp-to-subscriber-receipt delta",
+        "Instrument subscriber receipt timestamp to compute one-way latency via trace correlation"
+      ]
+    },
+    {
+      "nfr_id": "NFR6",
+      "path": "command",
+      "threshold": "Full state reconstruction <= 100ms from 1,000 events (no snapshot)",
+      "status": "CONCERN",
+      "evidence": [
+        "tests/Hexalith.EventStore.Server.Tests/Events/EventStreamReaderTests.cs:152 - sw.ElapsedMilliseconds.ShouldBeLessThan(100) for 1000-event rehydration (single sample, NSubstitute mock)",
+        "tests/Hexalith.EventStore.Server.Tests/Events/SnapshotRehydrationTests.cs - correctness-only, InMemoryStateManager, no timing assertion"
+      ],
+      "load_validation": "bounded-timing-in-functional-test",
+      "description": "Traceability report rates this FULL but the actual evidence is a single-sample stopwatch in a mock-backed unit test, not a statistically sound benchmark. No StateRehydrationBenchmarkTests file exists in the repo (grep-confirmed). Downgraded from FULL to CONCERN per nfr-criteria (bounded-timing-in-functional-test maps to CONCERN when target is p99/quantile-based).",
+      "recommendations": [
+        "Create a BenchmarkDotNet project (e.g., perf/Hexalith.EventStore.Benchmarks) with a Rehydrate1000Events benchmark producing p50/p95/p99 statistics",
+        "Run benchmark in CI on main-branch pushes and track regression against baseline"
+      ]
+    },
+    {
+      "nfr_id": "NFR7",
+      "path": "command",
+      "threshold": ">= 100 cmd/sec per instance without latency breach",
+      "status": "CONCERN",
+      "evidence": [
+        "tests/Hexalith.EventStore.Server.Tests/Actors/BackpressureTests.cs - validates MaxPendingCommandsPerAggregate=100 backpressure behavior, not sustained throughput",
+        "tests/Hexalith.EventStore.Server.Tests/Actors/CachingProjectionActorTests.cs - functional caching only"
+      ],
+      "load_validation": "absent",
+      "description": "Backpressure logic is unit-tested but the actual sustained 100 cmd/sec throughput (the core scalability envelope) has never been measured. No k6/NBomber/Artillery script in the repo. This is the primary GA blocker for the command path.",
+      "recommendations": [
+        "Build an NBomber or k6 scenario that drives 100-200 cmd/sec across multiple aggregates for 10 minutes",
+        "Assert p99 latency does not breach NFR1/NFR2 bounds during sustained load",
+        "Measure CPU/memory saturation to establish instance right-sizing guidance"
+      ]
+    },
+    {
+      "nfr_id": "NFR8",
+      "path": "command",
+      "threshold": "p99 <= 2ms DAPR sidecar overhead per building block call",
+      "status": "NOT-TESTABLE",
+      "evidence": [
+        "No in-repo test can isolate DAPR sidecar overhead from application code"
+      ],
+      "load_validation": "absent",
+      "description": "DAPR infra concern - overhead is a property of the DAPR runtime itself and must be measured via DAPR metrics (dapr_http_server_latency or dapr_grpc_io_server_latency) in a running topology. Not testable from application test suite.",
+      "recommendations": [
+        "Scrape DAPR sidecar Prometheus metrics in staging and configure alert for p99 > 2ms per building block",
+        "Document this NFR as infra-owned in the NFR register"
+      ]
+    },
+    {
+      "nfr_id": "NFR35",
+      "path": "query",
+      "threshold": "p99 <= 5ms ETag pre-check (warm actor)",
+      "status": "CONCERN",
+      "evidence": [
+        "tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs:683-692 - 200-sample p99 calculation with 25-iteration warm-up, asserts p99 < 5ms"
+      ],
+      "load_validation": "bounded-timing-in-functional-test",
+      "description": "Best single piece of perf evidence in the repo - proper warm-up, 200-sample p99 percentile calculation. However, runs against ConstantETagService (no DAPR round-trip) and is single-threaded sequential invocation, so it validates only the controller+mediator pipeline overhead, not the real warm-actor ETag path under concurrent load.",
+      "recommendations": [
+        "Extend scenario to include real ETagService with DAPR state call for the 'warm actor' path",
+        "Add a concurrent variant (multiple threads) to catch contention issues"
+      ]
+    },
+    {
+      "nfr_id": "NFR36",
+      "path": "query",
+      "threshold": "p99 <= 10ms query cache hit",
+      "status": "CONCERN",
+      "evidence": [
+        "tests/Hexalith.EventStore.Server.Tests/Actors/CachingProjectionActorTests.cs - functional cache-hit/cache-miss logic only, no latency assertion"
+      ],
+      "load_validation": "absent",
+      "description": "Cache semantics are validated but not cache-hit latency distribution. 10ms is tight and depends heavily on serializer + actor reentrancy cost.",
+      "recommendations": [
+        "Add BenchmarkDotNet benchmark for cache-hit path with realistic projection payload sizes (1KB, 10KB, 100KB)",
+        "Assert p99 < 10ms for each payload bucket"
+      ]
+    },
+    {
+      "nfr_id": "NFR37",
+      "path": "query",
+      "threshold": "p99 <= 200ms query cache miss",
+      "status": "CONCERN",
+      "evidence": [
+        "tests/Hexalith.EventStore.Server.Tests/Actors/CachingProjectionActorTests.cs - functional rebuild path only, no timing",
+        "tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs - orchestration correctness only"
+      ],
+      "load_validation": "absent",
+      "description": "Cache miss triggers projection rebuild from event stream - cost scales with stream length. No test measures rebuild latency as a function of event count.",
+      "recommendations": [
+        "Parameterized benchmark: projection rebuild for streams of 10/100/1000/10000 events",
+        "Assert p99 <= 200ms for the target stream size (likely 100-500 events per snapshot boundary)"
+      ]
+    },
+    {
+      "nfr_id": "NFR38",
+      "path": "query",
+      "threshold": "p99 <= 100ms SignalR changed signal",
+      "status": "CONCERN",
+      "evidence": [
+        "tests/Hexalith.EventStore.Server.Tests/SignalR/SignalRProjectionChangedBroadcasterTests.cs:75 - 50-sample p99 calculation with warm-up, asserts p99 < 100ms"
+      ],
+      "load_validation": "bounded-timing-in-functional-test",
+      "description": "Proper p99 assertion but against a mocked IHubContext (NSubstitute) - measures only the broadcaster's dispatch overhead, not end-to-end publish-to-client delivery. Real SignalR transport (WebSocket) latency is untested.",
+      "recommendations": [
+        "Add integration test with real Kestrel + SignalR hub and WebSocket client, measuring server-emit to client-receive delta",
+        "Scale to 100+ concurrent subscribers to validate hub fanout cost"
+      ]
+    },
+    {
+      "nfr_id": "NFR39",
+      "path": "query",
+      "threshold": ">= 1000 concurrent queries/sec per instance",
+      "status": "FAIL",
+      "evidence": [
+        "No concurrent query load test exists in the repo"
+      ],
+      "load_validation": "absent",
+      "description": "Zero evidence for the query-path throughput envelope. This is the #1 query-path GA risk. Per nfr-criteria, a defined target with no evidence = FAIL (not CONCERN).",
+      "recommendations": [
+        "Build k6/NBomber scenario driving 1000 concurrent GET query requests/sec across mixed cache-hit and cache-miss ratios",
+        "Measure sustained throughput and CPU/memory at steady state",
+        "Required gate for GA - must demonstrate the envelope before production cutover"
+      ]
+    },
+    {
+      "nfr_id": "NFR40",
+      "path": "admin",
+      "threshold": "p99 Admin API - read <= 500ms, write <= 2s",
+      "status": "CONCERN",
+      "evidence": [
+        "tests/Hexalith.EventStore.Admin.Server.Tests/Controllers/AdminStreamsControllerTests.cs - functional only",
+        "tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprStorageServiceTests.cs - service correctness only"
+      ],
+      "load_validation": "absent",
+      "description": "Admin API controllers and services have functional coverage but no timing assertions. Targets are loose (500ms read, 2s write) and likely met in practice, but unvalidated.",
+      "recommendations": [
+        "Add lightweight load scenario (10 rps) targeting each Admin API endpoint with p99 assertion",
+        "Instrument admin spans via ActivitySource and alert on SLA breach in staging"
+      ]
+    },
+    {
+      "nfr_id": "NFR41",
+      "path": "admin",
+      "threshold": "Admin UI <= 2s initial, <= 200ms SignalR updates",
+      "status": "CONCERN",
+      "evidence": [
+        "tests/Hexalith.EventStore.Admin.UI.Tests/Pages/*.cs - bunit render assertions, no wall-clock timing",
+        "tests/Hexalith.EventStore.Admin.UI.E2E/SmokeTests.cs - Playwright smoke, no Lighthouse/perf metrics",
+        "tests/Hexalith.EventStore.Admin.UI.E2E/BrowserSmokeTests.cs - functional E2E only"
+      ],
+      "load_validation": "absent",
+      "description": "UI tests validate that components render correctly, but initial-paint/TTI measurement is absent. No Lighthouse or Core Web Vitals run in CI. SignalR update latency is partially covered by NFR38's broadcaster test but not end-to-end to the browser.",
+      "recommendations": [
+        "Add Lighthouse CI job targeting /admin with budgets (LCP <= 2s, TTI <= 2s)",
+        "Extend Playwright smoke to measure time from SignalR message arrival to DOM update"
+      ]
+    },
+    {
+      "nfr_id": "NFR42",
+      "path": "admin",
+      "threshold": "Admin CLI <= 3s (incl. .NET startup)",
+      "status": "CONCERN",
+      "evidence": [
+        "tests/Hexalith.EventStore.Admin.Cli.Tests/VersionFlagTests.cs:32 - WaitForExit(5000) confirms process exits within 5s (loose upper bound)",
+        "tests/Hexalith.EventStore.Admin.Cli.Tests/VersionFlagTests.cs:64 - same loose 5s bound for --help"
+      ],
+      "load_validation": "bounded-timing-in-functional-test",
+      "description": "Traceability report rates this FULL, but the evidence is only a 5-second process-exit timeout (not a tight p99 <= 3s measurement). The 5s timeout is a hang-detector, not an NFR assertion. Downgraded to CONCERN.",
+      "recommendations": [
+        "Tighten WaitForExit to 3000ms and assert process.ExitCode == 0 within that budget",
+        "Add a test that runs each major subcommand (health, stream, projection, tenant, snapshot, backup, config) and asserts wall-clock <= 3s",
+        "Consider ReadyToRun/NativeAOT publish to meet 3s budget on cold disk"
+      ]
+    },
+    {
+      "nfr_id": "NFR43",
+      "path": "admin",
+      "threshold": "p99 <= 1s Admin MCP single-resource",
+      "status": "CONCERN",
+      "evidence": [
+        "tests/Hexalith.EventStore.Admin.Mcp.Tests - functional only, no timing assertions"
+      ],
+      "load_validation": "absent",
+      "description": "MCP server is functionally tested for resource enumeration and invocation but has no latency assertion. 1s p99 is loose and likely met, but unvalidated.",
+      "recommendations": [
+        "Add p99 timing assertion (100-sample warm + 200-sample measure) for each MCP tool invocation",
+        "Expose MCP duration metric and alert on breach"
+      ]
     }
   ],
   "compliance": {
-    "SLA_99.9": "UNKNOWN",
-    "NFR_latency_targets": "UNTESTED",
-    "NFR_throughput_targets": "UNTESTED"
+    "SLA_99.9_with_defined_p99": "CONCERNS",
+    "load_envelope_validated": "FAIL"
   },
   "priority_actions": [
-    "CRITICAL: Create k6 load test suite for NFR1-NFR8 validation (pre-GA blocker)",
-    "CRITICAL: Establish performance baselines with BenchmarkDotNet microbenchmarks",
-    "HIGH: Add performance regression gate to CI pipeline",
-    "MEDIUM: Profile resource usage under 10K active aggregates"
+    "1. (GA-BLOCKER) Introduce a load-testing framework - k6 or NBomber - at perf/Hexalith.EventStore.LoadTests/ with scenarios for 100 cmd/sec (NFR7) and 1000 query/sec (NFR39)",
+    "2. (GA-BLOCKER) Run those scenarios against the Aspire topology in a dedicated CI perf-lab workflow (nightly or on-demand), emitting p99 percentiles per NFR",
+    "3. Add a BenchmarkDotNet project (perf/Hexalith.EventStore.Benchmarks/) for NFR3 (event append), NFR4 (cold activation), NFR6 (1000-event rehydration), NFR36 (cache hit), NFR37 (cache miss) with statistically sound p50/p95/p99 output",
+    "4. Tighten VersionFlagTests process timeout from 5000ms to 3000ms and add cold-start tests for each CLI subcommand to give NFR42 a real assertion",
+    "5. Add DAPR sidecar Prometheus scraping + alert rule for p99 > 2ms (NFR8) in staging",
+    "6. Add Lighthouse CI job against the Admin UI with budgets per NFR41 (LCP <= 2s, TTI <= 2s)",
+    "7. Add end-to-end SignalR transport latency test (server-emit -> browser DOM update) for NFR38/NFR41",
+    "8. Add Admin API and MCP p99 timing tests (NFR40, NFR43) alongside existing functional tests",
+    "9. Document ownership: NFR8 is infra-owned (DAPR runtime), NFR1-NFR7, NFR35-NFR43 are app-owned and must ship with pre-release evidence"
   ],
-  "summary": "Performance posture is HIGH risk — not due to poor architecture (design is sound) but due to ZERO load test evidence for any defined target. All 13 performance NFRs (NFR1-8, NFR35-39) are untested. Architecture supports the targets but validation is completely absent. This is the #1 pre-GA risk."
+  "summary": "Performance NFR domain is HIGH risk: there is no load-testing framework in the repository (grep-confirmed no k6, NBomber, BenchmarkDotNet, Artillery, or LoadTest files), and the GitHub Actions CI/release workflows contain no performance benchmark job - this is the #1 pre-GA risk. All existing 'performance' evidence consists of bounded-timing assertions inside functional unit/integration tests (mostly single-sample Stopwatch.ElapsedMilliseconds assertions against NSubstitute mocks), with only two tests performing proper p99 percentile calculations (QueriesControllerTests:683-692 for NFR35 and SignalRProjectionChangedBroadcasterTests:75 for NFR38) - and even those run against mocked dependencies. Of 17 NFRs: 1 NOT-TESTABLE (NFR8 - infra), 1 FAIL (NFR39 - no query load evidence), 15 CONCERN (including NFR6 and NFR42 which the traceability report rates FULL but are actually bounded-timing-only); OpenTelemetry wiring via EventStoreActivitySource is in place, making in-prod p99 measurement feasible once a perf-lab and staging alerting pipeline are stood up, but production cutover without validating the 100 cmd/sec and 1000 query/sec envelopes would be reckless."
 }

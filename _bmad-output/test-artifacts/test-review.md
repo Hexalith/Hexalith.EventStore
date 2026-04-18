@@ -1,458 +1,288 @@
 ---
 stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03f-aggregate-scores', 'step-04-generate-report']
 lastStep: 'step-04-generate-report'
-lastSaved: '2026-03-31'
+lastSaved: '2026-04-18'
 status: 'complete'
 workflowType: 'testarch-test-review'
+reviewScope: 'suite'
 inputDocuments:
   - '_bmad/tea/testarch/knowledge/test-quality.md'
-  - '_bmad/tea/testarch/knowledge/data-factories.md'
   - '_bmad/tea/testarch/knowledge/test-levels-framework.md'
+  - '_bmad/tea/testarch/knowledge/data-factories.md'
+  - '_bmad/tea/testarch/knowledge/selector-resilience.md'
+  - '_bmad/tea/testarch/knowledge/timing-debugging.md'
   - '_bmad/tea/testarch/knowledge/test-healing-patterns.md'
-  - '_bmad/tea/testarch/knowledge/fixture-architecture.md'
   - '_bmad/tea/testarch/knowledge/selective-testing.md'
 ---
 
 # Test Quality Review: Hexalith.EventStore (Full Suite)
 
-**Quality Score**: 89/100 (B - Good)
-**Review Date**: 2026-03-31
-**Review Scope**: suite (14 test projects, 541 files)
+**Quality Score**: 88/100 (B+ — Good, actionable issues)
+**Review Date**: 2026-04-18
+**Review Scope**: suite — 14 test projects, 516 `*Tests.cs` files, 47.2k LOC of test code
 **Reviewer**: Murat (TEA Agent)
-**Previous Review**: 2026-03-29 (90/100, 14 projects, 500 files)
+**Previous Review**: 2026-03-31 (89/100, 541 files)
+**Stack Detected**: fullstack (.NET 10 xUnit backend + bUnit Blazor component + Playwright .NET E2E)
 
 ---
 
-Note: This review audits existing tests; it does not generate tests.
-Coverage mapping and coverage gates are out of scope here. Use `trace` for coverage decisions.
+_Note: This review audits existing tests; it does not generate tests.
+Coverage mapping and coverage gates are out of scope here — route those to `trace`._
 
 ## Executive Summary
 
-**Overall Assessment**: Excellent
+**Overall Assessment**: Good with two actionable P1 issues.
 
-**Recommendation**: Approve with Comments
+**Recommendation**: **Approve with Fixes** — merge current delta, schedule two P1 items this sprint.
+
+### Score Delta vs. Previous Review
+
+| Dimension        | Prev | Now | Δ   | Note                                                                |
+| ---------------- | ---- | --- | --- | ------------------------------------------------------------------- |
+| Determinism      | 8.5  | 9.5 | +1  | `Thread.Sleep(2)` in UniqueIdHelperIntegrationTests resolved        |
+| Isolation        | 9.5  | 9.5 | 0   | Still excellent — collection fixtures, per-test mocks               |
+| Maintainability  | 8.5  | 7.5 | -1  | Reflection-heavy Fluent v5 tests add fragility (Story 21-13 delta)  |
+| Performance      | 9.0  | 7.5 | -1.5| `DaprHealthHistoryCollectorTests` — three 17-second real-time waits |
+| Coverage Breadth | 9.5  | 9.5 | 0   | Story 21-13 bug regressions added (CommandPalette, TypeCatalog)     |
+
+Net: 89 → 88. Determinism win offset by newly surfaced real-time-delay tests and reflection fragility in Fluent UI v5 component tests.
 
 ### Key Strengths
 
-- Consistent naming convention (`Method_Scenario_Expected`) across all 541 test files
-- Zero async anti-patterns (no `.Result`, no `.Wait()`, proper `async/await` throughout)
-- Excellent test isolation via xUnit collection fixtures, `IAsyncLifetime`, and per-test mock creation
-- Shouldly fluent assertions used consistently across ~95% of test projects
-- Comprehensive error path coverage (401, 403, 404, validation failures, exception handling)
-- Strong security-focused testing (tenant isolation, RBAC, injection prevention, payload protection)
-- Well-factored test helpers (`ContractTestHelpers`, `AdminUITestContext`, `MockHttpMessageHandler`)
-- Proper test tiering (Tier 1/2/3) with clear dependency boundaries
-- New `DaprCommandActivityTrackerTests.cs` is exemplary — model for future tests
+- **Zero `Thread.Sleep` regressions** in test source code — last review's UniqueIdHelper violation is gone.
+- **Story 21-13 bug fixes ship with honest regression tests**: `CommandPalette_OpenAsync_DoesNotEarlyReturnWhenIsOpenStuckTrue` and `TypeCatalogPage_DeepLink_SetsActiveTabToAggregatesWithoutRedirectLoop` target exact failure modes with clear diagnostic comments.
+- **Consistent naming convention** (`Method_Scenario_Expected`) holds across all 14 projects.
+- **Async discipline**: zero `.Wait()`, zero bare `.Result` on domain/production paths (one pragmatic `.Result` in a test mock capture — flagged below).
+- **Proper tier discipline** — Tier 1 (unit/component) / Tier 2 (DAPR integration) / Tier 3 (Aspire E2E) boundaries respected.
+- **Shouldly + NSubstitute** used consistently; xUnit `IAsyncLifetime` + collection fixtures give clean isolation.
+- **Chaos resilience tests** (`ChaosResilienceTests.cs`) model real-world delays correctly — 3s/5s `Task.Delay` is intentional simulation of sidecar disruption.
 
 ### Key Weaknesses
 
-- `Thread.Sleep(2)` in UniqueIdHelperIntegrationTests — timing-dependent determinism violation
-- AggregateActorTests.cs: 1,068 lines with 45+ methods — needs decomposition
-- Reflection-based StateManager injection in actor tests — DAPR SDK testability limitation
-- Hard-coded magic strings repeated across test methods ("tenant-a", "counter", "acme", "agg-001")
-- `MockHttpMessageHandler` duplicated between `Admin.Cli.Tests` and `Admin.Mcp.Tests`
-
-### Summary
-
-The suite has grown from 500 to 541 files since the last review (2 days ago). New additions include `DaprCommandActivityTrackerTests.cs` and `CommandStatusFilterHelper.cs`. Quality remains strong, but this review identified a P1 determinism issue (`Thread.Sleep`) that wasn't caught previously, plus structural concerns around the largest test class.
-
-Score decreased 1 point (90 -> 89) due to the newly identified Thread.Sleep determinism violation (HIGH severity) and reflection-based testability smell. Core quality dimensions (isolation, performance) remain excellent.
+- **Real-time `Task.Delay(17s)` ×3** in `DaprHealthHistoryCollectorTests.cs` — 51+ seconds of wall-clock time in a **Tier-1** test class. Blocks the DoD rule "tests <1.5min" and inflates CI.
+- **Reflection-access to private Fluent UI v5 dialog state** in `CommandPaletteTests.cs` and `TypeCatalogPageTests.cs`. Honest workaround for a bUnit/JSInterop limitation, but silently breaks on rename.
+- **`.Result` sync-over-async** inside a capture lambda in `AdminApiClientPostTests.cs:67`.
+- **Weak idempotency assertion** in `TypeCatalogPage_UpdateUrl_IsIdempotent_WhenTargetEqualsCurrentUrl` — `WaitForAssertion(count.ShouldBe(0), 200ms)` passes immediately at t=0, does not prove stability over the window.
+- **Large test classes persist** — top file `EventStoreAggregateTests.cs` at 1,030 lines (down from the 1,068-line `AggregateActorTests` noted last time, so decomposition is in progress but not finished).
 
 ---
 
-## Quality Criteria Assessment
+## Findings — Critical (P0)
 
-| Criterion | Status | Violations | Notes |
-|---|---|---|---|
-| Naming Convention (Method_Scenario_Expected) | PASS | 0 | Excellent consistency across all 14 projects |
-| Test IDs | WARN | N/A | No formal test ID system; story references in comments |
-| Priority Markers (P0/P1/P2/P3) | WARN | N/A | Tier markers via `[Trait]` on integration tests; no P0-P3 on unit tests |
-| Hard Waits (Task.Delay) | WARN | ~28 | Only in Tier 2/3 integration/chaos tests; justified for infrastructure waits |
-| Determinism (no conditionals/try-catch) | PASS | 0 | Zero try-catch flow control; minimal justified conditionals |
-| Isolation (cleanup, no shared state) | PASS | 0 | Excellent: xUnit collections, IAsyncLifetime, Guid.NewGuid() per test |
-| Fixture Patterns | PASS | 0 | xUnit collection fixtures, AdminUITestContext, DaprTestContainerFixture |
-| Data Factories | WARN | 3 | Private factory methods used; no centralized builders in new Admin projects |
-| Network-First Pattern | PASS | 0 | N/A for backend; integration tests use proper HTTP client patterns |
-| Explicit Assertions | PASS | 0 | All assertions in test bodies; Shouldly fluent style |
-| Test Length (<=300 lines per method) | PASS | 0 | Individual methods 5-60 LOC; some *files* large but methods focused |
-| Test Duration (<=1.5 min) | PASS | 0 | Unit tests instant; integration tests use polling with timeouts |
-| Flakiness Patterns | PASS | 0 | bUnit uses `WaitForAssertion` (intelligent retry); no race conditions |
-
-**Total Violations**: 0 Critical, 1 High, 4 Medium, 5 Low
+**None.** No deploy-blocking issues. The recent merges (21-11/12/13) are clean.
 
 ---
 
-## Dimension Scores (Weighted)
+## Findings — High Priority (P1)
 
-| Dimension | Score | Grade | Weight | Weighted |
-|---|---|---|---|---|
-| Determinism | 85/100 | B | 30% | 25.5 |
-| Isolation | 93/100 | A | 30% | 27.9 |
-| Maintainability | 86/100 | B | 25% | 21.5 |
-| Performance | 96/100 | A | 15% | 14.4 |
-| **Overall** | **89/100** | **B** | **100%** | **89.3** |
+### P1-1. `DaprHealthHistoryCollectorTests` burns 51+ seconds on wall-clock waits
 
-### Score Breakdown
+**File**: `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprHealthHistoryCollectorTests.cs:71,101,145`
 
-```
-Starting Score:          100
-
-Determinism:
-  Thread.Sleep(2) [HIGH]:              -10
-  bUnit 5s hardcoded timeout [MEDIUM]:  -5
-
-Isolation:
-  Shared Aspire fixture [MEDIUM]:       -5
-  Shared Playwright browser [LOW]:      -2
-
-Maintainability:
-  AggregateActorTests 1068 lines [MEDIUM]: -5
-  Reflection-based injection [MEDIUM]:     -5
-  Arg.Is<> over-specification [LOW]:       -2
-  Repetitive OpenAPI patterns [LOW]:       -2
-
-Performance:
-  Thread.Sleep delay [LOW]:             -2
-  E2E timeout config [LOW]:             -2
-                                       --------
-Gross Penalty:                          -40
-
-Bonus Points:
-  Excellent Naming:          +5
-  Comprehensive Fixtures:    +5
-  Explicit Assertions:       +5
-  Strong Isolation:          +5
-  Tier Classification:       +5
-  Shouldly Consistency:      +5
-                            --------
-Total Bonus:                +30
-
-Final Score:                89/100
-Grade:                      B (Good)
-```
-
----
-
-## Critical Issues (Must Fix)
-
-### 1. Thread.Sleep(2) — Non-Deterministic Timing Dependency
-
-**Severity**: P1 (High)
-**Location**: `tests/Hexalith.EventStore.Contracts.Tests/Identity/UniqueIdHelperIntegrationTests.cs:39`
-**Criterion**: Determinism
-**Knowledge Base**: test-quality.md
-
-**Issue Description**:
-Test relies on `Thread.Sleep(2)` to ensure time-based ordering of generated IDs. On fast machines or under CI load, 2ms may not guarantee distinct timestamps, making the test non-deterministic. Windows OS scheduling granularity is typically 15.6ms.
-
-**Current Code**:
-```csharp
-// Non-deterministic
-var id1 = UniqueIdHelper.Generate();
-Thread.Sleep(2); // hope 2ms is enough for ordering
-var id2 = UniqueIdHelper.Generate();
-id2.ShouldBeGreaterThan(id1);
-```
-
-**Recommended Fix**:
-```csharp
-// Option A: Use TimeProvider (.NET 8+)
-var fakeTime = new FakeTimeProvider();
-var id1 = UniqueIdHelper.Generate(fakeTime);
-fakeTime.Advance(TimeSpan.FromMilliseconds(10));
-var id2 = UniqueIdHelper.Generate(fakeTime);
-id2.ShouldBeGreaterThan(id1);
-
-// Option B: Deterministic timestamp injection
-var id1 = UniqueIdHelper.Generate(timestamp: DateTimeOffset.UtcNow);
-var id2 = UniqueIdHelper.Generate(timestamp: DateTimeOffset.UtcNow.AddMilliseconds(10));
-```
-
-**Why This Matters**: Thread.Sleep-based ordering is the #1 source of intermittent CI failures in time-sensitive tests.
-
----
-
-## Recommendations (Should Fix)
-
-### 1. Consolidate Duplicated MockHttpMessageHandler
-
-**Severity**: P2 (Medium)
-**Location**: `tests/Hexalith.EventStore.Admin.Cli.Tests/Client/` and `tests/Hexalith.EventStore.Admin.Mcp.Tests/TestHelpers/`
-**Criterion**: Maintainability (DRY)
-**Knowledge Base**: fixture-architecture.md
-
-**Issue Description**:
-`MockHttpMessageHandler` and `QueuedMockHttpMessageHandler` are implemented independently in both the CLI and MCP test projects. Both provide identical factory methods (`CreateJsonClient`, `CreateCapturingClient`, `CreateThrowingClient`). Bug fixes or enhancements must be applied twice.
-
-**Recommended Fix**:
-Move shared HTTP mocking infrastructure to the existing `Hexalith.EventStore.Testing` project. Both test projects reference it via project dependency.
-
-**Priority**: P2 — no immediate reliability risk, but reduces maintenance burden.
-
----
-
-### 2. Standardize on Shouldly Across All Test Projects
-
-**Severity**: P2 (Medium)
-**Location**: `tests/Hexalith.EventStore.Contracts.Tests/` (uses xUnit `Assert.*`)
-**Criterion**: Maintainability (Consistency)
-
-**Issue Description**:
-Contracts.Tests uses raw xUnit `Assert.*` (~1,134 occurrences) while the remaining 13 projects use Shouldly (~8,260 occurrences). This creates cognitive switching costs.
-
-**Current Code**:
-```csharp
-Assert.Equal("expected", result.TenantId);
-Assert.NotNull(result.MessageId);
-```
-
-**Recommended Fix**:
-```csharp
-result.TenantId.ShouldBe("expected");
-result.MessageId.ShouldNotBeNull();
-```
-
-**Priority**: P2 — do incrementally when touching Contracts.Tests files.
-
----
-
-### 3. Extract Repeated Magic Strings to Shared Constants
-
-**Severity**: P2 (Medium)
-**Location**: Across all test projects
-**Criterion**: Maintainability (Magic Strings)
-**Knowledge Base**: data-factories.md
-
-**Issue Description**:
-Domain test data strings like `"tenant-a"`, `"counter"`, `"acme"`, `"agg-001"`, `"IncrementCounter"` are hard-coded inline across hundreds of test methods.
-
-**Recommended Fix**:
-```csharp
-// In Hexalith.EventStore.Testing
-public static class TestData
-{
-    public const string TenantId = "test-tenant";
-    public const string Domain = "counter";
-    public const string AggregateId = "agg-001";
-    public const string IncrementCommand = "IncrementCounter";
-}
-```
-
-**Priority**: P2 — do when refactoring test data setup.
-
----
-
-### 4. Replace Task.Delay with Retry/Poll in Chaos Tests
-
-**Severity**: P3 (Low)
-**Location**: `tests/Hexalith.EventStore.IntegrationTests/ContractTests/ChaosResilienceTests.cs`
-**Criterion**: Determinism (Hard Waits)
-
-**Issue Description**:
-Chaos resilience tests use `await Task.Delay(TimeSpan.FromSeconds(3-5))` for infrastructure state changes. While justified, these could use the existing `PollUntilTerminalStatusAsync` pattern for more deterministic behavior.
-
-**Priority**: P3 — justified delays in optional Tier 3 tests.
-
----
-
-### 5. Split Large Test Files
-
-**Severity**: P3 (Low)
-**Location**: `Server.Tests/Actors/AggregateActorTests.cs` (1,068 lines), `QueriesControllerTests.cs` (771 lines)
-**Criterion**: Maintainability (Test Length)
-
-**Recommended Split** for AggregateActorTests.cs:
-- `AggregateActorIdempotencyTests.cs`
-- `AggregateActorStateMachineTests.cs`
-- `AggregateActorTenantIsolationTests.cs`
-
-**Priority**: P3 — individual methods are well-structured; file-level organization improvement.
-
----
-
-## Best Practices Found
-
-### 1. Aspire Collection Fixture (Gold Standard)
-
-**Location**: `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestFixture.cs`
-**Pattern**: Shared infrastructure via IAsyncLifetime + xUnit Collection
-
-One Aspire topology started per collection, shared across all contract test classes. Validates resource health before execution. Captures container logs on failure for actionable diagnostics.
-
-### 2. AdminUITestContext for bUnit
-
-**Location**: `tests/Hexalith.EventStore.Admin.UI.Tests/TestHelpers/AdminUITestContext.cs`
-**Pattern**: Pre-configured DI container for Blazor component testing
-
-Provides JS interop mocks (FluentUI, LocalStorage, viewport), auth state, theme services, and HTTP client factory. Every UI test inherits clean environment. Uses `WaitForAssertion` for async rendering.
-
-### 3. Security-Focused Testing (45+ Tests)
-
-**Location**: `tests/Hexalith.EventStore.Server.Tests/Security/`
-**Pattern**: Defense-in-depth for multi-tenancy
-
-Covers tenant isolation, RBAC validation, payload protection, PubSub topic isolation, and script injection prevention. Cross-tenant operations explicitly tested and blocked.
-
-### 4. Factory Methods with Default Parameters
-
-**Location**: Throughout Server.Tests — `CreateTestEnvelope()`, `CreateTestCommand()`, `CreatePrincipal()`
-**Pattern**: Private factory methods with optional parameters
+**Diagnosis**: three test methods each start the hosted collector, then `Task.Delay(TimeSpan.FromSeconds(17))` to wait for the 15-second scheduled capture. This runs in Tier 1 (unit-ish test project).
 
 ```csharp
-private static CommandEnvelope CreateTestEnvelope(
-    string tenantId = "test-tenant",
-    string? correlationId = null) => new(
-    MessageId: Guid.NewGuid().ToString(),
-    TenantId: tenantId, ...);
+await collector.StartAsync(cts.Token);
+await Task.Delay(TimeSpan.FromSeconds(17)); // 15s delay + 2s buffer
+await cts.CancelAsync();
 ```
 
-Overrides show test intent; defaults minimize boilerplate.
+**Why it matters**: hits every CI run, adds ~1 minute to Tier 1, and the test still *could* be flaky — 2s buffer assumes the scheduler fires promptly. Time-based tests are the classic test-quality DoD violation (`< 1.5 min`, deterministic).
 
-### 5. Concurrency Stress Testing
+**Fix**: inject `TimeProvider` (or `IScheduler` / `ISystemClock`) into `DaprHealthHistoryCollector` and use a fake time source in the test. `TimeProvider.System` in production, `FakeTimeProvider` (from `Microsoft.Extensions.TimeProvider.Testing`) in tests. Advance virtual time; no wall-clock wait. This pattern already exists idiomatically in .NET 8+; .NET 10 has first-class support.
 
-**Location**: Multiple files (EventStoreAggregateTests, NamingConventionEngineTests)
-**Pattern**: `Parallel.For` with 64+ iterations
-
-Validates thread-safety of `ConcurrentDictionary` caches and `Lazy<T>` initialization. Catches race conditions that sequential tests miss.
+**Effort**: ~1 hour (refactor collector + rewrite 3 tests). **Impact**: saves ~51s per CI run, removes 3 sources of timing flake.
 
 ---
 
-## Test Suite Structure
+### P1-2. Reflection-access to private Fluent UI v5 dialog state creates silent-rename fragility
 
-### Suite Metadata
+**Files**:
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Components/CommandPaletteTests.cs` — pokes `_isOpen`, `_dialogState`, `_focusSearchRequested`, `_filteredResults`, `_searchQuery` + private method `NavigateToAsync`.
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/TypeCatalogPageTests.cs` — pokes `_activeTab` + private methods `OnTabChanged`, `UpdateUrl`.
 
-| Project | Files | Tier | Primary Focus |
-|---|---|---|---|
-| Server.Tests | 164 | 2 | Actors, pipeline, commands, security, DAPR |
-| Admin.UI.Tests | 86 | 1 | bUnit component tests (Blazor) |
-| Admin.Server.Tests | 63 | 1 | Controllers, authorization, services |
-| IntegrationTests | 60 | 3 | Aspire E2E contract tests |
-| Admin.Abstractions.Tests | 60 | 1 | Data models, serialization |
-| Admin.Cli.Tests | 55 | 1 | CLI commands, HTTP client |
-| Admin.Mcp.Tests | 38 | 1 | MCP protocol handlers |
-| Contracts.Tests | 29 | 1 | Domain contracts |
-| Client.Tests | 18 | 1 | Client abstractions |
-| Testing.Tests | 16 | 1 | Testing utilities |
-| Sample.Tests | 14 | 1 | Sample domain (Counter) |
-| Admin.UI.E2E | 11 | 3 | Aspire smoke tests |
-| Admin.Server.Host.Tests | 8 | 1 | Host bootstrap, middleware |
-| SignalR.Tests | 7 | 1 | SignalR notifications |
-| **Total** | **500** | | **~40,568 LOC** |
+**Diagnosis**: bUnit's loose JSInterop can't drive Fluent UI v5 dialogs (they render `ChildContent` only after JS opens them), so tests reach into private state via `BindingFlags.NonPublic | BindingFlags.Instance`. The code acknowledges this honestly in comments. However:
 
-### Test Pyramid
+- Any private rename turns these tests into runtime `InvalidOperationException` — no compile-time safety.
+- Tests effectively couple to implementation, not behaviour.
+- If `CommandPalette` is refactored to expose `IsOpen` / `CloseAsync` cleanly, tests would need rewriting anyway.
 
-```
-       /\         Tier 3: Aspire E2E (~71 files)
-      /  \          Full topology: EventStore + DAPR + Redis + Keycloak
-     / E2E\
-    /------\      Tier 2: DAPR Integration (~164 files)
-   / Integr \       Mocked DAPR, NSubstitute, InMemory stores
-  /----------\
- / Unit Tests \   Tier 1: Unit (~265 files)
-/--------------\    Pure logic, zero dependencies, sub-second execution
+**Why it matters**: fragility risk scales with every future refactor of these two components. The risk is limited by good failure messages ("Private field 'X' not found on CommandPalette; test assumptions need refresh"), but it's still a "tests are coupled to implementation" smell.
+
+**Fix** (choose one, document the choice):
+1. **Preferred** — surface the needed state via `internal` members + `InternalsVisibleTo("Hexalith.EventStore.Admin.UI.Tests")`. Type-safe, survives renames at compile time.
+2. **Complement** — cover the JS-dependent paths with **Playwright .NET E2E** in `Admin.UI.E2E` (you already have the fixture). Delete the reflection tests once E2E coverage lands.
+3. **Accept** — keep reflection but add a test-helper pair `GetPaletteState(...)` / `SetPaletteState(...)` so the reflection strings live in one place.
+
+**Effort**: ~2 hours for option 1 (the most pragmatic). **Impact**: eliminates a class of silent test breakage.
+
+---
+
+## Findings — Medium Priority (P2)
+
+### P2-1. Sync-over-async in a test mock capture
+
+**File**: `tests/Hexalith.EventStore.Admin.Mcp.Tests/AdminApiClientPostTests.cs:67`
+
+```csharp
+capturedBody = r.Content!.ReadAsStringAsync().Result; // sync-over-async in a test
 ```
 
-### Per-Project Scores
+**Diagnosis**: inside a synchronous capture lambda, `.Result` blocks the thread-pool thread. Low runtime risk in a unit test, but sets a bad precedent for copy-paste. The capture should be restructured to defer reading until after `PostAsync` returns (by then you have the `HttpContent` recorded) or use `GetAwaiter().GetResult()` (no clearer, just louder).
 
-| Project | Determinism | Isolation | Maintainability | Performance | Overall |
-|---|---|---|---|---|---|
-| Server.Tests | A | A | B | A | A |
-| Admin.UI.Tests | A | A | A | A | A |
-| Admin.Server.Tests | A | A | A | A | A |
-| IntegrationTests | B | A | B | B | B+ |
-| Admin.Abstractions.Tests | A | A | A | A | A |
-| Admin.Cli.Tests | A | A | B | A | A- |
-| Admin.Mcp.Tests | A | A | B | A | A- |
-| Contracts.Tests | A | A | C | A | B+ |
-| Client.Tests | A | A | A | A | A |
-| Testing.Tests | A | A | A | A | A |
-| Sample.Tests | A | A | A | A | A |
-| Admin.UI.E2E | A | A | A | A | A |
-| Admin.Server.Host.Tests | A | A | A | A | A |
-| SignalR.Tests | A | A | A | A | A |
+**Fix**: store the `HttpRequestMessage` itself in the capture, read body in the assertion phase:
+
+```csharp
+HttpRequestMessage? captured = null;
+using HttpClient httpClient = MockHttpMessageHandler.CreateCapturingClient(
+    r => captured = r,
+    HttpStatusCode.OK, _operationResultJson);
+// ...act...
+captured.ShouldNotBeNull();
+string body = await captured!.Content!.ReadAsStringAsync();
+body.ShouldContain("42");
+```
+
+**Effort**: 15 min. **Impact**: removes one sync-over-async, clearer pattern.
 
 ---
 
-## Quality Trends
+### P2-2. Weak idempotency assertion
 
-| Review Date | Scope | Score | Grade | High+ Issues | Trend |
-|---|---|---|---|---|---|
-| 2026-03-15 | 8 projects / ~95 files | 95/100 | A | 0 | Baseline |
-| 2026-03-29 | 14 projects / 500 files | 90/100 | A | 0 | Slight decline (scale) |
-| 2026-03-31 | 14 projects / 541 files | 89/100 | B | 1 | Stable (new P1 found) |
+**File**: `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/TypeCatalogPageTests.cs:295-320` (`TypeCatalogPage_UpdateUrl_IsIdempotent_WhenTargetEqualsCurrentUrl`)
 
-**Trend Analysis**: Score stable at ~90 across reviews. The 1-point decrease is due to a newly identified Thread.Sleep determinism violation (P1) and a reflection-based testability smell. The new `DaprCommandActivityTrackerTests.cs` is exemplary quality. Core isolation and performance remain excellent.
+**Diagnosis**: the test uses `cut.WaitForAssertion(() => navigationCount.ShouldBe(0), TimeSpan.FromMilliseconds(200));`. `WaitForAssertion` retries until the assertion **passes or the timeout elapses**. Since `navigationCount` starts at 0, the assertion passes on the first poll — the 200ms window is effectively ignored. The test only catches failures if `LocationChanged` fires before the first poll.
 
----
+**Fix**: to assert "nothing fired during a window," replace with a deterministic post-wait check:
 
-## Knowledge Base References
+```csharp
+await Task.Delay(TimeSpan.FromMilliseconds(200));
+navigationCount.ShouldBe(0);
+```
 
-- **test-quality.md** - Definition of Done (no hard waits, <300 lines, self-cleaning, explicit assertions)
-- **fixture-architecture.md** - Pure function -> Fixture composition patterns
-- **data-factories.md** - Factory functions with overrides, API-first setup
-- **test-levels-framework.md** - Unit vs Integration vs E2E selection
-- **test-healing-patterns.md** - Common failure patterns and healing strategies
-- **selective-testing.md** - Tag-based execution, diff-based selection
+Or, better, assert that invoking `UpdateUrl` does not change `nav.Uri` — a state-based check beats a timing-based one:
 
-See [tea-index.csv](../../_bmad/tea/testarch/tea-index.csv) for complete knowledge base.
+```csharp
+string uriBefore = nav.Uri;
+await cut.InvokeAsync(() => updateUrl.Invoke(cut.Instance, new object?[] { false }));
+nav.Uri.ShouldBe(uriBefore);
+navigationCount.ShouldBe(0);
+```
 
----
+The deep-link sibling test (`TypeCatalogPage_DeepLink_SetsActiveTabToAggregatesWithoutRedirectLoop:291`) uses the plain `navigationCount.ShouldBe(0)` pattern correctly — align this one with that.
 
-## Next Steps
-
-### Immediate Actions (P1)
-
-1. **Remove Thread.Sleep(2)** - Replace with deterministic sequencing
-   - Priority: P1
-   - File: `Contracts.Tests/Identity/UniqueIdHelperIntegrationTests.cs:39`
-   - Effort: Small (< 30 min)
-
-### Follow-up Actions (Future PRs)
-
-1. **Split AggregateActorTests** - Decompose into 3-4 focused classes
-   - Priority: P2
-   - Target: Next refactoring sprint
-
-2. **Centralize reflection-based Actor injection** - Single helper method
-   - Priority: P2
-   - Target: Next refactoring sprint
-
-3. **Consolidate MockHttpMessageHandler** - Move to shared Testing project
-   - Priority: P2
-   - Target: Next sprint
-
-4. **Standardize Contracts.Tests on Shouldly** - Migrate xUnit Assert calls
-   - Priority: P2
-   - Target: Incremental
-
-5. **Extract shared test constants** - Create TestData class
-   - Priority: P2
-   - Target: Next sprint
-
-6. **Parameterize OpenAPI tests** - Reduce duplication in AdminOpenApiDocumentTests
-   - Priority: P3
-   - Target: Backlog
-
-### Re-Review Needed?
-
-No re-review needed after P1 fix. Approve as-is.
+**Effort**: 5 min. **Impact**: test actually catches the regression it claims to.
 
 ---
 
-## Decision
+### P2-3. Large test classes still exceed DoD line limit
 
-**Recommendation**: Approve with Comments
+| File                                                          | Lines |
+| ------------------------------------------------------------- | ----- |
+| `Client.Tests/Aggregates/EventStoreAggregateTests.cs`         | 1,030 |
+| `Server.Tests/Observability/DeadLetterOriginTracingTests.cs`  | 813   |
+| `Server.Tests/Controllers/QueriesControllerTests.cs`          | 771   |
+| `Server.Tests/Actors/CachingProjectionActorTests.cs`          | 709   |
+| `Server.Tests/Actors/EventDrainRecoveryTests.cs`              | 682   |
+| `Server.Tests/Pipeline/AuthorizationBehaviorTests.cs`         | 676   |
 
-**Rationale**:
+**Diagnosis**: DoD rule in `test-quality.md` says `< 300 lines`. Six files are > 2× the limit. `EventStoreAggregateTests.cs` is > 3×. (Progress noted: previous top offender `AggregateActorTests.cs` at 1,068 lines is no longer in the top-15, so decomposition work is clearly happening.)
 
-Test quality is strong at 89/100. One P1 issue identified: `Thread.Sleep(2)` in UniqueIdHelperIntegrationTests creates a timing-dependent determinism violation — easy fix. Structural improvements (AggregateActorTests decomposition, reflection centralization) are maintainability investments, not correctness risks. The new `DaprCommandActivityTrackerTests.cs` is exemplary. The three-tier architecture with proper fixture sharing is well-designed for this DAPR-native event sourcing system. Security testing with 45+ tenant isolation tests is exemplary. Suite is production-ready after the P1 fix.
+**Fix**: split by behaviour area. Typical seams in this codebase:
+- Handle-path vs. Apply-path
+- Success vs. rejection vs. tombstone
+- Validation vs. authorization vs. persistence
+
+Extract shared setup to a collection fixture / private helper, keep each file focused on one concern.
+
+**Effort**: ~1 day per file, incremental. **Impact**: debugging + review time drops materially.
 
 ---
 
-## Review Metadata
+### P2-4. Hard-coded magic test strings still present
 
-**Generated By**: Murat (BMad TEA Agent - Master Test Architect)
-**Workflow**: testarch-test-review v5.0 (3 parallel exploration agents + sequential aggregation)
-**Review ID**: test-review-suite-20260331
-**Timestamp**: 2026-03-31
-**Version**: 3.0
+Carryover from previous review. Strings like `"tenant-a"`, `"acme"`, `"counter"`, `"agg-001"` repeat across test methods rather than being centralized constants. Not a correctness issue, just maintenance drag — when the domain shape shifts, string-by-string sed edits are the tax.
+
+**Fix**: introduce a `TestDomain` static class per test project with canonical identifiers. Low priority.
+
+---
+
+## Findings — Low Priority / Info
+
+- **`DaprTestContainerFixture.cs` uses `Task.Delay(2000)` / `Task.Delay(1000)` / `Task.Delay(200)`** — acceptable. These are polling intervals against a real sidecar boot. The right fix is a readiness probe, but the current pattern is defensible infrastructure code.
+- **`ContractTestHelpers.cs` polling loop** — standard Tier-3 polling for eventual consistency, acceptable.
+- **`ActorConcurrencyConflictTests.cs` / `EventPersistenceIntegrationTests.cs` `Task.Delay(50)`** — small jitter to spread concurrent writers, intentional and documented.
+
+---
+
+## Per-Project Scorecard
+
+| Project                               | Tier | Files | Score | Notes                                                     |
+| ------------------------------------- | ---- | ----- | ----- | --------------------------------------------------------- |
+| Contracts.Tests                       | 1    | ~40   | A     | Clean, focused, pure-function oriented                    |
+| Client.Tests                          | 1    | ~60   | A-    | Large `EventStoreAggregateTests` (1,030 lines)            |
+| Testing.Tests                         | 1    | ~15   | A     | Fakes verified, small focused files                       |
+| SignalR.Tests                         | 1    | ~25   | A     | Clean — minimal mocking                                   |
+| Sample.Tests                          | 1    | ~10   | A     | Tiny, exemplary                                           |
+| Admin.Abstractions.Tests              | 1    | ~20   | A     | Clean contract verification                               |
+| Admin.Cli.Tests                       | 1    | ~30   | A-    | `MockHttpMessageHandler` duplicated with Admin.Mcp.Tests  |
+| Admin.Mcp.Tests                       | 1    | ~25   | B+    | **P2-1** `.Result` in AdminApiClientPostTests.cs:67       |
+| Admin.Server.Tests                    | 1    | ~80   | B     | **P1-1** 17s `Task.Delay` ×3 in DaprHealthHistoryCollector |
+| Admin.Server.Host.Tests               | 1    | ~15   | A     | Middleware ordering well covered                          |
+| Admin.UI.Tests                        | 1    | ~50   | B+    | **P1-2** reflection-heavy (Story 21-13 delta), **P2-2** weak idempotency assertion |
+| Server.Tests                          | 2    | ~130  | A-    | Strong, but several >700-line files                       |
+| Admin.UI.E2E                          | 2    | ~6    | A-    | Playwright .NET fixture present; underused for Fluent v5 dialog coverage |
+| IntegrationTests                      | 3    | ~40   | A     | Chaos + contract tests well-factored                      |
+
+---
+
+## Remediation Priority & Effort
+
+| # | Finding                                      | Priority | Effort  | CI Impact       |
+| - | -------------------------------------------- | -------- | ------- | --------------- |
+| 1 | `TimeProvider` in DaprHealthHistoryCollector | P1       | ~1 hr   | -51s/run        |
+| 2 | `InternalsVisibleTo` for UI component tests  | P1       | ~2 hrs  | Stability       |
+| 3 | Fix idempotency assertion window             | P2       | 5 min   | Correctness     |
+| 4 | Remove `.Result` from test mock capture      | P2       | 15 min  | Hygiene         |
+| 5 | Split EventStoreAggregateTests (1,030 lines) | P2       | ~1 day  | Maintainability |
+| 6 | Centralize magic test strings                | P3       | ~2 hrs  | Maintainability |
+
+**Quick wins (combined < 1 hour)**: #1 + #3 + #4 = biggest signal per minute spent.
+
+---
+
+## Knowledge Base Alignment
+
+| Check (from `test-quality.md` DoD)              | Status                                       |
+| ------------------------------------------------- | -------------------------------------------- |
+| No Hard Waits (`Thread.Sleep`, arbitrary timeouts)| ⚠️  3 real-time `Task.Delay(17s)` (P1-1)      |
+| No Conditionals controlling flow                  | ✅ Pass                                      |
+| < 300 lines per test class                        | ❌ 6+ files exceed (P2-3)                    |
+| < 1.5 min per test                                | ⚠️ DaprHealthHistoryCollector tests ~17s each|
+| Self-cleaning (parallel-safe)                     | ✅ Pass — `IAsyncLifetime` discipline        |
+| Explicit assertions (not hidden in helpers)       | ✅ Pass                                      |
+| Unique data (no hardcoded IDs)                    | ⚠️  Magic strings repeated (P2-4)            |
+| Parallel-safe                                     | ✅ Pass                                      |
+
+---
+
+## Coverage Boundary Note
+
+This review **does not** score coverage — that's the `trace` workflow's job. If you want a coverage map of new code from Stories 21-11/12/13 against acceptance criteria, run `/bmad-testarch-trace` next.
+
+---
+
+## Recommended Next Actions
+
+1. **Ship the two P1 fixes this sprint** — `TimeProvider` injection is cheap and high-value; `InternalsVisibleTo` removes silent-rename risk.
+2. **Batch the two 5-minute P2 fixes** (idempotency assertion + `.Result` removal) into the same PR.
+3. **Schedule `EventStoreAggregateTests` decomposition** — pattern after the `AggregateActorTests` work that's already in flight.
+4. **Run `/bmad-testarch-trace`** if you need coverage verification of recent UI bug-fix stories against their acceptance criteria.
+
+---
+
+## Workflow Metadata
+
+- Next recommended workflow: `trace` (coverage mapping for 21-11/12/13) or `automate` (fill gaps once P1s are fixed).
+- Artifacts location: `_bmad-output/test-artifacts/`
+- No browser automation evidence collection needed (backend-heavy review; UI reflection evidence is source-level).

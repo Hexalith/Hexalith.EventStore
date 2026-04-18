@@ -1,0 +1,103 @@
+name: Perf Lab
+
+# Manual-trigger only for the initial scaffold. Add a nightly schedule once the
+# baseline is established and any flakiness in steady-state measurements is gone.
+on:
+  workflow_dispatch:
+    inputs:
+      scenarios:
+        description: 'Comma-separated scenario names (nfr7, nfr39, nfr17). Defaults to nfr7.'
+        required: false
+        default: 'nfr7'
+
+permissions:
+  contents: read
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      EVENTSTORE_BASE_URL: http://localhost:5170
+      LOAD_TEST_SCENARIOS: ${{ github.event.inputs.scenarios }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        # global.json auto-detected for SDK version
+
+      - name: Cache NuGet packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('Directory.Packages.props') }}
+          restore-keys: nuget-
+
+      - name: Install Dapr CLI
+        uses: dapr/setup-dapr@8d980918fd43a2765c143ce7f687665b2d46a6b9 # v2
+        with:
+          version: '1.16.0'
+
+      - name: Initialize Dapr
+        run: dapr init
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Start AppHost in background
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/perf-lab
+          nohup dotnet run --no-build --configuration Release \
+            --project src/Hexalith.EventStore.AppHost \
+            > /tmp/perf-lab/apphost.log 2>&1 &
+          echo $! > /tmp/perf-lab/apphost.pid
+          echo "AppHost PID $(cat /tmp/perf-lab/apphost.pid)"
+
+      - name: Wait for EventStore endpoint
+        run: |
+          set -euo pipefail
+          deadline=$(( SECONDS + 300 ))
+          until curl -sSf "${EVENTSTORE_BASE_URL}/health" > /dev/null 2>&1; do
+            if (( SECONDS > deadline )); then
+              echo "EventStore did not become healthy within 5 minutes. AppHost log tail:"
+              tail -n 200 /tmp/perf-lab/apphost.log || true
+              exit 1
+            fi
+            sleep 3
+          done
+          echo "EventStore healthy at ${EVENTSTORE_BASE_URL}"
+
+      - name: Run load harness
+        run: >
+          dotnet run --no-build --configuration Release
+          --project perf/Hexalith.EventStore.LoadTests
+
+      - name: Stop AppHost
+        if: always()
+        run: |
+          if [[ -f /tmp/perf-lab/apphost.pid ]]; then
+            pid=$(cat /tmp/perf-lab/apphost.pid)
+            kill "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+          fi
+
+      - name: Upload NBomber reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: nbomber-reports
+          path: perf/Hexalith.EventStore.LoadTests/reports/
+
+      - name: Upload AppHost log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: apphost-log
+          path: /tmp/perf-lab/apphost.log

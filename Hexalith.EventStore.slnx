@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/perf/">
+    <Project Path="perf/Hexalith.EventStore.LoadTests/Hexalith.EventStore.LoadTests.csproj" />
+  </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj" />
     <Project Path="samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj" />

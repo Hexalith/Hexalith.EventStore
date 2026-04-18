@@ -1,105 +1,209 @@
 {
   "domain": "scalability",
+  "assessment_date": "2026-04-18",
   "risk_level": "MEDIUM",
+  "overall_gate": "CONCERNS",
   "findings": [
     {
-      "category": "Horizontal Scaling",
-      "status": "PASS",
-      "description": "Stateless EventStore architecture with DAPR actor placement for automatic distribution. Kubernetes Deployment with configurable replicas, HPA-ready resource limits, health probes for traffic management. Each replica can serve any tenant without session affinity.",
+      "nfr_id": "NFR16",
+      "category": "Horizontal Scaling (Actor Placement)",
+      "threshold": "Horizontal scaling via replica addition + DAPR actor placement (consistent hashing)",
+      "status": "CONCERN",
+      "description": "DAPR actor placement infrastructure is implicitly present (AggregateActor uses DAPR actor framework, which relies on the placement service for consistent-hash distribution across replicas). The Aspire AppHost (src/Hexalith.EventStore.AppHost/Program.cs) wires the DAPR sidecar per project but does NOT call .WithReplicas(...) or otherwise configure replica count -- single-instance topology by default. No test runs two or more eventstore replicas and verifies actor redistribution or state cohesion across instances. Deployment guides reference HPA/KEDA (documented only, not configured).",
       "evidence": [
-        "src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:66-75 (actor registration)",
-        "samples/deploy/kubernetes/dapr-annotations-example.yaml (resource limits, probes)",
-        "docs/guides/deployment-kubernetes.md (HPA configuration guidance)",
-        "Stateless design: no in-process session data, all state in DAPR state store"
+        "src/Hexalith.EventStore.AppHost/Program.cs (no WithReplicas call -- single instance by default)",
+        "docs/guides/deployment-azure-container-apps.md (documents 'actors require minReplicas >= 1')",
+        "docs/guides/deployment-kubernetes.md:229,242 (sample manifests use replicas: 1)",
+        "no multi-replica integration test found"
       ],
+      "capacity_validated": "no",
+      "recommendations": [
+        "Add Tier 3 Aspire test that runs 2+ eventstore replicas and validates actor placement reshuffling on replica addition/removal",
+        "Provide reference HPA/KEDA manifests under deploy/ (currently only in docs)"
+      ]
+    },
+    {
+      "nfr_id": "NFR17",
+      "category": "Aggregate Capacity per Instance",
+      "threshold": ">= 10,000 active aggregates per instance without latency degradation",
+      "status": "FAIL",
+      "description": "No volume/scale test exists. Glob for Volume*, LoadScale*, 10K*, 1000Aggregate* returned zero matches. SnapshotRehydrationTests only exercises single-aggregate paths with <= 55 events and 10 events in the baseline cases. The 10K active-aggregate claim is entirely unvalidated -- neither memory footprint, actor-activation throughput, nor latency are measured at that scale.",
+      "evidence": [
+        "no test found matching Volume*/LoadScale*/10K*/1000Aggregate*",
+        "tests/Hexalith.EventStore.Server.Tests/Events/SnapshotRehydrationTests.cs (single-aggregate, 10-55 events)"
+      ],
+      "capacity_validated": "no",
+      "recommendations": [
+        "Add a benchmark/volume harness that activates 10,000 distinct aggregate actors and measures p50/p99 command latency plus memory footprint",
+        "Capture baseline per-aggregate memory cost to size instance RAM",
+        "Gate release on the 10K aggregate benchmark meeting the NFR17 target"
+      ]
+    },
+    {
+      "nfr_id": "NFR18",
+      "category": "Multi-Tenant Capacity",
+      "threshold": ">= 10 tenants per instance with full isolation, no cross-tenant interference",
+      "status": "CONCERN",
+      "description": "Tenant isolation is FULL at the routing/ActorId level (MultiTenantRoutingIntegrationTests verifies that {tenant}:{domain}:{aggregateId} ActorIds are unique per tenant; MultiTenantIsolationTests and ActorTenantIsolationTests exercise same-aggregateId-across-tenants isolation). However, no test exercises 10+ concurrent tenants driving commands simultaneously to assert no interference under load -- the 'no cross-tenant interference' clause of NFR18 is asserted structurally (via ActorId uniqueness) but not empirically under concurrent multi-tenant traffic.",
+      "evidence": [
+        "tests/Hexalith.EventStore.IntegrationTests/EventStore/MultiTenantRoutingIntegrationTests.cs (3 tenants, serial)",
+        "tests/Hexalith.EventStore.Sample.Tests/MultiTenant/MultiTenantIsolationTests.cs",
+        "tests/Hexalith.EventStore.Server.Tests/Actors/ActorTenantIsolationTests.cs"
+      ],
+      "capacity_validated": "partial",
+      "recommendations": [
+        "Extend MultiTenantRoutingIntegrationTests to 10+ tenants with concurrent command dispatch (Parallel.ForEachAsync) and verify per-tenant sequence integrity"
+      ]
+    },
+    {
+      "nfr_id": "NFR19",
+      "category": "Rehydration Bound (Snapshot + Tail)",
+      "threshold": "State rehydration time constant regardless of total event count (snapshot + tail only)",
+      "status": "PASS",
+      "description": "SnapshotRehydrationTests explicitly verifies that RehydrateAsync(identity, snapshot) returns ONLY tail events (seq > snapshot.Sequence) and the snapshot state, not the full event stream. The 55-event + seq-50-snapshot case confirms TailEventCount=5 regardless of total history. The bound is structurally guaranteed by EventStreamReader reading from $EventStreamKeyPrefix{snapshot.Sequence+1..current}.",
+      "evidence": [
+        "tests/Hexalith.EventStore.Server.Tests/Events/SnapshotRehydrationTests.cs:46-90 (RehydrateWithSnapshot_ReadsOnlyTailEvents_NotAllEvents, LastSnapshotSequence_FlowsCorrectlyForSnapshotDecision)",
+        "tests/Hexalith.EventStore.Server.Tests/Events/SnapshotRehydrationTests.cs:94-133 (SnapshotPlusTail_TailEventsMatch_FullReplayEvents)"
+      ],
+      "capacity_validated": "yes",
       "recommendations": []
     },
     {
-      "category": "Data Scaling",
+      "nfr_id": "NFR20",
+      "category": "Dynamic Tenant/Domain Hot-Add",
+      "threshold": "New tenant/domain via DAPR config store -- no restart, no downtime",
       "status": "PASS",
-      "description": "Backend portability via DAPR abstraction: Redis (dev), PostgreSQL (prod), Cosmos DB (scale). Composite key pattern ({tenant}||{domain}||{aggregateId}) enables natural data partitioning. Snapshot strategy bounds replay time regardless of event count (NFR19). No direct DB calls — all access through DaprClient.",
+      "description": "MultiTenantRoutingIntegrationTests.PostCommands_DynamicTenantAddition_SucceedsAfterReconfiguration demonstrates that registering a previously-unknown tenant+domain after a first failing request makes subsequent requests succeed, with no service restart. Traceability report lists NFR20 as FULL (DynamicConfigurationTests + tenant-hot-add integration).",
       "evidence": [
-        "deploy/dapr/statestore-postgresql.yaml (PostgreSQL backend)",
-        "deploy/dapr/statestore-cosmosdb.yaml (Cosmos DB backend with partition keys)",
-        "deploy/dapr/pubsub-rabbitmq.yaml, pubsub-kafka.yaml, pubsub-servicebus.yaml (3 pub/sub backends)",
-        "deploy/README.md (backend compatibility matrix)",
-        "PRD NFR29: Zero code changes for backend swap (validated architecture)"
+        "tests/Hexalith.EventStore.IntegrationTests/EventStore/MultiTenantRoutingIntegrationTests.cs:131-152 (PostCommands_DynamicTenantAddition_SucceedsAfterReconfiguration)",
+        "_bmad-output/test-artifacts/traceability-report.md (NFR20 FULL)"
       ],
-      "recommendations": [
-        "MEDIUM: Test Cosmos DB partition key strategy under multi-tenant load",
-        "OPTIONAL: Document event archival strategy for long-lived aggregates"
-      ]
-    },
-    {
-      "category": "Traffic Handling",
-      "status": "PASS",
-      "description": "Dual-layer rate limiting (per-tenant + per-consumer), DAPR pub/sub for async event distribution, per-aggregate backpressure with HTTP 429 (FR67), SignalR for real-time notifications. Dynamic topic provisioning for new tenants without restart.",
-      "evidence": [
-        "src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs:135-250 (rate limiting)",
-        "src/Hexalith.EventStore/ErrorHandling/BackpressureExceptionHandler.cs (429 + Retry-After)",
-        "src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml (dynamic topic provisioning)",
-        "src/Hexalith.EventStore.Server/DomainServices/DomainServiceResolver.cs (dynamic config store)"
-      ],
+      "capacity_validated": "yes",
       "recommendations": []
     },
     {
-      "category": "Multi-Tenant Scaling",
-      "status": "CONCERN",
-      "description": "Target: 10+ tenants per instance (NFR18) with full isolation and no cross-tenant performance interference. Architecture supports this via per-tenant rate limits, actor-level isolation, and DAPR policy scoping. However, cross-tenant performance isolation is UNTESTED — no evidence of concurrent multi-tenant load testing.",
-      "evidence": [
-        "PRD NFR18: 10+ tenants per instance target",
-        "Per-tenant rate limiting with configurable overrides (TenantPermitLimits)",
-        "Actor identity scoped by tenant:domain:aggregateId",
-        "NO multi-tenant load test results"
-      ],
-      "recommendations": [
-        "HIGH: Run multi-tenant load test validating NFR18 (10+ tenants, no cross-tenant interference)",
-        "MEDIUM: Test per-tenant rate limit fairness under contention"
-      ]
-    },
-    {
-      "category": "Active Aggregate Scaling",
-      "status": "CONCERN",
-      "description": "Target: 10K+ active aggregates per instance (NFR17) without degradation. Architecture supports this via DAPR actor placement and snapshot strategy. However, actor memory footprint at 10K+ scale is UNTESTED. Snapshot effectiveness for state rehydration is theoretically sound but unvalidated.",
-      "evidence": [
-        "PRD NFR17: 10K+ active aggregates target",
-        "DAPR actor placement distributes across replicas",
-        "Snapshot strategy (NFR19) bounds rehydration time",
-        "NO memory profiling at 10K+ actor scale"
-      ],
-      "recommendations": [
-        "HIGH: Profile memory and GC at 10K active actors",
-        "MEDIUM: Validate snapshot strategy prevents memory growth"
-      ]
-    },
-    {
-      "category": "Deployability",
+      "nfr_id": "NFR33",
+      "category": "Per-Tenant Rate Limiting (Backpressure)",
+      "threshold": "Per-tenant 1,000 cmd/min default (configurable); 429 + Retry-After on breach",
       "status": "PASS",
-      "description": "Aspire publishers for 3 targets (Docker Compose, Kubernetes Helm, Azure Container Apps). Semantic-release with NuGet autopublish. CI/CD with 5 GitHub Actions workflows. Dockerfiles with Alpine base, non-root user. Rolling update strategy with health probes.",
+      "description": "PerTenantRateLimitingTests verifies (a) override threshold honored (premium tenant with PermitLimit=4 throttled at 5th request), (b) tenants without override get default, (c) options validator rejects zero/negative values. RateLimitingIntegrationTests.PostCommands_ExceedsRateLimit_IncludesRetryAfterHeader confirms the 429 + Retry-After contract. CommandsControllerTests.PostCommands_RetryAfterHeader_UsesDeltaSecondsFormat pins Retry-After to delta-seconds format (RFC 7231 compliant).",
       "evidence": [
-        "src/Hexalith.EventStore.AppHost/Program.cs:125-134 (3 publisher targets)",
-        ".github/workflows/ci.yml, release.yml, deploy-staging.yml",
-        "src/Hexalith.EventStore/Dockerfile (multi-stage, Alpine, non-root)",
-        ".releaserc.json (semantic-release + NuGet publish)"
+        "tests/Hexalith.EventStore.IntegrationTests/EventStore/PerTenantRateLimitingTests.cs (premium override, regular default, validator)",
+        "tests/Hexalith.EventStore.IntegrationTests/EventStore/RateLimitingIntegrationTests.cs:48-59 (Retry-After header)",
+        "tests/Hexalith.EventStore.IntegrationTests/EventStore/CommandsControllerTests.cs:174-193 (delta-seconds format)",
+        "tests/Hexalith.EventStore.Server.Tests/Configuration/RateLimitingOptionsTests.cs"
       ],
+      "capacity_validated": "yes",
+      "recommendations": []
+    },
+    {
+      "nfr_id": "NFR34",
+      "category": "Per-Consumer Rate Limiting (Backpressure)",
+      "threshold": "Per-consumer 100 cmd/sec default (configurable); 429 + Retry-After on breach",
+      "status": "PASS",
+      "description": "PerConsumerRateLimitingTests.RateLimited_Response_IncludesRetryAfterAndBothIds verifies 429 with Retry-After AND ProblemDetails containing both tenantId and consumerId. TenantLimiter_RejectsFirst_WhenTenantLimitIsExceeded verifies chained limiter ordering (CreateChained) and exact Retry-After Delta==60s. Health endpoints bypass rate limiting.",
+      "evidence": [
+        "tests/Hexalith.EventStore.IntegrationTests/EventStore/PerConsumerRateLimitingTests.cs:238-258 (RateLimited_Response_IncludesRetryAfterAndBothIds)",
+        "tests/Hexalith.EventStore.IntegrationTests/EventStore/PerConsumerRateLimitingTests.cs:263-289 (TenantLimiter_RejectsFirst_WhenTenantLimitIsExceeded, Delta=60s)"
+      ],
+      "capacity_validated": "yes",
+      "recommendations": []
+    },
+    {
+      "nfr_id": "NFR7",
+      "category": "Concurrent Command Capacity Crossover",
+      "threshold": ">= 100 concurrent command submissions/sec per instance",
+      "status": "CONCERN",
+      "description": "Primarily a performance NFR but has a capacity angle: the integration tests demonstrate serial command acceptance but do not sustain 100 cmd/sec under load. No sustained-load harness exists. Rate-limiting defaults (1,000/min per tenant, 100/sec per consumer) align with the target, but capacity-under-load is not empirically proven. Risk: concurrent-write contention on the same aggregate actor is validated via ActorConcurrencyConflictTests, but throughput at the 100 cmd/sec instance-level aggregate is unmeasured.",
+      "evidence": [
+        "tests/Hexalith.EventStore.Server.Tests/Actors/ActorConcurrencyConflictTests.cs",
+        "no sustained-load/throughput test found"
+      ],
+      "capacity_validated": "no",
       "recommendations": [
-        "OPTIONAL: Implement blue-green or canary deployment strategy",
-        "OPTIONAL: Add GitOps (ArgoCD/Flux) for declarative deployment"
+        "Add a k6 or NBomber harness that sustains 100 cmd/sec for 60s and captures 429 rate and p99 latency",
+        "Coordinate with the performance subagent to share the harness"
+      ]
+    },
+    {
+      "nfr_id": "NFR39",
+      "category": "Concurrent Query Capacity Crossover",
+      "threshold": ">= 1,000 concurrent queries/sec per instance",
+      "status": "FAIL",
+      "description": "No load test exists for query endpoints. Traceability report lists NFR39 as NONE. The 1,000 queries/sec ceiling is entirely unvalidated.",
+      "evidence": [
+        "no load test found",
+        "_bmad-output/test-artifacts/traceability-report.md (NFR39 NONE)"
+      ],
+      "capacity_validated": "no",
+      "recommendations": [
+        "Add sustained-load query harness (1,000 qps for 60s) against read endpoints",
+        "Measure p99 latency and error rate at target throughput"
+      ]
+    },
+    {
+      "nfr_id": "NFR45",
+      "category": "Concurrent Admin UI Capacity Crossover",
+      "threshold": ">= 10 concurrent admin UI users without degradation",
+      "status": "FAIL",
+      "description": "No concurrent-UI test exists. Traceability report lists NFR45 as NONE. The admin UI (Hexalith.EventStore.Admin.UI) has unit/component tests but no multi-user Playwright or SignalR-burst scenario.",
+      "evidence": [
+        "no concurrent admin UI test found",
+        "_bmad-output/test-artifacts/traceability-report.md (NFR45 NONE)"
+      ],
+      "capacity_validated": "no",
+      "recommendations": [
+        "Add Playwright test simulating 10 parallel admin sessions browsing projections/aggregates and asserting p95 page-load under target",
+        "Validate SignalR hub scale with 10 concurrent subscribers for projection-change notifications"
+      ]
+    },
+    {
+      "nfr_id": "NFR32",
+      "category": "Deployability (Horizontal-Scale Enabler)",
+      "threshold": "Aspire-deployable to Docker Compose, Kubernetes, Azure Container Apps -- no custom scripts",
+      "status": "PASS",
+      "description": "AppHost/Program.cs supports PUBLISH_TARGET=docker|k8s|aca via AddDockerComposeEnvironment, AddKubernetesEnvironment, and AddAzureContainerAppEnvironment. Deployment guides exist for all three targets. Rated PASS as deployability (horizontal-scale enabler), though replica counts are not parameterized at the AppHost level -- scaling decisions are pushed to the target platform (HPA for k8s, scale rules for ACA).",
+      "evidence": [
+        "src/Hexalith.EventStore.AppHost/Program.cs:154-163 (PUBLISH_TARGET branches)",
+        "docs/guides/deployment-kubernetes.md",
+        "docs/guides/deployment-azure-container-apps.md",
+        "docs/guides/deployment-progression.md"
+      ],
+      "capacity_validated": "yes",
+      "recommendations": [
+        "Consider parameterizing eventstore replica count via Aspire WithReplicas(...) for production publish targets once multi-replica tests are added"
       ]
     }
   ],
+  "capacity_envelopes": {
+    "aggregates_per_instance_target": 10000,
+    "aggregates_per_instance_validated": 0,
+    "tenants_per_instance_target": 10,
+    "tenants_per_instance_validated": "unknown (3-tenant isolation test only, serial)",
+    "commands_per_sec_target": 100,
+    "commands_per_sec_validated": "no sustained-load test",
+    "queries_per_sec_target": 1000,
+    "queries_per_sec_validated": "no load test",
+    "admin_users_target": 10,
+    "admin_users_validated": "no concurrent-UI test"
+  },
+  "horizontal_scaling": {
+    "actor_placement_via_dapr": "partial",
+    "replica_topology_configurable": "no",
+    "auto_scaling_config_present": "no"
+  },
   "compliance": {
-    "10K_aggregates": "UNTESTED",
-    "10_tenants": "UNTESTED",
-    "100_cmd_sec": "UNTESTED",
-    "horizontal_scaling": "PASS",
-    "backend_portability": "PASS"
+    "target_capacity_validated": "CONCERNS"
   },
   "priority_actions": [
-    "HIGH: Run multi-tenant load test (10+ tenants, NFR18)",
-    "HIGH: Profile 10K+ active actor memory footprint (NFR17)",
-    "MEDIUM: Validate Cosmos DB partition strategy under load",
-    "OPTIONAL: Implement blue-green/canary deployment"
+    "P0: Add volume test for NFR17 -- 10,000 active aggregate actors with command/query load measuring memory + p99 latency",
+    "P0: Add sustained-load command harness for NFR7 -- 100 cmd/sec for 60s with latency + 429 tracking",
+    "P0: Add sustained-load query harness for NFR39 -- 1,000 qps for 60s with p99 + error rate",
+    "P1: Add multi-replica Aspire test for NFR16 -- 2+ eventstore replicas with actor redistribution assertions",
+    "P1: Extend NFR18 multi-tenant test to 10+ concurrent tenants with parallel command dispatch",
+    "P1: Add Playwright concurrent-admin-UI test for NFR45 -- 10 parallel sessions",
+    "P2: Publish reference HPA/KEDA manifests under deploy/ (currently only documented in guides)",
+    "P2: Parameterize eventstore replica count at the Aspire AppHost level for k8s/aca publish targets"
   ],
-  "summary": "Scalability posture is MEDIUM risk. Architecture is well-designed for scale (stateless, DAPR actor placement, backend portability, rate limiting) but quantitative scaling targets (10K aggregates, 10 tenants, 100 cmd/sec) are UNTESTED. Horizontal scaling and deployability are PASS. Key risk: no load test evidence for scaling limits."
+  "summary": "Scalability design is structurally sound -- DAPR actors provide consistent-hash placement primitives, snapshot+tail rehydration bounds state reconstruction (NFR19 PASS), rate limiting is fully validated (NFR33/34 PASS with Retry-After delta-seconds), and dynamic tenant hot-add works without restart (NFR20 PASS). However, the headline capacity ceilings (10K aggregates/instance, 100 cmd/sec, 1,000 qps, 10 admin users) are entirely unvalidated empirically -- no volume, load, or multi-replica test exists, and the Aspire AppHost runs a single replica of each service with no parameterized scaling. Recommend a CONCERNS gate until at least NFR17, NFR7, and NFR39 have sustained-load coverage."
 }
