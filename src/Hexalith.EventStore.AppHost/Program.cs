@@ -25,7 +25,13 @@ string resiliencyConfigPath = ResolveDaprConfigPath("resiliency.yaml");
 
 // Add EventStore topology using the convenience extension
 // launchSettings.json specifies port 8080 to match DAPR AppPort configuration.
-IResourceBuilder<ProjectResource> eventStore = builder.AddProject<Projects.Hexalith_EventStore>("eventstore");
+IResourceBuilder<ProjectResource> eventStore = builder.AddProject<Projects.Hexalith_EventStore>("eventstore")
+    // Trust internal DAPR service-invocation from domain services — the sidecar enforces ACL
+    // and tags the request with `dapr-caller-app-id`, which the DaprInternal auth scheme
+    // validates against this allow-list. The `tenants` service needs this so the bootstrap
+    // hosted service can submit `BootstrapGlobalAdmin` to `/api/v1/commands` without carrying
+    // a user JWT — domain services are behind the EventStore auth boundary by design.
+    .WithEnvironment("Authentication__DaprInternal__AllowedCallers__0", "tenants");
 IResourceBuilder<ProjectResource> adminServer = builder.AddProject<Projects.Hexalith_EventStore_Admin_Server_Host>("eventstore-admin");
 IResourceBuilder<ProjectResource> adminUI = builder.AddProject<Projects.Hexalith_EventStore_Admin_UI>("eventstore-admin-ui");
 HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(

@@ -54,9 +54,43 @@ public static class EventStoreServiceCollectionExtensions {
         _ = services.AddSingleton<IValidateOptions<EventStoreAuthenticationOptions>, ValidateEventStoreAuthenticationOptions>();
         _ = services.AddSingleton<IConfigureOptions<JwtBearerOptions>, ConfigureJwtBearerOptions>();
 
+        // Bind internal DAPR caller options (allow-list of trusted service app-ids).
+        _ = services.AddOptions<DaprInternalAuthenticationOptions>(DaprInternalAuthenticationOptions.SchemeName)
+            .BindConfiguration("Authentication:DaprInternal");
+
+        const string HexalithPolicyScheme = "Hexalith";
+
+        // Composite policy scheme: forward to DaprInternal only when the dapr-caller-app-id
+        // header is present AND the caller is explicitly allow-listed. All other requests
+        // (including DAPR-invoked calls from services that forward a user JWT, like admin
+        // server) fall through to JwtBearer so the user's token is validated normally.
         _ = services
-            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer();
+            .AddAuthentication(options => {
+                options.DefaultScheme = HexalithPolicyScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddPolicyScheme(HexalithPolicyScheme, HexalithPolicyScheme, policyOptions =>
+                policyOptions.ForwardDefaultSelector = context => {
+                    string? caller = context.Request.Headers[DaprInternalAuthenticationOptions.CallerHeaderName].FirstOrDefault();
+                    if (string.IsNullOrWhiteSpace(caller)) {
+                        return JwtBearerDefaults.AuthenticationScheme;
+                    }
+
+                    IOptionsMonitor<DaprInternalAuthenticationOptions> monitor =
+                        context.RequestServices.GetRequiredService<IOptionsMonitor<DaprInternalAuthenticationOptions>>();
+                    DaprInternalAuthenticationOptions internalOptions = monitor.Get(DaprInternalAuthenticationOptions.SchemeName);
+                    bool isAllowListed = internalOptions.AllowedCallers.Any(c =>
+                        string.Equals(c, caller, StringComparison.Ordinal));
+
+                    return isAllowListed
+                        ? DaprInternalAuthenticationOptions.SchemeName
+                        : JwtBearerDefaults.AuthenticationScheme;
+                })
+            .AddJwtBearer()
+            .AddScheme<DaprInternalAuthenticationOptions, DaprInternalAuthenticationHandler>(
+                DaprInternalAuthenticationOptions.SchemeName,
+                displayName: null,
+                configureOptions: null);
 
         _ = services.AddAuthorization();
 
