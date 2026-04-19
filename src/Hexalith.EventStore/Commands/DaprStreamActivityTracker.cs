@@ -16,9 +16,9 @@ public sealed class DaprStreamActivityTracker(
     DaprClient daprClient,
     IOptions<CommandStatusOptions> options,
     ILogger<DaprStreamActivityTracker> logger) : IStreamActivityTracker {
-    private const int MaxEntries = 1000;
-    private const int MaxEtagRetries = 3;
-    private const string ActivityIndexKey = "admin:stream-activity:all";
+    private const string _activityIndexKey = "admin:stream-activity:all";
+    private const int _maxEntries = 1000;
+    private const int _maxEtagRetries = 3;
     private readonly string _stateStoreName = options.Value.StateStoreName;
 
     /// <inheritdoc/>
@@ -41,7 +41,7 @@ public sealed class DaprStreamActivityTracker(
             if (!saved) {
                 logger.LogWarning(
                     "Failed to track stream activity after {MaxRetries} optimistic-concurrency attempts: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}",
-                    MaxEtagRetries,
+                    _maxEtagRetries,
                     tenantId,
                     domain,
                     aggregateId);
@@ -98,7 +98,7 @@ public sealed class DaprStreamActivityTracker(
 
         return entries
             .OrderByDescending(e => e.LastActivityUtc)
-            .Take(MaxEntries)
+            .Take(_maxEntries)
             .ToList();
     }
 
@@ -109,16 +109,16 @@ public sealed class DaprStreamActivityTracker(
         long newEventsAppended,
         DateTimeOffset timestamp,
         CancellationToken ct) {
-        for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+        for (int attempt = 0; attempt < _maxEtagRetries; attempt++) {
             try {
                 (List<StreamSummary>? existing, string etag) = await daprClient
-                    .GetStateAndETagAsync<List<StreamSummary>>(_stateStoreName, ActivityIndexKey, cancellationToken: ct)
+                    .GetStateAndETagAsync<List<StreamSummary>>(_stateStoreName, _activityIndexKey, cancellationToken: ct)
                     .ConfigureAwait(false);
 
                 List<StreamSummary> updated = UpsertAndTrim(
                     existing ?? [], tenantId, domain, aggregateId, newEventsAppended, timestamp);
                 bool saved = await daprClient
-                    .TrySaveStateAsync(_stateStoreName, ActivityIndexKey, updated, etag, cancellationToken: ct)
+                    .TrySaveStateAsync(_stateStoreName, _activityIndexKey, updated, etag, cancellationToken: ct)
                     .ConfigureAwait(false);
 
                 if (saved) {
@@ -127,18 +127,18 @@ public sealed class DaprStreamActivityTracker(
 
                 logger.LogDebug(
                     "ETag mismatch while updating stream activity index '{IndexKey}', retry {Attempt}.",
-                    ActivityIndexKey,
+                    _activityIndexKey,
                     attempt + 1);
             }
             catch (OperationCanceledException) {
                 throw;
             }
-            catch (Exception ex) when (attempt < MaxEtagRetries - 1) {
+            catch (Exception ex) when (attempt < _maxEtagRetries - 1) {
                 logger.LogDebug(
                     ex,
                     "Retry {Attempt} while updating stream activity index '{IndexKey}'.",
                     attempt + 1,
-                    ActivityIndexKey);
+                    _activityIndexKey);
             }
         }
 

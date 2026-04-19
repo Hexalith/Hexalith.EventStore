@@ -25,8 +25,8 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// Queries tenant data via the EventStore query pipeline using DAPR service invocation.
 /// </summary>
 public sealed class DaprTenantQueryService : ITenantQueryService {
-    private const int DefaultPageSize = 100;
-    private const string QueryEndpoint = "api/v1/queries";
+    private const int _defaultPageSize = 100;
+    private const string _queryEndpoint = "api/v1/queries";
 
     private static readonly JsonSerializerOptions _options = new() {
         PropertyNameCaseInsensitive = true,
@@ -92,7 +92,7 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
         do {
             SubmitQueryResponse response = await SendQueryAsync(
                 "tenants", tenantId, "get-tenant-users",
-                new { cursor, pageSize = DefaultPageSize },
+                new { cursor, pageSize = _defaultPageSize },
                 ct).ConfigureAwait(false);
 
             Hexalith.Tenants.Contracts.Queries.PaginatedResult<ContractsTenantMember>? page =
@@ -119,7 +119,7 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
         do {
             SubmitQueryResponse response = await SendQueryAsync(
                 "tenants", "index", "list-tenants",
-                new { cursor, pageSize = DefaultPageSize },
+                new { cursor, pageSize = _defaultPageSize },
                 ct).ConfigureAwait(false);
 
             Hexalith.Tenants.Contracts.Queries.PaginatedResult<ContractsTenantSummary>? page =
@@ -151,7 +151,7 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
         CancellationToken ct) {
         try {
             HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
-                HttpMethod.Post, _serverOptions.EventStoreAppId, QueryEndpoint);
+                HttpMethod.Post, _serverOptions.EventStoreAppId, _queryEndpoint);
 
             string? token = _authContext.GetToken();
             if (token is not null) {
