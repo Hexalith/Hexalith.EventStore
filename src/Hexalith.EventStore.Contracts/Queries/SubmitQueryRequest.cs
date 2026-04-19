@@ -13,6 +13,7 @@ namespace Hexalith.EventStore.Contracts.Queries;
 /// <param name="ProjectionType">Optional projection type used to route the query to the correct persisted read model.</param>
 /// <param name="Payload">Optional JSON payload containing query parameters.</param>
 /// <param name="EntityId">Optional entity identifier for sub-aggregate queries.</param>
+/// <param name="ProjectionActorType">Optional DAPR actor type name hosting the projection. Defaults to the generic "ProjectionActor"; domain services with their own projection actor (e.g., tenants) set this to their actor type.</param>
 public record SubmitQueryRequest(
     string Tenant,
     string Domain,
@@ -20,4 +21,5 @@ public record SubmitQueryRequest(
     string QueryType,
     string? ProjectionType = null,
     JsonElement? Payload = null,
-    string? EntityId = null);
+    string? EntityId = null,
+    string? ProjectionActorType = null);

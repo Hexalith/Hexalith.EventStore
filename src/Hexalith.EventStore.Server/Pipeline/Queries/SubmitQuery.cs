@@ -16,7 +16,8 @@ public record SubmitQuery(
     string CorrelationId,
     string UserId,
     string? EntityId = null,
-    string? ProjectionType = null) : IRequest<SubmitQueryResult>;
+    string? ProjectionType = null,
+    string? ProjectionActorType = null) : IRequest<SubmitQueryResult>;
 
 /// <summary>
 /// Result of processing a <see cref="SubmitQuery"/>.

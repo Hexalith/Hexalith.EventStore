@@ -78,7 +78,7 @@ public static class AdminUIServiceExtensions {
         _ = builder.Services.AddHttpClient("AdminApi", client => {
             client.BaseAddress = new Uri(builder.Configuration["EventStore:AdminServer:BaseUrl"]
                 ?? "https://eventstore-admin");
-            client.Timeout = TimeSpan.FromSeconds(5);
+            client.Timeout = TimeSpan.FromSeconds(30);
         })
             .AddHttpMessageHandler<AdminApiAuthorizationHandler>();
 

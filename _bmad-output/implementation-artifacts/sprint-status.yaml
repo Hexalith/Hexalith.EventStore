@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-17 (21-13 review → done)
+# last_updated: 2026-04-19 (Epic 15 + Epic 21 retrospectives completed — see epic-15-retro-2026-04-19.md and epic-21-retro-2026-04-19.md)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-04-17 (21-13 review → done)
+last_updated: 2026-04-19 (Epic 15 + Epic 21 retrospectives completed — see epic-15-retro-2026-04-19.md and epic-21-retro-2026-04-19.md)
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -181,8 +181,9 @@ development_status:
   15-10-admin-ui-data-pipeline-fixes: done
   15-11-persistent-state-store-and-command-activity: done
   15-12-events-page-cross-stream-browser: done
+  15-12a-implement-missing-timeline-endpoint: done  # 2026-04-19: code review complete. 3 DN resolved by story amendment (Events.razor anti-pattern updated; File List extended with Events.razor, Streams.razor, and Sample BlazorUI v5 migration fixes verified against FluentUI v5 docs). 0 patches. 4 deferred as pre-existing (unbounded actor read, no CT propagation, missing boundary tests). 8 dismissed. 12/12 new Tier-1 tests green. AC 12 live-AppHost verification still reviewer-gated.
   15-13-stream-activity-tracker-writer: done
-  epic-15-retrospective: optional
+  epic-15-retrospective: done  # 2026-04-19: epic-15-retro-2026-04-19.md. Note: epic-15 key still shows in-progress despite all 15 stories done — see retro action R15-A1
 
   # Epic 16: Admin Web UI — DBA Operations
   epic-16: done
@@ -254,4 +255,4 @@ development_status:
   21-11-navmenu-v5-fix: done  # 2026-04-16: all ACs verified — hover states, active indicator, responsive hamburger drawer, topology expand/collapse. 5 browser screenshots in test-artifacts/21-11-navmenu/.
   21-12-fluentdesigntheme-integration: done  # 2026-04-16: All ACs verified. IThemeService integration fix for FluentUI v5 tokens. 22 Tier-A screenshots captured. Build 0/0, tests 615/615.
   21-13-ui-bug-fixes-batch: done  # 2026-04-17: review patch sweep complete (4/4 patches fixed) — CommandPalette true-open no-op + stale-state recovery, TypeCatalog test async-await hardening, CommandSandbox dialog-specific aria-label assertion, AC3 forward-direction evidence recorded (Back x2 + Forward x2 lock-step). Admin.UI 0/0, slnx 0/0, targeted Admin.UI tests 4/4 green. Task 1.99 not executed.
-  epic-21-retrospective: optional
+  epic-21-retrospective: done  # 2026-04-19: epic-21-retro-2026-04-19.md. Note: epic-21 key still shows in-progress despite all 16 stories done — see retro action R21-A1

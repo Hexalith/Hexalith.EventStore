@@ -47,6 +47,16 @@ else
         <StatCard Label="Active Streams" Value="@ComputeActiveStreams().ToString()" />
     </div>
 
+    @if (_failedStreamCount > 0)
+    {
+        <div role="alert" style="padding: 8px 12px; margin-bottom: 12px;
+             background: var(--colorPaletteYellowBackground2);
+             color: var(--colorPaletteYellowForeground2); border-radius: 4px; font-size: 13px;">
+            ⚠ @_failedStreamCount of @_totalStreamCount stream timelines could not be loaded.
+            Events from those streams are missing — check Admin.Server logs.
+        </div>
+    }
+
     <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
         <FluentSelect TOption="string" TValue="string" @bind-Value="_tenantFilter" @bind-Value:after="OnTenantFilterChanged"
                       Label="Tenant" Style="min-width: 140px;">
@@ -131,6 +141,8 @@ else
     private bool _hasRendered;
     private bool _disposed;
     private CancellationTokenSource? _cts;
+    private int _failedStreamCount;
+    private int _totalStreamCount;
 
     private int _totalPages => _filteredItems.Count == 0
         ? 1
@@ -254,6 +266,8 @@ else
 
             IReadOnlyList<StreamSummary> streams = streamsResult.Items;
             var perStreamResults = new ConcurrentBag<List<EventRow>>();
+            _totalStreamCount = streams.Count;
+            _failedStreamCount = 0;
 
             await Parallel.ForEachAsync(
                 streams,
@@ -293,6 +307,7 @@ else
                     }
                     catch (Exception ex)
                     {
+                        Interlocked.Increment(ref _failedStreamCount);
                         Logger.LogWarning(
                             ex,
                             "Failed to fetch timeline for stream {TenantId}/{Domain}/{AggregateId}, skipping",

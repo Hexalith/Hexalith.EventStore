@@ -124,7 +124,8 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
             EntityId: entityId,
             ProjectionType: string.IsNullOrWhiteSpace(request.ProjectionType)
                 ? request.Domain
-                : request.ProjectionType);
+                : request.ProjectionType,
+            ProjectionActorType: request.ProjectionActorType);
 
         SubmitQueryResult result = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
 

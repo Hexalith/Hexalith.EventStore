@@ -32,6 +32,9 @@ public partial class QueryRouter(
             : query.ProjectionType;
 
         string actorId = QueryActorIdHelper.DeriveActorId(routingQueryType, query.Tenant, query.EntityId, query.Payload);
+        string actorTypeName = string.IsNullOrWhiteSpace(query.ProjectionActorType)
+            ? ProjectionActorTypeName
+            : query.ProjectionActorType;
         int tier = query.EntityId is not null && query.EntityId.Length > 0 ? 1
             : query.Payload.Length > 0 ? 2
             : 3;
@@ -52,7 +55,7 @@ public partial class QueryRouter(
         try {
             IProjectionActor proxy = actorProxyFactory.CreateActorProxy<IProjectionActor>(
                 new ActorId(actorId),
-                ProjectionActorTypeName);
+                actorTypeName);
 
             QueryResult result = await proxy.QueryAsync(envelope).ConfigureAwait(false);
 

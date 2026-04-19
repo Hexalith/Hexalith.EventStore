@@ -40,7 +40,7 @@ else if (_filteredItems is not null && _filteredItems.Count > 0)
         <FluentDataGrid Items="@GetCurrentPage()" TGridItem="StreamSummary"
                         Style="width: 100%;"
                         OnRowClick="@(row => OnRowClick(row.Item))"
-                        GridTemplateColumns="100px 100px 100px 1fr 80px 80px 48px">
+                        GridTemplateColumns="1fr 1fr 1fr 1fr 1fr 1fr 1fr">
             <TemplateColumn Title="Status" Class="streams-col-status">
                 <StatusBadge DisplayConfig="@(StatusBadge.StatusDisplayConfig.FromStreamStatus(context.StreamStatus))"
                              AriaLabelPrefix="Stream status" />
@@ -48,9 +48,9 @@ else if (_filteredItems is not null && _filteredItems.Count > 0)
             <PropertyColumn Property="@(s => s.TenantId)" Title="Tenant" Class="monospace streams-col-tenant" />
             <PropertyColumn Property="@(s => s.Domain)" Title="Domain" Class="monospace streams-col-domain" />
             <TemplateColumn Title="Aggregate ID" Class="streams-col-aggid">
-                <span class="monospace" title="@context.AggregateId"
+                <span class="monospace grid-cell-truncate" title="@context.AggregateId"
                       style="cursor: pointer;"
-                      @onclick="() => CopyAggregateId(context.AggregateId)">@(context.AggregateId.Length > 8 ? context.AggregateId[..8] + "\u2026" : context.AggregateId)</span>
+                      @onclick="() => CopyAggregateId(context.AggregateId)">@context.AggregateId</span>
             </TemplateColumn>
             <PropertyColumn Property="@(s => s.EventCount)" Title="Events" Align="DataGridCellAlignment.End"
                             Class="streams-col-events" />

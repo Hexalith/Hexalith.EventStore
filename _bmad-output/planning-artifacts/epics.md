@@ -600,6 +600,10 @@ So that I can browse event activity across the system without navigating to indi
 - StatCards: Total Events, Unique Streams, Unique Event Types
 - Sprint change proposal: `sprint-change-proposal-2026-04-01-events-page.md`
 
+---
+
+**2026-04-19 follow-up (Sprint Change Proposal):** Story 15.12 shipped referencing a `/timeline` endpoint on the EventStore service that was never implemented — all per-stream fetches returned 404 and were silently swallowed. See `sprint-change-proposal-2026-04-19-timeline-endpoint-missing.md` for root cause and the Story 15.12a fix (implement `GetStreamTimelineAsync` in `AdminStreamQueryController.cs`). Supersedes the timeout-focused diagnosis in `sprint-change-proposal-2026-04-18-events-page-slow.md` (the 5 s → 30 s timeout bump is retained as a safety margin but was not the root cause).
+
 ### Epic 16: Admin Web UI — DBA Operations
 Storage management, snapshot controls, backup/restore, tenant management, dead-letter queue, consistency checker. Enables Journey 8 (Maria).
 **FRs covered:** FR76, FR77, FR78

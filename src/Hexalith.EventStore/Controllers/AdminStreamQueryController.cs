@@ -6,6 +6,7 @@ using System.Text.Json.Nodes;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
@@ -232,6 +233,86 @@ public class AdminStreamQueryController(
                 statusCode: StatusCodes.Status500InternalServerError,
                 title: "Internal Server Error",
                 detail: "Failed to compute bisect result.");
+        }
+    }
+
+    /// <summary>
+    /// Returns a paginated timeline of events for the specified aggregate stream.
+    /// Used by the Admin UI Events page, StreamDetail page, MCP and CLI tools (FR69).
+    /// </summary>
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/timeline")]
+    [ProducesResponseType(typeof(PagedResult<TimelineEntry>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetStreamTimelineAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromQuery] long? from,
+        [FromQuery] long? to,
+        [FromQuery] int count = 100,
+        CancellationToken ct = default) {
+        if (from is < 0) {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "Parameter 'from' must be >= 0 when provided.");
+        }
+
+        if (to is < 1) {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "Parameter 'to' must be >= 1 when provided.");
+        }
+
+        if (from.HasValue && to.HasValue && to.Value < from.Value) {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "Parameter 'to' must be >= 'from'.");
+        }
+
+        if (count <= 0) {
+            count = 100;
+        }
+
+        try {
+            var identity = new AggregateIdentity(tenantId, domain, aggregateId);
+            IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+                new ActorId(identity.ActorId), "AggregateActor");
+
+            // GetEventsAsync is exclusive on lower bound; subtract 1 to make AC inclusive.
+            long fromSequence = from is > 0 ? from.Value - 1 : 0;
+            ServerEventEnvelope[] allEvents = await actor.GetEventsAsync(fromSequence).ConfigureAwait(false);
+
+            IEnumerable<ServerEventEnvelope> filtered = allEvents;
+            if (to.HasValue) {
+                filtered = filtered.Where(e => e.SequenceNumber <= to.Value);
+            }
+
+            List<TimelineEntry> entries = [.. filtered
+                .OrderBy(e => e.SequenceNumber)
+                .Take(count)
+                .Select(e => new TimelineEntry(
+                    e.SequenceNumber,
+                    e.Timestamp,
+                    TimelineEntryType.Event,
+                    e.EventTypeName,
+                    e.CorrelationId,
+                    string.IsNullOrWhiteSpace(e.UserId) ? null : e.UserId))];
+
+            return Ok(new PagedResult<TimelineEntry>(entries, entries.Count, null));
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            logger.LogError(ex, "Failed to fetch stream timeline for {TenantId}/{Domain}/{AggregateId}.",
+                tenantId, domain, aggregateId);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "Failed to fetch stream timeline.");
         }
     }
 

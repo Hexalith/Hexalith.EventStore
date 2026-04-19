@@ -1,0 +1,32 @@
+- generic [ref=e3]:
+  - generic [ref=e4]: Hexalith EventStore — UI Refresh Patterns
+  - navigation [ref=e6]:
+    - link "Overview" [ref=e7] [cursor=pointer]:
+      - /url: /
+      - text: Overview
+    - 'link "Pattern 1: Notification" [ref=e8] [cursor=pointer]':
+      - /url: /pattern-notification
+      - text: "Pattern 1: Notification"
+    - 'link "Pattern 2: Silent Reload" [ref=e9] [cursor=pointer]':
+      - /url: /pattern-silent-reload
+      - text: "Pattern 2: Silent Reload"
+    - 'link "Pattern 3: Selective Refresh" [ref=e10] [cursor=pointer]':
+      - /url: /pattern-selective-refresh
+      - text: "Pattern 3: Selective Refresh"
+  - generic [ref=e12]:
+    - 'heading "Pattern 1: Persistent Notification" [level=1] [ref=e13]'
+    - paragraph [ref=e14]: Shows a persistent inline message bar when the counter projection changes. The user decides when to refresh — data stays stable until they click "Refresh Now".
+    - group [ref=e15]:
+      - heading "Counter Value" [level=2] [ref=e16]
+      - paragraph [ref=e17]: "0"
+      - paragraph [ref=e18]: "Last refreshed: 11:27:53"
+    - group [ref=e19]:
+      - heading "Send Commands" [level=3] [ref=e20]
+      - paragraph [ref=e21]: This component does NOT subscribe to projection changes — it only submits commands.
+      - generic [ref=e22]:
+        - generic [ref=e24] [cursor=pointer]:
+          - generic: Increment
+        - generic [ref=e26] [cursor=pointer]:
+          - generic: Decrement
+        - generic [ref=e28] [cursor=pointer]:
+          - generic: Reset

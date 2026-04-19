@@ -1,0 +1,90 @@
+- generic [ref=e3]:
+  - generic [ref=e4]: Hexalith EventStore — UI Refresh Patterns
+  - navigation [ref=e6]:
+    - link "Overview" [ref=e7] [cursor=pointer]:
+      - /url: /
+      - text: Overview
+    - 'link "Pattern 1: Notification" [ref=e8] [cursor=pointer]':
+      - /url: /pattern-notification
+      - text: "Pattern 1: Notification"
+    - 'link "Pattern 2: Silent Reload" [ref=e9] [cursor=pointer]':
+      - /url: /pattern-silent-reload
+      - text: "Pattern 2: Silent Reload"
+    - 'link "Pattern 3: Selective Refresh" [ref=e10] [cursor=pointer]':
+      - /url: /pattern-selective-refresh
+      - text: "Pattern 3: Selective Refresh"
+  - generic [ref=e12]:
+    - heading "Hexalith EventStore — UI Refresh Patterns" [level=1] [ref=e13]
+    - paragraph [ref=e14]:
+      - text: This sample demonstrates three approaches for handling real-time projection change signals from EventStore via SignalR. Each pattern uses the
+      - code [ref=e15]: EventStoreSignalRClient
+      - text: to subscribe to the "changed" signal — a notification that contains only
+      - code [ref=e16]: (projectionType, tenantId)
+      - text: with no data payload. Patterns must re-query the EventStore to get updated data.
+    - heading "Pattern Comparison" [level=2] [ref=e17]
+    - table [ref=e18]:
+      - rowgroup [ref=e19]:
+        - row "Pattern UX Impact Implementation Effort Best Use Case" [ref=e20]:
+          - columnheader "Pattern" [ref=e21]:
+            - generic [ref=e24]: Pattern
+          - columnheader "UX Impact" [ref=e25]:
+            - generic [ref=e28]: UX Impact
+          - columnheader "Implementation Effort" [ref=e29]:
+            - generic [ref=e32]: Implementation Effort
+          - columnheader "Best Use Case" [ref=e33]:
+            - generic [ref=e36]: Best Use Case
+      - rowgroup [ref=e37]:
+        - 'row "1: Notification Least disruptive — user controls refresh Low Dashboards, admin panels" [ref=e38]':
+          - 'gridcell "1: Notification" [ref=e39]'
+          - gridcell "Least disruptive — user controls refresh" [ref=e40]
+          - gridcell "Low" [ref=e41]
+          - gridcell "Dashboards, admin panels" [ref=e42]
+        - 'row "2: Silent Reload Seamless — data always current Low Real-time monitoring, counters" [ref=e43]':
+          - 'gridcell "2: Silent Reload" [ref=e44]'
+          - gridcell "Seamless — data always current" [ref=e45]
+          - gridcell "Low" [ref=e46]
+          - gridcell "Real-time monitoring, counters" [ref=e47]
+        - 'row "3: Selective Refresh Best — only affected components update Medium Complex dashboards, multi-panel UIs" [ref=e48]':
+          - 'gridcell "3: Selective Refresh" [ref=e49]'
+          - gridcell "Best — only affected components update" [ref=e50]
+          - gridcell "Medium" [ref=e51]
+          - gridcell "Complex dashboards, multi-panel UIs" [ref=e52]
+    - heading "Recommended Learning Order" [level=2] [ref=e53]
+    - list [ref=e54]:
+      - listitem [ref=e55]:
+        - strong [ref=e56]:
+          - 'link "Pattern 2: Silent Reload" [ref=e57] [cursor=pointer]':
+            - /url: /pattern-silent-reload
+        - text: — Simplest (~20 lines). Data refreshes automatically on signal with debounce. Start here for immediate gratification.
+      - listitem [ref=e58]:
+        - strong [ref=e59]:
+          - 'link "Pattern 1: Notification" [ref=e60] [cursor=pointer]':
+            - /url: /pattern-notification
+        - text: — Adds user control. A persistent message bar prompts the user to refresh when data changes. No layout shifts until user acts.
+      - listitem [ref=e61]:
+        - strong [ref=e62]:
+          - 'link "Pattern 3: Selective Refresh" [ref=e63] [cursor=pointer]':
+            - /url: /pattern-selective-refresh
+        - text: — Most sophisticated. Each component manages its own subscription and refreshes independently. Best UX but more implementation effort.
+    - heading "How to Run" [level=2] [ref=e64]
+    - group [ref=e65]:
+      - list [ref=e66]:
+        - listitem [ref=e67]:
+          - strong [ref=e68]: "Start the Aspire AppHost:"
+          - code [ref=e69]: dotnet run --project src/Hexalith.EventStore.AppHost
+        - listitem [ref=e70]:
+          - strong [ref=e71]: Verify EventStore is running
+          - text: with SignalR enabled (
+          - code [ref=e72]: EventStore:SignalR:Enabled = true
+          - text: ). The Aspire topology configures this automatically.
+        - listitem [ref=e73]:
+          - strong [ref=e74]: Authentication is handled automatically by the sample UI.
+          - text: In local dev without Keycloak it generates a development JWT for
+          - code [ref=e75]: tenant-a
+          - text: . When Keycloak is enabled, it requests a demo token using the Aspire-wired realm configuration.
+        - listitem [ref=e76]:
+          - strong [ref=e77]: Open the Blazor UI URL
+          - text: from the Aspire dashboard (look for "sample-blazor-ui" resource).
+        - listitem [ref=e78]:
+          - strong [ref=e79]: "Try the patterns:"
+          - text: Navigate using the sidebar. Use the Counter domain sample to trigger projection changes and observe each pattern's behavior.

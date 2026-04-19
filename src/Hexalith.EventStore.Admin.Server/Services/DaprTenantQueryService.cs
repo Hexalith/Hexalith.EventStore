@@ -9,6 +9,7 @@ using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Contracts.Queries;
 
+using Hexalith.Tenants.Contracts;
 using Hexalith.Tenants.Contracts.Enums;
 
 using Microsoft.Extensions.Logging;
@@ -31,6 +32,7 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
         PropertyNameCaseInsensitive = true,
     };
 
+    private readonly IAdminAuthContext _authContext;
     private readonly DaprClient _daprClient;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<DaprTenantQueryService> _logger;
@@ -48,10 +50,12 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
         ArgumentNullException.ThrowIfNull(daprClient);
         ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(authContext);
         ArgumentNullException.ThrowIfNull(logger);
         _daprClient = daprClient;
         _httpClientFactory = httpClientFactory;
         _serverOptions = options.Value;
+        _authContext = authContext;
         _logger = logger;
     }
 
@@ -59,8 +63,8 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
     public async Task<TenantDetail?> GetTenantDetailAsync(string tenantId, CancellationToken ct = default) {
         try {
             SubmitQueryResponse response = await SendQueryAsync(
-                "Tenants", tenantId, "GetTenantDetail",
-                new { tenantId },
+                "tenants", tenantId, "get-tenant",
+                null,
                 ct).ConfigureAwait(false);
 
             ContractsTenantDetail? detail = response.Payload.Deserialize<ContractsTenantDetail>(_options);
@@ -87,8 +91,8 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
 
         do {
             SubmitQueryResponse response = await SendQueryAsync(
-                "Tenants", tenantId, "GetTenantMembers",
-                new { tenantId, cursor, pageSize = DefaultPageSize },
+                "tenants", tenantId, "get-tenant-users",
+                new { cursor, pageSize = DefaultPageSize },
                 ct).ConfigureAwait(false);
 
             Hexalith.Tenants.Contracts.Queries.PaginatedResult<ContractsTenantMember>? page =
@@ -114,7 +118,7 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
 
         do {
             SubmitQueryResponse response = await SendQueryAsync(
-                "Tenants", "tenant-index", "ListTenants",
+                "tenants", "index", "list-tenants",
                 new { cursor, pageSize = DefaultPageSize },
                 ct).ConfigureAwait(false);
 
@@ -149,12 +153,18 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
             HttpRequestMessage request = _daprClient.CreateInvokeMethodRequest(
                 HttpMethod.Post, _serverOptions.EventStoreAppId, QueryEndpoint);
 
+            string? token = _authContext.GetToken();
+            if (token is not null) {
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+
             request.Content = JsonContent.Create(new SubmitQueryRequest(
-                Tenant: string.Empty,
+                Tenant: "system",
                 Domain: domain,
                 AggregateId: aggregateId,
                 QueryType: queryType,
-                Payload: payload is not null ? JsonSerializer.SerializeToElement(payload) : null));
+                Payload: payload is not null ? JsonSerializer.SerializeToElement(payload) : null,
+                ProjectionActorType: TenantProjectionRouting.ActorTypeName));
 
             HttpClient httpClient = _httpClientFactory.CreateClient(_serverOptions.EventStoreAppId);
             HttpResponseMessage httpResponse = await httpClient.SendAsync(request, ct).ConfigureAwait(false);
