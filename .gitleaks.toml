@@ -1,0 +1,23 @@
+title = "Hexalith.EventStore gitleaks config"
+
+# Inherit gitleaks' default rule set (generic-api-key, jwt, aws-key, etc.)
+[extend]
+useDefault = true
+
+# Project-specific allowlists. These are paths gitleaks must NOT report on,
+# either because the matched values are intentional test fixtures or because
+# the file lives outside the project's deployable code surface.
+[allowlist]
+description = "Project-level allowlist for known false positives"
+
+paths = [
+    # BMAD skill knowledge fragments are third-party reference material
+    # bundled inside the repo for tooling. They contain prose code samples
+    # (e.g. "expiredToken = '...'") that are illustrative, not real secrets.
+    '''_bmad/.*''',
+
+    # JWT authentication integration tests deliberately construct invalid
+    # and expired tokens to exercise rejection paths. The literal token
+    # strings are required test fixtures, not credentials.
+    '''tests/Hexalith\.EventStore\.IntegrationTests/.*JwtAuthenticationIntegrationTests\.cs''',
+]
