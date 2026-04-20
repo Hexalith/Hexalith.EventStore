@@ -13,13 +13,16 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  DAPR_VERSION: '1.16.0'
+
 jobs:
   commitlint:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
@@ -32,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0 # full history so PR scans cover newly added commits
 
@@ -52,15 +55,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0 # semantic-release needs full history
           submodules: true
 
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+      - uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         # global.json auto-detected for SDK version
 
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 'lts/*'
           cache: 'npm'
@@ -69,7 +72,7 @@ jobs:
         run: npm ci
 
       - name: Cache NuGet packages
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.nuget/packages
           key: nuget-${{ hashFiles('Directory.Packages.props') }}
@@ -164,10 +167,15 @@ jobs:
       - name: Install Dapr CLI
         uses: dapr/setup-dapr@8d980918fd43a2765c143ce7f687665b2d46a6b9 # v2
         with:
-          version: '1.16.0'
+          version: ${{ env.DAPR_VERSION }}
 
       - name: Initialize Dapr
-        run: dapr init
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 15
+          command: dapr init
 
       - name: Integration Tests (Tier 2)
         run: >
@@ -179,6 +187,8 @@ jobs:
 
       - name: Test Summary
         if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
         run: |
           python - <<'PY'
           import glob
@@ -258,17 +268,18 @@ jobs:
             summary.write(f'\n**Tier 2 totals:** {tier2_passed_total} passed, {tier2_failed_total} failed\n\n')
 
             summary.write('### Job Status\n')
-            summary.write('${{ job.status }}\n')
+            summary.write(os.environ['JOB_STATUS'] + '\n')
           PY
 
       - name: Upload test results
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-results
           path: |
             **/test-results.trx
             **/integration-results.trx
+          retention-days: 30
 
       - name: Coverage Summary
         if: always()
@@ -330,10 +341,11 @@ jobs:
 
       - name: Upload coverage reports
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-reports
           path: '**/coverage.cobertura.xml'
+          retention-days: 30
 
   aspire-tests:
     runs-on: ubuntu-latest
@@ -341,15 +353,15 @@ jobs:
     needs: build-and-test
     continue-on-error: true
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           submodules: true
 
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+      - uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
 
       - name: Cache NuGet packages
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.nuget/packages
           key: nuget-${{ hashFiles('Directory.Packages.props') }}
@@ -358,23 +370,31 @@ jobs:
       - name: Install Dapr CLI
         uses: dapr/setup-dapr@8d980918fd43a2765c143ce7f687665b2d46a6b9 # v2
         with:
-          version: '1.16.0'
+          version: ${{ env.DAPR_VERSION }}
 
       - name: Initialize Dapr
-        run: dapr init
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 15
+          command: dapr init
 
       - name: Aspire Contract Tests (Tier 3)
         run: dotnet test tests/Hexalith.EventStore.IntegrationTests/ --configuration Release
 
       - name: Test Summary
         if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
         run: |
           echo "## Tier 3 Aspire Contract Tests" >> $GITHUB_STEP_SUMMARY
-          echo "Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "Status: $JOB_STATUS" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload test results
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: aspire-test-results
           path: "**/TestResults/**"
+          retention-days: 30
