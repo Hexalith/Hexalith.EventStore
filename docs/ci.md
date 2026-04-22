@@ -27,7 +27,7 @@ Tier 3 is wired with `continue-on-error: true` so an Aspire failure annotates th
 
 ## Job Topology — `ci.yml`
 
-```
+```text
 ┌──────────────┐      ┌─────────────┐
 │  commitlint  │      │ secret-scan │   (parallel; both gate the PR)
 └──────────────┘      └─────────────┘

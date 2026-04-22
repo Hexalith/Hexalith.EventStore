@@ -1,0 +1,19 @@
+# Gitleaks config — extends the default rule set and suppresses known false
+# positives. Scanned by the secret-scan job in .github/workflows/ci.yml.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "BMAD plugin training content contains example tokens and CSV paths that the generic-api-key heuristic flags as secrets. These files are authoring materials, not configuration."
+paths = [
+  '''^_bmad/.*''',
+]
+
+[[allowlists]]
+description = "Integration-test fixtures use deliberately invalid JWTs (e.g., 'eyJ...invalid.signature') to exercise auth-failure paths. These are literal strings in test code, not credentials."
+paths = [
+  '''^tests/.*JwtAuthenticationIntegrationTests\.cs$''',
+  '''^tests/.*KeycloakAuthenticationTests\.cs$''',
+  '''^tests/.*KeycloakTokenHelper\.cs$''',
+]
