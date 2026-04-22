@@ -72,9 +72,9 @@ public class MiddlewareOrderTests : IClassFixture<MiddlewareOrderTests.AuthTestF
                 _ = services.AddSingleton(Substitute.For<DaprClient>());
 
                 // Override DAPR-backed services with mocks
-                _ = services.AddScoped(_ => {
+                _ = services.AddScoped(sp => {
                     IStreamQueryService service = Substitute.For<IStreamQueryService>();
-                    _ = (IServiceProvider)service.GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                    _ = service.GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
                         .Returns(new PagedResult<StreamSummary>(
                         [
                             new StreamSummary(

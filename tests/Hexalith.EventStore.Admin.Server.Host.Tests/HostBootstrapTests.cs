@@ -213,9 +213,9 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
                 _ = services.AddSingleton(Substitute.For<DaprClient>());
 
                 // Override DAPR-backed services with mocks so controller routes are reachable
-                _ = services.AddScoped(_ => {
+                _ = services.AddScoped(sp => {
                     IStreamQueryService service = Substitute.For<IStreamQueryService>();
-                    _ = (IServiceProvider)service.GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                    _ = service.GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
                         .Returns(callInfo => new PagedResult<StreamSummary>(
                         [
                             new StreamSummary(
