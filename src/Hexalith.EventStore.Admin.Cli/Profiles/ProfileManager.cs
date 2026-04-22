@@ -22,7 +22,8 @@ public static partial class ProfileManager {
         "url",
         "token",
         "format",
-    ]);
+    ],
+   StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Gets the default path to <c>~/.eventstore/profiles.json</c>.
