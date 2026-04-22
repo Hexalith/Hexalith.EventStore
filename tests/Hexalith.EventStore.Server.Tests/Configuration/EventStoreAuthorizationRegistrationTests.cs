@@ -261,15 +261,18 @@ public class EventStoreAuthorizationRegistrationTests {
 
         // Assert
         result.CorrelationId.ShouldBe("test-correlation-id");
+        // AuthorizationBehavior runs first so denied requests never reach
+        // LoggingBehavior's pipeline entry/exit markers — entry/exit are
+        // reserved for authorized requests.
         behaviorOrder.ShouldBe([
+            typeof(AuthorizationBehavior<,>),
             typeof(LoggingBehavior<,>),
             typeof(ValidationBehavior<,>),
-            typeof(AuthorizationBehavior<,>),
         ]);
         executionOrder.ShouldBe([
+            "AuthorizationBehavior.Passed",
             "LoggingBehavior.Entry",
             "ValidationBehavior.Passed",
-            "AuthorizationBehavior.Passed",
             "Handler.Execute",
             "LoggingBehavior.Exit",
         ]);
