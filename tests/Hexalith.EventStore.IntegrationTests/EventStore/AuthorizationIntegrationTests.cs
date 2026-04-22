@@ -53,7 +53,7 @@ public class AuthorizationIntegrationTests
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("status").GetInt32().ShouldBe(403);
         body.GetProperty("title").GetString().ShouldBe("Forbidden");
-        body.GetProperty("type").GetString().ShouldBe("https://tools.ietf.org/html/rfc9457#section-3");
+        body.GetProperty("type").GetString().ShouldBe("https://hexalith.io/problems/forbidden");
         body.GetProperty("detail").GetString()!.ShouldContain("tenant");
         body.GetProperty("tenantId").GetString().ShouldBe("tenant-b");
         body.GetProperty("correlationId").GetString().ShouldNotBeNullOrEmpty();

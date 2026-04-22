@@ -20,6 +20,7 @@ public class MultiTenantRoutingIntegrationTests(JwtAuthenticatedWebApplicationFa
         string domain = "test-domain",
         string aggregateId = "agg-001",
         string commandType = "CreateOrder") => new {
+            messageId = Guid.NewGuid().ToString(),
             tenant,
             domain,
             aggregateId,

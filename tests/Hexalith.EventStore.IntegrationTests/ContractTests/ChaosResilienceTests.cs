@@ -46,7 +46,7 @@ public class ChaosResilienceTests {
 
         JsonElement status1 = await ContractTestHelpers.PollUntilTerminalStatusAsync(
             client, corrId1, "tenant-a");
-        status1.GetProperty("stage").GetString().ShouldBe("Completed");
+        status1.GetProperty("status").GetString().ShouldBe("Completed");
 
         // Phase 2: Stop Redis (state store + pub/sub).
         _ = await _fixture.App.ResourceCommands
@@ -75,7 +75,7 @@ public class ChaosResilienceTests {
 
         JsonElement status2 = await ContractTestHelpers.PollUntilTerminalStatusAsync(
             client, corrId2, "tenant-a");
-        status2.GetProperty("stage").GetString().ShouldBe("Completed");
+        status2.GetProperty("status").GetString().ShouldBe("Completed");
     }
 
     /// <summary>
@@ -96,13 +96,13 @@ public class ChaosResilienceTests {
             client, tenant: "tenant-a", domain: "counter",
             aggregateId: aggId, commandType: "IncrementCounter");
         JsonElement s1 = await ContractTestHelpers.PollUntilTerminalStatusAsync(client, corrId1, "tenant-a");
-        s1.GetProperty("stage").GetString().ShouldBe("Completed");
+        s1.GetProperty("status").GetString().ShouldBe("Completed");
 
         string corrId2 = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
             client, tenant: "tenant-a", domain: "counter",
             aggregateId: aggId, commandType: "IncrementCounter");
         JsonElement s2 = await ContractTestHelpers.PollUntilTerminalStatusAsync(client, corrId2, "tenant-a");
-        s2.GetProperty("stage").GetString().ShouldBe("Completed");
+        s2.GetProperty("status").GetString().ShouldBe("Completed");
 
         // Phase 2: Restart Redis (forces actor deactivation and state store reconnection).
         _ = await _fixture.App.ResourceCommands
@@ -123,7 +123,7 @@ public class ChaosResilienceTests {
             aggregateId: aggId, commandType: "IncrementCounter");
 
         JsonElement s3 = await ContractTestHelpers.PollUntilTerminalStatusAsync(client, corrId3, "tenant-a");
-        s3.GetProperty("stage").GetString().ShouldBe("Completed");
+        s3.GetProperty("status").GetString().ShouldBe("Completed");
 
         // Verify event count: 3 events should exist (rehydration didn't lose prior events).
         if (s3.TryGetProperty("eventCount", out JsonElement eventCountProp)) {
@@ -157,6 +157,7 @@ public class ChaosResilienceTests {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands") {
             Content = new StringContent(
                 JsonSerializer.Serialize(new {
+                    MessageId = Guid.NewGuid().ToString(),
                     Tenant = "tenant-a",
                     Domain = "counter",
                     AggregateId = aggId,
@@ -194,7 +195,7 @@ public class ChaosResilienceTests {
 
         JsonElement statusPost = await ContractTestHelpers.PollUntilTerminalStatusAsync(
             client, corrIdPost, "tenant-a");
-        statusPost.GetProperty("stage").GetString().ShouldBe("Completed");
+        statusPost.GetProperty("status").GetString().ShouldBe("Completed");
 
         // Assert: the during-outage command either returned an error or the system recovered.
         // The key invariant is: NO silently dropped events. If 202 was returned, the command

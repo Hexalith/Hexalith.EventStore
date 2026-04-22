@@ -385,9 +385,12 @@ public static class EventStoreServiceCollectionExtensions {
 
         _ = services.AddMediatR(cfg => {
             _ = cfg.RegisterServicesFromAssemblyContaining<SubmitCommandHandler>();
+            // Authorization runs first so denied requests never reach LoggingBehavior's
+            // "MediatR pipeline entry" log — the rejection is logged by AuthorizationBehavior
+            // itself, and pipeline entry/exit logs are reserved for requests that passed auth.
+            _ = cfg.AddOpenBehavior(typeof(AuthorizationBehavior<,>));
             _ = cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
             _ = cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
-            _ = cfg.AddOpenBehavior(typeof(AuthorizationBehavior<,>));
         });
 
         _ = services.AddValidatorsFromAssemblyContaining<SubmitCommandRequestValidator>();

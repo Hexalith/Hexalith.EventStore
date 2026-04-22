@@ -42,7 +42,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("status").GetInt32().ShouldBe(409);
         body.GetProperty("title").GetString().ShouldBe("Conflict");
-        body.GetProperty("type").GetString()!.ShouldContain("rfc9457");
+        body.GetProperty("type").GetString()!.ShouldBe("https://hexalith.io/problems/concurrency-conflict");
         body.GetProperty("instance").GetString().ShouldBe("/api/v1/commands");
     }
 
@@ -63,7 +63,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     }
 
     [Fact]
-    public async Task PostCommands_ConcurrencyConflict_ProblemDetailsIncludesAggregateId() {
+    public async Task PostCommands_ConcurrencyConflict_ProblemDetailsExcludesAggregateId() {
         // Arrange
         using WebApplicationFactory<EventStoreProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
@@ -72,10 +72,9 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
 
-        // Assert
+        // Assert — UX-DR10: aggregateId is intentionally omitted from the 409 client response.
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.TryGetProperty("aggregateId", out JsonElement aggregateId).ShouldBeTrue();
-        aggregateId.GetString().ShouldBe("order-789");
+        body.TryGetProperty("aggregateId", out _).ShouldBeFalse();
     }
 
     [Fact]
@@ -88,12 +87,11 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
 
-        // Assert
+        // Assert — UX-DR6: generic, safe detail without event-sourcing terminology or aggregate context.
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
         string detail = body.GetProperty("detail").GetString()!;
-        detail.ShouldContain("optimistic concurrency conflict");
-        detail.ShouldContain("order-detail-test");
-        detail.ShouldContain("Retry");
+        detail.ShouldContain("concurrency conflict");
+        detail.ShouldContain("retry");
     }
 
     [Fact]
@@ -176,7 +174,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
     }
 
     [Fact]
-    public async Task PostCommands_ConcurrencyConflict_ProblemDetailsIncludesTenantId() {
+    public async Task PostCommands_ConcurrencyConflict_ProblemDetailsExcludesTenantId() {
         // Arrange
         using WebApplicationFactory<EventStoreProgram> customFactory = CreateConflictFactory();
         HttpClient client = CreateAuthenticatedClient(customFactory);
@@ -185,10 +183,9 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         // Act
         HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/commands", request);
 
-        // Assert
+        // Assert — UX-DR10: tenantId is intentionally omitted from the 409 client response.
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.TryGetProperty("tenantId", out JsonElement tenantId).ShouldBeTrue();
-        tenantId.GetString().ShouldBe("test-tenant");
+        body.TryGetProperty("tenantId", out _).ShouldBeFalse();
     }
 
     [Fact]

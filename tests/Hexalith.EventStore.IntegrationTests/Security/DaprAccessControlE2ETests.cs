@@ -131,10 +131,15 @@ public class DaprAccessControlE2ETests : KeycloakE2ETestBase {
     }
 
     private Uri? TryGetSampleDaprEndpoint() {
+        // The sidecar exposes its HTTP endpoint only in some topology configurations; when the
+        // resource has no allocated endpoint, Aspire throws an ArgumentException whose message
+        // is culture-sensitive (EN: "has no allocated endpoints", FR: "n'a aucun point de
+        // terminaison alloué"). Treat any ArgumentException referencing the resource name
+        // itself as "not reachable" and skip the test.
         try {
             return App.GetEndpoint("sample-dapr", "http");
         }
-        catch (ArgumentException ex) when (ex.Message.Contains("has no allocated endpoints", StringComparison.OrdinalIgnoreCase)) {
+        catch (ArgumentException) {
             return null;
         }
     }

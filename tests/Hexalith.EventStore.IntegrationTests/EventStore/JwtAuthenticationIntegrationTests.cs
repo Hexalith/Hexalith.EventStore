@@ -52,8 +52,10 @@ public class JwtAuthenticationIntegrationTests
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("status").GetInt32().ShouldBe(401);
         body.GetProperty("title").GetString().ShouldBe("Unauthorized");
-        body.GetProperty("type").GetString().ShouldBe("https://tools.ietf.org/html/rfc9457#section-3");
-        body.GetProperty("correlationId").GetString().ShouldNotBeNullOrEmpty();
+        body.GetProperty("type").GetString().ShouldBe("https://hexalith.io/problems/authentication-required");
+
+        // UX-DR2: 401 responses from the auth challenge intentionally omit correlationId.
+        body.TryGetProperty("correlationId", out _).ShouldBeFalse();
     }
 
     [Fact]
@@ -143,6 +145,7 @@ public class JwtAuthenticationIntegrationTests
         HttpClient client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-001",
@@ -167,6 +170,7 @@ public class JwtAuthenticationIntegrationTests
         HttpClient client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "tenant-a",
             domain = "orders",
             aggregateId = "agg-001",

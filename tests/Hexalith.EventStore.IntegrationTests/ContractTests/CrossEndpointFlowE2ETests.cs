@@ -90,6 +90,7 @@ public class CrossEndpointFlowE2ETests {
 
         // Step 2: Submit the same command with the same wrong-tenant token → 403
         var submitBody = new {
+            MessageId = Guid.NewGuid().ToString(),
             Tenant = "tenant-a",
             Domain = "counter",
             AggregateId = $"cross-flow-denied-{Guid.NewGuid():N}",

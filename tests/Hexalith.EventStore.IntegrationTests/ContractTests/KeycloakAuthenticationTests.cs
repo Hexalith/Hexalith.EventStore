@@ -62,6 +62,7 @@ public class KeycloakAuthenticationTests {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands") {
             Content = new StringContent(
                 JsonSerializer.Serialize(new {
+                    MessageId = Guid.NewGuid().ToString(),
                     Tenant = "tenant-a",
                     Domain = "counter",
                     AggregateId = $"kc-notoken-{Guid.NewGuid():N}",
@@ -108,14 +109,15 @@ public class KeycloakAuthenticationTests {
     /// </summary>
     [Fact]
     public async Task SubmitCommand_TenantScopedUser_CanAccessOwnTenant() {
-        // Arrange: tenant-a-user has claims for tenant-a only
+        // Arrange: tenant-a-user has claims for tenant-a + domain "orders" only
+        // (hexalith-realm.json seeds this user with domains=["orders"]).
         string token = await KeycloakTokenHelper.AcquireTokenAsync(
             _fixture.KeycloakTokenEndpoint,
             ClientId,
             "tenant-a-user",
             "tenant-a-pass");
 
-        using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a");
+        using HttpRequestMessage request = CreateCommandRequest(token, tenant: "tenant-a", domain: "orders");
 
         // Act
         using HttpResponseMessage response = await _fixture.EventStoreClient.SendAsync(request);
@@ -187,8 +189,9 @@ public class KeycloakAuthenticationTests {
         string aggIdA = $"kc-iso-a-{Guid.NewGuid():N}";
         string aggIdB = $"kc-iso-b-{Guid.NewGuid():N}";
 
-        // Act: submit commands concurrently for different tenants
-        using HttpRequestMessage requestA = CreateCommandRequest(tokenA, tenant: "tenant-a", aggregateId: aggIdA);
+        // Act: submit commands concurrently for different tenants. Domains are
+        // per-user in hexalith-realm.json (tenant-a-user=orders, tenant-b-user=inventory).
+        using HttpRequestMessage requestA = CreateCommandRequest(tokenA, tenant: "tenant-a", domain: "orders", aggregateId: aggIdA);
         using HttpRequestMessage requestB = CreateCommandRequest(tokenB, tenant: "tenant-b", aggregateId: aggIdB, domain: "inventory");
 
         Task<HttpResponseMessage> taskA = _fixture.EventStoreClient.SendAsync(requestA);
@@ -219,6 +222,7 @@ public class KeycloakAuthenticationTests {
         string? aggregateId = null) {
         string aggId = aggregateId ?? $"kc-{Guid.NewGuid():N}";
         var body = new {
+            MessageId = Guid.NewGuid().ToString(),
             Tenant = tenant,
             Domain = domain,
             AggregateId = aggId,
