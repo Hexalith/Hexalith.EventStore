@@ -102,6 +102,7 @@ public class ErrorResponseTests {
     public async Task SubmitCommand_Unauthorized_Returns401() {
         // Arrange - no auth token
         var body = new {
+            MessageId = Guid.NewGuid().ToString(),
             Tenant = "tenant-a",
             Domain = "counter",
             AggregateId = "err-401",
@@ -129,13 +130,11 @@ public class ErrorResponseTests {
         JsonElement problemDetails = await response.Content.ReadFromJsonAsync<JsonElement>();
         problemDetails.GetProperty("status").GetInt32().ShouldBe(401);
         problemDetails.GetProperty("title").GetString().ShouldNotBeNullOrEmpty();
-        problemDetails.TryGetProperty("correlationId", out JsonElement corrIdProp).ShouldBeTrue();
-        corrIdProp.GetString().ShouldNotBeNullOrEmpty();
 
-        // tenantId is best-effort on 401 (available when request payload can be parsed).
-        if (problemDetails.TryGetProperty("tenantId", out JsonElement tenantIdProp)) {
-            tenantIdProp.GetString().ShouldBe("tenant-a");
-        }
+        // UX-DR2: 401 responses from the auth challenge intentionally omit correlationId
+        // and tenantId (pre-pipeline rejection).
+        problemDetails.TryGetProperty("correlationId", out _).ShouldBeFalse();
+        problemDetails.TryGetProperty("tenantId", out _).ShouldBeFalse();
     }
 
     /// <summary>
@@ -151,6 +150,7 @@ public class ErrorResponseTests {
             permissions: ["command:submit"]);
 
         var body = new {
+            MessageId = Guid.NewGuid().ToString(),
             Tenant = "tenant-a",
             Domain = "counter",
             AggregateId = "err-403",

@@ -177,6 +177,7 @@ public class KeycloakE2ESecurityTests : KeycloakE2ETestBase {
         string domain,
         string commandType) {
         var body = new {
+            MessageId = Guid.NewGuid().ToString(),
             Tenant = tenant,
             Domain = domain,
             AggregateId = Guid.NewGuid().ToString(),

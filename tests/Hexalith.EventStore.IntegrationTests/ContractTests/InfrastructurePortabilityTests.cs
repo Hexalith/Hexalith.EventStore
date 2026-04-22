@@ -77,6 +77,7 @@ public class InfrastructurePortabilityTests {
         string aggregateId = $"portability-{Guid.NewGuid():N}";
 
         var body = new {
+            MessageId = Guid.NewGuid().ToString(),
             Tenant = "tenant-a",
             Domain = "counter",
             AggregateId = aggregateId,

@@ -23,6 +23,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         HttpClient client = CreateAuthenticatedClient("test-tenant");
 
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-status-1",
@@ -73,6 +74,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         // Arrange - submit command as tenant-a
         HttpClient tenantAClient = CreateAuthenticatedClient("tenant-a");
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "tenant-a",
             domain = "test-domain",
             aggregateId = "agg-sec3",
@@ -160,6 +162,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "specific-agg-id",
@@ -224,6 +227,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant = "test-tenant",
             domain = "test-domain",
             aggregateId = "agg-location",

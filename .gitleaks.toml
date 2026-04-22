@@ -1,0 +1,15 @@
+# Gitleaks config — extends the default rule set and suppresses known false
+# positives. Scanned by the secret-scan job in .github/workflows/ci.yml
+# (gitleaks 8.21.2, which expects the singular [allowlist] table).
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known false positives: BMAD plugin training content (example tokens in authoring materials) and integration-test fixtures using literal 'invalid.signature' JWTs to exercise auth-failure paths."
+paths = [
+  '''^_bmad/.*''',
+  '''^tests/.*JwtAuthenticationIntegrationTests\.cs$''',
+  '''^tests/.*KeycloakAuthenticationTests\.cs$''',
+  '''^tests/.*KeycloakTokenHelper\.cs$''',
+]

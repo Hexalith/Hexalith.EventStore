@@ -18,6 +18,7 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
     : IClassFixture<JwtAuthenticatedWebApplicationFactory> {
     private static async Task<string> SubmitCommandAndGetCorrelationId(HttpClient client, string tenant = "test-tenant") {
         var request = new {
+            messageId = Guid.NewGuid().ToString(),
             tenant,
             domain = "test-domain",
             aggregateId = "agg-replay",

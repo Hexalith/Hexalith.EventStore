@@ -49,7 +49,11 @@ public sealed class AspireProjectionFaultTestFixture : IAsyncLifetime {
             _ = logging.AddFilter("Aspire.", LogLevel.Warning);
         });
 
-        _ = _builder.Services.ConfigureHttpClientDefaults(clientBuilder => _ = clientBuilder.AddStandardResilienceHandler());
+        _ = _builder.Services.ConfigureHttpClientDefaults(clientBuilder => _ = clientBuilder.AddStandardResilienceHandler(options => {
+            options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(60);
+            options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(180);
+            options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(120);
+        }));
 
         _app = await _builder.BuildAsync().ConfigureAwait(false);
         await _app.StartAsync(cts.Token).ConfigureAwait(false);

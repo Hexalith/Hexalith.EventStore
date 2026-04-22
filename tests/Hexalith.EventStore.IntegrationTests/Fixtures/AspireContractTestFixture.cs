@@ -68,7 +68,14 @@ public class AspireContractTestFixture : IAsyncLifetime {
         });
 
         // Task 1.3: Configure resilient HTTP defaults for test clients.
-        _ = _builder.Services.ConfigureHttpClientDefaults(clientBuilder => _ = clientBuilder.AddStandardResilienceHandler());
+        // Raise per-attempt and total timeouts above the standard defaults — Tier 3 runs all
+        // Aspire collections serially, so the shared Docker/Redis/DAPR stack can take longer
+        // than the 10s/30s defaults under back-to-back topology startup/teardown pressure.
+        _ = _builder.Services.ConfigureHttpClientDefaults(clientBuilder => _ = clientBuilder.AddStandardResilienceHandler(options => {
+            options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(60);
+            options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(180);
+            options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(120);
+        }));
 
         _app = await _builder.BuildAsync().ConfigureAwait(false);
         await _app.StartAsync(cts.Token).ConfigureAwait(false);

@@ -210,15 +210,18 @@ public class CommandLifecycleTests {
         verifyDec2Status.GetProperty("status").GetString().ShouldBe("Completed",
             "Third decrement should succeed (proves state was 1, now 0)");
 
-        // Assert state = 0: Decrement on zero should be rejected, proving exact count = 0
-        string verifyZeroCorrId = await SubmitCommandAndGetCorrelationIdAsync(
+        // Assert state = 0: Decrement on zero should be rejected synchronously (422),
+        // proving exact count = 0 — the server's DomainCommandRejectedExceptionHandler maps
+        // CounterCannotGoNegative to 422 UnprocessableEntity.
+        using HttpRequestMessage verifyZeroRequest = CreateCommandRequest(
             tenant: "tenant-a",
             domain: "counter",
             aggregateId: aggregateId,
             commandType: "DecrementCounter");
 
-        JsonElement verifyZeroStatus = await PollUntilTerminalStatusAsync(verifyZeroCorrId, "tenant-a");
-        verifyZeroStatus.GetProperty("status").GetString().ShouldBe("Rejected",
+        using HttpResponseMessage verifyZeroResponse = await _fixture.EventStoreClient.SendAsync(verifyZeroRequest);
+        verifyZeroResponse.StatusCode.ShouldBe(
+            HttpStatusCode.UnprocessableEntity,
             "Decrement at zero should be rejected (proves final state was exactly 0, confirming Inc x3 - Dec = 2 path)");
     }
 
@@ -250,45 +253,44 @@ public class CommandLifecycleTests {
         JsonElement resetStatus = await PollUntilTerminalStatusAsync(resetCorrId, "tenant-a");
         resetStatus.GetProperty("status").GetString().ShouldBe("Completed");
 
-        // Assert state = 0 after reset: Decrement should be rejected (CounterCannotGoNegative)
-        string postResetCorrId = await SubmitCommandAndGetCorrelationIdAsync(
+        // Assert state = 0 after reset: Decrement should be rejected synchronously (422)
+        // with CounterCannotGoNegative, proving counter was reset to 0.
+        using HttpRequestMessage postResetRequest = CreateCommandRequest(
             tenant: "tenant-a",
             domain: "counter",
             aggregateId: aggregateId,
             commandType: "DecrementCounter");
 
-        JsonElement postResetStatus = await PollUntilTerminalStatusAsync(postResetCorrId, "tenant-a");
-        postResetStatus.GetProperty("status").GetString().ShouldBe("Rejected",
+        using HttpResponseMessage postResetResponse = await _fixture.EventStoreClient.SendAsync(postResetRequest);
+        postResetResponse.StatusCode.ShouldBe(
+            HttpStatusCode.UnprocessableEntity,
             "Decrement after reset should be rejected, proving counter was reset to 0");
     }
 
     /// <summary>
-    /// AC #2: DecrementCounter on zero counter produces CounterCannotGoNegative rejection event.
+    /// AC #2: DecrementCounter on zero counter is rejected by the aggregate with
+    /// CounterCannotGoNegative. The server surfaces the domain rejection synchronously
+    /// via DomainCommandRejectedExceptionHandler as 422 UnprocessableEntity.
     /// </summary>
     [Fact]
     public async Task DecrementCounter_OnZeroCounter_ReturnsRejected() {
         // Arrange - fresh counter (count = 0)
         string aggregateId = $"counter-reject-{Guid.NewGuid():N}";
 
-        // Act - decrement on zero
-        string corrId = await SubmitCommandAndGetCorrelationIdAsync(
+        using HttpRequestMessage request = CreateCommandRequest(
             tenant: "tenant-a",
             domain: "counter",
             aggregateId: aggregateId,
             commandType: "DecrementCounter");
 
-        // Assert - should be rejected
-        JsonElement status = await PollUntilTerminalStatusAsync(corrId, "tenant-a");
-        status.GetProperty("status").GetString().ShouldBe("Rejected");
+        // Act
+        using HttpResponseMessage response = await _fixture.EventStoreClient.SendAsync(request);
 
-        if (status.TryGetProperty("rejectionEventType", out JsonElement rejProp)
-            && rejProp.ValueKind == JsonValueKind.String) {
-            rejProp.GetString()!.ShouldContain("CounterCannotGoNegative");
-        }
-        else if (status.TryGetProperty("failureReason", out JsonElement failProp)
-            && failProp.ValueKind == JsonValueKind.String) {
-            failProp.GetString()!.ShouldContain("CounterCannotGoNegative");
-        }
+        // Assert — domain rejection is returned synchronously as 422 with the rejection
+        // event type as the ProblemDetails "type" field.
+        response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("type").GetString()!.ShouldContain("CounterCannotGoNegative");
     }
 
     // ------------------------------------------------------------------
@@ -367,6 +369,7 @@ public class CommandLifecycleTests {
             permissions: ["command:submit", "command:query"]);
 
         var body = new {
+            MessageId = Guid.NewGuid().ToString(),
             Tenant = tenant,
             Domain = domain,
             AggregateId = aggregateId,

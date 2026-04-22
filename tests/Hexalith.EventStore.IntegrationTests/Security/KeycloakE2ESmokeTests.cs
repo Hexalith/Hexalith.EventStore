@@ -30,6 +30,7 @@ public class KeycloakE2ESmokeTests : KeycloakE2ETestBase {
         token.ShouldNotBeNullOrEmpty("Keycloak token acquisition failed");
 
         var request = new {
+            MessageId = Guid.NewGuid().ToString(),
             Tenant = "tenant-a",
             Domain = "orders",
             AggregateId = Guid.NewGuid().ToString(),
@@ -60,6 +61,7 @@ public class KeycloakE2ESmokeTests : KeycloakE2ETestBase {
     [Fact]
     public async Task UnauthenticatedRequest_Returns401() {
         var request = new {
+            MessageId = Guid.NewGuid().ToString(),
             Tenant = "tenant-a",
             Domain = "orders",
             AggregateId = Guid.NewGuid().ToString(),

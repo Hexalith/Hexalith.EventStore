@@ -31,6 +31,7 @@ public class AuthenticationTests {
     public async Task SubmitCommand_NoJwtToken_Returns401Unauthorized() {
         // Arrange - no Authorization header
         var body = new {
+            MessageId = Guid.NewGuid().ToString(),
             Tenant = "tenant-a",
             Domain = "counter",
             AggregateId = "auth-test-1",
@@ -57,13 +58,11 @@ public class AuthenticationTests {
 
         JsonElement problemDetails = await response.Content.ReadFromJsonAsync<JsonElement>();
         problemDetails.GetProperty("status").GetInt32().ShouldBe(401);
-        problemDetails.TryGetProperty("correlationId", out JsonElement corrIdProp).ShouldBeTrue();
-        corrIdProp.GetString().ShouldNotBeNullOrEmpty();
 
-        // tenantId is best-effort on 401 (available when request payload can be parsed).
-        if (problemDetails.TryGetProperty("tenantId", out JsonElement tenantIdProp)) {
-            tenantIdProp.GetString().ShouldBe("tenant-a");
-        }
+        // UX-DR2: 401 responses from the auth challenge intentionally omit correlationId
+        // and tenantId (pre-pipeline rejection — no authenticated context to attach to).
+        problemDetails.TryGetProperty("correlationId", out _).ShouldBeFalse();
+        problemDetails.TryGetProperty("tenantId", out _).ShouldBeFalse();
     }
 
     /// <summary>
@@ -139,6 +138,7 @@ public class AuthenticationTests {
 
     private static HttpRequestMessage CreateCommandRequest(string token, string tenant = "tenant-a") {
         var body = new {
+            MessageId = Guid.NewGuid().ToString(),
             Tenant = tenant,
             Domain = "counter",
             AggregateId = $"auth-{Guid.NewGuid():N}",
