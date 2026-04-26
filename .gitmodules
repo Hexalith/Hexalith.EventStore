@@ -1,3 +1,6 @@
 [submodule "Hexalith.Tenants"]
 	path = Hexalith.Tenants
 	url = https://github.com/Hexalith/Hexalith.Tenants.git
+[submodule "Hexalith.AI.Tools"]
+	path = Hexalith.AI.Tools
+	url = https://github.com/Hexalith/Hexalith.AI.Tools.git
