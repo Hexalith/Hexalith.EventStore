@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-26 (Epic 1 retro + sprint-change-proposal-2026-04-26.md — 4 post-epic-1 fix stories added to backlog; Epic 2 retro completed; sprint-change-proposal-2026-04-26-epic-2-retro-cleanup.md — 3 post-epic-2 fix stories added to backlog + Epic 3 spec amendments; Epic 3 retro completed; sprint-change-proposal-2026-04-26-epic-3-retro-cleanup.md — 4 post-epic-3 follow-up stories added to backlog + Story 3.6 status reconciled)
+# last_updated: 2026-04-26 (Epic 1 retro + sprint-change-proposal-2026-04-26.md — 4 post-epic-1 fix stories added to backlog; Epic 2 retro completed; sprint-change-proposal-2026-04-26-epic-2-retro-cleanup.md — 3 post-epic-2 fix stories added to backlog + Epic 3 spec amendments; Epic 3 retro completed; sprint-change-proposal-2026-04-26-epic-3-retro-cleanup.md — 4 post-epic-3 follow-up stories added to backlog + Story 3.6 status reconciled; Epic 4 retro completed; sprint-change-proposal-2026-04-26-epic-4-retro-cleanup.md — 4 post-epic-4 follow-up stories added to backlog + Story 4.2 status reconciled)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-04-26 (Epic 1 retro + sprint-change-proposal-2026-04-26.md — 4 post-epic-1 fix stories added to backlog; Epic 2 retro completed; sprint-change-proposal-2026-04-26-epic-2-retro-cleanup.md — 3 post-epic-2 fix stories added to backlog + Epic 3 spec amendments; Epic 3 retro completed; sprint-change-proposal-2026-04-26-epic-3-retro-cleanup.md — 4 post-epic-3 follow-up stories added to backlog + Story 3.6 status reconciled)
+last_updated: 2026-04-26 (Epic 1 retro + sprint-change-proposal-2026-04-26.md — 4 post-epic-1 fix stories added to backlog; Epic 2 retro completed; sprint-change-proposal-2026-04-26-epic-2-retro-cleanup.md — 3 post-epic-2 fix stories added to backlog + Epic 3 spec amendments; Epic 3 retro completed; sprint-change-proposal-2026-04-26-epic-3-retro-cleanup.md — 4 post-epic-3 follow-up stories added to backlog + Story 3.6 status reconciled; Epic 4 retro completed; sprint-change-proposal-2026-04-26-epic-4-retro-cleanup.md — 4 post-epic-4 follow-up stories added to backlog + Story 4.2 status reconciled)
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -82,7 +82,7 @@ development_status:
   4-1-cloudevents-publication-and-topic-routing: done
   4-2-resilient-publication-and-backlog-draining: done
   4-3-per-aggregate-backpressure: done
-  epic-4-retrospective: optional
+  epic-4-retrospective: done  # 2026-04-26: epic-4-retro-2026-04-26.md. 8 action items (R4-A1..R4-A8); R4-A3/R4-A4 critical before Epic 5 security evidence depends on runtime behavior
 
   # Epic 5: Security & Multi-Tenant Isolation
   epic-5: done
@@ -285,3 +285,14 @@ development_status:
   post-epic-3-r3a6-tier3-error-contract-update: backlog
   post-epic-3-r3a7-live-command-surface-verification: backlog
   post-epic-3-r3a8-retro-follow-through-gate: backlog
+
+  # Post-Epic-4 Retro Cleanup (sprint-change-proposal-2026-04-26-epic-4-retro-cleanup.md)
+  # Standalone follow-up stories from Epic 4 retrospective.
+  # R4-A1 corrected directly in Story 4.2.
+  # R4-A3 is covered by post-epic-3-r3a1-replay-ulid-validation.
+  # R4-A4 is covered by post-epic-3-r3a7-live-command-surface-verification.
+  # R4-A7 preserves existing routing to post-Epic-1 R1-A1 and post-Epic-2 R2-A2.
+  post-epic-4-r4a2-story-4-3-execution-record: backlog
+  post-epic-4-r4a5-tier3-pubsub-delivery: backlog
+  post-epic-4-r4a6-drain-integrity-guard: backlog
+  post-epic-4-r4a8-story-numbering-comments: backlog
