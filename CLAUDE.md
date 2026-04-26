@@ -12,6 +12,10 @@ DAPR-native event sourcing server for .NET. Built on CQRS, DDD, and event sourci
 
 **Use `Hexalith.EventStore.slnx` only.** Never use `.sln` files — the project uses the modern XML solution format exclusively.
 
+## Git Submodules
+
+Only initialize and update submodules defined at the root repository level. Do not initialize nested submodules. If nested submodules are initialized accidentally, deinitialize them before continuing.
+
 ## Build & Test Commands
 
 ```bash
