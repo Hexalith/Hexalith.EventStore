@@ -17,6 +17,10 @@ aspire run
 
 If there is already an instance of the application running it will prompt to stop the existing instance. You only need to restart the application if code in `apphost.cs` is changed, but if you experience problems it can be useful to reset everything to the starting state.
 
+## Git submodules
+
+IMPORTANT! Only initialize and update submodules defined at the root repository level. Do not initialize nested submodules. If nested submodules are initialized accidentally, deinitialize them before continuing.
+
 ## Checking resources
 To check the status of resources defined in the app model use the _list resources_ tool. This will show you the current state of each resource and if there are any issues. If a resource is not running as expected you can use the _execute resource command_ tool to restart it or perform other actions.
 
