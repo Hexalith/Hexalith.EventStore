@@ -132,6 +132,24 @@ Defined in `.editorconfig`:
 - All existing and new tests must pass before a story is complete
 - Tier 1 tests run in CI on every PR; Tier 2 after DAPR slim init; Tier 3 optional
 
+## Code Review Process
+
+Senior code review (typically GitHub Copilot GPT-5.4 or equivalent) is a mandatory pipeline stage for every story, not a rubber-stamp formality. The review-driven-patch rate across Epic 2 was 5/5 stories: every story had at least one HIGH or MEDIUM reviewer finding that produced a real patch.
+
+**Implications:**
+
+- Story specs should budget for review-found rework as the norm.
+- "Verification" stories (audit existing code) typically uncover one design or test gap per story — plan accordingly.
+- Reviewer-found patches are applied and validated before the story closes. If the reviewer surfaces a CRITICAL finding, verify before accepting (false-positive CRITICALs are expensive — see Epic 1 retro R1-A8 for the verification-command rule).
+
+**Integration test rule** (Epic 2 retro R2-A6):
+
+Tier 2 and Tier 3 integration tests MUST inspect state-store end-state (e.g., Redis key contents, persisted CloudEvent body), not only API return codes or mock call counts. "Asserts the call returned 202" is an API smoke test, not an integration test.
+
+**ID validation rule** (Epic 2 retro R2-A7):
+
+Controllers and validators that handle `messageId`, `correlationId`, `aggregateId`, or `causationId` MUST use `Ulid.TryParse` (or accept any non-whitespace string per `AggregateIdentity` rules). `Guid.TryParse` on these fields is **forbidden** — the system's identifiers are ULIDs. ULID and GUID share a 36-char shape only by coincidence.
+
 ## Commit Messages
 
 All commit messages **must** follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This is required for semantic-release to determine version bumps and generate changelogs.
@@ -170,7 +188,7 @@ feat!: rename EventEnvelope.StreamId to AggregateId
 
 ## Key Dependencies
 
-- DAPR SDK 1.17.0 (Client, AspNetCore, Actors)
+- DAPR SDK 1.16.1 (Client, AspNetCore, Actors)
 - .NET Aspire 13.1.x
 - MediatR 14.0.0
 - FluentValidation 12.1.1

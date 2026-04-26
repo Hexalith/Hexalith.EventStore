@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-26 (Epic 1 retro + sprint-change-proposal-2026-04-26.md — 4 post-epic-1 fix stories added to backlog)
+# last_updated: 2026-04-26 (Epic 1 retro + sprint-change-proposal-2026-04-26.md — 4 post-epic-1 fix stories added to backlog; Epic 2 retro completed; sprint-change-proposal-2026-04-26-epic-2-retro-cleanup.md — 3 post-epic-2 fix stories added to backlog + Epic 3 spec amendments)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-04-26 (Epic 1 retro + sprint-change-proposal-2026-04-26.md — 4 post-epic-1 fix stories added to backlog)
+last_updated: 2026-04-26 (Epic 1 retro + sprint-change-proposal-2026-04-26.md — 4 post-epic-1 fix stories added to backlog; Epic 2 retro completed; sprint-change-proposal-2026-04-26-epic-2-retro-cleanup.md — 3 post-epic-2 fix stories added to backlog + Epic 3 spec amendments)
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -65,7 +65,7 @@ development_status:
   2-3-state-rehydration-and-domain-service-invocation: done
   2-4-command-status-tracking: done
   2-5-duplicate-command-detection: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done  # 2026-04-26: epic-2-retro-2026-04-26.md. 10 action items (R2-A1..R2-A10); R2-A1/A7/A8 critical before Epic 3 starts; R2-A2/A3/A4/A5/A9 critical before Epic 3 closes
 
   # Epic 3: Command REST API & Error Experience
   epic-3: done
@@ -264,3 +264,14 @@ development_status:
   post-epic-1-r1a6-missing-apply-method-exception: backlog
   post-epic-1-r1a2-terminatable-compliance-helper: backlog
   post-epic-1-r1a7-tier2-tombstoning-lifecycle: backlog
+
+  # Post-Epic-2 Retro Cleanup (sprint-change-proposal-2026-04-26-epic-2-retro-cleanup.md)
+  # Standalone fix stories from Epic 2 retrospective (R2-A8, R2-A2, R2-A5).
+  # R2-A8 is critical-before-Epic-3-starts (4 SubmitCommandHandler NullRef Tier 2 tests).
+  # R2-A1 (corrected via retro §12 erratum): NOT a duplicate; covered by post-epic-1-r1a1-aggregatetype-pipeline.
+  # R2-A3/A4: confirmed sequencing on existing post-epic-1 stories (no new stories).
+  # R2-A6/A7/A10: process changes captured in CLAUDE.md and bmad-create-story template.
+  # R2-A9: pre-Epic-3 audit task — runs at Epic 3 story creation time (no story).
+  post-epic-2-r2a8-pipeline-nullref-fix: backlog
+  post-epic-2-r2a2-commandstatus-isterminal-extension: backlog
+  post-epic-2-r2a5-dapr-sdk-version-reconcile: backlog

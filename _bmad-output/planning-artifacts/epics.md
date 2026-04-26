@@ -882,6 +882,14 @@ So that I know exactly what to fix without guessing.
 **And** `correlationId` is present in ProblemDetails extensions (UX-DR2)
 **And** no event sourcing terminology appears in the response (UX-DR6).
 
+**Given** a request body or path parameter contains an ID field (`messageId`, `correlationId`, `aggregateId`, `causationId`),
+**When** the controller validates the ID,
+**Then** validation MUST use `Ulid.TryParse` (or accept any non-whitespace string per `AggregateIdentity` rules)
+**And** validation MUST NOT use `Guid.TryParse` for any ID field
+**And** a ULID input that fails GUID parsing MUST be accepted as valid
+**And** a malformed input MUST surface as a 400 with `type = https://hexalith.io/problems/validation-error` (UX-DR1).
+*Reference:* Story 2.4's senior-review fix removed GUID-only correlation ID validation from `CommandStatusController`. This rule generalizes that fix across all Epic 3 controller seams. ULID and GUID share a 36-char string shape only by coincidence; the system's identifiers are ULIDs.
+
 ### Story 3.3: Command Status Query Endpoint
 
 As an API consumer,
@@ -898,6 +906,13 @@ So that I can track the command lifecycle asynchronously.
 **Given** a status query for a non-existent correlation ID,
 **When** the endpoint is called,
 **Then** the system returns `404 Not Found` with RFC 7807 ProblemDetails.
+
+**Given** a `GET /api/v1/commands/status/{correlationId}` request,
+**When** the controller validates `correlationId`,
+**Then** it MUST accept any ULID-formatted string
+**And** MUST NOT enforce GUID format
+**And** an empty / whitespace correlationId MUST return 400 (not 404).
+*Reference:* Story 2.4 already implemented this; the Epic 3 spec ratifies the rule so future refactors don't regress. See Story 3.2 ULID rule for the canonical statement.
 
 ### Story 3.4: Dead-Letter Routing & Command Replay
 
@@ -946,6 +961,12 @@ So that my retry logic and error handling work correctly.
 **Then** the system returns `503 Service Unavailable` with `Retry-After: 30` (UX-DR5, UX-DR11)
 **And** says "command processing pipeline", never "DAPR sidecar"
 **And** no `correlationId` is included.
+
+**Given** any error response includes a `correlationId` extension in ProblemDetails (UX-DR2),
+**When** the controller serializes the response,
+**Then** the `correlationId` is emitted as a string (no GUID re-parse, no normalization)
+**And** validation of inbound correlation IDs follows Story 3.2's ULID rule (no `Guid.TryParse`).
+*Reference:* 401/403/409/503 paths must agree with 200/202/400 paths on identifier semantics.
 
 ### Story 3.6: OpenAPI Specification & Swagger UI
 
