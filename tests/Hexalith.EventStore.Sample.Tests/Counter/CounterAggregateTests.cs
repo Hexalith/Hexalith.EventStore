@@ -10,6 +10,7 @@ using Hexalith.EventStore.Sample.Counter;
 using Hexalith.EventStore.Sample.Counter.Commands;
 using Hexalith.EventStore.Sample.Counter.Events;
 using Hexalith.EventStore.Sample.Counter.State;
+using Hexalith.EventStore.Testing.Compliance;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -148,6 +149,12 @@ public class CounterAggregateTests {
         IDomainProcessor keyed = provider.GetRequiredKeyedService<IDomainProcessor>("counter");
 
         _ = Assert.IsType<CounterAggregate>(keyed);
+    }
+
+    [Fact]
+    public void CounterState_IsTerminatableCompliant() {
+        // R1-A2 sentinel — do not delete; protects ITerminatable replay safety. See _bmad-output/implementation-artifacts/post-epic-1-r1a2-terminatable-compliance-helper.md
+        TerminatableComplianceAssertions.AssertTerminatableCompliance<CounterState>();
     }
 
     [Fact]
