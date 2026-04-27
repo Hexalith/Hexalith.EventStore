@@ -1,5 +1,14 @@
 # Deferred Work
 
+## Deferred from: code review of post-epic-1-r1a6-missing-apply-method-exception (2026-04-27)
+
+- **Suffix-fallback in `TryResolveApplyMethod` is non-deterministic on multiple matches** — `EndsWith` walk over Apply keys returns the first dictionary-iteration match; with two Apply parameter types whose short names suffix-match the same `eventTypeName`, resolution depends on dictionary enumeration order. Pre-existing in `DomainProcessorStateRehydrator.cs:327-340`.
+- **`DiscoverApplyMethods` keys by `parameters[0].ParameterType.Name`** — Short-name keys collide across namespaces; an aggregate that imports two events sharing a CLR short name in different namespaces will silently drop one. Pre-existing in `DomainProcessorStateRehydrator.cs:13-37`.
+- **Replay-mid-stream blast radius inside DAPR actor activation** — When rehydration throws `MissingApplyMethodException` after some events have been applied to the in-memory `TState`, the partially-applied state is local and discarded; downstream actor lifecycle handling is the concern of sibling story R1-A7.
+- **`envelope.Metadata.EventTypeName` null/whitespace produces `ArgumentException` from `BuildMessage` rather than a typed diagnostic** — Pre-existing upstream contract assumption that `EventEnvelope.Metadata.EventTypeName` is always non-empty.
+- **No integration test for EventEnvelope replay with null `MessageId`/`AggregateId`** — Direct ctor unit tests cover the null-context branch in `MissingApplyMethodExceptionTests`; no rehydrator-side test exercises the case where envelope metadata fields are null.
+- **Typed-event branch in `ReplayEventsFromEnumerable` does not use the `TryResolveApplyMethod` suffix-fallback** — Asymmetry vs. the JSON and EventEnvelope sites at `:204-209`. Pre-existing.
+
 ## Deferred from: code review of 19-5-dapr-component-health-history (2026-03-27)
 
 - **Unbounded state store growth per day partition** — No cap on entries per day key in `DaprHealthHistoryCollector`; with low capture intervals and many components the day-partition JSON blob can grow large. Accepted design in spec for v1.

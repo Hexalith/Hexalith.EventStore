@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 
+using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 
@@ -205,7 +206,9 @@ internal static class DomainProcessorStateRehydrator {
                 continue;
             }
 
-            // Skip events without matching Apply methods (e.g., rejection events persisted in the stream).
+            throw new MissingApplyMethodException(
+                stateType: typeof(TState),
+                eventTypeName: eventTypeName);
         }
 
         return state;
@@ -228,8 +231,11 @@ internal static class DomainProcessorStateRehydrator {
         where TState : class, new() {
         MethodInfo? applyMethod = TryResolveApplyMethod(envelope.Metadata.EventTypeName, applyMethods);
         if (applyMethod is null) {
-            // Skip events without matching Apply methods (e.g., rejection events persisted in the stream).
-            return;
+            throw new MissingApplyMethodException(
+                stateType: typeof(TState),
+                eventTypeName: envelope.Metadata.EventTypeName,
+                messageId: envelope.Metadata.MessageId,
+                aggregateId: envelope.Metadata.AggregateId);
         }
 
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
@@ -267,9 +273,11 @@ internal static class DomainProcessorStateRehydrator {
         where TState : class, new() {
         MethodInfo? applyMethod = TryResolveApplyMethod(eventTypeName, applyMethods);
         if (applyMethod is null) {
-            // Skip events without matching Apply methods (e.g., rejection events persisted in the stream).
-            return;
+            throw new MissingApplyMethodException(
+                stateType: typeof(TState),
+                eventTypeName: eventTypeName);
         }
+
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
 
         try {

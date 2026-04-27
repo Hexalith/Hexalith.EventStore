@@ -205,6 +205,21 @@ public class EventStoreAggregateTests : IDisposable {
             => DomainResult.Success(new IEventPayload[] { new TerminalEvent() });
     }
 
+    // --- Broken terminatable state: missing Apply(AggregateTerminated) — exercises R1-A6 diagnostic guard ---
+    private sealed class BrokenTerminatableState : ITerminatable {
+        public int ItemCount { get; private set; }
+
+        // Get-only: replay never reaches a code path that could set this — Apply(AggregateTerminated) is deliberately absent.
+        public bool IsTerminated => false;
+
+        public void Apply(ItemAdded e) => ItemCount++;
+    }
+
+    private sealed class BrokenTerminatableAggregate : EventStoreAggregate<BrokenTerminatableState> {
+        public static DomainResult Handle(AddItem command, BrokenTerminatableState? state)
+            => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } });
+    }
+
     // --- Non-terminatable state (no ITerminatable) for backward compatibility ---
     // Uses existing TestAggregate/TestState (no ITerminatable interface)
 
@@ -393,7 +408,7 @@ public class EventStoreAggregateTests : IDisposable {
     }
 
     [Fact]
-    public async Task ProcessAsync_JsonElementArray_WithUnknownEventType_SkipsUnknownEvent() {
+    public async Task ProcessAsync_JsonElementArray_WithUnknownEventType_ThrowsMissingApplyMethodException() {
         var aggregate = new TestAggregate();
         string eventsJson = """
             [
@@ -403,9 +418,11 @@ public class EventStoreAggregateTests : IDisposable {
         JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(eventsJson);
         CommandEnvelope command = CreateCommand(new ResetItems());
 
-        DomainResult result = await aggregate.ProcessAsync(command, jsonArray);
+        MissingApplyMethodException ex = await Assert.ThrowsAsync<MissingApplyMethodException>(
+            () => aggregate.ProcessAsync(command, jsonArray));
 
-        Assert.True(result.IsNoOp); // Unknown event skipped, state has ItemCount 0 → NoOp
+        Assert.Equal(typeof(TestState), ex.StateType);
+        Assert.Equal("UnknownEvent", ex.EventTypeName);
     }
 
     [Fact]
@@ -454,14 +471,16 @@ public class EventStoreAggregateTests : IDisposable {
     }
 
     [Fact]
-    public async Task ProcessAsync_EnumerableEvents_WithUnknownEventType_SkipsUnknownEvent() {
+    public async Task ProcessAsync_EnumerableEvents_WithUnknownEventType_ThrowsMissingApplyMethodException() {
         var aggregate = new TestAggregate();
         object[] events = new object[] { new UnknownCommand() };
         CommandEnvelope command = CreateCommand(new ResetItems());
 
-        DomainResult result = await aggregate.ProcessAsync(command, events);
+        MissingApplyMethodException ex = await Assert.ThrowsAsync<MissingApplyMethodException>(
+            () => aggregate.ProcessAsync(command, events));
 
-        Assert.True(result.IsNoOp); // Unknown event skipped, state has ItemCount 0 → NoOp
+        Assert.Equal(typeof(TestState), ex.StateType);
+        Assert.Equal(nameof(UnknownCommand), ex.EventTypeName);
     }
 
     [Fact]
@@ -1026,5 +1045,65 @@ public class EventStoreAggregateTests : IDisposable {
         Assert.Contains("Multiple Handle methods found", ex.Message);
         Assert.Contains("AddItem", ex.Message);
         Assert.Contains("DuplicateHandleAggregate", ex.Message);
+    }
+
+    // --- R1-A6: MissingApplyMethodException coverage for snapshot-aware EventEnvelope replay ---
+
+    [Fact]
+    public async Task ProcessAsync_DomainServiceCurrentState_WithUnknownEventTypeName_ThrowsMissingApplyMethodException() {
+        var aggregate = new RecordAggregate();
+        string messageId = Hexalith.Commons.UniqueIds.UniqueIdHelper.GenerateSortableUniqueStringId();
+        EventEnvelope envelope = new(
+            new EventMetadata(
+                MessageId: messageId,
+                AggregateId: "agg-r1a6",
+                AggregateType: "counter",
+                TenantId: "tenant-1",
+                Domain: "test",
+                SequenceNumber: 2,
+                GlobalPosition: 2,
+                Timestamp: DateTimeOffset.UtcNow,
+                CorrelationId: "corr-1",
+                CausationId: "corr-1",
+                UserId: "user-1",
+                DomainServiceVersion: "v1",
+                EventTypeName: "UnknownReplayEvent",
+                MetadataVersion: 1,
+                SerializationFormat: "json"),
+            JsonSerializer.SerializeToUtf8Bytes(new { }),
+            null);
+        var currentState = new DomainServiceCurrentState(
+            new CounterStateJson { Count = 1 },
+            [envelope],
+            1,
+            2);
+        CommandEnvelope command = CreateCommand(new IncrementCounter());
+
+        MissingApplyMethodException ex = await Assert.ThrowsAsync<MissingApplyMethodException>(
+            () => aggregate.ProcessAsync(command, currentState));
+
+        Assert.Equal(typeof(CounterState), ex.StateType);
+        Assert.Equal("UnknownReplayEvent", ex.EventTypeName);
+        Assert.Equal(messageId, ex.MessageId);
+        Assert.Equal("agg-r1a6", ex.AggregateId);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_BrokenTerminatableState_OnAggregateTerminatedReplay_ThrowsMissingApplyMethodException() {
+        var aggregate = new BrokenTerminatableAggregate();
+        // Replay a persisted AggregateTerminated rejection event; broken state lacks Apply(AggregateTerminated).
+        object[] events = new object[] {
+            new ItemAdded { Name = "before-termination" },
+            new AggregateTerminated(AggregateType: "BrokenTerminatableAggregate", AggregateId: "agg-1"),
+        };
+        CommandEnvelope command = CreateCommand(new AddItem("after-termination"));
+
+        MissingApplyMethodException ex = await Assert.ThrowsAsync<MissingApplyMethodException>(
+            () => aggregate.ProcessAsync(command, events));
+
+        Assert.Equal(typeof(BrokenTerminatableState), ex.StateType);
+        Assert.Equal(nameof(AggregateTerminated), ex.EventTypeName);
+        Assert.Contains("ITerminatable", ex.Message);
+        Assert.Contains(nameof(AggregateTerminated), ex.Message);
     }
 }
