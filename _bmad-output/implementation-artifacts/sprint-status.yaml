@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-26 (Epic 1 retro + sprint-change-proposal-2026-04-26.md — 4 post-epic-1 fix stories added to backlog; Epic 2 retro completed; sprint-change-proposal-2026-04-26-epic-2-retro-cleanup.md — 3 post-epic-2 fix stories added to backlog + Epic 3 spec amendments; Epic 3 retro completed; sprint-change-proposal-2026-04-26-epic-3-retro-cleanup.md — 4 post-epic-3 follow-up stories added to backlog + Story 3.6 status reconciled; Epic 4 retro completed; sprint-change-proposal-2026-04-26-epic-4-retro-cleanup.md — 4 post-epic-4 follow-up stories added to backlog + Story 4.2 status reconciled)
+# last_updated: 2026-04-26 (post-epic-1-r1a6-missing-apply-method-exception created as ready-for-dev by pre-dev hardening; Epic 1 retro + sprint-change-proposal-2026-04-26.md — 4 post-epic-1 fix stories added to backlog; Epic 2 retro completed; sprint-change-proposal-2026-04-26-epic-2-retro-cleanup.md — 3 post-epic-2 fix stories added to backlog + Epic 3 spec amendments; Epic 3 retro completed; sprint-change-proposal-2026-04-26-epic-3-retro-cleanup.md — 4 post-epic-3 follow-up stories added to backlog + Story 3.6 status reconciled; Epic 4 retro completed; sprint-change-proposal-2026-04-26-epic-4-retro-cleanup.md — 4 post-epic-4 follow-up stories added to backlog + Story 4.2 status reconciled; Epic 5 retro completed)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-04-26 (Epic 1 retro + sprint-change-proposal-2026-04-26.md — 4 post-epic-1 fix stories added to backlog; Epic 2 retro completed; sprint-change-proposal-2026-04-26-epic-2-retro-cleanup.md — 3 post-epic-2 fix stories added to backlog + Epic 3 spec amendments; Epic 3 retro completed; sprint-change-proposal-2026-04-26-epic-3-retro-cleanup.md — 4 post-epic-3 follow-up stories added to backlog + Story 3.6 status reconciled; Epic 4 retro completed; sprint-change-proposal-2026-04-26-epic-4-retro-cleanup.md — 4 post-epic-4 follow-up stories added to backlog + Story 4.2 status reconciled)
+last_updated: 2026-04-26 (post-epic-1-r1a6-missing-apply-method-exception created as ready-for-dev by pre-dev hardening; Epic 1 retro + sprint-change-proposal-2026-04-26.md — 4 post-epic-1 fix stories added to backlog; Epic 2 retro completed; sprint-change-proposal-2026-04-26-epic-2-retro-cleanup.md — 3 post-epic-2 fix stories added to backlog + Epic 3 spec amendments; Epic 3 retro completed; sprint-change-proposal-2026-04-26-epic-3-retro-cleanup.md — 4 post-epic-3 follow-up stories added to backlog + Story 3.6 status reconciled; Epic 4 retro completed; sprint-change-proposal-2026-04-26-epic-4-retro-cleanup.md — 4 post-epic-4 follow-up stories added to backlog + Story 4.2 status reconciled; Epic 5 retro completed)
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -91,7 +91,7 @@ development_status:
   5-3-three-layer-multi-tenant-data-isolation: done
   5-4-dapr-service-to-service-access-control: done
   5-5-e2e-security-testing-with-keycloak: done
-  epic-5-retrospective: optional
+  epic-5-retrospective: done  # 2026-04-26: epic-5-retro-2026-04-26.md. 9 action items (R5-A1..R5-A9); R5-A1/R5-A2/R5-A9 critical before final runtime-security confidence and Epic 6 readiness
 
   # Epic 6: Observability & Operations
   epic-6: done
@@ -260,8 +260,8 @@ development_status:
   # Post-Epic-1 Retro Cleanup (sprint-change-proposal-2026-04-26.md)
   # Standalone fix stories from Epic 1 retrospective (R1-A1, R1-A6, R1-A2, R1-A7).
   # Implementation order: A1 -> A6 -> A2 -> A7 (see proposal §3 sequencing rationale).
-  post-epic-1-r1a1-aggregatetype-pipeline: backlog
-  post-epic-1-r1a6-missing-apply-method-exception: backlog
+  post-epic-1-r1a1-aggregatetype-pipeline: ready-for-dev
+  post-epic-1-r1a6-missing-apply-method-exception: ready-for-dev
   post-epic-1-r1a2-terminatable-compliance-helper: backlog
   post-epic-1-r1a7-tier2-tombstoning-lifecycle: backlog
 
