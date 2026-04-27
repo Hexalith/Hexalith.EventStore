@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-27 (post-epic-1-r1a7-tier2-tombstoning-lifecycle story created → ready-for-dev; closes Epic 1 retro carry-over batch; targets Tier 2 actor-lifecycle coverage of CounterClosed → AggregateTerminated rehydration loop)
+# last_updated: 2026-04-27 (post-epic-2-r2a8-pipeline-nullref-fix → done; code-review complete: 4 decisions resolved as patches, 6 patches applied to pin test [distinct correlation-id sentinels, Received/DidNotReceive shape assertions, defensive null-check, dead-stub removal] + AC #10 supersession + retro audit-pointer; 8 deferred, 8 dismissed)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-04-27 (post-epic-1-r1a7-tier2-tombstoning-lifecycle code review complete; 0 decision-needed, 0 patch, 3 deferred, 16 dismissed; all 11 ACs + 3 ADRs Acceptance-Auditor-compliant; status=done; Epic 1 retro carry-over batch fully closed)
+last_updated: 2026-04-27 (post-epic-2-r2a8-pipeline-nullref-fix → done; code-review complete: 4 decisions resolved as patches, 6 patches applied to pin test [distinct correlation-id sentinels, Received/DidNotReceive shape assertions, defensive null-check, dead-stub removal] + AC #10 supersession + retro audit-pointer; 8 deferred, 8 dismissed)
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -272,7 +272,7 @@ development_status:
   # R2-A3/A4: confirmed sequencing on existing post-epic-1 stories (no new stories).
   # R2-A6/A7/A10: process changes captured in CLAUDE.md and bmad-create-story template.
   # R2-A9: pre-Epic-3 audit task — runs at Epic 3 story creation time (no story).
-  post-epic-2-r2a8-pipeline-nullref-fix: backlog
+  post-epic-2-r2a8-pipeline-nullref-fix: done  # 2026-04-27: closed-as-superseded with structural pin per Project Lead Option 1. Code review complete (3 layers, 0 failed): 4 decision-needed all resolved as patches, 6 patches applied (distinct command/router correlation-id sentinels pin handler:56 round-trip semantics; Received(1) shape assertions on success-path store calls; DidNotReceive() on ReadStatusAsync locks no-trackers shape; result.ShouldNotBeNull() defensive; dead tracker.TryAcquire stub removed; AC #10 superseded → merge prefix test(server): not fix(server): under Option 1 test-only diff; retro §6 R2-A8 row strengthened with audit-artifact pointer to story §Validation Results), 8 deferred (out of narrow-pin scope; logged in deferred-work.md), 8 dismissed.
   post-epic-2-r2a2-commandstatus-isterminal-extension: backlog
   post-epic-2-r2a5-dapr-sdk-version-reconcile: backlog
 
