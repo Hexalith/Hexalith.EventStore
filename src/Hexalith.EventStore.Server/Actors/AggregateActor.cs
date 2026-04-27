@@ -362,7 +362,12 @@ public partial class AggregateActor(
                             payloadProtectionService);
 
                         persistResult = await eventPersister
-                            .PersistEventsAsync(command.AggregateIdentity, command, domainResult, domainServiceVersion)
+                            .PersistEventsAsync(
+                                identity: command.AggregateIdentity,
+                                aggregateType: command.Domain,
+                                command: command,
+                                domainResult: domainResult,
+                                domainServiceVersion: domainServiceVersion)
                             .ConfigureAwait(false);
 
                         // Step 5b: Snapshot creation (Story 3.9)

@@ -65,7 +65,7 @@ public class EventPersistenceIntegrationTests {
         });
 
         // Act -- persist
-        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v2");
+        _ = await persister.PersistEventsAsync(TestIdentity, aggregateType: "test-domain", command, domainResult, domainServiceVersion: "v2");
         await stateManager.SaveStateAsync(); // Simulate AggregateActor atomic commit
 
         // Assert -- verify event stored at correct key
@@ -107,11 +107,11 @@ public class EventPersistenceIntegrationTests {
         });
 
         // Act -- persist both commands (simulating two actor turns)
-        _ = await persister.PersistEventsAsync(TestIdentity, cmd1, result1, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, aggregateType: "test-domain", cmd1, result1, domainServiceVersion: "v1");
         await stateManager.SaveStateAsync();
 
         // Second persist reads updated metadata
-        _ = await persister.PersistEventsAsync(TestIdentity, cmd2, result2, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, aggregateType: "test-domain", cmd2, result2, domainServiceVersion: "v1");
         await stateManager.SaveStateAsync();
 
         // Assert -- read all events via EventStreamReader
@@ -138,7 +138,7 @@ public class EventPersistenceIntegrationTests {
         });
 
         // Act
-        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, aggregateType: "test-domain", command, domainResult, domainServiceVersion: "v1");
         await stateManager.SaveStateAsync();
 
         RehydrationResult? rehydrationResult = await reader.RehydrateAsync(TestIdentity);
@@ -165,7 +165,7 @@ public class EventPersistenceIntegrationTests {
         });
 
         // Act -- persist but do NOT save yet
-        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, aggregateType: "test-domain", command, domainResult, domainServiceVersion: "v1");
 
         // Assert -- committed state should not have events yet
         stateManager.CommittedState.ShouldNotContainKey("test-tenant:test-domain:agg-001:events:1");
@@ -191,7 +191,7 @@ public class EventPersistenceIntegrationTests {
         });
 
         // Act
-        _ = await persister.PersistEventsAsync(TestIdentity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(TestIdentity, aggregateType: "test-domain", command, domainResult, domainServiceVersion: "v1");
         await stateManager.SaveStateAsync();
 
         // Assert -- metadata committed with correct sequence

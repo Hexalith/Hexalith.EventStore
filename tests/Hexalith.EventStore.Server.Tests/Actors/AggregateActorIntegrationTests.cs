@@ -11,6 +11,8 @@ using Hexalith.EventStore.Testing.Builders;
 
 using Shouldly;
 
+using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
+
 namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
 /// Story 7.4 / AC #2: Actor processing pipeline integration tests.
@@ -253,6 +255,43 @@ public class AggregateActorIntegrationTests {
         result1.Accepted.ShouldBeTrue();
         result2.Accepted.ShouldBeTrue();
         result1.CorrelationId.ShouldBe(result2.CorrelationId);
+    }
+
+    /// <summary>
+    /// Post-Epic-1 R1-A1: AggregateType is plumbed through the actor → persister → state-store path
+    /// rather than derived inside the persister. Today the codebase has a 1:1 Domain↔AggregateType
+    /// mapping by `NamingConventionEngine`, so the values coincide; the parameter-source guarantee
+    /// is proven at the persister level by `EventPersisterTests.PersistEventsAsync_PopulatesAggregateTypeFromParameter_NotFromDomain`.
+    /// This test confirms the actor wires the value end-to-end without dropping or substituting it.
+    /// </summary>
+    [Fact]
+    public async Task ProcessCommandAsync_PlumbsAggregateTypeThroughActorPipeline() {
+        // Arrange
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+            HttpEndpoint = _fixture.DaprHttpEndpoint,
+        });
+
+        string aggregateId = $"agg-type-test-{Guid.NewGuid():N}";
+        CommandEnvelope command = new CommandEnvelopeBuilder()
+            .WithTenantId("tenant-a")
+            .WithDomain("counter")
+            .WithAggregateId(aggregateId)
+            .WithCommandType("IncrementCounter")
+            .Build();
+
+        IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+            new ActorId(command.AggregateIdentity.ActorId),
+            nameof(AggregateActor));
+
+        // Act -- run the full actor pipeline (persist + publish), then read events back from the state store.
+        CommandProcessingResult result = await proxy.ProcessCommandAsync(command);
+        EventEnvelope[] persisted = await proxy.GetEventsAsync(0);
+
+        // Assert -- end-state inspection (R2-A6): persisted envelope carries the value supplied by the actor.
+        result.Accepted.ShouldBeTrue();
+        persisted.Length.ShouldBe(1);
+        persisted[0].AggregateType.ShouldBe("counter");
+        persisted[0].Domain.ShouldBe("counter");
     }
 
     /// <summary>

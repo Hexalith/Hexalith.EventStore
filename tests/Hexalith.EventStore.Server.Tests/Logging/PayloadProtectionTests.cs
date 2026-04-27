@@ -105,7 +105,7 @@ public class PayloadProtectionTests : IDisposable {
         var domainResult = new DomainResult([new TestEvent()]);
 
         // Act
-        _ = await persister.PersistEventsAsync(identity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(identity, aggregateType: "test-domain", command, domainResult, domainServiceVersion: "v1");
 
         // Assert
         foreach (LogEntry entry in _logEntries) {

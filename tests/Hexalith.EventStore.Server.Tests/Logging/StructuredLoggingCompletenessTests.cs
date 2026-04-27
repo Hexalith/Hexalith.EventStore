@@ -171,7 +171,7 @@ public class StructuredLoggingCompletenessTests : IDisposable {
         var domainResult = new DomainResult([new TestEvent()]);
 
         // Act
-        _ = await persister.PersistEventsAsync(identity, command, domainResult, "v1");
+        _ = await persister.PersistEventsAsync(identity, aggregateType: "test-domain", command, domainResult, domainServiceVersion: "v1");
 
         // Assert
         LogEntry entry = _logEntries.First(e => e.Message.Contains("Events persisted"));
