@@ -14,9 +14,10 @@ public interface IEventPersister {
     /// Does NOT call SaveStateAsync -- the caller commits atomically (D1).
     /// </summary>
     /// <param name="identity">The aggregate identity providing key derivation.</param>
+    /// <param name="aggregateType">The registered aggregate type name (kebab-case, e.g. "counter") to stamp on persisted envelopes. Distinct from the bounded-context <see cref="AggregateIdentity.Domain"/>.</param>
     /// <param name="command">The original command envelope for metadata extraction.</param>
     /// <param name="domainResult">The domain result containing event payloads.</param>
     /// <param name="domainServiceVersion">The version of the domain service that produced the events.</param>
     /// <returns>The persist result containing the new sequence number and persisted envelopes.</returns>
-    Task<EventPersistResult> PersistEventsAsync(AggregateIdentity identity, CommandEnvelope command, DomainResult domainResult, string domainServiceVersion);
+    Task<EventPersistResult> PersistEventsAsync(AggregateIdentity identity, string aggregateType, CommandEnvelope command, DomainResult domainResult, string domainServiceVersion);
 }

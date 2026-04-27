@@ -30,13 +30,15 @@ public sealed class FakeEventPersister : IEventPersister {
     /// <inheritdoc/>
     public Task<EventPersistResult> PersistEventsAsync(
         AggregateIdentity identity,
+        string aggregateType,
         CommandEnvelope command,
         DomainResult domainResult,
         string domainServiceVersion) {
         ArgumentNullException.ThrowIfNull(identity);
+        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(domainResult);
-        ArgumentNullException.ThrowIfNull(domainServiceVersion);
+        ArgumentException.ThrowIfNullOrWhiteSpace(domainServiceVersion);
 
         if (_exceptionToThrow is not null) {
             Exception ex = _exceptionToThrow;
@@ -58,7 +60,7 @@ public sealed class FakeEventPersister : IEventPersister {
             var envelope = new EventEnvelope(
                 MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
                 AggregateId: identity.AggregateId,
-                AggregateType: identity.Domain,
+                AggregateType: aggregateType,
                 TenantId: identity.TenantId,
                 Domain: identity.Domain,
                 SequenceNumber: currentSequence,

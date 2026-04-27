@@ -78,10 +78,10 @@ public class MultiTenantStorageIsolationTests {
         });
 
         // Act
-        _ = await persisterA.PersistEventsAsync(identityA, cmdA, domainResult, "v1");
+        _ = await persisterA.PersistEventsAsync(identityA, aggregateType: "orders", cmdA, domainResult, domainServiceVersion: "v1");
         await stateManagerA.SaveStateAsync();
 
-        _ = await persisterB.PersistEventsAsync(identityB, cmdB, domainResult, "v1");
+        _ = await persisterB.PersistEventsAsync(identityB, aggregateType: "orders", cmdB, domainResult, domainServiceVersion: "v1");
         await stateManagerB.SaveStateAsync();
 
         // Assert - keys in each state manager are tenant-prefixed correctly
@@ -120,7 +120,7 @@ public class MultiTenantStorageIsolationTests {
         });
 
         // Persist events for tenant-b
-        _ = await persisterB.PersistEventsAsync(identityB, cmdB, domainResult, "v1");
+        _ = await persisterB.PersistEventsAsync(identityB, aggregateType: "orders", cmdB, domainResult, domainServiceVersion: "v1");
         await stateManagerB.SaveStateAsync();
 
         // Act - attempt to read tenant-b's events from tenant-a's state manager
@@ -186,10 +186,10 @@ public class MultiTenantStorageIsolationTests {
         });
 
         // Act - persist events for both tenants
-        _ = await persisterA.PersistEventsAsync(identityA, cmdA, resultA, "v1");
+        _ = await persisterA.PersistEventsAsync(identityA, aggregateType: "orders", cmdA, resultA, domainServiceVersion: "v1");
         await stateManagerA.SaveStateAsync();
 
-        _ = await persisterB.PersistEventsAsync(identityB, cmdB, resultB, "v1");
+        _ = await persisterB.PersistEventsAsync(identityB, aggregateType: "orders", cmdB, resultB, domainServiceVersion: "v1");
         await stateManagerB.SaveStateAsync();
 
         // Assert - each tenant's reader only sees its own events
@@ -226,7 +226,7 @@ public class MultiTenantStorageIsolationTests {
             new OrderCreated("ORD-B", 500.00m),
         });
 
-        _ = await persisterB.PersistEventsAsync(identityB, cmdB, domainResult, "v1");
+        _ = await persisterB.PersistEventsAsync(identityB, aggregateType: "orders", cmdB, domainResult, domainServiceVersion: "v1");
         await stateManagerB.SaveStateAsync();
 
         // Act - explicitly try to read tenant-b's event key from tenant-a's state manager
@@ -253,7 +253,7 @@ public class MultiTenantStorageIsolationTests {
             new OrderCreated("ORD-A", 300.00m),
         });
 
-        _ = await persisterA.PersistEventsAsync(identityA, cmdA, domainResult, "v1");
+        _ = await persisterA.PersistEventsAsync(identityA, aggregateType: "orders", cmdA, domainResult, domainServiceVersion: "v1");
         await stateManagerA.SaveStateAsync();
 
         // Act - tenant-b attempts to read tenant-a's events

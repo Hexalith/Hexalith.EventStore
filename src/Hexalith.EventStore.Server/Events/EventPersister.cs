@@ -30,10 +30,12 @@ public partial class EventPersister(
     /// <inheritdoc/>
     public async Task<EventPersistResult> PersistEventsAsync(
         AggregateIdentity identity,
+        string aggregateType,
         CommandEnvelope command,
         DomainResult domainResult,
         string domainServiceVersion) {
         ArgumentNullException.ThrowIfNull(identity);
+        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(domainResult);
         ArgumentException.ThrowIfNullOrWhiteSpace(domainServiceVersion);
@@ -80,7 +82,7 @@ public partial class EventPersister(
             var envelope = new EventEnvelope(
                 MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
                 AggregateId: identity.AggregateId,
-                AggregateType: identity.Domain,
+                AggregateType: aggregateType,
                 TenantId: identity.TenantId,
                 Domain: identity.Domain,
                 SequenceNumber: sequenceNumber,
