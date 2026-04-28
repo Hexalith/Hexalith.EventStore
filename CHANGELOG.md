@@ -1,3 +1,44 @@
+# [2.0.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.4.0...v2.0.0) (2026-04-28)
+
+
+* feat(client)!: throw MissingApplyMethodException on unknown event during rehydration ([2568f81](https://github.com/Hexalith/Hexalith.EventStore/commit/2568f81ea62273ff314b66bf76f06b909a7ecf2e))
+* refactor(server)!: thread aggregate type through persistence pipeline ([2070c68](https://github.com/Hexalith/Hexalith.EventStore/commit/2070c6828f40a0cace523a48f106fac114d12c4d))
+
+
+### Bug Fixes
+
+* **contracts:** restore CommandEnvelope defensive copy for Extensions ([c79acec](https://github.com/Hexalith/Hexalith.EventStore/commit/c79acecf60cb74212b69fd6000788d679af601be))
+* **ui:** apply Story 21-8 CSS review round 2 patches (monospace font-stack, link token) ([a634e93](https://github.com/Hexalith/Hexalith.EventStore/commit/a634e93216d670c44ca669ee4313e1b5d34da318))
+
+
+### Features
+
+* add perf lab + secret scanning + refresh NFR artifacts ([604beb5](https://github.com/Hexalith/Hexalith.EventStore/commit/604beb541e9bc90af09940445222e5296e106b72))
+* **auth:** implement Dapr internal authentication handler and options with allow-list support ([3c24118](https://github.com/Hexalith/Hexalith.EventStore/commit/3c2411878178c8aa49dfe5410a0f8e1c23af5677))
+* **contracts:** add CommandStatus.IsTerminal() extension and remove duplicate controller helpers ([1e4ea10](https://github.com/Hexalith/Hexalith.EventStore/commit/1e4ea10fbe8672e8fe07d7344cfa45cf7da9a2f0)), closes [#220](https://github.com/Hexalith/Hexalith.EventStore/issues/220)
+* **testing:** add TerminatableComplianceAssertions helper (R1-A2) ([bdff4c4](https://github.com/Hexalith/Hexalith.EventStore/commit/bdff4c418d5fb57b574c3fddb41b508741ca008e))
+* **ui:** fix NavMenu v5 styling and add Fluent UI CSS bundle (Story 21-11) ([3f2fc62](https://github.com/Hexalith/Hexalith.EventStore/commit/3f2fc6212f20a61cbaf3a74603414d007fddd46b))
+* **ui:** fix theme toggle for Fluent UI v5 with data-theme CSS selectors (Story 21-12) ([cb6085b](https://github.com/Hexalith/Hexalith.EventStore/commit/cb6085bdc97b0c175507d82cff149f3521c38447))
+* **ui:** fix UI bugs batch for Admin.UI v5 cleanup (Story 21-13) ([391c243](https://github.com/Hexalith/Hexalith.EventStore/commit/391c243dd0c3e062b15358643edeb7fb5a4e7722))
+* **ui:** refactor App.razor and Routes.razor for improved error handling and routing structure ([986ae97](https://github.com/Hexalith/Hexalith.EventStore/commit/986ae9737dcb008fd06b9e672e190673b0de435c))
+
+
+### BREAKING CHANGES
+
+* Aggregate state rehydration now throws
+MissingApplyMethodException for events lacking a matching public Apply method
+on the state type, instead of silently skipping them. Consumers relying on the
+prior skip behavior must declare an Apply method (no-op is sufficient,
+particularly on ITerminatable states for AggregateTerminated).
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+* IEventPersister.PersistEventsAsync signature changed;
+all implementers and direct callers must pass `aggregateType` explicitly.
+
+Closes story post-epic-1-r1a1-aggregatetype-pipeline.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
 # [1.4.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.3.0...v1.4.0) (2026-04-15)
 
 
