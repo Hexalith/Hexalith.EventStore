@@ -30,21 +30,21 @@ done
 
 # --- Stage 1: Markdown Linting ---
 echo ""
-echo "=== Stage 1/3: Markdown Linting ==="
+echo "=== Stage 1/4: Markdown Linting ==="
 CURRENT_STAGE="Markdown linting"
 eval npx markdownlint-cli2 $DOCS_GLOB
 echo "PASSED: Markdown linting"
 
 # --- Stage 2: Link Checking ---
 echo ""
-echo "=== Stage 2/3: Link Checking ==="
+echo "=== Stage 2/4: Link Checking ==="
 CURRENT_STAGE="Link checking"
 eval lychee --config lychee.toml $DOCS_GLOB
 echo "PASSED: Link checking"
 
 # --- Stage 3: Sample Build & Test ---
 echo ""
-echo "=== Stage 3/3: Sample Build & Test ==="
+echo "=== Stage 3/4: Sample Build & Test ==="
 CURRENT_STAGE="Sample build & test"
 dotnet restore samples/Hexalith.EventStore.Sample.Tests/
 dotnet restore tests/Hexalith.EventStore.Sample.Tests/
@@ -53,6 +53,13 @@ dotnet build tests/Hexalith.EventStore.Sample.Tests/ --configuration Release --n
 dotnet test tests/Hexalith.EventStore.Sample.Tests/ --configuration Release --no-build
 dotnet test samples/Hexalith.EventStore.Sample.Tests/ --configuration Release --no-build
 echo "PASSED: Sample build & test"
+
+# --- Stage 4: DAPR SDK Version Pin Consistency ---
+echo ""
+echo "=== Stage 4/4: DAPR SDK Version Pin Consistency ==="
+CURRENT_STAGE="DAPR SDK version pin consistency"
+bash scripts/check-doc-versions.sh
+echo "PASSED: DAPR SDK version pin consistency"
 
 CURRENT_STAGE=""
 trap - ERR

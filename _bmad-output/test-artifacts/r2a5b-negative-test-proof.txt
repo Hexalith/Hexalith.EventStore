@@ -1,0 +1,69 @@
+# r2a5b — scripts/check-doc-versions.sh negative-test proof
+# AC #13 — verifiable evidence that each error mode the script claims to detect actually fires.
+# Captured: 2026-04-28T15:24:15Z on MINGW64_NT-10.0-26200 3.5.4-395fda67.x86_64 x86_64 bash 5.2.37(1)-release
+# Pre-state: Directory.Packages.props pins all 4 Dapr.* at 1.17.7; nuget-packages.md cells at 158/182/183/184 match.
+# Each scenario: temp-edit → invoke script → capture stdout/stderr + exit code → revert → re-invoke → confirm PASSED.
+
+=== Scenario (a): cell-mismatch ===
+Temp edit: change docs/reference/nuget-packages.md line 158 cell '1.17.7' to '1.17.6'
+Edited row:
+| Dapr.Client                               | 1.17.6  |
+--- Script invocation: bash scripts/check-doc-versions.sh ---
+MISMATCH at docs/reference/nuget-packages.md:158: 'Dapr.Client' cell shows '1.17.6', Directory.Packages.props pins '1.17.7'
+Exit code: 1
+--- After revert: bash scripts/check-doc-versions.sh ---
+PASSED: DAPR SDK version pin consistency (1.17.7, 4 rows verified)
+Exit code: 0
+
+=== Scenario (b): divergent props pins ===
+Temp edit: Directory.Packages.props line 8 'Dapr.Actors' Version=1.17.7 → 1.17.6
+Edited line:
+    <PackageVersion Include="Dapr.Actors" Version="1.17.6" />
+--- Script invocation ---
+ERROR: Directory.Packages.props has divergent Dapr.* pins:
+  Dapr.Actors = 1.17.6
+  Dapr.AspNetCore = 1.17.7
+  Dapr.Client = 1.17.7
+  Dapr.Actors.AspNetCore = 1.17.7
+Exit code: 1
+--- After revert ---
+PASSED: DAPR SDK version pin consistency (1.17.7, 4 rows verified)
+Exit code: 0
+
+=== Scenario (c): missing package in props ===
+Temp edit: comment out Dapr.AspNetCore (line 7) in Directory.Packages.props
+Edited line:
+    <!-- <PackageVersion Include="Dapr.AspNetCore" Version="1.17.7" /> -->
+--- Script invocation ---
+ERROR: Dapr.AspNetCore not found in Directory.Packages.props
+Exit code: 1
+--- After revert ---
+PASSED: DAPR SDK version pin consistency (1.17.7, 4 rows verified)
+Exit code: 0
+
+=== Scenario (d): empty / missing doc rows ===
+Temp edit: prefix all 4 Dapr.* rows in nuget-packages.md with '<!-- ' / suffix ' -->'
+Edited rows:
+<!-- | Dapr.Client                               | 1.17.7  | -->
+<!-- | Dapr.Client            | 1.17.7  | -->
+<!-- | Dapr.Actors            | 1.17.7  | -->
+<!-- | Dapr.Actors.AspNetCore | 1.17.7  | -->
+--- Script invocation ---
+ERROR: expected exactly 4 Dapr.* table rows in docs/reference/nuget-packages.md, found 0
+Exit code: 1
+--- After revert ---
+PASSED: DAPR SDK version pin consistency (1.17.7, 4 rows verified)
+Exit code: 0
+
+=== Scenario (e, optional): multi-line <PackageVersion> guard ===
+Temp edit: break Dapr.Client (line 6) into multi-line form by inserting newline before the self-close
+Edited (lines 6-7):
+    <PackageVersion Include="Dapr.Client" Version="1.17.7"
+      Condition="true" />
+--- Script invocation ---
+ERROR: multi-line <PackageVersion> element detected in Directory.Packages.props — REWRITE NEEDED.
+       See script header comment for migration to xmllint or 'dotnet msbuild -getProperty:'.
+Exit code: 1
+--- After revert ---
+PASSED: DAPR SDK version pin consistency (1.17.7, 4 rows verified)
+Exit code: 0

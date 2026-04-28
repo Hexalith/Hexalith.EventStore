@@ -190,7 +190,7 @@ Your team needs to understand DAPR component YAML configuration, sidecar debuggi
 
 #### Version coupling
 
-Hexalith depends on a specific DAPR SDK version (currently 1.17.7, as pinned in `Directory.Packages.props`, last verified April 2026). DAPR follows semantic versioning and maintains backward compatibility within major versions. Coordinated upgrades are required when Hexalith bumps its DAPR dependency, but minor version upgrades are safe. Hexalith's CI pipeline tests against the pinned DAPR SDK version on every commit — you can verify compatibility with a newer DAPR release by bumping the version in a feature branch and running the test suite.
+Hexalith depends on a specific DAPR SDK version pinned in [`Directory.Packages.props`](../../Directory.Packages.props) (the single source of truth). DAPR follows semantic versioning and maintains backward compatibility within major versions. Coordinated upgrades are required when Hexalith bumps its DAPR dependency, but minor version upgrades are safe. Hexalith's CI pipeline tests against the pinned DAPR SDK version on every commit — you can verify compatibility with a newer DAPR release by bumping the version in a feature branch and running the test suite.
 
 Every trade-off above is the price of infrastructure portability — the ability to swap storage and messaging backends without touching application code. You trade one form of coupling (database vendor lock-in) for another (DAPR runtime coupling). The difference is that DAPR coupling is isolated to a single infrastructure package, while direct database coupling would pervade your entire codebase.
 

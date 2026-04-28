@@ -32,6 +32,9 @@ jobs:
       - name: Lint Markdown
         run: npx markdownlint-cli2 "docs/**/*.md" "README.md" "CONTRIBUTING.md" "CHANGELOG.md" "CODE_OF_CONDUCT.md"
 
+      - name: Verify DAPR SDK version pin consistency
+        run: bash scripts/check-doc-versions.sh
+
       - name: Restore lychee cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:

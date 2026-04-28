@@ -192,7 +192,7 @@ feat!: rename EventEnvelope.StreamId to AggregateId
 
 ## Key Dependencies
 
-- DAPR SDK 1.17.7 (Client, AspNetCore, Actors)
+- DAPR SDK (Client, AspNetCore, Actors) — pinned in [`Directory.Packages.props`](Directory.Packages.props)
 - .NET Aspire 13.1.x
 - MediatR 14.0.0
 - FluentValidation 12.1.1
