@@ -5,16 +5,19 @@
 #
 # Assumptions (rewrite to xmllint or `dotnet msbuild -getProperty:` if violated):
 #   1. Directory.Packages.props uses single-line <PackageVersion ... /> entries
-#      (no multi-line elements, no Condition attributes, no metadata children).
+#      (multi-line wraps not supported; Condition attributes on the same line are fine).
 #   2. Each Dapr.* package appears EXACTLY once in the props file.
-#   3. The nuget-packages.md DAPR table rows use the fixed-width pattern
-#      `| Dapr.X    | Y.Y.Y  |` with single-space cell padding on both sides.
+#   3. The nuget-packages.md DAPR table rows use the pipe-delimited pattern
+#      `| Dapr.X | Y.Y.Y |` with any whitespace padding inside cells.
 #   4. Bash 4+ (associative arrays). CI is ubuntu-latest (bash 5+); local-dev
 #      on Windows Git Bash 3.2 is unsupported — use WSL or refactor to scalars.
 set -euo pipefail
+(( BASH_VERSINFO[0] >= 4 )) || { echo "ERROR: bash 4+ required (found $BASH_VERSION); use WSL or upgrade Git Bash" >&2; exit 1; }
 
 PROPS="Directory.Packages.props"
 DOC="docs/reference/nuget-packages.md"
+[[ -f "$PROPS" ]] || { echo "ERROR: $PROPS not found (cwd=$PWD) — run from repo root" >&2; exit 1; }
+[[ -f "$DOC" ]]   || { echo "ERROR: $DOC not found (cwd=$PWD) — run from repo root" >&2; exit 1; }
 EXPECTED_DAPR_ROWS=4   # Dapr.Client x2 (Client + Server tables) + Dapr.Actors + Dapr.Actors.AspNetCore
 
 # Pre-flight: detect multi-line <PackageVersion> elements (regex can't handle them).
@@ -61,13 +64,13 @@ while IFS= read -r line; do
   rows_seen=$((rows_seen + 1))
   ln="${line%%:*}"
   row="${line#*:}"
-  pkg=$(echo "$row" | sed -E "s/^\| ([A-Za-z.]+) +\|.*$/\\1/")
-  ver=$(echo "$row" | sed -E "s/^\| [A-Za-z.]+ +\| ([0-9.]+) +\|.*$/\\1/")
+  pkg=$(echo "$row" | sed -E "s/^\|[[:space:]]+([A-Za-z.]+)[[:space:]]+\|.*$/\\1/")
+  ver=$(echo "$row" | sed -E "s/^\|[[:space:]]+[A-Za-z.]+[[:space:]]+\|[[:space:]]+([0-9.]+)[[:space:]]+\|.*$/\\1/")
   if [[ "$ver" != "$EXPECTED" ]]; then
     echo "MISMATCH at $DOC:$ln: '$pkg' cell shows '$ver', $PROPS pins '$EXPECTED'" >&2
     fail=1
   fi
-done < <(grep -nE "^\| Dapr\.(Client|Actors|AspNetCore|Actors\.AspNetCore) +\| [0-9.]+ +\|" "$DOC" || true)
+done < <(grep -nE "^\|[[:space:]]+Dapr\.(Client|Actors|AspNetCore|Actors\.AspNetCore)[[:space:]]+\|[[:space:]]+[0-9.]+[[:space:]]+\|" "$DOC" || true)
 
 if [[ "$rows_seen" -ne "$EXPECTED_DAPR_ROWS" ]]; then
   echo "ERROR: expected exactly $EXPECTED_DAPR_ROWS Dapr.* table rows in $DOC, found $rows_seen" >&2
