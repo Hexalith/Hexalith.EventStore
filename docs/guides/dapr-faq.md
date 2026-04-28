@@ -40,11 +40,11 @@ That replacement is significant — the Server package is not trivial — but it
 
 ## How Does DAPR Versioning Affect Hexalith?
 
-> **TL;DR:** DAPR follows SemVer with 5+ years of v1.x backward compatibility. Hexalith pins to a specific SDK version (currently 1.16.1) and CI verifies on every commit.
+> **TL;DR:** DAPR follows SemVer with 5+ years of v1.x backward compatibility. Hexalith pins to a specific SDK version (currently 1.17.7) and CI verifies on every commit.
 
 DAPR has been on v1.x since February 2021. In over five years of releases, DAPR has maintained backward compatibility within the major version — minor releases add features, patch releases fix bugs, and neither breaks existing API contracts. DAPR's [versioning policy](https://docs.dapr.io/operations/support/support-versioning/) follows semantic versioning: breaking changes are reserved for major version bumps.
 
-Hexalith pins the DAPR SDK version in `Directory.Packages.props` (currently **1.16.1** — last verified March 2026). The CI pipeline tests against this pinned version on every commit. To upgrade DAPR:
+Hexalith pins the DAPR SDK version in `Directory.Packages.props` (currently **1.17.7** — last verified April 2026). The CI pipeline tests against this pinned version on every commit. To upgrade DAPR:
 
 1. Bump the version in `Directory.Packages.props` on a feature branch
 2. Run the full test suite (Tier 1 unit tests, Tier 2 integration tests with DAPR slim, Tier 3 end-to-end with Aspire)

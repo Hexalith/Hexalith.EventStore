@@ -135,7 +135,7 @@ minikube start --cpus=4 --memory=8192 --driver=docker
 
 Install the DAPR control plane into your Kubernetes cluster. Pin the DAPR runtime version to match the SDK version used by the application.
 
-> **Note:** The project uses DAPR SDK version **1.16.1** (see `Directory.Packages.props`). Use a compatible DAPR runtime version. Consult the [DAPR SDK-to-runtime compatibility matrix](https://docs.dapr.io/operations/support/support-release-policy/) for version mapping.
+> **Note:** The project uses DAPR SDK version **1.17.7** (see `Directory.Packages.props`). Use a compatible DAPR runtime version. Consult the [DAPR SDK-to-runtime compatibility matrix](https://docs.dapr.io/operations/support/support-release-policy/) for version mapping.
 
 Install DAPR with a pinned runtime version:
 
