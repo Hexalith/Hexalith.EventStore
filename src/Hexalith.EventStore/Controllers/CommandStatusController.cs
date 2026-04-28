@@ -120,7 +120,7 @@ public class CommandStatusController(
                         record.Status);
 
                     // Only include Retry-After for non-terminal statuses (consumer should keep polling).
-                    if (!IsTerminalStatus(record.Status)) {
+                    if (!record.Status.IsTerminal()) {
                         Response.Headers["Retry-After"] = "1";
                     }
 
@@ -167,10 +167,4 @@ public class CommandStatusController(
 
         return new ObjectResult(problemDetails) { StatusCode = statusCode };
     }
-
-    private static bool IsTerminalStatus(CommandStatus status) =>
-        status is CommandStatus.Completed
-            or CommandStatus.Rejected
-            or CommandStatus.PublishFailed
-            or CommandStatus.TimedOut;
 }

@@ -74,7 +74,7 @@ public class AdminTraceQueryController(
                 resolvedDomain = domain ?? string.Empty;
                 resolvedAggregateId = commandStatus.AggregateId ?? aggregateId ?? string.Empty;
 
-                if (IsTerminalStatus(commandStatus.Status)) {
+                if (commandStatus.Status.IsTerminal()) {
                     commandCompletedAt = commandStatus.Timestamp;
                 }
 
@@ -219,12 +219,6 @@ public class AdminTraceQueryController(
                 detail: "Failed to compute correlation trace map.");
         }
     }
-
-    private static bool IsTerminalStatus(CommandStatus status)
-        => status is CommandStatus.Completed
-            or CommandStatus.Rejected
-            or CommandStatus.PublishFailed
-            or CommandStatus.TimedOut;
 
     private static bool IsRejectionEvent(ServerEventEnvelope evt) {
         // Convention: rejection events have type names ending with "Rejected" or containing "Rejection"

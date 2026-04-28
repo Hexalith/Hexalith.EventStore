@@ -13,6 +13,9 @@ permissions:
 
 env:
   DAPR_VERSION: '1.16.0'
+  # Bypass NU1902 transitive CVE warnings on OpenTelemetry packages — mirrors the local
+  # `-p:NuGetAudit=false` flag documented in CLAUDE.md § Build & Test Commands.
+  NuGetAudit: 'false'
 
 jobs:
   release:
