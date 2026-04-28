@@ -13,6 +13,11 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # Bypass NU1902 transitive CVE warnings on OpenTelemetry packages — mirrors the local
+  # `-p:NuGetAudit=false` flag documented in CLAUDE.md § Build & Test Commands.
+  NuGetAudit: 'false'
+
 jobs:
   lint-and-links:
     runs-on: ubuntu-latest
