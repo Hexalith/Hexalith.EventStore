@@ -138,7 +138,7 @@ The following table shows which dependency versions are required for each Hexali
 
 | Hexalith Version | .NET SDK | DAPR SDK | .NET Aspire | MediatR | FluentValidation |
 | ---------------- | -------- | -------- | ----------- | ------- | ---------------- |
-| v1 (current)     | 10.0.x   | 1.16.x+  | 13.1.x+     | 14.x    | 12.x             |
+| v1 (current)     | 10.0.x   | 1.17.x+  | 13.1.x+     | 14.x    | 12.x             |
 
 > **Note:** This table currently has one row (v1) and is forward-looking — it will grow with each major release.
 
