@@ -63,6 +63,13 @@ public class AuthenticationTests {
         // and tenantId (pre-pipeline rejection — no authenticated context to attach to).
         problemDetails.TryGetProperty("correlationId", out _).ShouldBeFalse();
         problemDetails.TryGetProperty("tenantId", out _).ShouldBeFalse();
+
+        // UX-DR4: WWW-Authenticate Bearer challenge per RFC 6750.
+        // Realm is asserted by substring (`hexalith-eventstore`) so a future ops change to
+        // namespace the realm (e.g., `hexalith-eventstore-prod`) does not break the test.
+        string wwwAuth = response.Headers.WwwAuthenticate.ToString();
+        wwwAuth.ShouldStartWith("Bearer realm=\"");
+        wwwAuth.ShouldContain("hexalith-eventstore");
     }
 
     /// <summary>

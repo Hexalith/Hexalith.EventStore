@@ -54,8 +54,17 @@ public class JwtAuthenticationIntegrationTests
         body.GetProperty("title").GetString().ShouldBe("Unauthorized");
         body.GetProperty("type").GetString().ShouldBe("https://hexalith.io/problems/authentication-required");
 
-        // UX-DR2: 401 responses from the auth challenge intentionally omit correlationId.
+        // UX-DR2: 401 responses from the auth challenge intentionally omit correlationId
+        // and tenantId (pre-pipeline rejection — no authenticated context to attach to).
         body.TryGetProperty("correlationId", out _).ShouldBeFalse();
+        body.TryGetProperty("tenantId", out _).ShouldBeFalse();
+
+        // UX-DR4: WWW-Authenticate Bearer challenge per RFC 6750.
+        // Realm is asserted by substring (`hexalith-eventstore`) so a future ops change to
+        // namespace the realm (e.g., `hexalith-eventstore-prod`) does not break the test.
+        string wwwAuth = response.Headers.WwwAuthenticate.ToString();
+        wwwAuth.ShouldStartWith("Bearer realm=\"");
+        wwwAuth.ShouldContain("hexalith-eventstore");
     }
 
     [Fact]
@@ -81,6 +90,15 @@ public class JwtAuthenticationIntegrationTests
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("status").GetInt32().ShouldBe(401);
         body.GetProperty("title").GetString().ShouldBe("Unauthorized");
+
+        // UX-DR8: invalid (non-expired) JWT maps to authentication-required URI.
+        body.GetProperty("type").GetString().ShouldBe("https://hexalith.io/problems/authentication-required");
+
+        // UX-DR4: invalid-token WWW-Authenticate carries error="invalid_token".
+        string wwwAuth = response.Headers.WwwAuthenticate.ToString();
+        wwwAuth.ShouldStartWith("Bearer realm=\"");
+        wwwAuth.ShouldContain("hexalith-eventstore");
+        wwwAuth.ShouldContain("error=\"invalid_token\"");
     }
 
     [Fact]
@@ -108,6 +126,16 @@ public class JwtAuthenticationIntegrationTests
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("status").GetInt32().ShouldBe(401);
         body.GetProperty("detail").GetString()!.ShouldContain("expired");
+
+        // UX-DR8: distinct URI for expired vs missing/invalid JWT.
+        body.GetProperty("type").GetString().ShouldBe("https://hexalith.io/problems/token-expired");
+
+        // UX-DR4: expired-token WWW-Authenticate carries error="invalid_token" + error_description="The token has expired".
+        string wwwAuth = response.Headers.WwwAuthenticate.ToString();
+        wwwAuth.ShouldStartWith("Bearer realm=\"");
+        wwwAuth.ShouldContain("hexalith-eventstore");
+        wwwAuth.ShouldContain("error=\"invalid_token\"");
+        wwwAuth.ShouldContain("error_description=\"The token has expired\"");
     }
 
     [Fact]
@@ -134,6 +162,19 @@ public class JwtAuthenticationIntegrationTests
 
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("status").GetInt32().ShouldBe(401);
+
+        // UX-DR8: wrong-issuer is an "invalid" JWT, not "expired" — maps to authentication-required.
+        body.GetProperty("type").GetString().ShouldBe("https://hexalith.io/problems/authentication-required");
+
+        // Story 3.5 task 2.5 consolidated the wrong-issuer detail to the canonical invalid-token text.
+        // Asserting the exact string locks that consolidation against future regressions.
+        body.GetProperty("detail").GetString().ShouldBe("The provided authentication token is invalid.");
+
+        // UX-DR4: invalid-token WWW-Authenticate carries error="invalid_token".
+        string wwwAuth = response.Headers.WwwAuthenticate.ToString();
+        wwwAuth.ShouldStartWith("Bearer realm=\"");
+        wwwAuth.ShouldContain("hexalith-eventstore");
+        wwwAuth.ShouldContain("error=\"invalid_token\"");
     }
 
     [Fact]

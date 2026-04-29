@@ -99,7 +99,8 @@ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factor
         ReplayCommandResponse? replayResult = await response.Content.ReadFromJsonAsync<ReplayCommandResponse>();
         _ = replayResult.ShouldNotBeNull();
         replayResult.CorrelationId.ShouldNotBe(correlationId);
-        Guid.TryParse(replayResult.CorrelationId, out _).ShouldBeTrue();
+        // R3-A1 / R2-A7: platform correlation IDs are ULIDs, not GUIDs — assert non-empty rather than parsability.
+        replayResult.CorrelationId.ShouldNotBeNullOrWhiteSpace();
         replayResult.IsReplay.ShouldBeTrue();
         replayResult.PreviousStatus.ShouldBe("TimedOut");
     }

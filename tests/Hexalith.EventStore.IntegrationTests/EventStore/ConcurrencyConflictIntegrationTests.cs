@@ -92,6 +92,12 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         string detail = body.GetProperty("detail").GetString()!;
         detail.ShouldContain("concurrency conflict");
         detail.ShouldContain("retry");
+
+        // UX-DR6: forbid event-sourcing / internal-state terminology in the 409 detail.
+        detail.ShouldNotContain("aggregate", Case.Insensitive);
+        detail.ShouldNotContain("between read and write", Case.Insensitive);
+        detail.ShouldNotContain("event stream", Case.Insensitive);
+        detail.ShouldNotContain("actor", Case.Insensitive);
     }
 
     [Fact]

@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-29 (Epic 6 retro completed; previous: 2026-04-28 post-epic-3-r3a1-replay-ulid-validation completed; 2026-04-28 post-epic-2-r2a5b-version-prose-source-of-truth-refactor completed; 2026-04-26 post-epic-1-r1a6-missing-apply-method-exception created as ready-for-dev by pre-dev hardening; Epic 1-5 retros completed)
+# last_updated: 2026-04-29 (post-epic-3-r3a6-tier3-error-contract-update: code-review complete — 4 patches applied, 1 dismissed (Ulid.TryParse — production emits GUID), 1 deferred (project-wide messageId convention sweep), 4 forward-looking deferrals tracked; story flipped review → done; previous: post-epic-3-r3a6 full Aspire Tier 3 verified ready-for-dev → review; Epic 6 retro completed; 2026-04-28 post-epic-3-r3a1-replay-ulid-validation completed; 2026-04-28 post-epic-2-r2a5b-version-prose-source-of-truth-refactor completed; 2026-04-26 post-epic-1-r1a6-missing-apply-method-exception created as ready-for-dev by pre-dev hardening; Epic 1-5 retros completed)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-04-29 (Epic 6 retro completed; previous: 2026-04-28 post-epic-3-r3a1-replay-ulid-validation completed; 2026-04-28 post-epic-2-r2a5b-version-prose-source-of-truth-refactor completed; 2026-04-26 post-epic-1-r1a6-missing-apply-method-exception created as ready-for-dev by pre-dev hardening; Epic 1-5 retros completed)
+last_updated: 2026-04-29 (post-epic-3-r3a6-tier3-error-contract-update: code-review complete — 4 patches applied, 1 dismissed (Ulid.TryParse — production emits GUID), 1 deferred (project-wide messageId convention sweep), 4 forward-looking deferrals tracked; story flipped review → done; previous: post-epic-3-r3a6 full Aspire Tier 3 verified ready-for-dev → review; Epic 6 retro completed; 2026-04-28 post-epic-3-r3a1-replay-ulid-validation completed; 2026-04-28 post-epic-2-r2a5b-version-prose-source-of-truth-refactor completed; 2026-04-26 post-epic-1-r1a6-missing-apply-method-exception created as ready-for-dev by pre-dev hardening; Epic 1-5 retros completed)
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -284,7 +284,7 @@ development_status:
   # R3-A3 is covered by post-epic-2-r2a2-commandstatus-isterminal-extension.
   # R3-A4 was corrected directly in Story 3.6.
   post-epic-3-r3a1-replay-ulid-validation: done  # 2026-04-28: replay no longer uses GUID-only validation; ReplayControllerTests 21/21 passed
-  post-epic-3-r3a6-tier3-error-contract-update: backlog
+  post-epic-3-r3a6-tier3-error-contract-update: done  # 2026-04-29: code-review complete — 3-layer adversarial review (Blind + Edge + Auditor) found NO AC violations. 4 NIT/LOW patches applied (Retry-After.Single, named ctor args, StatusStore diagnostic w/ leaked-record listing, tenantId-absence on 503, comment polish on WWW-Authenticate + gRPC ban); 1 dismissed (Ulid.TryParse on Replay — verified production ReplayController:177 emits Guid.NewGuid().ToString(), so ShouldNotBeNullOrWhiteSpace is correct per R2-A7's "any non-whitespace string" clause); 1 deferred (Guid messageId in tests is repo-wide convention; sweep separately). Build green; ServiceUnavailableIntegrationTests 1/1 PASS after refactor. 4 forward-looking deferrals tracked in deferred-work.md (IDisposable risk, Singleton vs Scoped, UK spelling, Aspire case-fold). Earlier this session: Tasks 1-6 applied + 503 test added; full Aspire Tier 3 run 212/222 (10 failures all infra-class, unrelated). Tier 1 = 788/788 + Tier 2 = 1620/1645 baseline-aligned (no regression). Sidecar 503 leg deferred with architectural reason (SubmitCommandHandler writes Received before ICommandRouter).
   post-epic-3-r3a7-live-command-surface-verification: backlog
   post-epic-3-r3a8-retro-follow-through-gate: backlog
 
