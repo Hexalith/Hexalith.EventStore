@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-29 (post-epic-3-r3a6-tier3-error-contract-update: code-review complete — 4 patches applied, 1 dismissed (Ulid.TryParse — production emits GUID), 1 deferred (project-wide messageId convention sweep), 4 forward-looking deferrals tracked; story flipped review → done; previous: post-epic-3-r3a6 full Aspire Tier 3 verified ready-for-dev → review; Epic 6 retro completed; 2026-04-28 post-epic-3-r3a1-replay-ulid-validation completed; 2026-04-28 post-epic-2-r2a5b-version-prose-source-of-truth-refactor completed; 2026-04-26 post-epic-1-r1a6-missing-apply-method-exception created as ready-for-dev by pre-dev hardening; Epic 1-5 retros completed)
+# last_updated: 2026-04-29 (Epic 8 retro completed; previous: 2026-04-29 Epic 7 retro completed; post-epic-3-r3a6-tier3-error-contract-update: code-review complete — 4 patches applied, 1 dismissed (Ulid.TryParse — production emits GUID), 1 deferred (project-wide messageId convention sweep), 4 forward-looking deferrals tracked; story flipped review → done; post-epic-3-r3a6 full Aspire Tier 3 verified ready-for-dev → review; Epic 6 retro completed; 2026-04-28 post-epic-3-r3a1-replay-ulid-validation completed; 2026-04-28 post-epic-2-r2a5b-version-prose-source-of-truth-refactor completed; 2026-04-26 post-epic-1-r1a6-missing-apply-method-exception created as ready-for-dev by pre-dev hardening; Epic 1-5 retros completed)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-04-29 (post-epic-3-r3a6-tier3-error-contract-update: code-review complete — 4 patches applied, 1 dismissed (Ulid.TryParse — production emits GUID), 1 deferred (project-wide messageId convention sweep), 4 forward-looking deferrals tracked; story flipped review → done; previous: post-epic-3-r3a6 full Aspire Tier 3 verified ready-for-dev → review; Epic 6 retro completed; 2026-04-28 post-epic-3-r3a1-replay-ulid-validation completed; 2026-04-28 post-epic-2-r2a5b-version-prose-source-of-truth-refactor completed; 2026-04-26 post-epic-1-r1a6-missing-apply-method-exception created as ready-for-dev by pre-dev hardening; Epic 1-5 retros completed)
+last_updated: 2026-04-29 (Epic 8 retro completed; previous: 2026-04-29 Epic 7 retro completed; post-epic-3-r3a6-tier3-error-contract-update: code-review complete — 4 patches applied, 1 dismissed (Ulid.TryParse — production emits GUID), 1 deferred (project-wide messageId convention sweep), 4 forward-looking deferrals tracked; story flipped review → done; post-epic-3-r3a6 full Aspire Tier 3 verified ready-for-dev → review; Epic 6 retro completed; 2026-04-28 post-epic-3-r3a1-replay-ulid-validation completed; 2026-04-28 post-epic-2-r2a5b-version-prose-source-of-truth-refactor completed; 2026-04-26 post-epic-1-r1a6-missing-apply-method-exception created as ready-for-dev by pre-dev hardening; Epic 1-5 retros completed)
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -105,7 +105,7 @@ development_status:
   7-1-configurable-aggregate-snapshots: done
   7-2-per-tenant-rate-limiting: done
   7-3-per-consumer-rate-limiting: done
-  epic-7-retrospective: optional
+  epic-7-retrospective: done  # 2026-04-29: epic-7-retro-2026-04-29.md. 8 action items (R7-A1..R7-A8); R7-A1/R7-A2 critical before final runtime-performance confidence
 
   # Epic 8: Aspire Orchestration, Sample App & Testing
   epic-8: done
@@ -117,7 +117,7 @@ development_status:
   8-6-deployment-manifests-and-environment-portability: done
   8-7-cicd-pipeline: done
   8-8-semantic-release-migration: done
-  epic-8-retrospective: optional
+  epic-8-retrospective: done  # 2026-04-29: epic-8-retro-2026-04-29.md. 9 action items (R8-A1..R8-A9); R8-A1/R8-A3/R8-A4 critical before final developer-experience confidence; R8-A4/R8-A5 critical before Epic 9 full-topology confidence
 
   # Epic 9: Query Pipeline & ETag Caching
   epic-9: done
