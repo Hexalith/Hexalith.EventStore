@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v2.0.0...v2.1.0) (2026-04-29)
+
+
+### Features
+
+* Add Epic 6 retrospective documentation for observability and operations ([e690233](https://github.com/Hexalith/Hexalith.EventStore/commit/e690233e3d995d5b85f682d7a0db48864c244e54))
+
 # [2.0.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v1.4.0...v2.0.0) (2026-04-28)
 
 
