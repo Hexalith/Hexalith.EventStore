@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "produced_by": "jobs/preflight-predev-hardening.py",
-  "timestamp": "2026-04-26T20:10:26Z",
+  "timestamp": "2026-04-26T17:10:37Z",
   "repo": "D:\\Hexalith.EventStore",
   "result": "fail",
   "bootstrap_actions": [],
@@ -63,11 +63,11 @@
         ":(exclude)_bmad-output/process-notes/preflight-latest.json"
       ],
       "exit_code": 0,
-      "stdout": " M _bmad-output/implementation-artifacts/sprint-status.yaml\n M _bmad-output/process-notes/predev-hardening-runs.log\n?? _bmad-output/implementation-artifacts/epic-5-retro-2026-04-26.md\n",
+      "stdout": " M _bmad-output/implementation-artifacts/sprint-status.yaml\n?? _bmad-output/implementation-artifacts/epic-5-retro-2026-04-26.md\n",
       "stderr": "",
-      "dirty_path_count": 3,
+      "dirty_path_count": 2,
       "result": "fail",
-      "details": "3 dirty path(s)"
+      "details": "2 dirty path(s)"
     }
   ],
   "note_to_llm": "This file was produced by jobs/preflight-predev-hardening.py. The recurring pre-dev hardening job MUST quote the contents of this file verbatim when reporting pre-flight results; do NOT re-run the checks yourself, paraphrase them, or summarize them in your own words."

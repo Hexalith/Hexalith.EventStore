@@ -74,14 +74,13 @@ public class ReplayController(
             ?? correlationId;
 
         try {
-            // Validate GUID format for path parameter
-            if (!Guid.TryParse(correlationId, out _)) {
+            if (string.IsNullOrWhiteSpace(correlationId)) {
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "InvalidCorrelationId"));
                 return CreateProblemDetails(
                     StatusCodes.Status400BadRequest,
                     ProblemTypeUris.BadRequest,
                     "Bad Request",
-                    $"Correlation ID '{correlationId}' is not a valid GUID format.",
+                    "Correlation ID must not be empty or whitespace.",
                     requestCorrelationId);
             }
 

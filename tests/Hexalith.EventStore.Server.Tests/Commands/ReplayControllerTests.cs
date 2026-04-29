@@ -95,6 +95,47 @@ public class ReplayControllerTests {
     }
 
     [Fact]
+    public async Task Replay_NonGuidCorrelationId_Returns202WithReplayResponse() {
+        // Arrange
+        const string correlationId = "01JZ6Q5D7XK2S9R8M4N3P2Q1T0";
+        await SeedArchivedCommand("tenant-a", correlationId, CommandStatus.Rejected);
+
+        _ = _mediator.Send(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new SubmitCommandResult(callInfo.Arg<SubmitCommand>().CorrelationId));
+
+        ReplayController controller = CreateController();
+
+        // Act
+        IActionResult result = await controller.Replay(correlationId, CancellationToken.None);
+
+        // Assert
+        AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
+        ReplayCommandResponse response = accepted.Value.ShouldBeOfType<ReplayCommandResponse>();
+        response.IsReplay.ShouldBeTrue();
+        response.PreviousStatus.ShouldBe("Rejected");
+        response.OriginalCorrelationId.ShouldBe(correlationId);
+
+        _ = await _mediator.Received(1).Send(
+            Arg.Is<SubmitCommand>(c => c.Tenant == "tenant-a" && c.CorrelationId != correlationId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Replay_WhitespaceCorrelationId_Returns400ProblemDetails() {
+        // Arrange
+        ReplayController controller = CreateController();
+
+        // Act
+        IActionResult result = await controller.Replay("   ", CancellationToken.None);
+
+        // Assert
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(400);
+        ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        problemDetails.Detail.ShouldBe("Correlation ID must not be empty or whitespace.");
+    }
+
+    [Fact]
     public async Task Replay_PublishFailedStatus_Returns202() {
         // Arrange
         string correlationId = Guid.NewGuid().ToString();

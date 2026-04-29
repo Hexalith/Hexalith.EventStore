@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-28 (post-epic-2-r2a5b-version-prose-source-of-truth-refactor → done at SHA 564034a; chore: prefix → semantic-release no-op confirmed. /bmad-code-review pass: 2 decisions deferred, 4 patches applied to scripts/check-doc-versions.sh (P1 file-existence guards, P2 bash 4+ guard, P3 regex whitespace tolerance, P4 header rewording — script grew 75 → 80 lines, at ≤80 budget), 7 deferred to deferred-work.md, 5 dismissed; 0 unresolved CRITICAL/HIGH/MEDIUM. CI green on merge commit (lint-and-links new step printed PASSED). Retro § 6 row R2-A5 SHA-substituted to 564034a. Prior context: PR-ready. 4 prose rewrites + scripts/check-doc-versions.sh + docs-validation.yml step + scripts/validate-docs.sh stage 4 implemented. Negative-test proof at _bmad-output/test-artifacts/r2a5b-negative-test-proof.txt (5 scenarios verified, 4 mandatory + 1 optional). Final grep audit green (1.17.7 → 4 table cells only; 1.16.1 → 0; date stamps → 0). Conventional-commit prefix chore:; semantic-release no-op expected. Structural cure spawned from R2-A5 ADR (Symptom fix vs. structural cure): prose-pointer pattern replaces `currently <X.Y.Z>` + `last verified <month>` in 4 doc files; new scripts/check-doc-versions.sh + docs-validation.yml step asserts the 4 Dapr.* table cells in nuget-packages.md match Directory.Packages.props pin. // Prior: post-epic-2-r2a5-dapr-sdk-version-reconcile → done; PR #221 squash-merged at SHA e0cbc78 with docs: prefix → no semantic-release version bump (verified). 10 line edits across 6 markdown files reconcile CLAUDE.md and 5 docs files to Directory.Packages.props at DAPR SDK 1.17.7 (source of truth, untouched). Retro § 6 row R2-A5 + § 10 line 161 closure-annotated with merge SHA. /bmad-code-review pass: 3 decision-needed all resolved (2 carved to sibling stories r2a5c/r2a5d), 2 patches applied to story spec, 4 deferred, 11 dismissed; 0 unresolved CRITICAL/HIGH/MEDIUM. CI green except aspire-tests timeout (non-blocking, continue-on-error: true). Closes Epic 2 retro R2-A5. // Prior: post-epic-2-r2a2-commandstatus-isterminal-extension → done at SHA 1e4ea10 with feat(contracts): minor bump.)
+# last_updated: 2026-04-29 (Epic 6 retro completed; previous: 2026-04-28 post-epic-3-r3a1-replay-ulid-validation completed; 2026-04-28 post-epic-2-r2a5b-version-prose-source-of-truth-refactor completed; 2026-04-26 post-epic-1-r1a6-missing-apply-method-exception created as ready-for-dev by pre-dev hardening; Epic 1-5 retros completed)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-04-28 (post-epic-2-r2a5b-version-prose-source-of-truth-refactor → done at SHA 564034a; chore: prefix → semantic-release no-op confirmed. /bmad-code-review pass: 2 decisions deferred, 4 patches applied to scripts/check-doc-versions.sh (P1 file-existence guards, P2 bash 4+ guard, P3 regex whitespace tolerance, P4 header rewording — script grew 75 → 80 lines, at ≤80 budget), 7 deferred to deferred-work.md, 5 dismissed; 0 unresolved CRITICAL/HIGH/MEDIUM. CI green on merge commit (lint-and-links new step printed PASSED). Retro § 6 row R2-A5 SHA-substituted to 564034a. Prior context: PR-ready. 4 prose rewrites + scripts/check-doc-versions.sh + docs-validation.yml step + scripts/validate-docs.sh stage 4 implemented. Negative-test proof at _bmad-output/test-artifacts/r2a5b-negative-test-proof.txt (5 scenarios verified, 4 mandatory + 1 optional). Final grep audit green (1.17.7 → 4 table cells only; 1.16.1 → 0; date stamps → 0). Conventional-commit prefix chore:; semantic-release no-op expected. Structural cure spawned from R2-A5 ADR (Symptom fix vs. structural cure): prose-pointer pattern replaces `currently <X.Y.Z>` + `last verified <month>` in 4 doc files; new scripts/check-doc-versions.sh + docs-validation.yml step asserts the 4 Dapr.* table cells in nuget-packages.md match Directory.Packages.props pin. // Prior: post-epic-2-r2a5-dapr-sdk-version-reconcile → done; PR #221 squash-merged at SHA e0cbc78 with docs: prefix → no semantic-release version bump (verified). 10 line edits across 6 markdown files reconcile CLAUDE.md and 5 docs files to Directory.Packages.props at DAPR SDK 1.17.7 (source of truth, untouched). Retro § 6 row R2-A5 + § 10 line 161 closure-annotated with merge SHA. /bmad-code-review pass: 3 decision-needed all resolved (2 carved to sibling stories r2a5c/r2a5d), 2 patches applied to story spec, 4 deferred, 11 dismissed; 0 unresolved CRITICAL/HIGH/MEDIUM. CI green except aspire-tests timeout (non-blocking, continue-on-error: true). Closes Epic 2 retro R2-A5. // Prior: post-epic-2-r2a2-commandstatus-isterminal-extension → done at SHA 1e4ea10 with feat(contracts): minor bump.)
+last_updated: 2026-04-29 (Epic 6 retro completed; previous: 2026-04-28 post-epic-3-r3a1-replay-ulid-validation completed; 2026-04-28 post-epic-2-r2a5b-version-prose-source-of-truth-refactor completed; 2026-04-26 post-epic-1-r1a6-missing-apply-method-exception created as ready-for-dev by pre-dev hardening; Epic 1-5 retros completed)
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -98,7 +98,7 @@ development_status:
   6-1-opentelemetry-tracing-across-command-lifecycle: done
   6-2-structured-logging-with-correlation-and-causation-ids: done
   6-3-health-and-readiness-endpoints: done
-  epic-6-retrospective: optional
+  epic-6-retrospective: done  # 2026-04-29: epic-6-retro-2026-04-29.md. 8 action items (R6-A1..R6-A8); R6-A1/R6-A2 critical before final runtime-operational confidence
 
   # Epic 7: Snapshots, Rate Limiting & Performance
   epic-7: done
@@ -283,7 +283,7 @@ development_status:
   # R3-A2 is covered by post-epic-1-r1a1-aggregatetype-pipeline.
   # R3-A3 is covered by post-epic-2-r2a2-commandstatus-isterminal-extension.
   # R3-A4 was corrected directly in Story 3.6.
-  post-epic-3-r3a1-replay-ulid-validation: backlog
+  post-epic-3-r3a1-replay-ulid-validation: done  # 2026-04-28: replay no longer uses GUID-only validation; ReplayControllerTests 21/21 passed
   post-epic-3-r3a6-tier3-error-contract-update: backlog
   post-epic-3-r3a7-live-command-surface-verification: backlog
   post-epic-3-r3a8-retro-follow-through-gate: backlog
