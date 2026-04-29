@@ -57,6 +57,14 @@ public class AuthorizationIntegrationTests
         body.GetProperty("detail").GetString()!.ShouldContain("tenant");
         body.GetProperty("tenantId").GetString().ShouldBe("tenant-b");
         body.GetProperty("correlationId").GetString().ShouldNotBeNullOrEmpty();
+
+        // UX-DR6: 403 detail MUST NOT leak event-sourcing or infrastructure terminology.
+        string detail = body.GetProperty("detail").GetString()!;
+        detail.ShouldNotContain("aggregate", Case.Insensitive);
+        detail.ShouldNotContain("event stream", Case.Insensitive);
+        detail.ShouldNotContain("actor", Case.Insensitive);
+        detail.ShouldNotContain("DAPR", Case.Insensitive);
+        detail.ShouldNotContain("sidecar", Case.Insensitive);
     }
 
     [Fact]
