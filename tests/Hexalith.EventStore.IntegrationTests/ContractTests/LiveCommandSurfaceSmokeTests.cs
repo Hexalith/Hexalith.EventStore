@@ -178,6 +178,7 @@ public class LiveCommandSurfaceSmokeTests
         JsonElement submitResult = await submitResponse.Content.ReadFromJsonAsync<JsonElement>();
         string? correlationId = submitResult.GetProperty("correlationId").GetString();
         correlationId.ShouldNotBeNullOrWhiteSpace();
+        string correlationIdValue = correlationId!;
 
         // Inlined polling helper — copied from CommandLifecycleTests pattern. Per R3-A7 polling-rule
         // pin (P12): do NOT extract until a third caller materializes.
@@ -187,12 +188,10 @@ public class LiveCommandSurfaceSmokeTests
 
         while (DateTimeOffset.UtcNow < deadline)
         {
-            using var statusRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/commands/status/{correlationId}");
+            using var statusRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/commands/status/{correlationIdValue}");
             statusRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-            using HttpResponseMessage statusResponse = await _fixture.EventStoreClient
-                .SendAsync(statusRequest)
-                ;
+            using HttpResponseMessage statusResponse = await _fixture.EventStoreClient.SendAsync(statusRequest);
 
             if (statusResponse.StatusCode == HttpStatusCode.OK)
             {
@@ -209,14 +208,30 @@ public class LiveCommandSurfaceSmokeTests
                     break;
                 }
             }
+            else if ((int)statusResponse.StatusCode is >= 400 and < 500)
+            {
+                string errorBody = await statusResponse.Content.ReadAsStringAsync();
+                throw new ShouldAssertException(
+                    $"Status endpoint returned {(int)statusResponse.StatusCode} (non-retriable) for correlationId '{correlationIdValue}'.\n{errorBody}");
+            }
 
             await Task.Delay(s_statusPollInterval);
         }
 
         // Lifecycle assertions — the actor pipeline can collapse intermediate stages on fast paths
         // (live R3-A7 observation: even at 10ms polling, dev-machine commands transition
-        // Received → Completed in &lt; 80ms). eventCount &gt;= 1 is the load-bearing persistence
+        // Received → Completed in < 80ms). eventCount >= 1 is the load-bearing persistence
         // evidence, mirroring CommandLifecycleTests' tolerance.
+        // Optional soft check for "Received": if the actor pipeline didn't collapse, assert it was seen;
+        // if it collapsed (the common fast-path), the eventCount >= 1 check is the evidence that matters.
+        // This mirrors CommandLifecycleTests.cs:96-111 per D2 decision.
+        bool sawReceived = observedStatuses.Contains("Received");
+        if (sawReceived)
+        {
+            observedStatuses.ShouldContain("Received",
+                "When observable, 'Received' MUST precede 'Completed' in the deduplicated sequence (AC #4)");
+        }
+
         observedStatuses.Count.ShouldBeGreaterThan(0,
             $"At least one status should have been observed during polling. Last raw payload: {lastStatus}");
         observedStatuses[^1].ShouldBe("Completed",
@@ -224,11 +239,10 @@ public class LiveCommandSurfaceSmokeTests
 
         lastStatus.TryGetProperty("eventCount", out JsonElement eventCount).ShouldBeTrue(
             "Completed status payload MUST include eventCount proving end-to-end persistence");
-        if (eventCount.ValueKind != JsonValueKind.Null)
-        {
-            eventCount.GetInt32().ShouldBeGreaterThanOrEqualTo(1,
-                "eventCount MUST be >= 1 — at least one event was persisted and published");
-        }
+        eventCount.ValueKind.ShouldNotBe(JsonValueKind.Null,
+            "eventCount MUST be a non-null integer — null indicates incomplete persistence (AC #4)");
+        eventCount.GetInt32().ShouldBeGreaterThanOrEqualTo(1,
+            "eventCount MUST be >= 1 — at least one event was persisted and published");
     }
 
     /// <summary>
@@ -292,6 +306,12 @@ public class LiveCommandSurfaceSmokeTests
                     break;
                 }
             }
+            else if ((int)statusResponse.StatusCode is >= 400 and < 500)
+            {
+                string errorBody = await statusResponse.Content.ReadAsStringAsync();
+                throw new ShouldAssertException(
+                    $"Fact D pre-condition: status endpoint returned {(int)statusResponse.StatusCode} (non-retriable) for correlationId '{correlationId}'.\n{errorBody}");
+            }
 
             await Task.Delay(s_statusPollInterval);
         }
@@ -315,7 +335,18 @@ public class LiveCommandSurfaceSmokeTests
         if (replayResponse.Content.Headers.ContentType?.MediaType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true
             && !string.IsNullOrEmpty(replayBodyText))
         {
-            JsonElement replayBody = JsonSerializer.Deserialize<JsonElement>(replayBodyText);
+            JsonElement replayBody;
+            try
+            {
+                replayBody = JsonSerializer.Deserialize<JsonElement>(replayBodyText);
+            }
+            catch (JsonException ex)
+            {
+                throw new ShouldAssertException(
+                    $"Replay response claimed Content-Type JSON but body was not parseable. "
+                    + $"Status: {(int)replayResponse.StatusCode}. Body: {replayBodyText}. Parse error: {ex.Message}");
+            }
+
             if (replayBody.TryGetProperty("type", out JsonElement typeElement)
                 && typeElement.ValueKind == JsonValueKind.String)
             {
