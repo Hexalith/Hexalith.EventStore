@@ -253,8 +253,8 @@ Test files (4):
 R4-A2 reconstruction edits (this story — markdown only):
 
 - `_bmad-output/implementation-artifacts/4-3-per-aggregate-backpressure.md` (this file — sections appended after the existing Definition of Done block)
-- `_bmad-output/implementation-artifacts/post-epic-4-r4a2-story-4-3-execution-record.md` (R4-A2 spec; status-flipped at Task 5.4)
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (R4-A2 row flipped to `review`; R4-A2b sibling carve-out at `backlog` verified to exist; two `last_updated` lines bumped)
+- `_bmad-output/implementation-artifacts/post-epic-4-r4a2-story-4-3-execution-record.md` (R4-A2 spec; dev-story `Status: review` verified at Task 5.4, then code-review flipped it to `done`)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (R4-A2 row moved `backlog` -> `review` in the reviewed squashed diff, then code-review flipped it to `done`; R4-A2b sibling carve-out at `backlog` verified to exist; two `last_updated` lines bumped)
 
 ## Change Log
 
