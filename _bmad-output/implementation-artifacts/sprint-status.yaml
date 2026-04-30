@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-30 (Epic 12 retro findings fixed: sample UI docs/evidence pattern added; R11-A1..R11-A4 carry-forward backlog made explicit; previous: Epic 12 retro completed; Epic 11 retro completed; Epic 9 retro completed; post-epic-3-r3a7-live-command-surface-verification moved dev → review with confirmed-clean live bootstrap/command evidence and permanent Tier 3 fixtures; 2026-04-29 Epic 8 retro completed; 2026-04-29 Epic 7 retro completed; post-epic-3-r3a6-tier3-error-contract-update done; Epic 6 retro completed; 2026-04-28 post-epic-3-r3a1 + post-epic-2-r2a5b completed; Epic 1-5 retros completed)
+# last_updated: 2026-04-30 (post-epic-11-r11a1-checkpoint-tracked-projection-delivery story created ready-for-dev; previous: Epic 12 retro findings fixed: sample UI docs/evidence pattern added; R11-A1..R11-A4 carry-forward backlog made explicit; Epic 12 retro completed; Epic 11 retro completed; Epic 9 retro completed; post-epic-3-r3a7-live-command-surface-verification moved dev → review with confirmed-clean live bootstrap/command evidence and permanent Tier 3 fixtures; 2026-04-29 Epic 8 retro completed; 2026-04-29 Epic 7 retro completed; post-epic-3-r3a6-tier3-error-contract-update done; Epic 6 retro completed; 2026-04-28 post-epic-3-r3a1 + post-epic-2-r2a5b completed; Epic 1-5 retros completed)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: '2026-04-30 (Epic 12 retro findings fixed: sample UI docs/evidence pattern added; R11-A1..R11-A4 carry-forward backlog made explicit; previous: Epic 12 retro completed; Epic 11 retro completed; Epic 9 retro completed; post-epic-3-r3a7-live-command-surface-verification moved dev → review with confirmed-clean live bootstrap/command evidence and permanent Tier 3 fixtures; 2026-04-29 Epic 8 retro completed; 2026-04-29 Epic 7 retro completed; post-epic-3-r3a6 done; Epic 6 retro completed; 2026-04-28 post-epic-3-r3a1 + post-epic-2-r2a5b completed; Epic 1-5 retros completed)'
+last_updated: '2026-04-30 (post-epic-11-r11a1-checkpoint-tracked-projection-delivery story created ready-for-dev; previous: Epic 12 retro findings fixed: sample UI docs/evidence pattern added; R11-A1..R11-A4 carry-forward backlog made explicit; Epic 12 retro completed; Epic 11 retro completed; Epic 9 retro completed; post-epic-3-r3a7-live-command-surface-verification moved dev → review with confirmed-clean live bootstrap/command evidence and permanent Tier 3 fixtures; 2026-04-29 Epic 8 retro completed; 2026-04-29 Epic 7 retro completed; post-epic-3-r3a6 done; Epic 6 retro completed; 2026-04-28 post-epic-3-r3a1 + post-epic-2-r2a5b completed; Epic 1-5 retros completed)'
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -151,7 +151,7 @@ development_status:
   epic-12-retrospective: done  # 2026-04-30: epic-12-retro-2026-04-30.md. 6 action items (R12-A1..R12-A6); R12-A1/R12-A2 critical before final sample UI confidence; R11 projection hardening carried forward
 
   # Post-Epic-11 Projection Hardening Carry-Forward (made explicit by Epic 12 retro R12-A5)
-  post-epic-11-r11a1-checkpoint-tracked-projection-delivery: backlog
+  post-epic-11-r11a1-checkpoint-tracked-projection-delivery: ready-for-dev
   post-epic-11-r11a2-polling-mode-product-behavior: backlog
   post-epic-11-r11a3-apphost-projection-proof: backlog
   post-epic-11-r11a4-valid-projection-round-trip: backlog
