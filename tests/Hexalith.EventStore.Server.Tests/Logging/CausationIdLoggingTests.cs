@@ -58,9 +58,7 @@ public class CausationIdLoggingTests : IDisposable {
         ICommandRouter router = Substitute.For<ICommandRouter>();
         _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new Server.Actors.CommandProcessingResult(true, CorrelationId: "corr-123"));
-        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
-        var handler = new SubmitCommandHandler(statusStore, archiveStore, router, tracker, logger);
+        var handler = new SubmitCommandHandler(statusStore, archiveStore, router, logger);
         SubmitCommand command = CreateSubmitCommand();
 
         // Act

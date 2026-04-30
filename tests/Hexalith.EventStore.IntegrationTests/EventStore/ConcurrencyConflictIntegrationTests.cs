@@ -282,7 +282,7 @@ public class ConcurrencyConflictIntegrationTests(JwtAuthenticatedWebApplicationF
         ICommandArchiveStore archiveStore,
         ICommandRouter commandRouter,
         ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
-        private readonly SubmitCommandHandler _inner = new(statusStore, archiveStore, commandRouter, new InMemoryBackpressureTracker(Microsoft.Extensions.Options.Options.Create(new Hexalith.EventStore.Server.Configuration.BackpressureOptions())), logger);
+        private readonly SubmitCommandHandler _inner = new(statusStore, archiveStore, commandRouter, logger);
 
         public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
             if (request.CommandType == ConflictTriggerCommandType) {
