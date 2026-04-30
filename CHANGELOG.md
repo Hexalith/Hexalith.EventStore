@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v2.1.0...v2.1.1) (2026-04-30)
+
+
+### Bug Fixes
+
+* stabilize event replay and update retrospectives ([2532f39](https://github.com/Hexalith/Hexalith.EventStore/commit/2532f39e6e37ec3f0b0aa68f4645bfc87585b9ed))
+
 # [2.1.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v2.0.0...v2.1.0) (2026-04-29)
 
 
