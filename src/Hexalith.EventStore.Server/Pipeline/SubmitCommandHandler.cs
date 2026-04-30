@@ -29,23 +29,6 @@ public partial class SubmitCommandHandler(
         ILogger<SubmitCommandHandler> logger)
         : this(statusStore, archiveStore, commandRouter, null, (IStreamActivityTracker?)null, logger) { }
 
-    public SubmitCommandHandler(
-        ICommandStatusStore statusStore,
-        ICommandArchiveStore archiveStore,
-        ICommandRouter commandRouter,
-        IBackpressureTracker backpressureTracker,
-        ILogger<SubmitCommandHandler> logger)
-        : this(statusStore, archiveStore, commandRouter, null, (IStreamActivityTracker?)null, logger) => ArgumentNullException.ThrowIfNull(backpressureTracker);
-
-    public SubmitCommandHandler(
-        ICommandStatusStore statusStore,
-        ICommandArchiveStore archiveStore,
-        ICommandRouter commandRouter,
-        ICommandActivityTracker? activityTracker,
-        IBackpressureTracker backpressureTracker,
-        ILogger<SubmitCommandHandler> logger)
-        : this(statusStore, archiveStore, commandRouter, activityTracker, (IStreamActivityTracker?)null, logger) => ArgumentNullException.ThrowIfNull(backpressureTracker);
-
     public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
 

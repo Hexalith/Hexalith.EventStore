@@ -15,12 +15,6 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Pipeline;
 
 public class SubmitCommandHandlerTests {
-    private static IBackpressureTracker CreateMockTracker() {
-        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-        _ = tracker.TryAcquire(Arg.Any<string>()).Returns(true);
-        return tracker;
-    }
-
     private static ICommandRouter CreateMockRouter() {
         ICommandRouter router = Substitute.For<ICommandRouter>();
         _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
@@ -34,7 +28,7 @@ public class SubmitCommandHandlerTests {
         string expectedCorrelationId = Guid.NewGuid().ToString();
         var statusStore = new InMemoryCommandStatusStore();
         var archiveStore = new InMemoryCommandArchiveStore();
-        var handler = new SubmitCommandHandler(statusStore, archiveStore, CreateMockRouter(), CreateMockTracker(), NullLogger<SubmitCommandHandler>.Instance);
+        var handler = new SubmitCommandHandler(statusStore, archiveStore, CreateMockRouter(), NullLogger<SubmitCommandHandler>.Instance);
         var command = new SubmitCommand(
             MessageId: "msg-1",
             Tenant: "test-tenant",
@@ -53,8 +47,8 @@ public class SubmitCommandHandlerTests {
     }
 
     /// <summary>
-    /// Structural pin: <see cref="SubmitCommandHandler.Handle"/> with the 5-arg constructor
-    /// (status store + archive store + router + backpressure tracker + logger) and unconfigured
+    /// Structural pin: <see cref="SubmitCommandHandler.Handle"/> with the 4-arg constructor
+    /// (status store + archive store + router + logger) and unconfigured
     /// <c>NSubstitute</c> mocks for the two state stores must complete without a
     /// <see cref="NullReferenceException"/> and return a <see cref="SubmitCommandResult"/>
     /// carrying the *command's* correlation identifier (per
@@ -82,7 +76,7 @@ public class SubmitCommandHandlerTests {
     /// </summary>
     [Fact]
     public async Task Handle_ValidCommand_DoesNotThrowNullReferenceWhenStoresAreNSubstituteMocks() {
-        // Arrange — 5-arg ctor with unconfigured NSubstitute mocks for both state stores.
+        // Arrange — 4-arg ctor with unconfigured NSubstitute mocks for both state stores.
         // Unconfigured Task-returning mock methods auto-stub to Task.CompletedTask; for
         // Task<T?>-returning methods (ReadStatusAsync) they auto-stub to Task.FromResult(null).
         // The handler's null-conditional chains and try/catch wrappers must absorb both shapes.
@@ -99,13 +93,11 @@ public class SubmitCommandHandlerTests {
         _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
             .Returns(new CommandProcessingResult(Accepted: true, CorrelationId: RouterCorrelationId));
 
-        // 5-arg ctor at SubmitCommandHandler.cs:32-38 validates IBackpressureTracker non-null
-        // then forwards (null, null) for both activity-trackers. The handler never invokes any
-        // method on the tracker — leaving it unconfigured documents that the stub is structural
-        // (non-null requirement only), not behavioural.
-        IBackpressureTracker tracker = Substitute.For<IBackpressureTracker>();
-
-        var handler = new SubmitCommandHandler(statusStore, archiveStore, router, tracker, NullLogger<SubmitCommandHandler>.Instance);
+        // 4-arg ctor at SubmitCommandHandler.cs:25-30 forwards to the primary 6-arg ctor with
+        // both activity-trackers as null. The handler's null-conditional chains and try/catch
+        // wrappers must absorb both unconfigured-mock shapes (Task → Task.CompletedTask,
+        // Task<T?> → Task.FromResult(null)).
+        var handler = new SubmitCommandHandler(statusStore, archiveStore, router, NullLogger<SubmitCommandHandler>.Instance);
         var command = new SubmitCommand(
             MessageId: "msg-pin-1",
             Tenant: "test-tenant",
