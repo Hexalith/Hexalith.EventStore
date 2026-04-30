@@ -1,3 +1,22 @@
+# [3.0.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v2.1.2...v3.0.0) (2026-04-30)
+
+
+* feat(server)!: remove unwired IBackpressureTracker dead code (R4-A2b) ([#228](https://github.com/Hexalith/Hexalith.EventStore/issues/228)) ([fc8f9b9](https://github.com/Hexalith/Hexalith.EventStore/commit/fc8f9b9d8848f3525f5ed6fdf82771be3cb3627f)), closes [#226](https://github.com/Hexalith/Hexalith.EventStore/issues/226) [#227](https://github.com/Hexalith/Hexalith.EventStore/issues/227)
+
+
+### BREAKING CHANGES
+
+* IBackpressureTracker (interface) and
+InMemoryBackpressureTracker (class) are removed from
+Hexalith.EventStore.Server. The 5-arg and 6-arg-with-tracker
+SubmitCommandHandler constructor overloads are also removed. Downstream
+consumers should rely on the actor-level backpressure check
+(BackpressureOptions.MaxPendingCommandsPerAggregate) and the
+BackpressureExceptionHandler / ProblemTypeUris.BackpressureExceeded
+HTTP error contract, which remain unchanged.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
 ## [2.1.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v2.1.1...v2.1.2) (2026-04-30)
 
 
