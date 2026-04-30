@@ -35,6 +35,7 @@ This page is for .NET developers integrating Hexalith.EventStore. Documentation 
 - [Deployment: Docker Compose](guides/deployment-docker-compose.md) — local and staging deployment with Docker Compose
 - [Deployment: Kubernetes](guides/deployment-kubernetes.md) — production Kubernetes deployment with Helm charts
 - [Disaster Recovery](guides/disaster-recovery.md) — backup, restore, and failover procedures
+- [Sample Blazor UI](guides/sample-blazor-ui.md) — refresh patterns, command feedback semantics, and smoke-test evidence
 - [Security Model](guides/security-model.md) — authentication, authorization, and multi-tenant isolation
 - [Troubleshooting](guides/troubleshooting.md) — common issues and their solutions
 - [Upgrade Path](guides/upgrade-path.md) — migrating between versions

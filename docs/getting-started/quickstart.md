@@ -109,7 +109,9 @@ The correlation ID from your command response links the request to all downstrea
 
 You can also check the **Structured Logs** tab in the Aspire dashboard to see detailed log entries from each service.
 
-If you open the sample Blazor UI from the dashboard, you'll see the complementary read side in action: it uses the query API to fetch projection data and can subscribe to projection change notifications to refresh when new events land.
+If you open the sample Blazor UI from the dashboard, you'll see the complementary read side in action: it uses the query API to fetch projection data and can subscribe to projection change notifications to refresh when new events land. The UI includes three concrete refresh patterns: persistent notification, silent reload, and selective component refresh.
+
+The green command feedback shown by the sample UI means the HTTP command submission was accepted. It does not prove final domain processing or projection completion. Use the command status endpoint, Aspire traces, logs, and query results when you need end-to-end proof. See [Sample Blazor UI](../guides/sample-blazor-ui.md) for the pattern trade-offs and smoke-test evidence format.
 
 ## What Happened
 
@@ -128,6 +130,7 @@ You wrote zero infrastructure code — DAPR handled state, messaging, and actor 
 
 - **Next:** [Build Your First Domain Service](first-domain-service.md) — create your own domain from scratch
 - **Related:** [Query & Projection API Reference](../reference/query-api.md) — inspect the read-model and real-time endpoints exposed by the same sample
+- **Related:** [Sample Blazor UI](../guides/sample-blazor-ui.md) — understand the refresh patterns and command feedback semantics
 - **Related:** [Architecture Overview](../concepts/architecture-overview.md) — understand the design decisions behind the system
 - **Related:** [Choose the Right Tool](../concepts/choose-the-right-tool.md) — compare Hexalith with alternatives
 - **Related:** [Prerequisites](prerequisites.md) — review tool setup details

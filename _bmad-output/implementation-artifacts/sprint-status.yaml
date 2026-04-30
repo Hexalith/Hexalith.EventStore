@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-04-29 (post-epic-3-r3a7-live-command-surface-verification: dev → review. Outcome (A) confirmed-clean: bootstrap-500 retro symptom did NOT reproduce on a post-Redis-flush first-run topology (Task 0.5 applied — 12 *global-administrators* keys deleted before AppHost start, forcing the (5b) first-run code path). Bootstrap event 2001 (BootstrapCommandSent) fired; eventstore returned 202 in 4.2s; zero 2002 (BootstrapFailed) and zero 2003 (BootstrapUnexpectedResponse) events; zero GlobalExceptionHandler Error logs; zero 5xx traces on POST /api/v1/commands. Two live IncrementCounter commands reached terminal Completed with eventCount=1 each. Most-likely-fix attribution: post-epic-2-r2a8-pipeline-nullref-fix structural pin in SubmitCommandHandler. AC #7 GetConfiguration "configuration stores not configured" trace classified as graceful-fallback noise (call-site enumeration gate satisfied: exactly 2 hits at DaprRateLimitConfigSync.cs:71 + DomainServiceResolver.cs:87 — both use Warning/Debug fallback paths; OTel span Error status is gRPC auto-instrumentation, not application-level). Permanent regression coverage landed: tests/Hexalith.EventStore.IntegrationTests/ContractTests/LiveCommandSurfaceSmokeTests.cs (4 facts: AC #2/#9/#3+#4/#8) + TenantBootstrapHealthTests.cs (1 fact: AC #5 — uses Aspire ResourceLoggerService.WatchAsync, not the dev-runtime MCP). Tier 1 = 792/792 + Tier 2 Server.Tests = 1645/1645 (no regression). Tier 3 awaiting completion of new-fixtures-only confirmation run; pre-Task-11/12 baseline run shows 11 failures (1 visible failure HotReloadTests.EventStore_DuringDomainServiceRestart_RemainsResponsive returns 500 during hot-reload restart window — infra-class flake matching post-epic-3-r3a6 baseline of 10 pre-existing infra failures). Story-spec drift items recorded in Dev Agent Record (AC #2 OpenAPI 3.1.0→3.1.1 library auto-version drift; AC #4 strict-Received infeasible on fast machine; AC #8 expected 202|404 but live returns 409 for Completed-replay; Task 0.5 flush-key incorrect — actual layout is eventstore||AggregateActor||system:tenants:global-administrators||*). Previous: Epic 8 retro completed; 2026-04-29 Epic 7 retro completed; post-epic-3-r3a7 created ready-for-dev → party-mode spec review applied 3 patches → advanced-elicitation pass applied 9 more patches across 5 methods; post-epic-3-r3a6 done; Epic 6 retro completed; 2026-04-28 post-epic-3-r3a1 + post-epic-2-r2a5b completed; Epic 1-5 retros completed)
+# last_updated: 2026-04-30 (Epic 12 retro findings fixed: sample UI docs/evidence pattern added; R11-A1..R11-A4 carry-forward backlog made explicit; previous: Epic 12 retro completed; Epic 11 retro completed; Epic 9 retro completed; post-epic-3-r3a7-live-command-surface-verification moved dev → review with confirmed-clean live bootstrap/command evidence and permanent Tier 3 fixtures; 2026-04-29 Epic 8 retro completed; 2026-04-29 Epic 7 retro completed; post-epic-3-r3a6-tier3-error-contract-update done; Epic 6 retro completed; 2026-04-28 post-epic-3-r3a1 + post-epic-2-r2a5b completed; Epic 1-5 retros completed)
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: 2026-04-29 (post-epic-3-r3a7-live-command-surface-verification: dev → review. Outcome (A) confirmed-clean: bootstrap-500 retro symptom did NOT reproduce on a post-Redis-flush first-run topology. Bootstrap event 2001 fired, eventstore returned 202, zero 2002/2003 events, zero GlobalExceptionHandler errors, zero 5xx traces. AC #7 GetConfiguration trace classified as graceful-fallback noise — call-site enumeration gate satisfied (exactly 2 hits at DaprRateLimitConfigSync.cs:71 + DomainServiceResolver.cs:87). Tier 1 = 792/792, Tier 2 Server.Tests = 1645/1645, new Tier 3 fixtures (LiveCommandSurfaceSmokeTests + TenantBootstrapHealthTests) report 4 pass + 1 documented skip + 0 fail. Most-likely fix attribution: post-epic-2-r2a8-pipeline-nullref-fix structural pin. No carve-out story needed. Previous: Epic 8 retro completed; 2026-04-29 Epic 7 retro completed; created ready-for-dev → party-mode + advanced-elicitation patch series (P1-P12); post-epic-3-r3a6 done; Epic 6 retro completed; 2026-04-28 post-epic-3-r3a1 + post-epic-2-r2a5b completed; Epic 1-5 retros completed.)
+last_updated: '2026-04-30 (Epic 12 retro findings fixed: sample UI docs/evidence pattern added; R11-A1..R11-A4 carry-forward backlog made explicit; previous: Epic 12 retro completed; Epic 11 retro completed; Epic 9 retro completed; post-epic-3-r3a7-live-command-surface-verification moved dev → review with confirmed-clean live bootstrap/command evidence and permanent Tier 3 fixtures; 2026-04-29 Epic 8 retro completed; 2026-04-29 Epic 7 retro completed; post-epic-3-r3a6 done; Epic 6 retro completed; 2026-04-28 post-epic-3-r3a1 + post-epic-2-r2a5b completed; Epic 1-5 retros completed)'
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -126,7 +126,7 @@ development_status:
   9-3-etag-actor-and-projection-change-notification: done
   9-4-query-actor-in-memory-page-cache: done
   9-5-iqueryresponse-compile-time-enforcement: done
-  epic-9-retrospective: optional
+  epic-9-retrospective: done  # 2026-04-30: epic-9-retro-2026-04-30.md. 8 action items (R9-A1..R9-A8); R9-A1/R9-A2/R9-A3 critical before final query-pipeline confidence
 
   # Epic 10: SignalR Real-Time Notifications
   epic-10: done
@@ -142,13 +142,19 @@ development_status:
   11-3-immediate-projection-trigger-fire-and-forget: done
   11-4-convention-based-projection-discovery-and-configuration: done
   11-5-counter-sample-project-endpoint: done
-  epic-11-retrospective: optional
+  epic-11-retrospective: done  # 2026-04-30: epic-11-retro-2026-04-30.md. 9 action items (R11-A1..R11-A9); R11-A9 closed by course correction; R11-A1/R11-A2/R11-A3/R11-A4 critical before final projection-builder confidence
 
   # Epic 12: Blazor Sample UI & Refresh Patterns
   epic-12: done
   12-1-three-blazor-refresh-patterns: done
   12-2-interactive-command-buttons-on-all-pattern-pages: done
-  epic-12-retrospective: optional
+  epic-12-retrospective: done  # 2026-04-30: epic-12-retro-2026-04-30.md. 6 action items (R12-A1..R12-A6); R12-A1/R12-A2 critical before final sample UI confidence; R11 projection hardening carried forward
+
+  # Post-Epic-11 Projection Hardening Carry-Forward (made explicit by Epic 12 retro R12-A5)
+  post-epic-11-r11a1-checkpoint-tracked-projection-delivery: backlog
+  post-epic-11-r11a2-polling-mode-product-behavior: backlog
+  post-epic-11-r11a3-apphost-projection-proof: backlog
+  post-epic-11-r11a4-valid-projection-round-trip: backlog
 
   # Epic 13: Documentation & Developer Onboarding
   epic-13: done

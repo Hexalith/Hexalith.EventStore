@@ -49,8 +49,6 @@ public partial class AggregateActor(
     private const string TraceParentExtensionKey = "traceparent";
     private const string TraceStateExtensionKey = "tracestate";
     private const string PendingCommandCountKey = "pending_command_count";
-
-    private const int MaxConcurrentStateReads = 32;
     /// <inheritdoc/>
     public async Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command) {
         ArgumentNullException.ThrowIfNull(command);
@@ -599,38 +597,25 @@ public partial class AggregateActor(
         int eventCount = checked((int)(currentSequence - fromSequence));
         string keyPrefix = identity.EventStreamKeyPrefix;
 
-        var events = new List<EventEnvelope>(eventCount);
-        int cursor = startSequence;
         int endExclusive = startSequence + eventCount;
+        var events = new List<EventEnvelope>(eventCount);
 
-        while (cursor < endExclusive) {
-            int batchSize = Math.Min(MaxConcurrentStateReads, endExclusive - cursor);
-            Task<(int Sequence, EventEnvelope Event)>[] loadTasks = Enumerable.Range(cursor, batchSize)
-                .Select(async seq => {
-                    ConditionalValue<EventEnvelope> eventResult;
-                    try {
-                        eventResult = await StateManager
-                            .TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}")
-                            .ConfigureAwait(false);
-                    }
-                    catch (Exception ex) when (ex is not OperationCanceledException) {
-                        throw new EventDeserializationException(seq, identity.ActorId, ex);
-                    }
-
-                    if (!eventResult.HasValue) {
-                        throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
-                    }
-
-                    return (Sequence: seq, Event: eventResult.Value);
-                })
-                .ToArray();
-
-            (int Sequence, EventEnvelope Event)[] loadedBatch = await Task.WhenAll(loadTasks).ConfigureAwait(false);
-            foreach ((int _, EventEnvelope evt) in loadedBatch.OrderBy(x => x.Sequence)) {
-                events.Add(evt);
+        for (int seq = startSequence; seq < endExclusive; seq++) {
+            ConditionalValue<EventEnvelope> eventResult;
+            try {
+                eventResult = await StateManager
+                    .TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}")
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) {
+                throw new EventDeserializationException(seq, identity.ActorId, ex);
             }
 
-            cursor += batchSize;
+            if (!eventResult.HasValue) {
+                throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
+            }
+
+            events.Add(eventResult.Value);
         }
 
         return [.. events];
@@ -1259,27 +1244,18 @@ public partial class AggregateActor(
         }
 
         var events = new List<EventEnvelope>(count);
-        int cursor = startSequence;
+        int endExclusive = startSequence + count;
 
-        while (cursor < startSequence + count) {
-            int batchSize = Math.Min(MaxConcurrentStateReads, startSequence + count - cursor);
-            Task<EventEnvelope>[] readTasks = Enumerable.Range(cursor, batchSize)
-                .Select(async seq => {
-                    ConditionalValue<EventEnvelope> result = await StateManager
-                        .TryGetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}{seq}")
-                        .ConfigureAwait(false);
+        for (int seq = startSequence; seq < endExclusive; seq++) {
+            ConditionalValue<EventEnvelope> result = await StateManager
+                .TryGetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}{seq}")
+                .ConfigureAwait(false);
 
-                    if (!result.HasValue) {
-                        throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
-                    }
+            if (!result.HasValue) {
+                throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
+            }
 
-                    return result.Value;
-                })
-                .ToArray();
-
-            EventEnvelope[] batch = await Task.WhenAll(readTasks).ConfigureAwait(false);
-            events.AddRange(batch);
-            cursor += batchSize;
+            events.Add(result.Value);
         }
 
         return [.. events];

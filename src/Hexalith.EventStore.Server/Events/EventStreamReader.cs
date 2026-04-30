@@ -17,8 +17,6 @@ namespace Hexalith.EventStore.Server.Events;
 public partial class EventStreamReader(
     IActorStateManager stateManager,
     ILogger<EventStreamReader> logger) : IEventStreamReader {
-    private const int MaxConcurrentStateReads = 32;
-
     /// <inheritdoc/>
     public async Task<RehydrationResult?> RehydrateAsync(AggregateIdentity identity, SnapshotRecord? snapshot = null) {
         ArgumentNullException.ThrowIfNull(identity);
@@ -90,41 +88,29 @@ public partial class EventStreamReader(
             eventCount = checked((int)currentSequence);
         }
 
-        // Load events using parallel reads (F5: NFR6 performance)
+        // IActorStateManager is scoped to the actor turn and is not safe for concurrent access.
+        // Keep reads ordered to avoid corrupting the actor state's internal change-tracking cache.
         string keyPrefix = identity.EventStreamKeyPrefix;
 
         var events = new List<EventEnvelope>(eventCount);
-        int cursor = startSequence;
         int endExclusive = startSequence + eventCount;
 
-        while (cursor < endExclusive) {
-            int batchSize = Math.Min(MaxConcurrentStateReads, endExclusive - cursor);
-            Task<(int Sequence, EventEnvelope Event)>[] loadTasks = Enumerable.Range(cursor, batchSize)
-                .Select(async seq => {
-                    ConditionalValue<EventEnvelope> eventResult;
-                    try {
-                        eventResult = await stateManager
-                            .TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}")
-                            .ConfigureAwait(false);
-                    }
-                    catch (Exception ex) when (ex is not OperationCanceledException) {
-                        throw new EventDeserializationException(seq, identity.ActorId, ex);
-                    }
-
-                    if (!eventResult.HasValue) {
-                        throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
-                    }
-
-                    return (Sequence: seq, Event: eventResult.Value);
-                })
-                .ToArray();
-
-            (int Sequence, EventEnvelope Event)[] loadedBatch = await Task.WhenAll(loadTasks).ConfigureAwait(false);
-            foreach ((int _, EventEnvelope evt) in loadedBatch.OrderBy(x => x.Sequence)) {
-                events.Add(evt);
+        for (int seq = startSequence; seq < endExclusive; seq++) {
+            ConditionalValue<EventEnvelope> eventResult;
+            try {
+                eventResult = await stateManager
+                    .TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}")
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) {
+                throw new EventDeserializationException(seq, identity.ActorId, ex);
             }
 
-            cursor += batchSize;
+            if (!eventResult.HasValue) {
+                throw new MissingEventException(seq, identity.TenantId, identity.Domain, identity.AggregateId);
+            }
+
+            events.Add(eventResult.Value);
         }
 
         sw.Stop();
