@@ -443,3 +443,9 @@ publish-output/
 
 # Local Claude scheduler lock artifacts
 .claude/*.lock
+
+# BMAD runtime logs and pre-flight snapshots (runtime artifacts, not source)
+_bmad-output/process-notes/predev-preflight-*.json
+_bmad-output/process-notes/code-review-preflight-*.json
+_bmad-output/process-notes/preflight-*.json
+_bmad-output/process-notes/predev-hardening-runs.log
