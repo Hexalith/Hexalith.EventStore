@@ -1,3 +1,10 @@
+## [2.1.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v2.1.1...v2.1.2) (2026-04-30)
+
+
+### Bug Fixes
+
+* update preflight results to reflect successful checks and add new preflight report ([67fa27c](https://github.com/Hexalith/Hexalith.EventStore/commit/67fa27c5e625aeb30c38425ddb3022296857e11d))
+
 ## [2.1.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v2.1.0...v2.1.1) (2026-04-30)
 
 
