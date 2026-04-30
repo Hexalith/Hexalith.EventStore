@@ -230,6 +230,8 @@ A common pattern is:
 3. When `ProjectionChanged` fires, re-run the query with `If-None-Match`.
 4. Refresh only when the API returns `200 OK`; keep the cached UI when it returns `304 Not Modified`.
 
+The sample Blazor UI demonstrates three client reactions to this signal-only model: persistent notification, silent reload, and selective component refresh. See [Sample Blazor UI](../guides/sample-blazor-ui.md) for the UI behavior, command feedback boundary, and smoke-test evidence format.
+
 ## Projection Type Naming
 
 Projection type names are base64url-encoded inside self-routing ETags (format: `{base64url(projectionType)}.{guid}`). Longer names produce proportionally longer ETag tokens in HTTP headers. Use short, descriptive names to keep ETags compact.
