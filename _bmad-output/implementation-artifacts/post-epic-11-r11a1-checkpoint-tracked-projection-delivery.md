@@ -27,11 +27,11 @@ The open R11-A1 risk is precise: `ProjectionUpdateOrchestrator` currently contai
 
 3. **Immediate projection delivery reads incrementally.** `ProjectionUpdateOrchestrator.UpdateProjectionAsync` reads the checkpoint before calling the aggregate actor and calls `GetEventsAsync(lastDeliveredSequence)` instead of `GetEventsAsync(0)`. When no checkpoint exists, the first delivery uses sequence 0 and behaves like the current full-replay bootstrap.
 
-4. **Checkpoint is saved only after successful projection write.** The tracker updates `LastDeliveredSequence` to the highest delivered event sequence only after the domain service returns a valid `ProjectionResponse` and `IProjectionWriteActor.UpdateProjectionAsync` completes successfully. Resolver failures, aggregate read failures, HTTP failures, invalid projection responses, and actor write failures do not advance the checkpoint.
+4. **Checkpoint is saved only after successful projection write.** The tracker updates `LastDeliveredSequence` to the highest `SequenceNumber` returned by the aggregate actor only after the domain service returns a valid `ProjectionResponse` and `IProjectionWriteActor.UpdateProjectionAsync` completes successfully. Do not infer the new checkpoint from `lastDeliveredSequence + events.Length`; sequence gaps, filtered reads, or future event-shape changes must not create an off-by-one skip. Resolver failures, aggregate read failures, HTTP failures, invalid projection responses, and actor write failures do not advance the checkpoint.
 
 5. **At-least-once semantics are preserved.** If a projection update fails after events are read but before checkpoint save, a later trigger resends the same events from the previous checkpoint. Duplicate delivery is acceptable; silent event skipping is not.
 
-6. **Checkpoint writes never regress.** A delayed or duplicate projection update cannot lower a checkpoint that already advanced to a higher sequence for the same aggregate. If the chosen storage API cannot make that atomic, the implementation must read-before-write and keep the maximum sequence with a focused test documenting the residual race.
+6. **Checkpoint writes never regress.** A delayed or duplicate projection update cannot lower a checkpoint that already advanced to a higher sequence for the same aggregate. Prefer the same bounded ETag retry shape already used by `DaprCommandActivityTracker` / `DaprStreamActivityTracker`: `GetStateAndETagAsync`, merge with `Math.Max(existing.LastDeliveredSequence, proposedSequence)`, then `TrySaveStateAsync`. If the save cannot win after the bounded retry budget, log and leave the checkpoint unchanged rather than falling back to a blind write.
 
 7. **Command processing remains fail-open.** Projection checkpoint failures are logged and swallowed inside the projection update path. Checkpoint read failure falls back to sequence 0 for that update so delivery may replay but cannot skip events. Checkpoint save failure leaves the previous checkpoint unchanged so a later trigger retries the same events. These failures must not make `EventPublisher.PublishEventsAsync` report failure and must not cause command submission or event publication to fail.
 
@@ -58,7 +58,8 @@ The open R11-A1 risk is precise: `ProjectionUpdateOrchestrator` currently contai
   - [ ] Make missing state return sequence 0.
   - [ ] Treat checkpoint read failure as fail-open full replay from sequence 0 and log tenant, domain, aggregate ID, and exception type.
   - [ ] Make stale saves non-regressing by keeping the maximum observed sequence.
-  - [ ] Prefer DAPR state ETag/compare-and-set for checkpoint writes where the SDK path is practical; otherwise read-before-write and keep the maximum sequence, with the residual race documented in the test name and story completion notes.
+  - [ ] Prefer DAPR state ETag/compare-and-set for checkpoint writes where the SDK path is practical; use the repo-local `DaprCommandActivityTracker` / `DaprStreamActivityTracker` bounded retry pattern as the precedent.
+  - [ ] If the bounded ETag retry path exhausts its attempts, return a save-failed result and let the orchestrator log/swallow it; do not perform a last blind save that could regress a checkpoint.
   - [ ] Log checkpoint read/save failures with tenant, domain, aggregate ID, and exception type only; do not log event payloads.
 
 - [ ] Task 3: Wire tracker into DI (AC: #2)
@@ -70,14 +71,15 @@ The open R11-A1 risk is precise: `ProjectionUpdateOrchestrator` currently contai
   - [ ] If checkpoint read fails, continue with sequence 0 and rely on duplicate-safe at-least-once projection delivery.
   - [ ] Replace the hard-coded `GetEventsAsync(0)` with `GetEventsAsync(lastDeliveredSequence)`.
   - [ ] Save checkpoint only after `UpdateProjectionAsync` succeeds.
+  - [ ] Compute the saved sequence as `events.Max(e => e.SequenceNumber)`, not from event count or checkpoint offset.
   - [ ] If checkpoint save fails after projection state is written, log and return without throwing; the next trigger must replay from the old checkpoint.
   - [ ] Leave the `RefreshIntervalMs > 0` early return unchanged.
   - [ ] Preserve the outer catch/fail-open behavior.
 
 - [ ] Task 5: Expand server unit tests (AC: #3, #4, #5, #6, #7, #10, #11)
-  - [ ] Add focused tracker tests for missing, read, save, max-sequence, invalid key, and storage failure behavior.
+  - [ ] Add focused tracker tests for missing, read, save, max-sequence, invalid key, retry-exhaustion, and storage failure behavior.
   - [ ] Update orchestrator tests so the first-delivery case still proves `GetEventsAsync(0)`.
-  - [ ] Add orchestrator tests for existing checkpoint, checkpoint read failure replay-from-zero, successful save, no-events no-save, invalid response no-save, actor-write failure no-save, and checkpoint save failure no-throw.
+  - [ ] Add orchestrator tests for existing checkpoint, checkpoint read failure replay-from-zero, successful save, non-contiguous returned sequences saving the maximum sequence, no-events no-save, invalid response no-save, actor-write failure no-save, and checkpoint save failure no-throw.
   - [ ] Keep the current DAPR invocation testability limitation in mind: use the existing HttpClient/fake-handler patterns where possible and do not overfit to non-virtual `DaprClient` members.
 
 - [ ] Task 6: Update documentation or retro follow-up notes (AC: #12)
@@ -125,12 +127,15 @@ The open R11-A1 risk is precise: `ProjectionUpdateOrchestrator` currently contai
 - Package versions are centrally pinned in `Directory.Packages.props`: Dapr `1.17.7`, Aspire `13.2.2`, .NET extensions `10.x`, xUnit v3, Shouldly, and NSubstitute. Do not introduce new packages for checkpointing without a clear reason.
 - DAPR actor execution is single-threaded per actor method, but `EventPublisher` can start concurrent background projection tasks. Design checkpoint writes to tolerate duplicate deliveries and stale saves.
 - Current DAPR state docs continue to require a configured actor state store for actors and support state APIs with ETags; use repo-local DAPR component configuration and existing DaprClient registration patterns rather than hard-coded store names. Official reference checked: https://docs.dapr.io/reference/api/state_api/ and https://docs.dapr.io/developing-applications/building-blocks/actors/actors-features-concepts/.
+- `DaprCommandActivityTracker` and `DaprStreamActivityTracker` already demonstrate the repo's preferred optimistic-concurrency loop: read state plus ETag, merge, `TrySaveStateAsync`, retry on ETag mismatch, and fail open after the bounded retry budget. Projection checkpoint persistence should follow that shape unless implementation proves a better local abstraction.
+- The orchestrator tests currently rely on fake `HttpClient` boundaries and note that some `DaprClient` members are non-virtual under NSubstitute. Keep checkpoint tracker tests focused on the tracker boundary, and keep orchestrator tests focused on checkpoint read/save calls, sequence arguments, and fail-open behavior.
 
 ### Previous Story Intelligence
 
 - Epic 11 retro says full replay was intentionally accepted for the sample but is not the final production shape. This story closes that debt for immediate mode.
 - Story 11.3 tests explicitly called out that non-virtual DAPR methods limit pure unit coverage. Keep behavior-focused tests around resolver, actor proxy, event read, and checkpoint boundaries, and reserve full DAPR invocation proof for integration coverage.
 - Epic 12 proved the sample UI demo path but did not address projection delivery mechanics. Do not use UI smoke evidence as proof that checkpoint tracking is done.
+- Previous projection tests still contain Story 11-3 wording that "full replay from sequence 0" is expected. This story must rename or narrow those assertions so sequence 0 is only the no-checkpoint bootstrap case.
 
 ### Project Structure Notes
 
@@ -181,4 +186,26 @@ TBD
   - Added an implementation guardrail for a dedicated projection checkpoint key namespace.
 - Findings deferred:
   - No product-scope or architecture-policy decisions deferred. The DAPR ETag/compare-and-set API choice remains an implementation detail to verify during `bmad-dev-story`.
+- Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-01T11:35:12+02:00
+- Selected story key: `post-epic-11-r11a1-checkpoint-tracked-projection-delivery`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-11-r11a1-checkpoint-tracked-projection-delivery`
+- Batch 1 method names: Self-Consistency Validation; Red Team vs Blue Team; Architecture Decision Records; Pre-mortem Analysis; Failure Mode Analysis
+- Reshuffled Batch 2 method names: Security Audit Personas; Comparative Analysis Matrix; Chaos Monkey Scenarios; Occam's Razor Application; Lessons Learned Extraction
+- Findings summary:
+  - Self-consistency and pre-mortem passes found a skip risk if the implementation saves `checkpoint + count` instead of the highest returned `SequenceNumber`.
+  - Architecture and comparative passes found an existing repo precedent for bounded DAPR ETag saves in `DaprCommandActivityTracker` and `DaprStreamActivityTracker`.
+  - Failure-mode and chaos passes found the retry-exhaustion case needed to be fail-open, not converted into a blind non-ETag save.
+  - Security and lessons passes found the story should explicitly avoid payload logging and should narrow old Story 11-3 "full replay" assertions.
+- Changes applied:
+  - AC #4 now requires saving the maximum returned event sequence and forbids count-derived checkpoint math.
+  - AC #6 and Task 2 now point to the repo's bounded ETag retry pattern and forbid blind fallback saves after retry exhaustion.
+  - Task 4 now calls out max-sequence calculation during orchestrator save.
+  - Task 5 now requires retry-exhaustion and non-contiguous sequence tests.
+  - Dev Notes now cite repo-local optimistic-concurrency precedents, DAPR testability boundaries, and the need to narrow old full-replay assertions.
+- Findings deferred:
+  - No product-scope or architecture-policy decisions deferred. Exact option names and retry count can be chosen during `bmad-dev-story` while preserving the bounded ETag/non-regression contract above.
 - Final recommendation: ready-for-dev
