@@ -1,4 +1,6 @@
 
+using Dapr.Client;
+
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Actors;
@@ -11,6 +13,7 @@ using Hexalith.EventStore.Server.Queries;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Server.Configuration;
@@ -43,6 +46,8 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<IProjectionChangeNotifier, DaprProjectionChangeNotifier>();
         services.TryAddSingleton<IProjectionChangedBroadcaster, NoOpProjectionChangedBroadcaster>();
         services.TryAddSingleton<IProjectionCheckpointTracker, ProjectionCheckpointTracker>();
+        services.TryAddSingleton<IProjectionPollerTickSource, PeriodicProjectionPollerTickSource>();
+        services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IValidateOptions<ProjectionChangeNotifierOptions>, ValidateProjectionChangeNotifierOptions>();
         _ = services.Configure<DomainServiceOptions>(configuration.GetSection("EventStore:DomainServices"));
         _ = services.AddOptions<ProjectionChangeNotifierOptions>()
@@ -65,6 +70,10 @@ public static class EventStoreServerServiceCollectionExtensions {
             .Validate(o => { o.Validate(); return true; }, "Projection configuration is invalid. All intervals must be >= 0 and domain keys must be non-empty.")
             .ValidateOnStart();
         _ = services.AddHostedService<ProjectionDiscoveryHostedService>();
+        _ = services.AddSingleton<IHostedService>(serviceProvider =>
+            serviceProvider.GetService<DaprClient>() is null
+                ? NoOpHostedService.Instance
+                : ActivatorUtilities.CreateInstance<ProjectionPollerService>(serviceProvider));
         services.AddActors(options => {
             string? daprHttpPort = configuration["DAPR_HTTP_PORT"];
             if (!string.IsNullOrEmpty(daprHttpPort)) {
@@ -78,4 +87,12 @@ public static class EventStoreServerServiceCollectionExtensions {
 
         return services;
     }
+}
+
+internal sealed class NoOpHostedService : IHostedService {
+    public static NoOpHostedService Instance { get; } = new();
+
+    public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

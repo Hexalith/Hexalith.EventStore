@@ -22,4 +22,19 @@ public interface IProjectionCheckpointTracker {
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns><see langword="true"/> when the checkpoint was saved; otherwise <see langword="false"/>.</returns>
     Task<bool> SaveDeliveredSequenceAsync(AggregateIdentity identity, long deliveredSequence, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Registers an aggregate identity as eligible for polling-mode projection delivery.
+    /// </summary>
+    /// <param name="identity">The aggregate identity.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task TrackIdentityAsync(AggregateIdentity identity, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Enumerates tracked aggregate identities without depending on actor state key scans.
+    /// </summary>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The tracked aggregate identities.</returns>
+    IAsyncEnumerable<AggregateIdentity> EnumerateTrackedIdentitiesAsync(CancellationToken cancellationToken = default);
 }

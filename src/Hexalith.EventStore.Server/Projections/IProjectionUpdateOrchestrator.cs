@@ -14,4 +14,12 @@ public interface IProjectionUpdateOrchestrator {
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     Task UpdateProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Delivers projection work for a tracked polling identity, bypassing only the immediate-mode interval guard.
+    /// </summary>
+    /// <param name="identity">The aggregate identity (tenant, domain, aggregateId).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task DeliverProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default);
 }

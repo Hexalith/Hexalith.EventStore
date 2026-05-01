@@ -1,6 +1,6 @@
 # Post-Epic-11 R11-A2: Polling-Mode Product Behavior
 
-Status: ready-for-dev
+Status: review
 
 <!-- Source: epic-11-retro-2026-04-30.md - Action item R11-A2 -->
 <!-- Source: epic-12-retro-2026-04-30.md - R12-A5 carry-forward backlog -->
@@ -51,52 +51,52 @@ This story is sequenced after R11-A1. Reuse the checkpoint/tracking boundary fro
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Confirm R11-A1 checkpoint/tracking boundary is available (AC: #3, #4)
-  - [ ] Reuse the R11-A1 tracker contract for known projection identities and checkpoint reads/writes.
-  - [ ] If the tracker cannot enumerate or register known identities, extend it in one place instead of adding a parallel registry.
-  - [ ] Make identity enumeration bounded or pageable enough that a large state store cannot be loaded into memory in one unbounded read.
-  - [ ] Keep identity shape canonical: `TenantId`, `Domain`, `AggregateId`; do not depend on DAPR actor state key internals.
-  - [ ] Compile against the actual R11-A1 tracker API before marking this task complete; do not assume method names from the story text if R11-A1 landed with different internal names.
+- [x] Task 1: Confirm R11-A1 checkpoint/tracking boundary is available (AC: #3, #4)
+  - [x] Reuse the R11-A1 tracker contract for known projection identities and checkpoint reads/writes.
+  - [x] If the tracker cannot enumerate or register known identities, extend it in one place instead of adding a parallel registry.
+  - [x] Make identity enumeration bounded or pageable enough that a large state store cannot be loaded into memory in one unbounded read.
+  - [x] Keep identity shape canonical: `TenantId`, `Domain`, `AggregateId`; do not depend on DAPR actor state key internals.
+  - [x] Compile against the actual R11-A1 tracker API before marking this task complete; do not assume method names from the story text if R11-A1 landed with different internal names.
 
-- [ ] Task 2: Refactor projection delivery into a shared path if needed (AC: #4, #9, #12)
-  - [ ] Keep immediate mode behavior unchanged for interval `0`.
-  - [ ] Extract only enough logic for both immediate and polling callers to share domain resolution, `GetEventsAsync`, `/project`, `UpdateProjectionAsync`, checkpoint save, and logging.
-  - [ ] Ensure the polling caller does not route through a public method that immediately returns because `RefreshIntervalMs > 0`; use a private/internal delivery method or equivalent collaborator for the actual projection work.
-  - [ ] Preserve public projection DTOs and actor interfaces unless R11-A1 already changed an internal server-only boundary.
+- [x] Task 2: Refactor projection delivery into a shared path if needed (AC: #4, #9, #12)
+  - [x] Keep immediate mode behavior unchanged for interval `0`.
+  - [x] Extract only enough logic for both immediate and polling callers to share domain resolution, `GetEventsAsync`, `/project`, `UpdateProjectionAsync`, checkpoint save, and logging.
+  - [x] Ensure the polling caller does not route through a public method that immediately returns because `RefreshIntervalMs > 0`; use a private/internal delivery method or equivalent collaborator for the actual projection work.
+  - [x] Preserve public projection DTOs and actor interfaces unless R11-A1 already changed an internal server-only boundary.
 
-- [ ] Task 3: Implement polling-mode registration from event publication (AC: #1, #3, #5)
-  - [ ] When resolved interval is `>0`, mark the aggregate identity as tracked/dirty instead of invoking `/project` immediately.
-  - [ ] Make repeated registration idempotent.
-  - [ ] Add or preserve a dirty-work signal on repeated publication for an already tracked identity, so later events are not hidden by an idempotent no-op.
-  - [ ] Ensure no projection payload or event body is logged while registering work.
+- [x] Task 3: Implement polling-mode registration from event publication (AC: #1, #3, #5)
+  - [x] When resolved interval is `>0`, mark the aggregate identity as tracked/dirty instead of invoking `/project` immediately.
+  - [x] Make repeated registration idempotent.
+  - [x] Add or preserve a dirty-work signal on repeated publication for an already tracked identity, so later events are not hidden by an idempotent no-op.
+  - [x] Ensure no projection payload or event body is logged while registering work.
 
-- [ ] Task 4: Add `ProjectionPollerService` or equivalent hosted worker (AC: #2, #6, #7, #8, #9)
-  - [ ] Use `ProjectionOptions.GetRefreshIntervalMs(domain)` for interval decisions.
-  - [ ] Poll only tracked identities whose resolved interval is greater than zero.
-  - [ ] Track per-domain due times or equivalent scheduling state so domains with longer intervals are not polled on every shorter-interval tick.
-  - [ ] Prevent overlapping delivery attempts for the same identity.
-  - [ ] Honor cancellation and do not treat normal shutdown as a failure.
-  - [ ] Keep concurrency bounded and observable through structured logs.
+- [x] Task 4: Add `ProjectionPollerService` or equivalent hosted worker (AC: #2, #6, #7, #8, #9)
+  - [x] Use `ProjectionOptions.GetRefreshIntervalMs(domain)` for interval decisions.
+  - [x] Poll only tracked identities whose resolved interval is greater than zero.
+  - [x] Track per-domain due times or equivalent scheduling state so domains with longer intervals are not polled on every shorter-interval tick.
+  - [x] Prevent overlapping delivery attempts for the same identity.
+  - [x] Honor cancellation and do not treat normal shutdown as a failure.
+  - [x] Keep concurrency bounded and observable through structured logs.
 
-- [ ] Task 5: Update discovery and operator logs (AC: #6, #10)
-  - [ ] Replace "polling not implemented" startup/runtime wording with active polling semantics.
-  - [ ] Log domain, tenant, aggregate identity, interval, and exception type where useful; do not log event payloads or projection state.
-  - [ ] Preserve orphaned domain-configuration warnings.
+- [x] Task 5: Update discovery and operator logs (AC: #6, #10)
+  - [x] Replace "polling not implemented" startup/runtime wording with active polling semantics.
+  - [x] Log domain, tenant, aggregate identity, interval, and exception type where useful; do not log event payloads or projection state.
+  - [x] Preserve orphaned domain-configuration warnings.
 
-- [ ] Task 6: Expand focused server tests (AC: #1, #3, #5, #6, #7, #8, #9, #11, #12)
-  - [ ] Add poller tests with a testable timer/tick abstraction rather than sleeping real intervals.
-  - [ ] Add registration tests for `RefreshIntervalMs > 0` and non-registration for immediate domains.
-  - [ ] Add registration-failure tests proving command publication remains fail-open and a later registration attempt can retry the same identity.
-  - [ ] Add a repeated-publication test proving an already tracked identity remains eligible for polling after new events arrive.
-  - [ ] Add per-domain interval tests proving a fast polling domain does not force slower polling domains to run on every fast tick.
-  - [ ] Add validation evidence that `PollingModeDeferred` is removed or no longer reachable for configured polling behavior.
-  - [ ] Add no-overlap and failure-retry tests.
-  - [ ] Update refresh-interval tests that currently assert permanent skip.
+- [x] Task 6: Expand focused server tests (AC: #1, #3, #5, #6, #7, #8, #9, #11, #12)
+  - [x] Add poller tests with a testable timer/tick abstraction rather than sleeping real intervals.
+  - [x] Add registration tests for `RefreshIntervalMs > 0` and non-registration for immediate domains.
+  - [x] Add registration-failure tests proving command publication remains fail-open and a later registration attempt can retry the same identity.
+  - [x] Add a repeated-publication test proving an already tracked identity remains eligible for polling after new events arrive.
+  - [x] Add per-domain interval tests proving a fast polling domain does not force slower polling domains to run on every fast tick.
+  - [x] Add validation evidence that `PollingModeDeferred` is removed or no longer reachable for configured polling behavior.
+  - [x] Add no-overlap and failure-retry tests.
+  - [x] Update refresh-interval tests that currently assert permanent skip.
 
-- [ ] Task 7: Update documentation and validation evidence (AC: #10, #12)
-  - [ ] Update `docs/superpowers/specs/2026-03-15-server-managed-projection-builder-design.md` or developer docs to describe active polling mode.
-  - [ ] Record that polling mode introduces interval-delayed projection freshness and keeps at-least-once semantics.
-  - [ ] Run targeted tests and record results in this story's Dev Agent Record.
+- [x] Task 7: Update documentation and validation evidence (AC: #10, #12)
+  - [x] Update `docs/superpowers/specs/2026-03-15-server-managed-projection-builder-design.md` or developer docs to describe active polling mode.
+  - [x] Record that polling mode introduces interval-delayed projection freshness and keeps at-least-once semantics.
+  - [x] Run targeted tests and record results in this story's Dev Agent Record.
 
 ## Dev Notes
 
@@ -173,13 +173,45 @@ This story is sequenced after R11-A1. Reuse the checkpoint/tracking boundary fro
 
 ### Agent Model Used
 
-TBD
+GPT-5
 
 ### Debug Log References
 
+- Red-phase focused test run initially blocked by Aspire-held DLL locks after the baseline apphost smoke; apphost was stopped and tests were rerun.
+- Focused projection suite: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --no-build --filter "FullyQualifiedName~ProjectionUpdateOrchestratorRefreshIntervalTests|FullyQualifiedName~ProjectionPollerServiceTests|FullyQualifiedName~ProjectionCheckpointTrackerTests|FullyQualifiedName~ProjectionDiscoveryHostedServiceTests" -p:NuGetAudit=false` => 34/34 passed.
+- Broader projection suite: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --no-build --filter "FullyQualifiedName~Projections|FullyQualifiedName~EventReplayProjectionActorTests" -p:NuGetAudit=false` => 80/80 passed.
+- Full server suite: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --no-build -p:NuGetAudit=false` => 1668/1668 passed.
+- Tier 1 units: Client 334/334, Contracts 281/281, Sample 63/63, Testing 78/78, SignalR 32/32 passed.
+- Closure grep: `rg -n "PollingModeDeferred|Background poller not yet implemented|will NOT update automatically" src tests docs` => no matches.
+- Post-change Aspire smoke: `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`; Aspire MCP resource inspection showed app resources, Dapr sidecars, statestore, and pubsub running healthy. Apphost stopped after inspection.
+
 ### Completion Notes List
 
+- Implemented active polling semantics for `RefreshIntervalMs > 0`: event publication now registers tracked projection work instead of invoking `/project` immediately.
+- Added `ProjectionPollerService` with testable tick source, per-domain due scheduling, same-process non-overlap guard, fail-open retry behavior, and graceful shutdown.
+- Extended the R11-A1 checkpoint tracker boundary to track and enumerate canonical `{TenantId, Domain, AggregateId}` polling identities through bounded pages; no parallel registry or actor state-key scan was added.
+- Refactored projection delivery so immediate mode and polling mode share the same domain resolution, aggregate event read, `/project`, projection actor write, checkpoint save, ETag/SignalR path, and failure logging.
+- Replaced deferred polling logs/docs with active polling semantics, including interval-delayed freshness and at-least-once duplicate-delivery expectations.
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/post-epic-11-r11a2-polling-mode-product-behavior.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/superpowers/specs/2026-03-15-server-managed-projection-builder-design.md`
+- `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs`
+- `src/Hexalith.EventStore.Server/Projections/IProjectionCheckpointTracker.cs`
+- `src/Hexalith.EventStore.Server/Projections/IProjectionUpdateOrchestrator.cs`
+- `src/Hexalith.EventStore.Server/Projections/NoOpProjectionUpdateOrchestrator.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionDiscoveryHostedService.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionPollerService.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionPollerServiceTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorRefreshIntervalTests.cs`
+
+### Change Log
+
+- 2026-05-01: Implemented polling-mode product behavior, added focused tests and documentation, validated server/Tier 1 suites and Aspire smoke, moved story to review.
 
 ## Party-Mode Review
 

@@ -15,6 +15,8 @@ using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
+using Shouldly;
+
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
 /// <summary>
@@ -30,7 +32,7 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests {
     public async Task UpdateProjectionAsync_DefaultRefreshIntervalZero_ProceedsWithUpdate() {
         // Arrange
         var options = new ProjectionOptions { DefaultRefreshIntervalMs = 0 };
-        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver) = CreateSut(options);
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(options);
         var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
         _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(registration);
@@ -56,13 +58,14 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests {
     public async Task UpdateProjectionAsync_DefaultRefreshIntervalPositive_SkipsUpdate() {
         // Arrange
         var options = new ProjectionOptions { DefaultRefreshIntervalMs = 5000 };
-        (ProjectionUpdateOrchestrator sut, _, _, IDomainServiceResolver resolver) = CreateSut(options);
+        (ProjectionUpdateOrchestrator sut, _, _, IDomainServiceResolver resolver, IProjectionCheckpointTracker checkpointTracker) = CreateSut(options);
 
         // Act
         await sut.UpdateProjectionAsync(TestIdentity);
 
-        // Assert - Resolver was NOT called (orchestrator returned early)
+        // Assert - Resolver was NOT called; polling mode only registers deferred work.
         _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
+        await checkpointTracker.Received(1).TrackIdentityAsync(TestIdentity, Arg.Any<CancellationToken>());
     }
 
     // --- AC 3: Per-domain override 0 proceeds for that domain ---
@@ -76,7 +79,7 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests {
                 ["test-domain"] = new DomainProjectionOptions { RefreshIntervalMs = 0 },
             },
         };
-        (ProjectionUpdateOrchestrator sut, _, _, IDomainServiceResolver resolver) = CreateSut(options);
+        (ProjectionUpdateOrchestrator sut, _, _, IDomainServiceResolver resolver, _) = CreateSut(options);
         var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
         _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(registration);
@@ -99,13 +102,14 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests {
                 ["test-domain"] = new DomainProjectionOptions { RefreshIntervalMs = 3000 },
             },
         };
-        (ProjectionUpdateOrchestrator sut, _, _, IDomainServiceResolver resolver) = CreateSut(options);
+        (ProjectionUpdateOrchestrator sut, _, _, IDomainServiceResolver resolver, IProjectionCheckpointTracker checkpointTracker) = CreateSut(options);
 
         // Act
         await sut.UpdateProjectionAsync(TestIdentity);
 
-        // Assert - Resolver was NOT called (per-domain override skips)
+        // Assert - Resolver was NOT called; per-domain polling override registers deferred work.
         _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
+        await checkpointTracker.Received(1).TrackIdentityAsync(TestIdentity, Arg.Any<CancellationToken>());
     }
 
     // --- AC 3: Per-domain override positive proceeds for OTHER domains ---
@@ -119,7 +123,7 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests {
                 ["order"] = new DomainProjectionOptions { RefreshIntervalMs = 3000 },
             },
         };
-        (ProjectionUpdateOrchestrator sut, _, _, IDomainServiceResolver resolver) = CreateSut(options);
+        (ProjectionUpdateOrchestrator sut, _, _, IDomainServiceResolver resolver, _) = CreateSut(options);
         var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
         _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(registration);
@@ -140,13 +144,66 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests {
                 ["TEST-DOMAIN"] = new DomainProjectionOptions { RefreshIntervalMs = 3000 },
             },
         };
-        (ProjectionUpdateOrchestrator sut, _, _, IDomainServiceResolver resolver) = CreateSut(options);
+        (ProjectionUpdateOrchestrator sut, _, _, IDomainServiceResolver resolver, IProjectionCheckpointTracker checkpointTracker) = CreateSut(options);
 
         // Act
         await sut.UpdateProjectionAsync(TestIdentity);
 
-        // Assert - Mixed-case override key still applies
+        // Assert - Mixed-case override key still applies and registers deferred work.
         _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
+        await checkpointTracker.Received(1).TrackIdentityAsync(TestIdentity, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeliverProjectionAsync_PositiveRefreshInterval_BypassesPollingRegistrationGuard() {
+        // Arrange
+        var options = new ProjectionOptions { DefaultRefreshIntervalMs = 5000 };
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, IProjectionCheckpointTracker checkpointTracker) = CreateSut(options);
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns(Array.Empty<EventEnvelope>());
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+
+        // Act
+        await sut.DeliverProjectionAsync(TestIdentity);
+
+        // Assert - poller delivery uses the shared delivery path, not the registration-only path.
+        _ = await resolver.Received(1).ResolveAsync("test-tenant", "test-domain", "v1", Arg.Any<CancellationToken>());
+        _ = actorProxyFactory.Received(1).CreateActorProxy<IAggregateActor>(
+            Arg.Is<ActorId>(id => id.GetId() == TestIdentity.ActorId),
+            Arg.Is("AggregateActor"));
+        await checkpointTracker.DidNotReceiveWithAnyArgs().TrackIdentityAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task UpdateProjectionAsync_PollingRegistrationFailure_DoesNotThrowOrInvokeProjectEndpoint() {
+        // Arrange
+        var options = new ProjectionOptions { DefaultRefreshIntervalMs = 5000 };
+        (ProjectionUpdateOrchestrator sut, _, _, IDomainServiceResolver resolver, IProjectionCheckpointTracker checkpointTracker) = CreateSut(options);
+        _ = checkpointTracker.TrackIdentityAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(_ => throw new InvalidOperationException("state store unavailable"));
+
+        // Act & Assert - projection-side registration remains fail-open for command publication.
+        await Should.NotThrowAsync(() => sut.UpdateProjectionAsync(TestIdentity));
+        _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
+    }
+
+    [Fact]
+    public async Task UpdateProjectionAsync_RepeatedPollingPublication_ReregistersTrackedIdentity() {
+        // Arrange
+        var options = new ProjectionOptions { DefaultRefreshIntervalMs = 5000 };
+        (ProjectionUpdateOrchestrator sut, _, _, _, IProjectionCheckpointTracker checkpointTracker) = CreateSut(options);
+
+        // Act
+        await sut.UpdateProjectionAsync(TestIdentity);
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        // Assert - repeated publication remains visible to the tracker boundary.
+        await checkpointTracker.Received(2).TrackIdentityAsync(TestIdentity, Arg.Any<CancellationToken>());
     }
 
     // --- AC 4: Tenant isolation - passes tenant ID through pipeline ---
@@ -155,7 +212,7 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests {
     public async Task UpdateProjectionAsync_TenantIsolation_PassesTenantIdThroughPipeline() {
         // Arrange
         var options = new ProjectionOptions { DefaultRefreshIntervalMs = 0 };
-        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver) = CreateSut(options);
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(options);
         var acmeIdentity = new AggregateIdentity("acme", "counter", "123");
         var registration = new DomainServiceRegistration("counter-service", "project", "acme", "counter", "v1");
         _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -178,15 +235,17 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests {
             Arg.Is("AggregateActor"));
     }
 
-    private static (ProjectionUpdateOrchestrator Sut, IActorProxyFactory ActorProxyFactory, DaprClient DaprClient, IDomainServiceResolver Resolver) CreateSut(ProjectionOptions? options = null) {
+    private static (ProjectionUpdateOrchestrator Sut, IActorProxyFactory ActorProxyFactory, DaprClient DaprClient, IDomainServiceResolver Resolver, IProjectionCheckpointTracker CheckpointTracker) CreateSut(ProjectionOptions? options = null) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         DaprClient daprClient = Substitute.For<DaprClient>();
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
         IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
         _ = checkpointTracker.ReadLastDeliveredSequenceAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>())
             .Returns(0);
+        _ = checkpointTracker.TrackIdentityAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
         IOptions<ProjectionOptions> projectionOptions = Options.Create(options ?? new ProjectionOptions());
         var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, NullLogger<ProjectionUpdateOrchestrator>.Instance);
-        return (sut, actorProxyFactory, daprClient, resolver);
+        return (sut, actorProxyFactory, daprClient, resolver, checkpointTracker);
     }
 }

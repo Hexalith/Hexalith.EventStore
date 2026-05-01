@@ -12,4 +12,8 @@ public sealed class NoOpProjectionUpdateOrchestrator : IProjectionUpdateOrchestr
     /// <inheritdoc/>
     public Task UpdateProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default)
         => Task.CompletedTask;
+
+    /// <inheritdoc/>
+    public Task DeliverProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
 }

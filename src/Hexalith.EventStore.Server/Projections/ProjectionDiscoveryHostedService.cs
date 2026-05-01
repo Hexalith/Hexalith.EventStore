@@ -109,8 +109,8 @@ public sealed partial class ProjectionDiscoveryHostedService(
 
         [LoggerMessage(
             EventId = 1122,
-            Level = LogLevel.Warning,
-            Message = "Projection discovery: domain '{Domain}' -> polling mode (RefreshIntervalMs={RefreshIntervalMs}). WARNING: Background poller not yet implemented; projections for this domain will NOT update automatically until poller is available.")]
+            Level = LogLevel.Information,
+            Message = "Projection discovery: domain '{Domain}' -> polling mode active (RefreshIntervalMs={RefreshIntervalMs}). Projection freshness is delayed until the next poll tick and remains at-least-once.")]
         public static partial void DomainPolling(ILogger logger, string domain, int refreshIntervalMs);
 
         [LoggerMessage(

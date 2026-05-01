@@ -44,9 +44,23 @@ public partial class ProjectionUpdateOrchestrator(
 
         int refreshIntervalMs = projectionOptions.Value.GetRefreshIntervalMs(identity.Domain);
         if (refreshIntervalMs > 0) {
-            Log.PollingModeDeferred(logger, identity.TenantId, identity.Domain, refreshIntervalMs);
+            try {
+                await checkpointTracker.TrackIdentityAsync(identity, cancellationToken).ConfigureAwait(false);
+                Log.PollingWorkRegistered(logger, identity.TenantId, identity.Domain, identity.AggregateId, refreshIntervalMs);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) {
+                Log.PollingWorkRegistrationFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
+            }
+
             return;
         }
+
+        await DeliverProjectionAsync(identity, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task DeliverProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(identity);
 
         SemaphoreSlim projectionLock = s_projectionLocks.GetOrAdd(identity.ActorId, static _ => new SemaphoreSlim(1, 1));
         await projectionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -199,8 +213,14 @@ public partial class ProjectionUpdateOrchestrator(
         [LoggerMessage(
             EventId = 1117,
             Level = LogLevel.Debug,
-            Message = "Projection polling mode configured (RefreshIntervalMs={RefreshIntervalMs}), skipping immediate trigger: TenantId={TenantId}, Domain={Domain}, Stage=PollingModeDeferred")]
-        public static partial void PollingModeDeferred(ILogger logger, string tenantId, string domain, int refreshIntervalMs);
+            Message = "Projection polling work registered: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RefreshIntervalMs={RefreshIntervalMs}, Stage=ProjectionPollingWorkRegistered")]
+        public static partial void PollingWorkRegistered(ILogger logger, string tenantId, string domain, string aggregateId, int refreshIntervalMs);
+
+        [LoggerMessage(
+            EventId = 1121,
+            Level = LogLevel.Warning,
+            Message = "Projection polling work registration failed: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ExceptionType={ExceptionType}, Stage=ProjectionPollingWorkRegistrationFailed")]
+        public static partial void PollingWorkRegistrationFailed(ILogger logger, Exception ex, string tenantId, string domain, string aggregateId, string exceptionType);
 
         [LoggerMessage(
             EventId = 1118,

@@ -95,13 +95,12 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 
 #### 4. Background Poller (RefreshIntervalMs > 0)
 
-- **Deferred**: polling product behavior is tracked separately from immediate checkpoint-tracked delivery.
-- `IHostedService` that polls **per aggregate** at the configured interval
-- Discovers aggregates that need polling from checkpoint state (any aggregate with a known checkpoint is polled)
-- New aggregates are discovered when the immediate trigger fires for the first time (creates the initial checkpoint)
-- Reads new events since checkpoint via `AggregateActor.GetEventsAsync(fromSequence)`
-- Sends to domain service `/project` endpoint
-- Updates checkpoint and ProjectionActor state
+- `ProjectionPollerService` is an `IHostedService` that polls tracked aggregate identities at configured intervals.
+- Event publication for polling domains registers `{tenantId, domain, aggregateId}` as tracked work instead of invoking `/project` immediately.
+- New aggregates become eligible for polling when the first published event registers the identity in the projection checkpoint tracker boundary.
+- A projection update may be stale until the next poll tick. Operators should treat the configured interval as the expected freshness delay for polling domains.
+- Polling keeps the same at-least-once delivery contract as immediate mode. Duplicate delivery is allowed and absorbed by idempotent domain projection handlers plus checkpoint/concurrency behavior.
+- Reads currently use the safe full-history path (`AggregateActor.GetEventsAsync(0)`) pending the incremental projection contract decision, then send to the domain service `/project` endpoint and update checkpoint plus `ProjectionActor` state through the shared orchestrator path.
 
 #### 5. Domain Service `/project` Endpoint (thin)
 
@@ -153,7 +152,7 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 }
 ```
 
-- `DefaultRefreshIntervalMs`: 0 = immediate (fire-and-forget after persistence), >0 = polling interval in ms
+- `DefaultRefreshIntervalMs`: 0 = immediate (fire-and-forget after persistence), >0 = polling interval in ms. Polling domains update on timer ticks rather than per command, so reads may remain stale until the next interval elapses.
 - `CheckpointStateStoreName`: DAPR state store component for projection delivery checkpoints. Defaults to `statestore`.
 - Per-domain override via `Domains:{domain}:RefreshIntervalMs`
 
