@@ -22,23 +22,29 @@ Current HEAD at story creation: `11298a5`.
 
 ## Acceptance Criteria
 
-1. **A Redis-backed multi-instance topology is started deliberately.** Run a topology with SignalR enabled, `EventStore:SignalR:BackplaneRedisConnectionString` or `EVENTSTORE_SIGNALR_REDIS` set to a real Redis endpoint, and at least two EventStore server instances using the same backplane. Record the exact topology shape, Redis endpoint source, and both EventStore instance endpoints.
+1. **A Redis-backed multi-instance topology is started deliberately.** Run a topology with SignalR enabled, `EventStore:SignalR:BackplaneRedisConnectionString` or `EVENTSTORE_SIGNALR_REDIS` set to a real Redis endpoint, and at least two independently hosted EventStore server instances using the same backplane. Record the exact topology shape, Redis endpoint source, EventStore resource/process/container names, instance IDs if available, process IDs or equivalent runtime identities, and both EventStore instance endpoints.
 
-2. **The test client connects to one specific instance.** Create or use a SignalR client that connects directly to instance B's `/hubs/projection-changes` endpoint, joins a single `{projectionType}:{tenantId}` group, and records the actual hub URL used. Do not route this client through a load balancer that could hide which instance owns the connection.
+2. **The test client connects to one specific instance.** Create or use a SignalR client that connects directly to instance B's concrete `/hubs/projection-changes` endpoint, joins a single `{projectionType}:{tenantId}` group, and records the actual hub URL used. Do not route this client through Aspire service discovery, a reverse proxy, or a load balancer that could hide which instance owns the connection.
 
-3. **The broadcast originates from a different instance.** Trigger ETag regeneration and SignalR broadcast from instance A. The proof must show the command/request path or explicit server-side broadcast path used to make instance A the origin. If Aspire service discovery or a reverse proxy prevents deterministic origin selection, implement a test-only deterministic route or explicit evidence hook rather than accepting ambiguous evidence.
+3. **The broadcast originates from a different instance.** Trigger ETag regeneration and SignalR broadcast from instance A's concrete endpoint or from a test-only instance-A hook. The proof must show the command/request path or explicit server-side broadcast path used to make instance A the origin. If Aspire service discovery or a reverse proxy prevents deterministic origin selection, implement a narrowly scoped test-only deterministic route or evidence hook rather than accepting ambiguous evidence. Any hook must be unavailable in production, must not change the public hub payload, and must be documented in the evidence.
 
-4. **Cross-instance delivery is observed.** The client connected to instance B receives exactly the expected signal for the joined projection/tenant after the instance A broadcast. The proof must include the received `projectionType`, `tenantId`, timestamp, connection target, and broadcast origin. Duplicate signals are allowed only if the evidence explains an at-least-once source; the primary assertion is that at least one valid cross-instance signal arrives within the bounded wait.
+4. **Cross-instance delivery is observed.** The client connected to instance B receives exactly the expected signal for the joined projection/tenant after the instance A broadcast. The proof must include the received `projectionType`, `tenantId`, timestamp, connection target, broadcast origin, correlation/run id, and wait duration. Duplicate signals are allowed only if the evidence explains an at-least-once source; the primary assertion is that at least one valid cross-instance signal arrives within a bounded wait of no more than 10 seconds.
 
 5. **The client re-query behavior is proven or explicitly bounded.** After receiving the signal, the proof either performs the expected projection re-query and records the response/ETag evidence, or records a bounded reason why this story only proves signal transport and leaves query refresh evidence to `post-epic-11-r11a3-apphost-projection-proof` / `post-epic-11-r11a4-valid-projection-round-trip`. Do not silently omit this part.
 
-6. **Redis/backplane evidence is concrete.** Capture evidence that the SignalR backplane is actually enabled in the runtime topology. Acceptable evidence includes a runtime config dump, logs showing Redis backplane startup, DI/type evidence from the running instance, Redis pub/sub observation, or equivalent evidence. A static code citation alone does not satisfy this AC.
+6. **Redis/backplane evidence is concrete.** Capture evidence that the SignalR backplane is actually enabled in the runtime topology for both EventStore instances. Acceptable evidence includes the Aspire Redis resource name or Redis endpoint, runtime config dump from both instances, logs showing Redis backplane startup, DI/type evidence from the running instances, Redis pub/sub observation, or equivalent evidence. A static code citation alone does not satisfy this AC.
 
-7. **Fail-open and local-only false positives are excluded.** The test must fail if the backplane is disabled, points to an unreachable Redis endpoint, or the client is accidentally connected to the same instance that originated the broadcast. A single-process or single-instance proof does not satisfy this story.
+7. **Fail-open and local-only false positives are excluded.** The proof must include mandatory negative/control evidence showing no valid cross-instance delivery within the same bounded wait when the Redis backplane is disabled or isolated/unreachable, and must fail if the client is accidentally connected to the same instance that originated the broadcast. A single-process, single-instance, same-process multiple-hub, or shared-DI-container proof does not satisfy this story.
 
-8. **Tier 3 execution evidence is saved.** Save a concise evidence file under `_bmad-output/test-artifacts/post-epic-10-r10a2-redis-backplane-runtime-proof/` containing environment prerequisites, commands run, topology endpoints, Redis configuration, observed notification payload, timing, and test result. Include Docker/DAPR/Aspire constraints if the proof cannot run in the current environment.
+8. **SignalR group and payload contract are pinned.** The proof uses one explicit projection/tenant pair and records the exact joined group string. The only public hub payload remains `ProjectionChanged(projectionType, tenantId)`: no projection state, ETags, aggregate IDs, command status, domain event body, PII, or serialized aggregate/read-model state may be added to the hub message for this story.
 
-9. **Story bookkeeping is closed.** At dev handoff, this story status becomes `review`, the sprint-status row becomes `review`, and both `last_updated` fields in `sprint-status.yaml` name R10-A2 and the result. At code-review signoff, both become `done`.
+9. **Operator-facing failure behavior is recorded.** If Redis is unavailable or misconfigured, command/query processing and local single-instance operation remain fail-open. Evidence must capture the observable warning or diagnostic signal, whether the app starts, and whether local-only SignalR behavior is intentionally out of scope for cross-instance proof.
+
+10. **Tier 3 execution evidence is saved.** Save a concise evidence file under `_bmad-output/test-artifacts/post-epic-10-r10a2-redis-backplane-runtime-proof/` with a dated filename such as `evidence-YYYY-MM-DD.md`. The file must include test run id, timestamp, git commit, Aspire/apphost command or manual command, Redis resource/container identity and endpoint, EventStore instance A/B endpoints and runtime identities, client target instance, action origin instance, joined group, expected payload, observed payload, wait duration, positive result, negative/control result, relevant log excerpts or links, and Docker/DAPR/Aspire constraints if the proof cannot run in the current environment.
+
+11. **Reproduction lane is explicit.** The story records whether the proof runs in normal CI, a Docker-gated integration lane, a nightly/manual Tier 3 lane, or a local reproduction path. It must include the exact command(s), required services, port isolation expectations, and cleanup expectations.
+
+12. **Story bookkeeping is closed.** At dev handoff, this story status becomes `review`, the sprint-status row becomes `review`, and both `last_updated` fields in `sprint-status.yaml` name R10-A2 and the result. At code-review signoff, both become `done`.
 
 ## Scope Boundaries
 
@@ -48,6 +54,7 @@ Current HEAD at story creation: `11298a5`.
 - Do not make local single-instance Aspire dev depend on Redis by default.
 - Do not weaken fail-open behavior. SignalR broadcast failure must not break ETag regeneration or command processing.
 - Do not treat DI wiring tests as sufficient runtime proof. They remain useful regression tests, but R10-A2 needs a real cross-instance delivery observation.
+- Do not change authorization, tenant isolation, projection naming, group naming, or public SignalR payload semantics. If deterministic proof requires product behavior changes outside test-only diagnostics or runtime topology, stop and update the story instead of absorbing the change during implementation.
 
 ## Implementation Inventory
 
@@ -66,47 +73,53 @@ Current HEAD at story creation: `11298a5`.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline and proof design (AC: #1, #2, #3, #7)
+- [ ] Task 0: Baseline and proof design (AC: #1, #2, #3, #7, #8, #11)
   - [ ] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
   - [ ] 0.2 Decide the proof topology: two EventStore processes in one Aspire test, two explicit local `dotnet run` processes, or a containerized composition. Record why the chosen path gives deterministic instance A/B evidence.
   - [ ] 0.3 Identify how each EventStore instance gets the same Redis backplane connection string.
   - [ ] 0.4 Identify how the client will connect directly to instance B without load-balancer ambiguity.
   - [ ] 0.5 Identify how the broadcast will originate from instance A without relying on chance routing.
+  - [ ] 0.6 Pick the exact proof pair, for example `projectionType=counter` and `tenantId=tenant-a`, and record the joined group string.
+  - [ ] 0.7 Decide the CI/manual execution lane, command line, required services, port isolation, and cleanup expectations before writing the harness.
 
-- [ ] Task 1: Build or configure the multi-instance proof harness (AC: #1, #2, #3, #6, #7)
+- [ ] Task 1: Build or configure the multi-instance proof harness (AC: #1, #2, #3, #6, #7, #9, #11)
   - [ ] 1.1 Add a Tier 3 test fixture or manual proof harness that starts or targets two EventStore instances.
   - [ ] 1.2 Ensure both instances have `EventStore__SignalR__Enabled=true`.
   - [ ] 1.3 Ensure both instances have the same real Redis backplane endpoint through `EventStore__SignalR__BackplaneRedisConnectionString` or `EVENTSTORE_SIGNALR_REDIS`.
-  - [ ] 1.4 Capture both instance base URLs and the Redis endpoint used by the backplane.
-  - [ ] 1.5 Add a negative/control path or explicit guard that fails the proof if only one instance is present or if the backplane setting is absent.
+  - [ ] 1.4 Capture both instance base URLs, resource/process/container names, process IDs or equivalent runtime identities, and the Redis endpoint used by the backplane.
+  - [ ] 1.5 Add mandatory negative/control paths that fail the proof if only one instance is present, if the backplane setting is absent, if Redis is disabled/isolated/unreachable, or if the client target equals the broadcast origin.
+  - [ ] 1.6 If a test-only endpoint or service hook is required, gate it to Development/Test configuration and record why it is not available in production.
+  - [ ] 1.7 Preserve fail-open command/query behavior when Redis is unavailable and capture the warning/diagnostic evidence.
 
-- [ ] Task 2: Connect the instance-B SignalR client (AC: #2, #4)
+- [ ] Task 2: Connect the instance-B SignalR client (AC: #2, #4, #8)
   - [ ] 2.1 Create a SignalR client targeting instance B's exact hub URL.
   - [ ] 2.2 Subscribe to `ProjectionChanged(projectionType, tenantId)` and capture received payloads with timestamps.
   - [ ] 2.3 Join the intended group, using the same projection type and tenant that the broadcast origin will use.
-  - [ ] 2.4 Wait for the join call to complete before triggering the instance A broadcast.
+  - [ ] 2.4 Assert the public payload is exactly the signal-only `projectionType` and `tenantId` shape; do not add state, ETags, aggregate IDs, command status, event body, or PII.
+  - [ ] 2.5 Wait for the join call to complete before triggering the instance A broadcast.
 
 - [ ] Task 3: Trigger the instance-A broadcast (AC: #3, #4, #5)
   - [ ] 3.1 Prefer a real command/projection flow if deterministic instance A routing is available.
   - [ ] 3.2 If deterministic command routing is not available, add a narrowly scoped test-only endpoint or fixture-only service hook that invokes `IProjectionChangedBroadcaster` in instance A with the target projection/tenant.
   - [ ] 3.3 If using a test-only hook, guard it so it is unavailable in production and explain why it does not change product behavior.
-  - [ ] 3.4 After broadcast, wait for the instance-B client receipt with a bounded timeout.
+  - [ ] 3.4 After broadcast, wait for the instance-B client receipt with a bounded timeout no longer than 10 seconds.
   - [ ] 3.5 Perform the projection re-query or explicitly record why query refresh is bounded to sibling projection-proof stories.
 
-- [ ] Task 4: Assert and record evidence (AC: #4, #6, #7, #8)
+- [ ] Task 4: Assert and record evidence (AC: #4, #6, #7, #8, #9, #10)
   - [ ] 4.1 Assert the received payload has the expected `projectionType` and `tenantId`.
   - [ ] 4.2 Assert the client connection target is instance B and the broadcast origin is instance A.
   - [ ] 4.3 Assert the proof used a real Redis backplane endpoint and not only the default local hub lifetime manager.
   - [ ] 4.4 Record Redis/backplane startup evidence from logs, config, runtime introspection, or Redis observation.
-  - [ ] 4.5 Save an evidence markdown file under `_bmad-output/test-artifacts/post-epic-10-r10a2-redis-backplane-runtime-proof/`.
+  - [ ] 4.5 Record negative/control outcomes for disabled or isolated/unreachable Redis and accidental same-instance routing.
+  - [ ] 4.6 Save an evidence markdown file under `_bmad-output/test-artifacts/post-epic-10-r10a2-redis-backplane-runtime-proof/` using the required dated schema from AC #10.
 
-- [ ] Task 5: Verification gates (AC: #1-#9)
+- [ ] Task 5: Verification gates (AC: #1-#12)
   - [ ] 5.1 Run the targeted Tier 3 proof on a Docker/DAPR/Aspire-equipped host.
   - [ ] 5.2 Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
   - [ ] 5.3 If source or test files changed, run the relevant focused test project(s) individually.
   - [ ] 5.4 If Docker, DAPR placement/scheduler, Redis, or local port constraints block the proof, record the exact blocker in the evidence file and leave the story in `review` only if code is complete but environment proof is pending; otherwise keep it `in-progress`.
 
-- [ ] Task 6: Story bookkeeping (AC: #9)
+- [ ] Task 6: Story bookkeeping (AC: #12)
   - [ ] 6.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
   - [ ] 6.2 Move this story and only this story from `ready-for-dev` to `review` at dev handoff.
   - [ ] 6.3 Leave R10-A3/R10-A5/R10-A6/R10-A7/R10-A8 status rows unchanged.

@@ -1,5 +1,6 @@
 
 using System.Text;
+using System.Text.Json;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -195,6 +196,32 @@ public class ProjectionUpdateOrchestratorTests {
     }
 
     [Fact]
+    public async Task UpdateProjectionAsync_ImmediateDelivery_AlwaysReadsFullHistory() {
+        // Arrange
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(7);
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(checkpointTracker);
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns(Array.Empty<EventEnvelope>());
+        _ = aggregateActor.GetEventsAsync(7).Returns([CreateTestEnvelope(8)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+
+        // Act
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        // Assert
+        _ = await aggregateActor.Received(1).GetEventsAsync(0);
+        _ = await aggregateActor.DidNotReceive().GetEventsAsync(7);
+        await checkpointTracker.DidNotReceiveWithAnyArgs().ReadLastDeliveredSequenceAsync(default!, default);
+    }
+
+    [Fact]
     public async Task UpdateProjectionAsync_ExistingCheckpoint_ReplaysFromZeroUntilIncrementalContractIsResolved() {
         // Arrange
         IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
@@ -218,6 +245,51 @@ public class ProjectionUpdateOrchestratorTests {
         _ = await aggregateActor.Received(1).GetEventsAsync(0);
         _ = await aggregateActor.DidNotReceive().GetEventsAsync(7);
         await checkpointTracker.DidNotReceiveWithAnyArgs().ReadLastDeliveredSequenceAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task UpdateProjectionAsync_RepeatTriggersOnSameAggregate_ProducesIdenticalProjectionState() {
+        // Arrange
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(1);
+        _ = checkpointTracker.SaveDeliveredSequenceAsync(TestIdentity, Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var capturedStates = new List<ProjectionState>();
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        _ = writeActor
+            .UpdateProjectionAsync(Arg.Do<ProjectionState>(capturedStates.Add))
+            .Returns(Task.CompletedTask);
+
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(new CountingProjectionResponseHandler());
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(checkpointTracker, daprClient, httpClientFactory);
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(1), CreateTestEnvelope(2)]);
+        _ = aggregateActor.GetEventsAsync(1).Returns([CreateTestEnvelope(2)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(writeActor);
+
+        // Act
+        await sut.UpdateProjectionAsync(TestIdentity);
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        // Assert
+        _ = await aggregateActor.Received(2).GetEventsAsync(0);
+        _ = await aggregateActor.DidNotReceive().GetEventsAsync(1);
+        capturedStates.Count.ShouldBe(2);
+        capturedStates[0].ProjectionType.ShouldBe("counter-summary");
+        capturedStates[1].ProjectionType.ShouldBe("counter-summary");
+        capturedStates[0].GetState().GetProperty("count").GetInt32().ShouldBe(2);
+        capturedStates[1].GetState().GetProperty("count").GetInt32().ShouldBe(2);
+        capturedStates[1].StateBytes.ShouldBe(capturedStates[0].StateBytes);
     }
 
     [Fact]
@@ -592,10 +664,37 @@ public class ProjectionUpdateOrchestratorTests {
         return httpClientFactory;
     }
 
+    private static IHttpClientFactory CreateHttpClientFactory(HttpMessageHandler handler) {
+        var httpClientFactory = Substitute.For<IHttpClientFactory>();
+        var client = new HttpClient(handler);
+        _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(client);
+        _ = httpClientFactory.CreateClient().Returns(client);
+        return httpClientFactory;
+    }
+
     private sealed class JsonResponseHandler(string json) : HttpMessageHandler {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) {
                 Content = new StringContent(json, Encoding.UTF8, "application/json"),
             });
+    }
+
+    private sealed class CountingProjectionResponseHandler : HttpMessageHandler {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
+            string json = request.Content is null
+                ? "{}"
+                : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            ProjectionRequest? projectionRequest = JsonSerializer.Deserialize<ProjectionRequest>(
+                json,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            int eventCount = projectionRequest?.Events.Length ?? 0;
+            string responseJson = JsonSerializer.Serialize(new {
+                projectionType = "counter-summary",
+                state = new { count = eventCount },
+            });
+            return new HttpResponseMessage(System.Net.HttpStatusCode.OK) {
+                Content = new StringContent(responseJson, Encoding.UTF8, "application/json"),
+            };
+        }
     }
 }

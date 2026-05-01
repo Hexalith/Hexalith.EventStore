@@ -1,6 +1,6 @@
 # Post-Epic-11 R11-A1b: Incremental Projection Contract Decision
 
-Status: ready-for-dev
+Status: review
 
 <!-- Source: post-epic-11-r11a1-checkpoint-tracked-projection-delivery.md — Re-Review (2026-05-01) Decision-Needed CRITICAL finding gating R11-A1 closure -->
 <!-- Source: epic-11-retro-2026-04-30.md — Action item R11-A1 (full replay vs incremental delivery) -->
@@ -264,61 +264,61 @@ Pick option (i) by default unless option (ii)'s clean-boundary argument outweigh
 
 ## Tasks / Subtasks
 
-- [ ] **Task 0 — Pre-flight verification of the Implementation Inventory** (AC: C1, C4)
-  - [ ] 0.1 For every cited line in the Implementation Inventory tables (P1–P12, T1–T5), confirm the file exists at the cited path and the cited line numbers still resolve to the cited code. Re-anchor by literal substring (e.g., `GetEventsAsync(0)`, `ProjectionStateKey = "projection-state"`, `TenantProjectionKeyPrefix + request.AggregateId`) for any drifted citation. Record the actual HEAD SHA in the Dev Agent Record `Debug Log References`.
-  - [ ] 0.2 Run the decision-evidence greps from the section above. Confirm `GetEventsAsync(0)` call-site count = 1, `ProjectionRequest` downstream-consumer count = 2 (both in `Hexalith.Tenants/`), and the sample/tenant handler shape evidence still matches the inventory. If any of these regress (e.g., a new consumer has appeared, a sample handler has been updated since 2026-05-01), pause and update the inventory before continuing.
-  - [ ] 0.3 Capture local Tier 1 + Tier 2 baseline pass counts per the CLAUDE.md command list. Record in the Dev Agent Record. (Per R2-A6: do not run only `dotnet test --filter` and call it a baseline; capture the full Tier 1 + Tier 2 baseline shape so the AC C4 equality can be checked end-to-end.)
-  - [ ] 0.4 Capture sprint-status.yaml current state of `post-epic-11-r11a1b-incremental-projection-contract-decision` (expected: `ready-for-dev` after this story-creation execution; flipped to `in-progress` by dev-story start; `review` at dev-story handoff per AC C3) AND the parent row `post-epic-11-r11a1-checkpoint-tracked-projection-delivery: in-progress`. Record both starting-state lines.
+- [x] **Task 0 — Pre-flight verification of the Implementation Inventory** (AC: C1, C4)
+  - [x] 0.1 For every cited line in the Implementation Inventory tables (P1–P12, T1–T5), confirm the file exists at the cited path and the cited line numbers still resolve to the cited code. Re-anchor by literal substring (e.g., `GetEventsAsync(0)`, `ProjectionStateKey = "projection-state"`, `TenantProjectionKeyPrefix + request.AggregateId`) for any drifted citation. Record the actual HEAD SHA in the Dev Agent Record `Debug Log References`.
+  - [x] 0.2 Run the decision-evidence greps from the section above. Confirm `GetEventsAsync(0)` call-site count = 1, `ProjectionRequest` downstream-consumer count = 2 (both in `Hexalith.Tenants/`), and the sample/tenant handler shape evidence still matches the inventory. If any of these regress (e.g., a new consumer has appeared, a sample handler has been updated since 2026-05-01), pause and update the inventory before continuing.
+  - [x] 0.3 Capture local Tier 1 + Tier 2 baseline pass counts per the CLAUDE.md command list. Record in the Dev Agent Record. (Per R2-A6: do not run only `dotnet test --filter` and call it a baseline; capture the full Tier 1 + Tier 2 baseline shape so the AC C4 equality can be checked end-to-end.)
+  - [x] 0.4 Capture sprint-status.yaml current state of `post-epic-11-r11a1b-incremental-projection-contract-decision` (expected: `ready-for-dev` after this story-creation execution; flipped to `in-progress` by dev-story start; `review` at dev-story handoff per AC C3) AND the parent row `post-epic-11-r11a1-checkpoint-tracked-projection-delivery: in-progress`. Record both starting-state lines.
 
-- [ ] **Task 1 — Make and record the path decision** (AC: C1)
-  - [ ] 1.1 Review the decision-framework Dev Note below. Weigh evidence for paths A / B / C against the project's current operational reality: (a) does any captured trace from `post-epic-11-r11a3` show full replay producing observable cost? (b) what is the SemVer cost of path B's contract change vs the API-stability cost of path A's checkpoint reduction vs the migration cost of path C's handler-rewrite? (c) what is the smallest change that closes the parent r11a1 gate cleanly? **Default recommendation: path A (full-replay-permanent).** Rationale: (i) the safety patch already ships and is correct; (ii) the sample event stream is small and there is no recorded operational signal that full replay is too expensive; (iii) keeping the `Hexalith.EventStore.Contracts` surface stable avoids forcing the `Hexalith.Tenants` submodule into a synchronized-release dance. Override only with an explicit captured-evidence Trigger A or with a project-lead instruction.
-  - [ ] 1.2 Record the firing trigger per common AC C1 second sub-bullet.
-  - [ ] 1.3 Append the `### R11-A1b Decision Record` block to this story's Dev Notes with the three required sub-headings (`**Chosen path:**`, `**Firing trigger:**`, `**Rationale:**`). Per R4-A2b's R5 unverified-format caveat: verify the parsing format the `code-review` skill expects by reading `.claude/skills/bmad-code-review/` (or whichever skill runs the close gate) and adjust the block shape WITHOUT changing the three required pieces of information. Record format-verification outcome in the Dev Agent Record.
+- [x] **Task 1 — Make and record the path decision** (AC: C1)
+  - [x] 1.1 Review the decision-framework Dev Note below. Weigh evidence for paths A / B / C against the project's current operational reality: (a) does any captured trace from `post-epic-11-r11a3` show full replay producing observable cost? (b) what is the SemVer cost of path B's contract change vs the API-stability cost of path A's checkpoint reduction vs the migration cost of path C's handler-rewrite? (c) what is the smallest change that closes the parent r11a1 gate cleanly? **Default recommendation: path A (full-replay-permanent).** Rationale: (i) the safety patch already ships and is correct; (ii) the sample event stream is small and there is no recorded operational signal that full replay is too expensive; (iii) keeping the `Hexalith.EventStore.Contracts` surface stable avoids forcing the `Hexalith.Tenants` submodule into a synchronized-release dance. Override only with an explicit captured-evidence Trigger A or with a project-lead instruction.
+  - [x] 1.2 Record the firing trigger per common AC C1 second sub-bullet.
+  - [x] 1.3 Append the `### R11-A1b Decision Record` block to this story's Dev Notes with the three required sub-headings (`**Chosen path:**`, `**Firing trigger:**`, `**Rationale:**`). Per R4-A2b's R5 unverified-format caveat: verify the parsing format the `code-review` skill expects by reading `.claude/skills/bmad-code-review/` (or whichever skill runs the close gate) and adjust the block shape WITHOUT changing the three required pieces of information. Record format-verification outcome in the Dev Agent Record.
 
-- [ ] **Task 2 — Execute path A (only if AC C1 picked `full-replay-permanent`)** (AC: A1, A2, A3, A4, A5)
-  - [ ] 2.1 Pick AC A2 sub-option (a) or (b). Default: (a). Record in Decision Record.
-  - [ ] 2.2 Add A1 test `UpdateProjectionAsync_ImmediateDelivery_AlwaysReadsFullHistory` to `ProjectionUpdateOrchestratorTests.cs`.
-  - [ ] 2.3 Add A4 test `UpdateProjectionAsync_RepeatTriggersOnSameAggregate_ProducesIdenticalProjectionState`.
-  - [ ] 2.4 If A2(b) chosen: remove `LastDeliveredSequence` from `ProjectionCheckpoint.cs`, remove the read/save methods from `IProjectionCheckpointTracker.cs` and `ProjectionCheckpointTracker.cs`, remove the `:147-158` save block from the orchestrator, update `ProjectionPollerService` to call only `EnumerateTrackedIdentitiesAsync`, delete the deleted-method tests in `ProjectionCheckpointTrackerTests.cs`. Verify Tier 2 delta accounts for the deletions.
-  - [ ] 2.5 Update XML docs per A3 on `CounterProjectionHandler` and `TenantProjectionHandler`.
-  - [ ] 2.6 Update the design doc per common AC C5 path-A wording.
-  - [ ] 2.7 Append per A5 to the relevant `RESOLVED` row in the parent r11a1 story.
-  - [ ] 2.8 Verify `_ = grep -rn "pending the incremental projection contract decision" docs/` returns 0 matches (the hedge is fully removed under path A).
+- [x] **Task 2 — Execute path A (only if AC C1 picked `full-replay-permanent`)** (AC: A1, A2, A3, A4, A5)
+  - [x] 2.1 Pick AC A2 sub-option (a) or (b). Default: (a). Record in Decision Record.
+  - [x] 2.2 Add A1 test `UpdateProjectionAsync_ImmediateDelivery_AlwaysReadsFullHistory` to `ProjectionUpdateOrchestratorTests.cs`.
+  - [x] 2.3 Add A4 test `UpdateProjectionAsync_RepeatTriggersOnSameAggregate_ProducesIdenticalProjectionState`.
+  - [x] 2.4 If A2(b) chosen: remove `LastDeliveredSequence` from `ProjectionCheckpoint.cs`, remove the read/save methods from `IProjectionCheckpointTracker.cs` and `ProjectionCheckpointTracker.cs`, remove the `:147-158` save block from the orchestrator, update `ProjectionPollerService` to call only `EnumerateTrackedIdentitiesAsync`, delete the deleted-method tests in `ProjectionCheckpointTrackerTests.cs`. Verify Tier 2 delta accounts for the deletions. N/A: A2(a) chosen; no checkpoint API removal.
+  - [x] 2.5 Update XML docs per A3 on `CounterProjectionHandler` and `TenantProjectionHandler`.
+  - [x] 2.6 Update the design doc per common AC C5 path-A wording.
+  - [x] 2.7 Append per A5 to the relevant `RESOLVED` row in the parent r11a1 story.
+  - [x] 2.8 Verify `_ = grep -rn "pending the incremental projection contract decision" docs/` returns 0 matches (the hedge is fully removed under path A).
 
-- [ ] **Task 3 — Execute path B (only if AC C1 picked `extend-projection-request`)** (AC: B1, B2, B3, B4, B5, B6, B7)
-  - [ ] 3.1 Update `ProjectionRequest.cs` per B1.
-  - [ ] 3.2 Pick PB-3 mechanism (i) or (ii). Default: (i). Record in Decision Record.
-  - [ ] 3.3 Update `ProjectionUpdateOrchestrator.cs` per B2 (read checkpoint, read prior state, switch to `GetEventsAsync(lastDeliveredSequence)`, attach prior state to the new `ProjectionRequest`).
-  - [ ] 3.4 Update `CounterProjectionHandler.cs` per B3 to apply delta onto `request.PriorState`.
-  - [ ] 3.5 Update `Hexalith.Tenants/src/Hexalith.Tenants/Projections/TenantProjectionHandler.cs` per B3. Re-run the P1 grep at the end of edits to verify the only `ProjectionRequest` call sites are the orchestrator and the test files.
-  - [ ] 3.6 Add B4's four tier-2 tests to `ProjectionUpdateOrchestratorTests.cs`.
-  - [ ] 3.7 Add B5's two sample tests to `CounterProjectionHandlerTests.cs`.
-  - [ ] 3.8 Update B6's contract test in `ProjectionContractTests.cs`.
-  - [ ] 3.9 Update existing `CounterProjectionHandlerTests.cs` constructor call sites to pass the new field (default `null` is fine for tests that don't exercise prior state).
-  - [ ] 3.10 Update the design doc per common AC C5 path-B wording.
-  - [ ] 3.11 Append per B7 to the relevant `RESOLVED` rows in the parent r11a1 story.
-  - [ ] 3.12 Re-run the AC C7 P1 downstream-consumer grep on `Hexalith.Tenants/` and confirm the submodule patch is the only Tenant-side change. Record in Dev Agent Record.
+- [x] **Task 3 — Execute path B (only if AC C1 picked `extend-projection-request`)** (AC: B1, B2, B3, B4, B5, B6, B7) — N/A: path A chosen.
+  - [x] 3.1 Update `ProjectionRequest.cs` per B1.
+  - [x] 3.2 Pick PB-3 mechanism (i) or (ii). Default: (i). Record in Decision Record.
+  - [x] 3.3 Update `ProjectionUpdateOrchestrator.cs` per B2 (read checkpoint, read prior state, switch to `GetEventsAsync(lastDeliveredSequence)`, attach prior state to the new `ProjectionRequest`).
+  - [x] 3.4 Update `CounterProjectionHandler.cs` per B3 to apply delta onto `request.PriorState`.
+  - [x] 3.5 Update `Hexalith.Tenants/src/Hexalith.Tenants/Projections/TenantProjectionHandler.cs` per B3. Re-run the P1 grep at the end of edits to verify the only `ProjectionRequest` call sites are the orchestrator and the test files.
+  - [x] 3.6 Add B4's four tier-2 tests to `ProjectionUpdateOrchestratorTests.cs`.
+  - [x] 3.7 Add B5's two sample tests to `CounterProjectionHandlerTests.cs`.
+  - [x] 3.8 Update B6's contract test in `ProjectionContractTests.cs`.
+  - [x] 3.9 Update existing `CounterProjectionHandlerTests.cs` constructor call sites to pass the new field (default `null` is fine for tests that don't exercise prior state).
+  - [x] 3.10 Update the design doc per common AC C5 path-B wording.
+  - [x] 3.11 Append per B7 to the relevant `RESOLVED` rows in the parent r11a1 story.
+  - [x] 3.12 Re-run the AC C7 P1 downstream-consumer grep on `Hexalith.Tenants/` and confirm the submodule patch is the only Tenant-side change. Record in Dev Agent Record.
 
-- [ ] **Task 4 — Execute path C (only if AC C1 picked `handler-owned-prior-state`)** (AC: C-path-1, C-path-2, C-path-3, C-path-4, C-path-5, C-path-6)
-  - [ ] 4.1 Update `ProjectionUpdateOrchestrator.cs` per C-path-1 (read checkpoint, switch to `GetEventsAsync(lastDeliveredSequence)`).
-  - [ ] 4.2 Update `CounterProjectionHandler.cs` per C-path-3: read prior state from DAPR state, apply delta, write back. Inject `DaprClient` per `Program.cs:41-42` registration.
-  - [ ] 4.3 Update `Hexalith.Tenants/src/Hexalith.Tenants/Projections/TenantProjectionHandler.cs` per C-path-4: seed per-aggregate state from `TenantProjectionKeyPrefix + request.AggregateId` instead of `new()`.
-  - [ ] 4.4 Add C-path-5's three orchestrator tests to `ProjectionUpdateOrchestratorTests.cs` and the sample test to `CounterProjectionHandlerTests.cs`.
-  - [ ] 4.5 Update the design doc per common AC C5 path-C wording.
-  - [ ] 4.6 Append per C-path-6 to the relevant `RESOLVED` rows in the parent r11a1 story.
-  - [ ] 4.7 Document the new handler obligation in `docs/superpowers/specs/2026-03-15-server-managed-projection-builder-design.md` §5 with explicit migration guidance.
+- [x] **Task 4 — Execute path C (only if AC C1 picked `handler-owned-prior-state`)** (AC: C-path-1, C-path-2, C-path-3, C-path-4, C-path-5, C-path-6) — N/A: path A chosen.
+  - [x] 4.1 Update `ProjectionUpdateOrchestrator.cs` per C-path-1 (read checkpoint, switch to `GetEventsAsync(lastDeliveredSequence)`).
+  - [x] 4.2 Update `CounterProjectionHandler.cs` per C-path-3: read prior state from DAPR state, apply delta, write back. Inject `DaprClient` per `Program.cs:41-42` registration.
+  - [x] 4.3 Update `Hexalith.Tenants/src/Hexalith.Tenants/Projections/TenantProjectionHandler.cs` per C-path-4: seed per-aggregate state from `TenantProjectionKeyPrefix + request.AggregateId` instead of `new()`.
+  - [x] 4.4 Add C-path-5's three orchestrator tests to `ProjectionUpdateOrchestratorTests.cs` and the sample test to `CounterProjectionHandlerTests.cs`.
+  - [x] 4.5 Update the design doc per common AC C5 path-C wording.
+  - [x] 4.6 Append per C-path-6 to the relevant `RESOLVED` rows in the parent r11a1 story.
+  - [x] 4.7 Document the new handler obligation in `docs/superpowers/specs/2026-03-15-server-managed-projection-builder-design.md` §5 with explicit migration guidance.
 
-- [ ] **Task 5 — Common closure obligations regardless of path** (AC: C2, C3, C4, C8, C9)
-  - [ ] 5.1 Update the parent r11a1 story per AC C2: append the `### R11-A1b Closure (<YYYY-MM-DD>)` block AND flip front-matter `Status: in-progress → review` in the SAME commit as the structural change. Pre-merge SHA: leave `<pending merge SHA>`; post-merge: resolve.
-  - [ ] 5.2 Update sprint-status.yaml per AC C3: flip `post-epic-11-r11a1b-incremental-projection-contract-decision: ready-for-dev → review`. Add a one-line `last_updated` note that names the chosen path AND the parent r11a1 status flip. Preserve all other rows and comments byte-identical.
-  - [ ] 5.3 Re-run Tier 1 + Tier 2 per AC C4 and capture post-story counts. Compute equality `post = baseline + expected_delta` and record both numbers in a new `### Verification Status` block at the end of this story file.
-  - [ ] 5.4 Verify per AC C8 that all listed existing tests pass green. If any tier-2 test had to be tightened to flip from `GetEventsAsync(0)` to `GetEventsAsync(checkpoint)` under paths B/C, record the test name and the diff shape (one-line: `<TestName>: pinned arg flipped from 0 to lastDeliveredSequence`) in the Dev Agent Record.
-  - [ ] 5.5 Update the parent r11a1 deferred CRITICAL row per AC C9.
-  - [ ] 5.6 Conventional-commit prefix per AC C7 chosen-path mapping. Verify semantic-release config per (R4) before pushing the merge.
+- [x] **Task 5 — Common closure obligations regardless of path** (AC: C2, C3, C4, C8, C9)
+  - [x] 5.1 Update the parent r11a1 story per AC C2: append the `### R11-A1b Closure (<YYYY-MM-DD>)` block AND flip front-matter `Status: in-progress → review` in the SAME commit as the structural change. Pre-merge SHA: leave `<pending merge SHA>`; post-merge: resolve.
+  - [x] 5.2 Update sprint-status.yaml per AC C3: flip `post-epic-11-r11a1b-incremental-projection-contract-decision: ready-for-dev → review`. Add a one-line `last_updated` note that names the chosen path AND the parent r11a1 status flip. Preserve all other rows and comments byte-identical.
+  - [x] 5.3 Re-run Tier 1 + Tier 2 per AC C4 and capture post-story counts. Compute equality `post = baseline + expected_delta` and record both numbers in a new `### Verification Status` block at the end of this story file.
+  - [x] 5.4 Verify per AC C8 that all listed existing tests pass green. If any tier-2 test had to be tightened to flip from `GetEventsAsync(0)` to `GetEventsAsync(checkpoint)` under paths B/C, record the test name and the diff shape (one-line: `<TestName>: pinned arg flipped from 0 to lastDeliveredSequence`) in the Dev Agent Record.
+  - [x] 5.5 Update the parent r11a1 deferred CRITICAL row per AC C9.
+  - [x] 5.6 Conventional-commit prefix per AC C7 chosen-path mapping. Verify semantic-release config per (R4) before pushing the merge.
 
-- [ ] **Task 6 — Path-coherence gate** (AC: C1)
-  - [ ] 6.1 Run a final `Bash` `grep -rn "pending the incremental projection contract decision" docs/` AND `grep -rn "GetEventsAsync(0)" src/Hexalith.EventStore.Server/`. Under path A: design-doc grep returns 0; orchestrator grep returns 1 (preserved). Under path B: design-doc grep returns 0; orchestrator grep returns 0 (replaced). Under path C: same as path B.
-  - [ ] 6.2 Verify no half-wire/half-rewrite state by confirming the chosen path's full edit set landed: P1 grep on `PriorState` (path B only — must appear in contracts AND sample AND tenant), P9 grep on `CounterState state = new() { Count = priorCount }` (path B) or `daprClient.GetStateAsync<CounterState>` (path C), P11 grep on the corresponding tenant edit. If any check fails, the path is not coherent and the story must not close.
+- [x] **Task 6 — Path-coherence gate** (AC: C1)
+  - [x] 6.1 Run a final `Bash` `grep -rn "pending the incremental projection contract decision" docs/` AND `grep -rn "GetEventsAsync(0)" src/Hexalith.EventStore.Server/`. Under path A: design-doc grep returns 0; orchestrator grep returns 1 (preserved). Under path B: design-doc grep returns 0; orchestrator grep returns 0 (replaced). Under path C: same as path B.
+  - [x] 6.2 Verify no half-wire/half-rewrite state by confirming the chosen path's full edit set landed: P1 grep on `PriorState` (path B only — must appear in contracts AND sample AND tenant), P9 grep on `CounterState state = new() { Count = priorCount }` (path B) or `daprClient.GetStateAsync<CounterState>` (path C), P11 grep on the corresponding tenant edit. If any check fails, the path is not coherent and the story must not close.
 
 ## Dev Notes
 
@@ -388,12 +388,11 @@ R11-A1 is `in-progress` — not yet `done`. Folding the structural-cure decision
 - Sample handler `CounterProjectionHandlerTests.cs:36-46`: the only multi-event test passes the full history in one batch, so the existing tests do not catch the incremental regression. Paths B/C add the missing coverage.
 - Two non-virtual `DaprClient` members limit pure unit coverage of `DaprClient.GetStateAsync` interactions (per R11-A1 Dev Notes). Use the existing `HttpClient` fake-handler pattern where applicable; for path B's prior-state read, prefer the `IProjectionCheckpointTracker`-style boundary that wraps DAPR access behind an injectable interface if a clean unit boundary is needed.
 
-### Decision Record (to be filled at execution time)
+### R11-A1b Decision Record
 
-`### R11-A1b Decision Record`
-**Chosen path:** _< full-replay-permanent | extend-projection-request | handler-owned-prior-state >_
-**Firing trigger:** _< per AC C1 second sub-bullet >_
-**Rationale:** _< 4–10 sentences citing concrete evidence per AC C1 third sub-bullet >_
+**Chosen path:** full-replay-permanent
+**Firing trigger:** Trigger A - observed need: R11-A1 closure gate
+**Rationale:** Path A is the smallest change that closes the parent R11-A1 gate while preserving the already-green safety patch. The sample `CounterProjectionHandler` still rebuilds from `CounterState state = new()` and the tenant handler still rebuilds `TenantReadModel state = new()` for the per-aggregate projection, so delta-only event delivery would corrupt state unless a new prior-state contract or handler-owned state obligation shipped. The downstream consumer grep shows `ProjectionRequest` is consumed by the in-tree `Hexalith.Tenants` submodule at `TenantProjectionHandler.cs` and `Program.cs`, so path B would create a synchronized public-contract release cost with no current operational signal demanding it. R11-A3 evidence recorded a working sample projection path with count 2 -> 3, regenerated ETag, SignalR silent reload, and Sample.Tests 63/63 PASS; it did not record full replay as a measurable cost on the sample stream. The post-change regressions pin `UpdateProjectionAsync_ImmediateDelivery_AlwaysReadsFullHistory` and `UpdateProjectionAsync_RepeatTriggersOnSameAggregate_ProducesIdenticalProjectionState`, keeping `GetEventsAsync(0)` explicit and making the rebuild-from-scratch contract visible to future maintainers. AC A2 option (a) is chosen: checkpoint sequence storage remains for polling coordination and observability; no checkpoint API is removed.
 
 ## References
 
@@ -423,16 +422,47 @@ R11-A1 is `in-progress` — not yet `done`. Folding the structural-cure decision
 
 ### Agent Model Used
 
-_< filled at dev-story execution time >_
+GPT-5.5 Codex
 
 ### Debug Log References
 
-_< filled at dev-story execution time >_
+- AppHost pre-flight: `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`; Aspire resources healthy for `eventstore`, `sample`, `tenants`, `statestore`, `pubsub`, sidecars, admin, and sample UI.
+- Pre-flight HEAD: `34884ac2935f8303b7a0f2d4a601a405cf8fd311`.
+- Decision-evidence greps: `GetEventsAsync(0)` call-site count = 1 (`src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:88`); `ProjectionRequest` downstream consumer count = 2 in `Hexalith.Tenants` (`TenantProjectionHandler.cs:28`, `Program.cs:94`).
+- Handler-shape anchors confirmed: `CounterState state = new();`, `TenantReadModel state = new();`, `ProjectionStateKey = "projection-state";`, and `TenantProjectionKeyPrefix + request.AggregateId`.
+- Baseline Tier 1: Contracts 281/281, Client 334/334, Sample 63/63, Testing 78/78, SignalR 32/32; total 788/788. Baseline Tier 2 Server.Tests: 1668/1668.
+- Path-coherence greps: design-doc hedge text `pending the incremental projection contract decision` = 0 matches; orchestrator `GetEventsAsync(0)` = 1 match.
+- Code-review format verification: `.claude/skills/bmad-code-review/` expects story/spec context and does not require a stricter Decision Record shape beyond readable story parsing; the required three-field block is retained.
+- Semantic-release verification: `.releaserc.json` uses default `@semantic-release/commit-analyzer` / release-notes plugins with no custom `releaseRules` or preset. For path A with no API removal, recommended conventional-commit prefix is `refactor(server):` or `docs:` patch, not `feat!`.
 
 ### Completion Notes List
 
-_< filled at dev-story execution time >_
+- Chose path A `full-replay-permanent` and AC A2 option (a), keeping checkpoint sequence storage for polling coordination and observability.
+- Added Tier 2 regressions that prove immediate delivery ignores the persisted checkpoint for event reads and that repeated triggers over the same aggregate produce identical full-history projection state.
+- Updated sample and tenant projection handler XML documentation to state the supported rebuild-from-scratch contract under full replay.
+- Rewrote the server-managed projection builder design doc to remove the deferred contract hedge and record the full-replay production contract.
+- Updated the parent R11-A1 story status to `review`, appended the R11-A1b closure block, and closed the deferred CRITICAL row with chosen path `full-replay-permanent`.
+- Paths B and C were not executed because the chosen path was A; no `ProjectionRequest` wire-contract change, prior-state field, or handler-owned prior-state migration was introduced.
 
 ### File List
 
-_< filled at dev-story execution time >_
+- `_bmad-output/implementation-artifacts/post-epic-11-r11a1-checkpoint-tracked-projection-delivery.md`
+- `_bmad-output/implementation-artifacts/post-epic-11-r11a1b-incremental-projection-contract-decision.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/superpowers/specs/2026-03-15-server-managed-projection-builder-design.md`
+- `samples/Hexalith.EventStore.Sample/Counter/Projections/CounterProjectionHandler.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs`
+- `Hexalith.Tenants/src/Hexalith.Tenants/Projections/TenantProjectionHandler.cs`
+
+### Verification Status
+
+- Pre-change baseline: Tier 1 = 788/788; Tier 2 Server.Tests = 1668/1668.
+- Post-change validation: Tier 1 = 788/788; Tier 2 Server.Tests = 1670/1670.
+- Expected path-A delta: Tier 1 +0, Tier 2 +2. Equality holds: Tier 1 `788 = 788 + 0`; Tier 2 `1670 = 1668 + 2`.
+- Targeted red/green path: new orchestrator regression tests failed first on implementation mistakes, then passed after fixing the test harness; final targeted run was 2/2 PASS.
+
+## Change Log
+
+| Date | Version | Description | Author |
+|---|---:|---|---|
+| 2026-05-01 | 1.0 | Implemented path A full-replay-permanent decision, pinned regressions, updated docs and parent closure state. | Codex |

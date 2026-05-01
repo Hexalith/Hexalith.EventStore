@@ -11,6 +11,9 @@ namespace Hexalith.EventStore.Sample.Counter.Projections;
 /// Projection handler for the Counter domain. Replays events from a
 /// <see cref="ProjectionRequest"/> onto a fresh <see cref="CounterState"/>
 /// and returns the current count as a <see cref="ProjectionResponse"/>.
+/// Rebuild-from-scratch is the supported pattern under the full-replay
+/// projection contract; the handler does not need to read or persist prior
+/// projection state.
 /// </summary>
 public static class CounterProjectionHandler {
     /// <summary>

@@ -28,8 +28,8 @@ Events persisted by AggregateActor
        no  --> Background IHostedService polls per tenant:domain:aggregateId
         |
         v
-EventStore reads new events since last-sent checkpoint
-(via AggregateActor.GetEventsAsync — encapsulated, no DAPR key coupling)
+EventStore reads the full aggregate event history
+(via AggregateActor.GetEventsAsync(0) — encapsulated, no DAPR key coupling)
         |
         v
 POST /project to domain service via DAPR service invocation
@@ -79,16 +79,16 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 - Tracks last-sent event sequence **per aggregate**: `tenant:domain:aggregateId`
 - Stored in DAPR state store via dedicated checkpoint state key: `projection-checkpoints:{tenant}:{domain}:{aggregateId}`
 - Updated **only after** successful `UpdateProjectionAsync` call (write-after-success guarantees at-least-once delivery)
-- Immediate delivery currently keeps the safe full-replay read path (`AggregateActor.GetEventsAsync(0)`) while still writing checkpoints after successful projection writes. Incremental reads from the checkpoint are deferred until the projection handler state contract is resolved.
+- Immediate and polling delivery use full replay (`AggregateActor.GetEventsAsync(0)`) as the production contract while still writing checkpoints after successful projection writes.
 - Checkpoint writes keep the maximum observed sequence so delayed duplicate triggers do not lower an already advanced checkpoint.
-- Duplicate delivery remains possible. Domain services must handle duplicate full-history projection requests idempotently; delta-only projection requests require a future contract decision because the current `ProjectionRequest` does not carry prior projection state.
+- Duplicate delivery remains possible. Domain services may rebuild projection state from the supplied full event sequence; checkpoint sequence values are retained for coordination and observability, not for trimming immediate or polling projection requests.
 
 #### 3. Immediate Trigger (RefreshIntervalMs = 0, default)
 
 - **Fire-and-forget background task** — does NOT block command processing (preserves CQRS separation)
 - Triggered after `EventPublisher` persists events via a lightweight event/callback, NOT by adding dependencies to `AggregateActor`
 - Uses `IProjectionUpdateOrchestrator` injected into the event publication path (not into AggregateActor itself)
-- Reads the aggregate event history via `AggregateActor.GetEventsAsync(0)` pending the incremental projection contract decision
+- Reads the aggregate event history via `AggregateActor.GetEventsAsync(0)` by design
 - Sends to domain service `/project` endpoint
 - Updates checkpoint and ProjectionActor state
 - Failures are logged and retried on the next trigger — stale projections are acceptable (eventual consistency)
@@ -100,7 +100,7 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 - New aggregates become eligible for polling when the first published event registers the identity in the projection checkpoint tracker boundary.
 - A projection update may be stale until the next poll tick. Operators should treat the configured interval as the expected freshness delay for polling domains.
 - Polling keeps the same at-least-once delivery contract as immediate mode. Duplicate delivery is allowed and absorbed by idempotent domain projection handlers plus checkpoint/concurrency behavior.
-- Reads currently use the safe full-history path (`AggregateActor.GetEventsAsync(0)`) pending the incremental projection contract decision, then send to the domain service `/project` endpoint and update checkpoint plus `ProjectionActor` state through the shared orchestrator path.
+- Polling uses the same safe full-history path (`AggregateActor.GetEventsAsync(0)`) as immediate delivery, then sends to the domain service `/project` endpoint and updates checkpoint plus `ProjectionActor` state through the shared orchestrator path.
 
 #### 5. Domain Service `/project` Endpoint (thin)
 
@@ -112,9 +112,9 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 - `ProjectionEventDto` is a new wire-format DTO in Contracts (not the Server-internal `EventEnvelope`)
     - Fields: `string EventTypeName, byte[] Payload, string SerializationFormat, long SequenceNumber, DateTimeOffset Timestamp, string CorrelationId`
     - Mapped from Server `EventEnvelope` by the projection builder before sending
-- Domain service applies events to its own stored projection state
-- Domain service owns the projection state persistence (e.g., in-memory, DAPR state, or any store)
-- Returns the current state after applying the new events
+- Domain service may rebuild projection state from the full supplied event sequence
+- Domain service owns the projection logic and returned state shape; it does not need to persist prior projection state for the server-managed full-replay contract
+- Returns the current state after applying the supplied events
 - **Idempotency**: domain service must handle duplicate event delivery (events include SequenceNumber for dedup)
 
 **Rationale for `JsonElement State`**: Projection state is domain-specific. EventStore treats it as opaque bytes — it stores and serves it without understanding the schema. This keeps the Server project decoupled from domain types.
@@ -131,7 +131,7 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 - **Decision**: Use a new read-only method on `IAggregateActor`, not direct DAPR state store key access
 - `GetEventsAsync(long fromSequence)` returns `EventEnvelope[]` for events with sequence > `fromSequence`
 - Encapsulates DAPR actor state key format — projection infrastructure never knows the internal key layout
-- **Concurrency**: DAPR actors are single-threaded, so this call blocks command processing while executing. Mitigated by: (a) only reads events since the last checkpoint (typically a small batch), so the call is short; (b) for high-throughput aggregates, use `RefreshIntervalMs > 0` to batch reads and reduce actor contention; (c) the projection builder should not hold the actor proxy longer than necessary
+- **Concurrency**: DAPR actors are single-threaded, so this call blocks command processing while executing. Mitigated by: (a) projection updates run after event publication and outside command persistence; (b) for high-throughput aggregates, use `RefreshIntervalMs > 0` to reduce trigger frequency; (c) the projection builder should not hold the actor proxy longer than necessary
 - The projection builder maps the returned Server `EventEnvelope[]` to `ProjectionEventDto[]` before sending to the domain service
 
 ### Configuration
@@ -161,9 +161,9 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 - **Domain service unavailable**: Log warning, skip update. Projection stays at last known state (stale). Next trigger/poll retries.
 - **Domain service returns error**: Log warning, do NOT update checkpoint. Same events will be resent on next trigger/poll.
 - **Checkpoint update ordering**: Checkpoint updated ONLY after successful `UpdateProjectionAsync` call. This guarantees at-least-once delivery.
-- **Checkpoint read failure**: Immediate delivery does not currently read checkpoints for event trimming. Future incremental delivery must fail open without skipping events.
+- **Checkpoint read failure**: Delivery does not read checkpoints for event trimming. Full replay (`GetEventsAsync(0)`) remains the production contract, so checkpoint read failures cannot cause skipped projection events.
 - **Checkpoint save failure**: Log warning after the projection actor write and leave the previous checkpoint unchanged. The next trigger resends from the old checkpoint.
-- **Projection builder crash**: On restart, immediate delivery replays full aggregate history and rewrites the projection state. Checkpoints remain available for future incremental/polling work.
+- **Projection builder crash**: On restart, delivery replays full aggregate history and rewrites the projection state. Checkpoints remain available for polling coordination and operational visibility.
 - **AggregateActor.GetEventsAsync failure**: Log warning, skip. Retried on next trigger/poll.
 - **Degraded mode**: Stale projections are explicitly acceptable. The system favors availability over consistency (AP in CAP). Queries return the last known state, which may be behind by one or more events.
 

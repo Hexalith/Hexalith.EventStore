@@ -1,6 +1,6 @@
 # Post-Epic-11 R11-A1: Checkpoint-Tracked Projection Delivery
 
-Status: in-progress
+Status: review
 
 <!--
 2026-05-01 re-review reopened this story (done → in-progress) on a CRITICAL finding: the
@@ -209,7 +209,11 @@ Re-entered via `/bmad-dev-story` to re-verify the three patches applied during t
 
 **Closure status:**
 
-All 7 tasks remain `[x]`. The three Re-Review (2026-05-01) patches remain `[x]` and are visible in the codebase. Story closure remains gated on the single CRITICAL Decision-Needed finding in the Re-Review section: rebuild-from-scratch projection handlers (canonical: `samples/Hexalith.EventStore.Sample/Counter/Projections/CounterProjectionHandler.cs:21-36`) are silently corrupted by incremental delivery because `EventReplayProjectionActor.cs:43` overwrites without merge and `ProjectionRequest` does not carry prior projection state. Per project precedent (post-epic-2-r2a5 → r2a5b, post-epic-4-r4a2 → r4a2b), the binary architectural decision (full-replay revert vs. extend `ProjectionRequest` with prior state vs. require incremental-aware handlers) belongs in the sibling carve-out story `post-epic-11-r11a1b-incremental-projection-contract-decision`, currently `backlog` (spec not yet authored). r11a1 cannot transition `in-progress → review` until r11a1b authors → develops → merges. Recommended next action: `/bmad-create-story post-epic-11-r11a1b-incremental-projection-contract-decision`.
+All 7 tasks remain `[x]`. The three Re-Review (2026-05-01) patches remain `[x]` and are visible in the codebase. Story closure remains gated on the single CRITICAL Decision-Needed finding in the Re-Review section: rebuild-from-scratch projection handlers (canonical: `samples/Hexalith.EventStore.Sample/Counter/Projections/CounterProjectionHandler.cs:21-36`) are silently corrupted by incremental delivery because `EventReplayProjectionActor.cs:43` overwrites without merge and `ProjectionRequest` does not carry prior projection state. Per project precedent (post-epic-2-r2a5 -> r2a5b, post-epic-4-r4a2 -> r4a2b), the binary architectural decision (full-replay revert vs. extend `ProjectionRequest` with prior state vs. require incremental-aware handlers) belongs in the sibling carve-out story `post-epic-11-r11a1b-incremental-projection-contract-decision`, currently `backlog` (spec not yet authored). r11a1 cannot transition `in-progress -> review` until r11a1b authors -> develops -> merges. Recommended next action: `/bmad-create-story post-epic-11-r11a1b-incremental-projection-contract-decision`.
+
+### R11-A1b Closure (2026-05-01)
+
+Closed by `post-epic-11-r11a1b-incremental-projection-contract-decision` with chosen path `full-replay-permanent` at `<pending merge SHA>`. The orchestrator uses `GetEventsAsync(0)` by design for immediate and polling projection delivery, preserving rebuild-from-scratch domain handlers while checkpoint writes remain available for polling coordination and observability.
 
 ### File List
 
@@ -273,6 +277,7 @@ Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor (independent — prio
 ### Decision-Needed
 
 - [x] [Review][Decision] **Counter sample (and any rebuild-from-scratch projection handler) is silently corrupted by incremental delivery** — RESOLVED in current pass by reverting immediate delivery to full replay (`GetEventsAsync(0)`) while retaining checkpoint writes. Future incremental delivery remains gated on `post-epic-11-r11a1b-incremental-projection-contract-decision`.
+  **Closed by R11-A1b at `<pending merge SHA>`** with chosen path: `full-replay-permanent`.
 
 ### Patch
 
@@ -311,7 +316,7 @@ All 12 ACs assessed as Met (independent re-audit). The CRITICAL finding above si
 ### Review Findings (Current Pass 2026-05-01)
 
 - [x] [Review][Decision] Incremental delivery corrupts rebuild-from-scratch projection handlers — RESOLVED by conservative full-replay safety patch. `ProjectionUpdateOrchestrator` now calls `GetEventsAsync(0)` for immediate delivery while retaining checkpoint writes after successful projection writes. Future incremental reads remain gated on `post-epic-11-r11a1b-incremental-projection-contract-decision`.
-- [x] [Review][Decision] Concurrent projection triggers can regress projection state while the checkpoint remains advanced — RESOLVED by per-aggregate serialization in `ProjectionUpdateOrchestrator`; concurrent fire-and-forget triggers for the same `AggregateIdentity.ActorId` now execute one at a time.
+- [x] [Review][Decision] Concurrent projection triggers can regress projection state while the checkpoint remains advanced — RESOLVED by per-aggregate serialization in `ProjectionUpdateOrchestrator`; concurrent fire-and-forget triggers for the same `AggregateIdentity.ActorId` now execute one at a time; full-replay-permanent contract under R11-A1b makes the regression scenario impossible by construction (no delta-only delivery).
 - [x] [Review][Decision] Checkpoints are scoped per aggregate, not per projection state lifecycle or projection type — RESOLVED for current immediate delivery by full replay: checkpoint state no longer trims immediate event reads, so projection actor state reset/type changes cannot skip historical events in this path. Future incremental/polling scope remains part of the sibling contract decision.
 - [x] [Review][Decision] Checkpoint-ahead-of-stream drift has no recovery policy — RESOLVED for current immediate delivery by full replay: the stored checkpoint is no longer passed to `GetEventsAsync` for immediate projection updates. Future incremental/polling recovery policy remains part of the sibling contract decision.
 - [x] [Review][Patch] Validate persisted checkpoint identity before trusting `LastDeliveredSequence` [`src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs:26`] — tracker now rejects mismatched `TenantId`, `Domain`, or `AggregateId` with `InvalidOperationException`, pinned by `ReadLastDeliveredSequenceAsync_MismatchedCheckpointIdentity_ThrowsInvalidOperationException`.
