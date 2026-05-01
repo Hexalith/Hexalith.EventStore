@@ -1,6 +1,6 @@
 # Post-Epic-11 R11-A4: Valid Projection Round-Trip
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Source: epic-11-retro-2026-04-30.md - Action item R11-A4 -->
 <!-- Source: epic-12-retro-2026-04-30.md - R12-A5 carry-forward backlog -->
