@@ -7,6 +7,11 @@ namespace Hexalith.EventStore.Server.Configuration;
 /// </summary>
 public record ProjectionOptions {
     /// <summary>
+    /// Gets the DAPR state store component name for projection delivery checkpoints.
+    /// </summary>
+    public string CheckpointStateStoreName { get; init; } = "statestore";
+
+    /// <summary>
     /// Gets the default refresh interval in milliseconds.
     /// 0 = immediate (fire-and-forget after persistence).
     /// Values &gt; 0 enable background polling at that interval (Story 11-4).
@@ -41,6 +46,10 @@ public record ProjectionOptions {
     /// Validates projection options and throws if configuration is invalid.
     /// </summary>
     public void Validate() {
+        if (string.IsNullOrWhiteSpace(CheckpointStateStoreName)) {
+            throw new InvalidOperationException("Projection checkpoint state store name must not be empty.");
+        }
+
         if (DefaultRefreshIntervalMs < 0) {
             throw new InvalidOperationException("Projection default refresh interval must be >= 0.");
         }

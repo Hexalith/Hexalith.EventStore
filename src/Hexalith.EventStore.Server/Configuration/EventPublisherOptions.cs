@@ -14,6 +14,18 @@ public record EventPublisherOptions {
     public string DeadLetterTopicPrefix { get; init; } = "deadletter";
 
     /// <summary>
+    /// Gets an optional test-only file path that forces publish failure while the file exists.
+    /// This is disabled by default and is used by Tier 3 runtime recovery tests.
+    /// </summary>
+    public string? TestPublishFaultFilePath { get; init; }
+
+    /// <summary>
+    /// Gets an optional correlation-id prefix that narrows the test publish fault.
+    /// Empty or null means any correlation ID is faulted while <see cref="TestPublishFaultFilePath"/> exists.
+    /// </summary>
+    public string? TestPublishFaultCorrelationIdPrefix { get; init; }
+
+    /// <summary>
     /// Gets the dead-letter topic name for a specific aggregate identity.
     /// Format: {DeadLetterTopicPrefix}.{tenantId}.{domain}.events
     /// </summary>

@@ -54,6 +54,15 @@ public class EventPublisherTests {
         return (publisher, daprClient, logger);
     }
 
+    private static (EventPublisher Publisher, DaprClient DaprClient, ILogger<EventPublisher> Logger) CreatePublisher(EventPublisherOptions publisherOptions) {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(publisherOptions);
+        ILogger<EventPublisher> logger = Substitute.For<ILogger<EventPublisher>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService(), new NoOpProjectionUpdateOrchestrator());
+        return (publisher, daprClient, logger);
+    }
+
     // --- Task 6.1: Single event CloudEvents metadata ---
 
     [Fact]
@@ -222,6 +231,55 @@ public class EventPublisherTests {
         result.Success.ShouldBeFalse();
         result.PublishedCount.ShouldBe(0);
         result.FailureReason!.ShouldContain("Pub/sub component unavailable");
+    }
+
+    [Fact]
+    public async Task PublishEventsAsync_TestPublishFaultFileExists_ReturnsFailureWithoutCallingDapr() {
+        string faultFile = Path.Combine(Path.GetTempPath(), $"hexalith-pubsub-fault-{Guid.NewGuid():N}.flag");
+        File.WriteAllText(faultFile, "fault");
+        try {
+            (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher(new EventPublisherOptions {
+                PubSubName = "pubsub",
+                TestPublishFaultFilePath = faultFile,
+            });
+
+            EventPublishResult result = await publisher.PublishEventsAsync(TestIdentity, [CreateTestEnvelope()], "corr-001");
+
+            result.Success.ShouldBeFalse();
+            result.PublishedCount.ShouldBe(0);
+            result.FailureReason.ShouldNotBeNull();
+            result.FailureReason.ShouldContain("Configured test publish fault");
+            await daprClient.DidNotReceiveWithAnyArgs().PublishEventAsync<EventEnvelope>(default!, default!, default!, default!, default);
+        }
+        finally {
+            File.Delete(faultFile);
+        }
+    }
+
+    [Fact]
+    public async Task PublishEventsAsync_TestPublishFaultPrefixDoesNotMatch_PublishesNormally() {
+        string faultFile = Path.Combine(Path.GetTempPath(), $"hexalith-pubsub-fault-{Guid.NewGuid():N}.flag");
+        File.WriteAllText(faultFile, "fault");
+        try {
+            (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher(new EventPublisherOptions {
+                PubSubName = "pubsub",
+                TestPublishFaultFilePath = faultFile,
+                TestPublishFaultCorrelationIdPrefix = "r4a5-",
+            });
+
+            EventPublishResult result = await publisher.PublishEventsAsync(TestIdentity, [CreateTestEnvelope()], "corr-001");
+
+            result.Success.ShouldBeTrue();
+            await daprClient.Received(1).PublishEventAsync(
+                "pubsub",
+                "test-tenant.test-domain.events",
+                Arg.Any<EventEnvelope>(),
+                Arg.Any<Dictionary<string, string>>(),
+                Arg.Any<CancellationToken>());
+        }
+        finally {
+            File.Delete(faultFile);
+        }
     }
 
     // --- Task 6.9: Partial failure ---

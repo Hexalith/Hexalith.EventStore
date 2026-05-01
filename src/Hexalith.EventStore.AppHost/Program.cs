@@ -42,6 +42,12 @@ HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(
     adminServerAccessControlConfigPath,
     resiliencyConfigPath);
 
+ForwardEventStoreEnvironment("EventStore:Publisher:TestPublishFaultFilePath", "EventStore__Publisher__TestPublishFaultFilePath");
+ForwardEventStoreEnvironment("EventStore:Publisher:TestPublishFaultCorrelationIdPrefix", "EventStore__Publisher__TestPublishFaultCorrelationIdPrefix");
+ForwardEventStoreEnvironment("EventStore:Drain:InitialDrainDelay", "EventStore__Drain__InitialDrainDelay");
+ForwardEventStoreEnvironment("EventStore:Drain:DrainPeriod", "EventStore__Drain__DrainPeriod");
+ForwardEventStoreEnvironment("EventStore:Drain:MaxDrainPeriod", "EventStore__Drain__MaxDrainPeriod");
+
 // Keycloak identity provider for E2E security testing (D11, Story 5.1 Task 8).
 // Enabled by default for local development with real OIDC token testing.
 // Set EnableKeycloak=false in environment or appsettings to run without Keycloak
@@ -170,6 +176,18 @@ else if (string.Equals(publishTarget, "aca", StringComparison.OrdinalIgnoreCase)
     _ = builder.AddAzureContainerAppEnvironment("aca");
 }
 
+if (string.Equals(builder.Configuration["EnablePubSubTestSubscriber"], "true", StringComparison.OrdinalIgnoreCase)) {
+    IResourceBuilder<ProjectResource> testSubscriber = builder.AddProject<Projects.Hexalith_EventStore_TestSubscriber>("eventstore-test-subscriber")
+        .WithDaprSidecar(sidecar => sidecar
+            .WithOptions(new DaprSidecarOptions {
+                AppId = "eventstore-test-subscriber",
+            })
+            .WithReference(eventStoreResources.PubSub))
+        .WaitFor(eventStore);
+
+    _ = testSubscriber.WithEnvironment("EVENTSTORE_TEST_SUBSCRIBER_TOPIC", "tenant-a.counter.events");
+}
+
 builder.Build().Run();
 
 static string ResolveDaprConfigPath(string fileName) {
@@ -187,4 +205,11 @@ static string ResolveDaprConfigPath(string fileName) {
     }
 
     return configPath;
+}
+
+void ForwardEventStoreEnvironment(string configurationKey, string environmentKey) {
+    string? value = builder.Configuration[configurationKey];
+    if (!string.IsNullOrWhiteSpace(value)) {
+        _ = eventStore.WithEnvironment(environmentKey, value);
+    }
 }

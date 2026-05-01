@@ -182,8 +182,11 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         DaprClient daprClient = Substitute.For<DaprClient>();
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>())
+            .Returns(0);
         IOptions<ProjectionOptions> projectionOptions = Options.Create(options ?? new ProjectionOptions());
-        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, Substitute.For<IHttpClientFactory>(), resolver, projectionOptions, NullLogger<ProjectionUpdateOrchestrator>.Instance);
+        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, NullLogger<ProjectionUpdateOrchestrator>.Instance);
         return (sut, actorProxyFactory, daprClient, resolver);
     }
 }

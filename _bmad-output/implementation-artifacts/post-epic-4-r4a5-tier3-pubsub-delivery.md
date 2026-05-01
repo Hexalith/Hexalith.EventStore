@@ -1,6 +1,6 @@
 # Post-Epic-4 R4-A5: Tier 3 Pub/Sub Delivery Proof
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Source: epic-4-retro-2026-04-26.md R4-A5 -->
 <!-- Source: sprint-change-proposal-2026-04-26-epic-4-retro-cleanup.md Proposal 5 -->
