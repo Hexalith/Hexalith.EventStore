@@ -59,13 +59,17 @@ This story adds that focused proof. It should be an integration-test/runbook sto
 
 - [ ] Task 3: Add an eventual query assertion helper (AC: #4, #5, #6, #8)
   - [ ] Poll `POST /api/v1/queries` until `200 OK` with the expected count.
-  - [ ] Include `entityId` and `projectionType` explicitly in the query JSON.
+  - [ ] Include `entityId = aggregateId` and `projectionType = "counter"` explicitly in the query JSON.
+  - [ ] If reusing `ContractTestHelpers.CreateQueryRequest`, extend that helper to serialize `ProjectionType` and `EntityId`; do not rely on controller defaulting for this proof.
+  - [ ] Treat `404 NotFound` and zero-count payloads as retry states until the expected count appears; do not copy `CounterQueryService`'s UI-friendly 404-to-zero behavior into the test success path.
   - [ ] Preserve the last non-success response body for timeout diagnostics.
   - [ ] Parse direct-object and base64-string payload forms.
 
 - [ ] Task 4: Pin ETag round-trip behavior (AC: #7)
   - [ ] Capture the first successful query response `ETag` header.
+  - [ ] Assert the first successful response body has the expected count before sending any `If-None-Match` request.
   - [ ] Send a second query with `If-None-Match`.
+  - [ ] Reuse the parsed response `EntityTagHeaderValue` or preserve the server-provided quotes exactly; avoid double-quoting or stripping weak-validator syntax.
   - [ ] Accept `304 NotModified`, or `200 OK` with the same expected count if a concurrent projection change invalidated the ETag.
 
 - [ ] Task 5: Keep failure-path coverage isolated (AC: #9, #10, #12)
@@ -84,6 +88,7 @@ This story adds that focused proof. It should be an integration-test/runbook sto
 
 - `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestFixture.cs` already starts the full Aspire topology with `EnableKeycloak=false`, waits for `eventstore`, `eventstore-admin`, and `sample`, and exposes `EventStoreClient`.
 - `tests/Hexalith.EventStore.IntegrationTests/Helpers/ContractTestHelpers.cs` already has command submission and status-poll helpers using synthetic JWTs. Extend it carefully if a query helper needs explicit `entityId` and `projectionType`.
+- `ContractTestHelpers.CreateQueryRequest` currently serializes `Tenant`, `Domain`, `AggregateId`, `QueryType`, and `Payload`; this story needs either a local request builder or a helper extension that also serializes `ProjectionType = "counter"` and `EntityId = aggregateId`.
 - `src/Hexalith.EventStore/Controllers/CommandsController.cs` returns `202 Accepted`, `Location`, and `Retry-After` for accepted commands.
 - `src/Hexalith.EventStore/Controllers/QueriesController.cs` defaults missing `EntityId` to `AggregateId`, uses projection type for self-routing ETags, and emits an `ETag` header when one is available.
 - `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs` is the real immediate projection path: resolve domain service, read aggregate events, invoke `/project`, and write the returned state to `ProjectionActor`.
@@ -95,10 +100,18 @@ This story adds that focused proof. It should be an integration-test/runbook sto
 
 - Do not use direct actor proxies in the test. The value is proving the public command and query surfaces plus DAPR service invocation.
 - Do not call the sample service `/project` directly as the main assertion. That proves handler serialization, not EventStore projection delivery.
+- If adding an optional direct `/project` preflight, send a valid `ProjectionRequest`; a null or malformed body belongs only to the existing fault-path test.
 - Do not make the test depend on SignalR or browser refresh. R11-A3 owns trace-backed AppHost/UI evidence.
 - Do not make the test require R11-A1 or R11-A2 to be implemented. The test should pass against immediate mode with full replay and should continue to pass after checkpointing/polling lands.
 - Keep timeouts bounded and diagnostics rich. Projection delivery is background work, so the assertion should poll, but it should fail with useful response bodies rather than hanging.
 - Use `TestJwtTokenGenerator` claims consistent with dev auth: include the target tenant and permissions for `command:submit`, `command:query`, and `query:read` as needed.
+
+### Party-Mode Review Guardrails
+
+- Keep the success oracle on the server contract: `Completed` with `eventCount > 0`, followed by `POST /api/v1/queries` returning the same aggregate's projected count. Browser/UI 404-to-zero behavior is not acceptable as the final proof.
+- The test must prove the explicit query identity shape, not only the controller's fallback behavior. The serialized query body should show `domain = "counter"`, `projectionType = "counter"`, `queryType = "get-counter-status"`, `aggregateId = aggregateId`, and `entityId = aggregateId`.
+- ETag validation starts only after a successful count assertion. A `304 NotModified` before the test has proven the target aggregate's projection state would be a false positive.
+- If the run fails because DAPR service invocation is blocked by access-control policy or slim-mode infrastructure, record that as an execution blocker for this story; do not broaden the story into access-control, checkpoint, polling, SignalR, or UI remediation.
 
 ### Suggested File Touches
 
@@ -153,3 +166,28 @@ TBD
 ### Completion Notes List
 
 ### File List
+
+## Party-Mode Review
+
+- Date/time: 2026-05-01T11:04:16+02:00
+- Selected story key: `post-epic-11-r11a4-valid-projection-round-trip`
+- Command/skill invocation used: `/bmad-party-mode post-epic-11-r11a4-valid-projection-round-trip; review;`
+- Participating BMAD agents: Bob (Scrum Master), Winston (Architect), Amelia (Developer Agent), Murat (Master Test Architect), Paige (Technical Writer), Sally (UX Designer), John (Product Manager)
+- Findings summary:
+  - Bob: The story was structurally ready, but the query-helper path needed clearer wording so implementation cannot satisfy AC #5 by relying only on controller defaulting.
+  - Winston: ETag validation needed an ordering guard; `If-None-Match` should be tested only after a successful count proves the target aggregate projection exists.
+  - Amelia: `ContractTestHelpers.CreateQueryRequest` currently omits `ProjectionType` and `EntityId`; the story needed an explicit implementation warning before development.
+  - Murat: The eventual assertion must treat transient `404 NotFound` and stale zero counts as retry states, not as the final success path copied from the sample UI service.
+  - Paige: The optional direct `/project` note needed to distinguish a valid `ProjectionRequest` probe from the existing malformed-response fault test.
+  - Sally: No UI accessibility/localization changes are introduced; adopter-experience risk is diagnostic quality when projection actor lookup fails.
+  - John: No product scope expansion is needed; checkpointing, polling, SignalR, UI proof, and access-control remediation remain outside this story.
+- Changes applied:
+  - Tightened Task 3 to require serialized `projectionType = "counter"` and `entityId = aggregateId`.
+  - Added a guard that `404 NotFound` and zero-count payloads remain retry states until the expected count appears.
+  - Strengthened Task 4 so ETag checks occur after a successful count assertion and preserve server-provided tag formatting.
+  - Added Dev Notes for the current `ContractTestHelpers.CreateQueryRequest` limitation and valid `/project` probe shape.
+  - Added Party-Mode Review Guardrails covering server-contract success, explicit query identity, ETag ordering, and infrastructure blocker routing.
+- Findings deferred:
+  - `project-context.md` preload was unavailable; no generated project-context artifact was found in this repository.
+  - DAPR access-control or slim-mode runtime failures, if encountered during execution, must be recorded as blockers rather than fixed inside this story.
+- Final recommendation: `ready-for-dev`
