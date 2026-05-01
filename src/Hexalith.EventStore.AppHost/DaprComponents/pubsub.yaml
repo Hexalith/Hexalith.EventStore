@@ -110,6 +110,11 @@ spec:
     # dynamic tenant topics and dead-letter topics (NFR20).
     # NOTE: Do NOT use "eventstore=*" -- DAPR treats * as a literal topic name,
     # not a wildcard. Omitting eventstore achieves unrestricted access.
+    # DEV-ONLY: `eventstore-test-subscriber=` is the test subscriber's empty publish grant.
+    # Production deployment overlays (k8s/docker/aca via `aspire publish`) MUST strip the
+    # `;eventstore-test-subscriber=` segment. The app-id is owned by the Tier 3 R4-A5 fixture
+    # only, but leaving it in production-bound manifests is non-zero squatting risk and is
+    # tracked by post-epic-4-r4a5-D2-followup (see deferred-work.md).
     - name: publishingScopes
       value: "sample=;eventstore-test-subscriber="
     # Subscription scoping (Story 5.3, FR29):
@@ -121,6 +126,9 @@ spec:
     #   value: "sample=;example-subscriber=acme.orders.events,acme.inventory.events"
     # Example with ops-monitor scoped to dead-letter topics only:
     #   value: "sample=;ops-monitor=deadletter.acme.orders.events,deadletter.acme.inventory.events"
+    # DEV-ONLY (see above): `eventstore-test-subscriber=tenant-a.counter.events` is the Tier 3
+    # R4-A5 test subscriber's narrow subscribe grant. Production overlays MUST strip this
+    # segment. See post-epic-4-r4a5-D2-followup in deferred-work.md.
     - name: subscriptionScopes
       value: "sample=;eventstore-test-subscriber=tenant-a.counter.events;example-subscriber=acme.orders.events,acme.inventory.events;ops-monitor=deadletter.acme.orders.events,deadletter.acme.inventory.events"
 # Component-level scoping: eventstore and explicitly authorized subscriber app-ids
@@ -136,6 +144,9 @@ spec:
 #     - ops-monitor
 scopes:
   - eventstore
+  # DEV-ONLY: `eventstore-test-subscriber` is the Tier 3 R4-A5 test subscriber app-id.
+  # Production deployment overlays MUST remove this entry. Tracked by
+  # post-epic-4-r4a5-D2-followup in deferred-work.md.
   - eventstore-test-subscriber
   - example-subscriber
   - ops-monitor

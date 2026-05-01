@@ -1,13 +1,14 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Net.Sockets;
 using System.Text.Json;
 
 using Hexalith.EventStore.IntegrationTests.Fixtures;
 using Hexalith.EventStore.IntegrationTests.Helpers;
 
 using Shouldly;
+
+using StackExchange.Redis;
 
 namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 
@@ -16,7 +17,12 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 [Collection("AspirePubSubProofTests")]
 public sealed class PubSubDeliveryProofTests {
     private static readonly TimeSpan SubscriberTimeout = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan RecoveryTimeout = TimeSpan.FromSeconds(20);
+
+    // Recovery wall-clock budget after the fault flag is removed: drain reminder fires every
+    // DrainPeriod=1s up to MaxDrainPeriod=5s, then the published event is observed by the
+    // subscriber and the status flips to Completed. 25s gives ~5 drain attempts of head-room
+    // for slow CI workers without hiding genuine drain regressions.
+    private static readonly TimeSpan RecoveryTimeout = TimeSpan.FromSeconds(25);
 
     private readonly AspirePubSubProofTestFixture _fixture;
 
@@ -24,9 +30,9 @@ public sealed class PubSubDeliveryProofTests {
 
     [Fact]
     public async Task PubSubDelivery_CommandPublished_SubscriberReceivesCloudEvent() {
-        await ClearSubscriberEventsAsync();
+        // Each test uses a fresh GUID-derived correlation id, so the subscriber's
+        // correlation-id-filtered GET starts empty for this run -- no global clear required.
         string aggregateId = $"r4a5-delivery-{Guid.NewGuid():N}";
-
         string correlationId = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
             _fixture.EventStoreClient,
             tenant: "tenant-a",
@@ -58,54 +64,57 @@ public sealed class PubSubDeliveryProofTests {
 
     [Fact]
     public async Task PubSubDrain_PublishFailsThenRecovers_DrainsPersistedEvents() {
-        await ClearSubscriberEventsAsync();
-        File.WriteAllText(_fixture.FaultFilePath, "fault");
         string aggregateId = $"r4a5-drain-{Guid.NewGuid():N}";
+        TryWriteFaultFile();
+        try {
+            string correlationId = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
+                _fixture.EventStoreClient,
+                tenant: "tenant-a",
+                domain: "counter",
+                aggregateId: aggregateId,
+                commandType: "IncrementCounter");
 
-        string correlationId = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdAsync(
-            _fixture.EventStoreClient,
-            tenant: "tenant-a",
-            domain: "counter",
-            aggregateId: aggregateId,
-            commandType: "IncrementCounter");
+            JsonElement publishFailedStatus = await ContractTestHelpers.PollUntilTerminalStatusAsync(
+                _fixture.EventStoreClient,
+                correlationId,
+                "tenant-a",
+                timeout: TimeSpan.FromSeconds(45));
 
-        JsonElement publishFailedStatus = await ContractTestHelpers.PollUntilTerminalStatusAsync(
-            _fixture.EventStoreClient,
-            correlationId,
-            "tenant-a",
-            timeout: TimeSpan.FromSeconds(45));
+            publishFailedStatus.GetProperty("status").GetString().ShouldBe("PublishFailed");
+            publishFailedStatus.GetProperty("eventCount").GetInt32().ShouldBe(1);
 
-        publishFailedStatus.GetProperty("status").GetString().ShouldBe("PublishFailed");
-        publishFailedStatus.GetProperty("eventCount").GetInt32().ShouldBe(1);
+            JsonElement drainRecord = await ReadDrainRecordAsync(aggregateId, correlationId);
+            GetString(drainRecord, "correlationId").ShouldBe(correlationId);
+            GetInt64(drainRecord, "startSequence").ShouldBe(1);
+            GetInt64(drainRecord, "endSequence").ShouldBe(1);
+            GetInt32(drainRecord, "eventCount").ShouldBe(1);
+            GetString(drainRecord, "commandType").ShouldBe("IncrementCounter");
+            // retryCount may be >= 0: with InitialDrainDelay=1s the drain reminder can fire
+            // between PublishFailed terminal-status poll and this read. At-least-once drain
+            // semantics make any non-negative count valid; the assertion below proves the
+            // counter is bounded and not pathologically growing.
+            GetInt32(drainRecord, "retryCount").ShouldBeGreaterThanOrEqualTo(0);
+            GetInt32(drainRecord, "retryCount").ShouldBeLessThan(20);
+            string? failureReason = GetString(drainRecord, "lastFailureReason");
+            failureReason.ShouldNotBeNull();
+            failureReason.ShouldContain("Configured test publish fault");
 
-        JsonElement drainRecord = await ReadDrainRecordAsync(aggregateId, correlationId);
-        GetString(drainRecord, "correlationId").ShouldBe(correlationId);
-        GetInt64(drainRecord, "startSequence").ShouldBe(1);
-        GetInt64(drainRecord, "endSequence").ShouldBe(1);
-        GetInt32(drainRecord, "eventCount").ShouldBe(1);
-        GetString(drainRecord, "commandType").ShouldBe("IncrementCounter");
-        GetInt32(drainRecord, "retryCount").ShouldBe(0);
-        string? failureReason = GetString(drainRecord, "lastFailureReason");
-        failureReason.ShouldNotBeNull();
-        failureReason.ShouldContain("Configured test publish fault");
+            TryDeleteFaultFile();
 
-        File.Delete(_fixture.FaultFilePath);
+            JsonElement completedStatus = await PollUntilStatusAsync(correlationId, "tenant-a", "Completed", RecoveryTimeout)
+                .ConfigureAwait(true);
+            completedStatus.GetProperty("eventCount").GetInt32().ShouldBe(1);
 
-        JsonElement completedStatus = await PollUntilStatusAsync(correlationId, "tenant-a", "Completed", RecoveryTimeout)
-            .ConfigureAwait(true);
-        completedStatus.GetProperty("eventCount").GetInt32().ShouldBe(1);
+            JsonElement[] events = await WaitForSubscriberEventsAsync(correlationId, expectedCount: 1);
+            events.Select(e => e.GetProperty("sequenceNumber").GetString()).ShouldContain("1");
+            events.ShouldAllBe(e => e.GetProperty("correlationId").GetString() == correlationId);
 
-        JsonElement[] events = await WaitForSubscriberEventsAsync(correlationId, expectedCount: 1);
-        events.Select(e => e.GetProperty("sequenceNumber").GetString()).ShouldContain("1");
-        events.ShouldAllBe(e => e.GetProperty("correlationId").GetString() == correlationId);
-
-        JsonElement? removedRecord = await TryReadDrainRecordAsync(aggregateId, correlationId);
-        removedRecord.ShouldBeNull("drain record should be removed after successful recovery publish");
-    }
-
-    private async Task ClearSubscriberEventsAsync() {
-        using HttpResponseMessage response = await _fixture.SubscriberClient.DeleteAsync("/events").ConfigureAwait(false);
-        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+            DrainRecordPresence absence = await CheckDrainRecordAbsentAsync(aggregateId, correlationId);
+            absence.ShouldBe(DrainRecordPresence.Absent, $"drain record should be removed after successful recovery publish (probe outcome: {absence})");
+        }
+        finally {
+            TryDeleteFaultFile();
+        }
     }
 
     private async Task<JsonElement[]> WaitForSubscriberEventsAsync(string correlationId, int expectedCount) {
@@ -145,12 +154,14 @@ public sealed class PubSubDeliveryProofTests {
 
         DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(timeout);
         JsonElement lastStatus = default;
+        HttpStatusCode lastCode = default;
 
         while (DateTimeOffset.UtcNow < deadline) {
             using var statusRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/commands/status/{correlationId}");
             statusRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             using HttpResponseMessage statusResponse = await _fixture.EventStoreClient.SendAsync(statusRequest).ConfigureAwait(false);
+            lastCode = statusResponse.StatusCode;
             if (statusResponse.StatusCode == HttpStatusCode.OK) {
                 lastStatus = await statusResponse.Content.ReadFromJsonAsync<JsonElement>().ConfigureAwait(false);
                 if (lastStatus.GetProperty("status").GetString() == expectedStatus) {
@@ -162,97 +173,100 @@ public sealed class PubSubDeliveryProofTests {
         }
 
         throw new TimeoutException(
-            $"Command {correlationId} did not reach {expectedStatus} within {timeout}. Last status: {lastStatus}.");
+            $"Command {correlationId} did not reach {expectedStatus} within {timeout}. Last HTTP {(int)lastCode}, last body: {lastStatus}.");
     }
 
-    private static async Task<JsonElement> ReadDrainRecordAsync(string aggregateId, string correlationId) =>
-        await TryReadDrainRecordAsync(aggregateId, correlationId).ConfigureAwait(false)
-        ?? throw new ShouldAssertException($"Expected drain record for {correlationId}.");
+    private async Task<JsonElement> ReadDrainRecordAsync(string aggregateId, string correlationId) {
+        JsonElement? record = await TryReadDrainRecordAsync(aggregateId, correlationId).ConfigureAwait(false);
+        return record ?? throw new ShouldAssertException($"Expected drain record for {correlationId}.");
+    }
 
-    private static async Task<JsonElement?> TryReadDrainRecordAsync(string aggregateId, string correlationId) {
+    private async Task<JsonElement?> TryReadDrainRecordAsync(string aggregateId, string correlationId) {
+        string key = BuildDrainKey(aggregateId, correlationId);
+        IDatabase db = _fixture.RedisDatabase;
+
+        // DAPR Redis state-store actor records can be stored either as plain string keys or as
+        // hashes (depending on DAPR version / cluster topology). Try string first, then hash.
+        // If the key is genuinely absent both probes return IsNull; any other failure is allowed
+        // to surface so we never collapse "read failure" into "key absent" (R2-A6).
+        RedisValue stringValue;
+        try {
+            stringValue = await db.StringGetAsync(key).ConfigureAwait(false);
+        }
+        catch (RedisServerException ex) when (ex.Message.StartsWith("WRONGTYPE", StringComparison.Ordinal)) {
+            stringValue = RedisValue.Null;
+        }
+
+        if (!stringValue.IsNull) {
+            return ParseJson(stringValue!);
+        }
+
+        RedisValue hashValue = await db.HashGetAsync(key, "data").ConfigureAwait(false);
+        return hashValue.IsNull ? null : ParseJson(hashValue!);
+
+        static JsonElement ParseJson(string json) {
+            using JsonDocument document = JsonDocument.Parse(json);
+            return document.RootElement.Clone();
+        }
+    }
+
+    private async Task<DrainRecordPresence> CheckDrainRecordAbsentAsync(string aggregateId, string correlationId) {
+        string key = BuildDrainKey(aggregateId, correlationId);
+        IDatabase db = _fixture.RedisDatabase;
+        try {
+            bool keyExists = await db.KeyExistsAsync(key).ConfigureAwait(false);
+            return keyExists ? DrainRecordPresence.Present : DrainRecordPresence.Absent;
+        }
+        catch (RedisException) {
+            return DrainRecordPresence.ProbeFailed;
+        }
+    }
+
+    private static string BuildDrainKey(string aggregateId, string correlationId) {
         string actorId = $"tenant-a:counter:{aggregateId}";
-        string key = $"eventstore||AggregateActor||{actorId}||drain:{correlationId}";
-        string? json = await RedisGetStringAsync(key).ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(json)) {
-            return null;
-        }
-
-        using JsonDocument document = JsonDocument.Parse(json);
-        return document.RootElement.Clone();
+        return $"eventstore||AggregateActor||{actorId}||drain:{correlationId}";
     }
 
-    private static async Task<string?> RedisGetStringAsync(string key) {
-        using var client = new TcpClient();
-        await client.ConnectAsync("localhost", 6379).ConfigureAwait(false);
-        await using NetworkStream stream = client.GetStream();
-        await using var writer = new StreamWriter(stream, new System.Text.UTF8Encoding(false), leaveOpen: true) {
-            NewLine = "\r\n",
-            AutoFlush = true,
-        };
-        using var reader = new StreamReader(stream, System.Text.Encoding.UTF8, leaveOpen: true);
-
-        await writer.WriteAsync($"*2\r\n$3\r\nGET\r\n${key.Length}\r\n{key}\r\n").ConfigureAwait(false);
-        string? header = await reader.ReadLineAsync().ConfigureAwait(false);
-        if (header is null || header == "$-1") {
-            return null;
-        }
-
-        if (header.StartsWith("-WRONGTYPE", StringComparison.Ordinal)) {
-            return await RedisHGetStringAsync(key, "data").ConfigureAwait(false);
-        }
-
-        if (!header.StartsWith('$') || !int.TryParse(header[1..], out int length)) {
-            throw new InvalidOperationException($"Unexpected Redis response header: {header}");
-        }
-
-        char[] buffer = new char[length];
-        int read = 0;
-        while (read < length) {
-            int chunk = await reader.ReadAsync(buffer.AsMemory(read, length - read)).ConfigureAwait(false);
-            if (chunk == 0) {
-                throw new EndOfStreamException("Redis closed the connection before the value was fully read.");
+    private void TryWriteFaultFile() {
+        Exception? lastError = null;
+        for (int attempt = 0; attempt < 5; attempt++) {
+            try {
+                File.WriteAllText(_fixture.FaultFilePath, "fault");
+                return;
+            }
+            catch (IOException ex) {
+                lastError = ex;
+            }
+            catch (UnauthorizedAccessException ex) {
+                lastError = ex;
             }
 
-            read += chunk;
+            Thread.Sleep(50);
         }
 
-        _ = await reader.ReadLineAsync().ConfigureAwait(false);
-        return new string(buffer);
+        throw new InvalidOperationException(
+            $"Failed to write fault file at {_fixture.FaultFilePath} after retries.", lastError);
     }
 
-    private static async Task<string?> RedisHGetStringAsync(string key, string field) {
-        using var client = new TcpClient();
-        await client.ConnectAsync("localhost", 6379).ConfigureAwait(false);
-        await using NetworkStream stream = client.GetStream();
-        await using var writer = new StreamWriter(stream, new System.Text.UTF8Encoding(false), leaveOpen: true) {
-            NewLine = "\r\n",
-            AutoFlush = true,
-        };
-        using var reader = new StreamReader(stream, System.Text.Encoding.UTF8, leaveOpen: true);
+    private void TryDeleteFaultFile() {
+        for (int attempt = 0; attempt < 5; attempt++) {
+            try {
+                if (!File.Exists(_fixture.FaultFilePath)) {
+                    return;
+                }
 
-        await writer.WriteAsync($"*3\r\n$4\r\nHGET\r\n${key.Length}\r\n{key}\r\n${field.Length}\r\n{field}\r\n").ConfigureAwait(false);
-        string? header = await reader.ReadLineAsync().ConfigureAwait(false);
-        if (header is null || header == "$-1") {
-            return null;
-        }
-
-        if (!header.StartsWith('$') || !int.TryParse(header[1..], out int length)) {
-            throw new InvalidOperationException($"Unexpected Redis HGET response header: {header}");
-        }
-
-        char[] buffer = new char[length];
-        int read = 0;
-        while (read < length) {
-            int chunk = await reader.ReadAsync(buffer.AsMemory(read, length - read)).ConfigureAwait(false);
-            if (chunk == 0) {
-                throw new EndOfStreamException("Redis closed the connection before the hash value was fully read.");
+                File.Delete(_fixture.FaultFilePath);
+                return;
+            }
+            catch (IOException) {
+            }
+            catch (UnauthorizedAccessException) {
             }
 
-            read += chunk;
+            Thread.Sleep(50);
         }
-
-        _ = await reader.ReadLineAsync().ConfigureAwait(false);
-        return new string(buffer);
+        // Ignore final failure: the fixture's TryDeleteFaultFile in DisposeAsync will retry,
+        // and even if it lingers it only affects the next run if env vars also leak.
     }
 
     private static string? GetString(JsonElement element, string propertyName) {
@@ -284,6 +298,11 @@ public sealed class PubSubDeliveryProofTests {
             return true;
         }
 
+        if (string.IsNullOrEmpty(propertyName)) {
+            value = default;
+            return false;
+        }
+
         string pascalName = char.ToUpperInvariant(propertyName[0]) + propertyName[1..];
         if (element.ValueKind == JsonValueKind.Object && element.TryGetProperty(pascalName, out value)) {
             return true;
@@ -291,5 +310,11 @@ public sealed class PubSubDeliveryProofTests {
 
         value = default;
         return false;
+    }
+
+    private enum DrainRecordPresence {
+        Absent,
+        Present,
+        ProbeFailed,
     }
 }

@@ -4,6 +4,7 @@ Status: ready-for-dev
 
 <!-- Source: epic-11-retro-2026-04-30.md - Action item R11-A3 -->
 <!-- Source: epic-12-retro-2026-04-30.md - R12-A5 carry-forward backlog -->
+<!-- Source: epic-10-retro-2026-05-01.md - Action item R10-A1 live SignalR topology proof routed here by sprint-change-proposal-2026-05-01-epic-10-retro-cleanup.md -->
 <!-- Source: sprint-change-proposal-2026-04-30-opentelemetry-audit-fix.md - AppHost proof unblocked -->
 <!-- Source: docs/guides/sample-blazor-ui.md - Smoke-Test Evidence Pattern -->
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->

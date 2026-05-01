@@ -105,7 +105,7 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 **Query Pipeline & Projection Caching — v2 (FR50-FR64)**
 
 - FR50: The system can route incoming query messages to query actors using a 3-tier routing model: (1) queries with EntityId route to `{QueryType}-{TenantId}-{EntityId}`, (2) queries without EntityId but with payload route to `{QueryType}-{TenantId}-{Checksum}`, (3) queries without EntityId and empty payload route to `{QueryType}-{TenantId}`
-- FR51: The system can maintain one ETag actor per `{ProjectionType}-{TenantId}` storing a self-routing ETag, regenerated on every projection change notification
+- FR51: The system can maintain one ETag actor per `{ProjectionType}:{TenantId}` storing a self-routing ETag, regenerated on every projection change notification
 - FR52: A domain service developer can notify EventStore of a projection change via `NotifyProjectionChanged(projectionType, tenantId, entityId?)` NuGet helper
 - FR53: The query REST endpoint can perform an ETag pre-check by decoding the self-routing ETag from `If-None-Match` header, returning HTTP 304 if matched without activating query actor
 - FR54: A query actor can serve as an in-memory page cache (second gate) with no state store persistence. Cold call forwards to microservice; warm calls check ETag actor
@@ -1424,7 +1424,7 @@ So that ETag pre-checks can return HTTP 304 without activating query actors.
 
 **Acceptance Criteria:**
 
-**Given** an ETag actor keyed by `{ProjectionType}-{TenantId}`,
+**Given** an ETag actor keyed by `{ProjectionType}:{TenantId}`,
 **When** a projection change is notified via `NotifyProjectionChanged(projectionType, tenantId, entityId?)` (FR52),
 **Then** the ETag is regenerated (new GUID portion) (FR51)
 **And** all cached query results for that projection+tenant pair are invalidated (FR58, coarse invalidation).
@@ -1489,7 +1489,7 @@ So that connected clients receive real-time push notifications without polling.
 **Given** a SignalR hub hosted inside the EventStore server,
 **When** a projection's ETag is regenerated,
 **Then** a signal-only "changed" message is broadcast to connected clients (FR55)
-**And** clients are grouped by ETag actor ID (`{ProjectionType}-{TenantId}`)
+**And** clients are grouped by ETag actor ID (`{ProjectionType}:{TenantId}`)
 **And** the signal contains no projection data — clients re-query on receipt.
 
 **Given** the SignalR hub endpoint,

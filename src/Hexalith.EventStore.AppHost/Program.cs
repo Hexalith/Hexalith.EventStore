@@ -176,7 +176,13 @@ else if (string.Equals(publishTarget, "aca", StringComparison.OrdinalIgnoreCase)
     _ = builder.AddAzureContainerAppEnvironment("aca");
 }
 
-if (string.Equals(builder.Configuration["EnablePubSubTestSubscriber"], "true", StringComparison.OrdinalIgnoreCase)) {
+// EnablePubSubTestSubscriber accepts any value parseable as bool (true/false/1/0, case-insensitive,
+// trimmed). The eventstore-test-subscriber app-id grants in DaprComponents/pubsub.yaml are documented
+// dev-only -- production deployment overlays (k8s/docker/aca via aspire publish) must strip them.
+bool testSubscriberEnabled = bool.TryParse(builder.Configuration["EnablePubSubTestSubscriber"]?.Trim(), out bool parsed) && parsed;
+string testSubscriberTopic = builder.Configuration["EVENTSTORE_TEST_SUBSCRIBER_TOPIC"]?.Trim() ?? "tenant-a.counter.events";
+string testSubscriberAuthSecret = builder.Configuration["EVENTSTORE_TEST_SUBSCRIBER_AUTH_SECRET"]?.Trim() ?? Guid.NewGuid().ToString("N");
+if (testSubscriberEnabled) {
     IResourceBuilder<ProjectResource> testSubscriber = builder.AddProject<Projects.Hexalith_EventStore_TestSubscriber>("eventstore-test-subscriber")
         .WithDaprSidecar(sidecar => sidecar
             .WithOptions(new DaprSidecarOptions {
@@ -185,7 +191,9 @@ if (string.Equals(builder.Configuration["EnablePubSubTestSubscriber"], "true", S
             .WithReference(eventStoreResources.PubSub))
         .WaitFor(eventStore);
 
-    _ = testSubscriber.WithEnvironment("EVENTSTORE_TEST_SUBSCRIBER_TOPIC", "tenant-a.counter.events");
+    _ = testSubscriber
+        .WithEnvironment("EVENTSTORE_TEST_SUBSCRIBER_TOPIC", testSubscriberTopic)
+        .WithEnvironment("EVENTSTORE_TEST_SUBSCRIBER_AUTH_SECRET", testSubscriberAuthSecret);
 }
 
 builder.Build().Run();

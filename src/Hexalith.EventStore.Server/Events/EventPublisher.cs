@@ -9,6 +9,7 @@ using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Telemetry;
 
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -24,7 +25,8 @@ public partial class EventPublisher(
     ILogger<EventPublisher> logger,
     IEventPayloadProtectionService payloadProtectionService,
     IProjectionUpdateOrchestrator projectionOrchestrator,
-    ITopicNameValidator? topicNameValidator = null) : IEventPublisher {
+    ITopicNameValidator? topicNameValidator = null,
+    IHostEnvironment? hostEnvironment = null) : IEventPublisher {
     /// <inheritdoc/>
     public async Task<EventPublishResult> PublishEventsAsync(
         AggregateIdentity identity,
@@ -69,7 +71,7 @@ public partial class EventPublisher(
         int publishedCount = 0;
 
         try {
-            if (IsTestPublishFaultActive(publisherOptions, correlationId)) {
+            if (IsTestPublishFaultActive(publisherOptions, correlationId, hostEnvironment)) {
                 string failureReason = $"Configured test publish fault is active for correlation id {correlationId}.";
                 Log.TestPublishFaultInjected(logger, correlationId, identity.TenantId, identity.Domain, identity.AggregateId, topic);
                 return new EventPublishResult(false, 0, failureReason);
@@ -158,14 +160,24 @@ public partial class EventPublisher(
         }
     }
 
-    private static bool IsTestPublishFaultActive(EventPublisherOptions options, string correlationId) {
+    private static bool IsTestPublishFaultActive(
+        EventPublisherOptions options,
+        string correlationId,
+        IHostEnvironment? hostEnvironment) {
+        // Test fault injection is gated on Development to keep the production binary inert
+        // even if the configuration option is accidentally set in a non-Development environment.
+        if (hostEnvironment is null || !hostEnvironment.IsDevelopment()) {
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(options.TestPublishFaultFilePath)
             || !File.Exists(options.TestPublishFaultFilePath)) {
             return false;
         }
 
         return string.IsNullOrWhiteSpace(options.TestPublishFaultCorrelationIdPrefix)
-            || correlationId.StartsWith(options.TestPublishFaultCorrelationIdPrefix, StringComparison.Ordinal);
+            || (correlationId is not null
+                && correlationId.StartsWith(options.TestPublishFaultCorrelationIdPrefix, StringComparison.Ordinal));
     }
 
     private static partial class Log {

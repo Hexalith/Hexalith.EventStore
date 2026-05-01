@@ -9,6 +9,7 @@ using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Telemetry;
 
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -45,12 +46,18 @@ public class EventPublisherTests {
             Payload: [1, 2, 3],
             Extensions: null);
 
+    private static IHostEnvironment CreateDevelopmentEnvironment() {
+        IHostEnvironment env = Substitute.For<IHostEnvironment>();
+        env.EnvironmentName.Returns(Environments.Development);
+        return env;
+    }
+
     private static (EventPublisher Publisher, DaprClient DaprClient, ILogger<EventPublisher> Logger) CreatePublisher(string pubSubName = "pubsub") {
         DaprClient daprClient = Substitute.For<DaprClient>();
         IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions { PubSubName = pubSubName });
         ILogger<EventPublisher> logger = Substitute.For<ILogger<EventPublisher>>();
         _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
-        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService(), new NoOpProjectionUpdateOrchestrator());
+        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService(), new NoOpProjectionUpdateOrchestrator(), hostEnvironment: CreateDevelopmentEnvironment());
         return (publisher, daprClient, logger);
     }
 
@@ -59,7 +66,18 @@ public class EventPublisherTests {
         IOptions<EventPublisherOptions> options = Options.Create(publisherOptions);
         ILogger<EventPublisher> logger = Substitute.For<ILogger<EventPublisher>>();
         _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
-        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService(), new NoOpProjectionUpdateOrchestrator());
+        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService(), new NoOpProjectionUpdateOrchestrator(), hostEnvironment: CreateDevelopmentEnvironment());
+        return (publisher, daprClient, logger);
+    }
+
+    private static (EventPublisher Publisher, DaprClient DaprClient, ILogger<EventPublisher> Logger) CreatePublisher(
+        EventPublisherOptions publisherOptions,
+        IHostEnvironment hostEnvironment) {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IOptions<EventPublisherOptions> options = Options.Create(publisherOptions);
+        ILogger<EventPublisher> logger = Substitute.For<ILogger<EventPublisher>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService(), new NoOpProjectionUpdateOrchestrator(), hostEnvironment: hostEnvironment);
         return (publisher, daprClient, logger);
     }
 
@@ -250,6 +268,67 @@ public class EventPublisherTests {
             result.FailureReason.ShouldNotBeNull();
             result.FailureReason.ShouldContain("Configured test publish fault");
             await daprClient.DidNotReceiveWithAnyArgs().PublishEventAsync<EventEnvelope>(default!, default!, default!, default!, default);
+        }
+        finally {
+            File.Delete(faultFile);
+        }
+    }
+
+    [Fact]
+    public async Task PublishEventsAsync_TestPublishFault_IgnoredInProductionEnvironment() {
+        string faultFile = Path.Combine(Path.GetTempPath(), $"hexalith-pubsub-fault-{Guid.NewGuid():N}.flag");
+        File.WriteAllText(faultFile, "fault");
+        try {
+            IHostEnvironment productionEnv = Substitute.For<IHostEnvironment>();
+            productionEnv.EnvironmentName.Returns(Environments.Production);
+
+            (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher(
+                new EventPublisherOptions {
+                    PubSubName = "pubsub",
+                    TestPublishFaultFilePath = faultFile,
+                },
+                productionEnv);
+
+            EventPublishResult result = await publisher.PublishEventsAsync(TestIdentity, [CreateTestEnvelope()], "corr-001");
+
+            // Fault file is present, but Production environment must keep the publisher inert.
+            result.Success.ShouldBeTrue();
+            await daprClient.Received(1).PublishEventAsync(
+                "pubsub",
+                Arg.Any<string>(),
+                Arg.Any<EventEnvelope>(),
+                Arg.Any<Dictionary<string, string>>(),
+                Arg.Any<CancellationToken>());
+        }
+        finally {
+            File.Delete(faultFile);
+        }
+    }
+
+    [Fact]
+    public async Task PublishEventsAsync_TestPublishFault_IgnoredWhenHostEnvironmentNull() {
+        string faultFile = Path.Combine(Path.GetTempPath(), $"hexalith-pubsub-fault-{Guid.NewGuid():N}.flag");
+        File.WriteAllText(faultFile, "fault");
+        try {
+            DaprClient daprClient = Substitute.For<DaprClient>();
+            IOptions<EventPublisherOptions> options = Options.Create(new EventPublisherOptions {
+                PubSubName = "pubsub",
+                TestPublishFaultFilePath = faultFile,
+            });
+            ILogger<EventPublisher> logger = Substitute.For<ILogger<EventPublisher>>();
+            _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+            // Default ctor (no hostEnvironment) must behave like Production -- fault check disabled.
+            var publisher = new EventPublisher(daprClient, options, logger, new NoOpEventPayloadProtectionService(), new NoOpProjectionUpdateOrchestrator());
+
+            EventPublishResult result = await publisher.PublishEventsAsync(TestIdentity, [CreateTestEnvelope()], "corr-001");
+
+            result.Success.ShouldBeTrue();
+            await daprClient.Received(1).PublishEventAsync(
+                "pubsub",
+                Arg.Any<string>(),
+                Arg.Any<EventEnvelope>(),
+                Arg.Any<Dictionary<string, string>>(),
+                Arg.Any<CancellationToken>());
         }
         finally {
             File.Delete(faultFile);

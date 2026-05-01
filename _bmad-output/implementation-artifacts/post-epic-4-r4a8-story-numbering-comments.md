@@ -31,7 +31,7 @@ Current HEAD at story creation: `da59238`.
    - `rg -n "Story 4\\.[45]|4\\.4|4\\.5" src -S`
    - Record the before/after counts in the Dev Agent Record.
 
-2. **Production source/config comments no longer point to obsolete Story 4.4 or Story 4.5.** After implementation, `rg -n "Story 4\\.[45]" src -S` returns no production-source matches. Replace comments with current story references where clear, or with neutral feature language where a single current story number would be misleading.
+2. **Production source/config comments no longer point to obsolete Story 4.4 or Story 4.5.** After implementation, both `rg -n "Story 4\\.[45]" src -S` and `rg -n "Story 4\\.[45]|4\\.4|4\\.5" src -S` return no production-source matches. Replace comments with current story references where clear, or with neutral feature language where a single current story number would be misleading.
 
 3. **Behavior is unchanged.** The diff contains only comment/documentation wording changes plus required story bookkeeping. No method bodies, constants, options defaults, DAPR component values, topic names, routes, retry policies, access-control scopes, or test assertions are changed.
 
@@ -81,9 +81,10 @@ Current HEAD at story creation: `da59238`.
   - [ ] 1.4 Update telemetry summary comments only; do not rename activity constants or tag constants.
 
 - [ ] Task 2: Optional stale test-comment cleanup (AC: #3, #6)
-  - [ ] 2.1 Search tests for `Story 4.4` / `Story 4.5` labels.
+  - [ ] 2.1 Search tests for exact stale Epic 4 story labels with `rg -n "Story 4\\.[45]" tests/Hexalith.EventStore.Server.Tests -S`.
   - [ ] 2.2 If a test comment is only a stale story label, update it to neutral task/feature wording.
-  - [ ] 2.3 Do not change assertions, test names, fixtures, test data, or test counts.
+  - [ ] 2.3 Do not rewrite unrelated decimal task/AC markers such as `Task 4.4`, `AC#3: 4.4`, or non-Epic-4 story references.
+  - [ ] 2.4 Do not change assertions, test names, fixtures, test data, or test counts.
 
 - [ ] Task 3: Verification gates (AC: #2, #3, #7)
   - [ ] 3.1 Re-run `rg -n "Story 4\\.[45]" src -S` and confirm zero production-source matches.
@@ -110,6 +111,8 @@ Current HEAD at story creation: `da59238`.
 ### Current-Code Intelligence
 
 - The source search at story creation found obsolete labels in `AggregateActor.cs`, `UnpublishedEventsRecord.cs`, `EventDrainOptions.cs`, `EventPublisherOptions.cs`, `EventStoreActivitySource.cs`, and three AppHost DAPR component YAML files.
+- The party-mode review source sweep on 2026-05-01 found 24 `src/` matches for `Story 4\.[45]|4\.4|4\.5`; the after-edit production gate should use the same broad regex so raw `4.4` / `4.5` labels cannot remain.
+- A broad `tests/` search also matches unrelated task numbers, AC examples, and other-story references. Optional test cleanup should target exact `Story 4.4` / `Story 4.5` Epic 4 labels only.
 - Story 4.2 is the current owner of persist-then-publish failure handling, `UnpublishedEventsRecord`, drain reminders, and backlog draining.
 - Story 4.1 is the current owner of CloudEvents publication and tenant-domain topic routing.
 - Story 4.3 is the current owner of per-aggregate backpressure. It also mentions drain-pending records because those records affect pending command count; do not rewrite that behavior.
@@ -169,7 +172,29 @@ To be filled by dev agent.
 | Date | Version | Description | Author |
 |---|---|---|---|
 | 2026-05-01 | 0.1 | Created ready-for-dev R4-A8 story-numbering comment cleanup story. | Codex automation |
+| 2026-05-01 | 0.2 | Party-mode review tightened production grep gates and test-comment cleanup scope. | Codex automation |
 
 ## Verification Status
 
 Story creation only. Runtime, build, and test execution are intentionally deferred to `bmad-dev-story`.
+
+## Party-Mode Review
+
+- Date/time: 2026-05-01T11:19:43+02:00
+- Selected story key: `post-epic-4-r4a8-story-numbering-comments`
+- Command/skill invocation used: `/bmad-party-mode post-epic-4-r4a8-story-numbering-comments; review;`
+- Participating BMAD agents: Bob (Scrum Master), Winston (Architect), Amelia (Developer Agent), Murat (Master Test Architect), Paige (Technical Writer), Sally (UX Designer)
+- Findings summary:
+  - Bob: The story is appropriately narrow and ready-for-dev, but AC #2 needed to mirror the broader baseline search so raw obsolete `4.4` / `4.5` labels cannot survive in production comments.
+  - Winston: The architecture boundary is sound because the story remains comment-only and does not touch DAPR metadata, topic names, retry policy, or actor behavior.
+  - Amelia: The implementation path is clear, with one caveat: the developer should not let broad numeric grep output in tests turn into unrelated cleanup.
+  - Murat: Verification should include the same broad production grep used for inventory, plus diff review and release build; no new behavioral tests are required for this cleanup.
+  - Paige: Documentation/history boundaries are explicit enough; the story should preserve historical artifacts and only normalize live source/config comments.
+  - Sally: No UI accessibility or localization work is introduced; adopter-experience risk is traceability confusion, addressed by current-story or neutral feature wording.
+- Changes applied:
+  - Strengthened AC #2 to require both the exact Story 4.4/4.5 grep and the broader `Story 4\.[45]|4\.4|4\.5` production grep to return no `src/` matches.
+  - Narrowed optional test-comment cleanup to exact stale Epic 4 story labels in `tests/Hexalith.EventStore.Server.Tests`.
+  - Added Dev Notes warning that broad `tests/` grep includes unrelated task numbers, AC examples, and other-story references that must not be rewritten.
+- Findings deferred:
+  - No product-scope, architecture-policy, or cross-story decisions deferred. The exact replacement wording remains an implementation detail constrained by AC #3 and AC #4.
+- Final recommendation: ready-for-dev
