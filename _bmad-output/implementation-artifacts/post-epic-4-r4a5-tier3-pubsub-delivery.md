@@ -228,6 +228,7 @@ GPT-5.2 Codex
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-01 | 1.2 | Docker-equipped Tier 3 re-run on `codex/checkpoint-and-pubsub-hardening` HEAD `f1af8393`: PubSubDeliveryProofTests passed 2/2 in 22.5s on Docker Desktop 29.4.0 + DAPR self-hosted topology. Closes the only outstanding verification gap from the 1.1 code-review session. No product fixes needed. | Verification |
 | 2026-05-01 | 1.1 | Code-review patches applied — D1 (Development env gate on EventPublisher fault hook), D3 (StackExchange.Redis replaces hand-rolled RESP, eliminates absence-assertion false-positive), D4 (X-Test-Auth header on subscriber GET/DELETE). 11 of 14 patches applied (P1/P2/P3/P5–P14); D2 and P4 deferred with rationale to deferred-work.md. Tier 1 = 788/788, Tier 2 = 1655/1655. | Code review |
 | 2026-05-01 | 1.0 | Implemented Tier 3 pub/sub delivery and drain recovery proof; story moved to review. | Codex |
 | 2026-05-01 | 0.2 | Party-mode review hardened subscriber scoping, deterministic failure proof, drain-state evidence, and at-least-once recovery assertions. | Codex automation |
@@ -256,6 +257,13 @@ Post-review re-verification on 2026-05-01 after applying D1/D3/D4 + 11 patches:
 - Tier 1 total: 788/788.
 - `dotnet test tests\Hexalith.EventStore.Server.Tests --configuration Release --no-build --no-restore -- xunit.parallelizeTestCollections=false`: passed, 1655/1655 (1648 baseline + 5 pre-existing additions + 2 new D1 gating tests). Parallel run produced 1654/1655 due to a pre-existing cross-collection `ActivityListener` parallelism quirk in `EventStoreTraceTests`; serial run is deterministic.
 - Tier 3 PubSubDeliveryProofTests not re-run in this code-review session because Docker is absent on the dev host (same Tier 3 environment limitation noted by post-epic-3-r3a6 / post-epic-3-r3a7); the original 2/2 PubSubDeliveryProofTests run from story execution remains the runtime evidence. Tier 3 changes are diff-clean against the original tests; runtime re-run should be performed on a Docker-equipped CI runner.
+
+Docker-equipped re-run on 2026-05-01T11:18Z (HEAD `f1af8393`, branch `codex/checkpoint-and-pubsub-hardening`, post-hardening tree including D1/D3/D4 + 11 patches + checkpoint/pubsub hardening commits c22e2e6..778aa88):
+
+- Topology: Docker Desktop 29.4.0 + DAPR self-hosted (placement, scheduler, Redis, zipkin all healthy).
+- `dotnet build Hexalith.EventStore.slnx --configuration Release`: passed, 0 warnings, 0 errors.
+- `dotnet test tests\Hexalith.EventStore.IntegrationTests --configuration Release --filter FullyQualifiedName~PubSubDeliveryProofTests --no-build --no-restore`: **passed, 2/2 in 22.5s** (CloudEvent delivery 4s, drain recovery 1s).
+- Closes the only outstanding verification gap from the code-review session. R4-A5 fully closed.
 
 ## Review Findings
 
