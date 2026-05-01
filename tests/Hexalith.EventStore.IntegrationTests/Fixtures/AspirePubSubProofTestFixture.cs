@@ -47,7 +47,7 @@ public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
         Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", "Development");
         Environment.SetEnvironmentVariable("EnablePubSubTestSubscriber", "true");
         Environment.SetEnvironmentVariable("EventStore__Publisher__TestPublishFaultFilePath", FaultFilePath);
-        Environment.SetEnvironmentVariable("EventStore__Publisher__TestPublishFaultCorrelationIdPrefix", "r4a5-");
+        Environment.SetEnvironmentVariable("EventStore__Publisher__TestPublishFaultCorrelationIdPrefix", null);
         Environment.SetEnvironmentVariable("EventStore__Drain__InitialDrainDelay", "00:00:01");
         Environment.SetEnvironmentVariable("EventStore__Drain__DrainPeriod", "00:00:01");
         Environment.SetEnvironmentVariable("EventStore__Drain__MaxDrainPeriod", "00:00:05");

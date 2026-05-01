@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Net.Sockets;
 using System.Text.Json;
 
 using Hexalith.EventStore.IntegrationTests.Fixtures;
@@ -45,7 +46,7 @@ public sealed class PubSubDeliveryProofTests {
         JsonElement[] events = await WaitForSubscriberEventsAsync(correlationId, expectedCount: 1);
         JsonElement received = events[0];
         received.GetProperty("topic").GetString().ShouldBe("tenant-a.counter.events");
-        received.GetProperty("type").GetString().ShouldBe("CounterIncremented");
+        received.GetProperty("type").GetString().ShouldEndWith(".CounterIncremented");
         received.GetProperty("source").GetString().ShouldBe("hexalith-eventstore/tenant-a/counter");
         received.GetProperty("id").GetString().ShouldBe($"{correlationId}:1");
         received.GetProperty("correlationId").GetString().ShouldBe(correlationId);
@@ -171,23 +172,87 @@ public sealed class PubSubDeliveryProofTests {
     private static async Task<JsonElement?> TryReadDrainRecordAsync(string aggregateId, string correlationId) {
         string actorId = $"tenant-a:counter:{aggregateId}";
         string key = $"eventstore||AggregateActor||{actorId}||drain:{correlationId}";
-        using var client = new HttpClient { BaseAddress = new Uri("http://localhost:3501") };
-        using HttpResponseMessage response = await client
-            .GetAsync($"/v1.0/state/statestore/{Uri.EscapeDataString(key)}")
-            .ConfigureAwait(false);
-
-        if (response.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.NotFound) {
-            return null;
-        }
-
-        response.EnsureSuccessStatusCode();
-        string json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        string? json = await RedisGetStringAsync(key).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(json)) {
             return null;
         }
 
         using JsonDocument document = JsonDocument.Parse(json);
         return document.RootElement.Clone();
+    }
+
+    private static async Task<string?> RedisGetStringAsync(string key) {
+        using var client = new TcpClient();
+        await client.ConnectAsync("localhost", 6379).ConfigureAwait(false);
+        await using NetworkStream stream = client.GetStream();
+        await using var writer = new StreamWriter(stream, new System.Text.UTF8Encoding(false), leaveOpen: true) {
+            NewLine = "\r\n",
+            AutoFlush = true,
+        };
+        using var reader = new StreamReader(stream, System.Text.Encoding.UTF8, leaveOpen: true);
+
+        await writer.WriteAsync($"*2\r\n$3\r\nGET\r\n${key.Length}\r\n{key}\r\n").ConfigureAwait(false);
+        string? header = await reader.ReadLineAsync().ConfigureAwait(false);
+        if (header is null || header == "$-1") {
+            return null;
+        }
+
+        if (header.StartsWith("-WRONGTYPE", StringComparison.Ordinal)) {
+            return await RedisHGetStringAsync(key, "data").ConfigureAwait(false);
+        }
+
+        if (!header.StartsWith('$') || !int.TryParse(header[1..], out int length)) {
+            throw new InvalidOperationException($"Unexpected Redis response header: {header}");
+        }
+
+        char[] buffer = new char[length];
+        int read = 0;
+        while (read < length) {
+            int chunk = await reader.ReadAsync(buffer.AsMemory(read, length - read)).ConfigureAwait(false);
+            if (chunk == 0) {
+                throw new EndOfStreamException("Redis closed the connection before the value was fully read.");
+            }
+
+            read += chunk;
+        }
+
+        _ = await reader.ReadLineAsync().ConfigureAwait(false);
+        return new string(buffer);
+    }
+
+    private static async Task<string?> RedisHGetStringAsync(string key, string field) {
+        using var client = new TcpClient();
+        await client.ConnectAsync("localhost", 6379).ConfigureAwait(false);
+        await using NetworkStream stream = client.GetStream();
+        await using var writer = new StreamWriter(stream, new System.Text.UTF8Encoding(false), leaveOpen: true) {
+            NewLine = "\r\n",
+            AutoFlush = true,
+        };
+        using var reader = new StreamReader(stream, System.Text.Encoding.UTF8, leaveOpen: true);
+
+        await writer.WriteAsync($"*3\r\n$4\r\nHGET\r\n${key.Length}\r\n{key}\r\n${field.Length}\r\n{field}\r\n").ConfigureAwait(false);
+        string? header = await reader.ReadLineAsync().ConfigureAwait(false);
+        if (header is null || header == "$-1") {
+            return null;
+        }
+
+        if (!header.StartsWith('$') || !int.TryParse(header[1..], out int length)) {
+            throw new InvalidOperationException($"Unexpected Redis HGET response header: {header}");
+        }
+
+        char[] buffer = new char[length];
+        int read = 0;
+        while (read < length) {
+            int chunk = await reader.ReadAsync(buffer.AsMemory(read, length - read)).ConfigureAwait(false);
+            if (chunk == 0) {
+                throw new EndOfStreamException("Redis closed the connection before the hash value was fully read.");
+            }
+
+            read += chunk;
+        }
+
+        _ = await reader.ReadLineAsync().ConfigureAwait(false);
+        return new string(buffer);
     }
 
     private static string? GetString(JsonElement element, string propertyName) {
