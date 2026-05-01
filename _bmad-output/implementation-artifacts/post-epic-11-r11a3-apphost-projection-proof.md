@@ -1,0 +1,185 @@
+# Post-Epic-11 R11-A3: AppHost Projection Proof
+
+Status: ready-for-dev
+
+<!-- Source: epic-11-retro-2026-04-30.md - Action item R11-A3 -->
+<!-- Source: epic-12-retro-2026-04-30.md - R12-A5 carry-forward backlog -->
+<!-- Source: sprint-change-proposal-2026-04-30-opentelemetry-audit-fix.md - AppHost proof unblocked -->
+<!-- Source: docs/guides/sample-blazor-ui.md - Smoke-Test Evidence Pattern -->
+<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
+
+## Story
+
+As a platform engineer hardening the server-managed projection builder,
+I want a trace-backed AppHost proof of the complete sample projection path,
+so that Epic 11 confidence is based on running evidence across command submission, event persistence, `/project`, projection actor write, query, ETag, SignalR, and UI refresh.
+
+## Story Context
+
+Epic 11 shipped the Mode B server-managed projection path, but its retrospective explicitly recorded that no fresh full AppHost projection proof was captured. Epic 12 partially addressed the sample UI behavior, but it did not capture runtime logs or traces proving the full server-managed path. R11-A3 closes that evidence gap.
+
+This is a verification and evidence story, not a feature story. Reuse the current AppHost topology in `src/Hexalith.EventStore.AppHost/Program.cs`: `eventstore`, `sample`, `sample-blazor-ui`, DAPR sidecars, Redis-backed `statestore`/`pubsub`, and SignalR enabled by `EventStore__SignalR__Enabled=true`. Do not add a second projection path, bypass DAPR, or replace the sample UI flow with a synthetic-only test unless the running proof exposes a real blocker.
+
+## Acceptance Criteria
+
+1. **AppHost starts from the documented developer command.** Run `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` or document why the equivalent `dotnet run --project src/Hexalith.EventStore.AppHost` path was used. `eventstore`, `sample`, `sample-blazor-ui`, `statestore`, and `pubsub` must be running before proof begins. If DAPR slim mode requires manual `placement` and `scheduler`, record the exact commands.
+
+2. **Resource evidence is captured before exercising the flow.** Paste the Aspire resource snapshot into this story's Dev Agent Record or `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/`. The snapshot must include endpoint URLs used for EventStore and the sample Blazor UI.
+
+3. **Command submission is proven through the real HTTP API or sample UI.** Submit at least one `IncrementCounter` command for tenant `sample-tenant`, domain `counter`, aggregate `counter-1`, and record the HTTP response status, correlation ID, `Location`, and `Retry-After` headers. A green UI submission alone is not sufficient because docs state it only proves HTTP acceptance.
+
+4. **Event persistence is evidenced.** Record either an Aspire trace/log entry or API evidence showing the accepted command reached event persistence. The evidence must include the correlation ID or enough structured fields to tie it back to the submitted command.
+
+5. **The sample `/project` endpoint is invoked.** Capture logs or traces showing EventStore invoked `sample` `POST /project` with a `ProjectionRequest`. The proof must confirm the sample endpoint is the real handler in `samples/Hexalith.EventStore.Sample/Program.cs`, not the malformed-response fault path.
+
+6. **Projection actor write is evidenced.** Capture logs or traces showing `EventReplayProjectionActor.UpdateProjectionAsync` accepted the returned projection state for projection type `counter` and tenant `sample-tenant`.
+
+7. **ETag regeneration is evidenced.** Capture logs, response headers, or trace evidence showing a new ETag was generated after the projection write. A query response with an `ETag` header is acceptable only when it is tied to the same command/projection proof.
+
+8. **Query result returns projected state.** Call `POST /api/v1/queries` or use the sample UI query path and prove the returned payload includes the expected counter count after the command. The query must use domain/projection `counter`, tenant `sample-tenant`, aggregate/entity `counter-1`, and query type `get-counter-status`.
+
+9. **SignalR invalidation is evidenced.** Capture either server log evidence from `SignalRProjectionChangedBroadcaster`, sample UI log evidence from `SignalRClientStartup` / refresh callbacks, or browser-visible behavior showing the projection change signal arrived. SignalR carries no projection data; the proof must show the client re-queried or refreshed after the signal.
+
+10. **Sample UI refresh behavior is evidenced with artifacts.** Open the sample Blazor UI from the Aspire endpoint and exercise at least one refresh pattern page. Prefer `/pattern-silent-reload` because it should update after a signal without manual refresh. Include a screenshot or browser notes showing before/after count. If browser automation is unavailable, record the exact manual steps and observed result.
+
+11. **No projection-path regression errors are present.** During the proof window, `eventstore` logs must not contain `QueryNotFoundException`, malformed projection response errors, unhandled `ProjectionUpdateOrchestrator` failures, or SignalR hub mapping failures. If unrelated startup warnings exist, classify them separately and do not hide projection failures.
+
+12. **Evidence is repeatable.** Create `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/README.md` with the commands, endpoints, payloads, timestamps, screenshots/log references, and known caveats needed to repeat the proof.
+
+13. **No product scope is silently expanded.** If the proof fails because R11-A1 or R11-A2 has not landed, record the blocker and leave the fix to those stories. This story may add a small verification script or runbook only if it reduces evidence drift; it must not implement checkpoint tracking, polling mode, or new projection contracts.
+
+## Tasks / Subtasks
+
+- [ ] Task 1: Prepare runtime proof environment (AC: #1, #2)
+  - [ ] Start Docker if needed and record whether DAPR placement/scheduler were started manually.
+  - [ ] Start the AppHost with `EnableKeycloak=false` unless validating the Keycloak path is explicitly needed.
+  - [ ] Capture resource state and endpoint URLs before submitting commands.
+
+- [ ] Task 2: Submit the counter command through the real surface (AC: #3)
+  - [ ] Use the sample UI command form or `POST /api/v1/commands`.
+  - [ ] Record command payload, HTTP status, correlation ID, `Location`, and `Retry-After`.
+  - [ ] Preserve JWT/auth setup details if direct API calls are used.
+
+- [ ] Task 3: Capture server-side projection evidence (AC: #4, #5, #6, #7, #11)
+  - [ ] Capture command/event persistence logs or traces tied to the correlation ID.
+  - [ ] Capture `/project` invocation against the `sample` resource.
+  - [ ] Capture projection actor write and ETag regeneration evidence.
+  - [ ] Search logs for projection-path errors during the proof window.
+
+- [ ] Task 4: Prove query and UI refresh behavior (AC: #8, #9, #10)
+  - [ ] Query counter state through `POST /api/v1/queries` or the sample UI query service.
+  - [ ] Exercise `/pattern-silent-reload` and record before/after count.
+  - [ ] Capture SignalR or refresh evidence, not just command submission feedback.
+
+- [ ] Task 5: Persist repeatable evidence (AC: #12, #13)
+  - [ ] Create `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/README.md`.
+  - [ ] Add screenshots, log excerpts, trace IDs, payloads, and caveats under the same folder.
+  - [ ] If a blocker is found, record the blocker precisely and route it to the owning follow-up story.
+
+- [ ] Task 6: Run validation checks (AC: #11, #12)
+  - [ ] `dotnet test tests/Hexalith.EventStore.Sample.Tests`
+  - [ ] Optional, if server-side projection code changed: `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~ProjectionUpdateOrchestratorTests|FullyQualifiedName~EventReplayProjectionActorTests"`
+  - [ ] Record all test results in the Dev Agent Record.
+
+## Dev Notes
+
+### Existing Implementation To Reuse
+
+- `src/Hexalith.EventStore.AppHost/Program.cs` wires `eventstore`, `sample`, `sample-blazor-ui`, DAPR sidecars, and `EventStore__SignalR__Enabled=true`.
+- `samples/Hexalith.EventStore.Sample/Program.cs` maps the real `/project` endpoint to `CounterProjectionHandler.Project(request)` unless `EventStore:SampleFaults:MalformedProjectResponse` is enabled.
+- `samples/Hexalith.EventStore.Sample/Counter/Projections/CounterProjectionHandler.cs` returns `ProjectionResponse("counter", { count })` after applying counter events.
+- `src/Hexalith.EventStore/Controllers/CommandsController.cs` exposes `POST /api/v1/commands`, returns `202 Accepted`, `Location`, and `Retry-After`.
+- `src/Hexalith.EventStore/Controllers/QueriesController.cs` exposes `POST /api/v1/queries`, supports `If-None-Match`, and sets an `ETag` response header when available.
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Services/CounterQueryService.cs` queries `/api/v1/queries` for tenant `sample-tenant`, domain `counter`, aggregate/entity `counter-1`, and query type `get-counter-status`.
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/SilentReloadPattern.razor` subscribes to SignalR and reloads after projection change notifications.
+- `docs/guides/sample-blazor-ui.md#smoke-test-evidence-pattern` defines the minimum evidence format. Use it instead of writing a free-form "smoke test passed" note.
+
+### Implementation Guardrails
+
+- Do not treat a successful command submit as projection proof. Command acceptance happens before domain processing, event persistence, projection writes, ETag regeneration, SignalR delivery, and UI refresh.
+- Do not call the sample domain service `/project` directly as the only proof. Direct calls can validate the handler, but R11-A3 requires EventStore-driven DAPR service invocation.
+- Do not use SignalR as the source of projection state. SignalR is an invalidation signal; the Query API response is the state proof.
+- Do not add new public contracts, change `ProjectionRequest` / `ProjectionResponse`, or alter `EventReplayProjectionActor` unless the proof identifies a real defect that blocks R11-A3.
+- Do not initialize nested submodules. If any submodule setup is needed, update only root-level submodules and record the command.
+- Keep proof artifacts under `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/`.
+
+### Suggested Evidence Shape
+
+Minimum artifact set:
+
+- `README.md` with run command, environment, resource snapshot, endpoints, command payload, query payload, results, and caveats.
+- `resources-before.txt` and, if useful, `resources-after.txt`.
+- `eventstore-logs.txt`, `sample-logs.txt`, and `sample-blazor-ui-logs.txt` excerpts scoped to the proof window.
+- `trace-ids.txt` listing trace IDs or correlation IDs used to connect command, `/project`, projection actor, query, ETag, and SignalR evidence.
+- `silent-reload-before.png` and `silent-reload-after.png` or a documented reason screenshots were unavailable.
+
+### Architecture And Version Notes
+
+- Package versions are centrally pinned in `Directory.Packages.props`: Dapr `1.17.7`, Aspire `13.2.2`, .NET extensions `10.x`, xUnit v3, Shouldly, and NSubstitute. Do not add packages for a proof-only story unless a verification script cannot be written with the existing stack.
+- Aspire CLI is the intended local orchestration entry point for this repository. Use the project-specific command from `AGENTS.md` when possible.
+- DAPR actor runtime is single-threaded per actor turn. The proof should capture runtime behavior, not infer it from unit tests.
+- DAPR state ETags are opaque strings and state stores may support optimistic concurrency. For R11-A3, only observe ETag generation/query headers; do not introduce state-store implementation details.
+
+### Previous Story Intelligence
+
+- R11-A1 and R11-A2 are ready-for-dev predecessor hardening stories. If they have not landed, this story can still prove the current sample path, but any full-replay or polling limitation must be called out instead of patched here.
+- Epic 12 already proved sample UI pattern behavior in a broad sense, but it did not capture the server-side projection trace chain. Reuse its UI evidence pattern; do not repeat a UI-only smoke as proof.
+- The OpenTelemetry audit fix proposal states that R11-A3 remains valid and is unblocked by restored AppHost build/start behavior.
+- Lessons ledger L09 requires repeatable sample UI smoke evidence with commands, resource state, browser target, observed results, and log/trace/screenshot references.
+
+### Useful API Payloads
+
+Command submission shape:
+
+```json
+{
+  "messageId": "<unique-id>",
+  "tenant": "sample-tenant",
+  "domain": "counter",
+  "aggregateId": "counter-1",
+  "commandType": "IncrementCounter",
+  "payload": {}
+}
+```
+
+Query shape:
+
+```json
+{
+  "tenant": "sample-tenant",
+  "domain": "counter",
+  "aggregateId": "counter-1",
+  "queryType": "get-counter-status",
+  "payload": {},
+  "entityId": "counter-1",
+  "projectionType": "counter"
+}
+```
+
+With `EnableKeycloak=false`, use the development JWT rules from `appsettings.Development.json`: issuer `hexalith-dev`, audience `hexalith-eventstore`, signing key `DevOnlySigningKey-AtLeast32Chars!`, tenant claim containing `sample-tenant`, and permissions including `command:submit` and `query:read` or wildcards.
+
+## References
+
+- `_bmad-output/implementation-artifacts/epic-11-retro-2026-04-30.md` - R11-A3 action item and evidence gap.
+- `_bmad-output/implementation-artifacts/epic-12-retro-2026-04-30.md` - R12-A5 carry-forward and partial R11-A3 evidence note.
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-30-opentelemetry-audit-fix.md` - AppHost build/start blocker correction.
+- `docs/guides/sample-blazor-ui.md` - sample UI evidence pattern and command-feedback semantics.
+- `docs/superpowers/specs/2026-03-15-server-managed-projection-builder-design.md` - projection builder runtime flow.
+- `src/Hexalith.EventStore.AppHost/Program.cs` - AppHost runtime topology.
+- `samples/Hexalith.EventStore.Sample/Program.cs` - sample `/project` endpoint.
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/SilentReloadPattern.razor` - SignalR-driven silent reload pattern.
+- Dapr actor runtime docs: https://docs.dapr.io/developing-applications/building-blocks/actors/actors-features-concepts/
+- Dapr state API docs: https://docs.dapr.io/reference/api/state_api/
+- Aspire CLI docs: https://learn.microsoft.com/dotnet/aspire/cli/overview
+
+## Dev Agent Record
+
+### Agent Model Used
+
+TBD
+
+### Debug Log References
+
+### Completion Notes List
+
+### File List
