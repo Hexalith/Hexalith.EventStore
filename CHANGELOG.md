@@ -1,3 +1,10 @@
+## [3.0.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.0.1...v3.0.2) (2026-05-01)
+
+
+### Bug Fixes
+
+* mark subproject as dirty to indicate uncommitted changes ([6781d67](https://github.com/Hexalith/Hexalith.EventStore/commit/6781d67e95ff4a3750fd426c6e780a96fcfa5bab))
+
 ## [3.0.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.0.0...v3.0.1) (2026-05-01)
 
 
