@@ -1,3 +1,10 @@
+## [3.0.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.0.0...v3.0.1) (2026-05-01)
+
+
+### Bug Fixes
+
+* optimize sequence saving by skipping unnecessary ETag retries ([45232e4](https://github.com/Hexalith/Hexalith.EventStore/commit/45232e431345882c72935c27b624ffc94cc5e0d4))
+
 # [3.0.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v2.1.2...v3.0.0) (2026-04-30)
 
 
