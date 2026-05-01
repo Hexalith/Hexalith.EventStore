@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: '2026-05-01 (post-epic-11-r11a3-apphost-projection-proof story created ready-for-dev — AppHost projection proof story for command -> event -> /project -> projection actor -> query/ETag/SignalR/UI evidence)'
+last_updated: '2026-05-01 (post-epic-11-r11a4-valid-projection-round-trip story created ready-for-dev - automated valid projection command-to-query integration proof)'
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -154,7 +154,7 @@ development_status:
   post-epic-11-r11a1-checkpoint-tracked-projection-delivery: ready-for-dev
   post-epic-11-r11a2-polling-mode-product-behavior: ready-for-dev
   post-epic-11-r11a3-apphost-projection-proof: ready-for-dev
-  post-epic-11-r11a4-valid-projection-round-trip: backlog
+  post-epic-11-r11a4-valid-projection-round-trip: ready-for-dev
 
   # Epic 13: Documentation & Developer Onboarding
   epic-13: done
