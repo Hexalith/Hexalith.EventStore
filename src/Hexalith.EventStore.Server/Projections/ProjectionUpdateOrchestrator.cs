@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -35,6 +36,8 @@ public partial class ProjectionUpdateOrchestrator(
     IProjectionCheckpointTracker checkpointTracker,
     IOptions<ProjectionOptions> projectionOptions,
     ILogger<ProjectionUpdateOrchestrator> logger) : IProjectionUpdateOrchestrator {
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> s_projectionLocks = new(StringComparer.Ordinal);
+
     /// <inheritdoc/>
     public async Task UpdateProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
@@ -45,6 +48,8 @@ public partial class ProjectionUpdateOrchestrator(
             return;
         }
 
+        SemaphoreSlim projectionLock = s_projectionLocks.GetOrAdd(identity.ActorId, static _ => new SemaphoreSlim(1, 1));
+        await projectionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
             Log.UpdateStarted(logger, identity.TenantId, identity.Domain, identity.AggregateId);
 
@@ -58,23 +63,15 @@ public partial class ProjectionUpdateOrchestrator(
                 return;
             }
 
-            long lastDeliveredSequence = 0;
-            try {
-                lastDeliveredSequence = await checkpointTracker
-                    .ReadLastDeliveredSequenceAsync(identity, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException) {
-                Log.CheckpointReadFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
-            }
-
             // Step 2: Create aggregate actor proxy and read events
             IAggregateActor aggregateProxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(identity.ActorId),
                 "AggregateActor");
 
+            // Full replay remains the safe immediate-delivery contract until
+            // projection handlers receive prior state or become explicitly incremental-aware.
             EventEnvelope[] events = await aggregateProxy
-                .GetEventsAsync(lastDeliveredSequence)
+                .GetEventsAsync(0)
                 .ConfigureAwait(false);
 
             if (events.Length == 0) {
@@ -150,6 +147,9 @@ public partial class ProjectionUpdateOrchestrator(
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             Log.ProjectionUpdateFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId);
+        }
+        finally {
+            _ = projectionLock.Release();
         }
     }
 

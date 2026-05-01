@@ -195,7 +195,7 @@ public class ProjectionUpdateOrchestratorTests {
     }
 
     [Fact]
-    public async Task UpdateProjectionAsync_ExistingCheckpoint_CallsGetEventsAsyncWithCheckpointSequence() {
+    public async Task UpdateProjectionAsync_ExistingCheckpoint_ReplaysFromZeroUntilIncrementalContractIsResolved() {
         // Arrange
         IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
         _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
@@ -206,15 +206,18 @@ public class ProjectionUpdateOrchestratorTests {
             .Returns(registration);
 
         IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
-        _ = aggregateActor.GetEventsAsync(7).Returns(Array.Empty<EventEnvelope>());
+        _ = aggregateActor.GetEventsAsync(0).Returns(Array.Empty<EventEnvelope>());
         _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(aggregateActor);
 
         // Act
         await sut.UpdateProjectionAsync(TestIdentity);
 
-        // Assert
-        _ = await aggregateActor.Received(1).GetEventsAsync(7);
+        // Assert - checkpoint state is tracked on save, but immediate delivery stays
+        // full-replay until the projection handler state contract is resolved.
+        _ = await aggregateActor.Received(1).GetEventsAsync(0);
+        _ = await aggregateActor.DidNotReceive().GetEventsAsync(7);
+        await checkpointTracker.DidNotReceiveWithAnyArgs().ReadLastDeliveredSequenceAsync(default!, default);
     }
 
     [Fact]
@@ -233,9 +236,11 @@ public class ProjectionUpdateOrchestratorTests {
         _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(aggregateActor);
 
-        // Act & Assert
+        // Act & Assert - checkpoint reads are not part of immediate delivery until
+        // the incremental projection contract is resolved.
         await Should.NotThrowAsync(() => sut.UpdateProjectionAsync(TestIdentity));
         _ = await aggregateActor.Received(1).GetEventsAsync(0);
+        await checkpointTracker.DidNotReceiveWithAnyArgs().ReadLastDeliveredSequenceAsync(default!, default);
     }
 
     // --- Test 6: AC 3 - Domain service failure does not throw ---
@@ -312,7 +317,7 @@ public class ProjectionUpdateOrchestratorTests {
             .Returns(registration);
 
         IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
-        _ = aggregateActor.GetEventsAsync(1).Returns(new[] { CreateTestEnvelope(2), CreateTestEnvelope(5) });
+        _ = aggregateActor.GetEventsAsync(0).Returns(new[] { CreateTestEnvelope(2), CreateTestEnvelope(5) });
         _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
             .Returns(aggregateActor);
         _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
@@ -322,6 +327,7 @@ public class ProjectionUpdateOrchestratorTests {
         await sut.UpdateProjectionAsync(TestIdentity);
 
         // Assert
+        _ = await aggregateActor.Received(1).GetEventsAsync(0);
         await writeActor.Received(1).UpdateProjectionAsync(Arg.Any<ProjectionState>());
         await checkpointTracker.Received(1).SaveDeliveredSequenceAsync(TestIdentity, 5, Arg.Any<CancellationToken>());
     }
@@ -351,6 +357,33 @@ public class ProjectionUpdateOrchestratorTests {
         await sut.UpdateProjectionAsync(TestIdentity);
 
         // Assert - empty ProjectionType short-circuits the orchestrator before write/save
+        await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
+        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+    }
+
+    [Fact]
+    public async Task UpdateProjectionAsync_InvalidProjectionResponseWithNullState_DoesNotSaveCheckpoint() {
+        // Arrange
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory("""{"projectionType":"counter-summary","state":null}""");
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(checkpointTracker, daprClient, httpClientFactory);
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns(new[] { CreateTestEnvelope(2) });
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(writeActor);
+
+        // Act
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        // Assert - null State short-circuits the orchestrator before write/save.
         await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
         await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }

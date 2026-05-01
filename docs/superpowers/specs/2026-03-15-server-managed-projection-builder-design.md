@@ -79,16 +79,16 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 - Tracks last-sent event sequence **per aggregate**: `tenant:domain:aggregateId`
 - Stored in DAPR state store via dedicated checkpoint state key: `projection-checkpoints:{tenant}:{domain}:{aggregateId}`
 - Updated **only after** successful `UpdateProjectionAsync` call (write-after-success guarantees at-least-once delivery)
-- Immediate delivery reads from the stored checkpoint and calls `AggregateActor.GetEventsAsync(lastDeliveredSequence)`. Missing checkpoints use `0` for the first delivery.
-- Checkpoint writes keep the maximum observed sequence so delayed duplicate triggers do not lower an already advanced checkpoint. The current implementation uses read-before-write max preservation; duplicate delivery can still occur under concurrent fire-and-forget triggers, but silent event skipping is not allowed.
-- Idempotent: if the same events are sent twice, the domain service must handle them idempotently (Apply methods are inherently idempotent when replaying from a known state)
+- Immediate delivery currently keeps the safe full-replay read path (`AggregateActor.GetEventsAsync(0)`) while still writing checkpoints after successful projection writes. Incremental reads from the checkpoint are deferred until the projection handler state contract is resolved.
+- Checkpoint writes keep the maximum observed sequence so delayed duplicate triggers do not lower an already advanced checkpoint.
+- Duplicate delivery remains possible. Domain services must handle duplicate full-history projection requests idempotently; delta-only projection requests require a future contract decision because the current `ProjectionRequest` does not carry prior projection state.
 
 #### 3. Immediate Trigger (RefreshIntervalMs = 0, default)
 
 - **Fire-and-forget background task** — does NOT block command processing (preserves CQRS separation)
 - Triggered after `EventPublisher` persists events via a lightweight event/callback, NOT by adding dependencies to `AggregateActor`
 - Uses `IProjectionUpdateOrchestrator` injected into the event publication path (not into AggregateActor itself)
-- Reads new events from the aggregate via `AggregateActor.GetEventsAsync(fromSequence)` (actor proxy call)
+- Reads the aggregate event history via `AggregateActor.GetEventsAsync(0)` pending the incremental projection contract decision
 - Sends to domain service `/project` endpoint
 - Updates checkpoint and ProjectionActor state
 - Failures are logged and retried on the next trigger — stale projections are acceptable (eventual consistency)
@@ -162,9 +162,9 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 - **Domain service unavailable**: Log warning, skip update. Projection stays at last known state (stale). Next trigger/poll retries.
 - **Domain service returns error**: Log warning, do NOT update checkpoint. Same events will be resent on next trigger/poll.
 - **Checkpoint update ordering**: Checkpoint updated ONLY after successful `UpdateProjectionAsync` call. This guarantees at-least-once delivery.
-- **Checkpoint read failure**: Log warning and replay from sequence `0` for that update. This can duplicate delivery but does not skip events or fail command processing.
+- **Checkpoint read failure**: Immediate delivery does not currently read checkpoints for event trimming. Future incremental delivery must fail open without skipping events.
 - **Checkpoint save failure**: Log warning after the projection actor write and leave the previous checkpoint unchanged. The next trigger resends from the old checkpoint.
-- **Projection builder crash**: On restart, resumes from last committed checkpoint. Events are replayed from that point (idempotent).
+- **Projection builder crash**: On restart, immediate delivery replays full aggregate history and rewrites the projection state. Checkpoints remain available for future incremental/polling work.
 - **AggregateActor.GetEventsAsync failure**: Log warning, skip. Retried on next trigger/poll.
 - **Degraded mode**: Stale projections are explicitly acceptable. The system favors availability over consistency (AP in CAP). Queries return the last known state, which may be behind by one or more events.
 

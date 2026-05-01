@@ -51,7 +51,7 @@ public class ProjectionCheckpointTrackerTests {
     public async Task SaveDeliveredSequenceAsync_MissingCheckpoint_SavesDeliveredSequence() {
         // Arrange
         DaprClient daprClient = Substitute.For<DaprClient>();
-        SetupGetStateAndEtag(daprClient, "custom-store", null, "etag-1");
+        SetupGetStateAndEtag(daprClient, "custom-store", null, string.Empty);
         SetupTrySave(daprClient, "custom-store", true);
         var tracker = CreateTracker(daprClient, "custom-store");
 
@@ -68,10 +68,25 @@ public class ProjectionCheckpointTrackerTests {
                 && p.Domain == "test-domain"
                 && p.AggregateId == "agg-001"
                 && p.LastDeliveredSequence == 9),
-            "etag-1",
+            string.Empty,
             stateOptions: Arg.Any<StateOptions?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReadLastDeliveredSequenceAsync_MismatchedCheckpointIdentity_ThrowsInvalidOperationException() {
+        // Arrange
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetStateAsync<ProjectionCheckpoint>(
+                "statestore",
+                ProjectionCheckpointTracker.GetStateKey(TestIdentity),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(new ProjectionCheckpoint("other-tenant", "test-domain", "agg-001", 42, DateTimeOffset.UtcNow));
+        var tracker = CreateTracker(daprClient);
+
+        // Act & Assert
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => tracker.ReadLastDeliveredSequenceAsync(TestIdentity));
     }
 
     [Fact]
@@ -243,6 +258,37 @@ public class ProjectionCheckpointTrackerTests {
 
         // Act & Assert
         _ = await Should.ThrowAsync<InvalidOperationException>(() => tracker.SaveDeliveredSequenceAsync(TestIdentity, 7));
+    }
+
+    [Fact]
+    public async Task SaveDeliveredSequenceAsync_TransientStorageException_RetriesUntilSaveSucceeds() {
+        // Arrange
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpoint>(
+                "statestore",
+                ProjectionCheckpointTracker.GetStateKey(TestIdentity),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromException<(ProjectionCheckpoint, string)>(new InvalidOperationException("transient state store failure")),
+                Task.FromResult(((ProjectionCheckpoint, string))(null!, string.Empty)));
+        SetupTrySave(daprClient, "statestore", true);
+        var tracker = CreateTracker(daprClient);
+
+        // Act
+        bool saved = await tracker.SaveDeliveredSequenceAsync(TestIdentity, 7);
+
+        // Assert
+        saved.ShouldBeTrue();
+        _ = await daprClient.Received(1).TrySaveStateAsync(
+            "statestore",
+            ProjectionCheckpointTracker.GetStateKey(TestIdentity),
+            Arg.Any<ProjectionCheckpoint>(),
+            string.Empty,
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -6,11 +6,14 @@ Status: in-progress
 2026-05-01 re-review reopened this story (done → in-progress) on a CRITICAL finding: the
 incremental delivery path silently corrupts any projection handler that rebuilds state from
 scratch (the canonical example is `samples/Hexalith.EventStore.Sample/Counter/Projections/CounterProjectionHandler.cs`).
+Current-pass remediation chose the conservative safety path: immediate delivery reverts to full replay
+(`GetEventsAsync(0)`) while retaining checkpoint writes, and per-aggregate projection updates are serialized.
 Closure is gated on the carve-out sibling story `post-epic-11-r11a1b-incremental-projection-contract-decision`
-making the binary architectural choice (revert seq=0 vs extend ProjectionRequest with prior state vs
-require incremental-aware handlers). Original 11-3 ADR-3 explicitly chose full-replay for correctness.
-Patches P1 (outer OCE filter), P2 (no-op save short-circuit), and P3 (drop misleading `_ =`) applied
-in this re-review pass and validated by 57/57 targeted tests + 0/0 Server build.
+making the binary architectural choice for future incremental reads (extend ProjectionRequest with prior state vs
+require incremental-aware handlers vs another sequence-aware projection write contract). Original 11-3 ADR-3
+explicitly chose full-replay for correctness.
+Patches P1 (outer OCE filter), P2 (no-op save short-circuit), P3 (drop misleading `_ =`), and current-pass
+correctness/test/doc patches applied and validated by 60/60 targeted tests + 0/0 Server build.
 -->
 
 
@@ -269,7 +272,7 @@ Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor (independent — prio
 
 ### Decision-Needed
 
-- [ ] [Review][Decision] **Counter sample (and any rebuild-from-scratch projection handler) is silently corrupted by incremental delivery** — Confirmed via `samples/Hexalith.EventStore.Sample/Counter/Projections/CounterProjectionHandler.cs:21-36` (does `CounterState state = new(); foreach (evt) ApplyEvent(state, evt)`); `src/Hexalith.EventStore.Server/Actors/EventReplayProjectionActor.cs:43` (`StateManager.SetStateAsync` overwrites, no merge); `tests/Hexalith.EventStore.Sample.Tests/Counter/Projections/CounterProjectionHandlerTests.cs:36-46` (only test of multi-event Counter projection passes events as a single full-history batch, never simulates incremental triggers). Failure mode: after a successful first delivery saves checkpoint at sequence N, the next trigger calls `GetEventsAsync(N)` and the Counter handler receives only delta events; it then computes state from a fresh seed plus the delta (e.g., 4 prior `CounterIncremented` followed by 1 new `CounterIncremented` produces a saved projection of `count=1` instead of `count=5`), permanently overwriting the prior count. The new R11-A4 (`post-epic-11-r11a4-valid-projection-round-trip`) story that would catch this end-to-end is still `ready-for-dev`, so no automated test currently exercises a multi-trigger projection round trip. AC #8 says the wire contract stays unchanged, but the orchestrator's *semantic* contract changed (events are now a delta, not full history) without ProjectionRequest carrying prior projection state. Resolution requires a design choice — see options below.
+- [x] [Review][Decision] **Counter sample (and any rebuild-from-scratch projection handler) is silently corrupted by incremental delivery** — RESOLVED in current pass by reverting immediate delivery to full replay (`GetEventsAsync(0)`) while retaining checkpoint writes. Future incremental delivery remains gated on `post-epic-11-r11a1b-incremental-projection-contract-decision`.
 
 ### Patch
 
@@ -305,6 +308,18 @@ Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor (independent — prio
 
 All 12 ACs assessed as Met (independent re-audit). The CRITICAL finding above sits at the *integration* boundary between R11-A1 (orchestrator semantics changed) and R11-A4 (valid round-trip proof) — neither story alone surfaces it. The Auditor focused on AC literal text against the diff; the integration regression only becomes visible when the diff is composed with `CounterProjectionHandler.cs` (out of the diff scope) and `EventReplayProjectionActor.cs` (overwrite semantics).
 
+### Review Findings (Current Pass 2026-05-01)
+
+- [x] [Review][Decision] Incremental delivery corrupts rebuild-from-scratch projection handlers — RESOLVED by conservative full-replay safety patch. `ProjectionUpdateOrchestrator` now calls `GetEventsAsync(0)` for immediate delivery while retaining checkpoint writes after successful projection writes. Future incremental reads remain gated on `post-epic-11-r11a1b-incremental-projection-contract-decision`.
+- [x] [Review][Decision] Concurrent projection triggers can regress projection state while the checkpoint remains advanced — RESOLVED by per-aggregate serialization in `ProjectionUpdateOrchestrator`; concurrent fire-and-forget triggers for the same `AggregateIdentity.ActorId` now execute one at a time.
+- [x] [Review][Decision] Checkpoints are scoped per aggregate, not per projection state lifecycle or projection type — RESOLVED for current immediate delivery by full replay: checkpoint state no longer trims immediate event reads, so projection actor state reset/type changes cannot skip historical events in this path. Future incremental/polling scope remains part of the sibling contract decision.
+- [x] [Review][Decision] Checkpoint-ahead-of-stream drift has no recovery policy — RESOLVED for current immediate delivery by full replay: the stored checkpoint is no longer passed to `GetEventsAsync` for immediate projection updates. Future incremental/polling recovery policy remains part of the sibling contract decision.
+- [x] [Review][Patch] Validate persisted checkpoint identity before trusting `LastDeliveredSequence` [`src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs:26`] — tracker now rejects mismatched `TenantId`, `Domain`, or `AggregateId` with `InvalidOperationException`, pinned by `ReadLastDeliveredSequenceAsync_MismatchedCheckpointIdentity_ThrowsInvalidOperationException`.
+- [x] [Review][Patch] Add invalid-projection-response coverage for null/undefined state [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs:330`] — added `UpdateProjectionAsync_InvalidProjectionResponseWithNullState_DoesNotSaveCheckpoint`.
+- [x] [Review][Patch] Add retry coverage for transient checkpoint storage exceptions [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs:230`] — added `SaveDeliveredSequenceAsync_TransientStorageException_RetriesUntilSaveSucceeds`.
+- [x] [Review][Patch] Pin missing-checkpoint save behavior with the realistic empty ETag shape [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs:51`] — missing-checkpoint save test now uses `string.Empty` ETag and asserts it is passed to `TrySaveStateAsync`.
+- [x] [Review][Patch] Projection builder documentation overstates idempotency while the handler-state contract is unresolved [`docs/superpowers/specs/2026-03-15-server-managed-projection-builder-design.md:84`] — docs now state immediate delivery uses full replay while checkpoints remain available for future incremental/polling work, and that delta-only projection requests require a future contract decision.
+
 ## Advanced Elicitation
 
 - Date/time: 2026-05-01T11:35:12+02:00
@@ -326,4 +341,3 @@ All 12 ACs assessed as Met (independent re-audit). The CRITICAL finding above si
 - Findings deferred:
   - No product-scope or architecture-policy decisions deferred. Exact option names and retry count can be chosen during `bmad-dev-story` while preserving the bounded ETag/non-regression contract above.
 - Final recommendation: ready-for-dev
-

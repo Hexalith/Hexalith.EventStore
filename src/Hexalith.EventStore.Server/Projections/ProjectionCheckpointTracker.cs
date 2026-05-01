@@ -31,7 +31,17 @@ public sealed class ProjectionCheckpointTracker(
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        return checkpoint?.LastDeliveredSequence ?? 0;
+        if (checkpoint is null) {
+            return 0;
+        }
+
+        if (!string.Equals(checkpoint.TenantId, identity.TenantId, StringComparison.Ordinal)
+            || !string.Equals(checkpoint.Domain, identity.Domain, StringComparison.Ordinal)
+            || !string.Equals(checkpoint.AggregateId, identity.AggregateId, StringComparison.Ordinal)) {
+            throw new InvalidOperationException("Projection checkpoint identity does not match the requested aggregate identity.");
+        }
+
+        return checkpoint.LastDeliveredSequence;
     }
 
     /// <inheritdoc/>
