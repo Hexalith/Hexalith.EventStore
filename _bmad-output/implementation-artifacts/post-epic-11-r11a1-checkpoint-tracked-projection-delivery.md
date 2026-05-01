@@ -185,6 +185,29 @@ GPT-5 Codex
 - Preserved fail-open behavior for checkpoint read/save failures and polling-mode deferral.
 - Updated projection design documentation to state immediate delivery is checkpoint-tracked and polling remains R11-A2 scope.
 
+### Verification (2026-05-01, dev-story re-entry)
+
+Re-entered via `/bmad-dev-story` to re-verify the three patches applied during the 2026-05-01 re-review pass (P1 outer OCE filter, P2 no-op save short-circuit, P3 dropped misleading discard). No code/test changes in this re-entry — verification only.
+
+**Patch confirmation:**
+
+- **P1 (outer OCE filter)** — `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:151` reads `catch (Exception ex) when (ex is not OperationCanceledException)`. Confirmed.
+- **P2 (no-op save short-circuit)** — `src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs:60-62` short-circuits `if (existing is not null && existing.LastDeliveredSequence >= deliveredSequence) return true;` before any `TrySaveStateAsync` call. Confirmed.
+- **P3 (dropped misleading discard)** — `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:106` is a side-effect statement `httpResponse.EnsureSuccessStatusCode();` (no `_ =` prefix). Confirmed.
+
+**Test runs (Debug build, no Docker required):**
+
+- `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~ProjectionUpdateOrchestratorTests|FullyQualifiedName~ProjectionCheckpoint"` → **31/31 PASS** (678 ms, 0 failed, 0 skipped).
+- `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~EventReplayProjectionActorTests|FullyQualifiedName~AggregateActorGetEventsTests|FullyQualifiedName~ProjectionUpdateOrchestratorRefreshIntervalTests"` → **26/26 PASS** (130 ms, 0 failed, 0 skipped).
+
+**Server build (Release, TreatWarningsAsErrors=true):**
+
+- `dotnet build src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj --configuration Release` → **0 warnings, 0 errors** (2.30 s).
+
+**Closure status:**
+
+All 7 tasks remain `[x]`. The three Re-Review (2026-05-01) patches remain `[x]` and are visible in the codebase. Story closure remains gated on the single CRITICAL Decision-Needed finding in the Re-Review section: rebuild-from-scratch projection handlers (canonical: `samples/Hexalith.EventStore.Sample/Counter/Projections/CounterProjectionHandler.cs:21-36`) are silently corrupted by incremental delivery because `EventReplayProjectionActor.cs:43` overwrites without merge and `ProjectionRequest` does not carry prior projection state. Per project precedent (post-epic-2-r2a5 → r2a5b, post-epic-4-r4a2 → r4a2b), the binary architectural decision (full-replay revert vs. extend `ProjectionRequest` with prior state vs. require incremental-aware handlers) belongs in the sibling carve-out story `post-epic-11-r11a1b-incremental-projection-contract-decision`, currently `backlog` (spec not yet authored). r11a1 cannot transition `in-progress → review` until r11a1b authors → develops → merges. Recommended next action: `/bmad-create-story post-epic-11-r11a1b-incremental-projection-contract-decision`.
+
 ### File List
 
 - `docs/superpowers/specs/2026-03-15-server-managed-projection-builder-design.md`
