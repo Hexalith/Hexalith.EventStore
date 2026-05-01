@@ -25,27 +25,27 @@ This is a verification and evidence story, not a feature story. Reuse the curren
 
 1. **AppHost starts from the documented developer command.** Run `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` or document why the equivalent `dotnet run --project src/Hexalith.EventStore.AppHost` path was used. `eventstore`, `sample`, `sample-blazor-ui`, `statestore`, and `pubsub` must be running before proof begins. If DAPR slim mode requires manual `placement` and `scheduler`, record the exact commands.
 
-2. **Resource evidence is captured before exercising the flow.** Paste the Aspire resource snapshot into this story's Dev Agent Record or `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/`. The snapshot must include endpoint URLs used for EventStore and the sample Blazor UI, plus the effective sample UI tenant/projection settings used during the browser proof.
+2. **Resource evidence is captured before exercising the flow.** Paste the Aspire resource snapshot into this story's Dev Agent Record or `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/`. The snapshot must include endpoint URLs used for EventStore and the sample Blazor UI, the effective sample UI tenant/projection settings used during the browser proof, the proof-window start timestamp, and the unique command `messageId` / correlation ID that will be followed through the rest of the evidence.
 
 3. **Command submission is proven through the real HTTP API or sample UI.** Submit at least one `IncrementCounter` command for tenant `sample-tenant`, domain `counter`, aggregate `counter-1`, and record the HTTP response status, correlation ID, `Location`, and `Retry-After` headers. A green UI submission alone is not sufficient because docs state it only proves HTTP acceptance; if the sample UI is used, capture the browser network request/response or pair it with a direct API submission that records those headers.
 
-4. **Event persistence is evidenced.** Record either an Aspire trace/log entry or API evidence showing the accepted command reached event persistence. The evidence must include the correlation ID or enough structured fields to tie it back to the submitted command.
+4. **Event persistence is evidenced.** Record either an Aspire trace/log entry or API evidence showing the accepted command reached event persistence. The evidence must include the same proof identity from AC #2: command `messageId`, correlation ID, aggregate ID, and timestamp close enough to the submitted command to prevent accidentally stitching together evidence from separate runs.
 
-5. **The sample `/project` endpoint is invoked.** Capture logs or traces showing EventStore invoked `sample` `POST /project` with a `ProjectionRequest`. The proof must confirm the sample endpoint is the real handler in `samples/Hexalith.EventStore.Sample/Program.cs`, not the malformed-response fault path.
+5. **The sample `/project` endpoint is invoked.** Capture logs or traces showing EventStore invoked `sample` `POST /project` with a `ProjectionRequest` tied to the same proof identity. The proof must confirm the sample endpoint is the real handler in `samples/Hexalith.EventStore.Sample/Program.cs`, not the malformed-response fault path.
 
 6. **Projection actor write is evidenced.** Capture logs or traces showing `EventReplayProjectionActor.UpdateProjectionAsync` accepted the returned projection state for projection type `counter` and tenant `sample-tenant`.
 
 7. **ETag regeneration is evidenced.** Capture logs, response headers, or trace evidence showing a new ETag was generated after the projection write. A query response with an `ETag` header is acceptable only when it is tied to the same command/projection proof and the ETag is shown to route to the `counter` projection, either by self-routing decode evidence or matching server log fields.
 
-8. **Query result returns projected state.** Call `POST /api/v1/queries` or use the sample UI query path and prove the returned payload includes the expected counter count after the command. The query must use domain/projection `counter`, tenant `sample-tenant`, aggregate/entity `counter-1`, and query type `get-counter-status`.
+8. **Query result returns projected state.** Call `POST /api/v1/queries` or use the sample UI query path and prove the returned payload includes the expected counter count after the command. The query must use domain/projection `counter`, tenant `sample-tenant`, aggregate/entity `counter-1`, and query type `get-counter-status`. Capture a baseline count before command submission and an after count after projection delivery; if pre-existing state makes the baseline non-zero, prove the expected delta rather than assuming the final count should be `1`.
 
-9. **SignalR invalidation is evidenced.** Capture either server log evidence from `SignalRProjectionChangedBroadcaster`, sample UI log evidence from `SignalRClientStartup` / refresh callbacks, or browser-visible behavior showing the projection change signal arrived. SignalR carries no projection data; the proof must show the client re-queried or refreshed after the signal.
+9. **SignalR invalidation is evidenced.** Capture either server log evidence from `SignalRProjectionChangedBroadcaster`, sample UI log evidence from `SignalRClientStartup` / refresh callbacks, or browser-visible behavior showing the projection change signal arrived. SignalR carries no projection data; the proof must show the client re-queried or refreshed after the signal. A manual refresh or a direct query proving updated state can support AC #8, but it must not be counted as AC #9 unless SignalR delivery or refresh-after-signal evidence is present; missing SignalR evidence is a blocker or deferred owner decision, not a pass.
 
 10. **Sample UI refresh behavior is evidenced with artifacts.** Open the sample Blazor UI from the Aspire endpoint and exercise at least one refresh pattern page. Prefer `/pattern-silent-reload` because it should update after a signal without manual refresh. Include a screenshot or browser notes showing before/after count, and preserve either the browser query request or page configuration evidence proving the UI used tenant `sample-tenant`, projection `counter`, and aggregate/entity `counter-1`. If browser automation is unavailable, record the exact manual steps and observed result.
 
-11. **No projection-path regression errors are present.** During the proof window, `eventstore` logs must not contain `QueryNotFoundException`, malformed projection response errors, unhandled `ProjectionUpdateOrchestrator` failures, or SignalR hub mapping failures. If unrelated startup warnings exist, classify them separately and do not hide projection failures.
+11. **No projection-path regression errors are present.** During the bounded proof window from AC #2 through the final query/UI refresh, `eventstore` logs must not contain `QueryNotFoundException`, malformed projection response errors, unhandled `ProjectionUpdateOrchestrator` failures, or SignalR hub mapping failures. Record the log source, time range, and filter terms used for the negative search. If unrelated startup warnings exist, classify them separately and do not hide projection failures.
 
-12. **Evidence is repeatable.** Create `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/README.md` with the commands, endpoints, payloads, timestamps, screenshots/log references, and known caveats needed to repeat the proof.
+12. **Evidence is repeatable.** Create `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/README.md` with the commands, endpoints, payloads, timestamps, screenshots/log references, and known caveats needed to repeat the proof. Include an AC evidence matrix mapping AC #1-#13 to the exact artifact file, log excerpt, screenshot, trace ID, or caveat that satisfies it.
 
 13. **No product scope is silently expanded.** If the proof fails because R11-A1 or R11-A2 has not landed, record the blocker and leave the fix to those stories. This story may add a small verification script or runbook only if it reduces evidence drift; it must not implement checkpoint tracking, polling mode, or new projection contracts.
 
@@ -55,6 +55,7 @@ This is a verification and evidence story, not a feature story. Reuse the curren
   - [ ] Start Docker if needed and record whether DAPR placement/scheduler were started manually.
   - [ ] Start the AppHost with `EnableKeycloak=false` unless validating the Keycloak path is explicitly needed.
   - [ ] Capture resource state and endpoint URLs before submitting commands.
+  - [ ] Pick and record one unique command `messageId`, correlation ID, proof-window start timestamp, and aggregate ID for the evidence chain.
 
 - [ ] Task 2: Submit the counter command through the real surface (AC: #3)
   - [ ] Use the sample UI command form or `POST /api/v1/commands`.
@@ -66,17 +67,19 @@ This is a verification and evidence story, not a feature story. Reuse the curren
   - [ ] Capture command/event persistence logs or traces tied to the correlation ID.
   - [ ] Capture `/project` invocation against the `sample` resource.
   - [ ] Capture projection actor write and ETag regeneration evidence.
-  - [ ] Search logs for projection-path errors during the proof window.
+  - [ ] Search logs for projection-path errors during the bounded proof window and record the source, time range, and filter terms.
 
 - [ ] Task 4: Prove query and UI refresh behavior (AC: #8, #9, #10)
+  - [ ] Capture the baseline counter count before command submission.
   - [ ] Query counter state through `POST /api/v1/queries` or the sample UI query service.
   - [ ] Exercise `/pattern-silent-reload` and record before/after count.
   - [ ] Preserve query request evidence showing tenant `sample-tenant`, domain/projection `counter`, aggregate/entity `counter-1`, and query type `get-counter-status`.
-  - [ ] Capture SignalR or refresh evidence, not just command submission feedback.
+  - [ ] Capture SignalR or refresh-after-signal evidence, not just command submission feedback or manual reload behavior.
 
 - [ ] Task 5: Persist repeatable evidence (AC: #12, #13)
   - [ ] Create `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/README.md`.
   - [ ] Add screenshots, log excerpts, trace IDs, payloads, and caveats under the same folder.
+  - [ ] Add an AC evidence matrix that maps AC #1-#13 to concrete artifact paths or explicit blockers.
   - [ ] If a blocker is found, record the blocker precisely and route it to the owning follow-up story.
 
 - [ ] Task 6: Run validation checks (AC: #11, #12)
@@ -136,6 +139,15 @@ Minimum artifact set:
 - `SilentReloadPattern` loads tenant and projection settings from configuration at runtime. Evidence should prove the effective values, not infer them from defaults.
 - Prefer log stages `DomainServiceInvocationSucceeded`, `ProjectionStateUpdated`, `Projection state persisted`, ETag response headers, and SignalR broadcast/refresh evidence as the connected proof chain.
 
+### Advanced Elicitation Guardrails
+
+- Use one proof identity for the whole run. The command `messageId`, correlation ID, tenant, domain, aggregate ID, and proof-window timestamps should appear consistently in the command response, persistence evidence, `/project` invocation, projection actor write, query evidence, and UI/SignalR notes.
+- Treat existing counter state as normal. Capture baseline and after counts and assert the delta caused by the selected command instead of resetting state solely to make the count start at zero.
+- Keep JWT and auth evidence safe. Record token issuer, audience, tenant claim, permissions, and expiry metadata, but do not paste full bearer tokens or signing secrets into artifacts.
+- Use bounded waits for eventual projection delivery and SignalR refresh. Record the retry cadence and final timeout; if projection or SignalR evidence does not arrive within the documented window, classify the story as blocked or needs-story-update instead of accepting a partial proof.
+- Prefer an evidence matrix over prose-only notes. Each acceptance criterion should point to a concrete artifact path, trace ID, log excerpt, screenshot, or explicit blocker so code review can audit the proof quickly.
+- Do not add a verification script by default. A small script is acceptable only when it reduces evidence drift; the minimum sufficient output for this story is a repeatable runbook plus captured artifacts.
+
 ### Useful API Payloads
 
 Command submission shape:
@@ -165,7 +177,7 @@ Query shape:
 }
 ```
 
-With `EnableKeycloak=false`, use the development JWT rules from `appsettings.Development.json`: issuer `hexalith-dev`, audience `hexalith-eventstore`, signing key `DevOnlySigningKey-AtLeast32Chars!`, tenant claim containing `sample-tenant`, and permissions including `command:submit` and `query:read` or wildcards.
+With `EnableKeycloak=false`, use the development JWT rules from `appsettings.Development.json`: issuer `hexalith-dev`, audience `hexalith-eventstore`, signing key `DevOnlySigningKey-AtLeast32Chars!`, tenant claim containing `sample-tenant`, and permissions including `command:submit` and `query:read` or wildcards. Evidence artifacts should record the non-secret claims used, not the full bearer token.
 
 ## References
 
@@ -216,4 +228,40 @@ TBD
 - Findings deferred:
   - No deferred product or architecture decisions. Checkpoint tracking and polling behavior remain owned by R11-A1/R11-A2 and must not be patched in this proof story.
   - `project-context.md` preload was unavailable; no generated project-context artifact was found in this repository.
+- Final recommendation: `ready-for-dev`
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-01T13:34:30+02:00
+- Selected story key: `post-epic-11-r11a3-apphost-projection-proof`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-11-r11a3-apphost-projection-proof`
+- Batch 1 method names:
+  - Self-Consistency Validation
+  - Red Team vs Blue Team
+  - Architecture Decision Records
+  - Pre-mortem Analysis
+  - Failure Mode Analysis
+- Reshuffled Batch 2 method names:
+  - Security Audit Personas
+  - Comparative Analysis Matrix
+  - Chaos Monkey Scenarios
+  - Occam's Razor Application
+  - Lessons Learned Extraction
+- Findings summary:
+  - The story was structurally ready, but the evidence chain could still pass with stitched evidence from multiple commands unless one proof identity was carried through every artifact.
+  - Existing counter state made a final-count-only assertion ambiguous; the story needed baseline and delta proof.
+  - Manual refresh evidence could accidentally satisfy both query and SignalR criteria; SignalR delivery or refresh-after-signal now remains a distinct obligation.
+  - Negative-log proof needed a bounded time window and filter terms so startup noise and projection-path failures are not mixed.
+  - JWT evidence needed enough claim detail for repeatability without preserving bearer tokens or signing secrets.
+  - Reviewability improves if AC #1-#13 are mapped to explicit artifacts instead of scattered prose.
+- Changes applied:
+  - AC #2, #4, and #5 now require one command/proof identity across the resource snapshot, command response, persistence evidence, `/project` invocation, and follow-on proof.
+  - AC #8 and Task 4 now require baseline and after counts, with delta-based proof when state already exists.
+  - AC #9 now states manual refresh or direct query evidence cannot substitute for SignalR delivery evidence.
+  - AC #11 now requires bounded proof-window search metadata, including log source, time range, and filter terms.
+  - AC #12 and Task 5 now require an AC evidence matrix covering AC #1-#13.
+  - Added Advanced Elicitation Guardrails for proof identity, state baseline handling, JWT evidence hygiene, bounded waits, evidence matrix reviewability, and minimal script scope.
+- Findings deferred:
+  - No product-scope or architecture-policy changes were applied.
+  - Checkpoint tracking and polling mode remain owned by R11-A1/R11-A2 if the runtime proof exposes related blockers.
 - Final recommendation: `ready-for-dev`
