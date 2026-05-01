@@ -27,7 +27,7 @@ This story is sequenced after R11-A1. Reuse the checkpoint/tracking boundary fro
 
 2. **A polling service is registered only when projection infrastructure is enabled.** `Hexalith.EventStore.Server` adds an injectable hosted service, for example `ProjectionPollerService`, from `EventStoreServerServiceCollectionExtensions.AddEventStoreServer`. It uses existing `ProjectionOptions`, domain service resolution, actor proxy, checkpoint/tracking, and projection update boundaries; it must not require a new package.
 
-3. **New aggregates are discoverable in polling mode.** When events are published for a domain whose resolved refresh interval is greater than zero, the existing fire-and-forget projection path records `TenantId`, `Domain`, and `AggregateId` in the projection checkpoint/tracker boundary instead of invoking `/project` immediately. The record must be idempotent and safe to repeat. Registration failure is logged and swallowed like other projection-side failures; it must not fail command processing, and a later event for the same identity may retry registration. A newly registered aggregate with no delivered checkpoint is eligible for polling from sequence 0.
+3. **New aggregates are discoverable in polling mode.** When events are published for a domain whose resolved refresh interval is greater than zero, the existing fire-and-forget projection path records `TenantId`, `Domain`, and `AggregateId` in the projection checkpoint/tracker boundary instead of invoking `/project` immediately. The record must be idempotent and safe to repeat. Repeated publication for an already known identity must still leave that identity eligible for later polling; an "already registered" fast path must not accidentally suppress dirty-work visibility. Registration failure is logged and swallowed like other projection-side failures; it must not fail command processing, and a later event for the same identity may retry registration. A newly registered aggregate with no delivered checkpoint is eligible for polling from sequence 0.
 
 4. **Polling delivery reuses the orchestrator logic.** The poller must call the same delivery path used by immediate mode after R11-A1, or a shared internal collaborator extracted from it. The callable polling entry point must bypass only the `RefreshIntervalMs > 0` immediate-mode deferral guard; it must not bypass domain service invocation, event mapping, projection actor writes, checkpoint advancement, ETag regeneration, SignalR broadcasting, fail-open logging, or at-least-once semantics.
 
@@ -35,7 +35,7 @@ This story is sequenced after R11-A1. Reuse the checkpoint/tracking boundary fro
 
 6. **The poller respects domain intervals and overrides.** A domain-specific `EventStore:Projections:Domains:{domain}:RefreshIntervalMs` overrides `DefaultRefreshIntervalMs`. Domains with `0` are not polled and still use immediate mode. Domains with `>0` are polled at their resolved interval, and the scheduling design must not let the shortest configured interval cause every polling domain to run on every tick. Orphaned per-domain config keeps the existing warning behavior from `ProjectionDiscoveryHostedService`.
 
-7. **Polling work is bounded and non-overlapping.** The poller must not start overlapping update attempts for the same `{tenantId, domain, aggregateId}` if a previous attempt is still running. A slow or failing aggregate must not block polling for unrelated aggregate identities longer than necessary. The implementation may process sequentially with clear limits or use bounded concurrency, but unbounded fan-out is not acceptable.
+7. **Polling work is bounded and non-overlapping.** The poller must not start overlapping update attempts for the same `{tenantId, domain, aggregateId}` if a previous attempt is still running within the same process. Multi-instance duplicates remain allowed under the existing at-least-once contract and must be reconciled by checkpoint/concurrency behavior, not by inventing a new distributed lock in this story. A slow or failing aggregate must not block polling for unrelated aggregate identities longer than necessary. The implementation may process sequentially with clear limits or use bounded concurrency, but unbounded fan-out is not acceptable.
 
 8. **Shutdown and cancellation are graceful.** The hosted service honors the application stopping token, exits promptly, and does not swallow `OperationCanceledException` as an error. Use `BackgroundService` plus `PeriodicTimer` or an equivalent testable abstraction that follows Microsoft hosted-service guidance.
 
@@ -47,6 +47,8 @@ This story is sequenced after R11-A1. Reuse the checkpoint/tracking boundary fro
 
 12. **Existing projection behavior still passes.** Existing `ProjectionUpdateOrchestratorTests`, `ProjectionUpdateOrchestratorRefreshIntervalTests`, `ProjectionDiscoveryHostedServiceTests`, `EventReplayProjectionActorTests`, and R11-A1 checkpoint tests remain green. Any test that previously expected polling to skip forever must be updated to assert registration plus deferred poll delivery.
 
+13. **Closure evidence rejects the old deferred mode.** Validation must include a grep or equivalent source audit proving the old `PollingModeDeferred` path no longer represents the runtime behavior, plus targeted evidence that `RefreshIntervalMs > 0` reaches registration and poller delivery instead of a permanent skip.
+
 ## Tasks / Subtasks
 
 - [ ] Task 1: Confirm R11-A1 checkpoint/tracking boundary is available (AC: #3, #4)
@@ -54,6 +56,7 @@ This story is sequenced after R11-A1. Reuse the checkpoint/tracking boundary fro
   - [ ] If the tracker cannot enumerate or register known identities, extend it in one place instead of adding a parallel registry.
   - [ ] Make identity enumeration bounded or pageable enough that a large state store cannot be loaded into memory in one unbounded read.
   - [ ] Keep identity shape canonical: `TenantId`, `Domain`, `AggregateId`; do not depend on DAPR actor state key internals.
+  - [ ] Compile against the actual R11-A1 tracker API before marking this task complete; do not assume method names from the story text if R11-A1 landed with different internal names.
 
 - [ ] Task 2: Refactor projection delivery into a shared path if needed (AC: #4, #9, #12)
   - [ ] Keep immediate mode behavior unchanged for interval `0`.
@@ -64,6 +67,7 @@ This story is sequenced after R11-A1. Reuse the checkpoint/tracking boundary fro
 - [ ] Task 3: Implement polling-mode registration from event publication (AC: #1, #3, #5)
   - [ ] When resolved interval is `>0`, mark the aggregate identity as tracked/dirty instead of invoking `/project` immediately.
   - [ ] Make repeated registration idempotent.
+  - [ ] Add or preserve a dirty-work signal on repeated publication for an already tracked identity, so later events are not hidden by an idempotent no-op.
   - [ ] Ensure no projection payload or event body is logged while registering work.
 
 - [ ] Task 4: Add `ProjectionPollerService` or equivalent hosted worker (AC: #2, #6, #7, #8, #9)
@@ -83,7 +87,9 @@ This story is sequenced after R11-A1. Reuse the checkpoint/tracking boundary fro
   - [ ] Add poller tests with a testable timer/tick abstraction rather than sleeping real intervals.
   - [ ] Add registration tests for `RefreshIntervalMs > 0` and non-registration for immediate domains.
   - [ ] Add registration-failure tests proving command publication remains fail-open and a later registration attempt can retry the same identity.
+  - [ ] Add a repeated-publication test proving an already tracked identity remains eligible for polling after new events arrive.
   - [ ] Add per-domain interval tests proving a fast polling domain does not force slower polling domains to run on every fast tick.
+  - [ ] Add validation evidence that `PollingModeDeferred` is removed or no longer reachable for configured polling behavior.
   - [ ] Add no-overlap and failure-retry tests.
   - [ ] Update refresh-interval tests that currently assert permanent skip.
 
@@ -111,6 +117,8 @@ This story is sequenced after R11-A1. Reuse the checkpoint/tracking boundary fro
 - Do not use actor timers for this product behavior. The design calls for an `IHostedService` poller, and Dapr actor timers are not retained after actor deactivation. Actor reminders are persistent but would add a different scheduler/control-plane contract than this story needs.
 - Do not make SignalR the source of projection truth. Polling updates projection state; SignalR remains an invalidation signal that causes clients to re-query.
 - Do not make polling exactly-once. Preserve at-least-once delivery, duplicate tolerance, and stale projection acceptance on failure.
+- Do not add a cross-instance distributed mutex for polling in this story. If multiple app instances observe the same tracked identity, rely on checkpoint persistence and idempotent projection writes to absorb duplicate attempts.
+- Do not let domain-name casing create separate polling identities or interval buckets. Use the same domain normalization and override lookup semantics as `ProjectionOptions`.
 
 ### Suggested File Touches
 
@@ -137,6 +145,7 @@ This story is sequenced after R11-A1. Reuse the checkpoint/tracking boundary fro
 - R11-A1 narrows delivery from full replay to checkpoint-based reads. R11-A2 should build on that checkpoint model; polling without checkpoints would regress to repeated full replay.
 - Epic 12 proved the sample UI can demonstrate refresh behavior, but UI smoke evidence is not proof that polling works. Polling needs server-side tests and, ideally, a later AppHost proof under R11-A3/R11-A4.
 - Lessons ledger L09 applies only if this story touches sample UI evidence. It does not require a Blazor smoke test for this server-side polling story.
+- L08 applies to this story's preparation history: the dated party-mode review above is separate from this advanced-elicitation pass, and both traces must remain visible for `bmad-dev-story`.
 
 ### Project Structure Notes
 
@@ -193,4 +202,37 @@ TBD
   - Expanded Task 6 with registration-failure retry and per-domain interval tests.
 - Findings deferred:
   - No product-scope or architecture-policy decisions deferred. The exact timer abstraction and checkpoint tracker API shape remain implementation details for `bmad-dev-story`, constrained by these clarified acceptance criteria.
+- Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-01T13:20:52+02:00
+- Selected story key: `post-epic-11-r11a2-polling-mode-product-behavior`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-11-r11a2-polling-mode-product-behavior`
+- Batch 1 method names:
+  - Self-Consistency Validation
+  - Pre-mortem Analysis
+  - Failure Mode Analysis
+  - Architecture Decision Records
+  - Comparative Analysis Matrix
+- Reshuffled Batch 2 method names:
+  - Red Team vs Blue Team
+  - Occam's Razor Application
+  - 5 Whys Deep Dive
+  - Graph of Thoughts
+  - Reverse Engineering
+- Findings summary:
+  - Self-consistency and pre-mortem review found that idempotent registration could be misread as "do nothing when already known"; AC #3 and Task 3 now require repeated publication to keep an identity eligible for later polling.
+  - Failure-mode and architecture review found a hidden distributed-lock decision inside "non-overlapping"; AC #7 and guardrails now constrain non-overlap to the same process and keep cross-instance duplicates under the existing at-least-once/checkpoint contract.
+  - Test-design review found the old deferred behavior needed a closure gate, not only new poller tests; AC #13 and Task 6 now require evidence that `PollingModeDeferred` no longer represents configured polling behavior.
+  - Red-team and graph review found domain casing and R11-A1 API assumptions as implementation traps; guardrails now require consistent domain normalization and Task 1 requires compiling against the actual landed tracker API.
+  - Reverse-engineering review confirmed that the existing product scope is sufficient; no scheduler package, distributed mutex, public DTO change, or UI smoke requirement should be added to close this story.
+- Changes applied:
+  - Strengthened AC #3 and Task 3 for repeated-publication dirty-work visibility.
+  - Clarified AC #7 and implementation guardrails for same-process non-overlap versus multi-instance at-least-once duplicates.
+  - Added AC #13 and Task 6 validation evidence for the former `PollingModeDeferred` skip path.
+  - Added Task 1 protection against assuming R11-A1 tracker method names before compiling.
+  - Added guardrails for domain-name normalization and preserved L08 trace separation.
+- Findings deferred:
+  - No product-scope or architecture-policy decisions deferred. The exact tracker API extension, timer abstraction, and bounded concurrency shape remain implementation decisions for `bmad-dev-story` inside the clarified constraints.
 - Final recommendation: ready-for-dev
