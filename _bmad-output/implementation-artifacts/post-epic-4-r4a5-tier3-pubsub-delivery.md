@@ -35,15 +35,15 @@ The execution agent must build the smallest reliable Tier 3 proof for the real D
 
 2. **Subscriber asserts CloudEvents metadata, not just payload receipt.** The subscriber proof captures and asserts at minimum: CloudEvents `type`, `source`, `id`, topic, tenant, domain, aggregate id or stream identity, and correlation id. The event payload may be inspected only enough to prove it is the expected sample counter event; do not log raw payload bytes or secrets.
 
-3. **Subscriber authorization is explicit and scoped.** The topology used by the proof must not weaken the domain-service isolation rule from `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml`: the `sample` app-id remains denied. If a new test subscriber app-id is introduced, it must be added to component `scopes` and `subscriptionScopes` only for the test topic(s), and it must not receive publish rights.
+3. **Subscriber authorization is explicit and scoped.** The topology used by the proof must not weaken the domain-service isolation rule from `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml`: the `sample` app-id remains denied. If a new test subscriber app-id is introduced, pin the app-id in the story evidence, add it to component `scopes`, add only the exact proof topic such as `tenant-a.counter.events` to `subscriptionScopes`, and deny publishing explicitly with `;{subscriber-app-id}=` if the subscriber appears in `publishingScopes`.
 
-4. **Publish outage leaves command processing accepted and records drain state.** Given a controlled pub/sub outage or publisher failure after events are persisted, when a command is submitted, then command processing remains accepted, status reaches `PublishFailed` or equivalent documented terminal evidence, and actor state contains an `UnpublishedEventsRecord` with the correct correlation id, sequence range, event count, command type, retry count, and failure reason.
+4. **Publish outage leaves command processing accepted and records drain state.** Given a controlled pub/sub outage or publisher failure after events are persisted, when a command is submitted, then command processing remains accepted, status reaches `PublishFailed` or equivalent documented terminal evidence, and actor state contains an `UnpublishedEventsRecord` with the correct correlation id, sequence range, event count, command type, retry count, and failure reason. The proof must name the evidence path used to observe the drain record; avoid broad DAPR state queries or direct Redis scans unless the test harness constrains the lookup to the single tenant/domain/aggregate actor id and `drain:{correlationId}` key.
 
-5. **Recovery/drain republishes the same persisted range.** Given the outage is cleared and the drain reminder/path is triggered, when recovery completes, then the subscriber receives the same persisted event range, the `UnpublishedEventsRecord` is removed, and command status moves to `Completed` or `Rejected` according to the original event kind.
+5. **Recovery/drain republishes the same persisted range.** Given the outage is cleared and the drain reminder/path is triggered, when recovery completes, then the subscriber receives the same persisted event range, the `UnpublishedEventsRecord` is removed, and command status moves to `Completed` or `Rejected` according to the original event kind. At-least-once delivery is expected: if a partial publish happened before failure, the proof may observe duplicate sequence numbers, but it must still prove every sequence in the recorded drain range is delivered after recovery.
 
 6. **Drain integrity is not silently claimed beyond current scope.** This story proves the happy drain re-publish path for a complete persisted range. It does not close R4-A6. If missing first, middle, or last events in the persisted range are discovered during execution, record the evidence and leave `post-epic-4-r4a6-drain-integrity-guard` as the owning story unless the product/architecture owner explicitly expands scope.
 
-7. **Environment limitations are separated from product failures.** Tier 3 evidence records Docker, DAPR placement, scheduler, AppHost resources, service health, topic/subscriber configuration, and logs/traces used. If the topology cannot run, the story records the exact infra blocker and does not mark product behavior as proven.
+7. **Environment limitations are separated from product failures.** Tier 3 evidence records Docker, DAPR placement, scheduler, AppHost resources, service health, topic/subscriber configuration, and logs/traces used. If the topology cannot run, or if DAPR slim-mode access-control behavior rejects EventStore-to-sample invocation before the pub/sub proof begins, the story records the exact infra blocker and does not mark product behavior as proven.
 
 8. **Existing lower-tier guarantees remain green.** Tier 1 unit test projects remain unchanged in count and pass. Tier 2 `Hexalith.EventStore.Server.Tests` remains at the pre-story baseline plus any deliberate new mocked helper tests added for this story. Tier 3 additions are isolated to `tests/Hexalith.EventStore.IntegrationTests` or an equivalent test-support project.
 
@@ -83,8 +83,8 @@ The execution agent must build the smallest reliable Tier 3 proof for the real D
   - [ ] 0.6 Capture resource health for `eventstore`, `sample`, Redis, DAPR placement, scheduler, and any test subscriber resource.
 
 - [ ] Task 1: Add or adapt a scoped runtime subscriber
-  - [ ] 1.1 Choose the smallest subscriber implementation that can be exercised from Tier 3 tests. Prefer a test-only subscriber if the AppHost can include it without weakening production defaults.
-  - [ ] 1.2 If a new subscriber app-id is used, add it to `pubsub.yaml` `scopes` and `subscriptionScopes` for only the topic(s) used by the test, and do not grant publish rights.
+  - [ ] 1.1 Choose the smallest subscriber implementation that can be exercised from Tier 3 tests. Prefer a test-only subscriber if the AppHost can include it without weakening production defaults; record the exact app-id before editing component scopes.
+  - [ ] 1.2 If a new subscriber app-id is used, add it to `pubsub.yaml` `scopes` and `subscriptionScopes` for only the topic(s) used by the test, for example `tenant-a.counter.events`, and do not grant publish rights. If the app-id is listed in `publishingScopes`, set it to an empty grant.
   - [ ] 1.3 The subscriber must capture the DAPR topic and CloudEvents headers/body needed by AC #2.
   - [ ] 1.4 Document why the `sample` app-id remains denied by component scope.
 
@@ -92,20 +92,20 @@ The execution agent must build the smallest reliable Tier 3 proof for the real D
   - [ ] 2.1 Submit a unique `IncrementCounter` command using the existing JWT helper and `tenant-a` / `counter`.
   - [ ] 2.2 Poll command status until terminal using the existing `CommandLifecycleTests` helper pattern.
   - [ ] 2.3 Assert the terminal status is `Completed` and includes event-count evidence.
-  - [ ] 2.4 Assert the subscriber received at least one event on `tenant-a.counter.events`.
+  - [ ] 2.4 Assert the explicitly scoped test subscriber app-id received at least one event on `tenant-a.counter.events`.
   - [ ] 2.5 Assert CloudEvents metadata fields from AC #2, including correlation id and the `hexalith-eventstore/{tenant}/{domain}` source shape.
 
 - [ ] Task 3: Prove publish failure records drain without rejecting the command
-  - [ ] 3.1 Pick a deterministic failure trigger. Prefer a test-only pub/sub outage controlled through Aspire resource lifecycle or a test publisher fault path over timing-sensitive network disruption.
+  - [ ] 3.1 Pick a deterministic failure trigger. Prefer a test-only publisher fault path or controlled Aspire/DAPR resource lifecycle action over timing-sensitive network disruption; document why the trigger fails publication only after event persistence.
   - [ ] 3.2 Submit a unique command while publication is failing.
   - [ ] 3.3 Assert the command API response is accepted or otherwise matches the established `PublishFailed` contract from Story 4.2.
-  - [ ] 3.4 Read actor state or status evidence proving `UnpublishedEventsRecord` exists with the correct correlation id, sequence range, event count, command type, retry count, and failure reason.
+  - [ ] 3.4 Read actor state or narrowly scoped diagnostic/status evidence proving `UnpublishedEventsRecord` exists with the correct correlation id, sequence range, event count, command type, retry count, and failure reason. Do not use an unconstrained state-store query.
   - [ ] 3.5 Verify events were persisted before the failure was observed.
 
 - [ ] Task 4: Prove recovery and drain re-publish
   - [ ] 4.1 Restore pub/sub availability.
-  - [ ] 4.2 Trigger or wait for the drain reminder/path without relying on arbitrary sleeps longer than the configured drain period.
-  - [ ] 4.3 Assert the subscriber receives the drained event range with the original correlation id.
+  - [ ] 4.2 Trigger or wait for the drain reminder/path without relying on arbitrary sleeps longer than the configured drain period; if needed, override `EventStore:Drain:InitialDrainDelay` and `EventStore:Drain:DrainPeriod` in the test topology to short bounded values.
+  - [ ] 4.3 Assert the subscriber receives every sequence in the drained event range with the original correlation id. Allow duplicate receipts only when they are the same correlation id and sequence number from at-least-once delivery.
   - [ ] 4.4 Assert the drain record is removed after successful re-publish.
   - [ ] 4.5 Assert advisory status moves from `PublishFailed` to `Completed` or `Rejected`, matching the original event kind.
 
@@ -150,6 +150,15 @@ The execution agent must build the smallest reliable Tier 3 proof for the real D
 - Capture every correlation id used in assertions; those ids are the fastest way to connect API response, status record, subscriber receipt, traces, and drain state.
 - If Docker, DAPR placement, or scheduler is unavailable, stop and record the exact blocker rather than weakening the acceptance criteria.
 
+### Party-Mode Review Guardrails
+
+- The proof topic must line up across command submission, DAPR subscription, component scoping, and subscriber assertion. For the existing task shape, the expected topic is `tenant-a.counter.events`; `sample.counter.events` is only a pattern reference and must not be treated as proof for this story.
+- `sample` remains intentionally denied at both component scope and subscription scope. A test subscriber must use its own app-id, and the evidence must show that app-id has subscribe-only access to the proof topic.
+- Publication failure needs a deterministic trigger that happens after event persistence. Stopping Redis or the DAPR sidecar may also break command processing, subscriber delivery, or state reads; if that happens, record it as environment-limited rather than weakening AC #4.
+- Drain evidence is at-least-once, not exactly-once. A partial publish before failure can produce early receipts plus recovery receipts; close the story only when correlation id and sequence assertions prove the full recorded range was delivered after recovery.
+- Any actor-state inspection must be narrowly keyed by tenant/domain/aggregate and `drain:{correlationId}`. Broad state-store queries or direct Redis scans would contradict the repository's actor-state isolation guidance.
+- In slim-mode Aspire/DAPR runs, service invocation from `eventstore` to `sample` can be rejected by access-control policy before this story reaches pub/sub behavior. Treat that as a topology blocker with logs, not a reason to mark pub/sub delivery unproven or passed.
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -168,10 +177,35 @@ To be filled by dev agent.
 
 To be filled by dev agent.
 
+## Party-Mode Review
+
+- Date/time: 2026-05-01T11:10:40+02:00
+- Selected story key: `post-epic-4-r4a5-tier3-pubsub-delivery`
+- Command/skill invocation used: `/bmad-party-mode post-epic-4-r4a5-tier3-pubsub-delivery; review;`
+- Participating BMAD agents: Bob (Scrum Master), Winston (Architect), Amelia (Developer Agent), Murat (Master Test Architect), Paige (Technical Writer), Sally (UX Designer)
+- Findings summary:
+  - Bob: The story was ready-for-dev, but the proof topic and subscriber app-id needed to be pinned so execution cannot drift between `tenant-a.counter.events` and the sample pattern subscription.
+  - Winston: Pub/sub scoping needed a subscribe-only test subscriber boundary that preserves the existing `sample` denial and avoids treating omitted DAPR scope entries as secure defaults.
+  - Amelia: The publish-failure path needed a deterministic trigger and a narrowly keyed drain-state evidence path, because broad DAPR state queries would violate actor-state isolation guidance.
+  - Murat: Drain validation needed explicit at-least-once sequence assertions, short bounded reminder timing, and duplicate-tolerant checks for partial publish followed by recovery.
+  - Paige: Environment-limited outcomes needed clearer wording for Docker/DAPR placement/scheduler and slim-mode access-control failures so evidence reports do not overclaim product behavior.
+  - Sally: Adopter experience improves when the story tells implementers exactly what to capture: app-id, topic, correlation id, sequence range, resource state, and blocker logs.
+- Changes applied:
+  - Clarified AC #3 with exact scoped test subscriber and publish-deny guidance.
+  - Clarified AC #4 with a narrow drain-record evidence path and no broad state-store query rule.
+  - Clarified AC #5 and Task 4 with at-least-once duplicate-tolerant sequence assertions.
+  - Strengthened Tasks 1-4 with topic/app-id alignment, deterministic failure trigger, and bounded drain timing.
+  - Added Party-Mode Review Guardrails covering topic alignment, subscriber authorization, failure trigger risk, state inspection, and slim-mode DAPR blockers.
+- Findings deferred:
+  - `project-context.md` preload was unavailable; no generated project-context artifact was found in this repository.
+  - The exact test subscriber implementation and deterministic failure mechanism remain implementation decisions for `bmad-dev-story`, constrained by the clarified acceptance criteria.
+- Final recommendation: `ready-for-dev`
+
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-01 | 0.2 | Party-mode review hardened subscriber scoping, deterministic failure proof, drain-state evidence, and at-least-once recovery assertions. | Codex automation |
 | 2026-05-01 | 0.1 | Created ready-for-dev R4-A5 Tier 3 pub/sub delivery proof story. | Codex automation |
 
 ## Verification Status

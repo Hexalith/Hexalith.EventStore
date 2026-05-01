@@ -6,3 +6,4 @@
 2026-05-01T08:52:28Z	party-mode-review	post-epic-11-r11a2-polling-mode-product-behavior	ok	review trace recorded; polling scheduling and registration semantics hardened
 2026-05-01T09:01:18Z	party-mode-review	post-epic-11-r11a3-apphost-projection-proof	ok	review trace recorded; AppHost proof evidence obligations hardened
 2026-05-01T09:04:16Z	party-mode-review	post-epic-11-r11a4-valid-projection-round-trip	ok	review trace recorded; query identity, retry, and ETag guards hardened
+2026-05-01T09:10:40Z	party-mode-review	post-epic-4-r4a5-tier3-pubsub-delivery	ok	review trace recorded; pub/sub subscriber scoping and drain proof hardened
