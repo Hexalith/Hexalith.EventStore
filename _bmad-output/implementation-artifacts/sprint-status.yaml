@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: '2026-05-01 (post-epic-4-r4a5-tier3-pubsub-delivery ready-for-dev -> in-progress by bmad-dev-story; AppHost baseline healthy before implementation)'
+last_updated: '2026-05-01 (post-epic-4-r4a5-tier3-pubsub-delivery in-progress -> review by bmad-dev-story; Tier 3 pub/sub subscriber delivery and drain recovery proof passed)'
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -304,6 +304,6 @@ development_status:
   # AC #12 carve-out from R4-A2 party-mode review (2026-04-30): wire-or-delete decision for IBackpressureTracker (defense-in-depth pipeline tracker shipped + tested but unregistered in production DI as of HEAD 8028cf2). Promotion trigger A: next backpressure-touching code change. Promotion trigger B: 2026-05-28 calendar SLA. R4-A2 records the gap as caveat; R4-A2b makes the binary code decision. Pattern precedent: post-epic-2-r2a5 → post-epic-2-r2a5b (symptom fix → structural cure as paired sibling).
   # resolved by R4-A2b at <pending merge SHA>: delete-removal — IBackpressureTracker, InMemoryBackpressureTracker, and the SubmitCommandHandler tracker-accepting ctor overloads removed; actor-level Step 2b is the documented sole enforcement path. Firing trigger: Neither — opportunistic flush on 2026-04-30 (R4-A2 closed earlier same day at PR #227 / merge SHA 6430565; flushed before carve-out could rot). SemVer: feat(server)!: major bump on Hexalith.EventStore.Server NuGet (R4 semantic-release config check passed: default Angular preset maps `!` and `BREAKING CHANGE:` to major; P1 downstream-consumer check on Hexalith.Tenants/ returned 0 matches). Story 4.3 AC #5d caveat updated in-place per AC C2 delete formulation.
   post-epic-4-r4a2b-backpressure-tracker-di-decision: done
-  post-epic-4-r4a5-tier3-pubsub-delivery: in-progress
+  post-epic-4-r4a5-tier3-pubsub-delivery: review
   post-epic-4-r4a6-drain-integrity-guard: ready-for-dev
   post-epic-4-r4a8-story-numbering-comments: backlog
