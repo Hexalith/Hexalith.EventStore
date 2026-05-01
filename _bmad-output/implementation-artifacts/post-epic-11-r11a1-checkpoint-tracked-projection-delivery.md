@@ -33,13 +33,13 @@ The open R11-A1 risk is precise: `ProjectionUpdateOrchestrator` currently contai
 
 6. **Checkpoint writes never regress.** A delayed or duplicate projection update cannot lower a checkpoint that already advanced to a higher sequence for the same aggregate. If the chosen storage API cannot make that atomic, the implementation must read-before-write and keep the maximum sequence with a focused test documenting the residual race.
 
-7. **Command processing remains fail-open.** Projection checkpoint failures are logged and swallowed inside the projection update path. They must not make `EventPublisher.PublishEventsAsync` report failure and must not cause command submission or event publication to fail.
+7. **Command processing remains fail-open.** Projection checkpoint failures are logged and swallowed inside the projection update path. Checkpoint read failure falls back to sequence 0 for that update so delivery may replay but cannot skip events. Checkpoint save failure leaves the previous checkpoint unchanged so a later trigger retries the same events. These failures must not make `EventPublisher.PublishEventsAsync` report failure and must not cause command submission or event publication to fail.
 
 8. **Projection wire contract stays unchanged.** `ProjectionRequest`, `ProjectionResponse`, `ProjectionEventDto`, `ProjectionState`, `IProjectionWriteActor`, and `EventReplayProjectionActor` remain compatible. Domain services still receive only public projection event fields and still own projection apply logic.
 
 9. **Polling mode remains deliberately deferred.** `RefreshIntervalMs > 0` keeps the current `PollingModeDeferred` behavior. This story may make checkpoint state usable by a future poller, but it must not implement `ProjectionPollerService` or change polling product behavior; that is `post-epic-11-r11a2-polling-mode-product-behavior`.
 
-10. **Tests pin the incremental path.** Unit coverage proves: missing checkpoint uses `GetEventsAsync(0)`; existing checkpoint `N` uses `GetEventsAsync(N)`; success saves the maximum returned sequence; no-events does not save; every failure class in AC #4 leaves the checkpoint unchanged; duplicate or stale saves cannot lower the checkpoint.
+10. **Tests pin the incremental path.** Unit coverage proves: missing checkpoint uses `GetEventsAsync(0)`; existing checkpoint `N` uses `GetEventsAsync(N)`; checkpoint read failure replays from `0` without throwing; success saves the maximum returned sequence; no-events does not save; every failure class in AC #4 leaves the checkpoint unchanged; checkpoint save failure is swallowed after the projection state write; duplicate or stale saves cannot lower the checkpoint.
 
 11. **Existing projection behavior still passes.** Existing `ProjectionUpdateOrchestratorTests`, `EventReplayProjectionActorTests`, `AggregateActorGetEventsTests`, `ProjectionUpdateOrchestratorRefreshIntervalTests`, and projection contract tests remain green. Any changed assertion that previously expected `GetEventsAsync(0)` must be narrowed to the no-checkpoint first-delivery case.
 
@@ -54,8 +54,11 @@ The open R11-A1 risk is precise: `ProjectionUpdateOrchestrator` currently contai
 
 - [ ] Task 2: Implement persistent checkpoint storage (AC: #1, #4, #5, #6, #7)
   - [ ] Use DAPR state management through an injectable service boundary, not direct aggregate actor state-key access.
+  - [ ] Use a configurable checkpoint state-store name with a repo-consistent default of `statestore`; do not hard-code aggregate actor state keys.
   - [ ] Make missing state return sequence 0.
+  - [ ] Treat checkpoint read failure as fail-open full replay from sequence 0 and log tenant, domain, aggregate ID, and exception type.
   - [ ] Make stale saves non-regressing by keeping the maximum observed sequence.
+  - [ ] Prefer DAPR state ETag/compare-and-set for checkpoint writes where the SDK path is practical; otherwise read-before-write and keep the maximum sequence, with the residual race documented in the test name and story completion notes.
   - [ ] Log checkpoint read/save failures with tenant, domain, aggregate ID, and exception type only; do not log event payloads.
 
 - [ ] Task 3: Wire tracker into DI (AC: #2)
@@ -63,16 +66,18 @@ The open R11-A1 risk is precise: `ProjectionUpdateOrchestrator` currently contai
   - [ ] Keep existing service lifetimes consistent with `ProjectionUpdateOrchestrator` and DAPR client usage.
 
 - [ ] Task 4: Update `ProjectionUpdateOrchestrator` incremental flow (AC: #3, #4, #5, #7, #8, #9)
-  - [ ] Read checkpoint before creating or invoking the aggregate actor.
+  - [ ] Read checkpoint after the polling-mode guard and before creating or invoking the aggregate actor.
+  - [ ] If checkpoint read fails, continue with sequence 0 and rely on duplicate-safe at-least-once projection delivery.
   - [ ] Replace the hard-coded `GetEventsAsync(0)` with `GetEventsAsync(lastDeliveredSequence)`.
   - [ ] Save checkpoint only after `UpdateProjectionAsync` succeeds.
+  - [ ] If checkpoint save fails after projection state is written, log and return without throwing; the next trigger must replay from the old checkpoint.
   - [ ] Leave the `RefreshIntervalMs > 0` early return unchanged.
   - [ ] Preserve the outer catch/fail-open behavior.
 
 - [ ] Task 5: Expand server unit tests (AC: #3, #4, #5, #6, #7, #10, #11)
   - [ ] Add focused tracker tests for missing, read, save, max-sequence, invalid key, and storage failure behavior.
   - [ ] Update orchestrator tests so the first-delivery case still proves `GetEventsAsync(0)`.
-  - [ ] Add orchestrator tests for existing checkpoint, successful save, no-events no-save, invalid response no-save, and actor-write failure no-save.
+  - [ ] Add orchestrator tests for existing checkpoint, checkpoint read failure replay-from-zero, successful save, no-events no-save, invalid response no-save, actor-write failure no-save, and checkpoint save failure no-throw.
   - [ ] Keep the current DAPR invocation testability limitation in mind: use the existing HttpClient/fake-handler patterns where possible and do not overfit to non-virtual `DaprClient` members.
 
 - [ ] Task 6: Update documentation or retro follow-up notes (AC: #12)
@@ -102,6 +107,7 @@ The open R11-A1 risk is precise: `ProjectionUpdateOrchestrator` currently contai
 - Do not make projection delivery block or fail command processing.
 - Do not implement polling. R11-A2 owns the product decision and poller behavior.
 - Do not turn projection checkpointing into exactly-once delivery. The contract is at-least-once with no silent skips.
+- Do not place checkpoint state inside `AggregateActor` actor-state keys. Keep checkpoint keys in a dedicated namespace such as `projection-checkpoints:{identity.ActorId}` so they are deterministic without duplicating the `:events:` or `:metadata` key spaces.
 
 ### Suggested File Touches
 
@@ -154,3 +160,25 @@ TBD
 ### Completion Notes List
 
 ### File List
+
+## Party-Mode Review
+
+- Date/time: 2026-05-01T10:34:19+02:00
+- Selected story key: `post-epic-11-r11a1-checkpoint-tracked-projection-delivery`
+- Command/skill invocation used: `/bmad-party-mode post-epic-11-r11a1-checkpoint-tracked-projection-delivery; review;`
+- Participating BMAD agents: Bob (Scrum Master), Winston (Architect), Amelia (Developer Agent), Murat (Master Test Architect), Paige (Technical Writer)
+- Findings summary:
+  - Bob: The story was ready-for-dev but checkpoint read/save failure semantics were not explicit enough for development handoff.
+  - Winston: AC #6 needed a concrete non-regression write strategy so concurrent fire-and-forget triggers cannot silently lower checkpoints.
+  - Amelia: The orchestrator task order needed to say where checkpoint reads happen relative to the polling guard and aggregate actor proxy creation.
+  - Murat: AC #10 and Task 5 needed explicit tests for checkpoint read failure and checkpoint save failure, not only domain/actor failure classes.
+  - Paige: Documentation guardrails needed to distinguish projection checkpoint keys from existing aggregate actor event and metadata keys.
+- Changes applied:
+  - Clarified AC #7 fail-open behavior for checkpoint read failure and checkpoint save failure.
+  - Expanded AC #10 and Task 5 with read-failure replay and save-failure no-throw test obligations.
+  - Added Task 2 guidance for configurable `statestore`, DAPR ETag/compare-and-set where practical, and read-before-write max fallback.
+  - Tightened Task 4 sequencing around polling-mode guard, aggregate actor creation, and checkpoint save failure.
+  - Added an implementation guardrail for a dedicated projection checkpoint key namespace.
+- Findings deferred:
+  - No product-scope or architecture-policy decisions deferred. The DAPR ETag/compare-and-set API choice remains an implementation detail to verify during `bmad-dev-story`.
+- Final recommendation: ready-for-dev
