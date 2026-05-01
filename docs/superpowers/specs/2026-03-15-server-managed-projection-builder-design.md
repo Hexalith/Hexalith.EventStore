@@ -77,8 +77,10 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 #### 2. Projection Checkpoint Tracker
 
 - Tracks last-sent event sequence **per aggregate**: `tenant:domain:aggregateId`
-- Stored in DAPR state store via dedicated checkpoint state key
+- Stored in DAPR state store via dedicated checkpoint state key: `projection-checkpoints:{tenant}:{domain}:{aggregateId}`
 - Updated **only after** successful `UpdateProjectionAsync` call (write-after-success guarantees at-least-once delivery)
+- Immediate delivery reads from the stored checkpoint and calls `AggregateActor.GetEventsAsync(lastDeliveredSequence)`. Missing checkpoints use `0` for the first delivery.
+- Checkpoint writes keep the maximum observed sequence so delayed duplicate triggers do not lower an already advanced checkpoint. The current implementation uses read-before-write max preservation; duplicate delivery can still occur under concurrent fire-and-forget triggers, but silent event skipping is not allowed.
 - Idempotent: if the same events are sent twice, the domain service must handle them idempotently (Apply methods are inherently idempotent when replaying from a known state)
 
 #### 3. Immediate Trigger (RefreshIntervalMs = 0, default)
@@ -93,6 +95,7 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 
 #### 4. Background Poller (RefreshIntervalMs > 0)
 
+- **Deferred**: polling product behavior is tracked separately from immediate checkpoint-tracked delivery.
 - `IHostedService` that polls **per aggregate** at the configured interval
 - Discovers aggregates that need polling from checkpoint state (any aggregate with a known checkpoint is polled)
 - New aggregates are discovered when the immediate trigger fires for the first time (creates the initial checkpoint)
@@ -139,6 +142,7 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
   "EventStore": {
     "Projections": {
       "DefaultRefreshIntervalMs": 0,
+      "CheckpointStateStoreName": "statestore",
       "Domains": {
         "counter": {
           "RefreshIntervalMs": 0
@@ -150,6 +154,7 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 ```
 
 - `DefaultRefreshIntervalMs`: 0 = immediate (fire-and-forget after persistence), >0 = polling interval in ms
+- `CheckpointStateStoreName`: DAPR state store component for projection delivery checkpoints. Defaults to `statestore`.
 - Per-domain override via `Domains:{domain}:RefreshIntervalMs`
 
 ### Error Handling
@@ -157,6 +162,8 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 - **Domain service unavailable**: Log warning, skip update. Projection stays at last known state (stale). Next trigger/poll retries.
 - **Domain service returns error**: Log warning, do NOT update checkpoint. Same events will be resent on next trigger/poll.
 - **Checkpoint update ordering**: Checkpoint updated ONLY after successful `UpdateProjectionAsync` call. This guarantees at-least-once delivery.
+- **Checkpoint read failure**: Log warning and replay from sequence `0` for that update. This can duplicate delivery but does not skip events or fail command processing.
+- **Checkpoint save failure**: Log warning after the projection actor write and leave the previous checkpoint unchanged. The next trigger resends from the old checkpoint.
 - **Projection builder crash**: On restart, resumes from last committed checkpoint. Events are replayed from that point (idempotent).
 - **AggregateActor.GetEventsAsync failure**: Log warning, skip. Retried on next trigger/poll.
 - **Degraded mode**: Stale projections are explicitly acceptable. The system favors availability over consistency (AP in CAP). Queries return the last known state, which may be behind by one or more events.

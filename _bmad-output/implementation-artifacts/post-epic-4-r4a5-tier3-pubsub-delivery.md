@@ -1,6 +1,6 @@
 # Post-Epic-4 R4-A5: Tier 3 Pub/Sub Delivery Proof
 
-Status: ready-for-dev
+Status: review
 
 <!-- Source: epic-4-retro-2026-04-26.md R4-A5 -->
 <!-- Source: sprint-change-proposal-2026-04-26-epic-4-retro-cleanup.md Proposal 5 -->
@@ -74,54 +74,54 @@ The execution agent must build the smallest reliable Tier 3 proof for the real D
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline and topology discovery
-  - [ ] 0.1 Record current git SHA and verify this story is still `ready-for-dev`.
-  - [ ] 0.2 Read the files in the implementation inventory before editing.
-  - [ ] 0.3 Record Tier 1 baseline by running the four unit test projects individually, per repository instructions.
-  - [ ] 0.4 Record Tier 2 server-test baseline or cite the known pre-existing server-test build failure if still present.
-  - [ ] 0.5 Start the AppHost with `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` or the integration-test fixture equivalent.
-  - [ ] 0.6 Capture resource health for `eventstore`, `sample`, Redis, DAPR placement, scheduler, and any test subscriber resource.
+- [x] Task 0: Baseline and topology discovery
+  - [x] 0.1 Record current git SHA and verify this story is still `ready-for-dev`.
+  - [x] 0.2 Read the files in the implementation inventory before editing.
+  - [x] 0.3 Record Tier 1 baseline by running the four unit test projects individually, per repository instructions.
+  - [x] 0.4 Record Tier 2 server-test baseline or cite the known pre-existing server-test build failure if still present.
+  - [x] 0.5 Start the AppHost with `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` or the integration-test fixture equivalent.
+  - [x] 0.6 Capture resource health for `eventstore`, `sample`, Redis, DAPR placement, scheduler, and any test subscriber resource.
 
-- [ ] Task 1: Add or adapt a scoped runtime subscriber
-  - [ ] 1.1 Choose the smallest subscriber implementation that can be exercised from Tier 3 tests. Prefer a test-only subscriber if the AppHost can include it without weakening production defaults; record the exact app-id before editing component scopes.
-  - [ ] 1.2 If a new subscriber app-id is used, add it to `pubsub.yaml` `scopes` and `subscriptionScopes` for only the topic(s) used by the test, for example `tenant-a.counter.events`, and do not grant publish rights. If the app-id is listed in `publishingScopes`, set it to an empty grant.
-  - [ ] 1.3 The subscriber must capture the DAPR topic and CloudEvents headers/body needed by AC #2.
-  - [ ] 1.4 Document why the `sample` app-id remains denied by component scope.
+- [x] Task 1: Add or adapt a scoped runtime subscriber
+  - [x] 1.1 Choose the smallest subscriber implementation that can be exercised from Tier 3 tests. Prefer a test-only subscriber if the AppHost can include it without weakening production defaults; record the exact app-id before editing component scopes.
+  - [x] 1.2 If a new subscriber app-id is used, add it to `pubsub.yaml` `scopes` and `subscriptionScopes` for only the topic(s) used by the test, for example `tenant-a.counter.events`, and do not grant publish rights. If the app-id is listed in `publishingScopes`, set it to an empty grant.
+  - [x] 1.3 The subscriber must capture the DAPR topic and CloudEvents headers/body needed by AC #2.
+  - [x] 1.4 Document why the `sample` app-id remains denied by component scope.
 
-- [ ] Task 2: Prove command to subscriber delivery
-  - [ ] 2.1 Submit a unique `IncrementCounter` command using the existing JWT helper and `tenant-a` / `counter`.
-  - [ ] 2.2 Poll command status until terminal using the existing `CommandLifecycleTests` helper pattern.
-  - [ ] 2.3 Assert the terminal status is `Completed` and includes event-count evidence.
-  - [ ] 2.4 Assert the explicitly scoped test subscriber app-id received at least one event on `tenant-a.counter.events`.
-  - [ ] 2.5 Assert CloudEvents metadata fields from AC #2, including correlation id and the `hexalith-eventstore/{tenant}/{domain}` source shape.
+- [x] Task 2: Prove command to subscriber delivery
+  - [x] 2.1 Submit a unique `IncrementCounter` command using the existing JWT helper and `tenant-a` / `counter`.
+  - [x] 2.2 Poll command status until terminal using the existing `CommandLifecycleTests` helper pattern.
+  - [x] 2.3 Assert the terminal status is `Completed` and includes event-count evidence.
+  - [x] 2.4 Assert the explicitly scoped test subscriber app-id received at least one event on `tenant-a.counter.events`.
+  - [x] 2.5 Assert CloudEvents metadata fields from AC #2, including correlation id and the `hexalith-eventstore/{tenant}/{domain}` source shape.
 
-- [ ] Task 3: Prove publish failure records drain without rejecting the command
-  - [ ] 3.1 Pick a deterministic failure trigger. Prefer a test-only publisher fault path or controlled Aspire/DAPR resource lifecycle action over timing-sensitive network disruption; document why the trigger fails publication only after event persistence.
-  - [ ] 3.2 Submit a unique command while publication is failing.
-  - [ ] 3.3 Assert the command API response is accepted or otherwise matches the established `PublishFailed` contract from Story 4.2.
-  - [ ] 3.4 Read actor state or narrowly scoped diagnostic/status evidence proving `UnpublishedEventsRecord` exists with the correct correlation id, sequence range, event count, command type, retry count, and failure reason. Do not use an unconstrained state-store query.
-  - [ ] 3.5 Verify events were persisted before the failure was observed.
+- [x] Task 3: Prove publish failure records drain without rejecting the command
+  - [x] 3.1 Pick a deterministic failure trigger. Prefer a test-only publisher fault path or controlled Aspire/DAPR resource lifecycle action over timing-sensitive network disruption; document why the trigger fails publication only after event persistence.
+  - [x] 3.2 Submit a unique command while publication is failing.
+  - [x] 3.3 Assert the command API response is accepted or otherwise matches the established `PublishFailed` contract from Story 4.2.
+  - [x] 3.4 Read actor state or narrowly scoped diagnostic/status evidence proving `UnpublishedEventsRecord` exists with the correct correlation id, sequence range, event count, command type, retry count, and failure reason. Do not use an unconstrained state-store query.
+  - [x] 3.5 Verify events were persisted before the failure was observed.
 
-- [ ] Task 4: Prove recovery and drain re-publish
-  - [ ] 4.1 Restore pub/sub availability.
-  - [ ] 4.2 Trigger or wait for the drain reminder/path without relying on arbitrary sleeps longer than the configured drain period; if needed, override `EventStore:Drain:InitialDrainDelay` and `EventStore:Drain:DrainPeriod` in the test topology to short bounded values.
-  - [ ] 4.3 Assert the subscriber receives every sequence in the drained event range with the original correlation id. Allow duplicate receipts only when they are the same correlation id and sequence number from at-least-once delivery.
-  - [ ] 4.4 Assert the drain record is removed after successful re-publish.
-  - [ ] 4.5 Assert advisory status moves from `PublishFailed` to `Completed` or `Rejected`, matching the original event kind.
+- [x] Task 4: Prove recovery and drain re-publish
+  - [x] 4.1 Restore pub/sub availability.
+  - [x] 4.2 Trigger or wait for the drain reminder/path without relying on arbitrary sleeps longer than the configured drain period; if needed, override `EventStore:Drain:InitialDrainDelay` and `EventStore:Drain:DrainPeriod` in the test topology to short bounded values.
+  - [x] 4.3 Assert the subscriber receives every sequence in the drained event range with the original correlation id. Allow duplicate receipts only when they are the same correlation id and sequence number from at-least-once delivery.
+  - [x] 4.4 Assert the drain record is removed after successful re-publish.
+  - [x] 4.5 Assert advisory status moves from `PublishFailed` to `Completed` or `Rejected`, matching the original event kind.
 
-- [ ] Task 5: Evidence and diagnostics
-  - [ ] 5.1 Store test artifacts under `_bmad-output/test-artifacts/post-epic-4-r4a5-tier3-pubsub-delivery/`.
-  - [ ] 5.2 Include AppHost command, resource health, subscriber topic configuration, command ids, correlation ids, and final status payloads.
-  - [ ] 5.3 Include relevant Aspire structured logs, DAPR sidecar logs, or traces when available.
-  - [ ] 5.4 If an environment issue blocks the proof, record it as environment-limited and leave product behavior unproven.
+- [x] Task 5: Evidence and diagnostics
+  - [x] 5.1 Store test artifacts under `_bmad-output/test-artifacts/post-epic-4-r4a5-tier3-pubsub-delivery/`.
+  - [x] 5.2 Include AppHost command, resource health, subscriber topic configuration, command ids, correlation ids, and final status payloads.
+  - [x] 5.3 Include relevant Aspire structured logs, DAPR sidecar logs, or traces when available.
+  - [x] 5.4 If an environment issue blocks the proof, record it as environment-limited and leave product behavior unproven.
 
-- [ ] Task 6: Final verification and bookkeeping
-  - [ ] 6.1 Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
-  - [ ] 6.2 Run the targeted Tier 3 test(s) for this story.
-  - [ ] 6.3 Re-run Tier 1 projects individually.
-  - [ ] 6.4 Re-run any Tier 2 tests changed by this story.
-  - [ ] 6.5 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
-  - [ ] 6.6 Update `sprint-status.yaml` for this story only.
+- [x] Task 6: Final verification and bookkeeping
+  - [x] 6.1 Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
+  - [x] 6.2 Run the targeted Tier 3 test(s) for this story.
+  - [x] 6.3 Re-run Tier 1 projects individually.
+  - [x] 6.4 Re-run any Tier 2 tests changed by this story.
+  - [x] 6.5 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
+  - [x] 6.6 Update `sprint-status.yaml` for this story only.
 
 ## Dev Notes
 
@@ -163,19 +163,40 @@ The execution agent must build the smallest reliable Tier 3 proof for the real D
 
 ### Agent Model Used
 
-To be filled by dev agent.
+GPT-5.2 Codex
 
 ### Debug Log References
 
-To be filled by dev agent.
+- `_bmad-output/test-artifacts/post-epic-4-r4a5-tier3-pubsub-delivery/evidence-2026-05-01.md`
+- Baseline AppHost run: `EnableKeycloak=false aspire run --detach --non-interactive --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --format Json`
+- Targeted Tier 3 run: `dotnet test tests\Hexalith.EventStore.IntegrationTests --configuration Release --filter FullyQualifiedName~PubSubDeliveryProofTests --no-restore`
 
 ### Completion Notes List
 
-To be filled by dev agent.
+- Added a gated AppHost test subscriber resource with app-id `eventstore-test-subscriber` and proof topic `tenant-a.counter.events`.
+- Scoped `eventstore-test-subscriber` to subscribe only to `tenant-a.counter.events` and explicitly denied its publish grant; `sample` remains denied and outside component scopes.
+- Added a disabled-by-default publisher test fault file option so Tier 3 can fail publication after persistence, then remove the trigger and prove drain recovery.
+- Added Tier 3 runtime tests proving command-to-subscriber CloudEvents delivery and publish-failure drain re-publish with exact keyed drain-record evidence.
+- Added evidence artifact with topology, subscriber authorization, exact drain key shape, and validation results.
 
 ### File List
 
-To be filled by dev agent.
+- `_bmad-output/implementation-artifacts/post-epic-4-r4a5-tier3-pubsub-delivery.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/process-notes/predev-hardening-runs.log`
+- `_bmad-output/test-artifacts/post-epic-4-r4a5-tier3-pubsub-delivery/evidence-2026-05-01.md`
+- `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml`
+- `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`
+- `src/Hexalith.EventStore.AppHost/Program.cs`
+- `src/Hexalith.EventStore.Server/Configuration/EventPublisherOptions.cs`
+- `src/Hexalith.EventStore.Server/Events/EventPublisher.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/ContractTests/PubSubDeliveryProofTests.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestCollection.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestFixture.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Events/EventPublisherTests.cs`
+- `tests/Hexalith.EventStore.TestSubscriber/Hexalith.EventStore.TestSubscriber.csproj`
+- `tests/Hexalith.EventStore.TestSubscriber/Program.cs`
+- `tests/Hexalith.EventStore.TestSubscriber/Properties/launchSettings.json`
 
 ## Party-Mode Review
 
@@ -205,9 +226,18 @@ To be filled by dev agent.
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-01 | 1.0 | Implemented Tier 3 pub/sub delivery and drain recovery proof; story moved to review. | Codex |
 | 2026-05-01 | 0.2 | Party-mode review hardened subscriber scoping, deterministic failure proof, drain-state evidence, and at-least-once recovery assertions. | Codex automation |
 | 2026-05-01 | 0.1 | Created ready-for-dev R4-A5 Tier 3 pub/sub delivery proof story. | Codex automation |
 
 ## Verification Status
 
-Story creation only. Runtime, build, and Tier 3 tests are intentionally deferred to `bmad-dev-story`.
+Ready for review. Validation passed on 2026-05-01:
+
+- `dotnet build Hexalith.EventStore.slnx --configuration Release --no-restore`: passed, 0 warnings, 0 errors.
+- `dotnet test tests\Hexalith.EventStore.IntegrationTests --configuration Release --filter FullyQualifiedName~PubSubDeliveryProofTests --no-restore`: passed, 2/2.
+- `dotnet test tests\Hexalith.EventStore.Server.Tests --configuration Release --no-restore`: passed, 1648/1648.
+- `dotnet test tests\Hexalith.EventStore.Contracts.Tests --configuration Release --no-restore`: passed, 281/281.
+- `dotnet test tests\Hexalith.EventStore.Client.Tests --configuration Release --no-restore`: passed, 334/334.
+- `dotnet test tests\Hexalith.EventStore.Sample.Tests --configuration Release --no-restore`: passed, 63/63.
+- `dotnet test tests\Hexalith.EventStore.Testing.Tests --configuration Release --no-restore`: passed, 78/78.

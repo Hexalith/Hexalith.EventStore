@@ -13,6 +13,7 @@
     <ProjectReference Include="..\Hexalith.EventStore\Hexalith.EventStore.csproj" />
     <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj" />
     <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample.BlazorUI\Hexalith.EventStore.Sample.BlazorUI.csproj" />
+    <ProjectReference Include="..\..\tests\Hexalith.EventStore.TestSubscriber\Hexalith.EventStore.TestSubscriber.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.Aspire\Hexalith.EventStore.Aspire.csproj" IsAspireProjectResource="false" />
     <ProjectReference Include="$(HexalithTenantsBasePath)\Hexalith.Tenants\Hexalith.Tenants.csproj" />
     <ProjectReference Include="$(HexalithTenantsBasePath)\Hexalith.Tenants.Aspire\Hexalith.Tenants.Aspire.csproj" IsAspireProjectResource="false" />

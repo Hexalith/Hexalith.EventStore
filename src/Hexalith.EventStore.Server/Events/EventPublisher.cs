@@ -41,6 +41,7 @@ public partial class EventPublisher(
 
         string pubSubName = options.Value.PubSubName;
         string topic = identity.PubSubTopic;
+        EventPublisherOptions publisherOptions = options.Value;
 
         if (topicNameValidator is not null && !topicNameValidator.IsValidTopicName(topic)) {
             logger.LogError(
@@ -68,6 +69,12 @@ public partial class EventPublisher(
         int publishedCount = 0;
 
         try {
+            if (IsTestPublishFaultActive(publisherOptions, correlationId)) {
+                string failureReason = $"Configured test publish fault is active for correlation id {correlationId}.";
+                Log.TestPublishFaultInjected(logger, correlationId, identity.TenantId, identity.Domain, identity.AggregateId, topic);
+                return new EventPublishResult(false, 0, failureReason);
+            }
+
             for (int i = 0; i < events.Count; i++) {
                 EventEnvelope eventEnvelope = events[i];
                 PayloadProtectionResult protectionResult = await payloadProtectionService
@@ -151,6 +158,16 @@ public partial class EventPublisher(
         }
     }
 
+    private static bool IsTestPublishFaultActive(EventPublisherOptions options, string correlationId) {
+        if (string.IsNullOrWhiteSpace(options.TestPublishFaultFilePath)
+            || !File.Exists(options.TestPublishFaultFilePath)) {
+            return false;
+        }
+
+        return string.IsNullOrWhiteSpace(options.TestPublishFaultCorrelationIdPrefix)
+            || correlationId.StartsWith(options.TestPublishFaultCorrelationIdPrefix, StringComparison.Ordinal);
+    }
+
     private static partial class Log {
         [LoggerMessage(
             EventId = 3100,
@@ -194,5 +211,17 @@ public partial class EventPublisher(
             string domain,
             string aggregateId,
             string correlationId);
+
+        [LoggerMessage(
+            EventId = 3103,
+            Level = LogLevel.Warning,
+            Message = "Test publish fault injected: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Topic={Topic}, Stage=TestPublishFaultInjected")]
+        public static partial void TestPublishFaultInjected(
+            ILogger logger,
+            string correlationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string topic);
     }
 }

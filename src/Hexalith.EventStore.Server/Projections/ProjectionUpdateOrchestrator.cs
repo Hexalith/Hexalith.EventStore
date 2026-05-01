@@ -32,6 +32,7 @@ public partial class ProjectionUpdateOrchestrator(
     DaprClient daprClient,
     IHttpClientFactory httpClientFactory,
     IDomainServiceResolver resolver,
+    IProjectionCheckpointTracker checkpointTracker,
     IOptions<ProjectionOptions> projectionOptions,
     ILogger<ProjectionUpdateOrchestrator> logger) : IProjectionUpdateOrchestrator {
     /// <inheritdoc/>
@@ -57,14 +58,23 @@ public partial class ProjectionUpdateOrchestrator(
                 return;
             }
 
+            long lastDeliveredSequence = 0;
+            try {
+                lastDeliveredSequence = await checkpointTracker
+                    .ReadLastDeliveredSequenceAsync(identity, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) {
+                Log.CheckpointReadFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
+            }
+
             // Step 2: Create aggregate actor proxy and read events
             IAggregateActor aggregateProxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(identity.ActorId),
                 "AggregateActor");
 
-            // TODO: Story 11-4+ checkpoint tracking -- replace GetEventsAsync(0) with GetEventsAsync(lastCheckpoint)
             EventEnvelope[] events = await aggregateProxy
-                .GetEventsAsync(0)
+                .GetEventsAsync(lastDeliveredSequence)
                 .ConfigureAwait(false);
 
             if (events.Length == 0) {
@@ -123,6 +133,19 @@ public partial class ProjectionUpdateOrchestrator(
                 .UpdateProjectionAsync(ProjectionState.FromJsonElement(response.ProjectionType, identity.TenantId, response.State))
                 .ConfigureAwait(false);
 
+            long highestDeliveredSequence = events.Max(e => e.SequenceNumber);
+            try {
+                bool checkpointSaved = await checkpointTracker
+                    .SaveDeliveredSequenceAsync(identity, highestDeliveredSequence, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!checkpointSaved) {
+                    Log.CheckpointSaveExhausted(logger, identity.TenantId, identity.Domain, identity.AggregateId, highestDeliveredSequence);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) {
+                Log.CheckpointSaveFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
+            }
+
             Log.ProjectionStateUpdated(logger, identity.TenantId, identity.Domain, identity.AggregateId, response.ProjectionType, projectionActorId);
         }
         catch (Exception ex) {
@@ -178,5 +201,23 @@ public partial class ProjectionUpdateOrchestrator(
             Level = LogLevel.Debug,
             Message = "Projection polling mode configured (RefreshIntervalMs={RefreshIntervalMs}), skipping immediate trigger: TenantId={TenantId}, Domain={Domain}, Stage=PollingModeDeferred")]
         public static partial void PollingModeDeferred(ILogger logger, string tenantId, string domain, int refreshIntervalMs);
+
+        [LoggerMessage(
+            EventId = 1118,
+            Level = LogLevel.Warning,
+            Message = "Projection checkpoint read failed: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ExceptionType={ExceptionType}, Stage=ProjectionCheckpointReadFailed")]
+        public static partial void CheckpointReadFailed(ILogger logger, Exception ex, string tenantId, string domain, string aggregateId, string exceptionType);
+
+        [LoggerMessage(
+            EventId = 1119,
+            Level = LogLevel.Warning,
+            Message = "Projection checkpoint save failed: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ExceptionType={ExceptionType}, Stage=ProjectionCheckpointSaveFailed")]
+        public static partial void CheckpointSaveFailed(ILogger logger, Exception ex, string tenantId, string domain, string aggregateId, string exceptionType);
+
+        [LoggerMessage(
+            EventId = 1120,
+            Level = LogLevel.Warning,
+            Message = "Projection checkpoint save exhausted optimistic-concurrency attempts: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, AttemptedSequence={AttemptedSequence}, Stage=ProjectionCheckpointSaveExhausted")]
+        public static partial void CheckpointSaveExhausted(ILogger logger, string tenantId, string domain, string aggregateId, long attemptedSequence);
     }
 }

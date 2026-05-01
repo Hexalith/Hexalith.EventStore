@@ -1,6 +1,6 @@
 # Post-Epic-11 R11-A1: Checkpoint-Tracked Projection Delivery
 
-Status: ready-for-dev
+Status: done
 
 <!-- Source: epic-11-retro-2026-04-30.md - Action item R11-A1 -->
 <!-- Source: epic-12-retro-2026-04-30.md - R12-A5 carry-forward backlog -->
@@ -47,49 +47,49 @@ The open R11-A1 risk is precise: `ProjectionUpdateOrchestrator` currently contai
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add projection checkpoint model and tracker contract (AC: #1, #2)
-  - [ ] Define a compact checkpoint record under `src/Hexalith.EventStore.Server/Projections/`.
-  - [ ] Define tracker methods for reading the current checkpoint and saving a successful sequence.
-  - [ ] Keep the key derivation centralized and covered by tests.
+- [x] Task 1: Add projection checkpoint model and tracker contract (AC: #1, #2)
+  - [x] Define a compact checkpoint record under `src/Hexalith.EventStore.Server/Projections/`.
+  - [x] Define tracker methods for reading the current checkpoint and saving a successful sequence.
+  - [x] Keep the key derivation centralized and covered by tests.
 
-- [ ] Task 2: Implement persistent checkpoint storage (AC: #1, #4, #5, #6, #7)
-  - [ ] Use DAPR state management through an injectable service boundary, not direct aggregate actor state-key access.
-  - [ ] Use a configurable checkpoint state-store name with a repo-consistent default of `statestore`; do not hard-code aggregate actor state keys.
-  - [ ] Make missing state return sequence 0.
-  - [ ] Treat checkpoint read failure as fail-open full replay from sequence 0 and log tenant, domain, aggregate ID, and exception type.
-  - [ ] Make stale saves non-regressing by keeping the maximum observed sequence.
-  - [ ] Prefer DAPR state ETag/compare-and-set for checkpoint writes where the SDK path is practical; use the repo-local `DaprCommandActivityTracker` / `DaprStreamActivityTracker` bounded retry pattern as the precedent.
-  - [ ] If the bounded ETag retry path exhausts its attempts, return a save-failed result and let the orchestrator log/swallow it; do not perform a last blind save that could regress a checkpoint.
-  - [ ] Log checkpoint read/save failures with tenant, domain, aggregate ID, and exception type only; do not log event payloads.
+- [x] Task 2: Implement persistent checkpoint storage (AC: #1, #4, #5, #6, #7)
+  - [x] Use DAPR state management through an injectable service boundary, not direct aggregate actor state-key access.
+  - [x] Use a configurable checkpoint state-store name with a repo-consistent default of `statestore`; do not hard-code aggregate actor state keys.
+  - [x] Make missing state return sequence 0.
+  - [x] Treat checkpoint read failure as fail-open full replay from sequence 0 and log tenant, domain, aggregate ID, and exception type.
+  - [x] Make stale saves non-regressing by keeping the maximum observed sequence.
+  - [x] Prefer DAPR state ETag/compare-and-set for checkpoint writes where the SDK path is practical; use the repo-local `DaprCommandActivityTracker` / `DaprStreamActivityTracker` bounded retry pattern as the precedent.
+  - [x] If the bounded ETag retry path exhausts its attempts, return a save-failed result and let the orchestrator log/swallow it; do not perform a last blind save that could regress a checkpoint.
+  - [x] Log checkpoint read/save failures with tenant, domain, aggregate ID, and exception type only; do not log event payloads.
 
-- [ ] Task 3: Wire tracker into DI (AC: #2)
-  - [ ] Register the tracker in `EventStoreServerServiceCollectionExtensions`.
-  - [ ] Keep existing service lifetimes consistent with `ProjectionUpdateOrchestrator` and DAPR client usage.
+- [x] Task 3: Wire tracker into DI (AC: #2)
+  - [x] Register the tracker in `EventStoreServerServiceCollectionExtensions`.
+  - [x] Keep existing service lifetimes consistent with `ProjectionUpdateOrchestrator` and DAPR client usage.
 
-- [ ] Task 4: Update `ProjectionUpdateOrchestrator` incremental flow (AC: #3, #4, #5, #7, #8, #9)
-  - [ ] Read checkpoint after the polling-mode guard and before creating or invoking the aggregate actor.
-  - [ ] If checkpoint read fails, continue with sequence 0 and rely on duplicate-safe at-least-once projection delivery.
-  - [ ] Replace the hard-coded `GetEventsAsync(0)` with `GetEventsAsync(lastDeliveredSequence)`.
-  - [ ] Save checkpoint only after `UpdateProjectionAsync` succeeds.
-  - [ ] Compute the saved sequence as `events.Max(e => e.SequenceNumber)`, not from event count or checkpoint offset.
-  - [ ] If checkpoint save fails after projection state is written, log and return without throwing; the next trigger must replay from the old checkpoint.
-  - [ ] Leave the `RefreshIntervalMs > 0` early return unchanged.
-  - [ ] Preserve the outer catch/fail-open behavior.
+- [x] Task 4: Update `ProjectionUpdateOrchestrator` incremental flow (AC: #3, #4, #5, #7, #8, #9)
+  - [x] Read checkpoint after the polling-mode guard and before creating or invoking the aggregate actor.
+  - [x] If checkpoint read fails, continue with sequence 0 and rely on duplicate-safe at-least-once projection delivery.
+  - [x] Replace the hard-coded `GetEventsAsync(0)` with `GetEventsAsync(lastDeliveredSequence)`.
+  - [x] Save checkpoint only after `UpdateProjectionAsync` succeeds.
+  - [x] Compute the saved sequence as `events.Max(e => e.SequenceNumber)`, not from event count or checkpoint offset.
+  - [x] If checkpoint save fails after projection state is written, log and return without throwing; the next trigger must replay from the old checkpoint.
+  - [x] Leave the `RefreshIntervalMs > 0` early return unchanged.
+  - [x] Preserve the outer catch/fail-open behavior.
 
-- [ ] Task 5: Expand server unit tests (AC: #3, #4, #5, #6, #7, #10, #11)
-  - [ ] Add focused tracker tests for missing, read, save, max-sequence, invalid key, retry-exhaustion, and storage failure behavior.
-  - [ ] Update orchestrator tests so the first-delivery case still proves `GetEventsAsync(0)`.
-  - [ ] Add orchestrator tests for existing checkpoint, checkpoint read failure replay-from-zero, successful save, non-contiguous returned sequences saving the maximum sequence, no-events no-save, invalid response no-save, actor-write failure no-save, and checkpoint save failure no-throw.
-  - [ ] Keep the current DAPR invocation testability limitation in mind: use the existing HttpClient/fake-handler patterns where possible and do not overfit to non-virtual `DaprClient` members.
+- [x] Task 5: Expand server unit tests (AC: #3, #4, #5, #6, #7, #10, #11)
+  - [x] Add focused tracker tests for missing, read, save, max-sequence, invalid key, retry-exhaustion, and storage failure behavior.
+  - [x] Update orchestrator tests so the first-delivery case still proves `GetEventsAsync(0)`.
+  - [x] Add orchestrator tests for existing checkpoint, checkpoint read failure replay-from-zero, successful save, non-contiguous returned sequences saving the maximum sequence, no-events no-save, invalid response no-save, actor-write failure no-save, and checkpoint save failure no-throw.
+  - [x] Keep the current DAPR invocation testability limitation in mind: use the existing HttpClient/fake-handler patterns where possible and do not overfit to non-virtual `DaprClient` members.
 
-- [ ] Task 6: Update documentation or retro follow-up notes (AC: #12)
-  - [ ] Update the server-managed projection builder doc or implementation notes to say immediate delivery is checkpoint-tracked.
-  - [ ] Record that polling remains separate R11-A2 scope.
+- [x] Task 6: Update documentation or retro follow-up notes (AC: #12)
+  - [x] Update the server-managed projection builder doc or implementation notes to say immediate delivery is checkpoint-tracked.
+  - [x] Record that polling remains separate R11-A2 scope.
 
-- [ ] Task 7: Run required validation (AC: #10, #11)
-  - [ ] `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~ProjectionUpdateOrchestratorTests|FullyQualifiedName~ProjectionCheckpoint"`
-  - [ ] `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~EventReplayProjectionActorTests|FullyQualifiedName~AggregateActorGetEventsTests|FullyQualifiedName~ProjectionUpdateOrchestratorRefreshIntervalTests"`
-  - [ ] If touched contracts require it: `dotnet test tests/Hexalith.EventStore.Contracts.Tests`
+- [x] Task 7: Run required validation (AC: #10, #11)
+  - [x] `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~ProjectionUpdateOrchestratorTests|FullyQualifiedName~ProjectionCheckpoint"`
+  - [x] `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~EventReplayProjectionActorTests|FullyQualifiedName~AggregateActorGetEventsTests|FullyQualifiedName~ProjectionUpdateOrchestratorRefreshIntervalTests"`
+  - [x] If touched contracts require it: `dotnet test tests/Hexalith.EventStore.Contracts.Tests`
 
 ## Dev Notes
 
@@ -158,13 +158,33 @@ The open R11-A1 risk is precise: `ProjectionUpdateOrchestrator` currently contai
 
 ### Agent Model Used
 
-TBD
+GPT-5 Codex
 
 ### Debug Log References
 
+- `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~ProjectionUpdateOrchestratorTests|FullyQualifiedName~ProjectionCheckpoint" --no-restore`
+- `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~EventReplayProjectionActorTests|FullyQualifiedName~AggregateActorGetEventsTests|FullyQualifiedName~ProjectionUpdateOrchestratorRefreshIntervalTests" --no-restore`
+
 ### Completion Notes List
 
+- Added persisted projection checkpoint model, injectable tracker, configurable checkpoint state store, and DI registration.
+- Switched immediate projection delivery from unconditional full replay to checkpoint-based `GetEventsAsync(lastDeliveredSequence)`.
+- Saves checkpoints only after successful projection actor writes, using DAPR ETag optimistic concurrency with bounded retry and max-sequence merge.
+- Preserved fail-open behavior for checkpoint read/save failures and polling-mode deferral.
+- Updated projection design documentation to state immediate delivery is checkpoint-tracked and polling remains R11-A2 scope.
+
 ### File List
+
+- `docs/superpowers/specs/2026-03-15-server-managed-projection-builder-design.md`
+- `src/Hexalith.EventStore.Server/Configuration/ProjectionOptions.cs`
+- `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs`
+- `src/Hexalith.EventStore.Server/Projections/IProjectionCheckpointTracker.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionCheckpoint.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorRefreshIntervalTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs`
 
 ## Party-Mode Review
 
@@ -188,6 +208,25 @@ TBD
   - No product-scope or architecture-policy decisions deferred. The DAPR ETag/compare-and-set API choice remains an implementation detail to verify during `bmad-dev-story`.
 - Final recommendation: ready-for-dev
 
+## Review Findings
+
+Date/time: 2026-05-01T (post-implementation review via `/bmad-code-review post-epic-11-r11a1-checkpoint-tracked-projection-delivery`)
+Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor
+
+- [x] [Review][Patch] Tracker swallows all retry-loop exceptions on every attempt, hiding storage failures behind Debug logs [`src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs:73-91`] — Add the precedent guard `when (attempt < MaxEtagRetries - 1)` so the final-attempt exception bubbles to the orchestrator's `Log.CheckpointSaveFailed` Warning. AC #6 says "Prefer the same bounded ETag retry shape already used by `DaprCommandActivityTracker`," and that file uses `when (attempt < MaxEtagRetries - 1)` (line 183) precisely so persistent store failures surface at Warning level instead of being silently downgraded.
+- [x] [Review][Patch] No tracker unit test asserts `ReadLastDeliveredSequenceAsync` propagates non-OCE storage exceptions [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs`] — Task 5 requires "tracker tests for ... read ... and storage failure behavior." Add a test where `daprClient.GetStateAsync<ProjectionCheckpoint>` throws a non-OCE exception and assert it propagates so the orchestrator's outer try/catch handles it.
+- [x] [Review][Patch] Existing failure-path orchestrator tests do not assert `SaveDeliveredSequenceAsync` was NOT called [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs`] — AC #10 + Task 5 require proof "every failure class in AC #4 leaves the checkpoint unchanged." Add `await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(...)` to `_DomainServiceFails_DoesNotThrow`, `_ResolverFails_DoesNotThrow`, `_GetEventsAsyncFails_DoesNotThrow`.
+- [x] [Review][Patch] Missing test: invalid `ProjectionResponse` (null/empty `ProjectionType` or null `State`) does not save checkpoint [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs`] — Task 5 enumerates "invalid response no-save." Add a test that returns `{"projectionType":""}` or null state and asserts `SaveDeliveredSequenceAsync` is not called.
+- [x] [Review][Patch] Missing test: `IProjectionWriteActor.UpdateProjectionAsync` failure does not save checkpoint [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs`] — Task 5 enumerates "actor-write failure no-save." Add a test where `writeActor.UpdateProjectionAsync` throws and asserts `SaveDeliveredSequenceAsync` is not called.
+- [x] [Review][Patch] `CheckpointSaveExhausted` log lacks the attempted sequence number for operator correlation [`src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:142,323-328`] — Add `attemptedSequence` parameter so operators can correlate the warning with the projection actor's persisted state without consulting traces.
+- [x] [Review][Patch] No test pins `OperationCanceledException` pass-through in tracker [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs`] — The tracker has an explicit `catch (OperationCanceledException) { throw; }` that prevents the catch-all from absorbing cancellation. A future refactor that drops this guard would silently regress cancellation semantics. Add a test that throws OCE from `GetStateAndETagAsync` and asserts it propagates.
+- [x] [Review][Defer] Checkpoint > actor's `CurrentSequence` permanently silences projections [`src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:80-83`] — deferred. AC #5 says silent skipping is forbidden, but the corruption scenario (restored state-store backup, key drift between aggregate and checkpoint stores) requires drift detection beyond R11-A1 scope. Add diagnostic when `events.Length == 0 && lastDeliveredSequence > 0` to a follow-up story.
+- [x] [Review][Defer] Concurrent fire-and-forget projection triggers can interleave so an older `UpdateProjectionAsync` lands after a newer one, regressing projection state while the checkpoint stays at max [`src/Hexalith.EventStore.Server/Events/EventPublisher.cs:135-143`] — deferred. The design doc already concedes "duplicate delivery can still occur under concurrent fire-and-forget triggers"; the **state-regression** failure mode is a stronger concern but requires per-aggregate serialization (Channel/SemaphoreSlim) outside R11-A1 scope. Track in R11-A2 or successor.
+- [x] [Review][Defer] Outer orchestrator `catch (Exception ex)` absorbs `OperationCanceledException` from `ReadLastDeliveredSequenceAsync` if a future caller passes a non-`None` token [`src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:151`] — deferred, pre-existing. EventPublisher passes `CancellationToken.None`, so production cancellation is not affected today.
+- [x] [Review][Defer] `MaxEtagRetries = 3` is a hardcoded const not exposed via `ProjectionOptions` — deferred. Story Dev Notes explicitly punt the retry count to bmad-dev-story so long as the bounded/non-regression contract holds; a separate story can add tunability.
+- [x] [Review][Defer] `SaveDeliveredSequenceAsync` rewrites identical state when caller passes a sequence ≤ existing checkpoint, costing a state-store round-trip [`src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs:198-218`] — deferred (perf NIT). Short-circuiting `if (existing?.LastDeliveredSequence >= deliveredSequence) return true;` is a future micro-optimization.
+- [x] [Review][Defer] `AggregateActor.GetEventsAsync` casts `(int)(fromSequence + 1)` `checked` (`AggregateActor.cs:596`); a persisted long checkpoint near `int.MaxValue` would now trigger `OverflowException` that the orchestrator silently swallows — deferred, pre-existing actor bug not caused by R11-A1.
+
 ## Advanced Elicitation
 
 - Date/time: 2026-05-01T11:35:12+02:00
@@ -209,3 +248,4 @@ TBD
 - Findings deferred:
   - No product-scope or architecture-policy decisions deferred. Exact option names and retry count can be chosen during `bmad-dev-story` while preserving the bounded ETag/non-regression contract above.
 - Final recommendation: ready-for-dev
+
