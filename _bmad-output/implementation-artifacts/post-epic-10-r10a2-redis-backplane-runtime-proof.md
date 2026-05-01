@@ -133,6 +133,9 @@ Current HEAD at story creation: `11298a5`.
 - The Redis backplane is production distribution infrastructure. Local default AppHost behavior may remain single-instance with no backplane requirement.
 - Redis backplane failures are fail-open for command/query processing. The proof may fail when Redis is absent, but the product behavior must not start throwing command failures because SignalR cannot publish.
 - A DAPR-managed Redis instance may be reused, but production may also use a dedicated Redis to avoid DAPR state/pubsub contention.
+- AppHost changes must preserve existing Aspire conventions. Avoid persistent containers for this proof unless the implementation records why state persistence is required and how cleanup is handled.
+- Prefer an Aspire/AppHost-managed Redis resource or the app model's existing Redis wiring for the proof. An ad hoc external Redis server is acceptable only if the evidence records why Aspire wiring could not provide deterministic A/B proof.
+- SignalR remains a notification mechanism, not a data consistency mechanism. Clients must re-query bounded read models after a signal and must tolerate missed, duplicated, or delayed signals; this story may prove transport without claiming replay or catch-up semantics.
 
 ### Current-Code Intelligence
 
@@ -150,6 +153,8 @@ Current HEAD at story creation: `11298a5`.
 - Do not run solution-level `dotnet test`. Run affected projects individually.
 - If the proof uses manual commands rather than an automated test, the evidence file must be specific enough for another developer to reproduce it.
 - The proof should use bounded waits and precise failure messages, following the style in `PubSubDeliveryProofTests`.
+- Positive delivery wait must be bounded to 10 seconds or less unless the evidence justifies a tighter/looser value before execution. Negative controls must use the same or shorter wait and assert no valid cross-instance delivery.
+- Evidence file minimum sections: Run Identity, Environment, Topology, Configuration, Positive Proof, Negative Controls, Query Refresh Boundary, Logs/Diagnostics, Results, and Cleanup.
 
 ### Latest Technical Information
 
@@ -199,7 +204,40 @@ To be filled by dev agent.
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-01 | 0.2 | Party-mode review applied: tightened deterministic A/B topology, Redis negative controls, evidence schema, payload boundary, and test-hook isolation. | Codex automation |
 | 2026-05-01 | 0.1 | Created ready-for-dev R10-A2 Redis backplane runtime proof story. | Codex automation |
+
+## Party-Mode Review
+
+Date: 2026-05-01T19:19:05+02:00
+
+Selected story key: `post-epic-10-r10a2-redis-backplane-runtime-proof`
+
+Command/skill invocation used: `/bmad-party-mode post-epic-10-r10a2-redis-backplane-runtime-proof; review;`
+
+Participating BMAD agents: Winston (Architect), Amelia (Developer), Murat (Test Architect), Sally (UX/Adopter Experience)
+
+Findings summary:
+
+- Deterministic two-instance topology needed stronger proof: independently hosted EventStore instances, direct instance-B client target, and instance-A broadcast origin.
+- False-positive exclusion needed mandatory Redis-disabled or Redis-isolated controls, plus same-instance routing guardrails.
+- Redis/backplane evidence needed concrete runtime proof from both instances rather than static DI/code evidence.
+- SignalR group and payload semantics needed explicit pinning so the Tier 3 proof does not expand the public hub contract.
+- Evidence needed a reproducible schema with topology, commands, runtime identities, payload, timings, logs, and control results.
+- AppHost/Aspire and test-only diagnostics needed constraints to avoid leaking proof hooks into production behavior.
+
+Changes applied:
+
+- Expanded AC #1-#4 to require concrete A/B endpoints, runtime identities, direct client targeting, deterministic origin, correlation/run id, and bounded waits.
+- Strengthened AC #6-#7 with both-instance Redis evidence and mandatory negative/control paths.
+- Added AC #8-#11 for payload boundary, fail-open operator evidence, evidence artifact schema, and reproduction lane.
+- Updated scope boundaries, tasks, architecture guardrails, and testing standards to make the proof reproducible and to isolate any test-only hook.
+
+Findings deferred:
+
+- None. All party-mode findings were story-hardening clarifications and did not change product scope, architecture policy, or cross-story contracts.
+
+Final recommendation: ready-for-dev
 
 ## Verification Status
 
