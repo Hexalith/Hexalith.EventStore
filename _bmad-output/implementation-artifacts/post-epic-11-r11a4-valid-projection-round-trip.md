@@ -1,6 +1,6 @@
 # Post-Epic-11 R11-A4: Valid Projection Round-Trip
 
-Status: in-progress
+Status: review
 
 <!-- Source: epic-11-retro-2026-04-30.md - Action item R11-A4 -->
 <!-- Source: epic-12-retro-2026-04-30.md - R12-A5 carry-forward backlog -->
@@ -47,43 +47,43 @@ This story adds that focused proof. It should be an integration-test/runbook sto
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add the valid projection Tier 3 test shell (AC: #1, #9, #10)
-  - [ ] Create `tests/Hexalith.EventStore.IntegrationTests/ContractTests/ValidProjectionRoundTripE2ETests.cs`.
-  - [ ] Use `[Trait("Category", "E2E")]`, `[Trait("Tier", "3")]`, and `[Collection("AspireContractTests")]`.
-  - [ ] Use `AspireContractTestFixture.EventStoreClient` for command and query calls.
+- [x] Task 1: Add the valid projection Tier 3 test shell (AC: #1, #9, #10)
+  - [x] Create `tests/Hexalith.EventStore.IntegrationTests/ContractTests/ValidProjectionRoundTripE2ETests.cs`.
+  - [x] Use `[Trait("Category", "E2E")]`, `[Trait("Tier", "3")]`, and `[Collection("AspireContractTests")]`.
+  - [x] Use `AspireContractTestFixture.EventStoreClient` for command and query calls.
 
-- [ ] Task 2: Submit and verify real commands (AC: #2, #3)
-  - [ ] Submit at least one `IncrementCounter` command against a unique aggregate ID.
-  - [ ] Poll status until `Completed`.
-  - [ ] Fail immediately on terminal non-success statuses and include the final status JSON in the assertion message.
-  - [ ] Assert persisted-event evidence when present in the status payload.
+- [x] Task 2: Submit and verify real commands (AC: #2, #3)
+  - [x] Submit at least one `IncrementCounter` command against a unique aggregate ID.
+  - [x] Poll status until `Completed`.
+  - [x] Fail immediately on terminal non-success statuses and include the final status JSON in the assertion message.
+  - [x] Assert persisted-event evidence when present in the status payload.
 
-- [ ] Task 3: Add an eventual query assertion helper (AC: #4, #5, #6, #8)
-  - [ ] Poll `POST /api/v1/queries` until `200 OK` with the expected count.
-  - [ ] Include `entityId = aggregateId` and `projectionType = "counter"` explicitly in the query JSON.
-  - [ ] If reusing `ContractTestHelpers.CreateQueryRequest`, extend that helper to serialize `ProjectionType` and `EntityId`; do not rely on controller defaulting for this proof.
-  - [ ] Generate query/status JWTs with the same tenant and `counter` domain used by the command; required permissions should include `query:read` for queries and existing command status permissions for status polling.
-  - [ ] Treat `404 NotFound` and zero-count payloads as retry states until the expected count appears; do not copy `CounterQueryService`'s UI-friendly 404-to-zero behavior into the test success path.
-  - [ ] Treat unparseable payloads as retry/diagnostic states during the poll window, then fail with the raw payload and response body if the expected count never appears.
-  - [ ] Preserve the last non-success response body for timeout diagnostics.
-  - [ ] Parse direct-object and base64-string payload forms.
+- [x] Task 3: Add an eventual query assertion helper (AC: #4, #5, #6, #8)
+  - [x] Poll `POST /api/v1/queries` until `200 OK` with the expected count.
+  - [x] Include `entityId = aggregateId` and `projectionType = "counter"` explicitly in the query JSON.
+  - [x] If reusing `ContractTestHelpers.CreateQueryRequest`, extend that helper to serialize `ProjectionType` and `EntityId`; do not rely on controller defaulting for this proof.
+  - [x] Generate query/status JWTs with the same tenant and `counter` domain used by the command; required permissions should include `query:read` for queries and existing command status permissions for status polling.
+  - [x] Treat `404 NotFound` and zero-count payloads as retry states until the expected count appears; do not copy `CounterQueryService`'s UI-friendly 404-to-zero behavior into the test success path.
+  - [x] Treat unparseable payloads as retry/diagnostic states during the poll window, then fail with the raw payload and response body if the expected count never appears.
+  - [x] Preserve the last non-success response body for timeout diagnostics.
+  - [x] Parse direct-object and base64-string payload forms.
 
-- [ ] Task 4: Pin ETag round-trip behavior (AC: #7)
-  - [ ] Capture the first successful query response `ETag` header.
-  - [ ] Assert the first successful response body has the expected count before sending any `If-None-Match` request.
-  - [ ] Send a second query with `If-None-Match` and the exact same query identity fields used by the successful count assertion.
-  - [ ] Reuse the parsed response `EntityTagHeaderValue` or preserve the server-provided quotes exactly; avoid double-quoting or stripping weak-validator syntax.
-  - [ ] Accept `304 NotModified`, or `200 OK` with the same expected count if a concurrent projection change invalidated the ETag.
+- [x] Task 4: Pin ETag round-trip behavior (AC: #7)
+  - [x] Capture the first successful query response `ETag` header.
+  - [x] Assert the first successful response body has the expected count before sending any `If-None-Match` request.
+  - [x] Send a second query with `If-None-Match` and the exact same query identity fields used by the successful count assertion.
+  - [x] Reuse the parsed response `EntityTagHeaderValue` or preserve the server-provided quotes exactly; avoid double-quoting or stripping weak-validator syntax.
+  - [x] Accept `304 NotModified`, or `200 OK` with the same expected count if a concurrent projection change invalidated the ETag.
 
-- [ ] Task 5: Keep failure-path coverage isolated (AC: #9, #10, #12)
-  - [ ] Verify the valid test does not enable malformed projection response fault injection.
-  - [ ] Do not edit `ProjectionMalformedResponseE2ETests` except for shared helper extraction that preserves behavior.
-  - [ ] Route any checkpoint, polling, SignalR, or UI proof gap to R11-A1, R11-A2, or R11-A3 instead of expanding this story.
+- [x] Task 5: Keep failure-path coverage isolated (AC: #9, #10, #12)
+  - [x] Verify the valid test does not enable malformed projection response fault injection.
+  - [x] Do not edit `ProjectionMalformedResponseE2ETests` except for shared helper extraction that preserves behavior.
+  - [x] Route any checkpoint, polling, SignalR, or UI proof gap to R11-A1, R11-A2, or R11-A3 instead of expanding this story.
 
-- [ ] Task 6: Run and record validation (AC: #11)
-  - [ ] `dotnet test tests/Hexalith.EventStore.IntegrationTests --filter "FullyQualifiedName~ValidProjectionRoundTripE2ETests"`
-  - [ ] If helper changes touch shared contract-test helpers, also run the affected existing tests, especially `ProjectionMalformedResponseE2ETests` and `CommandLifecycleTests`.
-  - [ ] Record command output, environment caveats, and any infrastructure blockers in the Dev Agent Record.
+- [x] Task 6: Run and record validation (AC: #11)
+  - [x] `dotnet test tests/Hexalith.EventStore.IntegrationTests --filter "FullyQualifiedName~ValidProjectionRoundTripE2ETests"`
+  - [x] If helper changes touch shared contract-test helpers, also run the affected existing tests, especially `ProjectionMalformedResponseE2ETests` and `CommandLifecycleTests`.
+  - [x] Record command output, environment caveats, and any infrastructure blockers in the Dev Agent Record.
 
 ## Dev Notes
 
@@ -171,13 +171,36 @@ This story adds that focused proof. It should be an integration-test/runbook sto
 
 ### Agent Model Used
 
-TBD
+GPT-5
 
 ### Debug Log References
 
+- AppHost preflight: `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`; Aspire MCP resource inspection showed `eventstore`, `sample`, DAPR sidecars, `statestore`, and `pubsub` running healthy. AppHost stopped before test fixture runs.
+- Red phase: first targeted run of `dotnet test tests\Hexalith.EventStore.IntegrationTests --filter "FullyQualifiedName~ValidProjectionRoundTripE2ETests" --no-restore` failed at compile time on xUnit1030 due `ConfigureAwait(false)` in the `[Fact]` body.
+- Green phase: after removing `[Fact]`-body `ConfigureAwait(false)`, targeted valid round-trip passed: 1/1.
+- Robustness refactor: command submission now uses existing `SubmitCommandAndGetCorrelationIdWithRetryAsync`; targeted valid round-trip still passed: 1/1.
+- Affected Tier 3 neighbors: `dotnet test tests\Hexalith.EventStore.IntegrationTests --filter "FullyQualifiedName~ProjectionMalformedResponseE2ETests|FullyQualifiedName~CommandLifecycleTests" --no-restore` passed: 7/7.
+- Tier 1 units: Client.Tests 334/334, Contracts.Tests 281/281, Sample.Tests 63/63, Testing.Tests 78/78 passed.
+- Full integration project caveat: `dotnet test tests\Hexalith.EventStore.IntegrationTests --no-restore` failed twice with the same broad shared-topology shape. Latest run: 218 passed, 1 skipped, 11 failed. Failures were existing Replay/Keycloak/HotReload/Chaos command-submission 500s plus this new test when run after those shared-resource failures; isolated R11-A4 targeted proof passes.
+
 ### Completion Notes List
 
+- Added `ValidProjectionRoundTripE2ETests` under the existing `AspireContractTests` collection.
+- The test uses the public command API to submit `IncrementCounter`, polls command status to `Completed`, and asserts `eventCount > 0`.
+- The test polls `POST /api/v1/queries` with explicit `tenant`, `domain`, `aggregateId`, `projectionType = "counter"`, `entityId = aggregateId`, and `queryType = "get-counter-status"` until the projected count is `1`.
+- Query payload parsing handles both direct JSON object payloads and base64-encoded JSON object payloads, preserving diagnostic details on timeout.
+- ETag behavior is pinned after the successful count assertion by reusing the exact same query identity with `If-None-Match` and accepting `304 NotModified` or `200 OK` with unchanged count.
+- Failure-path coverage remains isolated; `ProjectionMalformedResponseE2ETests` and shared helpers were not modified.
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/post-epic-11-r11a4-valid-projection-round-trip.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `tests/Hexalith.EventStore.IntegrationTests/ContractTests/ValidProjectionRoundTripE2ETests.cs`
+
+### Change Log
+
+- 2026-05-01: Added valid projection command-to-query Tier 3 proof with explicit query identity, payload diagnostics, ETag follow-up, targeted/neighbor/Tier 1 validation, and documented full integration shared-topology caveat; moved story to review.
 
 ## Party-Mode Review
 
