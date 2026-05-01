@@ -1,0 +1,29 @@
+Negative evidence search for final proof window.
+
+Proof window:
+- Started at: 2026-05-01T15:12:58.1131793+00:00
+- Final follow-up query completed at: 2026-05-01T15:13:03Z
+
+Terms checked in EventStore, sample, and sample-blazor-ui logs returned by Aspire MCP:
+- QueryNotFoundException
+- ProjectionUpdateFailed
+- ProjectionStatePersisted failure
+- DomainServiceInvocationFailed
+- ProjectionChangeNotificationFailed
+- SignalR broadcast failed
+- SignalR hub mapping failed
+- malformed
+- invalid JSON
+- HTTP 500
+- HTTP 403
+- HTTP 404
+
+Results:
+- No final proof-window EventStore logs were found for those error terms.
+- No final proof-window sample service logs were found for those error terms.
+- No final proof-window sample-blazor-ui logs were found for those error terms.
+- The final baseline and follow-up queries both returned HTTP 200.
+- The final command returned HTTP 202.
+
+Known unrelated observation:
+- A superseded warm-up run produced earlier artifacts before the UI tenant override was applied. Those artifacts are retained separately and are not used as the final proof.

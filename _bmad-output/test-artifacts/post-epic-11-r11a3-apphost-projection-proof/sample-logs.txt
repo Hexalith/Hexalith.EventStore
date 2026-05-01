@@ -1,0 +1,15 @@
+Curated sample service log excerpt.
+
+Resource:
+- sample-xysdkbkf
+- Endpoints: http://localhost:5189, https://localhost:7157
+- State during proof: Running, Healthy
+
+Relevant observations:
+- The sample service was started by Aspire and registered the counter domain service.
+- EventStore command trace 8ff4e7f invoked sample through Dapr:
+  - POST http://localhost:3501/v1.0/invoke/sample/method/process returned HTTP 200.
+  - POST http://localhost:3501/v1.0/invoke/sample/method/project returned HTTP 200.
+- EventStore log id 170 recorded AppId=sample, ResultType=Success, EventCount=1, TenantId=sample-tenant, Domain=counter.
+
+The sample service did not emit additional application-level `/project` logs at the active information log level during the proof window. The Dapr invocation spans and EventStore domain-service completion log are the captured evidence.

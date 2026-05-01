@@ -1,0 +1,25 @@
+Curated sample Blazor UI log excerpt.
+
+Resource:
+- sample-blazor-ui-bewascgr
+- Endpoints: http://localhost:5004, https://localhost:5003
+- State during proof: Running, Healthy
+- Tenant override: EventStore__Counter__TenantId=sample-tenant
+
+SignalR startup:
+- Log id 41: SignalR client starting.
+- Log id 42: SignalR client connected successfully.
+
+SignalR traces:
+- eda8c24: POST /projectionhub/negotiate returned HTTP 200.
+- 1a84da8: WebSocket connection to /projectionhub returned HTTP 101 and EventStore hub OnConnectedAsync completed.
+- 23a3036: JoinGroup invoked for the active projection subscription.
+
+UI command and refresh warm-up:
+- f3e58b4: UI submitted IncrementCounter command.
+- Browser snapshot after UI command showed count 2, refresh count 1, and ETag prefix Y291bnRl.
+
+Final direct API command refresh:
+- Browser remained open while direct API command r11a3-430ea44d14c8478791f67322165590b4 was submitted.
+- Browser snapshot after the direct API command showed count 3, refresh count 2, and last UI command still "IncrementCounter at 17:12:08".
+- Trace 6dc925c shows sample-blazor-ui sent POST /api/v1/queries to eventstore after the direct command, and EventStore routed it to ProjectionActor/counter:sample-tenant:counter-1.

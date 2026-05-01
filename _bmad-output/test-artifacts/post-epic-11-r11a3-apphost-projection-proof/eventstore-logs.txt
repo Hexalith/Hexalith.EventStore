@@ -1,0 +1,34 @@
+Curated EventStore structured log excerpt for final proof.
+
+Proof identifiers:
+- Proof window start UTC: 2026-05-01T15:12:58.1131793+00:00
+- Message id: r11a3-430ea44d14c8478791f67322165590b4
+- Correlation id: r11a3-832d7bc77883465895ce5ba94a180024
+- Tenant: sample-tenant
+- Domain: counter
+- Aggregate id: counter-1
+
+Trace 8ff4e7f - final direct command:
+- Log id 160: Command received. MessageId=r11a3-430ea44d14c8478791f67322165590b4; CorrelationId=r11a3-832d7bc77883465895ce5ba94a180024; TenantId=sample-tenant; Domain=counter; AggregateId=counter-1; CommandType=IncrementCounter; Stage=CommandReceived.
+- Log id 165: Command stage transition. Stage=EventsStored; TenantId=sample-tenant; Domain=counter; AggregateId=counter-1; CorrelationId=r11a3-832d7bc77883465895ce5ba94a180024; CausationId=r11a3-430ea44d14c8478791f67322165590b4.
+- Log id 168: Command completed. Status=Completed; CorrelationId=r11a3-832d7bc77883465895ce5ba94a180024.
+- Log id 170: Domain service completed. AppId=sample; ResultType=Success; EventCount=1; TenantId=sample-tenant; Domain=counter; Stage=DomainServiceInvoked.
+- Log ids 171-172: POST http://localhost:3501/v1.0/invoke/sample/method/process returned HTTP 200.
+- Log ids 173-174: POST http://localhost:3501/v1.0/invoke/sample/method/project returned HTTP 200.
+- Log id 181: Events persisted. TenantId=sample-tenant; Domain=counter; AggregateId=counter-1; EventCount=1; NewSequence=3; Stage=EventsPersisted.
+- Log id 182: Events published. Topic=sample-tenant.counter.events; EventCount=1; Stage=EventsPublished.
+- Log id 183: ETag regenerated. ActorId=counter:sample-tenant; ETagPrefix=Y291bnRl; Source=Hexalith.EventStore.Server.Actors.ETagActor.
+
+Trace 89d739a - final direct follow-up query:
+- Query routed to ProjectionActor/counter:sample-tenant:counter-1/QueryAsync and returned HTTP 200.
+- Query then called ETagActor/counter:sample-tenant/GetCurrentETagAsync and returned HTTP 200.
+- Log id 187: Query received. QueryType=get-counter-status; TenantId=sample-tenant; Domain=counter; AggregateId=counter-1.
+
+Trace 6dc925c - UI refresh query after final direct command:
+- Source sample-blazor-ui called eventstore POST /api/v1/queries at 2026-05-01T15:12:58Z.
+- EventStore routed the query to ProjectionActor/counter:sample-tenant:counter-1/QueryAsync and ETagActor/counter:sample-tenant/GetCurrentETagAsync.
+- Log id 159: Query received. QueryType=get-counter-status; TenantId=sample-tenant; Domain=counter; AggregateId=counter-1.
+
+Projection actor write caveat:
+- EventReplayProjectionActor.UpdateProjectionAsync and ProjectionUpdateOrchestrator state-write messages are logged at Debug level and were not emitted by the active AppHost logging configuration.
+- The accepted state is still evidenced by the command trace, sample /project HTTP 200, ProjectionActor query trace, query count changing from 2 to 3, and ETag regeneration for counter:sample-tenant.

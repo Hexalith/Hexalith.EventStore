@@ -1,0 +1,35 @@
+Captured before final direct command proof window.
+
+AppHost command:
+EnableKeycloak=false; EventStore__Counter__TenantId=sample-tenant; EventStore__Authentication__Tenants__0=sample-tenant; aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+
+AppHost process ids:
+- AppHost PID: 135228
+- Aspire CLI PID: 144980
+
+Resources:
+- eventstore-kgcrszhn: Running, Healthy
+  - Project: src/Hexalith.EventStore/Hexalith.EventStore.csproj
+  - PID: 169512
+  - Endpoints: http://localhost:8080, https://localhost:7141
+- sample-xysdkbkf: Running, Healthy
+  - Project: src/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj
+  - PID: 87168
+  - Endpoints: http://localhost:5189, https://localhost:7157
+- sample-blazor-ui-bewascgr: Running, Healthy
+  - Project: src/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj
+  - PID: 164260
+  - Endpoints: http://localhost:5004, https://localhost:5003
+- statestore: Running, Healthy
+- pubsub: Running, Healthy
+- eventstore-dapr-cli-ercvqgmp: Running, Healthy
+  - Dapr HTTP sidecar endpoint: http://localhost:3501
+  - Dapr gRPC endpoint: http://localhost:57532
+- sample-dapr-cli-umspefwz: Running, Healthy
+
+Keycloak resource:
+- Not present in the final proof run because EnableKeycloak=false.
+
+Dapr placement/scheduler:
+- No manual placement/scheduler processes were started because placement.exe and scheduler.exe were not present under the Windows $HOME/.dapr/bin folder.
+- Actor calls succeeded through the Aspire-managed Dapr sidecars.

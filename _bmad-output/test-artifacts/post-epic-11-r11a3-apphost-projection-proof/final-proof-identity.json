@@ -1,0 +1,27 @@
+{
+  "proofWindowStartUtc": "2026-05-01T15:12:58.1131793+00:00",
+  "messageId": "r11a3-430ea44d14c8478791f67322165590b4",
+  "correlationId": "r11a3-832d7bc77883465895ce5ba94a180024",
+  "tenant": "sample-tenant",
+  "domain": "counter",
+  "aggregateId": "counter-1",
+  "queryType": "get-counter-status",
+  "projectionType": "counter",
+  "appHostCommand": "EnableKeycloak=false; EventStore__Counter__TenantId=sample-tenant; EventStore__Authentication__Tenants__0=sample-tenant; aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+  "authClaims": {
+    "iss": "hexalith-dev",
+    "aud": "hexalith-eventstore",
+    "sub": "r11a3-apphost-proof",
+    "tenants": [
+      "sample-tenant"
+    ],
+    "domains": [
+      "counter"
+    ],
+    "permissions": [
+      "command:submit",
+      "query:read"
+    ],
+    "expUtc": "2026-05-01T16:12:58.1131793+00:00"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "error": "Response status code does not indicate success: 404 (Not Found).",
+  "statusCode": 404,
+  "statusDescription": null,
+  "headers": [
+    {
+      "Key": "Date",
+      "Value": [
+        "Fri, 01 May 2026 15:08:49 GMT"
+      ]
+    },
+    {
+      "Key": "Server",
+      "Value": [
+        "Kestrel"
+      ]
+    },
+    {
+      "Key": "Cache-Control",
+      "Value": [
+        "no-store, no-cache"
+      ]
+    },
+    {
+      "Key": "Pragma",
+      "Value": [
+        "no-cache"
+      ]
+    },
+    {
+      "Key": "Transfer-Encoding",
+      "Value": [
+        "chunked"
+      ]
+    }
+  ],
+  "body": null
+}

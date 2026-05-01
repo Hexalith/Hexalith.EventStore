@@ -1,0 +1,9 @@
+{
+  "messageId": "r11a3-430ea44d14c8478791f67322165590b4",
+  "tenant": "sample-tenant",
+  "domain": "counter",
+  "aggregateId": "counter-1",
+  "commandType": "IncrementCounter",
+  "payload": {},
+  "correlationId": "r11a3-832d7bc77883465895ce5ba94a180024"
+}

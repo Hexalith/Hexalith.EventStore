@@ -1,0 +1,9 @@
+{
+  "tenant": "sample-tenant",
+  "domain": "counter",
+  "aggregateId": "counter-1",
+  "queryType": "get-counter-status",
+  "payload": {},
+  "entityId": "counter-1",
+  "projectionType": "counter"
+}

@@ -1,0 +1,25 @@
+{
+  "statusCode": 200,
+  "statusDescription": "OK",
+  "headers": {
+    "Date": [
+      "Fri, 01 May 2026 15:12:57 GMT"
+    ],
+    "Server": [
+      "Kestrel"
+    ],
+    "ETag": [
+      "\"Y291bnRlcg.gSYnuYG9L0GwlQP4m5l4kg\""
+    ],
+    "Transfer-Encoding": [
+      "chunked"
+    ],
+    "X-Correlation-ID": [
+      "8e1f8968-1eb9-4b82-86fb-e99959f27eb3"
+    ],
+    "Content-Type": [
+      "application/json; charset=utf-8"
+    ]
+  },
+  "body": "{\"correlationId\":\"8e1f8968-1eb9-4b82-86fb-e99959f27eb3\",\"payload\":{\"count\":2}}"
+}

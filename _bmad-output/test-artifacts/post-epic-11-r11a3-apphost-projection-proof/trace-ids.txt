@@ -1,0 +1,29 @@
+Final proof trace ids and how they were used.
+
+Final direct API command:
+- Trace id: 8ff4e7f
+- Correlation id: r11a3-832d7bc77883465895ce5ba94a180024
+- Message id: r11a3-430ea44d14c8478791f67322165590b4
+- Path: POST /api/v1/commands
+- Evidence: command received, domain service invoked, events stored, sample /project invocation, events persisted, events published, ETag actor update.
+
+Final direct API follow-up query:
+- Trace id: 89d739a
+- Path: POST /api/v1/queries
+- Evidence: query routed to ProjectionActor/counter:sample-tenant:counter-1/QueryAsync, then ETagActor/counter:sample-tenant/GetCurrentETagAsync.
+
+UI query after final direct command:
+- Trace id: 6dc925c
+- Source: sample-blazor-ui to eventstore
+- Path: POST /api/v1/queries
+- Evidence: browser page refreshed to count 3 after direct API command.
+
+SignalR connection:
+- Negotiate trace id: eda8c24
+- WebSocket connect trace id: 1a84da8
+- Group join trace id: 23a3036
+- Additional JoinGroup traces seen during page activity: cdd5c8c
+
+UI command warm-up:
+- UI command trace id: f3e58b4
+- Used only to prove the page-side command and refresh mechanism before the final direct API command.

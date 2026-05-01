@@ -1,0 +1,19 @@
+Validation test results.
+
+First attempt:
+- Command: dotnet test tests/Hexalith.EventStore.Sample.Tests
+- Result: failed before test execution.
+- Cause: AppHost-run Hexalith.EventStore.Sample process locked referenced DLLs in samples/Hexalith.EventStore.Sample/bin/Debug/net10.0.
+- Action: stopped proof AppHost and child resource processes.
+
+Final attempt:
+- Command: dotnet test tests/Hexalith.EventStore.Sample.Tests
+- Result: passed.
+- Passed: 63
+- Failed: 0
+- Skipped: 0
+- Duration: 84 ms
+- Target framework: net10.0
+
+Server projection tests:
+- Not run. No server-side projection code changed in this proof-only story.

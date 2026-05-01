@@ -1,0 +1,26 @@
+{
+  "proofWindowStartUtc": "2026-05-01T15:08:49.8077943+00:00",
+  "messageId": "r11a3-69d05b0fdf10417f8407c11738823bcc",
+  "correlationId": "r11a3-baaf42510cb1422ea8fc60d3d0ff843d",
+  "tenant": "sample-tenant",
+  "domain": "counter",
+  "aggregateId": "counter-1",
+  "queryType": "get-counter-status",
+  "projectionType": "counter",
+  "authClaims": {
+    "iss": "hexalith-dev",
+    "aud": "hexalith-eventstore",
+    "sub": "r11a3-apphost-proof",
+    "tenants": [
+      "sample-tenant"
+    ],
+    "domains": [
+      "counter"
+    ],
+    "permissions": [
+      "command:submit",
+      "query:read"
+    ],
+    "expUtc": "2026-05-01T16:08:49.8077943+00:00"
+  }
+}

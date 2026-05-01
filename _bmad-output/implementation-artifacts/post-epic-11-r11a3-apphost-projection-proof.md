@@ -1,6 +1,6 @@
 # Post-Epic-11 R11-A3: AppHost Projection Proof
 
-Status: ready-for-dev
+Status: review
 
 <!-- Source: epic-11-retro-2026-04-30.md - Action item R11-A3 -->
 <!-- Source: epic-12-retro-2026-04-30.md - R12-A5 carry-forward backlog -->
@@ -51,41 +51,41 @@ This is a verification and evidence story, not a feature story. Reuse the curren
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Prepare runtime proof environment (AC: #1, #2)
-  - [ ] Start Docker if needed and record whether DAPR placement/scheduler were started manually.
-  - [ ] Start the AppHost with `EnableKeycloak=false` unless validating the Keycloak path is explicitly needed.
-  - [ ] Capture resource state and endpoint URLs before submitting commands.
-  - [ ] Pick and record one unique command `messageId`, correlation ID, proof-window start timestamp, and aggregate ID for the evidence chain.
+- [x] Task 1: Prepare runtime proof environment (AC: #1, #2)
+  - [x] Start Docker if needed and record whether DAPR placement/scheduler were started manually.
+  - [x] Start the AppHost with `EnableKeycloak=false` unless validating the Keycloak path is explicitly needed.
+  - [x] Capture resource state and endpoint URLs before submitting commands.
+  - [x] Pick and record one unique command `messageId`, correlation ID, proof-window start timestamp, and aggregate ID for the evidence chain.
 
-- [ ] Task 2: Submit the counter command through the real surface (AC: #3)
-  - [ ] Use the sample UI command form or `POST /api/v1/commands`.
-  - [ ] Record command payload, HTTP status, correlation ID, `Location`, and `Retry-After`.
-  - [ ] If using the sample UI path, capture browser network evidence for the command response headers because the visible form only reports submission success/failure.
-  - [ ] Preserve JWT/auth setup details if direct API calls are used.
+- [x] Task 2: Submit the counter command through the real surface (AC: #3)
+  - [x] Use the sample UI command form or `POST /api/v1/commands`.
+  - [x] Record command payload, HTTP status, correlation ID, `Location`, and `Retry-After`.
+  - [x] If using the sample UI path, capture browser network evidence for the command response headers because the visible form only reports submission success/failure.
+  - [x] Preserve JWT/auth setup details if direct API calls are used.
 
-- [ ] Task 3: Capture server-side projection evidence (AC: #4, #5, #6, #7, #11)
-  - [ ] Capture command/event persistence logs or traces tied to the correlation ID.
-  - [ ] Capture `/project` invocation against the `sample` resource.
-  - [ ] Capture projection actor write and ETag regeneration evidence.
-  - [ ] Search logs for projection-path errors during the bounded proof window and record the source, time range, and filter terms.
+- [x] Task 3: Capture server-side projection evidence (AC: #4, #5, #6, #7, #11)
+  - [x] Capture command/event persistence logs or traces tied to the correlation ID.
+  - [x] Capture `/project` invocation against the `sample` resource.
+  - [x] Capture projection actor write and ETag regeneration evidence.
+  - [x] Search logs for projection-path errors during the bounded proof window and record the source, time range, and filter terms.
 
-- [ ] Task 4: Prove query and UI refresh behavior (AC: #8, #9, #10)
-  - [ ] Capture the baseline counter count before command submission.
-  - [ ] Query counter state through `POST /api/v1/queries` or the sample UI query service.
-  - [ ] Exercise `/pattern-silent-reload` and record before/after count.
-  - [ ] Preserve query request evidence showing tenant `sample-tenant`, domain/projection `counter`, aggregate/entity `counter-1`, and query type `get-counter-status`.
-  - [ ] Capture SignalR or refresh-after-signal evidence, not just command submission feedback or manual reload behavior.
+- [x] Task 4: Prove query and UI refresh behavior (AC: #8, #9, #10)
+  - [x] Capture the baseline counter count before command submission.
+  - [x] Query counter state through `POST /api/v1/queries` or the sample UI query service.
+  - [x] Exercise `/pattern-silent-reload` and record before/after count.
+  - [x] Preserve query request evidence showing tenant `sample-tenant`, domain/projection `counter`, aggregate/entity `counter-1`, and query type `get-counter-status`.
+  - [x] Capture SignalR or refresh-after-signal evidence, not just command submission feedback or manual reload behavior.
 
-- [ ] Task 5: Persist repeatable evidence (AC: #12, #13)
-  - [ ] Create `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/README.md`.
-  - [ ] Add screenshots, log excerpts, trace IDs, payloads, and caveats under the same folder.
-  - [ ] Add an AC evidence matrix that maps AC #1-#13 to concrete artifact paths or explicit blockers.
-  - [ ] If a blocker is found, record the blocker precisely and route it to the owning follow-up story.
+- [x] Task 5: Persist repeatable evidence (AC: #12, #13)
+  - [x] Create `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/README.md`.
+  - [x] Add screenshots, log excerpts, trace IDs, payloads, and caveats under the same folder.
+  - [x] Add an AC evidence matrix that maps AC #1-#13 to concrete artifact paths or explicit blockers.
+  - [x] If a blocker is found, record the blocker precisely and route it to the owning follow-up story.
 
-- [ ] Task 6: Run validation checks (AC: #11, #12)
-  - [ ] `dotnet test tests/Hexalith.EventStore.Sample.Tests`
-  - [ ] Optional, if server-side projection code changed: `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~ProjectionUpdateOrchestratorTests|FullyQualifiedName~EventReplayProjectionActorTests"`
-  - [ ] Record all test results in the Dev Agent Record.
+- [x] Task 6: Run validation checks (AC: #11, #12)
+  - [x] `dotnet test tests/Hexalith.EventStore.Sample.Tests`
+  - [x] Optional, if server-side projection code changed: `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~ProjectionUpdateOrchestratorTests|FullyQualifiedName~EventReplayProjectionActorTests"`
+  - [x] Record all test results in the Dev Agent Record.
 
 ## Dev Notes
 
@@ -197,13 +197,70 @@ With `EnableKeycloak=false`, use the development JWT rules from `appsettings.Dev
 
 ### Agent Model Used
 
-TBD
+GPT-5 Codex
 
 ### Debug Log References
 
+- AppHost final proof run: `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/aspire-run-nokeycloak-sampletenant.log`
+- Evidence runbook and AC matrix: `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/README.md`
+- Resource snapshot: `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/resources-before.txt`
+- Proof identity and payloads: `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/final-proof-identity.json`, `final-command-payload.json`, `final-query-payload.json`
+- API responses: `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/final-baseline-query-response.txt`, `final-command-response.txt`, `final-after-query-response-5s.txt`
+- Trace and log excerpts: `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/trace-ids.txt`, `eventstore-logs.txt`, `sample-logs.txt`, `sample-blazor-ui-logs.txt`, `negative-log-search.txt`
+- Browser evidence: `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/silent-reload-env-override-before.png`, `silent-reload-env-override-after.png`, `silent-reload-final-after-direct-command.png`
+- Validation result: `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/test-results.txt`
+
 ### Completion Notes List
 
+- Captured an AppHost-managed no-Keycloak proof with `eventstore`, `sample`, `sample-blazor-ui`, `statestore`, `pubsub`, and Dapr sidecars healthy. The final run overrode the sample UI tenant to `sample-tenant` so browser and API evidence used the same tenant/domain/aggregate.
+- Submitted final direct API command `r11a3-430ea44d14c8478791f67322165590b4` with correlation id `r11a3-832d7bc77883465895ce5ba94a180024`. Baseline query count was 2, command returned HTTP 202, and follow-up query returned count 3 with a new `counter` ETag.
+- Captured EventStore trace/log evidence for command receipt, domain service success, sample `/process` and `/project` Dapr invocations, event persistence, publication, ETag regeneration, ProjectionActor query, and ETagActor query.
+- Projection actor state-write debug messages were not emitted at the active log level. The runbook records this caveat and ties AC #6 to the successful `/project` invocation, post-command ProjectionActor query, count delta, and ETag regeneration.
+- Captured SignalR connection and UI silent reload evidence: browser count moved from 2 to 3 after the direct API command while the page stayed open, refresh count moved to 2, and the last UI command timestamp remained unchanged.
+- Bounded negative log search found no projection-path errors during the final proof window.
+- Stopped the AppHost after evidence capture. The first test attempt was blocked by AppHost process file locks; after stopping the proof run, `dotnet test tests/Hexalith.EventStore.Sample.Tests` passed 63/63. Optional server projection tests were not run because no server-side projection code changed.
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/post-epic-11-r11a3-apphost-projection-proof.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/README.md`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/resources-before.txt`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/trace-ids.txt`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/eventstore-logs.txt`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/sample-logs.txt`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/sample-blazor-ui-logs.txt`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/negative-log-search.txt`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/test-results.txt`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/final-proof-identity.json`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/final-query-payload.json`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/final-command-payload.json`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/final-baseline-query-response.txt`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/final-command-response.txt`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/final-after-query-response-5s.txt`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/proof-identity.json`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/query-payload.json`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/command-payload.json`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/baseline-query-response.txt`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/command-response.txt`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/after-query-response-5s.txt`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/silent-reload-env-override-before.png`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/ui-silent-reload-env-override-before-snapshot.md`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/silent-reload-env-override-after.png`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/ui-silent-reload-env-override-after-snapshot.md`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/silent-reload-final-after-direct-command.png`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/ui-silent-reload-final-after-direct-command-snapshot.md`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/silent-reload-current.png`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/ui-silent-reload-current-snapshot.md`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/aspire-run.log`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/aspire-run-nokeycloak.log`
+- `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/aspire-run-nokeycloak-sampletenant.log`
+
+### Change Log
+
+| Date | Version | Description | Author |
+| --- | --- | --- | --- |
+| 2026-05-01 | 1.0 | Captured AppHost projection proof artifacts, validation result, and moved story to review. | GPT-5 Codex |
 
 ## Party-Mode Review
 

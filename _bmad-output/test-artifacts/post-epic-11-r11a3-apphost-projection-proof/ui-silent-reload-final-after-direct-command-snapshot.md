@@ -1,0 +1,35 @@
+- generic [ref=e33] [box=0,0,1280,900]:
+  - generic [ref=e34] [box=0,0,1280,44]: Hexalith EventStore — UI Refresh Patterns
+  - navigation [ref=e36] [box=0,44,280,191]:
+    - link "Overview" [ref=e37] [cursor=pointer] [box=10,44,265,40]:
+      - /url: /
+      - text: Overview
+    - 'link "Pattern 1: Notification" [ref=e38] [cursor=pointer] [box=10,86,265,40]':
+      - /url: /pattern-notification
+      - text: "Pattern 1: Notification"
+    - 'link "Pattern 2: Silent Reload" [ref=e39] [cursor=pointer] [box=10,128,265,40]':
+      - /url: /pattern-silent-reload
+      - text: "Pattern 2: Silent Reload"
+    - 'link "Pattern 3: Selective Refresh" [ref=e40] [cursor=pointer] [box=10,170,265,40]':
+      - /url: /pattern-selective-refresh
+      - text: "Pattern 3: Selective Refresh"
+  - generic [ref=e42] [box=280,44,1000,652]:
+    - 'heading "Pattern 2: Automatic Silent Reload" [level=1] [ref=e43] [box=304,68,952,52]'
+    - paragraph [ref=e44] [box=304,147,952,20]: Data refreshes automatically when the counter projection changes. A subtle fade transition indicates the update — no user action required.
+    - group [ref=e45] [box=304,181,400,250]:
+      - heading "Counter Value" [level=2] [ref=e46] [box=329,205,351,40]
+      - paragraph [ref=e48] [box=329,272,351,20]: "3"
+      - paragraph [ref=e49] [box=329,308,351,20]: "Last updated: 17:12:58"
+      - paragraph [ref=e50] [box=329,342,351,20]: "ETag: Y291bnRl..."
+      - paragraph [ref=e51] [box=329,374,351,20]: "Refresh count: 2"
+    - group [ref=e52] [box=304,447,952,225]:
+      - heading "Send Commands" [level=3] [ref=e53] [box=329,471,903,36]
+      - paragraph [ref=e54] [box=329,535,903,20]: This component does NOT subscribe to projection changes — it only submits commands.
+      - generic [ref=e55] [box=329,571,903,32]:
+        - generic [ref=e57] [cursor=pointer] [box=344,577,64,20]:
+          - generic [box=0,0,0,0]: Increment
+        - generic [ref=e59] [cursor=pointer] [box=446,577,70,20]:
+          - generic [box=0,0,0,0]: Decrement
+        - generic [ref=e61] [cursor=pointer] [box=568,577,34,20]:
+          - generic [box=0,0,0,0]: Reset
+      - paragraph [ref=e62] [box=329,615,903,20]: "Last command: IncrementCounter at 17:12:08"

@@ -1,0 +1,28 @@
+{
+  "statusCode": 202,
+  "statusDescription": "Accepted",
+  "headers": {
+    "Date": [
+      "Fri, 01 May 2026 15:08:49 GMT"
+    ],
+    "Server": [
+      "Kestrel"
+    ],
+    "Location": [
+      "http://localhost:8080/api/v1/commands/status/r11a3-baaf42510cb1422ea8fc60d3d0ff843d"
+    ],
+    "Retry-After": [
+      "1"
+    ],
+    "Transfer-Encoding": [
+      "chunked"
+    ],
+    "X-Correlation-ID": [
+      "78a0e15a-ca4e-46a6-bb88-4eb334c92638"
+    ],
+    "Content-Type": [
+      "application/json; charset=utf-8"
+    ]
+  },
+  "body": "{\"correlationId\":\"r11a3-baaf42510cb1422ea8fc60d3d0ff843d\"}"
+}
