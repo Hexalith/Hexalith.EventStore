@@ -53,6 +53,14 @@ public sealed class ProjectionCheckpointTracker(
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
+                // Skip the round-trip when the proposed sequence is already covered by the
+                // persisted checkpoint. This avoids burning ETag retries (and emitting a
+                // misleading CheckpointSaveExhausted warning) when concurrent fan-out triggers
+                // collide on a key that does not actually need to advance.
+                if (existing is not null && existing.LastDeliveredSequence >= deliveredSequence) {
+                    return true;
+                }
+
                 long maxSequence = Math.Max(existing?.LastDeliveredSequence ?? 0, deliveredSequence);
                 var checkpoint = new ProjectionCheckpoint(
                     identity.TenantId,
