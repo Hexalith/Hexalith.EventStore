@@ -31,13 +31,13 @@ Current HEAD `8ff581f` already contains a stronger implementation than the older
 
 4. **Missing first, middle, and last event positions are covered.** Tests explicitly cover missing `StartSequence`, one middle sequence, and `EndSequence` for a range of at least three events. Each test asserts no publish call, no record removal, retry increment, and a failure reason that identifies the missing sequence.
 
-5. **Recorded range metadata must be internally consistent.** Given an `UnpublishedEventsRecord` whose `EventCount` does not equal `EndSequence - StartSequence + 1`, when the drain reminder fires, then the handler must treat the record as corrupt/incomplete, must not publish, must preserve the drain record with `RetryCount + 1`, and must leave the reminder active. Do not normalize or silently ignore the mismatch.
+5. **Recorded range metadata must be internally consistent.** Given an `UnpublishedEventsRecord` whose `EventCount` does not equal `EndSequence - StartSequence + 1`, whether the count is lower or higher than the computed range size, when the drain reminder fires, then the handler must treat the record as corrupt/incomplete before calling `PublishEventsAsync`, must not publish, must preserve the drain record with `RetryCount + 1`, and must leave the reminder active. Do not normalize or silently ignore the mismatch.
 
 6. **Failure does not release pending command pressure.** Incomplete or internally inconsistent drain records must not decrement `pending_command_count`. The pending counter is released only after a complete range is successfully re-published and the drain record is removed.
 
 7. **Successful complete-range drain behavior is unchanged.** Existing happy-path drain behavior remains intact: complete ranges are published in sequence order, the record is removed, pending command count is decremented, state is saved, reminder is unregistered, and advisory status moves to `Completed` or `Rejected` based on `UnpublishedEventsRecord.IsRejection`.
 
-8. **Operational signal is explicit.** The failure path emits a warning-level log and activity error status containing enough context for operators to identify the correlation id, tenant, domain, aggregate id, retry count, event count, range bounds, and missing or mismatched sequence detail. If `MissingEventException.Message` is the source of sequence detail, tests or code review notes must prove it is preserved in `LastFailureReason`, warning output, and activity error status; prefer structured log fields/tags when the exception exposes them without broadening scope.
+8. **Operational signal is explicit.** The failure path emits a warning-level log and activity error status containing enough context for operators to identify the correlation id, tenant, domain, aggregate id, retry count after increment, event count, start sequence, end sequence, and missing or mismatched sequence detail. If `MissingEventException.Message` is the source of sequence detail, tests or code review notes must prove it is preserved in `LastFailureReason`, warning output, and activity error status; prefer structured log fields/tags when the exception exposes them without broadening scope.
 
 9. **No broad state-store access is introduced.** The implementation continues to use `IActorStateManager` and actor-scoped keys. Do not use `DaprClient.QueryStateAsync`, broad state queries, direct Redis scans, or direct `DaprClient.GetStateAsync/SetStateAsync` to inspect actor state.
 
@@ -84,14 +84,15 @@ Current HEAD `8ff581f` already contains a stronger implementation than the older
     - [ ] 1.3 Add missing-middle test: one sequence between start and end absent.
     - [ ] 1.4 Add missing-last test: sequence `EndSequence` absent.
     - [ ] 1.5 In each test, assert `PublishEventsAsync` is not called, `RemoveStateAsync("drain:{correlationId}")` is not called, `UnregisterReminderAsync` is not called, `SetStateAsync` stores `RetryCount + 1`, and `LastFailureReason` identifies the missing sequence.
-    - [ ] 1.6 Add an inconsistent-record test where `EventCount` differs from `EndSequence - StartSequence + 1`; assert the same no-publish/no-remove/reminder-continues/retry behavior and a failure reason that identifies the metadata mismatch.
+    - [ ] 1.6 Add inconsistent-record coverage where `EventCount` differs from `EndSequence - StartSequence + 1`; cover both lower-than-range and higher-than-range values when the helper cost is low, otherwise document why one representative mismatch is sufficient. Assert the same no-publish/no-remove/reminder-continues/retry behavior and a failure reason that identifies the metadata mismatch before `PublishEventsAsync` can run.
     - [ ] 1.7 Assert the incomplete-range and inconsistent-record failure paths do not write `pending_command_count`; only successful drain may decrement that counter.
 
 - [ ] Task 2: Tighten operational signal only if needed (AC: #2, #8)
     - [ ] 2.1 If existing `MissingEventException.Message` already flows to `LastFailureReason` and warning logs, prove it in tests or completion notes.
     - [ ] 2.2 If missing sequence detail is not visible enough, update the catch path in `DrainUnpublishedEventsAsync` to log or tag it without changing the retry semantics.
-    - [ ] 2.3 If event-count/range mismatch is not rejected before loading events, add a narrow validation before `PublishEventsAsync` and route it through the same retry-preserving failure path.
-    - [ ] 2.4 Preserve `OperationCanceledException` propagation.
+    - [ ] 2.3 If event-count/range mismatch is not rejected before loading events, add a narrow validation before `PublishEventsAsync` and route it through the same retry-preserving failure path. The validation must compare `record.EventCount` against `checked(record.EndSequence - record.StartSequence + 1)` and preserve the existing `OperationCanceledException` behavior.
+    - [ ] 2.4 Ensure the warning log and activity tags/status include the post-increment retry count, `StartSequence`, `EndSequence`, `EventCount`, and the missing/mismatched sequence detail.
+    - [ ] 2.5 Preserve `OperationCanceledException` propagation.
 
 - [ ] Task 3: Preserve success path and sibling boundaries (AC: #6, #7, #9, #10)
     - [ ] 3.1 Re-run existing happy-path drain tests and ensure complete ranges still remove the record and unregister the reminder.
@@ -121,7 +122,8 @@ Current HEAD `8ff581f` already contains a stronger implementation than the older
 
 - The older Story 4.2 completion note says missing events were "simply not returned"; that is not true at current HEAD `8ff581f`. Current `ReadEventsRangeAsync` throws `MissingEventException` when `TryGetStateAsync<EventEnvelope>` returns no value.
 - `DrainUnpublishedEventsAsync` catches non-cancellation exceptions, increments retry through `record.IncrementRetry(ex.Message)`, persists the updated record with the same key, saves state, logs warning, and leaves the reminder active.
-- The reviewed code path derives load count from `EndSequence - StartSequence + 1`; execution must confirm `record.EventCount` is validated against that range before publish or add the narrow validation. Otherwise a stale/corrupt record with mismatched count can be treated as a successful range drain.
+- The reviewed code path derives load count from `EndSequence - StartSequence + 1`; execution must confirm `record.EventCount` is validated against that range before publish or add the narrow validation. Otherwise a stale/corrupt record with mismatched count can be treated as a successful range drain, and the advisory status may record `record.EventCount` while the actual published list was sized from the range bounds.
+- Current drain failure logging includes correlation, tenant, domain, aggregate, and retry count, but implementation must verify range bounds and event count are present in the warning/activity signal after the R4-A6 change.
 - Existing tests cover generic publish failure and record preservation, but they do not explicitly exercise missing first/middle/last persisted events. That is the gap this story closes.
 - R4-A2b removed `IBackpressureTracker`; actor-level drain success still decrements the persisted pending-command counter in `AggregateActor.cs:707-708`.
 
@@ -130,6 +132,7 @@ Current HEAD `8ff581f` already contains a stronger implementation than the older
 - Tier 1 projects should be run individually: `Hexalith.EventStore.Client.Tests`, `Hexalith.EventStore.Contracts.Tests`, `Hexalith.EventStore.Sample.Tests`, and `Hexalith.EventStore.Testing.Tests`.
 - For changed Tier 2 tests, inspect actor state-manager side effects, not just method return values. The critical assertions are no partial publish, no drain record removal, retry record persisted, and reminder not unregistered.
 - For failure tests, also assert `pending_command_count` is not decremented. A false success that releases pending pressure would hide the same integrity failure this story is meant to expose.
+- For mismatch tests, avoid a weak assertion that only proves publish was not called after a mocked publisher failure. The record metadata check must fail before publisher invocation.
 - Use Shouldly and NSubstitute patterns already present in `EventDrainRecoveryTests.cs`.
 - Avoid Docker/AppHost requirements for this story's core gate. Missing-range tests belong in mocked server tests because the behavior is actor-state deterministic.
 
@@ -204,10 +207,33 @@ To be filled by dev agent.
   - Whether the current implementation already has sufficient structured logging/tags is left for `bmad-dev-story` to prove against the current source and test framework.
 - Final recommendation: `ready-for-dev`
 
+## Advanced Elicitation
+
+- Date/time: 2026-05-01T15:42:27+02:00
+- Selected story key: `post-epic-4-r4a6-drain-integrity-guard`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-4-r4a6-drain-integrity-guard`
+- Batch 1 method names: Self-Consistency Validation; Pre-mortem Analysis; Red Team vs Blue Team; Failure Mode Analysis; Critique and Refine
+- Reshuffled Batch 2 method names: First Principles Analysis; 5 Whys Deep Dive; Security Audit Personas; Occam's Razor Application; Active Recall Testing
+- Findings summary:
+  - The story already captured the main no-partial-publish contract, but the metadata mismatch case needed to state both too-low and too-high `EventCount` values.
+  - A future implementation could accidentally prove only "publisher was not called after a publish failure"; tests must prove mismatch rejection happens before `PublishEventsAsync`.
+  - Operational signal requirements needed the post-increment retry count and range fields named explicitly because the current exception warning does not list them all.
+  - The advisory-status count risk needed to be called out: current code can size the published list from range bounds while later reporting `record.EventCount`.
+- Changes applied:
+  - Strengthened AC #5 for lower/higher event-count mismatch and pre-publish rejection.
+  - Strengthened AC #8 and Task 2 for retry/range/count warning and activity evidence.
+  - Added testing guidance to avoid weak mismatch assertions that still allow publisher invocation.
+  - Added current-code intelligence about advisory status count drift when `EventCount` is not validated.
+- Findings deferred:
+  - Exact production code shape for validation and activity tags remains for `bmad-dev-story`; no source implementation was changed in this pre-dev hardening run.
+  - Whether both lower and higher mismatch tests are worth the extra helper surface is left to the developer unless low-cost in the existing test fixture.
+- Final recommendation: `ready-for-dev`
+
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-01 | 0.3 | Advanced elicitation hardened event-count mismatch, pre-publish test proof, and operational-signal requirements. | Codex automation |
 | 2026-05-01 | 0.2 | Party-mode review hardened metadata consistency, pending-count failure semantics, and operational-signal requirements. | Codex automation |
 | 2026-05-01 | 0.1 | Created ready-for-dev R4-A6 drain integrity guard story. | Codex automation |
 
