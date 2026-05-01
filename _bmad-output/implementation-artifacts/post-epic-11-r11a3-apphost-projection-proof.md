@@ -24,9 +24,9 @@ This is a verification and evidence story, not a feature story. Reuse the curren
 
 1. **AppHost starts from the documented developer command.** Run `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` or document why the equivalent `dotnet run --project src/Hexalith.EventStore.AppHost` path was used. `eventstore`, `sample`, `sample-blazor-ui`, `statestore`, and `pubsub` must be running before proof begins. If DAPR slim mode requires manual `placement` and `scheduler`, record the exact commands.
 
-2. **Resource evidence is captured before exercising the flow.** Paste the Aspire resource snapshot into this story's Dev Agent Record or `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/`. The snapshot must include endpoint URLs used for EventStore and the sample Blazor UI.
+2. **Resource evidence is captured before exercising the flow.** Paste the Aspire resource snapshot into this story's Dev Agent Record or `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/`. The snapshot must include endpoint URLs used for EventStore and the sample Blazor UI, plus the effective sample UI tenant/projection settings used during the browser proof.
 
-3. **Command submission is proven through the real HTTP API or sample UI.** Submit at least one `IncrementCounter` command for tenant `sample-tenant`, domain `counter`, aggregate `counter-1`, and record the HTTP response status, correlation ID, `Location`, and `Retry-After` headers. A green UI submission alone is not sufficient because docs state it only proves HTTP acceptance.
+3. **Command submission is proven through the real HTTP API or sample UI.** Submit at least one `IncrementCounter` command for tenant `sample-tenant`, domain `counter`, aggregate `counter-1`, and record the HTTP response status, correlation ID, `Location`, and `Retry-After` headers. A green UI submission alone is not sufficient because docs state it only proves HTTP acceptance; if the sample UI is used, capture the browser network request/response or pair it with a direct API submission that records those headers.
 
 4. **Event persistence is evidenced.** Record either an Aspire trace/log entry or API evidence showing the accepted command reached event persistence. The evidence must include the correlation ID or enough structured fields to tie it back to the submitted command.
 
@@ -34,13 +34,13 @@ This is a verification and evidence story, not a feature story. Reuse the curren
 
 6. **Projection actor write is evidenced.** Capture logs or traces showing `EventReplayProjectionActor.UpdateProjectionAsync` accepted the returned projection state for projection type `counter` and tenant `sample-tenant`.
 
-7. **ETag regeneration is evidenced.** Capture logs, response headers, or trace evidence showing a new ETag was generated after the projection write. A query response with an `ETag` header is acceptable only when it is tied to the same command/projection proof.
+7. **ETag regeneration is evidenced.** Capture logs, response headers, or trace evidence showing a new ETag was generated after the projection write. A query response with an `ETag` header is acceptable only when it is tied to the same command/projection proof and the ETag is shown to route to the `counter` projection, either by self-routing decode evidence or matching server log fields.
 
 8. **Query result returns projected state.** Call `POST /api/v1/queries` or use the sample UI query path and prove the returned payload includes the expected counter count after the command. The query must use domain/projection `counter`, tenant `sample-tenant`, aggregate/entity `counter-1`, and query type `get-counter-status`.
 
 9. **SignalR invalidation is evidenced.** Capture either server log evidence from `SignalRProjectionChangedBroadcaster`, sample UI log evidence from `SignalRClientStartup` / refresh callbacks, or browser-visible behavior showing the projection change signal arrived. SignalR carries no projection data; the proof must show the client re-queried or refreshed after the signal.
 
-10. **Sample UI refresh behavior is evidenced with artifacts.** Open the sample Blazor UI from the Aspire endpoint and exercise at least one refresh pattern page. Prefer `/pattern-silent-reload` because it should update after a signal without manual refresh. Include a screenshot or browser notes showing before/after count. If browser automation is unavailable, record the exact manual steps and observed result.
+10. **Sample UI refresh behavior is evidenced with artifacts.** Open the sample Blazor UI from the Aspire endpoint and exercise at least one refresh pattern page. Prefer `/pattern-silent-reload` because it should update after a signal without manual refresh. Include a screenshot or browser notes showing before/after count, and preserve either the browser query request or page configuration evidence proving the UI used tenant `sample-tenant`, projection `counter`, and aggregate/entity `counter-1`. If browser automation is unavailable, record the exact manual steps and observed result.
 
 11. **No projection-path regression errors are present.** During the proof window, `eventstore` logs must not contain `QueryNotFoundException`, malformed projection response errors, unhandled `ProjectionUpdateOrchestrator` failures, or SignalR hub mapping failures. If unrelated startup warnings exist, classify them separately and do not hide projection failures.
 
@@ -58,6 +58,7 @@ This is a verification and evidence story, not a feature story. Reuse the curren
 - [ ] Task 2: Submit the counter command through the real surface (AC: #3)
   - [ ] Use the sample UI command form or `POST /api/v1/commands`.
   - [ ] Record command payload, HTTP status, correlation ID, `Location`, and `Retry-After`.
+  - [ ] If using the sample UI path, capture browser network evidence for the command response headers because the visible form only reports submission success/failure.
   - [ ] Preserve JWT/auth setup details if direct API calls are used.
 
 - [ ] Task 3: Capture server-side projection evidence (AC: #4, #5, #6, #7, #11)
@@ -69,6 +70,7 @@ This is a verification and evidence story, not a feature story. Reuse the curren
 - [ ] Task 4: Prove query and UI refresh behavior (AC: #8, #9, #10)
   - [ ] Query counter state through `POST /api/v1/queries` or the sample UI query service.
   - [ ] Exercise `/pattern-silent-reload` and record before/after count.
+  - [ ] Preserve query request evidence showing tenant `sample-tenant`, domain/projection `counter`, aggregate/entity `counter-1`, and query type `get-counter-status`.
   - [ ] Capture SignalR or refresh evidence, not just command submission feedback.
 
 - [ ] Task 5: Persist repeatable evidence (AC: #12, #13)
@@ -127,6 +129,12 @@ Minimum artifact set:
 - The OpenTelemetry audit fix proposal states that R11-A3 remains valid and is unblocked by restored AppHost build/start behavior.
 - Lessons ledger L09 requires repeatable sample UI smoke evidence with commands, resource state, browser target, observed results, and log/trace/screenshot references.
 
+### Party-Mode Review Guardrails
+
+- `CounterCommandForm` submits the real `/api/v1/commands` request, but the page UI does not display response headers. Use browser network capture, Aspire trace details, or a direct API call to satisfy AC #3.
+- `SilentReloadPattern` loads tenant and projection settings from configuration at runtime. Evidence should prove the effective values, not infer them from defaults.
+- Prefer log stages `DomainServiceInvocationSucceeded`, `ProjectionStateUpdated`, `Projection state persisted`, ETag response headers, and SignalR broadcast/refresh evidence as the connected proof chain.
+
 ### Useful API Payloads
 
 Command submission shape:
@@ -183,3 +191,28 @@ TBD
 ### Completion Notes List
 
 ### File List
+
+## Party-Mode Review
+
+- Date/time: 2026-05-01T11:00:21+02:00
+- Selected story key: `post-epic-11-r11a3-apphost-projection-proof`
+- Command/skill invocation used: `/bmad-party-mode post-epic-11-r11a3-apphost-projection-proof; review;`
+- Participating BMAD agents: Bob (Scrum Master), Winston (Architect), Amelia (Developer Agent), Murat (Master Test Architect), Paige (Technical Writer), Sally (UX Designer), John (Product Manager)
+- Findings summary:
+  - Bob: Story is ready in structure, but AC #3 needed explicit handling for the fact that sample UI feedback does not expose HTTP headers.
+  - Winston: The runtime proof must tie ETag evidence to the `counter` projection rather than accept an unrelated validator header.
+  - Amelia: The implementation path has concrete log stages available; the story should name the useful ones so execution does not drift into vague log collection.
+  - Murat: Browser-visible before/after count is insufficient unless the tenant, projection, aggregate/entity, and query type are preserved with the evidence.
+  - Paige: The repeatable evidence shape is strong; the story needed a small guardrail section so future implementers do not miss the command-header and query-payload proof obligations.
+  - Sally: Silent reload proof should show that the UI refreshed from query state after a signal, not only that a command button showed success.
+  - John: No product scope expansion is needed; this remains a verification/evidence story.
+- Changes applied:
+  - Clarified AC #2 to require effective sample UI tenant/projection settings in resource evidence.
+  - Clarified AC #3 and Task 2 to require browser network capture or direct API evidence for command response headers when using the UI.
+  - Clarified AC #7 to require the ETag evidence to route to the `counter` projection.
+  - Clarified AC #10 and Task 4 to require UI/query evidence tied to `sample-tenant`, `counter`, `counter-1`, and `get-counter-status`.
+  - Added Party-Mode Review Guardrails with concrete execution traps and useful log stages.
+- Findings deferred:
+  - No deferred product or architecture decisions. Checkpoint tracking and polling behavior remain owned by R11-A1/R11-A2 and must not be patched in this proof story.
+  - `project-context.md` preload was unavailable; no generated project-context artifact was found in this repository.
+- Final recommendation: `ready-for-dev`

@@ -4,3 +4,4 @@
 2026-05-01T08:23:42Z	create-story	post-epic-4-r4a5-tier3-pubsub-delivery	ok	story created ready-for-dev; buffer was below target
 2026-05-01T08:34:19Z	party-mode-review	post-epic-11-r11a1-checkpoint-tracked-projection-delivery	ok	review trace recorded; checkpoint failure semantics hardened
 2026-05-01T08:52:28Z	party-mode-review	post-epic-11-r11a2-polling-mode-product-behavior	ok	review trace recorded; polling scheduling and registration semantics hardened
+2026-05-01T09:01:18Z	party-mode-review	post-epic-11-r11a3-apphost-projection-proof	ok	review trace recorded; AppHost proof evidence obligations hardened
