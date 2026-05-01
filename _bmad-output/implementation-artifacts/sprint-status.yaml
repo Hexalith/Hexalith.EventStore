@@ -42,7 +42,7 @@
 # under the old structure. Story statuses will be updated as stories are created/implemented.
 
 generated: 2026-03-15
-last_updated: '2026-05-01 (post-epic-4-r4a8-story-numbering-comments story created ready-for-dev - non-behavioral stale Story 4.4/4.5 source-comment normalization for current Epic 4 map)'
+last_updated: '2026-05-01 (post-epic-11-r11a1-checkpoint-tracked-projection-delivery code-review clean: 7 patches applied — tracker last-attempt exception bubble per DaprCommandActivityTracker precedent; tracker tests for read storage failure / OCE pass-through / save-storage-throws-on-last-retry; orchestrator tests for invalid-projection-response no-save / actor-write-failure no-save / DidNotReceive(SaveDeliveredSequenceAsync) on existing failure-path tests; CheckpointSaveExhausted log includes attemptedSequence; 6 deferred to deferred-work.md (checkpoint-vs-CurrentSequence drift detection / concurrent fire-and-forget projection-state regression / OCE filter on outer orchestrator catch / configurable MaxEtagRetries / stale-save short-circuit / int.MaxValue overflow). 55/55 targeted tests pass on net10.0. Story flipped review -> done.)'
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system

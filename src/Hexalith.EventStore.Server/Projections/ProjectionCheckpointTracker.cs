@@ -82,7 +82,7 @@ public sealed class ProjectionCheckpointTracker(
             catch (OperationCanceledException) {
                 throw;
             }
-            catch (Exception ex) {
+            catch (Exception ex) when (attempt < MaxEtagRetries - 1) {
                 logger.LogDebug(
                     ex,
                     "Retry {Attempt} while updating projection checkpoint '{CheckpointKey}'.",

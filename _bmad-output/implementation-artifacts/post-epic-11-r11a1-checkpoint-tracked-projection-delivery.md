@@ -1,6 +1,6 @@
 # Post-Epic-11 R11-A1: Checkpoint-Tracked Projection Delivery
 
-Status: review
+Status: done
 
 <!-- Source: epic-11-retro-2026-04-30.md - Action item R11-A1 -->
 <!-- Source: epic-12-retro-2026-04-30.md - R12-A5 carry-forward backlog -->
@@ -207,6 +207,25 @@ GPT-5 Codex
 - Findings deferred:
   - No product-scope or architecture-policy decisions deferred. The DAPR ETag/compare-and-set API choice remains an implementation detail to verify during `bmad-dev-story`.
 - Final recommendation: ready-for-dev
+
+## Review Findings
+
+Date/time: 2026-05-01T (post-implementation review via `/bmad-code-review post-epic-11-r11a1-checkpoint-tracked-projection-delivery`)
+Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor
+
+- [x] [Review][Patch] Tracker swallows all retry-loop exceptions on every attempt, hiding storage failures behind Debug logs [`src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs:73-91`] — Add the precedent guard `when (attempt < MaxEtagRetries - 1)` so the final-attempt exception bubbles to the orchestrator's `Log.CheckpointSaveFailed` Warning. AC #6 says "Prefer the same bounded ETag retry shape already used by `DaprCommandActivityTracker`," and that file uses `when (attempt < MaxEtagRetries - 1)` (line 183) precisely so persistent store failures surface at Warning level instead of being silently downgraded.
+- [x] [Review][Patch] No tracker unit test asserts `ReadLastDeliveredSequenceAsync` propagates non-OCE storage exceptions [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs`] — Task 5 requires "tracker tests for ... read ... and storage failure behavior." Add a test where `daprClient.GetStateAsync<ProjectionCheckpoint>` throws a non-OCE exception and assert it propagates so the orchestrator's outer try/catch handles it.
+- [x] [Review][Patch] Existing failure-path orchestrator tests do not assert `SaveDeliveredSequenceAsync` was NOT called [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs`] — AC #10 + Task 5 require proof "every failure class in AC #4 leaves the checkpoint unchanged." Add `await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(...)` to `_DomainServiceFails_DoesNotThrow`, `_ResolverFails_DoesNotThrow`, `_GetEventsAsyncFails_DoesNotThrow`.
+- [x] [Review][Patch] Missing test: invalid `ProjectionResponse` (null/empty `ProjectionType` or null `State`) does not save checkpoint [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs`] — Task 5 enumerates "invalid response no-save." Add a test that returns `{"projectionType":""}` or null state and asserts `SaveDeliveredSequenceAsync` is not called.
+- [x] [Review][Patch] Missing test: `IProjectionWriteActor.UpdateProjectionAsync` failure does not save checkpoint [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs`] — Task 5 enumerates "actor-write failure no-save." Add a test where `writeActor.UpdateProjectionAsync` throws and asserts `SaveDeliveredSequenceAsync` is not called.
+- [x] [Review][Patch] `CheckpointSaveExhausted` log lacks the attempted sequence number for operator correlation [`src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:142,323-328`] — Add `attemptedSequence` parameter so operators can correlate the warning with the projection actor's persisted state without consulting traces.
+- [x] [Review][Patch] No test pins `OperationCanceledException` pass-through in tracker [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs`] — The tracker has an explicit `catch (OperationCanceledException) { throw; }` that prevents the catch-all from absorbing cancellation. A future refactor that drops this guard would silently regress cancellation semantics. Add a test that throws OCE from `GetStateAndETagAsync` and asserts it propagates.
+- [x] [Review][Defer] Checkpoint > actor's `CurrentSequence` permanently silences projections [`src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:80-83`] — deferred. AC #5 says silent skipping is forbidden, but the corruption scenario (restored state-store backup, key drift between aggregate and checkpoint stores) requires drift detection beyond R11-A1 scope. Add diagnostic when `events.Length == 0 && lastDeliveredSequence > 0` to a follow-up story.
+- [x] [Review][Defer] Concurrent fire-and-forget projection triggers can interleave so an older `UpdateProjectionAsync` lands after a newer one, regressing projection state while the checkpoint stays at max [`src/Hexalith.EventStore.Server/Events/EventPublisher.cs:135-143`] — deferred. The design doc already concedes "duplicate delivery can still occur under concurrent fire-and-forget triggers"; the **state-regression** failure mode is a stronger concern but requires per-aggregate serialization (Channel/SemaphoreSlim) outside R11-A1 scope. Track in R11-A2 or successor.
+- [x] [Review][Defer] Outer orchestrator `catch (Exception ex)` absorbs `OperationCanceledException` from `ReadLastDeliveredSequenceAsync` if a future caller passes a non-`None` token [`src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:151`] — deferred, pre-existing. EventPublisher passes `CancellationToken.None`, so production cancellation is not affected today.
+- [x] [Review][Defer] `MaxEtagRetries = 3` is a hardcoded const not exposed via `ProjectionOptions` — deferred. Story Dev Notes explicitly punt the retry count to bmad-dev-story so long as the bounded/non-regression contract holds; a separate story can add tunability.
+- [x] [Review][Defer] `SaveDeliveredSequenceAsync` rewrites identical state when caller passes a sequence ≤ existing checkpoint, costing a state-store round-trip [`src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs:198-218`] — deferred (perf NIT). Short-circuiting `if (existing?.LastDeliveredSequence >= deliveredSequence) return true;` is a future micro-optimization.
+- [x] [Review][Defer] `AggregateActor.GetEventsAsync` casts `(int)(fromSequence + 1)` `checked` (`AggregateActor.cs:596`); a persisted long checkpoint near `int.MaxValue` would now trigger `OverflowException` that the orchestrator silently swallows — deferred, pre-existing actor bug not caused by R11-A1.
 
 ## Advanced Elicitation
 

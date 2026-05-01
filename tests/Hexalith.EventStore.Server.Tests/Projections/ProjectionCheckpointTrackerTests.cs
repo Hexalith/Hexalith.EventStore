@@ -184,6 +184,59 @@ public class ProjectionCheckpointTrackerTests {
         _ = await Should.ThrowAsync<ArgumentOutOfRangeException>(() => tracker.SaveDeliveredSequenceAsync(TestIdentity, -1));
     }
 
+    [Fact]
+    public async Task ReadLastDeliveredSequenceAsync_StorageThrows_PropagatesException() {
+        // Arrange
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetStateAsync<ProjectionCheckpoint>(
+                "statestore",
+                ProjectionCheckpointTracker.GetStateKey(TestIdentity),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ProjectionCheckpoint>(new InvalidOperationException("state store unavailable")));
+        var tracker = CreateTracker(daprClient);
+
+        // Act & Assert -- tracker does not catch storage exceptions; orchestrator's outer catch handles them.
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => tracker.ReadLastDeliveredSequenceAsync(TestIdentity));
+    }
+
+    [Fact]
+    public async Task SaveDeliveredSequenceAsync_StorageThrowsOnLastRetry_PropagatesException() {
+        // Arrange -- mirrors the precedent shape in DaprCommandActivityTracker:
+        // intermediate retries are swallowed, but the final-attempt exception surfaces
+        // so persistent storage errors are not hidden behind a Debug-only log trail.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpoint>(
+                "statestore",
+                ProjectionCheckpointTracker.GetStateKey(TestIdentity),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<(ProjectionCheckpoint, string)>(new InvalidOperationException("state store unavailable")));
+        var tracker = CreateTracker(daprClient);
+
+        // Act & Assert
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => tracker.SaveDeliveredSequenceAsync(TestIdentity, 7));
+    }
+
+    [Fact]
+    public async Task SaveDeliveredSequenceAsync_GetStateAndEtagThrowsOperationCanceledException_Propagates() {
+        // Arrange -- guard against future refactors that would absorb cancellation in the catch-all.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpoint>(
+                "statestore",
+                ProjectionCheckpointTracker.GetStateKey(TestIdentity),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<(ProjectionCheckpoint, string)>(new OperationCanceledException()));
+        var tracker = CreateTracker(daprClient);
+
+        // Act & Assert
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => tracker.SaveDeliveredSequenceAsync(TestIdentity, 7));
+    }
+
     private static ProjectionCheckpointTracker CreateTracker(DaprClient daprClient, string stateStoreName = "statestore") =>
         new(daprClient, Options.Create(new ProjectionOptions { CheckpointStateStoreName = stateStoreName }), NullLogger<ProjectionCheckpointTracker>.Instance);
 

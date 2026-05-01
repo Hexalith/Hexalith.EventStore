@@ -139,7 +139,7 @@ public partial class ProjectionUpdateOrchestrator(
                     .SaveDeliveredSequenceAsync(identity, highestDeliveredSequence, cancellationToken)
                     .ConfigureAwait(false);
                 if (!checkpointSaved) {
-                    Log.CheckpointSaveExhausted(logger, identity.TenantId, identity.Domain, identity.AggregateId);
+                    Log.CheckpointSaveExhausted(logger, identity.TenantId, identity.Domain, identity.AggregateId, highestDeliveredSequence);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
@@ -217,7 +217,7 @@ public partial class ProjectionUpdateOrchestrator(
         [LoggerMessage(
             EventId = 1120,
             Level = LogLevel.Warning,
-            Message = "Projection checkpoint save exhausted optimistic-concurrency attempts: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=ProjectionCheckpointSaveExhausted")]
-        public static partial void CheckpointSaveExhausted(ILogger logger, string tenantId, string domain, string aggregateId);
+            Message = "Projection checkpoint save exhausted optimistic-concurrency attempts: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, AttemptedSequence={AttemptedSequence}, Stage=ProjectionCheckpointSaveExhausted")]
+        public static partial void CheckpointSaveExhausted(ILogger logger, string tenantId, string domain, string aggregateId, long attemptedSequence);
     }
 }
