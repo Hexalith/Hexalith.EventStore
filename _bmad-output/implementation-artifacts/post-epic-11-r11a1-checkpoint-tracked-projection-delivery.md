@@ -1,6 +1,18 @@
 # Post-Epic-11 R11-A1: Checkpoint-Tracked Projection Delivery
 
-Status: done
+Status: in-progress
+
+<!--
+2026-05-01 re-review reopened this story (done → in-progress) on a CRITICAL finding: the
+incremental delivery path silently corrupts any projection handler that rebuilds state from
+scratch (the canonical example is `samples/Hexalith.EventStore.Sample/Counter/Projections/CounterProjectionHandler.cs`).
+Closure is gated on the carve-out sibling story `post-epic-11-r11a1b-incremental-projection-contract-decision`
+making the binary architectural choice (revert seq=0 vs extend ProjectionRequest with prior state vs
+require incremental-aware handlers). Original 11-3 ADR-3 explicitly chose full-replay for correctness.
+Patches P1 (outer OCE filter), P2 (no-op save short-circuit), and P3 (drop misleading `_ =`) applied
+in this re-review pass and validated by 57/57 targeted tests + 0/0 Server build.
+-->
+
 
 <!-- Source: epic-11-retro-2026-04-30.md - Action item R11-A1 -->
 <!-- Source: epic-12-retro-2026-04-30.md - R12-A5 carry-forward backlog -->
@@ -238,9 +250,9 @@ Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor (independent — prio
 
 ### Patch
 
-- [ ] [Review][Patch] Outer `catch (Exception ex)` in `UpdateProjectionAsync` does not filter `OperationCanceledException`, while the inner checkpoint-read and checkpoint-save catches DO [`src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:151`] — Cancellation thrown inside the new checkpoint-aware code paths will be silently logged as `ProjectionUpdateFailed` instead of cooperatively unwinding. The diff added cancellation-aware inner catches at `:67` and `:145` that now look inconsistent with the outer one. Patch: change the outer catch to `catch (Exception ex) when (ex is not OperationCanceledException)`.
-- [ ] [Review][Patch] `SaveDeliveredSequenceAsync` performs a no-op write (with refreshed `UpdatedAt`) when the caller passes a `deliveredSequence` ≤ existing checkpoint, burning all 3 ETag retries and emitting a misleading `CheckpointSaveExhausted` warning under contention [`src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs:56`] — Under concurrent fan-out (acknowledged in `EventPublisher.cs:135-136`), out-of-order triggers will collide on the same key writing the same `LastDeliveredSequence` and produce false-alarm warnings that look like genuine ETag exhaustion. Patch: short-circuit `if (existing?.LastDeliveredSequence >= deliveredSequence) return true;` immediately after the `GetStateAndETagAsync` call, before constructing the new `ProjectionCheckpoint`. (Prior review's "deferred perf NIT" classification is reconsidered here because the exhaustion warning becomes a real signal-loss issue, not just a wasted round-trip.)
-- [ ] [Review][Patch] `_ = httpResponse.EnsureSuccessStatusCode();` reads as accidentally-discarded [`src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:106`] — The throwing side-effect *is* the point; the discard pattern wastes a reviewer's cycles. Patch: remove the `_ =` so the call stands as a side-effect statement.
+- [x] [Review][Patch] Outer `catch (Exception ex)` in `UpdateProjectionAsync` does not filter `OperationCanceledException`, while the inner checkpoint-read and checkpoint-save catches DO [`src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:151`] — APPLIED. Outer catch now reads `catch (Exception ex) when (ex is not OperationCanceledException)`. Pinned by new test `UpdateProjectionAsync_OperationCanceledException_PropagatesThroughOuterCatch` in `ProjectionUpdateOrchestratorTests.cs`.
+- [x] [Review][Patch] `SaveDeliveredSequenceAsync` performs a no-op write (with refreshed `UpdatedAt`) when the caller passes a `deliveredSequence` ≤ existing checkpoint, burning all 3 ETag retries and emitting a misleading `CheckpointSaveExhausted` warning under contention [`src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs:56`] — APPLIED. Tracker now short-circuits `if (existing is not null && existing.LastDeliveredSequence >= deliveredSequence) return true;` after the ETag read, before any `TrySaveStateAsync` call. Existing `_ExistingHigherCheckpoint_KeepsMaximumSequence` test renamed to `_ExistingHigherCheckpoint_SkipsSaveAndReturnsTrue` (now asserts `DidNotReceiveWithAnyArgs.TrySaveStateAsync`); new sibling `_ExistingEqualCheckpoint_SkipsSaveAndReturnsTrue` test added for the duplicate-delivery shape.
+- [x] [Review][Patch] `_ = httpResponse.EnsureSuccessStatusCode();` reads as accidentally-discarded [`src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:106`] — APPLIED. Discard removed; the call now stands as a side-effect statement.
 
 ### Defer
 

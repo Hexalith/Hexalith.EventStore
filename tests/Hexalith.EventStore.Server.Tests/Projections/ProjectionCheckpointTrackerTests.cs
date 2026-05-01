@@ -75,30 +75,55 @@ public class ProjectionCheckpointTrackerTests {
     }
 
     [Fact]
-    public async Task SaveDeliveredSequenceAsync_ExistingHigherCheckpoint_KeepsMaximumSequence() {
-        // Arrange
+    public async Task SaveDeliveredSequenceAsync_ExistingHigherCheckpoint_SkipsSaveAndReturnsTrue() {
+        // Existing checkpoint already covers the proposed sequence, so the tracker must
+        // short-circuit before issuing a TrySaveStateAsync. This avoids burning ETag
+        // retries (and the misleading CheckpointSaveExhausted warning) under concurrent
+        // fan-out where out-of-order triggers collide on a key that does not need to advance.
         DaprClient daprClient = Substitute.For<DaprClient>();
         SetupGetStateAndEtag(
             daprClient,
             "statestore",
             new ProjectionCheckpoint("test-tenant", "test-domain", "agg-001", 15, DateTimeOffset.UtcNow),
             "etag-2");
-        SetupTrySave(daprClient, "statestore", true);
         var tracker = CreateTracker(daprClient);
 
-        // Act
         bool saved = await tracker.SaveDeliveredSequenceAsync(TestIdentity, 8);
 
-        // Assert
         saved.ShouldBeTrue();
-        _ = await daprClient.Received(1).TrySaveStateAsync(
+        _ = await daprClient.DidNotReceiveWithAnyArgs().TrySaveStateAsync<ProjectionCheckpoint>(
+            default!,
+            default!,
+            default!,
+            default!,
+            stateOptions: default,
+            metadata: default,
+            cancellationToken: default);
+    }
+
+    [Fact]
+    public async Task SaveDeliveredSequenceAsync_ExistingEqualCheckpoint_SkipsSaveAndReturnsTrue() {
+        // Equal-sequence triggers (the duplicate-delivery shape) must also short-circuit
+        // so duplicate fan-outs do not refresh UpdatedAt and do not collide on ETag.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        SetupGetStateAndEtag(
+            daprClient,
             "statestore",
-            ProjectionCheckpointTracker.GetStateKey(TestIdentity),
-            Arg.Is<ProjectionCheckpoint>(p => p.LastDeliveredSequence == 15),
-            "etag-2",
-            stateOptions: Arg.Any<StateOptions?>(),
-            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
-            cancellationToken: Arg.Any<CancellationToken>());
+            new ProjectionCheckpoint("test-tenant", "test-domain", "agg-001", 12, DateTimeOffset.UtcNow),
+            "etag-3");
+        var tracker = CreateTracker(daprClient);
+
+        bool saved = await tracker.SaveDeliveredSequenceAsync(TestIdentity, 12);
+
+        saved.ShouldBeTrue();
+        _ = await daprClient.DidNotReceiveWithAnyArgs().TrySaveStateAsync<ProjectionCheckpoint>(
+            default!,
+            default!,
+            default!,
+            default!,
+            stateOptions: default,
+            metadata: default,
+            cancellationToken: default);
     }
 
     [Fact]

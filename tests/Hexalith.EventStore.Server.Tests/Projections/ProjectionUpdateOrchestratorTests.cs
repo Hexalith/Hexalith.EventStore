@@ -538,6 +538,19 @@ public class ProjectionUpdateOrchestratorTests {
         await orchestrator.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!, default);
     }
 
+    [Fact]
+    public async Task UpdateProjectionAsync_OperationCanceledException_PropagatesThroughOuterCatch() {
+        // The outer catch must filter OCE so cooperative cancellation unwinds cleanly.
+        // The inner checkpoint-read and checkpoint-save catches already use the same
+        // `when (ex is not OperationCanceledException)` filter; the outer catch must
+        // remain consistent with them.
+        (ProjectionUpdateOrchestrator sut, _, _, IDomainServiceResolver resolver, _) = CreateSut();
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<DomainServiceRegistration?>(_ => throw new OperationCanceledException("test cancellation"));
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => sut.UpdateProjectionAsync(TestIdentity));
+    }
+
     private static IHttpClientFactory CreateHttpClientFactory(string json) {
         var httpClientFactory = Substitute.For<IHttpClientFactory>();
         var client = new HttpClient(new JsonResponseHandler(json));
