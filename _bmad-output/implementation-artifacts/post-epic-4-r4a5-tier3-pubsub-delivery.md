@@ -163,19 +163,40 @@ The execution agent must build the smallest reliable Tier 3 proof for the real D
 
 ### Agent Model Used
 
-To be filled by dev agent.
+GPT-5.2 Codex
 
 ### Debug Log References
 
-To be filled by dev agent.
+- `_bmad-output/test-artifacts/post-epic-4-r4a5-tier3-pubsub-delivery/evidence-2026-05-01.md`
+- Baseline AppHost run: `EnableKeycloak=false aspire run --detach --non-interactive --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --format Json`
+- Targeted Tier 3 run: `dotnet test tests\Hexalith.EventStore.IntegrationTests --configuration Release --filter FullyQualifiedName~PubSubDeliveryProofTests --no-restore`
 
 ### Completion Notes List
 
-To be filled by dev agent.
+- Added a gated AppHost test subscriber resource with app-id `eventstore-test-subscriber` and proof topic `tenant-a.counter.events`.
+- Scoped `eventstore-test-subscriber` to subscribe only to `tenant-a.counter.events` and explicitly denied its publish grant; `sample` remains denied and outside component scopes.
+- Added a disabled-by-default publisher test fault file option so Tier 3 can fail publication after persistence, then remove the trigger and prove drain recovery.
+- Added Tier 3 runtime tests proving command-to-subscriber CloudEvents delivery and publish-failure drain re-publish with exact keyed drain-record evidence.
+- Added evidence artifact with topology, subscriber authorization, exact drain key shape, and validation results.
 
 ### File List
 
-To be filled by dev agent.
+- `_bmad-output/implementation-artifacts/post-epic-4-r4a5-tier3-pubsub-delivery.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/process-notes/predev-hardening-runs.log`
+- `_bmad-output/test-artifacts/post-epic-4-r4a5-tier3-pubsub-delivery/evidence-2026-05-01.md`
+- `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml`
+- `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`
+- `src/Hexalith.EventStore.AppHost/Program.cs`
+- `src/Hexalith.EventStore.Server/Configuration/EventPublisherOptions.cs`
+- `src/Hexalith.EventStore.Server/Events/EventPublisher.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/ContractTests/PubSubDeliveryProofTests.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestCollection.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestFixture.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Events/EventPublisherTests.cs`
+- `tests/Hexalith.EventStore.TestSubscriber/Hexalith.EventStore.TestSubscriber.csproj`
+- `tests/Hexalith.EventStore.TestSubscriber/Program.cs`
+- `tests/Hexalith.EventStore.TestSubscriber/Properties/launchSettings.json`
 
 ## Party-Mode Review
 
@@ -205,9 +226,18 @@ To be filled by dev agent.
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-01 | 1.0 | Implemented Tier 3 pub/sub delivery and drain recovery proof; story moved to review. | Codex |
 | 2026-05-01 | 0.2 | Party-mode review hardened subscriber scoping, deterministic failure proof, drain-state evidence, and at-least-once recovery assertions. | Codex automation |
 | 2026-05-01 | 0.1 | Created ready-for-dev R4-A5 Tier 3 pub/sub delivery proof story. | Codex automation |
 
 ## Verification Status
 
-Story creation only. Runtime, build, and Tier 3 tests are intentionally deferred to `bmad-dev-story`.
+Ready for review. Validation passed on 2026-05-01:
+
+- `dotnet build Hexalith.EventStore.slnx --configuration Release --no-restore`: passed, 0 warnings, 0 errors.
+- `dotnet test tests\Hexalith.EventStore.IntegrationTests --configuration Release --filter FullyQualifiedName~PubSubDeliveryProofTests --no-restore`: passed, 2/2.
+- `dotnet test tests\Hexalith.EventStore.Server.Tests --configuration Release --no-restore`: passed, 1648/1648.
+- `dotnet test tests\Hexalith.EventStore.Contracts.Tests --configuration Release --no-restore`: passed, 281/281.
+- `dotnet test tests\Hexalith.EventStore.Client.Tests --configuration Release --no-restore`: passed, 334/334.
+- `dotnet test tests\Hexalith.EventStore.Sample.Tests --configuration Release --no-restore`: passed, 63/63.
+- `dotnet test tests\Hexalith.EventStore.Testing.Tests --configuration Release --no-restore`: passed, 78/78.
