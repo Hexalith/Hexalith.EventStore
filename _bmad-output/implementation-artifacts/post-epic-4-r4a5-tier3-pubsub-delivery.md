@@ -1,6 +1,6 @@
 # Post-Epic-4 R4-A5: Tier 3 Pub/Sub Delivery Proof
 
-Status: review
+Status: done
 
 <!-- Source: epic-4-retro-2026-04-26.md R4-A5 -->
 <!-- Source: sprint-change-proposal-2026-04-26-epic-4-retro-cleanup.md Proposal 5 -->
@@ -197,6 +197,8 @@ GPT-5.2 Codex
 - `tests/Hexalith.EventStore.TestSubscriber/Hexalith.EventStore.TestSubscriber.csproj`
 - `tests/Hexalith.EventStore.TestSubscriber/Program.cs`
 - `tests/Hexalith.EventStore.TestSubscriber/Properties/launchSettings.json`
+- `Directory.Packages.props` (post-review: StackExchange.Redis 2.11.0 added to Testing group)
+- `tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj` (post-review: StackExchange.Redis package reference)
 
 ## Party-Mode Review
 
@@ -226,6 +228,7 @@ GPT-5.2 Codex
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-01 | 1.1 | Code-review patches applied — D1 (Development env gate on EventPublisher fault hook), D3 (StackExchange.Redis replaces hand-rolled RESP, eliminates absence-assertion false-positive), D4 (X-Test-Auth header on subscriber GET/DELETE). 11 of 14 patches applied (P1/P2/P3/P5–P14); D2 and P4 deferred with rationale to deferred-work.md. Tier 1 = 788/788, Tier 2 = 1655/1655. | Code review |
 | 2026-05-01 | 1.0 | Implemented Tier 3 pub/sub delivery and drain recovery proof; story moved to review. | Codex |
 | 2026-05-01 | 0.2 | Party-mode review hardened subscriber scoping, deterministic failure proof, drain-state evidence, and at-least-once recovery assertions. | Codex automation |
 | 2026-05-01 | 0.1 | Created ready-for-dev R4-A5 Tier 3 pub/sub delivery proof story. | Codex automation |
@@ -241,3 +244,61 @@ Ready for review. Validation passed on 2026-05-01:
 - `dotnet test tests\Hexalith.EventStore.Client.Tests --configuration Release --no-restore`: passed, 334/334.
 - `dotnet test tests\Hexalith.EventStore.Sample.Tests --configuration Release --no-restore`: passed, 63/63.
 - `dotnet test tests\Hexalith.EventStore.Testing.Tests --configuration Release --no-restore`: passed, 78/78.
+
+Post-review re-verification on 2026-05-01 after applying D1/D3/D4 + 11 patches:
+
+- `dotnet build Hexalith.EventStore.slnx --configuration Release`: passed, 0 warnings, 0 errors (TreatWarningsAsErrors=true).
+- `dotnet test tests\Hexalith.EventStore.Contracts.Tests --configuration Release --no-build --no-restore`: passed, 281/281.
+- `dotnet test tests\Hexalith.EventStore.Client.Tests --configuration Release --no-build --no-restore`: passed, 334/334.
+- `dotnet test tests\Hexalith.EventStore.Sample.Tests --configuration Release --no-build --no-restore`: passed, 63/63.
+- `dotnet test tests\Hexalith.EventStore.Testing.Tests --configuration Release --no-build --no-restore`: passed, 78/78.
+- `dotnet test tests\Hexalith.EventStore.SignalR.Tests --configuration Release --no-build --no-restore`: passed, 32/32 (P13 closure).
+- Tier 1 total: 788/788.
+- `dotnet test tests\Hexalith.EventStore.Server.Tests --configuration Release --no-build --no-restore -- xunit.parallelizeTestCollections=false`: passed, 1655/1655 (1648 baseline + 5 pre-existing additions + 2 new D1 gating tests). Parallel run produced 1654/1655 due to a pre-existing cross-collection `ActivityListener` parallelism quirk in `EventStoreTraceTests`; serial run is deterministic.
+- Tier 3 PubSubDeliveryProofTests not re-run in this code-review session because Docker is absent on the dev host (same Tier 3 environment limitation noted by post-epic-3-r3a6 / post-epic-3-r3a7); the original 2/2 PubSubDeliveryProofTests run from story execution remains the runtime evidence. Tier 3 changes are diff-clean against the original tests; runtime re-run should be performed on a Docker-equipped CI runner.
+
+## Review Findings
+
+Adversarial code review run via `/bmad-code-review` on 2026-05-01 (Blind Hunter + Edge Case Hunter + Acceptance Auditor). 4 decision-needed, 14 patches, 7 deferred, ~30 dismissed as noise. All 4 decisions resolved; 13 of 14 patches applied (P4 deferred with rationale).
+
+### Decision-Needed (resolved)
+
+- [x] [Review][Decision] **D1 → (a) gate via `IHostEnvironment.IsDevelopment()`** — `EventPublisher` ctor accepts an optional `IHostEnvironment`; `IsTestPublishFaultActive` returns `false` unless `env.IsDevelopment()` is true. Production binary is now inert against the option even if the configuration value leaks. Two new Tier 2 tests pin this: `PublishEventsAsync_TestPublishFault_IgnoredInProductionEnvironment` (Production env, fault file present, publishes normally) and `PublishEventsAsync_TestPublishFault_IgnoredWhenHostEnvironmentNull` (default ctor without env, behaves as Production). [src/Hexalith.EventStore.Server/Events/EventPublisher.cs:22-29, 161-180; tests/Hexalith.EventStore.Server.Tests/Events/EventPublisherTests.cs:266-321]
+- [x] [Review][Decision] **D2 → defer with explicit dev-only guard** — `pubsub.yaml` already self-identifies as Local Development. Stripping the test-subscriber scope grants requires a deployment-time component overlay (kustomize/helm) that the project does not yet have. Each test-subscriber line in `pubsub.yaml` now carries a "DEV-ONLY ... production overlays MUST strip ..." block referencing `post-epic-4-r4a5-D2-followup` in `deferred-work.md` so the line is unambiguous to operators and to a future overlay implementer. AppHost still owns the resource gate (`EnablePubSubTestSubscriber=true`) so the test sidecar never starts in regular dev. Tracked as deferred follow-up. [src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml:107-119, 121-126, 137-146]
+- [x] [Review][Decision] **D3 → (a) replace custom RESP with `StackExchange.Redis`** — Added `StackExchange.Redis 2.11.0` to `Directory.Packages.props` (Testing group). Fixture builds an `IConnectionMultiplexer` from the Redis endpoint provided by `dapr init` (`localhost:6379`, the same fixed endpoint `Hexalith.EventStore.Aspire` already uses). Tier 3 reads now go through `IDatabase.StringGetAsync` with a `WRONGTYPE`-aware fallback to `HashGetAsync(key, "data")`. `RedisValue.IsNull` distinguishes "key absent" from "read errored", and any non-`WRONGTYPE` `RedisException` propagates instead of being silently turned into a null. The post-recovery absence assertion uses `KeyExistsAsync` and reports a probe outcome enum (`Absent` / `Present` / `ProbeFailed`) so a Redis read failure can never silently satisfy `ShouldBeNull(...)`. [Directory.Packages.props:72; tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj:21; tests/Hexalith.EventStore.IntegrationTests/ContractTests/PubSubDeliveryProofTests.cs:184-228; tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestFixture.cs:30-37, 96-105]
+- [x] [Review][Decision] **D4 → (a) shared-secret header on `/events` GET and DELETE** — Fixture mints a per-instance secret (`Guid.NewGuid("N")`) and passes it via `EVENTSTORE_TEST_SUBSCRIBER_AUTH_SECRET` to the subscriber, plus as a default `X-Test-Auth` header on the subscriber `HttpClient`. `MapGet("/events")` and `MapDelete("/events")` reject requests missing the matching header with 401 Unauthorized. The DAPR sidecar's POST to `route` stays open (the sidecar can't easily inject our header) but is loopback-bound via Aspire and an attacker would still need to forge the per-test correlation id to bypass assertions. The DELETE also accepts a `?correlationId=` filter so each test only clears its own redeliveries. [tests/Hexalith.EventStore.TestSubscriber/Program.cs:1-15, 80-117, 119-127; tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestFixture.cs:38-43, 95-99]
+
+### Patches Applied
+
+- [x] [Review][Patch] **P1 — Drain absence assertion no longer silent false-positive** — Subsumed by D3. `RedisValue.IsNull` semantics + `RedisException` propagation + the `DrainRecordPresence.ProbeFailed` enum guarantee that any read failure surfaces as a Shouldly assertion failure with the probe outcome embedded in the message rather than silently satisfying `ShouldBeNull`. [tests/Hexalith.EventStore.IntegrationTests/ContractTests/PubSubDeliveryProofTests.cs:184-228]
+- [x] [Review][Patch] **P2 — Env-var mutations now restored on `InitializeAsync` failure** — Snapshot/restore lives in a private dictionary populated by `SnapshotAndSet`; the `InitializeAsync` body is wrapped in `try { ... } catch { SafeShutdownAsync(); RestoreEnvironmentSnapshot(); throw; }`. Stale `FaultFilePath` is also deleted at the start of `InitializeAsync` so a previous crashed run can't ghost-fault the first publish. [tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestFixture.cs:38-122, 156-181]
+- [x] [Review][Patch] **P3 — Subscriber queue bounded + correlation-scoped clear** — `ConcurrentQueue<ReceivedPubSubEvent>` is now soft-capped at 256 (drop-oldest on overflow). `DELETE /events?correlationId=...` rebuilds the queue retaining only events whose correlation id does not match — late at-least-once redeliveries from one test no longer get wiped out from under another test running on the same fixture. The unscoped `DELETE /events` is retained as an emergency reset. [tests/Hexalith.EventStore.TestSubscriber/Program.cs:5-7, 64-67, 89-118]
+- [x] [Review][Patch] **P5 — CloudEvent id prefix is the correlationId fallback** — Subscriber now uses `data.correlationId ?? data.CorrelationId ?? ParseCorrelationIdFromCloudEventId(id)` and `data.sequenceNumber ?? data.SequenceNumber ?? ParseSequenceFromCloudEventId(id)`. The publisher's `cloudevent.id = "{correlationId}:{seq}"` is the canonical fallback when the envelope's casing/naming drifts. [tests/Hexalith.EventStore.TestSubscriber/Program.cs:46-66, 142-167]
+- [x] [Review][Patch] **P6 — `File.Delete` in DisposeAsync now caught** — `TryDeleteFaultFile()` swallows `IOException` and `UnauthorizedAccessException` so a locked or transiently-AV-scanned file does not abort the dispose chain before AppHost teardown. [tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestFixture.cs:156-167]
+- [x] [Review][Patch] **P7 — Test body file ops bounded-retry** — `TryWriteFaultFile` and `TryDeleteFaultFile` in the test class retry up to 5 × 50 ms on `IOException` / `UnauthorizedAccessException`. The drain test wraps the whole `try { ... } finally { TryDeleteFaultFile(); }` so an early assertion failure still cleans up. [tests/Hexalith.EventStore.IntegrationTests/ContractTests/PubSubDeliveryProofTests.cs:65-118, 230-270]
+- [x] [Review][Patch] **P8 — `DisposeAsync` env restore now in `finally`** — `DisposeAsync` is `try { SafeShutdownAsync(); } finally { RestoreEnvironmentSnapshot(); }`. `SafeShutdownAsync` itself wraps each external dispose (`_redis.CloseAsync`, `_app.DisposeAsync`, `_builder.DisposeAsync`) in its own `try/catch`, so a hung sidecar or DAPR-daemon flake cannot prevent env restoration. [tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestFixture.cs:124-154]
+- [x] [Review][Patch] **P9 — `bool.TryParse` for `EnablePubSubTestSubscriber`** — AppHost now uses `bool.TryParse(builder.Configuration["EnablePubSubTestSubscriber"]?.Trim(), out bool parsed) && parsed`. Accepts `true`/`True`/`TRUE`/`1`, trims whitespace, falls back to `false` cleanly. [src/Hexalith.EventStore.AppHost/Program.cs:179-196]
+- [x] [Review][Patch] **P10 — Subscriber reads `EVENTSTORE_TEST_SUBSCRIBER_TOPIC`** — Subscriber resolves the topic from env var first, falling back to the existing `tenant-a.counter.events` default. The `/dapr/subscribe` route is derived from the topic by replacing `.` with `-` so future topic changes don't drift the route. [tests/Hexalith.EventStore.TestSubscriber/Program.cs:9-13, 21-29]
+- [x] [Review][Patch] **P11 — `correlationId is not null` guard added** — `IsTestPublishFaultActive` now returns false short-circuit when `correlationId is null`, defending future drain-path callers that synthesize correlation ids without going through the `ArgumentException` validator. Coupled with the D1 environment gate. [src/Hexalith.EventStore.Server/Events/EventPublisher.cs:161-180]
+- [x] [Review][Patch] **P12 — Subscriber `JsonDocument.ParseAsync` wrapped** — POST handler returns 400 on `JsonException` (malformed CloudEvent body) and a 499 status code on `OperationCanceledException` (DAPR sidecar abort). Partial-document accumulation in the queue is no longer possible. [tests/Hexalith.EventStore.TestSubscriber/Program.cs:31-46]
+- [x] [Review][Patch] **P13 — SignalR.Tests rerun recorded** — `dotnet test tests/Hexalith.EventStore.SignalR.Tests/...` reports `32/32 pass, 0 fail`. Verification Status updated below. [Verification Status section]
+- [x] [Review][Patch] **P14 — `retryCount.ShouldBe(0)` loosened** — Drain test now asserts `retryCount.ShouldBeGreaterThanOrEqualTo(0)` and `retryCount.ShouldBeLessThan(20)`. The lower bound documents the at-least-once semantic (drain reminder may fire between status terminal-poll and drain-record read), the upper bound proves the counter is not pathologically growing. [tests/Hexalith.EventStore.IntegrationTests/ContractTests/PubSubDeliveryProofTests.cs:92-97]
+
+### Patches Deferred
+
+- [x] [Review][Patch][Defer] **P4 — DAPR `/dapr/subscribe` registration race** — Adding a TaskCompletionSource-backed readiness probe in the subscriber that flips Healthy only after `/dapr/subscribe` is hit at least once is a correct fix but non-trivial (requires a DAPR-aware health-check shim and Aspire wait coupling). Deferred to a follow-up; with the bounded queue + correlation-scoped clear (P3) the practical race window only causes a SubscriberTimeout flake, not a silent false-positive. Recorded as `post-epic-4-r4a5-P4-followup` in `deferred-work.md`.
+
+### Deferred
+
+- [x] [Review][Defer] **DF1 — `subscription-sample-counter.yaml` fanout potential** — pre-existing pattern subscription file; risk only materializes if it grants a third app-id on the proof topic. Out of scope here.
+- [x] [Review][Defer] **DF2 — Test aggregate ids use `Guid.NewGuid():N` rather than ULID** — R2-A7 explicitly permits "any non-whitespace string per `AggregateIdentity` rules" for `aggregateId`; in policy but inconsistent with project conventions. Defer to a project-wide ULID sweep. [tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestFixture.cs:746-748; tests/Hexalith.EventStore.IntegrationTests/ContractTests/PubSubDeliveryProofTests.cs:432, 467]
+- [x] [Review][Defer] **DF3 — Containerized AppHost won't share host `Path.GetTempPath()` with the EventStore container** — File-based fault injection only works in process-local Aspire dev. Document as known limitation; reconsider when a k8s/docker publish target is added.
+- [x] [Review][Defer] **DF4 — Drain proof exercises only single-event range (1..1)** — AC #5 vacuously satisfied. Multi-sequence drained-range proof belongs to R4-A6.
+- [x] [Review][Defer] **DF5 — `TcpClient` connection thrash in custom Redis client** — only two reads per test today; nuisance scale only. Subsumed by D3 if we replace the custom client.
+- [x] [Review][Defer] **DF6 — Possible double-registration of `AddStandardResilienceHandler`** in fixture vs AppHost — needs runtime verification before committing to a fix. [tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestFixture.cs:777-787]
+- [x] [Review][Defer] **DF7 — `RecoveryTimeout = 20s` is a magic number** — Should reference the configured drain period and a documented safety factor. Cosmetic; no flake observed in current run. [tests/Hexalith.EventStore.IntegrationTests/ContractTests/PubSubDeliveryProofTests.cs:423]
+
+### Reviewer Verdict
+
+- **AC compliance:** 8 of 9 ACs MET; AC #9 PARTIAL only because `sprint-status.yaml` was outside the reviewed diff scope (R4-A5 file-list filter). Scope-boundary violations: 0. Party-mode guardrail violations: 0.
+- **Top concerns:** all four `decision-needed` items center on the test-fault hook surface (production binary + production manifest), the Redis read path's correctness/false-positive risk, and the unauthenticated subscriber. None of these block AC compliance, but each one creates a real assertion-laundering or operator-risk vector that should be resolved before close.

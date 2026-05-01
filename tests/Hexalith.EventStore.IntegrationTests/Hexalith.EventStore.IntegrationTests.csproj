@@ -19,6 +19,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Shouldly" />
+    <PackageReference Include="StackExchange.Redis" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit.v3" />

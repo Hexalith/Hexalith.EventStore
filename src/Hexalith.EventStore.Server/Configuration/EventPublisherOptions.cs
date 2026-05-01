@@ -16,12 +16,16 @@ public record EventPublisherOptions {
     /// <summary>
     /// Gets an optional test-only file path that forces publish failure while the file exists.
     /// This is disabled by default and is used by Tier 3 runtime recovery tests.
+    /// IMPORTANT: the publisher ignores this option unless the resolved host environment name is
+    /// "Development", so a non-Development production binary cannot be coerced into faulting via
+    /// this option even if the configuration value leaks.
     /// </summary>
     public string? TestPublishFaultFilePath { get; init; }
 
     /// <summary>
     /// Gets an optional correlation-id prefix that narrows the test publish fault.
     /// Empty or null means any correlation ID is faulted while <see cref="TestPublishFaultFilePath"/> exists.
+    /// Same Development-only gating as <see cref="TestPublishFaultFilePath"/>.
     /// </summary>
     public string? TestPublishFaultCorrelationIdPrefix { get; init; }
 
