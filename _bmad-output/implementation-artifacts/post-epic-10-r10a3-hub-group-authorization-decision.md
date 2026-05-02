@@ -20,11 +20,11 @@ The Epic 10 retrospective records this as R10-A3: hub group join lacks a tenant-
 
 ## Acceptance Criteria
 
-1. **SignalR authentication posture is inspected and recorded.** Document whether `/hubs/projection-changes` is reachable anonymously today, whether `Context.User` contains transformed `eventstore:tenant` claims during hub method invocation, and how the .NET client supplies bearer tokens through `EventStoreSignalRClientOptions.AccessTokenProvider`.
+1. **SignalR authentication posture is inspected and recorded.** Document whether `/hubs/projection-changes` is reachable anonymously today, whether `Context.User` contains transformed `eventstore:tenant` claims during hub method invocation, how the .NET client supplies bearer tokens through `EventStoreSignalRClientOptions.AccessTokenProvider`, and whether the observed hosted behavior came from negotiate, WebSocket/SSE connection, or direct hub invocation evidence.
 
-2. **The story records one explicit decision before implementation proceeds.** Add a short decision record in the Dev Agent Record naming exactly one chosen path: `enforce-tenant-claims` or `accepted-signal-only-risk`. Do not leave this as an implicit implementation preference, and do not begin source changes beyond baseline inspection until the decision is recorded. Party-mode recommendation is `enforce-tenant-claims`; choosing `accepted-signal-only-risk` requires explicit product/security risk acceptance in the Dev Agent Record.
+2. **The story records one explicit decision before implementation proceeds.** Add a short decision record in the Dev Agent Record naming exactly one chosen path: `enforce-tenant-claims` or `accepted-signal-only-risk`, the evidence inspected, the person/role accepting the decision, and the revisit trigger if risk is accepted. Do not leave this as an implicit implementation preference, and do not begin source changes beyond baseline inspection until the decision is recorded. Party-mode recommendation is `enforce-tenant-claims`; choosing `accepted-signal-only-risk` requires explicit product/security risk acceptance in the Dev Agent Record.
 
-3. **If `enforce-tenant-claims` is chosen, unauthorized joins are rejected before group mutation.** `JoinGroup(projectionType, tenantId)` must reject missing, blank, or non-matching tenant authorization claims before updating `_connectionGroups` or calling `Groups.AddToGroupAsync`. The comparison must remain case-sensitive and aligned with `ClaimsTenantValidator`; do not parse tenant claims ad hoc in the hub unless the behavior delegates to or exactly mirrors `ITenantValidator`.
+3. **If `enforce-tenant-claims` is chosen, unauthorized joins are rejected before group mutation.** `JoinGroup(projectionType, tenantId)` must reject missing, blank, unauthenticated, or non-matching tenant authorization claims before updating `_connectionGroups` or calling `Groups.AddToGroupAsync`. The comparison must remain case-sensitive and aligned with `ClaimsTenantValidator`; do not parse tenant claims ad hoc in the hub unless the behavior delegates to or exactly mirrors `ITenantValidator`. Pass `Context.ConnectionAborted` to the validator when available so disconnects do not leave avoidable authorization work running.
 
 4. **If `enforce-tenant-claims` is chosen, global-admin semantics are deliberate.** Default to reusing `ClaimsTenantValidator` / `ITenantValidator` semantics so global administrators can join any tenant group without an `eventstore:tenant` claim for that tenant. If SignalR group subscription intentionally excludes the global-admin bypass, document the reason as a decision exception and cover it with tests. The chosen behavior must have tests.
 
@@ -34,9 +34,9 @@ The Epic 10 retrospective records this as R10-A3: hub group join lacks a tenant-
 
 7. **Existing group safety behavior is preserved.** Colon-reserved validation, null/whitespace validation, max-groups-per-connection enforcement, rollback-on-`AddToGroupAsync` failure, `LeaveGroup`, and disconnect cleanup continue to behave as before.
 
-8. **Client and reconnect behavior stay compatible.** `EventStoreSignalRClient.SubscribeAsync`, `StartAsync`, and reconnect rejoin continue to call `JoinGroup` with the same `{projectionType, tenantId}` arguments. If enforcement is chosen, token supply failures must surface as subscription/rejoin failures without silently marking the group authorized. Rejoin must use the current authenticated hub principal; existing group intent must not silently bypass fresh authorization after reconnect.
+8. **Client and reconnect behavior stay compatible.** `EventStoreSignalRClient.SubscribeAsync`, `StartAsync`, and reconnect rejoin continue to call `JoinGroup` with the same `{projectionType, tenantId}` arguments. If enforcement is chosen, token supply failures must surface as subscription/rejoin failures without silently marking the group authorized. Rejoin must use the current authenticated hub principal and must re-run tenant authorization for every restored group intent; stored client-side intent is not proof of current authorization after reconnect.
 
-9. **Tests cover positive and negative authorization paths.** Add focused tests for allowed tenant, wrong tenant, no tenant claims, global-admin behavior for the chosen rule, colon validation still winning for malformed group parts, no `Groups.AddToGroupAsync` call on denied authorization, max-group quota still working after denied authorization, and reconnect/rejoin behavior if client helper changes are required.
+9. **Tests cover positive and negative authorization paths.** Add focused tests for allowed tenant, wrong tenant, unauthenticated or no-tenant-claims denial, global-admin behavior for the chosen rule, colon validation still winning for malformed group parts, no `Groups.AddToGroupAsync` call on denied authorization, no `_connectionGroups` entry and no quota consumption after denial, same-connection recovery by joining an allowed tenant after denial, and reconnect/rejoin behavior if client helper changes are required.
 
 10. **Story bookkeeping is closed.** At dev handoff, this story status becomes `review`, the sprint-status row becomes `review`, and both `last_updated` fields in `sprint-status.yaml` name R10-A3 and the chosen decision. At code-review signoff, both become `done`.
 
@@ -72,6 +72,7 @@ The Epic 10 retrospective records this as R10-A3: hub group join lacks a tenant-
   - [ ] 0.2 Inspect current hub negotiate and method invocation behavior with SignalR enabled.
   - [ ] 0.3 Confirm whether authenticated hub connections receive transformed `eventstore:tenant` claims.
   - [ ] 0.4 Add a Dev Agent Record decision block with the chosen path and rationale before source/test edits. Party-mode recommends `enforce-tenant-claims`; `accepted-signal-only-risk` requires explicit product/security risk acceptance.
+  - [ ] 0.5 If the decision is accepted risk, record a dated revisit trigger tied to a production milestone or security review, not an open-ended "later".
 
 - [ ] Task 1: Implement or document the authorization decision (AC: #3, #4, #5, #6, #7)
   - [ ] 1.1 If enforcing, add `[Authorize]` or equivalent policy to the hub or `JoinGroup`.
@@ -79,6 +80,7 @@ The Epic 10 retrospective records this as R10-A3: hub group join lacks a tenant-
   - [ ] 1.3 If enforcing, reuse `ITenantValidator`/`ClaimsTenantValidator` semantics or document any intentional difference.
   - [ ] 1.4 If accepting risk, add the accepted-risk record with explicit mitigation and revisit trigger, without code changes that pretend to enforce authorization.
   - [ ] 1.5 Preserve current exception shape where practical; use `HubException` for caller-visible tenant-denial join failures unless ASP.NET Core authorization naturally returns the failure. Do not silently no-op unauthorized joins.
+  - [ ] 1.6 If enforcing, pass the hub connection cancellation token to tenant validation and keep authorization failures out of the group-name tracking path.
 
 - [ ] Task 2: Preserve group and client behavior (AC: #7, #8)
   - [ ] 2.1 Verify colon validation still rejects `projectionType` or `tenantId` containing `:`.
@@ -86,6 +88,7 @@ The Epic 10 retrospective records this as R10-A3: hub group join lacks a tenant-
   - [ ] 2.3 Verify failed `Groups.AddToGroupAsync` rollback still works after authorization changes.
   - [ ] 2.4 Verify `LeaveGroup` and disconnect cleanup still remove tracked groups.
   - [ ] 2.5 If the client helper needs token guidance or behavior change, keep it narrowly scoped to token supply and rejoin error visibility. If the client helper does not change, explicitly record that reconnect behavior remains unchanged and covered by existing behavior.
+  - [ ] 2.6 Verify the same connection can still join an allowed tenant after one or more denied joins.
 
 - [ ] Task 3: Add focused test coverage (AC: #3-#9)
   - [ ] 3.1 Add allowed-tenant `JoinGroup` coverage.
@@ -93,7 +96,8 @@ The Epic 10 retrospective records this as R10-A3: hub group join lacks a tenant-
   - [ ] 3.3 Add global-admin coverage for the chosen rule, including the case-sensitive tenant comparison baseline for non-admin users.
   - [ ] 3.4 Add anonymous negotiate or anonymous hub-method coverage for the chosen hub authorization posture in hosted endpoint tests.
   - [ ] 3.5 Add colon-validation precedence coverage proving malformed group parts fail before auth/quota side effects.
-  - [ ] 3.6 Re-run existing SignalR hub/client tests touched by the change.
+  - [ ] 3.6 Add a same-connection denial-then-allowed test to prove authorization denial did not poison quota or tracking state.
+  - [ ] 3.7 Re-run existing SignalR hub/client tests touched by the change.
 
 - [ ] Task 4: Verification gates (AC: #1-#10)
   - [ ] 4.1 Run `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --no-restore --filter "FullyQualifiedName~SignalR|FullyQualifiedName~ClaimsTenantValidator|FullyQualifiedName~EventStoreClaimsTransformation"`.
@@ -117,6 +121,8 @@ The Epic 10 retrospective records this as R10-A3: hub group join lacks a tenant-
 - A denied join must not leave stale entries in `_connectionGroups`, otherwise a malicious client can consume quota without joining real groups.
 - Required `JoinGroup` ordering for the enforcement path is: input validation, authentication, tenant authorization, quota check, group tracking, SignalR group add, rollback only after a successful-path add failure. This ordering keeps malformed input diagnostics stable and prevents authorization failures from touching group state.
 - Accepted-risk is an architecture/product risk decision, not a shortcut implementation path. If chosen, do not add partial enforcement code that implies stronger isolation than the recorded risk actually provides.
+- Do not treat client-side reconnect intent as authorization evidence. The hub must validate the current principal on every `JoinGroup` call, including replayed joins after reconnect.
+- If `ITenantValidator.ValidateAsync` is used, prefer `Context.ConnectionAborted` over `CancellationToken.None` so disconnecting clients do not keep tenant authorization work alive unnecessarily.
 
 ### Current-Code Intelligence
 
@@ -222,13 +228,47 @@ Findings deferred:
 
 Final recommendation: ready-for-dev
 
+## Advanced Elicitation
+
+Date: 2026-05-02T10:53:02+02:00
+
+Selected story key: `post-epic-10-r10a3-hub-group-authorization-decision`
+
+Command/skill invocation used: `/bmad-advanced-elicitation post-epic-10-r10a3-hub-group-authorization-decision`
+
+Batch 1 method names: Security Audit Personas; Red Team vs Blue Team; Architecture Decision Records; Failure Mode Analysis; Comparative Analysis Matrix
+
+Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Occam's Razor Application; First Principles Analysis; 5 Whys Deep Dive; Lessons Learned Extraction
+
+Findings summary:
+
+- Security review: The story already identifies the tenant-group leak, but the decision record needed to capture evidence source, accepting role, and a finite revisit trigger if risk is accepted.
+- Red/blue review: Reconnect group replay is the main bypass-shaped edge case; stored client intent must not substitute for current hub principal authorization.
+- Architecture review: `ITenantValidator` reuse is still the right boundary, with `Context.ConnectionAborted` as the natural cancellation token for hub method validation.
+- Failure analysis: Denied joins need recovery coverage because a stale `_connectionGroups` entry or consumed quota would make one failed authorization attempt affect later valid joins.
+- Simplicity review: No new group format, token parameter, tenant normalization rule, or SignalR payload data is needed for this story.
+
+Changes applied:
+
+- Expanded AC #1-#3 to require evidence-source clarity, decision ownership/revisit details, unauthenticated denial, and validator cancellation guidance.
+- Hardened AC #8-#9 and Tasks 2-3 so reconnect replay must reauthorize and denied joins must leave no tracking or quota side effects while still allowing a later valid join.
+- Added Dev Notes forbidding reconnect intent as authorization evidence and recommending `Context.ConnectionAborted` for `ITenantValidator.ValidateAsync`.
+
+Findings deferred:
+
+- The actual `enforce-tenant-claims` versus `accepted-signal-only-risk` decision remains deferred to dev-story execution and product/security governance.
+- Any broader SignalR token-refresh UX, tenant normalization policy, hub method authorization policy object, or group-format redesign remains out of scope for this story.
+
+Final recommendation: ready-for-dev
+
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-02 | 0.3 | Advanced elicitation hardened decision evidence, reconnect reauthorization, cancellation, and denied-join recovery coverage. | Codex automation |
 | 2026-05-01 | 0.2 | Party-mode review hardened decision ordering, authorization side effects, global-admin semantics, and test boundaries. | Codex automation |
 | 2026-05-01 | 0.1 | Created ready-for-dev R10-A3 hub group authorization decision story. | Codex automation |
 
 ## Verification Status
 
-Story creation plus party-mode review only. Implementation verification is pending dev-story execution.
+Story creation plus party-mode review plus advanced elicitation only. Implementation verification is pending dev-story execution.
