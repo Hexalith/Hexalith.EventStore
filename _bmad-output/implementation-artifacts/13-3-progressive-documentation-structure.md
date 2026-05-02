@@ -1,6 +1,6 @@
 # Story 13.3: Progressive Documentation Structure
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -302,3 +302,15 @@ Claude Opus 4.6 (1M context)
 - docs/reference/query-api.md (modified — added Projection Type Naming section)
 - docs/reference/nuget-packages.md (modified — added cross-link to projection naming)
 - README.md (modified — added link to docs/index.md)
+
+### Review Findings
+
+Adversarial code review run on 2026-05-02 (commit `0f7fa1e`). 3 layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor.
+
+- [x] [Review][Decision-Resolved] README "Documentation" section coexists with `docs/index.md` — intentional design. README is a curated entry-point (3-5 items per tier with editorial selection); `docs/index.md` is the canonical full list. README also carries items not in the index (`deploy/README.md`, GitHub Discussions, Issue Tracker). Spec Task 4.3 ("match the progressive tier organization") is satisfied — tier names and ordering match, README is a curated subset rather than a contradicting set. Pointer at `README.md:106` makes the relationship explicit. No code change required.
+
+- [x] [Review][Patch] ETag format corrected — `{guid}` → `{base64url-guid}` [`docs/reference/query-api.md:237`] — Patched 2026-05-02. Source code `src/Hexalith.EventStore.Server/Queries/SelfRoutingETag.cs:8, 29-36` documents the format as `{base64url(projectionType)}.{base64url-guid}` and `GenerateNew` base64url-encodes the GUID bytes (`+`→`-`, `/`→`_`, trailing `=` stripped). Doc updated to match code behavior, with parenthetical clarifying the encoding.
+
+- [x] [Review][Defer] `docs/reference/problems/index.md:1` back-link non-conforming [`docs/reference/problems/index.md:1`] — deferred, pre-existing. Wrong arrow character (`<-` vs `←`) and wrong target (points to `command-api.md`, not `../../README.md`). Pre-existing from Story 13-2. Now more visible because `docs/index.md` promotes this page to the documentation home.
+
+- [x] [Review][Defer] `FR64` cryptic citation in public reference doc [`docs/reference/query-api.md:252`] — deferred, on-spec. Spec Task 3.1 asked for "References FR64". The current rendering (`> Reference: FR64 — ...`) is opaque to public readers (no link to FR definition). Defer to a future docs polish pass that decides on a public-facing convention for FR/UX-DR citations across all reference pages.

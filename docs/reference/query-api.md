@@ -234,7 +234,7 @@ The sample Blazor UI demonstrates three client reactions to this signal-only mod
 
 ## Projection Type Naming
 
-Projection type names are base64url-encoded inside self-routing ETags (format: `{base64url(projectionType)}.{guid}`). Longer names produce proportionally longer ETag tokens in HTTP headers. Use short, descriptive names to keep ETags compact.
+Projection type names are base64url-encoded inside self-routing ETags (format: `{base64url(projectionType)}.{base64url-guid}`, where `base64url-guid` is the 16-byte GUID encoded with the URL-safe alphabet and trailing `=` padding stripped). Longer names produce proportionally longer ETag tokens in HTTP headers. Use short, descriptive names to keep ETags compact.
 
 | Recommended | Avoid | Reason |
 |-------------|-------|--------|
