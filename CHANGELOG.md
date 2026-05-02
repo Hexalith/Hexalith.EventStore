@@ -1,3 +1,10 @@
+# [3.1.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.0.2...v3.1.0) (2026-05-02)
+
+
+### Features
+
+* Enhance projection options validation and uniqueness checks ([3d2e8ba](https://github.com/Hexalith/Hexalith.EventStore/commit/3d2e8ba34613e43f134ac07c87133202df9691b3))
+
 ## [3.0.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.0.1...v3.0.2) (2026-05-01)
 
 
