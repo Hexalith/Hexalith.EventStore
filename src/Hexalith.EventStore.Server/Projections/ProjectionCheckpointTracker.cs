@@ -68,6 +68,13 @@ public sealed class ProjectionCheckpointTracker(
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
+                if (existing is not null
+                    && (!string.Equals(existing.TenantId, identity.TenantId, StringComparison.Ordinal)
+                        || !string.Equals(existing.Domain, identity.Domain, StringComparison.Ordinal)
+                        || !string.Equals(existing.AggregateId, identity.AggregateId, StringComparison.Ordinal))) {
+                    throw new InvalidOperationException("Projection checkpoint identity does not match the requested aggregate identity.");
+                }
+
                 // Skip the round-trip when the proposed sequence is already covered by the
                 // persisted checkpoint. This avoids burning ETag retries (and emitting a
                 // misleading CheckpointSaveExhausted warning) when concurrent fan-out triggers
@@ -122,9 +129,21 @@ public sealed class ProjectionCheckpointTracker(
         ArgumentNullException.ThrowIfNull(identity);
 
         ProjectionIdentityScope scope = new(identity.TenantId, identity.Domain);
-        await AddScopeAsync(scope, cancellationToken).ConfigureAwait(false);
-        await AddIdentityAsync(scope, new ProjectionIdentity(identity.TenantId, identity.Domain, identity.AggregateId), cancellationToken)
-            .ConfigureAwait(false);
+        if (!await TryAddScopeAsync(scope, cancellationToken).ConfigureAwait(false)) {
+            logger.LogWarning(
+                "Projection identity scope registration exhausted ETag retries for tenant {TenantId}, domain {Domain}.",
+                identity.TenantId,
+                identity.Domain);
+            return;
+        }
+
+        if (!await TryAddIdentityAsync(scope, new ProjectionIdentity(identity.TenantId, identity.Domain, identity.AggregateId), cancellationToken).ConfigureAwait(false)) {
+            logger.LogWarning(
+                "Projection identity registration exhausted ETag retries for tenant {TenantId}, domain {Domain}, aggregate {AggregateId}.",
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId);
+        }
     }
 
     /// <inheritdoc/>
@@ -144,7 +163,10 @@ public sealed class ProjectionCheckpointTracker(
                 continue;
             }
 
-            foreach (ProjectionIdentityScope scope in scopePage.Scopes) {
+            // Defensive null coalesce: a single corrupted/legacy persisted record with a null
+            // array (e.g. from a partial restore or schema drift) must not raise NRE and tear
+            // down the entire poll tick.
+            foreach (ProjectionIdentityScope scope in scopePage.Scopes ?? []) {
                 ProjectionIdentityIndex identityIndex = await ReadStateAsync<ProjectionIdentityIndex>(
                         GetIdentityIndexKey(scope),
                         cancellationToken)
@@ -161,7 +183,7 @@ public sealed class ProjectionCheckpointTracker(
                         continue;
                     }
 
-                    foreach (ProjectionIdentity trackedIdentity in identityPage.Identities) {
+                    foreach (ProjectionIdentity trackedIdentity in identityPage.Identities ?? []) {
                         yield return new AggregateIdentity(trackedIdentity.TenantId, trackedIdentity.Domain, trackedIdentity.AggregateId);
                     }
                 }
@@ -183,69 +205,147 @@ public sealed class ProjectionCheckpointTracker(
     private static string GetScopePageKey(int pageNumber) =>
         IdentityScopePagePrefix + pageNumber.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
-    private async Task AddScopeAsync(ProjectionIdentityScope scope, CancellationToken cancellationToken) {
-        ProjectionIdentityIndex index = await ReadStateAsync<ProjectionIdentityIndex>(IdentityScopeIndexKey, cancellationToken)
-            .ConfigureAwait(false)
-            ?? ProjectionIdentityIndex.Empty;
+    // Page+index updates use a single bounded ETag retry loop on the index "anchor" plus
+    // ETag-guarded page writes. Concurrent same-process or cross-replica writers cannot lose
+    // data: the loser sees ETag mismatch, re-reads, and re-applies the append. After the
+    // bounded retry budget is exhausted, the caller logs and returns rather than performing a
+    // blind non-ETag save that could regress the index.
+    private async Task<bool> TryAddScopeAsync(ProjectionIdentityScope scope, CancellationToken cancellationToken) {
+        string stateStoreName = options.Value.CheckpointStateStoreName;
+        for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+            try {
+                (ProjectionIdentityIndex? indexOrNull, string indexEtag) = await daprClient
+                    .GetStateAndETagAsync<ProjectionIdentityIndex>(stateStoreName, IdentityScopeIndexKey, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                ProjectionIdentityIndex index = indexOrNull ?? ProjectionIdentityIndex.Empty;
 
-        for (int pageNumber = 0; pageNumber < index.PageCount; pageNumber++) {
-            ProjectionIdentityScopePage page = await ReadStateAsync<ProjectionIdentityScopePage>(GetScopePageKey(pageNumber), cancellationToken)
-                .ConfigureAwait(false)
-                ?? ProjectionIdentityScopePage.Empty;
-            if (page.Scopes.Any(existing => existing == scope)) {
-                return;
+                bool alreadyTracked = false;
+                for (int pageNumber = 0; pageNumber < index.PageCount; pageNumber++) {
+                    ProjectionIdentityScopePage existingPage = await ReadStateAsync<ProjectionIdentityScopePage>(GetScopePageKey(pageNumber), cancellationToken)
+                        .ConfigureAwait(false)
+                        ?? ProjectionIdentityScopePage.Empty;
+                    if ((existingPage.Scopes ?? []).Any(existing => existing == scope)) {
+                        alreadyTracked = true;
+                        break;
+                    }
+                }
+
+                if (alreadyTracked) {
+                    return true;
+                }
+
+                int targetPageNumber = index.PageCount == 0 || index.LastPageCount >= IdentityPageSize
+                    ? index.PageCount
+                    : index.PageCount - 1;
+                string pageKey = GetScopePageKey(targetPageNumber);
+                (ProjectionIdentityScopePage? pageOrNull, string pageEtag) = await daprClient
+                    .GetStateAndETagAsync<ProjectionIdentityScopePage>(stateStoreName, pageKey, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                ProjectionIdentityScopePage page = pageOrNull ?? ProjectionIdentityScopePage.Empty;
+                ProjectionIdentityScope[] updatedScopes = (page.Scopes ?? []).Append(scope).ToArray();
+
+                bool pageSaved = await daprClient
+                    .TrySaveStateAsync(stateStoreName, pageKey, new ProjectionIdentityScopePage(updatedScopes), pageEtag, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                if (!pageSaved) {
+                    continue;
+                }
+
+                ProjectionIdentityIndex updatedIndex = index.PageCount == 0 || index.LastPageCount >= IdentityPageSize
+                    ? new ProjectionIdentityIndex(index.PageCount + 1, 1)
+                    : index with { LastPageCount = updatedScopes.Length };
+
+                bool indexSaved = await daprClient
+                    .TrySaveStateAsync(stateStoreName, IdentityScopeIndexKey, updatedIndex, indexEtag, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                if (indexSaved) {
+                    return true;
+                }
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) when (attempt < MaxEtagRetries - 1) {
+                logger.LogDebug(
+                    ex,
+                    "Retry {Attempt} while registering projection scope '{TenantId}:{Domain}'.",
+                    attempt + 1,
+                    scope.TenantId,
+                    scope.Domain);
             }
         }
 
-        await AppendScopeAsync(index, scope, cancellationToken).ConfigureAwait(false);
+        return false;
     }
 
-    private async Task AddIdentityAsync(ProjectionIdentityScope scope, ProjectionIdentity identity, CancellationToken cancellationToken) {
+    private async Task<bool> TryAddIdentityAsync(ProjectionIdentityScope scope, ProjectionIdentity identity, CancellationToken cancellationToken) {
+        string stateStoreName = options.Value.CheckpointStateStoreName;
         string indexKey = GetIdentityIndexKey(scope);
-        ProjectionIdentityIndex index = await ReadStateAsync<ProjectionIdentityIndex>(indexKey, cancellationToken)
-            .ConfigureAwait(false)
-            ?? ProjectionIdentityIndex.Empty;
+        for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+            try {
+                (ProjectionIdentityIndex? indexOrNull, string indexEtag) = await daprClient
+                    .GetStateAndETagAsync<ProjectionIdentityIndex>(stateStoreName, indexKey, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                ProjectionIdentityIndex index = indexOrNull ?? ProjectionIdentityIndex.Empty;
 
-        for (int pageNumber = 0; pageNumber < index.PageCount; pageNumber++) {
-            ProjectionIdentityPage page = await ReadStateAsync<ProjectionIdentityPage>(GetIdentityPageKey(scope, pageNumber), cancellationToken)
-                .ConfigureAwait(false)
-                ?? ProjectionIdentityPage.Empty;
-            if (page.Identities.Any(existing => existing == identity)) {
-                return;
+                bool alreadyTracked = false;
+                for (int pageNumber = 0; pageNumber < index.PageCount; pageNumber++) {
+                    ProjectionIdentityPage existingPage = await ReadStateAsync<ProjectionIdentityPage>(GetIdentityPageKey(scope, pageNumber), cancellationToken)
+                        .ConfigureAwait(false)
+                        ?? ProjectionIdentityPage.Empty;
+                    if ((existingPage.Identities ?? []).Any(existing => existing == identity)) {
+                        alreadyTracked = true;
+                        break;
+                    }
+                }
+
+                if (alreadyTracked) {
+                    return true;
+                }
+
+                int targetPageNumber = index.PageCount == 0 || index.LastPageCount >= IdentityPageSize
+                    ? index.PageCount
+                    : index.PageCount - 1;
+                string pageKey = GetIdentityPageKey(scope, targetPageNumber);
+                (ProjectionIdentityPage? pageOrNull, string pageEtag) = await daprClient
+                    .GetStateAndETagAsync<ProjectionIdentityPage>(stateStoreName, pageKey, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                ProjectionIdentityPage page = pageOrNull ?? ProjectionIdentityPage.Empty;
+                ProjectionIdentity[] updatedIdentities = (page.Identities ?? []).Append(identity).ToArray();
+
+                bool pageSaved = await daprClient
+                    .TrySaveStateAsync(stateStoreName, pageKey, new ProjectionIdentityPage(updatedIdentities), pageEtag, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                if (!pageSaved) {
+                    continue;
+                }
+
+                ProjectionIdentityIndex updatedIndex = index.PageCount == 0 || index.LastPageCount >= IdentityPageSize
+                    ? new ProjectionIdentityIndex(index.PageCount + 1, 1)
+                    : index with { LastPageCount = updatedIdentities.Length };
+
+                bool indexSaved = await daprClient
+                    .TrySaveStateAsync(stateStoreName, indexKey, updatedIndex, indexEtag, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                if (indexSaved) {
+                    return true;
+                }
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) when (attempt < MaxEtagRetries - 1) {
+                logger.LogDebug(
+                    ex,
+                    "Retry {Attempt} while registering projection identity '{TenantId}:{Domain}:{AggregateId}'.",
+                    attempt + 1,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId);
             }
         }
 
-        await AppendIdentityAsync(scope, index, identity, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task AppendScopeAsync(ProjectionIdentityIndex index, ProjectionIdentityScope scope, CancellationToken cancellationToken) {
-        int pageNumber = index.PageCount == 0 || index.LastPageCount >= IdentityPageSize ? index.PageCount : index.PageCount - 1;
-        string pageKey = GetScopePageKey(pageNumber);
-        ProjectionIdentityScopePage page = await ReadStateAsync<ProjectionIdentityScopePage>(pageKey, cancellationToken).ConfigureAwait(false)
-            ?? ProjectionIdentityScopePage.Empty;
-        var updatedScopes = page.Scopes.Append(scope).ToArray();
-        await SaveStateAsync(pageKey, new ProjectionIdentityScopePage(updatedScopes), cancellationToken).ConfigureAwait(false);
-        ProjectionIdentityIndex updatedIndex = index.PageCount == 0 || index.LastPageCount >= IdentityPageSize
-            ? new ProjectionIdentityIndex(index.PageCount + 1, 1)
-            : index with { LastPageCount = updatedScopes.Length };
-        await SaveStateAsync(IdentityScopeIndexKey, updatedIndex, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task AppendIdentityAsync(
-        ProjectionIdentityScope scope,
-        ProjectionIdentityIndex index,
-        ProjectionIdentity identity,
-        CancellationToken cancellationToken) {
-        int pageNumber = index.PageCount == 0 || index.LastPageCount >= IdentityPageSize ? index.PageCount : index.PageCount - 1;
-        string pageKey = GetIdentityPageKey(scope, pageNumber);
-        ProjectionIdentityPage page = await ReadStateAsync<ProjectionIdentityPage>(pageKey, cancellationToken).ConfigureAwait(false)
-            ?? ProjectionIdentityPage.Empty;
-        var updatedIdentities = page.Identities.Append(identity).ToArray();
-        await SaveStateAsync(pageKey, new ProjectionIdentityPage(updatedIdentities), cancellationToken).ConfigureAwait(false);
-        ProjectionIdentityIndex updatedIndex = index.PageCount == 0 || index.LastPageCount >= IdentityPageSize
-            ? new ProjectionIdentityIndex(index.PageCount + 1, 1)
-            : index with { LastPageCount = updatedIdentities.Length };
-        await SaveStateAsync(GetIdentityIndexKey(scope), updatedIndex, cancellationToken).ConfigureAwait(false);
+        return false;
     }
 
     private async Task<T?> ReadStateAsync<T>(string key, CancellationToken cancellationToken) =>
@@ -253,15 +353,6 @@ public sealed class ProjectionCheckpointTracker(
             .GetStateAsync<T>(
                 options.Value.CheckpointStateStoreName,
                 key,
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-
-    private async Task SaveStateAsync<T>(string key, T value, CancellationToken cancellationToken) =>
-        await daprClient
-            .SaveStateAsync(
-                options.Value.CheckpointStateStoreName,
-                key,
-                value,
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 

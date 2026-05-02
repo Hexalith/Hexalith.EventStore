@@ -292,6 +292,30 @@ public class ProjectionCheckpointTrackerTests {
     }
 
     [Fact]
+    public async Task SaveDeliveredSequenceAsync_MismatchedCheckpointIdentity_ThrowsInvalidOperationException() {
+        // Arrange -- mirror the read-path identity guard so the save path cannot silently
+        // accept a stored record whose identity does not match the requested aggregate.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        SetupGetStateAndEtag(
+            daprClient,
+            "statestore",
+            new ProjectionCheckpoint("other-tenant", "test-domain", "agg-001", 5, DateTimeOffset.UtcNow),
+            "etag-1");
+        var tracker = CreateTracker(daprClient);
+
+        // Act & Assert
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => tracker.SaveDeliveredSequenceAsync(TestIdentity, 7));
+        _ = await daprClient.DidNotReceiveWithAnyArgs().TrySaveStateAsync<ProjectionCheckpoint>(
+            default!,
+            default!,
+            default!,
+            default!,
+            stateOptions: default,
+            metadata: default,
+            cancellationToken: default);
+    }
+
+    [Fact]
     public async Task SaveDeliveredSequenceAsync_GetStateAndEtagThrowsOperationCanceledException_Propagates() {
         // Arrange -- guard against future refactors that would absorb cancellation in the catch-all.
         DaprClient daprClient = Substitute.For<DaprClient>();

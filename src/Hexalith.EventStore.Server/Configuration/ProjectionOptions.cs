@@ -54,9 +54,14 @@ public record ProjectionOptions {
             throw new InvalidOperationException("Projection default refresh interval must be >= 0.");
         }
 
+        HashSet<string> seenKeys = new(StringComparer.OrdinalIgnoreCase);
         foreach ((string key, DomainProjectionOptions value) in Domains) {
             if (string.IsNullOrWhiteSpace(key)) {
                 throw new InvalidOperationException("Projection domain key must not be empty.");
+            }
+
+            if (!seenKeys.Add(key)) {
+                throw new InvalidOperationException($"Projection domain keys must be unique ignoring case; duplicate detected for '{key}'.");
             }
 
             if (value.RefreshIntervalMs < 0) {

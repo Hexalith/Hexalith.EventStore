@@ -644,6 +644,48 @@ public class ProjectionUpdateOrchestratorTests {
     }
 
     [Fact]
+    public async Task UpdateProjectionAsync_HappyPath_SendsExpectedProjectionRequestBody() {
+        // Pins the orchestrator's outgoing HTTP body (tenant/domain/aggregateId/event count
+        // and the exact SequenceNumber set) against its EventEnvelope[] input. Without this,
+        // existing tests either ignored the request body or re-implemented the mapping inside
+        // the test (which only verifies the test's own output).
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.SaveDeliveredSequenceAsync(Arg.Any<AggregateIdentity>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        var capture = new RequestCapturingHandler("""{"projectionType":"counter-summary","state":{"value":1}}""");
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(capture);
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(checkpointTracker, daprClient, httpClientFactory);
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        EventEnvelope[] events = [CreateTestEnvelope(2), CreateTestEnvelope(7), CreateTestEnvelope(11)];
+        _ = aggregateActor.GetEventsAsync(0).Returns(events);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(writeActor);
+
+        // Act
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        // Assert
+        capture.CapturedBody.ShouldNotBeNull();
+        ProjectionRequest? body = JsonSerializer.Deserialize<ProjectionRequest>(
+            capture.CapturedBody!,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        body.ShouldNotBeNull();
+        body!.TenantId.ShouldBe("test-tenant");
+        body.Domain.ShouldBe("test-domain");
+        body.AggregateId.ShouldBe("agg-001");
+        body.Events.Length.ShouldBe(events.Length);
+        body.Events.Select(e => e.SequenceNumber).ShouldBe(new long[] { 2, 7, 11 });
+    }
+
+    [Fact]
     public async Task UpdateProjectionAsync_OperationCanceledException_PropagatesThroughOuterCatch() {
         // The outer catch must filter OCE so cooperative cancellation unwinds cleanly.
         // The inner checkpoint-read and checkpoint-save catches already use the same
@@ -677,6 +719,19 @@ public class ProjectionUpdateOrchestratorTests {
             Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) {
                 Content = new StringContent(json, Encoding.UTF8, "application/json"),
             });
+    }
+
+    private sealed class RequestCapturingHandler(string responseJson) : HttpMessageHandler {
+        public string? CapturedBody { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
+            CapturedBody = request.Content is null
+                ? null
+                : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            return new HttpResponseMessage(System.Net.HttpStatusCode.OK) {
+                Content = new StringContent(responseJson, Encoding.UTF8, "application/json"),
+            };
+        }
     }
 
     private sealed class CountingProjectionResponseHandler : HttpMessageHandler {

@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -36,7 +35,10 @@ public partial class ProjectionUpdateOrchestrator(
     IProjectionCheckpointTracker checkpointTracker,
     IOptions<ProjectionOptions> projectionOptions,
     ILogger<ProjectionUpdateOrchestrator> logger) : IProjectionUpdateOrchestrator {
-    private static readonly ConcurrentDictionary<string, SemaphoreSlim> s_projectionLocks = new(StringComparer.Ordinal);
+    // Per-aggregate serialization across orchestrator instances. Entries are evicted and the
+    // underlying SemaphoreSlim disposed when the last holder releases, so a multi-tenant server
+    // with many short-lived aggregates does not accumulate kernel handles indefinitely.
+    internal static readonly KeyedSemaphore<string> ProjectionLocks = new(StringComparer.Ordinal);
 
     /// <inheritdoc/>
     public async Task UpdateProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
@@ -62,8 +64,7 @@ public partial class ProjectionUpdateOrchestrator(
     public async Task DeliverProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
 
-        SemaphoreSlim projectionLock = s_projectionLocks.GetOrAdd(identity.ActorId, static _ => new SemaphoreSlim(1, 1));
-        await projectionLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        using IDisposable projectionLock = await ProjectionLocks.AcquireAsync(identity.ActorId, cancellationToken).ConfigureAwait(false);
         try {
             Log.UpdateStarted(logger, identity.TenantId, identity.Domain, identity.AggregateId);
 
@@ -161,9 +162,6 @@ public partial class ProjectionUpdateOrchestrator(
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             Log.ProjectionUpdateFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId);
-        }
-        finally {
-            _ = projectionLock.Release();
         }
     }
 
