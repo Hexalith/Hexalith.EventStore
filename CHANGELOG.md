@@ -1,3 +1,10 @@
+# [3.2.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.1.0...v3.2.0) (2026-05-02)
+
+
+### Features
+
+* Enhance polling mode behavior and validation in projection services ([a61a87a](https://github.com/Hexalith/Hexalith.EventStore/commit/a61a87a57f0dd6250ed6c338825b4f15ef1f2fca))
+
 # [3.1.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.0.2...v3.1.0) (2026-05-02)
 
 
