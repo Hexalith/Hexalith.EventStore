@@ -22,27 +22,27 @@ Current HEAD at story creation: `68b6957`.
 
 ## Acceptance Criteria
 
-1. **Minimum proof artifacts are defined.** Create or update a concise evidence-pattern document that names the mandatory artifacts for SignalR delivery confidence: run identity, topology, commit SHA, environment, SignalR config, authenticated client/group join, ETag/projection-change trigger, hub broadcast, client receipt, query refresh, latency calculation, reliability/control result, logs/traces/metrics links or excerpts, and environment blockers.
+1. **Minimum proof artifacts are defined.** Create or update a concise evidence-pattern document at `docs/operations/signalr-operational-evidence.md` and a reusable Markdown schema/example under `_bmad-output/test-artifacts/signalr-operational-evidence-template.md`. The pattern must name the mandatory artifacts for SignalR delivery confidence: evidence index, run identity, topology, commit SHA/build version, environment, SignalR config, authenticated client/group join, ETag/projection-change trigger, hub broadcast, client receipt, query refresh, latency calculation, reliability/control result, logs/traces/metrics links or excerpts, classification outcome, redaction notes, and environment blockers.
 
-2. **Latency boundary is unambiguous.** Define NFR38 measurement points in UTC timestamps: trigger accepted, ETag regeneration completed or equivalent projection-change publish point, `SignalRProjectionChangedBroadcaster.BroadcastChangedAsync` started/completed, client `ProjectionChanged(projectionType, tenantId)` receipt, client query started/completed, and UI refresh/render evidence when browser proof is in scope. The pattern must state which interval is the primary SignalR delivery budget and which intervals are query/UI follow-on diagnostics.
+2. **Latency boundary is unambiguous.** Define NFR38 measurement points in UTC timestamps: trigger accepted, ETag regeneration completed or equivalent projection-change publish point, `SignalRProjectionChangedBroadcaster.BroadcastChangedAsync` started/completed, client `ProjectionChanged(projectionType, tenantId)` receipt, client query started/completed, and UI refresh/render evidence when browser proof is in scope. The pattern must name these intervals explicitly: trigger-to-broadcast, broadcast-to-client-receipt, client-receipt-to-query-refresh, query-refresh-to-render when UI proof is in scope, and end-to-end trigger-to-refresh. The primary SignalR delivery budget is broadcast-to-client-receipt; the other intervals are query/UI follow-on diagnostics unless a future story changes NFR38 wording.
 
-3. **p99 guidance is reproducible.** Define how many samples are required before claiming p99, how to compute the percentile, the maximum accepted threshold for the SignalR delivery interval, and how to report cold-start/warm-run outliers. Do not claim p99 from a single happy-path run. For small manual runs, require wording such as "sample evidence only" and route production p99 to the configured metrics/trace backend.
+3. **p99 guidance is reproducible.** Define how many samples are required before claiming p99, how to compute the percentile, the maximum accepted threshold for the SignalR delivery interval, and how to report cold-start/warm-run outliers. Do not claim p99 from a single happy-path run. Require raw sample count, sample window, clock source, warmup exclusion rule, sorted nearest-rank calculation (`ceil(0.99 * sample_count)`), and threshold source. Require at least 100 valid samples before any repository evidence claims p99; smaller manual runs must be labeled "sample evidence only" and production p99 must be routed to the configured metrics/trace backend. Do not invent a threshold; cite the NFR38 source/configuration or record a deferred threshold-definition gap.
 
-4. **Trace/log/browser evidence links the chain.** The pattern must require evidence linking ETag regeneration or projection-change trigger -> hub broadcast -> client receipt -> query refresh. It must include the identifiers that correlate the chain: correlation/run id, projection type, tenant id, group name, connection target, broadcast origin, and query response/ETag evidence. SignalR payload must remain only `projectionType` and `tenantId`; run ids belong in proof metadata or run-unique test identifiers, not in the public hub payload.
+4. **Trace/log/browser evidence links the chain.** The pattern must require evidence linking ETag regeneration or projection-change trigger -> hub broadcast -> client receipt -> query refresh. It must include required correlation fields: evidence run id, operation id, correlation id, causation id when available, command/message id when applicable, event id or projection-change identifier when available, stream or aggregate id when applicable, projection type, tenant id or redacted tenant alias, group name, connection id or redacted client-session alias, connection target, broadcast origin, query response status, and ETag evidence. SignalR payload must remain only `projectionType` and `tenantId`; run ids and proof-only identifiers belong in proof metadata, logs, or run-unique test identifiers, not in the public hub payload.
 
 5. **Built-in SignalR diagnostics are used correctly.** Document how ASP.NET Core SignalR server/client tracing and metrics can support, but not replace, product-specific evidence. Include `Microsoft.AspNetCore.SignalR.Server` and `Microsoft.AspNetCore.SignalR.Client` ActivitySource guidance for .NET 9+ / .NET 10 environments, and name the built-in `Microsoft.AspNetCore.Http.Connections` metrics such as `signalr.server.connection.duration` and `signalr.server.active_connections` as connection-health context rather than direct end-to-end delivery proof.
 
 6. **Repository instrumentation gaps are explicit.** Inspect current EventStore SignalR and telemetry code and record whether the existing logs/activities can capture each required timestamp. If a required timestamp cannot be captured without new product or test-only instrumentation, create a deferred-work entry with owner, proposed location, and why it is needed. Do not silently add product behavior or public payload fields while defining the pattern.
 
-7. **Environment failures are classified separately from product failures.** The pattern must define environment-blocker categories for Docker unavailable, Redis unavailable, DAPR placement/scheduler unavailable, Aspire AppHost not running, browser automation unavailable, auth/token setup failure, and observability backend unavailable. It must also define product-failure categories for no broadcast, wrong group, unauthorized join, no client receipt within the bounded wait, stale/duplicate evidence, query refresh failure, and latency budget breach.
+7. **Environment failures are classified separately from product failures.** The pattern must define a decision table with owner/routing guidance for environment blockers, product failures, and deferred instrumentation gaps. Environment blockers must include Docker unavailable, Redis unavailable, DAPR placement/scheduler unavailable, Aspire AppHost not running, browser automation unavailable, auth/token setup failure, clock skew/unsynchronized timestamp sources, port conflict, load/evidence harness failure, and observability backend unavailable. Product failures must include no broadcast, wrong group, unauthorized join, no client receipt within the bounded wait, stale/duplicate evidence, query refresh failure, and latency budget breach. Instrumentation gaps must include missing server timestamp, missing client timestamp, missing correlation continuity, missing diagnostic source, and unsafe evidence/redaction risk.
 
-8. **Reliability controls are required.** The evidence pattern must require at least one negative/control result appropriate to the proof shape: disabled SignalR/no hub, wrong tenant/group no receipt, disconnected client no stale replay claim, Redis disabled for cross-instance proof, or equivalent. Controls must be framed as false-positive prevention, not as broader chaos testing.
+8. **Reliability controls are required.** The evidence pattern must require at least one negative/control result appropriate to the proof shape: disabled SignalR/no hub, wrong tenant/group no receipt, disconnected client no stale replay claim, Redis disabled for cross-instance proof, or equivalent. It must also require one correlation-integrity control where evidence collection succeeds but a mismatched or missing run/correlation identifier causes the validation to fail. Controls must be framed as false-positive prevention, not as broader chaos testing.
 
-9. **The pattern names where evidence is stored.** Evidence files for future runs must live under a story- or proof-specific folder in `_bmad-output/test-artifacts/` with dated filenames. The pattern must include a reusable evidence schema and forbid committing raw production logs, HAR files with sensitive payloads, tokens, connection strings, or full network traces.
+9. **The pattern names where evidence is stored.** Evidence files for future runs must live under a story- or proof-specific folder in `_bmad-output/test-artifacts/` with dated filenames and a short evidence index. The pattern must include a reusable Markdown schema with required and optional fields, version marker, field descriptions, allowed classification values, and storage convention. It must forbid committing raw production logs, HAR files with sensitive payloads, tokens, connection strings, full network traces, production hostnames, user identifiers, or tenant identifiers that are not already safe test aliases; redacted values must use stable placeholders such as `<redacted-token>`, `<redacted-host>`, or `tenant-alias-001`.
 
 10. **Existing story boundaries are preserved.** Do not re-prove R10-A2 Redis cross-instance delivery, R10-A3 tenant authorization, R10-A5 reconnect docs, R10-A7 Redis isolation policy, or R11-A3/R11-A4 query/projection round-trip behavior inside this story. R10-A6 defines the evidence pattern and may add narrow diagnostics/test harness guidance only when required to make the pattern executable.
 
-11. **Verification demonstrates the pattern is usable.** Validate the final evidence-pattern document by walking one existing evidence artifact or story record through the schema, preferably R10-A2 runtime proof evidence or R11-A3/R11-A4 projection proof evidence. Record which required fields are already present and which future fields remain deferred. If docs only change, markdown/link checks are sufficient. If source/test instrumentation changes are made, run the affected project tests individually.
+11. **Verification demonstrates the pattern is usable.** Validate the final evidence-pattern document by walking one existing evidence artifact or story record through the schema, preferably `_bmad-output/test-artifacts/post-epic-10-r10a2-redis-backplane-runtime-proof/` plus a spot-check of R11-A3/R11-A4 projection proof evidence. Record which required fields are present, absent-but-deferred, or not applicable. The walk-through must prove an agent can fill the schema from one bounded run without asking for missing field meanings. It must not use Redis, tenant authorization, reconnect, or projection/query checks as new acceptance proof for this story. If docs only change, markdown/link checks are sufficient. If source/test instrumentation changes are made, run the affected project tests individually.
 
 12. **Story bookkeeping is closed.** At dev handoff, this story status becomes `review`, the sprint-status row becomes `review`, and `last_updated` names R10-A6 and the evidence-pattern result. At code-review signoff, both become `done`.
 
@@ -53,6 +53,7 @@ Current HEAD at story creation: `68b6957`.
 - Do not redefine NFR38 product semantics beyond naming the measurable intervals and evidence thresholds.
 - Do not treat built-in connection metrics as proof that a specific projection-change signal reached a client.
 - Do not require persistent containers or a new default Redis dependency for normal local development.
+- Do not add durable SignalR delivery semantics, a new SignalR retry policy, product SLO enforcement, client SDK/API redesign, long-running soak tests, production dashboards, alert rules, or a distributed tracing platform migration.
 - Do not add broad observability platform work, dashboards, or admin UI features unless recorded as deferred follow-up.
 - Do not commit raw production diagnostics, tokens, connection strings, HAR files with sensitive data, or full network traces.
 
@@ -81,17 +82,17 @@ Current HEAD at story creation: `68b6957`.
   - [ ] 0.5 Confirm no public SignalR payload, group format, authorization, Redis, reconnect, query, or UI behavior change is needed for this evidence-pattern story.
 
 - [ ] Task 1: Define the evidence schema (AC: #1, #2, #4, #7, #8, #9)
-  - [ ] 1.1 Add a reusable schema with sections: Run Identity, Environment, Topology, Configuration, Trigger, Broadcast, Client Receipt, Query Refresh, Latency Samples, Reliability Controls, Diagnostics, Classification, Result, and Cleanup.
-  - [ ] 1.2 Require UTC timestamps for all latency points and note clock-source assumptions when client/browser and server run on different machines.
-  - [ ] 1.3 Require correlation/run id, projection type, tenant id, group name, connection target, broadcast origin, and query response/ETag evidence.
-  - [ ] 1.4 Require at least one false-positive control and explain which product failure it guards against.
+  - [ ] 1.1 Add `docs/operations/signalr-operational-evidence.md` and `_bmad-output/test-artifacts/signalr-operational-evidence-template.md` with a Markdown schema, version marker, required/optional field labels, allowed classification values, and an evidence index pattern.
+  - [ ] 1.2 Require UTC timestamps for all latency points and note clock-source assumptions when client/browser and server run on different machines; define trigger-to-broadcast, broadcast-to-client-receipt, client-receipt-to-query-refresh, query-refresh-to-render, and end-to-end trigger-to-refresh.
+  - [ ] 1.3 Require evidence run id, operation id, correlation id, causation id when available, command/message id when applicable, event id or projection-change identifier when available, stream/aggregate id when applicable, projection type, tenant id or safe tenant alias, group name, connection id or client-session alias, connection target, broadcast origin, and query response/ETag evidence.
+  - [ ] 1.4 Require at least one false-positive control and explain which product failure it guards against; include a correlation-integrity control where mismatched/missing identifiers make validation fail.
   - [ ] 1.5 Define allowed evidence storage under `_bmad-output/test-artifacts/<story-or-proof-key>/evidence-YYYY-MM-DD*.md`.
-  - [ ] 1.6 Add a safety note: redact tokens, secrets, connection strings, tenant-sensitive payloads, raw production logs, and network traces.
+  - [ ] 1.6 Add a safety note: redact tokens, secrets, connection strings, production hostnames, unsafe tenant/user identifiers, tenant-sensitive payloads, raw production logs, and network traces with stable placeholders.
 
 - [ ] Task 2: Define latency and p99 calculation guidance (AC: #2, #3, #5)
   - [ ] 2.1 Name the primary SignalR delivery interval and separately name query refresh and UI render intervals.
   - [ ] 2.2 State that a single run proves path viability, not p99.
-  - [ ] 2.3 Define the minimum sample set for p99 claims and require raw sample count, sorted percentile method, threshold, and outlier handling in evidence.
+  - [ ] 2.3 Define the minimum sample set for p99 claims and require raw sample count, sample window, accepted clock source, sorted nearest-rank percentile method, threshold source, and outlier/warmup handling in evidence.
   - [ ] 2.4 State how built-in SignalR connection metrics and ActivitySources support diagnosis without replacing product-specific delivery observations.
   - [ ] 2.5 If the current OpenTelemetry setup does not collect `Microsoft.AspNetCore.SignalR.Server` / `.Client`, record the required configuration as deferred work or a future instrumentation story.
 
@@ -99,13 +100,15 @@ Current HEAD at story creation: `68b6957`.
   - [ ] 3.1 Add a decision table separating environment blockers from product failures.
   - [ ] 3.2 Include Docker, Redis, DAPR placement/scheduler, Aspire, auth/token, browser automation, observability backend, and port conflict blockers.
   - [ ] 3.3 Include no broadcast, wrong group, unauthorized join, no receipt, stale/duplicate evidence, query refresh failure, and latency breach product failures.
-  - [ ] 3.4 Route Redis isolation/channel-prefix policy questions to R10-A7 and query/UI round-trip proof to R11-A3/R11-A4.
+  - [ ] 3.4 Add instrumentation-gap routing for missing server timestamp, missing client timestamp, missing correlation continuity, missing diagnostic source, unsafe evidence/redaction risk, and p99 sample insufficiency.
+  - [ ] 3.5 Route Redis isolation/channel-prefix policy questions to R10-A7 and query/UI round-trip proof to R11-A3/R11-A4.
 
 - [ ] Task 4: Validate against existing evidence (AC: #11)
   - [ ] 4.1 Walk the R10-A2 runtime proof evidence through the schema and mark present/missing fields.
   - [ ] 4.2 If R11-A3/R11-A4 evidence exists, spot-check the query refresh fields against that proof without editing those stories.
   - [ ] 4.3 Record schema gaps as future evidence obligations, not retroactive failures of completed stories unless the old evidence made a false claim.
-  - [ ] 4.4 Run markdown/link validation when practical; if unavailable, record the command attempted and the blocker.
+  - [ ] 4.4 Add one intentionally incomplete or mismatched evidence example in the template or verification notes that demonstrates the schema rejects missing correlation/latency fields.
+  - [ ] 4.5 Run markdown/link validation when practical; if unavailable, record the command attempted and the blocker.
 
 - [ ] Task 5: Story bookkeeping (AC: #12)
   - [ ] 5.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
@@ -125,6 +128,8 @@ Current HEAD at story creation: `68b6957`.
 - If server and browser clocks differ, prefer a same-process harness for latency measurement or record clock-skew assumptions. Do not subtract timestamps across unsynchronized machines without caveat.
 - Use run-unique projection/tenant identifiers or a proven buffer-drain step to avoid stale signal false positives.
 - Product failures should be actionable. Environment blockers should name the missing service/tool and the exact command or condition that failed.
+- The evidence schema must be falsifiable: missing required timestamps, mismatched run/correlation identifiers, or absent client receipt evidence must fail validation instead of being described as inconclusive success.
+- The schema is a Markdown contract for human-run and automation-run proofs, not a new product protocol. Use safe proof metadata and redaction aliases rather than changing SignalR payload, hub group format, or query contracts.
 
 ### Current-Code Intelligence
 
@@ -205,10 +210,34 @@ To be filled by dev agent.
 
 To be filled by dev agent.
 
+## Party-Mode Review
+
+- Date/time: 2026-05-02T18:47:48+02:00
+- Selected story key: `post-epic-10-r10a6-signalr-operational-evidence-pattern`
+- Command/skill invocation used: `/bmad-party-mode post-epic-10-r10a6-signalr-operational-evidence-pattern; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect), Paige (Technical Writer)
+- Findings summary:
+  - Winston: The story needed a sharper evidence contract so implementation does not expand into improvised observability work; canonical correlation fields, latency windows, p99 criteria, proof artifact files, and sibling-story exclusions needed to be explicit.
+  - Amelia: The story was conceptually implementable but needed concrete target paths, schema shape, directly verifiable acceptance criteria, and clearer separation between docs/schema work and product instrumentation.
+  - Murat: The evidence pattern needed stronger falsifiability: required timestamps and identifiers, false-positive controls, environment/product/instrumentation routing, and a validation path that rejects missing correlation or latency evidence.
+  - Paige: The document needed enough structure for future agents and operators to fill the evidence schema without inventing placement, field meanings, redaction rules, or proof sufficiency.
+- Changes applied:
+  - Added concrete expected artifact paths for the operations document and reusable evidence template.
+  - Defined the primary SignalR delivery interval as broadcast-to-client-receipt and named follow-on diagnostic intervals.
+  - Added required correlation, identity, connection, query/ETag, and safe-redaction fields.
+  - Strengthened p99 guidance with sample count, sample window, clock source, nearest-rank method, and threshold-source requirements.
+  - Added instrumentation-gap classification, blocker routing, and a required correlation-integrity negative control.
+  - Tightened validation against existing R10-A2 and R11 evidence without re-proving sibling story behavior.
+- Findings deferred:
+  - Actual product instrumentation, OpenTelemetry collection changes, dashboards, alerting, long-running soak tests, and client API redesign remain out of scope unless a future implementation story accepts them.
+  - Exact final wording and field layout of the Markdown schema remain implementation details constrained by the updated acceptance criteria.
+- Final recommendation: `ready-for-dev`
+
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-02 | 0.2 | Party-mode review hardened evidence schema, latency boundaries, p99 guidance, controls, and blocker routing. | Codex automation |
 | 2026-05-02 | 0.1 | Created ready-for-dev R10-A6 SignalR operational evidence pattern story. | Codex automation |
 
 ## Verification Status
