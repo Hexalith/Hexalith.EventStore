@@ -213,7 +213,7 @@ All 7 tasks remain `[x]`. The three Re-Review (2026-05-01) patches remain `[x]` 
 
 ### R11-A1b Closure (2026-05-01)
 
-Closed by `post-epic-11-r11a1b-incremental-projection-contract-decision` with chosen path `full-replay-permanent` at `<pending merge SHA>`. The orchestrator uses `GetEventsAsync(0)` by design for immediate and polling projection delivery, preserving rebuild-from-scratch domain handlers while checkpoint writes remain available for polling coordination and observability.
+Closed by `post-epic-11-r11a1b-incremental-projection-contract-decision` with chosen path `full-replay-permanent` at `7c7ce7e`. The orchestrator uses `GetEventsAsync(0)` by design for immediate and polling projection delivery, preserving rebuild-from-scratch domain handlers while checkpoint writes remain available for polling coordination and observability.
 
 ### File List
 
@@ -277,7 +277,7 @@ Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor (independent — prio
 ### Decision-Needed
 
 - [x] [Review][Decision] **Counter sample (and any rebuild-from-scratch projection handler) is silently corrupted by incremental delivery** — RESOLVED in current pass by reverting immediate delivery to full replay (`GetEventsAsync(0)`) while retaining checkpoint writes. Future incremental delivery remains gated on `post-epic-11-r11a1b-incremental-projection-contract-decision`.
-  **Closed by R11-A1b at `<pending merge SHA>`** with chosen path: `full-replay-permanent`.
+  **Closed by R11-A1b at `7c7ce7e`** with chosen path: `full-replay-permanent`.
 
 ### Patch
 

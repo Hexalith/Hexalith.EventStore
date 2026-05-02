@@ -132,6 +132,7 @@ ProjectionActor.ExecuteQueryAsync reads from DAPR actor state
 - `GetEventsAsync(long fromSequence)` returns `EventEnvelope[]` for events with sequence > `fromSequence`
 - Encapsulates DAPR actor state key format — projection infrastructure never knows the internal key layout
 - **Concurrency**: DAPR actors are single-threaded, so this call blocks command processing while executing. Mitigated by: (a) projection updates run after event publication and outside command persistence; (b) for high-throughput aggregates, use `RefreshIntervalMs > 0` to reduce trigger frequency; (c) the projection builder should not hold the actor proxy longer than necessary
+- **Stream length is unbounded**: under the full-replay contract `GetEventsAsync(0)` is `O(N)` in aggregate stream length. Operators should monitor stream length on hot aggregates; snapshotting is out-of-scope for the Epic 11 contract.
 - The projection builder maps the returned Server `EventEnvelope[]` to `ProjectionEventDto[]` before sending to the domain service
 
 ### Configuration

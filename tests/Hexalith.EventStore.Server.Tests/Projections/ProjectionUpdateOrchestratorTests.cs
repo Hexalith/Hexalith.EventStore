@@ -199,8 +199,6 @@ public class ProjectionUpdateOrchestratorTests {
     public async Task UpdateProjectionAsync_ImmediateDelivery_AlwaysReadsFullHistory() {
         // Arrange
         IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
-        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
-            .Returns(7);
         (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(checkpointTracker);
         var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
         _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -739,14 +737,14 @@ public class ProjectionUpdateOrchestratorTests {
             string json = request.Content is null
                 ? "{}"
                 : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            ProjectionRequest? projectionRequest = JsonSerializer.Deserialize<ProjectionRequest>(
-                json,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            ProjectionRequest? projectionRequest = JsonSerializer.Deserialize<ProjectionRequest>(json, JsonSerializerOptions.Web);
             int eventCount = projectionRequest?.Events.Length ?? 0;
-            string responseJson = JsonSerializer.Serialize(new {
-                projectionType = "counter-summary",
-                state = new { count = eventCount },
-            });
+            string responseJson = JsonSerializer.Serialize(
+                new {
+                    projectionType = "counter-summary",
+                    state = new { count = eventCount },
+                },
+                JsonSerializerOptions.Web);
             return new HttpResponseMessage(System.Net.HttpStatusCode.OK) {
                 Content = new StringContent(responseJson, Encoding.UTF8, "application/json"),
             };

@@ -1,6 +1,6 @@
 # Post-Epic-11 R11-A1b: Incremental Projection Contract Decision
 
-Status: review
+Status: done
 
 <!-- Source: post-epic-11-r11a1-checkpoint-tracked-projection-delivery.md — Re-Review (2026-05-01) Decision-Needed CRITICAL finding gating R11-A1 closure -->
 <!-- Source: epic-11-retro-2026-04-30.md — Action item R11-A1 (full replay vs incremental delivery) -->
@@ -461,8 +461,43 @@ GPT-5.5 Codex
 - Expected path-A delta: Tier 1 +0, Tier 2 +2. Equality holds: Tier 1 `788 = 788 + 0`; Tier 2 `1670 = 1668 + 2`.
 - Targeted red/green path: new orchestrator regression tests failed first on implementation mistakes, then passed after fixing the test harness; final targeted run was 2/2 PASS.
 
+### Review Findings (2026-05-02 /bmad-code-review)
+
+Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor (independent — priorities and severities reconciled by triage step).
+
+#### Decision-Needed
+
+- [x] [Review][Decision] **Design doc removed actor-blocking mitigation note for permanent full-replay** [`docs/superpowers/specs/2026-03-15-server-managed-projection-builder-design.md:131`] — RESOLVED (option 3 compromise): added one-line caveat `Stream length is unbounded: under the full-replay contract GetEventsAsync(0) is O(N) in aggregate stream length. Operators should monitor stream length on hot aggregates; snapshotting is out-of-scope for the Epic 11 contract.` Records the trade-off honestly without committing to a follow-up story that current operational signal does not justify.
+
+#### Patch
+
+- [x] [Review][Patch] **Dead mock setup `ReadLastDeliveredSequenceAsync(...).Returns(7)` paired with `DidNotReceiveWithAnyArgs`** [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs:509`] — RESOLVED: dead `Returns(7)` removed. Test pins `DidNotReceiveWithAnyArgs.ReadLastDeliveredSequenceAsync` cleanly. 33/33 ProjectionUpdateOrchestrator suite PASS.
+- [x] [Review][Patch] **`<pending merge SHA>` placeholder unresolved post-merge** [`_bmad-output/implementation-artifacts/post-epic-11-r11a1-checkpoint-tracked-projection-delivery.md`] — RESOLVED: both occurrences replaced with `7c7ce7e` (R11-A1b Closure block at `:216`, Decision-Needed `Closed by R11-A1b` row at `:280`). A5 row addendum did not include a merge SHA placeholder per AC A5 wording.
+- [x] [Review][Patch] **`JsonSerializerOptions` allocated per fake-HTTP call; `PropertyNameCaseInsensitive = true` masks orchestrator casing** [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs:735-752`] — RESOLVED: `CountingProjectionResponseHandler` now uses the framework-cached `JsonSerializerOptions.Web` for both deserialization (request body) and serialization (response body). Matches DAPR's outgoing wire shape for `ProjectionRequest`; eliminates per-call allocation and casing-tolerance mask.
+
+#### Defer
+
+- [x] [Review][Defer] Commit `7c7ce7e` subject `Enhance server-managed projection builder design and tests` lacks any Conventional Commits prefix per CLAUDE.md and AC C7 — immutable on `main`; logged here as a process lesson (path A target was `refactor(server):` or `docs:`).
+- [x] [Review][Defer] Commit `7c7ce7e` mixes the structural change with story-status flips, sprint-status YAML rewrite, full path-B / path-C task-box bulk-checks, and a substantive 51-line rewrite of unrelated story `post-epic-10-r10a2-redis-backplane-runtime-proof.md` (added/expanded ACs #1-#12, scope-boundary lines, and Tasks 0-6 sub-items). The R10-A2 spec rewrite was not gated through its own create-story flow — flag for retro and decide whether to revert/re-author under R10-A2's own track.
+- [x] [Review][Defer] Path-B and Path-C subitems in r11a1b's Tasks/Subtasks block are checked `[x]` while annotated "N/A: path A chosen" — future `grep "[x] Update \`ProjectionRequest.cs\`"` returns false positive. Convert to `[ ]` with `(N/A)` annotation in a future docs sweep.
+- [x] [Review][Defer] Test `UpdateProjectionAsync_RepeatTriggersOnSameAggregate_ProducesIdenticalProjectionState` uses sequential `await` despite the "Repeat triggers" name — does not exercise the per-aggregate semaphore. Rename or use `Task.WhenAll`.
+- [x] [Review][Defer] `events.Max(e => e.SequenceNumber)` at `ProjectionUpdateOrchestrator.cs:148` is safe today via the early-return at `:92` but would throw `InvalidOperationException` if a future filter empties the array between the guard and the `Max` call — silently dropping the post-write checkpoint save. Speculative; track for the next orchestrator refactor.
+- [x] [Review][Defer] No test covers the HTTP 4xx/5xx branch returned by the domain-service `/project` endpoint at `ProjectionUpdateOrchestrator.cs:117-118`.
+- [x] [Review][Defer] `JsonValueKind.Null or Undefined` guard at `ProjectionUpdateOrchestrator.cs:126` misses `JsonValueKind.String` empty payloads — `"state": ""` passes the guard, gets serialized into `ProjectionState.StateBytes`, and `GetState()` later throws on read.
+- [x] [Review][Defer] `httpClientFactory.CreateClient()` (no name) at `ProjectionUpdateOrchestrator.cs:116` has no test for the named-client wiring branch.
+- [x] [Review][Defer] `ProjectionUpdateOrchestrator.ProjectionLocks` is a `static` field; xUnit parallel tests targeting `TestIdentity.ActorId == "test-tenant:test-domain:agg-001"` share the semaphore. Consider unique aggregate ids per test or a reset hook.
+- [x] [Review][Defer] `capturedStates[1].StateBytes.ShouldBe(capturedStates[0].StateBytes)` is sequence-equality on `byte[]` today but silently flips to reference equality if `StateBytes` becomes `ReadOnlyMemory<byte>` or `ImmutableArray<byte>`.
+- [x] [Review][Defer] Commit `7c7ce7e` body claims `Modified the CounterProjectionHandler to support rebuilding projection state from scratch` but the diff is doc-comment-only (3 added XML lines) — misleading commit body; immutable history.
+
+#### Dismiss
+
+- Decision Record uses plain hyphen instead of em-dash in `Trigger A - observed need: R11-A1 closure gate` — Debug Log References record code-review parser tolerance verification; literal-string match risk acknowledged but not fired.
+- A4 test "tautology" claim — the differential `aggregateActor.GetEventsAsync(1).Returns([CreateTestEnvelope(2)])` stub means a regression to `GetEventsAsync(checkpoint)` would yield `count=1` vs `count=2`, so `capturedStates[1].StateBytes.ShouldBe(capturedStates[0].StateBytes)` would fail. The test pins regression at the orchestrator-mock layer per AC A4 explicit shape.
+- Dead `GetEventsAsync(1).Returns(...)` stub — same reason as above; the stub provides differential output that produces a state divergence under regression.
+
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---:|---|---|
 | 2026-05-01 | 1.0 | Implemented path A full-replay-permanent decision, pinned regressions, updated docs and parent closure state. | Codex |
+| 2026-05-02 | 1.1 | /bmad-code-review: 1 decision-needed, 3 patches, 11 deferred, 3 dismissed. Findings appended; deferred work mirrored to deferred-work.md. | Claude |
