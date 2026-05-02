@@ -28,7 +28,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-02T16:14:59+02:00' # R10-A3 done: code review applied (5 patches resolved, sanitized error + pruned rejoin)
+last_updated: '2026-05-02T18:20:29+02:00' # R10-A6 ready-for-dev: SignalR operational evidence pattern story created
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -127,7 +127,7 @@ development_status:
   post-epic-10-r10a2-redis-backplane-runtime-proof: done
   post-epic-10-r10a3-hub-group-authorization-decision: done
   post-epic-10-r10a5-client-reconnect-guidance: ready-for-dev
-  post-epic-10-r10a6-signalr-operational-evidence-pattern: backlog
+  post-epic-10-r10a6-signalr-operational-evidence-pattern: ready-for-dev
   post-epic-10-r10a7-redis-channel-isolation-policy: backlog
   post-epic-10-r10a8-r9-r10-follow-through-tracking: backlog
 
