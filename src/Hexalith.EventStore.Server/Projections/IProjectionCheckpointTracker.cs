@@ -9,6 +9,12 @@ public interface IProjectionCheckpointTracker {
     /// <summary>
     /// Reads the last successfully delivered event sequence for an aggregate.
     /// </summary>
+    /// <remarks>
+    /// Reserved for incremental projection delivery. R11-A1b pinned full-replay as the production contract
+    /// for both immediate and polling modes, so no in-tree caller invokes this in the delivery hot path.
+    /// Kept on the interface for forward-compat with a future incremental-delivery design and for
+    /// observability reads; do not introduce new callers without revisiting that design decision.
+    /// </remarks>
     /// <param name="identity">The aggregate identity.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>The last delivered sequence, or 0 when no checkpoint exists.</returns>

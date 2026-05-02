@@ -1,6 +1,6 @@
 # Post-Epic-11 R11-A2: Polling-Mode Product Behavior
 
-Status: review
+Status: in-progress
 
 <!-- Source: epic-11-retro-2026-04-30.md - Action item R11-A2 -->
 <!-- Source: epic-12-retro-2026-04-30.md - R12-A5 carry-forward backlog -->
@@ -97,6 +97,45 @@ This story is sequenced after R11-A1. Reuse the checkpoint/tracking boundary fro
   - [x] Update `docs/superpowers/specs/2026-03-15-server-managed-projection-builder-design.md` or developer docs to describe active polling mode.
   - [x] Record that polling mode introduces interval-delayed projection freshness and keeps at-least-once semantics.
   - [x] Run targeted tests and record results in this story's Dev Agent Record.
+
+### Review Findings
+
+Triple-layer code review (Blind Hunter / Edge Case Hunter / Acceptance Auditor) on diff `e2315a9..HEAD` covering polling-mode implementation. 18 unique findings after dedup: 3 decision-needed, 15 patch candidates, 3 deferred, 5 dismissed.
+
+**Decision-needed (3) — resolved 2026-05-02:**
+
+- [x] [Review][Decision] D1 — Tracker enumeration cost per tick — **Resolved: defer to scaling story.** The current cost is acceptable for the product scope (no perf SLA in AC); enumeration runs at the smallest configured interval. Recorded as R11A2-DF4 in `deferred-work.md`. To revisit if a real-world deployment exceeds ~1k tracked identities or pairs sub-second polling with multi-domain scopes.
+- [x] [Review][Decision] D2 — Polling-registration permanent loss — **Resolved: accept.** AC #3 explicitly states "Registration failure is logged and swallowed... a later event for the same identity may retry registration." Current behavior is spec-compliant: command processing remains fail-open, and the next event for the same aggregate retries `TrackIdentityAsync`. The pinning test codifies AC #3, not at-most-once-by-design. Missing test coverage for "retry after prior failure" tracked under P14.
+- [x] [Review][Decision] D3 — Dead `ReadLastDeliveredSequenceAsync` API — **Resolved: keep with `<remarks>` annotation.** `[Obsolete]` would cascade build failures across server tests under `TreatWarningsAsErrors`. Documentation note added at `IProjectionCheckpointTracker.cs:9-19` warns against introducing new callers without revisiting the R11-A1b full-replay decision. Stronger removal/Obsolete deferred to a future cleanup story when forward-compat intent is confirmed.
+
+**Patch — applied (8 of 15):**
+
+- [x] [Review][Patch] P1 — Race on `_nextDueByDomain` — **Applied.** Changed to `ConcurrentDictionary<string, DateTimeOffset>` with `GetOrAdd` in `IsDomainDue` and indexer-set in the post-loop schedule advancement [`src/Hexalith.EventStore.Server/Projections/ProjectionPollerService.cs:24,69-72,91-101`]
+- [x] [Review][Patch] P2 — Per-tick starvation — **Applied.** When `MaxIdentitiesPerTick` cap fires, `tickLimited=true` and the post-loop schedule advancement is skipped entirely. The next tick re-discovers the same domains and continues processing the unprocessed tail; duplicate delivery is absorbed by the at-least-once checkpoint contract [`ProjectionPollerService.cs:36,44-46,68-77`]
+- [x] [Review][Patch] P3 — `EnumerateTrackedIdentitiesAsync` exception aborts whole tick — **Applied.** Wrapped the `await foreach` in try/catch (OCE rethrows; other exceptions logged via new `EnumerationFailed` event id 1134) so a transient tracker failure does not skip the post-loop schedule advancement [`ProjectionPollerService.cs:38-67,79-82,143-147`]
+- [x] [Review][Patch] P6 — `DeliverProjectionAsync` interface footgun — **Applied.** Added `<remarks>` warning that this is an internal seam for `ProjectionPollerService` only and `[EditorBrowsable(EditorBrowsableState.Never)]` so IntelliSense hides the method from immediate-mode callers [`src/Hexalith.EventStore.Server/Projections/IProjectionUpdateOrchestrator.cs:18-37`]
+- [x] [Review][Patch] P7 — Silent disable when `DaprClient` missing — **Applied.** DI registration logs a startup `LogWarning` ("DaprClient is not registered; projection polling is disabled... Stage=ProjectionPollerDisabled") before substituting the no-op hosted service, so operators detect the misconfiguration even if discovery later logs "polling mode active" [`src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs:74-83`]
+- [x] [Review][Patch] P10 — `PeriodicTimer` cosplay — **Applied.** Replaced the disposable-after-first-tick `PeriodicTimer` with `Task.Delay`, which matches the actual semantics (per-call interval, no cross-tick cadence). Added an interval clamp (≤0 → 60s default) and OCE→`false` translation so the existing tick-source contract is preserved. XML doc records the at-least-once drift acceptance [`src/Hexalith.EventStore.Server/Projections/ProjectionPollerService.cs:158-179`]
+- [x] [Review][Patch] P11 — `TenantId`/`Domain` validation — **Applied.** Added `ArgumentException.ThrowIfNullOrWhiteSpace` for `TenantId`, `Domain`, `AggregateId`, plus an explicit check that `TenantId` and `Domain` do not contain `':'` (key separator) to prevent cross-scope key collisions and namespace injection. Validation throws inside `TrackIdentityAsync`, which the orchestrator already wraps in a fail-open catch [`src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs:128-145`]
+- [x] [Review][Patch] P12 — `AggregateId` non-empty validation — **Applied** as part of P11 [`ProjectionCheckpointTracker.cs:131`]
+- [x] [Review][Patch] P15 — `PeriodicTimer` interval ≤0 guard — **Applied** as part of P10 (clamp inside `PeriodicProjectionPollerTickSource.WaitForNextTickAsync`) [`ProjectionPollerService.cs:172-174`]
+
+**Patch — left as action items (6 of 15):**
+
+- [ ] [Review][Patch] P4 — `KeyedSemaphore` robustness gaps: (a) no `cancellationToken.ThrowIfCancellationRequested()` inside spin loop, (b) unbounded `SpinWait` with no `Task.Yield()` after threshold, (c) `Releaser.Dispose` does not catch `ObjectDisposedException` on race, (d) `Interlocked.Increment` overflow at `int.MaxValue` wraps refcount negative [`src/Hexalith.EventStore.Server/Projections/KeyedSemaphore.cs:38-46,74-80`]
+- [ ] [Review][Patch] P5 — Identity registration safety: (a) inner page reads in `TryAddScopeAsync`/`TryAddIdentityAsync` not ETag-guarded → race-duplicates, (b) cancellation between page-save and index-save leaves orphan page, (c) `MaxEtagRetries=3` exhaustion silently drops registration [`src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs:213-279,281-349`]
+- [ ] [Review][Patch] P8 — Tests use `TimeProvider.System` instead of `FakeTimeProvider` (requires adding `Microsoft.Extensions.TimeProvider.Testing` package reference) [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionPollerServiceTests.cs`]
+- [ ] [Review][Patch] P9 — `_activeIdentities` cleanup theoretical race — between `TryAdd` and `try` there is no async boundary, so OCE cannot intervene; finding kept for hardening but not blocking [`src/Hexalith.EventStore.Server/Projections/ProjectionPollerService.cs:48-67`]
+- [ ] [Review][Patch] P13 — Domain-casing normalization mismatch (Auditor finding): `ProjectionIdentityScope`/`ProjectionIdentity` records use default `Ordinal` equality while `ProjectionOptions.GetRefreshIntervalMs` and `_nextDueByDomain` use `OrdinalIgnoreCase`. Either canonicalize domain in `TrackIdentityAsync` (e.g., `ToLowerInvariant` before key derivation) or pin the upstream `AggregateIdentity` guarantee with a test [`ProjectionCheckpointTracker.cs`, `ProjectionPollerService.cs:23`]
+- [ ] [Review][Patch] P14 — Missing tests required by AC #11 / Task 6: (a) domain-casing dedup at tracker layer (links to P13), (b) registration retry-after-failure (prior failure → later success for same identity, links to D2 evidence), (c) pagination boundary at `IdentityPageSize=100`, (d) operator log assertions (`PollingWorkRegistered`, `IdentityDeliveryFailed`, `TickLimitReached`, `EnumerationFailed`)
+
+**Deferred (3) — pre-existing or out-of-scope:**
+
+- [x] [Review][Defer] W1 — `ProjectionUpdateOrchestrator.s_projectionLocks` static field shared across xUnit parallel tests [`ProjectionUpdateOrchestrator.cs:41`] — deferred, R11-A1b legacy cleanup, see deferred-work.md R11A1-ReRe-DF16
+- [x] [Review][Defer] W2 — `PollOnceAsync_SameIdentityAlreadyRunning_SkipsOverlap` synchronization is timing-dependent — deferred, passes today
+- [x] [Review][Defer] W3 — `ProjectionPollerService.ExecuteAsync` does not subscribe to `IOptionsMonitor.OnChange` — interval changes only take effect on next tick boundary — deferred, scope creep
+
+**Dismissed (5):** Events.Length order coupling (sequence-ordered by source); async enumerator dispose (compiler-handled); polling-mode OCE filter (already covered); unlock-duration metric finally (observability nicety, out of scope); DaprClient post-startup loss (fail-open absorbs).
 
 ## Dev Notes
 

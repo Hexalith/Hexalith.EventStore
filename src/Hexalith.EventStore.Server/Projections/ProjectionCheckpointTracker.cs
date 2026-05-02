@@ -127,6 +127,19 @@ public sealed class ProjectionCheckpointTracker(
     /// <inheritdoc/>
     public async Task TrackIdentityAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
+        ArgumentException.ThrowIfNullOrWhiteSpace(identity.TenantId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(identity.Domain);
+        ArgumentException.ThrowIfNullOrWhiteSpace(identity.AggregateId);
+
+        // Reject ':' in scope components — used as the state-key separator. Without this guard a malformed
+        // tenant or domain could collide across logical scopes (e.g. tenant "a:b" + domain "c" generates
+        // the same key as tenant "a" + domain "b:c"), or be used to inject a key prefix.
+        if (identity.TenantId.Contains(':', StringComparison.Ordinal)
+            || identity.Domain.Contains(':', StringComparison.Ordinal)) {
+            throw new ArgumentException(
+                "TenantId and Domain must not contain ':' — reserved as a projection-identity key separator.",
+                nameof(identity));
+        }
 
         ProjectionIdentityScope scope = new(identity.TenantId, identity.Domain);
         if (!await TryAddScopeAsync(scope, cancellationToken).ConfigureAwait(false)) {

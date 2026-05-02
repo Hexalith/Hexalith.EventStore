@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Server.Configuration;
@@ -70,10 +71,16 @@ public static class EventStoreServerServiceCollectionExtensions {
             .Validate(o => { o.Validate(); return true; }, "Projection configuration is invalid. All intervals must be >= 0 and domain keys must be non-empty.")
             .ValidateOnStart();
         _ = services.AddHostedService<ProjectionDiscoveryHostedService>();
-        _ = services.AddSingleton<IHostedService>(serviceProvider =>
-            serviceProvider.GetService<DaprClient>() is null
-                ? NoOpHostedService.Instance
-                : ActivatorUtilities.CreateInstance<ProjectionPollerService>(serviceProvider));
+        _ = services.AddSingleton<IHostedService>(serviceProvider => {
+            if (serviceProvider.GetService<DaprClient>() is null) {
+                ILogger<ProjectionPollerService>? log = serviceProvider.GetService<ILogger<ProjectionPollerService>>();
+                log?.LogWarning(
+                    "DaprClient is not registered; projection polling is disabled. Configured polling-mode domains will not deliver projections automatically until DaprClient is added to the container. Stage=ProjectionPollerDisabled");
+                return NoOpHostedService.Instance;
+            }
+
+            return ActivatorUtilities.CreateInstance<ProjectionPollerService>(serviceProvider);
+        });
         services.AddActors(options => {
             string? daprHttpPort = configuration["DAPR_HTTP_PORT"];
             if (!string.IsNullOrEmpty(daprHttpPort)) {

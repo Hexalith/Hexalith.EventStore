@@ -18,8 +18,21 @@ public interface IProjectionUpdateOrchestrator {
     /// <summary>
     /// Delivers projection work for a tracked polling identity, bypassing only the immediate-mode interval guard.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Internal seam — call from <see cref="ProjectionPollerService"/> only.</b>
+    /// </para>
+    /// <para>
+    /// This method exists to let the polling background service drive projection delivery without the
+    /// <c>RefreshIntervalMs &gt; 0</c> registration short-circuit applied by <see cref="UpdateProjectionAsync"/>.
+    /// Calling this from event publication or any other immediate-mode path defeats the polling-mode contract:
+    /// every command would deliver synchronously even for domains explicitly configured for batched polling delivery.
+    /// All non-poller callers MUST go through <see cref="UpdateProjectionAsync"/> instead.
+    /// </para>
+    /// </remarks>
     /// <param name="identity">The aggregate identity (tenant, domain, aggregateId).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
     Task DeliverProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default);
 }
