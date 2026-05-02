@@ -28,15 +28,15 @@ Current HEAD at story creation: `11298a5`.
 
 3. **The broadcast originates from a different instance.** Trigger ETag regeneration and SignalR broadcast from instance A's concrete endpoint or from a test-only instance-A hook. The proof must show the command/request path or explicit server-side broadcast path used to make instance A the origin. If Aspire service discovery or a reverse proxy prevents deterministic origin selection, implement a narrowly scoped test-only deterministic route or evidence hook rather than accepting ambiguous evidence. Any hook must be unavailable in production, must not change the public hub payload, and must be documented in the evidence.
 
-4. **Cross-instance delivery is observed.** The client connected to instance B receives exactly the expected signal for the joined projection/tenant after the instance A broadcast. The proof must include the received `projectionType`, `tenantId`, timestamp, connection target, broadcast origin, correlation/run id, and wait duration. Duplicate signals are allowed only if the evidence explains an at-least-once source; the primary assertion is that at least one valid cross-instance signal arrives within a bounded wait of no more than 10 seconds.
+4. **Cross-instance delivery is observed.** The client connected to instance B receives exactly the expected signal for the joined projection/tenant after the instance A broadcast. The proof must include the received `projectionType`, `tenantId`, timestamp, connection target, broadcast origin, correlation/run id, and wait duration. Because the public hub payload intentionally contains only `projectionType` and `tenantId`, the proof must prevent stale-message false positives by using a unique projection/tenant pair per run when the chosen trigger path allows it, or by explicitly draining/resetting the client receive buffer and proving no pre-trigger message was observed before the instance A broadcast. Duplicate signals are allowed only if the evidence explains an at-least-once source; the primary assertion is that at least one valid cross-instance signal arrives within a bounded wait of no more than 10 seconds.
 
 5. **The client re-query behavior is proven or explicitly bounded.** After receiving the signal, the proof either performs the expected projection re-query and records the response/ETag evidence, or records a bounded reason why this story only proves signal transport and leaves query refresh evidence to `post-epic-11-r11a3-apphost-projection-proof` / `post-epic-11-r11a4-valid-projection-round-trip`. Do not silently omit this part.
 
-6. **Redis/backplane evidence is concrete.** Capture evidence that the SignalR backplane is actually enabled in the runtime topology for both EventStore instances. Acceptable evidence includes the Aspire Redis resource name or Redis endpoint, runtime config dump from both instances, logs showing Redis backplane startup, DI/type evidence from the running instances, Redis pub/sub observation, or equivalent evidence. A static code citation alone does not satisfy this AC.
+6. **Redis/backplane evidence is concrete.** Capture evidence that the SignalR backplane is actually enabled in the runtime topology for both EventStore instances before the positive broadcast is triggered. Acceptable evidence includes the Aspire Redis resource name or Redis endpoint, runtime config dump from both instances, logs showing Redis backplane startup, DI/type evidence from the running instances, Redis pub/sub observation, or equivalent evidence. The proof must also record each instance's runtime identity and backplane readiness signal; a static code citation alone does not satisfy this AC.
 
 7. **Fail-open and local-only false positives are excluded.** The proof must include mandatory negative/control evidence showing no valid cross-instance delivery within the same bounded wait when the Redis backplane is disabled or isolated/unreachable, and must fail if the client is accidentally connected to the same instance that originated the broadcast. A single-process, single-instance, same-process multiple-hub, or shared-DI-container proof does not satisfy this story.
 
-8. **SignalR group and payload contract are pinned.** The proof uses one explicit projection/tenant pair and records the exact joined group string. The only public hub payload remains `ProjectionChanged(projectionType, tenantId)`: no projection state, ETags, aggregate IDs, command status, domain event body, PII, or serialized aggregate/read-model state may be added to the hub message for this story.
+8. **SignalR group and payload contract are pinned.** The proof uses one explicit projection/tenant pair and records the exact joined group string. If the proof uses a run-unique projection/tenant pair, the run id must be encoded only in those existing fields or in evidence metadata, never as an added hub payload field. The only public hub payload remains `ProjectionChanged(projectionType, tenantId)`: no projection state, ETags, aggregate IDs, command status, correlation/run id, domain event body, PII, or serialized aggregate/read-model state may be added to the hub message for this story.
 
 9. **Operator-facing failure behavior is recorded.** If Redis is unavailable or misconfigured, command/query processing and local single-instance operation remain fail-open. Evidence must capture the observable warning or diagnostic signal, whether the app starts, and whether local-only SignalR behavior is intentionally out of scope for cross-instance proof.
 
@@ -79,7 +79,7 @@ Current HEAD at story creation: `11298a5`.
   - [ ] 0.3 Identify how each EventStore instance gets the same Redis backplane connection string.
   - [ ] 0.4 Identify how the client will connect directly to instance B without load-balancer ambiguity.
   - [ ] 0.5 Identify how the broadcast will originate from instance A without relying on chance routing.
-  - [ ] 0.6 Pick the exact proof pair, for example `projectionType=counter` and `tenantId=tenant-a`, and record the joined group string.
+  - [ ] 0.6 Pick the exact proof pair, for example `projectionType=counter` and `tenantId=tenant-a`, and record the joined group string. Prefer a run-unique pair when the selected trigger path can support it; otherwise record the client-buffer drain/reset step used to exclude stale messages.
   - [ ] 0.7 Decide the CI/manual execution lane, command line, required services, port isolation, and cleanup expectations before writing the harness.
 
 - [ ] Task 1: Build or configure the multi-instance proof harness (AC: #1, #2, #3, #6, #7, #9, #11)
@@ -87,9 +87,10 @@ Current HEAD at story creation: `11298a5`.
   - [ ] 1.2 Ensure both instances have `EventStore__SignalR__Enabled=true`.
   - [ ] 1.3 Ensure both instances have the same real Redis backplane endpoint through `EventStore__SignalR__BackplaneRedisConnectionString` or `EVENTSTORE_SIGNALR_REDIS`.
   - [ ] 1.4 Capture both instance base URLs, resource/process/container names, process IDs or equivalent runtime identities, and the Redis endpoint used by the backplane.
-  - [ ] 1.5 Add mandatory negative/control paths that fail the proof if only one instance is present, if the backplane setting is absent, if Redis is disabled/isolated/unreachable, or if the client target equals the broadcast origin.
+  - [ ] 1.5 Add mandatory negative/control paths that fail the proof if only one instance is present, if the backplane setting is absent, if Redis is disabled/isolated/unreachable, if the client target equals the broadcast origin, or if a matching message arrives before the intentional instance-A trigger.
   - [ ] 1.6 If a test-only endpoint or service hook is required, gate it to Development/Test configuration and record why it is not available in production.
   - [ ] 1.7 Preserve fail-open command/query behavior when Redis is unavailable and capture the warning/diagnostic evidence.
+  - [ ] 1.8 Add a readiness gate that waits for both instances to report SignalR enabled, the same Redis backplane endpoint, and a distinct runtime identity before the client joins the group.
 
 - [ ] Task 2: Connect the instance-B SignalR client (AC: #2, #4, #8)
   - [ ] 2.1 Create a SignalR client targeting instance B's exact hub URL.
@@ -101,16 +102,16 @@ Current HEAD at story creation: `11298a5`.
 - [ ] Task 3: Trigger the instance-A broadcast (AC: #3, #4, #5)
   - [ ] 3.1 Prefer a real command/projection flow if deterministic instance A routing is available.
   - [ ] 3.2 If deterministic command routing is not available, add a narrowly scoped test-only endpoint or fixture-only service hook that invokes `IProjectionChangedBroadcaster` in instance A with the target projection/tenant.
-  - [ ] 3.3 If using a test-only hook, guard it so it is unavailable in production and explain why it does not change product behavior.
+  - [ ] 3.3 If using a test-only hook, guard it so it is unavailable in production, does not bypass normal hub group semantics, records the instance-A runtime identity, and explains why it does not change product behavior.
   - [ ] 3.4 After broadcast, wait for the instance-B client receipt with a bounded timeout no longer than 10 seconds.
   - [ ] 3.5 Perform the projection re-query or explicitly record why query refresh is bounded to sibling projection-proof stories.
 
 - [ ] Task 4: Assert and record evidence (AC: #4, #6, #7, #8, #9, #10)
   - [ ] 4.1 Assert the received payload has the expected `projectionType` and `tenantId`.
   - [ ] 4.2 Assert the client connection target is instance B and the broadcast origin is instance A.
-  - [ ] 4.3 Assert the proof used a real Redis backplane endpoint and not only the default local hub lifetime manager.
+  - [ ] 4.3 Assert the proof used a real Redis backplane endpoint and not only the default local hub lifetime manager; include both-instance runtime evidence gathered after startup, not only static configuration.
   - [ ] 4.4 Record Redis/backplane startup evidence from logs, config, runtime introspection, or Redis observation.
-  - [ ] 4.5 Record negative/control outcomes for disabled or isolated/unreachable Redis and accidental same-instance routing.
+  - [ ] 4.5 Record negative/control outcomes for disabled or isolated/unreachable Redis, accidental same-instance routing, and pre-trigger stale-message detection.
   - [ ] 4.6 Save an evidence markdown file under `_bmad-output/test-artifacts/post-epic-10-r10a2-redis-backplane-runtime-proof/` using the required dated schema from AC #10.
 
 - [ ] Task 5: Verification gates (AC: #1-#12)
@@ -136,6 +137,9 @@ Current HEAD at story creation: `11298a5`.
 - AppHost changes must preserve existing Aspire conventions. Avoid persistent containers for this proof unless the implementation records why state persistence is required and how cleanup is handled.
 - Prefer an Aspire/AppHost-managed Redis resource or the app model's existing Redis wiring for the proof. An ad hoc external Redis server is acceptable only if the evidence records why Aspire wiring could not provide deterministic A/B proof.
 - SignalR remains a notification mechanism, not a data consistency mechanism. Clients must re-query bounded read models after a signal and must tolerate missed, duplicated, or delayed signals; this story may prove transport without claiming replay or catch-up semantics.
+- The proof must correlate a received signal to the current run without expanding the public hub payload. Prefer run-unique projection/tenant values when valid for the chosen harness; otherwise drain the client receive buffer before triggering and record the zero-message pre-trigger observation.
+- Runtime identity evidence must distinguish process/resource identity from logical hub group identity. A proof that cannot demonstrate instance A and instance B are distinct processes/resources must fail as ambiguous rather than claiming Redis backplane delivery.
+- If Redis pub/sub channel names, database index, or channel prefix are observable, record them as evidence only. Do not decide the broader Redis channel isolation policy here; that remains scoped to `post-epic-10-r10a7-redis-channel-isolation-policy`.
 
 ### Current-Code Intelligence
 
@@ -204,6 +208,7 @@ To be filled by dev agent.
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-02 | 0.3 | Advanced elicitation hardened stale-message controls, runtime identity readiness, and Redis evidence boundaries. | Codex automation |
 | 2026-05-01 | 0.2 | Party-mode review applied: tightened deterministic A/B topology, Redis negative controls, evidence schema, payload boundary, and test-hook isolation. | Codex automation |
 | 2026-05-01 | 0.1 | Created ready-for-dev R10-A2 Redis backplane runtime proof story. | Codex automation |
 
@@ -236,6 +241,39 @@ Changes applied:
 Findings deferred:
 
 - None. All party-mode findings were story-hardening clarifications and did not change product scope, architecture policy, or cross-story contracts.
+
+Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+Date: 2026-05-02T10:35:17+02:00
+
+Selected story key: `post-epic-10-r10a2-redis-backplane-runtime-proof`
+
+Command/skill invocation used: `/bmad-advanced-elicitation post-epic-10-r10a2-redis-backplane-runtime-proof`
+
+Batch 1 method names: Red Team vs Blue Team; Failure Mode Analysis; Pre-mortem Analysis; Self-Consistency Validation; Architecture Decision Records
+
+Reshuffled Batch 2 method names: Security Audit Personas; Chaos Monkey Scenarios; Reverse Engineering; Occam's Razor Application; Lessons Learned Extraction
+
+Findings summary:
+
+- The signal payload intentionally lacks a run id, so the story needed an explicit stale-message false-positive control without expanding the public hub contract.
+- Redis backplane evidence needed a readiness gate from both instances before broadcast, not only post-hoc logs or static configuration.
+- Test-only broadcast hooks needed stronger wording around runtime identity evidence and production unavailability.
+- Redis channel isolation details may be useful evidence, but the policy decision belongs to R10-A7 and must not be absorbed by this proof story.
+
+Changes applied:
+
+- Tightened AC #4 and AC #8 to require run-unique projection/tenant values when possible, or an explicit pre-trigger receive-buffer drain/reset when not possible, while preserving the two-field public hub payload.
+- Tightened AC #6 and Tasks 1/4 to require both-instance runtime identity and backplane readiness evidence before the positive broadcast.
+- Expanded negative controls to include pre-trigger stale-message detection and ambiguous same-instance routing.
+- Added architecture guardrails for runtime identity evidence and Redis channel observations without changing broader channel-isolation policy.
+
+Findings deferred:
+
+- Redis channel/database/prefix isolation policy remains deferred to `post-epic-10-r10a7-redis-channel-isolation-policy`.
+- Whether the production app exposes any diagnostic identity endpoint remains a dev-story implementation choice; this story only permits narrowly scoped Development/Test proof hooks.
 
 Final recommendation: ready-for-dev
 
