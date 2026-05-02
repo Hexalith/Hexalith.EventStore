@@ -28,7 +28,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-02T13:00:00+02:00'
+last_updated: '2026-05-02T14:30:00+02:00'
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -151,7 +151,7 @@ development_status:
   post-epic-11-r11a1b-incremental-projection-contract-decision: done
   post-epic-11-r11a2-polling-mode-product-behavior: done
   post-epic-11-r11a3-apphost-projection-proof: done
-  post-epic-11-r11a4-valid-projection-round-trip: review
+  post-epic-11-r11a4-valid-projection-round-trip: done
 
   # Epic 13: Documentation & Developer Onboarding
   epic-13: done

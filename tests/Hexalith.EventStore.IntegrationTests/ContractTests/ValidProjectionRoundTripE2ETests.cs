@@ -21,6 +21,7 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 public class ValidProjectionRoundTripE2ETests {
     private static readonly TimeSpan s_projectionPollTimeout = TimeSpan.FromSeconds(45);
     private static readonly TimeSpan s_projectionPollInterval = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan s_statusPollTimeout = TimeSpan.FromSeconds(90);
 
     private readonly AspireContractTestFixture _fixture;
 
@@ -34,6 +35,9 @@ public class ValidProjectionRoundTripE2ETests {
         const string queryType = "get-counter-status";
         string aggregateId = $"valid-projection-{Guid.NewGuid():N}";
 
+        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        CancellationToken ct = cts.Token;
+
         string correlationId = await ContractTestHelpers.SubmitCommandAndGetCorrelationIdWithRetryAsync(
             _fixture.EventStoreClient,
             tenant,
@@ -44,7 +48,8 @@ public class ValidProjectionRoundTripE2ETests {
         JsonElement status = await ContractTestHelpers.PollUntilTerminalStatusAsync(
             _fixture.EventStoreClient,
             correlationId,
-            tenant);
+            tenant,
+            timeout: s_statusPollTimeout);
 
         status.GetProperty("status").GetString().ShouldBe(
             "Completed",
@@ -57,7 +62,8 @@ public class ValidProjectionRoundTripE2ETests {
             aggregateId,
             projectionType,
             queryType,
-            expectedCount: 1);
+            expectedCount: 1,
+            ct);
 
         projected.ETag.ShouldNotBeNullOrWhiteSpace(
             $"Successful projection query should include ETag. Response body: {projected.Body}");
@@ -71,21 +77,21 @@ public class ValidProjectionRoundTripE2ETests {
             projected.ETag);
 
         using HttpResponseMessage cachedResponse = await _fixture.EventStoreClient
-            .SendAsync(cachedRequest);
+            .SendAsync(cachedRequest, ct);
 
         if (cachedResponse.StatusCode == HttpStatusCode.NotModified) {
             return;
         }
 
-        string cachedBody = await cachedResponse.Content.ReadAsStringAsync();
+        string cachedBody = await cachedResponse.Content.ReadAsStringAsync(ct);
         cachedResponse.StatusCode.ShouldBe(
             HttpStatusCode.OK,
             $"Expected cached query to return 304 or 200 with unchanged count. Body: {cachedBody}");
 
         int cachedCount = ParseCountFromQueryBody(cachedBody);
         cachedCount.ShouldBe(
-            1,
-            $"Expected cached-query fallback response to preserve projected count. Body: {cachedBody}");
+            projected.ParsedCount!.Value,
+            $"Expected cached-query fallback response to preserve previously projected count {projected.ParsedCount}. Body: {cachedBody}");
     }
 
     private async Task<QueryPollResult> PollUntilProjectedCountAsync(
@@ -94,7 +100,8 @@ public class ValidProjectionRoundTripE2ETests {
         string aggregateId,
         string projectionType,
         string queryType,
-        int expectedCount) {
+        int expectedCount,
+        CancellationToken cancellationToken) {
         DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(s_projectionPollTimeout);
         QueryPollResult lastResult = new(
             StatusCode: 0,
@@ -104,6 +111,8 @@ public class ValidProjectionRoundTripE2ETests {
             ETag: null);
 
         while (DateTimeOffset.UtcNow < deadline) {
+            cancellationToken.ThrowIfCancellationRequested();
+
             using HttpRequestMessage request = CreateProjectionQueryRequest(
                 tenant,
                 domain,
@@ -112,9 +121,9 @@ public class ValidProjectionRoundTripE2ETests {
                 queryType);
 
             using HttpResponseMessage response = await _fixture.EventStoreClient
-                .SendAsync(request).ConfigureAwait(false);
+                .SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-            string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             int? parsedCount = null;
             string? parseError = null;
 
@@ -138,7 +147,7 @@ public class ValidProjectionRoundTripE2ETests {
                 return lastResult;
             }
 
-            await Task.Delay(s_projectionPollInterval).ConfigureAwait(false);
+            await Task.Delay(s_projectionPollInterval, cancellationToken).ConfigureAwait(false);
         }
 
         throw new ShouldAssertException(

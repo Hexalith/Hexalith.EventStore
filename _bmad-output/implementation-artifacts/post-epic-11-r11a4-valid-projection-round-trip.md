@@ -1,6 +1,6 @@
 # Post-Epic-11 R11-A4: Valid Projection Round-Trip
 
-Status: review
+Status: done
 
 <!-- Source: epic-11-retro-2026-04-30.md - Action item R11-A4 -->
 <!-- Source: epic-12-retro-2026-04-30.md - R12-A5 carry-forward backlog -->
@@ -84,6 +84,17 @@ This story adds that focused proof. It should be an integration-test/runbook sto
   - [x] `dotnet test tests/Hexalith.EventStore.IntegrationTests --filter "FullyQualifiedName~ValidProjectionRoundTripE2ETests"`
   - [x] If helper changes touch shared contract-test helpers, also run the affected existing tests, especially `ProjectionMalformedResponseE2ETests` and `CommandLifecycleTests`.
   - [x] Record command output, environment caveats, and any infrastructure blockers in the Dev Agent Record.
+
+### Review Findings
+
+Code review on 2026-05-02 (commit `8d5daa3`). Three review layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor. 3 patches, 3 deferred, ~12 dismissed.
+
+- [x] [Review][Patch] Status-poll timeout (30s default) shorter than projection-poll budget (45s) — `tests/Hexalith.EventStore.IntegrationTests/ContractTests/ValidProjectionRoundTripE2ETests.cs:36-47` and `tests/Hexalith.EventStore.IntegrationTests/Helpers/ContractTestHelpers.cs:18`. **Applied 2026-05-02**: added `s_statusPollTimeout = 90s` and pass it explicitly to `PollUntilTerminalStatusAsync(..., timeout: s_statusPollTimeout)`.
+- [x] [Review][Patch] No CancellationToken on async I/O in poll loop — `tests/Hexalith.EventStore.IntegrationTests/ContractTests/ValidProjectionRoundTripE2ETests.cs:114-117, 141`. **Applied 2026-05-02**: introduced per-test `CancellationTokenSource(TimeSpan.FromMinutes(3))` matching `ChaosResilienceTests` convention, threaded the token through `PollUntilProjectedCountAsync` and the cached-query `SendAsync`/`ReadAsStringAsync`/`Task.Delay`, and added `cancellationToken.ThrowIfCancellationRequested()` at the top of the poll loop.
+- [x] [Review][Patch] Cached-query fallback compares to literal `1` instead of previously observed count — `tests/Hexalith.EventStore.IntegrationTests/ContractTests/ValidProjectionRoundTripE2ETests.cs:85-88`. **Applied 2026-05-02**: assertion now reads `cachedCount.ShouldBe(projected.ParsedCount!.Value, ...)` and the failure message echoes the previously observed count.
+- [x] [Review][Defer] `PollUntilTerminalStatusAsync` `TimeoutException` does not include the structured terminal status JSON shape AC #3 prescribes — `tests/Hexalith.EventStore.IntegrationTests/Helpers/ContractTestHelpers.cs:159` — deferred, pre-existing helper behavior; not the typical failure path.
+- [x] [Review][Defer] `ContractTestHelpers.CreateQueryRequest` still cannot serialize `ProjectionType` and `EntityId` — `tests/Hexalith.EventStore.IntegrationTests/Helpers/ContractTestHelpers.cs:191-218` — deferred, spec Task 3 wording "If reusing... extend that helper" allowed the local-builder sidestep this story chose; future reuse may copy the deficient helper.
+- [x] [Review][Defer] Polling deadline uses non-monotonic UTC clock (`DateTimeOffset.UtcNow`) — `tests/Hexalith.EventStore.IntegrationTests/ContractTests/ValidProjectionRoundTripE2ETests.cs:98, 106` — deferred, pre-existing pattern shared with many existing tests; project-wide sweep candidate.
 
 ## Dev Notes
 
