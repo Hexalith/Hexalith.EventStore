@@ -127,7 +127,7 @@ public class SecretsProtectionTests {
 
         // Patterns for hardcoded secrets in C# string literals
         Regex hardcodedSecretPattern = new(
-            @"""[^""]*(?:password|secret|connectionstring|apikey|signing.?key)\s*[=:]\s*[^""]{8,}""",
+            @"""[^""\r\n]*(?:password|secret|connectionstring|apikey|signing.?key)\s*[=:]\s*[^""\r\n]{8,}""",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         foreach (string csFile in csFiles) {

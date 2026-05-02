@@ -1,5 +1,8 @@
 using System.Collections.Concurrent;
 
+using Hexalith.EventStore.Authorization;
+
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 
@@ -8,8 +11,8 @@ namespace Hexalith.EventStore.SignalRHub;
 /// <summary>
 /// SignalR hub for real-time projection change notifications.
 /// Clients join groups by projection type and tenant to receive targeted "changed" signals.
-/// Production deployments SHOULD add [Authorize] to this class and configure JWT via query string.
 /// </summary>
+[Authorize]
 public partial class ProjectionChangedHub {
     /// <summary>
     /// The hub endpoint path. Hardcoded — no valid reason to make configurable.
@@ -21,6 +24,7 @@ public partial class ProjectionChangedHub {
 /// SignalR hub implementation with group management and structured logging.
 /// </summary>
 public partial class ProjectionChangedHub(
+    ITenantValidator tenantValidator,
     IOptions<SignalROptions> options,
     ILogger<ProjectionChangedHub> logger) : Hub<IProjectionChangedClient> {
     private static readonly ConcurrentDictionary<string, HashSet<string>> _connectionGroups = new();
@@ -38,6 +42,29 @@ public partial class ProjectionChangedHub(
         // Defense-in-depth: colons are reserved as group name separator
         if (projectionType.Contains(':') || tenantId.Contains(':')) {
             throw new HubException("projectionType and tenantId must not contain colons.");
+        }
+
+        if (Context.User?.Identity?.IsAuthenticated != true) {
+            throw new HubException("Authentication is required to join projection change groups.");
+        }
+
+        TenantValidationResult tenantValidation;
+        try {
+            tenantValidation = await tenantValidator
+                .ValidateAsync(Context.User, tenantId, Context.ConnectionAborted)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            Log.TenantValidatorFailed(logger, ex, Context.ConnectionId);
+            throw new HubException("Tenant authorization unavailable.");
+        }
+
+        if (!tenantValidation.IsAuthorized) {
+            Log.TenantAuthorizationDenied(logger, Context.ConnectionId, tenantValidation.Reason ?? "(no reason)");
+            throw new HubException("Tenant authorization failed.");
         }
 
         string groupName = $"{projectionType}:{tenantId}";
@@ -121,5 +148,13 @@ public partial class ProjectionChangedHub(
         [LoggerMessage(EventId = 1083, Level = LogLevel.Debug,
             Message = "SignalR client disconnected: {ConnectionId}, ExceptionType: {ExceptionType}")]
         public static partial void ClientDisconnected(ILogger logger, string connectionId, string? exceptionType);
+
+        [LoggerMessage(EventId = 1084, Level = LogLevel.Warning,
+            Message = "SignalR client {ConnectionId} tenant authorization denied: {Reason}")]
+        public static partial void TenantAuthorizationDenied(ILogger logger, string connectionId, string reason);
+
+        [LoggerMessage(EventId = 1085, Level = LogLevel.Error,
+            Message = "Tenant validator failed for SignalR connection {ConnectionId}")]
+        public static partial void TenantValidatorFailed(ILogger logger, Exception exception, string connectionId);
     }
 }

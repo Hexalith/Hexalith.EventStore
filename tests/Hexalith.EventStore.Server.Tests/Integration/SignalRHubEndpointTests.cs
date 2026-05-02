@@ -15,12 +15,28 @@ public class SignalRHubEndpointTests : IClassFixture<SignalRHubWebApplicationFac
     public SignalRHubEndpointTests(SignalRHubWebApplicationFactory factory) => _factory = factory;
 
     [Fact]
-    public async Task NegotiateEndpoint_WhenSignalREnabled_IsHostedAtExpectedPath() {
+    public async Task NegotiateEndpoint_WhenSignalREnabled_RejectsAnonymousRequest() {
         using HttpClient client = _factory.CreateClient();
         using HttpRequestMessage request = new(HttpMethod.Post, $"{ProjectionChangedHub.HubPath}/negotiate?negotiateVersion=1") {
             Content = new StringContent(string.Empty),
         };
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+        HttpResponseMessage response = await client.SendAsync(request);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task NegotiateEndpoint_WhenSignalREnabled_AllowsAuthenticatedRequest() {
+        using HttpClient client = _factory.CreateClient();
+        using HttpRequestMessage request = new(HttpMethod.Post, $"{ProjectionChangedHub.HubPath}/negotiate?negotiateVersion=1") {
+            Content = new StringContent(string.Empty),
+        };
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            TestJwtHelper.GenerateToken(tenants: ["acme"]));
 
         HttpResponseMessage response = await client.SendAsync(request);
 

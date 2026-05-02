@@ -1,6 +1,6 @@
 # Post-Epic-10 R10-A3: Hub Group Authorization Decision
 
-Status: ready-for-dev
+Status: done
 
 <!-- Source: epic-10-retro-2026-05-01.md R10-A3 -->
 <!-- Source: sprint-change-proposal-2026-05-01-epic-10-retro-cleanup.md Proposal 3 -->
@@ -67,48 +67,48 @@ The Epic 10 retrospective records this as R10-A3: hub group join lacks a tenant-
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline and decision framing (AC: #1, #2, #6)
-  - [ ] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
-  - [ ] 0.2 Inspect current hub negotiate and method invocation behavior with SignalR enabled.
-  - [ ] 0.3 Confirm whether authenticated hub connections receive transformed `eventstore:tenant` claims.
-  - [ ] 0.4 Add a Dev Agent Record decision block with the chosen path and rationale before source/test edits. Party-mode recommends `enforce-tenant-claims`; `accepted-signal-only-risk` requires explicit product/security risk acceptance.
-  - [ ] 0.5 If the decision is accepted risk, record a dated revisit trigger tied to a production milestone or security review, not an open-ended "later".
+- [x] Task 0: Baseline and decision framing (AC: #1, #2, #6)
+  - [x] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
+  - [x] 0.2 Inspect current hub negotiate and method invocation behavior with SignalR enabled.
+  - [x] 0.3 Confirm whether authenticated hub connections receive transformed `eventstore:tenant` claims.
+  - [x] 0.4 Add a Dev Agent Record decision block with the chosen path and rationale before source/test edits. Party-mode recommends `enforce-tenant-claims`; `accepted-signal-only-risk` requires explicit product/security risk acceptance.
+  - [x] 0.5 If the decision is accepted risk, record a dated revisit trigger tied to a production milestone or security review, not an open-ended "later".
 
-- [ ] Task 1: Implement or document the authorization decision (AC: #3, #4, #5, #6, #7)
-  - [ ] 1.1 If enforcing, add `[Authorize]` or equivalent policy to the hub or `JoinGroup`.
-  - [ ] 1.2 If enforcing, preserve the required failure order: null/whitespace and colon validation -> authenticated user required -> tenant authorization -> quota check -> `_connectionGroups` mutation -> `Groups.AddToGroupAsync` -> rollback on add failure.
-  - [ ] 1.3 If enforcing, reuse `ITenantValidator`/`ClaimsTenantValidator` semantics or document any intentional difference.
-  - [ ] 1.4 If accepting risk, add the accepted-risk record with explicit mitigation and revisit trigger, without code changes that pretend to enforce authorization.
-  - [ ] 1.5 Preserve current exception shape where practical; use `HubException` for caller-visible tenant-denial join failures unless ASP.NET Core authorization naturally returns the failure. Do not silently no-op unauthorized joins.
-  - [ ] 1.6 If enforcing, pass the hub connection cancellation token to tenant validation and keep authorization failures out of the group-name tracking path.
+- [x] Task 1: Implement or document the authorization decision (AC: #3, #4, #5, #6, #7)
+  - [x] 1.1 If enforcing, add `[Authorize]` or equivalent policy to the hub or `JoinGroup`.
+  - [x] 1.2 If enforcing, preserve the required failure order: null/whitespace and colon validation -> authenticated user required -> tenant authorization -> quota check -> `_connectionGroups` mutation -> `Groups.AddToGroupAsync` -> rollback on add failure.
+  - [x] 1.3 If enforcing, reuse `ITenantValidator`/`ClaimsTenantValidator` semantics or document any intentional difference.
+  - [x] 1.4 If accepting risk, add the accepted-risk record with explicit mitigation and revisit trigger, without code changes that pretend to enforce authorization.
+  - [x] 1.5 Preserve current exception shape where practical; use `HubException` for caller-visible tenant-denial join failures unless ASP.NET Core authorization naturally returns the failure. Do not silently no-op unauthorized joins.
+  - [x] 1.6 If enforcing, pass the hub connection cancellation token to tenant validation and keep authorization failures out of the group-name tracking path.
 
-- [ ] Task 2: Preserve group and client behavior (AC: #7, #8)
-  - [ ] 2.1 Verify colon validation still rejects `projectionType` or `tenantId` containing `:`.
-  - [ ] 2.2 Verify denied authorization does not create a `_connectionGroups` entry, call `Groups.AddToGroupAsync`, or consume per-connection group quota.
-  - [ ] 2.3 Verify failed `Groups.AddToGroupAsync` rollback still works after authorization changes.
-  - [ ] 2.4 Verify `LeaveGroup` and disconnect cleanup still remove tracked groups.
-  - [ ] 2.5 If the client helper needs token guidance or behavior change, keep it narrowly scoped to token supply and rejoin error visibility. If the client helper does not change, explicitly record that reconnect behavior remains unchanged and covered by existing behavior.
-  - [ ] 2.6 Verify the same connection can still join an allowed tenant after one or more denied joins.
+- [x] Task 2: Preserve group and client behavior (AC: #7, #8)
+  - [x] 2.1 Verify colon validation still rejects `projectionType` or `tenantId` containing `:`.
+  - [x] 2.2 Verify denied authorization does not create a `_connectionGroups` entry, call `Groups.AddToGroupAsync`, or consume per-connection group quota.
+  - [x] 2.3 Verify failed `Groups.AddToGroupAsync` rollback still works after authorization changes.
+  - [x] 2.4 Verify `LeaveGroup` and disconnect cleanup still remove tracked groups.
+  - [x] 2.5 If the client helper needs token guidance or behavior change, keep it narrowly scoped to token supply and rejoin error visibility. If the client helper does not change, explicitly record that reconnect behavior remains unchanged and covered by existing behavior.
+  - [x] 2.6 Verify the same connection can still join an allowed tenant after one or more denied joins.
 
-- [ ] Task 3: Add focused test coverage (AC: #3-#9)
-  - [ ] 3.1 Add allowed-tenant `JoinGroup` coverage.
-  - [ ] 3.2 Add wrong-tenant and no-tenant-claims denial coverage that asserts no group add, no group tracking, and no quota consumption.
-  - [ ] 3.3 Add global-admin coverage for the chosen rule, including the case-sensitive tenant comparison baseline for non-admin users.
-  - [ ] 3.4 Add anonymous negotiate or anonymous hub-method coverage for the chosen hub authorization posture in hosted endpoint tests.
-  - [ ] 3.5 Add colon-validation precedence coverage proving malformed group parts fail before auth/quota side effects.
-  - [ ] 3.6 Add a same-connection denial-then-allowed test to prove authorization denial did not poison quota or tracking state.
-  - [ ] 3.7 Re-run existing SignalR hub/client tests touched by the change.
+- [x] Task 3: Add focused test coverage (AC: #3-#9)
+  - [x] 3.1 Add allowed-tenant `JoinGroup` coverage.
+  - [x] 3.2 Add wrong-tenant and no-tenant-claims denial coverage that asserts no group add, no group tracking, and no quota consumption.
+  - [x] 3.3 Add global-admin coverage for the chosen rule, including the case-sensitive tenant comparison baseline for non-admin users.
+  - [x] 3.4 Add anonymous negotiate or anonymous hub-method coverage for the chosen hub authorization posture in hosted endpoint tests.
+  - [x] 3.5 Add colon-validation precedence coverage proving malformed group parts fail before auth/quota side effects.
+  - [x] 3.6 Add a same-connection denial-then-allowed test to prove authorization denial did not poison quota or tracking state.
+  - [x] 3.7 Re-run existing SignalR hub/client tests touched by the change.
 
-- [ ] Task 4: Verification gates (AC: #1-#10)
-  - [ ] 4.1 Run `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --no-restore --filter "FullyQualifiedName~SignalR|FullyQualifiedName~ClaimsTenantValidator|FullyQualifiedName~EventStoreClaimsTransformation"`.
-  - [ ] 4.2 If client helper code changed, run `dotnet test tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj --no-restore`.
-  - [ ] 4.3 Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
-  - [ ] 4.4 If Aspire/runtime proof is attempted, capture exact commands and blockers in the Dev Agent Record; runtime proof is helpful but not required unless the implementation depends on hosted authentication behavior.
+- [x] Task 4: Verification gates (AC: #1-#10)
+  - [x] 4.1 Run `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --no-restore --filter "FullyQualifiedName~SignalR|FullyQualifiedName~ClaimsTenantValidator|FullyQualifiedName~EventStoreClaimsTransformation"`.
+  - [x] 4.2 If client helper code changed, run `dotnet test tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj --no-restore`.
+  - [x] 4.3 Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
+  - [x] 4.4 If Aspire/runtime proof is attempted, capture exact commands and blockers in the Dev Agent Record; runtime proof is helpful but not required unless the implementation depends on hosted authentication behavior.
 
-- [ ] Task 5: Story bookkeeping (AC: #10)
-  - [ ] 5.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
-  - [ ] 5.2 Move this story and only this story from `ready-for-dev` to `review` at dev handoff.
-  - [ ] 5.3 Leave R10-A2/R10-A5/R10-A6/R10-A7/R10-A8 status rows unchanged.
+- [x] Task 5: Story bookkeeping (AC: #10)
+  - [x] 5.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
+  - [x] 5.2 Move this story and only this story from `ready-for-dev` to `review` at dev handoff.
+  - [x] 5.3 Leave R10-A2/R10-A5/R10-A6/R10-A7/R10-A8 status rows unchanged.
 
 ## Dev Notes
 
@@ -179,23 +179,65 @@ The Epic 10 retrospective records this as R10-A3: hub group join lacks a tenant-
 
 ### Agent Model Used
 
-To be filled by dev agent.
+GPT-5 Codex
 
 ### Decision Record
 
-To be filled by dev agent. Required value: `enforce-tenant-claims` or `accepted-signal-only-risk`.
+Decision: `enforce-tenant-claims`
+
+Decision owner/accepting role: Dev-story implementer acting on the party-mode architecture/security recommendation for tenant-scoped real-time notifications.
+
+Evidence inspected before source/test edits:
+
+- Current HEAD at baseline: `5753f796035019a7b3883e1bd69018e5ea5759f9`.
+- Story status was `ready-for-dev` in `sprint-status.yaml` before this dev-story run moved it to `in-progress`.
+- Aspire baseline was started with `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`; the Aspire resource list showed `eventstore`, `eventstore-admin`, `sample`, `sample-blazor-ui`, `tenants`, `statestore`, and `pubsub` running and healthy.
+- Runtime anonymous negotiate evidence: `POST http://localhost:8080/hubs/projection-changes/negotiate?negotiateVersion=1` returned `200 OK` with SignalR negotiate JSON before authorization changes, proving the hosted hub negotiate endpoint was anonymously reachable when SignalR was enabled.
+- Source/method invocation evidence: `ProjectionChangedHub` had no `[Authorize]`, `Program.cs` mapped the hub after `UseAuthentication()` and `UseAuthorization()`, and direct hub tests showed `JoinGroup("order-list", "acme")` called `Groups.AddToGroupAsync` without tenant authorization.
+- Claim transformation evidence: `EventStoreClaimsTransformation` maps JWT `tenants`, `tenant_id`, and `tid` into normalized `eventstore:tenant` claims, and `ConfigureJwtBearerOptions` preserves inbound JWT claim names.
+- Validator evidence: `ClaimsTenantValidator` uses global-admin bypass, `eventstore:tenant` claims, no-claim denial, and ordinal case-sensitive tenant comparison through the existing `ITenantValidator` abstraction.
+- Client token evidence: `EventStoreSignalRClientOptions.AccessTokenProvider` already wires SignalR bearer-token supply through `HttpConnectionOptions.AccessTokenProvider`; no custom hub method token parameter is needed.
+- Hosted behavior evidence source: baseline runtime proof covered anonymous negotiate; method mutation behavior came from source and direct hub unit tests; transformed tenant claims were confirmed through authentication/claims-transformation source and existing tests, with hosted authenticated coverage added by this story.
+
+Rationale: tenant group names expose tenant/projection activity and can trigger unauthorized refresh behavior. The existing platform already has JWT authentication, normalized `eventstore:tenant` claims, and `ITenantValidator` semantics. Reusing those semantics is narrower and stronger than accepting a signal-only risk.
+
+Global-admin semantics: reuse `ClaimsTenantValidator` / `ITenantValidator`, so global administrators can join any tenant group without a matching tenant claim.
+
+Accepted-risk revisit trigger: not applicable because this story enforces tenant claims instead of accepting the risk.
 
 ### Debug Log References
 
-To be filled by dev agent.
+- 2026-05-02T16:07:23+02:00 - Baseline HEAD `5753f796035019a7b3883e1bd69018e5ea5759f9`; worktree clean before status updates.
+- 2026-05-02T16:07:23+02:00 - Aspire baseline started and resource list inspected; core resources were running and healthy.
+- 2026-05-02T16:07:23+02:00 - Anonymous SignalR negotiate returned `200 OK` before enforcement.
+- `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --no-restore --filter "FullyQualifiedName~SignalR|FullyQualifiedName~ClaimsTenantValidator|FullyQualifiedName~EventStoreClaimsTransformation"` initially failed at compile time after red tests, then passed after hub enforcement: 58 passed, 0 failed.
+- `dotnet test tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj --no-restore` passed: 32 passed, 0 failed.
+- `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --no-restore` passed: 334 passed, 0 failed.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-restore` passed: 281 passed, 0 failed.
+- `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj --no-restore` passed: 63 passed, 0 failed.
+- `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj --no-restore` passed: 78 passed, 0 failed.
+- `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --no-restore` initially exposed a pre-existing scanner false positive spanning multiple C# string literals in `SecretsProtectionTests`; after tightening the regex to stay within one string literal, the full server test project passed: 1706 passed, 0 failed.
+- `dotnet build Hexalith.EventStore.slnx --configuration Release` passed after all changes: 0 warnings, 0 errors.
 
 ### Completion Notes List
 
-To be filled by dev agent.
+- Task 0 completed. Chosen decision is `enforce-tenant-claims`; accepted-risk path is not used.
+- Task 1 completed. `ProjectionChangedHub` now requires authorized hub access, rejects unauthenticated direct invocations, delegates tenant checks to `ITenantValidator`, preserves global-admin/case-sensitive semantics, and performs tenant authorization before quota or group tracking.
+- Task 2 completed. Existing group validation, quota, rollback, leave, and disconnect cleanup behavior is preserved. Client helper code did not change; `SubscribeAsync`, `StartAsync`, and reconnect still replay the same `JoinGroup(projectionType, tenantId)` intent, and the hub now reauthorizes those calls against the current principal.
+- Task 3 completed. Added focused hub and hosted endpoint tests for positive/negative authorization, global-admin behavior, case-sensitive tenant matching, validation precedence, denial side effects, recovery after denial, and authenticated versus anonymous negotiate.
+- Task 4 completed. Verification gates passed, including focused server tests, SignalR client tests, documented unit tests, full server tests, and release build.
+- Task 5 completed. Story status and sprint status moved to `review`; neighboring post-Epic-10 rows were left unchanged.
 
 ### File List
 
-To be filled by dev agent.
+- `_bmad-output/implementation-artifacts/post-epic-10-r10a3-hub-group-authorization-decision.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs`
+- `src/Hexalith.EventStore.SignalR/EventStoreSignalRClient.cs`
+- `tests/Hexalith.EventStore.Server.Tests/SignalR/ProjectionChangedHubTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Integration/SignalRHubEndpointTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs`
 
 ## Party-Mode Review
 
@@ -265,10 +307,60 @@ Final recommendation: ready-for-dev
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-02 | 1.1 | Code review applied: sanitized hub error message, wrapped validator exceptions, pruned denied rejoins in client, refactored colon-ordering test, strengthened unauth quota recovery assertion. | bmad-code-review |
+| 2026-05-02 | 1.0 | Implemented `enforce-tenant-claims` SignalR hub group authorization with hosted auth proof, focused allow/deny tests, and verification gates. | GPT-5 Codex |
 | 2026-05-02 | 0.3 | Advanced elicitation hardened decision evidence, reconnect reauthorization, cancellation, and denied-join recovery coverage. | Codex automation |
 | 2026-05-01 | 0.2 | Party-mode review hardened decision ordering, authorization side effects, global-admin semantics, and test boundaries. | Codex automation |
 | 2026-05-01 | 0.1 | Created ready-for-dev R10-A3 hub group authorization decision story. | Codex automation |
 
 ## Verification Status
 
-Story creation plus party-mode review plus advanced elicitation only. Implementation verification is pending dev-story execution.
+Implementation verification complete. The chosen decision is `enforce-tenant-claims`. Code-review patches applied and re-verified: 59/59 focused SignalR/Claims server tests pass, 32/32 SignalR client tests pass, full release build clean (0 warnings, 0 errors).
+
+## Review Findings
+
+Date: 2026-05-02
+Reviewer: bmad-code-review (Blind Hunter + Edge Case Hunter + Acceptance Auditor)
+Counts: 2 decision-needed, 3 patch, 12 deferred, 13 dismissed.
+
+### Decision Needed
+
+- [x] [Review][Decision] **Hub error message echoes `tenantValidation.Reason` to client** — Resolved: sanitize. Hub now throws generic `HubException("Tenant authorization failed.")` and logs the validator's Reason at warn level (EventId 1084). Three direct hub tests updated to assert the generic message.
+- [x] [Review][Decision] **AC #8 silent rejoin failure in `EventStoreSignalRClient.JoinAllGroupsAsync`** — Resolved: prune-on-`HubException` + log at error. Server-side denials prune `_subscribedGroups` so reconnects no longer retry forever; transient transport failures retain the existing warn-level retry-via-reconnect path. No new public API surface.
+
+### Patch
+
+- [x] [Review][Patch] **Test name oversells colon-vs-auth ordering coverage** [`tests/Hexalith.EventStore.Server.Tests/SignalR/ProjectionChangedHubTests.cs`] — Resolved: renamed to `JoinGroup_ProjectionTypeContainsColon_RejectsBeforeAuthorization`; uses a substitute `ITenantValidator` and asserts `DidNotReceive` + no group add after the colon-malformed call. No follow-up valid call confounds the assertion.
+- [x] [Review][Patch] **Validator exceptions propagate raw to client** [`src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs`] — Resolved: validator call wrapped in try/catch. `OperationCanceledException` rethrown; others logged via EventId 1085 and surfaced as `HubException("Tenant authorization unavailable.")`. New direct hub test `JoinGroup_TenantValidatorThrows_LogsAndThrowsGenericHubException` covers the path.
+- [x] [Review][Patch] **`JoinGroup_UnauthenticatedUser_...` test does not assert tracking/quota state remains untouched** — Resolved: extended the test to flip `Context.User` to an authorized principal on the same connection and assert a follow-up `JoinGroup` succeeds with `maxGroupsPerConnection: 1`, proving the prior denial did not consume quota or mutate tracking.
+
+### Deferred
+
+- [x] [Review][Defer] **`ConcurrentDictionary<string, HashSet<string>>` inner set is not thread-safe** [`src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs:30,62-86`] — pre-existing; per-connection lock on the inner `HashSet` covers the read-modify-write but the await on `AddToGroupAsync` happens outside the lock and the rollback re-acquires the lock on a possibly-replaced set. Not introduced by R10-A3, but the new tenant-validate await widens the window between auth and group-add. **Why:** ordering invariant remains valid; race only manifests with concurrent JoinGroup on same connection (SignalR per-connection ordering reduces likelihood).
+- [x] [Review][Defer] **TOCTOU between auth and `AddToGroupAsync` (token rotation mid-call)** [`src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs:51-73`] — Validator decision is fixed at the time of check; if claims are revoked between validate and add, the join still succeeds. Inherent to async authorization; pre-existing platform-level concern. Periodic re-validation belongs in a follow-up policy story.
+- [x] [Review][Defer] **`SecretsProtectionTests` regex tightening may miss multi-line raw-string secrets** [`tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs:127-131`] — Adding `\r\n` exclusions inside the bracket classes prevents the scanner from spanning multiple string literals (the documented fix), but also blocks detection inside C# raw string literals (`"""..."""`) that legitimately contain newlines. Out-of-scope cleanup for R10-A3; revisit when scanning verbatim/raw strings.
+- [x] [Review][Defer] **Cached principal on reconnect; access token expiry mid-connection** [`src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs:38-57`] — SignalR caches the connection's `HttpContext.User` on negotiate. Subsequent `JoinGroup` calls re-read `Context.User` (covered by the validator), but the underlying authentication ticket does not expire mid-connection unless the access-token provider refreshes. Token-refresh policy belongs to a separate cross-cutting story.
+- [x] [Review][Defer] **`LeaveGroup` has no input validation and no auth check** [`src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs:97-108`] — `LeaveGroup` does not validate null/whitespace/colon, and after `[Authorize]` only blocks anonymous callers. An authenticated tenant-A user calling `LeaveGroup("...", "tenantB")` cannot evict tenant-B's tracked entries because tracking is per-`ConnectionId`; impact is bounded but the symmetry with `JoinGroup` is missing. Pre-existing.
+- [x] [Review][Defer] **`OnDisconnectedAsync` race with in-flight `JoinGroup`** [`src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs:62-86,117-122`] — If disconnect runs while a JoinGroup awaits between tenant-validate and tracking, disconnect `TryRemove`s the dictionary entry; concurrent JoinGroup later locks the orphan `HashSet` and adds to it; subsequent disconnect cleanup misses it. Pre-existing.
+- [x] [Review][Defer] **`ClaimsTenantValidator.ValidateAsync` does not validate the tenantId argument** [`src/Hexalith.EventStore/Authorization/ClaimsTenantValidator.cs`] — Hub guards null/whitespace before calling, but other callers can pass empty/whitespace tenant values; would compare against an empty string rather than throwing. Defensive enhancement for the validator; pre-existing.
+- [x] [Review][Defer] **`global_admin` claim brittle to `"1"`/`"yes"`/`"True "` values** [`src/Hexalith.EventStore/Authorization/GlobalAdministratorHelper.cs`] — `bool.TryParse` only accepts `True`/`False` (case-insensitive). Tokens issued with `"1"` or `"yes"` silently lose admin privilege. Pre-existing claim-matching behavior; document or normalize in a separate cross-cutting story.
+- [x] [Review][Defer] **`SubscribeAsync` race during `Reconnecting` state** [`src/Hexalith.EventStore.SignalR/EventStoreSignalRClient.cs:108-110`] — Subscriptions added while state transitions out of `Connected` are cached but not joined; the next `Reconnected` event picks them up via `JoinAllGroupsAsync`. Tight race window during state transition. Pre-existing.
+- [x] [Review][Defer] **Whitespace/control characters survive identifier validation** [`src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs:38-45`] — `ArgumentException.ThrowIfNullOrWhiteSpace` rejects only fully-whitespace values; `"acme \t"` passes through and is concatenated into a group name. Case-sensitive comparison with the claim then surprises the caller. Identifier regex hardening belongs to a separate input-validation story.
+- [x] [Review][Defer] **Tenant claim name (`eventstore:tenant`) is hardcoded in test helpers** [`tests/Hexalith.EventStore.Server.Tests/SignalR/ProjectionChangedHubTests.cs:CreateUser`] — Tests pass even if the validator's claim-name expectation drifts because the helper hardcodes the same string the validator expects. A pinned constant (e.g., `EventStoreClaimTypes.Tenant`) shared by validator and test would catch drift. Pre-existing pattern.
+- [x] [Review][Defer] **Hosted Tier-2 `JoinGroup` test gap** [`tests/Hexalith.EventStore.Server.Tests/Integration/SignalRHubEndpointTests.cs`] — Hosted coverage proves anonymous negotiate is rejected and authenticated negotiate is accepted; it does not invoke `JoinGroup` end-to-end through `EventStoreClaimsTransformation` and the JWT-bearer claim-mapping pipeline. AC #5 is met by the combination of `[Authorize]` + hosted negotiate + direct hub tests, but a runtime-level JoinGroup proof would close the claim-name/transformation drift risk. Coverage enhancement.
+
+### Dismissed
+
+- `[Authorize]` attribute + explicit `Context.User?.Identity?.IsAuthenticated` check (defense in depth, intentional).
+- Negotiate hosted test asserting only `200 OK` (separate JoinGroup unit/auth tests cover method-level enforcement).
+- `LeaveGroup` cross-tenant eviction (mitigated by `[Authorize]` + per-`ConnectionId` tracking scope).
+- Dev story self-marks status to `review` in same diff (this is the documented BMAD workflow).
+- `ClaimsTenantValidator` source not in diff (used as default `tenantValidator` in tests; behavior verified by its own test project).
+- `Context.User` non-null with null `Identity` (handled by `?.` chain).
+- Disconnect-cleanup idempotent removal (no observable fault).
+- Lock-on-replaced-`HashSet` pattern fragility (no observable bug post-rollback).
+- AddToGroupAsync rollback on duplicate-join (`addedToTracking=false` correctly skips rollback).
+- AC #10 wording defect ("both `last_updated` fields") — spec text defect, single field correctly updated.
+- Task 0.4 sequencing only verifiable via Debug Log narration (acceptable for a static review).
+- Task 4.4 Aspire/runtime proof recorded as Debug Log narration (AC permits "if attempted").
+- `ClaimsTenantValidator` behavior unverified in diff (out of scope; covered by the validator's own tests).

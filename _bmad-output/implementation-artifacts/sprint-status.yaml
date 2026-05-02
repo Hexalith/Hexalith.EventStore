@@ -28,7 +28,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-02T16:30:00+02:00' # R10-A2 done: code review applied (15 patches + 2 decisions resolved)
+last_updated: '2026-05-02T16:14:59+02:00' # R10-A3 done: code review applied (5 patches resolved, sanitized error + pruned rejoin)
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -125,7 +125,7 @@ development_status:
   # R10-A1 routed to post-epic-11-r11a3-apphost-projection-proof (overlapping evidence).
   # R10-A4 colon-scoped group/actor ID planning cleanup applied directly in course correction.
   post-epic-10-r10a2-redis-backplane-runtime-proof: done
-  post-epic-10-r10a3-hub-group-authorization-decision: ready-for-dev
+  post-epic-10-r10a3-hub-group-authorization-decision: done
   post-epic-10-r10a5-client-reconnect-guidance: ready-for-dev
   post-epic-10-r10a6-signalr-operational-evidence-pattern: backlog
   post-epic-10-r10a7-redis-channel-isolation-policy: backlog

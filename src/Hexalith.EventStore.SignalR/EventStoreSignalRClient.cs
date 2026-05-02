@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 
@@ -190,6 +191,13 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
                 }
                 catch (OperationCanceledException) {
                     break; // Client is disposing
+                }
+                catch (HubException ex) {
+                    // Server actively rejected the rejoin (e.g., tenant authorization denied).
+                    // Prune the subscription so we do not retry forever and do not leave the
+                    // consumer with the impression the group is still authorized.
+                    _ = _subscribedGroups.TryRemove(groupName, out _);
+                    _logger?.LogError(ex, "Server rejected rejoin for group {GroupName}; subscription pruned.", groupName);
                 }
                 catch (Exception ex) {
                     _logger?.LogWarning(ex, "Failed to rejoin group {GroupName}", groupName);

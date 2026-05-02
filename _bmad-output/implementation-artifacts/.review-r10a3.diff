@@ -1,0 +1,532 @@
+diff --git a/_bmad-output/implementation-artifacts/post-epic-10-r10a3-hub-group-authorization-decision.md b/_bmad-output/implementation-artifacts/post-epic-10-r10a3-hub-group-authorization-decision.md
+index da0d3e3..556924e 100644
+--- a/_bmad-output/implementation-artifacts/post-epic-10-r10a3-hub-group-authorization-decision.md
++++ b/_bmad-output/implementation-artifacts/post-epic-10-r10a3-hub-group-authorization-decision.md
+@@ -1,6 +1,6 @@
+ # Post-Epic-10 R10-A3: Hub Group Authorization Decision
+ 
+-Status: ready-for-dev
++Status: review
+ 
+ <!-- Source: epic-10-retro-2026-05-01.md R10-A3 -->
+ <!-- Source: sprint-change-proposal-2026-05-01-epic-10-retro-cleanup.md Proposal 3 -->
+@@ -67,48 +67,48 @@ The Epic 10 retrospective records this as R10-A3: hub group join lacks a tenant-
+ 
+ ## Tasks / Subtasks
+ 
+-- [ ] Task 0: Baseline and decision framing (AC: #1, #2, #6)
+-  - [ ] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
+-  - [ ] 0.2 Inspect current hub negotiate and method invocation behavior with SignalR enabled.
+-  - [ ] 0.3 Confirm whether authenticated hub connections receive transformed `eventstore:tenant` claims.
+-  - [ ] 0.4 Add a Dev Agent Record decision block with the chosen path and rationale before source/test edits. Party-mode recommends `enforce-tenant-claims`; `accepted-signal-only-risk` requires explicit product/security risk acceptance.
+-  - [ ] 0.5 If the decision is accepted risk, record a dated revisit trigger tied to a production milestone or security review, not an open-ended "later".
+-
+-- [ ] Task 1: Implement or document the authorization decision (AC: #3, #4, #5, #6, #7)
+-  - [ ] 1.1 If enforcing, add `[Authorize]` or equivalent policy to the hub or `JoinGroup`.
+-  - [ ] 1.2 If enforcing, preserve the required failure order: null/whitespace and colon validation -> authenticated user required -> tenant authorization -> quota check -> `_connectionGroups` mutation -> `Groups.AddToGroupAsync` -> rollback on add failure.
+-  - [ ] 1.3 If enforcing, reuse `ITenantValidator`/`ClaimsTenantValidator` semantics or document any intentional difference.
+-  - [ ] 1.4 If accepting risk, add the accepted-risk record with explicit mitigation and revisit trigger, without code changes that pretend to enforce authorization.
+-  - [ ] 1.5 Preserve current exception shape where practical; use `HubException` for caller-visible tenant-denial join failures unless ASP.NET Core authorization naturally returns the failure. Do not silently no-op unauthorized joins.
+-  - [ ] 1.6 If enforcing, pass the hub connection cancellation token to tenant validation and keep authorization failures out of the group-name tracking path.
+-
+-- [ ] Task 2: Preserve group and client behavior (AC: #7, #8)
+-  - [ ] 2.1 Verify colon validation still rejects `projectionType` or `tenantId` containing `:`.
+-  - [ ] 2.2 Verify denied authorization does not create a `_connectionGroups` entry, call `Groups.AddToGroupAsync`, or consume per-connection group quota.
+-  - [ ] 2.3 Verify failed `Groups.AddToGroupAsync` rollback still works after authorization changes.
+-  - [ ] 2.4 Verify `LeaveGroup` and disconnect cleanup still remove tracked groups.
+-  - [ ] 2.5 If the client helper needs token guidance or behavior change, keep it narrowly scoped to token supply and rejoin error visibility. If the client helper does not change, explicitly record that reconnect behavior remains unchanged and covered by existing behavior.
+-  - [ ] 2.6 Verify the same connection can still join an allowed tenant after one or more denied joins.
+-
+-- [ ] Task 3: Add focused test coverage (AC: #3-#9)
+-  - [ ] 3.1 Add allowed-tenant `JoinGroup` coverage.
+-  - [ ] 3.2 Add wrong-tenant and no-tenant-claims denial coverage that asserts no group add, no group tracking, and no quota consumption.
+-  - [ ] 3.3 Add global-admin coverage for the chosen rule, including the case-sensitive tenant comparison baseline for non-admin users.
+-  - [ ] 3.4 Add anonymous negotiate or anonymous hub-method coverage for the chosen hub authorization posture in hosted endpoint tests.
+-  - [ ] 3.5 Add colon-validation precedence coverage proving malformed group parts fail before auth/quota side effects.
+-  - [ ] 3.6 Add a same-connection denial-then-allowed test to prove authorization denial did not poison quota or tracking state.
+-  - [ ] 3.7 Re-run existing SignalR hub/client tests touched by the change.
+-
+-- [ ] Task 4: Verification gates (AC: #1-#10)
+-  - [ ] 4.1 Run `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --no-restore --filter "FullyQualifiedName~SignalR|FullyQualifiedName~ClaimsTenantValidator|FullyQualifiedName~EventStoreClaimsTransformation"`.
+-  - [ ] 4.2 If client helper code changed, run `dotnet test tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj --no-restore`.
+-  - [ ] 4.3 Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
+-  - [ ] 4.4 If Aspire/runtime proof is attempted, capture exact commands and blockers in the Dev Agent Record; runtime proof is helpful but not required unless the implementation depends on hosted authentication behavior.
+-
+-- [ ] Task 5: Story bookkeeping (AC: #10)
+-  - [ ] 5.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
+-  - [ ] 5.2 Move this story and only this story from `ready-for-dev` to `review` at dev handoff.
+-  - [ ] 5.3 Leave R10-A2/R10-A5/R10-A6/R10-A7/R10-A8 status rows unchanged.
++- [x] Task 0: Baseline and decision framing (AC: #1, #2, #6)
++  - [x] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
++  - [x] 0.2 Inspect current hub negotiate and method invocation behavior with SignalR enabled.
++  - [x] 0.3 Confirm whether authenticated hub connections receive transformed `eventstore:tenant` claims.
++  - [x] 0.4 Add a Dev Agent Record decision block with the chosen path and rationale before source/test edits. Party-mode recommends `enforce-tenant-claims`; `accepted-signal-only-risk` requires explicit product/security risk acceptance.
++  - [x] 0.5 If the decision is accepted risk, record a dated revisit trigger tied to a production milestone or security review, not an open-ended "later".
++
++- [x] Task 1: Implement or document the authorization decision (AC: #3, #4, #5, #6, #7)
++  - [x] 1.1 If enforcing, add `[Authorize]` or equivalent policy to the hub or `JoinGroup`.
++  - [x] 1.2 If enforcing, preserve the required failure order: null/whitespace and colon validation -> authenticated user required -> tenant authorization -> quota check -> `_connectionGroups` mutation -> `Groups.AddToGroupAsync` -> rollback on add failure.
++  - [x] 1.3 If enforcing, reuse `ITenantValidator`/`ClaimsTenantValidator` semantics or document any intentional difference.
++  - [x] 1.4 If accepting risk, add the accepted-risk record with explicit mitigation and revisit trigger, without code changes that pretend to enforce authorization.
++  - [x] 1.5 Preserve current exception shape where practical; use `HubException` for caller-visible tenant-denial join failures unless ASP.NET Core authorization naturally returns the failure. Do not silently no-op unauthorized joins.
++  - [x] 1.6 If enforcing, pass the hub connection cancellation token to tenant validation and keep authorization failures out of the group-name tracking path.
++
++- [x] Task 2: Preserve group and client behavior (AC: #7, #8)
++  - [x] 2.1 Verify colon validation still rejects `projectionType` or `tenantId` containing `:`.
++  - [x] 2.2 Verify denied authorization does not create a `_connectionGroups` entry, call `Groups.AddToGroupAsync`, or consume per-connection group quota.
++  - [x] 2.3 Verify failed `Groups.AddToGroupAsync` rollback still works after authorization changes.
++  - [x] 2.4 Verify `LeaveGroup` and disconnect cleanup still remove tracked groups.
++  - [x] 2.5 If the client helper needs token guidance or behavior change, keep it narrowly scoped to token supply and rejoin error visibility. If the client helper does not change, explicitly record that reconnect behavior remains unchanged and covered by existing behavior.
++  - [x] 2.6 Verify the same connection can still join an allowed tenant after one or more denied joins.
++
++- [x] Task 3: Add focused test coverage (AC: #3-#9)
++  - [x] 3.1 Add allowed-tenant `JoinGroup` coverage.
++  - [x] 3.2 Add wrong-tenant and no-tenant-claims denial coverage that asserts no group add, no group tracking, and no quota consumption.
++  - [x] 3.3 Add global-admin coverage for the chosen rule, including the case-sensitive tenant comparison baseline for non-admin users.
++  - [x] 3.4 Add anonymous negotiate or anonymous hub-method coverage for the chosen hub authorization posture in hosted endpoint tests.
++  - [x] 3.5 Add colon-validation precedence coverage proving malformed group parts fail before auth/quota side effects.
++  - [x] 3.6 Add a same-connection denial-then-allowed test to prove authorization denial did not poison quota or tracking state.
++  - [x] 3.7 Re-run existing SignalR hub/client tests touched by the change.
++
++- [x] Task 4: Verification gates (AC: #1-#10)
++  - [x] 4.1 Run `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --no-restore --filter "FullyQualifiedName~SignalR|FullyQualifiedName~ClaimsTenantValidator|FullyQualifiedName~EventStoreClaimsTransformation"`.
++  - [x] 4.2 If client helper code changed, run `dotnet test tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj --no-restore`.
++  - [x] 4.3 Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
++  - [x] 4.4 If Aspire/runtime proof is attempted, capture exact commands and blockers in the Dev Agent Record; runtime proof is helpful but not required unless the implementation depends on hosted authentication behavior.
++
++- [x] Task 5: Story bookkeeping (AC: #10)
++  - [x] 5.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
++  - [x] 5.2 Move this story and only this story from `ready-for-dev` to `review` at dev handoff.
++  - [x] 5.3 Leave R10-A2/R10-A5/R10-A6/R10-A7/R10-A8 status rows unchanged.
+ 
+ ## Dev Notes
+ 
+@@ -179,23 +179,63 @@ The Epic 10 retrospective records this as R10-A3: hub group join lacks a tenant-
+ 
+ ### Agent Model Used
+ 
+-To be filled by dev agent.
++GPT-5 Codex
+ 
+ ### Decision Record
+ 
+-To be filled by dev agent. Required value: `enforce-tenant-claims` or `accepted-signal-only-risk`.
++Decision: `enforce-tenant-claims`
++
++Decision owner/accepting role: Dev-story implementer acting on the party-mode architecture/security recommendation for tenant-scoped real-time notifications.
++
++Evidence inspected before source/test edits:
++
++- Current HEAD at baseline: `5753f796035019a7b3883e1bd69018e5ea5759f9`.
++- Story status was `ready-for-dev` in `sprint-status.yaml` before this dev-story run moved it to `in-progress`.
++- Aspire baseline was started with `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`; the Aspire resource list showed `eventstore`, `eventstore-admin`, `sample`, `sample-blazor-ui`, `tenants`, `statestore`, and `pubsub` running and healthy.
++- Runtime anonymous negotiate evidence: `POST http://localhost:8080/hubs/projection-changes/negotiate?negotiateVersion=1` returned `200 OK` with SignalR negotiate JSON before authorization changes, proving the hosted hub negotiate endpoint was anonymously reachable when SignalR was enabled.
++- Source/method invocation evidence: `ProjectionChangedHub` had no `[Authorize]`, `Program.cs` mapped the hub after `UseAuthentication()` and `UseAuthorization()`, and direct hub tests showed `JoinGroup("order-list", "acme")` called `Groups.AddToGroupAsync` without tenant authorization.
++- Claim transformation evidence: `EventStoreClaimsTransformation` maps JWT `tenants`, `tenant_id`, and `tid` into normalized `eventstore:tenant` claims, and `ConfigureJwtBearerOptions` preserves inbound JWT claim names.
++- Validator evidence: `ClaimsTenantValidator` uses global-admin bypass, `eventstore:tenant` claims, no-claim denial, and ordinal case-sensitive tenant comparison through the existing `ITenantValidator` abstraction.
++- Client token evidence: `EventStoreSignalRClientOptions.AccessTokenProvider` already wires SignalR bearer-token supply through `HttpConnectionOptions.AccessTokenProvider`; no custom hub method token parameter is needed.
++- Hosted behavior evidence source: baseline runtime proof covered anonymous negotiate; method mutation behavior came from source and direct hub unit tests; transformed tenant claims were confirmed through authentication/claims-transformation source and existing tests, with hosted authenticated coverage added by this story.
++
++Rationale: tenant group names expose tenant/projection activity and can trigger unauthorized refresh behavior. The existing platform already has JWT authentication, normalized `eventstore:tenant` claims, and `ITenantValidator` semantics. Reusing those semantics is narrower and stronger than accepting a signal-only risk.
++
++Global-admin semantics: reuse `ClaimsTenantValidator` / `ITenantValidator`, so global administrators can join any tenant group without a matching tenant claim.
++
++Accepted-risk revisit trigger: not applicable because this story enforces tenant claims instead of accepting the risk.
+ 
+ ### Debug Log References
+ 
+-To be filled by dev agent.
++- 2026-05-02T16:07:23+02:00 - Baseline HEAD `5753f796035019a7b3883e1bd69018e5ea5759f9`; worktree clean before status updates.
++- 2026-05-02T16:07:23+02:00 - Aspire baseline started and resource list inspected; core resources were running and healthy.
++- 2026-05-02T16:07:23+02:00 - Anonymous SignalR negotiate returned `200 OK` before enforcement.
++- `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --no-restore --filter "FullyQualifiedName~SignalR|FullyQualifiedName~ClaimsTenantValidator|FullyQualifiedName~EventStoreClaimsTransformation"` initially failed at compile time after red tests, then passed after hub enforcement: 58 passed, 0 failed.
++- `dotnet test tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj --no-restore` passed: 32 passed, 0 failed.
++- `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --no-restore` passed: 334 passed, 0 failed.
++- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-restore` passed: 281 passed, 0 failed.
++- `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj --no-restore` passed: 63 passed, 0 failed.
++- `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj --no-restore` passed: 78 passed, 0 failed.
++- `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --no-restore` initially exposed a pre-existing scanner false positive spanning multiple C# string literals in `SecretsProtectionTests`; after tightening the regex to stay within one string literal, the full server test project passed: 1706 passed, 0 failed.
++- `dotnet build Hexalith.EventStore.slnx --configuration Release` passed after all changes: 0 warnings, 0 errors.
+ 
+ ### Completion Notes List
+ 
+-To be filled by dev agent.
++- Task 0 completed. Chosen decision is `enforce-tenant-claims`; accepted-risk path is not used.
++- Task 1 completed. `ProjectionChangedHub` now requires authorized hub access, rejects unauthenticated direct invocations, delegates tenant checks to `ITenantValidator`, preserves global-admin/case-sensitive semantics, and performs tenant authorization before quota or group tracking.
++- Task 2 completed. Existing group validation, quota, rollback, leave, and disconnect cleanup behavior is preserved. Client helper code did not change; `SubscribeAsync`, `StartAsync`, and reconnect still replay the same `JoinGroup(projectionType, tenantId)` intent, and the hub now reauthorizes those calls against the current principal.
++- Task 3 completed. Added focused hub and hosted endpoint tests for positive/negative authorization, global-admin behavior, case-sensitive tenant matching, validation precedence, denial side effects, recovery after denial, and authenticated versus anonymous negotiate.
++- Task 4 completed. Verification gates passed, including focused server tests, SignalR client tests, documented unit tests, full server tests, and release build.
++- Task 5 completed. Story status and sprint status moved to `review`; neighboring post-Epic-10 rows were left unchanged.
+ 
+ ### File List
+ 
+-To be filled by dev agent.
++- `_bmad-output/implementation-artifacts/post-epic-10-r10a3-hub-group-authorization-decision.md`
++- `_bmad-output/implementation-artifacts/sprint-status.yaml`
++- `src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs`
++- `tests/Hexalith.EventStore.Server.Tests/SignalR/ProjectionChangedHubTests.cs`
++- `tests/Hexalith.EventStore.Server.Tests/Integration/SignalRHubEndpointTests.cs`
++- `tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs`
+ 
+ ## Party-Mode Review
+ 
+@@ -265,10 +305,11 @@ Final recommendation: ready-for-dev
+ 
+ | Date | Version | Description | Author |
+ |---|---|---|---|
++| 2026-05-02 | 1.0 | Implemented `enforce-tenant-claims` SignalR hub group authorization with hosted auth proof, focused allow/deny tests, and verification gates. | GPT-5 Codex |
+ | 2026-05-02 | 0.3 | Advanced elicitation hardened decision evidence, reconnect reauthorization, cancellation, and denied-join recovery coverage. | Codex automation |
+ | 2026-05-01 | 0.2 | Party-mode review hardened decision ordering, authorization side effects, global-admin semantics, and test boundaries. | Codex automation |
+ | 2026-05-01 | 0.1 | Created ready-for-dev R10-A3 hub group authorization decision story. | Codex automation |
+ 
+ ## Verification Status
+ 
+-Story creation plus party-mode review plus advanced elicitation only. Implementation verification is pending dev-story execution.
++Implementation verification complete. The chosen decision is `enforce-tenant-claims`. Focused server tests, SignalR client tests, documented unit tests, full server tests, and release build all pass.
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index 74ff57d..ddf9cac 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -28,7 +28,7 @@
+ # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+ 
+ generated: 2026-03-15
+-last_updated: '2026-05-02T16:30:00+02:00' # R10-A2 done: code review applied (15 patches + 2 decisions resolved)
++last_updated: '2026-05-02T16:14:59+02:00' # R10-A3 review: enforce-tenant-claims decision implemented
+ project: Hexalith.EventStore
+ project_key: NOKEY
+ tracking_system: file-system
+@@ -125,7 +125,7 @@ development_status:
+   # R10-A1 routed to post-epic-11-r11a3-apphost-projection-proof (overlapping evidence).
+   # R10-A4 colon-scoped group/actor ID planning cleanup applied directly in course correction.
+   post-epic-10-r10a2-redis-backplane-runtime-proof: done
+-  post-epic-10-r10a3-hub-group-authorization-decision: ready-for-dev
++  post-epic-10-r10a3-hub-group-authorization-decision: review
+   post-epic-10-r10a5-client-reconnect-guidance: ready-for-dev
+   post-epic-10-r10a6-signalr-operational-evidence-pattern: backlog
+   post-epic-10-r10a7-redis-channel-isolation-policy: backlog
+diff --git a/src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs b/src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs
+index 2fdefb3..0f00c5f 100644
+--- a/src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs
++++ b/src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs
+@@ -1,5 +1,8 @@
+ using System.Collections.Concurrent;
+ 
++using Hexalith.EventStore.Authorization;
++
++using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.SignalR;
+ using Microsoft.Extensions.Options;
+ 
+@@ -8,8 +11,8 @@ namespace Hexalith.EventStore.SignalRHub;
+ /// <summary>
+ /// SignalR hub for real-time projection change notifications.
+ /// Clients join groups by projection type and tenant to receive targeted "changed" signals.
+-/// Production deployments SHOULD add [Authorize] to this class and configure JWT via query string.
+ /// </summary>
++[Authorize]
+ public partial class ProjectionChangedHub {
+     /// <summary>
+     /// The hub endpoint path. Hardcoded — no valid reason to make configurable.
+@@ -21,6 +24,7 @@ public partial class ProjectionChangedHub {
+ /// SignalR hub implementation with group management and structured logging.
+ /// </summary>
+ public partial class ProjectionChangedHub(
++    ITenantValidator tenantValidator,
+     IOptions<SignalROptions> options,
+     ILogger<ProjectionChangedHub> logger) : Hub<IProjectionChangedClient> {
+     private static readonly ConcurrentDictionary<string, HashSet<string>> _connectionGroups = new();
+@@ -40,6 +44,18 @@ public partial class ProjectionChangedHub(
+             throw new HubException("projectionType and tenantId must not contain colons.");
+         }
+ 
++        if (Context.User?.Identity?.IsAuthenticated != true) {
++            throw new HubException("Authentication is required to join projection change groups.");
++        }
++
++        TenantValidationResult tenantValidation = await tenantValidator
++            .ValidateAsync(Context.User, tenantId, Context.ConnectionAborted)
++            .ConfigureAwait(false);
++
++        if (!tenantValidation.IsAuthorized) {
++            throw new HubException(tenantValidation.Reason ?? "Tenant authorization failed.");
++        }
++
+         string groupName = $"{projectionType}:{tenantId}";
+ 
+         // Guard: limit groups per connection to prevent resource exhaustion
+diff --git a/tests/Hexalith.EventStore.Server.Tests/Integration/SignalRHubEndpointTests.cs b/tests/Hexalith.EventStore.Server.Tests/Integration/SignalRHubEndpointTests.cs
+index 71d134c..5d5e29f 100644
+--- a/tests/Hexalith.EventStore.Server.Tests/Integration/SignalRHubEndpointTests.cs
++++ b/tests/Hexalith.EventStore.Server.Tests/Integration/SignalRHubEndpointTests.cs
+@@ -15,7 +15,7 @@ public class SignalRHubEndpointTests : IClassFixture<SignalRHubWebApplicationFac
+     public SignalRHubEndpointTests(SignalRHubWebApplicationFactory factory) => _factory = factory;
+ 
+     [Fact]
+-    public async Task NegotiateEndpoint_WhenSignalREnabled_IsHostedAtExpectedPath() {
++    public async Task NegotiateEndpoint_WhenSignalREnabled_RejectsAnonymousRequest() {
+         using HttpClient client = _factory.CreateClient();
+         using HttpRequestMessage request = new(HttpMethod.Post, $"{ProjectionChangedHub.HubPath}/negotiate?negotiateVersion=1") {
+             Content = new StringContent(string.Empty),
+@@ -24,6 +24,22 @@ public class SignalRHubEndpointTests : IClassFixture<SignalRHubWebApplicationFac
+ 
+         HttpResponseMessage response = await client.SendAsync(request);
+ 
++        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
++    }
++
++    [Fact]
++    public async Task NegotiateEndpoint_WhenSignalREnabled_AllowsAuthenticatedRequest() {
++        using HttpClient client = _factory.CreateClient();
++        using HttpRequestMessage request = new(HttpMethod.Post, $"{ProjectionChangedHub.HubPath}/negotiate?negotiateVersion=1") {
++            Content = new StringContent(string.Empty),
++        };
++        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
++        request.Headers.Authorization = new AuthenticationHeaderValue(
++            "Bearer",
++            TestJwtHelper.GenerateToken(tenants: ["acme"]));
++
++        HttpResponseMessage response = await client.SendAsync(request);
++
+         response.StatusCode.ShouldBe(HttpStatusCode.OK);
+     }
+ 
+diff --git a/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs b/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs
+index efcf481..8f87f86 100644
+--- a/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs
++++ b/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs
+@@ -127,7 +127,7 @@ public class SecretsProtectionTests {
+ 
+         // Patterns for hardcoded secrets in C# string literals
+         Regex hardcodedSecretPattern = new(
+-            @"""[^""]*(?:password|secret|connectionstring|apikey|signing.?key)\s*[=:]\s*[^""]{8,}""",
++            @"""[^""\r\n]*(?:password|secret|connectionstring|apikey|signing.?key)\s*[=:]\s*[^""\r\n]{8,}""",
+             RegexOptions.IgnoreCase | RegexOptions.Compiled);
+ 
+         foreach (string csFile in csFiles) {
+diff --git a/tests/Hexalith.EventStore.Server.Tests/SignalR/ProjectionChangedHubTests.cs b/tests/Hexalith.EventStore.Server.Tests/SignalR/ProjectionChangedHubTests.cs
+index f9589fb..5a8397b 100644
+--- a/tests/Hexalith.EventStore.Server.Tests/SignalR/ProjectionChangedHubTests.cs
++++ b/tests/Hexalith.EventStore.Server.Tests/SignalR/ProjectionChangedHubTests.cs
+@@ -1,3 +1,6 @@
++using System.Security.Claims;
++
++using Hexalith.EventStore.Authorization;
+ using Hexalith.EventStore.SignalRHub;
+ 
+ using Microsoft.AspNetCore.SignalR;
+@@ -14,7 +17,7 @@ public class ProjectionChangedHubTests {
+     [Fact]
+     public async Task JoinGroup_ValidInput_AddsConnectionToGroup() {
+         IGroupManager groups = Substitute.For<IGroupManager>();
+-        ProjectionChangedHub sut = CreateHub("conn-join", groups, maxGroupsPerConnection: 5);
++        ProjectionChangedHub sut = CreateHub("conn-join", groups, maxGroupsPerConnection: 5, user: CreateUser("acme"));
+ 
+         await sut.JoinGroup("order-list", "acme");
+ 
+@@ -31,9 +34,39 @@ public class ProjectionChangedHubTests {
+         ex.Message.ShouldContain("must not contain colons");
+     }
+ 
++    [Fact]
++    public async Task JoinGroup_ProjectionTypeContainsColon_DoesNotAuthorizeOrTrackGroup() {
++        IGroupManager groups = Substitute.For<IGroupManager>();
++        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
++        _ = tenantValidator.ValidateAsync(
++                Arg.Any<ClaimsPrincipal>(),
++                "acme",
++                Arg.Any<CancellationToken>(),
++                Arg.Any<string?>())
++            .Returns(TenantValidationResult.Allowed);
++        ProjectionChangedHub sut = CreateHub(
++            "conn-invalid-before-auth",
++            groups,
++            maxGroupsPerConnection: 1,
++            user: CreateUser("acme"),
++            tenantValidator: tenantValidator);
++
++        _ = await Should.ThrowAsync<HubException>(() =>
++            sut.JoinGroup("order:list", "acme"));
++        await sut.JoinGroup("order-list", "acme");
++
++        await tenantValidator.Received(1).ValidateAsync(
++            Arg.Any<ClaimsPrincipal>(),
++            "acme",
++            Arg.Any<CancellationToken>(),
++            Arg.Any<string?>());
++        await groups.Received(1).AddToGroupAsync("conn-invalid-before-auth", "order-list:acme", Arg.Any<CancellationToken>());
++        await groups.DidNotReceive().AddToGroupAsync("conn-invalid-before-auth", "order:list:acme", Arg.Any<CancellationToken>());
++    }
++
+     [Fact]
+     public async Task JoinGroup_MaxGroupsExceeded_ThrowsHubException() {
+-        ProjectionChangedHub sut = CreateHub("conn-max", Substitute.For<IGroupManager>(), maxGroupsPerConnection: 1);
++        ProjectionChangedHub sut = CreateHub("conn-max", Substitute.For<IGroupManager>(), maxGroupsPerConnection: 1, user: CreateUser("acme"));
+ 
+         await sut.JoinGroup("order-list", "acme");
+ 
+@@ -46,7 +79,7 @@ public class ProjectionChangedHubTests {
+     [Fact]
+     public async Task LeaveGroup_ValidInput_RemovesConnectionFromGroup() {
+         IGroupManager groups = Substitute.For<IGroupManager>();
+-        ProjectionChangedHub sut = CreateHub("conn-leave", groups, maxGroupsPerConnection: 5);
++        ProjectionChangedHub sut = CreateHub("conn-leave", groups, maxGroupsPerConnection: 5, user: CreateUser("acme"));
+         await sut.JoinGroup("order-list", "acme");
+ 
+         await sut.LeaveGroup("order-list", "acme");
+@@ -60,17 +93,143 @@ public class ProjectionChangedHubTests {
+         _ = groups.AddToGroupAsync("conn-failure", "order-list:acme", Arg.Any<CancellationToken>())
+             .Returns(Task.FromException(new InvalidOperationException("add failed")));
+ 
+-        ProjectionChangedHub sut = CreateHub("conn-failure", groups, maxGroupsPerConnection: 1);
++        ProjectionChangedHub sut = CreateHub("conn-failure", groups, maxGroupsPerConnection: 1, user: CreateUser("acme"));
+ 
+         _ = await Should.ThrowAsync<InvalidOperationException>(() => sut.JoinGroup("order-list", "acme"));
+         await Should.NotThrowAsync(() => sut.JoinGroup("invoice-list", "acme"));
+     }
+ 
+-    private static ProjectionChangedHub CreateHub(string connectionId, IGroupManager groups, int maxGroupsPerConnection = 50) {
++    [Fact]
++    public async Task JoinGroup_UnauthenticatedUser_ThrowsHubExceptionWithoutAddingGroup() {
++        IGroupManager groups = Substitute.For<IGroupManager>();
++        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
++        ProjectionChangedHub sut = CreateHub(
++            "conn-anonymous",
++            groups,
++            maxGroupsPerConnection: 1,
++            user: new ClaimsPrincipal(new ClaimsIdentity()),
++            tenantValidator: tenantValidator);
++
++        HubException ex = await Should.ThrowAsync<HubException>(() =>
++            sut.JoinGroup("order-list", "acme"));
++
++        ex.Message.ShouldContain("Authentication is required");
++        await tenantValidator.DidNotReceive().ValidateAsync(
++            Arg.Any<ClaimsPrincipal>(),
++            Arg.Any<string>(),
++            Arg.Any<CancellationToken>(),
++            Arg.Any<string?>());
++        await groups.DidNotReceive().AddToGroupAsync("conn-anonymous", "order-list:acme", Arg.Any<CancellationToken>());
++    }
++
++    [Fact]
++    public async Task JoinGroup_WrongTenant_ThrowsHubExceptionWithoutAddingGroupOrConsumingQuota() {
++        IGroupManager groups = Substitute.For<IGroupManager>();
++        ProjectionChangedHub sut = CreateHub("conn-wrong-tenant", groups, maxGroupsPerConnection: 1, user: CreateUser("other"));
++
++        HubException ex = await Should.ThrowAsync<HubException>(() =>
++            sut.JoinGroup("order-list", "acme"));
++        await sut.JoinGroup("invoice-list", "other");
++
++        ex.Message.ShouldContain("Not authorized for tenant 'acme'.");
++        await groups.DidNotReceive().AddToGroupAsync("conn-wrong-tenant", "order-list:acme", Arg.Any<CancellationToken>());
++        await groups.Received(1).AddToGroupAsync("conn-wrong-tenant", "invoice-list:other", Arg.Any<CancellationToken>());
++    }
++
++    [Fact]
++    public async Task JoinGroup_NoTenantClaims_ThrowsHubExceptionWithoutAddingGroupOrConsumingQuota() {
++        IGroupManager groups = Substitute.For<IGroupManager>();
++        ProjectionChangedHub sut = CreateHub(
++            "conn-no-tenant",
++            groups,
++            maxGroupsPerConnection: 1,
++            user: new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "user-1")], "Bearer")));
++
++        HubException ex = await Should.ThrowAsync<HubException>(() =>
++            sut.JoinGroup("order-list", "acme"));
++
++        ex.Message.ShouldContain("No tenant authorization claims found");
++        await groups.DidNotReceive().AddToGroupAsync("conn-no-tenant", "order-list:acme", Arg.Any<CancellationToken>());
++    }
++
++    [Fact]
++    public async Task JoinGroup_GlobalAdmin_AllowsAnyTenant() {
++        IGroupManager groups = Substitute.For<IGroupManager>();
++        var user = new ClaimsPrincipal(new ClaimsIdentity([new Claim("global_admin", "true")], "Bearer"));
++        ProjectionChangedHub sut = CreateHub("conn-admin", groups, maxGroupsPerConnection: 1, user: user);
++
++        await sut.JoinGroup("order-list", "any-tenant");
++
++        await groups.Received(1).AddToGroupAsync("conn-admin", "order-list:any-tenant", Arg.Any<CancellationToken>());
++    }
++
++    [Fact]
++    public async Task JoinGroup_TenantComparisonIsCaseSensitiveForNonAdminUsers() {
++        IGroupManager groups = Substitute.For<IGroupManager>();
++        ProjectionChangedHub sut = CreateHub("conn-case", groups, user: CreateUser("ACME"));
++
++        HubException ex = await Should.ThrowAsync<HubException>(() =>
++            sut.JoinGroup("order-list", "acme"));
++
++        ex.Message.ShouldContain("Not authorized for tenant 'acme'.");
++        await groups.DidNotReceive().AddToGroupAsync("conn-case", "order-list:acme", Arg.Any<CancellationToken>());
++    }
++
++    [Fact]
++    public async Task JoinGroup_UsesConnectionAbortedTokenForTenantValidation() {
++        IGroupManager groups = Substitute.For<IGroupManager>();
++        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
++        using var cts = new CancellationTokenSource();
++        _ = tenantValidator.ValidateAsync(
++                Arg.Any<ClaimsPrincipal>(),
++                "acme",
++                cts.Token,
++                Arg.Any<string?>())
++            .Returns(TenantValidationResult.Allowed);
++        ProjectionChangedHub sut = CreateHub(
++            "conn-cancel",
++            groups,
++            user: CreateUser("acme"),
++            tenantValidator: tenantValidator,
++            connectionAborted: cts.Token);
++
++        await sut.JoinGroup("order-list", "acme");
++
++        await tenantValidator.Received(1).ValidateAsync(
++            Arg.Any<ClaimsPrincipal>(),
++            "acme",
++            cts.Token,
++            Arg.Any<string?>());
++    }
++
++    [Fact]
++    public async Task JoinGroup_DeniedThenAllowedOnSameConnection_DoesNotPoisonTrackingState() {
++        IGroupManager groups = Substitute.For<IGroupManager>();
++        ProjectionChangedHub sut = CreateHub("conn-recovery", groups, maxGroupsPerConnection: 1, user: CreateUser("allowed"));
++
++        _ = await Should.ThrowAsync<HubException>(() => sut.JoinGroup("order-list", "denied"));
++        await sut.JoinGroup("invoice-list", "allowed");
++
++        await groups.DidNotReceive().AddToGroupAsync("conn-recovery", "order-list:denied", Arg.Any<CancellationToken>());
++        await groups.Received(1).AddToGroupAsync("conn-recovery", "invoice-list:allowed", Arg.Any<CancellationToken>());
++    }
++
++    private static ProjectionChangedHub CreateHub(
++        string connectionId,
++        IGroupManager groups,
++        int maxGroupsPerConnection = 50,
++        ClaimsPrincipal? user = null,
++        ITenantValidator? tenantValidator = null,
++        CancellationToken connectionAborted = default) {
+         HubCallerContext context = Substitute.For<HubCallerContext>();
+         _ = context.ConnectionId.Returns(connectionId);
++        _ = context.User.Returns(user ?? CreateUser("acme"));
++        _ = context.ConnectionAborted.Returns(connectionAborted);
++
++        tenantValidator ??= new ClaimsTenantValidator();
+ 
+         ProjectionChangedHub hub = new(
++            tenantValidator,
+             Options.Create(new SignalROptions {
+                 Enabled = true,
+                 MaxGroupsPerConnection = maxGroupsPerConnection,
+@@ -83,4 +242,7 @@ public class ProjectionChangedHubTests {
+ 
+         return hub;
+     }
+-}
+\ No newline at end of file
++
++    private static ClaimsPrincipal CreateUser(string tenantId) =>
++        new(new ClaimsIdentity([new Claim("eventstore:tenant", tenantId), new Claim("sub", "user-1")], "Bearer"));
++}
