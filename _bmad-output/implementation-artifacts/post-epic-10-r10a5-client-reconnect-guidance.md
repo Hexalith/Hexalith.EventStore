@@ -32,11 +32,11 @@ Current HEAD at story creation: `34884ac`.
 
 5. **Existing sample code claims are truthful.** Inspect `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/Index.razor`, the three pattern pages, and shared query components for wording that overclaims reconnect catch-up. Update text or comments only where needed. Do not redesign the sample UI unless the existing text is materially misleading.
 
-6. **Client helper docs stay aligned with current API.** Guidance references `EventStoreSignalRClientOptions.AccessTokenProvider`, `RetryPolicy`, and `ConfigureHttpConnection` only as they exist today. Do not introduce a new public client API in this story unless the docs cannot be made truthful without it; if such an API is needed, record a deferred follow-up instead.
+6. **Client helper docs stay aligned with current API.** Guidance references `EventStoreSignalRClientOptions.AccessTokenProvider`, `RetryPolicy`, and `ConfigureHttpConnection` only as they exist today. Do not introduce a new public client API in this story unless the docs cannot be made truthful without it; if such an API is needed, record a deferred follow-up instead. Do not promise exact reconnect timing or attempt counts beyond the configured SignalR reconnect policy.
 
 7. **No product behavior is changed accidentally.** The story is documentation/sample guidance by default. Do not change hub protocol, group format, query contract, retry behavior, token flow, or reconnect internals while completing R10-A5.
 
-8. **Verification covers docs and any touched sample surface.** Run a markdown or link validation command when available. If only docs changed, no .NET test run is required. If sample `.razor` or client code changes are made, run the affected project/test commands individually and record results.
+8. **Verification covers docs and any touched sample surface.** Run a markdown or link validation command when available. If only docs changed, no .NET test run is required. If sample `.razor` or client code changes are made, run the affected project/test commands individually and record results. Record a post-edit wording audit for replay/current-state overclaims in the touched docs and sample text.
 
 9. **Story bookkeeping is closed.** At dev handoff, this story status becomes `review`, the sprint-status row becomes `review`, and both `last_updated` fields in `sprint-status.yaml` name R10-A5 and the documentation result. At code-review signoff, both become `done`.
 
@@ -47,6 +47,13 @@ Current HEAD at story creation: `34884ac`.
 - NuGet package reference placement: describe `EventStoreSignalRClient` group rejoin as internal future-signal continuity, and state that applications must trigger their own re-query from lifecycle events they can observe.
 - Sample Blazor UI guide placement: explain practical UI lifecycle behavior for initial load, signal receipt, reconnect/resume, and user-triggered refresh.
 - Prefer precise wording such as "authoritative source", "re-query", "known reconnect", "resume from sleep", and "known downtime". Avoid relying only on idioms such as "source of truth", "catch up", or "wake up".
+
+## Advanced Elicitation Hardening Notes
+
+- Treat reconnect, browser resume, page restore, network-online events, and user-visible stale-data recovery as application-owned lifecycle signals. The docs may name these examples, but must not claim the current helper raises a consumer-facing reconnect notification.
+- Keep the guidance security-neutral: `AccessTokenProvider` explains token supply for the hub connection, while tenant authorization and authoritative projection data remain owned by existing Query API and hub authorization contracts.
+- The post-edit wording audit should flag both explicit overclaims and softer phrases such as "keeps current", "stays synchronized", "missed update", "automatic recovery", or "real-time state" when they appear near SignalR guidance.
+- If truthful docs require a reconnect callback, connection-state observable, or sample behavior change, record it as a deferred follow-up instead of widening this story beyond documentation/sample guidance.
 
 ## Scope Boundaries
 
@@ -60,6 +67,7 @@ Current HEAD at story creation: `34884ac`.
 - Do not add a public reconnect callback to `EventStoreSignalRClient` in this story. Document the current helper boundary instead.
 - Do not change hub contracts, payloads, group/retry/token logic, reconnect behavior, replay semantics, or server-side missed-signal buffering.
 - Do not change sample UI behavior unless existing UI text or comments currently imply SignalR carries data, command status, ETags, or missed notifications.
+- Do not present SignalR reconnect as a tenant authorization or current-state validation boundary. Reconnect restores transport continuity only.
 
 ## Implementation Inventory
 
@@ -86,6 +94,7 @@ Current HEAD at story creation: `34884ac`.
   - [ ] 0.4 Identify every sentence that could make a consumer believe missed signals are replayed, reconnect makes the client current, or SignalR carries current projection data.
   - [ ] 0.5 Confirm no runtime SignalR client/server behavior files changed unless a documented blocker forced escalation.
   - [ ] 0.6 Confirm `EventStoreSignalRClient` does not currently expose a consumer callback for reconnect completion.
+  - [ ] 0.7 After edits, repeat the overclaim grep on touched files and record whether each remaining match is intentional context, a corrected sentence, or unrelated wording.
 
 - [ ] Task 1: Update reference documentation (AC: #1, #2, #3, #6)
   - [ ] 1.1 In `docs/reference/query-api.md`, add or tighten a short "connect and reconnect responsibilities" subsection near the SignalR hub usage guidance.
@@ -95,17 +104,20 @@ Current HEAD at story creation: `34884ac`.
   - [ ] 1.5 Say the current helper rejoins groups internally but does not expose a public reconnected event for consumer refresh logic.
   - [ ] 1.6 In `docs/reference/nuget-packages.md`, align the SignalR package description with the same responsibility boundary.
   - [ ] 1.7 Add a concise "Do / Do not" contract block where it fits: do query on initial load, re-query after known reconnect/resume/downtime, and treat notifications as refresh hints; do not treat notifications as projection data, command status, ETags, or replayed missed notifications.
+  - [ ] 1.8 Avoid documenting exact reconnect attempt timing unless the text explicitly attributes it to the configured SignalR retry policy and not to an EventStore contract.
 
 - [ ] Task 2: Update sample guidance (AC: #2, #3, #4, #5)
   - [ ] 2.1 In `docs/guides/sample-blazor-ui.md`, add a concise table for initial load, signal receipt, reconnect/resume, and user-triggered refresh behavior.
   - [ ] 2.2 Name pattern behavior: notification waits for user refresh, silent reload auto-queries after debounce, selective refresh lets components refresh independently.
   - [ ] 2.3 State that the sample demonstrates query-after-signal behavior, not replay of changes missed during disconnect.
   - [ ] 2.4 If the sample overview or pattern page text overclaims reconnect catch-up, update only the wording needed to make it truthful.
+  - [ ] 2.5 If the sample guide mentions browser resume or network recovery, phrase it as a consumer-owned reason to re-query, not as behavior implemented by the sample helper.
 
 - [ ] Task 3: Preserve implementation boundaries (AC: #6, #7)
   - [ ] 3.1 Do not modify `EventStoreSignalRClient` unless a concrete documentation truthfulness blocker is found.
   - [ ] 3.2 If a public reconnect notification API is needed, add a deferred-work row instead of widening this docs story silently.
   - [ ] 3.3 Do not change hub authorization, Redis backplane behavior, group naming, retry policy defaults, or query API behavior.
+  - [ ] 3.4 If docs expose a limitation that materially harms adopter experience, capture the follow-up with owner, trigger, and why R10-A5 intentionally did not implement it.
 
 - [ ] Task 4: Verification gates (AC: #8)
   - [ ] 4.1 Run `npx markdownlint-cli2 "docs/**/*.md" "_bmad-output/implementation-artifacts/post-epic-10-r10a5-client-reconnect-guidance.md"` if the local Node toolchain supports it; otherwise record the unavailable command.
@@ -114,6 +126,7 @@ Current HEAD at story creation: `34884ac`.
   - [ ] 4.4 If SignalR client source changes despite the default boundary, run `dotnet test tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj --no-restore`.
   - [ ] 4.5 If validation cannot run, record the attempted command or tool, the failure reason, any manual spot-check performed, and whether an equivalent CI check is configured. Do not write "CI should catch it" unless that check is known to exist.
   - [ ] 4.6 If only markdown documentation changes are made, no .NET tests are required. If sample `.razor` text changes are made, build the sample project when practical. If SignalR runtime code changes are made, run relevant SignalR tests or record explicit approval/deferral because behavior changes are out of scope by default.
+  - [ ] 4.7 Record the exact post-edit overclaim grep terms and the touched-file scope in the Dev Agent Record.
 
 - [ ] Task 5: Story bookkeeping (AC: #9)
   - [ ] 5.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
@@ -126,6 +139,7 @@ Current HEAD at story creation: `34884ac`.
 
 - SignalR is an invalidation channel. Query endpoints remain the source of projection data, current ETags, and tenant authorization decisions.
 - Automatic reconnect is about transport recovery. Automatic group rejoin is about future subscription continuity. Neither mechanism replays missed messages.
+- Reconnect completion does not prove the UI is current. It only means the transport recovered and the helper attempted to restore tracked groups for future notifications.
 - The sample's `CounterQueryService` already owns ETag caching and sends `If-None-Match`; reuse that as the documentation example instead of inventing another query helper.
 - Current sample pages perform an initial query during component initialization. That is the baseline-state pattern R10-A5 should document.
 - The current client helper logs unexpected closed events and rejoins tracked groups after reconnect, but it does not expose a public "reconnected" notification that UI components can subscribe to.
@@ -209,6 +223,7 @@ To be filled by dev agent.
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-02 | 0.3 | Advanced elicitation hardened lifecycle-signal boundaries, reconnect timing wording, post-edit overclaim audit, and deferred follow-up routing. | Codex automation |
 | 2026-05-02 | 0.2 | Party-mode review hardened reconnect contract wording, implementation guardrails, and validation branches. | Codex automation |
 | 2026-05-01 | 0.1 | Created ready-for-dev R10-A5 client reconnect guidance story. | Codex automation |
 
@@ -221,6 +236,18 @@ To be filled by dev agent.
 - Findings summary: Reviewers agreed the story should stay documentation/sample-guidance focused; strengthen the canonical invalidation-only contract; state missed-signal replay negatively; document the current helper's lack of public reconnect callback; add precise audit terms; and make validation branches explicit for docs-only, sample `.razor`, and SignalR runtime changes.
 - Changes applied: Added party-mode hardening notes with the canonical contract sentence and doc placement guidance; expanded scope boundaries to forbid reconnect callback/API and behavior changes; tightened wording-audit tasks; added "Do / Do not" contract guidance; and expanded validation fallback evidence requirements.
 - Findings deferred: Dev-story execution must decide whether existing docs or sample UI wording is materially misleading and perform the actual documentation updates. No product, architecture, public API, hub contract, or sample behavior decision was made in this review.
+- Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-02T14:53:57+02:00
+- Selected story key: `post-epic-10-r10a5-client-reconnect-guidance`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-10-r10a5-client-reconnect-guidance`
+- Batch 1 method names: Self-Consistency Validation; Red Team vs Blue Team; Security Audit Personas; Failure Mode Analysis; Comparative Analysis Matrix
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Occam's Razor Application; First Principles Analysis; 5 Whys Deep Dive; Lessons Learned Extraction
+- Findings summary: The story already preserved the signal-only boundary, but needed stronger guardrails around lifecycle signals, reconnect timing wording, adopter-facing overclaim audits, and follow-up routing if truthful docs require a future reconnect observable.
+- Changes applied: Added advanced elicitation hardening notes; tightened AC #6 and #8; added reconnect-as-transport-only scope guidance; expanded audit, docs, sample, boundary, and verification subtasks; added a reconnect-currentness guardrail to Dev Notes; and recorded this dated canonical trace.
+- Findings deferred: Dev-story execution must decide whether existing documentation or sample UI text actually requires edits, run the post-edit overclaim audit, and record any needed reconnect callback or connection-state observable as deferred work rather than adding API surface in R10-A5.
 - Final recommendation: ready-for-dev
 
 ## Verification Status
