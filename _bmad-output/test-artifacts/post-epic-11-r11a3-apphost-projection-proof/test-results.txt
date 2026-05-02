@@ -12,7 +12,7 @@ Final attempt:
 - Passed: 63
 - Failed: 0
 - Skipped: 0
-- Duration: 84 ms
+- Duration: 84 ms (xUnit assembly inner test execution time as reported by the runner; this excludes `dotnet test` host startup, MSBuild restore/build, and assembly load. The full `dotnet test` wall time is in seconds — only the per-assembly summary line was preserved here.)
 - Target framework: net10.0
 
 Server projection tests:
