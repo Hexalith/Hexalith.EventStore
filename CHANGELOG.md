@@ -1,3 +1,10 @@
+# [3.5.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.4.0...v3.5.0) (2026-05-02)
+
+
+### Features
+
+* Add Redis backplane runtime proof endpoints and integration tests ([5753f79](https://github.com/Hexalith/Hexalith.EventStore/commit/5753f796035019a7b3883e1bd69018e5ea5759f9))
+
 # [3.4.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.3.0...v3.4.0) (2026-05-02)
 
 
