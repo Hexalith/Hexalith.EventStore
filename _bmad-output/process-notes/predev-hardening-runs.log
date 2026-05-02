@@ -41,3 +41,4 @@
 2026-05-02T14:53:57+02:00	advanced-elicitation	post-epic-10-r10a5-client-reconnect-guidance	ok	advanced-elicitation trace applied; preflight passed at 2026-05-02T12:23:49Z
 2026-05-02T18:20:29+02:00	create-story	post-epic-10-r10a6-signalr-operational-evidence-pattern	ok	created ready-for-dev R10-A6 SignalR operational evidence pattern story
 2026-05-02T18:34:15+02:00	create-story	post-epic-10-r10a7-redis-channel-isolation-policy	ok	created ready-for-dev story; concurrent R10-A5 sprint-status change left unstaged
+2026-05-02T18:42:13+02:00	create-story	post-epic-10-r10a8-r9-r10-follow-through-tracking	ok	created ready-for-dev R10-A8 follow-through tracking story

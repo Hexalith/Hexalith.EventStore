@@ -28,7 +28,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-02T18:34:06+02:00' # R10-A5 review: client reconnect guidance docs/sample wording completed and validated
+last_updated: '2026-05-02T18:42:13+02:00' # R10-A8 story created for R9/R10 follow-through tracking
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -129,7 +129,7 @@ development_status:
   post-epic-10-r10a5-client-reconnect-guidance: review
   post-epic-10-r10a6-signalr-operational-evidence-pattern: ready-for-dev
   post-epic-10-r10a7-redis-channel-isolation-policy: ready-for-dev
-  post-epic-10-r10a8-r9-r10-follow-through-tracking: backlog
+  post-epic-10-r10a8-r9-r10-follow-through-tracking: ready-for-dev
 
   # Epic 11: Server-Managed Projection Builder
   epic-11: done
