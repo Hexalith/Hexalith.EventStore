@@ -185,7 +185,7 @@ The Command API can expose an optional SignalR hub at:
 /hubs/projection-changes
 ```
 
-The hub does not send projection data. It sends a **signal only** — clients receive the projection type and tenant ID, then decide whether to requery the HTTP API.
+SignalR notifications are invalidation signals only. They do not contain projection data, ETags, command status, or a replay of missed signals. The Query API remains the authoritative source for current projection state.
 
 ### Hub Methods
 
@@ -223,12 +223,32 @@ await client.SubscribeAsync("counter", "tenant-a", () =>
 await client.StartAsync();
 ```
 
+Use `EventStoreSignalRClientOptions.AccessTokenProvider` when the hub requires bearer authentication. Use `RetryPolicy` to supply the SignalR reconnect policy, and `ConfigureHttpConnection` to customize the underlying HTTP connection options. These settings affect the hub connection; they do not change the Query API responsibility for current projection data.
+
+### Connect and Reconnect Responsibilities
+
 A common pattern is:
 
-1. Call `POST /api/v1/queries` and cache the `ETag`.
+1. Call `POST /api/v1/queries` on connect or component initialization to establish baseline state, then cache the `ETag`.
 2. Join the SignalR group for the relevant projection type and tenant.
 3. When `ProjectionChanged` fires, re-run the query with `If-None-Match`.
 4. Refresh only when the API returns `200 OK`; keep the cached UI when it returns `304 Not Modified`.
+
+Automatic reconnect and group rejoin restore future notification delivery only. They do not replay notifications missed while the connection was down. After a known reconnect, browser resume, page restore, or other known downtime, clients that display projection data should re-query the Query API for the projections they show.
+
+The current `EventStoreSignalRClient` rejoins tracked groups internally after reconnect, but it does not expose a public reconnected event or callback for application refresh logic. Applications that need reconnect-aware refresh should use lifecycle signals they can observe, such as browser online/resume events, page restore events, explicit user refresh, or host-specific connection monitoring, then re-query the HTTP Query API.
+
+Do:
+
+- Query on initial load before relying on future `ProjectionChanged` callbacks.
+- Re-query after known reconnect, browser resume, page restore, or known downtime.
+- Treat SignalR notifications as refresh hints and use `If-None-Match` to avoid replacing unchanged UI state.
+
+Do not:
+
+- Treat `ProjectionChanged` as projection data.
+- Treat SignalR as a command-status, ETag, or missed-notification replay channel.
+- Infer exact reconnect timing from the EventStore contract; reconnect timing is governed by the configured SignalR retry policy.
 
 The sample Blazor UI demonstrates three client reactions to this signal-only model: persistent notification, silent reload, and selective component refresh. See [Sample Blazor UI](../guides/sample-blazor-ui.md) for the UI behavior, command feedback boundary, and smoke-test evidence format.
 

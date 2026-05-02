@@ -90,6 +90,20 @@ Install **SignalR**.
 
 SignalR provides `EventStoreSignalRClient`, a small helper that connects to `/hubs/projection-changes`, joins projection groups, and automatically rejoins them after reconnects.
 
+SignalR notifications are invalidation signals only. They do not contain projection data, ETags, command status, or a replay of missed signals. The Query API remains the authoritative source for current projection state.
+
+Do:
+
+- Query the HTTP Query API on initial load to establish baseline state.
+- Re-query after known reconnect, browser resume, page restore, or known downtime.
+- Treat `ProjectionChanged` as a refresh hint and use `If-None-Match` to keep unchanged cached UI state.
+
+Do not:
+
+- Treat SignalR notifications as projection data, command status, ETags, or replayed missed notifications.
+- Rely on group rejoin to make a UI current after downtime.
+- Document exact reconnect timing as an EventStore guarantee; timing comes from the configured SignalR retry policy.
+
 ```bash
 $ dotnet add package Hexalith.EventStore.SignalR
 ```
@@ -190,7 +204,11 @@ $ dotnet add package Hexalith.EventStore.Server
 
 ### Hexalith.EventStore.SignalR
 
-Signal-only client helper for real-time projection change notifications. This package is designed for read-model consumers that want to refresh cached or displayed projection data when the server announces a change. When naming projection types, use short names for compact ETags — see [Projection Type Naming](query-api.md#projection-type-naming).
+Signal-only client helper for projection change notifications. This package is designed for read-model consumers that want to refresh cached or displayed projection data when the server announces a change. It wraps the hub connection and group membership mechanics, including internal group rejoin after reconnect. Applications still own current-state refresh by querying the HTTP Query API on initial load and after lifecycle events they can observe.
+
+`EventStoreSignalRClientOptions.AccessTokenProvider` supplies bearer tokens for hub authentication. `RetryPolicy` controls SignalR reconnect behavior, and `ConfigureHttpConnection` customizes the underlying HTTP connection options. The current helper does not expose a public reconnected event or callback for consumer refresh logic.
+
+When naming projection types, use short names for compact ETags — see [Projection Type Naming](query-api.md#projection-type-naming).
 
 **Key namespace and types:**
 

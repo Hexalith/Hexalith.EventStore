@@ -7,8 +7,8 @@
 
 <!-- Pattern 2: Automatic Silent Reload
      Trade-offs:
-     + Seamless — data always current without user intervention
-     + Simple to implement — just re-fetch on signal
+     + Seamless after received signals without user intervention
+     + Simple to implement — just re-fetch on each received signal
      - May cause layout shifts if data size changes
      - Higher query load — every signal triggers a fetch
      - User may lose scroll position or selection state
@@ -16,7 +16,7 @@
 
 <h1>Pattern 2: Automatic Silent Reload</h1>
 <p>
-    Data refreshes automatically when the counter projection changes.
+    Data refreshes automatically when this page receives a counter projection change signal.
     A subtle fade transition indicates the update — no user action required.
 </p>
 

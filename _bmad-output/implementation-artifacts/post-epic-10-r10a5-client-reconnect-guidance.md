@@ -1,6 +1,6 @@
 # Post-Epic-10 R10-A5: Client Reconnect Guidance
 
-Status: ready-for-dev
+Status: review
 
 <!-- Source: epic-10-retro-2026-05-01.md R10-A5 -->
 <!-- Source: sprint-change-proposal-2026-05-01-epic-10-retro-cleanup.md Proposal 5 -->
@@ -87,51 +87,51 @@ Current HEAD at story creation: `34884ac`.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline and wording audit (AC: #1, #5, #7)
-  - [ ] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
-  - [ ] 0.2 Grep docs and sample text for `reconnect`, `rejoin`, `replay`, `catch-up`, `ProjectionChanged`, `SignalR`, and `If-None-Match`.
-  - [ ] 0.3 Also grep for `real-time state`, `live synchronized`, `guaranteed update`, `missed updates`, `stream`, and `event replay` under `docs/`, `samples/`, and relevant client package README/package text.
-  - [ ] 0.4 Identify every sentence that could make a consumer believe missed signals are replayed, reconnect makes the client current, or SignalR carries current projection data.
-  - [ ] 0.5 Confirm no runtime SignalR client/server behavior files changed unless a documented blocker forced escalation.
-  - [ ] 0.6 Confirm `EventStoreSignalRClient` does not currently expose a consumer callback for reconnect completion.
-  - [ ] 0.7 After edits, repeat the overclaim grep on touched files and record whether each remaining match is intentional context, a corrected sentence, or unrelated wording.
+- [x] Task 0: Baseline and wording audit (AC: #1, #5, #7)
+  - [x] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
+  - [x] 0.2 Grep docs and sample text for `reconnect`, `rejoin`, `replay`, `catch-up`, `ProjectionChanged`, `SignalR`, and `If-None-Match`.
+  - [x] 0.3 Also grep for `real-time state`, `live synchronized`, `guaranteed update`, `missed updates`, `stream`, and `event replay` under `docs/`, `samples/`, and relevant client package README/package text.
+  - [x] 0.4 Identify every sentence that could make a consumer believe missed signals are replayed, reconnect makes the client current, or SignalR carries current projection data.
+  - [x] 0.5 Confirm no runtime SignalR client/server behavior files changed unless a documented blocker forced escalation.
+  - [x] 0.6 Confirm `EventStoreSignalRClient` does not currently expose a consumer callback for reconnect completion.
+  - [x] 0.7 After edits, repeat the overclaim grep on touched files and record whether each remaining match is intentional context, a corrected sentence, or unrelated wording.
 
-- [ ] Task 1: Update reference documentation (AC: #1, #2, #3, #6)
-  - [ ] 1.1 In `docs/reference/query-api.md`, add or tighten a short "connect and reconnect responsibilities" subsection near the SignalR hub usage guidance.
-  - [ ] 1.2 State the normal connect flow: query for baseline state, subscribe/join the group, then re-query with `If-None-Match` when `ProjectionChanged` fires.
-  - [ ] 1.3 State the reconnect flow: group rejoin restores future signals; consumers that know a reconnect/resume happened must re-query for current authoritative state.
-  - [ ] 1.4 State the reconnect flow without implying guaranteed recovery: after initial connect, known reconnect, resume from sleep, or known downtime, clients should re-query the Query API for the projections they display.
-  - [ ] 1.5 Say the current helper rejoins groups internally but does not expose a public reconnected event for consumer refresh logic.
-  - [ ] 1.6 In `docs/reference/nuget-packages.md`, align the SignalR package description with the same responsibility boundary.
-  - [ ] 1.7 Add a concise "Do / Do not" contract block where it fits: do query on initial load, re-query after known reconnect/resume/downtime, and treat notifications as refresh hints; do not treat notifications as projection data, command status, ETags, or replayed missed notifications.
-  - [ ] 1.8 Avoid documenting exact reconnect attempt timing unless the text explicitly attributes it to the configured SignalR retry policy and not to an EventStore contract.
+- [x] Task 1: Update reference documentation (AC: #1, #2, #3, #6)
+  - [x] 1.1 In `docs/reference/query-api.md`, add or tighten a short "connect and reconnect responsibilities" subsection near the SignalR hub usage guidance.
+  - [x] 1.2 State the normal connect flow: query for baseline state, subscribe/join the group, then re-query with `If-None-Match` when `ProjectionChanged` fires.
+  - [x] 1.3 State the reconnect flow: group rejoin restores future signals; consumers that know a reconnect/resume happened must re-query for current authoritative state.
+  - [x] 1.4 State the reconnect flow without implying guaranteed recovery: after initial connect, known reconnect, resume from sleep, or known downtime, clients should re-query the Query API for the projections they display.
+  - [x] 1.5 Say the current helper rejoins groups internally but does not expose a public reconnected event for consumer refresh logic.
+  - [x] 1.6 In `docs/reference/nuget-packages.md`, align the SignalR package description with the same responsibility boundary.
+  - [x] 1.7 Add a concise "Do / Do not" contract block where it fits: do query on initial load, re-query after known reconnect/resume/downtime, and treat notifications as refresh hints; do not treat notifications as projection data, command status, ETags, or replayed missed notifications.
+  - [x] 1.8 Avoid documenting exact reconnect attempt timing unless the text explicitly attributes it to the configured SignalR retry policy and not to an EventStore contract.
 
-- [ ] Task 2: Update sample guidance (AC: #2, #3, #4, #5)
-  - [ ] 2.1 In `docs/guides/sample-blazor-ui.md`, add a concise table for initial load, signal receipt, reconnect/resume, and user-triggered refresh behavior.
-  - [ ] 2.2 Name pattern behavior: notification waits for user refresh, silent reload auto-queries after debounce, selective refresh lets components refresh independently.
-  - [ ] 2.3 State that the sample demonstrates query-after-signal behavior, not replay of changes missed during disconnect.
-  - [ ] 2.4 If the sample overview or pattern page text overclaims reconnect catch-up, update only the wording needed to make it truthful.
-  - [ ] 2.5 If the sample guide mentions browser resume or network recovery, phrase it as a consumer-owned reason to re-query, not as behavior implemented by the sample helper.
+- [x] Task 2: Update sample guidance (AC: #2, #3, #4, #5)
+  - [x] 2.1 In `docs/guides/sample-blazor-ui.md`, add a concise table for initial load, signal receipt, reconnect/resume, and user-triggered refresh behavior.
+  - [x] 2.2 Name pattern behavior: notification waits for user refresh, silent reload auto-queries after debounce, selective refresh lets components refresh independently.
+  - [x] 2.3 State that the sample demonstrates query-after-signal behavior, not replay of changes missed during disconnect.
+  - [x] 2.4 If the sample overview or pattern page text overclaims reconnect catch-up, update only the wording needed to make it truthful.
+  - [x] 2.5 If the sample guide mentions browser resume or network recovery, phrase it as a consumer-owned reason to re-query, not as behavior implemented by the sample helper.
 
-- [ ] Task 3: Preserve implementation boundaries (AC: #6, #7)
-  - [ ] 3.1 Do not modify `EventStoreSignalRClient` unless a concrete documentation truthfulness blocker is found.
-  - [ ] 3.2 If a public reconnect notification API is needed, add a deferred-work row instead of widening this docs story silently.
-  - [ ] 3.3 Do not change hub authorization, Redis backplane behavior, group naming, retry policy defaults, or query API behavior.
-  - [ ] 3.4 If docs expose a limitation that materially harms adopter experience, capture the follow-up with owner, trigger, and why R10-A5 intentionally did not implement it.
+- [x] Task 3: Preserve implementation boundaries (AC: #6, #7)
+  - [x] 3.1 Do not modify `EventStoreSignalRClient` unless a concrete documentation truthfulness blocker is found.
+  - [x] 3.2 If a public reconnect notification API is needed, add a deferred-work row instead of widening this docs story silently.
+  - [x] 3.3 Do not change hub authorization, Redis backplane behavior, group naming, retry policy defaults, or query API behavior.
+  - [x] 3.4 If docs expose a limitation that materially harms adopter experience, capture the follow-up with owner, trigger, and why R10-A5 intentionally did not implement it.
 
-- [ ] Task 4: Verification gates (AC: #8)
-  - [ ] 4.1 Run `npx markdownlint-cli2 "docs/**/*.md" "_bmad-output/implementation-artifacts/post-epic-10-r10a5-client-reconnect-guidance.md"` if the local Node toolchain supports it; otherwise record the unavailable command.
-  - [ ] 4.2 Run `npx lychee --config lychee.toml docs/reference/query-api.md docs/reference/nuget-packages.md docs/guides/sample-blazor-ui.md` if link checking is practical in the environment; otherwise record the blocker.
-  - [ ] 4.3 If any `.razor` file changes, run `dotnet build samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj --no-restore`.
-  - [ ] 4.4 If SignalR client source changes despite the default boundary, run `dotnet test tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj --no-restore`.
-  - [ ] 4.5 If validation cannot run, record the attempted command or tool, the failure reason, any manual spot-check performed, and whether an equivalent CI check is configured. Do not write "CI should catch it" unless that check is known to exist.
-  - [ ] 4.6 If only markdown documentation changes are made, no .NET tests are required. If sample `.razor` text changes are made, build the sample project when practical. If SignalR runtime code changes are made, run relevant SignalR tests or record explicit approval/deferral because behavior changes are out of scope by default.
-  - [ ] 4.7 Record the exact post-edit overclaim grep terms and the touched-file scope in the Dev Agent Record.
+- [x] Task 4: Verification gates (AC: #8)
+  - [x] 4.1 Run `npx markdownlint-cli2 "docs/**/*.md" "_bmad-output/implementation-artifacts/post-epic-10-r10a5-client-reconnect-guidance.md"` if the local Node toolchain supports it; otherwise record the unavailable command.
+  - [x] 4.2 Run `npx lychee --config lychee.toml docs/reference/query-api.md docs/reference/nuget-packages.md docs/guides/sample-blazor-ui.md` if link checking is practical in the environment; otherwise record the blocker.
+  - [x] 4.3 If any `.razor` file changes, run `dotnet build samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj --no-restore`.
+  - [x] 4.4 If SignalR client source changes despite the default boundary, run `dotnet test tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj --no-restore`.
+  - [x] 4.5 If validation cannot run, record the attempted command or tool, the failure reason, any manual spot-check performed, and whether an equivalent CI check is configured. Do not write "CI should catch it" unless that check is known to exist.
+  - [x] 4.6 If only markdown documentation changes are made, no .NET tests are required. If sample `.razor` text changes are made, build the sample project when practical. If SignalR runtime code changes are made, run relevant SignalR tests or record explicit approval/deferral because behavior changes are out of scope by default.
+  - [x] 4.7 Record the exact post-edit overclaim grep terms and the touched-file scope in the Dev Agent Record.
 
-- [ ] Task 5: Story bookkeeping (AC: #9)
-  - [ ] 5.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
-  - [ ] 5.2 Move this story and only this story from `ready-for-dev` to `review` at dev handoff.
-  - [ ] 5.3 Leave R10-A2/R10-A3/R10-A6/R10-A7/R10-A8 status rows unchanged.
+- [x] Task 5: Story bookkeeping (AC: #9)
+  - [x] 5.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
+  - [x] 5.2 Move this story and only this story from `ready-for-dev` to `review` at dev handoff.
+  - [x] 5.3 Leave R10-A2/R10-A3/R10-A6/R10-A7/R10-A8 status rows unchanged.
 
 ## Dev Notes
 
@@ -201,28 +201,45 @@ Current HEAD at story creation: `34884ac`.
 
 ### Agent Model Used
 
-To be filled by dev agent.
+Codex GPT-5
 
 ### Deferred Decisions / Follow-ups
 
-To be filled by dev agent if the current helper API prevents truthful reconnect-refresh guidance.
+- None required for this story. The docs now name the current helper limitation: `EventStoreSignalRClient` rejoins groups internally after reconnect but does not expose a public reconnected callback for consumer refresh logic.
 
 ### Debug Log References
 
-To be filled by dev agent.
+- 2026-05-02T18:30:58+02:00 - Baseline: HEAD `e76adff`; story status confirmed `ready-for-dev`; sprint row moved to `in-progress`.
+- Baseline audit command: `rg -n -i "reconnect|rejoin|replay|catch-up|ProjectionChanged|SignalR|If-None-Match|real-time state|live synchronized|guaranteed update|missed updates|missed update|stream|event replay|keeps current|stays synchronized|automatic recovery" docs samples src\Hexalith.EventStore.SignalR tests\Hexalith.EventStore.SignalR.Tests`.
+- Targeted audit scope: `docs/reference/query-api.md`, `docs/reference/nuget-packages.md`, `docs/guides/sample-blazor-ui.md`, sample Blazor UI pages/components/services, and `src/Hexalith.EventStore.SignalR`.
+- Public reconnect callback check: `rg -n "public .*Reconnect|Reconnected|event .*Reconnect|OnReconnectedAsync" src\Hexalith.EventStore.SignalR\EventStoreSignalRClient.cs src\Hexalith.EventStore.SignalR\EventStoreSignalRClientOptions.cs`; only private/internal reconnect handling exists.
+- Post-edit overclaim audit command: `rg -n -i "reconnect|rejoin|replay|catch-up|ProjectionChanged|SignalR|If-None-Match|real-time state|live synchronized|guaranteed update|missed updates|missed update|keeps current|stays synchronized|automatic recovery|always current" docs\reference\query-api.md docs\reference\nuget-packages.md docs\guides\sample-blazor-ui.md samples\Hexalith.EventStore.Sample.BlazorUI\Pages\Index.razor samples\Hexalith.EventStore.Sample.BlazorUI\Pages\NotificationPattern.razor samples\Hexalith.EventStore.Sample.BlazorUI\Pages\SilentReloadPattern.razor samples\Hexalith.EventStore.Sample.BlazorUI\Pages\SelectiveRefreshPattern.razor samples\Hexalith.EventStore.Sample.BlazorUI\Components\CounterValueCard.razor samples\Hexalith.EventStore.Sample.BlazorUI\Components\CounterHistoryGrid.razor samples\Hexalith.EventStore.Sample.BlazorUI\Services\CounterQueryService.cs src\Hexalith.EventStore.SignalR\EventStoreSignalRClient.cs src\Hexalith.EventStore.SignalR\EventStoreSignalRClientOptions.cs`.
+- Post-edit audit result: remaining matches are corrected contract language, intentional sample/client context, or unrelated SignalR/client internals; `always current` no longer appears in touched sample wording.
 
 ### Completion Notes List
 
-To be filled by dev agent.
+- Added connect/reconnect responsibility guidance to the Query API reference, including the canonical signal-only contract, baseline query flow, query-after-signal flow, reconnect/resume re-query responsibility, and current helper callback limitation.
+- Aligned the NuGet package guide with the same SignalR boundary, including Do/Do not guidance and current `EventStoreSignalRClientOptions` surface (`AccessTokenProvider`, `RetryPolicy`, `ConfigureHttpConnection`).
+- Expanded the sample Blazor UI guide with an initial load, signal receipt, reconnect/resume, and user-triggered refresh table; clarified that the sample demonstrates query-after-signal behavior, not missed-signal replay.
+- Tightened sample overview and silent reload page wording so it no longer implies SignalR keeps data always current or catches up after downtime.
+- Preserved implementation boundaries: no SignalR runtime, hub protocol, group format, retry, token flow, query contract, Redis, or authorization behavior changed.
+- Aspire state checked before edits; key resources were healthy. `sample-blazor-ui` was stopped briefly to release the executable lock for build validation, then restarted and confirmed running healthy.
 
 ### File List
 
-To be filled by dev agent.
+- `_bmad-output/implementation-artifacts/post-epic-10-r10a5-client-reconnect-guidance.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/reference/query-api.md`
+- `docs/reference/nuget-packages.md`
+- `docs/guides/sample-blazor-ui.md`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/Index.razor`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/SilentReloadPattern.razor`
 
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-02 | 1.0 | Implemented R10-A5 client reconnect guidance, sample wording corrections, validation evidence, and dev handoff bookkeeping. | Codex |
 | 2026-05-02 | 0.3 | Advanced elicitation hardened lifecycle-signal boundaries, reconnect timing wording, post-edit overclaim audit, and deferred follow-up routing. | Codex automation |
 | 2026-05-02 | 0.2 | Party-mode review hardened reconnect contract wording, implementation guardrails, and validation branches. | Codex automation |
 | 2026-05-01 | 0.1 | Created ready-for-dev R10-A5 client reconnect guidance story. | Codex automation |
@@ -252,4 +269,18 @@ To be filled by dev agent.
 
 ## Verification Status
 
-Story creation only. Documentation, sample, and build verification are intentionally deferred to `bmad-dev-story`.
+- `aspire doctor`: pass for .NET SDK and Docker; warnings only for multiple/older dev certificates and deprecated Claude Code MCP config.
+- Aspire resources inspected through MCP before edits; `eventstore`, `sample`, `sample-blazor-ui`, Dapr components, and Keycloak were running healthy.
+- `npx markdownlint-cli2 "docs/**/*.md" "_bmad-output/implementation-artifacts/post-epic-10-r10a5-client-reconnect-guidance.md"`: failed because the pre-existing story file task list uses two-space nested unordered-list indentation that violates MD007. The touched documentation files were not identified as failures.
+- `npx markdownlint-cli2 "docs/reference/query-api.md" "docs/reference/nuget-packages.md" "docs/guides/sample-blazor-ui.md"`: passed, 0 errors.
+- `npx lychee --config lychee.toml docs/reference/query-api.md docs/reference/nuget-packages.md docs/guides/sample-blazor-ui.md`: npm could not determine an executable. Direct installed `lychee` was found on PATH.
+- `lychee --config lychee.toml docs/reference/query-api.md docs/reference/nuget-packages.md docs/guides/sample-blazor-ui.md`: passed, 19 total links, 18 OK, 0 errors, 1 excluded.
+- `dotnet build samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj --no-restore`: first attempt failed because the Aspire-running sample executable locked `Hexalith.EventStore.Sample.BlazorUI.exe`.
+- After stopping only the `sample-blazor-ui` Aspire resource, `dotnet build samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj --no-restore`: passed, 0 warnings, 0 errors.
+- Documented unit regression tests were attempted in parallel first; `Hexalith.EventStore.Contracts.Tests` passed, while the other parallel test builds hit file locks from concurrent builds and running Aspire resources.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-restore`: passed, 281 tests.
+- After stopping Aspire `sample` and `eventstore` resources to release locked binaries, `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --no-restore`: passed, 334 tests.
+- `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj --no-restore`: passed, 63 tests.
+- `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj --no-restore`: passed, 78 tests.
+- Stopped Aspire resources were restarted after validation; `eventstore`, `sample`, and `sample-blazor-ui` were confirmed running healthy.
+- SignalR runtime/client source was not modified; `tests/Hexalith.EventStore.SignalR.Tests` was not required for this docs/sample-text story.

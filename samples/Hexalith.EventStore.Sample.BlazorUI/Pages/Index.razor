@@ -24,7 +24,7 @@
 <ol>
     <li>
         <strong><a href="/pattern-silent-reload">Pattern 2: Silent Reload</a></strong> —
-        Simplest (~20 lines). Data refreshes automatically on signal with debounce.
+        Simplest (~20 lines). Data re-queries automatically on received signals with debounce.
         Start here for immediate gratification.
     </li>
     <li>
@@ -73,7 +73,7 @@
     private readonly List<PatternInfo> _patterns =
     [
         new("1: Notification", "Least disruptive — user controls refresh", "Low", "Dashboards, admin panels"),
-        new("2: Silent Reload", "Seamless — data always current", "Low", "Real-time monitoring, counters"),
+        new("2: Silent Reload", "Seamless after received signals", "Low", "Live monitoring, counters"),
         new("3: Selective Refresh", "Best — only affected components update", "Medium", "Complex dashboards, multi-panel UIs"),
     ];
 

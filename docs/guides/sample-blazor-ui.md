@@ -11,7 +11,7 @@ Open the `sample-blazor-ui` resource from the Aspire dashboard after the AppHost
 | Pattern | Page | Behavior | Use When |
 |---------|------|----------|----------|
 | Notification | `/pattern-notification` | Shows a persistent message when a projection changes. The user chooses when to refresh. | Users need control before replacing visible data. |
-| Silent reload | `/pattern-silent-reload` | Re-runs the query automatically after a short debounce. | The screen should stay current with minimal interruption. |
+| Silent reload | `/pattern-silent-reload` | Re-runs the query automatically after a received signal and short debounce. | The screen should refresh after received invalidation signals with minimal interruption. |
 | Selective refresh | `/pattern-selective-refresh` | Lets independent components subscribe and refresh separately. | A page has multiple read-model widgets with different refresh needs. |
 
 All three pages include the shared `CounterCommandForm` component so each pattern can submit `IncrementCounter`, `DecrementCounter`, and `ResetCounter` commands without leaving the page.
@@ -34,9 +34,18 @@ Full command lifecycle visualization belongs to the Admin UI and dashboard surfa
 
 ## SignalR and Query Boundaries
 
-SignalR projection messages are invalidation signals only. They do not carry authoritative projection data.
+SignalR notifications are invalidation signals only. They do not contain projection data, ETags, command status, or a replay of missed signals. The Query API remains the authoritative source for current projection state.
 
-The client should treat a `ProjectionChanged` message as a prompt to re-query the HTTP Query API, usually with `If-None-Match`. The Query API remains the source of projection state. A `304 Not Modified` response means the existing UI data can stay visible; a `200 OK` response provides the replacement payload and ETag.
+The client should query the HTTP Query API on component initialization to establish baseline state before relying on future `ProjectionChanged` callbacks. It should then treat a received `ProjectionChanged` message as a prompt to re-query, usually with `If-None-Match`. A `304 Not Modified` response means the existing UI data can stay visible; a `200 OK` response provides the replacement payload and ETag.
+
+Automatic reconnect and internal group rejoin restore future notification delivery only. They do not replay changes missed while the browser, circuit, or hub connection was down. If a client knows it reconnected, resumed from sleep, restored a page, or had other downtime, it should re-query the projections it displays. The current `EventStoreSignalRClient` does not expose a public reconnected callback for sample pages to subscribe to, so reconnect/resume refresh is application-owned lifecycle logic rather than behavior demonstrated by these pages.
+
+| Situation | Sample behavior | Consumer responsibility |
+|-----------|-----------------|-------------------------|
+| Initial load | Each pattern queries the HTTP Query API during component initialization. | Establish baseline state before relying on future signals. |
+| Signal receipt | Notification shows a refresh prompt; silent reload re-queries after debounce; selective refresh lets subscribed components re-query independently. | Treat the signal as a refresh hint, not as data. |
+| Reconnect, resume, or page restore | The helper rejoins tracked groups internally for future signals; the sample pages do not demonstrate missed-signal replay. | Re-query displayed projections when the application knows downtime occurred. |
+| User-triggered refresh | Notification pattern waits for the user to click refresh; other surfaces can add explicit refresh commands when needed. | Use explicit refresh to recover confidence when lifecycle detection is unavailable. |
 
 ## Smoke-Test Evidence Pattern
 
