@@ -131,15 +131,17 @@ public sealed class ProjectionCheckpointTracker(
         ArgumentException.ThrowIfNullOrWhiteSpace(identity.Domain);
         ArgumentException.ThrowIfNullOrWhiteSpace(identity.AggregateId);
 
-        // Reject ':' in scope components — used as the state-key separator. Without this guard a malformed
-        // tenant or domain could collide across logical scopes (e.g. tenant "a:b" + domain "c" generates
-        // the same key as tenant "a" + domain "b:c"), or be used to inject a key prefix.
-        if (identity.TenantId.Contains(':', StringComparison.Ordinal)
-            || identity.Domain.Contains(':', StringComparison.Ordinal)) {
-            throw new ArgumentException(
-                "TenantId and Domain must not contain ':' — reserved as a projection-identity key separator.",
-                nameof(identity));
-        }
+        // R2P6 — reject characters that participate in the projection-identity key scheme so a malformed
+        // identity cannot collide across logical scopes or inject a key prefix. The check covers all three
+        // identity components (tenant, domain, aggregate id) because AggregateId flows into _activeIdentities
+        // via AggregateIdentity.ActorId. ':' is the state-key separator; '\0' is rejected because some state
+        // stores treat it as a record terminator; '|' and newline characters are reserved by sibling
+        // discovery/key parsers. AggregateIdentity's regex already lowercases tenant+domain and rejects most
+        // of these, so this guard is defense-in-depth against bypass paths (reflection, deserialization
+        // without validation, with-clones).
+        AssertNoReservedChars(identity.TenantId, nameof(identity.TenantId));
+        AssertNoReservedChars(identity.Domain, nameof(identity.Domain));
+        AssertNoReservedChars(identity.AggregateId, nameof(identity.AggregateId));
 
         ProjectionIdentityScope scope = new(identity.TenantId, identity.Domain);
         if (!await TryAddScopeAsync(scope, cancellationToken).ConfigureAwait(false)) {
@@ -208,6 +210,18 @@ public sealed class ProjectionCheckpointTracker(
         ArgumentNullException.ThrowIfNull(identity);
         return StateKeyPrefix + identity.ActorId;
     }
+
+    private static void AssertNoReservedChars(string value, string parameterName) {
+        // Reserved characters across the projection-identity key scheme: ':' separator, '\0' terminator,
+        // '|' (used by ProjectionDiscoveryHostedService.ExtractDomain), and CR/LF which break log lines.
+        if (value.AsSpan().IndexOfAny(s_reservedChars) >= 0) {
+            throw new ArgumentException(
+                $"{parameterName} must not contain ':', '\\0', '|', '\\r', or '\\n' — reserved by the projection-identity key scheme.",
+                parameterName);
+        }
+    }
+
+    private static readonly System.Buffers.SearchValues<char> s_reservedChars = System.Buffers.SearchValues.Create(":\0|\r\n");
 
     private static string GetIdentityIndexKey(ProjectionIdentityScope scope) =>
         IdentityIndexPrefix + scope.TenantId + ":" + scope.Domain;
@@ -369,19 +383,22 @@ public sealed class ProjectionCheckpointTracker(
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-    private sealed record ProjectionIdentityIndex(int PageCount, int LastPageCount) {
+    // Persisted-schema records — internal (not private) so test assemblies with
+    // InternalsVisibleTo can construct/inspect them when probing storage interactions.
+    // Not part of the public API surface; serialization shape is owned here.
+    internal sealed record ProjectionIdentityIndex(int PageCount, int LastPageCount) {
         public static ProjectionIdentityIndex Empty { get; } = new(0, 0);
     }
 
-    private sealed record ProjectionIdentityScope(string TenantId, string Domain);
+    internal sealed record ProjectionIdentityScope(string TenantId, string Domain);
 
-    private sealed record ProjectionIdentityScopePage(ProjectionIdentityScope[] Scopes) {
+    internal sealed record ProjectionIdentityScopePage(ProjectionIdentityScope[] Scopes) {
         public static ProjectionIdentityScopePage Empty { get; } = new([]);
     }
 
-    private sealed record ProjectionIdentity(string TenantId, string Domain, string AggregateId);
+    internal sealed record ProjectionIdentity(string TenantId, string Domain, string AggregateId);
 
-    private sealed record ProjectionIdentityPage(ProjectionIdentity[] Identities) {
+    internal sealed record ProjectionIdentityPage(ProjectionIdentity[] Identities) {
         public static ProjectionIdentityPage Empty { get; } = new([]);
     }
 }

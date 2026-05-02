@@ -34,7 +34,7 @@ public partial class ProjectionUpdateOrchestrator(
     IDomainServiceResolver resolver,
     IProjectionCheckpointTracker checkpointTracker,
     IOptions<ProjectionOptions> projectionOptions,
-    ILogger<ProjectionUpdateOrchestrator> logger) : IProjectionUpdateOrchestrator {
+    ILogger<ProjectionUpdateOrchestrator> logger) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway {
     // Per-aggregate serialization across orchestrator instances. Entries are evicted and the
     // underlying SemaphoreSlim disposed when the last holder releases, so a multi-tenant server
     // with many short-lived aggregates does not accumulate kernel handles indefinitely.

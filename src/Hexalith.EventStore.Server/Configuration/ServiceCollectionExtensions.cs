@@ -42,6 +42,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<ISnapshotManager, SnapshotManager>();
         services.TryAddSingleton<ITopicNameValidator, TopicNameValidator>();
         services.TryAddTransient<IProjectionUpdateOrchestrator, ProjectionUpdateOrchestrator>();
+        services.TryAddTransient<IProjectionPollerDeliveryGateway, ProjectionUpdateOrchestrator>();
         services.TryAddTransient<IEventPublisher, EventPublisher>();
         services.TryAddTransient<IDeadLetterPublisher, DeadLetterPublisher>();
         services.TryAddSingleton<IProjectionChangeNotifier, DaprProjectionChangeNotifier>();
@@ -73,9 +74,22 @@ public static class EventStoreServerServiceCollectionExtensions {
         _ = services.AddHostedService<ProjectionDiscoveryHostedService>();
         _ = services.AddSingleton<IHostedService>(serviceProvider => {
             if (serviceProvider.GetService<DaprClient>() is null) {
-                ILogger<ProjectionPollerService>? log = serviceProvider.GetService<ILogger<ProjectionPollerService>>();
-                log?.LogWarning(
-                    "DaprClient is not registered; projection polling is disabled. Configured polling-mode domains will not deliver projections automatically until DaprClient is added to the container. Stage=ProjectionPollerDisabled");
+                // R2P9 — emit the disable warning via a source-generated LoggerMessage so the Stage tag
+                // surfaces as a structured log property (consistent with the other ProjectionPolling* logs).
+                // R2P10 — resolve the factory via GetService rather than the typed logger, then fall back
+                // to Console.Error so a misconfigured logging stack cannot silence this operator alert
+                // (the whole point of this branch is to surface that polling is silently disabled).
+                ILoggerFactory? loggerFactory = serviceProvider.GetService<ILoggerFactory>();
+                if (loggerFactory is not null) {
+                    ILogger<ProjectionPollerService> logger = loggerFactory.CreateLogger<ProjectionPollerService>();
+                    ProjectionPollerDisabledLog.PollerDisabled(logger);
+                }
+                else {
+                    Console.Error.WriteLine(
+                        "[Stage=ProjectionPollerDisabled] DaprClient is not registered; projection polling is disabled. "
+                        + "Configured polling-mode domains will not deliver projections automatically until DaprClient is added to the container.");
+                }
+
                 return NoOpHostedService.Instance;
             }
 
@@ -102,4 +116,12 @@ internal sealed class NoOpHostedService : IHostedService {
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+}
+
+internal static partial class ProjectionPollerDisabledLog {
+    [LoggerMessage(
+        EventId = 1140,
+        Level = LogLevel.Warning,
+        Message = "DaprClient is not registered; projection polling is disabled. Configured polling-mode domains will not deliver projections automatically until DaprClient is added to the container. Stage=ProjectionPollerDisabled")]
+    public static partial void PollerDisabled(ILogger logger);
 }

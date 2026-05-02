@@ -1,0 +1,256 @@
+diff --git a/src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs b/src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs
+index 333657c..7e06089 100644
+--- a/src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs
++++ b/src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs
+@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration;
+ using Microsoft.Extensions.DependencyInjection;
+ using Microsoft.Extensions.DependencyInjection.Extensions;
+ using Microsoft.Extensions.Hosting;
++using Microsoft.Extensions.Logging;
+ using Microsoft.Extensions.Options;
+ 
+ namespace Hexalith.EventStore.Server.Configuration;
+@@ -70,10 +71,16 @@ public static class EventStoreServerServiceCollectionExtensions {
+             .Validate(o => { o.Validate(); return true; }, "Projection configuration is invalid. All intervals must be >= 0 and domain keys must be non-empty.")
+             .ValidateOnStart();
+         _ = services.AddHostedService<ProjectionDiscoveryHostedService>();
+-        _ = services.AddSingleton<IHostedService>(serviceProvider =>
+-            serviceProvider.GetService<DaprClient>() is null
+-                ? NoOpHostedService.Instance
+-                : ActivatorUtilities.CreateInstance<ProjectionPollerService>(serviceProvider));
++        _ = services.AddSingleton<IHostedService>(serviceProvider => {
++            if (serviceProvider.GetService<DaprClient>() is null) {
++                ILogger<ProjectionPollerService>? log = serviceProvider.GetService<ILogger<ProjectionPollerService>>();
++                log?.LogWarning(
++                    "DaprClient is not registered; projection polling is disabled. Configured polling-mode domains will not deliver projections automatically until DaprClient is added to the container. Stage=ProjectionPollerDisabled");
++                return NoOpHostedService.Instance;
++            }
++
++            return ActivatorUtilities.CreateInstance<ProjectionPollerService>(serviceProvider);
++        });
+         services.AddActors(options => {
+             string? daprHttpPort = configuration["DAPR_HTTP_PORT"];
+             if (!string.IsNullOrEmpty(daprHttpPort)) {
+diff --git a/src/Hexalith.EventStore.Server/Projections/IProjectionCheckpointTracker.cs b/src/Hexalith.EventStore.Server/Projections/IProjectionCheckpointTracker.cs
+index 94927cc..d83b3c2 100644
+--- a/src/Hexalith.EventStore.Server/Projections/IProjectionCheckpointTracker.cs
++++ b/src/Hexalith.EventStore.Server/Projections/IProjectionCheckpointTracker.cs
+@@ -9,6 +9,12 @@ public interface IProjectionCheckpointTracker {
+     /// <summary>
+     /// Reads the last successfully delivered event sequence for an aggregate.
+     /// </summary>
++    /// <remarks>
++    /// Reserved for incremental projection delivery. R11-A1b pinned full-replay as the production contract
++    /// for both immediate and polling modes, so no in-tree caller invokes this in the delivery hot path.
++    /// Kept on the interface for forward-compat with a future incremental-delivery design and for
++    /// observability reads; do not introduce new callers without revisiting that design decision.
++    /// </remarks>
+     /// <param name="identity">The aggregate identity.</param>
+     /// <param name="cancellationToken">A cancellation token.</param>
+     /// <returns>The last delivered sequence, or 0 when no checkpoint exists.</returns>
+diff --git a/src/Hexalith.EventStore.Server/Projections/IProjectionUpdateOrchestrator.cs b/src/Hexalith.EventStore.Server/Projections/IProjectionUpdateOrchestrator.cs
+index 4ea845d..f6efe96 100644
+--- a/src/Hexalith.EventStore.Server/Projections/IProjectionUpdateOrchestrator.cs
++++ b/src/Hexalith.EventStore.Server/Projections/IProjectionUpdateOrchestrator.cs
+@@ -18,8 +18,21 @@ public interface IProjectionUpdateOrchestrator {
+     /// <summary>
+     /// Delivers projection work for a tracked polling identity, bypassing only the immediate-mode interval guard.
+     /// </summary>
++    /// <remarks>
++    /// <para>
++    /// <b>Internal seam — call from <see cref="ProjectionPollerService"/> only.</b>
++    /// </para>
++    /// <para>
++    /// This method exists to let the polling background service drive projection delivery without the
++    /// <c>RefreshIntervalMs &gt; 0</c> registration short-circuit applied by <see cref="UpdateProjectionAsync"/>.
++    /// Calling this from event publication or any other immediate-mode path defeats the polling-mode contract:
++    /// every command would deliver synchronously even for domains explicitly configured for batched polling delivery.
++    /// All non-poller callers MUST go through <see cref="UpdateProjectionAsync"/> instead.
++    /// </para>
++    /// </remarks>
+     /// <param name="identity">The aggregate identity (tenant, domain, aggregateId).</param>
+     /// <param name="cancellationToken">Cancellation token.</param>
+     /// <returns>A task representing the asynchronous operation.</returns>
++    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+     Task DeliverProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default);
+ }
+diff --git a/src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs b/src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs
+index 0da7e59..45ecc23 100644
+--- a/src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs
++++ b/src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs
+@@ -127,6 +127,19 @@ public sealed class ProjectionCheckpointTracker(
+     /// <inheritdoc/>
+     public async Task TrackIdentityAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
+         ArgumentNullException.ThrowIfNull(identity);
++        ArgumentException.ThrowIfNullOrWhiteSpace(identity.TenantId);
++        ArgumentException.ThrowIfNullOrWhiteSpace(identity.Domain);
++        ArgumentException.ThrowIfNullOrWhiteSpace(identity.AggregateId);
++
++        // Reject ':' in scope components — used as the state-key separator. Without this guard a malformed
++        // tenant or domain could collide across logical scopes (e.g. tenant "a:b" + domain "c" generates
++        // the same key as tenant "a" + domain "b:c"), or be used to inject a key prefix.
++        if (identity.TenantId.Contains(':', StringComparison.Ordinal)
++            || identity.Domain.Contains(':', StringComparison.Ordinal)) {
++            throw new ArgumentException(
++                "TenantId and Domain must not contain ':' — reserved as a projection-identity key separator.",
++                nameof(identity));
++        }
+ 
+         ProjectionIdentityScope scope = new(identity.TenantId, identity.Domain);
+         if (!await TryAddScopeAsync(scope, cancellationToken).ConfigureAwait(false)) {
+diff --git a/src/Hexalith.EventStore.Server/Projections/ProjectionPollerService.cs b/src/Hexalith.EventStore.Server/Projections/ProjectionPollerService.cs
+index d917cce..54aade0 100644
+--- a/src/Hexalith.EventStore.Server/Projections/ProjectionPollerService.cs
++++ b/src/Hexalith.EventStore.Server/Projections/ProjectionPollerService.cs
+@@ -21,7 +21,7 @@ public sealed partial class ProjectionPollerService(
+     ILogger<ProjectionPollerService> logger) : BackgroundService {
+     private const int MaxIdentitiesPerTick = 100;
+     private readonly ConcurrentDictionary<string, byte> _activeIdentities = new(StringComparer.Ordinal);
+-    private readonly Dictionary<string, DateTimeOffset> _nextDueByDomain = new(StringComparer.OrdinalIgnoreCase);
++    private readonly ConcurrentDictionary<string, DateTimeOffset> _nextDueByDomain = new(StringComparer.OrdinalIgnoreCase);
+ 
+     /// <summary>
+     /// Runs one polling pass. Exposed internally for deterministic tests.
+@@ -33,37 +33,59 @@ public sealed partial class ProjectionPollerService(
+         ProjectionOptions options = projectionOptions.Value;
+         HashSet<string> dueDomains = new(StringComparer.OrdinalIgnoreCase);
+         int processed = 0;
+-
+-        await foreach (AggregateIdentity identity in checkpointTracker.EnumerateTrackedIdentitiesAsync(cancellationToken).ConfigureAwait(false)) {
+-            int refreshIntervalMs = options.GetRefreshIntervalMs(identity.Domain);
+-            if (refreshIntervalMs <= 0 || !IsDomainDue(identity.Domain, refreshIntervalMs, now, dueDomains)) {
+-                continue;
+-            }
+-
+-            if (processed >= MaxIdentitiesPerTick) {
+-                Log.TickLimitReached(logger, MaxIdentitiesPerTick);
+-                break;
+-            }
+-
+-            if (!_activeIdentities.TryAdd(identity.ActorId, 0)) {
+-                Log.IdentityAlreadyRunning(logger, identity.TenantId, identity.Domain, identity.AggregateId);
+-                continue;
++        bool tickLimited = false;
++
++        // Wrap the enumeration in a try/catch so a transient tracker failure does not
++        // skip the schedule advancement below — without this, IsDomainDue would keep
++        // returning true on every minimum-interval tick until DAPR recovers.
++        try {
++            await foreach (AggregateIdentity identity in checkpointTracker.EnumerateTrackedIdentitiesAsync(cancellationToken).ConfigureAwait(false)) {
++                int refreshIntervalMs = options.GetRefreshIntervalMs(identity.Domain);
++                if (refreshIntervalMs <= 0 || !IsDomainDue(identity.Domain, refreshIntervalMs, now, dueDomains)) {
++                    continue;
++                }
++
++                if (processed >= MaxIdentitiesPerTick) {
++                    Log.TickLimitReached(logger, MaxIdentitiesPerTick);
++                    tickLimited = true;
++                    break;
++                }
++
++                if (!_activeIdentities.TryAdd(identity.ActorId, 0)) {
++                    Log.IdentityAlreadyRunning(logger, identity.TenantId, identity.Domain, identity.AggregateId);
++                    continue;
++                }
++
++                processed++;
++                try {
++                    Log.IdentityDeliveryStarted(logger, identity.TenantId, identity.Domain, identity.AggregateId, refreshIntervalMs);
++                    await projectionOrchestrator.DeliverProjectionAsync(identity, cancellationToken).ConfigureAwait(false);
++                }
++                catch (OperationCanceledException) {
++                    throw;
++                }
++                catch (Exception ex) {
++                    Log.IdentityDeliveryFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
++                }
++                finally {
++                    _ = _activeIdentities.TryRemove(identity.ActorId, out _);
++                }
+             }
++        }
++        catch (OperationCanceledException) {
++            throw;
++        }
++        catch (Exception ex) {
++            Log.EnumerationFailed(logger, ex, ex.GetType().Name);
++        }
+ 
+-            processed++;
+-            try {
+-                Log.IdentityDeliveryStarted(logger, identity.TenantId, identity.Domain, identity.AggregateId, refreshIntervalMs);
+-                await projectionOrchestrator.DeliverProjectionAsync(identity, cancellationToken).ConfigureAwait(false);
+-            }
+-            catch (OperationCanceledException) {
+-                throw;
+-            }
+-            catch (Exception ex) {
+-                Log.IdentityDeliveryFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
+-            }
+-            finally {
+-                _ = _activeIdentities.TryRemove(identity.ActorId, out _);
+-            }
++        // When the per-tick identity cap is hit, the loop breaks before the tail of the
++        // due-set is processed. Advancing _nextDueByDomain here would force the unprocessed
++        // identities to wait one full polling interval. Skip the advancement so the next
++        // tick re-discovers the same domains and continues from where this tick stopped;
++        // duplicate delivery is absorbed by the at-least-once checkpoint contract.
++        if (tickLimited) {
++            return;
+         }
+ 
+         foreach (string domain in dueDomains) {
+@@ -88,10 +110,7 @@ public sealed partial class ProjectionPollerService(
+     }
+ 
+     private bool IsDomainDue(string domain, int refreshIntervalMs, DateTimeOffset now, HashSet<string> dueDomains) {
+-        if (!_nextDueByDomain.TryGetValue(domain, out DateTimeOffset nextDue)) {
+-            _nextDueByDomain[domain] = now;
+-            nextDue = now;
+-        }
++        DateTimeOffset nextDue = _nextDueByDomain.GetOrAdd(domain, now);
+ 
+         if (now < nextDue) {
+             return false;
+@@ -136,6 +155,12 @@ public sealed partial class ProjectionPollerService(
+             Level = LogLevel.Information,
+             Message = "Projection poller reached per-tick identity limit: Limit={Limit}, Stage=ProjectionPollingTickLimitReached")]
+         public static partial void TickLimitReached(ILogger logger, int limit);
++
++        [LoggerMessage(
++            EventId = 1134,
++            Level = LogLevel.Warning,
++            Message = "Projection poller enumeration failed: ExceptionType={ExceptionType}, Stage=ProjectionPollingEnumerationFailed")]
++        public static partial void EnumerationFailed(ILogger logger, Exception ex, string exceptionType);
+     }
+ }
+ 
+@@ -143,9 +168,26 @@ public interface IProjectionPollerTickSource {
+     Task<bool> WaitForNextTickAsync(TimeSpan interval, CancellationToken cancellationToken);
+ }
+ 
++/// <summary>
++/// Default <see cref="IProjectionPollerTickSource"/> backed by <see cref="Task.Delay(TimeSpan, CancellationToken)"/>.
++/// Each call awaits the requested interval, then returns <see langword="true"/>; cancellation returns <see langword="false"/>.
++/// The cadence is recomputed by <see cref="ProjectionPollerService.ExecuteAsync"/> on every iteration so the poller
++/// adapts to live <see cref="ProjectionOptions"/> changes on the next tick boundary; this means polling drifts by
++/// the duration of the prior poll pass. Drift is acceptable under the at-least-once polling contract.
++/// </summary>
+ public sealed class PeriodicProjectionPollerTickSource : IProjectionPollerTickSource {
++    /// <inheritdoc/>
+     public async Task<bool> WaitForNextTickAsync(TimeSpan interval, CancellationToken cancellationToken) {
+-        using var timer = new PeriodicTimer(interval);
+-        return await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false);
++        if (interval <= TimeSpan.Zero) {
++            interval = TimeSpan.FromSeconds(60);
++        }
++
++        try {
++            await Task.Delay(interval, cancellationToken).ConfigureAwait(false);
++            return true;
++        }
++        catch (OperationCanceledException) {
++            return false;
++        }
+     }
+ }

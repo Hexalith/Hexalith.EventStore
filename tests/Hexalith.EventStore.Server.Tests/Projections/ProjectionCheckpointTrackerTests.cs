@@ -332,6 +332,97 @@ public class ProjectionCheckpointTrackerTests {
         _ = await Should.ThrowAsync<OperationCanceledException>(() => tracker.SaveDeliveredSequenceAsync(TestIdentity, 7));
     }
 
+    [Fact]
+    public async Task TrackIdentityAsync_RetryAfterPriorFailure_CompletesRegistrationOnSecondCall() {
+        // AC #3 / Round-2 D2 closure: "Registration failure is logged and swallowed... a later
+        // event for the same identity may retry registration." Pin that a previously-failed
+        // registration leaves the tracker with no orphan in-memory state — a subsequent call
+        // with the same identity completes the registration end-to-end.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var tracker = CreateTracker(daprClient);
+
+        bool failScopeIndexRead = true;
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
+                "statestore",
+                Arg.Any<string>(),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => failScopeIndexRead
+                ? throw new InvalidOperationException("transient storage outage")
+                : (((ProjectionCheckpointTracker.ProjectionIdentityIndex?)null)!, string.Empty));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(
+                "statestore",
+                Arg.Any<string>(),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityScopePage?)null)!, string.Empty));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityPage>(
+                "statestore",
+                Arg.Any<string>(),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityPage?)null)!, string.Empty));
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityPage>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityIndex>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act -- first call: the storage outage propagates through the bounded ETag retry loop.
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => tracker.TrackIdentityAsync(TestIdentity));
+
+        // Recover the storage backend.
+        failScopeIndexRead = false;
+
+        // Act -- second call with the same identity must succeed cleanly without orphan state.
+        await tracker.TrackIdentityAsync(TestIdentity);
+
+        // Assert -- registration end-to-end persisted scope page, scope index, identity page,
+        // and identity index. If the tracker had cached the prior failure (e.g. via an in-memory
+        // "already attempted" flag), no save would happen on the retry.
+        _ = await daprClient.Received().TrySaveStateAsync(
+            "statestore",
+            Arg.Any<string>(),
+            Arg.Is<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(p => (p.Scopes ?? Array.Empty<ProjectionCheckpointTracker.ProjectionIdentityScope>()).Any(s => s.TenantId == "test-tenant" && s.Domain == "test-domain")),
+            Arg.Any<string>(),
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+        _ = await daprClient.Received().TrySaveStateAsync(
+            "statestore",
+            Arg.Any<string>(),
+            Arg.Is<ProjectionCheckpointTracker.ProjectionIdentityPage>(p => (p.Identities ?? Array.Empty<ProjectionCheckpointTracker.ProjectionIdentity>()).Any(i => i.AggregateId == "agg-001")),
+            Arg.Any<string>(),
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
     private static ProjectionCheckpointTracker CreateTracker(DaprClient daprClient, string stateStoreName = "statestore") =>
         new(daprClient, Options.Create(new ProjectionOptions { CheckpointStateStoreName = stateStoreName }), NullLogger<ProjectionCheckpointTracker>.Instance);
 

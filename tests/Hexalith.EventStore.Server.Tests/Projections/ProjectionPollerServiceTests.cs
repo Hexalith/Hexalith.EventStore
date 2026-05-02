@@ -20,7 +20,7 @@ public class ProjectionPollerServiceTests {
     [Fact]
     public async Task PollOnceAsync_PositiveInterval_DeliversTrackedIdentity() {
         var tracker = new FakeProjectionCheckpointTracker(FastIdentity);
-        IProjectionUpdateOrchestrator orchestrator = Substitute.For<IProjectionUpdateOrchestrator>();
+        IProjectionPollerDeliveryGateway orchestrator = Substitute.For<IProjectionPollerDeliveryGateway>();
         var service = CreateService(
             tracker,
             orchestrator,
@@ -34,7 +34,7 @@ public class ProjectionPollerServiceTests {
     [Fact]
     public async Task PollOnceAsync_PerDomainIntervals_DoNotDeliverSlowDomainOnEveryFastTick() {
         var tracker = new FakeProjectionCheckpointTracker(FastIdentity, SlowIdentity);
-        IProjectionUpdateOrchestrator orchestrator = Substitute.For<IProjectionUpdateOrchestrator>();
+        IProjectionPollerDeliveryGateway orchestrator = Substitute.For<IProjectionPollerDeliveryGateway>();
         var service = CreateService(
             tracker,
             orchestrator,
@@ -57,7 +57,7 @@ public class ProjectionPollerServiceTests {
     [Fact]
     public async Task PollOnceAsync_SameIdentityAlreadyRunning_SkipsOverlap() {
         var tracker = new FakeProjectionCheckpointTracker(FastIdentity);
-        IProjectionUpdateOrchestrator orchestrator = Substitute.For<IProjectionUpdateOrchestrator>();
+        IProjectionPollerDeliveryGateway orchestrator = Substitute.For<IProjectionPollerDeliveryGateway>();
         TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _ = orchestrator.DeliverProjectionAsync(FastIdentity, Arg.Any<CancellationToken>())
             .Returns(_ => release.Task);
@@ -79,7 +79,7 @@ public class ProjectionPollerServiceTests {
     [Fact]
     public async Task ExecuteAsync_TickSourceEnds_ExitsCleanly() {
         var tracker = new FakeProjectionCheckpointTracker(FastIdentity);
-        IProjectionUpdateOrchestrator orchestrator = Substitute.For<IProjectionUpdateOrchestrator>();
+        IProjectionPollerDeliveryGateway orchestrator = Substitute.For<IProjectionPollerDeliveryGateway>();
         var tickSource = new ManualProjectionPollerTickSource();
         var service = CreateService(
             tracker,
@@ -99,7 +99,7 @@ public class ProjectionPollerServiceTests {
     [Fact]
     public async Task PollOnceAsync_DeliveryFailure_RetriesOnLaterDueTick() {
         var tracker = new FakeProjectionCheckpointTracker(FastIdentity);
-        IProjectionUpdateOrchestrator orchestrator = Substitute.For<IProjectionUpdateOrchestrator>();
+        IProjectionPollerDeliveryGateway orchestrator = Substitute.For<IProjectionPollerDeliveryGateway>();
         _ = orchestrator.DeliverProjectionAsync(FastIdentity, Arg.Any<CancellationToken>())
             .Returns(
                 _ => throw new InvalidOperationException("project endpoint unavailable"),
@@ -118,7 +118,7 @@ public class ProjectionPollerServiceTests {
 
     private static ProjectionPollerService CreateService(
         IProjectionCheckpointTracker tracker,
-        IProjectionUpdateOrchestrator orchestrator,
+        IProjectionPollerDeliveryGateway orchestrator,
         ProjectionOptions options,
         IProjectionPollerTickSource? tickSource = null) =>
         new(
