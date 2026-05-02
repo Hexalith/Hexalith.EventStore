@@ -1,3 +1,10 @@
+# [3.4.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.3.0...v3.4.0) (2026-05-02)
+
+
+### Features
+
+* Update sprint status and improve projection checkpoint tracking ([e0a9f0b](https://github.com/Hexalith/Hexalith.EventStore/commit/e0a9f0bc418aeab9d8670eaebe3374d0dafb8104))
+
 # [3.3.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.2.0...v3.3.0) (2026-05-02)
 
 
