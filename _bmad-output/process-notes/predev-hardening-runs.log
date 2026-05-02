@@ -36,3 +36,4 @@
 2026-05-02T10:13:39.7563038+02:00	party-mode-review	post-epic-10-r10a5-client-reconnect-guidance	ok	party-mode trace applied; preflight soft working-tree warning at 2026-05-02T08:11:39Z
 2026-05-02T10:35:17+02:00	advanced-elicitation	post-epic-10-r10a2-redis-backplane-runtime-proof	ok	advanced-elicitation trace applied; preflight passed at 2026-05-02T08:33:20Z
 2026-05-02T10:53:02.3010816+02:00	advanced-elicitation	post-epic-10-r10a3-hub-group-authorization-decision	ok	advanced-elicitation trace applied; preflight passed at 2026-05-02T08:51:05Z
+2026-05-02T11:05:00+02:00	failed	-	failed	{"preflight_json":"_bmad-output/process-notes/predev-preflight-latest.json","timestamp":"2026-05-02T09:03:19Z","failed":[{"name":"working tree cleanliness","details":"2 dirty path(s)","stdout":" M _bmad-output/implementation-artifacts/deferred-work.md\n M _bmad-output/implementation-artifacts/post-epic-11-r11a2-polling-mode-product-behavior.md\n"}]}
