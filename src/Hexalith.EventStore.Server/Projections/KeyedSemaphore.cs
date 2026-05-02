@@ -24,7 +24,7 @@ internal sealed class KeyedSemaphore<TKey> where TKey : notnull {
     /// release. Disposing the last holder evicts the entry and disposes the underlying semaphore.
     /// </summary>
     public async Task<IDisposable> AcquireAsync(TKey key, CancellationToken cancellationToken) {
-        Holder holder = AcquireRef(key);
+        Holder holder = await AcquireRefAsync(key, cancellationToken).ConfigureAwait(false);
         try {
             await holder.Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -36,19 +36,43 @@ internal sealed class KeyedSemaphore<TKey> where TKey : notnull {
         return new Releaser(this, key, holder);
     }
 
-    private Holder AcquireRef(TKey key) {
+    private async ValueTask<Holder> AcquireRefAsync(TKey key, CancellationToken cancellationToken) {
         SpinWait spin = default;
         while (true) {
+            cancellationToken.ThrowIfCancellationRequested();
+
             Holder holder = _holders.GetOrAdd(key, static _ => new Holder());
-            int newCount = Interlocked.Increment(ref holder.RefCount);
-            if (newCount > 0) {
+            if (TryAddReference(holder)) {
                 return holder;
             }
 
             // Holder is being torn down by a concurrent ReleaseRef (RefCount poisoned with
-            // int.MinValue). Yield briefly, then retry — the disposing caller will TryRemove
-            // imminently and the next GetOrAdd will create a fresh holder.
-            spin.SpinOnce();
+            // int.MinValue). Yield briefly after the spin threshold, then retry — the
+            // disposing caller will TryRemove imminently and the next GetOrAdd will create a
+            // fresh holder.
+            if (spin.NextSpinWillYield) {
+                await Task.Yield();
+            }
+            else {
+                spin.SpinOnce();
+            }
+        }
+    }
+
+    private static bool TryAddReference(Holder holder) {
+        while (true) {
+            int current = Volatile.Read(ref holder.RefCount);
+            if (current < 0) {
+                return false;
+            }
+
+            if (current == int.MaxValue) {
+                throw new InvalidOperationException("Keyed semaphore reference count overflow.");
+            }
+
+            if (Interlocked.CompareExchange(ref holder.RefCount, current + 1, current) == current) {
+                return true;
+            }
         }
     }
 
@@ -80,8 +104,14 @@ internal sealed class KeyedSemaphore<TKey> where TKey : notnull {
                 return;
             }
 
-            _ = holder.Semaphore.Release();
-            owner.ReleaseRef(key, holder);
+            try {
+                _ = holder.Semaphore.Release();
+                owner.ReleaseRef(key, holder);
+            }
+            catch (ObjectDisposedException) {
+                // A defensive guard for disposal races in future refactors. Current holders
+                // own a reference until ReleaseRef completes, so this should not be reachable.
+            }
         }
     }
 }

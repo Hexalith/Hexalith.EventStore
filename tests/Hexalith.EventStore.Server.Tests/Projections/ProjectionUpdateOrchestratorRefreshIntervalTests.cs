@@ -11,6 +11,7 @@ using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
 
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
@@ -206,6 +207,19 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests {
         await checkpointTracker.Received(2).TrackIdentityAsync(TestIdentity, Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task UpdateProjectionAsync_PollingRegistration_LogsOperatorEvent() {
+        var options = new ProjectionOptions { DefaultRefreshIntervalMs = 5000 };
+        var entries = new List<LogEntry>();
+        (ProjectionUpdateOrchestrator sut, _, _, _, _) = CreateSut(
+            options,
+            new TestLogger<ProjectionUpdateOrchestrator>(entries));
+
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        entries.ShouldContain(e => e.EventId.Id == 1117 && e.Level == LogLevel.Debug && e.Message.Contains("Stage=ProjectionPollingWorkRegistered", StringComparison.Ordinal));
+    }
+
     // --- AC 4: Tenant isolation - passes tenant ID through pipeline ---
 
     [Fact]
@@ -235,7 +249,9 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests {
             Arg.Is("AggregateActor"));
     }
 
-    private static (ProjectionUpdateOrchestrator Sut, IActorProxyFactory ActorProxyFactory, DaprClient DaprClient, IDomainServiceResolver Resolver, IProjectionCheckpointTracker CheckpointTracker) CreateSut(ProjectionOptions? options = null) {
+    private static (ProjectionUpdateOrchestrator Sut, IActorProxyFactory ActorProxyFactory, DaprClient DaprClient, IDomainServiceResolver Resolver, IProjectionCheckpointTracker CheckpointTracker) CreateSut(
+        ProjectionOptions? options = null,
+        ILogger<ProjectionUpdateOrchestrator>? logger = null) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         DaprClient daprClient = Substitute.For<DaprClient>();
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
@@ -245,7 +261,18 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests {
         _ = checkpointTracker.TrackIdentityAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
         IOptions<ProjectionOptions> projectionOptions = Options.Create(options ?? new ProjectionOptions());
-        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, NullLogger<ProjectionUpdateOrchestrator>.Instance);
+        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, logger ?? NullLogger<ProjectionUpdateOrchestrator>.Instance);
         return (sut, actorProxyFactory, daprClient, resolver, checkpointTracker);
     }
+
+    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            entries.Add(new LogEntry(logLevel, eventId, formatter(state, exception)));
+    }
+
+    private sealed record LogEntry(LogLevel Level, EventId EventId, string Message);
 }

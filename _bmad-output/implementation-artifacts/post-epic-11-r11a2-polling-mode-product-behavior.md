@@ -1,6 +1,6 @@
 # Post-Epic-11 R11-A2: Polling-Mode Product Behavior
 
-Status: in-progress
+Status: review
 
 <!-- Source: epic-11-retro-2026-04-30.md - Action item R11-A2 -->
 <!-- Source: epic-12-retro-2026-04-30.md - R12-A5 carry-forward backlog -->
@@ -120,14 +120,14 @@ Triple-layer code review (Blind Hunter / Edge Case Hunter / Acceptance Auditor) 
 - [x] [Review][Patch] P12 — `AggregateId` non-empty validation — **Applied** as part of P11 [`ProjectionCheckpointTracker.cs:131`]
 - [x] [Review][Patch] P15 — `PeriodicTimer` interval ≤0 guard — **Applied** as part of P10 (clamp inside `PeriodicProjectionPollerTickSource.WaitForNextTickAsync`) [`ProjectionPollerService.cs:172-174`]
 
-**Patch — left as action items (6 of 15):**
+**Patch — final carryover applied (6 of 15):**
 
-- [ ] [Review][Patch] P4 — `KeyedSemaphore` robustness gaps: (a) no `cancellationToken.ThrowIfCancellationRequested()` inside spin loop, (b) unbounded `SpinWait` with no `Task.Yield()` after threshold, (c) `Releaser.Dispose` does not catch `ObjectDisposedException` on race, (d) `Interlocked.Increment` overflow at `int.MaxValue` wraps refcount negative [`src/Hexalith.EventStore.Server/Projections/KeyedSemaphore.cs:38-46,74-80`]
-- [ ] [Review][Patch] P5 — Identity registration safety: (a) inner page reads in `TryAddScopeAsync`/`TryAddIdentityAsync` not ETag-guarded → race-duplicates, (b) cancellation between page-save and index-save leaves orphan page, (c) `MaxEtagRetries=3` exhaustion silently drops registration [`src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs:213-279,281-349`]
-- [ ] [Review][Patch] P8 — Tests use `TimeProvider.System` instead of `FakeTimeProvider` (requires adding `Microsoft.Extensions.TimeProvider.Testing` package reference) [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionPollerServiceTests.cs`]
-- [ ] [Review][Patch] P9 — `_activeIdentities` cleanup theoretical race — between `TryAdd` and `try` there is no async boundary, so OCE cannot intervene; finding kept for hardening but not blocking [`src/Hexalith.EventStore.Server/Projections/ProjectionPollerService.cs:48-67`]
-- [ ] [Review][Patch] P13 — Domain-casing normalization mismatch (Auditor finding): `ProjectionIdentityScope`/`ProjectionIdentity` records use default `Ordinal` equality while `ProjectionOptions.GetRefreshIntervalMs` and `_nextDueByDomain` use `OrdinalIgnoreCase`. Either canonicalize domain in `TrackIdentityAsync` (e.g., `ToLowerInvariant` before key derivation) or pin the upstream `AggregateIdentity` guarantee with a test [`ProjectionCheckpointTracker.cs`, `ProjectionPollerService.cs:23`]
-- [ ] [Review][Patch] P14 — Missing tests required by AC #11 / Task 6: (a) domain-casing dedup at tracker layer (links to P13), ~~(b) registration retry-after-failure~~ **(b) ✓ landed in Round 2 closure as `TrackIdentityAsync_RetryAfterPriorFailure_CompletesRegistrationOnSecondCall`**, (c) pagination boundary at `IdentityPageSize=100`, (d) operator log assertions (`PollingWorkRegistered`, `IdentityDeliveryFailed`, `TickLimitReached`, `EnumerationFailed`)
+- [x] [Review][Patch] P4 — `KeyedSemaphore` robustness gaps — **Applied.** `AcquireRefAsync` now checks cancellation inside the retry loop, yields with `Task.Yield()` after the spin threshold, uses CAS reference increments to prevent `int.MaxValue` overflow wrapping negative, and `Releaser.Dispose` defensively handles `ObjectDisposedException` on release races [`src/Hexalith.EventStore.Server/Projections/KeyedSemaphore.cs`]
+- [x] [Review][Patch] P5 — Identity registration safety — **Applied.** Tracker scope/identity page scans now use ETag-guarded reads, duplicate target-page detection recovers orphan page/index writes after page-save/index-save interruption, and retry exhaustion throws so `ProjectionUpdateOrchestrator` logs registration failure instead of a false registered event [`src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs`]
+- [x] [Review][Patch] P8 — Tests use `TimeProvider.System` instead of `FakeTimeProvider` — **Applied.** Added `Microsoft.Extensions.TimeProvider.Testing` and switched poller tests to `FakeTimeProvider` [`Directory.Packages.props`, `tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj`, `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionPollerServiceTests.cs`]
+- [x] [Review][Patch] P9 — `_activeIdentities` cleanup theoretical race — **Closed by inspection.** There is still no async boundary between `_activeIdentities.TryAdd` and the guarded `try/finally`; the existing cleanup path remains covered by no-overlap/failure-retry poller tests and no code change was required [`src/Hexalith.EventStore.Server/Projections/ProjectionPollerService.cs`]
+- [x] [Review][Patch] P13 — Domain-casing normalization mismatch — **Closed by pinning upstream guarantee.** Added tracker coverage proving mixed-case `AggregateIdentity` input persists canonical lowercase tenant/domain identity records, matching the contract-level normalization boundary [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs`]
+- [x] [Review][Patch] P14 — Missing tests required by AC #11 / Task 6 — **Applied.** Added remaining tests for domain-casing persistence, `IdentityPageSize=100` pagination rollover, and operator log assertions for `PollingWorkRegistered`, `IdentityDeliveryFailed`, `TickLimitReached`, and `EnumerationFailed`; retry-after-failure remained covered by Round 2 [`tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs`, `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionPollerServiceTests.cs`, `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorRefreshIntervalTests.cs`]
 
 **Deferred (3) — pre-existing or out-of-scope:**
 
@@ -223,6 +223,16 @@ GPT-5
 - Tier 1 units: Client 334/334, Contracts 281/281, Sample 63/63, Testing 78/78, SignalR 32/32 passed.
 - Closure grep: `rg -n "PollingModeDeferred|Background poller not yet implemented|will NOT update automatically" src tests docs` => no matches.
 - Post-change Aspire smoke: `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`; Aspire MCP resource inspection showed app resources, Dapr sidecars, statestore, and pubsub running healthy. Apphost stopped after inspection.
+- 2026-05-02 baseline Aspire attempt before final hardening initially failed during apphost build with stale `CS0009` metadata/reference errors; after focused builds/tests, `dotnet build Hexalith.EventStore.slnx -p:NuGetAudit=false` succeeded with 0 warnings/0 errors and a second Aspire smoke reported healthy running resources.
+- Red-phase final carryover run: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~ProjectionCheckpointTrackerTests|FullyQualifiedName~ProjectionPollerServiceTests|FullyQualifiedName~ProjectionUpdateOrchestratorRefreshIntervalTests" -p:NuGetAudit=false` failed as expected on tracker retry-exhaustion and pagination/page-read assertions before implementation.
+- Focused final carryover suite: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~ProjectionCheckpointTrackerTests|FullyQualifiedName~ProjectionPollerServiceTests|FullyQualifiedName~ProjectionUpdateOrchestratorRefreshIntervalTests|FullyQualifiedName~KeyedSemaphoreTests" -p:NuGetAudit=false` => 43/43 passed.
+- Broader projection suite: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~Projections|FullyQualifiedName~EventReplayProjectionActorTests" -p:NuGetAudit=false` => 100/100 passed.
+- Full server suite: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj -p:NuGetAudit=false` => 1693/1693 passed.
+- Tier 1 units: Client 334/334, Contracts 281/281, Sample 63/63, Testing 78/78 passed.
+- Solution build: `dotnet build Hexalith.EventStore.slnx -p:NuGetAudit=false` => succeeded, 0 warnings, 0 errors.
+- Closure grep: `rg -n "PollingModeDeferred|Background poller not yet implemented|will NOT update automatically" src tests docs` => no matches.
+- P8 audit: `rg -n "TimeProvider\.System" tests\Hexalith.EventStore.Server.Tests\Projections\ProjectionPollerServiceTests.cs` => no matches.
+- P14 audit: `rg -n "TrackIdentityAsync_(MixedCaseInput|FullIdentityPage|ExistingScopeScan|IndexRetryExhausted)|PollingRegistration_LogsOperatorEvent|DeliveryFailure_LogsOperatorEvent|TickLimitReached_LogsOperatorEvent|EnumerationFailure_LogsOperatorEvent" tests\Hexalith.EventStore.Server.Tests\Projections` => all expected tests present.
 
 ### Completion Notes List
 
@@ -231,26 +241,32 @@ GPT-5
 - Extended the R11-A1 checkpoint tracker boundary to track and enumerate canonical `{TenantId, Domain, AggregateId}` polling identities through bounded pages; no parallel registry or actor state-key scan was added.
 - Refactored projection delivery so immediate mode and polling mode share the same domain resolution, aggregate event read, `/project`, projection actor write, checkpoint save, ETag/SignalR path, and failure logging.
 - Replaced deferred polling logs/docs with active polling semantics, including interval-delayed freshness and at-least-once duplicate-delivery expectations.
+- Closed final review carryover: hardened `KeyedSemaphore`, made projection identity registration page reads ETag-guarded, surfaced registration retry exhaustion as fail-open orchestrator warnings, migrated poller tests to `FakeTimeProvider`, and added missing casing/pagination/operator-log tests.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/post-epic-11-r11a2-polling-mode-product-behavior.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `Directory.Packages.props`
 - `docs/superpowers/specs/2026-03-15-server-managed-projection-builder-design.md`
 - `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs`
 - `src/Hexalith.EventStore.Server/Projections/IProjectionCheckpointTracker.cs`
 - `src/Hexalith.EventStore.Server/Projections/IProjectionUpdateOrchestrator.cs`
+- `src/Hexalith.EventStore.Server/Projections/KeyedSemaphore.cs`
 - `src/Hexalith.EventStore.Server/Projections/NoOpProjectionUpdateOrchestrator.cs`
 - `src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs`
 - `src/Hexalith.EventStore.Server/Projections/ProjectionDiscoveryHostedService.cs`
 - `src/Hexalith.EventStore.Server/Projections/ProjectionPollerService.cs`
 - `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionPollerServiceTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorRefreshIntervalTests.cs`
 
 ### Change Log
 
 - 2026-05-01: Implemented polling-mode product behavior, added focused tests and documentation, validated server/Tier 1 suites and Aspire smoke, moved story to review.
+- 2026-05-02: Addressed final review carryover P4/P5/P8/P9/P13/P14, added missing hardening tests, revalidated focused/server/Tier 1/solution build/Aspire smoke, moved story to review.
 
 ## Party-Mode Review
 
@@ -364,4 +380,10 @@ Triple-layer code review (Blind Hunter / Edge Case Hunter / Acceptance Auditor) 
 - **Patches applied:** R2P1–R2P13 (all 13). Files touched: `src/Hexalith.EventStore.Server/Projections/ProjectionPollerService.cs`, `IProjectionUpdateOrchestrator.cs` (interface split), `ProjectionUpdateOrchestrator.cs`, `NoOpProjectionUpdateOrchestrator.cs`, `ProjectionCheckpointTracker.cs` (validation widened + records made `internal`); `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs` (DI seam registration + source-gen disable warning); `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs` (new pinning test); `tests/.../ProjectionPollerServiceTests.cs` (substitute updated for split interface).
 - **Deferred:** R2W1, R2W2, R2W3 — recorded in `deferred-work.md` under Round 2 heading.
 - **Test evidence:** 16/16 tracker tests, 92/92 broader projection tests, 1685/1685 server tests, full-solution Release build with `TreatWarningsAsErrors` — all green.
-- **Round 1 carryover still open (not addressed in this round):** P4 (KeyedSemaphore robustness), P5 (identity registration ETag-race safety), P8 (FakeTimeProvider migration), P9 (theoretical `_activeIdentities` race), P13 (domain-casing dedup at tracker), P14 (a, c, d) — story remains `in-progress` until those land. R2 hardening did not regress them.
+- **Round 1 carryover now closed in final pass:** P4 (KeyedSemaphore robustness), P5 (identity registration ETag-race safety), P8 (FakeTimeProvider migration), P9 (theoretical `_activeIdentities` race closed by inspection), P13 (domain-casing dedup pinned at tracker), P14 (a, c, d tests) — story is ready for review.
+
+### Final carryover closure summary (2026-05-02)
+
+- **Patches applied:** P4, P5, P8, P13, P14; P9 closed by inspection because no async boundary exists between active-identity registration and cleanup `try/finally`.
+- **Files touched in final pass:** `Directory.Packages.props`; `src/Hexalith.EventStore.Server/Projections/KeyedSemaphore.cs`; `src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs`; `tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj`; `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs`; `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionPollerServiceTests.cs`; `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorRefreshIntervalTests.cs`.
+- **Test evidence:** focused final carryover 43/43, broader projection 100/100, full server 1693/1693, Tier 1 units Client 334/334 + Contracts 281/281 + Sample 63/63 + Testing 78/78, solution build 0 warnings/0 errors, post-change Aspire resources healthy.

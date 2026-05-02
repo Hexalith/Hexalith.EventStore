@@ -423,6 +423,275 @@ public class ProjectionCheckpointTrackerTests {
             cancellationToken: Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task TrackIdentityAsync_IndexRetryExhausted_ThrowsSoPublisherCanLogFailure() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var tracker = CreateTracker(daprClient);
+
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
+                "statestore",
+                Arg.Any<string>(),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityIndex?)null)!, string.Empty));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(
+                "statestore",
+                Arg.Any<string>(),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityScopePage?)null)!, string.Empty));
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityIndex>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => tracker.TrackIdentityAsync(TestIdentity));
+    }
+
+    [Fact]
+    public async Task TrackIdentityAsync_ExistingScopeScan_UsesEtagGuardedPageRead() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var tracker = CreateTracker(daprClient);
+        var existingScope = new ProjectionCheckpointTracker.ProjectionIdentityScope("test-tenant", "test-domain");
+
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
+                "statestore",
+                "projection-identities:scopes",
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((new ProjectionCheckpointTracker.ProjectionIdentityIndex(1, 1), "scope-index-etag"));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(
+                "statestore",
+                "projection-identities:scopes:0",
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((new ProjectionCheckpointTracker.ProjectionIdentityScopePage([existingScope]), "scope-page-etag"));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
+                "statestore",
+                "projection-identities:index:test-tenant:test-domain",
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityIndex?)null)!, string.Empty));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityPage>(
+                "statestore",
+                Arg.Any<string>(),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityPage?)null)!, string.Empty));
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityPage>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityIndex>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await tracker.TrackIdentityAsync(TestIdentity);
+
+        _ = await daprClient.Received(1).GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(
+            "statestore",
+            "projection-identities:scopes:0",
+            consistencyMode: Arg.Any<ConsistencyMode?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+        _ = await daprClient.DidNotReceive().GetStateAsync<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(
+            "statestore",
+            "projection-identities:scopes:0",
+            consistencyMode: Arg.Any<ConsistencyMode?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TrackIdentityAsync_MixedCaseInput_PersistsCanonicalLowercaseScopeAndIdentity() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var tracker = CreateTracker(daprClient);
+        var mixedCaseIdentity = new AggregateIdentity("Test-Tenant", "Test-Domain", "Agg-001");
+
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
+                "statestore",
+                Arg.Any<string>(),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityIndex?)null)!, string.Empty));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(
+                "statestore",
+                Arg.Any<string>(),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityScopePage?)null)!, string.Empty));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityPage>(
+                "statestore",
+                Arg.Any<string>(),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityPage?)null)!, string.Empty));
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityPage>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityIndex>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await tracker.TrackIdentityAsync(mixedCaseIdentity);
+
+        _ = await daprClient.Received().TrySaveStateAsync(
+            "statestore",
+            Arg.Any<string>(),
+            Arg.Is<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(p => (p.Scopes ?? Array.Empty<ProjectionCheckpointTracker.ProjectionIdentityScope>()).Any(s => s.TenantId == "test-tenant" && s.Domain == "test-domain")),
+            Arg.Any<string>(),
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+        _ = await daprClient.Received().TrySaveStateAsync(
+            "statestore",
+            Arg.Any<string>(),
+            Arg.Is<ProjectionCheckpointTracker.ProjectionIdentityPage>(p => (p.Identities ?? Array.Empty<ProjectionCheckpointTracker.ProjectionIdentity>()).Any(i => i.TenantId == "test-tenant" && i.Domain == "test-domain" && i.AggregateId == "Agg-001")),
+            Arg.Any<string>(),
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TrackIdentityAsync_FullIdentityPage_AppendsToNextPageAndUpdatesIndex() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var tracker = CreateTracker(daprClient);
+        var newIdentity = new AggregateIdentity("test-tenant", "test-domain", "agg-100");
+        ProjectionCheckpointTracker.ProjectionIdentity[] fullPage = Enumerable
+            .Range(0, 100)
+            .Select(i => new ProjectionCheckpointTracker.ProjectionIdentity("test-tenant", "test-domain", $"agg-{i:D3}"))
+            .ToArray();
+
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
+                "statestore",
+                "projection-identities:scopes",
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((new ProjectionCheckpointTracker.ProjectionIdentityIndex(1, 1), "scope-index-etag"));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(
+                "statestore",
+                "projection-identities:scopes:0",
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((new ProjectionCheckpointTracker.ProjectionIdentityScopePage([new("test-tenant", "test-domain")]), "scope-page-etag"));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
+                "statestore",
+                "projection-identities:index:test-tenant:test-domain",
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((new ProjectionCheckpointTracker.ProjectionIdentityIndex(1, 100), "identity-index-etag"));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityPage>(
+                "statestore",
+                "projection-identities:page:test-tenant:test-domain:0",
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((new ProjectionCheckpointTracker.ProjectionIdentityPage(fullPage), "identity-page-0-etag"));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityPage>(
+                "statestore",
+                "projection-identities:page:test-tenant:test-domain:1",
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityPage?)null)!, string.Empty));
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityPage>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityIndex>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await tracker.TrackIdentityAsync(newIdentity);
+
+        _ = await daprClient.Received(1).TrySaveStateAsync(
+            "statestore",
+            "projection-identities:page:test-tenant:test-domain:1",
+            Arg.Is<ProjectionCheckpointTracker.ProjectionIdentityPage>(p => (p.Identities ?? Array.Empty<ProjectionCheckpointTracker.ProjectionIdentity>()).Length == 1 && (p.Identities ?? Array.Empty<ProjectionCheckpointTracker.ProjectionIdentity>())[0].AggregateId == "agg-100"),
+            string.Empty,
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+        _ = await daprClient.Received(1).TrySaveStateAsync(
+            "statestore",
+            "projection-identities:index:test-tenant:test-domain",
+            Arg.Is<ProjectionCheckpointTracker.ProjectionIdentityIndex>(i => i.PageCount == 2 && i.LastPageCount == 1),
+            "identity-index-etag",
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
     private static ProjectionCheckpointTracker CreateTracker(DaprClient daprClient, string stateStoreName = "statestore") =>
         new(daprClient, Options.Create(new ProjectionOptions { CheckpointStateStoreName = stateStoreName }), NullLogger<ProjectionCheckpointTracker>.Instance);
 

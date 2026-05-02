@@ -4,8 +4,10 @@ using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Projections;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 
 using NSubstitute;
 
@@ -116,21 +118,81 @@ public class ProjectionPollerServiceTests {
         await orchestrator.Received(2).DeliverProjectionAsync(FastIdentity, Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task PollOnceAsync_DeliveryFailure_LogsOperatorEvent() {
+        var tracker = new FakeProjectionCheckpointTracker(FastIdentity);
+        IProjectionPollerDeliveryGateway orchestrator = Substitute.For<IProjectionPollerDeliveryGateway>();
+        _ = orchestrator.DeliverProjectionAsync(FastIdentity, Arg.Any<CancellationToken>())
+            .Returns(_ => throw new InvalidOperationException("project endpoint unavailable"));
+        var entries = new List<LogEntry>();
+        var service = CreateService(
+            tracker,
+            orchestrator,
+            new ProjectionOptions { DefaultRefreshIntervalMs = 1000 },
+            logger: new TestLogger<ProjectionPollerService>(entries));
+
+        await service.PollOnceAsync(DateTimeOffset.UtcNow);
+
+        entries.ShouldContain(e => e.EventId.Id == 1131 && e.Level == LogLevel.Warning && e.Message.Contains("Stage=ProjectionPollingDeliveryFailed", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task PollOnceAsync_TickLimitReached_LogsOperatorEvent() {
+        AggregateIdentity[] identities = Enumerable
+            .Range(0, 101)
+            .Select(i => new AggregateIdentity("tenant", "fast", $"agg-{i:D3}"))
+            .ToArray();
+        var tracker = new FakeProjectionCheckpointTracker(identities);
+        IProjectionPollerDeliveryGateway orchestrator = Substitute.For<IProjectionPollerDeliveryGateway>();
+        var entries = new List<LogEntry>();
+        var service = CreateService(
+            tracker,
+            orchestrator,
+            new ProjectionOptions { DefaultRefreshIntervalMs = 1000 },
+            logger: new TestLogger<ProjectionPollerService>(entries));
+
+        await service.PollOnceAsync(DateTimeOffset.UtcNow);
+
+        entries.ShouldContain(e => e.EventId.Id == 1133 && e.Level == LogLevel.Information && e.Message.Contains("Stage=ProjectionPollingTickLimitReached", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task PollOnceAsync_EnumerationFailure_LogsOperatorEvent() {
+        var tracker = new FakeProjectionCheckpointTracker(FastIdentity) {
+            ThrowBeforeYield = true,
+        };
+        IProjectionPollerDeliveryGateway orchestrator = Substitute.For<IProjectionPollerDeliveryGateway>();
+        var entries = new List<LogEntry>();
+        var service = CreateService(
+            tracker,
+            orchestrator,
+            new ProjectionOptions { DefaultRefreshIntervalMs = 1000 },
+            logger: new TestLogger<ProjectionPollerService>(entries));
+
+        await service.PollOnceAsync(DateTimeOffset.UtcNow);
+
+        entries.ShouldContain(e => e.EventId.Id == 1134 && e.Level == LogLevel.Warning && e.Message.Contains("Stage=ProjectionPollingEnumerationFailed", StringComparison.Ordinal));
+    }
+
     private static ProjectionPollerService CreateService(
         IProjectionCheckpointTracker tracker,
         IProjectionPollerDeliveryGateway orchestrator,
         ProjectionOptions options,
-        IProjectionPollerTickSource? tickSource = null) =>
+        IProjectionPollerTickSource? tickSource = null,
+        TimeProvider? timeProvider = null,
+        ILogger<ProjectionPollerService>? logger = null) =>
         new(
             tracker,
             orchestrator,
             Options.Create(options),
             tickSource ?? new ManualProjectionPollerTickSource(),
-            TimeProvider.System,
-            NullLogger<ProjectionPollerService>.Instance);
+            timeProvider ?? new FakeTimeProvider(DateTimeOffset.UtcNow),
+            logger ?? NullLogger<ProjectionPollerService>.Instance);
 
     private sealed class FakeProjectionCheckpointTracker(params AggregateIdentity[] identities) : IProjectionCheckpointTracker {
         private readonly TaskCompletionSource _enumerated = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public bool ThrowBeforeYield { get; init; }
 
         public Task<long> ReadLastDeliveredSequenceAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) =>
             Task.FromResult(0L);
@@ -143,6 +205,10 @@ public class ProjectionPollerServiceTests {
 
         public async IAsyncEnumerable<AggregateIdentity> EnumerateTrackedIdentitiesAsync(
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default) {
+            if (ThrowBeforeYield) {
+                throw new InvalidOperationException("state store unavailable");
+            }
+
             foreach (AggregateIdentity identity in identities) {
                 _enumerated.TrySetResult();
                 yield return identity;
@@ -168,4 +234,15 @@ public class ProjectionPollerServiceTests {
 
         public Task WaitForWaiterAsync() => _waiting.Task;
     }
+
+    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            entries.Add(new LogEntry(logLevel, eventId, formatter(state, exception)));
+    }
+
+    private sealed record LogEntry(LogLevel Level, EventId EventId, string Message);
 }

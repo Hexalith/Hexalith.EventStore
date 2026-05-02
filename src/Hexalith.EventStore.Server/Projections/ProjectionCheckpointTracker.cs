@@ -149,7 +149,7 @@ public sealed class ProjectionCheckpointTracker(
                 "Projection identity scope registration exhausted ETag retries for tenant {TenantId}, domain {Domain}.",
                 identity.TenantId,
                 identity.Domain);
-            return;
+            throw new InvalidOperationException("Projection identity scope registration exhausted ETag retries.");
         }
 
         if (!await TryAddIdentityAsync(scope, new ProjectionIdentity(identity.TenantId, identity.Domain, identity.AggregateId), cancellationToken).ConfigureAwait(false)) {
@@ -158,6 +158,7 @@ public sealed class ProjectionCheckpointTracker(
                 identity.TenantId,
                 identity.Domain,
                 identity.AggregateId);
+            throw new InvalidOperationException("Projection identity registration exhausted ETag retries.");
         }
     }
 
@@ -248,9 +249,9 @@ public sealed class ProjectionCheckpointTracker(
 
                 bool alreadyTracked = false;
                 for (int pageNumber = 0; pageNumber < index.PageCount; pageNumber++) {
-                    ProjectionIdentityScopePage existingPage = await ReadStateAsync<ProjectionIdentityScopePage>(GetScopePageKey(pageNumber), cancellationToken)
-                        .ConfigureAwait(false)
-                        ?? ProjectionIdentityScopePage.Empty;
+                    (ProjectionIdentityScopePage? existingPageOrNull, _) = await ReadStateAndEtagAsync<ProjectionIdentityScopePage>(GetScopePageKey(pageNumber), cancellationToken)
+                        .ConfigureAwait(false);
+                    ProjectionIdentityScopePage existingPage = existingPageOrNull ?? ProjectionIdentityScopePage.Empty;
                     if ((existingPage.Scopes ?? []).Any(existing => existing == scope)) {
                         alreadyTracked = true;
                         break;
@@ -269,7 +270,26 @@ public sealed class ProjectionCheckpointTracker(
                     .GetStateAndETagAsync<ProjectionIdentityScopePage>(stateStoreName, pageKey, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                 ProjectionIdentityScopePage page = pageOrNull ?? ProjectionIdentityScopePage.Empty;
-                ProjectionIdentityScope[] updatedScopes = (page.Scopes ?? []).Append(scope).ToArray();
+                ProjectionIdentityScope[] existingScopes = page.Scopes ?? [];
+                if (existingScopes.Any(existing => existing == scope)) {
+                    ProjectionIdentityIndex recoveredIndex = index.PageCount == 0 || targetPageNumber >= index.PageCount
+                        ? new ProjectionIdentityIndex(targetPageNumber + 1, existingScopes.Length)
+                        : index;
+                    if (recoveredIndex == index
+                        || await daprClient
+                            .TrySaveStateAsync(stateStoreName, IdentityScopeIndexKey, recoveredIndex, indexEtag, cancellationToken: cancellationToken)
+                            .ConfigureAwait(false)) {
+                        return true;
+                    }
+
+                    continue;
+                }
+
+                if (existingScopes.Length >= IdentityPageSize) {
+                    continue;
+                }
+
+                ProjectionIdentityScope[] updatedScopes = existingScopes.Append(scope).ToArray();
 
                 bool pageSaved = await daprClient
                     .TrySaveStateAsync(stateStoreName, pageKey, new ProjectionIdentityScopePage(updatedScopes), pageEtag, cancellationToken: cancellationToken)
@@ -317,9 +337,9 @@ public sealed class ProjectionCheckpointTracker(
 
                 bool alreadyTracked = false;
                 for (int pageNumber = 0; pageNumber < index.PageCount; pageNumber++) {
-                    ProjectionIdentityPage existingPage = await ReadStateAsync<ProjectionIdentityPage>(GetIdentityPageKey(scope, pageNumber), cancellationToken)
-                        .ConfigureAwait(false)
-                        ?? ProjectionIdentityPage.Empty;
+                    (ProjectionIdentityPage? existingPageOrNull, _) = await ReadStateAndEtagAsync<ProjectionIdentityPage>(GetIdentityPageKey(scope, pageNumber), cancellationToken)
+                        .ConfigureAwait(false);
+                    ProjectionIdentityPage existingPage = existingPageOrNull ?? ProjectionIdentityPage.Empty;
                     if ((existingPage.Identities ?? []).Any(existing => existing == identity)) {
                         alreadyTracked = true;
                         break;
@@ -338,7 +358,26 @@ public sealed class ProjectionCheckpointTracker(
                     .GetStateAndETagAsync<ProjectionIdentityPage>(stateStoreName, pageKey, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                 ProjectionIdentityPage page = pageOrNull ?? ProjectionIdentityPage.Empty;
-                ProjectionIdentity[] updatedIdentities = (page.Identities ?? []).Append(identity).ToArray();
+                ProjectionIdentity[] existingIdentities = page.Identities ?? [];
+                if (existingIdentities.Any(existing => existing == identity)) {
+                    ProjectionIdentityIndex recoveredIndex = index.PageCount == 0 || targetPageNumber >= index.PageCount
+                        ? new ProjectionIdentityIndex(targetPageNumber + 1, existingIdentities.Length)
+                        : index;
+                    if (recoveredIndex == index
+                        || await daprClient
+                            .TrySaveStateAsync(stateStoreName, indexKey, recoveredIndex, indexEtag, cancellationToken: cancellationToken)
+                            .ConfigureAwait(false)) {
+                        return true;
+                    }
+
+                    continue;
+                }
+
+                if (existingIdentities.Length >= IdentityPageSize) {
+                    continue;
+                }
+
+                ProjectionIdentity[] updatedIdentities = existingIdentities.Append(identity).ToArray();
 
                 bool pageSaved = await daprClient
                     .TrySaveStateAsync(stateStoreName, pageKey, new ProjectionIdentityPage(updatedIdentities), pageEtag, cancellationToken: cancellationToken)
@@ -378,6 +417,14 @@ public sealed class ProjectionCheckpointTracker(
     private async Task<T?> ReadStateAsync<T>(string key, CancellationToken cancellationToken) =>
         await daprClient
             .GetStateAsync<T>(
+                options.Value.CheckpointStateStoreName,
+                key,
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+    private async Task<(T? Value, string Etag)> ReadStateAndEtagAsync<T>(string key, CancellationToken cancellationToken) =>
+        await daprClient
+            .GetStateAndETagAsync<T>(
                 options.Value.CheckpointStateStoreName,
                 key,
                 cancellationToken: cancellationToken)
