@@ -24,25 +24,25 @@ Current HEAD at story creation: `e76adff`.
 
 1. **Current Redis/backplane posture is inspected and recorded.** Document how the EventStore server currently enables SignalR, resolves the Redis backplane endpoint, sets `AbortOnConnectFail = false`, maps the hub, and enables SignalR in the AppHost/sample topology. Include whether a channel prefix can already be supplied through the raw StackExchange.Redis connection string and whether any EventStore-specific `ChannelPrefix` option exists.
 
-2. **Production isolation decision is explicit.** Add a dated decision record choosing exactly one primary production policy: `separate-redis-per-isolation-boundary`, `shared-redis-with-required-channel-prefix`, or `shared-redis-with-accepted-risk`. The record must name the decision owner/role, the intended isolation boundary, the evidence reviewed, and the revisit trigger.
+2. **Production isolation decision is explicit.** Add a dated decision record before source changes choosing exactly one primary production policy: `separate-redis-per-isolation-boundary`, `shared-redis-with-required-channel-prefix`, or `shared-redis-with-accepted-risk`. The record must name the decision owner/role, the isolation boundary dimensions, the Redis topology, the evidence reviewed, the affected environments, the residual risk, and the revisit trigger. `shared-redis-with-accepted-risk` must include an owner-approved exception, an expiry or revisit date, and a statement that no Redis channel-isolation guarantee is provided for the accepted boundary.
 
-3. **Isolation boundary is defined in deployment terms.** The policy must define whether the boundary is environment, application instance, tenant, cluster, namespace, or test lane. It must explicitly state that SignalR Redis channel separation is not tenant authorization and does not replace JWT claims, `ProjectionChangedHub.JoinGroup` authorization, query authorization, or DAPR access-control policies.
+3. **Isolation boundary is defined in deployment terms.** The policy must define the boundary as the tuple of environment, deployed application/product instance, cluster or namespace when relevant, tenant or tenant lane when Redis is intentionally shared across tenant-isolated runtimes, and test/CI lane when Redis is shared by parallel runs. It must explicitly state whether tenant separation is required at the Redis SignalR-channel level, application authorization level, or both. It must also state that SignalR Redis channel separation is not tenant authorization and does not replace JWT claims, `ProjectionChangedHub.JoinGroup` authorization, query authorization, or DAPR access-control policies.
 
-4. **If shared Redis is allowed, channel-prefix requirements are concrete.** Specify the prefix format, allowed characters, source of value, example values for local/dev/test/prod, collision-risk handling, and whether the prefix must include environment and application identity. Do not include secrets, tenant IDs with sensitive meaning, connection strings, or raw deployment names that leak production topology into public logs.
+4. **If shared Redis is allowed, channel-prefix requirements are concrete.** Specify the prefix format, allowed characters, source of value, deploy-time owner, example values for local/dev/test/prod, collision-risk handling, and whether the prefix must include environment and application identity. Outside local single-app development, the prefix must be non-empty after trimming, stable across restarts, safe for Redis channel names, and must distinguish every shared isolation boundary; include tenant or test-lane identity only when Redis is intentionally shared across those scopes and document the cardinality/privacy tradeoff. Do not include secrets, tenant IDs with sensitive meaning, connection strings, or raw deployment names that leak production topology into public logs.
 
-5. **If a first-class EventStore option is required, implement it narrowly.** Add `EventStore:SignalR:BackplaneRedisChannelPrefix` or a similarly named option only if the decision requires an EventStore-owned setting instead of relying on raw `channelPrefix=` inside the connection string. The implementation must set `ConfigurationOptions.ChannelPrefix` before `AddStackExchangeRedis`, preserve `AbortOnConnectFail = false`, validate null/empty/invalid values, and not change the public hub payload or group format.
+5. **If a first-class EventStore option is required, implement it narrowly.** Add `EventStore:SignalR:BackplaneRedisChannelPrefix` or a similarly named option only if the selected decision requires an EventStore-owned setting and no existing SignalR/StackExchange.Redis configuration path can express the required prefix safely and documentably. The option must be scoped only to SignalR Redis backplane channel prefixing, not general Redis naming, tenancy, cache, pub/sub, or security abstraction. Existing Redis connection parsing remains authoritative for connectivity; document precedence explicitly if both raw `channelPrefix=` and an EventStore-owned option are present, and fail validation rather than silently accepting conflicting prefix values. The implementation must set `ConfigurationOptions.ChannelPrefix` before `AddStackExchangeRedis`, preserve `AbortOnConnectFail = false`, validate null/empty/invalid values according to the selected policy, and not change the public hub payload or group format.
 
 6. **If the raw connection-string option is accepted, document it completely.** If no first-class option is added, production guidance must show how to set `channelPrefix=...` in the existing Redis connection string path and explain why that is sufficient. Add a deferred-work entry if a first-class option is deliberately postponed.
 
-7. **Runtime and evidence guidance prevents false confidence.** Update deployment or operational documentation so future runtime proofs record Redis endpoint identity, effective channel-prefix decision, same-prefix positive case, different-prefix negative/control case when practical, and the expected fail-open behavior when Redis is unavailable.
+7. **Runtime and evidence guidance prevents false confidence.** Update deployment or operational documentation so future runtime proofs record redacted Redis endpoint identity, database/index when used, effective channel-prefix decision, same-prefix positive case, different-prefix negative/control case when practical, deploy-time owner for the selected setting, and the expected fail-open behavior when Redis is unavailable. If source configuration changes are made, prove that the configured prefix affects the actual SignalR Redis backplane configuration rather than only binding to an unused option.
 
 8. **Existing runtime proof boundaries remain intact.** Do not re-prove R10-A2 cross-instance delivery, R10-A3 tenant authorization, R10-A5 reconnect guidance, or R10-A6 operational evidence pattern in this story. This story may update those documents only by adding narrow links or routing notes.
 
-9. **Tests match the chosen path.** If source configuration changes are made, add focused unit tests for option binding/validation and `ConfigureBackplane` behavior, including preserving `AbortOnConnectFail = false` and setting the expected channel prefix. If docs/policy only change, run markdown/link checks when available and record why code tests are not required.
+9. **Tests match the chosen path.** If source configuration changes are made, add focused unit/configuration tests for option binding, prefix validation, missing-prefix failure when the selected shared-Redis policy requires one, accepted-risk/no-prefix behavior if that path is selected, documented precedence or conflict handling, and `ConfigureBackplane` behavior, including preserving `AbortOnConnectFail = false` and setting the expected channel prefix. Prefer unit/configuration tests unless an existing lightweight Redis/SignalR fixture already supports a narrow control proof; do not turn this story into a broad infrastructure proof. If docs/policy only change, run markdown/link checks when available and record why code tests are not required.
 
-10. **AppHost and publish guidance are checked.** Inspect `src/Hexalith.EventStore.AppHost/Program.cs`, publish/deployment guidance, and any Docker/Kubernetes/ACA notes for Redis reuse assumptions. If production overlays should require separate Redis or a prefix, document the required environment variables/configuration keys and whether local development remains unchanged.
+10. **AppHost and publish guidance are checked.** Inspect `src/Hexalith.EventStore.AppHost/Program.cs`, publish/deployment guidance, and any Docker/Kubernetes/ACA notes for Redis reuse assumptions. If production overlays should require separate Redis or a prefix, document the required environment variables/configuration keys, who supplies them for AppHost, CI/test lanes, and production, and whether local development remains unchanged. Include an operator decision table covering when each allowed policy is appropriate, required configuration, required evidence, and production suitability.
 
-11. **Secrets and operational safety are preserved.** The policy and any logs/evidence must redact passwords, connection strings with credentials, Redis endpoints containing secrets, access tokens, and production topology details that are not safe for repo artifacts. Prefix values are configuration metadata, not credentials.
+11. **Secrets and operational safety are preserved.** The policy and any logs/evidence must redact passwords, connection strings with credentials, access keys, access tokens, Redis endpoints containing secrets, hostnames or topology details that are not safe for repo artifacts, and tenant-identifying values when required. Avoid committing raw `ConfigurationOptions.ToString()` output unless it is proven safe or sanitized. Prefix values are configuration metadata, not credentials, but examples in repo artifacts must be sanitized.
 
 12. **Story bookkeeping is closed.** At dev handoff, this story status becomes `review`, the sprint-status row becomes `review`, and `last_updated` names R10-A7 and the selected isolation policy. At code-review signoff, both become `done`.
 
@@ -54,6 +54,9 @@ Current HEAD at story creation: `e76adff`.
 - Do not change DAPR state store, DAPR pub/sub, command processing, projection state storage, or Redis keys used by actors.
 - Do not expand runtime proof endpoints beyond the Development/Test-only posture created by R10-A2.
 - Do not commit raw production Redis connection strings, secrets, tokens, HAR files, or full network traces.
+- Do not redesign Redis infrastructure, introduce Redis ACL/mTLS/key-management work, change Keycloak/auth behavior, alter DAPR service invocation, or add new environment provisioning unless the selected policy explicitly requires documentation-only deployment guidance.
+- Do not introduce SignalR tenant routing, hub restructuring, new Redis multiplexing abstractions, projection semantics changes, cache key namespacing, or general Redis topology refactoring.
+- Do not initialize or update nested submodules.
 
 ## Implementation Inventory
 
@@ -76,25 +79,27 @@ Current HEAD at story creation: `e76adff`.
   - [ ] 0.2 Inspect `SignalROptions`, `SignalRServiceCollectionExtensions`, `Program.cs`, AppHost SignalR wiring, and the R10-A2 runtime proof endpoints.
   - [ ] 0.3 Record whether `channelPrefix=...` already works through the existing connection string parse path and whether a first-class EventStore option exists.
   - [ ] 0.4 Review deployment/publish docs for shared Redis assumptions, environment naming, and secret-redaction guidance.
-  - [ ] 0.5 Add a decision record before source changes choosing one primary policy path.
+  - [ ] 0.5 Add a decision record before source changes choosing one primary policy path, naming boundary tuple, deploy-time owner, evidence location, residual risk, and revisit trigger.
 
 - [ ] Task 1: Document the production isolation policy (AC: #2, #3, #4, #6, #7, #10, #11)
   - [ ] 1.1 Define the isolation boundary and whether Redis must be separate per boundary or may be shared with a prefix.
   - [ ] 1.2 If shared Redis is allowed, define the required prefix format and examples for local, test, staging, and production.
   - [ ] 1.3 Explain that prefixes protect SignalR pub/sub channel separation only and do not replace auth or query authorization.
   - [ ] 1.4 Add operational evidence requirements for endpoint identity, prefix evidence, positive delivery, negative/control isolation, and fail-open behavior.
-  - [ ] 1.5 Add secret-redaction rules for evidence and docs.
+  - [ ] 1.5 Add a policy decision table covering dedicated Redis per boundary, shared Redis with required prefix, and shared Redis with accepted risk.
+  - [ ] 1.6 Add secret-redaction rules and sanitized examples for evidence and docs.
 
 - [ ] Task 2: Implement first-class prefix support only if required (AC: #5, #9)
-  - [ ] 2.1 Add a narrow `BackplaneRedisChannelPrefix` option if the decision record requires it.
+  - [ ] 2.1 Add a narrow `BackplaneRedisChannelPrefix` option only if the decision record requires it and the existing raw configuration path cannot safely satisfy the selected policy.
   - [ ] 2.2 Apply the value to `ConfigurationOptions.ChannelPrefix` before registering the Redis backplane.
   - [ ] 2.3 Preserve `AbortOnConnectFail = false` exactly.
-  - [ ] 2.4 Validate null/empty/invalid prefix values without breaking the existing no-prefix path.
+  - [ ] 2.4 Validate null/empty/invalid prefix values according to the selected policy without breaking local single-app no-prefix development unless the policy explicitly forbids it.
   - [ ] 2.5 Keep the existing `BackplaneRedisConnectionString` and `EVENTSTORE_SIGNALR_REDIS` behavior compatible.
+  - [ ] 2.6 Document and test precedence or conflict behavior if both raw `channelPrefix=` and an EventStore-owned prefix option are present.
 
 - [ ] Task 3: Tests and proof guidance (AC: #7, #8, #9)
-  - [ ] 3.1 If source changes are made, add focused tests for option binding/validation and Redis configuration output.
-  - [ ] 3.2 If runtime proof evidence is touched, add only prefix/effective-config evidence needed by the chosen policy.
+  - [ ] 3.1 If source changes are made, add focused tests for option binding/validation, missing-prefix failure under required-prefix policy, accepted-risk/no-prefix behavior when selected, redaction behavior, and Redis configuration output.
+  - [ ] 3.2 If runtime proof evidence is touched, add only prefix/effective-config evidence needed by the chosen policy and prove the setting reaches the actual SignalR Redis backplane configuration.
   - [ ] 3.3 Record different-prefix negative/control guidance without requiring a full R10-A2 proof rerun unless the source change affects runtime behavior.
   - [ ] 3.4 If docs only change, run markdown/link validation when available and record the result.
 
@@ -116,6 +121,36 @@ Current HEAD at story creation: `e76adff`.
 - Preserve fail-open behavior. Redis backplane startup or publish failures must not break command processing, ETag regeneration, or local single-instance operation.
 - If using raw connection string `channelPrefix=...`, document that the value is parsed by StackExchange.Redis, not by EventStore option binding.
 - If adding a first-class option, keep both paths deterministic: the EventStore option must either override the raw connection string prefix with a documented precedence rule or fail validation when both disagree. Do not allow silent conflicts.
+
+### Policy Wording Requirements
+
+The implementation and docs must use one of these production decisions exactly:
+
+- `separate-redis-per-isolation-boundary`
+- `shared-redis-with-required-channel-prefix`
+- `shared-redis-with-accepted-risk`
+
+An isolation boundary means any scope where projection-change notifications must not cross: environment, deployed app/product instance, cluster or namespace when relevant, tenant when Redis is shared across tenant-isolated runtimes, and test/CI lane when Redis is shared across parallel runs. The decision must state whether tenant identity belongs in the Redis channel-prefix boundary or remains solely an application authorization boundary.
+
+When shared Redis is allowed, the channel prefix must be non-empty outside local single-app development and must distinguish every shared isolation boundary. At minimum it must include environment and app identity. It must also include tenant or test-lane identity when Redis is intentionally shared across those scopes. Prefix examples in docs must be sanitized and must not expose secrets or sensitive topology.
+
+Use this minimum evidence template in the story completion notes or linked artifact:
+
+```text
+Redis Isolation Decision Evidence
+- Date:
+- Decision:
+- Decision owner/role:
+- Isolation boundaries covered:
+- Redis topology:
+- Channel prefix requirement:
+- Prefix source/config key:
+- Deploy-time owner:
+- Redaction note:
+- Validation performed:
+- Residual risk:
+- Revisit trigger:
+```
 
 ### Current-Code Intelligence
 
@@ -142,6 +177,8 @@ Current HEAD at story creation: `e76adff`.
 - Runtime proof changes belong in Tier 3 integration tests and should stay Docker/Redis gated.
 - Do not run solution-level `dotnet test`; run affected projects individually.
 - If no source files change, do not invent a code test just to have one. The verification gate is policy clarity plus documentation validation.
+- A positive-only runtime proof is insufficient for shared Redis isolation. When live proof is practical, include a negative/control case with differently configured boundaries sharing Redis; otherwise record why configuration/unit proof is the selected gate.
+- If validating redaction in code is not practical, require a review checklist item proving evidence artifacts do not contain raw Redis passwords, tokens, credentials, sensitive hostnames, or unsafe connection-string output.
 
 ### Latest Technical Information
 
@@ -195,10 +232,33 @@ To be filled by dev agent.
 
 To be filled by dev agent.
 
+## Party-Mode Review
+
+- Date/time: 2026-05-02T19:13:13+02:00
+- Selected story key: `post-epic-10-r10a7-redis-channel-isolation-policy`
+- Command/skill invocation used: `/bmad-party-mode post-epic-10-r10a7-redis-channel-isolation-policy; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect), Paige (Technical Writer)
+- Findings summary:
+  - Winston: The policy branch needed a canonical isolation-boundary definition, explicit shared-prefix semantics, accepted-risk gating, and sharper exclusions from broader Redis/auth/topology work.
+  - Amelia: Configuration precedence was the main implementation trap; first-class prefix support must be narrow, explicit, and tested without broad AppHost or Redis redesign.
+  - Murat: The story risked false confidence unless evidence includes redacted endpoint/prefix posture and, where practical, negative/control isolation proof rather than positive delivery only.
+  - Paige: Operator-facing docs needed a decision table, sanitized prefix examples, and a concrete decision-evidence template.
+- Changes applied:
+  - Strengthened acceptance criteria for dated policy decision evidence, boundary tuple definition, shared-prefix shape, deploy-time ownership, accepted-risk signoff, first-class option scope, precedence/conflict behavior, and redaction.
+  - Added scope boundaries excluding broad Redis infrastructure redesign, tenant routing, hub restructuring, DAPR/Auth changes, topology refactors, and nested submodule updates.
+  - Added task guidance for policy decision table, evidence template, missing-prefix validation, conflict handling, redaction review, and negative/control proof when practical.
+  - Added policy wording requirements and evidence template to Dev Notes.
+- Findings deferred:
+  - The exact production policy choice and exact prefix format remain for `bmad-dev-story`; this pre-dev review requires the decision to be recorded before source changes but does not choose it.
+  - Whether tenant identity belongs in the Redis prefix remains a topology decision to document explicitly; the story now requires that analysis rather than assuming tenant-scoped prefixes.
+  - Live Redis/SignalR negative proof remains conditional on an existing lightweight fixture; otherwise focused configuration/unit tests plus documented evidence are acceptable.
+- Final recommendation: `ready-for-dev`
+
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-02 | 0.2 | Party-mode review hardened Redis isolation decision, prefix, evidence, and test constraints. | Codex automation |
 | 2026-05-02 | 0.1 | Created ready-for-dev R10-A7 Redis channel isolation policy story. | Codex automation |
 
 ## Verification Status
