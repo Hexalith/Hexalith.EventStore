@@ -1,6 +1,6 @@
 # Post-Epic-10 R10-A6: SignalR Operational Evidence Pattern
 
-Status: ready-for-dev
+Status: review
 
 <!-- Source: epic-10-retro-2026-05-01.md R10-A6 -->
 <!-- Source: sprint-change-proposal-2026-05-01-epic-10-retro-cleanup.md Proposal 6 -->
@@ -74,46 +74,46 @@ Current HEAD at story creation: `68b6957`.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline and evidence inventory (AC: #1, #6, #10)
-  - [ ] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
-  - [ ] 0.2 Inspect R10-A2 evidence and current SignalR story records for fields already captured.
-  - [ ] 0.3 Inspect current SignalR logs, proof endpoints, client helper, and telemetry registration for available timestamps and identifiers.
-  - [ ] 0.4 Identify missing instrumentation or proof-harness gaps as deferred work unless a very small docs/test-only change is required to make the pattern usable.
-  - [ ] 0.5 Confirm no public SignalR payload, group format, authorization, Redis, reconnect, query, or UI behavior change is needed for this evidence-pattern story.
+- [x] Task 0: Baseline and evidence inventory (AC: #1, #6, #10)
+  - [x] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
+  - [x] 0.2 Inspect R10-A2 evidence and current SignalR story records for fields already captured.
+  - [x] 0.3 Inspect current SignalR logs, proof endpoints, client helper, and telemetry registration for available timestamps and identifiers.
+  - [x] 0.4 Identify missing instrumentation or proof-harness gaps as deferred work unless a very small docs/test-only change is required to make the pattern usable.
+  - [x] 0.5 Confirm no public SignalR payload, group format, authorization, Redis, reconnect, query, or UI behavior change is needed for this evidence-pattern story.
 
-- [ ] Task 1: Define the evidence schema (AC: #1, #2, #4, #7, #8, #9)
-  - [ ] 1.1 Add `docs/operations/signalr-operational-evidence.md` and `_bmad-output/test-artifacts/signalr-operational-evidence-template.md` with a Markdown schema, version marker, required/optional field labels, allowed classification values, and an evidence index pattern.
-  - [ ] 1.2 Require UTC timestamps for all latency points and note clock-source assumptions when client/browser and server run on different machines; define trigger-to-broadcast, broadcast-to-client-receipt, client-receipt-to-query-refresh, query-refresh-to-render, and end-to-end trigger-to-refresh.
-  - [ ] 1.3 Require evidence run id, operation id, correlation id, causation id when available, command/message id when applicable, event id or projection-change identifier when available, stream/aggregate id when applicable, projection type, tenant id or safe tenant alias, group name, connection id or client-session alias, connection target, broadcast origin, and query response/ETag evidence.
-  - [ ] 1.4 Require at least one false-positive control and explain which product failure it guards against; include a correlation-integrity control where mismatched/missing identifiers make validation fail.
-  - [ ] 1.5 Define allowed evidence storage under `_bmad-output/test-artifacts/<story-or-proof-key>/evidence-YYYY-MM-DD*.md`.
-  - [ ] 1.6 Add a safety note: redact tokens, secrets, connection strings, production hostnames, unsafe tenant/user identifiers, tenant-sensitive payloads, raw production logs, and network traces with stable placeholders.
+- [x] Task 1: Define the evidence schema (AC: #1, #2, #4, #7, #8, #9)
+  - [x] 1.1 Add `docs/operations/signalr-operational-evidence.md` and `_bmad-output/test-artifacts/signalr-operational-evidence-template.md` with a Markdown schema, version marker, required/optional field labels, allowed classification values, and an evidence index pattern.
+  - [x] 1.2 Require UTC timestamps for all latency points and note clock-source assumptions when client/browser and server run on different machines; define trigger-to-broadcast, broadcast-to-client-receipt, client-receipt-to-query-refresh, query-refresh-to-render, and end-to-end trigger-to-refresh.
+  - [x] 1.3 Require evidence run id, operation id, correlation id, causation id when available, command/message id when applicable, event id or projection-change identifier when available, stream/aggregate id when applicable, projection type, tenant id or safe tenant alias, group name, connection id or client-session alias, connection target, broadcast origin, and query response/ETag evidence.
+  - [x] 1.4 Require at least one false-positive control and explain which product failure it guards against; include a correlation-integrity control where mismatched/missing identifiers make validation fail.
+  - [x] 1.5 Define allowed evidence storage under `_bmad-output/test-artifacts/<story-or-proof-key>/evidence-YYYY-MM-DD*.md`.
+  - [x] 1.6 Add a safety note: redact tokens, secrets, connection strings, production hostnames, unsafe tenant/user identifiers, tenant-sensitive payloads, raw production logs, and network traces with stable placeholders.
 
-- [ ] Task 2: Define latency and p99 calculation guidance (AC: #2, #3, #5)
-  - [ ] 2.1 Name the primary SignalR delivery interval and separately name query refresh and UI render intervals.
-  - [ ] 2.2 State that a single run proves path viability, not p99.
-  - [ ] 2.3 Define the minimum sample set for p99 claims and require raw sample count, sample window, accepted clock source, sorted nearest-rank percentile method, threshold source, and outlier/warmup handling in evidence.
-  - [ ] 2.4 State how built-in SignalR connection metrics and ActivitySources support diagnosis without replacing product-specific delivery observations.
-  - [ ] 2.5 If the current OpenTelemetry setup does not collect `Microsoft.AspNetCore.SignalR.Server` / `.Client`, record the required configuration as deferred work or a future instrumentation story.
+- [x] Task 2: Define latency and p99 calculation guidance (AC: #2, #3, #5)
+  - [x] 2.1 Name the primary SignalR delivery interval and separately name query refresh and UI render intervals.
+  - [x] 2.2 State that a single run proves path viability, not p99.
+  - [x] 2.3 Define the minimum sample set for p99 claims and require raw sample count, sample window, accepted clock source, sorted nearest-rank percentile method, threshold source, and outlier/warmup handling in evidence.
+  - [x] 2.4 State how built-in SignalR connection metrics and ActivitySources support diagnosis without replacing product-specific delivery observations.
+  - [x] 2.5 If the current OpenTelemetry setup does not collect `Microsoft.AspNetCore.SignalR.Server` / `.Client`, record the required configuration as deferred work or a future instrumentation story.
 
-- [ ] Task 3: Define failure classification and blocker routing (AC: #7, #8, #10)
-  - [ ] 3.1 Add a decision table separating environment blockers from product failures.
-  - [ ] 3.2 Include Docker, Redis, DAPR placement/scheduler, Aspire, auth/token, browser automation, observability backend, and port conflict blockers.
-  - [ ] 3.3 Include no broadcast, wrong group, unauthorized join, no receipt, stale/duplicate evidence, query refresh failure, and latency breach product failures.
-  - [ ] 3.4 Add instrumentation-gap routing for missing server timestamp, missing client timestamp, missing correlation continuity, missing diagnostic source, unsafe evidence/redaction risk, and p99 sample insufficiency.
-  - [ ] 3.5 Route Redis isolation/channel-prefix policy questions to R10-A7 and query/UI round-trip proof to R11-A3/R11-A4.
+- [x] Task 3: Define failure classification and blocker routing (AC: #7, #8, #10)
+  - [x] 3.1 Add a decision table separating environment blockers from product failures.
+  - [x] 3.2 Include Docker, Redis, DAPR placement/scheduler, Aspire, auth/token, browser automation, observability backend, and port conflict blockers.
+  - [x] 3.3 Include no broadcast, wrong group, unauthorized join, no receipt, stale/duplicate evidence, query refresh failure, and latency breach product failures.
+  - [x] 3.4 Add instrumentation-gap routing for missing server timestamp, missing client timestamp, missing correlation continuity, missing diagnostic source, unsafe evidence/redaction risk, and p99 sample insufficiency.
+  - [x] 3.5 Route Redis isolation/channel-prefix policy questions to R10-A7 and query/UI round-trip proof to R11-A3/R11-A4.
 
-- [ ] Task 4: Validate against existing evidence (AC: #11)
-  - [ ] 4.1 Walk the R10-A2 runtime proof evidence through the schema and mark present/missing fields.
-  - [ ] 4.2 If R11-A3/R11-A4 evidence exists, spot-check the query refresh fields against that proof without editing those stories.
-  - [ ] 4.3 Record schema gaps as future evidence obligations, not retroactive failures of completed stories unless the old evidence made a false claim.
-  - [ ] 4.4 Add one intentionally incomplete or mismatched evidence example in the template or verification notes that demonstrates the schema rejects missing correlation/latency fields.
-  - [ ] 4.5 Run markdown/link validation when practical; if unavailable, record the command attempted and the blocker.
+- [x] Task 4: Validate against existing evidence (AC: #11)
+  - [x] 4.1 Walk the R10-A2 runtime proof evidence through the schema and mark present/missing fields.
+  - [x] 4.2 If R11-A3/R11-A4 evidence exists, spot-check the query refresh fields against that proof without editing those stories.
+  - [x] 4.3 Record schema gaps as future evidence obligations, not retroactive failures of completed stories unless the old evidence made a false claim.
+  - [x] 4.4 Add one intentionally incomplete or mismatched evidence example in the template or verification notes that demonstrates the schema rejects missing correlation/latency fields.
+  - [x] 4.5 Run markdown/link validation when practical; if unavailable, record the command attempted and the blocker.
 
-- [ ] Task 5: Story bookkeeping (AC: #12)
-  - [ ] 5.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
-  - [ ] 5.2 Move this story and only this story from `ready-for-dev` to `review` at dev handoff.
-  - [ ] 5.3 Leave R10-A5/R10-A7/R10-A8 and all non-R10 rows unchanged.
+- [x] Task 5: Story bookkeeping (AC: #12)
+  - [x] 5.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
+  - [x] 5.2 Move this story and only this story from `ready-for-dev` to `review` at dev handoff.
+  - [x] 5.3 Leave R10-A5/R10-A7/R10-A8 and all non-R10 rows unchanged.
 
 ## Dev Notes
 
@@ -192,23 +192,39 @@ Current HEAD at story creation: `68b6957`.
 
 ### Agent Model Used
 
-To be filled by dev agent.
+GPT-5 Codex
 
 ### Deferred Decisions / Follow-ups
 
-To be filled by dev agent if the evidence pattern exposes missing instrumentation or telemetry registration.
+- Add `Microsoft.AspNetCore.SignalR.Server` and `Microsoft.AspNetCore.SignalR.Client` ActivitySource registration in `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs` if default SignalR spans are required by future proof automation.
+- Add an Activity or structured timing log around `SignalRProjectionChangedBroadcaster.BroadcastChangedAsync()` start/completion if automated p99 delivery evidence needs an unambiguous server-side broadcast boundary.
+- Add proof harness or optional client diagnostics for UTC client receipt timestamps; do not add proof metadata to the public SignalR payload.
+- Improve correlation continuity across trigger, ETag regeneration, broadcast, client receipt, and query refresh with safe trace tags or proof metadata in a future instrumentation story.
 
 ### Debug Log References
 
-To be filled by dev agent.
+- Baseline: current HEAD `5279247a833f5b9fdfaf655485ceca2ba0dc4e37`; story row confirmed `ready-for-dev`, then moved to `in-progress`.
+- Aspire baseline: repo AppHost was already running; `mcp__aspire__.doctor` showed no failed checks, and `mcp__aspire__.list_resources` showed EventStore/sample/admin resources healthy before docs work.
+- Red check: required files `docs/operations/signalr-operational-evidence.md` and `_bmad-output/test-artifacts/signalr-operational-evidence-template.md` were absent before implementation.
+- Validation: `npx --yes markdownlint-cli2 "docs/operations/signalr-operational-evidence.md"` passed; `npx --yes markdown-link-check "docs/operations/signalr-operational-evidence.md"` checked 3 links and passed.
+- Validation: `npx --yes markdownlint-cli2 "_bmad-output/test-artifacts/signalr-operational-evidence-template.md"` passed; `npx --yes markdown-link-check "_bmad-output/test-artifacts/signalr-operational-evidence-template.md"` found no hyperlinks and passed.
+- Regression: first `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj` attempt was blocked by the running EventStore resource locking DLLs; stopped `eventstore-hxqerrbv`, reran successfully.
+- Regression: first `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj` attempt was blocked by the running Sample resource locking DLLs; stopped `sample-shcupzvy`, reran successfully.
+- Cleanup: restarted `eventstore-hxqerrbv` and `sample-shcupzvy`; Aspire resources returned to Running/Healthy.
 
 ### Completion Notes List
 
-To be filled by dev agent.
+- Added the operator-facing SignalR operational evidence pattern under `docs/operations/`, covering mandatory artifacts, UTC latency boundaries, p99 rules, correlation fields, diagnostics, failure classification, reliability controls, storage/redaction policy, instrumentation gaps, and a walk-through of existing R10-A2/R11-A3 evidence.
+- Added a reusable `signalr-operational-evidence/v1` Markdown template under `_bmad-output/test-artifacts/` with required/optional fields, allowed classification values, reliability controls, correlation-integrity rejection, redaction rules, and deferred-work table.
+- Preserved story boundaries: no product SignalR payload, group format, authorization, Redis, reconnect, query, UI, or telemetry code changed.
+- Validated the pattern against existing R10-A2 Redis backplane evidence and R11-A3 projection/UI proof evidence; old evidence gaps are documented as future obligations, not retroactive failures.
 
 ### File List
 
-To be filled by dev agent.
+- `_bmad-output/implementation-artifacts/post-epic-10-r10a6-signalr-operational-evidence-pattern.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/test-artifacts/signalr-operational-evidence-template.md`
+- `docs/operations/signalr-operational-evidence.md`
 
 ## Party-Mode Review
 
@@ -237,9 +253,17 @@ To be filled by dev agent.
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-02 | 1.0 | Implemented SignalR operational evidence pattern, reusable evidence template, schema walk-through, markdown/link validation, and moved story to review. | GPT-5 Codex |
 | 2026-05-02 | 0.2 | Party-mode review hardened evidence schema, latency boundaries, p99 guidance, controls, and blocker routing. | Codex automation |
 | 2026-05-02 | 0.1 | Created ready-for-dev R10-A6 SignalR operational evidence pattern story. | Codex automation |
 
 ## Verification Status
 
-Story creation only. Evidence-pattern implementation and verification are intentionally deferred to `bmad-dev-story`.
+Implementation complete. Markdown lint/link checks passed for the operations doc and evidence template. Standard unit-test projects passed individually after temporarily stopping AppHost resources that were locking build outputs:
+
+- `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj` — 334 passed.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj` — 281 passed.
+- `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj` — 63 passed.
+- `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj` — 78 passed.
+
+AppHost `eventstore` and `sample` resources were restarted after the test run and reported Running/Healthy.
