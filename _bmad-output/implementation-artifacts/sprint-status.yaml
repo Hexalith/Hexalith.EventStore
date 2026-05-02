@@ -128,7 +128,7 @@ development_status:
   post-epic-10-r10a3-hub-group-authorization-decision: done
   post-epic-10-r10a5-client-reconnect-guidance: ready-for-dev
   post-epic-10-r10a6-signalr-operational-evidence-pattern: ready-for-dev
-  post-epic-10-r10a7-redis-channel-isolation-policy: backlog
+  post-epic-10-r10a7-redis-channel-isolation-policy: ready-for-dev
   post-epic-10-r10a8-r9-r10-follow-through-tracking: backlog
 
   # Epic 11: Server-Managed Projection Builder
