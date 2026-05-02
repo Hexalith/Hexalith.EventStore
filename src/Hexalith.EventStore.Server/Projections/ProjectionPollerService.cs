@@ -36,6 +36,19 @@ public sealed partial class ProjectionPollerService(
         bool tickLimited = false;
         bool enumerationFailed = false;
 
+        // R3P10 — seed _nextDueByDomain from explicitly configured polling domains so
+        // AdvanceKnownPollingDomains has work to advance when EnumerateTrackedIdentitiesAsync
+        // throws before yielding any identity. Without this seed, the very first tick's
+        // enumeration failure leaves the dictionary empty, so AdvanceKnownPollingDomains is a
+        // no-op and the next tick re-fires at the smallest configured interval until a tick
+        // succeeds — operator sees event 1134 spam at the cadence of the smallest interval.
+        // GetOrAdd preserves any fresher schedule that a prior tick may have set.
+        foreach (KeyValuePair<string, DomainProjectionOptions> entry in options.Domains) {
+            if (entry.Value.RefreshIntervalMs > 0) {
+                _ = _nextDueByDomain.GetOrAdd(entry.Key, now);
+            }
+        }
+
         // R2P1 — when the per-tick cap fires we must skip schedule advancement only for the
         // domain whose enumeration was interrupted. Earlier domains in the enumeration order
         // are fully covered (the underlying tracker iterates one scope at a time) and must be

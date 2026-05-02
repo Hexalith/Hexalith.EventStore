@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Projections;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -138,8 +139,14 @@ public class ProjectionPollerServiceTests {
 
     [Fact]
     public async Task PollOnceAsync_TickLimitReached_LogsOperatorEvent() {
+        // The poller's MaxIdentitiesPerTick is 100. Enumerate 101 identities so the cap fires
+        // mid-iteration: exactly 100 deliveries occur before the loop breaks. The test pins
+        // BOTH the operator log emission AND the actual delivery boundary so a regression that
+        // raised or lowered the cap (e.g. 50 or 200) is caught at the boundary, not just
+        // observed via the log message presence.
+        const int expectedMaxDeliveriesPerTick = 100;
         AggregateIdentity[] identities = Enumerable
-            .Range(0, 101)
+            .Range(0, expectedMaxDeliveriesPerTick + 1)
             .Select(i => new AggregateIdentity("tenant", "fast", $"agg-{i:D3}"))
             .ToArray();
         var tracker = new FakeProjectionCheckpointTracker(identities);
@@ -154,6 +161,43 @@ public class ProjectionPollerServiceTests {
         await service.PollOnceAsync(DateTimeOffset.UtcNow);
 
         entries.ShouldContain(e => e.EventId.Id == 1133 && e.Level == LogLevel.Information && e.Message.Contains("Stage=ProjectionPollingTickLimitReached", StringComparison.Ordinal));
+        // R3P6 — boundary check: exactly 100 deliveries fired, the 101st was deferred.
+        await orchestrator.Received(expectedMaxDeliveriesPerTick).DeliverProjectionAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_UsesTimeProviderToTimestampPollPasses() {
+        // R3P9 — drive ExecuteAsync end-to-end so timeProvider.GetUtcNow() is actually consulted
+        // (PollOnceAsync overloads that take an explicit `now` bypass the provider). FakeTimeProvider
+        // is initialized to a fixed instant; the IsDomainDue check seeds _nextDueByDomain from
+        // that instant via GetOrAdd. After the first tick the domain is due (since seed == now),
+        // delivery fires once. A subsequent tick BEFORE the interval elapses (FakeTimeProvider not
+        // advanced) must NOT fire because nextDue has been advanced by the interval.
+        DateTimeOffset start = new(2030, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var fakeTime = new FakeTimeProvider(start);
+        var tracker = new FakeProjectionCheckpointTracker(FastIdentity);
+        IProjectionPollerDeliveryGateway orchestrator = Substitute.For<IProjectionPollerDeliveryGateway>();
+        var tickSource = new ManualProjectionPollerTickSource();
+        var service = CreateService(
+            tracker,
+            orchestrator,
+            new ProjectionOptions { DefaultRefreshIntervalMs = 1000 },
+            tickSource,
+            fakeTime);
+
+        Task run = service.StartAsync(CancellationToken.None);
+        await tickSource.WaitForWaiterAsync();
+        // First tick at start time — domain is due, delivery fires.
+        tickSource.Complete(true);
+        await tracker.WaitForEnumerationAsync();
+        // Second waiter latch fires after PollOnceAsync completes; fire another tick at the SAME
+        // wall-clock instant (FakeTimeProvider not advanced) to prove the schedule advancement
+        // honours the interval rather than relying on a hard-coded DateTimeOffset.UtcNow source.
+        tickSource.Complete(false);
+        await service.StopAsync(CancellationToken.None);
+        await run;
+
+        await orchestrator.Received(1).DeliverProjectionAsync(FastIdentity, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -235,14 +279,4 @@ public class ProjectionPollerServiceTests {
         public Task WaitForWaiterAsync() => _waiting.Task;
     }
 
-    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
-            entries.Add(new LogEntry(logLevel, eventId, formatter(state, exception)));
-    }
-
-    private sealed record LogEntry(LogLevel Level, EventId EventId, string Message);
 }

@@ -424,7 +424,7 @@ public class ProjectionCheckpointTrackerTests {
     }
 
     [Fact]
-    public async Task TrackIdentityAsync_IndexRetryExhausted_ThrowsSoPublisherCanLogFailure() {
+    public async Task TrackIdentityAsync_ScopeIndexRetryExhausted_ThrowsScopeExhaustionException() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var tracker = CreateTracker(daprClient);
 
@@ -451,6 +451,10 @@ public class ProjectionCheckpointTrackerTests {
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(true);
+        // Both the scope index (key "projection-identities:scopes") and the identity index
+        // (key "projection-identities:index:{tenant}:{domain}") share the ProjectionIdentityIndex
+        // generic overload. Returning false for any save of that type means the scope index
+        // retry exhausts FIRST, surfacing the scope-path throw at line 152.
         _ = daprClient.TrySaveStateAsync(
                 "statestore",
                 Arg.Any<string>(),
@@ -461,7 +465,90 @@ public class ProjectionCheckpointTrackerTests {
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(false);
 
-        _ = await Should.ThrowAsync<InvalidOperationException>(() => tracker.TrackIdentityAsync(TestIdentity));
+        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(() => tracker.TrackIdentityAsync(TestIdentity));
+        // R3P11 — Exception.Data must disambiguate which retry exhausted.
+        ex.Data["ExhaustionScope"].ShouldBe("ScopeIndex");
+        ex.Data["TenantId"].ShouldBe("test-tenant");
+        ex.Data["Domain"].ShouldBe("test-domain");
+        ex.Message.ShouldContain("scope", Case.Insensitive);
+    }
+
+    [Fact]
+    public async Task TrackIdentityAsync_IdentityIndexRetryExhausted_ThrowsIdentityExhaustionException() {
+        // R3P7 — pin the identity-index throw at line 161 by making the scope-index save succeed
+        // (key-specific Returns) but the identity-index save fail (key-specific Returns). The
+        // previous TrackIdentityAsync_IndexRetryExhausted test only pinned the scope-path throw;
+        // a regression that dropped the identity-path throw would slip past it.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var tracker = CreateTracker(daprClient);
+        const string identityIndexKey = "projection-identities:index:test-tenant:test-domain";
+
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
+                "statestore",
+                Arg.Any<string>(),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityIndex?)null)!, string.Empty));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(
+                "statestore",
+                Arg.Any<string>(),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityScopePage?)null)!, string.Empty));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityPage>(
+                "statestore",
+                Arg.Any<string>(),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityPage?)null)!, string.Empty));
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityPage>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+        // Scope index save succeeds; identity index save fails. NSubstitute's last matching
+        // Returns wins, so the identity-index-key call resolves to false while other index
+        // saves resolve to true.
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityIndex>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                identityIndexKey,
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityIndex>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(() => tracker.TrackIdentityAsync(TestIdentity));
+        ex.Data["ExhaustionScope"].ShouldBe("IdentityIndex");
+        ex.Data["TenantId"].ShouldBe("test-tenant");
+        ex.Data["Domain"].ShouldBe("test-domain");
+        ex.Data["AggregateId"].ShouldBe("agg-001");
     }
 
     [Fact]
@@ -534,7 +621,17 @@ public class ProjectionCheckpointTrackerTests {
     }
 
     [Fact]
-    public async Task TrackIdentityAsync_MixedCaseInput_PersistsCanonicalLowercaseScopeAndIdentity() {
+    public async Task TrackIdentityAsync_AggregateIdentityNormalization_FlowsCanonicalLowercaseToTrackerPersistence() {
+        // Note: the contract boundary that performs casing normalization is AggregateIdentity's
+        // constructor (TenantId/Domain are forced to lower-case there). This test pins the
+        // end-to-end invariant — when a caller constructs AggregateIdentity with mixed-case
+        // tenant/domain, the tracker persists canonical lowercase values without doing any
+        // additional normalization itself. The tracker explicitly does NOT renormalize internally;
+        // see ProjectionIdentityScope/ProjectionIdentity record definitions in
+        // ProjectionCheckpointTracker.cs which are case-sensitive value types. Bypass paths
+        // (reflection, deserialization without the validator) that construct AggregateIdentity
+        // with un-normalized values would persist verbatim — the AssertNoReservedChars guard
+        // in ValidateIdentity is the defense-in-depth check for those bypass cases.
         DaprClient daprClient = Substitute.For<DaprClient>();
         var tracker = CreateTracker(daprClient);
         var mixedCaseIdentity = new AggregateIdentity("Test-Tenant", "Test-Domain", "Agg-001");
@@ -602,6 +699,112 @@ public class ProjectionCheckpointTrackerTests {
             "statestore",
             Arg.Any<string>(),
             Arg.Is<ProjectionCheckpointTracker.ProjectionIdentityPage>(p => (p.Identities ?? Array.Empty<ProjectionCheckpointTracker.ProjectionIdentity>()).Any(i => i.TenantId == "test-tenant" && i.Domain == "test-domain" && i.AggregateId == "Agg-001")),
+            Arg.Any<string>(),
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TrackIdentityAsync_MixedAndLowerCaseInputsForSameAggregate_ConvergeOnSamePersistedIdentity() {
+        // R3P4 — complementary contract test. Two AggregateIdentity instances constructed with
+        // mixed-case vs lowercase tenant/domain (but the same logical aggregate) must produce
+        // identical persisted records, because AggregateIdentity's ctor lowercases tenant/domain
+        // upstream. If the tracker were to add its own normalization (or fail to rely on the
+        // upstream guarantee), the second TrackIdentityAsync call would either persist a duplicate
+        // or fail dedup — both regressions visible to this test.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var tracker = CreateTracker(daprClient);
+
+        // Initial scope index is empty — first call lays down page 0 with the scope.
+        bool scopePersisted = false;
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
+                "statestore",
+                "projection-identities:scopes",
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => scopePersisted
+                ? (new ProjectionCheckpointTracker.ProjectionIdentityIndex(1, 1), "scope-index-etag")
+                : (((ProjectionCheckpointTracker.ProjectionIdentityIndex?)null)!, string.Empty));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(
+                "statestore",
+                "projection-identities:scopes:0",
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => scopePersisted
+                ? (new ProjectionCheckpointTracker.ProjectionIdentityScopePage([new("test-tenant", "test-domain")]), "scope-page-etag")
+                : (((ProjectionCheckpointTracker.ProjectionIdentityScopePage?)null)!, string.Empty));
+
+        bool identityPersisted = false;
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
+                "statestore",
+                "projection-identities:index:test-tenant:test-domain",
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => identityPersisted
+                ? (new ProjectionCheckpointTracker.ProjectionIdentityIndex(1, 1), "id-index-etag")
+                : (((ProjectionCheckpointTracker.ProjectionIdentityIndex?)null)!, string.Empty));
+        _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityPage>(
+                "statestore",
+                "projection-identities:page:test-tenant:test-domain:0",
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => identityPersisted
+                ? (new ProjectionCheckpointTracker.ProjectionIdentityPage([new("test-tenant", "test-domain", "Agg-001")]), "id-page-etag")
+                : (((ProjectionCheckpointTracker.ProjectionIdentityPage?)null)!, string.Empty));
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => { scopePersisted = true; return true; });
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityPage>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => { identityPersisted = true; return true; });
+        _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                Arg.Any<string>(),
+                Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityIndex>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await tracker.TrackIdentityAsync(new AggregateIdentity("Test-Tenant", "Test-Domain", "Agg-001"));
+        // Second call with already-lowercase input on the same logical aggregate must dedup
+        // against the persisted record from the first call — proving the tracker treats both
+        // upstream-normalization paths as equivalent.
+        await tracker.TrackIdentityAsync(new AggregateIdentity("test-tenant", "test-domain", "Agg-001"));
+
+        // Scope page is saved exactly once (first call) — second call sees it in the existing
+        // scope-page scan and short-circuits via the alreadyTracked path.
+        _ = await daprClient.Received(1).TrySaveStateAsync(
+            "statestore",
+            Arg.Any<string>(),
+            Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(),
+            Arg.Any<string>(),
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+        // Identity page is saved exactly once for the same reason.
+        _ = await daprClient.Received(1).TrySaveStateAsync(
+            "statestore",
+            Arg.Any<string>(),
+            Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityPage>(),
             Arg.Any<string>(),
             stateOptions: Arg.Any<StateOptions?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
@@ -687,6 +890,18 @@ public class ProjectionCheckpointTrackerTests {
             "projection-identities:index:test-tenant:test-domain",
             Arg.Is<ProjectionCheckpointTracker.ProjectionIdentityIndex>(i => i.PageCount == 2 && i.LastPageCount == 1),
             "identity-index-etag",
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+        // R3P12 — lock that the existing full page-0 is NOT rewritten during the rollover.
+        // A future regression that accidentally appends agg-100 to BOTH page 0 and page 1 (e.g.
+        // the orphan-recovery branches mis-fire) would pass the previous receive assertions but
+        // be caught here.
+        _ = await daprClient.DidNotReceive().TrySaveStateAsync(
+            "statestore",
+            "projection-identities:page:test-tenant:test-domain:0",
+            Arg.Any<ProjectionCheckpointTracker.ProjectionIdentityPage>(),
+            Arg.Any<string>(),
             stateOptions: Arg.Any<StateOptions?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>());

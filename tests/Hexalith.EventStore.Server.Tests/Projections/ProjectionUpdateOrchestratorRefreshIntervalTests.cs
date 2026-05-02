@@ -9,6 +9,7 @@ using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
@@ -194,6 +195,26 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests {
     }
 
     [Fact]
+    public async Task UpdateProjectionAsync_PollingRegistrationFailure_LogsRegistrationFailedOperatorEvent() {
+        // R3P8 — pin the silent → throw contract change at the tracker. The orchestrator absorbs
+        // the new InvalidOperationException AND emits EventId 1121 / Stage=
+        // ProjectionPollingWorkRegistrationFailed so operators see registration failures.
+        var options = new ProjectionOptions { DefaultRefreshIntervalMs = 5000 };
+        var entries = new List<LogEntry>();
+        (ProjectionUpdateOrchestrator sut, _, _, _, IProjectionCheckpointTracker checkpointTracker) = CreateSut(
+            options,
+            new TestLogger<ProjectionUpdateOrchestrator>(entries));
+        _ = checkpointTracker.TrackIdentityAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(_ => throw new InvalidOperationException("state store unavailable"));
+
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        entries.ShouldContain(e => e.EventId.Id == 1121
+            && e.Level == LogLevel.Warning
+            && e.Message.Contains("Stage=ProjectionPollingWorkRegistrationFailed", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task UpdateProjectionAsync_RepeatedPollingPublication_ReregistersTrackedIdentity() {
         // Arrange
         var options = new ProjectionOptions { DefaultRefreshIntervalMs = 5000 };
@@ -265,14 +286,4 @@ public class ProjectionUpdateOrchestratorRefreshIntervalTests {
         return (sut, actorProxyFactory, daprClient, resolver, checkpointTracker);
     }
 
-    private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
-            entries.Add(new LogEntry(logLevel, eventId, formatter(state, exception)));
-    }
-
-    private sealed record LogEntry(LogLevel Level, EventId EventId, string Message);
 }

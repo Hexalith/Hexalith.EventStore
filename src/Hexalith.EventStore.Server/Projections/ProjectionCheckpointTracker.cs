@@ -27,7 +27,7 @@ public sealed class ProjectionCheckpointTracker(
     public async Task<long> ReadLastDeliveredSequenceAsync(
         AggregateIdentity identity,
         CancellationToken cancellationToken = default) {
-        ArgumentNullException.ThrowIfNull(identity);
+        ValidateIdentity(identity);
 
         ProjectionCheckpoint? checkpoint = await daprClient
             .GetStateAsync<ProjectionCheckpoint>(
@@ -54,7 +54,7 @@ public sealed class ProjectionCheckpointTracker(
         AggregateIdentity identity,
         long deliveredSequence,
         CancellationToken cancellationToken = default) {
-        ArgumentNullException.ThrowIfNull(identity);
+        ValidateIdentity(identity);
         ArgumentOutOfRangeException.ThrowIfNegative(deliveredSequence);
 
         string key = GetStateKey(identity);
@@ -126,22 +126,7 @@ public sealed class ProjectionCheckpointTracker(
 
     /// <inheritdoc/>
     public async Task TrackIdentityAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
-        ArgumentNullException.ThrowIfNull(identity);
-        ArgumentException.ThrowIfNullOrWhiteSpace(identity.TenantId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(identity.Domain);
-        ArgumentException.ThrowIfNullOrWhiteSpace(identity.AggregateId);
-
-        // R2P6 — reject characters that participate in the projection-identity key scheme so a malformed
-        // identity cannot collide across logical scopes or inject a key prefix. The check covers all three
-        // identity components (tenant, domain, aggregate id) because AggregateId flows into _activeIdentities
-        // via AggregateIdentity.ActorId. ':' is the state-key separator; '\0' is rejected because some state
-        // stores treat it as a record terminator; '|' and newline characters are reserved by sibling
-        // discovery/key parsers. AggregateIdentity's regex already lowercases tenant+domain and rejects most
-        // of these, so this guard is defense-in-depth against bypass paths (reflection, deserialization
-        // without validation, with-clones).
-        AssertNoReservedChars(identity.TenantId, nameof(identity.TenantId));
-        AssertNoReservedChars(identity.Domain, nameof(identity.Domain));
-        AssertNoReservedChars(identity.AggregateId, nameof(identity.AggregateId));
+        ValidateIdentity(identity);
 
         ProjectionIdentityScope scope = new(identity.TenantId, identity.Domain);
         if (!await TryAddScopeAsync(scope, cancellationToken).ConfigureAwait(false)) {
@@ -149,7 +134,13 @@ public sealed class ProjectionCheckpointTracker(
                 "Projection identity scope registration exhausted ETag retries for tenant {TenantId}, domain {Domain}.",
                 identity.TenantId,
                 identity.Domain);
-            throw new InvalidOperationException("Projection identity scope registration exhausted ETag retries.");
+            // R3P11 — attach the offending identity components to Exception.Data so callers
+            // and operators can programmatically distinguish scope-vs-identity exhaustion.
+            var scopeException = new InvalidOperationException("Projection identity scope registration exhausted ETag retries.");
+            scopeException.Data["TenantId"] = identity.TenantId;
+            scopeException.Data["Domain"] = identity.Domain;
+            scopeException.Data["ExhaustionScope"] = "ScopeIndex";
+            throw scopeException;
         }
 
         if (!await TryAddIdentityAsync(scope, new ProjectionIdentity(identity.TenantId, identity.Domain, identity.AggregateId), cancellationToken).ConfigureAwait(false)) {
@@ -158,8 +149,27 @@ public sealed class ProjectionCheckpointTracker(
                 identity.TenantId,
                 identity.Domain,
                 identity.AggregateId);
-            throw new InvalidOperationException("Projection identity registration exhausted ETag retries.");
+            var identityException = new InvalidOperationException("Projection identity registration exhausted ETag retries.");
+            identityException.Data["TenantId"] = identity.TenantId;
+            identityException.Data["Domain"] = identity.Domain;
+            identityException.Data["AggregateId"] = identity.AggregateId;
+            identityException.Data["ExhaustionScope"] = "IdentityIndex";
+            throw identityException;
         }
+    }
+
+    // R3P5 — lifted from TrackIdentityAsync so the same defense-in-depth runs on the Read and Save
+    // entry points. AggregateIdentity's ctor regex already lowercases tenant+domain and rejects
+    // reserved chars under normal construction, so this guard catches bypass paths (reflection,
+    // deserialization without validator, record `with`-clones) for all three operations.
+    private static void ValidateIdentity(AggregateIdentity identity) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentException.ThrowIfNullOrWhiteSpace(identity.TenantId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(identity.Domain);
+        ArgumentException.ThrowIfNullOrWhiteSpace(identity.AggregateId);
+        AssertNoReservedChars(identity.TenantId, nameof(identity.TenantId));
+        AssertNoReservedChars(identity.Domain, nameof(identity.Domain));
+        AssertNoReservedChars(identity.AggregateId, nameof(identity.AggregateId));
     }
 
     /// <inheritdoc/>
@@ -272,8 +282,11 @@ public sealed class ProjectionCheckpointTracker(
                 ProjectionIdentityScopePage page = pageOrNull ?? ProjectionIdentityScopePage.Empty;
                 ProjectionIdentityScope[] existingScopes = page.Scopes ?? [];
                 if (existingScopes.Any(existing => existing == scope)) {
+                    // R3P3 — clamp LastPageCount to IdentityPageSize. A concurrent writer may have
+                    // grown existingScopes past the boundary between attempts; persisting the raw count
+                    // would break the rollover predicate downstream.
                     ProjectionIdentityIndex recoveredIndex = index.PageCount == 0 || targetPageNumber >= index.PageCount
-                        ? new ProjectionIdentityIndex(targetPageNumber + 1, existingScopes.Length)
+                        ? new ProjectionIdentityIndex(targetPageNumber + 1, Math.Min(existingScopes.Length, IdentityPageSize))
                         : index;
                     if (recoveredIndex == index
                         || await daprClient
@@ -286,6 +299,19 @@ public sealed class ProjectionCheckpointTracker(
                 }
 
                 if (existingScopes.Length >= IdentityPageSize) {
+                    // R3P1 — orphan recovery for "page filled to IdentityPageSize but index says
+                    // LastPageCount < IdentityPageSize". A previous attempt's page-save succeeded but
+                    // the index-save failed, leaving the index understating the page's actual size.
+                    // Without this clamp, every retry recomputes the same targetPageNumber against the
+                    // stale LastPageCount and hits this `continue` again — exhausting retries and
+                    // throwing for every new scope in the affected scope-index.
+                    if (targetPageNumber == index.PageCount - 1 && index.LastPageCount < IdentityPageSize) {
+                        ProjectionIdentityIndex correctedIndex = index with { LastPageCount = IdentityPageSize };
+                        _ = await daprClient
+                            .TrySaveStateAsync(stateStoreName, IdentityScopeIndexKey, correctedIndex, indexEtag, cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+
                     continue;
                 }
 
@@ -360,8 +386,11 @@ public sealed class ProjectionCheckpointTracker(
                 ProjectionIdentityPage page = pageOrNull ?? ProjectionIdentityPage.Empty;
                 ProjectionIdentity[] existingIdentities = page.Identities ?? [];
                 if (existingIdentities.Any(existing => existing == identity)) {
+                    // R3P3 — clamp LastPageCount to IdentityPageSize so a concurrent writer that grew
+                    // the page past the boundary between attempts cannot produce an index whose
+                    // LastPageCount exceeds the rollover predicate.
                     ProjectionIdentityIndex recoveredIndex = index.PageCount == 0 || targetPageNumber >= index.PageCount
-                        ? new ProjectionIdentityIndex(targetPageNumber + 1, existingIdentities.Length)
+                        ? new ProjectionIdentityIndex(targetPageNumber + 1, Math.Min(existingIdentities.Length, IdentityPageSize))
                         : index;
                     if (recoveredIndex == index
                         || await daprClient
@@ -374,6 +403,18 @@ public sealed class ProjectionCheckpointTracker(
                 }
 
                 if (existingIdentities.Length >= IdentityPageSize) {
+                    // R3P1 — orphan recovery: page filled to IdentityPageSize but index says
+                    // LastPageCount < IdentityPageSize. A previous attempt's page-save succeeded but
+                    // its index-save failed; without this clamp every retry recomputes the same
+                    // targetPageNumber against the stale LastPageCount and hits this `continue`
+                    // forever, exhausting retries and throwing for every new aggregate in the scope.
+                    if (targetPageNumber == index.PageCount - 1 && index.LastPageCount < IdentityPageSize) {
+                        ProjectionIdentityIndex correctedIndex = index with { LastPageCount = IdentityPageSize };
+                        _ = await daprClient
+                            .TrySaveStateAsync(stateStoreName, indexKey, correctedIndex, indexEtag, cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+
                     continue;
                 }
 

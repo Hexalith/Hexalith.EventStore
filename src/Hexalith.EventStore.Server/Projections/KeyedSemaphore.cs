@@ -104,13 +104,23 @@ internal sealed class KeyedSemaphore<TKey> where TKey : notnull {
                 return;
             }
 
+            // ReleaseRef MUST run even if Semaphore.Release throws ObjectDisposedException, otherwise
+            // the refcount stays incremented and the holder leaks in _holders permanently. The original
+            // shape grouped both calls under one try/catch which silently skipped ReleaseRef on ODE
+            // (a defense-in-depth catch is fine; bypassing eviction bookkeeping is not).
             try {
-                _ = holder.Semaphore.Release();
-                owner.ReleaseRef(key, holder);
+                try {
+                    _ = holder.Semaphore.Release();
+                }
+                catch (ObjectDisposedException) {
+                    // Defense-in-depth: the holder still owns its reference until ReleaseRef completes,
+                    // so this is not expected under current call shapes. If a future refactor disposes
+                    // the underlying SemaphoreSlim before this Releaser, the eviction must still proceed
+                    // via ReleaseRef so the dictionary entry can be reclaimed.
+                }
             }
-            catch (ObjectDisposedException) {
-                // A defensive guard for disposal races in future refactors. Current holders
-                // own a reference until ReleaseRef completes, so this should not be reachable.
+            finally {
+                owner.ReleaseRef(key, holder);
             }
         }
     }
