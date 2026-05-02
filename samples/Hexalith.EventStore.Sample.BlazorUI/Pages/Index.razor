@@ -4,7 +4,7 @@
 <h1>Hexalith EventStore — UI Refresh Patterns</h1>
 
 <p>
-    This sample demonstrates three approaches for handling real-time projection change signals
+    This sample demonstrates three approaches for handling projection change invalidation signals
     from EventStore via SignalR. Each pattern uses the <code>EventStoreSignalRClient</code> to
     subscribe to the "changed" signal — a notification that contains only
     <code>(projectionType, tenantId)</code> with no data payload. Patterns must re-query the
@@ -73,7 +73,7 @@
     private readonly List<PatternInfo> _patterns =
     [
         new("1: Notification", "Least disruptive — user controls refresh", "Low", "Dashboards, admin panels"),
-        new("2: Silent Reload", "Seamless after received signals", "Low", "Live monitoring, counters"),
+        new("2: Silent Reload", "Refreshes seamlessly after received signals", "Low", "Live monitoring, counters"),
         new("3: Selective Refresh", "Best — only affected components update", "Medium", "Complex dashboards, multi-panel UIs"),
     ];
 

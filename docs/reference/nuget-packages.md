@@ -206,7 +206,7 @@ $ dotnet add package Hexalith.EventStore.Server
 
 Signal-only client helper for projection change notifications. This package is designed for read-model consumers that want to refresh cached or displayed projection data when the server announces a change. It wraps the hub connection and group membership mechanics, including internal group rejoin after reconnect. Applications still own current-state refresh by querying the HTTP Query API on initial load and after lifecycle events they can observe.
 
-`EventStoreSignalRClientOptions.AccessTokenProvider` supplies bearer tokens for hub authentication. `RetryPolicy` controls SignalR reconnect behavior, and `ConfigureHttpConnection` customizes the underlying HTTP connection options. The current helper does not expose a public reconnected event or callback for consumer refresh logic.
+`EventStoreSignalRClientOptions.AccessTokenProvider` supplies bearer tokens for hub authentication. `RetryPolicy` controls SignalR reconnect behavior, and `ConfigureHttpConnection` customizes the underlying HTTP connection options. `ConfigureHttpConnection` runs after `AccessTokenProvider` is wired, so a delegate that sets `connectionOptions.AccessTokenProvider` will override the dedicated option — pick one place to supply the bearer token. The current helper does not expose a public reconnected event or callback for consumer refresh logic.
 
 When naming projection types, use short names for compact ETags — see [Projection Type Naming](query-api.md#projection-type-naming).
 

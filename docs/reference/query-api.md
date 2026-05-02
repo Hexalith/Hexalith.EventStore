@@ -2,7 +2,7 @@
 
 # Query & Projection API Reference
 
-Complete REST and SignalR reference for the Hexalith.EventStore read side, covering query execution, query preflight validation, projection invalidation, and optional real-time projection change notifications.
+Complete REST and SignalR reference for the Hexalith.EventStore read side, covering query execution, query preflight validation, projection invalidation, and optional projection change invalidation signals.
 
 > **Prerequisites:** [Quickstart](../getting-started/quickstart.md) — you should have the sample running locally before using these endpoints.
 
@@ -225,14 +225,18 @@ await client.StartAsync();
 
 Use `EventStoreSignalRClientOptions.AccessTokenProvider` when the hub requires bearer authentication. Use `RetryPolicy` to supply the SignalR reconnect policy, and `ConfigureHttpConnection` to customize the underlying HTTP connection options. These settings affect the hub connection; they do not change the Query API responsibility for current projection data.
 
+`ConfigureHttpConnection` is invoked after `AccessTokenProvider` is wired, so a delegate that sets `connectionOptions.AccessTokenProvider` will override the dedicated option. Pick one place to supply the bearer token.
+
 ### Connect and Reconnect Responsibilities
 
 A common pattern is:
 
-1. Call `POST /api/v1/queries` on connect or component initialization to establish baseline state, then cache the `ETag`.
+1. Call `POST /api/v1/queries` at the lifecycle moment your component or service exposes first (typically component initialization or service startup) to establish baseline state, then cache the `ETag`.
 2. Join the SignalR group for the relevant projection type and tenant.
 3. When `ProjectionChanged` fires, re-run the query with `If-None-Match`.
 4. Refresh only when the API returns `200 OK`; keep the cached UI when it returns `304 Not Modified`.
+
+The order of steps 1 and 2 is not significant before `StartAsync()` is called: `EventStoreSignalRClient` queues `JoinGroup` calls until the connection starts, and no `ProjectionChanged` callback can fire before that point. The numbered order above is a recommended reading order, not a required execution order.
 
 Automatic reconnect and group rejoin restore future notification delivery only. They do not replay notifications missed while the connection was down. After a known reconnect, browser resume, page restore, or other known downtime, clients that display projection data should re-query the Query API for the projections they show.
 

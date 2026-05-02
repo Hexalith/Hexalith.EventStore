@@ -1,5 +1,10 @@
 # Deferred Work
 
+## Deferred from: code review of post-epic-10-r10a5-client-reconnect-guidance (2026-05-02)
+
+- **`docs/community/roadmap.md:42` SignalR helper description** — Advertises the helper using only auto-reconnect/group-rejoin features without the invalidation-signal-only contract. Out of declared three-doc scope for R10-A5 (target docs were `docs/reference/query-api.md`, `docs/reference/nuget-packages.md`, `docs/guides/sample-blazor-ui.md`). Pre-existing wording.
+- **`README.md:71` "real-time read-model refresh"** — Top-level README presents SignalR as "real-time read-model refresh", inconsistent with the new canonical "invalidation signals only" framing. Out of declared three-doc scope. Pre-existing.
+
 ## Deferred from: code review of post-epic-10-r10a3-hub-group-authorization-decision (2026-05-02)
 
 - **`ConcurrentDictionary<string, HashSet<string>>` inner-set thread-safety** — pre-existing; per-connection lock covers within-method mutation but the new tenant-validate await widens the window between auth and group-add, and the rollback re-acquires the lock on a possibly-replaced set. Not introduced by R10-A3. Revisit if concurrent JoinGroup-on-same-connection becomes observable. `src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs:30,62-86`.

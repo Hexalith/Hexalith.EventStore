@@ -1,6 +1,6 @@
 # Post-Epic-10 R10-A5: Client Reconnect Guidance
 
-Status: review
+Status: done
 
 <!-- Source: epic-10-retro-2026-05-01.md R10-A5 -->
 <!-- Source: sprint-change-proposal-2026-05-01-epic-10-retro-cleanup.md Proposal 5 -->
@@ -132,6 +132,21 @@ Current HEAD at story creation: `34884ac`.
   - [x] 5.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
   - [x] 5.2 Move this story and only this story from `ready-for-dev` to `review` at dev handoff.
   - [x] 5.3 Leave R10-A2/R10-A3/R10-A6/R10-A7/R10-A8 status rows unchanged.
+
+### Review Findings
+
+Code review completed 2026-05-02 by `/bmad-code-review` (Blind Hunter, Edge Case Hunter, Acceptance Auditor — all three layers ran successfully). Acceptance Auditor reports all 9 ACs satisfied. Findings below come from cross-file consistency and sample-text wording checks the auditor did not raise.
+
+- [x] [Review][Decision] Sample/doc step ordering inconsistency — Resolved: option (b). `docs/reference/query-api.md` Connect and Reconnect Responsibilities section now states the numbered order is a recommended reading order, not a required execution order; `EventStoreSignalRClient` queues `JoinGroup` calls until `StartAsync()` and no `ProjectionChanged` callback fires before that point. Sample code left as-is per story scope boundary.
+- [x] [Review][Patch] `NotificationPattern.razor:22` — replaced "data stays stable until they click 'Refresh Now'" with "the displayed data is held until they click 'Refresh Now'". [`samples/Hexalith.EventStore.Sample.BlazorUI/Pages/NotificationPattern.razor:22`]
+- [x] [Review][Patch] Documented `AccessTokenProvider` vs `ConfigureHttpConnection` precedence in `docs/reference/query-api.md` and `docs/reference/nuget-packages.md` — `ConfigureHttpConnection` runs after `AccessTokenProvider` is wired and a delegate that sets `connectionOptions.AccessTokenProvider` will override the dedicated option. [`docs/reference/query-api.md`, `docs/reference/nuget-packages.md`]
+- [x] [Review][Patch] Tightened residual "real-time" framing — `docs/reference/query-api.md:5` abstract and `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/Index.razor:6-12` paragraph now use "projection change invalidation signals" for consistency with the new canonical wording.
+- [x] [Review][Patch] `query-api.md` step 1 wording — replaced "on connect or component initialization" with "at the lifecycle moment your component or service exposes first (typically component initialization or service startup)". [`docs/reference/query-api.md`]
+- [x] [Review][Patch] Wording polish — (a) "Seamless after received signals" is now "Refreshes seamlessly after received signals" in `Pages/Index.razor:76` and `Pages/SilentReloadPattern.razor:10`; (b) `docs/guides/sample-blazor-ui.md:14` table row now says "after a debounce window that follows a received signal"; (c) `sample-blazor-ui.md` SignalR section now uses "each `ProjectionChanged` callback" consistently with the rest of the docs; (d) `SilentReloadPattern.razor:19` plural form aligned: "receives counter projection change signals".
+- [x] [Review][Defer] `docs/community/roadmap.md:42` — SignalR helper description omits the invalidation-signal contract. Deferred, pre-existing; out of declared three-doc scope. [`docs/community/roadmap.md:42`]
+- [x] [Review][Defer] `README.md:71` — "real-time read-model refresh" wording in top-level repo README. Deferred, pre-existing; out of declared three-doc scope. [`README.md:71`]
+
+Dismissed as noise (5): "Real-time monitoring → Live monitoring" (intentional per advanced-elicitation hardening flagging "real-time state"); alleged rejoin-vs-no-callback contradiction (false positive — diff explicitly reconciles); triple-duplication of the canonical sentence (intentional per Party-Mode hardening note); "command status" in the negative list (intentional per Party-Mode canonical wording); `SilentReloadPattern.razor:19` not mentioning reconnect/sleep miss (AC #5 threshold is "materially misleading").
 
 ## Dev Notes
 
