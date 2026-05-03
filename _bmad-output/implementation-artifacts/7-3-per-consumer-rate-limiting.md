@@ -1,6 +1,6 @@
 # Story 7.3: Per-Consumer Rate Limiting
 
-Status: review
+Status: done
 
 ## Story
 

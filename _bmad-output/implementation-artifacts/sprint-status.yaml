@@ -28,7 +28,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-03T09:36:35+02:00' # R10-A8 review: R9/R10 follow-through reconciled; unresolved R9 items recorded as needs-new-tracking
+last_updated: '2026-05-03T11:30:00+02:00' # R10-A8 done after code-review signoff: R9-A4 directly fixed; R9-A1/A2/A5/A8 + R10-A1 residual added as backlog rows
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -125,13 +125,22 @@ development_status:
   # R10-A1 routed to post-epic-11-r11a3-apphost-projection-proof (overlapping evidence).
   # R10-A4 colon-scoped group/actor ID planning cleanup applied directly in course correction.
   # R10-A8 follow-through reconciliation recorded R9/R10 dispositions in post-epic-10-r10a8-r9-r10-follow-through-tracking.md.
-  # Remaining R9 items needing new tracking: R9-A1, R9-A2, R9-A4, R9-A5, R9-A8.
+  # R9-A4 inherited story-status drift fixed directly during R10-A8 code review (Story 8.1 and Story 7.3 headers).
   post-epic-10-r10a2-redis-backplane-runtime-proof: done
   post-epic-10-r10a3-hub-group-authorization-decision: done
   post-epic-10-r10a5-client-reconnect-guidance: done
   post-epic-10-r10a6-signalr-operational-evidence-pattern: done
   post-epic-10-r10a7-redis-channel-isolation-policy: done
-  post-epic-10-r10a8-r9-r10-follow-through-tracking: review
+  post-epic-10-r10a8-r9-r10-follow-through-tracking: done
+  # R10-A1 residual: SignalR broadcast/client-receipt log instrumentation tracked separately.
+  post-epic-10-r10a9-signalr-broadcast-log-instrumentation: backlog
+
+  # Post-Epic-9 Query Confidence Carry-Forward (added by R10-A8 code-review patch 2026-05-03)
+  # Each row owns one R9 needs-new-tracking item; create story files when work begins.
+  post-epic-9-r9a1-http-stale-etag-proof: backlog
+  post-epic-9-r9a2-query-cache-topology-proof: backlog
+  post-epic-9-r9a5-release-governance-evidence: backlog
+  post-epic-9-r9a8-query-operational-evidence-pattern: backlog
 
   # Epic 11: Server-Managed Projection Builder
   epic-11: done

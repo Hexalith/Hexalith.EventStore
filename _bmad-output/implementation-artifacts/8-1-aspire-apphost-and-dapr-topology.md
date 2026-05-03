@@ -1,6 +1,6 @@
 # Story 8.1: Aspire AppHost & DAPR Topology
 
-Status: review
+Status: done
 
 ## Story
 
