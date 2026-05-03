@@ -1,3 +1,10 @@
+# [3.9.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.8.0...v3.9.0) (2026-05-03)
+
+
+### Features
+
+* **signalr:** Enhance SignalR broadcast logging and client receipt instrumentation ([0c5ec80](https://github.com/Hexalith/Hexalith.EventStore/commit/0c5ec806bcb83efcfcb6a94a472e5238130e3d0a))
+
 # [3.8.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.7.0...v3.8.0) (2026-05-03)
 
 
