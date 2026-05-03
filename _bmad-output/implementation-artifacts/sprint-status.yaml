@@ -28,7 +28,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-03T12:00:20+02:00' # R9-A5 release-governance evidence story created and moved backlog -> ready-for-dev.
+last_updated: '2026-05-03T13:23:54+02:00' # R9-A8 query operational evidence pattern story created and moved backlog -> ready-for-dev.
 # 2026-05-03: post-epic-4-r4a6-drain-integrity-guard moved review -> done after code review (1 patch applied for checked((int)) overflow diagnostic regression at AggregateActor.cs:692; 4 defers recorded; 22/22 EventDrainRecoveryTests + Release build clean).
 # 2026-05-03: post-epic-4-r4a8-story-numbering-comments moved review -> done after code review (3 patches applied: 2 YAML tautologies post-Story-4.5-scrub + 1 EventDrainOptionsTests AC traceability re-link to Story 4.2 AC #10; 2 defers recorded; AC #8 last_updated attribution restored as historical comment because R9-A5 commits clobbered the dev-time field update).
 project: Hexalith.EventStore
@@ -142,7 +142,7 @@ development_status:
   post-epic-9-r9a1-http-stale-etag-proof: ready-for-dev
   post-epic-9-r9a2-query-cache-topology-proof: ready-for-dev
   post-epic-9-r9a5-release-governance-evidence: ready-for-dev
-  post-epic-9-r9a8-query-operational-evidence-pattern: backlog
+  post-epic-9-r9a8-query-operational-evidence-pattern: ready-for-dev
 
   # Epic 11: Server-Managed Projection Builder
   epic-11: done
