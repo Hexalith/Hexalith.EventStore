@@ -50,3 +50,4 @@
 2026-05-03T09:45:19+02:00	none	-	none	No backlog stories available; all ready-for-dev stories already have party-mode and advanced-elicitation traces.
 2026-05-03T11:01:17+02:00	create-story	post-epic-10-r10a9-signalr-broadcast-log-instrumentation	ok	Created ready-for-dev R10-A9 SignalR broadcast/client-receipt instrumentation story; concurrent R4-A6 active-dev changes left untouched.
 2026-05-03T11:01:48+02:00	failed	-	failed	Pre-flight hard-failed: _bmad-output/process-notes/predev-preflight-latest.json timestamp 2026-05-03T09:01:20Z; working tree cleanliness details 5 dirty path(s).
+2026-05-03T11:16:27+02:00	create-story	post-epic-9-r9a1-http-stale-etag-proof	ok	Created ready-for-dev R9-A1 HTTP stale ETag proof story.
