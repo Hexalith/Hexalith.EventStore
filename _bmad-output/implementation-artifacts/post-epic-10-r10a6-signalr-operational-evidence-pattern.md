@@ -1,6 +1,6 @@
 # Post-Epic-10 R10-A6: SignalR Operational Evidence Pattern
 
-Status: review
+Status: done
 
 <!-- Source: epic-10-retro-2026-05-01.md R10-A6 -->
 <!-- Source: sprint-change-proposal-2026-05-01-epic-10-retro-cleanup.md Proposal 6 -->
@@ -253,6 +253,7 @@ GPT-5 Codex
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-03 | 1.1 | Code review: resolved 2 decision-needed (EventId Category qualifier + R10-A2 index.md/walk-through fix), applied 12 patches across operations doc and template, deferred 4 follow-ups. Story status moved review → done. | Claude Opus 4.7 |
 | 2026-05-02 | 1.0 | Implemented SignalR operational evidence pattern, reusable evidence template, schema walk-through, markdown/link validation, and moved story to review. | GPT-5 Codex |
 | 2026-05-02 | 0.2 | Party-mode review hardened evidence schema, latency boundaries, p99 guidance, controls, and blocker routing. | Codex automation |
 | 2026-05-02 | 0.1 | Created ready-for-dev R10-A6 SignalR operational evidence pattern story. | Codex automation |
@@ -267,3 +268,28 @@ Implementation complete. Markdown lint/link checks passed for the operations doc
 - `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj` — 78 passed.
 
 AppHost `eventstore` and `sample` resources were restarted after the test run and reported Running/Healthy.
+
+### Review Findings
+
+Code review on 2026-05-03 (commit `6932e46`). Three review layers ran in parallel: Blind Hunter, Edge Case Hunter, Acceptance Auditor. Acceptance Auditor confirmed all 12 ACs are satisfied; the findings below are quality/consistency issues found by Blind Hunter and Edge Case Hunter that the implementation should address before sign-off.
+
+- [x] [Review][Decision→Patch] **EventId 1084/1085 collision between Broadcaster and Hub** (resolved 2026-05-03) — Verified in source (`SignalRProjectionChangedBroadcaster.cs:34,38` defines 1084 Debug / 1085 Warning; `ProjectionChangedHub.cs:152,156` reuses 1084 Warning / 1085 Error). Resolution: option (c) — interim doc qualifier added requiring filter by Category + EventId; renumbering of hub IDs added to deferred-work backlog for a separate source-code story.
+- [x] [Review][Decision→Patch] **R10-A2 evidence folder lacks `index.md`** (resolved 2026-05-03) — Resolution: option (a) — added `_bmad-output/test-artifacts/post-epic-10-r10a2-redis-backplane-runtime-proof/index.md` listing both evidence files; updated operations-doc walk-through to enumerate both files and name the canonical walk-through subject. Adding a folder index is a navigation aid, not a re-proof of R10-A2 behavior, so AC #10 is preserved.
+- [x] [Review][Patch] HIGH `inconclusive` classification value now has a defined row in the Failure Classification table [`docs/operations/signalr-operational-evidence.md`]
+- [x] [Review][Patch] HIGH Deferred-Work table harmonized to 5 columns across operations doc and template; 5-col shape declared canonical [`docs/operations/signalr-operational-evidence.md`, `_bmad-output/test-artifacts/signalr-operational-evidence-template.md`]
+- [x] [Review][Patch] MEDIUM Intentional rejection narrative now uses `tenant-alias-001` instead of `tenant-a` [`docs/operations/signalr-operational-evidence.md`]
+- [x] [Review][Patch] MEDIUM `not-applicable` clarified as a per-field marker, not a classification value; allowed scope and form spelled out [`_bmad-output/test-artifacts/signalr-operational-evidence-template.md`]
+- [x] [Review][Patch] MEDIUM p99 ≥100 rule made explicit "after warmup exclusions are applied"; below-100 post-exclusion runs are `sample-only` [`docs/operations/signalr-operational-evidence.md`]
+- [x] [Review][Patch] MEDIUM Broadcast-to-client-receipt formula now carries explicit NFR38 caveat: `broadcastCompletedUtc`-based results bias low and must be labelled `sample-only` until `broadcastStartUtc` instrumentation lands [`docs/operations/signalr-operational-evidence.md`]
+- [x] [Review][Patch] MEDIUM Clock skew rerouted to `instrumentation-gap` (added to that row); removed from `environment-blocker`; latency-boundaries section updated to forbid `pass` for unsynchronized cross-machine subtraction [`docs/operations/signalr-operational-evidence.md`]
+- [x] [Review][Patch] LOW Reliability Controls section in template now uses repeatable `#### Control N` blocks; correlation-integrity control split out as its own labelled subsection [`_bmad-output/test-artifacts/signalr-operational-evidence-template.md`]
+- [x] [Review][Patch] LOW Deferred Instrumentation table row in template now carries `<gap>`/`<owner>`/`<proposed-location>`/`<why-needed>`/`<yes\|no>` placeholder cues [`_bmad-output/test-artifacts/signalr-operational-evidence-template.md`]
+- [x] [Review][Patch] LOW `etagReadyUtc` now consumed by two new diagnostic intervals (trigger-to-etag-ready, etag-ready-to-broadcast) and the timestamp-points description points at them [`docs/operations/signalr-operational-evidence.md`]
+- [x] [Review][Patch] LOW Disconnect/reconnect entry rephrased as a falsifiable control with a positive pass criterion (no missed-trigger payload after reconnect; explicit re-query required) [`docs/operations/signalr-operational-evidence.md`]
+- [x] [Review][Patch] LOW Template now opens with an explicit cross-reference to the operations doc Mandatory Artifacts list; section headings are declared to mirror the canonical checklist [`_bmad-output/test-artifacts/signalr-operational-evidence-template.md`]
+- [x] [Review][Defer] HIGH No falsifiable schema validator (parser/JSON-schema/lint hook) exists — `<required>` is honor-system [`_bmad-output/test-artifacts/signalr-operational-evidence-template.md`] — deferred, requires new tooling/CI work outside this docs-only story
+- [x] [Review][Defer] LOW "Production hostname" redaction has no operator decision rule for accidental staging endpoint runs [`docs/operations/signalr-operational-evidence.md:16`] — deferred, redaction-checklist refinement
+- [x] [Review][Defer] LOW Reused tenant aliases (`tenant-alias-001`) across runs can leak correlation signal between unrelated proofs; no per-run/per-story scoping rule [`docs/operations/signalr-operational-evidence.md:16`] — deferred, alias-scoping rule
+- [x] [Review][Defer] LOW Template `Receipt logs/traces` field has no explicit "no stale replay claimed" guard for receipt timestamps from reconnect rejoin (R10-A5 prose covers conceptually) [`_bmad-output/test-artifacts/signalr-operational-evidence-template.md:136`] — deferred, template hardening once the reconnect-evidence shape is exercised in a future run
+
+One reviewer finding was dismissed as noise: AC #5 wording — Acceptance Auditor confirmed "context, not as direct end-to-end delivery proof" is an acceptable substitute for the spec's "supplement" wording.

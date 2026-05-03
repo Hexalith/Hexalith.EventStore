@@ -4,9 +4,11 @@ Schema version: `signalr-operational-evidence/v1`
 
 Copy this file to `_bmad-output/test-artifacts/<story-or-proof-key>/evidence-YYYY-MM-DD[-short-run-id].md` for each run. Keep production secrets and raw diagnostics out of committed evidence.
 
+Authoritative field definitions, latency intervals, classification table, and redaction rules live in [`docs/operations/signalr-operational-evidence.md`](../../docs/operations/signalr-operational-evidence.md). The Mandatory Artifacts list in that document is the canonical checklist; the section headings below mirror it. Do not skip a section without recording the reason in the section's body.
+
 ## Field Reference
 
-Allowed classification values:
+Allowed classification values (single-value enum for the run-level `Classification` field):
 
 - `pass`
 - `product-failure`
@@ -15,7 +17,7 @@ Allowed classification values:
 - `sample-only`
 - `inconclusive`
 
-Required fields must be filled or explicitly marked `not-applicable` with a reason. Optional fields may be omitted when they do not apply to the proof shape.
+Required fields must be filled. A required field that is genuinely irrelevant for the proof shape may instead carry the **per-field marker** `not-applicable: <one-line reason>` — this marker is for individual field bodies only and is not a legal value of the run-level `Classification`. Optional fields may be omitted when they do not apply to the proof shape.
 
 ## Evidence
 
@@ -178,7 +180,9 @@ Required fields must be filled or explicitly marked `not-applicable` with a reas
 
 ### Reliability Controls
 
-At least one false-positive control is required.
+At least one false-positive control is required. Add another `#### Control N` block for every additional control; do not stop at one if the proof shape exercises more guards.
+
+#### Control 1
 
 - Control name:
 - Product failure guarded against:
@@ -187,7 +191,9 @@ At least one false-positive control is required.
 - Observed result:
 - Pass/fail:
 
-Correlation-integrity control is required.
+<!-- Duplicate the block above as `#### Control 2`, `#### Control 3`, ... for each additional false-positive control. -->
+
+#### Correlation-integrity control (required)
 
 - Mismatched or missing field:
 - Expected validation result: `fail`
@@ -218,7 +224,7 @@ Correlation-integrity control is required.
 
 | Gap | Owner | Proposed location | Why needed | Blocking this proof? |
 | --- | --- | --- | --- | --- |
-|  |  |  |  |  |
+| `<gap>` | `<owner>` | `<proposed-location>` | `<why-needed>` | `<yes\|no>` |
 
 ### Result
 

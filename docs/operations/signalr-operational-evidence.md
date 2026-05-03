@@ -40,14 +40,14 @@ Every evidence file must include:
 
 ## Latency Boundaries
 
-All timestamps must be UTC. A run may use server and browser/client timestamps only when the clock source is declared. If clocks are not synchronized, use a same-process harness for latency measurement or classify cross-machine subtraction as diagnostic only.
+All timestamps must be UTC. A run may use server and browser/client timestamps only when the clock source is declared. If clocks are not synchronized, use a same-process harness for latency measurement; cross-machine subtraction without a synchronized clock source must be recorded under `instrumentation-gap` (see Failure Classification) — never reported as a `pass` result.
 
 Capture these points when available:
 
 | Point | Description | Current repository capture |
 | --- | --- | --- |
 | `triggerAcceptedUtc` | Command, projection-change notification, or proof broadcast request accepted. | Available from HTTP/command logs or proof harness metadata, depending on proof shape. |
-| `etagReadyUtc` | ETag regeneration completed, or equivalent projection-change publish point when an ETag is not part of the proof. | Not consistently emitted as a dedicated SignalR-ready timestamp; use ETag actor/query evidence when present. Deferred instrumentation may be needed for automated p99. |
+| `etagReadyUtc` | ETag regeneration completed, or equivalent projection-change publish point when an ETag is not part of the proof. Used in the `trigger-to-etag-ready` and `etag-ready-to-broadcast` diagnostics below to localize where pre-broadcast latency lives. | Not consistently emitted as a dedicated SignalR-ready timestamp; use ETag actor/query evidence when present. Deferred instrumentation may be needed for automated p99. |
 | `broadcastStartUtc` | `SignalRProjectionChangedBroadcaster.BroadcastChangedAsync` entered. | Missing today. Requires product or test-only instrumentation. |
 | `broadcastCompletedUtc` | Broadcast call returned or fail-open warning emitted. | Development proof endpoint returns a UTC timestamp after the broadcast call; normal product path has Debug success log without timestamp-specific activity. |
 | `clientReceiptUtc` | Client callback received `ProjectionChanged(projectionType, tenantId)`. | Available from proof clients or browser/test harnesses, not from `EventStoreSignalRClient` logs by default. |
@@ -59,8 +59,10 @@ Name intervals explicitly:
 
 | Interval | Formula | Role |
 | --- | --- | --- |
+| Trigger-to-etag-ready | `etagReadyUtc - triggerAcceptedUtc`. | Diagnostic for command/projection-side delay before any SignalR work begins, when ETag evidence is in scope. |
+| Etag-ready-to-broadcast | `broadcastStartUtc - etagReadyUtc`, or `broadcastCompletedUtc - etagReadyUtc` when start is missing and the limitation is declared. | Diagnostic for the gap between ETag readiness and broadcast invocation. |
 | Trigger-to-broadcast | `broadcastStartUtc - triggerAcceptedUtc`, or `broadcastCompletedUtc - triggerAcceptedUtc` when start is missing and the limitation is declared. | Diagnostic for projection/ETag/server pipeline delay. |
-| Broadcast-to-client-receipt | `clientReceiptUtc - broadcastCompletedUtc` or, with better instrumentation, `clientReceiptUtc - broadcastStartUtc`. | Primary SignalR delivery budget for R10-A6 evidence. |
+| Broadcast-to-client-receipt | `clientReceiptUtc - broadcastCompletedUtc` or, with better instrumentation, `clientReceiptUtc - broadcastStartUtc`. **NFR38 caveat:** results computed against `broadcastCompletedUtc` exclude server-side dispatch and bias the delivery interval low. They cannot be used for NFR38 pass/fail; label such results as `sample-only` until the `broadcastStartUtc` instrumentation deferred-work item lands. | Primary SignalR delivery budget for R10-A6 evidence. |
 | Client-receipt-to-query-refresh | `clientQueryCompletedUtc - clientReceiptUtc`. | Query follow-on diagnostic. |
 | Query-refresh-to-render | `uiRenderedUtc - clientQueryCompletedUtc`. | UI proof diagnostic when browser evidence is in scope. |
 | End-to-end trigger-to-refresh | `clientQueryCompletedUtc - triggerAcceptedUtc`, or `uiRenderedUtc - triggerAcceptedUtc` for browser claims. | Overall user-visible flow; not the primary NFR38 budget unless a future story changes the requirement. |
@@ -73,7 +75,7 @@ A single happy-path run proves path viability only. Do not label it p99.
 
 Before repository evidence claims p99:
 
-- Capture at least 100 valid SignalR delivery samples after warmup.
+- Capture at least 100 valid SignalR delivery samples **after warmup exclusions are applied**. If warmup or outlier exclusion drops the post-exclusion count below 100, the run is `sample-only`, not p99.
 - Record the raw sample count, sample window, clock source, topology, commit/build, and threshold source.
 - Exclude cold-start samples only with a written warmup rule decided before measurement.
 - Sort the valid sample values ascending.
@@ -121,10 +123,11 @@ Current repository gap: `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs` 
 
 | Classification | Conditions | Owner/routing |
 | --- | --- | --- |
-| `environment-blocker` | Docker unavailable; Redis unavailable; DAPR placement/scheduler unavailable; Aspire AppHost not running; browser automation unavailable; auth/token setup failure; clock skew or unsynchronized timestamp sources; port conflict; load/evidence harness failure; observability backend unavailable. | DevOps or test environment owner. Record exact command/resource failure and retry after environment is fixed. |
+| `environment-blocker` | Docker unavailable; Redis unavailable; DAPR placement/scheduler unavailable; Aspire AppHost not running; browser automation unavailable; auth/token setup failure; port conflict; load/evidence harness failure; observability backend unavailable. | DevOps or test environment owner. Record exact command/resource failure and retry after environment is fixed. |
 | `product-failure` | No broadcast; wrong group; unauthorized join outside an intentional negative control; no client receipt within bounded wait; stale or duplicate evidence accepted as success; query refresh failure; latency budget breach. | Product engineering owner for the affected EventStore, SignalR, auth, query, or client path. |
-| `instrumentation-gap` | Missing server timestamp; missing client timestamp; missing correlation continuity; missing diagnostic source; unsafe evidence/redaction risk; fewer than 100 samples while claiming p99. | Observability/test owner. Create deferred work with proposed location and why it is needed. |
-| `sample-only` | Bounded manual run proves path viability but lacks sample count, clock discipline, or production-grade metrics for p99. | QA/test owner. Do not promote to NFR proof. |
+| `instrumentation-gap` | Missing server timestamp; missing client timestamp; missing correlation continuity; missing diagnostic source; unsafe evidence/redaction risk; fewer than 100 samples while claiming p99; clock skew or unsynchronized timestamp sources between server and client/browser. | Observability/test owner. Create deferred work with proposed location and why it is needed. |
+| `sample-only` | Bounded manual run proves path viability but lacks sample count, clock discipline, or production-grade metrics for p99. Use also for runs that meet path-viability criteria but rely on `broadcastCompletedUtc` for the delivery interval (see NFR38 caveat above). | QA/test owner. Do not promote to NFR proof. |
+| `inconclusive` | Required artifacts present and no product failure was observed, but the evidence cannot be classified `pass` because a non-instrumentation precondition for the claim cannot be confirmed (e.g., negative-control assertion was not exercised, run window expired before the bounded wait elapsed, or the proof shape was changed mid-run). | Story/proof owner. Re-run with the missing precondition restored, or downgrade the claim and reclassify as `sample-only` or `instrumentation-gap` as appropriate. |
 | `pass` | Required artifacts present, controls pass, correlation is continuous, latency threshold and sample rules are satisfied for the claim being made. | Story/proof owner. |
 
 Route Redis isolation or channel-prefix policy questions to `post-epic-10-r10a7-redis-channel-isolation-policy`. Route query/UI round-trip proof to `post-epic-11-r11a3-apphost-projection-proof` or `post-epic-11-r11a4-valid-projection-round-trip`.
@@ -135,7 +138,7 @@ Every run must include at least one false-positive prevention control appropriat
 
 - Disabled SignalR or no hub: no receipt should occur.
 - Wrong tenant/group: no receipt should occur for the subscribed client.
-- Disconnected client: do not claim stale replay after reconnect.
+- Disconnected client + deferred trigger: client disconnects, a trigger fires while disconnected, client reconnects with no receipt. **Pass criterion:** no `ProjectionChanged` payload from the missed trigger window is delivered after reconnect; the proof must explicitly query the API to recover state and must not record reconnect-replay timestamps as evidence of broadcast delivery.
 - Redis disabled for cross-instance proof: no cross-instance receipt should occur.
 - Equivalent control that would fail if the proof accepted unrelated or stale messages.
 
@@ -148,25 +151,32 @@ These controls prevent false positives. They are not a substitute for broader ch
 | Evidence need | Current support | Deferred work if stronger proof is needed |
 | --- | --- | --- |
 | Authenticated join and group | `ProjectionChangedHub.JoinGroup()` validates auth/tenant access, rejects colons, tracks group count, and logs join/leave/connect/disconnect at Debug. | Capture Debug logs or add safe test harness metadata for connection/session aliases. |
-| Broadcast success/failure | `SignalRProjectionChangedBroadcaster.BroadcastChangedAsync()` sends to `{projectionType}:{tenantId}`, logs Debug success EventId 1084 and Warning fail-open EventId 1085. | Add Activity or structured timing around broadcast start/completion for p99 automation. |
+| Broadcast success/failure | `SignalRProjectionChangedBroadcaster.BroadcastChangedAsync()` sends to `{projectionType}:{tenantId}`, logs Debug success EventId 1084 and Warning fail-open EventId 1085. **EventId namespace warning:** EventIds 1084/1085 are also used by `ProjectionChangedHub` for unrelated tenant-authorization events (see `src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs`). When filtering broadcaster log output, filter on **both** the EventId AND the source category `Hexalith.EventStore.SignalRHub.SignalRProjectionChangedBroadcaster` to avoid mixing in hub events. Renumbering the hub's EventIds to a non-overlapping range is tracked as deferred work. | Add Activity or structured timing around broadcast start/completion for p99 automation. |
 | Development deterministic broadcast | `SignalRRuntimeProofEndpoints` exposes Development-only identity and broadcast endpoints gated by `EventStore:SignalR:RuntimeProof:Enabled=true`. | Keep proof-only; do not expose in production. Consider adding optional server timestamp names if future automation needs them. |
 | Client receipt | `EventStoreSignalRClient` invokes callbacks from `OnProjectionChanged`; no built-in receipt timestamp or reconnect callback is exposed publicly. | Add test harness receipt timestamping or future client diagnostics without changing the public hub payload. |
 | Reconnect/rejoin | Client helper rejoins tracked groups internally after reconnect and prunes server-rejected groups. | Public reconnect callback is deferred by R10-A5; applications own re-query after known downtime. |
 | OpenTelemetry | Service defaults register `Hexalith.EventStore`, ASP.NET Core, HTTP client, runtime metrics, and JSON console logs. | Add SignalR server/client ActivitySource registration and product tags in a future instrumentation story. |
 | ETag/query refresh | Query API returns ETags and supports `If-None-Match`; R11-A3 evidence shows direct query and UI refresh artifacts. | Dedicated timestamp continuity from ETag regeneration to broadcast start is still a gap for full automation. |
 
-Deferred work entries:
+Deferred work entries (canonical 5-column shape; matches the reusable evidence template):
 
-| Gap | Owner | Proposed location | Why needed |
-| --- | --- | --- | --- |
-| Missing broadcast start timestamp | EventStore server/observability | `SignalRProjectionChangedBroadcaster.BroadcastChangedAsync()` Activity or structured timing log | Required for unambiguous trigger-to-broadcast and broadcast-to-client calculations without relying on endpoint completion only. |
-| Missing default SignalR ActivitySource registration | Service defaults/observability | `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs` | Required before built-in SignalR server/client spans appear consistently in traces. |
-| Missing client receipt timestamp in reusable helper | Client/test tooling | Test harness around `EventStoreSignalRClient` or optional diagnostics in client package | Required for repeatable delivery latency measurement outside ad hoc proof clients. |
-| Missing correlation continuity across trigger, ETag, broadcast, and client receipt | EventStore telemetry/test tooling | Product Activity tags or proof metadata schema | Required for falsifiable automated validation and production trace correlation. |
+| Gap | Owner | Proposed location | Why needed | Blocking this proof? |
+| --- | --- | --- | --- | --- |
+| Missing broadcast start timestamp | EventStore server/observability | `SignalRProjectionChangedBroadcaster.BroadcastChangedAsync()` Activity or structured timing log | Required for unambiguous trigger-to-broadcast and broadcast-to-client calculations without relying on endpoint completion only. | No (pattern is documented; instrumentation lands in a future story). |
+| Missing default SignalR ActivitySource registration | Service defaults/observability | `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs` | Required before built-in SignalR server/client spans appear consistently in traces. | No (built-in SignalR diagnostics framed as supplement, not gate). |
+| Missing client receipt timestamp in reusable helper | Client/test tooling | Test harness around `EventStoreSignalRClient` or optional diagnostics in client package | Required for repeatable delivery latency measurement outside ad hoc proof clients. | No (proof harnesses can capture client receipt today). |
+| Missing correlation continuity across trigger, ETag, broadcast, and client receipt | EventStore telemetry/test tooling | Product Activity tags or proof metadata schema | Required for falsifiable automated validation and production trace correlation. | No (correlation discipline can be hand-maintained per run today). |
+| EventId 1084/1085 collision between `SignalRProjectionChangedBroadcaster` and `ProjectionChangedHub` | EventStore server/observability | `src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs` (renumber hub's 1084/1085 to a non-overlapping range; e.g., 1100-series) | Required so log filtering on numeric EventId alone disambiguates broadcaster events from tenant-authorization events. | No (interim guidance is to filter by Category + EventId; doc warns operators today). |
+| No falsifiable schema validator for the evidence template | Tooling/CI | `_bmad-output/test-artifacts/signalr-operational-evidence-template.md` schema → JSON-schema or lint script + CI hook | Required so `<required>` field enforcement is mechanical instead of honor-system. | No (manual review enforces the schema today). |
 
 ## Schema Walk-Through
 
-Existing evidence: `_bmad-output/test-artifacts/post-epic-10-r10a2-redis-backplane-runtime-proof/evidence-2026-05-02-133041Z.md`.
+Folder: `_bmad-output/test-artifacts/post-epic-10-r10a2-redis-backplane-runtime-proof/`. The folder index ([`index.md`](../../_bmad-output/test-artifacts/post-epic-10-r10a2-redis-backplane-runtime-proof/index.md)) lists two evidence files from the same Tier-3 lane:
+
+- `evidence-2026-05-02-133041Z.md` — canonical run, fuller environment/cleanup notes, used as the walk-through subject below.
+- `evidence-2026-05-02-150535.md` — earlier successful run with a thinner topology/cleanup section; useful for traceability but not re-walked here.
+
+Walk-through subject: `evidence-2026-05-02-133041Z.md`.
 
 | Schema field | Status | Notes |
 | --- | --- | --- |
@@ -200,4 +210,4 @@ missing_or_mismatched:
   client_receipt_correlation_id: r10a6-20260502-previous-run
 ```
 
-This evidence must fail even if a `ProjectionChanged(counter, tenant-a)` message was received, because the schema cannot prove that the receipt belongs to the current trigger.
+This evidence must fail even if a `ProjectionChanged(counter, tenant-alias-001)` message was received, because the schema cannot prove that the receipt belongs to the current trigger.

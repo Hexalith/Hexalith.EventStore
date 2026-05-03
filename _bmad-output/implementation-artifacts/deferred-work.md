@@ -1,5 +1,12 @@
 # Deferred Work
 
+## Deferred from: code review of post-epic-10-r10a6-signalr-operational-evidence-pattern (2026-05-03)
+
+- **No falsifiable schema validator for the SignalR operational evidence template** — `_bmad-output/test-artifacts/signalr-operational-evidence-template.md` declares schema version `signalr-operational-evidence/v1` and lists `<required>` fields, but no parser, JSON-schema, lint script, or CI hook rejects evidence with missing required fields. The "intentionally invalid example" is a manual demonstration only. Add a JSON-schema or lint script + CI hook for evidence files; until then, `REQUIRED` enforcement is honor-system. Out of scope for the docs-only R10-A6 story.
+- **"Production hostname" redaction has no operator decision rule for accidental staging endpoint runs** — `docs/operations/signalr-operational-evidence.md:16` forbids committing production hostnames but does not define what counts (e.g., a developer who accidentally pointed a proof at a staging endpoint). Add an explicit redaction checklist with "what to scrub before commit" rules.
+- **Reused tenant aliases leak correlation signal between unrelated proofs** — `docs/operations/signalr-operational-evidence.md:16` standardises stable placeholders such as `tenant-alias-001`, but stable reuse across runs lets a reader correlate two unrelated proofs as the same tenant. Add a per-run / per-story scoping rule (e.g., `tenant-alias-<short-run-id>-001`) when the next evidence run is authored.
+- **Template `Receipt logs/traces` field has no explicit "no stale replay claimed" guard** — A future filler recording receipt timestamps drawn from a reconnect rejoin path could implicitly contradict R10-A5's reconnect/replay boundary. Operations doc prose at line 138 and R10-A5 cover the rule conceptually; harden the template field with an explicit checkbox the next time the template is exercised against reconnect evidence. `_bmad-output/test-artifacts/signalr-operational-evidence-template.md:136`.
+
 ## Deferred from: code review of post-epic-10-r10a5-client-reconnect-guidance (2026-05-02)
 
 - **`docs/community/roadmap.md:42` SignalR helper description** — Advertises the helper using only auto-reconnect/group-rejoin features without the invalidation-signal-only contract. Out of declared three-doc scope for R10-A5 (target docs were `docs/reference/query-api.md`, `docs/reference/nuget-packages.md`, `docs/guides/sample-blazor-ui.md`). Pre-existing wording.

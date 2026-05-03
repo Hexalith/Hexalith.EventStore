@@ -23,32 +23,32 @@ Current HEAD at story creation: `3bb39b8`.
 
 ## Acceptance Criteria
 
-1. **R9/R10 action inventory is complete.** Create a concise follow-through table covering every Epic 9 action item `R9-A1` through `R9-A8` and every Epic 10 action item `R10-A1` through `R10-A8`. The table must include source file, action text, owner, priority, current disposition, evidence link, and next action.
+1. **R9/R10 action inventory is complete.** Create a concise follow-through table covering every Epic 9 action item `R9-A1` through `R9-A8` and every Epic 10 action item `R10-A1` through `R10-A8`. The table must contain exactly 16 action rows and use this header: `ID | Source | Original action text | Owner | Priority | Current disposition | Evidence inspected | Evidence link | Next action | Notes`.
 
-2. **Disposition categories are explicit.** Each item must be classified as exactly one of: `done`, `in-progress`, `ready-for-dev`, `backlog`, `superseded`, `accepted-non-action`, or `needs-new-tracking`. Do not use vague values such as "probably done" or "covered elsewhere".
+2. **Disposition categories are explicit.** Each item must be classified as exactly one of: `done`, `in-progress`, `ready-for-dev`, `backlog`, `superseded`, `accepted-non-action`, or `needs-new-tracking`. Do not create alternate labels or use vague values such as "probably done" or "covered elsewhere".
 
-3. **Current artifact evidence is inspected before closure.** For any item marked `done`, cite the exact story artifact, test artifact, docs change, sprint-status row, retrospective annotation, or commit evidence that proves closure. A story being `done` is sufficient only when its artifact clearly names the retro action or acceptance criteria that close the action.
+3. **Current artifact evidence is inspected before closure.** For any item marked `done`, cite the exact story artifact, test artifact, docs change, sprint-status row, retrospective annotation, or commit evidence that proves closure. A story being `done` is sufficient only when its artifact clearly names the retro action or acceptance criteria that close the action. A related story, plan, or discussion is not closure evidence unless the row disposition is only tracking ownership, such as `in-progress`, `ready-for-dev`, or `backlog`.
 
 4. **R10 routing is reconciled without duplication.** Verify and record the current disposition of R10-A1 through R10-A7:
    - R10-A1 is routed to `post-epic-11-r11a3-apphost-projection-proof`; record whether its caveated SignalR/AppHost evidence is sufficient or whether residual follow-up remains.
    - R10-A2 is owned by `post-epic-10-r10a2-redis-backplane-runtime-proof`.
    - R10-A3 is owned by `post-epic-10-r10a3-hub-group-authorization-decision`.
    - R10-A4 was applied directly through planning artifact normalization; verify PRD/epics wording before marking it done.
-   - R10-A5, R10-A6, and R10-A7 retain their own story rows; do not absorb their implementation scope.
+   - R10-A5, R10-A6, and R10-A7 retain their own story rows; do not absorb their implementation scope, acceptance criteria, implementation content, or readiness state. This story may only reference their current artifact/status evidence and leave the next action with the owning story.
 
 5. **R9 actions are evaluated against later evidence, not copied from the retro.** Inspect R9-A1 through R9-A8 against current artifacts. In particular, check whether later R11 proof stories satisfy any HTTP ETag, query topology, or query-latency evidence obligations; whether PRD/epics/docs now align on colon separators, per-request tenant, static `ProjectionType`, and `api/v1/queries`; whether Story 8.1 and Story 7.3 status headers still drift from `sprint-status.yaml`; and whether release governance has real recorded evidence.
 
-6. **No hidden feature work is performed.** If an item still needs implementation, verification, documentation, or release-governance work, create or identify the owning story/status row or record an accepted non-action decision. Do not implement runtime proofs, change product code, rewrite query/SignalR behavior, or run broad infrastructure work inside this tracking story.
+6. **No hidden feature work is performed.** If an item still needs implementation, verification, documentation, or release-governance work, create or identify the owning story/status row or record an accepted non-action decision. Do not implement runtime proofs, tests, benchmarks, APIs, runtime checks, governance mechanisms, product code, query/SignalR behavior changes, or broad infrastructure work inside this tracking story.
 
-7. **Accepted non-action decisions are justified.** Any `accepted-non-action` or `superseded` disposition must include a dated owner/role, rationale, evidence reviewed, residual risk, and revisit trigger. Do not use accepted non-action to hide missing high-priority proof.
+7. **Accepted non-action decisions are justified.** Any `accepted-non-action` or `superseded` disposition must include a dated owner/role, rationale, evidence reviewed, residual risk, and revisit trigger. Do not use accepted non-action to hide missing high-priority proof. If no owner/role basis can be identified, use `needs-new-tracking` instead.
 
-8. **Sprint status remains discoverable.** Update `_bmad-output/implementation-artifacts/sprint-status.yaml` comments or rows only as needed to make R9/R10 routing visible. Do not change unrelated story statuses. This story may move only itself through the normal lifecycle during development/review.
+8. **Sprint status remains discoverable.** Update `_bmad-output/implementation-artifacts/sprint-status.yaml` comments or rows only as needed to make R9/R10 routing visible. Do not reorder sprint planning, reprioritize unrelated backlog, create new delivery commitments inside sprint status, or change unrelated story statuses. No status promotion is allowed unless the linked evidence satisfies the disposition rule. This story may move only itself through the normal lifecycle during development/review.
 
 9. **Retrospective trail is updated without rewriting history.** Add closure annotations or a follow-through section to the relevant retrospective or tracking artifact while preserving the original retro tables. Do not delete or rewrite the original R9/R10 findings; append dated dispositions so the audit trail remains readable.
 
-10. **A reusable follow-through pattern is captured.** Record the minimum fields future retrospectives should provide before marking follow-through complete. Keep the pattern inside BMAD output artifacts or documentation owned by this repository; do not edit `.claude/skills/`, `_bmad/bmm/`, or tool-submodule skill definitions as part of this story.
+10. **A reusable follow-through pattern is captured.** Record the minimum fields future retrospectives should provide before marking follow-through complete in a short `Reusable Follow-Through Pattern` section or checklist. Keep the pattern inside BMAD output artifacts or documentation owned by this repository; do not edit `.claude/skills/`, `_bmad/bmm/`, or tool-submodule skill definitions as part of this story.
 
-11. **Validation is appropriate for a tracking story.** Run markdown/link validation if available. If only BMAD Markdown/YAML artifacts change, no product test is required. If any script or generated-status helper is added, run its focused validation and record the command/result.
+11. **Validation is appropriate for a tracking story.** First identify whether the repo has an existing markdown/link validation command. Run it if available. If no validator exists, manually inspect changed links/paths and record that automated validation was unavailable. If only BMAD Markdown/YAML artifacts change, no product test is required. If any script or generated-status helper is added, run its focused validation and record the command/result.
 
 12. **Story bookkeeping is closed.** At dev handoff, this story status becomes `review`, the sprint-status row becomes `review`, and `last_updated` names R10-A8 and the reconciliation result. At code-review signoff, both become `done`.
 
@@ -123,6 +123,12 @@ Current HEAD at story creation: `3bb39b8`.
 - A closure claim must point to a story artifact, evidence folder, docs change, sprint-status row, or commit. If evidence is missing, classify the item as still needing tracking.
 - Use `accepted-non-action` sparingly. It is valid for obsolete or intentionally rejected work, but it must name the owner, rationale, residual risk, and revisit trigger.
 - Keep the follow-through table short enough to maintain but specific enough that a later retro can audit each item without searching the whole repository.
+- For `done`, the evidence link must directly prove closure of the retro action, not merely prove that related work happened.
+- For `in-progress`, `ready-for-dev`, or `backlog`, the evidence link must point to the owning story/status row with matching scope and the next action must leave ownership there.
+- For `superseded`, the evidence link must point to the replacement item and the notes must explain why the original action no longer needs independent tracking.
+- For `needs-new-tracking`, the notes must state what evidence is missing and what kind of follow-up story/status row is needed.
+- R10-A5, R10-A6, and R10-A7 must remain visible as separate rows in the reconciliation table even though their implementation scope is not absorbed here.
+- Stable anchors, plain-language rationale, and meaningful owner/next-action fields are the adopter-experience requirements for this tracking story; there is no UI accessibility or localization surface.
 
 ### Existing Artifact Intelligence
 
@@ -184,10 +190,35 @@ To be filled by dev agent.
 
 To be filled by dev agent.
 
+## Party-Mode Review
+
+- Date/time: 2026-05-03T08:18:57+02:00
+- Selected story key: `post-epic-10-r10a8-r9-r10-follow-through-tracking`
+- Command/skill invocation used: `/bmad-party-mode post-epic-10-r10a8-r9-r10-follow-through-tracking; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), Paige (Technical Writer)
+- Findings summary:
+  - All reviewers recommended `needs-story-update`, not `blocked`.
+  - The main risk is false closure: R9/R10 follow-through could make unresolved confidence work look complete if evidence and disposition rules remain vague.
+  - The story needed a mandatory table schema, exact disposition vocabulary, direct evidence sufficiency rules, bounded sprint-status edits, explicit R10-A5/R10-A6/R10-A7 non-absorption, and validation fallback guidance.
+  - Accessibility/localization risk is not a UI concern for this story; adopter experience is discoverability through stable anchors, plain-language rationale, and useful owner/next-action fields.
+- Changes applied:
+  - Made the reconciliation table header mandatory and required exactly 16 action rows.
+  - Reaffirmed the closed disposition enum and forbade alternate labels.
+  - Added direct closure-evidence rules and minimum evidence standards for `done`, tracked statuses, `superseded`, and `needs-new-tracking`.
+  - Tightened the no-hidden-feature-work boundary to exclude runtime proofs, tests, benchmarks, APIs, runtime checks, governance mechanisms, product code, and query/SignalR behavior changes.
+  - Clarified that R10-A5, R10-A6, and R10-A7 remain visible in the table but stay owned by their separate story rows.
+  - Bounded sprint-status edits and added markdown/link validation fallback expectations.
+  - Defined the reusable follow-through pattern as a short checklist/section rather than a new framework or tool change.
+- Findings deferred:
+  - Dev-story execution must decide item-by-item whether missing R9/R10 evidence creates a new tracking story, remains routed to an existing story, or requires an accepted non-action decision.
+  - Runtime proof, latency benchmark, enforcement, release-governance redesign, and R10-A5/R10-A6/R10-A7 readiness decisions remain outside this tracking story unless routed as separate follow-up.
+- Final recommendation: `ready-for-dev`
+
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-03 | 0.2 | Applied party-mode review hardening for evidence, disposition, scope, and validation rules. | Codex automation |
 | 2026-05-02 | 0.1 | Created ready-for-dev R10-A8 R9/R10 follow-through tracking story. | Codex automation |
 
 ## Verification Status
