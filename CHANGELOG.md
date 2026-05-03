@@ -1,3 +1,10 @@
+# [3.7.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.6.0...v3.7.0) (2026-05-03)
+
+
+### Features
+
+* implement drain integrity guard tests and validation for event count mismatches ([39aab69](https://github.com/Hexalith/Hexalith.EventStore/commit/39aab6908d8928a5f5737d75fd123d365583c3e4))
+
 # [3.6.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.5.0...v3.6.0) (2026-05-03)
 
 
