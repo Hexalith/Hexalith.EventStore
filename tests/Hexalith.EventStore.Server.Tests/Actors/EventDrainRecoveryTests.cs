@@ -22,7 +22,7 @@ using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
-/// Story 4.4 Tasks 7 &amp; 9: Drain recovery and end-to-end drain cycle tests.
+/// Story 4.2: Drain recovery and end-to-end drain cycle tests.
 /// Verifies ReceiveReminderAsync, DrainUnpublishedEventsAsync, and full drain lifecycle
 /// (AC: #1, #4, #5, #6, #9, #10, #12).
 /// </summary>

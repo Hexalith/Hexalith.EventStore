@@ -5,7 +5,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
-/// Story 4.4 Task 10: UnpublishedEventsRecord unit tests.
+/// Story 4.2: UnpublishedEventsRecord unit tests.
 /// Verifies key format, reminder name, IncrementRetry, and construction (AC: #2).
 /// </summary>
 public class UnpublishedEventsRecordTests {

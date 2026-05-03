@@ -10,7 +10,7 @@ spec:
         duration: 1s
         maxRetries: 3
       # Pub/sub outbound: publisher -> sidecar -> broker
-      # Conservative: Story 4.4 recovery drain handles prolonged outages
+      # Conservative: drain recovery handles prolonged outages
       pubsubRetryOutbound:
         policy: exponential
         maxInterval: 10s

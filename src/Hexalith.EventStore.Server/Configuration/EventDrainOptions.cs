@@ -1,7 +1,7 @@
 namespace Hexalith.EventStore.Server.Configuration;
 
 /// <summary>
-/// Configuration options for the event drain recovery mechanism (Story 4.4).
+/// Configuration options for the event drain recovery mechanism (Story 4.2).
 /// Bound to configuration section "EventStore:Drain".
 /// </summary>
 public record EventDrainOptions {

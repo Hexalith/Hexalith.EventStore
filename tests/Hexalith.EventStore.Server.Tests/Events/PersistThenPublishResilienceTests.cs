@@ -25,7 +25,7 @@ using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
 namespace Hexalith.EventStore.Server.Tests.Events;
 /// <summary>
-/// Story 4.4 Task 8: Persist-then-publish resilience tests.
+/// Story 4.2: Persist-then-publish resilience tests.
 /// Verifies UnpublishedEventsRecord storage on PublishFailed paths (AC: #2, #3, #7, #8).
 /// </summary>
 public class PersistThenPublishResilienceTests {

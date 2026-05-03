@@ -32,10 +32,10 @@ public static class EventStoreActivitySource {
     /// <summary>Event publication stage (Story 4.1).</summary>
     public const string EventsPublish = "EventStore.Events.Publish";
 
-    /// <summary>Event drain recovery stage (Story 4.4).</summary>
+    /// <summary>Event drain recovery stage (Story 4.2).</summary>
     public const string EventsDrain = "EventStore.Events.Drain";
 
-    /// <summary>Dead-letter publication stage (Story 4.5).</summary>
+    /// <summary>Dead-letter publication stage.</summary>
     public const string EventsPublishDeadLetter = "EventStore.Events.PublishDeadLetter";
 
     /// <summary>Backpressure check stage (Story 4.3).</summary>
@@ -65,13 +65,13 @@ public static class EventStoreActivitySource {
     /// <summary>Tag key for pub/sub topic.</summary>
     public const string TagTopic = "eventstore.topic";
 
-    /// <summary>Tag key for exception type (Story 4.5).</summary>
+    /// <summary>Tag key for exception type used by dead-letter routing.</summary>
     public const string TagExceptionType = "eventstore.exception_type";
 
-    /// <summary>Tag key for failure stage (Story 4.5).</summary>
+    /// <summary>Tag key for failure stage used by dead-letter routing.</summary>
     public const string TagFailureStage = "eventstore.failure_stage";
 
-    /// <summary>Tag key for dead-letter topic (Story 4.5).</summary>
+    /// <summary>Tag key for dead-letter topic.</summary>
     public const string TagDeadLetterTopic = "eventstore.deadletter_topic";
 
     /// <summary>Gets the singleton <see cref="ActivitySource"/> instance.</summary>

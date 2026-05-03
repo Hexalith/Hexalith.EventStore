@@ -10,7 +10,7 @@ public record EventPublisherOptions {
     /// <summary>Gets the DAPR pub/sub component name.</summary>
     public string PubSubName { get; init; } = "pubsub";
 
-    /// <summary>Gets the prefix for dead-letter topic names. Used by Story 4.5 for per-subscription dead-letter routing.</summary>
+    /// <summary>Gets the prefix for dead-letter topic names used by per-subscription dead-letter routing.</summary>
     public string DeadLetterTopicPrefix { get; init; } = "deadletter";
 
     /// <summary>

@@ -87,7 +87,7 @@ public class AggregateActorDomainResultTests {
     [Fact]
     public async Task ProcessCommandAsync_UnknownEvent_DeadLettersAndRejectsCommand() {
         // Arrange -- metadata says 2 events but event 2 is missing (simulates gap)
-        // Story 4.5: Infrastructure exceptions (MissingEventException) trigger dead-letter routing
+        // Dead-letter routing handles infrastructure exceptions (MissingEventException).
         ActorTestContext ctx = CreateActor();
         _ = ctx.StateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
@@ -107,7 +107,7 @@ public class AggregateActorDomainResultTests {
 
         CommandEnvelope envelope = CreateTestEnvelope();
 
-        // Act -- Story 4.5: dead-letter routing returns Rejected result instead of propagating
+        // Act -- dead-letter routing returns Rejected result instead of propagating
         CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(envelope);
 
         // Assert
@@ -235,7 +235,7 @@ public class AggregateActorDomainResultTests {
 
     [Fact]
     public async Task ProcessCommandAsync_DomainServiceNotFound_DeadLettersAndRejectsCommand() {
-        // Arrange -- Story 4.5: Infrastructure exceptions trigger dead-letter routing
+        // Arrange -- dead-letter routing handles infrastructure exceptions
         ActorTestContext ctx = CreateActor();
         ConfigureNoDuplicate(ctx.StateManager);
         _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
@@ -251,7 +251,7 @@ public class AggregateActorDomainResultTests {
 
     [Fact]
     public async Task ProcessCommandAsync_DomainInfrastructureFailure_DeadLettersAndRejectsCommand() {
-        // Arrange -- Story 4.5: Infrastructure exceptions trigger dead-letter routing
+        // Arrange -- dead-letter routing handles infrastructure exceptions
         ActorTestContext ctx = CreateActor();
         ConfigureNoDuplicate(ctx.StateManager);
         _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())

@@ -1,6 +1,6 @@
 # Post-Epic-4 R4-A8: Story Numbering Comments
 
-Status: ready-for-dev
+Status: done
 
 <!-- Source: epic-4-retro-2026-04-26.md R4-A8 -->
 <!-- Source: sprint-change-proposal-2026-04-26-epic-4-retro-cleanup.md Proposal 8 -->
@@ -70,35 +70,35 @@ Current HEAD at story creation: `da59238`.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline and inventory (AC: #1)
-  - [ ] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
-  - [ ] 0.2 Run `rg -n "Story 4\\.[45]|4\\.4|4\\.5" src -S` and record the matching production files.
-  - [ ] 0.3 Classify each match as drain recovery, dead-letter routing, pub/sub topic config, generated output, non-story numeric value, or unrelated numeric text before editing.
+- [x] Task 0: Baseline and inventory (AC: #1)
+  - [x] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
+  - [x] 0.2 Run `rg -n "Story 4\\.[45]|4\\.4|4\\.5" src -S` and record the matching production files.
+  - [x] 0.3 Classify each match as drain recovery, dead-letter routing, pub/sub topic config, generated output, non-story numeric value, or unrelated numeric text before editing.
 
-- [ ] Task 1: Normalize production comments (AC: #2, #3, #4)
-  - [ ] 1.1 Update drain-recovery comments to Story 4.2 or neutral "drain recovery" wording.
-  - [ ] 1.2 Update dead-letter comments to neutral "dead-letter routing" wording unless a current story reference is plainly correct.
-  - [ ] 1.3 Update pub/sub and subscription YAML comments without changing YAML values, scopes, metadata, or indentation semantics.
-  - [ ] 1.4 Update telemetry summary comments only; do not rename activity constants or tag constants.
-  - [ ] 1.5 If a broad grep match cannot be safely removed because it is not a stale story comment, leave it unchanged and record the false-positive rationale with path and line.
+- [x] Task 1: Normalize production comments (AC: #2, #3, #4)
+  - [x] 1.1 Update drain-recovery comments to Story 4.2 or neutral "drain recovery" wording.
+  - [x] 1.2 Update dead-letter comments to neutral "dead-letter routing" wording unless a current story reference is plainly correct.
+  - [x] 1.3 Update pub/sub and subscription YAML comments without changing YAML values, scopes, metadata, or indentation semantics.
+  - [x] 1.4 Update telemetry summary comments only; do not rename activity constants or tag constants.
+  - [x] 1.5 If a broad grep match cannot be safely removed because it is not a stale story comment, leave it unchanged and record the false-positive rationale with path and line.
 
-- [ ] Task 2: Optional stale test-comment cleanup (AC: #3, #6)
-  - [ ] 2.1 Search tests for exact stale Epic 4 story labels with `rg -n "Story 4\\.[45]" tests/Hexalith.EventStore.Server.Tests -S`.
-  - [ ] 2.2 If a test comment is only a stale story label, update it to neutral task/feature wording.
-  - [ ] 2.3 Do not rewrite unrelated decimal task/AC markers such as `Task 4.4`, `AC#3: 4.4`, or non-Epic-4 story references.
-  - [ ] 2.4 Do not change assertions, test names, fixtures, test data, or test counts.
+- [x] Task 2: Optional stale test-comment cleanup (AC: #3, #6)
+  - [x] 2.1 Search tests for exact stale Epic 4 story labels with `rg -n "Story 4\\.[45]" tests/Hexalith.EventStore.Server.Tests -S`.
+  - [x] 2.2 If a test comment is only a stale story label, update it to neutral task/feature wording.
+  - [x] 2.3 Do not rewrite unrelated decimal task/AC markers such as `Task 4.4`, `AC#3: 4.4`, or non-Epic-4 story references.
+  - [x] 2.4 Do not change assertions, test names, fixtures, test data, or test counts.
 
-- [ ] Task 3: Verification gates (AC: #2, #3, #7)
-  - [ ] 3.1 Re-run `rg -n "Story 4\\.[45]" src -S` and confirm zero production-source matches.
-  - [ ] 3.2 Review `git diff --check`.
-  - [ ] 3.3 Review `git diff --name-only` and confirm only expected comment/story-bookkeeping files changed.
-  - [ ] 3.4 Review the source/config hunks and record that every changed `src/` line is a comment-only change.
-  - [ ] 3.5 Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
+- [x] Task 3: Verification gates (AC: #2, #3, #7)
+  - [x] 3.1 Re-run `rg -n "Story 4\\.[45]" src -S` and confirm zero production-source matches.
+  - [x] 3.2 Review `git diff --check`.
+  - [x] 3.3 Review `git diff --name-only` and confirm only expected comment/story-bookkeeping files changed.
+  - [x] 3.4 Review the source/config hunks and record that every changed `src/` line is a comment-only change.
+  - [x] 3.5 Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
 
-- [ ] Task 4: Story bookkeeping (AC: #8)
-  - [ ] 4.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
-  - [ ] 4.2 Move this story and only this story from `ready-for-dev` to `review` in `sprint-status.yaml`.
-  - [ ] 4.3 Leave R4-A5 and R4-A6 status rows unchanged.
+- [x] Task 4: Story bookkeeping (AC: #8)
+  - [x] 4.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
+  - [x] 4.2 Move this story and only this story from `ready-for-dev` to `review` in `sprint-status.yaml`.
+  - [x] 4.3 Leave R4-A5 and R4-A6 status rows unchanged.
 
 ## Dev Notes
 
@@ -158,19 +158,56 @@ No external technical research is needed for this story. It does not change DAPR
 
 ### Agent Model Used
 
-To be filled by dev agent.
+GPT-5 Codex
 
 ### Debug Log References
 
-To be filled by dev agent.
+- 2026-05-03T11:44:06+02:00: Starting HEAD `295a7e76677fb8320a7fec5b6725de5f699aadc6` (`295a7e7`); story row confirmed `ready-for-dev` before moving to `in-progress`.
+- 2026-05-03T11:44+02:00: Aspire MCP showed AppHost already running. Healthy resources included `keycloak`, `statestore`, `pubsub`, `eventstore-admin`, `eventstore-admin-ui`, `sample-blazor-ui`, and `tenants`; `eventstore` and `sample` were already finished with exit code `-1` before comment edits.
+- Baseline production broad grep: `rg -n "Story 4\\.[45]|4\\.4|4\\.5" src -S` returned 25 matches.
+- Baseline production exact story grep: `rg -n "Story 4\\.[45]" src -S` returned 24 matches.
+- Baseline optional test exact story grep: `rg -n "Story 4\\.[45]" tests/Hexalith.EventStore.Server.Tests -S` returned 9 matches.
+- Baseline classification: `AggregateActor.cs` source comments include drain recovery labels and dead-letter routing labels; `UnpublishedEventsRecord.cs` and `EventDrainOptions.cs` source comments are drain recovery labels; `EventPublisherOptions.cs` source comment is dead-letter routing; `EventStoreActivitySource.cs` XML comments include drain and dead-letter telemetry labels; `pubsub.yaml`, `resiliency.yaml`, and `subscription-sample-counter.yaml` matches are YAML comments for pub/sub topic config, dead-letter routing, or drain recovery. No generated output, non-story numeric value, unrelated numeric text, or runtime value matched the production broad grep.
+- After production comment edits, `rg -n "Story 4\\.[45]" src -S` and `rg -n "Story 4\\.[45]|4\\.4|4\\.5" src -S` returned zero matches.
+- Optional test-comment cleanup left one exact `tests/` match unchanged at `tests/Hexalith.EventStore.Server.Tests/Configuration/ResiliencyConfigurationTests.cs:27` because it is an assertion custom message, and AC #6 / Task 2.4 forbid assertion changes for this cleanup.
+- Verification: `git diff --check` exited 0; output contained only Git line-ending warnings.
+- Verification: `git diff --name-only` showed only expected source/config comment files, optional server test comment files, this story file, and `sprint-status.yaml`.
+- Verification: `git diff -U0 -- src tests/Hexalith.EventStore.Server.Tests` showed every changed `src/` line was a C# comment/XML doc or YAML `#` comment; optional test changes were comments only.
+- Verification: `dotnet build Hexalith.EventStore.slnx --configuration Release` succeeded with 0 warnings and 0 errors.
+- Regression tests: `dotnet test tests/Hexalith.EventStore.Server.Tests --configuration Release --no-build` passed 1712/1712; `Client.Tests` passed 334/334; `Contracts.Tests` passed 281/281; `Sample.Tests` passed 63/63; `Testing.Tests` passed 78/78.
+
+### Implementation Plan
+
+- Replace stale drain-recovery comments with Story 4.2 or neutral drain recovery wording.
+- Replace stale dead-letter comments with neutral dead-letter routing wording.
+- Keep YAML edits to `#` comments only and preserve keys, scalar values, ordering, scopes, topics, and resiliency policy values.
+- Update optional stale test comments only when they are exact `Story 4.4` / `Story 4.5` labels; leave assertions, names, fixtures, and numeric examples unchanged.
 
 ### Completion Notes List
 
-To be filled by dev agent.
+- Completed Task 0 baseline inventory. All 25 production broad-grep matches were stale source/config/YAML comments, not runtime values.
+- Completed Task 1 production normalization. All stale `Story 4.4` / `Story 4.5` and raw `4.4` / `4.5` production-source matches were removed with comment-only edits.
+- Completed Task 2 optional test-comment cleanup. Stale exact test comments were normalized; the remaining test match is an assertion message intentionally left unchanged.
+- Completed Task 3 verification. Production grep gates, diff check, comment-only diff review, Release build, and selected regression tests all passed.
+- Completed Task 4 bookkeeping. Story and sprint status are ready for review; R4-A5 and R4-A6 rows were not changed.
 
 ### File List
 
-To be filled by dev agent.
+- `_bmad-output/implementation-artifacts/post-epic-4-r4a8-story-numbering-comments.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml`
+- `src/Hexalith.EventStore.AppHost/DaprComponents/resiliency.yaml`
+- `src/Hexalith.EventStore.AppHost/DaprComponents/subscription-sample-counter.yaml`
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs`
+- `src/Hexalith.EventStore.Server/Actors/UnpublishedEventsRecord.cs`
+- `src/Hexalith.EventStore.Server/Configuration/EventDrainOptions.cs`
+- `src/Hexalith.EventStore.Server/Configuration/EventPublisherOptions.cs`
+- `src/Hexalith.EventStore.Server/Telemetry/EventStoreActivitySource.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorDomainResultTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Actors/EventDrainRecoveryTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Actors/UnpublishedEventsRecordTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Configuration/EventDrainOptionsTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Events/PersistThenPublishResilienceTests.cs`
 
 ## Change Log
 
@@ -179,10 +216,11 @@ To be filled by dev agent.
 | 2026-05-01 | 0.1 | Created ready-for-dev R4-A8 story-numbering comment cleanup story. | Codex automation |
 | 2026-05-01 | 0.2 | Party-mode review tightened production grep gates and test-comment cleanup scope. | Codex automation |
 | 2026-05-03 | 0.3 | Advanced elicitation hardened broad grep false-positive handling, comment-only proof, and YAML behavior-preservation rules. | Codex automation |
+| 2026-05-03 | 1.0 | Normalized stale Epic 4 Story 4.4 / 4.5 source, config, and test comments; verified comment-only diff, Release build, and selected regression tests. | GPT-5 Codex |
 
 ## Verification Status
 
-Story creation only. Runtime, build, and test execution are intentionally deferred to `bmad-dev-story`.
+Done after code review (2026-05-03). Production `src/` grep gates return zero stale Story 4.4 / 4.5 and raw 4.4 / 4.5 matches (re-verified post-patches). `git diff --check`, Release build (dev-time), and selected regression tests passed; changed `src/` hunks are comment-only. Code review applied 3 patches (2 YAML tautology rewrites post-Story-4.5-scrub, 1 EventDrainOptionsTests AC traceability re-link) and recorded 2 deferred follow-ups (orphaned "task 6.7" reference in `AggregateActor.cs`; stale Story 4.4/4.5 references in `deploy/dapr/*.yaml` + `docs/guides/dapr-component-reference.md`). AC #8 historical attribution restored as a comment line in `sprint-status.yaml:33` because two concurrent R9-A5 commits (`5332495`, `079aead`) clobbered the dev-time `last_updated` field update before R4-A8 was committed.
 
 ## Party-Mode Review
 
@@ -225,3 +263,25 @@ Story creation only. Runtime, build, and test execution are intentionally deferr
   - Dev-story execution must decide exact replacement wording per file after inspecting current source comments.
   - Any remaining broad-regex false positive must be justified with exact path, line, and unchanged value during development rather than resolved by semantic edits.
 - Final recommendation: `ready-for-dev`
+
+## Review Findings
+
+Code review run on 2026-05-03 against working-tree diff vs `HEAD`. Three review layers: Blind Hunter (adversarial, diff-only), Edge Case Hunter (boundary walk with project access), Acceptance Auditor (AC conformance). Findings:
+
+- [x] [Review][Decision] AC #8 sprint bookkeeping overwritten by concurrent R9-A5 commits — Resolved with option (b): added a historical comment line for R4-A8 below `last_updated` at `sprint-status.yaml:33`, following the precedent of the existing R4-A6 comment. Preserves R9-A5's `last_updated` attribution and satisfies AC #8's intent without overwriting concurrent work.
+- [x] [Review][Patch] Tautology in pubsub.yaml comment after Story 4.5 scrub [`src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml:102`] — Applied: removed trailing "for dead-letter routing".
+- [x] [Review][Patch] Tautology in subscription-sample-counter.yaml comment after Story 4.5 scrub [`src/Hexalith.EventStore.AppHost/DaprComponents/subscription-sample-counter.yaml:5`] — Applied: rewrote to `# Dead-letter topic convention: deadletter.{tenant}.{domain}.events`.
+- [x] [Review][Patch] AC traceability dropped in EventDrainOptionsTests XML doc [`tests/Hexalith.EventStore.Server.Tests/Configuration/EventDrainOptionsTests.cs:11-13`] — Applied: re-linked to `Story 4.2: EventDrainOptions unit tests (AC: #10).` (Configurable drain timing).
+- [x] [Review][Defer] AggregateActor.cs XML doc still references orphaned "task 6.7" [`src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:1305`] — deferred, pre-existing. After Story 4.5's `Story 4.5:` prefix was stripped, the surviving sentence "Dead-letter publication happens BEFORE SaveStateAsync (task 6.7)." references a task number from the now-defunct Story 4.5. R4-A8 was scoped to story-number labels; orphan task references are a follow-up cleanup.
+- [x] [Review][Defer] Stale `Story 4.4`/`Story 4.5` references remain outside `src/` [`deploy/dapr/*.yaml`, `docs/guides/dapr-component-reference.md`] — deferred, out of R4-A8 scope. R4-A8 AC #2 explicitly scopes the grep gate to `src/`. Operator-facing deployment templates (`deploy/dapr/pubsub-kafka.yaml`, `pubsub-servicebus.yaml`, `pubsub-rabbitmq.yaml`, `resiliency.yaml`) and operator docs still carry obsolete story-number labels. Recommend a follow-up R4-A9 (or doc-team task) to extend the cleanup.
+
+### Dismissed (recorded for transparency)
+
+- Spec narrative still mentions "Story 4.4/4.5" inside this very story file — intentional historical reference (AC scopes to `src/`).
+- `ResiliencyConfigurationTests.cs:27` not in diff — Debug Log explicitly classifies it as an intentionally unchanged false positive (assertion message, AC #6/Task 2.4 forbids assertion edits).
+- HEAD `da59238` (story creation) vs `295a7e7` (dev start) — not contradictory.
+- `sprint-status.yaml` `last_updated` historical comment text claims `in-progress -> review` while the row diff shows `ready-for-dev -> review` — narratively accurate; the in-progress state was an unrecorded intermediate.
+- `subscription-sample-counter.yaml` retains `Story 4.3 AC #3` reference — confirmed correct, Story 4.3 still owns per-aggregate backpressure / per-subscription DL routing demo.
+- `EventDrainRecoveryTests.cs:25-28` "Story 4.2 ... (AC: #1, #4, #5, #6, #9, #10, #12)" claimed invalid by Edge Case Hunter — false positive, Story 4.2 has 13 ACs and the referenced ones all map correctly.
+- `predev-hardening-runs.log` shown as modified by `git status` but `git diff HEAD` returns zero diff — CRLF/file-mode artifact, not an R4-A8 concern.
+- Telemetry tag XML docs reworded from `(Story 4.5)` to `used by dead-letter routing` allegedly narrows generic constants — verified via grep, the three constants (`TagExceptionType`, `TagFailureStage`, `TagDeadLetterTopic`) are used only by `DeadLetterPublisher`/`DeadLetterPublisherTests`, so the new wording is accurate.

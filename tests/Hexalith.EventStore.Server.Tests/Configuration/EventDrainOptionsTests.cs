@@ -9,7 +9,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Configuration;
 /// <summary>
-/// Story 4.4 Task 11: EventDrainOptions unit tests (AC: #11).
+/// Story 4.2: EventDrainOptions unit tests (AC: #10).
 /// </summary>
 public class EventDrainOptionsTests {
     [Fact]

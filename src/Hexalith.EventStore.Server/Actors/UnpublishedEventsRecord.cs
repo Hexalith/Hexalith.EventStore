@@ -3,7 +3,7 @@ namespace Hexalith.EventStore.Server.Actors;
 /// <summary>
 /// Tracks unpublished events for drain recovery after publication failure.
 /// Stored in actor state with key prefix "drain:" for automatic recovery
-/// via DAPR actor reminders (Story 4.4).
+/// via DAPR actor reminders (Story 4.2).
 /// </summary>
 /// <param name="CorrelationId">The correlation ID of the failed command.</param>
 /// <param name="StartSequence">First event sequence number in the unpublished range.</param>

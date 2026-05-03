@@ -27,8 +27,8 @@ namespace Hexalith.EventStore.Server.Actors;
 /// Step 5: Event persistence (Story 3.7). Step 5b: Snapshot creation (Story 3.9).
 /// Story 3.10: Step 3 now loads snapshot FIRST, passes to EventStreamReader for tail-only reads.
 /// Story 3.11: Checkpointed state machine, OpenTelemetry activities, advisory status writes.
-/// Story 4.4: IRemindable for drain recovery of unpublished events after pub/sub outage.
-/// Story 4.5: Dead-letter routing for infrastructure failures at Steps 3-5.
+/// Story 4.2: IRemindable for drain recovery of unpublished events after pub/sub outage.
+/// Dead-letter routing handles infrastructure failures at Steps 3-5.
 /// SECURITY: Never use DaprClient.QueryStateAsync or bulk state queries without explicit tenant
 /// filtering. DAPR query API does not enforce actor state scoping. See FR28.
 /// SECURITY: Never bypass IActorStateManager with direct DaprClient.GetStateAsync/SetStateAsync.
@@ -249,7 +249,7 @@ public partial class AggregateActor(
                 await WriteAdvisoryStatusAsync(command, CommandStatus.Processing).ConfigureAwait(false);
 
                 // Step 3: State rehydration (Story 3.10 -- snapshot-first flow)
-                // Story 4.5: Infrastructure exceptions trigger dead-letter routing.
+                // Dead-letter routing handles infrastructure exceptions.
                 SnapshotRecord? existingSnapshot;
                 RehydrationResult? rehydrationResult;
                 long lastSnapshotSequence;
@@ -294,7 +294,7 @@ public partial class AggregateActor(
                     catch (Exception ex) when (ex is not OperationCanceledException) {
                         _ = (activity?.AddException(ex));
                         _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
-                        // Story 4.5: State rehydration infrastructure failure -- dead-letter routing
+                        // State rehydration infrastructure failure -- dead-letter routing
                         return await HandleInfrastructureFailureAsync(
                             command, causationId, CommandStatus.Processing, ex,
                             idempotencyChecker, stateMachine, pipelineKeyPrefix,
@@ -303,7 +303,7 @@ public partial class AggregateActor(
                 }
 
                 // Step 4: Domain service invocation (Story 3.5)
-                // Story 4.5: Infrastructure exceptions trigger dead-letter routing.
+                // Dead-letter routing handles infrastructure exceptions.
                 // D3: Domain rejections (IRejectionEvent) are normal events, NOT dead-letter triggers.
                 DomainResult domainResult;
                 using (Activity? activity = EventStoreActivitySource.Instance.StartActivity(
@@ -327,7 +327,7 @@ public partial class AggregateActor(
                     catch (Exception ex) when (ex is not OperationCanceledException) {
                         _ = (activity?.AddException(ex));
                         _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
-                        // Story 4.5: Domain service invocation infrastructure failure -- dead-letter routing
+                        // Domain service invocation infrastructure failure -- dead-letter routing
                         return await HandleInfrastructureFailureAsync(
                             command, causationId, CommandStatus.Processing, ex,
                             idempotencyChecker, stateMachine, pipelineKeyPrefix,
@@ -346,7 +346,7 @@ public partial class AggregateActor(
                 }
 
                 // Step 5: Event persistence (Story 3.7)
-                // Story 4.5: Infrastructure exceptions trigger dead-letter routing.
+                // Dead-letter routing handles infrastructure exceptions.
                 EventPersistResult persistResult;
                 using (Activity? activity = EventStoreActivitySource.Instance.StartActivity(
                     EventStoreActivitySource.EventsPersist,
@@ -417,7 +417,7 @@ public partial class AggregateActor(
                     catch (Exception ex) when (ex is not OperationCanceledException and not ConcurrencyConflictException) {
                         _ = (activity?.AddException(ex));
                         _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
-                        // Story 4.5: Event persistence infrastructure failure -- dead-letter routing
+                        // Event persistence infrastructure failure -- dead-letter routing
                         return await HandleInfrastructureFailureAsync(
                             command, causationId, CommandStatus.EventsStored, ex,
                             idempotencyChecker, stateMachine, pipelineKeyPrefix,
@@ -491,7 +491,7 @@ public partial class AggregateActor(
 
                     await idempotencyChecker.RecordAsync(causationId, failResult).ConfigureAwait(false);
 
-                    // Story 4.4: Store drain record for recovery (committed in same atomic batch)
+                    // Story 4.2: Store drain record for recovery (committed in same atomic batch)
                     long startSequence = persistResult.NewSequenceNumber - domainResult.Events.Count + 1;
                     var unpublishedRecord = new UnpublishedEventsRecord(
                         command.CorrelationId,
@@ -521,7 +521,7 @@ public partial class AggregateActor(
                             innerException: ex);
                     }
 
-                    // Story 4.4: Register drain reminder AFTER successful commit
+                    // Story 4.2: Register drain reminder AFTER successful commit
                     await RegisterDrainReminderAsync(command.CorrelationId).ConfigureAwait(false);
 
                     LogStageTransition(CommandStatus.PublishFailed, command, causationId, startTicks);
@@ -1152,7 +1152,7 @@ public partial class AggregateActor(
 
         await idempotencyChecker.RecordAsync(causationId, failResult).ConfigureAwait(false);
 
-        // Story 4.4: Store drain record for recovery on resume path (committed in same atomic batch)
+        // Story 4.2: Store drain record for recovery on resume path (committed in same atomic batch)
         int eventCount = existingPipeline.EventCount ?? 0;
         bool shouldRegisterReminder = false;
         if (eventCount > 0) {
@@ -1213,7 +1213,7 @@ public partial class AggregateActor(
                 innerException: ex);
         }
 
-        // Story 4.4: Register drain reminder AFTER successful commit
+        // Story 4.2: Register drain reminder AFTER successful commit
         if (shouldRegisterReminder) {
             await RegisterDrainReminderAsync(command.CorrelationId).ConfigureAwait(false);
         }
@@ -1302,7 +1302,7 @@ public partial class AggregateActor(
             envelope.Extensions is null ? null : new Dictionary<string, string>(envelope.Extensions));
 
     /// <summary>
-    /// Story 4.5: Handles infrastructure failures by routing to dead-letter and transitioning to Rejected.
+    /// Handles infrastructure failures by routing to dead-letter and transitioning to Rejected.
     /// Dead-letter publication is best-effort and non-blocking (AC #7).
     /// Dead-letter publication happens BEFORE SaveStateAsync (task 6.7).
     /// </summary>

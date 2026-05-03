@@ -2,7 +2,7 @@
 # ====================================================
 # Demonstrates per-subscription dead-letter routing for Story 4.3 AC #3.
 # Topic follows D6: {tenant}.{domain}.events
-# Dead-letter topic follows Story 4.3/4.5 convention: deadletter.{tenant}.{domain}.events
+# Dead-letter topic convention: deadletter.{tenant}.{domain}.events
 #
 # NOTE ON SCOPING INTERACTION:
 # This subscription scopes to 'sample' (below), but the pubsub component's scopes
