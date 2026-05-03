@@ -103,6 +103,63 @@ public class EventDrainRecoveryTests {
         }
     }
 
+    private static void ConfigureThreeEventDrainWithMissingSequence(
+        IActorStateManager stateManager,
+        int missingSequence,
+        string correlationId = "corr-drain",
+        int startSequence = 10) {
+        const int eventCount = 3;
+        int endSequence = startSequence + eventCount - 1;
+        for (int seq = startSequence; seq <= endSequence; seq++) {
+            if (seq == missingSequence) {
+                continue;
+            }
+
+            var evt = new EventEnvelope(
+                "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
+                correlationId, $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json",
+                [1, 2, 3], null);
+            _ = stateManager.TryGetStateAsync<EventEnvelope>(
+                $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(true, evt));
+        }
+    }
+
+    private static async Task AssertDrainIntegrityFailureAsync(
+        IActorStateManager stateManager,
+        IEventPublisher eventPublisher,
+        ActorTimerManager timerManager,
+        string expectedFailureDetail,
+        int expectedRetryCount = 1,
+        string correlationId = "corr-drain") {
+        _ = await eventPublisher.DidNotReceive().PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+
+        await stateManager.DidNotReceive().RemoveStateAsync(
+            $"drain:{correlationId}", Arg.Any<CancellationToken>());
+
+        await timerManager.DidNotReceive().UnregisterReminderAsync(
+            Arg.Any<ActorReminderToken>());
+
+        await stateManager.Received(1).SetStateAsync(
+            $"drain:{correlationId}",
+            Arg.Is<UnpublishedEventsRecord>(r =>
+                r.RetryCount == expectedRetryCount
+                && r.LastFailureReason != null
+                && r.LastFailureReason.Contains(expectedFailureDetail)),
+            Arg.Any<CancellationToken>());
+
+        await stateManager.Received().SaveStateAsync(Arg.Any<CancellationToken>());
+
+        await stateManager.DidNotReceive().SetStateAsync(
+            "pending_command_count",
+            Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
+    }
+
     // --- Task 7.2: Drain succeeds, events re-published ---
 
     [Fact]
@@ -350,6 +407,75 @@ public class EventDrainRecoveryTests {
         // Assert -- failure path must not unregister reminder
         await timerManager.DidNotReceive().UnregisterReminderAsync(
             Arg.Any<ActorReminderToken>());
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(11)]
+    [InlineData(12)]
+    public async Task ReceiveReminder_DrainRangeMissingPersistedEvent_PreservesRecordAndDoesNotPublish(int missingSequence) {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _, ActorTimerManager timerManager) = CreateActorWithTimerManager();
+        var record = new UnpublishedEventsRecord(
+            CorrelationId: "corr-drain",
+            StartSequence: 10,
+            EndSequence: 12,
+            EventCount: 3,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: 0,
+            LastFailureReason: "Pub/sub unavailable");
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureThreeEventDrainWithMissingSequence(stateManager, missingSequence);
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert
+        await AssertDrainIntegrityFailureAsync(
+            stateManager,
+            eventPublisher,
+            timerManager,
+            $"sequence {missingSequence}");
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(4)]
+    public async Task ReceiveReminder_DrainRecordEventCountMismatch_PreservesRecordAndDoesNotPublish(int eventCount) {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _, ActorTimerManager timerManager) = CreateActorWithTimerManager();
+        var record = new UnpublishedEventsRecord(
+            CorrelationId: "corr-drain",
+            StartSequence: 10,
+            EndSequence: 12,
+            EventCount: eventCount,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: 0,
+            LastFailureReason: "Pub/sub unavailable");
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, eventCount: 3, startSequence: 10);
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert
+        await AssertDrainIntegrityFailureAsync(
+            stateManager,
+            eventPublisher,
+            timerManager,
+            "EventCount");
     }
 
     // --- Task 7.8: Orphaned reminder cleanup ---

@@ -28,7 +28,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-03T11:30:00+02:00' # R10-A8 done after code-review signoff: R9-A4 directly fixed; R9-A1/A2/A5/A8 + R10-A1 residual added as backlog rows
+last_updated: '2026-05-03T11:05:14+02:00' # R4-A6 drain integrity guard implemented; targeted tests and release build passed; status set to review.
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -305,5 +305,5 @@ development_status:
   post-epic-4-r4a2-story-4-3-execution-record: done
   post-epic-4-r4a2b-backpressure-tracker-di-decision: done
   post-epic-4-r4a5-tier3-pubsub-delivery: done
-  post-epic-4-r4a6-drain-integrity-guard: ready-for-dev
+  post-epic-4-r4a6-drain-integrity-guard: review
   post-epic-4-r4a8-story-numbering-comments: ready-for-dev

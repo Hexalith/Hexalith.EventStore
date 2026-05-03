@@ -676,6 +676,8 @@ public partial class AggregateActor(
         UnpublishedEventsRecord record = recordResult.Value;
         _ = (activity?.SetTag("eventstore.retry_count", record.RetryCount));
         _ = (activity?.SetTag(EventStoreActivitySource.TagEventCount, record.EventCount));
+        _ = (activity?.SetTag("eventstore.drain_start_sequence", record.StartSequence));
+        _ = (activity?.SetTag("eventstore.drain_end_sequence", record.EndSequence));
 
         logger.LogInformation(
             "Drain attempt starting: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}, EventCount={EventCount}",
@@ -687,6 +689,12 @@ public partial class AggregateActor(
             record.EventCount);
 
         try {
+            int expectedEventCount = checked((int)(record.EndSequence - record.StartSequence + 1));
+            if (record.EventCount != expectedEventCount) {
+                throw new InvalidOperationException(
+                    $"Drain record EventCount mismatch for {identity.ActorId}: startSequence={record.StartSequence}, endSequence={record.EndSequence}, eventCount={record.EventCount}, expectedEventCount={expectedEventCount}.");
+            }
+
             // Load exact persisted event range for this failed command
             IReadOnlyList<EventEnvelope> events = await LoadPersistedEventsRangeAsync(
                 identity,
@@ -767,14 +775,19 @@ public partial class AggregateActor(
                 await StateManager.SaveStateAsync().ConfigureAwait(false);
 
                 logger.LogWarning(
-                    "Drain failed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}, EventCount={EventCount}",
+                    "Drain failed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}, EventCount={EventCount}, StartSequence={StartSequence}, EndSequence={EndSequence}, FailureReason={FailureReason}",
                     correlationId,
                     identity.TenantId,
                     identity.Domain,
                     identity.AggregateId,
                     updatedRecord.RetryCount,
-                    updatedRecord.EventCount);
+                    updatedRecord.EventCount,
+                    updatedRecord.StartSequence,
+                    updatedRecord.EndSequence,
+                    publishResult.FailureReason);
 
+                _ = (activity?.SetTag("eventstore.retry_count", updatedRecord.RetryCount));
+                _ = (activity?.SetTag("eventstore.failure_reason", publishResult.FailureReason));
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, publishResult.FailureReason));
             }
         }
@@ -791,13 +804,19 @@ public partial class AggregateActor(
 
             logger.LogWarning(
                 ex,
-                "Drain failed with exception: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}",
+                "Drain failed with exception: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}, EventCount={EventCount}, StartSequence={StartSequence}, EndSequence={EndSequence}, FailureReason={FailureReason}",
                 correlationId,
                 identity.TenantId,
                 identity.Domain,
                 identity.AggregateId,
-                updatedRecord.RetryCount);
+                updatedRecord.RetryCount,
+                updatedRecord.EventCount,
+                updatedRecord.StartSequence,
+                updatedRecord.EndSequence,
+                ex.Message);
 
+            _ = (activity?.SetTag("eventstore.retry_count", updatedRecord.RetryCount));
+            _ = (activity?.SetTag("eventstore.failure_reason", ex.Message));
             _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
         }
     }

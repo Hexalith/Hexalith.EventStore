@@ -1,6 +1,6 @@
 # Post-Epic-4 R4-A6: Drain Integrity Guard
 
-Status: ready-for-dev
+Status: review
 
 <!-- Source: epic-4-retro-2026-04-26.md R4-A6 -->
 <!-- Source: sprint-change-proposal-2026-04-26-epic-4-retro-cleanup.md Proposal 6 -->
@@ -72,39 +72,39 @@ Current HEAD `8ff581f` already contains a stronger implementation than the older
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline and current-state confirmation
-    - [ ] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
-    - [ ] 0.2 Read the implementation inventory files before editing.
-    - [ ] 0.3 Confirm current drain code path: `LoadPersistedEventsRangeAsync` -> `ReadEventsRangeAsync` -> `MissingEventException` on absent state.
-    - [ ] 0.4 Record existing drain test count and targeted test baseline.
+- [x] Task 0: Baseline and current-state confirmation
+    - [x] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
+    - [x] 0.2 Read the implementation inventory files before editing.
+    - [x] 0.3 Confirm current drain code path: `LoadPersistedEventsRangeAsync` -> `ReadEventsRangeAsync` -> `MissingEventException` on absent state.
+    - [x] 0.4 Record existing drain test count and targeted test baseline.
 
-- [ ] Task 1: Add explicit missing-range tests (AC: #1, #2, #3, #4)
-    - [ ] 1.1 Add a helper in `EventDrainRecoveryTests.cs` that configures a three-event record while omitting one requested sequence.
-    - [ ] 1.2 Add missing-first test: sequence `StartSequence` absent.
-    - [ ] 1.3 Add missing-middle test: one sequence between start and end absent.
-    - [ ] 1.4 Add missing-last test: sequence `EndSequence` absent.
-    - [ ] 1.5 In each test, assert `PublishEventsAsync` is not called, `RemoveStateAsync("drain:{correlationId}")` is not called, `UnregisterReminderAsync` is not called, `SetStateAsync` stores `RetryCount + 1`, and `LastFailureReason` identifies the missing sequence.
-    - [ ] 1.6 Add inconsistent-record coverage where `EventCount` differs from `EndSequence - StartSequence + 1`; cover both lower-than-range and higher-than-range values when the helper cost is low, otherwise document why one representative mismatch is sufficient. Assert the same no-publish/no-remove/reminder-continues/retry behavior and a failure reason that identifies the metadata mismatch before `PublishEventsAsync` can run.
-    - [ ] 1.7 Assert the incomplete-range and inconsistent-record failure paths do not write `pending_command_count`; only successful drain may decrement that counter.
+- [x] Task 1: Add explicit missing-range tests (AC: #1, #2, #3, #4)
+    - [x] 1.1 Add a helper in `EventDrainRecoveryTests.cs` that configures a three-event record while omitting one requested sequence.
+    - [x] 1.2 Add missing-first test: sequence `StartSequence` absent.
+    - [x] 1.3 Add missing-middle test: one sequence between start and end absent.
+    - [x] 1.4 Add missing-last test: sequence `EndSequence` absent.
+    - [x] 1.5 In each test, assert `PublishEventsAsync` is not called, `RemoveStateAsync("drain:{correlationId}")` is not called, `UnregisterReminderAsync` is not called, `SetStateAsync` stores `RetryCount + 1`, and `LastFailureReason` identifies the missing sequence.
+    - [x] 1.6 Add inconsistent-record coverage where `EventCount` differs from `EndSequence - StartSequence + 1`; cover both lower-than-range and higher-than-range values when the helper cost is low, otherwise document why one representative mismatch is sufficient. Assert the same no-publish/no-remove/reminder-continues/retry behavior and a failure reason that identifies the metadata mismatch before `PublishEventsAsync` can run.
+    - [x] 1.7 Assert the incomplete-range and inconsistent-record failure paths do not write `pending_command_count`; only successful drain may decrement that counter.
 
-- [ ] Task 2: Tighten operational signal only if needed (AC: #2, #8)
-    - [ ] 2.1 If existing `MissingEventException.Message` already flows to `LastFailureReason` and warning logs, prove it in tests or completion notes.
-    - [ ] 2.2 If missing sequence detail is not visible enough, update the catch path in `DrainUnpublishedEventsAsync` to log or tag it without changing the retry semantics.
-    - [ ] 2.3 If event-count/range mismatch is not rejected before loading events, add a narrow validation before `PublishEventsAsync` and route it through the same retry-preserving failure path. The validation must compare `record.EventCount` against `checked(record.EndSequence - record.StartSequence + 1)` and preserve the existing `OperationCanceledException` behavior.
-    - [ ] 2.4 Ensure the warning log and activity tags/status include the post-increment retry count, `StartSequence`, `EndSequence`, `EventCount`, and the missing/mismatched sequence detail.
-    - [ ] 2.5 Preserve `OperationCanceledException` propagation.
+- [x] Task 2: Tighten operational signal only if needed (AC: #2, #8)
+    - [x] 2.1 If existing `MissingEventException.Message` already flows to `LastFailureReason` and warning logs, prove it in tests or completion notes.
+    - [x] 2.2 If missing sequence detail is not visible enough, update the catch path in `DrainUnpublishedEventsAsync` to log or tag it without changing the retry semantics.
+    - [x] 2.3 If event-count/range mismatch is not rejected before loading events, add a narrow validation before `PublishEventsAsync` and route it through the same retry-preserving failure path. The validation must compare `record.EventCount` against `checked(record.EndSequence - record.StartSequence + 1)` and preserve the existing `OperationCanceledException` behavior.
+    - [x] 2.4 Ensure the warning log and activity tags/status include the post-increment retry count, `StartSequence`, `EndSequence`, `EventCount`, and the missing/mismatched sequence detail.
+    - [x] 2.5 Preserve `OperationCanceledException` propagation.
 
-- [ ] Task 3: Preserve success path and sibling boundaries (AC: #6, #7, #9, #10)
-    - [ ] 3.1 Re-run existing happy-path drain tests and ensure complete ranges still remove the record and unregister the reminder.
-    - [ ] 3.2 Verify no broad DAPR state access or direct backend scan was added.
-    - [ ] 3.3 Verify no AppHost, DAPR component, R4-A5, or R4-A8 files changed.
+- [x] Task 3: Preserve success path and sibling boundaries (AC: #6, #7, #9, #10)
+    - [x] 3.1 Re-run existing happy-path drain tests and ensure complete ranges still remove the record and unregister the reminder.
+    - [x] 3.2 Verify no broad DAPR state access or direct backend scan was added.
+    - [x] 3.3 Verify no AppHost, DAPR component, R4-A5, or R4-A8 files changed.
 
-- [ ] Task 4: Verification and bookkeeping (AC: #11, #12)
-    - [ ] 4.1 Run targeted server tests for `EventDrainRecoveryTests` and any changed tests.
-    - [ ] 4.2 Run Tier 1 unit test projects individually.
-    - [ ] 4.3 Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
-    - [ ] 4.4 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
-    - [ ] 4.5 Update only the R4-A6 sprint-status row and `last_updated` values.
+- [x] Task 4: Verification and bookkeeping (AC: #11, #12)
+    - [x] 4.1 Run targeted server tests for `EventDrainRecoveryTests` and any changed tests.
+    - [x] 4.2 Run Tier 1 unit test projects individually.
+    - [x] 4.3 Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
+    - [x] 4.4 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
+    - [x] 4.5 Update only the R4-A6 sprint-status row and `last_updated` values.
 
 ## Dev Notes
 
@@ -169,19 +169,35 @@ Current HEAD `8ff581f` already contains a stronger implementation than the older
 
 ### Agent Model Used
 
-To be filled by dev agent.
+GPT-5 Codex
 
 ### Debug Log References
 
-To be filled by dev agent.
+- 2026-05-03T10:56:33+02:00: HEAD `de8859eae786a7ab9c37a305e5dc8b421583cb7d`; story row confirmed `ready-for-dev`; Aspire apphost was already running and resources were inspected before source edits.
+- Existing drain test baseline: `EventDrainRecoveryTests` had 17 tests and passed 17/17 after stopping runtime processes that locked Debug assemblies.
+- Red phase: added missing first/middle/last and low/high `EventCount` mismatch tests; targeted run failed only the two mismatch cases because current code published before validating metadata.
+- Green/refactor: added pre-publish `EventCount` range validation plus warning/activity range, count, retry, and failure detail.
+- Final targeted run: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --filter FullyQualifiedName~EventDrainRecoveryTests --no-restore` passed 22/22.
+
+### Implementation Plan
+
+- Pin missing-range behavior in actor-state tests before changing production code.
+- Reuse the existing retry-preserving drain exception path for metadata mismatch instead of introducing new drain state or publisher retry behavior.
+- Keep success semantics unchanged and limit source edits to actor-scoped `IActorStateManager` access.
 
 ### Completion Notes List
 
-To be filled by dev agent.
+- Added explicit missing persisted event coverage for missing start, middle, and end sequences. Each failure path asserts no publish, no drain record removal, no reminder unregister, retry record persistence with sequence detail, state save, and no `pending_command_count` write.
+- Added low and high `EventCount` mismatch coverage. The actor now compares `record.EventCount` with `checked(record.EndSequence - record.StartSequence + 1)` before loading or publishing events and routes mismatch through the existing retry-preserving exception path.
+- Preserved successful drain behavior: complete ranges still publish, remove the drain record, decrement pending command pressure, save state, unregister reminders, and write advisory status.
+- Operational signal now includes range bounds, event count, post-increment retry count, and failure reason in warning logs and activity tags/status for retry-preserving failure paths.
 
 ### File List
 
-To be filled by dev agent.
+- `_bmad-output/implementation-artifacts/post-epic-4-r4a6-drain-integrity-guard.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Actors/EventDrainRecoveryTests.cs`
 
 ## Party-Mode Review
 
@@ -236,7 +252,17 @@ To be filled by dev agent.
 | 2026-05-01 | 0.3 | Advanced elicitation hardened event-count mismatch, pre-publish test proof, and operational-signal requirements. | Codex automation |
 | 2026-05-01 | 0.2 | Party-mode review hardened metadata consistency, pending-count failure semantics, and operational-signal requirements. | Codex automation |
 | 2026-05-01 | 0.1 | Created ready-for-dev R4-A6 drain integrity guard story. | Codex automation |
+| 2026-05-03 | 0.4 | Implemented drain integrity guard tests, event-count mismatch validation, and operational failure signal updates. | GPT-5 Codex |
 
 ## Verification Status
 
-Story creation only. Runtime, build, and test execution are intentionally deferred to `bmad-dev-story`.
+Implemented and ready for review.
+
+- PASS: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --filter FullyQualifiedName~EventDrainRecoveryTests --no-restore` (22/22).
+- PASS: `dotnet test tests\Hexalith.EventStore.Client.Tests\Hexalith.EventStore.Client.Tests.csproj --no-restore` (334/334).
+- PASS: `dotnet test tests\Hexalith.EventStore.Contracts.Tests\Hexalith.EventStore.Contracts.Tests.csproj --no-restore` (281/281).
+- PASS: `dotnet test tests\Hexalith.EventStore.Sample.Tests\Hexalith.EventStore.Sample.Tests.csproj --no-restore` (63/63).
+- PASS: `dotnet test tests\Hexalith.EventStore.Testing.Tests\Hexalith.EventStore.Testing.Tests.csproj --no-restore` (78/78).
+- PASS: `dotnet build Hexalith.EventStore.slnx --configuration Release --no-restore` (0 warnings, 0 errors).
+- PASS: broader non-integration unit projects: Admin.Abstractions (404/404), Admin.Cli (301/301), Admin.Mcp (308/308), Admin.Server (499/499), Admin.Server.Host (15/15), Admin.UI (622/622 after clearing stale UI process lock), SignalR (32/32).
+- CAVEAT: full `Hexalith.EventStore.Server.Tests` project remains order/shared-fixture sensitive outside the targeted gate. First full run: 1702/1712 passed with 10 command-processing integration-style failures where `Accepted` was false. Second full run: 1699/1712 passed with 13 similar failures. A representative failed case passed when run alone. The targeted changed drain suite stayed green after the full-project failures.
