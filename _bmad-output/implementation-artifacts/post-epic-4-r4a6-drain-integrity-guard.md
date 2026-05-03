@@ -1,6 +1,6 @@
 # Post-Epic-4 R4-A6: Drain Integrity Guard
 
-Status: review
+Status: done
 
 <!-- Source: epic-4-retro-2026-04-26.md R4-A6 -->
 <!-- Source: sprint-change-proposal-2026-04-26-epic-4-retro-cleanup.md Proposal 6 -->
@@ -105,6 +105,14 @@ Current HEAD `8ff581f` already contains a stronger implementation than the older
     - [x] 4.3 Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
     - [x] 4.4 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
     - [x] 4.5 Update only the R4-A6 sprint-status row and `last_updated` values.
+
+### Review Findings
+
+- [x] [Review][Patch] `checked((int)(EndSequence - StartSequence + 1))` overflow yields opaque `OverflowException` instead of the "EventCount mismatch" diagnostic [`src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:692`] — applied 2026-05-03: switched to `long expectedEventCount = record.EndSequence - record.StartSequence + 1;` so a corrupt record with `EndSequence - StartSequence + 1 > Int32.MaxValue` now produces the diagnostic `InvalidOperationException` instead of an opaque `OverflowException`. The `int != long` widening on the comparison side is safe; mismatch fires for any out-of-range computed value. Verified: `dotnet test ... --filter "FullyQualifiedName~EventDrainRecoveryTests"` 22/22 PASS; `dotnet build Hexalith.EventStore.slnx --configuration Release` 0 warnings / 0 errors.
+- [x] [Review][Defer] Corrupt drain records retry forever — no max-retry or poison-record disposition [`src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:691-820`] — deferred, spec-mandated. AC #2/#3 explicitly lock in `RetryCount + 1` and "reminder remains active" for integrity failures. The `EventCount` mismatch case is non-recoverable by external action, but the spec also forbids new admin endpoints / record-shape changes. Forward-looking concern for a future hardening story; not actionable under R4-A6.
+- [x] [Review][Defer] New activity tags `eventstore.drain_start_sequence`, `eventstore.drain_end_sequence`, `eventstore.failure_reason` have no test coverage [`tests/Hexalith.EventStore.Server.Tests/Actors/EventDrainRecoveryTests.cs`] — deferred. The test class does not currently inspect activity tags; adding listener-based assertions is its own infrastructure task. Tags can silently regress (typo, wrong overload) without coverage.
+- [x] [Review][Defer] `ex.Message` written to activity tag `eventstore.failure_reason` carries the full exception text [`src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:819`] — deferred. The new `InvalidOperationException` message embeds `identity.ActorId` (tenant/domain/aggregate). High-cardinality tag values can balloon trace backends and surface PII-adjacent identifiers. Prefer a stable short reason code on the tag and full detail in the structured log.
+- [x] [Review][Defer] Concurrent re-entrant drain reminder fires not guarded [`src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:691-820`] — deferred, pre-existing. The new integrity guard does not introduce new re-entrancy risk, but it also does not mitigate the case where two simultaneous fires of the same reminder both pass the integrity check, both publish, and both call `RemoveStateAsync`. DAPR actor reminder semantics generally serialise; not in scope for R4-A6.
 
 ## Dev Notes
 
@@ -253,10 +261,11 @@ GPT-5 Codex
 | 2026-05-01 | 0.2 | Party-mode review hardened metadata consistency, pending-count failure semantics, and operational-signal requirements. | Codex automation |
 | 2026-05-01 | 0.1 | Created ready-for-dev R4-A6 drain integrity guard story. | Codex automation |
 | 2026-05-03 | 0.4 | Implemented drain integrity guard tests, event-count mismatch validation, and operational failure signal updates. | GPT-5 Codex |
+| 2026-05-03 | 0.5 | Code review: 1 MEDIUM patch applied (long-arithmetic overflow fix at `AggregateActor.cs:692`), 4 defers recorded, 7 dismissed; status review -> done. | Claude Opus 4.7 (1M context) |
 
 ## Verification Status
 
-Implemented and ready for review.
+Code review complete; story closed.
 
 - PASS: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --filter FullyQualifiedName~EventDrainRecoveryTests --no-restore` (22/22).
 - PASS: `dotnet test tests\Hexalith.EventStore.Client.Tests\Hexalith.EventStore.Client.Tests.csproj --no-restore` (334/334).
@@ -266,3 +275,9 @@ Implemented and ready for review.
 - PASS: `dotnet build Hexalith.EventStore.slnx --configuration Release --no-restore` (0 warnings, 0 errors).
 - PASS: broader non-integration unit projects: Admin.Abstractions (404/404), Admin.Cli (301/301), Admin.Mcp (308/308), Admin.Server (499/499), Admin.Server.Host (15/15), Admin.UI (622/622 after clearing stale UI process lock), SignalR (32/32).
 - CAVEAT: full `Hexalith.EventStore.Server.Tests` project remains order/shared-fixture sensitive outside the targeted gate. First full run: 1702/1712 passed with 10 command-processing integration-style failures where `Accepted` was false. Second full run: 1699/1712 passed with 13 similar failures. A representative failed case passed when run alone. The targeted changed drain suite stayed green after the full-project failures.
+
+### Code Review Verification (2026-05-03)
+
+- PASS: `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~EventDrainRecoveryTests"` (22/22) after applying the long-arithmetic overflow patch.
+- PASS: `dotnet build Hexalith.EventStore.slnx --configuration Release` (0 warnings, 0 errors).
+- Patch scope: single line in `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:692` (`int` -> `long`); no test changes required (existing 22 tests still validate behaviour because the fix preserves the same diagnostic message text for in-range cases).

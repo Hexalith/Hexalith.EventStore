@@ -29,6 +29,7 @@
 
 generated: 2026-03-15
 last_updated: '2026-05-03T11:16:27+02:00' # R9-A1 HTTP stale ETag proof story created; status set to ready-for-dev.
+# 2026-05-03: post-epic-4-r4a6-drain-integrity-guard moved review -> done after code review (1 patch applied for checked((int)) overflow diagnostic regression at AggregateActor.cs:692; 4 defers recorded; 22/22 EventDrainRecoveryTests + Release build clean).
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -305,5 +306,5 @@ development_status:
   post-epic-4-r4a2-story-4-3-execution-record: done
   post-epic-4-r4a2b-backpressure-tracker-di-decision: done
   post-epic-4-r4a5-tier3-pubsub-delivery: done
-  post-epic-4-r4a6-drain-integrity-guard: review
+  post-epic-4-r4a6-drain-integrity-guard: done
   post-epic-4-r4a8-story-numbering-comments: ready-for-dev

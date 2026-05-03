@@ -689,7 +689,7 @@ public partial class AggregateActor(
             record.EventCount);
 
         try {
-            int expectedEventCount = checked((int)(record.EndSequence - record.StartSequence + 1));
+            long expectedEventCount = record.EndSequence - record.StartSequence + 1;
             if (record.EventCount != expectedEventCount) {
                 throw new InvalidOperationException(
                     $"Drain record EventCount mismatch for {identity.ActorId}: startSequence={record.StartSequence}, endSequence={record.EndSequence}, eventCount={record.EventCount}, expectedEventCount={expectedEventCount}.");
