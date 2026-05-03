@@ -1,3 +1,10 @@
+# [3.6.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.5.0...v3.6.0) (2026-05-03)
+
+
+### Features
+
+* Update status of stories and reconcile follow-through annotations ([583616f](https://github.com/Hexalith/Hexalith.EventStore/commit/583616f0b8a43a62cdedfd8948821a6823c2123a))
+
 # [3.5.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.4.0...v3.5.0) (2026-05-02)
 
 
