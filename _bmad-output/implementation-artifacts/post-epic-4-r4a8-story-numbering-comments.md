@@ -29,11 +29,11 @@ Current HEAD at story creation: `da59238`.
 
 1. **Stale production comments are inventoried before editing.** Run a focused search over `src/` for obsolete Epic 4 references, at minimum:
    - `rg -n "Story 4\\.[45]|4\\.4|4\\.5" src -S`
-   - Record the before/after counts in the Dev Agent Record.
+   - Record the before/after counts in the Dev Agent Record. Classify each match before editing as a source/config comment, YAML comment, test/comment label, generated output, or non-story numeric value. Do not edit a runtime value merely because it contains `4.4` or `4.5`; if the broad grep reveals a non-comment value, record it as a false positive or blocker in the Dev Agent Record instead of changing behavior.
 
-2. **Production source/config comments no longer point to obsolete Story 4.4 or Story 4.5.** After implementation, both `rg -n "Story 4\\.[45]" src -S` and `rg -n "Story 4\\.[45]|4\\.4|4\\.5" src -S` return no production-source matches. Replace comments with current story references where clear, or with neutral feature language where a single current story number would be misleading.
+2. **Production source/config comments no longer point to obsolete Story 4.4 or Story 4.5.** After implementation, both `rg -n "Story 4\\.[45]" src -S` and `rg -n "Story 4\\.[45]|4\\.4|4\\.5" src -S` return no production-source comment matches. Replace comments with current story references where clear, or with neutral feature language where a single current story number would be misleading. If any broad-regex match remains because it is not a stale story/comment reference, document the exact path, line, reason, and unchanged value in the Dev Agent Record.
 
-3. **Behavior is unchanged.** The diff contains only comment/documentation wording changes plus required story bookkeeping. No method bodies, constants, options defaults, DAPR component values, topic names, routes, retry policies, access-control scopes, or test assertions are changed.
+3. **Behavior is unchanged.** The diff contains only comment/documentation wording changes plus required story bookkeeping. No method bodies, constants, options defaults, DAPR component values, topic names, routes, retry policies, access-control scopes, generated files, package/version metadata, or test assertions are changed. YAML edits must be comment-only and preserve indentation, keys, scalar values, and ordering.
 
 4. **Current Epic 4 mapping is explicit where useful.** Drain recovery comments may reference Story 4.2 or the neutral phrase "drain recovery"; publication/topic comments may reference Story 4.1; backpressure comments may reference Story 4.3. Dead-letter comments should prefer neutral feature language such as "dead-letter routing" unless a current story artifact explicitly owns the detail.
 
@@ -41,7 +41,7 @@ Current HEAD at story creation: `da59238`.
 
 6. **Tests remain a verification gate, not the primary change.** Do not modify test behavior for this cleanup. Test comments may be updated only when they are stale story-number labels and the edit is comment-only.
 
-7. **Build verification is captured.** Run `dotnet build Hexalith.EventStore.slnx --configuration Release`. If a pre-existing build failure appears, record its exact shape and prove the failure is unrelated to comment-only edits.
+7. **Build verification is captured.** Run `dotnet build Hexalith.EventStore.slnx --configuration Release`. If a pre-existing build failure appears, record its exact shape and prove the failure is unrelated to comment-only edits. Also run `git diff --check` and record that the changed source/config hunks are comment-only; if the build is skipped because only BMAD story bookkeeping changed during dev handoff, record that rationale explicitly.
 
 8. **Story bookkeeping is closed.** At dev handoff, this story status becomes `review`, the sprint-status row becomes `review`, and both `last_updated` fields in `sprint-status.yaml` name R4-A8 and the result. At code-review signoff, both become `done`. Do not touch R4-A5 or R4-A6 status rows.
 
@@ -52,6 +52,7 @@ Current HEAD at story creation: `da59238`.
 - Do not add or remove tests unless a build/lint rule requires a comment-only adjustment.
 - Do not rewrite completed story artifacts or planning artifacts to hide historical numbering.
 - Do not perform R4-A5 Tier 3 runtime proof or R4-A6 drain integrity work here.
+- Do not update checked-in generated artifacts, dependency manifests, lock files, or release metadata while chasing the broad `4.4` / `4.5` search results.
 
 ## Implementation Inventory
 
@@ -72,13 +73,14 @@ Current HEAD at story creation: `da59238`.
 - [ ] Task 0: Baseline and inventory (AC: #1)
   - [ ] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
   - [ ] 0.2 Run `rg -n "Story 4\\.[45]|4\\.4|4\\.5" src -S` and record the matching production files.
-  - [ ] 0.3 Classify each match as drain recovery, dead-letter routing, pub/sub topic config, or unrelated numeric text.
+  - [ ] 0.3 Classify each match as drain recovery, dead-letter routing, pub/sub topic config, generated output, non-story numeric value, or unrelated numeric text before editing.
 
 - [ ] Task 1: Normalize production comments (AC: #2, #3, #4)
   - [ ] 1.1 Update drain-recovery comments to Story 4.2 or neutral "drain recovery" wording.
   - [ ] 1.2 Update dead-letter comments to neutral "dead-letter routing" wording unless a current story reference is plainly correct.
   - [ ] 1.3 Update pub/sub and subscription YAML comments without changing YAML values, scopes, metadata, or indentation semantics.
   - [ ] 1.4 Update telemetry summary comments only; do not rename activity constants or tag constants.
+  - [ ] 1.5 If a broad grep match cannot be safely removed because it is not a stale story comment, leave it unchanged and record the false-positive rationale with path and line.
 
 - [ ] Task 2: Optional stale test-comment cleanup (AC: #3, #6)
   - [ ] 2.1 Search tests for exact stale Epic 4 story labels with `rg -n "Story 4\\.[45]" tests/Hexalith.EventStore.Server.Tests -S`.
@@ -90,7 +92,8 @@ Current HEAD at story creation: `da59238`.
   - [ ] 3.1 Re-run `rg -n "Story 4\\.[45]" src -S` and confirm zero production-source matches.
   - [ ] 3.2 Review `git diff --check`.
   - [ ] 3.3 Review `git diff --name-only` and confirm only expected comment/story-bookkeeping files changed.
-  - [ ] 3.4 Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
+  - [ ] 3.4 Review the source/config hunks and record that every changed `src/` line is a comment-only change.
+  - [ ] 3.5 Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
 
 - [ ] Task 4: Story bookkeeping (AC: #8)
   - [ ] 4.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
@@ -113,6 +116,8 @@ Current HEAD at story creation: `da59238`.
 - The source search at story creation found obsolete labels in `AggregateActor.cs`, `UnpublishedEventsRecord.cs`, `EventDrainOptions.cs`, `EventPublisherOptions.cs`, `EventStoreActivitySource.cs`, and three AppHost DAPR component YAML files.
 - The party-mode review source sweep on 2026-05-01 found 24 `src/` matches for `Story 4\.[45]|4\.4|4\.5`; the after-edit production gate should use the same broad regex so raw `4.4` / `4.5` labels cannot remain.
 - A broad `tests/` search also matches unrelated task numbers, AC examples, and other-story references. Optional test cleanup should target exact `Story 4.4` / `Story 4.5` Epic 4 labels only.
+- The broad production grep is deliberately strict, but not every `4.4` / `4.5` token is automatically a stale Epic 4 story reference. Do not change semantic values, versions, generated output, or unrelated numeric data to satisfy a search gate; record false positives or blockers instead.
+- YAML component files under `src/Hexalith.EventStore.AppHost/DaprComponents/` are part of the runtime topology. Only `#` comments may change there; values such as component names, routes, topics, scopes, metadata, and resiliency policies must remain byte-for-byte equivalent unless a later behavioral story owns the change.
 - Story 4.2 is the current owner of persist-then-publish failure handling, `UnpublishedEventsRecord`, drain reminders, and backlog draining.
 - Story 4.1 is the current owner of CloudEvents publication and tenant-domain topic routing.
 - Story 4.3 is the current owner of per-aggregate backpressure. It also mentions drain-pending records because those records affect pending command count; do not rewrite that behavior.
@@ -173,6 +178,7 @@ To be filled by dev agent.
 |---|---|---|---|
 | 2026-05-01 | 0.1 | Created ready-for-dev R4-A8 story-numbering comment cleanup story. | Codex automation |
 | 2026-05-01 | 0.2 | Party-mode review tightened production grep gates and test-comment cleanup scope. | Codex automation |
+| 2026-05-03 | 0.3 | Advanced elicitation hardened broad grep false-positive handling, comment-only proof, and YAML behavior-preservation rules. | Codex automation |
 
 ## Verification Status
 
@@ -198,3 +204,24 @@ Story creation only. Runtime, build, and test execution are intentionally deferr
 - Findings deferred:
   - No product-scope, architecture-policy, or cross-story decisions deferred. The exact replacement wording remains an implementation detail constrained by AC #3 and AC #4.
 - Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-03T09:31:45+02:00
+- Selected story key: `post-epic-4-r4a8-story-numbering-comments`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-4-r4a8-story-numbering-comments`
+- Batch 1 method names: Self-Consistency Validation; Red Team vs Blue Team; Failure Mode Analysis; Critique and Refine; Active Recall Testing
+- Reshuffled Batch 2 method names: Occam's Razor Application; First Principles Analysis; 5 Whys Deep Dive; Comparative Analysis Matrix; Lessons Learned Extraction
+- Findings summary:
+  - The main risk is accidental behavior change while chasing a broad `4.4` / `4.5` grep gate, especially in YAML topology files or unrelated numeric/version text.
+  - The story needed clearer handling for false positives, generated files, package/version metadata, and proof that source/config edits are comment-only.
+  - The cleanup remains appropriately narrow; R4-A5 runtime proof and R4-A6 drain integrity behavior stay outside this story.
+- Changes applied:
+  - Required pre-edit classification of broad grep matches, including generated output, non-story numeric values, and false positives.
+  - Clarified that production gates target stale story/comment references and that non-comment broad-regex matches must be documented rather than behaviorally changed.
+  - Strengthened behavior-preservation rules for YAML indentation, keys, scalar values, ordering, generated files, package/version metadata, and DAPR topology.
+  - Added verification expectations for `git diff --check` and explicit comment-only hunk review.
+- Findings deferred:
+  - Dev-story execution must decide exact replacement wording per file after inspecting current source comments.
+  - Any remaining broad-regex false positive must be justified with exact path, line, and unchanged value during development rather than resolved by semantic edits.
+- Final recommendation: `ready-for-dev`

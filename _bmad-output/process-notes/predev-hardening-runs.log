@@ -46,3 +46,4 @@
 2026-05-02T19:13:13+02:00	party-mode-review	post-epic-10-r10a7-redis-channel-isolation-policy	ok	Applied party-mode Redis isolation policy hardening; preflight active-dev-story soft warning for R10-A6 sprint-status left untouched.
 2026-05-03T08:18:57+02:00	party-mode-review	post-epic-10-r10a8-r9-r10-follow-through-tracking	ok	Applied party-mode follow-through evidence/disposition hardening and recorded trace; no backlog story available to create.
 2026-05-03T09:23:22+02:00	advanced-elicitation	post-epic-10-r10a8-r9-r10-follow-through-tracking	ok	Applied advanced elicitation evidence/conflict/validation hardening; no backlog story available to create.
+2026-05-03T09:31:45+02:00	advanced-elicitation	post-epic-4-r4a8-story-numbering-comments	ok	Applied advanced elicitation false-positive/comment-only/YAML behavior guardrails; no backlog story available to create.
