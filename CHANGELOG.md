@@ -1,3 +1,10 @@
+# [3.8.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.7.0...v3.8.0) (2026-05-03)
+
+
+### Features
+
+* finalize post-epic-4 r4a6 drain integrity guard with review findings and status update ([295a7e7](https://github.com/Hexalith/Hexalith.EventStore/commit/295a7e76677fb8320a7fec5b6725de5f699aadc6))
+
 # [3.7.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.6.0...v3.7.0) (2026-05-03)
 
 
