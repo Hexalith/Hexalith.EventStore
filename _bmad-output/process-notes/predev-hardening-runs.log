@@ -52,3 +52,4 @@
 2026-05-03T11:01:48+02:00	failed	-	failed	Pre-flight hard-failed: _bmad-output/process-notes/predev-preflight-latest.json timestamp 2026-05-03T09:01:20Z; working tree cleanliness details 5 dirty path(s).
 2026-05-03T11:16:27+02:00	create-story	post-epic-9-r9a1-http-stale-etag-proof	ok	Created ready-for-dev R9-A1 HTTP stale ETag proof story.
 2026-05-03T11:31:55+02:00	failed	-	failed	Pre-flight hard-failed: _bmad-output/process-notes/predev-preflight-latest.json timestamp 2026-05-03T09:31:39Z; working tree cleanliness details 3 dirty path(s).
+2026-05-03T11:42:35+02:00	create-story	post-epic-9-r9a2-query-cache-topology-proof	ok	Created ready-for-dev R9-A2 query cache topology proof story; concurrent R4-A8 active-dev sprint-status changes left unstaged.

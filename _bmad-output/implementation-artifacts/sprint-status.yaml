@@ -28,7 +28,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-03T11:16:27+02:00' # R9-A1 HTTP stale ETag proof story created; status set to ready-for-dev.
+last_updated: '2026-05-03T11:42:35+02:00' # R9-A2 query cache topology proof story created; status set to ready-for-dev.
 # 2026-05-03: post-epic-4-r4a6-drain-integrity-guard moved review -> done after code review (1 patch applied for checked((int)) overflow diagnostic regression at AggregateActor.cs:692; 4 defers recorded; 22/22 EventDrainRecoveryTests + Release build clean).
 project: Hexalith.EventStore
 project_key: NOKEY
@@ -139,7 +139,7 @@ development_status:
   # Post-Epic-9 Query Confidence Carry-Forward (added by R10-A8 code-review patch 2026-05-03)
   # Each row owns one R9 needs-new-tracking item; create story files when work begins.
   post-epic-9-r9a1-http-stale-etag-proof: ready-for-dev
-  post-epic-9-r9a2-query-cache-topology-proof: backlog
+  post-epic-9-r9a2-query-cache-topology-proof: ready-for-dev
   post-epic-9-r9a5-release-governance-evidence: backlog
   post-epic-9-r9a8-query-operational-evidence-pattern: backlog
 
