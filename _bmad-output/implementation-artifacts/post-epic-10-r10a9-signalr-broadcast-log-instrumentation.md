@@ -1,6 +1,6 @@
 # Post-Epic-10 R10-A9: SignalR Broadcast Log Instrumentation
 
-Status: ready-for-dev
+Status: review
 
 <!-- Source: post-epic-10-r10a8-r9-r10-follow-through-tracking.md R10-A1 residual -->
 <!-- Source: epic-10-retro-2026-05-01.md R10-A1 -->
@@ -74,40 +74,40 @@ Current HEAD at story creation: `de8859e`.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline and decision record (AC: #1, #6, #11)
-    - [ ] 0.1 Record baseline HEAD and confirm this story is still `ready-for-dev`.
-    - [ ] 0.2 Inspect broadcaster, hub, client helper, service defaults, R10-A6 operations doc, and R11-A3 evidence caveats.
-    - [ ] 0.3 Record the instrumentation decision: emitters, log levels, ActivitySource names, EventId ranges, fields, redaction, and proof-gating choice.
-    - [ ] 0.4 Confirm no public payload, hub route, group format, reconnect semantics, Redis topology, or tenant authorization change is required.
+- [x] Task 0: Baseline and decision record (AC: #1, #6, #11)
+    - [x] 0.1 Record baseline HEAD and confirm this story is still `ready-for-dev`.
+    - [x] 0.2 Inspect broadcaster, hub, client helper, service defaults, R10-A6 operations doc, and R11-A3 evidence caveats.
+    - [x] 0.3 Record the instrumentation decision: emitters, log levels, ActivitySource names, EventId ranges, fields, redaction, and proof-gating choice.
+    - [x] 0.4 Confirm no public payload, hub route, group format, reconnect semantics, Redis topology, or tenant authorization change is required.
 
-- [ ] Task 1: Add server broadcast evidence (AC: #2, #3, #6, #7)
-    - [ ] 1.1 Emit server-side broadcast start/completion evidence with projection, tenant, group, timestamp/activity timing, elapsed milliseconds, category, and trace/span identifiers when present.
-    - [ ] 1.2 Emit fail-open failure evidence with exception type and elapsed milliseconds while preserving non-throwing behavior.
-    - [ ] 1.3 Resolve the broadcaster/hub EventId collision or update evidence guidance with a category+EventId filter requirement.
-    - [ ] 1.4 Ensure instrumentation does not log projection state, ETags, command payloads, secrets, connection strings, or read-model data.
+- [x] Task 1: Add server broadcast evidence (AC: #2, #3, #6, #7)
+    - [x] 1.1 Emit server-side broadcast start/completion evidence with projection, tenant, group, timestamp/activity timing, elapsed milliseconds, category, and trace/span identifiers when present.
+    - [x] 1.2 Emit fail-open failure evidence with exception type and elapsed milliseconds while preserving non-throwing behavior.
+    - [x] 1.3 Resolve the broadcaster/hub EventId collision or update evidence guidance with a category+EventId filter requirement.
+    - [x] 1.4 Ensure instrumentation does not log projection state, ETags, command payloads, secrets, connection strings, or read-model data.
 
-- [ ] Task 2: Add client receipt evidence (AC: #4, #7)
-    - [ ] 2.1 Emit client receipt evidence before callback invocation.
-    - [ ] 2.2 Include projection, tenant, group, timestamp/activity timing, connection state, callback count, category, and trace/span identifiers when present.
-    - [ ] 2.3 Preserve callback signatures, subscription storage, reconnect/rejoin behavior, and disposal behavior.
-    - [ ] 2.4 Add a correlation-integrity guard in tests or evidence so stale/mismatched receipts cannot be accepted silently.
+- [x] Task 2: Add client receipt evidence (AC: #4, #7)
+    - [x] 2.1 Emit client receipt evidence before callback invocation.
+    - [x] 2.2 Include projection, tenant, group, timestamp/activity timing, connection state, callback count, category, and trace/span identifiers when present.
+    - [x] 2.3 Preserve callback signatures, subscription storage, reconnect/rejoin behavior, and disposal behavior.
+    - [x] 2.4 Add a correlation-integrity guard in tests or evidence so stale/mismatched receipts cannot be accepted silently.
 
-- [ ] Task 3: Wire telemetry defaults only as needed (AC: #5)
-    - [ ] 3.1 Inspect whether repository-owned spans use existing `Hexalith.EventStore` source or need explicit SignalR ActivitySource registration.
-    - [ ] 3.2 If adding SignalR ActivitySources, update `Extensions.cs` narrowly and keep existing OpenTelemetry exporters/configuration unchanged.
-    - [ ] 3.3 Record verification by focused assertion or inspection if no clean test seam exists.
+- [x] Task 3: Wire telemetry defaults only as needed (AC: #5)
+    - [x] 3.1 Inspect whether repository-owned spans use existing `Hexalith.EventStore` source or need explicit SignalR ActivitySource registration.
+    - [x] 3.2 If adding SignalR ActivitySources, update `Extensions.cs` narrowly and keep existing OpenTelemetry exporters/configuration unchanged.
+    - [x] 3.3 Record verification by focused assertion or inspection if no clean test seam exists.
 
-- [ ] Task 4: Update docs and evidence template narrowly (AC: #8, #9)
-    - [ ] 4.1 Update `docs/operations/signalr-operational-evidence.md` only for newly emitted fields and safe filtering guidance.
-    - [ ] 4.2 Update the evidence template only if field names or proof expectations changed.
-    - [ ] 4.3 Add R10-A9 evidence under `_bmad-output/test-artifacts/post-epic-10-r10a9-signalr-broadcast-log-instrumentation/`.
-    - [ ] 4.4 If runtime proof is blocked, classify the blocker with the existing evidence schema and preserve focused unit-test evidence.
+- [x] Task 4: Update docs and evidence template narrowly (AC: #8, #9)
+    - [x] 4.1 Update `docs/operations/signalr-operational-evidence.md` only for newly emitted fields and safe filtering guidance.
+    - [x] 4.2 Update the evidence template only if field names or proof expectations changed.
+    - [x] 4.3 Add R10-A9 evidence under `_bmad-output/test-artifacts/post-epic-10-r10a9-signalr-broadcast-log-instrumentation/`.
+    - [x] 4.4 If runtime proof is blocked, classify the blocker with the existing evidence schema and preserve focused unit-test evidence.
 
-- [ ] Task 5: Tests and bookkeeping (AC: #10, #12)
-    - [ ] 5.1 Run `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~SignalRProjectionChangedBroadcasterTests"` or an equivalent focused server test command.
-    - [ ] 5.2 Run `dotnet test tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj`.
-    - [ ] 5.3 Run markdown/link validation for touched docs and evidence artifacts when available.
-    - [ ] 5.4 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and sprint-status row.
+- [x] Task 5: Tests and bookkeeping (AC: #10, #12)
+    - [x] 5.1 Run `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~SignalRProjectionChangedBroadcasterTests"` or an equivalent focused server test command.
+    - [x] 5.2 Run `dotnet test tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj`.
+    - [x] 5.3 Run markdown/link validation for touched docs and evidence artifacts when available.
+    - [x] 5.4 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and sprint-status row.
 
 ## Dev Notes
 
@@ -180,30 +180,68 @@ Current HEAD at story creation: `de8859e`.
 
 ### Agent Model Used
 
-TBD by dev-story agent
+GPT-5 Codex
 
 ### Decision Record
 
-TBD by dev-story agent before source changes.
+2026-05-03T13:24:31+02:00 baseline: HEAD `b9f52e7`; story row confirmed `ready-for-dev` before transition to `in-progress`. Existing AppHost was already running and inspected through Aspire MCP; `eventstore` and `sample` were stopped/finished with exit code `-1`, while admin UI, tenants, Keycloak, `statestore`, and `pubsub` were healthy. Source changes will remain focused on repository-owned instrumentation and evidence.
+
+Instrumentation decision:
+
+- Evidence emitters: `SignalRProjectionChangedBroadcaster.BroadcastChangedAsync()` for server broadcast start/completion/failure; `EventStoreSignalRClient.OnProjectionChanged()` for client receipt before callbacks; `Extensions.ConfigureOpenTelemetry()` for default tracing source registration; docs/template/evidence artifacts for R10-A9 proof guidance.
+- Log levels: server broadcast start and completion at `Information`; fail-open broadcast failure remains `Warning`; client receipt at `Information`; existing hub join/leave/connect logs remain unchanged.
+- EventId ranges: reserve broadcaster evidence IDs `1090` start, `1091` completed, `1092` fail-open failure, and client receipt evidence ID `2090`. Leave hub IDs `1080`-`1085` unchanged for now because moving hub authorization IDs is not needed once broadcaster IDs no longer collide; evidence filters can use broadcaster category plus 1090-1092 or client category plus 2090 without numeric ambiguity.
+- ActivitySource names: use existing repository-owned `Hexalith.EventStore` source for broadcaster spans and add default collection for built-in `Microsoft.AspNetCore.SignalR.Server` and `Microsoft.AspNetCore.SignalR.Client`. No new source name will be introduced.
+- Activity names and tags: add a narrow broadcaster activity named `EventStore.SignalR.BroadcastProjectionChanged` with projection type, tenant id/safe alias, group name, result, exception type when present, elapsed milliseconds, and current trace/span continuity through ambient `Activity.Current`. Client receipt will log ambient trace/span identifiers when present but will not create a client Activity to avoid adding a public or lifecycle contract to the helper.
+- Structured fields: projection type, tenant id or safe test alias, group name, broadcast/receipt UTC timestamp, elapsed milliseconds for server result, connection state and callback count for client receipt, logging category, trace id, span id, result classification, and exception type for failures.
+- Redaction and payload policy: no projection state, ETags, command payloads, access tokens, connection strings, read-model data, aggregate ids, command status, run ids, or serialized data in the public SignalR payload. The public hub payload remains `ProjectionChanged(projectionType, tenantId)`, hub route remains `/hubs/projection-changes`, and group format remains `{projectionType}:{tenantId}`.
+- Configuration/proof gate: no runtime configuration gate for the structured evidence logs because the story goal is default operational observability without broad SignalR Debug logging. Runtime proof artifacts may carry an evidence run id in metadata/test harness state only; the product payload stays unchanged.
+- Behavior preservation: broadcaster failures remain fail-open and non-throwing. Reconnect/rejoin, Redis topology, tenant authorization, subscription APIs, and callback signatures are out of scope and will not be changed.
 
 ### Debug Log References
 
-TBD by dev-story agent.
+- Baseline HEAD: `b9f52e7`
+- Aspire MCP resource inspection: existing AppHost `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`; `eventstore` and `sample` stopped/finished with exit code `-1`, no console logs returned for either resource.
+- Baseline inspected files: `src/Hexalith.EventStore/SignalRHub/SignalRProjectionChangedBroadcaster.cs`, `src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs`, `src/Hexalith.EventStore.SignalR/EventStoreSignalRClient.cs`, `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs`, `docs/operations/signalr-operational-evidence.md`, `_bmad-output/test-artifacts/signalr-operational-evidence-template.md`, `_bmad-output/implementation-artifacts/post-epic-11-r11a3-apphost-projection-proof.md`.
+- RED server test run: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~SignalRProjectionChangedBroadcasterTests"` failed 4 expected tests before broadcaster instrumentation.
+- RED client test run: `dotnet test tests\Hexalith.EventStore.SignalR.Tests\Hexalith.EventStore.SignalR.Tests.csproj` failed 2 expected receipt-log tests before client instrumentation.
+- RED telemetry test run: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~OpenTelemetryRegistrationTests.ServiceDefaults_RegistersBothActivitySources"` failed before SignalR ActivitySource registration.
+- Focused validation: server SignalR + telemetry tests passed 9/9; SignalR client tests passed 35/35; `git diff --check` passed with line-ending warnings only; targeted `markdownlint-cli2` and `markdown-link-check` passed for changed docs/evidence files.
+- Standard unit regression projects run individually per repo instructions: Client.Tests passed 334/334, Contracts.Tests passed 281/281, Sample.Tests passed 63/63, Testing.Tests passed 78/78.
+- Final DoD checks: unchecked task scan found no `[ ]` checkboxes; `sprint-status.yaml` parsed successfully with PyYAML; final `markdownlint-cli2`, `markdown-link-check`, and `git diff --check` passed.
 
 ### Completion Notes List
 
-TBD by dev-story agent.
+- Completed Task 0 baseline and decision record before source changes. Decision preserves public SignalR payload, route, group format, fail-open broadcaster behavior, reconnect semantics, Redis topology, and tenant authorization scope.
+- Added server-side broadcast start/completion/fail-open structured evidence using non-overlapping EventIds 1090-1092, repository ActivitySource `Hexalith.EventStore`, activity `EventStore.SignalR.BroadcastProjectionChanged`, elapsed timing, result classification, trace/span ids when present, and no sensitive payload/state fields.
+- Added client receipt evidence EventId 2090 before callback invocation, including projection, tenant, group, receipt timestamp, connection state, callback count, category, and trace/span ids when present. Callback signatures, subscriptions, reconnect/rejoin, and disposal behavior were preserved.
+- Added SignalR server/client ActivitySource registration to ServiceDefaults while keeping existing exporters and telemetry shape unchanged.
+- Updated operational evidence docs/template narrowly and added an R10-A9 evidence README. Live runtime proof is classified `environment-blocker` because the existing AppHost baseline had `eventstore` and `sample` stopped/finished with exit code `-1`; focused unit evidence is preserved.
+- Completed Task 5 validation/bookkeeping and moved story plus sprint-status row to `review`.
 
 ### File List
 
-TBD by dev-story agent.
+- `_bmad-output/implementation-artifacts/post-epic-10-r10a9-signalr-broadcast-log-instrumentation.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/test-artifacts/post-epic-10-r10a9-signalr-broadcast-log-instrumentation/README.md`
+- `_bmad-output/test-artifacts/signalr-operational-evidence-template.md`
+- `docs/operations/signalr-operational-evidence.md`
+- `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs`
+- `src/Hexalith.EventStore.SignalR/EventStoreSignalRClient.cs`
+- `src/Hexalith.EventStore/SignalRHub/SignalRProjectionChangedBroadcaster.cs`
+- `tests/Hexalith.EventStore.Server.Tests/SignalR/SignalRProjectionChangedBroadcasterTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Telemetry/OpenTelemetryRegistrationTests.cs`
+- `tests/Hexalith.EventStore.SignalR.Tests/EventStoreSignalRClientTests.cs`
 
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---|---|---|
 | 2026-05-03 | 0.1 | Created ready-for-dev R10-A9 SignalR broadcast/client-receipt instrumentation story. | Codex automation |
+| 2026-05-03 | 0.2 | Started implementation, recorded baseline and instrumentation decision, and moved sprint row to in-progress. | GPT-5 Codex |
+| 2026-05-03 | 0.3 | Added server/client SignalR instrumentation, telemetry defaults, focused tests, docs, and environment-blocker evidence artifact. | GPT-5 Codex |
+| 2026-05-03 | 1.0 | Completed validation/bookkeeping and moved story to review. | GPT-5 Codex |
 
 ## Verification Status
 
-Story created for pre-development hardening. Implementation and validation are pending `bmad-dev-story`.
+Ready for review. Focused server SignalR/telemetry tests, full SignalR client tests, targeted markdown lint/link validation, whitespace diff check, and standard unit regression projects passed. Live runtime SignalR proof is classified `environment-blocker` in the R10-A9 evidence README because the existing AppHost baseline had stopped `eventstore` and `sample` resources.

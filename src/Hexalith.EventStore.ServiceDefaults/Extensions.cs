@@ -60,7 +60,8 @@ public static class Extensions {
                     .AddRuntimeInstrumentation())
             .WithTracing(tracing => tracing.AddSource(builder.Environment.ApplicationName)
                     .AddSource("Hexalith.EventStore")
-                    .AddSource("Hexalith.EventStore")
+                    .AddSource("Microsoft.AspNetCore.SignalR.Server")
+                    .AddSource("Microsoft.AspNetCore.SignalR.Client")
                     .AddAspNetCoreInstrumentation(tracing =>
                         // Exclude health check requests from tracing
                         tracing.Filter = context =>

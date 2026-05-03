@@ -24,7 +24,8 @@ public class OpenTelemetryRegistrationTests {
 
         string source = File.ReadAllText(extensionsPath);
         source.ShouldContain(".AddSource(\"Hexalith.EventStore\")");
-        source.ShouldContain(".AddSource(\"Hexalith.EventStore\")");
+        source.ShouldContain(".AddSource(\"Microsoft.AspNetCore.SignalR.Server\")");
+        source.ShouldContain(".AddSource(\"Microsoft.AspNetCore.SignalR.Client\")");
     }
 
     [Fact]

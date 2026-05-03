@@ -125,6 +125,10 @@ Required fields must be filled. A required field that is genuinely irrelevant fo
 - Broadcast origin:
 - Broadcast group:
 - Broadcast result:
+- Broadcast start EventId/category:
+- Broadcast completed or fail-open EventId/category:
+- Broadcast elapsed milliseconds:
+- Broadcast exception type:
 - Broadcast logs/traces:
 
 ### Client Receipt
@@ -135,6 +139,9 @@ Required fields must be filled. A required field that is genuinely irrelevant fo
 - Received `tenantId`:
 - Payload contains only `projectionType` and `tenantId`: `<yes|no>`
 - Receipt connection id or client-session alias:
+- Receipt EventId/category:
+- Receipt connection state:
+- Receipt callback count:
 - Receipt logs/traces:
 
 ### Query Refresh

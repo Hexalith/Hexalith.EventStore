@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -11,7 +12,9 @@ namespace Hexalith.EventStore.SignalR;
 /// Handles automatic reconnection and group rejoin (FR59).
 /// Implements <see cref="IAsyncDisposable"/> — callers MUST dispose when done.
 /// </summary>
-public sealed class EventStoreSignalRClient : IAsyncDisposable {
+public sealed partial class EventStoreSignalRClient : IAsyncDisposable {
+    private const string CategoryName = "Hexalith.EventStore.SignalR.EventStoreSignalRClient";
+
     private delegate void ReconnectConfigurator(HubConnectionBuilder builder, IRetryPolicy? retryPolicy);
 
     private readonly HubConnection _connection;
@@ -213,7 +216,22 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
     private void OnProjectionChanged(string projectionType, string tenantId) {
         string groupName = $"{projectionType}:{tenantId}";
         if (_subscribedGroups.TryGetValue(groupName, out GroupSubscription? subscription)) {
-            foreach (Action callback in subscription.Callbacks.Values) {
+            Action[] callbacks = [.. subscription.Callbacks.Values];
+            if (_logger is not null) {
+                Log.ProjectionChangedReceived(
+                    _logger,
+                    projectionType,
+                    tenantId,
+                    groupName,
+                    DateTimeOffset.UtcNow,
+                    _connection.State.ToString(),
+                    callbacks.Length,
+                    Activity.Current?.TraceId.ToString(),
+                    Activity.Current?.SpanId.ToString(),
+                    CategoryName);
+            }
+
+            foreach (Action callback in callbacks) {
                 callback();
             }
         }
@@ -238,5 +256,11 @@ public sealed class EventStoreSignalRClient : IAsyncDisposable {
 
     private sealed class GroupSubscription {
         public ConcurrentDictionary<Guid, Action> Callbacks { get; } = new();
+    }
+
+    private static partial class Log {
+        [LoggerMessage(EventId = 2090, Level = LogLevel.Information,
+            Message = "SignalR client received projection change. ProjectionType: {ProjectionType}, TenantId: {TenantId}, Group: {GroupName}, ReceiptUtc: {ReceiptUtc}, ConnectionState: {ConnectionState}, CallbackCount: {CallbackCount}, TraceId: {TraceId}, SpanId: {SpanId}, CategoryName: {CategoryName}")]
+        public static partial void ProjectionChangedReceived(ILogger logger, string projectionType, string tenantId, string groupName, DateTimeOffset receiptUtc, string connectionState, int callbackCount, string? traceId, string? spanId, string categoryName);
     }
 }

@@ -205,6 +205,76 @@ public class EventStoreSignalRClientTests {
     }
 
     [Fact]
+    public async Task OnProjectionChanged_WithSubscribedGroup_LogsReceiptBeforeCallbacks() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var logEntries = new List<LogEntry>();
+        var sut = new EventStoreSignalRClient(options, new TestLogger<EventStoreSignalRClient>(logEntries));
+        try {
+            int callbackCount = 0;
+            await sut.SubscribeAsync("counter", "acme", () => {
+                logEntries.Count.ShouldBe(1);
+                logEntries[0].EventId.Id.ShouldBe(2090);
+                callbackCount++;
+            });
+
+            InvokeProjectionChanged(sut, "counter", "acme");
+
+            callbackCount.ShouldBe(1);
+            LogEntry receipt = logEntries.Single(e => e.EventId.Id == 2090);
+            receipt.Level.ShouldBe(LogLevel.Information);
+            receipt.Message.ShouldContain("counter");
+            receipt.Message.ShouldContain("acme");
+            receipt.Message.ShouldContain("counter:acme");
+            receipt.Message.ShouldContain("Disconnected");
+            receipt.Message.ShouldContain("CallbackCount: 1");
+            receipt.Message.ShouldContain(nameof(EventStoreSignalRClient));
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task OnProjectionChanged_WithMultipleCallbacks_LogsCallbackCount() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var logEntries = new List<LogEntry>();
+        var sut = new EventStoreSignalRClient(options, new TestLogger<EventStoreSignalRClient>(logEntries));
+        try {
+            int callbackCount = 0;
+            await sut.SubscribeAsync("counter", "acme", () => callbackCount++);
+            await sut.SubscribeAsync("counter", "acme", () => callbackCount++);
+
+            InvokeProjectionChanged(sut, "counter", "acme");
+
+            callbackCount.ShouldBe(2);
+            LogEntry receipt = logEntries.Single(e => e.EventId.Id == 2090);
+            receipt.Message.ShouldContain("CallbackCount: 2");
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task OnProjectionChanged_WithMismatchedGroup_DoesNotLogReceiptOrInvokeCallbacks() {
+        var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
+        var logEntries = new List<LogEntry>();
+        var sut = new EventStoreSignalRClient(options, new TestLogger<EventStoreSignalRClient>(logEntries));
+        try {
+            int callbackCount = 0;
+            await sut.SubscribeAsync("counter", "acme", () => callbackCount++);
+
+            InvokeProjectionChanged(sut, "counter", "other-tenant");
+
+            callbackCount.ShouldBe(0);
+            logEntries.ShouldBeEmpty();
+        }
+        finally {
+            await sut.DisposeAsync();
+        }
+    }
+
+    [Fact]
     public async Task UnsubscribeAsync_CallbackOverload_RemovesOnlySpecifiedCallback() {
         var options = new EventStoreSignalRClientOptions { HubUrl = "https://localhost/hubs/projection-changes" };
         var sut = new EventStoreSignalRClient(options);
@@ -570,8 +640,8 @@ public class EventStoreSignalRClientTests {
         public bool IsEnabled(LogLevel logLevel) => true;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-            => entries.Add(new LogEntry(logLevel, formatter(state, exception)));
+            => entries.Add(new LogEntry(logLevel, eventId, formatter(state, exception)));
     }
 
-    private sealed record LogEntry(LogLevel Level, string Message);
+    private sealed record LogEntry(LogLevel Level, EventId EventId, string Message);
 }
