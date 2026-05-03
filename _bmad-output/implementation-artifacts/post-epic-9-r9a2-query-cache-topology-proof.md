@@ -28,31 +28,31 @@ Existing evidence to reuse:
 
 ## Acceptance Criteria
 
-1. **A focused Aspire topology proof exists.** Add or extend a Tier 3 integration test under `tests/Hexalith.EventStore.IntegrationTests/ContractTests/`, using `[Collection("AspireContractTests")]` and `AspireContractTestFixture`, that drives the public EventStore HTTP surface through the running Aspire topology.
+1. **A focused Aspire topology proof exists.** Add one ordered Tier 3 integration-test scenario under `tests/Hexalith.EventStore.IntegrationTests/ContractTests/`, using `[Collection("AspireContractTests")]` and `AspireContractTestFixture`, that drives only the public EventStore HTTP surface through the running Aspire topology. The passing evidence is the automated test result plus its Dev Agent Record notes, not manual Aspire screenshots or exploratory log inspection.
 
-2. **The proof uses one stable query identity.** The scenario uses the same tenant, domain, aggregate ID, projection type, entity ID, query type, payload, and JWT tenant/domain claims across commands and all queries. Prefer the sample counter path: tenant `tenant-a`, domain `counter`, projection type `counter`, query type `get-counter-status`, unique aggregate ID, and `entityId = aggregateId`.
+2. **The proof uses one stable query identity.** The scenario uses the same tenant, domain, aggregate ID, projection type, entity ID, query type, payload, and JWT tenant/domain claims across commands and all queries. The mandatory identity tuple is tenant `tenant-a`, domain `counter`, projection type `counter`, query type `get-counter-status`, one unique aggregate ID per test run, `entityId = aggregateId`, payload ID aligned to the aggregate ID, and JWT tenant/domain claims that authorize that exact identity.
 
-3. **The cold query populates the topology.** Submit an `IncrementCounter` command, poll command status until `Completed`, assert persisted-event evidence such as `eventCount > 0` when present, then poll `POST /api/v1/queries` until `200 OK` returns the expected projected count and an `ETag` header. This first successful query is the cold path for the selected identity.
+3. **The cold query populates the topology.** Submit the first `IncrementCounter` command through `POST /api/v1/commands`, poll the public command-status endpoint until `Completed`, assert persisted-event evidence such as `eventCount > 0` when present, then poll `POST /api/v1/queries` until `200 OK` returns expected count `1` and an `ETag` response header. This first successful query is the cold path for the selected identity.
 
 4. **The returned ETag is self-routing and current.** Assert that the first successful response includes a strong quoted HTTP validator whose inner value follows the self-routing `{base64url(projectionType)}.{base64url-guid}` shape and decodes to `counter` through `SelfRoutingETag` or equivalent test-side verification. Do not accept old-format GUID-only ETags.
 
-5. **A warm same-identity request returns 304.** Re-send the exact same query with `If-None-Match` set to the server-provided ETag. The passing result is `304 NotModified`. If the endpoint returns `200 OK`, the test must record enough response detail to diagnose whether Gate 1 was skipped, the ETag actor returned a different value, or a same-aggregate projection changed concurrently.
+5. **A warm same-identity request returns 304.** Re-send the exact same query with `If-None-Match` set to the server-provided ETag header exactly as returned, including quotes. The passing result is `304 NotModified`. If the endpoint returns `200 OK`, the test must record enough response detail to diagnose whether Gate 1 was skipped, the ETag actor returned a different value, or a same-aggregate projection changed concurrently.
 
-6. **Projection change invalidates the old ETag.** Submit a second `IncrementCounter` command for the same aggregate and wait for `Completed`. Then send the same query with the original ETag in `If-None-Match` until the projection change is observed. The passing state is `200 OK` with the incremented count and an `ETag` different from the original. A final `304 NotModified` after the second projection is visible is a failure.
+6. **Projection change invalidates the old ETag.** Submit a second `IncrementCounter` command for the same aggregate through `POST /api/v1/commands` and wait for public command status `Completed`. Then send the same query with the original ETag in `If-None-Match` until the projection change is observed. The passing state is `200 OK` with expected count `2` and an `ETag` different from the original. A final `304 NotModified` after the second projection is visible is a failure.
 
 7. **Cache re-warm is proven after invalidation.** After the changed-count `200 OK` response, re-send the exact same query with the new ETag. The passing result is `304 NotModified`. This is the re-warm proof: the topology must converge to a new current validator after the projection update.
 
-8. **Gate 2 evidence is recorded without brittle internals.** Record evidence that the query actor cache path was exercised, either by asserting existing structured logs for `Stage=CacheMiss` followed by `Stage=CacheHit`/`ETagPreCheckMatch` when accessible from the test/AppHost evidence, or by documenting why direct log capture was unavailable and proving the public sequence instead. Do not call projection actors directly or add test-only production hooks solely to observe private cache fields.
+8. **Gate 2 evidence is recorded without brittle internals.** Record evidence that the query actor cache path was exercised, either by asserting existing structured logs for `Stage=CacheMiss` followed by `Stage=CacheHit`/`ETagPreCheckMatch` when accessible from the test/AppHost evidence, or by documenting why direct log capture was unavailable and proving the public sequence instead. Do not call projection actors directly, inspect Dapr state directly, add test-only production hooks, or bypass Dapr/ETag actors solely to observe private cache fields.
 
-9. **Eventual consistency is bounded and diagnostic.** During polling windows, temporary `404 NotFound`, old counts, missing ETags, parse errors, or transient command/query responses are retry states only until the deadline. Timeout failures must include tenant, domain, aggregate ID, projection type, query type, original ETag, new ETag if observed, last status code, last response body, parsed count, parse error, and the phase that timed out.
+9. **Eventual consistency is bounded and diagnostic.** During polling windows, temporary `404 NotFound`, old counts, missing ETags, parse errors, or transient command/query responses are retry states only until the deadline. Once a `200 OK` response proves the expected current count, a missing, malformed, same-as-old, or wrong-projection ETag is a contract failure rather than a transient. Timeout failures must include tenant, domain, aggregate ID, projection type, query type, command IDs, original ETag, new ETag if observed, last status code, last response body, parsed count, parse error, trace/correlation headers if available, and the phase that timed out.
 
 10. **The proof remains topology-focused.** Do not absorb R9-A1 stale-validator scope beyond what is necessary for this broader sequence, R9-A8 query-latency/operational NFR evidence, SignalR client behavior, Redis backplane behavior, release governance, or new production cache design. This story proves the existing topology or exposes a routed defect.
 
 11. **Existing query/projection tests are not weakened.** Preserve `ValidProjectionRoundTripE2ETests`, `ProjectionMalformedResponseE2ETests`, `QueryEndpointE2ETests`, and query/ETag unit tests. Shared helper extraction is allowed only when explicit query identity, token permissions, bounded waits, ETag handling, and diagnostic failures stay at least as strong as the existing tests.
 
-12. **The proof is repeatable from the command line.** Record the targeted command in this story's Dev Agent Record, for example `dotnet test tests/Hexalith.EventStore.IntegrationTests --filter "FullyQualifiedName~QueryCacheTopologyProofE2ETests"`. If Docker, DAPR placement/scheduler, Aspire startup, access-control policy, or a pre-existing shared-topology failure blocks execution, record the exact blocker instead of marking the story complete.
+12. **The proof is repeatable from the command line.** Record the targeted command in this story's Dev Agent Record, for example `dotnet test tests/Hexalith.EventStore.IntegrationTests --filter "FullyQualifiedName~QueryCacheTopologyProofE2ETests"`. If Docker, DAPR placement/scheduler, Aspire startup, access-control policy, dev authentication, public API availability, or a pre-existing shared-topology failure blocks execution, record the exact blocker instead of marking the story complete.
 
-13. **No production behavior is changed without a real defect.** The expected implementation is test/evidence work. Product code changes are allowed only if the focused proof exposes a real cache, ETag, routing, or projection-update defect; any such change must include focused unit coverage for the defective branch and preserve fail-open behavior for malformed, wildcard, mixed-projection, and unavailable ETag actor cases.
+13. **No production behavior is changed without a real defect.** The expected implementation is test/evidence work. Product code changes are allowed only if the focused proof exposes a real cache, ETag, routing, or projection-update defect; any such change must include focused unit coverage for the defective branch and preserve fail-open behavior for malformed, wildcard, mixed-projection, and unavailable ETag actor cases. This story proves the healthy topology path and must not turn ETag infrastructure unavailability into fail-closed production behavior.
 
 14. **Story bookkeeping is closed.** At dev handoff, this story status becomes `review`, the sprint-status row becomes `review`, and `last_updated` names the query-cache topology proof result. At code-review signoff, both become `done`.
 
@@ -60,13 +60,14 @@ Existing evidence to reuse:
 
 - [ ] Task 1: Add the focused Tier 3 topology test (AC: #1, #2)
     - [ ] Create `QueryCacheTopologyProofE2ETests` or add a clearly named test to an existing focused query/ETag contract-test file.
+    - [ ] Prefer a scenario name that states the topology contract, such as `QueryCacheTopology_WhenProjectionChanges_InvalidatesOldETagAndCachesNewETag`.
     - [ ] Use `[Trait("Category", "E2E")]`, `[Trait("Tier", "3")]`, and `[Collection("AspireContractTests")]`.
     - [ ] Use `AspireContractTestFixture.EventStoreClient`; do not launch a separate AppHost from inside the test.
 
 - [ ] Task 2: Prove cold query and initial ETag (AC: #2, #3, #4)
     - [ ] Submit the first `IncrementCounter` through `POST /api/v1/commands`.
-    - [ ] Poll command status to terminal success and fail on terminal non-success status with the final status body.
-    - [ ] Poll `POST /api/v1/queries` with explicit `projectionType = "counter"` and `entityId = aggregateId` until the expected count and ETag are present.
+    - [ ] Poll command status to terminal success and fail on terminal non-success status with the command ID and final status body.
+    - [ ] Poll `POST /api/v1/queries` with explicit `projectionType = "counter"` and `entityId = aggregateId` until expected count `1` and ETag are present.
     - [ ] Parse direct-object and base64-string query payload forms, matching the existing `ValidProjectionRoundTripE2ETests` pattern.
     - [ ] Assert the returned ETag is quoted, self-routing, and decodes to `counter`.
 
@@ -79,7 +80,7 @@ Existing evidence to reuse:
     - [ ] Submit a second `IncrementCounter` for the same aggregate and wait for `Completed`.
     - [ ] Poll the same query with the original baseline ETag in `If-None-Match`.
     - [ ] Treat pre-delivery `404`, old count, parse errors, or missing ETag as bounded retry states.
-    - [ ] Pass only when `200 OK` returns the incremented count and a new ETag different from the original.
+    - [ ] Pass only when `200 OK` returns expected count `2` and a new ETag different from the original.
     - [ ] Fail with a diagnostic message if `304` remains after the changed projection is visible.
 
 - [ ] Task 5: Prove cache re-warm and record topology evidence (AC: #7, #8)
@@ -117,6 +118,7 @@ Existing evidence to reuse:
 
 - Use public HTTP surfaces only. Do not seed actor state, call `IETagActor` directly, invoke `EventReplayProjectionActor` directly, or call the sample `/project` endpoint as the proof.
 - The proof sequence is strict: first command completed, cold query `200` with count and ETag, warm query `304`, second command completed, old ETag becomes stale with changed-count `200`, new ETag then returns `304`.
+- The executable proof sequence is one ordered contract: first command completed; cold query returns `200`, count `1`, and ETag A; exact same query with `If-None-Match: A` returns `304`; second command completed; original ETag A returns `200`, count `2`, and ETag B; exact same query with `If-None-Match: B` returns `304`.
 - Keep the query identity identical across all query calls. Tenant, domain, aggregate ID, projection type, entity ID, query type, payload ID, and JWT tenant/domain claims must line up.
 - ETag validation starts only after a successful count assertion. A `304` before state is proven is a false positive.
 - The original ETag is the stale validator after the second command. Keep sending that original ETag until the new projection count appears with a different ETag.
@@ -125,6 +127,14 @@ Existing evidence to reuse:
 - Do not turn malformed, wildcard, mixed-projection, or ETag actor failure behavior into hard errors. Those fail-open semantics are existing product behavior and must remain unchanged.
 - Prefer stable public outcomes over private cache-field inspection. Logs/traces are useful evidence, but the test should not become brittle by depending on exact event ordering that the HTTP contract does not expose.
 - If the proof fails because DAPR service invocation is blocked, projection actors are not registered, or sidecars are unavailable, record the blocker and route remediation to the owning projection/infrastructure story.
+- Keep helper extraction local to integration-test infrastructure unless an existing shared helper already fits. Avoid creating a general cache-test framework for this single topology proof.
+
+### Deferred Review Decisions
+
+- Decide outside this story whether this Tier 3 proof should run in normal CI, nightly CI, or an environment-gated integration lane.
+- Decide outside this story whether future APIs should expose stronger cache diagnostics; this story must not add diagnostics unless a real defect requires it.
+- Decide outside this story whether cross-tenant/domain negative cache behavior needs a separate acceptance test.
+- Do not standardize broader ETag syntax here beyond the current public self-routing header behavior needed by this proof.
 
 ### Suggested File Touches
 
@@ -185,8 +195,20 @@ TBD by dev-story agent.
 
 ### File List
 
+### Party-Mode Review
+
+- Date/time: 2026-05-03T13:57:23+02:00
+- Selected story key: `post-epic-9-r9a2-query-cache-topology-proof`
+- Command/skill invocation used: `/bmad-party-mode post-epic-9-r9a2-query-cache-topology-proof; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), John (Product Manager)
+- Findings summary: tighten the story so dev proves one ordered public HTTP topology contract instead of a broad or exploratory cache smoke test; pin the stable query identity, expected counts, server-provided quoted ETags, bounded polling, failure diagnostics, and fail-open guardrails.
+- Changes applied: clarified ACs for public HTTP-only proof, mandatory identity tuple, expected count transitions, ETag header/`If-None-Match` handling, retry-state classification, environment blockers, fail-open semantics, scenario naming, and helper scope; added deferred review decisions.
+- Findings deferred: CI lane policy for Tier 3 proof; future cache diagnostics API shape; cross-tenant/domain negative cache tests; broader ETag syntax standardization.
+- Final recommendation: ready-for-dev
+
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-03 | 0.2 | Applied party-mode review hardening for R9-A2 topology proof boundaries. | Codex automation |
 | 2026-05-03 | 0.1 | Created ready-for-dev R9-A2 query cache topology proof story. | Codex automation |
