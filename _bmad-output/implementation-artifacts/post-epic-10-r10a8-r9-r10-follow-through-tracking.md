@@ -1,6 +1,6 @@
 # Post-Epic-10 R10-A8: R9/R10 Follow-Through Tracking
 
-Status: ready-for-dev
+Status: review
 
 <!-- Source: epic-10-retro-2026-05-01.md R10-A8 -->
 <!-- Source: epic-9-retro-2026-04-30.md R9-A1..R9-A8 -->
@@ -83,36 +83,36 @@ Current HEAD at story creation: `3bb39b8`.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline the reconciliation target (AC: #1, #2, #3)
-  - [ ] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
-  - [ ] 0.2 Load Epic 9 and Epic 10 retrospectives and extract R9-A1..R9-A8 and R10-A1..R10-A8 verbatim.
-  - [ ] 0.3 Load `sprint-status.yaml` and all candidate owning story artifacts named in this story.
-  - [ ] 0.4 Build the follow-through table with one row per action item and no omitted IDs.
+- [x] Task 0: Baseline the reconciliation target (AC: #1, #2, #3)
+    - [x] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
+    - [x] 0.2 Load Epic 9 and Epic 10 retrospectives and extract R9-A1..R9-A8 and R10-A1..R10-A8 verbatim.
+    - [x] 0.3 Load `sprint-status.yaml` and all candidate owning story artifacts named in this story.
+    - [x] 0.4 Build the follow-through table with one row per action item and no omitted IDs.
 
-- [ ] Task 1: Reconcile R10 action items (AC: #3, #4, #6, #7)
-  - [ ] 1.1 Verify R10-A1 against R11-A3 evidence and caveats.
-  - [ ] 1.2 Verify R10-A2, R10-A3, and R10-A5 against their story artifacts and statuses.
-  - [ ] 1.3 Verify R10-A4 by searching PRD/epics for stale group/actor wording in the R9/R10 scope.
-  - [ ] 1.4 Preserve R10-A6 and R10-A7 as separate ready stories and record that ownership explicitly.
+- [x] Task 1: Reconcile R10 action items (AC: #3, #4, #6, #7)
+    - [x] 1.1 Verify R10-A1 against R11-A3 evidence and caveats.
+    - [x] 1.2 Verify R10-A2, R10-A3, and R10-A5 against their story artifacts and statuses.
+    - [x] 1.3 Verify R10-A4 by searching PRD/epics for stale group/actor wording in the R9/R10 scope.
+    - [x] 1.4 Preserve R10-A6 and R10-A7 as separate ready stories and record that ownership explicitly.
 
-- [ ] Task 2: Reconcile R9 action items (AC: #3, #5, #6, #7)
-  - [ ] 2.1 Inspect R11-A3/R11-A4 and query/ETag docs for R9-A1/R9-A2 closure evidence.
-  - [ ] 2.2 Inspect planning docs for R9-A3 route, tenant, projection, and separator alignment.
-  - [ ] 2.3 Inspect Story 8.1 and Story 7.3 headers for R9-A4 drift.
-  - [ ] 2.4 Inspect release notes, tags, workflow docs, and governance artifacts for R9-A5.
-  - [ ] 2.5 Inspect query API/docs/story records for R9-A6 and R9-A8.
-  - [ ] 2.6 Decide whether R9-A7 is satisfied by this story's reusable follow-through pattern or needs a future process story.
+- [x] Task 2: Reconcile R9 action items (AC: #3, #5, #6, #7)
+    - [x] 2.1 Inspect R11-A3/R11-A4 and query/ETag docs for R9-A1/R9-A2 closure evidence.
+    - [x] 2.2 Inspect planning docs for R9-A3 route, tenant, projection, and separator alignment.
+    - [x] 2.3 Inspect Story 8.1 and Story 7.3 headers for R9-A4 drift.
+    - [x] 2.4 Inspect release notes, tags, workflow docs, and governance artifacts for R9-A5.
+    - [x] 2.5 Inspect query API/docs/story records for R9-A6 and R9-A8.
+    - [x] 2.6 Decide whether R9-A7 is satisfied by this story's reusable follow-through pattern or needs a future process story.
 
-- [ ] Task 3: Persist visible tracking (AC: #8, #9, #10)
-  - [ ] 3.1 Add or update a BMAD-owned follow-through tracking section/artifact with dated R9/R10 dispositions.
-  - [ ] 3.2 Add sprint-status comments or rows only where necessary to make unresolved items discoverable.
-  - [ ] 3.3 Append retrospective closure annotations without deleting original retro findings.
-  - [ ] 3.4 Capture the reusable minimum follow-through pattern for future retrospectives.
+- [x] Task 3: Persist visible tracking (AC: #8, #9, #10)
+    - [x] 3.1 Add or update a BMAD-owned follow-through tracking section/artifact with dated R9/R10 dispositions.
+    - [x] 3.2 Add sprint-status comments or rows only where necessary to make unresolved items discoverable.
+    - [x] 3.3 Append retrospective closure annotations without deleting original retro findings.
+    - [x] 3.4 Capture the reusable minimum follow-through pattern for future retrospectives.
 
-- [ ] Task 4: Validate and close bookkeeping (AC: #11, #12)
-  - [ ] 4.1 Run markdown/link validation if available, or record why it was unavailable.
-  - [ ] 4.2 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
-  - [ ] 4.3 Move only this story and its sprint-status row to `review` at dev handoff.
+- [x] Task 4: Validate and close bookkeeping (AC: #11, #12)
+    - [x] 4.1 Run markdown/link validation if available, or record why it was unavailable.
+    - [x] 4.2 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
+    - [x] 4.3 Move only this story and its sprint-status row to `review` at dev handoff.
 
 ## Dev Notes
 
@@ -175,23 +175,62 @@ Current HEAD at story creation: `3bb39b8`.
 
 ### Agent Model Used
 
-To be filled by dev agent.
+GPT-5 Codex
 
 ### Reconciliation Table
 
-To be filled by dev agent with R9-A1..R9-A8 and R10-A1..R10-A8 dispositions.
+| ID | Source | Original action text | Owner | Priority | Current disposition | Evidence inspected | Evidence link | Next action | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| R9-A1 | `epic-9-retro-2026-04-30.md` §9 | Add or record full HTTP self-routing ETag proof | QA / Dev | High | needs-new-tracking | `rg -n -i "stale\|If-None-Match\|304\|etag"` across BMAD artifacts/docs/test artifacts; inspected R11-A3 README and R11-A4 story. | `_bmad-output/implementation-artifacts/post-epic-11-r11a4-valid-projection-round-trip.md`; `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/README.md` | Create a focused HTTP self-routing ETag proof story/status row for valid `If-None-Match` 304 plus stale client ETag 200 after projection change. | R11-A4 proves same-ETag conditional request behavior; R11-A3 proves new ETag after command. No artifact directly proves stale `If-None-Match` after projection change. |
+| R9-A2 | `epic-9-retro-2026-04-30.md` §9 | Execute Aspire query-cache topology verification | Dev / QA | High | needs-new-tracking | Inspected R11-A3, R11-A4, query docs, sprint status, and search terms `cold query`, `warm 304`, `projection change invalidation`, `cache re-warm`. | `_bmad-output/implementation-artifacts/post-epic-11-r11a3-apphost-projection-proof.md`; `_bmad-output/implementation-artifacts/post-epic-11-r11a4-valid-projection-round-trip.md` | Create or promote a query-cache topology proof covering cold query, ETag header, warm 304, projection invalidation, and cache re-warm. | Existing later proofs cover command-to-query, ETag, and UI evidence, but not the complete query-cache topology sequence named by R9-A2. |
+| R9-A3 | `epic-9-retro-2026-04-30.md` §9 | Reconcile planning docs with implemented query decisions | Architect / Tech Writer | High | done | `rg -n` over `_bmad-output/planning-artifacts/prd.md`, `_bmad-output/planning-artifacts/epics.md`, and docs for stale separator/API wording. | `_bmad-output/planning-artifacts/prd.md`; `_bmad-output/planning-artifacts/epics.md`; `docs/reference/query-api.md` | None. | Current PRD/epics use `{ProjectionType}:{TenantId}`, per-request query routing, static response-side `ProjectionType`, and `/api/v1/queries`. Historical readiness reports still preserve older text as archival evidence. |
+| R9-A4 | `epic-9-retro-2026-04-30.md` §9 | Reconcile inherited story status drift | Bob / Dev | Medium | needs-new-tracking | `rg -n "Status:"` on Story 8.1 and Story 7.3 plus sprint-status row inspection. | `_bmad-output/implementation-artifacts/8-1-aspire-apphost-and-dapr-topology.md`; `_bmad-output/implementation-artifacts/7-3-per-consumer-rate-limiting.md`; `_bmad-output/implementation-artifacts/sprint-status.yaml` | Create an explicit artifact-hygiene cleanup or approved direct correction for those two story headers. | Both story files still say `Status: review` while `sprint-status.yaml` marks both rows `done`; this story records the conflict and uses the least-advanced defensible disposition. |
+| R9-A5 | `epic-9-retro-2026-04-30.md` §9 | Confirm semantic-release baseline and release governance | Jerome / DevOps | Medium | needs-new-tracking | Ran `git tag --list "v*"` and `git ls-remote --tags origin "v*"`; inspected release workflow, CI docs, and secret checklist. | `.github/workflows/release.yml`; `docs/ci.md`; `docs/ci-secrets-checklist.md`; `_bmad-output/implementation-artifacts/8-8-semantic-release-migration.md` | Add explicit release-governance evidence for branch protection, required checks, release secrets, and environment approvals; record whether missing remote `v0.0.0` is accepted or superseded by later remote tags. | Remote tags now exist from `v1.0.0` through `v3.5.0`, but no remote `v0.0.0` was observed and repository settings cannot be proven from checked-in files alone. |
+| R9-A6 | `epic-9-retro-2026-04-30.md` §9 | Document `IQueryResponse` enforcement model clearly | Tech Writer / Architect | Medium | done | Inspected Story 9.5 and searched docs/source for `IQueryResponse`, non-null, non-empty, whitespace, and `ProjectionType`. | `_bmad-output/implementation-artifacts/9-5-iqueryresponse-compile-time-enforcement.md`; `docs/reference/query-api.md` | None. | Story 9.5 records the two-layer model: non-null compile-time contract through NRT/warnings-as-errors and non-empty runtime validation. |
+| R9-A7 | `epic-9-retro-2026-04-30.md` §9 | Encode retro follow-through as a reusable closure gate | Bob | Medium | done | Implemented this story's reconciliation table, retrospective annotations, and reusable pattern. | `_bmad-output/implementation-artifacts/post-epic-10-r10a8-r9-r10-follow-through-tracking.md#reusable-follow-through-pattern` | Use the pattern in future retrospectives and story creation checks. | This story closes the process visibility gap at markdown/tracking level; CI enforcement remains outside this story unless separately requested. |
+| R9-A8 | `epic-9-retro-2026-04-30.md` §9 | Define operational evidence for query latency NFRs | QA / Dev | Medium | needs-new-tracking | Inspected NFR assessment/traceability, R10-A6 SignalR evidence pattern, query docs, and search terms `NFR35`, `NFR36`, `NFR37`, `query latency`, `cache hit`, `cache miss`, `p99`. | `_bmad-output/test-artifacts/nfr-assessment.md`; `_bmad-output/test-artifacts/traceability-report.md`; `docs/operations/signalr-operational-evidence.md` | Create a query operational evidence pattern for NFR35/NFR36/NFR37 and related query-cache latency claims. | R10-A6 defines SignalR evidence only. Current NFR artifacts classify query performance evidence as partial and recommend perf-lab/benchmark follow-up. |
+| R10-A1 | `epic-10-retro-2026-05-01.md` §9 | Capture live SignalR end-to-end topology proof | QA / Dev | High | done | Inspected R11-A3 story, test artifact README, sprint-change proposal routing, and sprint-status row. | `_bmad-output/implementation-artifacts/post-epic-11-r11a3-apphost-projection-proof.md`; `_bmad-output/test-artifacts/post-epic-11-r11a3-apphost-projection-proof/README.md` | None for R10-A1; residual instrumentation hardening stays with R10-A6/R11 carry-forward notes. | R11-A3 is done and explicitly sources R10-A1. Evidence is sufficient but caveated: direct broadcast/client receipt logs were not captured at active log level; behavioral refresh-after-signal evidence was accepted. |
+| R10-A2 | `epic-10-retro-2026-05-01.md` §9 | Prove Redis backplane delivery with real Redis and multiple EventStore instances | Dev / QA | High | done | Inspected R10-A2 story, evidence index/files, sprint-status row, and code-review completion notes. | `_bmad-output/implementation-artifacts/post-epic-10-r10a2-redis-backplane-runtime-proof.md`; `_bmad-output/test-artifacts/post-epic-10-r10a2-redis-backplane-runtime-proof/index.md` | None. | Dedicated runtime proof story is done; deferred channel-isolation policy was routed to R10-A7 and is now done. |
+| R10-A3 | `epic-10-retro-2026-05-01.md` §9 | Decide and implement tenant-aware hub group authorization or record an explicit accepted-risk decision | Architect / Dev | High | done | Inspected R10-A3 story, decision record, verification status, and sprint-status row. | `_bmad-output/implementation-artifacts/post-epic-10-r10a3-hub-group-authorization-decision.md` | None. | Decision path was `enforce-tenant-claims`; story records source/test changes and verification. |
+| R10-A4 | `epic-10-retro-2026-05-01.md` §9 | Reconcile planning artifacts with colon-scoped group and actor IDs | Architect / Tech Writer | Medium | done | `rg -n` over current PRD/epics for `{ProjectionType}-{TenantId}`, `{ProjectionType}:{TenantId}`, and query route wording. | `_bmad-output/planning-artifacts/prd.md`; `_bmad-output/planning-artifacts/epics.md`; `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-01-epic-10-retro-cleanup.md` | None. | Current PRD/epics use colon-scoped ETag actor/group wording. Historical proposal text is retained as the record of the correction. |
+| R10-A5 | `epic-10-retro-2026-05-01.md` §9 | Document client reconnect responsibilities | Tech Writer / QA | Medium | done | Inspected R10-A5 story, docs references, sample guide, and sprint-status row. | `_bmad-output/implementation-artifacts/post-epic-10-r10a5-client-reconnect-guidance.md`; `docs/reference/query-api.md`; `docs/guides/sample-blazor-ui.md` | None. | Client reconnect responsibilities and signal-only boundaries are documented; helper limitation is explicitly recorded. |
+| R10-A6 | `epic-10-retro-2026-05-01.md` §9 | Define operational evidence for SignalR latency and delivery reliability | QA / DevOps | Medium | done | Inspected R10-A6 story, operations doc, reusable template, and sprint-status row. | `_bmad-output/implementation-artifacts/post-epic-10-r10a6-signalr-operational-evidence-pattern.md`; `docs/operations/signalr-operational-evidence.md`; `_bmad-output/test-artifacts/signalr-operational-evidence-template.md` | None. | SignalR evidence pattern is done, including p99 rules, failure classification, storage/redaction guidance, and deferred instrumentation gaps. |
+| R10-A7 | `epic-10-retro-2026-05-01.md` §9 | Review Redis deployment isolation and channel-prefix policy | Architect / DevOps | Medium | done | Inspected R10-A7 story, Redis isolation operations doc, configuration docs, deferred-work entry, and sprint-status row. | `_bmad-output/implementation-artifacts/post-epic-10-r10a7-redis-channel-isolation-policy.md`; `docs/operations/redis-signalr-channel-isolation.md` | None. | Primary policy is `separate-redis-per-isolation-boundary`; shared Redis is exception-only with `channelPrefix=...`. |
+| R10-A8 | `epic-10-retro-2026-05-01.md` §9 | Convert prior retro follow-through into explicit backlog tracking | Bob / Jerome | Medium | done | This story inspected Epic 9/Epic 10 retrospectives, sprint status, owning story artifacts, planning docs, docs, test artifacts, release workflow, and remote tags. | `_bmad-output/implementation-artifacts/post-epic-10-r10a8-r9-r10-follow-through-tracking.md` | Move this story to review for code review signoff, then mark R10-A8 done after review. | This table has exactly 16 action rows and leaves unresolved R9 confidence items visible as `needs-new-tracking`. |
+
+### Reusable Follow-Through Pattern
+
+Future retrospective follow-through is complete only when each action item has these minimum fields before closure: source ID, source file/section, original action text, source owner, source priority, current disposition from the approved enum, direct evidence inspected, stable evidence link, residual risk, and next action.
+
+Use `done` only when direct artifact evidence proves the original action. Use `in-progress`, `ready-for-dev`, or `backlog` when a visible owning story/status row already exists. Use `needs-new-tracking` when evidence is missing and no owner-backed non-action decision exists. Use `accepted-non-action` or `superseded` only with dated owner/role, rationale, residual risk, and revisit trigger.
 
 ### Debug Log References
 
-To be filled by dev agent.
+- Workflow customization resolved with `python3 _bmad/scripts/resolve_customization.py --skill .agents/skills/bmad-dev-story --key workflow`; no prepend/append hooks and no project-context file found.
+- Baseline HEAD for this story run: `e344b79aaee65f641dd67662b31cb63e9fbd4be5`; story row was `ready-for-dev` before being moved to `in-progress`.
+- Loaded full `_bmad-output/implementation-artifacts/sprint-status.yaml` and confirmed the requested key was `ready-for-dev` before work started.
+- Loaded Epic 9 and Epic 10 retrospectives and extracted R9-A1..R9-A8 and R10-A1..R10-A8 from their original action-item tables.
+- Loaded owning R10/R11 story artifacts: R11-A3, R11-A4, R10-A2, R10-A3, R10-A5, R10-A6, and R10-A7.
+- Evidence commands included `rg` searches for ETag/304/stale proof, query topology terms, planning separator/API wording, story status drift, release governance, `IQueryResponse`, and query latency NFR evidence.
+- Release evidence command: `git tag --list "v*"; git ls-remote --tags origin "v*"` found local `v0.0.0` plus local/remote release tags through `v3.5.0`, but no remote `v0.0.0`.
+- Validation discovery found `.github/workflows/docs-validation.yml` using `npx markdownlint-cli2` and lychee; package scripts do not define a single local docs command.
 
 ### Completion Notes List
 
-To be filled by dev agent.
+- Built the required 16-row reconciliation table covering R9-A1..R9-A8 and R10-A1..R10-A8 with the exact disposition enum.
+- Reconciled R10 routing: R10-A1 through R10-A7 are now visible and closed by their owning story artifacts; R10-A8 is closed by this table and retro annotations at dev handoff.
+- Classified unresolved R9 confidence gaps honestly as `needs-new-tracking`: HTTP stale-ETag proof, Aspire query-cache topology proof, inherited story-status drift, release governance evidence, and query latency evidence pattern.
+- Classified R9-A3, R9-A6, and R9-A7 as `done` with direct planning, story, documentation, and pattern evidence.
+- Appended dated follow-through annotations to Epic 9 and Epic 10 retrospectives without deleting or rewriting the original action tables.
+- Added a reusable follow-through pattern inside this BMAD story artifact for future retrospective closure.
+- Validation passed for markdown linting, link discovery, 16-row table count, unchecked task scan, and sprint-status structural checks. Product tests were not run because only BMAD Markdown/YAML artifacts changed.
 
 ### File List
 
-To be filled by dev agent.
+- `_bmad-output/implementation-artifacts/post-epic-10-r10a8-r9-r10-follow-through-tracking.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/implementation-artifacts/epic-9-retro-2026-04-30.md`
+- `_bmad-output/implementation-artifacts/epic-10-retro-2026-05-01.md`
 
 ## Party-Mode Review
 
@@ -200,21 +239,21 @@ To be filled by dev agent.
 - Command/skill invocation used: `/bmad-party-mode post-epic-10-r10a8-r9-r10-follow-through-tracking; review;`
 - Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), Paige (Technical Writer)
 - Findings summary:
-  - All reviewers recommended `needs-story-update`, not `blocked`.
-  - The main risk is false closure: R9/R10 follow-through could make unresolved confidence work look complete if evidence and disposition rules remain vague.
-  - The story needed a mandatory table schema, exact disposition vocabulary, direct evidence sufficiency rules, bounded sprint-status edits, explicit R10-A5/R10-A6/R10-A7 non-absorption, and validation fallback guidance.
-  - Accessibility/localization risk is not a UI concern for this story; adopter experience is discoverability through stable anchors, plain-language rationale, and useful owner/next-action fields.
+    - All reviewers recommended `needs-story-update`, not `blocked`.
+    - The main risk is false closure: R9/R10 follow-through could make unresolved confidence work look complete if evidence and disposition rules remain vague.
+    - The story needed a mandatory table schema, exact disposition vocabulary, direct evidence sufficiency rules, bounded sprint-status edits, explicit R10-A5/R10-A6/R10-A7 non-absorption, and validation fallback guidance.
+    - Accessibility/localization risk is not a UI concern for this story; adopter experience is discoverability through stable anchors, plain-language rationale, and useful owner/next-action fields.
 - Changes applied:
-  - Made the reconciliation table header mandatory and required exactly 16 action rows.
-  - Reaffirmed the closed disposition enum and forbade alternate labels.
-  - Added direct closure-evidence rules and minimum evidence standards for `done`, tracked statuses, `superseded`, and `needs-new-tracking`.
-  - Tightened the no-hidden-feature-work boundary to exclude runtime proofs, tests, benchmarks, APIs, runtime checks, governance mechanisms, product code, and query/SignalR behavior changes.
-  - Clarified that R10-A5, R10-A6, and R10-A7 remain visible in the table but stay owned by their separate story rows.
-  - Bounded sprint-status edits and added markdown/link validation fallback expectations.
-  - Defined the reusable follow-through pattern as a short checklist/section rather than a new framework or tool change.
+    - Made the reconciliation table header mandatory and required exactly 16 action rows.
+    - Reaffirmed the closed disposition enum and forbade alternate labels.
+    - Added direct closure-evidence rules and minimum evidence standards for `done`, tracked statuses, `superseded`, and `needs-new-tracking`.
+    - Tightened the no-hidden-feature-work boundary to exclude runtime proofs, tests, benchmarks, APIs, runtime checks, governance mechanisms, product code, and query/SignalR behavior changes.
+    - Clarified that R10-A5, R10-A6, and R10-A7 remain visible in the table but stay owned by their separate story rows.
+    - Bounded sprint-status edits and added markdown/link validation fallback expectations.
+    - Defined the reusable follow-through pattern as a short checklist/section rather than a new framework or tool change.
 - Findings deferred:
-  - Dev-story execution must decide item-by-item whether missing R9/R10 evidence creates a new tracking story, remains routed to an existing story, or requires an accepted non-action decision.
-  - Runtime proof, latency benchmark, enforcement, release-governance redesign, and R10-A5/R10-A6/R10-A7 readiness decisions remain outside this tracking story unless routed as separate follow-up.
+    - Dev-story execution must decide item-by-item whether missing R9/R10 evidence creates a new tracking story, remains routed to an existing story, or requires an accepted non-action decision.
+    - Runtime proof, latency benchmark, enforcement, release-governance redesign, and R10-A5/R10-A6/R10-A7 readiness decisions remain outside this tracking story unless routed as separate follow-up.
 - Final recommendation: `ready-for-dev`
 
 ## Advanced Elicitation
@@ -225,29 +264,37 @@ To be filled by dev agent.
 - Batch 1 method names: Self-Consistency Validation; Red Team vs Blue Team; Security Audit Personas; Failure Mode Analysis; Comparative Analysis Matrix
 - Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Occam's Razor Application; First Principles Analysis; 5 Whys Deep Dive; Lessons Learned Extraction
 - Findings summary:
-  - The main residual risk is false closure from weak evidence links, inferred ownership, or treating a related done story as proof without direct action-item coverage.
-  - The story needed stronger guidance for missing owner/priority fields, negative search evidence, conflicting artifact/status sources, and validator discovery.
-  - Scope remained appropriate as a tracking story; runtime proof, benchmark, release-governance redesign, and feature changes remain outside this story unless routed to separate work.
+    - The main residual risk is false closure from weak evidence links, inferred ownership, or treating a related done story as proof without direct action-item coverage.
+    - The story needed stronger guidance for missing owner/priority fields, negative search evidence, conflicting artifact/status sources, and validator discovery.
+    - Scope remained appropriate as a tracking story; runtime proof, benchmark, release-governance redesign, and feature changes remain outside this story unless routed to separate work.
 - Changes applied:
-  - Required exact source-field preservation in the 16-row reconciliation table and forbade invented owner/priority values.
-  - Strengthened `Evidence inspected` and `Evidence link` rules so closure claims cite stable artifacts, sections, commands, search patterns, or commits.
-  - Added conflict-handling guidance to use the least-advanced defensible disposition when story artifacts, sprint status, and retrospectives disagree.
-  - Required validator-discovery command/result recording before using automated or manual markdown/link validation.
-  - Added baseline-date, later-commit, and negative-search rules to the reconciliation guidance.
-  - Tightened the reusable follow-through pattern to the minimum fields needed for repeatable retro closure.
+    - Required exact source-field preservation in the 16-row reconciliation table and forbade invented owner/priority values.
+    - Strengthened `Evidence inspected` and `Evidence link` rules so closure claims cite stable artifacts, sections, commands, search patterns, or commits.
+    - Added conflict-handling guidance to use the least-advanced defensible disposition when story artifacts, sprint status, and retrospectives disagree.
+    - Required validator-discovery command/result recording before using automated or manual markdown/link validation.
+    - Added baseline-date, later-commit, and negative-search rules to the reconciliation guidance.
+    - Tightened the reusable follow-through pattern to the minimum fields needed for repeatable retro closure.
 - Findings deferred:
-  - Dev-story execution must classify each R9/R10 row against actual artifacts and decide whether any unresolved item needs new tracking.
-  - Any runtime proof, query/SignalR implementation, latency benchmark, release-governance redesign, or R10-A5/R10-A6/R10-A7 readiness decision remains outside this tracking story.
+    - Dev-story execution must classify each R9/R10 row against actual artifacts and decide whether any unresolved item needs new tracking.
+    - Any runtime proof, query/SignalR implementation, latency benchmark, release-governance redesign, or R10-A5/R10-A6/R10-A7 readiness decision remains outside this tracking story.
 - Final recommendation: `ready-for-dev`
 
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-03 | 1.0 | Reconciled R9/R10 action items, appended retro annotations, recorded reusable follow-through pattern, and moved story to review. | GPT-5 Codex |
 | 2026-05-03 | 0.3 | Advanced elicitation hardened evidence links, conflict handling, validation discovery, and follow-through field rules. | Codex automation |
 | 2026-05-03 | 0.2 | Applied party-mode review hardening for evidence, disposition, scope, and validation rules. | Codex automation |
 | 2026-05-02 | 0.1 | Created ready-for-dev R10-A8 R9/R10 follow-through tracking story. | Codex automation |
 
 ## Verification Status
 
-Story creation only. R9/R10 reconciliation, tracking artifact updates, and validation are intentionally deferred to `bmad-dev-story`.
+Implementation complete. Validation results:
+
+- `npx --yes markdownlint-cli2 "_bmad-output/implementation-artifacts/post-epic-10-r10a8-r9-r10-follow-through-tracking.md" "_bmad-output/implementation-artifacts/epic-9-retro-2026-04-30.md" "_bmad-output/implementation-artifacts/epic-10-retro-2026-05-01.md"`: passed, 0 errors.
+- `npx --yes markdown-link-check "_bmad-output/implementation-artifacts/post-epic-10-r10a8-r9-r10-follow-through-tracking.md"`: passed, no hyperlinks found.
+- Reconciliation table structural check: passed, exactly 16 R9/R10 action rows.
+- Task checkbox scan: passed, 0 unchecked task boxes.
+- Sprint-status structural check: passed before final status move; R10-A8 row present and `last_updated` present.
+- Product tests: not run; this story changed only BMAD Markdown/YAML tracking artifacts.
