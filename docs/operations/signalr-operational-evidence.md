@@ -132,6 +132,12 @@ Current repository gap: `src/Hexalith.EventStore.ServiceDefaults/Extensions.cs` 
 
 Route Redis isolation or channel-prefix policy questions to `post-epic-10-r10a7-redis-channel-isolation-policy`. Route query/UI round-trip proof to `post-epic-11-r11a3-apphost-projection-proof` or `post-epic-11-r11a4-valid-projection-round-trip`.
 
+For any proof that uses a Redis SignalR backplane, also apply the
+[Redis SignalR Channel Isolation Policy](redis-signalr-channel-isolation.md).
+Record whether Redis is dedicated or shared, the redacted endpoint identity,
+database/index when used, the effective channel-prefix decision, the deploy-time
+owner, and a different-prefix negative/control case when practical.
+
 ## Reliability Controls
 
 Every run must include at least one false-positive prevention control appropriate to the proof shape:

@@ -28,7 +28,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-03T00:00:00+00:00' # R10-A6 done: code review applied 12 patches + 2 decision-needed resolutions; 4 follow-ups deferred
+last_updated: '2026-05-03T00:00:00+00:00' # R10-A7 done: code-review patches applied (1 HIGH precedence-rewrite + 7 MEDIUM + 14 LOW), 4 deferred
 project: Hexalith.EventStore
 project_key: NOKEY
 tracking_system: file-system
@@ -128,7 +128,7 @@ development_status:
   post-epic-10-r10a3-hub-group-authorization-decision: done
   post-epic-10-r10a5-client-reconnect-guidance: done
   post-epic-10-r10a6-signalr-operational-evidence-pattern: done
-  post-epic-10-r10a7-redis-channel-isolation-policy: ready-for-dev
+  post-epic-10-r10a7-redis-channel-isolation-policy: done
   post-epic-10-r10a8-r9-r10-follow-through-tracking: ready-for-dev
 
   # Epic 11: Server-Managed Projection Builder

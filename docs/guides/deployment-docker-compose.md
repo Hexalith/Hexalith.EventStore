@@ -167,6 +167,7 @@ To adapt the generated compose file for production deployment:
 4. **Configure external OIDC** instead of Keycloak (see [deploy/README.md](../../deploy/README.md#external-oidc-configuration-for-production) for environment variables)
 5. **Remove the dashboard** service for production deployments
 6. **Set secrets** via `.env` file (excluded from source control) or Docker secrets
+7. **Review SignalR Redis isolation** before running more than one EventStore replica. Use a dedicated Redis backplane per isolation boundary, or set a safe `channelPrefix=...` only for an approved shared-Redis exception. See [Redis SignalR Channel Isolation](../operations/redis-signalr-channel-isolation.md).
 
 ## Deploy the Application
 
@@ -317,6 +318,11 @@ SAMPLE_IMAGE=hexalith-sample:latest
 REDIS_HOST=redis:6379
 REDIS_PASSWORD=
 
+# Optional SignalR Redis backplane for multi-instance EventStore deployments.
+# Prefer a dedicated Redis endpoint per environment/application boundary.
+# If Redis is shared, include a non-empty sanitized channelPrefix value.
+EVENTSTORE_SIGNALR_REDIS=redis-signalr:6379,channelPrefix=hesr.local.eventstore.compose
+
 # Keycloak (if enabled)
 AUTH_AUTHORITY=http://keycloak:8080/realms/hexalith
 ```
@@ -381,6 +387,33 @@ $ docker compose restart eventstore-dapr eventstore-admin-dapr sample-dapr
 ```
 
 For per-backend environment variables and connection string formats, see [deploy/README.md](../../deploy/README.md#per-backend-configuration).
+
+### SignalR Redis Backplane Isolation
+
+The Redis configured in DAPR component YAML is for EventStore state, pub/sub,
+and configuration components. The SignalR Redis backplane is configured
+separately by `EventStore:SignalR:BackplaneRedisConnectionString` or
+`EVENTSTORE_SIGNALR_REDIS`.
+
+Docker Compose deployments that scale `eventstore` beyond one replica need a
+SignalR backplane if all replicas must distribute projection-change signals.
+For production-like Docker Compose, prefer a Redis endpoint dedicated to the
+environment/application boundary:
+
+```bash
+EVENTSTORE_SIGNALR_REDIS=redis-signalr:6379
+```
+
+When the same Redis server is intentionally shared by multiple EventStore
+boundaries, add a sanitized StackExchange.Redis channel prefix:
+
+```bash
+EVENTSTORE_SIGNALR_REDIS=redis-shared:6379,channelPrefix=hesr.test.eventstore.compose
+```
+
+Do not use the prefix as tenant authorization. Hub authorization, query
+authorization, JWT claims, and DAPR access control still enforce tenant access.
+Record runtime evidence according to [Redis SignalR Channel Isolation](../operations/redis-signalr-channel-isolation.md).
 
 ## Where Is My Data?
 

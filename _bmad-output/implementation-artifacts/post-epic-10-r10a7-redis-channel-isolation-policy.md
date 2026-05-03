@@ -1,6 +1,6 @@
 # Post-Epic-10 R10-A7: Redis Channel Isolation Policy
 
-Status: ready-for-dev
+Status: done
 
 <!-- Source: epic-10-retro-2026-05-01.md R10-A7 -->
 <!-- Source: sprint-change-proposal-2026-05-01-epic-10-retro-cleanup.md Proposal 7 -->
@@ -74,40 +74,79 @@ Current HEAD at story creation: `e76adff`.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline policy and code inspection (AC: #1, #2, #3, #8, #10)
-  - [ ] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
-  - [ ] 0.2 Inspect `SignalROptions`, `SignalRServiceCollectionExtensions`, `Program.cs`, AppHost SignalR wiring, and the R10-A2 runtime proof endpoints.
-  - [ ] 0.3 Record whether `channelPrefix=...` already works through the existing connection string parse path and whether a first-class EventStore option exists.
-  - [ ] 0.4 Review deployment/publish docs for shared Redis assumptions, environment naming, and secret-redaction guidance.
-  - [ ] 0.5 Add a decision record before source changes choosing one primary policy path, naming boundary tuple, deploy-time owner, evidence location, residual risk, and revisit trigger.
+- [x] Task 0: Baseline policy and code inspection (AC: #1, #2, #3, #8, #10)
+  - [x] 0.1 Record current HEAD SHA and confirm this story is still `ready-for-dev`.
+  - [x] 0.2 Inspect `SignalROptions`, `SignalRServiceCollectionExtensions`, `Program.cs`, AppHost SignalR wiring, and the R10-A2 runtime proof endpoints.
+  - [x] 0.3 Record whether `channelPrefix=...` already works through the existing connection string parse path and whether a first-class EventStore option exists.
+  - [x] 0.4 Review deployment/publish docs for shared Redis assumptions, environment naming, and secret-redaction guidance.
+  - [x] 0.5 Add a decision record before source changes choosing one primary policy path, naming boundary tuple, deploy-time owner, evidence location, residual risk, and revisit trigger.
 
-- [ ] Task 1: Document the production isolation policy (AC: #2, #3, #4, #6, #7, #10, #11)
-  - [ ] 1.1 Define the isolation boundary and whether Redis must be separate per boundary or may be shared with a prefix.
-  - [ ] 1.2 If shared Redis is allowed, define the required prefix format and examples for local, test, staging, and production.
-  - [ ] 1.3 Explain that prefixes protect SignalR pub/sub channel separation only and do not replace auth or query authorization.
-  - [ ] 1.4 Add operational evidence requirements for endpoint identity, prefix evidence, positive delivery, negative/control isolation, and fail-open behavior.
-  - [ ] 1.5 Add a policy decision table covering dedicated Redis per boundary, shared Redis with required prefix, and shared Redis with accepted risk.
-  - [ ] 1.6 Add secret-redaction rules and sanitized examples for evidence and docs.
+- [x] Task 1: Document the production isolation policy (AC: #2, #3, #4, #6, #7, #10, #11)
+  - [x] 1.1 Define the isolation boundary and whether Redis must be separate per boundary or may be shared with a prefix.
+  - [x] 1.2 If shared Redis is allowed, define the required prefix format and examples for local, test, staging, and production.
+  - [x] 1.3 Explain that prefixes protect SignalR pub/sub channel separation only and do not replace auth or query authorization.
+  - [x] 1.4 Add operational evidence requirements for endpoint identity, prefix evidence, positive delivery, negative/control isolation, and fail-open behavior.
+  - [x] 1.5 Add a policy decision table covering dedicated Redis per boundary, shared Redis with required prefix, and shared Redis with accepted risk.
+  - [x] 1.6 Add secret-redaction rules and sanitized examples for evidence and docs.
 
-- [ ] Task 2: Implement first-class prefix support only if required (AC: #5, #9)
-  - [ ] 2.1 Add a narrow `BackplaneRedisChannelPrefix` option only if the decision record requires it and the existing raw configuration path cannot safely satisfy the selected policy.
-  - [ ] 2.2 Apply the value to `ConfigurationOptions.ChannelPrefix` before registering the Redis backplane.
-  - [ ] 2.3 Preserve `AbortOnConnectFail = false` exactly.
-  - [ ] 2.4 Validate null/empty/invalid prefix values according to the selected policy without breaking local single-app no-prefix development unless the policy explicitly forbids it.
-  - [ ] 2.5 Keep the existing `BackplaneRedisConnectionString` and `EVENTSTORE_SIGNALR_REDIS` behavior compatible.
-  - [ ] 2.6 Document and test precedence or conflict behavior if both raw `channelPrefix=` and an EventStore-owned prefix option are present.
+- [x] Task 2: Implement first-class prefix support only if required (AC: #5, #9)
+  - [x] 2.1 Add a narrow `BackplaneRedisChannelPrefix` option only if the decision record requires it and the existing raw configuration path cannot safely satisfy the selected policy.
+  - [x] 2.2 Apply the value to `ConfigurationOptions.ChannelPrefix` before registering the Redis backplane.
+  - [x] 2.3 Preserve `AbortOnConnectFail = false` exactly. **N/A under docs-only path:** no source diff under `src/Hexalith.EventStore/SignalRHub/`; the existing `SignalRServiceCollectionExtensions.ConfigureBackplane` setting is preserved trivially because nothing was changed.
+  - [x] 2.4 Validate null/empty/invalid prefix values according to the selected policy without breaking local single-app no-prefix development unless the policy explicitly forbids it.
+  - [x] 2.5 Keep the existing `BackplaneRedisConnectionString` and `EVENTSTORE_SIGNALR_REDIS` behavior compatible.
+  - [x] 2.6 Document and test precedence or conflict behavior if both raw `channelPrefix=` and an EventStore-owned prefix option are present. **N/A under docs-only path:** no first-class `BackplaneRedisChannelPrefix` option exists, so there is no precedence-or-conflict behavior to test. Precedence between `BackplaneRedisConnectionString` and `EVENTSTORE_SIGNALR_REDIS` is documented in `docs/guides/configuration-reference.md` and `docs/operations/redis-signalr-channel-isolation.md`.
 
-- [ ] Task 3: Tests and proof guidance (AC: #7, #8, #9)
-  - [ ] 3.1 If source changes are made, add focused tests for option binding/validation, missing-prefix failure under required-prefix policy, accepted-risk/no-prefix behavior when selected, redaction behavior, and Redis configuration output.
-  - [ ] 3.2 If runtime proof evidence is touched, add only prefix/effective-config evidence needed by the chosen policy and prove the setting reaches the actual SignalR Redis backplane configuration.
-  - [ ] 3.3 Record different-prefix negative/control guidance without requiring a full R10-A2 proof rerun unless the source change affects runtime behavior.
-  - [ ] 3.4 If docs only change, run markdown/link validation when available and record the result.
+- [x] Task 3: Tests and proof guidance (AC: #7, #8, #9)
+  - [x] 3.1 If source changes are made, add focused tests for option binding/validation, missing-prefix failure under required-prefix policy, accepted-risk/no-prefix behavior when selected, redaction behavior, and Redis configuration output.
+  - [x] 3.2 If runtime proof evidence is touched, add only prefix/effective-config evidence needed by the chosen policy and prove the setting reaches the actual SignalR Redis backplane configuration.
+  - [x] 3.3 Record different-prefix negative/control guidance without requiring a full R10-A2 proof rerun unless the source change affects runtime behavior.
+  - [x] 3.4 If docs only change, run markdown/link validation when available and record the result.
 
-- [ ] Task 4: Bookkeeping and verification (AC: #9, #12)
-  - [ ] 4.1 Update the Dev Agent Record with decision owner/role, chosen policy, and evidence reviewed.
-  - [ ] 4.2 Update File List, Change Log, and Verification Status.
-  - [ ] 4.3 Move only this story and its sprint-status row to `review` at dev handoff.
-  - [ ] 4.4 At code-review signoff, move only this story and its sprint-status row to `done`.
+- [x] Task 4: Bookkeeping and verification (AC: #9, #12)
+  - [x] 4.1 Update the Dev Agent Record with decision owner/role, chosen policy, and evidence reviewed.
+  - [x] 4.2 Update File List, Change Log, and Verification Status.
+  - [x] 4.3 Move only this story and its sprint-status row to `review` at dev handoff.
+  - [x] 4.4 At code-review signoff, move only this story and its sprint-status row to `done`.
+
+### Review Findings
+
+Code review run: 2026-05-03 via `bmad-code-review` (Blind Hunter, Edge Case Hunter, Acceptance Auditor). Acceptance Auditor: all 12 ACs MET. Adversarial layers found internal inconsistencies and overstated claims requiring patches before `done`.
+
+**HIGH / MEDIUM patches:**
+
+- [x] [Review/Patch] Precedence claim for `BackplaneRedisConnectionString` vs `EVENTSTORE_SIGNALR_REDIS` is wrong [`docs/guides/configuration-reference.md:447-451`, `docs/operations/redis-signalr-channel-isolation.md:43-45`] — Doc says "EventStore key wins because it supplies the entire connection string." Actual code is `options.BackplaneRedisConnectionString ?? Environment.GetEnvironmentVariable("EVENTSTORE_SIGNALR_REDIS")` (`SignalRServiceCollectionExtensions.cs:46-47`). The env-var path is a `??` fallback, not a peer; standard ASP.NET configuration providers (e.g. `EventStore__SignalR__BackplaneRedisConnectionString`) override both. Rewrite the precedence text to describe the actual cascade and note `ValidateSignalROptions` rejecting whitespace.
+- [x] [Review/Patch] AppHost SignalR enablement is unconditional, not Blazor-gated [`src/Hexalith.EventStore.AppHost/Program.cs:110` vs `docs/operations/redis-signalr-channel-isolation.md:47-49` and Dev Agent Record line 241] — Code is `eventStore.WithEnvironment("EventStore__SignalR__Enabled", "true")` with no `if`. Correct the policy doc and Debug Log claim.
+- [x] [Review/Patch] Operator decision-table cell undersells shared-Redis prefix rules [`docs/operations/redis-signalr-channel-isolation.md` operator decision table] — Row "shared-redis-with-required-channel-prefix" requires only "non-empty `channelPrefix=...`", but the Channel Prefix Requirements section mandates lowercase `a-z 0-9 . -`, ≤96 chars, env+app scoped. Tighten the cell to reference the full grammar.
+- [x] [Review/Patch] "Fail-open when Redis unavailable or misconfigured" is overstated [`docs/operations/redis-signalr-channel-isolation.md:143-150`] — `AbortOnConnectFail = false` only governs runtime connection loss. `ConfigurationOptions.Parse` throws synchronously on a malformed string and crashes startup. Qualify the claim ("connection loss" only, not "misconfiguration") or document the parse-failure path.
+- [x] [Review/Patch] Empty-string `channelPrefix=` silently accepted by `ConfigurationOptions.Parse` [`docs/operations/redis-signalr-channel-isolation.md` prefix requirements] — Policy says "non-empty after trim" but no startup validator enforces this for the parsed prefix. Add an explicit "no enforcement; deploy-time discipline only — empty value falls back to no prefix" warning.
+- [x] [Review/Patch] Case-sensitivity not made normative [`docs/operations/redis-signalr-channel-isolation.md` prefix grammar] — "lowercase" reads as style. Redis pub/sub channel names are byte-exact, so `hesr.PROD…` and `hesr.prod…` are different boundaries. State this explicitly as correctness, not style.
+- [x] [Review/Patch] AC #11 redaction guidance does not name `ConfigurationOptions.ToString()` in the published policy [`docs/operations/redis-signalr-channel-isolation.md` redaction] — Spec AC #11 calls it out; the published doc only lists generic "no JWT/bearer/connection string password". Carry the specific API name forward, since the existing R10-A2 runtime proof emits this output.
+- [x] [Review/Patch] Story Tasks 2.6 (`Document and test precedence or conflict behavior`) and 2.3 (`Preserve AbortOnConnectFail = false exactly`) are `[x]` despite no source change and no SignalR test run — Annotate both as N/A under the docs-only path with rationale (no first-class option exists → no precedence to test; no source diff under `src/SignalRHub/` → preserved trivially).
+
+**LOW patches:**
+
+- [x] [Review/Patch] Tenant-lane example `hesr.prod.eventstore.tenant-lane-a` collides with the cluster slot in the format `hesr.<env>.<app>[.<cluster>][.<lane>]` [`docs/operations/redis-signalr-channel-isolation.md` examples] — Position 4 is documented as `cluster-or-namespace-alias`; example uses tenant-lane there with no cluster. Either make slots explicitly delimited or change the example.
+- [x] [Review/Patch] 96-char cap unsourced [`docs/operations/redis-signalr-channel-isolation.md` prefix grammar] — No reference to a Redis or SignalR limit. Cite source, drop the cap, or downgrade to advisory.
+- [x] [Review/Patch] "Affected environments: Local development …" contradicts the local single-app exception in the same doc [`docs/operations/redis-signalr-channel-isolation.md` Decision Record] — Refine wording to "boundaries covered (where prefix discipline applies)".
+- [x] [Review/Patch] `docs/index.md` routes the new policy under `## Guides` though target path is `operations/...` and ordering breaks [`docs/index.md:42`] — Either add a `## Operations` section or relocate the doc to `docs/guides/`.
+- [x] [Review/Patch] Story Decision Record has duplicated `Redis Isolation Decision Evidence` line right under H3 [`post-epic-10-r10a7-redis-channel-isolation-policy.md` Dev Agent Record §Decision Record] — Paste artifact; remove the redundant line.
+- [x] [Review/Patch] ACA / Kubernetes shared-Redis examples embed `password=<redacted>` literal inside connection-string copy-paste payloads [`docs/guides/deployment-azure-container-apps.md:302`, `docs/guides/deployment-kubernetes.md:404`] — Operators copy-paste secret payloads; mixing redaction syntax with literal example syntax is a footgun. Switch to `password=$REDIS_PASSWORD` or annotate the literal as a placeholder.
+- [x] [Review/Patch] Verification Status note "passed after escaping a pre-existing inline placeholder" is untraceable [story §Verification Status] — Name the markdownlint rule id (e.g. MD033/MD038) and the file:line that was escaped.
+- [x] [Review/Patch] Accepted-risk row promises "owner-approved exception record" with no schema or location [`docs/operations/redis-signalr-channel-isolation.md` operator decision table] — Specify where the exception record lives and required fields.
+- [x] [Review/Patch] Normative policy uses "should/may" in places where the title is "Policy" [`docs/operations/redis-signalr-channel-isolation.md` various] — Upgrade to MUST/MUST NOT or rename the doc to "Guidance".
+- [x] [Review/Patch] `EventStore:SignalR` options table omits `MaxGroupsPerConnection` constraints and the empty-string rejection in `ValidateSignalROptions` [`docs/guides/configuration-reference.md` SignalR options table] — Operators trying `BackplaneRedisConnectionString=""` to disable the backplane will hit an undocumented startup failure.
+- [x] [Review/Patch] Decision table requires "collision check" evidence with no procedure [`docs/operations/redis-signalr-channel-isolation.md` decision table] — Add a 1-2-line algorithm (prefix registry, MONITOR/CLIENT LIST inspection, etc.).
+- [x] [Review/Patch] "Local single-app development" carve-out never defined [`docs/operations/redis-signalr-channel-isolation.md` exemptions] — Distinguish single AppHost on dev box from parallel local instances sharing the same local Redis.
+- [x] [Review/Patch] Tenant-prefix examples (`tenant-lane-a`) invite real tenant-ID leak [`docs/operations/redis-signalr-channel-isolation.md` examples] — Add explicit "MUST NOT use real tenant identifiers" warning aligned with AC #11 redaction rules.
+- [x] [Review/Patch] Deferred-work entry for `BackplaneRedisChannelPrefix` does not name `SignalROptions`/`ValidateSignalROptions` or restate AC #5 precedence-fail invariant [`_bmad-output/implementation-artifacts/deferred-work.md` R10-A7 entry] — A future implementer reading the entry alone cannot reconstruct the AC #5 invariant.
+
+**Deferred (not blockers; pre-existing or out of docs-only scope):**
+
+- [x] [Review/Defer] Sprint-status `last_updated` does not advance same-day [`sprint-status.yaml`] — repo-wide timestamp-precision convention question.
+- [x] [Review/Defer] Lifecycle `ready-for-dev → review` skipped a recorded `in-progress` transition in YAML [`sprint-status.yaml`] — repo-wide audit-trail concern, already flagged on a prior story.
+- [x] [Review/Defer] No automated check that canonical policy literals appear in the canonical location [`docs/operations/redis-signalr-channel-isolation.md`] — out of docs-only scope; tooling effort.
+- [x] [Review/Defer] Multi-AppHost CI lane same-prefix collision derivation policy [`docs/operations/redis-signalr-channel-isolation.md` boundary tuple] — needs design (env var? hash? lane-id) before encoding into the doc.
 
 ## Dev Notes
 
@@ -214,23 +253,53 @@ Redis Isolation Decision Evidence
 
 ### Agent Model Used
 
-To be filled by dev agent.
+GPT-5 Codex
 
 ### Decision Record
 
-To be filled by dev agent before source changes. Required value: `separate-redis-per-isolation-boundary`, `shared-redis-with-required-channel-prefix`, or `shared-redis-with-accepted-risk`.
+- Date: 2026-05-03
+- Decision: `separate-redis-per-isolation-boundary`
+- Decision owner/role: Platform architect / production DevOps owner
+- Isolation boundaries covered: environment, deployed application/product instance, cluster or namespace when relevant, tenant or tenant lane when Redis is intentionally shared across tenant-isolated runtimes, and test/CI lane when Redis is shared by parallel runs.
+- Redis topology: Production SignalR Redis backplane MUST use a dedicated Redis deployment per isolation boundary. Shared Redis is an exception path only and requires a non-empty StackExchange.Redis `channelPrefix` in the existing `EventStore:SignalR:BackplaneRedisConnectionString` / `EVENTSTORE_SIGNALR_REDIS` connection string.
+- Channel prefix requirement: Not required for local single-app development or dedicated-per-boundary Redis. Required for any approved shared Redis exception outside local single-app development.
+- Prefix source/config key: Existing Redis connection string `channelPrefix=...` parsed by `StackExchange.Redis.ConfigurationOptions.Parse`; no EventStore-specific `BackplaneRedisChannelPrefix` option is added.
+- Deploy-time owner: The environment/platform owner that provisions Redis and supplies EventStore runtime configuration.
+- Redaction note: Evidence must redact credentials, connection strings, unsafe hostnames, tokens, and sensitive tenant identifiers; sanitized prefix values may be recorded because they are configuration metadata, not credentials.
+- Validation performed: Inspected current SignalR options/backplane wiring, AppHost SignalR enablement, runtime proof endpoints, deployment docs, Microsoft SignalR Redis backplane guidance, and StackExchange.Redis `channelPrefix` support.
+- Residual risk: Shared Redis remains dependent on deploy-time configuration discipline; a missing or colliding prefix on a shared Redis exception can leak SignalR pub/sub messages across SignalR apps using that same Redis server.
+- Revisit trigger: Add a first-class EventStore prefix option or startup validation if production deployments repeatedly require shared Redis, if prefix conflicts are observed, or if operators need separate policy enforcement outside the raw Redis connection string.
 
 ### Debug Log References
 
-To be filled by dev agent.
+- Baseline: current HEAD `56f07b75d713c0eb94e329d71ebeac720278eb1e`; sprint row confirmed `ready-for-dev`, then moved to `in-progress`.
+- Aspire baseline: repo AppHost was already running under `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`; Aspire MCP resource list showed the EventStore, sample, admin, Keycloak, state store, and pub/sub resources running and healthy before docs work.
+- Code inspection: `SignalROptions` exposes `Enabled`, `BackplaneRedisConnectionString`, and `MaxGroupsPerConnection`; no EventStore-owned channel-prefix option exists.
+- Code inspection: `ConfigureBackplane()` resolves `BackplaneRedisConnectionString` or `EVENTSTORE_SIGNALR_REDIS`, parses the full StackExchange.Redis connection string, and preserves `AbortOnConnectFail = false`.
+- AppHost inspection: `src/Hexalith.EventStore.AppHost/Program.cs:110` unconditionally sets `EventStore__SignalR__Enabled=true` on the EventStore resource (the line is wired alongside the Blazor UI sample but is not gated on its presence). The AppHost does not provision or configure a Redis SignalR backplane by default.
+- Documentation validation: `npx --yes markdownlint-cli2` passed for all changed docs; `markdown-link-check` passed for the new policy page, configuration reference, deployment guides, docs index, and SignalR operational evidence page.
+- Regression: standard unit-test projects passed individually with `--no-build`: Client (334), Contracts (281), Sample (63), Testing (78).
 
 ### Completion Notes List
 
-To be filled by dev agent.
+- Selected primary production policy `separate-redis-per-isolation-boundary` and documented shared Redis as an approved-exception path requiring `channelPrefix=...` through the existing StackExchange.Redis connection string.
+- Added the canonical Redis SignalR channel isolation policy under `docs/operations/`, including boundary tuple, prefix format, sanitized examples, operator decision table, redaction rules, runtime evidence requirements, and first-class option revisit criteria.
+- Kept source configuration unchanged: no `BackplaneRedisChannelPrefix` option was required because `ConfigurationOptions.Parse(...)` already supports `channelPrefix=...`, and dedicated Redis per boundary is the primary policy.
+- Updated configuration, Docker Compose, Kubernetes, Azure Container Apps, docs index, and SignalR evidence docs with narrow links/routing notes.
+- Added deferred-work tracking for the postponed first-class EventStore prefix option.
 
 ### File List
 
-To be filled by dev agent.
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `_bmad-output/implementation-artifacts/post-epic-10-r10a7-redis-channel-isolation-policy.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/guides/configuration-reference.md`
+- `docs/guides/deployment-azure-container-apps.md`
+- `docs/guides/deployment-docker-compose.md`
+- `docs/guides/deployment-kubernetes.md`
+- `docs/index.md`
+- `docs/operations/redis-signalr-channel-isolation.md`
+- `docs/operations/signalr-operational-evidence.md`
 
 ## Party-Mode Review
 
@@ -258,9 +327,30 @@ To be filled by dev agent.
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-03 | 1.1 | Code-review pass: applied 22 patches (1 HIGH precedence-rewrite + 7 MEDIUM + 14 LOW) addressing internal contradictions, normative wording, fail-open qualification, `ConfigurationOptions.ToString()` redaction warning, accepted-risk record schema, collision-check procedure, lane-id derivation, tenant-prefix safety, and AppHost claim correction. Story moved to `done`. | Claude Opus 4.7 |
+| 2026-05-03 | 1.0 | Implemented Redis SignalR channel isolation policy docs, accepted raw connection-string `channelPrefix` path, deferred first-class option, and moved story to review. | GPT-5 Codex |
 | 2026-05-02 | 0.2 | Party-mode review hardened Redis isolation decision, prefix, evidence, and test constraints. | Codex automation |
 | 2026-05-02 | 0.1 | Created ready-for-dev R10-A7 Redis channel isolation policy story. | Codex automation |
 
 ## Verification Status
 
-Story creation only. Production isolation decision, documentation updates, optional prefix configuration, and verification are intentionally deferred to `bmad-dev-story`.
+Implementation complete and code-review patches applied. Docs/policy-only path selected; no source configuration changes were required.
+
+### Initial dev-handoff verification
+
+- `npx --yes markdownlint-cli2 "docs/operations/redis-signalr-channel-isolation.md" "docs/guides/configuration-reference.md" "docs/guides/deployment-docker-compose.md" "docs/guides/deployment-kubernetes.md" "docs/guides/deployment-azure-container-apps.md" "docs/operations/signalr-operational-evidence.md" "docs/index.md"` — passed.
+- `npx --yes markdownlint-cli2 "_bmad-output/implementation-artifacts/deferred-work.md"` — passed after wrapping the pre-existing `(merged <date>)` placeholder in backticks (markdownlint rule `MD033/no-inline-html`, formerly `_bmad-output/implementation-artifacts/deferred-work.md:283`, now line 287 after the R10-A7 entry was prepended).
+- `npx --yes markdown-link-check` passed for `docs/operations/redis-signalr-channel-isolation.md`, `docs/guides/configuration-reference.md`, `docs/guides/deployment-docker-compose.md`, `docs/guides/deployment-kubernetes.md`, `docs/guides/deployment-azure-container-apps.md`, `docs/operations/signalr-operational-evidence.md`, and `docs/index.md`.
+- `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --no-build` — 334 passed.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-build` — 281 passed.
+- `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj --no-build` — 63 passed.
+- `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj --no-build` — 78 passed.
+
+### Code-review patch pass (2026-05-03)
+
+22 patches applied from the `bmad-code-review` Review Findings (1 HIGH precedence-rewrite, 7 MEDIUM, 14 LOW). 4 items deferred to repo-wide tooling/convention work and recorded in `deferred-work.md`. 0 items dismissed.
+
+- `npx --yes markdownlint-cli2 "docs/operations/redis-signalr-channel-isolation.md" "docs/guides/configuration-reference.md" "docs/guides/deployment-docker-compose.md" "docs/guides/deployment-kubernetes.md" "docs/guides/deployment-azure-container-apps.md" "docs/operations/signalr-operational-evidence.md" "docs/index.md"` — re-ran after patches: 0 errors.
+- `npx --yes markdownlint-cli2 "_bmad-output/implementation-artifacts/deferred-work.md"` — re-ran after the tightened R10-A7 deferred-work entry: 0 errors.
+- `npx --yes markdown-link-check` re-run on all 7 touched docs: all internal anchors and external references resolve (new anchors `#local-single-app-development-defined`, `#required-prefix-shape-non-local-shared-redis`, `#lane-id-derivation`, `#source-change-policy` confirmed).
+- No source code under `src/` was modified during the patch pass; the existing Tier 1 unit-test pass from the initial dev-handoff verification stands.

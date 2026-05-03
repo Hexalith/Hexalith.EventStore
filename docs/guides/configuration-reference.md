@@ -405,6 +405,7 @@ Environment variables configure infrastructure connections and operational behav
 |----------|---------|-------------|
 | `REDIS_HOST` | `"localhost:6379"` | Redis host and port for DAPR components (local development) |
 | `REDIS_PASSWORD` | (empty) | Redis password. Leave empty for local development without auth |
+| `EVENTSTORE_SIGNALR_REDIS` | (empty) | Optional SignalR Redis backplane connection string. Used as the fallback for `EventStore:SignalR:BackplaneRedisConnectionString` only when that option is `null` (see [SignalR Redis Backplane](#signalr-redis-backplane) for the full resolution order). Use `channelPrefix=...` here only for approved shared-Redis SignalR backplane exceptions; prefer a dedicated Redis per isolation boundary. |
 | `POSTGRES_CONNECTION_STRING` | (N/A) | PostgreSQL connection string for production state store |
 | `RABBITMQ_CONNECTION_STRING` | (N/A) | RabbitMQ connection string for production pub/sub |
 | `SUBSCRIBER_APP_ID` | (N/A) | DAPR app-id of the event subscriber service (production pub/sub routing) |
@@ -423,6 +424,46 @@ export DAPR_NAMESPACE="production"
 ```
 
 > **Warning:** Never hardcode secrets in environment variable files committed to source control. Use Kubernetes secrets, Azure Key Vault references, or your platform's secret management for production.
+
+### SignalR Redis Backplane
+
+Configuration section: `EventStore:SignalR`
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `Enabled` | bool | `false` | Enables the `/hubs/projection-changes` SignalR hub and the SignalR projection-change broadcaster. |
+| `BackplaneRedisConnectionString` | string? | `null` | Optional Redis connection string for the SignalR backplane. Must be either `null` (omit the key) or a non-empty value; an empty or whitespace-only value is rejected at startup by `ValidateSignalROptions`. |
+| `MaxGroupsPerConnection` | int (>0) | `50` | Maximum SignalR projection groups a single client connection can join. Must be greater than zero; otherwise startup fails. |
+
+**Resolution order for the SignalR Redis backplane endpoint:**
+
+1. `EventStore:SignalR:BackplaneRedisConnectionString` is bound from any
+   registered `IConfiguration` provider — `appsettings.json`, command-line,
+   user-secrets, and environment variables of the form
+   `EventStore__SignalR__BackplaneRedisConnectionString` (note the double
+   underscores). Standard ASP.NET Core provider precedence applies.
+2. If the bound value is `null`, the server falls back to the
+   `EVENTSTORE_SIGNALR_REDIS` process environment variable, read directly via
+   `Environment.GetEnvironmentVariable`.
+3. If both inputs in step 1 and step 2 are `null`/unset, the SignalR backplane
+   is disabled (single-instance mode).
+
+There is no startup validation of the parsed StackExchange.Redis
+`channelPrefix=...` value beyond what StackExchange.Redis itself parses. An
+empty `channelPrefix=` segment in a connection string is silently treated as
+no prefix.
+
+For production, prefer a dedicated Redis deployment per SignalR isolation
+boundary. If an approved shared-Redis exception is used, set
+`channelPrefix=...` in the existing Redis connection string:
+
+```bash
+EventStore__SignalR__Enabled=true
+EventStore__SignalR__BackplaneRedisConnectionString="redis-shared:6379,channelPrefix=hesr.test.eventstore.blue"
+```
+
+The connection string is parsed by StackExchange.Redis, so `channelPrefix` is
+available without a separate EventStore option. See [Redis SignalR Channel Isolation](../operations/redis-signalr-channel-isolation.md) for the production policy, prefix format, redaction rules, and evidence requirements.
 
 ## Aspire Orchestration
 
@@ -548,6 +589,7 @@ This table lists every configurable setting for quick scanning, including explic
 | `DAPR_NAMESPACE` | string | `"hexalith"` | Valid Kubernetes namespace string | Environment |
 | `REDIS_HOST` | string | `"localhost:6379"` | `<host>:<port>` | Environment |
 | `REDIS_PASSWORD` | string | (empty) | Empty string or secret value | Environment |
+| `EVENTSTORE_SIGNALR_REDIS` | string | (empty) | Empty or StackExchange.Redis connection string, optionally with `channelPrefix=...` | Environment |
 | `POSTGRES_CONNECTION_STRING` | string | (N/A) | Valid PostgreSQL connection string | Environment |
 | `RABBITMQ_CONNECTION_STRING` | string | (N/A) | Valid RabbitMQ connection string/URI | Environment |
 | `SUBSCRIBER_APP_ID` | string | (N/A) | Non-empty DAPR app-id string | Environment |

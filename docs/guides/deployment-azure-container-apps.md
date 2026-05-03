@@ -410,6 +410,44 @@ This provides equivalent or better security posture with zero configuration over
 
 Azure Container Apps supports managed identity natively. For Azure-native backends (Cosmos DB, Service Bus, Key Vault), use managed identity instead of connection strings — this is more secure than the Kubernetes `secretKeyRef` approach.
 
+## Configure SignalR Redis Backplane Isolation
+
+Azure Container Apps deployments that scale EventStore to multiple replicas need
+a SignalR Redis backplane if projection-change notifications must distribute
+across replicas. This Redis endpoint is not the DAPR state store or pub/sub
+component; configure it as EventStore application configuration.
+
+Primary production policy is a dedicated Redis deployment per isolation
+boundary. Store the connection string as an ACA secret or Key Vault-backed
+secret and reference it from the EventStore container app:
+
+```bash
+az containerapp secret set \
+  --name eventstore \
+  --resource-group <resource-group> \
+  --secrets "signalr-redis=<redacted-connection-string>"
+
+az containerapp update \
+  --name eventstore \
+  --resource-group <resource-group> \
+  --set-env-vars \
+    EventStore__SignalR__Enabled=true \
+    EventStore__SignalR__BackplaneRedisConnectionString=secretref:signalr-redis
+```
+
+If a shared Redis exception is approved, the secret value must include a
+sanitized `channelPrefix=...`. Substitute the real password at deploy time —
+the `${REDIS_PASSWORD}` placeholder below is illustrative; never store the
+literal token `<redacted>` as the password component:
+
+```text
+redis-shared:6379,ssl=true,password=${REDIS_PASSWORD},channelPrefix=hesr.prod.eventstore.aca
+```
+
+The prefix is SignalR pub/sub channel separation only. It is not tenant
+authorization and does not replace JWT claims, hub join authorization, query
+authorization, or DAPR component scoping. See [Redis SignalR Channel Isolation](../operations/redis-signalr-channel-isolation.md).
+
 **Priority for secret management in ACA:**
 
 1. **Managed identity** for Azure services (Cosmos DB, Service Bus, Key Vault) — no secrets to manage

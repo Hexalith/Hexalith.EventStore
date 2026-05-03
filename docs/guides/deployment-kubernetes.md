@@ -573,6 +573,44 @@ env:
 
 > **Critical:** Do **not** set `Authentication__JwtBearer__SigningKey`. If a SigningKey is present (in appsettings or environment variables), the application uses symmetric key validation and ignores the OIDC Authority. For external OIDC, the SigningKey must be cleared or omitted.
 
+## Configure SignalR Redis Backplane Isolation
+
+Kubernetes deployments that run more than one EventStore pod need a SignalR
+Redis backplane if projection-change notifications must flow across replicas.
+This Redis endpoint is separate from DAPR state store and pub/sub component
+configuration.
+
+Primary production policy is a dedicated Redis deployment per isolation
+boundary. Set the connection string on the `eventstore` Deployment from a
+Secret or platform secret provider:
+
+```yaml
+env:
+    - name: EventStore__SignalR__Enabled
+      value: "true"
+    - name: EventStore__SignalR__BackplaneRedisConnectionString
+      valueFrom:
+          secretKeyRef:
+              name: signalr-redis
+              key: connection-string
+```
+
+If the platform owner approves a shared Redis exception, the secret value must
+include a non-empty sanitized `channelPrefix=...` value. Substitute the real
+password at deploy time (the `${REDIS_PASSWORD}` placeholder below is
+illustrative — never store the literal token `<redacted>` as the password
+component):
+
+```text
+redis-shared:6379,ssl=true,password=${REDIS_PASSWORD},channelPrefix=hesr.prod.eventstore.region-a
+```
+
+The prefix separates SignalR Redis pub/sub channels only. It does not replace
+JWT claims, `ProjectionChangedHub.JoinGroup` authorization, query authorization,
+or DAPR access-control policies. Record the deploy-time owner, redacted endpoint
+identity, effective prefix decision, and different-prefix control evidence when
+practical. See [Redis SignalR Channel Isolation](../operations/redis-signalr-channel-isolation.md).
+
 ### Microsoft Entra ID (Azure AD) Walkthrough
 
 1. **Create an App Registration** in the Azure Portal:

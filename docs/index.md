@@ -40,6 +40,13 @@ This page is for .NET developers integrating Hexalith.EventStore. Documentation 
 - [Troubleshooting](guides/troubleshooting.md) — common issues and their solutions
 - [Upgrade Path](guides/upgrade-path.md) — migrating between versions
 
+## Operations
+
+*For operators running Hexalith.EventStore in shared infrastructure — isolation, evidence, and runtime posture.*
+
+- [Redis SignalR Channel Isolation](operations/redis-signalr-channel-isolation.md) — production Redis backplane isolation and channel-prefix policy
+- [SignalR Operational Evidence](operations/signalr-operational-evidence.md) — runtime evidence schema for SignalR proofs
+
 ## Reference
 
 *For developers who need exact API contracts and specifications.*
