@@ -28,7 +28,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-04T16:30:00+02:00' # R9-A5 release-governance-evidence moved review -> done after code review (9 patches applied: AC #12 sprint-status last_updated attribution, AC #8 docs/ci.md Job Topology caption + Workflows row Tier 3 non-blocking note, AC #4 NUGET_API_KEY blocker schema fields, AC #10 accepted-non-action decision recorded for branch-protection enforcement gap, AC #7 SHA-divergence row added to Release Governance Gaps, branch-protection 404 disambiguation, future-tense bookkeeping summary, trailing-whitespace cleanup, File List honesty acknowledging R9-A1 files bundled in commit 9c62333; 1 decision resolved; 3 defers recorded; 6 dismissed).
+last_updated: '2026-05-04T16:47:11+02:00' # R9-A8 query operational evidence pattern moved in-progress -> review after docs/template implementation and validation.
 # 2026-05-04: post-epic-9-r9a2-query-cache-topology-proof moved review -> done after code review (6 patches applied: FailFastSubmitException for 4xx/missing-correlationId, POST_DELIVERY_STUCK_AT_304 timeout classifier, AssertWarmNotModifiedAsync bounded-retry helper, Gate 1 ETag echo assertion, If-None-Match TryAddWithoutValidation guard with raw-bytes diagnostic, outer 4-min OCE wrapped with FailureContext envelope; 6 defers recorded; QueryCacheTopologyProofE2ETests passed 1/1, Release build clean). Original R9-A2 dev-handoff attribution clobbered by R9-A5 update on line 31; preserved here per AC #12.
 # 2026-05-04: post-epic-9-r9a1-http-stale-etag-proof moved review -> done after code review (9 patches applied: sprint-status R9-A1 attribution, FailFast list 405/408/415/501/505, ParseCountFromPayload base64url, eventCount ValueKind guard, TryDecodeBase64Url ShouldAssert wrapping, AssertStrongSelfRoutingETag guard collapse, Snip truncation marker, AppendHistory cap=200, polling stopwatch single-clock; 3 defers recorded; Release build clean). R9-A2 row stayed in-progress per separate commit 13b9854. Original R9-A1 dev-handoff attribution clobbered by R9-A5 update on line 31; preserved here per AC #12.
 # 2026-05-03: post-epic-4-r4a6-drain-integrity-guard moved review -> done after code review (1 patch applied for checked((int)) overflow diagnostic regression at AggregateActor.cs:692; 4 defers recorded; 22/22 EventDrainRecoveryTests + Release build clean).
@@ -144,7 +144,7 @@ development_status:
   post-epic-9-r9a1-http-stale-etag-proof: done
   post-epic-9-r9a2-query-cache-topology-proof: done
   post-epic-9-r9a5-release-governance-evidence: done
-  post-epic-9-r9a8-query-operational-evidence-pattern: ready-for-dev
+  post-epic-9-r9a8-query-operational-evidence-pattern: review
 
   # Epic 11: Server-Managed Projection Builder
   epic-11: done
