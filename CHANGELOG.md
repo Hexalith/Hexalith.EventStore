@@ -1,3 +1,10 @@
+## [3.9.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.9.0...v3.9.1) (2026-05-04)
+
+
+### Bug Fixes
+
+* **signalr:** correct broadcast trace/span attribution from R10-A9 code review ([7baaa64](https://github.com/Hexalith/Hexalith.EventStore/commit/7baaa6431bc29dc45df7f01c81f6d96c283ee432))
+
 # [3.9.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.8.0...v3.9.0) (2026-05-03)
 
 
