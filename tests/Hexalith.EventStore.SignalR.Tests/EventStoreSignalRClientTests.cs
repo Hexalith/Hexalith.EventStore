@@ -212,8 +212,9 @@ public class EventStoreSignalRClientTests {
         try {
             int callbackCount = 0;
             await sut.SubscribeAsync("counter", "acme", () => {
-                logEntries.Count.ShouldBe(1);
-                logEntries[0].EventId.Id.ShouldBe(2090);
+                // Prove ordering — receipt log must already be recorded by the time the callback runs.
+                // Avoid coupling to absolute log count so a future log emission elsewhere does not break this test.
+                logEntries.Any(e => e.EventId.Id == 2090).ShouldBeTrue("receipt log (EventId 2090) must be recorded before consumer callbacks fire");
                 callbackCount++;
             });
 

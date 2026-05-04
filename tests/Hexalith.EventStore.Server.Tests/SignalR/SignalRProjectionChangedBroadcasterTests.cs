@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Reflection;
+using System.Text.RegularExpressions;
 
 using Hexalith.EventStore.Server.Telemetry;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
@@ -201,10 +203,57 @@ public class SignalRProjectionChangedBroadcasterTests {
 
     [Fact]
     public void BroadcasterEvidenceEventIds_DoNotOverlapHubEventIds() {
-        int[] broadcasterEventIds = [1090, 1091, 1092];
-        int[] hubEventIds = [1080, 1081, 1082, 1083, 1084, 1085];
+        // Derive both id sets from the actual [LoggerMessage] attributes so a future EventId
+        // change in either type is reflected here without test-side maintenance.
+        int[] broadcasterEventIds = GetLoggerMessageEventIds(typeof(SignalRProjectionChangedBroadcaster));
+        int[] hubEventIds = GetLoggerMessageEventIds(typeof(ProjectionChangedHub));
 
+        broadcasterEventIds.ShouldNotBeEmpty();
+        hubEventIds.ShouldNotBeEmpty();
         broadcasterEventIds.ShouldAllBe(id => !hubEventIds.Contains(id));
+    }
+
+    [Fact]
+    public async Task BroadcastChangedAsync_Success_LogsTraceAndSpanIdsWhenActivitySampled() {
+        IProjectionChangedClient projectionClient = Substitute.For<IProjectionChangedClient>();
+        IHubClients<IProjectionChangedClient> clients = Substitute.For<IHubClients<IProjectionChangedClient>>();
+        _ = clients.Group("order-list:acme").Returns(projectionClient);
+
+        IHubContext<ProjectionChangedHub, IProjectionChangedClient> hubContext = Substitute.For<IHubContext<ProjectionChangedHub, IProjectionChangedClient>>();
+        _ = hubContext.Clients.Returns(clients);
+
+        using var listener = new ActivityListener {
+            ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = _ => { },
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var logEntries = new List<LogEntry>();
+        var sut = new SignalRProjectionChangedBroadcaster(hubContext, new TestLogger<SignalRProjectionChangedBroadcaster>(logEntries));
+
+        await sut.BroadcastChangedAsync("order-list", "acme");
+
+        LogEntry start = logEntries.Single(e => e.EventId.Id == 1090);
+        LogEntry completion = logEntries.Single(e => e.EventId.Id == 1091);
+        var traceIdRegex = new Regex(@"TraceId: (?<id>[0-9a-f]{32})");
+        Match startTrace = traceIdRegex.Match(start.Message);
+        startTrace.Success.ShouldBeTrue("start log should contain a 32-char trace id when an Activity is sampled");
+        Match completionTrace = traceIdRegex.Match(completion.Message);
+        completionTrace.Success.ShouldBeTrue("completion log should contain a 32-char trace id when an Activity is sampled");
+        completionTrace.Groups["id"].Value.ShouldBe(startTrace.Groups["id"].Value, "broadcast start and completion logs must share the same trace id");
+        Regex.IsMatch(start.Message, @"SpanId: [0-9a-f]{16}").ShouldBeTrue("start log should contain a 16-char span id when an Activity is sampled");
+        Regex.IsMatch(completion.Message, @"SpanId: [0-9a-f]{16}").ShouldBeTrue("completion log should contain a 16-char span id when an Activity is sampled");
+    }
+
+    private static int[] GetLoggerMessageEventIds(Type owner) {
+        Type? logType = owner.GetNestedType("Log", BindingFlags.NonPublic);
+        logType.ShouldNotBeNull($"{owner.Name} must declare a nested Log helper class with [LoggerMessage] methods.");
+
+        return [.. logType
+            .GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .SelectMany(m => m.GetCustomAttributes<LoggerMessageAttribute>())
+            .Select(attr => attr.EventId)];
     }
 
     private static double CalculatePercentile(IReadOnlyList<double> values, double percentile) {

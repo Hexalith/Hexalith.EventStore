@@ -1,6 +1,6 @@
 # Post-Epic-10 R10-A9: SignalR Broadcast Log Instrumentation
 
-Status: review
+Status: done
 
 <!-- Source: post-epic-10-r10a8-r9-r10-follow-through-tracking.md R10-A1 residual -->
 <!-- Source: epic-10-retro-2026-05-01.md R10-A1 -->
@@ -245,3 +245,24 @@ Instrumentation decision:
 ## Verification Status
 
 Ready for review. Focused server SignalR/telemetry tests, full SignalR client tests, targeted markdown lint/link validation, whitespace diff check, and standard unit regression projects passed. Live runtime SignalR proof is classified `environment-blocker` in the R10-A9 evidence README because the existing AppHost baseline had stopped `eventstore` and `sample` resources.
+
+### Review Findings
+
+Code review 2026-05-04 (Blind Hunter + Edge Case Hunter + Acceptance Auditor; commit `0c5ec80`).
+
+- [x] [Review][Patch] R10A9-P1 — `Activity.Current` may misattribute trace/span IDs vs the just-created broadcast Activity; when no listener samples, `Activity.Current` reverts to caller scope and logs label foreign trace IDs as the broadcast trace [`src/Hexalith.EventStore/SignalRHub/SignalRProjectionChangedBroadcaster.cs:33-48`] — fixed: capture `traceId`/`spanId` once from local `activity` (null when not sampled) instead of `Activity.Current`.
+- [x] [Review][Patch] R10A9-P2 — `BroadcasterEvidenceEventIds_DoNotOverlapHubEventIds` is tautological: hardcoded `[1080..1085]` array vs hardcoded `[1090..1092]` array, not derived from hub source. Future hub EventId additions silently slip past [`tests/Hexalith.EventStore.Server.Tests/SignalR/SignalRProjectionChangedBroadcasterTests.cs:202-208`] — fixed: derive both id sets via reflection over `[LoggerMessage]` attributes on each type's nested `Log` class.
+- [x] [Review][Patch] R10A9-P3 — Receipt-before-callback test asserts `logEntries.Count.ShouldBe(1)` from inside the callback; brittle to any future logging in `SubscribeAsync` or upstream. Relax to "receipt log present at-or-before callback fires" [`tests/Hexalith.EventStore.SignalR.Tests/EventStoreSignalRClientTests.cs:761-766`] — fixed: in-callback assertion now uses `logEntries.Any(e => e.EventId.Id == 2090).ShouldBeTrue(...)`.
+- [x] [Review][Patch] R10A9-P4 — TraceId/SpanId fields are emitted but not asserted by any test; pairs with R10A9-P1 and protects the field contract recorded in the Decision Record [`tests/Hexalith.EventStore.Server.Tests/SignalR/SignalRProjectionChangedBroadcasterTests.cs`] — fixed: added `BroadcastChangedAsync_Success_LogsTraceAndSpanIdsWhenActivitySampled` with regex match on 32-hex trace and 16-hex span, asserting start and completion logs share the same trace id.
+- [x] [Review][Patch] R10A9-P5 — `docs/operations/signalr-operational-evidence.md` removed the prior "filter on **both** EventId AND source category" warning when broadcaster IDs moved to 1090-1092. Hub 1084/1085 still exist; restore a brief note so operators filtering hub authorization events know to combine category+EventId [`docs/operations/signalr-operational-evidence.md`] — fixed: hub row in Current Instrumentation Inventory now lists `1084`/`1085` with explicit category-pairing guidance.
+- [x] [Review][Defer] R10A9-DF1 — Snapshot+log CallbackCount race window under concurrent Subscribe/Unsubscribe [`src/Hexalith.EventStore.SignalR/EventStoreSignalRClient.cs:218-223`] — deferred, snapshot semantics intentional, divergence is microseconds
+- [x] [Review][Defer] R10A9-DF2 — `ShouldContain("CallbackCount: 1")` couples test to `LoggerMessage` formatted text [`tests/Hexalith.EventStore.SignalR.Tests/EventStoreSignalRClientTests.cs:776,798`] — deferred, test smell, not behavioral risk
+- [x] [Review][Defer] R10A9-DF3 — `OpenTelemetryRegistrationTests` is file-text-based and order-agnostic; cannot prevent regression where `.AddSource("Hexalith.EventStore")` is removed and re-added elsewhere [`tests/Hexalith.EventStore.Server.Tests/Telemetry/OpenTelemetryRegistrationTests.cs`] — deferred, pre-existing test pattern
+- [x] [Review][Defer] R10A9-DF4 — `ActivityListener` test races possible across xUnit cross-class parallel collections [`tests/Hexalith.EventStore.Server.Tests/SignalR/SignalRProjectionChangedBroadcasterTests.cs:60-70`] — deferred, speculative, default sequential within class
+- [x] [Review][Defer] R10A9-DF5 — `OperationCanceledException` from caller cancellation classified as `FailOpenFailure` and logged Warning EventId 1092 [`src/Hexalith.EventStore/SignalRHub/SignalRProjectionChangedBroadcaster.cs:72-93`] — deferred, pre-existing fail-open catch behavior
+- [x] [Review][Defer] R10A9-DF6 — Broadcaster has no input validation for null/empty/whitespace `projectionType`/`tenantId`; would emit `":"` group + log fields with empty values [`src/Hexalith.EventStore/SignalRHub/SignalRProjectionChangedBroadcaster.cs:33-48`] — deferred, pre-existing, internal caller
+- [x] [Review][Defer] R10A9-DF7 — `projectionType` containing `:` produces ambiguous `{projectionType}:{tenantId}` group name [`src/Hexalith.EventStore/SignalRHub/SignalRProjectionChangedBroadcaster.cs:33`] — deferred, pre-existing input-shape gap
+- [x] [Review][Defer] R10A9-DF8 — Subscription key present but `Callbacks` empty logs `CallbackCount:0` receipt [`src/Hexalith.EventStore.SignalR/EventStoreSignalRClient.cs:216-238`] — deferred, minor evidence noise
+- [x] [Review][Defer] R10A9-DF9 — `OnProjectionChanged` racing with `DisposeAsync` clearing `_subscribedGroups` may log+invoke after dispose [`src/Hexalith.EventStore.SignalR/EventStoreSignalRClient.cs:216-238`] — deferred, pre-existing dispose race
+- [x] [Review][Defer] R10A9-DF10 — Test gap for cancellation token cancelled before broadcast [`tests/Hexalith.EventStore.Server.Tests/SignalR/SignalRProjectionChangedBroadcasterTests.cs`] — deferred, paired with R10A9-DF5
+- [x] [Review][Defer] R10A9-DF11 — Two `ActivitySource` instances with the same name `Hexalith.EventStore` (one in `Hexalith.EventStore.Server`, one in `Hexalith.EventStore`) [`src/Hexalith.EventStore.Server/Telemetry/EventStoreActivitySource.cs`, `src/Hexalith.EventStore/Telemetry/EventStoreActivitySources.cs`] — deferred, pre-existing, both captured by single `.AddSource("Hexalith.EventStore")` registration

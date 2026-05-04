@@ -37,14 +37,19 @@ public partial class SignalRProjectionChangedBroadcaster(
         _ = activity?.SetTag(TagProjectionType, projectionType);
         _ = activity?.SetTag(TagTenantId, tenantId);
         _ = activity?.SetTag(TagGroupName, groupName);
+        // Use the just-started broadcast activity for trace/span IDs. When no listener samples,
+        // activity is null and we log null rather than Activity.Current, which could belong to
+        // an unrelated outer scope and mislabel the broadcast trace.
+        string? traceId = activity?.TraceId.ToString();
+        string? spanId = activity?.SpanId.ToString();
         Log.BroadcastStarted(
             logger,
             projectionType,
             tenantId,
             groupName,
             startedUtc,
-            Activity.Current?.TraceId.ToString(),
-            Activity.Current?.SpanId.ToString(),
+            traceId,
+            spanId,
             CategoryName);
 
         try {
@@ -65,8 +70,8 @@ public partial class SignalRProjectionChangedBroadcaster(
                 completedUtc,
                 elapsedMilliseconds,
                 BroadcastResultSuccess,
-                Activity.Current?.TraceId.ToString(),
-                Activity.Current?.SpanId.ToString(),
+                traceId,
+                spanId,
                 CategoryName);
         }
         catch (Exception ex) {
@@ -87,8 +92,8 @@ public partial class SignalRProjectionChangedBroadcaster(
                 elapsedMilliseconds,
                 BroadcastResultFailOpenFailure,
                 exceptionType,
-                Activity.Current?.TraceId.ToString(),
-                Activity.Current?.SpanId.ToString(),
+                traceId,
+                spanId,
                 CategoryName);
         }
     }
