@@ -22,25 +22,25 @@ Current HEAD at story creation: `5821f90`.
 
 ## Acceptance Criteria
 
-1. **Release governance evidence artifact exists.** Create `_bmad-output/test-artifacts/post-epic-9-r9a5-release-governance-evidence/evidence-2026-05-03.md` or an equivalent dated evidence file. The file must record the exact command/query source, working directory when local, timestamp in UTC, actor/role performing the check, repository, branch, commit SHA, working-tree state, and whether evidence was captured from local git, GitHub CLI/API, workflow YAML, or manual admin inspection. Include a required evidence matrix with columns `Control`, `Evidence Source`, `Command/UI/API Used`, `Observed Result`, `Timestamp`, `Conclusion`, and `Gap/Blocker`.
+1. **Release governance evidence artifact exists.** Create `_bmad-output/test-artifacts/post-epic-9-r9a5-release-governance-evidence/evidence-2026-05-03.md` or an equivalent dated evidence file. The file must record the exact command/query source, working directory when local, timestamp in UTC, actor/role performing the check, repository, branch, commit SHA, working-tree state, and whether evidence was captured from local git, GitHub CLI/API, workflow YAML, or manual admin inspection. Include a required evidence matrix with columns `Control`, `Evidence Source`, `Command/UI/API Used`, `Observed Result`, `Timestamp`, `Conclusion`, and `Gap/Blocker`. Each row must classify the conclusion as `observed`, `inferred-from-config`, `permission-blocked`, `contradictory`, or `unknown` so reviewers can distinguish direct evidence from weaker evidence.
 
 2. **Semantic-release baseline is verified without inventing history.** Record local and remote release tag state with exact read-only commands, including `git tag --list "v*" --sort=-v:refname`, `git ls-remote --tags origin "v*"`, and optional inspection-only commands such as `git show-ref --tags`. Explicitly state whether `v0.0.0` exists locally and remotely, whether the latest remote release tag is present locally, and whether `.releaserc.json` `tagFormat` matches the observed tags. Do not create, delete, sign, retag, fetch with forced tag updates, push, force-push, or otherwise mutate tags as part of this story unless Jerome explicitly approves that release-history change.
 
 3. **Release workflow contract is documented.** Inspect `.github/workflows/release.yml`, `.releaserc.json`, `package.json`, `CHANGELOG.md`, and `docs/ci.md`. Record the release trigger, branch, permissions, checkout depth, test scope, package publishing path, GitHub Release behavior, changelog update behavior, and required secrets. The evidence must distinguish workflow configuration from proof that the latest workflow run succeeded.
 
-4. **Branch protection evidence is captured or blocked honestly.** Use the GitHub UI, GitHub CLI, or GitHub API to record the current `main` branch protection / ruleset state. Evidence must include required status checks, whether direct pushes are restricted, whether reviews are required, whether linear history or signed commits are required, and whether admins are included. If the automation lacks permission to view repository rules, record `permission-blocker` with the exact command/page/API endpoint attempted, timestamp, safe actor identity or permission context, non-sensitive returned error, and blocked acceptance criterion; do not mark branch protection verified by inference from `docs/ci.md`.
+4. **Branch protection evidence is captured or blocked honestly.** Use the GitHub UI, GitHub CLI, or GitHub API to record the current `main` branch protection / ruleset state. Evidence must include required status checks, whether direct pushes are restricted, whether reviews are required, whether linear history or signed commits are required, and whether admins are included. Query classic branch protection and repository rulesets separately when API access is available, because a missing classic protection object does not prove rulesets are absent. If the automation lacks permission to view repository rules, record `permission-blocker` with the exact command/page/API endpoint attempted, timestamp, safe actor identity or permission context, non-sensitive returned error, and blocked acceptance criterion; do not mark branch protection verified by inference from `docs/ci.md`.
 
-5. **Required checks are reconciled against workflow jobs.** Compare the protected required checks, if available, with `.github/workflows/ci.yml`, `.github/workflows/docs-validation.yml`, and `.github/workflows/release.yml`. Include two tables: one for documented-versus-observed branch protection/ruleset required checks, and one for release workflow executed checks. At minimum, classify `commitlint`, `secret-scan`, `build-and-test`, `aspire-tests`, documentation validation, and any `Hexalith.EventStore.Server.Tests` release path as `required`, `recommended`, `optional`, `executed-not-required`, `permission-blocked`, or `unknown`. The story should preserve the current policy that Tier 3 Aspire tests are non-blocking unless repository rules say otherwise.
+5. **Required checks are reconciled against workflow jobs.** Compare the protected required checks, if available, with `.github/workflows/ci.yml`, `.github/workflows/docs-validation.yml`, and `.github/workflows/release.yml`. Include two tables: one for documented-versus-observed branch protection/ruleset required checks, and one for release workflow executed checks. At minimum, classify `commitlint`, `secret-scan`, `build-and-test`, `aspire-tests`, documentation validation, and any `Hexalith.EventStore.Server.Tests` release path as `required`, `recommended`, `optional`, `executed-not-required`, `permission-blocked`, or `unknown`. Record exact GitHub check context names when available and route stale, missing, renamed, or workflow-only checks to `Release Governance Gaps`. The story should preserve the current policy that Tier 3 Aspire tests are non-blocking unless repository rules say otherwise.
 
 6. **Release-secret presence is verified without exposing secrets.** Verify whether `NUGET_API_KEY` is configured for the release workflow and whether `GITHUB_TOKEN` permissions are sufficient for tags/releases. Acceptable evidence is presence/visibility metadata from GitHub Actions secrets, an admin screenshot summary without values, a failed/successful workflow log that proves availability without printing it, or a permission-blocker note. Never print, copy, hash, decode, test, partially reveal, or infer secret values, masked values, token fragments, lengths, prefixes, suffixes, or screenshots containing unrelated secret names. Do not validate secrets by attempting a publish.
 
-7. **Most recent release evidence is linked.** Record latest local tag, latest remote tag, latest GitHub Release, latest release workflow run on `main`, and visible NuGet/package outcome when accessible. Include tag, commit SHA, release URL or workflow run URL, conclusion, package/publish outcome if visible, and any skipped or failed steps. If these sources disagree, route the mismatch to `Release Governance Gaps` instead of choosing one silently. If GitHub access is unavailable, record local evidence from `CHANGELOG.md`, `git show --no-patch --decorate <latest-tag>`, and remote tag lookup, then classify the GitHub-side release evidence as blocked.
+7. **Most recent release evidence is linked.** Record latest local tag, latest remote tag, latest GitHub Release, latest release workflow run on `main`, and visible NuGet/package outcome when accessible. Include tag, commit SHA, release URL or workflow run URL, conclusion, package/publish outcome if visible, and any skipped or failed steps. Compare the tag SHA, release target commit, workflow head SHA, changelog version, and package version when those sources are available. If these sources disagree, route the mismatch to `Release Governance Gaps` instead of choosing one silently. If GitHub access is unavailable, record local evidence from `CHANGELOG.md`, `git show --no-patch --decorate <latest-tag>`, and remote tag lookup, then classify the GitHub-side release evidence as blocked.
 
 8. **Docs reflect the audited governance state.** Update only `docs/ci.md` or a focused release-governance docs section only if the evidence shows the current documentation is stale, incomplete, or missing the governance caveat. Preserve the difference between documented intended policy and observed repository settings. If no docs edit is needed, record the reason in the evidence artifact. Do not overstate controls that were not verified, and do not use docs edits to change release policy or workflow behavior.
 
 9. **No release side effects occur by default.** Do not run `npx semantic-release`, publish NuGet packages, modify `CHANGELOG.md` through semantic-release, trigger deploy workflows, change branch protection, rotate secrets, or force-push tags during this story. If a dry run is useful, use a no-publish dry-run command and record that it is not release evidence.
 
-10. **Governance gaps are routed, not hidden.** Add a mandatory "Release Governance Gaps" section to the evidence file. It must contain either `No gaps found based on available evidence.` or a dated list of unknown, contradictory, blocked, or stale evidence with owner, impact, required follow-up, and recommended story/status routing. Do not mark R9-A5 complete while a high-impact governance item remains `unknown` without either an accepted non-action decision or a follow-up row.
+10. **Governance gaps are routed, not hidden.** Add a mandatory "Release Governance Gaps" section to the evidence file. It must contain either `No gaps found based on available evidence.` or a dated list of unknown, contradictory, blocked, or stale evidence with owner, impact, required follow-up, and recommended story/status routing. Treat branch-protection/ruleset enforcement, release-secret presence, latest-release source disagreement, and required-check authority as high-impact governance items. Do not mark R9-A5 complete while a high-impact governance item remains `unknown` without either an accepted non-action decision or a follow-up row.
 
 11. **Validation is appropriate for docs/evidence.** Run the repository's docs validation command when practical, or at least the targeted markdown lint/link checks for changed docs and evidence files. The evidence artifact must record the exact validation command, result, and warnings; if no markdown validator is available, record the fallback CommonMark/link/path sanity check. If only BMAD evidence and docs change, product tests are not required. If workflow YAML changes, run or record a YAML parse/lint check.
 
@@ -57,6 +57,7 @@ Current HEAD at story creation: `5821f90`.
 - Do not use this story to resolve query-pipeline proof gaps owned by R9-A1, R9-A2, or R9-A8.
 - Do not initialize or update nested submodules.
 - Do not edit generated preflight JSON audit files.
+- Do not treat a GitHub API `404`, empty ruleset response, or missing workflow run as success until the evidence artifact explains whether it means absent control, unavailable permission, filtered visibility, or unsupported endpoint.
 
 ## Implementation Inventory
 
@@ -89,16 +90,19 @@ Current HEAD at story creation: `5821f90`.
     - [ ] 2.2 Compare required checks to `ci.yml` job names and `docs-validation.yml`.
     - [ ] 2.3 Record whether `aspire-tests` is non-blocking by policy, required by rules, or unknown.
     - [ ] 2.4 If permissions block the check, record the exact command/API response and classify the unknowns.
+    - [ ] 2.5 Record any discrepancy between classic branch protection, rulesets, `docs/ci.md`, and observed workflow check names as a routed governance gap.
 
 - [ ] Task 3: Verify release-secret and permission evidence safely (AC: #6, #7)
     - [ ] 3.1 Verify `NUGET_API_KEY` presence by metadata, workflow evidence, or admin inspection without exposing values.
     - [ ] 3.2 Verify `GITHUB_TOKEN` release/tag permissions from workflow `permissions:` and observed release behavior.
     - [ ] 3.3 Record any environment, ruleset, or secret visibility blockers separately from configuration defects.
+    - [ ] 3.4 Confirm the evidence artifact contains no masked values, hashes, token fragments, screenshots with unrelated secret names, or inferred secret lengths.
 
 - [ ] Task 4: Update docs and route gaps (AC: #8, #10)
     - [ ] 4.1 Update `docs/ci.md` only if observed governance differs from its Branch Protection, Secrets, or Workflow sections.
     - [ ] 4.2 Add a "Release Governance Gaps" section to the evidence artifact when any item remains unknown or deficient.
     - [ ] 4.3 Route high-impact unknowns to a follow-up story/status row or record a dated accepted non-action decision with owner and revisit trigger.
+    - [ ] 4.4 If no follow-up row is created for a high-impact gap, record who accepted the residual risk and the concrete revisit trigger.
 
 - [ ] Task 5: Validate and close bookkeeping (AC: #11, #12)
     - [ ] 5.1 Run targeted markdown lint/link validation for changed docs and evidence files, or record why unavailable.
@@ -115,6 +119,8 @@ Current HEAD at story creation: `5821f90`.
 - Branch protection and required checks are external GitHub settings. Repository docs can describe intended policy, but only GitHub settings or admin evidence can prove enforcement.
 - Secret evidence must be presence/outcome metadata only. Never print secret values or masked values into BMAD artifacts.
 - Record blockers as blockers. A permission error is useful evidence when it names exactly what could not be verified.
+- Use this evidence authority order when sources conflict: GitHub branch protection/ruleset settings, successful or failed workflow run evidence, workflow YAML and release config, repository docs, then retrospective notes. Lower-authority sources may explain intent but must not override higher-authority observations.
+- Do not collapse governance gaps into one generic blocker. Separate enforcement gaps, release-history mismatches, secret visibility blockers, required-check drift, and documentation staleness so a follow-up owner can resolve each one independently.
 
 ### Current-Code Intelligence
 
@@ -171,6 +177,7 @@ The evidence file should use a stable outline so reviewers can audit closure wit
 10. Story bookkeeping summary.
 
 Evidence entries must distinguish observed fact, inferred conclusion, permission blocker, and recommended follow-up.
+When a source is unavailable, the evidence entry should name the unavailable source, the attempted access path, the non-sensitive result, and the fallback source used, if any.
 
 ## References
 
@@ -210,6 +217,7 @@ TBD by dev-story agent.
 |---|---|---|---|
 | 2026-05-03 | 0.1 | Created ready-for-dev R9-A5 release governance evidence story. | Codex automation |
 | 2026-05-03 | 0.2 | Party-mode review applied evidence-format, read-only, permission-blocker, secret-handling, and governance-gap hardening. | Codex automation |
+| 2026-05-04 | 0.3 | Advanced elicitation tightened evidence authority, API ambiguity, mismatch routing, secret hygiene, and high-impact gap handling. | Codex automation |
 
 ## Verification Status
 
@@ -225,3 +233,15 @@ Story created for pre-development hardening. Implementation and validation are p
 - Changes applied: Added a required evidence matrix and artifact outline; narrowed tag/release collection to read-only evidence unless Jerome approves side effects; defined permission-blocker content; split required checks into branch-protection/ruleset and release-workflow evidence; hardened secret handling to metadata-only proof; required latest local tag, remote tag, GitHub Release, workflow, and package observations; made Release Governance Gaps mandatory even when empty; narrowed docs update scope; required exact validation command/result recording.
 - Findings deferred: Whether `aspire-tests` should become branch-protection blocking; whether `Hexalith.EventStore.Server.Tests` should remain in release-required validation despite known CA2007 build failures; whether GitHub branch protection should migrate to rulesets; whether release secrets should be rotated or renamed; whether semantic-release should continue targeting only `main` with `v${version}` tags.
 - Final recommendation: needs-story-update
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-04T10:30:42Z
+- Selected story key: post-epic-9-r9a5-release-governance-evidence
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-9-r9a5-release-governance-evidence`
+- Batch 1 method names: Self-Consistency Validation; Red Team vs Blue Team; Security Audit Personas; Failure Mode Analysis; Comparative Analysis Matrix
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Occam's Razor Application; First Principles Analysis; 5 Whys Deep Dive; Lessons Learned Extraction
+- Findings summary: The story already had strong guardrails, but elicitation found remaining false-closure paths around API ambiguity, check-name drift, release-source mismatch, secret-evidence hygiene, and treating docs as enforcement proof.
+- Changes applied: Added explicit evidence classification values; required separate classic branch-protection and ruleset handling; tightened GitHub API ambiguity handling; required exact check context names and mismatch routing; added latest-release SHA/version comparisons; made high-impact governance categories explicit; added secret-artifact hygiene confirmation; added an evidence authority hierarchy and fallback-source recording.
+- Findings deferred: Whether the project should make `aspire-tests` branch-protection blocking; whether release-required `Hexalith.EventStore.Server.Tests` should be changed while its CA2007 failure history exists; whether branch protection should be migrated to rulesets; whether release secrets need rotation or environment scoping; whether future release governance evidence should be collected by a reusable script.
+- Final recommendation: ready-for-dev
