@@ -1,5 +1,16 @@
 # Deferred Work
 
+## Deferred from: code review of post-epic-9-r9a8-query-operational-evidence-pattern (2026-05-04)
+
+- **Two duplicated reviewer checklists in ops-doc and template** — `docs/operations/query-operational-evidence.md` Reviewer Checklist + `_bmad-output/test-artifacts/query-operational-evidence-template.md` Fail-Closed Reviewer Checklist. Maintaining two near-duplicate truth tables creates drift risk (already exhibits divergence: template adds `concurrency`, renames `retries` ↔ `retry treatment`, narrower metadata downgrade list). Consolidate to single source of truth in a follow-up story, or generate one from the other.
+- **Aspire-specific fields (apphost state, console logs, structured logs) required for every run** — `_bmad-output/test-artifacts/query-operational-evidence-template.md` Topology + Diagnostics References. Conflates test rig with product; a non-Aspire deployment should still produce valid evidence. Template extensibility concern.
+- **Final-classification YAML schema is the only constrained surface** — `_bmad-output/test-artifacts/query-operational-evidence-template.md`. Reviewer Verdict + Final Classification headings downstream are free-text and not enforced. Already covered by the deferred instrumentation entry "Evidence schema validation"; no separate action needed but worth tracking until the validator lands.
+- **Title Case headings inconsistent with sentence-case neighbors** — `_bmad-output/test-artifacts/query-operational-evidence-template.md` "Query Identity And Authorization", "Deferred Instrumentation Or Follow-Up". Cosmetic style mismatch.
+- **Evidence Index `<story-or-proof-key>` placeholders not flagged with explicit "REPLACE" marker** — `_bmad-output/test-artifacts/query-operational-evidence-template.md` Evidence Storage. A partly-filled template can ship with literal angle-bracket leftovers; no fail-closed rule covers this.
+- **`Authorization mode` taxonomy split between docs** — `docs/operations/query-operational-evidence.md` Mandatory Artifacts has it as a stand-alone row; template merges it under Query Identity. Section taxonomy alignment.
+- **Scenario matrix uses three placeholder formats** — `_bmad-output/test-artifacts/query-operational-evidence-template.md` Scenario Matrix uses `<scenario-id>` while metadata uses `<required>` and other fields use bare colon. Cosmetic.
+- **SignalR-exclusion check is asymmetric** — `docs/operations/query-operational-evidence.md` SignalR Pattern Reuse forbids inheriting SignalR-specific fields here but does not address what dominates when a single proof claims both SignalR delivery and query refresh. Cross-doc concern; revisit when a combined proof is attempted.
+
 ## Deferred from: code review of post-epic-9-r9a5-release-governance-evidence (2026-05-04)
 
 - **Tag evidence section folded into Semantic-Release Baseline** — `_bmad-output/test-artifacts/post-epic-9-r9a5-release-governance-evidence/evidence-2026-05-04.md`. Required Evidence Artifact Shape lists "Local and remote tag evidence" as section #3; current artifact rolls it into section #2 "Semantic-Release Baseline". Content present, structural deviation only.

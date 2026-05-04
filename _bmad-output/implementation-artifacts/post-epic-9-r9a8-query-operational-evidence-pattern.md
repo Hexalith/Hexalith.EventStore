@@ -1,6 +1,6 @@
 # Post-Epic-9 R9-A8: Query Operational Evidence Pattern
 
-Status: review
+Status: done
 
 <!-- Source: epic-9-retro-2026-04-30.md - R9-A8 -->
 <!-- Source: post-epic-10-r10a8-r9-r10-follow-through-tracking.md - R9/R10 reconciliation -->
@@ -118,6 +118,62 @@ Current HEAD at story creation: `b9f52e7`.
     - [x] 5.2 If links are added, run a targeted link check or record why it was unavailable.
     - [x] 5.3 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and sprint-status row at dev handoff.
     - [x] 5.4 Record a docs-only validation checklist covering source links, required sections, schema fields, claim rules, SignalR exclusions, redaction, and deferred instrumentation.
+
+### Review Findings
+
+Code review on commit `d7b15e1` performed via `bmad-code-review` (Blind Hunter + Edge Case Hunter + Acceptance Auditor). Acceptance Auditor verdict: APPROVED-AS-IS — all 13 ACs and 8 scope boundaries pass. Adversarial layers raised content-quality findings on the docs/template (treated as the product per Party-Mode guidance).
+
+#### Decision-needed
+
+- [x] `[Review][Decision]` **Classification for redaction-rule violation** — Resolved: chose `not-claimable until redacted` (option 1). Consistent with other hygiene rows; `product-failure` overload removed. Applied in both ops-doc Reviewer Checklist and template Fail-Closed Reviewer Checklist.
+- [x] `[Review][Decision]` **Throughput partial-failure tolerance** — Resolved: chose zero non-2xx and zero timeouts → `not-claimable` (option 1). Strictest, falsifiable. Applied in ops-doc Throughput Claims and template Throughput Inputs / Fail-Closed Reviewer Checklist.
+- [x] `[Review][Decision]` **Precedence between `not-claimable` and `instrumentation-gap`** — Resolved: `instrumentation-gap` dominates when missing capability is product-side; `not-claimable` dominates when run-author hygiene (option 1). Routes blame correctly. Applied in ops-doc Allowed run classifications + Reviewer Checklist and template Fail-Closed Reviewer Checklist; full precedence ladder added to ops-doc.
+
+#### Patches
+
+- [x] `[Review][Patch]` **Sprint-status `last_updated` claims `in-progress -> review` but prior was `ready-for-dev`** [`_bmad-output/implementation-artifacts/sprint-status.yaml:31`]
+- [x] `[Review][Patch]` **R9-A5 dev-handoff attribution clobbered without preservation footer (AC #12 pattern)** [`_bmad-output/implementation-artifacts/sprint-status.yaml:31`]
+- [x] `[Review][Patch]` **Wildcard `If-None-Match: *` not represented in cache-state setup matrix** [`docs/operations/query-operational-evidence.md` Cache-State Setup, `_bmad-output/test-artifacts/query-operational-evidence-template.md` Cache-State Setup]
+- [x] `[Review][Patch]` **Mixed-projection `If-None-Match` mis-described as "Gate 1 skipped" — controller does NOT set `gate1Skipped` and emits both `MixedProjectionTypesSkipped` and `ETagPreCheckMiss(false,true)`** [`docs/operations/query-operational-evidence.md` Cache-State Setup + Controls bullets]
+- [x] `[Review][Patch]` **Latency boundary `etag-actor-lookup` does not account for the post-mediator second `eTagService.GetCurrentETagAsync` call (controller line 139)** [`docs/operations/query-operational-evidence.md` Latency Boundaries, `_bmad-output/test-artifacts/query-operational-evidence-template.md` Measurement Boundaries]
+- [x] `[Review][Patch]` **`gate1-fail-open` (ETagService throws → `currentETag = null`) missing from boundary table and cache-state matrix** [`docs/operations/query-operational-evidence.md` Latency Boundaries + Cache-State Setup]
+- [x] `[Review][Patch]` **`TooManyIfNoneMatchValues` (>10 comma-separated values) not surfaced in diagnostics inventory or cache-state matrix** [`docs/operations/query-operational-evidence.md` Diagnostics And Instrumentation]
+- [x] `[Review][Patch]` **`gate2-cache-skipped` (in-actor `DaprETagService` fail-open returns null) not classified as a distinct cache state** [`docs/operations/query-operational-evidence.md` Cache-State Setup, template Cache-State Setup]
+- [x] `[Review][Patch]` **`projection-type-discovery-bypass` path (`CachingProjectionActor` returns uncached when ETag was fetched with wrong projection type) unclassified** [`docs/operations/query-operational-evidence.md` Cache-State Setup]
+- [x] `[Review][Patch]` **`gate1-304-response` boundary marked "Partially observable" via `ETagPreCheckMatch` log, but that log carries no timing — should be deferred** [`docs/operations/query-operational-evidence.md` Latency Boundaries row 3]
+- [x] `[Review][Patch]` **NFR35 cold-actor activation caveat from PRD (line 967) dropped from threshold table** [`docs/operations/query-operational-evidence.md` NFR Thresholds NFR35 row]
+- [x] `[Review][Patch]` **Retry treatment for throughput is recordable but rule for "retries included in achieved-rps total" not classified** [`docs/operations/query-operational-evidence.md` Throughput Claims]
+- [x] `[Review][Patch]` **p99 nearest-rank formula uses `valid_sample_count` but template example uses `sample_count: 1` with no `valid_sample_count` field** [`_bmad-output/test-artifacts/query-operational-evidence-template.md` p99 Inputs + Intentionally Invalid Example]
+- [x] `[Review][Patch]` **`client-observed-duration` not explicitly forbidden as p99 source absent stated cross-process clock and correlation** [`docs/operations/query-operational-evidence.md` Reviewer Checklist, `_bmad-output/test-artifacts/query-operational-evidence-template.md` Fail-Closed Reviewer Checklist]
+- [x] `[Review][Patch]` **Required-fields list, YAML schema, and reviewer checklist disagree on which template fields are required (`generated_by`, `safe_projection_alias`, `safe_query_alias`, `final_classification` declared `<required>` in YAML but missing from required-fields bullet and fail-closed rows)** [`_bmad-output/test-artifacts/query-operational-evidence-template.md` Field Reference + Metadata YAML + Fail-Closed Reviewer Checklist]
+- [x] `[Review][Patch]` **Reviewer-checklist drift between ops-doc and template (e.g., template requires `concurrency` while ops-doc omits it; rename `retries` ↔ `retry treatment`)** [`docs/operations/query-operational-evidence.md` Reviewer Checklist, `_bmad-output/test-artifacts/query-operational-evidence-template.md` Fail-Closed Reviewer Checklist]
+- [x] `[Review][Patch]` **Final-classification taxonomy conflates run-level classifications with claim types — `p99` and `throughput` listed as claim types but missing from run classifications, and `path-viability`/`sample-only` reused across both axes** [`_bmad-output/test-artifacts/query-operational-evidence-template.md` Allowed run classifications + Latency Calculation claim type]
+- [x] `[Review][Patch]` **NFR39 phrasing "≥ 1,000 concurrent query requests per second" is unit-incoherent — separate concurrent in-flight from achieved rps** [`docs/operations/query-operational-evidence.md` NFR Thresholds NFR39 row]
+- [x] `[Review][Patch]` **NFR35 description "without activating the query actor" risks conflating ETag actor and query actor; add note that the post-mediator ETag-set call is in NFR36/37 windows, not NFR35** [`docs/operations/query-operational-evidence.md` NFR Thresholds + warm-same-validator-304 row]
+- [x] `[Review][Patch]` **`Stable query payload identity` field referenced but format undefined (hash? canonical JSON? digest algorithm?)** [`docs/operations/query-operational-evidence.md` Mandatory Artifacts, `_bmad-output/test-artifacts/query-operational-evidence-template.md` Query Identity And Authorization]
+- [x] `[Review][Patch]` **Cross-process timing rule "lacks clock and correlation assumptions" is unfalsifiable — specify minimum required level (per-marker clock source named explicitly)** [`docs/operations/query-operational-evidence.md` Reviewer Checklist, template Fail-Closed Reviewer Checklist]
+- [x] `[Review][Patch]` **"Reuse from another story/tenant/projection/environment" rule has no enforcement checklist row in either document** [`docs/operations/query-operational-evidence.md` Controls + Reviewer Checklist, template Controls + Fail-Closed Reviewer Checklist]
+- [x] `[Review][Patch]` **`<NFR35\|NFR36\|NFR37\|NFR39>` inside backtick code spans renders the literal `\|` per CommonMark — drop backticks or restructure** [`_bmad-output/test-artifacts/query-operational-evidence-template.md` Scenario Matrix + Latency Calculation claim type]
+- [x] `[Review][Patch]` **`reviewed_by` flagged `<required before final verdict>` in YAML but listed as unconditional in required-fields bullet and fail-closed checklist** [`_bmad-output/test-artifacts/query-operational-evidence-template.md` Metadata + Field Reference + Fail-Closed Reviewer Checklist]
+- [x] `[Review][Patch]` **`repository_status: <clean|dirty|not-recorded>` — `not-recorded` lacks any fail-closed downgrade row** [`_bmad-output/test-artifacts/query-operational-evidence-template.md` Metadata + Fail-Closed Reviewer Checklist]
+- [x] `[Review][Patch]` **Latency Calculation NFR claim enum allows `not-applicable` — schema-weakening, no fail-closed for "claim type p99 with no NFR cited"** [`_bmad-output/test-artifacts/query-operational-evidence-template.md` Latency Calculation]
+- [x] `[Review][Patch]` **Intentionally invalid example uses `safe_domain_alias: counter` (real sample-domain name) — violates the doc's own safe-alias convention** [`_bmad-output/test-artifacts/query-operational-evidence-template.md` Intentionally Invalid Example]
+- [x] `[Review][Patch]` **Intentionally invalid example rejection rationale does not mention that missing required metadata alone forces `not-claimable`** [`_bmad-output/test-artifacts/query-operational-evidence-template.md` Intentionally Invalid Example]
+- [x] `[Review][Patch]` **`cache-miss-after-etag-mismatch` collapses two distinct paths (ETag mismatch vs cold actor cache) — risks mixed populations the doc itself warns against** [`docs/operations/query-operational-evidence.md` Cache-State Setup, template Cache-State Setup]
+- [x] `[Review][Patch]` **"SignalR-specific mandatory fields excluded: `<yes|no>`" Reviewer Verdict row has no fail-closed downgrade for a `no` answer** [`_bmad-output/test-artifacts/query-operational-evidence-template.md` Reviewer Verdict + Fail-Closed Reviewer Checklist]
+- [x] `[Review][Patch]` **`http-response-completed` boundary cannot disambiguate Gate 1 / Gate 2 / cache-miss with route-tagged ASP.NET duration metric — add caveat** [`docs/operations/query-operational-evidence.md` Latency Boundaries row 8]
+- [x] `[Review][Patch]` **Story Change Log version bumped from 0.2 → 1.0 — verify intent (story file versions are typically incremental like 0.3); does not collide with semantic-release but worth confirming** [`_bmad-output/implementation-artifacts/post-epic-9-r9a8-query-operational-evidence-pattern.md:248`]
+
+#### Deferred
+
+- [x] `[Review][Defer]` **Two duplicated reviewer checklists in ops-doc and template create drift risk** [`docs/operations/query-operational-evidence.md` + `_bmad-output/test-artifacts/query-operational-evidence-template.md`] — deferred, structural concern beyond R9-A8 scope
+- [x] `[Review][Defer]` **Aspire-specific fields (apphost state, console logs, structured logs) required for every run, conflating test rig with product** [`_bmad-output/test-artifacts/query-operational-evidence-template.md` Topology + Diagnostics References] — deferred, template extensibility concern
+- [x] `[Review][Defer]` **Final-classification YAML schema is the only constrained surface; downstream Reviewer Verdict + Final Classification headings are free-text** [`_bmad-output/test-artifacts/query-operational-evidence-template.md`] — deferred, requires validator implementation (listed as deferred instrumentation already)
+- [x] `[Review][Defer]` **Title Case headings ("Query Identity And Authorization", "Deferred Instrumentation Or Follow-Up") inconsistent with sentence-case neighbors** [`_bmad-output/test-artifacts/query-operational-evidence-template.md`] — deferred, cosmetic
+- [x] `[Review][Defer]` **Evidence Index `<story-or-proof-key>` placeholders not flagged with explicit "REPLACE" marker** [`_bmad-output/test-artifacts/query-operational-evidence-template.md` Evidence Storage] — deferred, defensive
+- [x] `[Review][Defer]` **`Authorization mode` is a stand-alone Mandatory Artifacts row but template merges it into Query Identity And Authorization** [`docs/operations/query-operational-evidence.md` Mandatory Artifacts vs template] — deferred, taxonomy alignment
+- [x] `[Review][Defer]` **Scenario matrix uses three placeholder formats (`<scenario-id>`, `<required>`, bare colon)** [`_bmad-output/test-artifacts/query-operational-evidence-template.md`] — deferred, cosmetic
+- [x] `[Review][Defer]` **SignalR-exclusion check is asymmetric — does not address combined SignalR + query refresh proofs** [`docs/operations/query-operational-evidence.md` SignalR Pattern Reuse] — deferred, cross-doc concern
 
 ## Dev Notes
 
@@ -245,20 +301,25 @@ GPT-5 Codex.
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-04 | 1.1 | Code review completed via `bmad-code-review` (Blind Hunter + Edge Case Hunter + Acceptance Auditor). Auditor verdict APPROVED-AS-IS. Adversarial layers raised 31 patches + 3 decisions on docs/template content (treated as the product). All 3 decisions resolved (redaction → `not-claimable`; throughput tolerance → zero non-2xx; classification precedence → product-side gap dominates). All 31 patches applied to `docs/operations/query-operational-evidence.md` (cache-state matrix + boundary table + classifications precedence + reviewer checklist + NFR threshold prose) and `_bmad-output/test-artifacts/query-operational-evidence-template.md` (required-fields list aligned with YAML schema, scenario matrix rendering fix, intentionally-invalid example fixes, fail-closed reviewer checklist alignment). 8 defers recorded in deferred-work.md. 13 dismissed as noise (including E18 false-positive on `Hexalith.EventStore` ActivitySource registration). Sprint-status R9-A8 row moved review → done; preceding R9-A5 attribution preserved per AC #12. | Claude Opus 4.7 (1M context) |
 | 2026-05-04 | 1.0 | Implemented docs-only query operational evidence pattern, reusable template, validation, and dev-handoff bookkeeping. | GPT-5 Codex |
 | 2026-05-04 | 0.2 | Applied party-mode review hardening for query evidence falsifiability and docs-only boundaries. | Codex automation |
 | 2026-05-03 | 0.1 | Created ready-for-dev R9-A8 query operational evidence pattern story. | Codex automation |
 
 ## Verification Status
 
-Docs-only validation passed.
+Docs-only validation passed (dev handoff) and re-validated after code-review patches.
 
-- Markdown validation passed for the operations document, reusable template, and story artifact with `markdownlint-cli2`.
+- Markdown validation passed for the operations document, reusable template, and story artifact with `markdownlint-cli2` both at dev handoff and after code-review patches.
 - Targeted link check passed for all links in the new operations document and reusable template with `markdown-link-check`.
 - Source-reference coverage confirmed for PRD NFRs, R9-A8 retro, R10-A8 reconciliation, SignalR pattern/template, query API docs, `QueriesController`, `CachingProjectionActor`, `ETagActor`, `DaprETagService`, and ServiceDefaults.
 - Required sections confirmed for schema metadata, environment, topology, query identity, authorization, cache-state setup, latency boundaries, p99 inputs, throughput inputs, diagnostics, redaction, deferred follow-up, reviewer verdict, and final classification.
-- Claim rules confirmed for `path-viability`, `sample-only`, `diagnostic-only`, `not-claimable`, and valid p99/throughput claims.
+- Claim rules confirmed for `path-viability`, `sample-only`, `diagnostic-only`, `not-claimable`, and valid p99/throughput claims; precedence rules added between `instrumentation-gap` and `not-claimable` after code review.
 - SignalR-specific hub, broadcast, Redis backplane, client receipt, reconnect, fanout, subscription, and transport fields are not mandatory query evidence.
+- Cache-state setup matrix expanded after code review to cover wildcard `If-None-Match: *`, mixed-projection fail-open, too-many-values fail-open, ETag-service-exception fail-open, in-actor cache-skipped, projection-type-discovery bypass, and cold-actor cache miss.
+- Latency boundary table updated after code review: `etag-actor-lookup` split into pre-Gate-1 and post-mediator entries; `gate1-fail-open-response` and `gate2-cache-skipped-response` rows added; `http-response-completed` ASP.NET Core route/status caveat documented; `client-observed-duration` p99 use rejected unless cross-process clock and correlation are stated.
+- Throughput rules tightened after code review: any non-2xx or timeout in the throughput window forces `not-claimable`; retries-included rps downgrades to `sample-only`.
+- Source Inventory note clarified that `Hexalith.EventStore` ActivitySource (used by `Hexalith.EventStore.Server` actors via `EventStoreActivitySource.SourceName`) IS registered in `ServiceDefaults`; reviewer false-positive E18 dismissed.
 - Product tests were not run because no product code, workflow, or test harness files changed.
 
 ## Party-Mode Review
