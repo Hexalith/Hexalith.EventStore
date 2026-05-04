@@ -28,15 +28,15 @@ This story is a focused confidence proof, not a new query feature. Prefer extend
 
 1. **A focused full-HTTP stale ETag proof exists.** Add or extend a Tier 3 integration test under `tests/Hexalith.EventStore.IntegrationTests/ContractTests/`, using the existing `AspireContractTests` collection and `AspireContractTestFixture`, that drives `POST /api/v1/commands`, `GET /api/v1/commands/status/{correlationId}`, and `POST /api/v1/queries` through the running EventStore HTTP surface.
 
-2. **The proof uses one stable query identity.** Every query in the scenario uses the same tenant, domain, aggregate ID, projection type, entity ID, query type, query route, request headers that define query identity, and serialized payload shape. Use the sample counter path unless a better existing fixture is already available: tenant `tenant-a` or `sample-tenant`, domain `counter`, projection type `counter`, query type `get-counter-status`, and a unique aggregate ID with `entityId = aggregateId`. The command and query tokens must carry tenant/domain claims aligned with that identity, plus the existing command permissions and `query:read`.
+2. **The proof uses one stable query identity.** Every query in the scenario uses the same tenant, domain, aggregate ID, projection type, entity ID, query type, query route, request headers that define query identity, and serialized payload shape. Use the sample counter path unless a better existing fixture is already available: tenant `tenant-a` or `sample-tenant`, domain `counter`, projection type `counter`, query type `get-counter-status`, and a unique aggregate ID with `entityId = aggregateId`. Prefer a test-isolated tenant when the dev auth and sample query path allow it; otherwise document that the `AspireContractTests` collection serializes same-tenant counter proofs so another same-tenant `counter` update cannot invalidate the coarse `counter:{tenant}` ETag between the baseline query and current-ETag assertion. The command and query tokens must carry tenant/domain claims aligned with that identity, with command submit/status calls using command permissions and query calls using `query:read`.
 
-3. **The baseline query proves projected state before ETag checks.** Submit one `IncrementCounter` command, poll command status until `Completed`, assert event evidence such as `eventCount > 0` when present, then separately poll `POST /api/v1/queries` until `200 OK` returns the expected baseline projected count, the expected query identity, and an `ETag` header. Do not send `If-None-Match` before the target aggregate's projected state has been proven by the expected count and identity.
+3. **The baseline query proves projected state before ETag checks.** Submit one `IncrementCounter` command, poll command status until `Completed`, assert event evidence such as `eventCount > 0` when present, then separately poll `POST /api/v1/queries` until `200 OK` returns the expected baseline projected count, the expected query identity, and an `ETag` header. Capture the exact serialized query payload or a deterministic payload fingerprint at this point so later requests can prove they are byte-equivalent for cache identity purposes. Do not send `If-None-Match` before the target aggregate's projected state has been proven by the expected count and identity.
 
-4. **A current self-routing ETag returns HTTP 304.** Re-send the exact same query with `If-None-Match` set to the quoted ETag from the successful baseline query. The expected result is `304 NotModified` with no query response body requirement. If the endpoint returns `200 OK`, the response must still be investigated and must not be counted as the AC #4 pass unless the test documents a legitimate concurrent projection change tied to the same aggregate.
+4. **A current self-routing ETag returns HTTP 304.** Re-send the exact same query with `If-None-Match` set to the quoted ETag from the successful baseline query. The expected result is `304 NotModified` with no query response body requirement. If the endpoint returns `200 OK`, the response must still be investigated and must not be counted as the AC #4 pass unless the test documents a legitimate concurrent projection change tied to the same aggregate; unrelated same-tenant projection churn is a repeatability defect or environment blocker, not a success path.
 
-5. **A stale ETag re-queries after projection change.** Submit a second `IncrementCounter` command for the same aggregate, poll command status until `Completed`, then repeatedly send the same query with the original baseline ETag in `If-None-Match` until projection delivery is observed. The observable state delta is the same aggregate's projected counter value increasing by exactly one from the baseline count. The passing final state is `200 OK` with the incremented projected count and an `ETag` header different from the original baseline ETag. A final `304 NotModified` after the second projection is delivered is a failure.
+5. **A stale ETag re-queries after projection change.** Submit a second `IncrementCounter` command for the same aggregate, poll command status until `Completed`, then repeatedly send the same byte-equivalent query with the original baseline ETag in `If-None-Match` until projection delivery is observed. The observable state delta is the same aggregate's projected counter value increasing by exactly one from the baseline count. The passing final state is `200 OK` with the incremented projected count and an `ETag` header different from the original baseline ETag, proving that the coarse `counter:{tenant}` validator changed while the query identity stayed fixed. A final `304 NotModified` after the second projection is delivered is a failure.
 
-6. **Eventual consistency is bounded and diagnostic.** During projection catch-up poll windows, temporary `404 NotFound`, `200 OK` with the old count, missing ETag, or parse errors are retry states only until the deadline. Fail fast on unexpected authorization, routing, serialization, or command terminal-failure responses because those are not projection-lag signals. On timeout or stale-validator failure, the failure message must include tenant, domain, aggregate ID, projection type, entity ID, query type, serialized payload identity, command correlation IDs, expected count, last status code, last response body snippet, parsed count, parse error, original ETag, last observed ETag, observed status/count/ETag history, and elapsed polling duration. Do not dump broad Aspire logs unless the assertion fails and the failure message references the relevant excerpt.
+6. **Eventual consistency is bounded and diagnostic.** During projection catch-up poll windows, temporary `404 NotFound`, `200 OK` with the old count, missing ETag, or parse errors are retry states only until the deadline. Fail fast on unexpected authorization, routing, serialization, or command terminal-failure responses because those are not projection-lag signals. On timeout or stale-validator failure, the failure message must include tenant, domain, aggregate ID, projection type, entity ID, query type, serialized payload identity or fingerprint, command correlation IDs, expected count, last status code, last response body snippet, parsed count, parse error, original ETag, last observed ETag, observed status/count/ETag history, elapsed polling duration, and any detected same-tenant/projection concurrency that could have invalidated `counter:{tenant}`. Do not dump broad Aspire logs unless the assertion fails and the failure message references the relevant excerpt.
 
 7. **ETag formatting and self-routing are preserved.** Capture and assert that the ETag value is a strong quoted HTTP validator whose inner value follows the self-routing `{base64url(projectionType)}.{guid}` shape and decodes to the expected projection type through existing helpers or equivalent test-side verification. The assertion must reject weak validators such as `W/"..."`, unquoted values, missing dot separators, invalid base64url projection prefixes, non-GUID suffixes, old-format GUID-only ETags, and ETags produced by changing query identity. A test-side shape check equivalent to `"^[A-Za-z0-9_-]+\\.[0-9a-fA-F-]{36}$"` is acceptable after removing the surrounding quotes.
 
@@ -57,6 +57,7 @@ This story is a focused confidence proof, not a new query feature. Prefer extend
     - [ ] Use `[Trait("Category", "E2E")]`, `[Trait("Tier", "3")]`, and `[Collection("AspireContractTests")]`.
     - [ ] Use `AspireContractTestFixture.EventStoreClient`; do not launch a separate AppHost from inside the test.
     - [ ] Build the query request explicitly or extend `ContractTestHelpers.CreateQueryRequest` so `ProjectionType` and `EntityId` are serialized; do not rely on a helper path that omits them.
+    - [ ] Use a unique aggregate ID and, when supported by the fixture, a test-isolated tenant; if the tenant must be shared, rely on the collection serialization and record that assumption in the test name or failure diagnostics.
 
 - [ ] Task 2: Prove the baseline projected state and current ETag (AC: #2, #3, #7)
     - [ ] Submit the first `IncrementCounter` through `POST /api/v1/commands`.
@@ -64,17 +65,18 @@ This story is a focused confidence proof, not a new query feature. Prefer extend
     - [ ] Poll `POST /api/v1/queries` with explicit `projectionType = "counter"` and `entityId = aggregateId` until the expected count and ETag are present.
     - [ ] Parse direct-object and base64-string query payload forms, matching the existing `CounterQueryService` and R11-A4 test pattern.
     - [ ] Preserve the existing integration-test query payload convention; do not introduce a new serialization shape only for this proof.
+    - [ ] Capture the deterministic serialized query payload or fingerprint and reuse it for the current and stale `If-None-Match` requests.
     - [ ] Assert the returned ETag is quoted, self-routing, and decodes to `counter`.
     - [ ] Assert the command and query authorization token claims match the tenant/domain under test and include `query:read` for query calls.
 
 - [ ] Task 3: Assert the current ETag 304 path (AC: #4)
     - [ ] Re-send the exact same query with `If-None-Match` set to the baseline ETag exactly as the server returned it.
     - [ ] Assert `304 NotModified`.
-    - [ ] Preserve enough response detail to diagnose an unexpected `200 OK`, `404 NotFound`, or missing ETag.
+    - [ ] Preserve enough response detail to diagnose an unexpected `200 OK`, `404 NotFound`, missing ETag, or same-tenant/projection invalidation between baseline and revalidation.
 
 - [ ] Task 4: Assert the stale ETag re-query path after projection change (AC: #5, #6)
     - [ ] Submit a second `IncrementCounter` for the same aggregate and wait for `Completed`.
-    - [ ] Poll the same query with the original baseline ETag in `If-None-Match`.
+    - [ ] Poll the same byte-equivalent query with the original baseline ETag in `If-None-Match`.
     - [ ] Treat pre-delivery `404`, old count, parse errors, or missing ETag as bounded retry states.
     - [ ] Pass only when `200 OK` returns the incremented count and a new ETag different from the original.
     - [ ] Fail with a diagnostic message if `304` remains after the new projected count should be visible.
@@ -107,6 +109,7 @@ This story is a focused confidence proof, not a new query feature. Prefer extend
 - Use the public HTTP surfaces only. Do not seed actor state, call `IETagActor` directly, invoke `EventReplayProjectionActor` directly, or call the sample `/project` endpoint as the proof.
 - Do not assert through repositories, direct DAPR state APIs, database reads, in-memory test hooks, projection internals, or product service instances. The proof boundary is HTTP command submission, public command-status observation, and HTTP query revalidation.
 - Preserve one proof identity across both commands and all queries. Tenant, domain, aggregate ID, projection type, entity ID, query type, payload ID, and JWT tenant/domain claims must line up.
+- Treat the ETag actor's `projectionType:{tenant}` scope as part of the test design. Avoid concurrent same-tenant `counter` writes between the baseline and current-ETag request, or record the environment as blocked/flaky instead of accepting a false negative or false positive.
 - ETag validation starts only after a successful count assertion. A `304` before state is proven is a false positive.
 - The original ETag is the stale validator after the second command. The proof should keep sending that original ETag until the new projection count appears with a different ETag.
 - If the query returns `200 OK` with the old count after the second command, keep polling until the deadline; that is eventual consistency, not success.
@@ -174,6 +177,18 @@ This story is a focused confidence proof, not a new query feature. Prefer extend
 - Findings deferred: Broader cache topology, cache re-warm behavior, multi-node or replica semantics, reverse-proxy behavior, operational dashboards/log evidence, weak-vs-strong policy beyond this endpoint family, and route-prefix encoding versioning remain outside R9-A1 and belong to R9-A2/R9-A8 or a separate architecture decision.
 - Final recommendation: needs-story-update
 
+### Advanced Elicitation
+
+- Date: 2026-05-04T11:02:22+02:00
+- Selected story key: `post-epic-9-r9a1-http-stale-etag-proof`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-9-r9a1-http-stale-etag-proof`
+- Batch 1 method names: Self-Consistency Validation; Red Team vs Blue Team; Security Audit Personas; Failure Mode Analysis; Comparative Analysis Matrix
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Occam's Razor Application; First Principles Analysis; 5 Whys Deep Dive; Lessons Learned Extraction
+- Findings summary: The story was already strong after party-mode review, but elicitation found one repeatability trap: the ETag actor is scoped by projection type and tenant, so same-tenant counter writes outside this proof can invalidate the current ETag before the 304 assertion. It also found that stable query identity needed an observable serialized payload/fingerprint, and that command/status authorization should stay distinct from query authorization in the proof.
+- Changes applied: Added tenant/projection isolation guidance, deterministic query payload/fingerprint capture, byte-equivalent query reuse for both current and stale validator requests, command-vs-query token wording, same-tenant/projection concurrency diagnostics, and a guardrail that unrelated validator churn is an environment blocker rather than a passing condition.
+- Findings deferred: Broader cross-aggregate invalidation semantics, replica-wide validator consistency, weak-validator policy outside this endpoint family, and multi-node cache topology remain outside R9-A1 and belong to R9-A2/R9-A8 or a separate architecture decision.
+- Final recommendation: ready-for-dev
+
 ### Agent Model Used
 
 TBD by dev-story agent.
@@ -188,5 +203,6 @@ TBD by dev-story agent.
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-04 | 0.3 | Advanced elicitation hardened tenant/projection isolation, byte-equivalent query identity, and stale-validator diagnostics. | Codex automation |
 | 2026-05-03 | 0.2 | Party-mode review tightened stale ETag proof identity, polling, diagnostics, auth, and scope guardrails. | Codex automation |
 | 2026-05-03 | 0.1 | Created ready-for-dev R9-A1 HTTP stale ETag proof story. | Codex automation |
