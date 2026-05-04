@@ -1,6 +1,6 @@
 # Post-Epic-9 R9-A1: HTTP Stale ETag Proof
 
-Status: review
+Status: done
 
 <!-- Source: epic-9-retro-2026-04-30.md - R9-A1 -->
 <!-- Source: post-epic-10-r10a8-r9-r10-follow-through-tracking.md - R9/R10 reconciliation -->
@@ -92,6 +92,22 @@ This story is a focused confidence proof, not a new query feature. Prefer extend
     - [x] If shared helpers changed, run affected neighbors such as `ValidProjectionRoundTripE2ETests` and `ProjectionMalformedResponseE2ETests`.
     - [x] Run the relevant unit slice if production query/ETag code changed.
     - [x] Record commands, results, environment caveats, and blockers in this story's Dev Agent Record.
+
+### Review Findings
+
+- [x] [Review][Decision] R9-A2 sprint-status row flipped to `in-progress` inside R9-A1 PR — Resolved: kept R9-A2 row change (already backed by separate commit `13b9854 test(post-epic-9): add r9a2 query-cache topology proof` on the same branch); restored R9-A1 attribution as a historical comment line per AC #12.
+- [x] [Review][Patch] AC #12 `last_updated` names R9-A1 stale ETag proof result via historical comment [`_bmad-output/implementation-artifacts/sprint-status.yaml:32`]
+- [x] [Review][Patch] FailFast list extended with 405/408/415/501/505 (BadRequest/Unauthorized retained per spec) [`HttpStaleETagProofE2ETests.cs:210-222`]
+- [x] [Review][Patch] `ParseCountFromPayload` now uses `DecodeBase64UrlToBytes` for base64url-aware decoding [`HttpStaleETagProofE2ETests.cs:325`]
+- [x] [Review][Patch] `AssertPersistedEventEvidence` validates `eventCount.ValueKind == JsonValueKind.Number` and uses `TryGetInt32` [`HttpStaleETagProofE2ETests.cs:242-254`]
+- [x] [Review][Patch] `TryDecodeBase64Url`/`TryDecodeBase64UrlBytes` wrap `FormatException` in `ShouldAssertException` with diagnostic [`HttpStaleETagProofE2ETests.cs:284-300`]
+- [x] [Review][Patch] `AssertStrongSelfRoutingETag` collapses weak/unquoted/empty checks into one diagnostic guard [`HttpStaleETagProofE2ETests.cs:256-264`]
+- [x] [Review][Patch] `Snip` appends `…[truncated, full length=N]` marker when truncating [`HttpStaleETagProofE2ETests.cs:415-423`]
+- [x] [Review][Patch] `AppendHistory` caps history list at 200 entries (FIFO drop) [`HttpStaleETagProofE2ETests.cs:425-431`]
+- [x] [Review][Patch] Polling deadline switched to `stopwatch.Elapsed < s_projectionPollTimeout` (single clock source) [`HttpStaleETagProofE2ETests.cs:158`]
+- [x] [Review][Defer] `SubmitCompletedIncrementAsync` ignores `cancellationToken` end-to-end [`HttpStaleETagProofE2ETests.cs:115-140`] — deferred, helper signatures lack CT overloads; broadening helpers is out of R9-A1 scope (AC #9)
+- [x] [Review][Defer] AC #6 same-tenant concurrency diagnostics are a static sentence rather than dynamically detected [`HttpStaleETagProofE2ETests.cs:411-412`] — deferred, dynamic detection requires probing other queries (R9-A2 scope)
+- [x] [Review][Defer] Anonymous-object query body / camelCase fingerprint not byte-stable across future .NET versions [`HttpStaleETagProofE2ETests.cs:467-481`] — deferred, forward-looking risk; current contract works
 
 ## Dev Notes
 
@@ -220,6 +236,7 @@ GPT-5 Codex
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-04 | 1.1 | Code review: applied 9 patches (sprint-status R9-A1 attribution, FailFast extension, base64url-aware payload parsing, eventCount ValueKind guard, base64url decode with diagnostic, weak-ETag guard collapse, Snip truncation marker, bounded history, single-clock polling deadline) and recorded 3 defers. R9-A2 row change kept (backed by commit 13b9854). Build clean. | Claude Opus 4.7 |
 | 2026-05-04 | 1.0 | Added focused Tier 3 HTTP stale ETag proof and recorded passing targeted, neighbor, and unit validation evidence. | GPT-5 Codex |
 | 2026-05-04 | 0.3 | Advanced elicitation hardened tenant/projection isolation, byte-equivalent query identity, and stale-validator diagnostics. | Codex automation |
 | 2026-05-03 | 0.2 | Party-mode review tightened stale ETag proof identity, polling, diagnostics, auth, and scope guardrails. | Codex automation |

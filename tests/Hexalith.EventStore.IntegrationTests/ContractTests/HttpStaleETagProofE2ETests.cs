@@ -24,6 +24,8 @@ public sealed partial class HttpStaleETagProofE2ETests {
     private static readonly TimeSpan s_projectionPollTimeout = TimeSpan.FromSeconds(45);
     private static readonly TimeSpan s_projectionPollInterval = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan s_statusPollTimeout = TimeSpan.FromSeconds(90);
+    private const int MaxHistoryEntries = 200;
+    private const int BodySnipMax = 800;
 
     private readonly AspireContractTestFixture _fixture;
 
@@ -146,7 +148,6 @@ public sealed partial class HttpStaleETagProofE2ETests {
         List<QueryObservation> history,
         CancellationToken cancellationToken) {
         var stopwatch = Stopwatch.StartNew();
-        DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(s_projectionPollTimeout);
         QueryPollResult lastResult = new(
             StatusCode: 0,
             Body: string.Empty,
@@ -154,7 +155,7 @@ public sealed partial class HttpStaleETagProofE2ETests {
             ParseError: "Projection query was not sent.",
             ETag: null);
 
-        while (DateTimeOffset.UtcNow < deadline) {
+        while (stopwatch.Elapsed < s_projectionPollTimeout) {
             cancellationToken.ThrowIfCancellationRequested();
 
             using HttpRequestMessage request = CreateProjectionQueryRequest(query, originalETag);
@@ -163,7 +164,7 @@ public sealed partial class HttpStaleETagProofE2ETests {
 
             string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             QueryObservation observation = QueryObservation.FromResponse(response, body);
-            history.Add(observation);
+            AppendHistory(history, observation);
 
             lastResult = new QueryPollResult(
                 response.StatusCode,
@@ -210,10 +211,15 @@ public sealed partial class HttpStaleETagProofE2ETests {
         => statusCode is HttpStatusCode.Unauthorized
             or HttpStatusCode.Forbidden
             or HttpStatusCode.BadRequest
+            or HttpStatusCode.MethodNotAllowed
+            or HttpStatusCode.RequestTimeout
+            or HttpStatusCode.UnsupportedMediaType
+            or HttpStatusCode.NotImplemented
             or HttpStatusCode.InternalServerError
             or HttpStatusCode.BadGateway
             or HttpStatusCode.ServiceUnavailable
-            or HttpStatusCode.GatewayTimeout;
+            or HttpStatusCode.GatewayTimeout
+            or HttpStatusCode.HttpVersionNotSupported;
 
     private static HttpRequestMessage CreateProjectionQueryRequest(QueryIdentity query, string? ifNoneMatch = null) {
         string token = TestJwtTokenGenerator.GenerateToken(
@@ -237,21 +243,23 @@ public sealed partial class HttpStaleETagProofE2ETests {
         status.TryGetProperty("eventCount", out JsonElement eventCount).ShouldBeTrue(
             $"Completed command status {correlationId} should include eventCount. Status JSON: {status}");
 
-        eventCount.ValueKind.ShouldNotBe(
-            JsonValueKind.Null,
-            $"eventCount for command {correlationId} should not be null. Status JSON: {status}");
-        eventCount.GetInt32().ShouldBeGreaterThan(
+        eventCount.ValueKind.ShouldBe(
+            JsonValueKind.Number,
+            $"eventCount for command {correlationId} should be a JSON number. ValueKind={eventCount.ValueKind}. Status JSON: {status}");
+        eventCount.TryGetInt32(out int parsed).ShouldBeTrue(
+            $"eventCount for command {correlationId} should fit in Int32. Raw: {eventCount}. Status JSON: {status}");
+        parsed.ShouldBeGreaterThan(
             0,
             $"eventCount should prove at least one event was persisted for command {correlationId}. Status JSON: {status}");
     }
 
     private static void AssertStrongSelfRoutingETag(string etag, string expectedProjectionType, QueryIdentity query) {
-        if (etag.StartsWith("W/", StringComparison.Ordinal)) {
-            throw new ShouldAssertException($"Expected a strong ETag for {query.DiagnosticIdentity}. Actual: {etag}");
-        }
-
-        if (!etag.StartsWith('"') || !etag.EndsWith('"')) {
-            throw new ShouldAssertException($"Expected quoted ETag for {query.DiagnosticIdentity}. Actual: {etag}");
+        if (etag.Length < 3
+            || etag.StartsWith("W/", StringComparison.Ordinal)
+            || !etag.StartsWith('"')
+            || !etag.EndsWith('"')) {
+            throw new ShouldAssertException(
+                $"Expected a strong quoted ETag (not weak/unquoted/empty) for {query.DiagnosticIdentity}. Actual: {etag}");
         }
 
         string inner = etag[1..^1];
@@ -264,12 +272,30 @@ public sealed partial class HttpStaleETagProofE2ETests {
         Base64UrlGuidRegex().IsMatch(parts[1]).ShouldBeTrue(
             $"Expected ETag GUID suffix to be 22-character base64url GUID for {query.DiagnosticIdentity}. Actual: {etag}");
 
-        DecodeBase64Url(parts[0]).ShouldBe(
+        TryDecodeBase64Url(parts[0]).ShouldBe(
             expectedProjectionType,
-            $"Expected ETag prefix to decode to projection type '{expectedProjectionType}' for {query.DiagnosticIdentity}.");
-        DecodeBase64UrlToBytes(parts[1]).Length.ShouldBe(
+            $"Expected ETag prefix to decode to projection type '{expectedProjectionType}' for {query.DiagnosticIdentity}. Actual: {etag}");
+        TryDecodeBase64UrlBytes(parts[1]).Length.ShouldBe(
             16,
-            $"Expected ETag GUID suffix to decode to 16 bytes for {query.DiagnosticIdentity}.");
+            $"Expected ETag GUID suffix to decode to 16 bytes for {query.DiagnosticIdentity}. Actual: {etag}");
+    }
+
+    private static string TryDecodeBase64Url(string value) {
+        try {
+            return Encoding.UTF8.GetString(DecodeBase64UrlToBytes(value));
+        }
+        catch (FormatException ex) {
+            throw new ShouldAssertException($"ETag prefix '{value}' could not be decoded as base64url: {ex.Message}");
+        }
+    }
+
+    private static byte[] TryDecodeBase64UrlBytes(string value) {
+        try {
+            return DecodeBase64UrlToBytes(value);
+        }
+        catch (FormatException ex) {
+            throw new ShouldAssertException($"ETag GUID suffix '{value}' could not be decoded as base64url: {ex.Message}");
+        }
     }
 
     private static int ParseCountFromQueryBody(string body) {
@@ -295,7 +321,7 @@ public sealed partial class HttpStaleETagProofE2ETests {
                 throw new FormatException("Payload is an empty base64 string.");
             }
 
-            byte[] bytes = Convert.FromBase64String(encoded);
+            byte[] bytes = DecodeBase64UrlToBytes(encoded);
             using JsonDocument inner = JsonDocument.Parse(bytes);
             if (inner.RootElement.TryGetProperty("count", out JsonElement encodedCount)) {
                 return encodedCount.GetInt32();
@@ -390,12 +416,18 @@ public sealed partial class HttpStaleETagProofE2ETests {
             return "<empty>";
         }
 
-        const int max = 800;
-        return value.Length <= max ? value : value[..max];
+        return value.Length <= BodySnipMax
+            ? value
+            : $"{value[..BodySnipMax]}…[truncated, full length={value.Length}]";
     }
 
-    private static string DecodeBase64Url(string value)
-        => Encoding.UTF8.GetString(DecodeBase64UrlToBytes(value));
+    private static void AppendHistory(List<QueryObservation> history, QueryObservation observation) {
+        if (history.Count >= MaxHistoryEntries) {
+            history.RemoveAt(0);
+        }
+
+        history.Add(observation);
+    }
 
     private static byte[] DecodeBase64UrlToBytes(string value) {
         string padded = value.Replace('-', '+').Replace('_', '/');

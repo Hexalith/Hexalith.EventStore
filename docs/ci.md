@@ -94,13 +94,21 @@ To upgrade an action, look up the new SHA from the upstream release and update b
 
 ## Branch Protection
 
-`main` is the only protected branch. Required status checks:
+Observed repository settings on 2026-05-04:
+
+- Classic branch protection for `main` was not configured.
+- Repository ruleset `Protect` was active and blocked branch deletion and non-fast-forward updates.
+- No required status checks, pull request review requirement, signed commit requirement, or linear-history
+  requirement was observed in the available branch protection/ruleset evidence.
+
+Intended required status checks from repository policy are:
 
 - `commitlint` (PRs only)
 - `secret-scan`
 - `build-and-test`
 
-`aspire-tests` is **not** required (continue-on-error). `Documentation Validation` is recommended but not enforced.
+`aspire-tests` is **not** intended to be required because it uses `continue-on-error`. `Documentation Validation`
+is recommended but was not observed as an enforced branch rule in the 2026-05-04 governance evidence.
 
 ## Secrets
 
