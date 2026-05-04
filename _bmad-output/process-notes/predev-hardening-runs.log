@@ -76,3 +76,4 @@
 2026-05-04T20:40:39+02:00	party-mode-review	post-epic-deferred-dw1-projection-and-drain-hardening	ok	Applied party-mode review clarifications; final recommendation needs-story-update; soft working-tree warning from preflight timestamp 2026-05-04T18:38:42Z.
 2026-05-04T20:48:20+02:00	party-mode-review	post-epic-deferred-dw2-admin-dapr-mcp-live-evidence	ok	Applied party-mode review clarifications; final recommendation ready-for-dev.
 2026-05-04T21:55:21+02:00	party-mode-review	post-epic-deferred-dw3-admin-debugging-json-large-stream-hardening	ok	Applied party-mode review clarifications; final recommendation needs-story-update; soft working-tree warning from preflight timestamp 2026-05-04T19:02:38Z.
+2026-05-05T00:11:03+02:00	party-mode-review	post-epic-deferred-dw4-operational-evidence-schema-validation	ok	Applied party-mode hardening for validator contract, fixture matrix, diagnostics, fail-closed behavior, and CI expectations.

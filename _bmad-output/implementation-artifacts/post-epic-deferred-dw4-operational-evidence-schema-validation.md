@@ -94,6 +94,16 @@ Current HEAD at story creation: `d392506b`.
 - The JSON Schema validation vocabulary includes structural validation keywords such as `type`, `required`, `enum`, `pattern`, and object/property constraints. These are useful for extracted metadata blocks but do not replace repository-specific rules like same-run control linkage or placeholder detection. Source: <https://json-schema.org/draft/2020-12/json-schema-validation>
 - `System.Text.Json` provides UTF-8 JSON reader/writer APIs and DOM APIs; `JsonNode` is the mutable DOM option when a .NET validator needs to inspect generated JSON/YAML-converted structures. Source: <https://learn.microsoft.com/dotnet/api/system.text.json?view=net-10.0>
 
+## Party-Mode Hardening Notes
+
+- Primary implementation path should be explicit before development starts: prefer a small validator under `scripts/` with PowerShell and shell entrypoints only when that matches the existing docs-validation pattern. If a .NET test/tool is chosen instead, record the reason in the Dev Agent Record and run only the affected test project.
+- Keep schema-specific rules data-driven. Rule data for `query-operational-evidence/v1` and `signalr-operational-evidence/v1` should live in named rule sets or versioned config/schema artifacts, not only as scattered procedural checks. Unknown schema versions must fail closed until a future story explicitly maps them.
+- Validator diagnostics must be deterministic and assertion-friendly. Use stable ordering and include `file`, `schema`, `rule id`, `section`, `field or table row`, and `hint` whenever available.
+- Define a fixture coverage matrix before closing the story. Each negative fixture should map to at least one required rule family: missing required metadata, unreplaced placeholder, missing control, invalid classification, unsafe redaction, absent redaction, malformed evidence, unknown schema version, and missing profile-scoped Aspire fields when the profile requires them.
+- `not-applicable: <reason>` is allowed only when the rule set marks the field as profile-specific or optional. A blank reason or generic escape must fail.
+- Redaction validation needs concrete boundaries: synthetic tokens, tenant IDs, user IDs, URLs, trace IDs, and connection-string-like values may appear only when clearly marked as synthetic or redacted; obvious bearer tokens, real connection-string keywords, production hostnames, and raw secret markers must fail with an escape path for documented false positives.
+- CI/local validation should stay centralized. Prefer invoking the new validator from `scripts/validate-docs.ps1` and `scripts/validate-docs.sh`, then from `.github/workflows/docs-validation.yml`, unless the Dev Agent Record records a precise reason for advisory-only or deferred CI wiring.
+
 ## Tasks / Subtasks
 
 - [ ] Task 0: Baseline schema contracts and choose validator shape (AC: #1, #4, #7, #9, #11, #14)
@@ -108,6 +118,8 @@ Current HEAD at story creation: `d392506b`.
     - [ ] 1.2 Define required fields, required sections, required tables, classification enums, control requirements, and redaction rules for `signalr-operational-evidence/v1`.
     - [ ] 1.3 Add rule ids or stable rule names for missing field, placeholder, empty required table cell, invalid classification, missing control, and unsafe redaction findings.
     - [ ] 1.4 Add a visible mapping table if query and SignalR classifications intentionally differ.
+    - [ ] 1.5 Define fail-closed behavior for malformed evidence, unknown schema versions, unknown classifications, placeholder-looking values in required fields, and missing profile-scoped Aspire fields when an Aspire/DAPR profile is claimed.
+    - [ ] 1.6 Define the exact `not-applicable: <reason>` rule and reject empty, generic, or unsupported use of the marker.
 
 - [ ] Task 2: Implement the lightweight validator (AC: #2, #3, #5, #6, #7, #9, #13)
     - [ ] 2.1 Add the validator in the smallest maintainable repo location.
@@ -116,18 +128,23 @@ Current HEAD at story creation: `d392506b`.
     - [ ] 2.4 Detect invalid classification values and missing fail-closed reviewer verdict data.
     - [ ] 2.5 Detect obvious unsafe tokens, connection-string markers, production hostnames, or raw-secret indicators, and document false-positive handling.
     - [ ] 2.6 Return deterministic non-zero exit code and concise file/schema/rule diagnostics.
+    - [ ] 2.7 Keep diagnostics sorted stably and shaped for tests: `file`, `schema`, `rule`, `section`, `field`, and `hint`.
+    - [ ] 2.8 Keep schema-specific rule data separate from parser flow so a future `v2` can be added without rewriting the validator.
 
 - [ ] Task 3: Add positive and negative proof samples (AC: #8, #11, #13)
     - [ ] 3.1 Add one minimal valid query evidence sample and one minimal invalid query evidence sample.
     - [ ] 3.2 Add one minimal valid SignalR evidence sample and one minimal invalid SignalR evidence sample.
     - [ ] 3.3 Ensure negative samples cover missing metadata, placeholder, missing control, invalid classification, and redaction failure.
     - [ ] 3.4 Keep all samples synthetic and safe to commit.
+    - [ ] 3.5 Add a fixture coverage matrix mapping each invalid sample to the exact validator rule ids it is expected to trigger.
+    - [ ] 3.6 Include one valid `not-applicable: <reason>` profile-scoped case and one invalid unsupported or empty `not-applicable` case.
 
 - [ ] Task 4: Align docs, templates, and validation paths (AC: #4, #7, #10, #12, #14)
     - [ ] 4.1 Update query and SignalR operations docs only where needed to point reviewers to the validator and supported schema versions.
     - [ ] 4.2 Update templates only where needed to reduce duplicate taxonomy drift or make required fields validator-friendly.
     - [ ] 4.3 Either wire the validator into `scripts/validate-docs.ps1`, `scripts/validate-docs.sh`, and `.github/workflows/docs-validation.yml`, or record a precise CI-deferred reason.
     - [ ] 4.4 Update only DW4-relevant `deferred-work.md` bullets with disposition markers.
+    - [ ] 4.5 Document the local command, docs-validation command, and CI command path in the Dev Agent Record.
 
 - [ ] Task 5: Validate and close bookkeeping (AC: #8, #10, #12, #15)
     - [ ] 5.1 Run the validator against positive samples and confirm pass.
@@ -135,6 +152,7 @@ Current HEAD at story creation: `d392506b`.
     - [ ] 5.3 Run targeted markdown validation for changed docs, templates, samples, and this story.
     - [ ] 5.4 Run focused tests if the validator is implemented as .NET test/tool code.
     - [ ] 5.5 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and sprint-status row at dev handoff.
+    - [ ] 5.6 Record sample passing output and at least one expected failing-case output in the Dev Agent Record.
 
 ## Dev Notes
 
@@ -161,6 +179,7 @@ Current HEAD at story creation: `d392506b`.
 - If implemented as a script, include deterministic command examples in the Dev Agent Record and ensure the script exits non-zero on invalid samples.
 - Product unit tests are not required unless product code changes unexpectedly.
 - Do not run solution-level `dotnet test`; follow repository guidance and run relevant projects individually.
+- Validator self-tests are required even when product tests are not. Cover parser success/failure, each independent rule family, valid fixture pass behavior, invalid fixture fail behavior, diagnostic ordering, and exact diagnostic code/path output.
 
 ### References
 
@@ -208,3 +227,15 @@ GPT-5 Codex
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
 | 2026-05-04 | 0.1 | Created ready-for-dev DW4 operational evidence schema validation story. | Codex automation |
+| 2026-05-05 | 0.2 | Applied party-mode hardening for validator contract, fixtures, diagnostics, and CI expectations. | Codex automation |
+
+## Party-Mode Review
+
+- Date/time: 2026-05-05T00:11:03+02:00
+- Selected story key: `post-epic-deferred-dw4-operational-evidence-schema-validation`
+- Command/skill invocation used: `/bmad-party-mode post-epic-deferred-dw4-operational-evidence-schema-validation; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), Paige (Technical Writer)
+- Findings summary: all reviewers recommended `needs-story-update`; the story is directionally sound, but the development handoff needed a sharper validator contract, explicit implementation entrypoint expectations, rule-data separation, deterministic diagnostics, fail-closed behavior, fixture coverage matrix, redaction boundaries, and CI/local command clarity.
+- Changes applied: added Party-Mode Hardening Notes; expanded rule, implementation, sample, docs-validation, and verification tasks; added validator self-test guidance; added change-log row.
+- Findings deferred: exact schema/config file format and location; whether the implementation is a script, .NET tool/test, or JSON Schema plus markdown lint companion; whether CI blocks immediately or starts advisory; long-term taxonomy ownership and historical evidence migration policy.
+- Final recommendation: needs-story-update
