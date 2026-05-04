@@ -43,78 +43,115 @@ public sealed partial class QueryCacheTopologyProofE2ETests {
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(4));
         CancellationToken ct = cts.Token;
         var history = new List<QueryObservation>();
+        var stopwatch = Stopwatch.StartNew();
 
-        string firstCorrelationId = await SubmitCompletedIncrementAsync(query, ct);
+        string currentPhase = "first-command-submit";
+        string firstCorrelationId = "<not-submitted>";
+        string? secondCorrelationId = null;
+        string? originalETag = null;
+        int currentExpectedCount = 1;
 
-        QueryPollResult coldQuery = await PollUntilProjectedCountAsync(
-            query,
-            expectedCount: 1,
-            ifNoneMatch: null,
-            firstCorrelationId,
-            secondCorrelationId: null,
-            baselineETag: null,
-            history,
-            phase: "cold-query",
-            ct);
+        try {
+            currentPhase = "first-command-submit";
+            firstCorrelationId = await SubmitCompletedIncrementAsync(query, ct);
 
-        string baselineETag = coldQuery.ETag!;
-        AssertStrongSelfRoutingETag(baselineETag, projectionType, query);
-
-        QueryObservation warmBaseline = await SendSingleQueryAsync(query, baselineETag, ct);
-        warmBaseline.StatusCode.ShouldBe(
-            HttpStatusCode.NotModified,
-            FailureContext(
+            currentPhase = "cold-query";
+            QueryPollResult coldQuery = await PollUntilProjectedCountAsync(
                 query,
+                expectedCount: 1,
+                ifNoneMatch: null,
+                firstCorrelationId,
+                secondCorrelationId: null,
+                baselineETag: null,
+                history,
+                phase: currentPhase,
+                ct);
+
+            string baselineETag = coldQuery.ETag!;
+            originalETag = baselineETag;
+            AssertStrongSelfRoutingETag(baselineETag, projectionType, query);
+
+            currentPhase = "warm-baseline-current-validator";
+            await AssertWarmNotModifiedAsync(
+                query,
+                baselineETag,
                 firstCorrelationId,
                 secondCorrelationId: null,
                 expectedCount: 1,
-                phase: "warm-baseline-current-validator",
-                originalETag: baselineETag,
-                lastResult: warmBaseline,
+                phase: currentPhase,
                 history,
-                elapsed: null));
+                stopwatch.Elapsed,
+                ct);
 
-        string secondCorrelationId = await SubmitCompletedIncrementAsync(query, ct);
+            currentPhase = "second-command-submit";
+            secondCorrelationId = await SubmitCompletedIncrementAsync(query, ct);
 
-        QueryPollResult changedProjection = await PollUntilProjectedCountAsync(
-            query,
-            expectedCount: 2,
-            ifNoneMatch: baselineETag,
-            firstCorrelationId,
-            secondCorrelationId,
-            baselineETag,
-            history,
-            phase: "post-change-stale-validator",
-            ct);
-
-        string changedETag = changedProjection.ETag!;
-        changedETag.ShouldNotBe(
-            baselineETag,
-            FailureContext(
+            currentPhase = "post-change-stale-validator";
+            currentExpectedCount = 2;
+            QueryPollResult changedProjection = await PollUntilProjectedCountAsync(
                 query,
+                expectedCount: 2,
+                ifNoneMatch: baselineETag,
+                firstCorrelationId,
+                secondCorrelationId,
+                baselineETag,
+                history,
+                phase: currentPhase,
+                ct);
+
+            string changedETag = changedProjection.ETag!;
+            changedETag.ShouldNotBe(
+                baselineETag,
+                FailureContext(
+                    query,
+                    firstCorrelationId,
+                    secondCorrelationId,
+                    expectedCount: 2,
+                    phase: currentPhase,
+                    originalETag: baselineETag,
+                    lastResult: changedProjection,
+                    history,
+                    elapsed: stopwatch.Elapsed));
+            AssertStrongSelfRoutingETag(changedETag, projectionType, query);
+            originalETag = changedETag;
+
+            currentPhase = "rewarm-current-validator";
+            await AssertWarmNotModifiedAsync(
+                query,
+                changedETag,
                 firstCorrelationId,
                 secondCorrelationId,
                 expectedCount: 2,
-                phase: "post-change-stale-validator",
-                originalETag: baselineETag,
-                lastResult: changedProjection,
+                phase: currentPhase,
                 history,
-                elapsed: null));
-        AssertStrongSelfRoutingETag(changedETag, projectionType, query);
+                stopwatch.Elapsed,
+                ct);
+        }
+        catch (OperationCanceledException oce) when (cts.IsCancellationRequested) {
+            QueryObservation sentinel = history.Count > 0
+                ? history[^1]
+                : new QueryObservation(
+                    StatusCode: 0,
+                    BodySnippet: "<no-observation>",
+                    ParsedCount: null,
+                    ParseError: "Outer 4-minute test cancellation fired before any query observation",
+                    ETag: null,
+                    TraceHeaders: "<none>");
 
-        QueryObservation reWarmed = await SendSingleQueryAsync(query, changedETag, ct);
-        reWarmed.StatusCode.ShouldBe(
-            HttpStatusCode.NotModified,
-            FailureContext(
-                query,
-                firstCorrelationId,
-                secondCorrelationId,
-                expectedCount: 2,
-                phase: "rewarm-current-validator",
-                originalETag: changedETag,
-                lastResult: reWarmed,
-                history,
-                elapsed: null));
+            throw new ShouldAssertException(
+                $"Outer 4-minute test cancellation fired during phase={currentPhase}. "
+                + FailureContext(
+                    query,
+                    firstCorrelationId,
+                    secondCorrelationId,
+                    currentExpectedCount,
+                    currentPhase,
+                    originalETag,
+                    sentinel,
+                    history,
+                    stopwatch.Elapsed),
+                oce);
+        }
     }
 
     private async Task<string> SubmitCompletedIncrementAsync(QueryIdentity query, CancellationToken cancellationToken) {
@@ -150,6 +187,9 @@ public sealed partial class QueryCacheTopologyProofE2ETests {
             catch (OperationCanceledException) {
                 throw;
             }
+            catch (FailFastSubmitException) {
+                throw;
+            }
             catch (Exception ex) {
                 lastError = ex;
                 await Task.Delay(ContractTestHelpers.DefaultPollInterval, cancellationToken).ConfigureAwait(false);
@@ -170,13 +210,29 @@ public sealed partial class QueryCacheTopologyProofE2ETests {
 
         if (response.StatusCode != HttpStatusCode.Accepted) {
             string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            throw new ShouldAssertException(
-                $"Expected IncrementCounter submit to return 202 Accepted for {query.DiagnosticIdentity} "
-                + $"but was {(int)response.StatusCode} {response.StatusCode}. Body:{Environment.NewLine}{body}");
+            string message = $"Expected IncrementCounter submit to return 202 Accepted for {query.DiagnosticIdentity} "
+                + $"but was {(int)response.StatusCode} {response.StatusCode}. Body:{Environment.NewLine}{body}";
+            throw IsFailFast(response.StatusCode)
+                ? new FailFastSubmitException(message)
+                : new ShouldAssertException(message);
         }
 
         JsonElement result = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken).ConfigureAwait(false);
-        return result.GetProperty("correlationId").GetString()!;
+        if (!result.TryGetProperty("correlationId", out JsonElement correlationIdElement)
+            || correlationIdElement.ValueKind != JsonValueKind.String) {
+            throw new FailFastSubmitException(
+                $"IncrementCounter submit response for {query.DiagnosticIdentity} did not include a string 'correlationId' property. "
+                + $"Raw body:{Environment.NewLine}{result.GetRawText()}");
+        }
+
+        string? correlationId = correlationIdElement.GetString();
+        if (string.IsNullOrWhiteSpace(correlationId)) {
+            throw new FailFastSubmitException(
+                $"IncrementCounter submit response for {query.DiagnosticIdentity} returned an empty 'correlationId'. "
+                + $"Raw body:{Environment.NewLine}{result.GetRawText()}");
+        }
+
+        return correlationId;
     }
 
     private async Task<QueryPollResult> PollUntilProjectedCountAsync(
@@ -198,12 +254,18 @@ public sealed partial class QueryCacheTopologyProofE2ETests {
             ParseError: "Projection query was not sent.",
             ETag: null,
             TraceHeaders: "<none>");
+        int phaseObservations = 0;
+        int phaseNotModified = 0;
 
         while (DateTimeOffset.UtcNow < deadline) {
             cancellationToken.ThrowIfCancellationRequested();
 
             QueryObservation observation = await SendSingleQueryAsync(query, ifNoneMatch, cancellationToken).ConfigureAwait(false);
             history.Add(observation);
+            phaseObservations++;
+            if (observation.StatusCode == HttpStatusCode.NotModified) {
+                phaseNotModified++;
+            }
 
             lastResult = new QueryPollResult(
                 observation.StatusCode,
@@ -245,6 +307,7 @@ public sealed partial class QueryCacheTopologyProofE2ETests {
             await Task.Delay(s_projectionPollInterval, cancellationToken).ConfigureAwait(false);
         }
 
+        string failureMode = ClassifyTimeoutFailureMode(phase, phaseObservations, phaseNotModified);
         throw new ShouldAssertException(
             FailureContext(
                 query,
@@ -255,7 +318,20 @@ public sealed partial class QueryCacheTopologyProofE2ETests {
                 ifNoneMatch,
                 lastResult,
                 history,
-                stopwatch.Elapsed));
+                stopwatch.Elapsed)
+            + $" FailureMode={failureMode};");
+    }
+
+    private static string ClassifyTimeoutFailureMode(string phase, int phaseObservations, int phaseNotModified) {
+        if (string.Equals(phase, "post-change-stale-validator", StringComparison.Ordinal)
+            && phaseObservations > 0
+            && phaseNotModified == phaseObservations) {
+            return "POST_DELIVERY_STUCK_AT_304 (AC #6 violation: every post-change observation returned 304; "
+                + "the second IncrementCounter command reached Completed before this poll started, "
+                + "so a final 304 NotModified is the failure mode named by AC #6, not bounded eventual consistency)";
+        }
+
+        return $"GENERIC_PHASE_TIMEOUT (phase={phase}; observations={phaseObservations}; notModified={phaseNotModified})";
     }
 
     private async Task<QueryObservation> SendSingleQueryAsync(
@@ -268,6 +344,48 @@ public sealed partial class QueryCacheTopologyProofE2ETests {
 
         string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         return QueryObservation.FromResponse(response, body);
+    }
+
+    private async Task AssertWarmNotModifiedAsync(
+        QueryIdentity query,
+        string baselineETag,
+        string firstCorrelationId,
+        string? secondCorrelationId,
+        int expectedCount,
+        string phase,
+        List<QueryObservation> history,
+        TimeSpan elapsed,
+        CancellationToken cancellationToken) {
+        const int maxAttempts = 3;
+        QueryObservation? lastObservation = null;
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            cancellationToken.ThrowIfCancellationRequested();
+            lastObservation = await SendSingleQueryAsync(query, baselineETag, cancellationToken).ConfigureAwait(false);
+            history.Add(lastObservation);
+
+            if (lastObservation.StatusCode == HttpStatusCode.NotModified) {
+                if (!string.IsNullOrWhiteSpace(lastObservation.ETag)
+                    && !string.Equals(lastObservation.ETag, baselineETag, StringComparison.Ordinal)) {
+                    throw new ShouldAssertException(
+                        FailureContext(
+                            query, firstCorrelationId, secondCorrelationId, expectedCount, phase,
+                            baselineETag, lastObservation, history, elapsed)
+                        + $" Server echoed a different ETag on 304: expected '{baselineETag}' but received '{lastObservation.ETag}'.");
+                }
+
+                return;
+            }
+
+            if (attempt < maxAttempts) {
+                await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        throw new ShouldAssertException(
+            FailureContext(
+                query, firstCorrelationId, secondCorrelationId, expectedCount, phase,
+                baselineETag, lastObservation!, history, elapsed));
     }
 
     private static void AssertExpectedCountETagContract(
@@ -317,6 +435,7 @@ public sealed partial class QueryCacheTopologyProofE2ETests {
         => statusCode is HttpStatusCode.Unauthorized
             or HttpStatusCode.Forbidden
             or HttpStatusCode.BadRequest
+            or HttpStatusCode.UnprocessableEntity
             or HttpStatusCode.InternalServerError
             or HttpStatusCode.BadGateway
             or HttpStatusCode.ServiceUnavailable
@@ -350,16 +469,28 @@ public sealed partial class QueryCacheTopologyProofE2ETests {
             domains: [query.Domain],
             permissions: ["query:read"]);
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/queries") {
-            Content = new StringContent(query.SerializedBody, Encoding.UTF8, "application/json"),
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        HttpRequestMessage? request = null;
+        try {
+            request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/queries") {
+                Content = new StringContent(query.SerializedBody, Encoding.UTF8, "application/json"),
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        if (!string.IsNullOrWhiteSpace(ifNoneMatch)) {
-            _ = request.Headers.TryAddWithoutValidation("If-None-Match", ifNoneMatch);
+            if (!string.IsNullOrWhiteSpace(ifNoneMatch)
+                && !request.Headers.TryAddWithoutValidation("If-None-Match", ifNoneMatch)) {
+                string hex = Convert.ToHexString(Encoding.UTF8.GetBytes(ifNoneMatch));
+                throw new ShouldAssertException(
+                    $"HttpClient rejected If-None-Match value for query {query.DiagnosticIdentity}. "
+                    + $"Raw value (length={ifNoneMatch.Length}): '{ifNoneMatch}'. UTF-8 hex: {hex}.");
+            }
+
+            HttpRequestMessage result = request;
+            request = null;
+            return result;
         }
-
-        return request;
+        finally {
+            request?.Dispose();
+        }
     }
 
     private static void AssertPersistedEventEvidence(JsonElement status, string correlationId) {
@@ -657,4 +788,6 @@ public sealed partial class QueryCacheTopologyProofE2ETests {
         string? ParseError,
         string? ETag,
         string TraceHeaders);
+
+    private sealed class FailFastSubmitException(string message) : Exception(message);
 }

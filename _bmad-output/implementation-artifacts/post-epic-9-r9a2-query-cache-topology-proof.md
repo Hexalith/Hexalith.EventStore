@@ -1,6 +1,6 @@
 # Post-Epic-9 R9-A2: Query Cache Topology Proof
 
-Status: review
+Status: done
 
 <!-- Source: epic-9-retro-2026-04-30.md - R9-A2 -->
 <!-- Source: post-epic-10-r10a8-r9-r10-follow-through-tracking.md - R9/R10 reconciliation -->
@@ -101,6 +101,25 @@ Existing evidence to reuse:
     - [x] If shared helpers changed, run affected neighbors such as `ValidProjectionRoundTripE2ETests`, `ProjectionMalformedResponseE2ETests`, and `QueryEndpointE2ETests`.
     - [x] Run the relevant unit slice if production query/ETag/cache code changed.
     - [x] Record commands, results, environment caveats, and blockers in this story's Dev Agent Record.
+
+### Review Findings
+
+Code review 2026-05-04 (3-layer adversarial: Blind Hunter / Edge Case Hunter / Acceptance Auditor). 36 raw findings consolidated to 17 unique. 0 decision-needed, 6 patches, 6 defers, 5 dismissed (+9 absorbed in dedupe).
+
+- [x] [Review][Patch] P1 Submit retry loop swallows 4xx + missing `correlationId` as transient timeouts — added `FailFastSubmitException` thrown on `IsFailFast` status (now includes 422) and on missing/empty `correlationId` with raw body in failure; retry loop catches it before generic `Exception` and re-throws instead of retrying [`QueryCacheTopologyProofE2ETests.cs`] (HIGH; sources: blind+edge)
+- [x] [Review][Patch] P2 Post-delivery `304` after second-command `Completed` not classified as sharp failure (AC #6) — `PollUntilProjectedCountAsync` now counts post-phase observations and `NotModified` responses; on timeout, `ClassifyTimeoutFailureMode` emits `POST_DELIVERY_STUCK_AT_304 (AC #6 violation: ...)` when every post-change observation returned `304` [`QueryCacheTopologyProofE2ETests.cs`] (MEDIUM; sources: auditor+edge)
+- [x] [Review][Patch] P3 Warm-baseline `304` is single-shot; AC #9 classifies missing/transient ETag as bounded retry — added `AssertWarmNotModifiedAsync` helper with 3-attempt bounded retry (200 ms inter-attempt delay) accepting `304` as terminal success; intermediate observations recorded in `history` for diagnostics [`QueryCacheTopologyProofE2ETests.cs`] (MEDIUM; sources: auditor+edge)
+- [x] [Review][Patch] P4 Warm `304` does not assert server-echoed ETag equals baseline — `AssertWarmNotModifiedAsync` now asserts that any ETag header returned with `304` ordinal-equals the baseline, and throws with the diff string when divergent (Gate 1 echo contract enforced) [`QueryCacheTopologyProofE2ETests.cs`] (MEDIUM; source: edge)
+- [x] [Review][Patch] P5 `TryAddWithoutValidation` discards return; if `If-None-Match` is rejected the request goes out without the validator and `200` is misclassified as server bug — `CreateProjectionQueryRequest` now wraps allocation in `try/finally`, asserts the return value, and throws `ShouldAssertException` containing the raw UTF-8 hex of the rejected ETag (request disposed on failure) [`QueryCacheTopologyProofE2ETests.cs`] (MEDIUM; sources: blind+edge)
+- [x] [Review][Patch] P6 Outer 4-min cancellation throws bare `OperationCanceledException` with no `FailureContext`/phase/history — test body now tracks `currentPhase`/`firstCorrelationId`/`secondCorrelationId`/`originalETag`/`currentExpectedCount` as locals; outer `try/catch (OperationCanceledException) when (cts.IsCancellationRequested)` re-throws as `ShouldAssertException` with full `FailureContext` and the original `OperationCanceledException` as inner [`QueryCacheTopologyProofE2ETests.cs`] (MEDIUM; source: edge)
+- [x] [Review][Defer] D1 `eventCount.GetInt32()` does not branch on `ValueKind` for serializer drift [`QueryCacheTopologyProofE2ETests.cs:537-547`] — deferred, diagnostic polish only; server currently emits `Number`
+- [x] [Review][Defer] D2 No active mid-test detection of cross-test shared-scope `{counter:tenant-a}` ETag churn [`QueryCacheTopologyProofE2ETests.cs:445-486`] — deferred, mitigated by `[Collection("AspireContractTests")]` serialization; spec acknowledges trade-off
+- [x] [Review][Defer] D3 `history` list grows unboundedly; long `FailureContext` may be runner-truncated [`QueryCacheTopologyProofE2ETests.cs:217, 378, 678-682`] — deferred, diagnostic polish only
+- [x] [Review][Defer] D4 `QueryObservation.FromResponse` parses count only on `200`; weaker diagnostic on non-`OK` with embedded body [`QueryCacheTopologyProofE2ETests.cs:789-808`] — deferred, diagnostic polish only
+- [x] [Review][Defer] D5 `MessageId` submitted as `Guid.NewGuid().ToString()`, not ULID (CLAUDE.md R2-A7 drift) [`QueryCacheTopologyProofE2ETests.cs:212, 504-510`] — deferred, pre-existing pattern in sibling Tier 3 tests; ULID reconciliation is its own backlog item
+- [x] [Review][Defer] D6 Outer CT not propagated into shared `PollUntilTerminalStatusAsync` [`QueryCacheTopologyProofE2ETests.cs:295-299`] — deferred, fix requires shared-helper signature change; AC #13 and Dev Agent Record commit to no shared-helper changes in this story
+
+Dismissed (5 unique + 9 deduped): regex `{22}` hardcode (server contract emits 22), `Convert.FromBase64String` in `ParseCountFromPayload` (server emits standard base64; sibling test uses same pattern), 404 not in `IsFailFast` for cold (spec classifies 404 as retry state), `ConfigureAwait` selective removal (correct per xUnit1030 scope), and various theoretical/cosmetic concerns.
 
 ## Dev Notes
 
@@ -244,6 +263,7 @@ GPT-5 Codex
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-04 | 1.1 | Code review applied 6 patches (P1 fail-fast submit, P2 stuck-at-304 classifier, P3 warm-baseline bounded retry, P4 ETag echo assertion, P5 If-None-Match header rejection guard, P6 outer-CTS diagnostic envelope); 6 defers recorded. Targeted test passed 1/1. Story moved review → done. | Claude (code review) |
 | 2026-05-04 | 1.0 | Implemented and validated Tier 3 query-cache topology proof; moved story to review. | Codex |
 | 2026-05-04 | 0.3 | Applied advanced elicitation hardening for ETag scope, Gate 1/Gate 2 evidence, and diagnostics. | Codex automation |
 | 2026-05-03 | 0.2 | Applied party-mode review hardening for R9-A2 topology proof boundaries. | Codex automation |
