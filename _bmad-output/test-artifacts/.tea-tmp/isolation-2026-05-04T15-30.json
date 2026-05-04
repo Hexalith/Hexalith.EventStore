@@ -1,0 +1,132 @@
+{
+  "dimension": "isolation",
+  "score": 76,
+  "max_score": 100,
+  "grade": "C",
+  "violations": [
+    {
+      "file": "tests/Hexalith.EventStore.Server.Tests/Fixtures/DaprTestContainerFixture.cs",
+      "line": 60,
+      "severity": "HIGH",
+      "category": "shared-fixture-state-not-reset",
+      "description": "FakeEventPublisher, FakeDeadLetterPublisher, InMemoryCommandStatusStore, and FakeDomainServiceInvoker are owned by the collection-scoped fixture and accumulate state across every test in the [Collection(\"DaprTestContainer\")]; there is no per-test Reset() invoked between tests, so accumulated topics, published events, and command status records leak across tests within the same fixture lifetime.",
+      "suggestion": "Add a Reset() helper on the fixture (and on FakeEventPublisher/FakeDeadLetterPublisher/InMemoryCommandStatusStore) and invoke it from each test class constructor or via an IDisposable per-test wrapper that runs before each test.",
+      "code_snippet": "public FakeEventPublisher EventPublisher { get; } = new();\npublic FakeDeadLetterPublisher DeadLetterPublisher { get; } = new();\npublic InMemoryCommandStatusStore CommandStatusStore { get; } = new();"
+    },
+    {
+      "file": "tests/Hexalith.EventStore.Server.Tests/Events/EventPersistenceIntegrationTests.cs",
+      "line": 29,
+      "severity": "HIGH",
+      "category": "static-shared-resource-no-cleanup",
+      "description": "A static Lazy<Task<IConnectionMultiplexer>> RedisConnection is initialized once per AppDomain and never disposed; the multiplexer leaks across tests, classes, and even fixture lifecycles, and any state cached in Redis between Tier 2 runs is observable to subsequent tests.",
+      "suggestion": "Move the multiplexer into the DaprTestContainerFixture (IAsyncLifetime) so it is created/disposed with the collection, or wrap each access in a using block; flush the relevant Redis keys in DisposeAsync.",
+      "code_snippet": "private static readonly Lazy<Task<IConnectionMultiplexer>> RedisConnection =\n    new(async () => await ConnectionMultiplexer\n        .ConnectAsync(\"localhost:6379,abortConnect=false\")\n        .ConfigureAwait(false));"
+    },
+    {
+      "file": "tests/Hexalith.EventStore.Admin.Cli.Tests/GlobalOptionsTests.cs",
+      "line": 18,
+      "severity": "MEDIUM",
+      "category": "env-var-not-restored",
+      "description": "Constructor and Dispose both null-out EVENTSTORE_ADMIN_URL/TOKEN/FORMAT without first capturing the prior process value; if the developer or CI sets these env vars before invoking dotnet test, those values are silently destroyed for the rest of the process lifetime.",
+      "suggestion": "Mirror the snapshot/restore pattern used in GlobalOptionsBindingProfileTests.cs: capture _origUrl/_origToken/_origFormat in the constructor and write them back in Dispose.",
+      "code_snippet": "public GlobalOptionsTests() {\n    foreach (string v in _envVarsToClean) {\n        Environment.SetEnvironmentVariable(v, null);\n    }\n}\npublic void Dispose() {\n    foreach (string v in _envVarsToClean) {\n        Environment.SetEnvironmentVariable(v, null);\n    }\n    GC.SuppressFinalize(this);\n}"
+    },
+    {
+      "file": "tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestFixture.cs",
+      "line": 44,
+      "severity": "MEDIUM",
+      "category": "env-var-leak-on-init-failure",
+      "description": "InitializeAsync mutates EnableKeycloak / ASPNETCORE_ENVIRONMENT / DOTNET_ENVIRONMENT before BuildAsync/StartAsync; if any of those steps throws, xUnit does NOT call DisposeAsync (per xUnit semantics), so the env vars leak into any downstream collection executed in the same process.",
+      "suggestion": "Wrap InitializeAsync in try/catch (mirroring AspirePubSubProofTestFixture), restore the env-var snapshot in the catch block, then rethrow.",
+      "code_snippet": "_previousEnableKeycloak = Environment.GetEnvironmentVariable(\"EnableKeycloak\");\nEnvironment.SetEnvironmentVariable(\"EnableKeycloak\", \"false\");\n... // BuildAsync/StartAsync may throw before DisposeAsync ever runs"
+    },
+    {
+      "file": "tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireProjectionFaultTestFixture.cs",
+      "line": 28,
+      "severity": "MEDIUM",
+      "category": "env-var-leak-on-init-failure",
+      "description": "Same xUnit IAsyncLifetime hazard: 4 env vars (EnableKeycloak, ASPNETCORE_ENVIRONMENT, DOTNET_ENVIRONMENT, EventStore__SampleFaults__MalformedProjectResponse) are mutated before the topology starts; failure during BuildAsync/StartAsync skips DisposeAsync and leaks them.",
+      "suggestion": "Adopt AspirePubSubProofTestFixture's SnapshotAndSet/RestoreEnvironmentSnapshot helpers and wrap InitializeAsync in try/catch for guaranteed restoration.",
+      "code_snippet": "Environment.SetEnvironmentVariable(\"EventStore__SampleFaults__MalformedProjectResponse\", \"true\");\n... // No try/catch around BuildAsync/StartAsync"
+    },
+    {
+      "file": "tests/Hexalith.EventStore.IntegrationTests/Fixtures/KeycloakAuthFixture.cs",
+      "line": 42,
+      "severity": "MEDIUM",
+      "category": "env-var-leak-on-init-failure",
+      "description": "Three env vars (EnableKeycloak, ASPNETCORE_ENVIRONMENT, DOTNET_ENVIRONMENT) are mutated before BuildAsync/StartAsync; Keycloak realm import in particular often fails on slow CI hardware, and that failure path leaks the env vars because xUnit skips DisposeAsync.",
+      "suggestion": "Adopt the SnapshotAndSet/RestoreEnvironmentSnapshot pattern and a try/catch around InitializeAsync.",
+      "code_snippet": "Environment.SetEnvironmentVariable(\"EnableKeycloak\", \"true\");\n... // 5-min Keycloak startup may throw; DisposeAsync never runs"
+    },
+    {
+      "file": "tests/Hexalith.EventStore.IntegrationTests/Security/AspireTopologyFixture.cs",
+      "line": 50,
+      "severity": "MEDIUM",
+      "category": "env-var-leak-on-init-failure",
+      "description": "Mutates EnableKeycloak before a 5-minute Keycloak startup; if WaitForEndpointAsync, WaitForTokenAcquisitionAsync, or any health probe throws, xUnit does not call DisposeAsync and EnableKeycloak=true leaks to subsequent collections (potentially forcing them to start unwanted Keycloak containers).",
+      "suggestion": "Wrap InitializeAsync in try/catch and restore EnableKeycloak in the catch path before rethrowing.",
+      "code_snippet": "_previousEnableKeycloak = Environment.GetEnvironmentVariable(\"EnableKeycloak\");\nEnvironment.SetEnvironmentVariable(\"EnableKeycloak\", \"true\");"
+    },
+    {
+      "file": "tests/Hexalith.EventStore.Server.Tests/Fixtures/DaprTestContainerFixture.cs",
+      "line": 87,
+      "severity": "MEDIUM",
+      "category": "env-var-leak-on-init-failure",
+      "description": "DAPR_HTTP_PORT/DAPR_GRPC_PORT are set after capture, but the prerequisite/start-host/sidecar startup that follows can throw (Redis unreachable, daprd path missing, port conflict); on failure xUnit skips DisposeAsync and the in-process Dapr Actors runtime resolves to the abandoned ports for the rest of the test run.",
+      "suggestion": "Wrap InitializeAsync in try/catch and explicitly restore the two DAPR_* env vars before rethrowing.",
+      "code_snippet": "_previousDaprHttpPort = Environment.GetEnvironmentVariable(\"DAPR_HTTP_PORT\");\nEnvironment.SetEnvironmentVariable(\"DAPR_HTTP_PORT\", _daprHttpPort.ToString());\n// followed by VerifyPrerequisitesAsync, StartTestHostAsync, StartDaprSidecar — any can throw"
+    },
+    {
+      "file": "Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/Fixtures/TenantsDaprTestFixture.cs",
+      "line": 85,
+      "severity": "MEDIUM",
+      "category": "env-var-leak-on-init-failure",
+      "description": "Same hazard as the EventStore DAPR fixture: DAPR_HTTP_PORT/DAPR_GRPC_PORT are mutated before VerifyPrerequisitesAsync/StartTestHostAsync/StartDaprSidecar; a throw from any of those skips DisposeAsync.",
+      "suggestion": "Wrap InitializeAsync in try/catch with explicit env-var restoration before rethrow.",
+      "code_snippet": "_previousDaprHttpPort = Environment.GetEnvironmentVariable(\"DAPR_HTTP_PORT\");\nEnvironment.SetEnvironmentVariable(\"DAPR_HTTP_PORT\", _daprHttpPort.ToString());"
+    },
+    {
+      "file": "tests/Hexalith.EventStore.Admin.UI.Tests/HostBootstrapTests.cs",
+      "line": 17,
+      "severity": "LOW",
+      "category": "undisposed-test-resource",
+      "description": "Test creates HttpClient via _factory.CreateClient() but never disposes it; the WebApplicationFactory tracks created clients, but the test class itself is not IDisposable so handles leak across the class fixture lifetime.",
+      "suggestion": "Implement IDisposable on the test class and dispose the HttpClient in Dispose, or use a using statement.",
+      "code_snippet": "HttpClient client = _factory.CreateClient();\n// No using, no Dispose"
+    },
+    {
+      "file": "tests/Hexalith.EventStore.IntegrationTests/Fixtures/SignalRRedisBackplaneProofTestCollection.cs",
+      "line": 3,
+      "severity": "LOW",
+      "category": "missing-disable-parallelization-justification",
+      "description": "[CollectionDefinition(\"SignalRRedisBackplaneProofTests\", DisableParallelization = true)] disables parallelism without an inline justification comment; the rationale (Redis backplane port-isolation under concurrent runs) lives only in the test file at line 412 and is easy to lose during refactor.",
+      "suggestion": "Add a /// <summary> comment on the collection class explaining the Redis-backplane parallelism hazard, mirroring the docstrings on AspireTopologyCollection.",
+      "code_snippet": "[CollectionDefinition(\"SignalRRedisBackplaneProofTests\", DisableParallelization = true)]\npublic sealed class SignalRRedisBackplaneProofTestCollection {\n}"
+    },
+    {
+      "file": "tests/Hexalith.EventStore.IntegrationTests/EventStore/LoggingBehaviorIntegrationTests.cs",
+      "line": 132,
+      "severity": "LOW",
+      "category": "shared-mutable-test-fixture-state",
+      "description": "LogCapturingFactory.LogProvider accumulates entries across tests in the class fixture; tests rely on calling _factory.LogProvider.Clear() at the top of each test to avoid bleed-over. xUnit serializes tests in the same class fixture, so this works, but is fragile if [Theory]/parallel collection is added.",
+      "suggestion": "Either expose a per-test scope (IDisposable that wraps LogProvider) or migrate to a per-test factory; at minimum add a comment that any test added must invoke Clear() first.",
+      "code_snippet": "public class LogCapturingFactory : WebApplicationFactory<EventStoreProgram> {\n    public TestLogProvider LogProvider { get; } = new();\n    ..."
+    }
+  ],
+  "passed_checks": 14,
+  "failed_checks": 12,
+  "total_checks": 26,
+  "violation_summary": {
+    "HIGH": 2,
+    "MEDIUM": 7,
+    "LOW": 3
+  },
+  "recommendations": [
+    "Adopt AspirePubSubProofTestFixture's SnapshotAndSet/RestoreEnvironmentSnapshot helper as a shared TestEnvScope utility, and refactor every IAsyncLifetime fixture that mutates env vars (AspireContractTestFixture, AspireProjectionFaultTestFixture, KeycloakAuthFixture, AspireTopologyFixture, DaprTestContainerFixture, TenantsDaprTestFixture) to wrap InitializeAsync in try/catch with restore-on-failure to close the xUnit-skips-DisposeAsync hazard.",
+    "Add a Reset() method to FakeEventPublisher/FakeDeadLetterPublisher/InMemoryCommandStatusStore in src/Hexalith.EventStore.Testing/Fakes/ and call it from DaprTestContainerFixture between tests (e.g., expose a fixture.ResetCollectedState() that test class constructors invoke). This converts the current implicit isolation-via-unique-IDs into explicit isolation.",
+    "Move the static Redis ConnectionMultiplexer in EventPersistenceIntegrationTests.cs into DaprTestContainerFixture (or a shared Tier 2 RedisFixture) so it is created and disposed deterministically, and add a Tier 2 setup hook that flushes the EventStore-related Redis keys at fixture init (not full FLUSHDB which would clobber other suites).",
+    "Mirror GlobalOptionsBindingProfileTests' env-var snapshot pattern in GlobalOptionsTests (and any future env-var-mutating unit tests) so previous values are preserved across the test process. Consider a small EnvSnapshot helper in Hexalith.EventStore.Testing to make this trivial.",
+    "Add /// <summary> XML doc comments on every [CollectionDefinition], especially those with DisableParallelization = true, explaining why parallelism is disabled and what shared resource is being protected (Redis backplane, port range, AppDomain cache, etc.). This makes future maintainers' intent-preservation cheap."
+  ],
+  "summary": "Test-isolation discipline is generally strong: 56 fixture/lifetime use sites, the gold-standard AssemblyScanner.ClearCache pattern is consistently mirrored, all temp paths are GUID-suffixed, and AspirePubSubProofTestFixture demonstrates the correct env-snapshot+try/catch pattern. The two material gaps are (1) DaprTestContainerFixture's collection-shared FakeEventPublisher/CommandStatusStore that never reset between tests plus a static undisposed Redis multiplexer, and (2) seven IAsyncLifetime fixtures that mutate env vars before BuildAsync/StartAsync without try/catch, leaking those env vars whenever Aspire/DAPR startup throws."
+}
