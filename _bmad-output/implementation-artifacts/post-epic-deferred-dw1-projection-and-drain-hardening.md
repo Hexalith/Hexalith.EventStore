@@ -59,6 +59,46 @@ Current HEAD at story creation: `2846d419`.
 - Do not log event payload data or customer identifiers in activity tags.
 - Do not edit generated preflight JSON audit files.
 
+## Party-Mode Review Clarifications
+
+The 2026-05-04 party-mode review found the story directionally ready, but recommended tightening the implementation handoff before development. The clarifications below are binding for dev-story execution unless a human architecture/product decision explicitly supersedes them.
+
+### Invariants
+
+- Projection checkpoints must never advance past the last event durably applied to projection state.
+- Projection checkpoint drift means a persisted checkpoint, stream position, tracker record, or projection state cannot be reconciled for the same tenant/domain/aggregate/projection identity.
+- Cancellation, timeout, projection failure, tracker corruption, drain poison, and terminal drain failure must remain distinguishable in diagnostics and tests.
+- Same-aggregate projection delivery must preserve per-aggregate ordering without introducing global projection serialization or cross-aggregate blocking.
+- Drain terminal disposition must be stable, machine-classifiable, and idempotent across repeated reminder execution.
+
+### Stable Diagnostic Vocabulary
+
+- `/project` diagnostics are internal/operator diagnostics for this story. They must not change public projection/query contracts, SignalR behavior, or domain-service response contracts.
+- Initial `/project` reason categories should include at least: `project_upstream_4xx`, `project_upstream_5xx`, `project_unsupported_content_type`, `project_invalid_charset`, `project_malformed_json`, `project_invalid_projection_type`, `project_invalid_state`, `project_timeout`, `project_cancelled`, `checkpoint_drift`, and `unknown`.
+- Tracker disposition codes should distinguish `tracker_corrupt_scope_index`, `tracker_corrupt_identity_index`, `tracker_recovered`, and `tracker_terminal_failure` when those outcomes are observable.
+- Drain activity reason codes should use bounded stable identifiers such as `drain_event_count_mismatch`, `drain_missing_event`, `drain_publish_failed`, `drain_terminal_failure`, and `unknown`.
+- Tests must assert reason codes or categories, not localized/free-form message text. Human-readable messages may vary and may include safe structured metadata in logs, but activity tags must not carry high-cardinality actor IDs, event payloads, or raw exception text.
+
+### Evidence Targets
+
+| Concern | Expected behavior | Required proof | Out of scope |
+|---|---|---|---|
+| Checkpoint drift | Impossible checkpoint/stream pairings do not report silent success and do not advance checkpoints past durable projection state. | Focused orchestrator/tracker tests and stable diagnostic reason code evidence. | Public repair endpoint, projection reset API, or query contract change. |
+| `/project` failures | Upstream 4xx/5xx, unsupported content, charset, malformed JSON, invalid projection type, invalid state, timeout, and caller cancellation classify distinctly. | Tests covering each changed branch and logs with safe metadata only. | Domain-service response contract changes or public supportability schema. |
+| Same-aggregate serialization | Overlapping same-aggregate deliveries serialize while unrelated aggregates are not globally blocked by new infrastructure. | Concurrency regression test that exercises overlapping delivery, not only sequential repeats. | Global queues, global locks, Dapr topology changes, or broad retry loops. |
+| Tracker corruption | Corrupt scope/index/page state is detected, bounded, and classified without tight retry loops or silent reset. | At least one scope-index and one identity-index corruption test with explicit disposition. | Broad tracker caching layer or automatic rebuild policy unless explicitly decided. |
+| Drain poison/terminal disposition | Poison or unrecoverable drain state reaches a stable idempotent disposition or is recorded as accepted debt before code changes. | Tests for no partial publish, no premature removal, no pending-counter decrement, and no repeated terminal reprocessing. | New admin drain controls, global drain registry, or weakened at-least-once guarantees. |
+| Reminder re-entrancy | Existing Dapr actor reminder semantics or a narrow guard prevents destructive overlapping drain execution. | Focused test or structured proof in Dev Agent Record tied to current side effects. | Dapr actor lifecycle or reminder topology changes. |
+| EventId/reason-code uniqueness | New EventIds are unique in touched files and reason codes are stable enough for dashboards. | Local search/review evidence plus tests where behavior changes. | Project-wide EventId allocation table unless separately approved. |
+
+### Deferred Decisions
+
+- Whether corrupted tracker state should be automatically rebuilt, quarantined for operator action, or only classified and left for manual repair.
+- Whether terminal drain dispositions are internal-only diagnostics or future operator-visible contract.
+- Whether `/project` diagnostics should ever become a public supportability contract.
+- Whether same-aggregate serialization must be guaranteed across process boundaries or only within the current projector instance.
+- Whether timeout values are product policy or implementation configuration.
+
 ## Implementation Inventory
 
 | Area | File / artifact | Expected use |
@@ -170,10 +210,12 @@ GPT-5 Codex
 ### Debug Log References
 
 - Pre-dev hardening preflight: `_bmad-output/process-notes/predev-preflight-latest.json`, timestamp `2026-05-04T17:49:52Z`, result `pass`.
+- Pre-dev hardening preflight: `_bmad-output/process-notes/predev-preflight-latest.json`, timestamp `2026-05-04T18:38:42Z`, result `fail` only for working-tree cleanliness; classified as a soft warning because the JSON stdout listed only `_bmad-output/test-artifacts/` paths.
 
 ### Completion Notes List
 
 - Created ready-for-dev story from first backlog row in the Post-Epic Deferred Work Cleanup package.
+- Party-mode review on 2026-05-04 recommended `needs-story-update`; low-risk clarifications were applied for invariants, diagnostic vocabulary, evidence targets, and deferred decisions.
 - No implementation work has been performed for this story.
 - No `project-context.md` file was present in the repository at story creation.
 
@@ -193,3 +235,15 @@ GPT-5 Codex
 | Date | Version | Description | Author |
 |---|---:|---|---|
 | 2026-05-04 | 0.1 | Created ready-for-dev DW1 projection and drain hardening story. | Codex automation |
+| 2026-05-04 | 0.2 | Applied party-mode review clarifications for invariants, diagnostics, evidence targets, and deferred decisions. | Codex automation |
+
+## Party-Mode Review
+
+- ISO date and time: 2026-05-04T20:40:39+02:00
+- Selected story key: `post-epic-deferred-dw1-projection-and-drain-hardening`
+- Command/skill invocation used: `/bmad-party-mode post-epic-deferred-dw1-projection-and-drain-hardening; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), Paige (Technical Writer)
+- Findings summary: All four reviewers recommended `needs-story-update`, not blocked. Shared concerns were ambiguous checkpoint drift invariants, diagnostic-only `/project` classifications, cancellation versus timeout ownership, same-aggregate versus global serialization boundaries, tracker corruption disposition, drain terminal reason-code stability, reminder re-entrancy evidence, EventId uniqueness, and proof targets for reviewer signoff.
+- Changes applied: Added Party-Mode Review Clarifications with invariants, internal diagnostic vocabulary, evidence-target table, scope guardrails, and deferred decisions. Added Dev Agent Record and Change Log entries.
+- Findings deferred: Human architecture/product judgment is still needed for tracker rebuild/quarantine/classify policy, internal versus operator-visible terminal drain disposition, public supportability status of `/project` diagnostics, cross-process serialization guarantees, and timeout policy ownership.
+- Final recommendation: `needs-story-update`
