@@ -28,7 +28,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-04T20:18:32+02:00' # Created ready-for-dev story post-epic-deferred-dw4-operational-evidence-schema-validation from the deferred-work cleanup backlog.
+last_updated: '2026-05-04T20:27:27+02:00' # Created ready-for-dev story post-epic-deferred-dw5-admin-ui-runtime-follow-ups from the deferred-work cleanup backlog.
+# Previous last_updated detail preserved: 2026-05-04T20:18:32+02:00 - Created ready-for-dev story post-epic-deferred-dw4-operational-evidence-schema-validation from the deferred-work cleanup backlog.
 # Previous last_updated detail preserved: 2026-05-04T20:12:18+02:00 - Created ready-for-dev story post-epic-deferred-dw3-admin-debugging-json-large-stream-hardening from the deferred-work cleanup backlog.
 # Previous last_updated detail preserved: 2026-05-04T20:03:44+02:00 - Created ready-for-dev story post-epic-deferred-dw2-admin-dapr-mcp-live-evidence from the deferred-work cleanup backlog.
 # Previous last_updated detail preserved: 2026-05-04T19:52:00+02:00 - Created ready-for-dev story post-epic-deferred-dw1-projection-and-drain-hardening from the deferred-work cleanup backlog.
@@ -296,7 +297,7 @@ development_status:
   post-epic-deferred-dw2-admin-dapr-mcp-live-evidence: ready-for-dev
   post-epic-deferred-dw3-admin-debugging-json-large-stream-hardening: ready-for-dev
   post-epic-deferred-dw4-operational-evidence-schema-validation: ready-for-dev
-  post-epic-deferred-dw5-admin-ui-runtime-follow-ups: backlog
+  post-epic-deferred-dw5-admin-ui-runtime-follow-ups: ready-for-dev
   post-epic-deferred-dw6-deferred-work-governance: backlog
 
   # Post-Epic-1 Retro Cleanup (sprint-change-proposal-2026-04-26.md)
