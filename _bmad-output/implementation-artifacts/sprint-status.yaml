@@ -28,7 +28,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-04T19:27:27+02:00' # epic-19-retrospective moved optional -> done; retrospective saved at _bmad-output/implementation-artifacts/epic-19-retro-2026-05-04.md.
+last_updated: '2026-05-04T19:30:46+02:00' # epic-20-retrospective moved optional -> done; retrospective saved at _bmad-output/implementation-artifacts/epic-20-retro-2026-05-04.md.
+# Previous last_updated detail preserved: 2026-05-04T19:27:27+02:00 - epic-19-retrospective moved optional -> done; retrospective saved at _bmad-output/implementation-artifacts/epic-19-retro-2026-05-04.md.
 # Previous last_updated detail preserved: 2026-05-04T19:24:10+02:00 - epic-18-retrospective moved optional -> done; retrospective saved at _bmad-output/implementation-artifacts/epic-18-retro-2026-05-04.md.
 # Previous last_updated detail preserved: 2026-05-04T19:16:37+02:00 - epic-17-retrospective moved optional -> done; retrospective saved at _bmad-output/implementation-artifacts/epic-17-retro-2026-05-04.md.
 # Previous last_updated detail preserved: 2026-05-04T18:46:49+02:00 - epic-16-retrospective moved optional -> done; retrospective saved at _bmad-output/implementation-artifacts/epic-16-retro-2026-05-04.md.
@@ -261,11 +262,11 @@ development_status:
   20-3-step-through-event-debugger: done
   20-4-command-sandbox-test-harness: done
   20-5-correlation-id-trace-map: done
-  epic-20-retrospective: optional
+  epic-20-retrospective: done
 
   # Epic 21: Fluent UI Blazor v4 → v5 Migration
   # MIGRATION GATE: Complete Epic 21 before starting any new UI stories
-  epic-21: in-progress
+  epic-21: done
   21-0-bunit-smoke-tests-baseline: done
   21-1-package-version-csproj-infrastructure: done
   21-2-layout-and-navigation-foundation: done
