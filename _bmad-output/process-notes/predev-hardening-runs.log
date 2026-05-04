@@ -71,3 +71,4 @@
 2026-05-04T19:52:00+02:00	create-story	post-epic-deferred-dw1-projection-and-drain-hardening	ok	Created ready-for-dev DW1 projection and drain hardening story.
 2026-05-04T20:06:19+02:00	create-story	post-epic-deferred-dw2-admin-dapr-mcp-live-evidence	ok	Created ready-for-dev DW2 Admin DAPR MCP live evidence story.
 2026-05-04T20:12:18+02:00	create-story	post-epic-deferred-dw3-admin-debugging-json-large-stream-hardening	ok	Created ready-for-dev DW3 Admin debugging JSON and large-stream hardening story.
+2026-05-04T20:18:32+02:00	create-story	post-epic-deferred-dw4-operational-evidence-schema-validation	ok	created ready-for-dev DW4 operational evidence schema validation story
