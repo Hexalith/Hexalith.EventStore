@@ -28,7 +28,9 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-04T18:38:29+02:00' # epic-14-retrospective moved optional -> done; retrospective saved at _bmad-output/implementation-artifacts/epic-14-retro-2026-05-04.md.
+last_updated: '2026-05-04T18:46:49+02:00' # epic-16-retrospective moved optional -> done; retrospective saved at _bmad-output/implementation-artifacts/epic-16-retro-2026-05-04.md.
+# Previous last_updated detail preserved: 2026-05-04T18:44:19+02:00 - epic-15 moved in-progress -> done; all Epic 15 stories and epic-15-retrospective were already done.
+# Previous last_updated detail preserved: 2026-05-04T18:38:29+02:00 - epic-14-retrospective moved optional -> done; retrospective saved at _bmad-output/implementation-artifacts/epic-14-retro-2026-05-04.md.
 # Previous last_updated detail preserved: 2026-05-04T18:34:50+02:00 - epic-13-retrospective moved optional -> done; retrospective saved at _bmad-output/implementation-artifacts/epic-13-retro-2026-05-04.md.
 # Previous last_updated detail preserved: 2026-05-04T18:00:00+02:00 - R9-A8 query operational evidence pattern moved review -> done after code review (31 patches applied: cache-state matrix expanded with gate1-wildcard-skip / gate1-mixed-projection-fail-open / gate1-too-many-values-fail-open / gate1-fail-open / gate2-cache-skipped / cache-miss-cold-actor / projection-type-discovery-bypass; latency boundary table split etag-actor-lookup pre/post-mediator and added gate1-fail-open-response + gate2-cache-skipped-response; gate1-304-response observability demoted to deferred; NFR35 cold-actor caveat from PRD restored, NFR39 unit-incoherent phrasing fixed; classifications precedence ladder added; reviewer checklists in ops-doc + template aligned with same downgrade rules; required-metadata fields aligned across template Field Reference / Metadata YAML / Fail-Closed checklist; intentionally invalid example uses domain-alias-001 and explicit missing-required-fields rejection rationale; stable query payload identity defined as SHA-256 of canonical JSON; throughput tolerance tightened to zero non-2xx + zero timeouts; retries-included rps downgrades to sample-only; client-observed-duration p99 forbidden absent cross-process clock + correlation; sprint-status R9-A8 transition wording corrected; AC #12 R9-A5 attribution preserved as historical comment); 3 decisions resolved (redaction -> not-claimable; throughput zero non-2xx; instrumentation-gap dominates when product-side); 8 defers recorded in deferred-work.md; 13 dismissed including E18 false-positive on ActivitySource registration; markdownlint clean.
 # 2026-05-04: post-epic-9-r9a8-query-operational-evidence-pattern moved ready-for-dev -> review after docs/template implementation and validation. Original R9-A8 dev-handoff attribution clobbered by R9-A8 code-review update on line 31; preserved here per AC #12.
@@ -190,7 +192,7 @@ development_status:
   epic-14-retrospective: done
 
   # Epic 15: Admin Web UI — Core Developer Experience
-  epic-15: in-progress
+  epic-15: done
   15-1-blazor-shell-fluentui-layout-command-palette-dark-mode: done
   15-2-activity-feed-recent-active-streams: done
   15-3-stream-browser-command-event-query-timeline: done
@@ -216,7 +218,7 @@ development_status:
   16-5-tenant-management-quotas-onboarding-comparison: done
   16-6-dead-letter-queue-manager: done
   16-7-consistency-checker: done
-  epic-16-retrospective: optional
+  epic-16-retrospective: done
 
   # Epic 17: Admin CLI (eventstore-admin)
   epic-17: done
