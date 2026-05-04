@@ -1,6 +1,6 @@
 # Post-Epic-9 R9-A1: HTTP Stale ETag Proof
 
-Status: ready-for-dev
+Status: done
 
 <!-- Source: epic-9-retro-2026-04-30.md - R9-A1 -->
 <!-- Source: post-epic-10-r10a8-r9-r10-follow-through-tracking.md - R9/R10 reconciliation -->
@@ -52,46 +52,62 @@ This story is a focused confidence proof, not a new query feature. Prefer extend
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add the focused Tier 3 scenario (AC: #1, #2)
-    - [ ] Create `HttpStaleETagProofE2ETests` or add a clearly named test to an existing focused ETag/projection contract-test file.
-    - [ ] Use `[Trait("Category", "E2E")]`, `[Trait("Tier", "3")]`, and `[Collection("AspireContractTests")]`.
-    - [ ] Use `AspireContractTestFixture.EventStoreClient`; do not launch a separate AppHost from inside the test.
-    - [ ] Build the query request explicitly or extend `ContractTestHelpers.CreateQueryRequest` so `ProjectionType` and `EntityId` are serialized; do not rely on a helper path that omits them.
-    - [ ] Use a unique aggregate ID and, when supported by the fixture, a test-isolated tenant; if the tenant must be shared, rely on the collection serialization and record that assumption in the test name or failure diagnostics.
+- [x] Task 1: Add the focused Tier 3 scenario (AC: #1, #2)
+    - [x] Create `HttpStaleETagProofE2ETests` or add a clearly named test to an existing focused ETag/projection contract-test file.
+    - [x] Use `[Trait("Category", "E2E")]`, `[Trait("Tier", "3")]`, and `[Collection("AspireContractTests")]`.
+    - [x] Use `AspireContractTestFixture.EventStoreClient`; do not launch a separate AppHost from inside the test.
+    - [x] Build the query request explicitly or extend `ContractTestHelpers.CreateQueryRequest` so `ProjectionType` and `EntityId` are serialized; do not rely on a helper path that omits them.
+    - [x] Use a unique aggregate ID and, when supported by the fixture, a test-isolated tenant; if the tenant must be shared, rely on the collection serialization and record that assumption in the test name or failure diagnostics.
 
-- [ ] Task 2: Prove the baseline projected state and current ETag (AC: #2, #3, #7)
-    - [ ] Submit the first `IncrementCounter` through `POST /api/v1/commands`.
-    - [ ] Poll command status to terminal success and fail on terminal non-success status with the final status body.
-    - [ ] Poll `POST /api/v1/queries` with explicit `projectionType = "counter"` and `entityId = aggregateId` until the expected count and ETag are present.
-    - [ ] Parse direct-object and base64-string query payload forms, matching the existing `CounterQueryService` and R11-A4 test pattern.
-    - [ ] Preserve the existing integration-test query payload convention; do not introduce a new serialization shape only for this proof.
-    - [ ] Capture the deterministic serialized query payload or fingerprint and reuse it for the current and stale `If-None-Match` requests.
-    - [ ] Assert the returned ETag is quoted, self-routing, and decodes to `counter`.
-    - [ ] Assert the command and query authorization token claims match the tenant/domain under test and include `query:read` for query calls.
+- [x] Task 2: Prove the baseline projected state and current ETag (AC: #2, #3, #7)
+    - [x] Submit the first `IncrementCounter` through `POST /api/v1/commands`.
+    - [x] Poll command status to terminal success and fail on terminal non-success status with the final status body.
+    - [x] Poll `POST /api/v1/queries` with explicit `projectionType = "counter"` and `entityId = aggregateId` until the expected count and ETag are present.
+    - [x] Parse direct-object and base64-string query payload forms, matching the existing `CounterQueryService` and R11-A4 test pattern.
+    - [x] Preserve the existing integration-test query payload convention; do not introduce a new serialization shape only for this proof.
+    - [x] Capture the deterministic serialized query payload or fingerprint and reuse it for the current and stale `If-None-Match` requests.
+    - [x] Assert the returned ETag is quoted, self-routing, and decodes to `counter`.
+    - [x] Assert the command and query authorization token claims match the tenant/domain under test and include `query:read` for query calls.
 
-- [ ] Task 3: Assert the current ETag 304 path (AC: #4)
-    - [ ] Re-send the exact same query with `If-None-Match` set to the baseline ETag exactly as the server returned it.
-    - [ ] Assert `304 NotModified`.
-    - [ ] Preserve enough response detail to diagnose an unexpected `200 OK`, `404 NotFound`, missing ETag, or same-tenant/projection invalidation between baseline and revalidation.
+- [x] Task 3: Assert the current ETag 304 path (AC: #4)
+    - [x] Re-send the exact same query with `If-None-Match` set to the baseline ETag exactly as the server returned it.
+    - [x] Assert `304 NotModified`.
+    - [x] Preserve enough response detail to diagnose an unexpected `200 OK`, `404 NotFound`, missing ETag, or same-tenant/projection invalidation between baseline and revalidation.
 
-- [ ] Task 4: Assert the stale ETag re-query path after projection change (AC: #5, #6)
-    - [ ] Submit a second `IncrementCounter` for the same aggregate and wait for `Completed`.
-    - [ ] Poll the same byte-equivalent query with the original baseline ETag in `If-None-Match`.
-    - [ ] Treat pre-delivery `404`, old count, parse errors, or missing ETag as bounded retry states.
-    - [ ] Pass only when `200 OK` returns the incremented count and a new ETag different from the original.
-    - [ ] Fail with a diagnostic message if `304` remains after the new projected count should be visible.
-    - [ ] Keep command-completion waits separate from projection-visibility waits; command completion alone is not projection delivery.
+- [x] Task 4: Assert the stale ETag re-query path after projection change (AC: #5, #6)
+    - [x] Submit a second `IncrementCounter` for the same aggregate and wait for `Completed`.
+    - [x] Poll the same byte-equivalent query with the original baseline ETag in `If-None-Match`.
+    - [x] Treat pre-delivery `404`, old count, parse errors, or missing ETag as bounded retry states.
+    - [x] Pass only when `200 OK` returns the incremented count and a new ETag different from the original.
+    - [x] Fail with a diagnostic message if `304` remains after the new projected count should be visible.
+    - [x] Keep command-completion waits separate from projection-visibility waits; command completion alone is not projection delivery.
 
-- [ ] Task 5: Keep helper changes narrow (AC: #8, #9, #11)
-    - [ ] Reuse or extract query-request and payload parsing helpers only if they preserve explicit identity and diagnostics.
-    - [ ] Do not modify R9-A2/R9-A8 scope, SignalR tests, Redis backplane tests, or production cache topology solely for this proof.
-    - [ ] If production code changes are required, add focused unit coverage around the defective stale-validator branch.
+- [x] Task 5: Keep helper changes narrow (AC: #8, #9, #11)
+    - [x] Reuse or extract query-request and payload parsing helpers only if they preserve explicit identity and diagnostics.
+    - [x] Do not modify R9-A2/R9-A8 scope, SignalR tests, Redis backplane tests, or production cache topology solely for this proof.
+    - [x] If production code changes are required, add focused unit coverage around the defective stale-validator branch.
 
-- [ ] Task 6: Validate and record evidence (AC: #10, #12)
-    - [ ] Run the targeted stale ETag proof test.
-    - [ ] If shared helpers changed, run affected neighbors such as `ValidProjectionRoundTripE2ETests` and `ProjectionMalformedResponseE2ETests`.
-    - [ ] Run the relevant unit slice if production query/ETag code changed.
-    - [ ] Record commands, results, environment caveats, and blockers in this story's Dev Agent Record.
+- [x] Task 6: Validate and record evidence (AC: #10, #12)
+    - [x] Run the targeted stale ETag proof test.
+    - [x] If shared helpers changed, run affected neighbors such as `ValidProjectionRoundTripE2ETests` and `ProjectionMalformedResponseE2ETests`.
+    - [x] Run the relevant unit slice if production query/ETag code changed.
+    - [x] Record commands, results, environment caveats, and blockers in this story's Dev Agent Record.
+
+### Review Findings
+
+- [x] [Review][Decision] R9-A2 sprint-status row flipped to `in-progress` inside R9-A1 PR — Resolved: kept R9-A2 row change (already backed by separate commit `13b9854 test(post-epic-9): add r9a2 query-cache topology proof` on the same branch); restored R9-A1 attribution as a historical comment line per AC #12.
+- [x] [Review][Patch] AC #12 `last_updated` names R9-A1 stale ETag proof result via historical comment [`_bmad-output/implementation-artifacts/sprint-status.yaml:32`]
+- [x] [Review][Patch] FailFast list extended with 405/408/415/501/505 (BadRequest/Unauthorized retained per spec) [`HttpStaleETagProofE2ETests.cs:210-222`]
+- [x] [Review][Patch] `ParseCountFromPayload` now uses `DecodeBase64UrlToBytes` for base64url-aware decoding [`HttpStaleETagProofE2ETests.cs:325`]
+- [x] [Review][Patch] `AssertPersistedEventEvidence` validates `eventCount.ValueKind == JsonValueKind.Number` and uses `TryGetInt32` [`HttpStaleETagProofE2ETests.cs:242-254`]
+- [x] [Review][Patch] `TryDecodeBase64Url`/`TryDecodeBase64UrlBytes` wrap `FormatException` in `ShouldAssertException` with diagnostic [`HttpStaleETagProofE2ETests.cs:284-300`]
+- [x] [Review][Patch] `AssertStrongSelfRoutingETag` collapses weak/unquoted/empty checks into one diagnostic guard [`HttpStaleETagProofE2ETests.cs:256-264`]
+- [x] [Review][Patch] `Snip` appends `…[truncated, full length=N]` marker when truncating [`HttpStaleETagProofE2ETests.cs:415-423`]
+- [x] [Review][Patch] `AppendHistory` caps history list at 200 entries (FIFO drop) [`HttpStaleETagProofE2ETests.cs:425-431`]
+- [x] [Review][Patch] Polling deadline switched to `stopwatch.Elapsed < s_projectionPollTimeout` (single clock source) [`HttpStaleETagProofE2ETests.cs:158`]
+- [x] [Review][Defer] `SubmitCompletedIncrementAsync` ignores `cancellationToken` end-to-end [`HttpStaleETagProofE2ETests.cs:115-140`] — deferred, helper signatures lack CT overloads; broadening helpers is out of R9-A1 scope (AC #9)
+- [x] [Review][Defer] AC #6 same-tenant concurrency diagnostics are a static sentence rather than dynamically detected [`HttpStaleETagProofE2ETests.cs:411-412`] — deferred, dynamic detection requires probing other queries (R9-A2 scope)
+- [x] [Review][Defer] Anonymous-object query body / camelCase fingerprint not byte-stable across future .NET versions [`HttpStaleETagProofE2ETests.cs:467-481`] — deferred, forward-looking risk; current contract works
 
 ## Dev Notes
 
@@ -191,18 +207,37 @@ This story is a focused confidence proof, not a new query feature. Prefer extend
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5 Codex
 
 ### Debug Log References
 
+- 2026-05-04T12:30:38+02:00 - Started dev-story implementation for `post-epic-9-r9a1-http-stale-etag-proof`; moved story and sprint row to in-progress.
+- 2026-05-04T12:33:00+02:00 - Added `HttpStaleETagProofE2ETests` as a focused Tier 3 Aspire contract test. First targeted run failed at compile/analyzer checks, which was corrected before evidence collection.
+- 2026-05-04T12:35:00+02:00 - Targeted stale ETag proof passed: `dotnet test tests/Hexalith.EventStore.IntegrationTests --filter "FullyQualifiedName~HttpStaleETagProofE2ETests"` -> Passed 1/1.
+- 2026-05-04T12:36:00+02:00 - Neighbor projection contract tests passed: `dotnet test tests/Hexalith.EventStore.IntegrationTests --filter "FullyQualifiedName~ValidProjectionRoundTripE2ETests|FullyQualifiedName~ProjectionMalformedResponseE2ETests"` -> Passed 2/2.
+- 2026-05-04T12:36:00+02:00 - Recommended unit slices passed individually: Client 334/334, Contracts 281/281, Sample 63/63, Testing 78/78.
+
 ### Completion Notes List
 
+- Added `HttpStaleETagProofE2ETests.IncrementCounter_CurrentETagReturns304_StaleETagRequeriesAfterProjectionChange`, using the shared `AspireContractTests` collection and `AspireContractTestFixture.EventStoreClient`.
+- The proof drives only public HTTP surfaces: command submission, command status polling, and query submission with `If-None-Match`.
+- The test preserves one query identity across baseline/current/stale requests: tenant `tenant-a`, domain `counter`, projection type `counter`, query type `get-counter-status`, unique aggregate/entity ID, deterministic serialized payload, and SHA-256 payload fingerprint.
+- The baseline query waits for count `1` and an ETag, the current validator request asserts `304 NotModified`, and the stale validator request after a second command waits for count `2` with a different ETag.
+- ETag assertions verify a strong quoted self-routing validator whose prefix decodes to `counter` and whose suffix matches the existing base64url GUID format used by `SelfRoutingETag.GenerateNew`.
+- No production code or shared integration helpers were changed; R9-A2/R9-A8 cache topology and operational evidence scope remains untouched.
+
 ### File List
+
+- `tests/Hexalith.EventStore.IntegrationTests/ContractTests/HttpStaleETagProofE2ETests.cs`
+- `_bmad-output/implementation-artifacts/post-epic-9-r9a1-http-stale-etag-proof.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-04 | 1.1 | Code review: applied 9 patches (sprint-status R9-A1 attribution, FailFast extension, base64url-aware payload parsing, eventCount ValueKind guard, base64url decode with diagnostic, weak-ETag guard collapse, Snip truncation marker, bounded history, single-clock polling deadline) and recorded 3 defers. R9-A2 row change kept (backed by commit 13b9854). Build clean. | Claude Opus 4.7 |
+| 2026-05-04 | 1.0 | Added focused Tier 3 HTTP stale ETag proof and recorded passing targeted, neighbor, and unit validation evidence. | GPT-5 Codex |
 | 2026-05-04 | 0.3 | Advanced elicitation hardened tenant/projection isolation, byte-equivalent query identity, and stale-validator diagnostics. | Codex automation |
 | 2026-05-03 | 0.2 | Party-mode review tightened stale ETag proof identity, polling, diagnostics, auth, and scope guardrails. | Codex automation |
 | 2026-05-03 | 0.1 | Created ready-for-dev R9-A1 HTTP stale ETag proof story. | Codex automation |

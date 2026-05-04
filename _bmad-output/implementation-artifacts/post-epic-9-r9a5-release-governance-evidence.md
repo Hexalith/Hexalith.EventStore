@@ -1,6 +1,6 @@
 # Post-Epic-9 R9-A5: Release Governance Evidence
 
-Status: ready-for-dev
+Status: done
 
 <!-- Source: epic-9-retro-2026-04-30.md - R9-A5 -->
 <!-- Source: post-epic-10-r10a8-r9-r10-follow-through-tracking.md - R9/R10 reconciliation -->
@@ -74,40 +74,60 @@ Current HEAD at story creation: `5821f90`.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline the release-governance scope (AC: #1, #2, #9)
-    - [ ] 0.1 Record baseline HEAD and confirm this story is still `ready-for-dev`.
-    - [ ] 0.2 Create the dated evidence artifact under `_bmad-output/test-artifacts/post-epic-9-r9a5-release-governance-evidence/`.
-    - [ ] 0.3 Record the exact "no release side effects" guardrail before running evidence commands.
+- [x] Task 0: Baseline the release-governance scope (AC: #1, #2, #9)
+    - [x] 0.1 Record baseline HEAD and confirm this story is still `ready-for-dev`.
+    - [x] 0.2 Create the dated evidence artifact under `_bmad-output/test-artifacts/post-epic-9-r9a5-release-governance-evidence/`.
+    - [x] 0.3 Record the exact "no release side effects" guardrail before running evidence commands.
 
-- [ ] Task 1: Verify semantic-release and tag state (AC: #2, #3, #7)
-    - [ ] 1.1 Run `git tag --list "v*"` and record local tag range, including whether `v0.0.0` exists.
-    - [ ] 1.2 Run `git ls-remote --tags origin "v*"` and record remote tag range, including whether `v0.0.0` exists.
-    - [ ] 1.3 Inspect `.releaserc.json`, `package.json`, `CHANGELOG.md`, and `.github/workflows/release.yml`.
-    - [ ] 1.4 Link the latest release tag to its commit and GitHub Release/workflow run when accessible.
+- [x] Task 1: Verify semantic-release and tag state (AC: #2, #3, #7)
+    - [x] 1.1 Run `git tag --list "v*"` and record local tag range, including whether `v0.0.0` exists.
+    - [x] 1.2 Run `git ls-remote --tags origin "v*"` and record remote tag range, including whether `v0.0.0` exists.
+    - [x] 1.3 Inspect `.releaserc.json`, `package.json`, `CHANGELOG.md`, and `.github/workflows/release.yml`.
+    - [x] 1.4 Link the latest release tag to its commit and GitHub Release/workflow run when accessible.
 
-- [ ] Task 2: Capture branch protection and required checks (AC: #4, #5)
-    - [ ] 2.1 Query `main` branch protection or repository rulesets with GitHub CLI/API, or record manual UI evidence.
-    - [ ] 2.2 Compare required checks to `ci.yml` job names and `docs-validation.yml`.
-    - [ ] 2.3 Record whether `aspire-tests` is non-blocking by policy, required by rules, or unknown.
-    - [ ] 2.4 If permissions block the check, record the exact command/API response and classify the unknowns.
-    - [ ] 2.5 Record any discrepancy between classic branch protection, rulesets, `docs/ci.md`, and observed workflow check names as a routed governance gap.
+- [x] Task 2: Capture branch protection and required checks (AC: #4, #5)
+    - [x] 2.1 Query `main` branch protection or repository rulesets with GitHub CLI/API, or record manual UI evidence.
+    - [x] 2.2 Compare required checks to `ci.yml` job names and `docs-validation.yml`.
+    - [x] 2.3 Record whether `aspire-tests` is non-blocking by policy, required by rules, or unknown.
+    - [x] 2.4 If permissions block the check, record the exact command/API response and classify the unknowns.
+    - [x] 2.5 Record any discrepancy between classic branch protection, rulesets, `docs/ci.md`, and observed workflow check names as a routed governance gap.
 
-- [ ] Task 3: Verify release-secret and permission evidence safely (AC: #6, #7)
-    - [ ] 3.1 Verify `NUGET_API_KEY` presence by metadata, workflow evidence, or admin inspection without exposing values.
-    - [ ] 3.2 Verify `GITHUB_TOKEN` release/tag permissions from workflow `permissions:` and observed release behavior.
-    - [ ] 3.3 Record any environment, ruleset, or secret visibility blockers separately from configuration defects.
-    - [ ] 3.4 Confirm the evidence artifact contains no masked values, hashes, token fragments, screenshots with unrelated secret names, or inferred secret lengths.
+- [x] Task 3: Verify release-secret and permission evidence safely (AC: #6, #7)
+    - [x] 3.1 Verify `NUGET_API_KEY` presence by metadata, workflow evidence, or admin inspection without exposing values.
+    - [x] 3.2 Verify `GITHUB_TOKEN` release/tag permissions from workflow `permissions:` and observed release behavior.
+    - [x] 3.3 Record any environment, ruleset, or secret visibility blockers separately from configuration defects.
+    - [x] 3.4 Confirm the evidence artifact contains no masked values, hashes, token fragments, screenshots with unrelated secret names, or inferred secret lengths.
 
-- [ ] Task 4: Update docs and route gaps (AC: #8, #10)
-    - [ ] 4.1 Update `docs/ci.md` only if observed governance differs from its Branch Protection, Secrets, or Workflow sections.
-    - [ ] 4.2 Add a "Release Governance Gaps" section to the evidence artifact when any item remains unknown or deficient.
-    - [ ] 4.3 Route high-impact unknowns to a follow-up story/status row or record a dated accepted non-action decision with owner and revisit trigger.
-    - [ ] 4.4 If no follow-up row is created for a high-impact gap, record who accepted the residual risk and the concrete revisit trigger.
+- [x] Task 4: Update docs and route gaps (AC: #8, #10)
+    - [x] 4.1 Update `docs/ci.md` only if observed governance differs from its Branch Protection, Secrets, or Workflow sections.
+    - [x] 4.2 Add a "Release Governance Gaps" section to the evidence artifact when any item remains unknown or deficient.
+    - [x] 4.3 Route high-impact unknowns to a follow-up story/status row or record a dated accepted non-action decision with owner and revisit trigger.
+    - [x] 4.4 If no follow-up row is created for a high-impact gap, record who accepted the residual risk and the concrete revisit trigger.
 
-- [ ] Task 5: Validate and close bookkeeping (AC: #11, #12)
-    - [ ] 5.1 Run targeted markdown lint/link validation for changed docs and evidence files, or record why unavailable.
-    - [ ] 5.2 If workflow YAML changes, run a YAML parse/lint check.
-    - [ ] 5.3 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and sprint-status row.
+- [x] Task 5: Validate and close bookkeeping (AC: #11, #12)
+    - [x] 5.1 Run targeted markdown lint/link validation for changed docs and evidence files, or record why unavailable.
+    - [x] 5.2 If workflow YAML changes, run a YAML parse/lint check.
+    - [x] 5.3 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and sprint-status row.
+
+### Review Findings
+
+Code review run: 2026-05-04. Sources: Blind Hunter (diff-only), Edge Case Hunter (diff + project read), Acceptance Auditor (diff + spec).
+
+- [x] [Review][Decision][Resolved → Patch] Commit `9c62333` bundles R9-A1 closure with R9-A5 submission — commit modified 7 files (`deferred-work.md`, `post-epic-9-r9a1-http-stale-etag-proof.md`, `tests/Hexalith.EventStore.Server.Tests/.../HttpStaleETagProofE2ETests.cs`, plus the 4 R9-A5 files). Resolution: File List was updated to acknowledge the bundled R9-A1 files (already-reviewed-and-done) without rewriting branch history. Branch hygiene preference: future submissions should split close-of-prior-story from new-story-submission into separate commits.
+- [x] [Review][Patch][HIGH] AC #12 violation — `sprint-status.yaml` `last_updated` field comment names R9-A2's outcome instead of R9-A5's release-governance evidence result [`_bmad-output/implementation-artifacts/sprint-status.yaml:31`]. Spec: "`last_updated` names the release-governance evidence result." Dev acknowledged the clobber on line 32 ("Original R9-A1 dev-handoff attribution clobbered by R9-A5 update on line 31; preserved here per AC #12") but the `last_updated` field itself still does not name R9-A5.
+- [x] [Review][Patch][MED] AC #8 violation — `docs/ci.md:32` ASCII Job Topology caption "(parallel; both gate the PR)" contradicts the new Branch Protection section at lines 99-102 saying no required status checks were observed [`docs/ci.md:32` and `docs/ci.md:99-102`]. Either soften the caption to reflect intent-vs-enforcement, or annotate it explicitly.
+- [x] [Review][Patch][MED] AC #4 violation — NUGET_API_KEY permission-blocker rows missing required schema fields [`_bmad-output/test-artifacts/post-epic-9-r9a5-release-governance-evidence/evidence-2026-05-04.md:31, 142-148`]. AC #4 demands "exact command/page/API endpoint attempted, timestamp, safe actor identity or permission context, non-sensitive returned error, and blocked acceptance criterion." The rows record endpoints and a single shared timestamp but omit non-sensitive error message bodies and the blocked AC# citation.
+- [x] [Review][Patch][MED] AC #10 — High-impact branch-protection gap row presents two action options ("Create a follow-up governance story/status row if enforcement is desired; otherwise record an accepted non-action decision") without doing either [`evidence-2026-05-04.md:552`]. Story is moving to `review` while neither path is taken. Either add a routed follow-up row in `sprint-status.yaml` or record a dated accepted non-action decision with owner and revisit trigger.
+- [x] [Review][Patch][LOW] AC #7 — Workflow head SHA `f9c2021…` vs tag SHA `3f360cc…` divergence is observed and explained inline at `evidence-2026-05-04.md:182-186` and `:543` but never added as a row in `Release Governance Gaps` (lines 552-554). Spec: "If these sources disagree, route the mismatch to `Release Governance Gaps` instead of choosing one silently." Add a row even if classified as expected.
+- [x] [Review][Patch][LOW] Trailing whitespace on `5-5-e2e-security-testing-with-keycloak: done ` line introduced by this diff [`_bmad-output/implementation-artifacts/sprint-status.yaml:81`]. Unrelated incidental edit; remove trailing space.
+- [x] [Review][Patch][LOW] Evidence file's bookkeeping summary written in future tense ("Story status and sprint status will be updated to `review`…") even though both are now `review` in this same diff [`evidence-2026-05-04.md:211-214`]. Update tense to confirm closed state.
+- [x] [Review][Patch][LOW] Scope-boundary disambiguation — classic branch-protection 404 row concludes "observed absence of classic branch protection" without explicitly stating that the actor has sufficient permission to read this endpoint (i.e., 404 means absent control, not permission-blocked or filtered) [`evidence-2026-05-04.md:28, 95-97`]. Same disambiguation is correctly applied to NUGET_API_KEY 404/403 rows.
+- [x] [Review][Patch][LOW] AC #8 — `docs/ci.md:9` Workflows summary row lists "Tier 1 + Tier 2 + Tier 3 tests" without noting Tier 3 (`aspire-tests`) is `continue-on-error: true`. Spec preserves "Tier 3 Aspire tests are non-blocking" — note this in the Workflows row.
+- [x] [Review][Defer] Required Evidence Artifact Shape section #3 "Local and remote tag evidence" is folded into section #2 "Semantic-Release Baseline" rather than its own heading [`evidence-2026-05-04.md`] — content present, structural deviation only; deferred.
+- [x] [Review][Defer] AC #1 "Observed Result" — `git ls-remote` v0.0.0 result is summarized as "remote `v0.0.0` was not present" rather than quoted as a raw output excerpt [`evidence-2026-05-04.md:384`] — deferred, conclusion is correct and reproducible.
+- [x] [Review][Defer] AC #11 — Validation record didn't formally check job-name fidelity between docs/ci.md edits and workflow YAML [`evidence-2026-05-04.md:184`] — fidelity is correct in practice; deferred.
+
+Dismissed (6) — not actionable: `gho_` regex in secret-hygiene scan (scan filter, not leaked prefix); R10-A9 / R9-A8 / R4-A8 status flips (each closed by their own commits on this branch); ruleset "cannot be bypassed" wording (accurate property description); pre-dev party-mode/elicitation final recommendations (planning artifacts, not closure).
 
 ## Dev Notes
 
@@ -197,19 +217,72 @@ When a source is unavailable, the evidence entry should name the unavailable sou
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+Codex dev-story agent (GPT-5).
+
+### Implementation Plan
+
+1. Keep the story scoped to read-only governance evidence and documentation;
+   do not mutate release tags, releases, secrets, branch protection, rulesets,
+   deployment state, or workflow execution.
+2. Capture local git, GitHub API/CLI, workflow YAML, release config, and NuGet
+   package metadata evidence into a dated artifact with explicit evidence
+   classifications.
+3. Update `docs/ci.md` only for observed documentation drift, preserving the
+   distinction between intended policy and verified GitHub enforcement.
+4. Run targeted markdown/link validation and record any unavailable checks or
+   non-applicable validation.
 
 ### Debug Log References
 
-TBD by dev-story agent.
+- Resolved BMad workflow customization with
+  `python3 _bmad/scripts/resolve_customization.py --skill .agents/skills/bmad-dev-story --key workflow`.
+- Checked Aspire context with Aspire MCP `list_apphosts` and `doctor`; no
+  AppHost was running, environment had no failed Aspire checks.
+- Captured baseline with `git rev-parse --abbrev-ref HEAD`, `git rev-parse HEAD`,
+  `git status --porcelain=v1`, and authenticated GitHub CLI user lookup.
+- Captured release/tag/config evidence with `git tag --list "v*" --sort=-v:refname`,
+  `git ls-remote --tags origin "v*"`, `.releaserc.json`, `package.json`,
+  `CHANGELOG.md`, and release workflow inspection.
+- Captured GitHub governance evidence with branch protection API, ruleset API,
+  `gh ruleset view`, latest release/run APIs, release job API, and filtered
+  secret metadata attempts.
+- Captured NuGet package outcome through read-only NuGet flat-container metadata.
+- Ran markdownlint, markdown-link-check, and refined secret-hygiene scans.
 
 ### Completion Notes List
 
-TBD by dev-story agent.
+- Created `_bmad-output/test-artifacts/post-epic-9-r9a5-release-governance-evidence/evidence-2026-05-04.md`
+  with metadata, evidence matrix, semantic-release baseline, tag state, workflow
+  contract, branch protection/ruleset evidence, required-check reconciliation,
+  secret evidence, latest release evidence, governance gaps, validation record,
+  and story bookkeeping summary.
+- Verified local and remote latest release tag `v3.9.1`; local `v0.0.0` exists,
+  remote `v0.0.0` was not returned by remote tag lookup.
+- Verified latest GitHub Release `v3.9.1`, successful release workflow run
+  `25314142173`, GitHub Release package assets, and representative NuGet
+  package versions `3.9.1`.
+- Found governance drift: classic `main` branch protection is absent and active
+  ruleset `Protect` only blocks deletion and non-fast-forward updates. Updated
+  `docs/ci.md` to separate observed settings from intended/recommended policy.
+- Recorded `NUGET_API_KEY` exact metadata as permission-blocked/partially
+  unavailable while documenting runtime availability through the successful
+  release and NuGet package publication evidence.
+- No release side effects were performed.
 
 ### File List
 
-TBD by dev-story agent.
+R9-A5 in-scope files:
+
+- `_bmad-output/implementation-artifacts/post-epic-9-r9a5-release-governance-evidence.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/test-artifacts/post-epic-9-r9a5-release-governance-evidence/evidence-2026-05-04.md`
+- `docs/ci.md`
+
+Bundled in commit `9c62333` ("close r9a1 review and submit r9a5 evidence") but belonging to R9-A1's already-reviewed-and-done closure (not R9-A5 scope; recorded here for File List honesty per code-review finding D1):
+
+- `_bmad-output/implementation-artifacts/deferred-work.md` (R9-A1 defers)
+- `_bmad-output/implementation-artifacts/post-epic-9-r9a1-http-stale-etag-proof.md` (R9-A1 status update)
+- `tests/Hexalith.EventStore.Server.Tests/.../HttpStaleETagProofE2ETests.cs` (R9-A1 review-driven patches)
 
 ## Change Log
 
@@ -218,10 +291,17 @@ TBD by dev-story agent.
 | 2026-05-03 | 0.1 | Created ready-for-dev R9-A5 release governance evidence story. | Codex automation |
 | 2026-05-03 | 0.2 | Party-mode review applied evidence-format, read-only, permission-blocker, secret-handling, and governance-gap hardening. | Codex automation |
 | 2026-05-04 | 0.3 | Advanced elicitation tightened evidence authority, API ambiguity, mismatch routing, secret hygiene, and high-impact gap handling. | Codex automation |
+| 2026-05-04 | 1.0 | Implemented release-governance evidence artifact, docs correction, validation record, and review handoff. | Codex dev-story agent |
+| 2026-05-04 | 1.1 | Code review applied 9 patches (1 HIGH AC #12 sprint-status `last_updated` attribution; MED AC #8 docs/ci.md caption + Workflows-row Tier 3 note; MED AC #4 NUGET_API_KEY blocker schema; MED AC #10 accepted-non-action decision for branch-protection gap; LOW AC #7 SHA-divergence routed; LOW trailing whitespace; LOW future-tense bookkeeping; LOW 404 disambiguation; File List honesty for R9-A1 bundled files); 1 decision resolved (File List update); 3 defers recorded; 6 dismissed. | Claude Opus 4.7 code-review agent |
 
 ## Verification Status
 
-Story created for pre-development hardening. Implementation and validation are pending `bmad-dev-story`.
+Code review complete (Claude Opus 4.7, 2026-05-04). 9 patches applied + 1
+decision resolved + 3 defers + 6 dismissed. Targeted markdown validation passed
+with 0 errors, docs links passed, evidence link check reported no Markdown
+hyperlinks, refined secret hygiene scan found no token-style fragments or
+masked values, and workflow YAML lint was not required because no workflow
+YAML changed.
 
 ## Party-Mode Review
 

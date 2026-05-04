@@ -1,6 +1,6 @@
 # Post-Epic-9 R9-A8: Query Operational Evidence Pattern
 
-Status: ready-for-dev
+Status: review
 
 <!-- Source: epic-9-retro-2026-04-30.md - R9-A8 -->
 <!-- Source: post-epic-10-r10a8-r9-r10-follow-through-tracking.md - R9/R10 reconciliation -->
@@ -26,19 +26,19 @@ Current HEAD at story creation: `b9f52e7`.
 
 1. **Query operational evidence documentation exists.** Add `docs/operations/query-operational-evidence.md` or an equivalent operations document that defines how to collect and review query pipeline evidence for NFR35, NFR36, NFR37, and NFR39. The document must link back to the source requirements in `_bmad-output/planning-artifacts/prd.md`, the R9-A8 action in `epic-9-retro-2026-04-30.md`, the R10-A8 follow-through row, the SignalR evidence pattern/template, query API docs, `QueriesController`, `CachingProjectionActor`, `ETagActor`, `DaprETagService`, and ServiceDefaults. It must explain what each source contributes.
 
-2. **A reusable evidence template exists.** Add `_bmad-output/test-artifacts/query-operational-evidence-template.md` with a schema version such as `query-operational-evidence/v1`. The template must require run identity, environment, topology, query identity, authorization mode, cache-state setup, latency calculation, controls, diagnostics, redaction, deferred follow-up, and final classification sections.
+2. **A reusable evidence template exists.** Add `_bmad-output/test-artifacts/query-operational-evidence-template.md` with a schema version such as `query-operational-evidence/v1`. The template must require run identity, environment, topology, query identity, authorization mode, cache-state setup, latency calculation, controls, diagnostics, redaction, deferred follow-up, reviewer verdict, and final classification sections. It must name required metadata fields including `schema_version`, `evidence_run_id`, `proof_key`, `source_commit`, `generated_at`, `reviewed_by`, and safe tenant/domain aliases.
 
-3. **Latency boundaries are named precisely.** The pattern distinguishes at least these intervals: request received to Gate 1 decision, ETag actor lookup, Gate 1 `304 NotModified` response, query actor invocation, Gate 2 cache-hit response, projection/domain-service query execution, cache refresh, HTTP response completed, and optional client-observed duration. Do not collapse all timings into one ambiguous "query latency" value. The operations document or template must include a canonical measurement-boundary table with a stable label, start marker, stop marker, required correlation fields, applicable cache state, and whether the boundary is currently observable or a deferred instrumentation gap.
+3. **Latency boundaries are named precisely.** The pattern distinguishes at least these intervals: request received to Gate 1 decision, ETag actor lookup, Gate 1 `304 NotModified` response, query actor invocation, Gate 2 cache-hit response, projection/domain-service query execution, cache refresh, HTTP response completed, and optional client-observed duration. Do not collapse all timings into one ambiguous "query latency" value. The operations document or template must include a canonical measurement-boundary table with a stable label, start marker, stop marker, required correlation fields, clock source, applicable cache state, and whether the boundary is currently observable or a deferred instrumentation gap. Cross-process timing must be rejected or classified as diagnostic-only unless the clock and correlation assumptions are stated.
 
 4. **NFR thresholds and claim rules are explicit.** The pattern cites NFR35 warm ETag pre-check p99 <= 5ms, NFR36 cache hit p99 <= 10ms, NFR37 cache miss p99 <= 200ms, and NFR39 >= 1,000 concurrent query requests per second per EventStore instance. It must state when a run is `path-viability`, `sample-only`, `diagnostic-only`, `not-claimable`, or a valid p99/throughput claim, and must avoid wording that implies current product compliance without evidence.
 
-5. **p99 and throughput claims are falsifiable.** A p99 claim must record sample count, warmup rule, sample window, clock source, nearest-rank percentile method, raw sample artifact location, threshold source, excluded samples, and whether the calculation is per instance, endpoint, tenant, projection, or aggregate. Fewer than 100 valid post-warmup samples must not be labeled p99. A throughput claim must record concurrent in-flight requests, achieved requests per second, latency budget outcome, error rate, duration, instance identity, replica count, response mix, saturation signals, and whether retries were included.
+5. **p99 and throughput claims are falsifiable.** A p99 claim must record sample count, warmup rule, sample window, clock source, nearest-rank percentile method, raw sample artifact location, calculation command or worksheet, threshold source, excluded samples, and whether the calculation is per instance, endpoint, tenant, projection, or aggregate. Fewer than 100 valid post-warmup samples must not be labeled p99. A throughput claim must record concurrent in-flight requests, achieved requests per second, latency budget outcome, error rate, duration, instance identity, replica count, response mix, saturation signals, and whether retries were included. Missing raw samples, missing calculation evidence, mixed clock sources, or unstated retry treatment force `not-claimable`.
 
 6. **Cache-state setup is part of the evidence.** The template requires evidence for cold baseline, warm same-validator `304`, Gate 2 cache-hit path when Gate 1 is intentionally bypassed or not applicable, cache miss after ETag mismatch, and cache refresh/re-warm when the proof shape includes invalidation. The pattern must explain when a phase belongs to R9-A1 or R9-A2 instead of R9-A8.
 
-7. **Controls prevent false positives.** Every evidence run must include at least one false-positive control and one correlation-integrity control. Examples include malformed or mixed-projection `If-None-Match` values failing open, wrong-tenant authorization denial, stale evidence-run id rejection, cache-hit claims rejected without stable query identity, p99 claims rejected when the sample count or raw sample artifact is missing, mixed cold/warm populations, unrelated background load, stale ETag evidence, invalidation race evidence, missing projection evidence, DAPR actor failure, and domain-service timeout.
+7. **Controls prevent false positives.** Every evidence run must include at least one false-positive control and one correlation-integrity control from the same run or a clearly linked control run. Examples include malformed or mixed-projection `If-None-Match` values failing open, wrong-tenant authorization denial, stale evidence-run id rejection, cache-hit claims rejected without stable query identity, p99 claims rejected when the sample count or raw sample artifact is missing, mixed cold/warm populations, unrelated background load, stale ETag evidence, invalidation race evidence, missing projection evidence, DAPR actor failure, and domain-service timeout. Controls reused from another story, tenant, projection, or environment must be marked as reference material, not proof.
 
-8. **Diagnostics and instrumentation gaps are routed honestly.** The pattern must list currently available evidence sources such as `QueriesController` Gate 1 logs, `CachingProjectionActor` `CacheHit`/`CacheMiss`/`CacheSkipped` logs, `ETagActor` regeneration logs, HTTP status/headers, Aspire logs/traces, and OpenTelemetry service defaults. Missing dedicated query latency metrics, histogram instruments, or trace tags must be recorded as deferred instrumentation rather than silently treated as proof.
+8. **Diagnostics and instrumentation gaps are routed honestly.** The pattern must list currently available evidence sources such as `QueriesController` Gate 1 logs, `CachingProjectionActor` `CacheHit`/`CacheMiss`/`CacheSkipped` logs, `ETagActor` regeneration logs, HTTP status/headers, Aspire logs/traces, and OpenTelemetry service defaults. Missing dedicated query latency metrics, histogram instruments, raw-sample export, evidence-schema validation, or trace tags must be recorded as deferred instrumentation rather than silently treated as proof. Manual stopwatch timing, screenshots alone, or narrative-only observations cannot satisfy an NFR timing claim.
 
 9. **Safe redaction and storage rules are defined.** Evidence runs must live under `_bmad-output/test-artifacts/<story-or-proof-key>/` with an index and dated evidence files. The pattern must forbid committed bearer tokens, connection strings, production hostnames, raw payloads containing customer data, raw HAR files with secrets, and tenant/user identifiers that are not safe aliases.
 
@@ -46,7 +46,7 @@ Current HEAD at story creation: `b9f52e7`.
 
 11. **No product behavior changes are made by default.** This story is expected to change only `docs/operations/query-operational-evidence.md`, `_bmad-output/test-artifacts/query-operational-evidence-template.md`, and story/sprint bookkeeping. Product code, test harness, telemetry implementation, query routing, ETag matching, cache semantics, authorization, DAPR fail-open behavior, benchmarks, and CI changes are out of scope unless Jerome explicitly expands the story. Missing metrics, spans, tags, raw-sample export, or validation automation must be recorded as deferred instrumentation rather than implemented here.
 
-12. **Validation is appropriate for docs/evidence.** Run targeted markdown validation for the new operations document and template. Validate source-reference coverage, required schema fields, required sections, SignalR-specific exclusions, claim rules, redaction rules, and deferred instrumentation inventory. If only docs and BMAD evidence templates change, product tests are not required. If code, tests, or workflow files change unexpectedly, run the affected focused test slice and record why it was necessary.
+12. **Validation is appropriate for docs/evidence.** Run targeted markdown validation for the new operations document and template. Validate source-reference coverage, required schema fields, required sections, reviewer-verdict classifications, SignalR-specific exclusions, claim rules, redaction rules, and deferred instrumentation inventory. Include at least one intentionally invalid sample or checklist row showing why evidence is rejected. If only docs and BMAD evidence templates change, product tests are not required. If code, tests, or workflow files change unexpectedly, run the affected focused test slice and record why it was necessary.
 
 13. **Story bookkeeping is closed.** At dev handoff, this story status becomes `review`, the sprint-status row becomes `review`, and `last_updated` names the query operational evidence result. At code-review signoff, both become `done` only after the documentation, template, and validation evidence are recorded.
 
@@ -79,42 +79,45 @@ Current HEAD at story creation: `b9f52e7`.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline the evidence-pattern scope (AC: #1, #4, #10)
-    - [ ] 0.1 Re-read NFR35, NFR36, NFR37, and NFR39 in `prd.md`.
-    - [ ] 0.2 Re-read R9-A8 in the Epic 9 retro and R10-A8 reconciliation table.
-    - [ ] 0.3 Confirm R9-A1/R9-A2 remain separate and do not pull their proof sequences into this story.
+- [x] Task 0: Baseline the evidence-pattern scope (AC: #1, #4, #10)
+    - [x] 0.1 Re-read NFR35, NFR36, NFR37, and NFR39 in `prd.md`.
+    - [x] 0.2 Re-read R9-A8 in the Epic 9 retro and R10-A8 reconciliation table.
+    - [x] 0.3 Confirm R9-A1/R9-A2 remain separate and do not pull their proof sequences into this story.
 
-- [ ] Task 1: Add the operations documentation (AC: #1, #3, #4, #6, #8, #9)
-    - [ ] 1.1 Create `docs/operations/query-operational-evidence.md`.
-    - [ ] 1.2 Define evidence storage, mandatory artifacts, latency boundaries, p99/throughput rules, diagnostics, failure classification, controls, redaction, and deferred instrumentation.
-    - [ ] 1.3 Cite source requirement files and implementation files by path.
-    - [ ] 1.4 Include a source inventory section explaining what each source contributes.
-    - [ ] 1.5 Include examples of acceptable and unacceptable NFR claims.
+- [x] Task 1: Add the operations documentation (AC: #1, #3, #4, #6, #8, #9)
+    - [x] 1.1 Create `docs/operations/query-operational-evidence.md`.
+    - [x] 1.2 Define evidence storage, mandatory artifacts, latency boundaries, p99/throughput rules, diagnostics, failure classification, controls, redaction, and deferred instrumentation.
+    - [x] 1.3 Cite source requirement files and implementation files by path.
+    - [x] 1.4 Include a source inventory section explaining what each source contributes.
+    - [x] 1.5 Include examples of acceptable and unacceptable NFR claims.
 
-- [ ] Task 2: Add the reusable evidence template (AC: #2, #5, #6, #7, #9)
-    - [ ] 2.1 Create `_bmad-output/test-artifacts/query-operational-evidence-template.md`.
-    - [ ] 2.2 Include required field placeholders and allowed run classifications.
-    - [ ] 2.3 Include an intentionally invalid example that rejects stale or uncorrelated evidence.
-    - [ ] 2.4 Keep the template schema-first: metadata, environment, scenario matrix, measurements, p99 inputs, throughput inputs, diagnostics references, exclusions, redaction statement, and reviewer verdict.
+- [x] Task 2: Add the reusable evidence template (AC: #2, #5, #6, #7, #9)
+    - [x] 2.1 Create `_bmad-output/test-artifacts/query-operational-evidence-template.md`.
+    - [x] 2.2 Include required field placeholders and allowed run classifications.
+    - [x] 2.3 Include an intentionally invalid example that rejects stale or uncorrelated evidence.
+    - [x] 2.4 Keep the template schema-first: metadata, environment, scenario matrix, measurements, p99 inputs, throughput inputs, diagnostics references, exclusions, redaction statement, and reviewer verdict.
+    - [x] 2.5 Add a fail-closed reviewer checklist so missing required fields produce `not-claimable`, `instrumentation-gap`, or `inconclusive` instead of an implied pass.
 
-- [ ] Task 3: Define query-specific measurement semantics (AC: #3, #4, #5, #6)
-    - [ ] 3.1 Separate Gate 1 `304` timing from Gate 2 query actor cache-hit timing.
-    - [ ] 3.2 Explain how a cache miss differs from projection/domain-service execution time.
-    - [ ] 3.3 State that single path-viability runs may support diagnostics but not p99 or throughput claims.
-    - [ ] 3.4 Require raw sample storage or metrics links before p99/throughput classification can be `pass`.
-    - [ ] 3.5 Define start/stop markers and correlation fields for each named boundary to prevent double-counting.
+- [x] Task 3: Define query-specific measurement semantics (AC: #3, #4, #5, #6)
+    - [x] 3.1 Separate Gate 1 `304` timing from Gate 2 query actor cache-hit timing.
+    - [x] 3.2 Explain how a cache miss differs from projection/domain-service execution time.
+    - [x] 3.3 State that single path-viability runs may support diagnostics but not p99 or throughput claims.
+    - [x] 3.4 Require raw sample storage or metrics links before p99/throughput classification can be `pass`.
+    - [x] 3.5 Define start/stop markers and correlation fields for each named boundary to prevent double-counting.
+    - [x] 3.6 State which boundaries can use server-side monotonic timing, which may use trace timestamps, and which must remain diagnostic-only until dedicated instrumentation exists.
 
-- [ ] Task 4: Capture diagnostics and routing gaps (AC: #7, #8, #11)
-    - [ ] 4.1 Inventory existing structured logs and traces usable for query evidence.
-    - [ ] 4.2 Add a deferred instrumentation table for missing query histograms, query-stage Activity tags, raw-sample export, or evidence-schema validation.
-    - [ ] 4.3 Route load-harness or perf-lab implementation to follow-up work instead of implementing it here.
-    - [ ] 4.4 Define rejection criteria for mixed cold/warm populations, unrelated background load, missing correlation, and missing raw samples.
+- [x] Task 4: Capture diagnostics and routing gaps (AC: #7, #8, #11)
+    - [x] 4.1 Inventory existing structured logs and traces usable for query evidence.
+    - [x] 4.2 Add a deferred instrumentation table for missing query histograms, query-stage Activity tags, raw-sample export, or evidence-schema validation.
+    - [x] 4.3 Route load-harness or perf-lab implementation to follow-up work instead of implementing it here.
+    - [x] 4.4 Define rejection criteria for mixed cold/warm populations, unrelated background load, missing correlation, and missing raw samples.
+    - [x] 4.5 Separate reusable reference evidence from proof evidence tied to the same run id, tenant/domain alias, projection, environment, and source commit.
 
-- [ ] Task 5: Validate and close bookkeeping (AC: #12, #13)
-    - [ ] 5.1 Run markdown validation for the new operations doc, template, and this story artifact.
-    - [ ] 5.2 If links are added, run a targeted link check or record why it was unavailable.
-    - [ ] 5.3 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and sprint-status row at dev handoff.
-    - [ ] 5.4 Record a docs-only validation checklist covering source links, required sections, schema fields, claim rules, SignalR exclusions, redaction, and deferred instrumentation.
+- [x] Task 5: Validate and close bookkeeping (AC: #12, #13)
+    - [x] 5.1 Run markdown validation for the new operations doc, template, and this story artifact.
+    - [x] 5.2 If links are added, run a targeted link check or record why it was unavailable.
+    - [x] 5.3 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and sprint-status row at dev handoff.
+    - [x] 5.4 Record a docs-only validation checklist covering source links, required sections, schema fields, claim rules, SignalR exclusions, redaction, and deferred instrumentation.
 
 ## Dev Notes
 
@@ -140,6 +143,8 @@ Use these run-level classifications unless the operations document deliberately 
 - `sample-only`: a bounded run proves path viability but lacks the sample count, clock discipline, or metrics needed for p99/throughput.
 - `inconclusive`: required artifacts exist, but a non-instrumentation precondition or control cannot be confirmed.
 
+Reviewer verdicts must fail closed. A reviewer may downgrade a run from `pass` to `diagnostic-only`, `not-claimable`, `instrumentation-gap`, or `inconclusive` when required metadata, correlation, raw samples, controls, or clock assumptions are missing. The pattern should make that downgrade mechanical enough that another maintainer can reproduce the verdict from the artifacts.
+
 ### Party-Mode Review Guidance
 
 - Treat the evidence pattern itself as the product: reviewers must be able to reject invalid NFR evidence without relying on unstated interpretation.
@@ -164,6 +169,13 @@ Use these run-level classifications unless the operations document deliberately 
 - Product tests are not required for documentation/template-only work.
 - If product code changes are made for instrumentation, run the affected query/ETag/cache unit slice and explain why docs-only scope was insufficient.
 - If a new validation script is added for evidence templates, include a positive and negative sample so missing required fields fail mechanically.
+
+### Advanced Elicitation Guidance
+
+- Treat `evidence_run_id`, `source_commit`, `query/projection identity`, safe tenant/domain aliases, trace/correlation id, and environment identity as the minimum chain of custody for claimable evidence.
+- Require raw sample artifacts or metrics-query links for p99 and throughput claims; summary tables alone are insufficient.
+- Any acceptance wording that says "prove NFR compliance" must include the sample count, threshold source, percentile method, retry treatment, and reviewer verdict needed to falsify the claim.
+- The docs-only implementation should not create a new validation tool by default, but the template must be structured so a future validator can check required fields without interpreting prose.
 
 ### Latest Technical Information
 
@@ -200,30 +212,54 @@ Use these run-level classifications unless the operations document deliberately 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5 Codex.
 
 ### Debug Log References
 
-TBD by dev-story agent.
+- `aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` baseline started and inspected with Aspire MCP `list_apphosts` and `list_resources`.
+- `rg -n "NFR35|NFR36|NFR37|NFR39|Query Pipeline Performance" _bmad-output/planning-artifacts/prd.md`
+- `rg -n "R9-A8|query latency|operational evidence" _bmad-output/implementation-artifacts/epic-9-retro-2026-04-30.md _bmad-output/implementation-artifacts/post-epic-10-r10a8-r9-r10-follow-through-tracking.md`
+- `rg -n "ETag|If-None-Match|NotModified|Log|Cache|Query" src/Hexalith.EventStore/Controllers/QueriesController.cs`
+- `rg -n "CacheHit|CacheMiss|CacheSkipped|ETag|Log|Query" src/Hexalith.EventStore.Server/Actors/CachingProjectionActor.cs`
+- `rg -n "ETag|Regenerat|Log|Persist|Actor" src/Hexalith.EventStore.Server/Actors/ETagActor.cs`
+- `rg -n "ETag|Get|fail|Log|Actor" src/Hexalith.EventStore.Server/Queries/DaprETagService.cs`
+- `rg -n "OpenTelemetry|AddSource|Activity|Metrics|Console|Json" src/Hexalith.EventStore.ServiceDefaults/Extensions.cs`
+- `npx --yes markdownlint-cli2 "docs/operations/query-operational-evidence.md" "_bmad-output/test-artifacts/query-operational-evidence-template.md" "_bmad-output/implementation-artifacts/post-epic-9-r9a8-query-operational-evidence-pattern.md"`
+- `npx --yes markdown-link-check "docs/operations/query-operational-evidence.md" "_bmad-output/test-artifacts/query-operational-evidence-template.md"`
 
 ### Completion Notes List
 
-TBD by dev-story agent.
+- Added the query operational evidence pattern under `docs/operations/` with source inventory, evidence storage, mandatory artifacts, cache-state setup, canonical latency boundaries, NFR thresholds, p99 and throughput claim rules, controls, diagnostics inventory, deferred instrumentation, SignalR reuse boundaries, claim examples, and a fail-closed reviewer checklist.
+- Added the reusable `query-operational-evidence/v1` template with required metadata, run/environment/topology/query identity sections, cache-state setup, scenario matrix, measurement boundaries, p99 and throughput inputs, controls, diagnostics, redaction, deferred follow-up, reviewer verdict, final classification, and an intentionally invalid rejection example.
+- Kept implementation docs-only as required by AC #11; no product code, test harness, telemetry, query routing, ETag/cache behavior, CI, benchmark, or load-testing changes were made.
+- Validation completed with markdownlint and targeted link checking. Product tests were not run because this story changed only documentation, BMAD evidence templates, and story/sprint bookkeeping.
 
 ### File List
 
-TBD by dev-story agent.
+- `docs/operations/query-operational-evidence.md`
+- `_bmad-output/test-artifacts/query-operational-evidence-template.md`
+- `_bmad-output/implementation-artifacts/post-epic-9-r9a8-query-operational-evidence-pattern.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-04 | 1.0 | Implemented docs-only query operational evidence pattern, reusable template, validation, and dev-handoff bookkeeping. | GPT-5 Codex |
 | 2026-05-04 | 0.2 | Applied party-mode review hardening for query evidence falsifiability and docs-only boundaries. | Codex automation |
 | 2026-05-03 | 0.1 | Created ready-for-dev R9-A8 query operational evidence pattern story. | Codex automation |
 
 ## Verification Status
 
-Story created for pre-development hardening. Implementation and validation are pending `bmad-dev-story`.
+Docs-only validation passed.
+
+- Markdown validation passed for the operations document, reusable template, and story artifact with `markdownlint-cli2`.
+- Targeted link check passed for all links in the new operations document and reusable template with `markdown-link-check`.
+- Source-reference coverage confirmed for PRD NFRs, R9-A8 retro, R10-A8 reconciliation, SignalR pattern/template, query API docs, `QueriesController`, `CachingProjectionActor`, `ETagActor`, `DaprETagService`, and ServiceDefaults.
+- Required sections confirmed for schema metadata, environment, topology, query identity, authorization, cache-state setup, latency boundaries, p99 inputs, throughput inputs, diagnostics, redaction, deferred follow-up, reviewer verdict, and final classification.
+- Claim rules confirmed for `path-viability`, `sample-only`, `diagnostic-only`, `not-claimable`, and valid p99/throughput claims.
+- SignalR-specific hub, broadcast, Redis backplane, client receipt, reconnect, fanout, subscription, and transport fields are not mandatory query evidence.
+- Product tests were not run because no product code, workflow, or test harness files changed.
 
 ## Party-Mode Review
 
@@ -234,4 +270,16 @@ Story created for pre-development hardening. Implementation and validation are p
 - Findings summary: tighten the docs-only boundary; make p99 and throughput claims rejectable; require canonical measurement-boundary labels, start/stop markers, and correlation fields; separate warm ETag, Gate 2 cache hit, cache miss, invalidation, and refresh evidence; prevent SignalR-specific template leakage; require operator-friendly schema and claim examples.
 - Changes applied: updated acceptance criteria, scope boundaries, task checklist, evidence classifications, and dev notes with falsifiability, correlation, source inventory, validation, and SignalR-exclusion guidance.
 - Findings deferred: runtime telemetry implementation, query-stage histograms, trace tag propagation, raw-sample export automation, load-test tooling, query routing changes, ETag/cache semantics changes, authorization changes, and DAPR behavior changes.
+- Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-04T13:03:35+02:00
+- Selected story key: `post-epic-9-r9a8-query-operational-evidence-pattern`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-9-r9a8-query-operational-evidence-pattern`
+- Batch 1 method names: Self-Consistency Validation; Red Team vs Blue Team; Security Audit Personas; Failure Mode Analysis; Comparative Analysis Matrix
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Occam's Razor Application; First Principles Analysis; 5 Whys Deep Dive; Lessons Learned Extraction
+- Findings summary: the story already had the right docs-only boundary, but evidence could still be falsely upgraded if metadata, clock source, raw samples, reusable controls, or reviewer verdict rules were implicit.
+- Changes applied: tightened required template metadata, clock/correlation assumptions, p99 and throughput rejection rules, same-run control handling, deferred instrumentation routing, validation checklist expectations, fail-closed reviewer verdicts, and future validator readiness.
+- Findings deferred: dedicated query metrics, query-stage Activity tags, raw-sample export, automated schema validation, load harness selection, product telemetry changes, and any claim that current NFR compliance is proven.
 - Final recommendation: ready-for-dev

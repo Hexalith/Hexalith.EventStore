@@ -6,7 +6,7 @@ This page describes the GitHub Actions workflows that gate every change to `main
 
 | Workflow | File | Triggers | Purpose |
 |----------|------|----------|---------|
-| **CI** | `.github/workflows/ci.yml` | `push` & `pull_request` to `main` | Conventional Commit lint, gitleaks secret scan, build, Tier 1 + Tier 2 + Tier 3 tests, coverage, container-image build validation, CLI tool smoke test |
+| **CI** | `.github/workflows/ci.yml` | `push` & `pull_request` to `main` | Conventional Commit lint, gitleaks secret scan, build, Tier 1 + Tier 2 tests, coverage, container-image build validation, CLI tool smoke test, plus Tier 3 Aspire E2E (`continue-on-error: true`, non-blocking) |
 | **Release** | `.github/workflows/release.yml` | `push` to `main` | Re-runs all tests, then `semantic-release` publishes 6 NuGet packages and creates a GitHub Release |
 | **Deploy Staging** | `.github/workflows/deploy-staging.yml` | `workflow_run: ["CI"]` success on `main` | Builds and pushes 6 container images to `registry.hexalith.com`, then triggers `kubectl rollout restart` over SSH |
 | **Documentation Validation** | `.github/workflows/docs-validation.yml` | `push` & `pull_request` to `main` | `markdownlint-cli2` + `lychee` link check + cross-platform sample build matrix (ubuntu, windows, macos) |
@@ -29,7 +29,7 @@ Tier 3 is wired with `continue-on-error: true` so an Aspire failure annotates th
 
 ```text
 ┌──────────────┐      ┌─────────────┐
-│  commitlint  │      │ secret-scan │   (parallel; both gate the PR)
+│  commitlint  │      │ secret-scan │   (parallel; intended PR gates — see Branch Protection for observed enforcement)
 └──────────────┘      └─────────────┘
          │
          └────────────────────────────┐
@@ -94,13 +94,21 @@ To upgrade an action, look up the new SHA from the upstream release and update b
 
 ## Branch Protection
 
-`main` is the only protected branch. Required status checks:
+Observed repository settings on 2026-05-04:
+
+- Classic branch protection for `main` was not configured.
+- Repository ruleset `Protect` was active and blocked branch deletion and non-fast-forward updates.
+- No required status checks, pull request review requirement, signed commit requirement, or linear-history
+  requirement was observed in the available branch protection/ruleset evidence.
+
+Intended required status checks from repository policy are:
 
 - `commitlint` (PRs only)
 - `secret-scan`
 - `build-and-test`
 
-`aspire-tests` is **not** required (continue-on-error). `Documentation Validation` is recommended but not enforced.
+`aspire-tests` is **not** intended to be required because it uses `continue-on-error`. `Documentation Validation`
+is recommended but was not observed as an enforced branch rule in the 2026-05-04 governance evidence.
 
 ## Secrets
 
