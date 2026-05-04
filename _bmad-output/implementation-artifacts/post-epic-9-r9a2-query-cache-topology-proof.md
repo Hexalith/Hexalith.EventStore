@@ -25,26 +25,27 @@ Existing evidence to reuse:
 - `QueriesController` handles Gate 1 by decoding self-routing ETags from `If-None-Match`, fetching the current projection ETag, returning `304` only on match, and otherwise routing the query through MediatR.
 - `CachingProjectionActor` handles Gate 2 by comparing the current ETag with its cached ETag and payload bytes. A matching ETag returns cached bytes; a changed ETag executes the query and refreshes its in-memory cache.
 - `ETagActor` persists the current self-routing ETag for `{projectionType}:{tenantId}` and `DaprETagService` intentionally fails open when ETag lookup is unavailable.
+- The current ETag actor scope is `{projectionType}:{tenantId}`, not aggregate/domain/entity. The proof must use a unique aggregate ID and a targeted Aspire test run, and any unexpected validator churn from another `counter` projection update in `tenant-a` is diagnostic evidence, not a successful cache-topology transition for this story's aggregate.
 
 ## Acceptance Criteria
 
 1. **A focused Aspire topology proof exists.** Add one ordered Tier 3 integration-test scenario under `tests/Hexalith.EventStore.IntegrationTests/ContractTests/`, using `[Collection("AspireContractTests")]` and `AspireContractTestFixture`, that drives only the public EventStore HTTP surface through the running Aspire topology. The passing evidence is the automated test result plus its Dev Agent Record notes, not manual Aspire screenshots or exploratory log inspection.
 
-2. **The proof uses one stable query identity.** The scenario uses the same tenant, domain, aggregate ID, projection type, entity ID, query type, payload, and JWT tenant/domain claims across commands and all queries. The mandatory identity tuple is tenant `tenant-a`, domain `counter`, projection type `counter`, query type `get-counter-status`, one unique aggregate ID per test run, `entityId = aggregateId`, payload ID aligned to the aggregate ID, and JWT tenant/domain claims that authorize that exact identity.
+2. **The proof uses one stable query identity.** The scenario uses the same tenant, domain, aggregate ID, projection type, entity ID, query type, payload, and JWT tenant/domain claims across commands and all queries. The mandatory identity tuple is tenant `tenant-a`, domain `counter`, projection type `counter`, query type `get-counter-status`, one unique aggregate ID per test run, `entityId = aggregateId`, payload ID aligned to the aggregate ID, and JWT tenant/domain claims that authorize that exact identity. Because ETag state is currently scoped by `{projectionType}:{tenantId}`, the test must be targeted and serialized through the existing Aspire contract-test collection; it must not infer aggregate-specific cache success from validator changes caused by unrelated `tenant-a` `counter` activity.
 
 3. **The cold query populates the topology.** Submit the first `IncrementCounter` command through `POST /api/v1/commands`, poll the public command-status endpoint until `Completed`, assert persisted-event evidence such as `eventCount > 0` when present, then poll `POST /api/v1/queries` until `200 OK` returns expected count `1` and an `ETag` response header. This first successful query is the cold path for the selected identity.
 
 4. **The returned ETag is self-routing and current.** Assert that the first successful response includes a strong quoted HTTP validator whose inner value follows the self-routing `{base64url(projectionType)}.{base64url-guid}` shape and decodes to `counter` through `SelfRoutingETag` or equivalent test-side verification. Do not accept old-format GUID-only ETags.
 
-5. **A warm same-identity request returns 304.** Re-send the exact same query with `If-None-Match` set to the server-provided ETag header exactly as returned, including quotes. The passing result is `304 NotModified`. If the endpoint returns `200 OK`, the test must record enough response detail to diagnose whether Gate 1 was skipped, the ETag actor returned a different value, or a same-aggregate projection changed concurrently.
+5. **A warm same-identity request returns 304.** Re-send the exact same query with `If-None-Match` set to the server-provided ETag header exactly as returned, including quotes. The passing result is `304 NotModified`, which proves Gate 1 accepted the current validator before the request entered the projection actor path. If the endpoint returns `200 OK`, the test must record enough response detail to diagnose whether Gate 1 was skipped, the ETag actor returned a different value, unrelated shared-scope validator churn occurred, or a same-aggregate projection changed concurrently.
 
 6. **Projection change invalidates the old ETag.** Submit a second `IncrementCounter` command for the same aggregate through `POST /api/v1/commands` and wait for public command status `Completed`. Then send the same query with the original ETag in `If-None-Match` until the projection change is observed. The passing state is `200 OK` with expected count `2` and an `ETag` different from the original. A final `304 NotModified` after the second projection is visible is a failure.
 
 7. **Cache re-warm is proven after invalidation.** After the changed-count `200 OK` response, re-send the exact same query with the new ETag. The passing result is `304 NotModified`. This is the re-warm proof: the topology must converge to a new current validator after the projection update.
 
-8. **Gate 2 evidence is recorded without brittle internals.** Record evidence that the query actor cache path was exercised, either by asserting existing structured logs for `Stage=CacheMiss` followed by `Stage=CacheHit`/`ETagPreCheckMatch` when accessible from the test/AppHost evidence, or by documenting why direct log capture was unavailable and proving the public sequence instead. Do not call projection actors directly, inspect Dapr state directly, add test-only production hooks, or bypass Dapr/ETag actors solely to observe private cache fields.
+8. **Gate 2 evidence is recorded without brittle internals.** Record evidence that the query actor path was exercised by the cold `200 OK` and post-invalidation `200 OK` query executions, and capture existing structured logs or traces for `Stage=CacheMiss`, `CacheHit`, `ETagPreCheckMatch`, or equivalent stages when accessible from the test/AppHost evidence. Do not treat the warm `304 NotModified` as proof of a Gate 2 cache hit by itself because Gate 1 may short-circuit first. If direct log/trace capture is unavailable in the fixture, document that limitation and keep the public HTTP sequence as the non-brittle topology proof. Do not call projection actors directly, inspect Dapr state directly, add test-only production hooks, or bypass Dapr/ETag actors solely to observe private cache fields.
 
-9. **Eventual consistency is bounded and diagnostic.** During polling windows, temporary `404 NotFound`, old counts, missing ETags, parse errors, or transient command/query responses are retry states only until the deadline. Once a `200 OK` response proves the expected current count, a missing, malformed, same-as-old, or wrong-projection ETag is a contract failure rather than a transient. Timeout failures must include tenant, domain, aggregate ID, projection type, query type, command IDs, original ETag, new ETag if observed, last status code, last response body, parsed count, parse error, trace/correlation headers if available, and the phase that timed out.
+9. **Eventual consistency is bounded and diagnostic.** During polling windows, temporary `404 NotFound`, old counts, missing ETags, parse errors, transient command/query responses, or unexpected shared-scope ETag churn are retry states only until the deadline. Once a `200 OK` response proves the expected current count, a missing, malformed, same-as-old, wrong-projection, or unrelatedly-changed ETag is a contract failure rather than a transient. Timeout failures must include tenant, domain, aggregate ID, projection type, query type, command IDs, original ETag, new ETag if observed, any unexpected intermediate ETags, last status code, last response body, parsed count, parse error, trace/correlation headers if available, and the phase that timed out.
 
 10. **The proof remains topology-focused.** Do not absorb R9-A1 stale-validator scope beyond what is necessary for this broader sequence, R9-A8 query-latency/operational NFR evidence, SignalR client behavior, Redis backplane behavior, release governance, or new production cache design. This story proves the existing topology or exposes a routed defect.
 
@@ -87,6 +88,7 @@ Existing evidence to reuse:
     - [ ] Re-send the exact same query with the new post-change ETag.
     - [ ] Assert `304 NotModified`.
     - [ ] Capture available structured log, trace, or test-output evidence for `ETagPreCheckMatch`, `CacheMiss`, `CacheHit`, or equivalent stages when accessible.
+    - [ ] Separate claims carefully: warm `304` proves Gate 1 validator behavior; cold and post-change `200` responses prove the projection actor query path; only explicit logs/traces should be used to claim a Gate 2 cache hit.
     - [ ] If log/trace capture is unavailable in the test fixture, record that limitation and keep the public HTTP sequence as the non-brittle proof.
 
 - [ ] Task 6: Keep helper and product changes narrow (AC: #10, #11, #13)
@@ -123,6 +125,8 @@ Existing evidence to reuse:
 - ETag validation starts only after a successful count assertion. A `304` before state is proven is a false positive.
 - The original ETag is the stale validator after the second command. Keep sending that original ETag until the new projection count appears with a different ETag.
 - The new ETag is the re-warm validator. The final `304` must use the post-change ETag, not the baseline ETag.
+- The ETag actor scope is currently `{projectionType}:{tenantId}`. Keep the test targeted and avoid parallel shared-tenant `counter` mutators; if an ETag changes without the selected aggregate reaching the expected count, surface that as shared-scope/interference diagnostics rather than passing the topology proof.
+- Do not overclaim private cache behavior. Gate 1 `304` responses prove HTTP validator short-circuiting; Gate 2 cache-hit claims require existing log/trace evidence or must be recorded as unavailable.
 - If `200 OK` with the old count appears after the second command, keep polling until the deadline; that is eventual consistency, not success.
 - Do not turn malformed, wildcard, mixed-projection, or ETag actor failure behavior into hard errors. Those fail-open semantics are existing product behavior and must remain unchanged.
 - Prefer stable public outcomes over private cache-field inspection. Logs/traces are useful evidence, but the test should not become brittle by depending on exact event ordering that the HTTP contract does not expose.
@@ -133,6 +137,7 @@ Existing evidence to reuse:
 
 - Decide outside this story whether this Tier 3 proof should run in normal CI, nightly CI, or an environment-gated integration lane.
 - Decide outside this story whether future APIs should expose stronger cache diagnostics; this story must not add diagnostics unless a real defect requires it.
+- Decide outside this story whether future integration-test auth should support a test-specific tenant for cache/ETag isolation instead of reusing `tenant-a`.
 - Decide outside this story whether cross-tenant/domain negative cache behavior needs a separate acceptance test.
 - Do not standardize broader ETag syntax here beyond the current public self-routing header behavior needed by this proof.
 
@@ -206,9 +211,22 @@ TBD by dev-story agent.
 - Findings deferred: CI lane policy for Tier 3 proof; future cache diagnostics API shape; cross-tenant/domain negative cache tests; broader ETag syntax standardization.
 - Final recommendation: ready-for-dev
 
+### Advanced Elicitation
+
+- Date/time: 2026-05-04T12:12:24+02:00
+- Selected story key: `post-epic-9-r9a2-query-cache-topology-proof`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-9-r9a2-query-cache-topology-proof`
+- Batch 1 method names: Self-Consistency Validation; Red Team vs Blue Team; Security Audit Personas; Failure Mode Analysis; Comparative Analysis Matrix
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Occam's Razor Application; First Principles Analysis; 5 Whys Deep Dive; Lessons Learned Extraction
+- Findings summary: the story was already ready, but needed sharper guardrails around shared `{projectionType}:{tenantId}` ETag scope, Gate 1 versus Gate 2 proof claims, and diagnostics for unexpected validator churn.
+- Changes applied: clarified that the targeted test must not pass on unrelated shared-scope ETag changes; separated warm `304` Gate 1 proof from optional Gate 2 cache-hit evidence; expanded timeout diagnostics for intermediate ETags and interference; added a deferred tenant-isolation decision.
+- Findings deferred: whether integration-test auth should support per-test tenants; broader cache diagnostics API shape remains outside this story.
+- Final recommendation: ready-for-dev
+
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---|---|---|
+| 2026-05-04 | 0.3 | Applied advanced elicitation hardening for ETag scope, Gate 1/Gate 2 evidence, and diagnostics. | Codex automation |
 | 2026-05-03 | 0.2 | Applied party-mode review hardening for R9-A2 topology proof boundaries. | Codex automation |
 | 2026-05-03 | 0.1 | Created ready-for-dev R9-A2 query cache topology proof story. | Codex automation |
