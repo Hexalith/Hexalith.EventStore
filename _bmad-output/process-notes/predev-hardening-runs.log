@@ -75,3 +75,4 @@
 2026-05-04T20:27:27+02:00	create-story	post-epic-deferred-dw5-admin-ui-runtime-follow-ups	ok	Created ready-for-dev DW5 Admin UI runtime follow-ups story with soft working-tree warning from preflight timestamp 2026-05-04T18:25:31Z.
 2026-05-04T20:40:39+02:00	party-mode-review	post-epic-deferred-dw1-projection-and-drain-hardening	ok	Applied party-mode review clarifications; final recommendation needs-story-update; soft working-tree warning from preflight timestamp 2026-05-04T18:38:42Z.
 2026-05-04T20:48:20+02:00	party-mode-review	post-epic-deferred-dw2-admin-dapr-mcp-live-evidence	ok	Applied party-mode review clarifications; final recommendation ready-for-dev.
+2026-05-04T21:55:21+02:00	party-mode-review	post-epic-deferred-dw3-admin-debugging-json-large-stream-hardening	ok	Applied party-mode review clarifications; final recommendation needs-story-update; soft working-tree warning from preflight timestamp 2026-05-04T19:02:38Z.
