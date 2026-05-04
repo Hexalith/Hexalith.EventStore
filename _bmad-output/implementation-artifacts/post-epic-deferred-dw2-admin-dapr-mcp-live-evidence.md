@@ -104,8 +104,10 @@ Current HEAD at story creation: `41fc73da`.
 - [ ] Task 0: Baseline and evidence plan (AC: #1, #11, #13, #14)
     - [ ] 0.1 Re-read Proposal C / DW2 and the relevant Admin/DAPR/MCP entries in `deferred-work.md`.
     - [ ] 0.2 Create `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/`.
-    - [ ] 0.3 Define evidence tables before running checks: runtime baseline, Admin DAPR, Epic 20 debugging, MCP, latency, blockers, dispositions.
-    - [ ] 0.4 Define redaction rules for tokens, secrets, payloads, customer identifiers, and raw state values.
+    - [ ] 0.3 Define an evidence index before running checks. The index must map each acceptance criterion to the command or tool used, target resource, dated artifact path, expected result, observed result, result classification, redaction note, and deferred-work disposition.
+    - [ ] 0.4 Define evidence tables before running checks: runtime baseline, Admin DAPR, Epic 20 debugging, MCP, latency, blockers, dispositions, and "how to rerun" commands.
+    - [ ] 0.5 Define redaction rules for tokens, secrets, payloads, customer identifiers, and raw state values.
+    - [ ] 0.6 Define blocker classes before running checks: environment blocker, pre-existing product defect, story defect, known deferred debt, out-of-scope DW3-DW6 work, and evidence gap.
 
 - [ ] Task 1: Run Aspire and capture resource baseline (AC: #1, #13)
     - [ ] 1.1 Start prerequisites according to repo guidance: Docker, DAPR placement, and DAPR scheduler as needed for the environment.
@@ -118,7 +120,8 @@ Current HEAD at story creation: `41fc73da`.
     - [ ] 2.2 Exercise `/api/v1/admin/dapr/components`, `/sidecar`, `/actors`, `/pubsub`, and `/resiliency`.
     - [ ] 2.3 Exercise health summary and component health-history endpoints after a bounded wait for at least one capture interval, or record empty-timeline classification.
     - [ ] 2.4 For sidecar, actors, and pub/sub, record `RemoteMetadataStatus` and `RemoteEndpoint` evidence separately from local component metadata.
-    - [ ] 2.5 If a browser is used, capture screenshots only after redaction review and link them from the evidence index.
+    - [ ] 2.5 Record a `RemoteMetadataStatus` matrix for sidecar, actors, and pub/sub. Each surface must have a dated row for the observed `Available`, `Unreachable`, or `NotConfigured` state; do not use one global degraded-state result as proof for all surfaces.
+    - [ ] 2.6 If a browser is used, capture screenshots only after redaction review and link them from the evidence index.
 
 - [ ] Task 3: Capture Epic 20 debugging live evidence (AC: #5, #6, #11, #13)
     - [ ] 3.1 Seed one deterministic stream through CommandAPI or an existing sample flow and record tenant, domain, aggregate id, event count, and correlation id.
@@ -130,9 +133,9 @@ Current HEAD at story creation: `41fc73da`.
     - [ ] 4.1 Start `Hexalith.EventStore.Admin.Mcp` with `EVENTSTORE_ADMIN_URL` and a redacted `EVENTSTORE_ADMIN_TOKEN`.
     - [ ] 4.2 Capture initialize and `tools/list` transcript with stdout/stderr separated.
     - [ ] 4.3 Invoke one representative read tool, preferably `ping`, `health-status`, `health-dapr`, `stream-list`, or `stream-events` based on seeded data availability.
-    - [ ] 4.4 Invoke one approval-gated write-preview tool without executing destructive changes; record preview-only behavior.
-    - [ ] 4.5 Prove session context fallback for tenant/domain if supported, or record the missing live proof as a precise defect/deferred decision.
-    - [ ] 4.6 Measure at least one single-resource MCP read tool with a documented timing method, warm/cold state, retry treatment, and Admin API inclusion.
+    - [ ] 4.4 Invoke one approval-gated write-preview tool without executing destructive changes; record the request, approval boundary, denied or unapproved behavior, sanitized preview output, and before/after proof that no mutation occurred.
+    - [ ] 4.5 Prove session context fallback for tenant/domain if supported. If fallback is absent, record a classified defect or deferred decision with reproduction steps and evidence path instead of implementing a new fallback design in this story.
+    - [ ] 4.6 Measure at least one single-resource MCP read tool with a documented timing method, sample count, cold/warm state, retry treatment, min/average/max or raw individual durations, local environment caveat, and whether Admin API latency is included.
 
 - [ ] Task 5: Close deferred-work and validation bookkeeping (AC: #11, #12, #15)
     - [ ] 5.1 Update only DW2-relevant `deferred-work.md` bullets with disposition markers.
@@ -150,6 +153,15 @@ Current HEAD at story creation: `41fc73da`.
 - DAPR resiliency and component YAML are configuration contracts. Do not edit them for this evidence story unless an actual defect blocks all proof and the fix is reviewed as product/runtime behavior.
 - Evidence can include endpoint names, status codes, component names, app ids, actor types, and envelope metadata, but not bearer tokens, component secrets, raw actor state, or event payloads.
 - MCP stdout is protocol traffic. Send diagnostics to stderr and keep transcripts separated so protocol regressions are visible.
+- Production code changes must pass the DW2 defect gate: a live smoke check proves an existing narrow defect, the fix is required to complete DW2 evidence, the defect and before/after evidence are recorded, and the change does not alter deployment topology, public Admin API contracts, MCP protocol or tool contracts, JSON reconstruction behavior, large-stream behavior, DAPR component/access-control YAML, or deferred DW3-DW6 scope.
+
+### Party-Mode Review Clarifications
+
+- Treat the evidence index as the contract for review. Every artifact under `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/` must be linked from the index with timestamp, command or tool, target resource, redaction note, result classification, and related blocker or deferred-work disposition.
+- Preserve degraded states as first-class outcomes. Empty data, unavailable remote metadata, parse errors, timeouts, 404, 500, 503, and health-history gaps must remain visible as classified results instead of being collapsed into pass/fail prose.
+- Use one deterministic seeded stream and correlation id for blame, bisect, step-through, sandbox, and trace-map evidence. Redact payloads, but keep tenant, domain, aggregate id, event count, correlation id, and structural metadata needed to reproduce the smoke.
+- Keep MCP proof split by protocol phase: startup environment, initialize, `tools/list`, representative read tool, approval-gated write-preview behavior, session fallback, and latency sample. A tool-discovery success alone is not MCP evidence.
+- If Admin UI is used for optional evidence, limit UI review to the tested path: no hidden critical status, keyboard reachability for tested controls, and no new unlabeled controls or hard-coded strings beyond existing patterns. Broader Admin UI polish remains DW5 scope.
 
 ### Previous Story Intelligence
 
@@ -198,12 +210,24 @@ GPT-5 Codex
 ### Debug Log References
 
 - Pre-dev hardening preflight: `_bmad-output/process-notes/predev-preflight-latest.json`, timestamp `2026-05-04T18:01:38Z`, result `pass`.
+- Party-mode pre-dev hardening preflight: `_bmad-output/process-notes/predev-preflight-latest.json`, timestamp `2026-05-04T18:44:30Z`, result `pass`.
 
 ### Completion Notes List
 
 - Created ready-for-dev story from first backlog row after DW1 in the Post-Epic Deferred Work Cleanup package.
 - No implementation work has been performed for this story.
 - No `project-context.md` file was present in the repository at story creation.
+- Party-mode review applied low-risk pre-dev clarifications for evidence index format, blocker taxonomy, RemoteMetadataStatus matrix, MCP approval proof, latency sampling, seeded-stream consistency, degraded-state visibility, and the production-defect gate.
+
+### Party-Mode Review - 2026-05-04T20:48:20+02:00
+
+- Selected story key: `post-epic-deferred-dw2-admin-dapr-mcp-live-evidence`
+- Command/skill invocation used: `/bmad-party-mode post-epic-deferred-dw2-admin-dapr-mcp-live-evidence; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), John (Product Manager)
+- Findings summary: The story is viable as `ready-for-dev`, but review found decision-budget drift risk unless DW2 starts with a strict evidence index, fixed blocker taxonomy, independent RemoteMetadataStatus matrix, explicit MCP approval-boundary proof, precise NFR43 latency sampling, and a narrow production-defect gate.
+- Changes applied: Added evidence-index mapping requirements; added blocker classes; clarified RemoteMetadataStatus matrix evidence; clarified MCP write-preview no-mutation proof; clarified session-fallback defect handling; clarified latency sample fields; added party-mode clarifications for degraded-state visibility, deterministic seed evidence, MCP phase separation, and optional Admin UI limits.
+- Findings deferred: DW3 JSON reconstruction and large-stream hardening; DW4 evidence-template validation; DW5 broader Admin UI polish; DW6 governance; deployment topology, public Admin API, MCP contract, DAPR YAML, and access-control changes unless a narrow smoke-proven defect blocks DW2 evidence.
+- Final recommendation: ready-for-dev
 
 ### File List
 
@@ -220,4 +244,5 @@ GPT-5 Codex
 
 | Date | Version | Description | Author |
 |---|---:|---|---|
+| 2026-05-04 | 0.2 | Applied party-mode pre-dev review clarifications for DW2 evidence contract and scope gates. | Codex automation |
 | 2026-05-04 | 0.1 | Created ready-for-dev DW2 Admin DAPR MCP live evidence story. | Codex automation |
