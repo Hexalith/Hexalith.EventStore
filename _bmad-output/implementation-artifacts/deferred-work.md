@@ -1,5 +1,11 @@
 # Deferred Work
 
+## Deferred from: code review of post-epic-9-r9a5-release-governance-evidence (2026-05-04)
+
+- **Tag evidence section folded into Semantic-Release Baseline** — `_bmad-output/test-artifacts/post-epic-9-r9a5-release-governance-evidence/evidence-2026-05-04.md`. Required Evidence Artifact Shape lists "Local and remote tag evidence" as section #3; current artifact rolls it into section #2 "Semantic-Release Baseline". Content present, structural deviation only.
+- **`git ls-remote --tags origin "v*"` v0.0.0 result not quoted as raw output excerpt** — `evidence-2026-05-04.md:384`. AC #1 "Observed Result" is summarized as "remote `v0.0.0` was not present in the returned tag list" rather than including the actual `git ls-remote` excerpt. Conclusion is reproducible.
+- **Validation record didn't formally check job-name fidelity between `docs/ci.md` edits and workflow YAML** — `evidence-2026-05-04.md:184`. Reconciliation table at lines 116-124 lists `lint-and-links` and `sample-build` which match `.github/workflows/docs-validation.yml:22, 52`; fidelity is correct in practice but not formally validated by command in the Validation Record. AC #11 polish.
+
 ## Deferred from: code review of post-epic-9-r9a2-query-cache-topology-proof (2026-05-04)
 
 - **D1 — `eventCount.GetInt32()` does not branch on `JsonValueKind`** — `tests/Hexalith.EventStore.IntegrationTests/ContractTests/QueryCacheTopologyProofE2ETests.cs:537-547`. If the status JSON ever serializes `eventCount` as a string (`"1"`) the call throws `InvalidOperationException` rather than a Shouldly assertion with the diagnostic body. Diagnostic-only polish; server currently emits `Number`.

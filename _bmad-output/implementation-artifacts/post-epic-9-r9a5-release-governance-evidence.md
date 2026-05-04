@@ -1,6 +1,6 @@
 # Post-Epic-9 R9-A5: Release Governance Evidence
 
-Status: review
+Status: done
 
 <!-- Source: epic-9-retro-2026-04-30.md - R9-A5 -->
 <!-- Source: post-epic-10-r10a8-r9-r10-follow-through-tracking.md - R9/R10 reconciliation -->
@@ -108,6 +108,26 @@ Current HEAD at story creation: `5821f90`.
     - [x] 5.1 Run targeted markdown lint/link validation for changed docs and evidence files, or record why unavailable.
     - [x] 5.2 If workflow YAML changes, run a YAML parse/lint check.
     - [x] 5.3 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and sprint-status row.
+
+### Review Findings
+
+Code review run: 2026-05-04. Sources: Blind Hunter (diff-only), Edge Case Hunter (diff + project read), Acceptance Auditor (diff + spec).
+
+- [x] [Review][Decision][Resolved → Patch] Commit `9c62333` bundles R9-A1 closure with R9-A5 submission — commit modified 7 files (`deferred-work.md`, `post-epic-9-r9a1-http-stale-etag-proof.md`, `tests/Hexalith.EventStore.Server.Tests/.../HttpStaleETagProofE2ETests.cs`, plus the 4 R9-A5 files). Resolution: File List was updated to acknowledge the bundled R9-A1 files (already-reviewed-and-done) without rewriting branch history. Branch hygiene preference: future submissions should split close-of-prior-story from new-story-submission into separate commits.
+- [x] [Review][Patch][HIGH] AC #12 violation — `sprint-status.yaml` `last_updated` field comment names R9-A2's outcome instead of R9-A5's release-governance evidence result [`_bmad-output/implementation-artifacts/sprint-status.yaml:31`]. Spec: "`last_updated` names the release-governance evidence result." Dev acknowledged the clobber on line 32 ("Original R9-A1 dev-handoff attribution clobbered by R9-A5 update on line 31; preserved here per AC #12") but the `last_updated` field itself still does not name R9-A5.
+- [x] [Review][Patch][MED] AC #8 violation — `docs/ci.md:32` ASCII Job Topology caption "(parallel; both gate the PR)" contradicts the new Branch Protection section at lines 99-102 saying no required status checks were observed [`docs/ci.md:32` and `docs/ci.md:99-102`]. Either soften the caption to reflect intent-vs-enforcement, or annotate it explicitly.
+- [x] [Review][Patch][MED] AC #4 violation — NUGET_API_KEY permission-blocker rows missing required schema fields [`_bmad-output/test-artifacts/post-epic-9-r9a5-release-governance-evidence/evidence-2026-05-04.md:31, 142-148`]. AC #4 demands "exact command/page/API endpoint attempted, timestamp, safe actor identity or permission context, non-sensitive returned error, and blocked acceptance criterion." The rows record endpoints and a single shared timestamp but omit non-sensitive error message bodies and the blocked AC# citation.
+- [x] [Review][Patch][MED] AC #10 — High-impact branch-protection gap row presents two action options ("Create a follow-up governance story/status row if enforcement is desired; otherwise record an accepted non-action decision") without doing either [`evidence-2026-05-04.md:552`]. Story is moving to `review` while neither path is taken. Either add a routed follow-up row in `sprint-status.yaml` or record a dated accepted non-action decision with owner and revisit trigger.
+- [x] [Review][Patch][LOW] AC #7 — Workflow head SHA `f9c2021…` vs tag SHA `3f360cc…` divergence is observed and explained inline at `evidence-2026-05-04.md:182-186` and `:543` but never added as a row in `Release Governance Gaps` (lines 552-554). Spec: "If these sources disagree, route the mismatch to `Release Governance Gaps` instead of choosing one silently." Add a row even if classified as expected.
+- [x] [Review][Patch][LOW] Trailing whitespace on `5-5-e2e-security-testing-with-keycloak: done ` line introduced by this diff [`_bmad-output/implementation-artifacts/sprint-status.yaml:81`]. Unrelated incidental edit; remove trailing space.
+- [x] [Review][Patch][LOW] Evidence file's bookkeeping summary written in future tense ("Story status and sprint status will be updated to `review`…") even though both are now `review` in this same diff [`evidence-2026-05-04.md:211-214`]. Update tense to confirm closed state.
+- [x] [Review][Patch][LOW] Scope-boundary disambiguation — classic branch-protection 404 row concludes "observed absence of classic branch protection" without explicitly stating that the actor has sufficient permission to read this endpoint (i.e., 404 means absent control, not permission-blocked or filtered) [`evidence-2026-05-04.md:28, 95-97`]. Same disambiguation is correctly applied to NUGET_API_KEY 404/403 rows.
+- [x] [Review][Patch][LOW] AC #8 — `docs/ci.md:9` Workflows summary row lists "Tier 1 + Tier 2 + Tier 3 tests" without noting Tier 3 (`aspire-tests`) is `continue-on-error: true`. Spec preserves "Tier 3 Aspire tests are non-blocking" — note this in the Workflows row.
+- [x] [Review][Defer] Required Evidence Artifact Shape section #3 "Local and remote tag evidence" is folded into section #2 "Semantic-Release Baseline" rather than its own heading [`evidence-2026-05-04.md`] — content present, structural deviation only; deferred.
+- [x] [Review][Defer] AC #1 "Observed Result" — `git ls-remote` v0.0.0 result is summarized as "remote `v0.0.0` was not present" rather than quoted as a raw output excerpt [`evidence-2026-05-04.md:384`] — deferred, conclusion is correct and reproducible.
+- [x] [Review][Defer] AC #11 — Validation record didn't formally check job-name fidelity between docs/ci.md edits and workflow YAML [`evidence-2026-05-04.md:184`] — fidelity is correct in practice; deferred.
+
+Dismissed (6) — not actionable: `gho_` regex in secret-hygiene scan (scan filter, not leaked prefix); R10-A9 / R9-A8 / R4-A8 status flips (each closed by their own commits on this branch); ruleset "cannot be bypassed" wording (accurate property description); pre-dev party-mode/elicitation final recommendations (planning artifacts, not closure).
 
 ## Dev Notes
 
@@ -251,10 +271,18 @@ Codex dev-story agent (GPT-5).
 
 ### File List
 
+R9-A5 in-scope files:
+
 - `_bmad-output/implementation-artifacts/post-epic-9-r9a5-release-governance-evidence.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `_bmad-output/test-artifacts/post-epic-9-r9a5-release-governance-evidence/evidence-2026-05-04.md`
 - `docs/ci.md`
+
+Bundled in commit `9c62333` ("close r9a1 review and submit r9a5 evidence") but belonging to R9-A1's already-reviewed-and-done closure (not R9-A5 scope; recorded here for File List honesty per code-review finding D1):
+
+- `_bmad-output/implementation-artifacts/deferred-work.md` (R9-A1 defers)
+- `_bmad-output/implementation-artifacts/post-epic-9-r9a1-http-stale-etag-proof.md` (R9-A1 status update)
+- `tests/Hexalith.EventStore.Server.Tests/.../HttpStaleETagProofE2ETests.cs` (R9-A1 review-driven patches)
 
 ## Change Log
 
@@ -264,13 +292,16 @@ Codex dev-story agent (GPT-5).
 | 2026-05-03 | 0.2 | Party-mode review applied evidence-format, read-only, permission-blocker, secret-handling, and governance-gap hardening. | Codex automation |
 | 2026-05-04 | 0.3 | Advanced elicitation tightened evidence authority, API ambiguity, mismatch routing, secret hygiene, and high-impact gap handling. | Codex automation |
 | 2026-05-04 | 1.0 | Implemented release-governance evidence artifact, docs correction, validation record, and review handoff. | Codex dev-story agent |
+| 2026-05-04 | 1.1 | Code review applied 9 patches (1 HIGH AC #12 sprint-status `last_updated` attribution; MED AC #8 docs/ci.md caption + Workflows-row Tier 3 note; MED AC #4 NUGET_API_KEY blocker schema; MED AC #10 accepted-non-action decision for branch-protection gap; LOW AC #7 SHA-divergence routed; LOW trailing whitespace; LOW future-tense bookkeeping; LOW 404 disambiguation; File List honesty for R9-A1 bundled files); 1 decision resolved (File List update); 3 defers recorded; 6 dismissed. | Claude Opus 4.7 code-review agent |
 
 ## Verification Status
 
-Ready for review. Targeted markdown validation passed with 0 errors, docs links
-passed, evidence link check reported no Markdown hyperlinks, refined secret
-hygiene scan found no token-style fragments or masked values, and workflow YAML
-lint was not required because no workflow YAML changed.
+Code review complete (Claude Opus 4.7, 2026-05-04). 9 patches applied + 1
+decision resolved + 3 defers + 6 dismissed. Targeted markdown validation passed
+with 0 errors, docs links passed, evidence link check reported no Markdown
+hyperlinks, refined secret hygiene scan found no token-style fragments or
+masked values, and workflow YAML lint was not required because no workflow
+YAML changed.
 
 ## Party-Mode Review
 
