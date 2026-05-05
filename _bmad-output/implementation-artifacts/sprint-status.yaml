@@ -28,7 +28,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-05T14:00:28+02:00' # post-epic-deferred-dw2-admin-dapr-mcp-live-evidence moved in-progress -> review after live Aspire/Admin DAPR/Epic 20/MCP evidence capture. Artifacts saved under _bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/; sidecar/actors/pubsub RemoteMetadataStatus=Available; seeded stream 5 events; MCP initialize/tools-list/read/write-preview/session/latency smoke passed; artifact redaction/completeness passed; Admin.Server 511/529 and Admin.Mcp 308/316 green with DW2 red-phase skips; core unit projects 334/281/4/78 green.
+last_updated: '2026-05-05T14:14:03+02:00' # Created ready-for-dev story post-epic-deferred-dw6-deferred-work-governance from the deferred-work cleanup backlog.
+# Previous last_updated detail preserved: 2026-05-05T14:00:28+02:00 - post-epic-deferred-dw2-admin-dapr-mcp-live-evidence moved in-progress -> review after live Aspire/Admin DAPR/Epic 20/MCP evidence capture. Artifacts saved under _bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/; sidecar/actors/pubsub RemoteMetadataStatus=Available; seeded stream 5 events; MCP initialize/tools-list/read/write-preview/session/latency smoke passed; artifact redaction/completeness passed; Admin.Server 511/529 and Admin.Mcp 308/316 green with DW2 red-phase skips; core unit projects 334/281/4/78 green.
 # Previous last_updated detail preserved: 2026-05-05T13:50:07+02:00 - post-epic-deferred-dw2-admin-dapr-mcp-live-evidence moved ready-for-dev -> in-progress for DW2 evidence capture; evidence index skeleton created before runtime checks.
 # Previous last_updated detail preserved: 2026-05-05T16:30:00+02:00 - post-epic-deferred-dw1-projection-and-drain-hardening moved review -> done after code review applied 13 patches (drift in empty-events branch, typed DrainEventCountMismatchException, EventId 1142 HttpStatus/ContentType, host cancellation test, dead null-check removal, using-declaration re-indent, project_unexpected_status for 1xx/3xx, shared *ReasonCodes constants, deterministic concurrency probe, charset NotSupportedException catch, IsCorruptIndex upper bound, high-cardinality leak negative assertions, checkpoint-read-failure regression evidence) and recorded 11 deferred items. Targeted Tier 2 tests 95/95, Tier 1 unit projects 334+281+63+78 all green; Release build clean.
 # Previous last_updated detail preserved: 2026-05-05T11:35:18+02:00 - Story 15-12b-implement-missing-event-detail-endpoint moved review -> done after code review patches for structured not-found logging, Admin.Server 400 response metadata, and pre-canceled request-token guard. Targeted EventStore controller tests passed 16/16 in Release; affected Admin.Server controller/service tests passed 60/60.
@@ -306,7 +307,7 @@ development_status:
   post-epic-deferred-dw3-admin-debugging-json-large-stream-hardening: ready-for-dev
   post-epic-deferred-dw4-operational-evidence-schema-validation: ready-for-dev
   post-epic-deferred-dw5-admin-ui-runtime-follow-ups: ready-for-dev
-  post-epic-deferred-dw6-deferred-work-governance: backlog
+  post-epic-deferred-dw6-deferred-work-governance: ready-for-dev
 
   # Post-Epic-1 Retro Cleanup (sprint-change-proposal-2026-04-26.md)
   # Implementation order: A1 -> A6 -> A2 -> A7 (see proposal §3 sequencing rationale).
