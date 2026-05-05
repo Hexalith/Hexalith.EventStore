@@ -99,6 +99,46 @@ The 2026-05-04 party-mode review found the story directionally ready, but recomm
 - Whether same-aggregate serialization must be guaranteed across process boundaries or only within the current projector instance.
 - Whether timeout values are product policy or implementation configuration.
 
+## Advanced Elicitation Hardening Notes
+
+- Treat DW1 as a policy-then-patch story. Before changing runtime behavior, the developer must decide which deferred items are `decision-now` versus `accepted-debt` and must not improvise a new operator contract mid-implementation.
+- Checkpoint drift needs an explicit outcome matrix in the implementation notes or tests: chosen policy, stable reason code, retry/recovery expectation, and whether immediate versus polling delivery share the same branch. If the team cannot pick that policy inside DW1, record accepted debt rather than silently inventing one.
+- `/project` diagnostics should converge on a single bounded reason-code vocabulary owned by the touched EventStore files. New tests should assert those stable codes or categories, and any new EventIds must be checked for uniqueness in the touched files before handoff.
+- Tracker-scaling closure must either stay documentation-only with a concrete deferred trigger block or land as a narrowly tested code change. If it remains deferred, capture explicit thresholds for identity count, scope/page count, polling interval, and the observable symptom that should trigger the follow-up.
+- Drain poison handling needs a mini decision record even if no code change lands: chosen policy, invariant preserved, operator signal, and why the rejected alternatives were not chosen for DW1.
+- Reminder re-entrancy evidence must tie Dapr reminder turn-based semantics to the current `DrainUnpublishedEventsAsync` side effects. If the proof depends on an assumption that is not directly testable in the current suite, document that assumption in the Dev Agent Record and add the narrowest regression guard available.
+- Prefer additive constants, focused tests, and explicit deferred-work notes over broad refactors. DW1 should not become a project-wide observability cleanup, tracker redesign, or drain-control feature.
+
+## Advanced Elicitation Clarifications
+
+The 2026-05-05 advanced-elicitation pass treated the party-mode clarifications as the current baseline and tightened only the implementation handoff. These notes are binding for dev-story execution unless a human product or architecture decision supersedes them.
+
+### Decision Ledger Required Before Production Edits
+
+Before changing production code, record a short decision ledger in the Dev Agent Record that names each selected DW1 policy and the evidence expected for it:
+
+- Checkpoint drift policy: whether to fail the delivery attempt, quarantine the checkpoint, or continue only with an explicit non-success diagnostic. The selected policy must never advance a checkpoint past durable projection state.
+- Tracker corruption policy: whether corrupt state is rebuilt, quarantined, classified for manual repair, or accepted as deferred debt. Scope-index and identity-index paths may choose different policies, but each must be explicit.
+- Drain poison policy: whether corrupt drain records use bounded backoff, terminal disposition, or accepted debt. If accepted debt is chosen, no production drain behavior should be changed until the rationale is recorded.
+- Timeout policy: identify the owner of timeout duration and retry policy. DW1 may classify observed timeout outcomes, but must not invent a broad retry policy.
+
+### Failure-Mode Closure Rules
+
+- Every new reason code must have a single owner area (`project`, `tracker`, or `drain`), a bounded value, and at least one behavior-level assertion or explicit accepted-debt note.
+- Timeout and cancellation tests must use separate evidence paths: caller-token cancellation is host lifecycle behavior; service timeout or transport timeout is projection delivery failure behavior.
+- Tracker corruption handling must show bounded retry behavior at the poller boundary, not only validation helper failures.
+- Drain terminal or poison handling must prove idempotence across repeated reminders: no partial publish, no premature record removal, no duplicate pending-counter decrement, and no repeated terminal side effect.
+- EventId uniqueness proof is local to touched files for this story. A project-wide allocation table remains out of scope unless explicitly approved.
+
+### Dev-Story Stop Signs
+
+Stop and record a deferred decision instead of coding when the implementation pressure requires any of these:
+
+- Public supportability or admin-facing contract for `/project`, tracker, or drain diagnostics.
+- Automatic tracker rebuild or drain terminal disposition without a recorded product/architecture choice.
+- Cross-process projection serialization, global queues, broad caches, or Dapr component changes.
+- New integration or Aspire runtime dependency solely to prove behavior that can be covered by focused Tier 2 tests.
+
 ## Implementation Inventory
 
 | Area | File / artifact | Expected use |
@@ -137,12 +177,14 @@ The 2026-05-04 party-mode review found the story directionally ready, but recomm
     - [ ] 0.2 Classify each selected deferred item as `patch-now`, `decision-now`, `accepted-debt`, `duplicate`, or `not-DW1`.
     - [ ] 0.3 Record any architecture/product decisions before editing production code.
     - [ ] 0.4 Confirm no public API, query contract, SignalR, admin endpoint, or Dapr component change is needed.
+    - [ ] 0.5 Add the DW1 decision ledger to the Dev Agent Record before production edits, covering checkpoint drift, tracker corruption, drain poison, and timeout ownership.
 
 - [ ] Task 1: Harden projection delivery diagnostics (AC: #1, #2, #3, #10)
     - [ ] 1.1 Add focused tests for `/project` upstream 4xx, upstream 5xx, malformed JSON, unsupported or missing content type if supported by the test seam, empty `ProjectionType`, and invalid `State`.
     - [ ] 1.2 Add stable reason-code logging for each failure class without logging payload data.
     - [ ] 1.3 Separate host cancellation from service timeout/transient invocation failure.
-    - [ ] 1.4 Add a checkpoint-drift test or decision record covering checkpoint greater than aggregate event sequence.
+    - [ ] 1.4 Add a checkpoint-drift test or decision record covering checkpoint greater than aggregate event sequence, including the chosen retry/recovery expectation and the exact stable operator signal.
+    - [ ] 1.5 Assert the selected projection reason codes by stable value or category, and keep any human-readable message assertions out of the primary behavior tests.
 
 - [ ] Task 2: Preserve projection serialization and checkpoint non-regression (AC: #1, #4, #11)
     - [ ] 2.1 Add or update same-aggregate overlap tests that prove the per-aggregate lock serializes delivery.
@@ -153,19 +195,22 @@ The 2026-05-04 party-mode review found the story directionally ready, but recomm
     - [ ] 3.1 Add scope-index corruption coverage and identity-index corruption coverage.
     - [ ] 3.2 Assert corrupt or missing pages do not create tight retry loops.
     - [ ] 3.3 Preserve ETag-guarded page/index writes and page size 100.
-    - [ ] 3.4 Document any still-deferred scaling limits with concrete thresholds and owner.
+    - [ ] 3.4 Document any still-deferred scaling limits with concrete thresholds, owner, and trigger symptom. Include identity-count, scope/page-count, and polling-interval thresholds rather than a generic "watch performance" note.
+    - [ ] 3.5 Prove poller-level boundedness for corrupt tracker state, including the next-domain or next-tick behavior that prevents one corrupt record from monopolizing polling.
 
 - [ ] Task 4: Resolve drain poison and activity signal gaps (AC: #7, #8, #9, #11)
-    - [ ] 4.1 Decide whether corrupt drain records get terminal disposition, bounded backoff, or accepted-debt status.
+    - [ ] 4.1 Decide whether corrupt drain records get terminal disposition, bounded backoff, or accepted-debt status, and record the rejected alternatives plus preserved invariant in the story notes or deferred-work update.
     - [ ] 4.2 If code changes, add tests proving no partial publish, no premature drain removal, no pending-counter decrement on failure, and reminder behavior remains intentional.
     - [ ] 4.3 Replace high-cardinality activity failure text with stable reason codes while keeping useful structured logs.
-    - [ ] 4.4 Capture Dapr reminder semantics in the Dev Agent Record or code comments only where needed.
+    - [ ] 4.4 Capture Dapr reminder semantics in the Dev Agent Record or code comments only where needed, and tie the proof to the exact side effects (`publish`, record removal, reminder unregister, `pending_command_count`) that must not overlap destructively.
+    - [ ] 4.5 If terminal disposition remains deferred, update the deferred-work disposition with the trigger that will reopen the decision.
 
 - [ ] Task 5: Validate and close bookkeeping (AC: #11, #13)
     - [ ] 5.1 Run targeted projection and drain tests individually.
     - [ ] 5.2 Run the four Tier 1 unit test projects individually if production code changed.
     - [ ] 5.3 If Tier 3 runtime behavior changed, run the affected integration tests with the Aspire/Dapr prerequisites recorded.
-    - [ ] 5.4 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and any deferred-work dispositions.
+    - [ ] 5.4 Before handoff, search the touched files for EventId collisions and confirm the final reason-code vocabulary is consistent across tests, logs, and activity tags.
+    - [ ] 5.5 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and any deferred-work dispositions.
 
 ## Dev Notes
 
@@ -216,8 +261,10 @@ GPT-5 Codex
 
 - Created ready-for-dev story from first backlog row in the Post-Epic Deferred Work Cleanup package.
 - Party-mode review on 2026-05-04 recommended `needs-story-update`; low-risk clarifications were applied for invariants, diagnostic vocabulary, evidence targets, and deferred decisions.
+- Advanced elicitation on 2026-05-05 hardened decision points for checkpoint drift, tracker-scaling thresholds, drain-poison policy recording, reminder re-entrancy proof, and EventId/reason-code validation.
 - No implementation work has been performed for this story.
 - No `project-context.md` file was present in the repository at story creation.
+- Advanced elicitation on 2026-05-05 applied low-risk handoff clarifications for decision-ledger requirements, failure-mode closure rules, poller boundedness proof, drain idempotence evidence, and dev-story stop signs.
 
 ### File List
 
@@ -228,6 +275,7 @@ GPT-5 Codex
 ## Verification Status
 
 - Story artifact created and sprint-status row moved from `backlog` to `ready-for-dev`.
+- Party-mode review and advanced elicitation traces are recorded inline; no status change was required.
 - Markdown and YAML validation should be run before dev handoff if local tooling is available.
 
 ## Change Log
@@ -236,6 +284,8 @@ GPT-5 Codex
 |---|---:|---|---|
 | 2026-05-04 | 0.1 | Created ready-for-dev DW1 projection and drain hardening story. | Codex automation |
 | 2026-05-04 | 0.2 | Applied party-mode review clarifications for invariants, diagnostics, evidence targets, and deferred decisions. | Codex automation |
+| 2026-05-05 | 0.3 | Applied advanced elicitation hardening for policy gating, tracker thresholds, drain-decision recording, and validation requirements. | Codex automation |
+| 2026-05-05 | 0.3 | Applied advanced-elicitation hardening for decision ledger, bounded failure evidence, and dev-story stop signs. | Codex automation |
 
 ## Party-Mode Review
 
@@ -247,3 +297,27 @@ GPT-5 Codex
 - Changes applied: Added Party-Mode Review Clarifications with invariants, internal diagnostic vocabulary, evidence-target table, scope guardrails, and deferred decisions. Added Dev Agent Record and Change Log entries.
 - Findings deferred: Human architecture/product judgment is still needed for tracker rebuild/quarantine/classify policy, internal versus operator-visible terminal drain disposition, public supportability status of `/project` diagnostics, cross-process serialization guarantees, and timeout policy ownership.
 - Final recommendation: `needs-story-update`
+
+## Advanced Elicitation
+
+- ISO date and time: 2026-05-05T05:30:00+02:00
+- Selected story key: `post-epic-deferred-dw1-projection-and-drain-hardening`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-deferred-dw1-projection-and-drain-hardening`
+- Batch 1 method names: `Pre-mortem Analysis`; `Red Team vs Blue Team`; `Architecture Decision Records`; `Failure Mode Analysis`; `Comparative Analysis Matrix`
+- Reshuffled Batch 2 method names: `First Principles Analysis`; `Self-Consistency Validation`; `Challenge from Critical Perspective`; `Occam's Razor Application`; `Lessons Learned Extraction`
+- Findings summary: The story was already directionally strong after party-mode review, but elicitation exposed five remaining handoff gaps: checkpoint drift needed an explicit policy/output matrix instead of an implied test-only fix; tracker scaling needed concrete deferred thresholds if left unresolved; drain poison work needed a recorded decision frame before code edits; reminder re-entrancy proof needed to bind Dapr semantics to current side effects; and EventId/reason-code validation needed to be called out as part of final bookkeeping.
+- Changes applied: Added Advanced Elicitation Hardening Notes; tightened Task 1.4, 3.4, 4.1, 4.4, and validation/bookkeeping tasks; updated Completion Notes, Verification Status, and Change Log; and recorded this dated canonical advanced-elicitation trace.
+- Findings deferred: The actual checkpoint-drift policy choice, tracker rebuild/quarantine policy, terminal drain disposition policy, cross-process serialization guarantees, timeout policy ownership, and any project-wide EventId allocation governance remain human architecture/product decisions unless the implementing developer can close them within DW1's existing scope.
+- Final recommendation: `ready-for-dev`
+
+## Advanced Elicitation
+
+- ISO date and time: 2026-05-05T05:11:40+02:00
+- Selected story key: `post-epic-deferred-dw1-projection-and-drain-hardening`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-deferred-dw1-projection-and-drain-hardening`
+- Batch 1 method names: Red Team vs Blue Team; Security Audit Personas; Failure Mode Analysis; Self-Consistency Validation; Critique and Refine
+- Reshuffled Batch 2 method names: Pre-mortem Analysis; Architecture Decision Records; Chaos Monkey Scenarios; 5 Whys Deep Dive; Comparative Analysis Matrix
+- Findings summary: The story was already directionally ready after party-mode review, but the implementation handoff still needed a mandatory policy decision ledger, clearer separation between timeout and cancellation evidence, poller-level proof for bounded tracker corruption, and explicit drain idempotence evidence across repeated reminders.
+- Changes applied: Added Advanced Elicitation Clarifications covering decision-ledger requirements, failure-mode closure rules, and dev-story stop signs. Added task details for decision-ledger creation, reason-code assertions, poller boundedness proof, and deferred terminal-disposition triggers. Added Dev Agent Record and Change Log entries.
+- Findings deferred: Human product/architecture judgment remains required for tracker rebuild/quarantine/classify policy, drain terminal disposition, public supportability status of diagnostics, cross-process projection serialization, and timeout policy ownership.
+- Final recommendation: `ready-for-dev`
