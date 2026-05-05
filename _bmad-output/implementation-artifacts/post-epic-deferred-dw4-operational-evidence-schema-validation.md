@@ -104,6 +104,15 @@ Current HEAD at story creation: `d392506b`.
 - Redaction validation needs concrete boundaries: synthetic tokens, tenant IDs, user IDs, URLs, trace IDs, and connection-string-like values may appear only when clearly marked as synthetic or redacted; obvious bearer tokens, real connection-string keywords, production hostnames, and raw secret markers must fail with an escape path for documented false positives.
 - CI/local validation should stay centralized. Prefer invoking the new validator from `scripts/validate-docs.ps1` and `scripts/validate-docs.sh`, then from `.github/workflows/docs-validation.yml`, unless the Dev Agent Record records a precise reason for advisory-only or deferred CI wiring.
 
+## Advanced Elicitation Hardening Notes
+
+- Treat evidence-file discovery as part of the validator contract. The implementation must define whether the command validates explicit file paths, directories, or known template/sample roots, and it must skip or fail unsupported files deterministically instead of relying on incidental glob order.
+- Fail closed before rule evaluation when schema identity is missing, duplicated, malformed, or contradictory. A file that declares both query and SignalR evidence schema markers, or declares an unsupported future version, must produce a stable schema-identification diagnostic.
+- Keep parser errors distinct from business-rule failures. Malformed YAML snippets, malformed Markdown tables, duplicate required headings, and ambiguous section matches should have their own rule ids so reviewers can tell "cannot parse" from "parsed but invalid".
+- Negative fixtures must assert expected rule ids, not just any non-zero exit. This prevents a broken parser or unrelated failure from falsely proving placeholder, control, classification, or redaction coverage.
+- Redaction checks should distinguish obviously unsafe committed material from allowed synthetic examples. The accepted escape path must require an explicit synthetic/redacted marker in the evidence, not a broad allowlist that could hide real tokens or tenant data.
+- CI integration should avoid broad historical evidence scans until explicitly opted in. The first gate should validate templates and curated fixtures, while any optional repository-wide audit reports known failures without making DW4 depend on repairing old artifacts.
+
 ## Tasks / Subtasks
 
 - [ ] Task 0: Baseline schema contracts and choose validator shape (AC: #1, #4, #7, #9, #11, #14)
@@ -112,6 +121,7 @@ Current HEAD at story creation: `d392506b`.
     - [ ] 0.3 Decide whether implementation is a PowerShell/Python script, .NET test/tool, or JSON Schema plus markdown lint companion.
     - [ ] 0.4 Record why Aspire/DAPR fields are profile-scoped rather than globally required.
     - [ ] 0.5 Confirm historical evidence folders are not mass-rewritten.
+    - [ ] 0.6 Record the validator input contract: explicit files, directories, curated roots, unsupported-file behavior, and stable traversal order.
 
 - [ ] Task 1: Define the machine-readable rules (AC: #2, #3, #4, #5, #6, #7, #13)
     - [ ] 1.1 Define required fields, required sections, required tables, classification enums, control requirements, and redaction rules for `query-operational-evidence/v1`.
@@ -120,6 +130,7 @@ Current HEAD at story creation: `d392506b`.
     - [ ] 1.4 Add a visible mapping table if query and SignalR classifications intentionally differ.
     - [ ] 1.5 Define fail-closed behavior for malformed evidence, unknown schema versions, unknown classifications, placeholder-looking values in required fields, and missing profile-scoped Aspire fields when an Aspire/DAPR profile is claimed.
     - [ ] 1.6 Define the exact `not-applicable: <reason>` rule and reject empty, generic, or unsupported use of the marker.
+    - [ ] 1.7 Define schema-identification diagnostics for missing schema, duplicate schema markers, contradictory schema markers, and unsupported future versions.
 
 - [ ] Task 2: Implement the lightweight validator (AC: #2, #3, #5, #6, #7, #9, #13)
     - [ ] 2.1 Add the validator in the smallest maintainable repo location.
@@ -130,6 +141,7 @@ Current HEAD at story creation: `d392506b`.
     - [ ] 2.6 Return deterministic non-zero exit code and concise file/schema/rule diagnostics.
     - [ ] 2.7 Keep diagnostics sorted stably and shaped for tests: `file`, `schema`, `rule`, `section`, `field`, and `hint`.
     - [ ] 2.8 Keep schema-specific rule data separate from parser flow so a future `v2` can be added without rewriting the validator.
+    - [ ] 2.9 Separate parse diagnostics from rule diagnostics for malformed YAML, malformed tables, duplicate headings, and ambiguous section matches.
 
 - [ ] Task 3: Add positive and negative proof samples (AC: #8, #11, #13)
     - [ ] 3.1 Add one minimal valid query evidence sample and one minimal invalid query evidence sample.
@@ -138,6 +150,7 @@ Current HEAD at story creation: `d392506b`.
     - [ ] 3.4 Keep all samples synthetic and safe to commit.
     - [ ] 3.5 Add a fixture coverage matrix mapping each invalid sample to the exact validator rule ids it is expected to trigger.
     - [ ] 3.6 Include one valid `not-applicable: <reason>` profile-scoped case and one invalid unsupported or empty `not-applicable` case.
+    - [ ] 3.7 Assert negative fixtures fail for the expected rule ids so unrelated parser failures cannot masquerade as coverage.
 
 - [ ] Task 4: Align docs, templates, and validation paths (AC: #4, #7, #10, #12, #14)
     - [ ] 4.1 Update query and SignalR operations docs only where needed to point reviewers to the validator and supported schema versions.
@@ -145,6 +158,7 @@ Current HEAD at story creation: `d392506b`.
     - [ ] 4.3 Either wire the validator into `scripts/validate-docs.ps1`, `scripts/validate-docs.sh`, and `.github/workflows/docs-validation.yml`, or record a precise CI-deferred reason.
     - [ ] 4.4 Update only DW4-relevant `deferred-work.md` bullets with disposition markers.
     - [ ] 4.5 Document the local command, docs-validation command, and CI command path in the Dev Agent Record.
+    - [ ] 4.6 Document whether CI validates curated fixtures only or also runs an advisory repository-wide evidence audit.
 
 - [ ] Task 5: Validate and close bookkeeping (AC: #8, #10, #12, #15)
     - [ ] 5.1 Run the validator against positive samples and confirm pass.
@@ -153,6 +167,7 @@ Current HEAD at story creation: `d392506b`.
     - [ ] 5.4 Run focused tests if the validator is implemented as .NET test/tool code.
     - [ ] 5.5 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and sprint-status row at dev handoff.
     - [ ] 5.6 Record sample passing output and at least one expected failing-case output in the Dev Agent Record.
+    - [ ] 5.7 Record at least one schema-identification failure output for missing, duplicate, or unsupported schema markers.
 
 ## Dev Notes
 
@@ -180,6 +195,7 @@ Current HEAD at story creation: `d392506b`.
 - Product unit tests are not required unless product code changes unexpectedly.
 - Do not run solution-level `dotnet test`; follow repository guidance and run relevant projects individually.
 - Validator self-tests are required even when product tests are not. Cover parser success/failure, each independent rule family, valid fixture pass behavior, invalid fixture fail behavior, diagnostic ordering, and exact diagnostic code/path output.
+- Invalid fixture tests should verify expected diagnostic rule ids. A test that only asserts "the command failed" is not enough to prove the intended validator rule is working.
 
 ### References
 
@@ -228,6 +244,7 @@ GPT-5 Codex
 | --- | ---: | --- | --- |
 | 2026-05-04 | 0.1 | Created ready-for-dev DW4 operational evidence schema validation story. | Codex automation |
 | 2026-05-05 | 0.2 | Applied party-mode hardening for validator contract, fixtures, diagnostics, and CI expectations. | Codex automation |
+| 2026-05-05 | 0.3 | Applied advanced elicitation for schema identification, parser failure separation, fixture assertions, and CI audit boundaries. | Codex automation |
 
 ## Party-Mode Review
 
@@ -238,4 +255,16 @@ GPT-5 Codex
 - Findings summary: all reviewers recommended `needs-story-update`; the story is directionally sound, but the development handoff needed a sharper validator contract, explicit implementation entrypoint expectations, rule-data separation, deterministic diagnostics, fail-closed behavior, fixture coverage matrix, redaction boundaries, and CI/local command clarity.
 - Changes applied: added Party-Mode Hardening Notes; expanded rule, implementation, sample, docs-validation, and verification tasks; added validator self-test guidance; added change-log row.
 - Findings deferred: exact schema/config file format and location; whether the implementation is a script, .NET tool/test, or JSON Schema plus markdown lint companion; whether CI blocks immediately or starts advisory; long-term taxonomy ownership and historical evidence migration policy.
+- Final recommendation: needs-story-update
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-05T09:03:58+02:00
+- Selected story key: `post-epic-deferred-dw4-operational-evidence-schema-validation`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-deferred-dw4-operational-evidence-schema-validation`
+- Batch 1 method names: Self-Consistency Validation; Red Team vs Blue Team; Architecture Decision Records; Security Audit Personas; Failure Mode Analysis.
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Occam's Razor Application; First Principles Analysis; 5 Whys Deep Dive; Lessons Learned Extraction.
+- Findings summary: the story had strong rule and fixture coverage, but it could still falsely pass if schema discovery was ambiguous, parser failures were conflated with rule failures, negative fixtures only asserted non-zero exit, or CI tried to validate all historical evidence before curated fixtures were stable.
+- Changes applied: added Advanced Elicitation Hardening Notes; added input-contract, schema-identification, parse-diagnostic, exact-negative-fixture, CI audit-boundary, and schema-identification-output tasks; strengthened validator self-test guidance; added change-log row.
+- Findings deferred: exact command syntax, exact rule-id names, parser implementation language, and whether repository-wide historical evidence auditing starts as advisory or deferred.
 - Final recommendation: needs-story-update
