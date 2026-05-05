@@ -99,16 +99,6 @@ The 2026-05-04 party-mode review found the story directionally ready, but recomm
 - Whether same-aggregate serialization must be guaranteed across process boundaries or only within the current projector instance.
 - Whether timeout values are product policy or implementation configuration.
 
-## Advanced Elicitation Hardening Notes
-
-- Treat DW1 as a policy-then-patch story. Before changing runtime behavior, the developer must decide which deferred items are `decision-now` versus `accepted-debt` and must not improvise a new operator contract mid-implementation.
-- Checkpoint drift needs an explicit outcome matrix in the implementation notes or tests: chosen policy, stable reason code, retry/recovery expectation, and whether immediate versus polling delivery share the same branch. If the team cannot pick that policy inside DW1, record accepted debt rather than silently inventing one.
-- `/project` diagnostics should converge on a single bounded reason-code vocabulary owned by the touched EventStore files. New tests should assert those stable codes or categories, and any new EventIds must be checked for uniqueness in the touched files before handoff.
-- Tracker-scaling closure must either stay documentation-only with a concrete deferred trigger block or land as a narrowly tested code change. If it remains deferred, capture explicit thresholds for identity count, scope/page count, polling interval, and the observable symptom that should trigger the follow-up.
-- Drain poison handling needs a mini decision record even if no code change lands: chosen policy, invariant preserved, operator signal, and why the rejected alternatives were not chosen for DW1.
-- Reminder re-entrancy evidence must tie Dapr reminder turn-based semantics to the current `DrainUnpublishedEventsAsync` side effects. If the proof depends on an assumption that is not directly testable in the current suite, document that assumption in the Dev Agent Record and add the narrowest regression guard available.
-- Prefer additive constants, focused tests, and explicit deferred-work notes over broad refactors. DW1 should not become a project-wide observability cleanup, tracker redesign, or drain-control feature.
-
 ## Advanced Elicitation Clarifications
 
 The 2026-05-05 advanced-elicitation pass treated the party-mode clarifications as the current baseline and tightened only the implementation handoff. These notes are binding for dev-story execution unless a human product or architecture decision supersedes them.
