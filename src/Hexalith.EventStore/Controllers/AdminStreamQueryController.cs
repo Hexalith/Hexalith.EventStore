@@ -317,6 +317,86 @@ public class AdminStreamQueryController(
     }
 
     /// <summary>
+    /// Returns full detail for the event at the requested sequence number. Used by the Admin UI event detail
+    /// panel, CLI stream commands, and MCP diagnostics. Payload is returned verbatim for authorized inspection;
+    /// SEC-5 redaction applies only to logs and <see cref="EventDetail.ToString"/>, not the API response body.
+    /// </summary>
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/events/{sequenceNumber:long}")]
+    [ProducesResponseType(typeof(EventDetail), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetEventDetailAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        CancellationToken ct = default) {
+        if (sequenceNumber <= 0) {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "Parameter 'sequenceNumber' must be >= 1.");
+        }
+
+        ct.ThrowIfCancellationRequested();
+
+        try {
+            var identity = new AggregateIdentity(tenantId, domain, aggregateId);
+            IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+                new ActorId(identity.ActorId), "AggregateActor");
+
+            // GetEventsAsync is exclusive on lower bound; subtract 1 to include the target sequence.
+            ServerEventEnvelope[] events = await actor.GetEventsAsync(sequenceNumber - 1).ConfigureAwait(false);
+
+            ct.ThrowIfCancellationRequested();
+
+            ServerEventEnvelope? target = events.FirstOrDefault(e => e.SequenceNumber == sequenceNumber);
+            if (target is null) {
+                logger.LogInformation(
+                    "Event detail not found for {TenantId}/{Domain}/{AggregateId} at sequence {SequenceNumber}.",
+                    tenantId,
+                    domain,
+                    aggregateId,
+                    sequenceNumber);
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "Event not found.");
+            }
+
+            string decoded = target.Payload is { Length: > 0 }
+                ? Encoding.UTF8.GetString(target.Payload)
+                : string.Empty;
+            string payloadJson = string.IsNullOrWhiteSpace(decoded) ? "{}" : decoded;
+
+            EventDetail detail = new(
+                TenantId: tenantId,
+                Domain: domain,
+                AggregateId: aggregateId,
+                SequenceNumber: target.SequenceNumber,
+                EventTypeName: target.EventTypeName,
+                Timestamp: target.Timestamp,
+                CorrelationId: target.CorrelationId,
+                CausationId: string.IsNullOrWhiteSpace(target.CausationId) ? null : target.CausationId,
+                UserId: string.IsNullOrWhiteSpace(target.UserId) ? null : target.UserId,
+                PayloadJson: payloadJson);
+
+            return Ok(detail);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            logger.LogError(ex, "Failed to fetch event detail for {TenantId}/{Domain}/{AggregateId} at sequence {SequenceNumber}.",
+                tenantId, domain, aggregateId, sequenceNumber);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "Failed to fetch event detail.");
+        }
+    }
+
+    /// <summary>
     /// Computes per-field blame (provenance) for an aggregate's state at a given sequence position.
     /// Uses an incremental O(N) algorithm: replay events, diff state after each apply, track blame.
     /// </summary>

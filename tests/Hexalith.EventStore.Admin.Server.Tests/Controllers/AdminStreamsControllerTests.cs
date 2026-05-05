@@ -225,6 +225,77 @@ public class AdminStreamsControllerTests {
         objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
     }
 
+    [Fact]
+    public async Task GetEventDetail_InvalidSequence_Returns400AndDoesNotCallService() {
+        IActionResult result = await _sut.GetEventDetail("t", "d", "a", 0);
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        ProblemDetails problem = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Detail.ShouldNotBeNull();
+        problem.Detail.ShouldContain("'sequenceNumber' must be >= 1");
+        _ = await _service.DidNotReceive().GetEventDetailAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetEventDetail_NegativeSequence_Returns400AndDoesNotCallService() {
+        IActionResult result = await _sut.GetEventDetail("t", "d", "a", -5);
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        _ = await _service.DidNotReceive().GetEventDetailAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetEventDetail_KeyNotFoundException_Returns404WithEventNotFoundDetail() {
+        _ = _service.GetEventDetailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Throws(new KeyNotFoundException("Event not found."));
+
+        IActionResult result = await _sut.GetEventDetail("t", "d", "a", 5);
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
+        ProblemDetails problem = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Detail.ShouldBe("Event not found.");
+    }
+
+    [Fact]
+    public async Task GetEventDetail_ArgumentException_Returns400() {
+        _ = _service.GetEventDetailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Throws(new ArgumentException("Parameter 'sequenceNumber' must be >= 1."));
+
+        IActionResult result = await _sut.GetEventDetail("t", "d", "a", 5);
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+    }
+
+    [Fact]
+    public async Task GetEventDetail_HttpRequestException_Returns503() {
+        _ = _service.GetEventDetailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Throws(new HttpRequestException("downstream 502"));
+
+        IActionResult result = await _sut.GetEventDetail("t", "d", "a", 5);
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+    }
+
+    [Fact]
+    public async Task GetEventDetail_ReturnsOk_WhenServiceReturnsDetail() {
+        DateTimeOffset timestamp = new(2026, 5, 5, 12, 0, 0, TimeSpan.Zero);
+        var expected = new EventDetail("t", "d", "a", 5, "CounterIncremented", timestamp, "corr-1", "cause-1", "user-1", "{\"value\":1}");
+        _ = _service.GetEventDetailAsync("t", "d", "a", 5L, Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        IActionResult result = await _sut.GetEventDetail("t", "d", "a", 5);
+
+        OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
+        ok.Value.ShouldBe(expected);
+    }
+
     private static ClaimsPrincipal CreatePrincipal(string adminRole, params string[] tenants) {
         var claims = new List<Claim> { new(AdminClaimTypes.AdminRole, adminRole) };
         foreach (string tenant in tenants) {

@@ -342,10 +342,16 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         try {
             EventDetail? result = await InvokeEventStoreAsync<EventDetail>(
                 HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
-            return result ?? CreateEmptyEventDetail(tenantId, domain, aggregateId, sequenceNumber, "not-found");
+            return result ?? throw new KeyNotFoundException("Event not found.");
         }
         catch (OperationCanceledException) {
             throw;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound) {
+            throw new KeyNotFoundException("Event not found.");
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.BadRequest) {
+            throw new ArgumentException("Parameter 'sequenceNumber' must be >= 1.");
         }
         catch (Exception ex) {
             _logger.LogError(ex, "Failed to get event detail at {Sequence} for {TenantId}/{Domain}/{AggregateId} via DAPR service invocation to '{AppId}'.", sequenceNumber, tenantId, domain, aggregateId, _options.EventStoreAppId);
@@ -481,14 +487,6 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         long sequenceNumber,
         string status)
         => new(tenantId, domain, aggregateId, sequenceNumber, DateTimeOffset.UnixEpoch, $"{{\"status\":\"{status}\"}}");
-
-    private static EventDetail CreateEmptyEventDetail(
-        string tenantId,
-        string domain,
-        string aggregateId,
-        long sequenceNumber,
-        string status)
-        => new(tenantId, domain, aggregateId, sequenceNumber, $"admin.event.{status}", DateTimeOffset.UnixEpoch, $"admin-{status}", null, null, $"{{\"status\":\"{status}\"}}");
 
     private static CausationChain CreateEmptyCausationChain(string status)
         => new($"admin.command.{status}", $"admin-{status}", $"admin-{status}", null, [], []);

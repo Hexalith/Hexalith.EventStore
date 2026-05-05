@@ -286,6 +286,77 @@ public class DaprStreamQueryServiceTests {
     }
 
     [Fact]
+    public async Task GetEventDetailAsync_DownstreamNotFound_ThrowsKeyNotFoundException() {
+        (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupErrorResponse(System.Net.HttpStatusCode.NotFound);
+
+        KeyNotFoundException ex = await Should.ThrowAsync<KeyNotFoundException>(
+            () => service.GetEventDetailAsync("tenant1", "orders", "order-1", 5));
+        ex.Message.ShouldBe("Event not found.");
+    }
+
+    [Fact]
+    public async Task GetEventDetailAsync_DownstreamBadRequest_ThrowsArgumentException() {
+        (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupErrorResponse(System.Net.HttpStatusCode.BadRequest);
+
+        _ = await Should.ThrowAsync<ArgumentException>(
+            () => service.GetEventDetailAsync("tenant1", "orders", "order-1", 5));
+    }
+
+    [Fact]
+    public async Task GetEventDetailAsync_DownstreamServerError_ThrowsHttpRequestException() {
+        (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupErrorResponse(System.Net.HttpStatusCode.InternalServerError);
+
+        HttpRequestException ex = await Should.ThrowAsync<HttpRequestException>(
+            () => service.GetEventDetailAsync("tenant1", "orders", "order-1", 5));
+        ex.StatusCode.ShouldBe(System.Net.HttpStatusCode.InternalServerError);
+    }
+
+    [Fact]
+    public async Task GetEventDetailAsync_DownstreamServiceUnavailable_ThrowsHttpRequestException() {
+        (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupErrorResponse(System.Net.HttpStatusCode.ServiceUnavailable);
+
+        HttpRequestException ex = await Should.ThrowAsync<HttpRequestException>(
+            () => service.GetEventDetailAsync("tenant1", "orders", "order-1", 5));
+        ex.StatusCode.ShouldBe(System.Net.HttpStatusCode.ServiceUnavailable);
+    }
+
+    [Fact]
+    public async Task GetEventDetailAsync_NullJsonBody_ThrowsKeyNotFoundException() {
+        (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupNullJsonResponse();
+
+        KeyNotFoundException ex = await Should.ThrowAsync<KeyNotFoundException>(
+            () => service.GetEventDetailAsync("tenant1", "orders", "order-1", 5));
+        ex.Message.ShouldBe("Event not found.");
+    }
+
+    [Fact]
+    public async Task GetEventDetailAsync_BuildsCanonicalEndpoint_AndForwardsBearerToken() {
+        IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
+        _ = authContext.GetToken().Returns("event-detail-token");
+
+        DateTimeOffset timestamp = new(2026, 5, 5, 12, 0, 0, TimeSpan.Zero);
+        EventDetail expected = new("tenant 1", "orders", "order/1", 7, "OrderShipped", timestamp, "corr-1", null, null, "{\"value\":1}");
+
+        (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService(authContext: authContext);
+        handler.SetupJsonResponse(expected);
+
+        EventDetail result = await service.GetEventDetailAsync("tenant 1", "orders", "order/1", 7);
+
+        result.SequenceNumber.ShouldBe(7);
+        _ = handler.LastRequest.ShouldNotBeNull();
+        handler.LastRequest!.Method.ShouldBe(HttpMethod.Get);
+        string url = handler.LastRequest.RequestUri!.AbsoluteUri;
+        url.ShouldContain("api/v1/admin/streams/tenant%201/orders/order%2F1/events/7");
+        url.ShouldNotContain("?");
+        handler.LastRequest.Headers.Authorization!.Parameter.ShouldBe("event-detail-token");
+    }
+
+    [Fact]
     public async Task GetEventStepFrameAsync_ThrowsArgumentException_WhenSequenceNumberLessThanOne() {
         (DaprStreamQueryService service, _) = CreateService();
 

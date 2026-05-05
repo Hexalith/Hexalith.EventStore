@@ -226,7 +226,7 @@ Test: `dotnet test tests/Hexalith.EventStore.Server.Tests/`
 
 1. **Unified timeline (events + commands + queries in one stream)** — full FR69. Requires a design decision on how to merge command activity (from `admin:command-activity:all`) with actor-sourced events when their timestamps overlap. Requires a query log that does not yet exist. Separate story.
 2. **Pagination cursor for streams larger than `count`** — `ContinuationToken` stays `null` for now. When unified timeline lands, define a base64-encoded `(lastSequenceNumber, lastTimestamp)` cursor.
-3. **Distinguish 4xx vs 5xx in `AdminStreamsController` exception-to-HTTP mapping (Admin.Server)** — the appendix of the 2026-04-19 memo notes this turns a clear 404 into an opaque 503 at the UI layer. Optional cleanup story.
+3. **Distinguish 4xx vs 5xx in `AdminStreamsController` exception-to-HTTP mapping (Admin.Server)** — the appendix of the 2026-04-19 memo notes this turns a clear 404 into an opaque 503 at the UI layer. Optional cleanup story. Story 15.12b applies this principle narrowly for the event-detail endpoint only; the broader cleanup remains separate.
 4. **Tier 3 Aspire E2E test for `/events` page** — Task 5 above is the lightweight version; a full Playwright-backed E2E that drives the UI and asserts non-empty cards is a separate story.
 
 ### References
@@ -243,6 +243,7 @@ Test: `dotnet test tests/Hexalith.EventStore.Server.Tests/`
 - [Source: `tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs`] — Test conventions reference.
 - [Source: `_bmad-output/implementation-artifacts/15-13-stream-activity-tracker-writer.md`] — Prior story; structural-clone pattern, Tier 1 conventions.
 - [Source: `_bmad-output/implementation-artifacts/15-12-events-page-cross-stream-browser.md`] — Originating story; UI consumer.
+- [Source: `_bmad-output/implementation-artifacts/15-12b-implement-missing-event-detail-endpoint.md`] — Sibling follow-up for the same facade-vs-EventStore route gap on `events/{sequenceNumber}`.
 - [Source: `CLAUDE.md`] — Solution file, Conventional Commits, build/test commands.
 
 ## Dev Agent Record
@@ -288,6 +289,7 @@ claude-opus-4-7[1m]
 | 2026-04-19 | Implemented `GetStreamTimelineAsync` on `AdminStreamQueryController` + 12 Tier 1 tests. AC 1–11 satisfied; AC 12 deferred to reviewer for live-AppHost verification. |
 | 2026-04-19 | Code review: 3 decision-needed (scope leaks), 0 patch, 4 defer (pre-existing), 8 dismissed. All 12 new tests green. |
 | 2026-04-19 | Code review DN1/DN2/DN3 all resolved via story amendment: anti-pattern for `Events.razor` updated; File List extended with `Events.razor`, `Streams.razor`, `samples/.../App.razor`, `samples/.../MainLayout.razor` (latter two verified against official FluentUI v5 Installation docs). Story status → `done`; AC 12 still reviewer-gated for live-AppHost verification. |
+| 2026-05-05 | Follow-up breadcrumb added — Story 15.12b tracks the sibling missing EventStore route for `events/{sequenceNumber}` and narrows Admin.Server 400/404 preservation for event detail. |
 
 ## Review Findings
 
@@ -311,4 +313,3 @@ Adversarial review completed 2026-04-19 with three parallel layers (Blind Hunter
 - `count<=0` split into `Timeline_CountZero_NormalizesTo100` + `Timeline_CountNegative_NormalizesTo100` instead of a single `[Fact]` — equal/greater coverage, cosmetic divergence only.
 - `AdminUIServiceExtensions.cs` 5s → 30s HTTP timeout — legitimate carryover from `sprint-change-proposal-2026-04-18-events-page-slow.md`; the story's Dev Notes explicitly say it "is retained as a safety margin".
 - `DaprTenantQueryService.cs` Bearer-token forwarding — legitimate carryover from `sprint-change-proposal-2026-04-18-tenant-query-auth.md` (Task 4.7 of this story explicitly requires verifying the 2026-04-18 tenant-query-auth fix remains green).
-

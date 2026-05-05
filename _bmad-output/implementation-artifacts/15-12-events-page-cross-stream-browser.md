@@ -261,6 +261,7 @@ Note: Commands.razor also imports `Hexalith.EventStore.Contracts.Commands` for `
 - [Source: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-01-events-page.md`] — Sprint change proposal
 - [Source: `_bmad-output/planning-artifacts/ux-design-specification.md` D3 direction] — UX spec for Events/Timeline page
 - [Source: `_bmad-output/planning-artifacts/epics.md` Story 15.12] — Story definition
+- [Source: `_bmad-output/implementation-artifacts/15-12b-implement-missing-event-detail-endpoint.md`] — 2026-05-05 follow-up for the row-click/event-detail path this page depends on.
 - [Source: `src/Hexalith.EventStore.Admin.UI/Pages/Commands.razor`] — Primary reference implementation
 - [Source: `src/Hexalith.EventStore.Admin.UI/Services/AdminStreamApiClient.cs`] — API client with all required methods
 - [Source: `_bmad-output/implementation-artifacts/15-9-commands-page-cross-stream-command-list.md`] — Commands page story (pattern reference)
@@ -307,3 +308,4 @@ Claude Opus 4.6 (1M context)
 
 - 2026-04-01: Story 15.12 implemented — cross-stream event browser on Events page with filtering, pagination, and parallel data loading
 - 2026-04-01: Review fixes applied — refresh now restores scroll and reloads tenant options; Events page tests strengthened
+- 2026-05-05: Follow-up breadcrumb added — Story 15.12b tracks the missing EventStore event detail endpoint required by Events row-click navigation to `/streams/{tenant}/{domain}/{aggregateId}?detail={sequenceNumber}`.
