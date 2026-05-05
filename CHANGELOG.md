@@ -1,3 +1,18 @@
+# [3.13.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.12.0...v3.13.0) (2026-05-05)
+
+
+### Bug Fixes
+
+* **admin:** add state inspection and tenant query hardening ([4d34563](https://github.com/Hexalith/Hexalith.EventStore/commit/4d3456386252fb533cf79f9eaac9eb1a0c7692f4))
+
+
+### Features
+
+* **contracts:** add CommandStatus.IsTerminal() extension and remove duplicate controller helpers ([8724deb](https://github.com/Hexalith/Hexalith.EventStore/commit/8724deba2c3eb64c80532ab05231f4c98722ceca)), closes [#6](https://github.com/Hexalith/Hexalith.EventStore/issues/6)
+* **server:** add admin event detail endpoint and preserve 400/404 semantics ([d87d1ad](https://github.com/Hexalith/Hexalith.EventStore/commit/d87d1ad1ad83be745b93e0f5f2c4e2dd9769179a))
+* **ui:** migrate Sample.BlazorUI to Fluent UI Blazor v5 (Story 21-10) ([eddecb6](https://github.com/Hexalith/Hexalith.EventStore/commit/eddecb63379290542b6a45a6fd7e5afd02d30255))
+* Update status to done for story 17-8: .NET Tool Packaging and Distribution ([d0d5d41](https://github.com/Hexalith/Hexalith.EventStore/commit/d0d5d41d66bf0691553fbb9fc4b5f16c6729cad9))
+
 # [3.12.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.11.1...v3.12.0) (2026-05-05)
 
 
