@@ -22,13 +22,11 @@ namespace Hexalith.EventStore.Server.Tests.Controllers;
 /// in <see cref="GetEventsAsyncDisposition_AllSurfacesHaveExplicitDisposition"/>.
 /// </summary>
 public class Dw3LargeStreamSurfaceAtddTests {
-    private const string _baseSkip = "ATDD red phase — DW3 ";
-
     // ---------------------------------------------------------------
     // AC #7 — disposition matrix is exhaustive and bounded
     // ---------------------------------------------------------------
 
-    [Fact(Skip = _baseSkip + "AC#7 (GetEventsAsync(0) disposition matrix). Remove Skip when implementing.")]
+    [Fact]
     public void GetEventsAsyncDisposition_AllSurfacesHaveExplicitDisposition() {
         // Surfaces calling GetEventsAsync(0) per source-code reconnaissance
         // (see ATDD checklist Step 03).
@@ -57,7 +55,7 @@ public class Dw3LargeStreamSurfaceAtddTests {
     // AC #6 — per-surface behavior on oversize / out-of-range
     // ---------------------------------------------------------------
 
-    [Fact(Skip = _baseSkip + "AC#6 (blame truncated flag). Remove Skip when implementing.")]
+    [Fact]
     public async Task Blame_StreamLengthExceedsMaxEvents_ResponseFlagsIsTruncated() {
         ServerEventEnvelope[] envelopes = [.. Enumerable.Range(1, 101)
             .Select(i => Dw3TestUtilities.BuildEnvelope(i, $$"""{"counter":{{i}}}"""))];
@@ -74,7 +72,7 @@ public class Dw3LargeStreamSurfaceAtddTests {
         view.IsTruncated.ShouldBeTrue("DW3 AC#6: blame must report IsTruncated=true when stream length exceeds maxEvents.");
     }
 
-    [Fact(Skip = _baseSkip + "AC#6 (timeline truncation flag). Remove Skip when implementing.")]
+    [Fact]
     public async Task Timeline_StreamLengthExceedsCount_ResponseExposesTruncationSignal() {
         ServerEventEnvelope[] envelopes = [.. Enumerable.Range(1, 200)
             .Select(i => Dw3TestUtilities.BuildEnvelope(i))];
@@ -98,7 +96,7 @@ public class Dw3LargeStreamSurfaceAtddTests {
             + "(via TotalCount > Items.Count or non-null ContinuationToken).");
     }
 
-    [Fact(Skip = _baseSkip + "AC#6 (step beyond stream). Remove Skip when implementing.")]
+    [Fact]
     public async Task Step_AtSequenceBeyondStream_Returns400WithStableMessage() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([
@@ -120,7 +118,7 @@ public class Dw3LargeStreamSurfaceAtddTests {
             "DW3 AC#6: step beyond stream must surface a stable, parseable signal.");
     }
 
-    [Fact(Skip = _baseSkip + "AC#6 (bisect bad beyond stream). Remove Skip when implementing.")]
+    [Fact]
     public async Task Bisect_BadSequenceBeyondStream_Returns400WithGuidance() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([
@@ -151,7 +149,7 @@ public class Dw3LargeStreamSurfaceAtddTests {
         }
     }
 
-    [Fact(Skip = _baseSkip + "AC#6 (sandbox AtSequence beyond stream). Remove Skip when implementing.")]
+    [Fact]
     public async Task Sandbox_AtSequenceBeyondStream_Returns400() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([
@@ -174,7 +172,7 @@ public class Dw3LargeStreamSurfaceAtddTests {
         obj.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
     }
 
-    [Fact(Skip = _baseSkip + "AC#6 (sandbox AtSequence=0 zero-stream)." + " Remove Skip when implementing.")]
+    [Fact]
     public async Task Sandbox_AtSequenceZero_DoesNotInvokeActor() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         AdminStreamQueryController controller = Dw3TestUtilities.CreateStreamController(actor);

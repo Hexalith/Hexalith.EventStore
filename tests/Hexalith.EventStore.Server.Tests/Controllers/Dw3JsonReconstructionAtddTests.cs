@@ -16,18 +16,15 @@ namespace Hexalith.EventStore.Server.Tests.Controllers;
 
 /// <summary>
 /// DW3 ATDD red-phase scaffolds for JSON reconstruction semantics (AC #2, #3, #4).
-/// All tests are <c>[Fact(Skip = ...)]</c> until the corresponding production
-/// behavior is implemented; the dev removes the Skip marker per AC, watches the
-/// test go red, then implements the production change to make it green.
+/// These tests now run as the DW3 regression guard for the selected behavior
+/// matrix.
 /// </summary>
 public class Dw3JsonReconstructionAtddTests {
-    private const string _baseSkip = "ATDD red phase — DW3 ";
-
     // ---------------------------------------------------------------
     // AC #2 — Deletion / explicit-null / nested-removal semantics
     // ---------------------------------------------------------------
 
-    [Fact(Skip = _baseSkip + "AC#2 (omitted property). Remove Skip when implementing.")]
+    [Fact]
     public async Task Step_OmittedPropertyAfterMerge_DoesNotEmitSyntheticDelete() {
         // Step #2: event 1 sets {"a":1,"b":2}. Event 2 omits "b" (sends {"a":3}).
         // Current DeepMerge does not remove "b". A synthetic delete in FieldChanges
@@ -59,7 +56,7 @@ public class Dw3JsonReconstructionAtddTests {
             + "unless a recorded product/architecture decision approves delete semantics.");
     }
 
-    [Fact(Skip = _baseSkip + "AC#2 (explicit JSON null). Remove Skip when implementing.")]
+    [Fact]
     public async Task Step_ExplicitJsonNullValue_HasDocumentedRepresentation() {
         // Event 1: {"a":1}. Event 2: {"a":null}. The disposition the dev picks
         // (supported, preserved-limitation, accepted-debt, future-actor-api) must
@@ -85,7 +82,7 @@ public class Dw3JsonReconstructionAtddTests {
         change.NewValue.ShouldBe("null");
     }
 
-    [Fact(Skip = _baseSkip + "AC#2 (nested removal). Remove Skip when implementing.")]
+    [Fact]
     public async Task Step_NestedPropertyRemovedFromObject_BehaviorMatchesMatrix() {
         // Event 1: {"obj":{"x":1,"y":2}}. Event 2: {"obj":{"x":3}} (no "y").
         // Current JsonDiff DOES emit "y → null" because the recursive nested
@@ -125,7 +122,7 @@ public class Dw3JsonReconstructionAtddTests {
     // AC #3 — Array treatment (opaque-leaf preservation)
     // ---------------------------------------------------------------
 
-    [Fact(Skip = _baseSkip + "AC#3 (array as leaf). Remove Skip when implementing.")]
+    [Fact]
     public async Task Step_ArrayPayload_TreatedAsOpaqueLeaf_NoElementPaths() {
         // Event with array property: {"items":[1,2,3]}. FlattenJson currently
         // treats arrays as leaves. AC #3 requires this opaque-leaf behavior to
@@ -151,7 +148,7 @@ public class Dw3JsonReconstructionAtddTests {
         frame.FieldChanges.ShouldContain(fc => fc.FieldPath == "items");
     }
 
-    [Fact(Skip = _baseSkip + "AC#3 (array element-change). Remove Skip when implementing.")]
+    [Fact]
     public async Task Step_TwoEventsWithDifferentArrayContents_DiffRecordsWholeArray() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([
@@ -177,7 +174,7 @@ public class Dw3JsonReconstructionAtddTests {
     // AC #4 — Recursion / malformed / non-object / empty-path
     // ---------------------------------------------------------------
 
-    [Fact(Skip = _baseSkip + "AC#4 (deep recursion). Remove Skip when implementing.")]
+    [Fact]
     public async Task Step_DeeplyNestedJsonPayload_DoesNotCauseStackOverflow() {
         // Build a deeply nested payload. Threshold is intentionally not pinned —
         // dev picks the limit during AC #4 implementation. Test asserts the
@@ -212,7 +209,7 @@ public class Dw3JsonReconstructionAtddTests {
         );
     }
 
-    [Fact(Skip = _baseSkip + "AC#4 (empty property name). Remove Skip when implementing.")]
+    [Fact]
     public async Task Step_EmptyPropertyNameInPayload_DoesNotCrash() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([
@@ -230,7 +227,7 @@ public class Dw3JsonReconstructionAtddTests {
             "DW3 AC#4: empty property names must be skipped or surfaced as 400 — never 500.");
     }
 
-    [Fact(Skip = _baseSkip + "AC#4 (non-object payload). Remove Skip when implementing.")]
+    [Fact]
     public async Task Step_NonObjectPayload_SkippedSilently_NoPayloadLeakInProblemDetails() {
         // Numeric payload (123) is valid JSON but not an object.
         // ReconstructState already catches this case and skips. Test asserts
@@ -252,7 +249,7 @@ public class Dw3JsonReconstructionAtddTests {
         }
     }
 
-    [Fact(Skip = _baseSkip + "AC#4 (malformed JSON). Remove Skip when implementing.")]
+    [Fact]
     public async Task Step_MalformedJsonPayloadBytes_SkippedAndContinues() {
         // Malformed payload — not valid JSON.
         byte[] malformed = Encoding.UTF8.GetBytes("{not-valid-json}");

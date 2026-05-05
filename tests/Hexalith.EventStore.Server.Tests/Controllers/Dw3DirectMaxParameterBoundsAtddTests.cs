@@ -22,8 +22,6 @@ namespace Hexalith.EventStore.Server.Tests.Controllers;
 /// invoked — proving rejection happens before any expensive full-stream read.
 /// </summary>
 public class Dw3DirectMaxParameterBoundsAtddTests {
-    private const string _baseSkip = "ATDD red phase — DW3 ";
-
     /// <summary>
     /// Builds a controller wired to an actor substitute that returns an empty
     /// stream. Tests assert the actor was never invoked when the input is
@@ -74,7 +72,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
     // Timeline — count parameter
     // ---------------------------------------------------------------
 
-    [Fact(Skip = _baseSkip + "AC#5 (timeline count above limit). Remove Skip when implementing.")]
+    [Fact]
     public async Task Timeline_CountAboveLimit_RejectedWithStableReasonCode_BeforeActorRead() {
         (AdminStreamQueryController controller, IAggregateActor actor, _) = CreateController();
 
@@ -88,7 +86,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
         await actor.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
     }
 
-    [Fact(Skip = _baseSkip + "AC#5 (timeline default count). Remove Skip when implementing.")]
+    [Fact]
     public async Task Timeline_DefaultCount_Ok_NoBoundRejection() {
         (AdminStreamQueryController controller, _, _) = CreateController();
 
@@ -104,7 +102,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
     // Blame — maxEvents and maxFields
     // ---------------------------------------------------------------
 
-    [Fact(Skip = _baseSkip + "AC#5 (blame maxEvents above limit). Remove Skip when implementing.")]
+    [Fact]
     public async Task Blame_MaxEventsAboveLimit_RejectedBeforeActorRead() {
         (AdminStreamQueryController controller, IAggregateActor actor, _) = CreateController();
 
@@ -118,7 +116,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
         await actor.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
     }
 
-    [Fact(Skip = _baseSkip + "AC#5 (blame maxFields above limit). Remove Skip when implementing.")]
+    [Fact]
     public async Task Blame_MaxFieldsAboveLimit_RejectedBeforeActorRead() {
         (AdminStreamQueryController controller, IAggregateActor actor, _) = CreateController();
 
@@ -136,7 +134,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
     // Bisect — maxSteps and maxFields
     // ---------------------------------------------------------------
 
-    [Fact(Skip = _baseSkip + "AC#5 (bisect maxSteps above limit). Remove Skip when implementing.")]
+    [Fact]
     public async Task Bisect_MaxStepsAboveLimit_RejectedBeforeActorRead() {
         (AdminStreamQueryController controller, IAggregateActor actor, _) = CreateController();
 
@@ -151,7 +149,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
         await actor.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
     }
 
-    [Fact(Skip = _baseSkip + "AC#5 (bisect maxFields above limit). Remove Skip when implementing.")]
+    [Fact]
     public async Task Bisect_MaxFieldsAboveLimit_RejectedBeforeActorRead() {
         (AdminStreamQueryController controller, IAggregateActor actor, _) = CreateController();
 
@@ -170,7 +168,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
     // Reason-code vocabulary contract
     // ---------------------------------------------------------------
 
-    [Fact(Skip = _baseSkip + "AC#5+#10 (reason-code vocabulary). Remove Skip when implementing.")]
+    [Fact]
     public void DirectBoundReasonCodes_AllConformToStableNamingContract() {
         // RED: vocabulary must satisfy regex ^[a-z][a-z0-9_]*$ AND length < 64.
         // Test fails if a future code is added that breaks the contract.

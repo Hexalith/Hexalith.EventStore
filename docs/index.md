@@ -45,6 +45,7 @@ This page is for .NET developers integrating Hexalith.EventStore. Documentation 
 *For operators running Hexalith.EventStore in shared infrastructure — isolation, evidence, and runtime posture.*
 
 - [Redis SignalR Channel Isolation](operations/redis-signalr-channel-isolation.md) — production Redis backplane isolation and channel-prefix policy
+- [Admin Debugging JSON and Large-Stream Hardening](operations/admin-debugging-json-large-stream-hardening.md) — JSON reconstruction limits, direct bounds, scan caps, and CommandApi trust boundary
 - [SignalR Operational Evidence](operations/signalr-operational-evidence.md) — runtime evidence schema for SignalR proofs
 
 ## Reference

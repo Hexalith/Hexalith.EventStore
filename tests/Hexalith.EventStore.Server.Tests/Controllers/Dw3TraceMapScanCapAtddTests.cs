@@ -23,7 +23,6 @@ namespace Hexalith.EventStore.Server.Tests.Controllers;
 /// the tail-window count. AC #8 demands these cases be observable.
 /// </summary>
 public class Dw3TraceMapScanCapAtddTests {
-    private const string _baseSkip = "ATDD red phase — DW3 ";
     private const int _maxEventScan = 10_000;
     private const string _correlationId = "corr-trace-1";
 
@@ -51,7 +50,7 @@ public class Dw3TraceMapScanCapAtddTests {
     // AC #8 — partial coverage when expectedEventCount is null
     // ---------------------------------------------------------------
 
-    [Fact(Skip = _baseSkip + "AC#8 (scan-cap with null expectedEventCount). Remove Skip when implementing.")]
+    [Fact]
     public async Task TraceMap_StreamExceedsScanCap_NullExpectedEventCount_SetsScanCappedTrue() {
         // 10_500 events; correlation appears at 5 head events (indices 0..4) and
         // 2 tail events (indices 10_498..10_499). With MaxEventScan=10_000, the
@@ -97,7 +96,7 @@ public class Dw3TraceMapScanCapAtddTests {
         map.ScanCapMessage.ShouldNotBeNullOrEmpty();
     }
 
-    [Fact(Skip = _baseSkip + "AC#8 (scan-cap with older-only correlation). Remove Skip when implementing.")]
+    [Fact]
     public async Task TraceMap_CorrelationOlderThanScanWindow_ProducesEmptyEvents_ScanCappedTrue() {
         // Correlation events ONLY at the head (older end), all hidden by the cap.
         ServerEventEnvelope[] stream = BuildLongStreamWithCorrelationAtBoth(
@@ -137,7 +136,7 @@ public class Dw3TraceMapScanCapAtddTests {
             + "ScanCapped must be true and ProducedEvents must be empty (not silently zero).");
     }
 
-    [Fact(Skip = _baseSkip + "AC#8 (scan-cap when tail count matches expected). Remove Skip when implementing.")]
+    [Fact]
     public async Task TraceMap_ExpectedCountMatchesFoundButOlderEventsExist_StillScanCapped() {
         // expectedEventCount = 2, both expected events are in tail (newer end),
         // BUT older same-correlation events also exist beyond the scan window.
@@ -181,7 +180,7 @@ public class Dw3TraceMapScanCapAtddTests {
             + "because older same-correlation events may still exist beyond the cap.");
     }
 
-    [Fact(Skip = _baseSkip + "AC#8 (scan-cap message format). Remove Skip when implementing.")]
+    [Fact]
     public async Task TraceMap_ScanCapMessage_ContainsStableTruncationVocabulary() {
         ServerEventEnvelope[] stream = BuildLongStreamWithCorrelationAtBoth(
             totalEvents: _maxEventScan + 100,

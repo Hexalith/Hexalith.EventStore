@@ -159,10 +159,13 @@ public class AdminTraceQueryController(
                         // Sort by sequence number ascending
                         producedEvents.Sort((a, b) => a.SequenceNumber.CompareTo(b.SequenceNumber));
 
-                        // Check if scan was capped
-                        if (scanStart > 0 && expectedEventCount.HasValue && producedEvents.Count < expectedEventCount.Value) {
+                        // Check if scan was capped. Any stream beyond the tail window is partial,
+                        // even when command-status metadata is absent or happens to match found events.
+                        if (scanStart > 0) {
                             scanCapped = true;
-                            scanCapMessage = $"Event scan was limited to the most recent {MaxEventScan:N0} events. Older events for this correlation may exist but were not included. The command produced {expectedEventCount.Value} events but only {producedEvents.Count} were found within the scan window.";
+                            scanCapMessage = expectedEventCount.HasValue
+                                ? $"Result truncated: scan cap reached at {MaxEventScan:N0} events. Older events for this correlation may exist but were not included. Command status reports {expectedEventCount.Value} produced events; {producedEvents.Count} were found within the scan window."
+                                : $"Result truncated: scan cap reached at {MaxEventScan:N0} events. Older events for this correlation may exist but were not included.";
                         }
                     }
                 }

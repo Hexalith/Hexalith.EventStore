@@ -39,6 +39,11 @@ public class AdminStreamQueryController(
     private const int _defaultMaxBisectSteps = 30;
     private const int _defaultMaxEvents = 10_000;
     private const int _defaultMaxFields = 5_000;
+    private const int _maxDirectBisectFields = _defaultMaxBisectFields;
+    private const int _maxDirectBisectSteps = _defaultMaxBisectSteps;
+    private const int _maxDirectBlameEvents = _defaultMaxEvents;
+    private const int _maxDirectBlameFields = _defaultMaxFields;
+    private const int _maxDirectTimelineCount = 1_000;
 
     /// <summary>
     /// Performs a binary search through event history to find the exact event where aggregate state
@@ -87,6 +92,18 @@ public class AdminStreamQueryController(
             maxFields = _defaultMaxBisectFields;
         }
 
+        if (maxSteps > _maxDirectBisectSteps) {
+            return BadRequestWithReasonCode(
+                $"Parameter 'maxSteps' exceeds the direct CommandApi maximum of {_maxDirectBisectSteps}.",
+                "max_steps_above_limit");
+        }
+
+        if (maxFields > _maxDirectBisectFields) {
+            return BadRequestWithReasonCode(
+                $"Parameter 'maxFields' exceeds the direct CommandApi maximum of {_maxDirectBisectFields}.",
+                "max_fields_above_limit");
+        }
+
         // Parse comma-separated field paths
         IReadOnlyList<string> fieldPaths = string.IsNullOrWhiteSpace(fields)
             ? []
@@ -115,7 +132,10 @@ public class AdminStreamQueryController(
             }
 
             if (bad > actualMaxSequence) {
-                bad = actualMaxSequence;
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Bad Request",
+                    detail: $"Parameter 'bad' ({bad}) exceeds stream length ({actualMaxSequence}); choose a sequence within the stream before bisecting.");
             }
 
             // Reconstruct state at the good sequence to establish expected field values
@@ -276,6 +296,12 @@ public class AdminStreamQueryController(
             count = 100;
         }
 
+        if (count > _maxDirectTimelineCount) {
+            return BadRequestWithReasonCode(
+                $"Parameter 'count' exceeds the direct CommandApi maximum of {_maxDirectTimelineCount}.",
+                "count_above_limit");
+        }
+
         try {
             var identity = new AggregateIdentity(tenantId, domain, aggregateId);
             IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
@@ -290,8 +316,8 @@ public class AdminStreamQueryController(
                 filtered = filtered.Where(e => e.SequenceNumber <= to.Value);
             }
 
-            List<TimelineEntry> entries = [.. filtered
-                .OrderBy(e => e.SequenceNumber)
+            List<ServerEventEnvelope> filteredEvents = [.. filtered.OrderBy(e => e.SequenceNumber)];
+            List<TimelineEntry> entries = [.. filteredEvents
                 .Take(count)
                 .Select(e => new TimelineEntry(
                     e.SequenceNumber,
@@ -301,7 +327,11 @@ public class AdminStreamQueryController(
                     e.CorrelationId,
                     string.IsNullOrWhiteSpace(e.UserId) ? null : e.UserId))];
 
-            return Ok(new PagedResult<TimelineEntry>(entries, entries.Count, null));
+            string? continuationToken = filteredEvents.Count > entries.Count
+                ? entries.LastOrDefault()?.SequenceNumber.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                : null;
+
+            return Ok(new PagedResult<TimelineEntry>(entries, filteredEvents.Count, continuationToken));
         }
         catch (OperationCanceledException) {
             throw;
@@ -425,6 +455,18 @@ public class AdminStreamQueryController(
 
         if (maxFields <= 0) {
             maxFields = _defaultMaxFields;
+        }
+
+        if (maxEvents > _maxDirectBlameEvents) {
+            return BadRequestWithReasonCode(
+                $"Parameter 'maxEvents' exceeds the direct CommandApi maximum of {_maxDirectBlameEvents}.",
+                "max_events_above_limit");
+        }
+
+        if (maxFields > _maxDirectBlameFields) {
+            return BadRequestWithReasonCode(
+                $"Parameter 'maxFields' exceeds the direct CommandApi maximum of {_maxDirectBlameFields}.",
+                "max_fields_above_limit");
         }
 
         try {
@@ -579,6 +621,7 @@ public class AdminStreamQueryController(
             // Compute field changes between previous state and current state
             Dictionary<string, (string NewValue, string OldValue)> changes = JsonDiff(stateAtPrev, stateAtCurrent, string.Empty);
             var fieldChanges = changes
+                .Where(c => IsValidFieldPath(c.Key))
                 .Select(c => new FieldChange(c.Key, c.Value.OldValue, c.Value.NewValue))
                 .OrderBy(fc => fc.FieldPath, StringComparer.Ordinal)
                 .ToList();
@@ -811,6 +854,7 @@ public class AdminStreamQueryController(
                 // Compute state diff
                 Dictionary<string, (string NewValue, string OldValue)> changes = JsonDiff(inputState, resultingState, string.Empty);
                 stateChanges = changes
+                    .Where(c => IsValidFieldPath(c.Key))
                     .Select(c => new FieldChange(c.Key, c.Value.OldValue, c.Value.NewValue))
                     .OrderBy(fc => fc.FieldPath, StringComparer.Ordinal)
                     .ToList();
@@ -887,6 +931,10 @@ public class AdminStreamQueryController(
                 prefix: string.Empty);
 
             foreach (KeyValuePair<string, (string NewValue, string OldValue)> change in changes) {
+                if (!IsValidFieldPath(change.Key)) {
+                    continue;
+                }
+
                 blameMap[change.Key] = new FieldProvenance(
                     FieldPath: change.Key,
                     CurrentValue: change.Value.NewValue,
@@ -944,6 +992,21 @@ public class AdminStreamQueryController(
             IsFieldsTruncated: isFieldsTruncated);
     }
 
+    private static ObjectResult BadRequestWithReasonCode(string detail, string reasonCode) {
+        var problem = new ProblemDetails {
+            Status = StatusCodes.Status400BadRequest,
+            Title = "Bad Request",
+            Detail = detail,
+        };
+        problem.Extensions["reasonCode"] = reasonCode;
+        return new ObjectResult(problem) { StatusCode = StatusCodes.Status400BadRequest };
+    }
+
+    private static bool IsValidFieldPath(string fieldPath)
+        => !string.IsNullOrWhiteSpace(fieldPath)
+            && !fieldPath.EndsWith(".", StringComparison.Ordinal)
+            && !fieldPath.Contains("..", StringComparison.Ordinal);
+
     /// <summary>
     /// Counts how many watched fields differ between midpoint values and expected values
     /// using <see cref="JsonElement.DeepEquals"/> for semantic JSON comparison.
@@ -974,6 +1037,10 @@ public class AdminStreamQueryController(
     /// </summary>
     private static void DeepMerge(JsonObject target, JsonObject source) {
         foreach (KeyValuePair<string, JsonNode?> property in source) {
+            if (string.IsNullOrWhiteSpace(property.Key)) {
+                continue;
+            }
+
             if (property.Value is JsonObject sourceChild
                 && target[property.Key] is JsonObject targetChild) {
                 DeepMerge(targetChild, sourceChild);
@@ -1047,7 +1114,15 @@ public class AdminStreamQueryController(
     private static Dictionary<string, string> FlattenJson(JsonObject obj, string prefix) {
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (KeyValuePair<string, JsonNode?> prop in obj) {
+            if (string.IsNullOrWhiteSpace(prop.Key)) {
+                continue;
+            }
+
             string fieldPath = string.IsNullOrEmpty(prefix) ? prop.Key : $"{prefix}.{prop.Key}";
+            if (!IsValidFieldPath(fieldPath)) {
+                continue;
+            }
+
             if (prop.Value is JsonObject childObj) {
                 foreach (KeyValuePair<string, string> nested in FlattenJson(childObj, fieldPath)) {
                     result[nested.Key] = nested.Value;
@@ -1075,7 +1150,15 @@ public class AdminStreamQueryController(
         }
 
         foreach (KeyValuePair<string, JsonNode?> prop in after) {
+            if (string.IsNullOrWhiteSpace(prop.Key)) {
+                continue;
+            }
+
             string fieldPath = string.IsNullOrEmpty(prefix) ? prop.Key : $"{prefix}.{prop.Key}";
+            if (!IsValidFieldPath(fieldPath)) {
+                continue;
+            }
+
             JsonNode? beforeValue = before?[prop.Key];
             JsonNode? afterValue = prop.Value;
 
@@ -1102,7 +1185,15 @@ public class AdminStreamQueryController(
         // Check for fields removed in 'after' (present in before, missing in after)
         if (before is not null) {
             foreach (KeyValuePair<string, JsonNode?> prop in before) {
+                if (string.IsNullOrWhiteSpace(prop.Key)) {
+                    continue;
+                }
+
                 string fieldPath = string.IsNullOrEmpty(prefix) ? prop.Key : $"{prefix}.{prop.Key}";
+                if (!IsValidFieldPath(fieldPath)) {
+                    continue;
+                }
+
                 if (!after.ContainsKey(prop.Key) && prop.Value is not null) {
                     changes[fieldPath] = ("null", prop.Value.ToJsonString());
                 }

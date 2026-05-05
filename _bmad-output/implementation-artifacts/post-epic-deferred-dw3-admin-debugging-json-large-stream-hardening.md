@@ -1,6 +1,6 @@
 # Post-Epic Deferred DW3: Admin Debugging JSON and Large-Stream Hardening
 
-Status: ready-for-dev
+Status: review
 
 <!-- Source: sprint-change-proposal-2026-05-04-deferred-work-triage.md - Proposal D / DW3 -->
 <!-- Source: deferred-work.md - Epic 20 JSON reconstruction, direct CommandApi bounds, and large-stream deferrals through 2026-05-04 -->
@@ -96,55 +96,55 @@ Current HEAD at story creation: `28275e7a`.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline and classify DW3 deferrals (AC: #1, #7, #9, #12, #13)
-    - [ ] 0.1 Re-read Proposal D / DW3 and the Epic 20 sections in `deferred-work.md`.
-    - [ ] 0.2 Classify each relevant deferred item as `patch-now`, `accepted-debt`, `future-actor-api`, `duplicate`, or `not-DW3`.
-    - [ ] 0.3 Record any product or architecture decisions before editing production code.
-    - [ ] 0.4 Confirm the story will not pull in DW2 live-evidence, DW4 validators, DW5 UI polish, or DW6 governance.
-    - [ ] 0.5 Create a pre-edit DW3 decision ledger that names the selected behavior for delete semantics, array semantics, direct CommandApi bounds, trace-map partial coverage, and internal trust-boundary verification.
+- [x] Task 0: Baseline and classify DW3 deferrals (AC: #1, #7, #9, #12, #13)
+    - [x] 0.1 Re-read Proposal D / DW3 and the Epic 20 sections in `deferred-work.md`.
+    - [x] 0.2 Classify each relevant deferred item as `patch-now`, `accepted-debt`, `future-actor-api`, `duplicate`, or `not-DW3`.
+    - [x] 0.3 Record any product or architecture decisions before editing production code.
+    - [x] 0.4 Confirm the story will not pull in DW2 live-evidence, DW4 validators, DW5 UI polish, or DW6 governance.
+    - [x] 0.5 Create a pre-edit DW3 decision ledger that names the selected behavior for delete semantics, array semantics, direct CommandApi bounds, trace-map partial coverage, and internal trust-boundary verification.
 
-- [ ] Task 1: Document reconstruction semantics and trust boundary (AC: #1, #2, #3, #7, #9, #13)
-    - [ ] 1.1 Add a durable architecture/operations note for Admin debugging JSON reconstruction and large-stream behavior.
-    - [ ] 1.2 Document JSON object merge, explicit `null`, omitted fields, nested removals, arrays, malformed JSON, and non-object payload handling.
-    - [ ] 1.3 Document `[AllowAnonymous]` CommandApi admin controllers as internal DAPR-invoked endpoints behind the authorized Admin.Server facade.
-    - [ ] 1.4 Define future actor API shape if snapshot/range-aware debugging is deferred, including sequence range, snapshot anchor, and event-count metadata needs.
-    - [ ] 1.5 State clearly that omitted properties are not synthetic deletes unless a new product/architecture decision says otherwise; explicit JSON `null` may be represented, but it must not be described as proof of a domain delete without a test.
+- [x] Task 1: Document reconstruction semantics and trust boundary (AC: #1, #2, #3, #7, #9, #13)
+    - [x] 1.1 Add a durable architecture/operations note for Admin debugging JSON reconstruction and large-stream behavior.
+    - [x] 1.2 Document JSON object merge, explicit `null`, omitted fields, nested removals, arrays, malformed JSON, and non-object payload handling.
+    - [x] 1.3 Document `[AllowAnonymous]` CommandApi admin controllers as internal DAPR-invoked endpoints behind the authorized Admin.Server facade.
+    - [x] 1.4 Define future actor API shape if snapshot/range-aware debugging is deferred, including sequence range, snapshot anchor, and event-count metadata needs.
+    - [x] 1.5 State clearly that omitted properties are not synthetic deletes unless a new product/architecture decision says otherwise; explicit JSON `null` may be represented, but it must not be described as proof of a domain delete without a test.
 
-- [ ] Task 2: Bound direct CommandApi parameters (AC: #5, #6, #10, #11)
-    - [ ] 2.1 Identify every direct max/count parameter on `AdminStreamQueryController` and `AdminTraceQueryController`.
-    - [ ] 2.2 Add upper-bound validation or clamping with clear 400 responses where direct callers can exceed configured protection.
-    - [ ] 2.2a For each parameter, record default, minimum, maximum, direct CommandApi behavior, facade behavior, and over-limit error shape before implementation.
-    - [ ] 2.2b Apply direct over-limit rejection before any full-stream actor read or expensive reconstruction work begins, and add tests proving the actor path was not invoked for rejected inputs where the test seam allows it.
-    - [ ] 2.3 Keep Admin.Server facade defaults compatible with existing `AdminServerOptions`.
-    - [ ] 2.4 Add endpoint tests for zero, negative, default, at-limit, and above-limit values.
+- [x] Task 2: Bound direct CommandApi parameters (AC: #5, #6, #10, #11)
+    - [x] 2.1 Identify every direct max/count parameter on `AdminStreamQueryController` and `AdminTraceQueryController`.
+    - [x] 2.2 Add upper-bound validation or clamping with clear 400 responses where direct callers can exceed configured protection.
+    - [x] 2.2a For each parameter, record default, minimum, maximum, direct CommandApi behavior, facade behavior, and over-limit error shape before implementation.
+    - [x] 2.2b Apply direct over-limit rejection before any full-stream actor read or expensive reconstruction work begins, and add tests proving the actor path was not invoked for rejected inputs where the test seam allows it.
+    - [x] 2.3 Keep Admin.Server facade defaults compatible with existing `AdminServerOptions`.
+    - [x] 2.4 Add endpoint tests for zero, negative, default, at-limit, and above-limit values.
 
-- [ ] Task 3: Harden JSON diff and reconstruction failure modes (AC: #2, #3, #4, #11)
-    - [ ] 3.1 Add tests for explicit null, omitted property, nested property removal, empty property name, non-object payload, malformed JSON, and array payload behavior.
-    - [ ] 3.1a For each JSON behavior test, record whether the result is `supported`, `preserved-limitation`, `accepted-debt`, or `future-actor-api`; do not leave ambiguous passing snapshots as the only specification.
-    - [ ] 3.2 Patch only behaviors that are coherent from the event payload model and preserve existing public response shape.
-    - [ ] 3.3 Add recursion/depth protection or record accepted debt with exact trigger thresholds if safe implementation is not local.
-    - [ ] 3.4 Verify no logs or problem details expose event payload values.
+- [x] Task 3: Harden JSON diff and reconstruction failure modes (AC: #2, #3, #4, #11)
+    - [x] 3.1 Add tests for explicit null, omitted property, nested property removal, empty property name, non-object payload, malformed JSON, and array payload behavior.
+    - [x] 3.1a For each JSON behavior test, record whether the result is `supported`, `preserved-limitation`, `accepted-debt`, or `future-actor-api`; do not leave ambiguous passing snapshots as the only specification.
+    - [x] 3.2 Patch only behaviors that are coherent from the event payload model and preserve existing public response shape.
+    - [x] 3.3 Add recursion/depth protection or record accepted debt with exact trigger thresholds if safe implementation is not local.
+    - [x] 3.4 Verify no logs or problem details expose event payload values.
 
-- [ ] Task 4: Make large-stream behavior honest per debugging surface (AC: #6, #7, #8, #10, #11)
-    - [ ] 4.1 Produce a matrix for blame, bisect, step-through, sandbox, diff, timeline, event detail, and trace map with input size, current read pattern, bound, truncation signal, and remaining debt.
-    - [ ] 4.2 Fix trace-map scan-cap reporting if older events can be hidden without `ScanCapped = true`.
-    - [ ] 4.2a Add a same-correlation older-than-scan-window case, or record why it cannot be constructed locally, so trace-map partial coverage is not proven only by expected-count metadata.
-    - [ ] 4.3 Decide whether any `GetEventsAsync(0)` call can be replaced with a narrow range read under the current `IAggregateActor.GetEventsAsync(long fromSequence)` contract.
-    - [ ] 4.3a Record endpoint-by-endpoint `GetEventsAsync(0)` disposition as `preserve-legacy`, `reject-direct-input`, `bounded-range-read`, `accepted-debt`, or `future-actor-api`.
-    - [ ] 4.4 If broader actor API work is required, record it as `future-actor-api` rather than mixing it into DW3.
+- [x] Task 4: Make large-stream behavior honest per debugging surface (AC: #6, #7, #8, #10, #11)
+    - [x] 4.1 Produce a matrix for blame, bisect, step-through, sandbox, diff, timeline, event detail, and trace map with input size, current read pattern, bound, truncation signal, and remaining debt.
+    - [x] 4.2 Fix trace-map scan-cap reporting if older events can be hidden without `ScanCapped = true`.
+    - [x] 4.2a Add a same-correlation older-than-scan-window case, or record why it cannot be constructed locally, so trace-map partial coverage is not proven only by expected-count metadata.
+    - [x] 4.3 Decide whether any `GetEventsAsync(0)` call can be replaced with a narrow range read under the current `IAggregateActor.GetEventsAsync(long fromSequence)` contract.
+    - [x] 4.3a Record endpoint-by-endpoint `GetEventsAsync(0)` disposition as `preserve-legacy`, `reject-direct-input`, `bounded-range-read`, `accepted-debt`, or `future-actor-api`.
+    - [x] 4.4 If broader actor API work is required, record it as `future-actor-api` rather than mixing it into DW3.
 
-- [ ] Task 5: Validate facade and client compatibility (AC: #10, #11)
-    - [ ] 5.1 Run targeted Admin.Server tests if facade error propagation or timeout behavior changes.
-    - [ ] 5.2 Run Admin UI, CLI, or MCP tests only when visible responses or client error handling changes.
-    - [ ] 5.3 Ensure new 400/problem responses remain safe for Admin UI, CLI, and MCP consumers.
-    - [ ] 5.4 Preserve machine-readable reason codes for capped, malformed, and bounded-failure responses; do not rely on color, phrasing-only signals, or ambiguous labels such as `bad` or `broken`.
+- [x] Task 5: Validate facade and client compatibility (AC: #10, #11)
+    - [x] 5.1 Run targeted Admin.Server tests if facade error propagation or timeout behavior changes.
+    - [x] 5.2 Run Admin UI, CLI, or MCP tests only when visible responses or client error handling changes.
+    - [x] 5.3 Ensure new 400/problem responses remain safe for Admin UI, CLI, and MCP consumers.
+    - [x] 5.4 Preserve machine-readable reason codes for capped, malformed, and bounded-failure responses; do not rely on color, phrasing-only signals, or ambiguous labels such as `bad` or `broken`.
 
-- [ ] Task 6: Close deferred-work and bookkeeping (AC: #12, #14)
-    - [ ] 6.1 Update only DW3-relevant `deferred-work.md` bullets with disposition markers.
-    - [ ] 6.2 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and any deferred architecture decisions.
-    - [ ] 6.3 Run markdown validation and targeted tests individually.
-    - [ ] 6.4 Move this story and sprint-status row to `review` only after documentation, tests, and dispositions are complete.
-    - [ ] 6.5 If any selected DW3 item remains untested or undocumented, keep the story in `ready-for-dev` and record the blocker instead of moving it to `review`.
+- [x] Task 6: Close deferred-work and bookkeeping (AC: #12, #14)
+    - [x] 6.1 Update only DW3-relevant `deferred-work.md` bullets with disposition markers.
+    - [x] 6.2 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and any deferred architecture decisions.
+    - [x] 6.3 Run markdown validation and targeted tests individually.
+    - [x] 6.4 Move this story and sprint-status row to `review` only after documentation, tests, and dispositions are complete.
+    - [x] 6.5 If any selected DW3 item remains untested or undocumented, keep the story in `ready-for-dev` and record the blocker instead of moving it to `review`.
 
 ## Dev Notes
 
@@ -226,26 +226,51 @@ GPT-5 Codex
 ### Debug Log References
 
 - Pre-dev hardening preflight: `_bmad-output/process-notes/predev-preflight-latest.json`, timestamp `2026-05-04T18:10:04Z`, result `pass`.
+- Aspire baseline on 2026-05-05: AppHost started with `EnableKeycloak=false`; Aspire MCP listed `eventstore`, `eventstore-admin`, `eventstore-admin-ui`, `sample`, `tenants`, `statestore`, and `pubsub` as running/healthy before edits.
+- Red phase on 2026-05-05: `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~Dw3" --no-restore` failed 10 DW3 tests before implementation.
+- Green/validation on 2026-05-05: DW3 Debug and Release targeted tests, Admin stream/trace controller filter, markdownlint, and listed unit projects all passed; exact commands recorded in Verification Status.
 
 ### Completion Notes List
 
 - Created ready-for-dev story from first backlog row after DW2 in the Post-Epic Deferred Work Cleanup package.
-- No implementation work has been performed for this story.
 - No `project-context.md` file was present in the repository at story creation.
 - Party-mode review on 2026-05-04 recommended `needs-story-update`; low-risk clarifications were applied before dev-story.
 - Advanced elicitation on 2026-05-05 applied low-risk handoff clarifications for a pre-edit decision ledger, direct-bound pre-read failure proof, JSON behavior dispositions, trace-map partial-coverage proof, and review rejection criteria.
+- Implemented direct CommandApi upper-bound rejection for timeline `count`, blame `maxEvents`/`maxFields`, and bisect `maxSteps`/`maxFields` with stable reason codes and pre-actor-read tests.
+- Preserved JSON reconstruction as a debug-only merge model: omissions are not synthetic deletes, explicit JSON `null` remains visible, arrays stay opaque leaves, non-object/malformed payloads do not leak into problem details, and empty field paths are skipped before `FieldChange` creation.
+- Made large-stream behavior more honest by exposing timeline truncation through `PagedResult.TotalCount`/`ContinuationToken`, rejecting bisect `bad` sequences beyond stream length, preserving blame truncation flags, and setting trace-map `ScanCapped` whenever the tail scan window is partial.
+- Added durable operations documentation with the DW3 decision ledger, direct-bound matrix, large-stream surface matrix, future actor API shape, and internal DAPR trust-boundary decision.
+- Updated only DW3-relevant `deferred-work.md` bullets with `RESOLVED`, `ACCEPTED-DEBT`, `DUPLICATE`, `FUTURE-ACTOR-API`, or `not-DW3` dispositions.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/post-epic-deferred-dw3-admin-debugging-json-large-stream-hardening.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
-- `_bmad-output/process-notes/predev-hardening-runs.log`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `docs/index.md`
+- `docs/operations/admin-debugging-json-large-stream-hardening.md`
+- `src/Hexalith.EventStore/Controllers/AdminStreamQueryController.cs`
+- `src/Hexalith.EventStore/Controllers/AdminTraceQueryController.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Controllers/Dw3DirectMaxParameterBoundsAtddTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Controllers/Dw3FacadeCompatibilityAtddTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Controllers/Dw3JsonReconstructionAtddTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Controllers/Dw3LargeStreamSurfaceAtddTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Controllers/Dw3TraceMapScanCapAtddTests.cs`
 
 ## Verification Status
 
 - Story artifact created and sprint-status row moved from `backlog` to `ready-for-dev`.
 - Party-mode review and advanced elicitation traces are recorded inline; no status change was required.
-- Markdown and targeted controller-test validation should be run before dev handoff if local tooling is available.
+- `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~Dw3" --no-restore` passed: 30/30.
+- `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~AdminStreamQueryController|FullyQualifiedName~AdminTraceQueryController" --no-restore` passed: 28/28.
+- `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~Dw3" -c Release --no-restore` passed: 30/30.
+- `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --no-restore` passed: 334/334.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-restore` passed: 281/281.
+- `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj --no-restore` passed: 63/63.
+- `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj --no-restore` passed: 78/78.
+- `npx --yes markdownlint-cli2 "docs/operations/admin-debugging-json-large-stream-hardening.md" "docs/index.md" "_bmad-output/implementation-artifacts/post-epic-deferred-dw3-admin-debugging-json-large-stream-hardening.md"` passed: 0 errors.
+- `git diff --check` passed with line-ending warnings only.
+- Full `Hexalith.EventStore.Server.Tests` was not used as the completion gate because repository guidance records pre-existing Server.Tests baseline issues; DW3-specific Debug/Release and affected controller filters passed.
 
 ## Party-Mode Review
 
@@ -262,6 +287,7 @@ GPT-5 Codex
 
 | Date | Version | Description | Author |
 |---|---:|---|---|
+| 2026-05-05 | 1.0 | Implemented DW3 direct bounds, JSON reconstruction guards, trace-map scan-cap honesty, large-stream/trust-boundary documentation, deferred-work dispositions, and validation handoff. | Codex |
 | 2026-05-05 | 0.3 | Applied advanced-elicitation hardening for DW3 decision ledger, JSON behavior proof, direct bounds, and trace-map partial coverage. | Codex automation |
 | 2026-05-04 | 0.2 | Applied party-mode review clarifications for DW3 contracts, evidence, and implementation guardrails. | Codex automation |
 | 2026-05-04 | 0.1 | Created ready-for-dev DW3 Admin debugging JSON and large-stream hardening story. | Codex automation |

@@ -15,8 +15,6 @@ namespace Hexalith.EventStore.Server.Tests.Controllers;
 /// implementation. They also pin the stable diagnostic vocabulary contract.
 /// </summary>
 public class Dw3FacadeCompatibilityAtddTests {
-    private const string _baseSkip = "ATDD red phase — DW3 ";
-
     /// <summary>
     /// Required public properties on each response model. If DW3 implementation
     /// drops or renames any of these, Admin UI / CLI / MCP contract breaks.
@@ -59,7 +57,7 @@ public class Dw3FacadeCompatibilityAtddTests {
         ],
     };
 
-    [Fact(Skip = _baseSkip + "AC#10 (response shape). Remove Skip when implementing.")]
+    [Fact]
     public void ResponseModels_PublicPropertiesUnchanged() {
         foreach (KeyValuePair<Type, string[]> kvp in _requiredProperties) {
             HashSet<string> actualProps = [.. kvp.Key
@@ -74,7 +72,7 @@ public class Dw3FacadeCompatibilityAtddTests {
         }
     }
 
-    [Fact(Skip = _baseSkip + "AC#10 (PagedResult<TimelineEntry> shape). Remove Skip when implementing.")]
+    [Fact]
     public void PagedResult_OfTimelineEntry_PublicPropertiesUnchanged() {
         Type pagedTimeline = typeof(PagedResult<TimelineEntry>);
         HashSet<string> actualProps = [.. pagedTimeline
@@ -86,7 +84,7 @@ public class Dw3FacadeCompatibilityAtddTests {
         actualProps.ShouldContain("ContinuationToken");
     }
 
-    [Fact(Skip = _baseSkip + "AC#10 (reason-code naming contract). Remove Skip when implementing.")]
+    [Fact]
     public void ReasonCodeVocabulary_FollowsStableNamingContract() {
         // All bounded reason codes (direct-bound + trace-cap + JSON disposition labels)
         // must satisfy the regex contract pinned in Dw3TestUtilities.
