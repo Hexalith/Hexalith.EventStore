@@ -101,22 +101,26 @@ Current HEAD at story creation: `28275e7a`.
     - [ ] 0.2 Classify each relevant deferred item as `patch-now`, `accepted-debt`, `future-actor-api`, `duplicate`, or `not-DW3`.
     - [ ] 0.3 Record any product or architecture decisions before editing production code.
     - [ ] 0.4 Confirm the story will not pull in DW2 live-evidence, DW4 validators, DW5 UI polish, or DW6 governance.
+    - [ ] 0.5 Create a pre-edit DW3 decision ledger that names the selected behavior for delete semantics, array semantics, direct CommandApi bounds, trace-map partial coverage, and internal trust-boundary verification.
 
 - [ ] Task 1: Document reconstruction semantics and trust boundary (AC: #1, #2, #3, #7, #9, #13)
     - [ ] 1.1 Add a durable architecture/operations note for Admin debugging JSON reconstruction and large-stream behavior.
     - [ ] 1.2 Document JSON object merge, explicit `null`, omitted fields, nested removals, arrays, malformed JSON, and non-object payload handling.
     - [ ] 1.3 Document `[AllowAnonymous]` CommandApi admin controllers as internal DAPR-invoked endpoints behind the authorized Admin.Server facade.
     - [ ] 1.4 Define future actor API shape if snapshot/range-aware debugging is deferred, including sequence range, snapshot anchor, and event-count metadata needs.
+    - [ ] 1.5 State clearly that omitted properties are not synthetic deletes unless a new product/architecture decision says otherwise; explicit JSON `null` may be represented, but it must not be described as proof of a domain delete without a test.
 
 - [ ] Task 2: Bound direct CommandApi parameters (AC: #5, #6, #10, #11)
     - [ ] 2.1 Identify every direct max/count parameter on `AdminStreamQueryController` and `AdminTraceQueryController`.
     - [ ] 2.2 Add upper-bound validation or clamping with clear 400 responses where direct callers can exceed configured protection.
     - [ ] 2.2a For each parameter, record default, minimum, maximum, direct CommandApi behavior, facade behavior, and over-limit error shape before implementation.
+    - [ ] 2.2b Apply direct over-limit rejection before any full-stream actor read or expensive reconstruction work begins, and add tests proving the actor path was not invoked for rejected inputs where the test seam allows it.
     - [ ] 2.3 Keep Admin.Server facade defaults compatible with existing `AdminServerOptions`.
     - [ ] 2.4 Add endpoint tests for zero, negative, default, at-limit, and above-limit values.
 
 - [ ] Task 3: Harden JSON diff and reconstruction failure modes (AC: #2, #3, #4, #11)
     - [ ] 3.1 Add tests for explicit null, omitted property, nested property removal, empty property name, non-object payload, malformed JSON, and array payload behavior.
+    - [ ] 3.1a For each JSON behavior test, record whether the result is `supported`, `preserved-limitation`, `accepted-debt`, or `future-actor-api`; do not leave ambiguous passing snapshots as the only specification.
     - [ ] 3.2 Patch only behaviors that are coherent from the event payload model and preserve existing public response shape.
     - [ ] 3.3 Add recursion/depth protection or record accepted debt with exact trigger thresholds if safe implementation is not local.
     - [ ] 3.4 Verify no logs or problem details expose event payload values.
@@ -124,6 +128,7 @@ Current HEAD at story creation: `28275e7a`.
 - [ ] Task 4: Make large-stream behavior honest per debugging surface (AC: #6, #7, #8, #10, #11)
     - [ ] 4.1 Produce a matrix for blame, bisect, step-through, sandbox, diff, timeline, event detail, and trace map with input size, current read pattern, bound, truncation signal, and remaining debt.
     - [ ] 4.2 Fix trace-map scan-cap reporting if older events can be hidden without `ScanCapped = true`.
+    - [ ] 4.2a Add a same-correlation older-than-scan-window case, or record why it cannot be constructed locally, so trace-map partial coverage is not proven only by expected-count metadata.
     - [ ] 4.3 Decide whether any `GetEventsAsync(0)` call can be replaced with a narrow range read under the current `IAggregateActor.GetEventsAsync(long fromSequence)` contract.
     - [ ] 4.3a Record endpoint-by-endpoint `GetEventsAsync(0)` disposition as `preserve-legacy`, `reject-direct-input`, `bounded-range-read`, `accepted-debt`, or `future-actor-api`.
     - [ ] 4.4 If broader actor API work is required, record it as `future-actor-api` rather than mixing it into DW3.
@@ -139,6 +144,7 @@ Current HEAD at story creation: `28275e7a`.
     - [ ] 6.2 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and any deferred architecture decisions.
     - [ ] 6.3 Run markdown validation and targeted tests individually.
     - [ ] 6.4 Move this story and sprint-status row to `review` only after documentation, tests, and dispositions are complete.
+    - [ ] 6.5 If any selected DW3 item remains untested or undocumented, keep the story in `ready-for-dev` and record the blocker instead of moving it to `review`.
 
 ## Dev Notes
 
@@ -161,6 +167,29 @@ Current HEAD at story creation: `28275e7a`.
 - CommandApi `[AllowAnonymous]` admin controllers must be documented as internal DAPR-invoked computation endpoints. Public callers must use Admin.Server, which remains the authorized facade. Do not add public auth route changes in DW3.
 - Facade, Admin UI, CLI, and MCP compatibility means route names and response model shapes remain stable unless a failing test proves the current shape is defective and the new behavior is documented.
 - Required evidence at review: dated docs or architecture note, endpoint/helper test output, max-parameter pass/fail evidence, large-stream partial-result evidence, and deferred-work disposition markers for only DW3-owned bullets.
+
+### Advanced Elicitation Clarifications
+
+The 2026-05-05 advanced-elicitation pass treated the party-mode clarification as the baseline and tightened only the implementation handoff. These notes are binding for dev-story execution unless a human product or architecture decision supersedes them.
+
+#### Decision Ledger and Stop Signs
+
+- Record the DW3 decision ledger before production edits. It must name the chosen behavior for omitted properties, explicit `null`, nested removal, arrays, malformed/non-object payloads, recursion/depth protection, direct CommandApi maximums, trace-map partial coverage, and internal trust-boundary verification.
+- Stop and record a deferred decision instead of coding if the implementation pressure requires a broad actor range/snapshot API, a JSON Patch engine, domain `Apply` replay, public CommandApi authorization changes, DAPR topology/access-control changes, or cross-story evidence-template validation.
+- Any production fix must trace to a DW3 acceptance criterion and a failing or missing behavior proof. Runtime evidence work from DW2, schema validation from DW4, and Admin UI polish from DW5 remain out of scope.
+
+#### Behavior Proof Requirements
+
+- Direct CommandApi bounds must fail before expensive actor reads or JSON reconstruction when the input is already over limit. The preferred evidence is an endpoint test with an actor/test-double assertion that no full-stream read was attempted; if the current seam cannot prove that, record the limitation and still prove the returned error shape.
+- JSON reconstruction tests must distinguish supported semantics from preserved limitations. Omitted properties, explicit `null`, nested removal, arrays, malformed JSON, and non-object payloads each need a dated disposition of `supported`, `preserved-limitation`, `accepted-debt`, or `future-actor-api`.
+- Trace-map partial coverage must be proven independently of happy-path expected-count metadata. Include an older-than-scan-window correlation case where practical, or document the exact reason the local test seam cannot construct it.
+- Large-stream matrices must name both the direct CommandApi behavior and the Admin.Server facade behavior, because facade defaults are compatibility defaults and not the only protection.
+
+#### Review Handoff
+
+- Reviewers should reject completion if evidence consists only of helper snapshots without endpoint behavior, if `GetEventsAsync(0)` dispositions are missing for any debugging surface, or if deferred-work markers sweep unrelated DW2/DW4/DW5/DW6 items.
+- Problem details and logs may identify route, parameter name, limit name, event count, and reason code, but must not include event payload values, reconstructed aggregate state, bearer tokens, DAPR secrets, or raw actor state.
+- If all selected changes are documentation and test-only, validate markdown plus targeted controller tests; do not add broad integration work solely to make the story look larger.
 
 ### Previous Story Intelligence
 
@@ -204,6 +233,7 @@ GPT-5 Codex
 - No implementation work has been performed for this story.
 - No `project-context.md` file was present in the repository at story creation.
 - Party-mode review on 2026-05-04 recommended `needs-story-update`; low-risk clarifications were applied before dev-story.
+- Advanced elicitation on 2026-05-05 applied low-risk handoff clarifications for a pre-edit decision ledger, direct-bound pre-read failure proof, JSON behavior dispositions, trace-map partial-coverage proof, and review rejection criteria.
 
 ### File List
 
@@ -214,7 +244,8 @@ GPT-5 Codex
 ## Verification Status
 
 - Story artifact created and sprint-status row moved from `backlog` to `ready-for-dev`.
-- Markdown and YAML validation should be run before dev handoff if local tooling is available.
+- Party-mode review and advanced elicitation traces are recorded inline; no status change was required.
+- Markdown and targeted controller-test validation should be run before dev handoff if local tooling is available.
 
 ## Party-Mode Review
 
@@ -231,5 +262,18 @@ GPT-5 Codex
 
 | Date | Version | Description | Author |
 |---|---:|---|---|
+| 2026-05-05 | 0.3 | Applied advanced-elicitation hardening for DW3 decision ledger, JSON behavior proof, direct bounds, and trace-map partial coverage. | Codex automation |
 | 2026-05-04 | 0.2 | Applied party-mode review clarifications for DW3 contracts, evidence, and implementation guardrails. | Codex automation |
 | 2026-05-04 | 0.1 | Created ready-for-dev DW3 Admin debugging JSON and large-stream hardening story. | Codex automation |
+
+## Advanced Elicitation
+
+- ISO date and time: 2026-05-05T08:02:40+02:00
+- Selected story key: `post-epic-deferred-dw3-admin-debugging-json-large-stream-hardening`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-deferred-dw3-admin-debugging-json-large-stream-hardening`
+- Batch 1 method names: Self-Consistency Validation; Red Team vs Blue Team; Architecture Decision Records; Security Audit Personas; Failure Mode Analysis
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Occam's Razor Application; First Principles Analysis; 5 Whys Deep Dive; Lessons Learned Extraction
+- Findings summary: The story was directionally ready after party-mode review, but elicitation exposed handoff gaps around making pre-edit decisions explicit, proving direct bounds before full-stream reads, separating supported JSON semantics from preserved limitations, proving trace-map partial coverage outside happy-path metadata, and giving reviewers concrete rejection criteria.
+- Changes applied: Added Advanced Elicitation Clarifications for decision-ledger requirements, stop signs, behavior-proof requirements, review handoff, and sensitive-output boundaries. Tightened Tasks 0.5, 1.5, 2.2b, 3.1a, 4.2a, and 6.5, and updated Completion Notes, Verification Status, and Change Log.
+- Findings deferred: Numeric limits, exact recursion/depth thresholds, final endpoint-by-endpoint `GetEventsAsync(0)` dispositions, trust-boundary automation versus documentation, broad actor APIs, JSON Patch/domain replay semantics, public CommandApi auth changes, DAPR topology/access-control changes, DW2 runtime evidence, DW4 schema validation, and DW5 UI polish remain out of scope until separate product or architecture decisions approve them.
+- Final recommendation: `ready-for-dev`
