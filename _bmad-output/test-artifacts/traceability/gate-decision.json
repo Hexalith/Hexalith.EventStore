@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-05-04T00:00:00Z",
+  "repo": "Hexalith.EventStore",
+  "target": {
+    "type": "deferred-cleanup-package",
+    "id": "post-epic-deferred-dw1-through-dw5",
+    "label": "Post-Epic Deferred Work Cleanup — DW1 through DW5"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "FAIL",
+  "rationale": "P0 coverage is 5% (required: 100%). 11 critical (P0) acceptance criteria are uncovered across DW1, DW2, DW3, DW4, and DW5. All 5 stories are at status ready-for-dev, so this gate measures readiness vs. intended target — not delivered functionality. FAIL is the expected and correct signal: dev-story execution must be preceded by ATDD scaffolding for the 11 P0 NONE items.",
+  "p0_status": "NOT_MET",
+  "p1_status": "NOT_MET",
+  "overall_status": "NOT_MET",
+  "critical_open": 11,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}

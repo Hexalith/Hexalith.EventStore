@@ -1,0 +1,243 @@
+{
+  "phase": "PHASE_1_COMPLETE",
+  "generated_at": "2026-05-04T00:00:00Z",
+  "trace_target": {
+    "type": "deferred-cleanup-package",
+    "id": "post-epic-deferred-dw1-through-dw5",
+    "label": "Post-Epic Deferred Work Cleanup — DW1 through DW5"
+  },
+  "collection_mode": "sequential",
+  "allow_gate": true,
+  "coverage_basis": "acceptance_criteria",
+  "summary_confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/implementation-artifacts/post-epic-deferred-dw1-projection-and-drain-hardening.md",
+      "_bmad-output/implementation-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence.md",
+      "_bmad-output/implementation-artifacts/post-epic-deferred-dw3-admin-debugging-json-large-stream-hardening.md",
+      "_bmad-output/implementation-artifacts/post-epic-deferred-dw4-operational-evidence-schema-validation.md",
+      "_bmad-output/implementation-artifacts/post-epic-deferred-dw5-admin-ui-runtime-follow-ups.md",
+      "_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-04-deferred-work-triage.md"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "coverage_statistics": {
+    "total_requirements": 72,
+    "fully_covered": 1,
+    "partially_covered": 20,
+    "uncovered": 51,
+    "overall_coverage_percentage": 1,
+    "priority_breakdown": {
+      "P0": { "total": 21, "covered": 1, "percentage": 5 },
+      "P1": { "total": 33, "covered": 0, "percentage": 0 },
+      "P2": { "total": 13, "covered": 0, "percentage": 0 },
+      "P3": { "total": 5,  "covered": 0, "percentage": 0 }
+    },
+    "by_story": {
+      "DW1": { "total": 13, "full": 0, "partial": 7, "unit_only": 0, "none": 6 },
+      "DW2": { "total": 15, "full": 0, "partial": 6, "unit_only": 0, "none": 9 },
+      "DW3": { "total": 14, "full": 0, "partial": 1, "unit_only": 0, "none": 13 },
+      "DW4": { "total": 15, "full": 0, "partial": 0, "unit_only": 0, "none": 15 },
+      "DW5": { "total": 15, "full": 1, "partial": 4, "unit_only": 2, "none": 8 }
+    }
+  },
+  "gap_analysis": {
+    "critical_gaps_p0": [
+      { "id": "DW1.AC5", "title": "Tracker enumeration corruption bounded" },
+      { "id": "DW1.AC7", "title": "Drain poison/terminal disposition decided" },
+      { "id": "DW2.AC1", "title": "Aspire runtime baseline captured" },
+      { "id": "DW2.AC5", "title": "Epic 20 debugging tools smoke-tested on seeded stream" },
+      { "id": "DW2.AC11", "title": "Evidence artifacts durable + reviewable" },
+      { "id": "DW3.AC4", "title": "JSON recursion + malformed-path guards" },
+      { "id": "DW3.AC5", "title": "Direct CommandApi max parameters bounded" },
+      { "id": "DW4.AC5", "title": "Redaction rules validated before commit" },
+      { "id": "DW5.AC2", "title": "TypeCatalog /types?tab=* nav block reproduced or closed" },
+      { "id": "DW5.AC5", "title": "Ctrl+B sidebar toggle on Blazor renderer context" },
+      { "id": "DW5.AC6", "title": "Ctrl+B persistence viewport-scoped" }
+    ],
+    "high_gaps_p1": [
+      { "id": "DW1.AC8",  "title": "Drain activity tags use bounded stable reason codes" },
+      { "id": "DW2.AC6",  "title": "Debugging evidence respects scope (no DW3 patches)" },
+      { "id": "DW2.AC10", "title": "NFR43 MCP single-resource latency plan + sample" },
+      { "id": "DW2.AC13", "title": "Security & redaction preserved in artifacts" },
+      { "id": "DW3.AC1",  "title": "JSON reconstruction semantics architecture decision" },
+      { "id": "DW3.AC2",  "title": "Deletion + nested-removal behavior tested or accepted" },
+      { "id": "DW3.AC3",  "title": "Array treatment bounded + visible" },
+      { "id": "DW3.AC6",  "title": "Large-stream behavior explicit per debugging surface" },
+      { "id": "DW3.AC7",  "title": "GetEventsAsync(0) usages dispositioned per endpoint" },
+      { "id": "DW3.AC8",  "title": "Trace-map ScanCapped honesty when expected count unknown" },
+      { "id": "DW3.AC9",  "title": "Internal admin trust boundary documented" },
+      { "id": "DW3.AC11", "title": "Tests cover helper + endpoint behavior" },
+      { "id": "DW4.AC1",  "title": "Validator scope explicit (query v1, signalr v1)" },
+      { "id": "DW4.AC2",  "title": "Required-field enforcement mechanical" },
+      { "id": "DW4.AC3",  "title": "Placeholder detection strict" },
+      { "id": "DW4.AC4",  "title": "Classification taxonomy single-source" },
+      { "id": "DW4.AC6",  "title": "Controls + correlation checks first-class" },
+      { "id": "DW4.AC7",  "title": "Aspire-specific evidence optional / profile-scoped" },
+      { "id": "DW4.AC8",  "title": "Positive + negative samples prove validator" },
+      { "id": "DW4.AC9",  "title": "Implementation fits repo toolchain" },
+      { "id": "DW4.AC10", "title": "CI integration deliberate or deferred with reason" },
+      { "id": "DW4.AC13", "title": "Validator output useful for reviewers + automation" },
+      { "id": "DW5.AC10", "title": "Runtime evidence artifacts durable" }
+    ],
+    "medium_gaps_p2": [
+      "DW1.AC10", "DW1.AC12",
+      "DW2.AC12", "DW2.AC14",
+      "DW3.AC12", "DW3.AC13",
+      "DW4.AC11", "DW4.AC12", "DW4.AC14",
+      "DW5.AC1", "DW5.AC13", "DW5.AC14"
+    ],
+    "low_gaps_p3": [
+      "DW1.AC13", "DW2.AC15", "DW3.AC14", "DW4.AC15", "DW5.AC15"
+    ],
+    "partial_coverage_items": [
+      "DW1.AC1", "DW1.AC2", "DW1.AC3", "DW1.AC4", "DW1.AC6", "DW1.AC9", "DW1.AC11",
+      "DW2.AC2", "DW2.AC3", "DW2.AC4", "DW2.AC7", "DW2.AC8", "DW2.AC9",
+      "DW3.AC10",
+      "DW5.AC3", "DW5.AC7", "DW5.AC11", "DW5.AC12"
+    ],
+    "unit_only_items": [
+      "DW5.AC8", "DW5.AC9"
+    ]
+  },
+  "coverage_heuristics": {
+    "endpoint_gaps": [
+      { "endpoint": "AdminStreamQueryController.GetAggregateBlameAsync (CommandApi)", "story": "DW3" },
+      { "endpoint": "AdminStreamQueryController.BisectAggregateStateAsync",          "story": "DW3" },
+      { "endpoint": "AdminStreamQueryController.GetEventStepFrameAsync",             "story": "DW3" },
+      { "endpoint": "AdminStreamQueryController.SandboxCommandAsync (direct)",       "story": "DW3" },
+      { "endpoint": "AdminTraceQueryController (CommandApi direct)",                 "story": "DW3" },
+      { "endpoint": "/project per-failure-class diagnostics",                        "story": "DW1" }
+    ],
+    "auth_negative_path_gaps": [
+      { "id": "DW3.AC9", "concern": "[AllowAnonymous] CommandApi controllers have no negative auth or trust-boundary test" }
+    ],
+    "happy_path_only_gaps": [
+      "DW1.AC2 (only 3 invalid-response branches; 9 stable categories required)",
+      "DW1.AC3 (cancellation covered; inner timeout class missing)",
+      "DW1.AC9 (single-thread reminder execution covered; concurrent re-entrancy not tested)",
+      "DW2.AC2/AC3/AC4 (parser-level only; no live degraded-state runtime evidence)",
+      "DW3.AC10 (existing tests guard happy responses; new error responses untested)"
+    ],
+    "ui_journey_gaps": [
+      { "journey": "/types?tab=* → sidebar nav click → URL/page change", "story": "DW5.AC2" },
+      { "journey": "Ctrl+B collapse/expand + viewport-tier persistence",   "story": "DW5.AC5/AC6" },
+      { "journey": "Ctrl+B + Ctrl+K coexistence in same browser session",  "story": "DW5.AC7" },
+      { "journey": "CommandSandbox payload dialog runtime DOM aria-label", "story": "DW5.AC8" },
+      { "journey": "EventDebugger payload dialog runtime DOM aria-label",  "story": "DW5.AC9" },
+      { "journey": "Aspire runtime baseline (resource states, URLs)",      "story": "DW2.AC1" },
+      { "journey": "Epic 20 blame/bisect/step/sandbox/trace-map seeded smoke", "story": "DW2.AC5" },
+      { "journey": "MCP startup + tools/list + read tool + write-preview", "story": "DW2.AC7-AC9" }
+    ],
+    "ui_state_gaps": [
+      "TypeCatalog navigation-blocked state",
+      "MainLayout sidebar collapsed state per viewport tier",
+      "FluentDialog runtime aria-label state (vs. markup-only assertion)"
+    ],
+    "counts": {
+      "endpoints_without_tests": 6,
+      "auth_missing_negative_paths": 1,
+      "happy_path_only_criteria": 5,
+      "ui_journeys_without_e2e": 8,
+      "ui_states_missing_coverage": 3
+    }
+  },
+  "test_inventory": {
+    "summary": {
+      "files": 21,
+      "cases_named_by_id": 21,
+      "by_level": {
+        "unit": { "tests": 14, "criteria_covered": 0 },
+        "component": { "tests": 4, "criteria_covered": 0 },
+        "e2e": { "tests": 3, "criteria_covered": 0 }
+      }
+    },
+    "tests": [
+      { "id": "T-PROJ-01", "file": "tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs", "level": "unit", "title": "Projection orchestrator (~24 tests including invalid response, null state, write fail, cancellation)", "status": "active" },
+      { "id": "T-PROJ-02", "file": "tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorRefreshIntervalTests.cs", "level": "unit", "title": "Polling refresh interval", "status": "active" },
+      { "id": "T-PROJ-03", "file": "tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs", "level": "unit", "title": "Checkpoint tracker (22 tests)", "status": "active" },
+      { "id": "T-PROJ-04", "file": "tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionPollerServiceTests.cs", "level": "unit", "title": "Polling enumeration (9 tests)", "status": "active" },
+      { "id": "T-PROJ-05", "file": "tests/Hexalith.EventStore.Server.Tests/Projections/KeyedSemaphoreTests.cs", "level": "unit", "title": "Per-key serialization (4 tests)", "status": "active" },
+      { "id": "T-DRAIN-01", "file": "tests/Hexalith.EventStore.Server.Tests/Actors/EventDrainRecoveryTests.cs", "level": "unit", "title": "Drain reminder + integrity (19 tests, no terminal/poison/disposition coverage)", "status": "active" },
+      { "id": "T-DRAIN-02", "file": "tests/Hexalith.EventStore.Server.Tests/Actors/UnpublishedEventsRecordTests.cs", "level": "unit", "title": "Drain record state", "status": "active" },
+      { "id": "T-ADMSQ-01", "file": "tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerTimelineTests.cs", "level": "unit", "title": "AdminStreamQueryController timeline (12 tests; blame/bisect/step/sandbox/diff uncovered)", "status": "active" },
+      { "id": "T-ADMTR-01", "file": "tests/Hexalith.EventStore.Admin.Server.Tests/Controllers/AdminTracesControllerTests.cs", "level": "unit", "title": "Admin facade trace controller", "status": "active" },
+      { "id": "T-ADMSV-01", "file": "tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprInfrastructureQueryServiceTests.cs", "level": "unit", "title": "DAPR infra parser (RemoteMetadataStatus parser tests, not live evidence)", "status": "active" },
+      { "id": "T-ADMSV-02", "file": "tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprStreamQueryServiceTests.cs", "level": "unit", "title": "Admin facade stream query service", "status": "active" },
+      { "id": "T-ADMSV-03", "file": "tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprHealthHistoryCollectorTests.cs", "level": "unit", "title": "Health history parser", "status": "active" },
+      { "id": "T-ADMDR-01", "file": "tests/Hexalith.EventStore.Admin.Server.Tests/Controllers/AdminDaprControllerTests.cs", "level": "unit", "title": "Admin DAPR controllers (4 files: base, actor, pubsub, resiliency)", "status": "active" },
+      { "id": "T-MCP-01", "file": "tests/Hexalith.EventStore.Admin.Mcp.Tests/*.cs", "level": "unit", "title": "MCP tools + session + clients (33 unit-test files; no live tools/list)", "status": "active" },
+      { "id": "T-UI-LAY-01", "file": "tests/Hexalith.EventStore.Admin.UI.Tests/Layout/MainLayoutTests.cs", "level": "component", "title": "MainLayout (5 tests; ZERO Ctrl+B coverage)", "status": "active" },
+      { "id": "T-UI-TC-01", "file": "tests/Hexalith.EventStore.Admin.UI.Tests/Pages/TypeCatalogPageTests.cs", "level": "component", "title": "TypeCatalog (16 tests; UpdateUrl + deep-links + ?tab= covered)", "status": "active" },
+      { "id": "T-UI-CS-01", "file": "tests/Hexalith.EventStore.Admin.UI.Tests/Components/CommandSandboxTests.cs:198", "level": "component", "title": "CommandSandbox_PayloadDialog_CarriesAriaLabel (markup-only bUnit)", "status": "active" },
+      { "id": "T-UI-ED-01", "file": "tests/Hexalith.EventStore.Admin.UI.Tests/Components/EventDebuggerTests.cs:383", "level": "component", "title": "EventDebugger_PayloadDialog_CarriesAriaLabel (markup-only bUnit)", "status": "active" },
+      { "id": "T-E2E-UI-01", "file": "tests/Hexalith.EventStore.Admin.UI.E2E/BrowserSmokeTests.cs", "level": "e2e", "title": "Browser smoke (5 tests; no DW5 paths)", "status": "active" },
+      { "id": "T-E2E-PROJ-01", "file": "tests/Hexalith.EventStore.IntegrationTests/ContractTests/ProjectionMalformedResponseE2ETests.cs", "level": "e2e", "title": "Projection malformed response (1 Tier-3 test)", "status": "active" },
+      { "id": "T-E2E-PROJ-02", "file": "tests/Hexalith.EventStore.IntegrationTests/ContractTests/ValidProjectionRoundTripE2ETests.cs", "level": "e2e", "title": "Projection round-trip (1 Tier-3 test)", "status": "active" }
+    ],
+    "blockers": []
+  },
+  "recommendations": [
+    {
+      "priority": "URGENT",
+      "action": "Run /bmad-testarch-atdd for the 11 P0 acceptance criteria with NONE coverage; pin the stable diagnostic vocabulary in failing tests before dev-story execution",
+      "requirements": [
+        "DW1.AC5", "DW1.AC7",
+        "DW2.AC1", "DW2.AC5", "DW2.AC11",
+        "DW3.AC4", "DW3.AC5",
+        "DW4.AC5",
+        "DW5.AC2", "DW5.AC5", "DW5.AC6"
+      ]
+    },
+    {
+      "priority": "HIGH",
+      "action": "Run /bmad-testarch-automate to expand coverage for 23 P1 acceptance criteria with NONE coverage (DW3 + DW4 dominate; budget DW3 helper-tests and DW4 validator samples first)",
+      "requirements": "see gap_analysis.high_gaps_p1"
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Complete coverage for 20 partially covered ACs: DW1.AC2 needs ≥6 additional /project failure-class tests; DW1.AC4 needs an explicit overlap regression; DW2.AC3 needs the per-surface RemoteMetadataStatus matrix; DW5.AC8/AC9 need runtime DOM evidence (Playwright)",
+      "requirements": "see gap_analysis.partial_coverage_items"
+    },
+    {
+      "priority": "HIGH",
+      "action": "Add API tests for 6 uncovered CommandApi admin endpoints (blame, bisect, step, sandbox, AdminTrace direct, /project failure classes)",
+      "requirements": [
+        "AdminStreamQueryController.GetAggregateBlameAsync",
+        "AdminStreamQueryController.BisectAggregateStateAsync",
+        "AdminStreamQueryController.GetEventStepFrameAsync",
+        "AdminStreamQueryController.SandboxCommandAsync",
+        "AdminTraceQueryController",
+        "/project per-failure-class"
+      ]
+    },
+    {
+      "priority": "HIGH",
+      "action": "Add architecture/trust-boundary documentation note for [AllowAnonymous] CommandApi controllers (DW3.AC9) — no negative auth test exists today",
+      "requirements": ["DW3.AC9"]
+    },
+    {
+      "priority": "HIGH",
+      "action": "Add E2E or component coverage for 8 inferred UI/runtime journeys (TypeCatalog nav, Ctrl+B, Ctrl+K coexistence, dialog DOM aria, Aspire baseline, Epic 20 smoke, MCP transcripts)",
+      "requirements": "see coverage_heuristics.ui_journey_gaps"
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Add error/edge scenario tests for 5 happy-path-only criteria (DW1.AC2, AC3, AC9, DW2.AC2-4, DW3.AC10)",
+      "requirements": ["DW1.AC2", "DW1.AC3", "DW1.AC9", "DW2.AC2", "DW2.AC3", "DW2.AC4", "DW3.AC10"]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Add UI state coverage (TypeCatalog blocked state, sidebar tier collapsed state, FluentDialog runtime aria state)",
+      "requirements": "see coverage_heuristics.ui_state_gaps"
+    },
+    {
+      "priority": "LOW",
+      "action": "Run /bmad-testarch-test-review (RV) once new tests are written, especially around stable diagnostic reason codes — these are easy to write but easy to drift, so a reviewer pass on shape is worth the budget",
+      "requirements": []
+    }
+  ]
+}
