@@ -342,3 +342,9 @@ development_status:
   post-epic-4-r4a5-tier3-pubsub-delivery: done
   post-epic-4-r4a6-drain-integrity-guard: done
   post-epic-4-r4a8-story-numbering-comments: done
+
+  # Tenant Management Debug Cluster Fix (sprint-change-proposal-2026-05-05-tenant-management-debug-cluster.md)
+  # Consolidated story spanning Hexalith.EventStore + Hexalith.Tenants submodule.
+  # ST1 (UI Immediate bind) + ST2 (admin JSON enum converter) applied in this commit.
+  # ST3 (GlobalAdministratorProjectionHandler in Hexalith.Tenants) + ST4 (admin error-path handling) remain.
+  tenant-management-debug-cluster-fix: in-progress

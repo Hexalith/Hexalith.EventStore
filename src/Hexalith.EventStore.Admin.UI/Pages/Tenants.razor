@@ -230,6 +230,7 @@
             </TitleTemplate>
             <ChildContent>
                 <FluentTextInput @bind-Value="_createTenantId"
+                                 Immediate="true"
                                  Label="Tenant ID" Required="true"
                                  Placeholder="e.g. acme-corp"
                                  Style="width: 100%; margin-bottom: 12px;"
@@ -241,10 +242,12 @@
                     </p>
                 }
                 <FluentTextInput @bind-Value="_createName"
+                                 Immediate="true"
                                  Label="Name" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Name" />
                 <FluentTextInput @bind-Value="_createDescription"
+                                 Immediate="true"
                                  Label="Description"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Description" />

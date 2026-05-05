@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using Dapr.Client;
 
@@ -30,6 +31,7 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
 
     private static readonly JsonSerializerOptions _options = new() {
         PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() },
     };
 
     private readonly IAdminAuthContext _authContext;
