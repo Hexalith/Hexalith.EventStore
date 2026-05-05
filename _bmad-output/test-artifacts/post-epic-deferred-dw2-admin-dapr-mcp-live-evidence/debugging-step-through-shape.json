@@ -1,0 +1,28 @@
+{
+  "time": "2026-05-05T13:54:13.6824831+02:00",
+  "tool": "step-through",
+  "method": "Get",
+  "uri": "http://localhost:8090/api/v1/admin/streams/tenant-a/counter/counter-dw2-20260505135410/step?at=1",
+  "statusCode": 200,
+  "elapsedMs": 27,
+  "topLevelShape": [
+    "sequenceNumber",
+    "timestamp",
+    "totalEvents",
+    "tenantId",
+    "domain",
+    "aggregateId",
+    "eventTypeName",
+    "correlationId",
+    "causationId",
+    "userId",
+    "eventPayloadJson",
+    "stateJson",
+    "fieldChanges",
+    "hasPrevious",
+    "hasNext"
+  ],
+  "error": null,
+  "contentLength": 476,
+  "payloadPolicy": "raw payload/body omitted from evidence; shape and status only"
+}

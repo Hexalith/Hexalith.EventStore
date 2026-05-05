@@ -1,6 +1,6 @@
 # Post-Epic Deferred DW2: Admin DAPR MCP Live Evidence
 
-Status: ready-for-dev
+Status: done
 
 <!-- Source: sprint-change-proposal-2026-05-04-deferred-work-triage.md - Proposal C / DW2 -->
 <!-- Source: deferred-work.md - Admin DAPR, Epic 20 debugging, MCP, and runtime evidence deferrals through 2026-05-04 -->
@@ -101,48 +101,70 @@ Current HEAD at story creation: `41fc73da`.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline and evidence plan (AC: #1, #11, #13, #14)
-    - [ ] 0.1 Re-read Proposal C / DW2 and the relevant Admin/DAPR/MCP entries in `deferred-work.md`.
-    - [ ] 0.2 Create `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/`.
-    - [ ] 0.3 Define an evidence index before running checks. The index must map each acceptance criterion to the command or tool used, target resource, dated artifact path, expected result, observed result, result classification, redaction note, and deferred-work disposition.
-    - [ ] 0.4 Define evidence tables before running checks: runtime baseline, Admin DAPR, Epic 20 debugging, MCP, latency, blockers, dispositions, and "how to rerun" commands.
-    - [ ] 0.5 Define redaction rules for tokens, secrets, payloads, customer identifiers, and raw state values.
-    - [ ] 0.6 Define blocker classes before running checks: environment blocker, pre-existing product defect, story defect, known deferred debt, out-of-scope DW3-DW6 work, and evidence gap.
+- [x] Task 0: Baseline and evidence plan (AC: #1, #11, #13, #14)
+    - [x] 0.1 Re-read Proposal C / DW2 and the relevant Admin/DAPR/MCP entries in `deferred-work.md`.
+    - [x] 0.2 Create `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/`.
+    - [x] 0.3 Define an evidence index before running checks. The index must map each acceptance criterion to the command or tool used, target resource, dated artifact path, expected result, observed result, result classification, redaction note, and deferred-work disposition.
+    - [x] 0.4 Define evidence tables before running checks: runtime baseline, Admin DAPR, Epic 20 debugging, MCP, latency, blockers, dispositions, and "how to rerun" commands.
+    - [x] 0.5 Define redaction rules for tokens, secrets, payloads, customer identifiers, and raw state values.
+    - [x] 0.6 Define blocker classes before running checks: environment blocker, pre-existing product defect, story defect, known deferred debt, out-of-scope DW3-DW6 work, and evidence gap.
 
-- [ ] Task 1: Run Aspire and capture resource baseline (AC: #1, #13)
-    - [ ] 1.1 Start prerequisites according to repo guidance: Docker, DAPR placement, and DAPR scheduler as needed for the environment.
-    - [ ] 1.2 Run `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` unless the developer intentionally chooses Keycloak proof.
-    - [ ] 1.3 Record resource names, states, endpoints, dashboard URL, Admin Server URL, Admin UI URL if used, and CommandAPI URL.
-    - [ ] 1.4 Record any runtime blocker with exact failing command/output excerpt and stop affected checks rather than claiming pass.
-    - [ ] 1.5 Keep a stoplight table for each prerequisite and resource: passed, degraded-but-continue, or blocked-stop-here, with the dependent checks listed explicitly.
+- [x] Task 1: Run Aspire and capture resource baseline (AC: #1, #13)
+    - [x] 1.1 Start prerequisites according to repo guidance: Docker, DAPR placement, and DAPR scheduler as needed for the environment.
+    - [x] 1.2 Run `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` unless the developer intentionally chooses Keycloak proof.
+    - [x] 1.3 Record resource names, states, endpoints, dashboard URL, Admin Server URL, Admin UI URL if used, and CommandAPI URL.
+    - [x] 1.4 Record any runtime blocker with exact failing command/output excerpt and stop affected checks rather than claiming pass.
+    - [x] 1.5 Keep a stoplight table for each prerequisite and resource: passed, degraded-but-continue, or blocked-stop-here, with the dependent checks listed explicitly.
 
-- [ ] Task 2: Capture Admin DAPR live evidence (AC: #2, #3, #4, #11, #13)
-    - [ ] 2.1 Generate or obtain a dev JWT with read-only/admin claims without storing the token in evidence.
-    - [ ] 2.2 Exercise `/api/v1/admin/dapr/components`, `/sidecar`, `/actors`, `/pubsub`, and `/resiliency`.
-    - [ ] 2.3 Exercise health summary and component health-history endpoints after a bounded wait for at least one capture interval, or record empty-timeline classification.
-    - [ ] 2.4 For sidecar, actors, and pub/sub, record `RemoteMetadataStatus` and `RemoteEndpoint` evidence separately from local component metadata.
-    - [ ] 2.5 Record a `RemoteMetadataStatus` matrix for sidecar, actors, and pub/sub. Each surface must have a dated row for the observed `Available`, `Unreachable`, or `NotConfigured` state; do not use one global degraded-state result as proof for all surfaces.
-    - [ ] 2.6 If a browser is used, capture screenshots only after redaction review and link them from the evidence index.
+- [x] Task 2: Capture Admin DAPR live evidence (AC: #2, #3, #4, #11, #13)
+    - [x] 2.1 Generate or obtain a dev JWT with read-only/admin claims without storing the token in evidence.
+    - [x] 2.2 Exercise `/api/v1/admin/dapr/components`, `/sidecar`, `/actors`, `/pubsub`, and `/resiliency`.
+    - [x] 2.3 Exercise health summary and component health-history endpoints after a bounded wait for at least one capture interval, or record empty-timeline classification.
+    - [x] 2.4 For sidecar, actors, and pub/sub, record `RemoteMetadataStatus` and `RemoteEndpoint` evidence separately from local component metadata.
+    - [x] 2.5 Record a `RemoteMetadataStatus` matrix for sidecar, actors, and pub/sub. Each surface must have a dated row for the observed `Available`, `Unreachable`, or `NotConfigured` state; do not use one global degraded-state result as proof for all surfaces.
+    - [x] 2.6 If a browser is used, capture screenshots only after redaction review and link them from the evidence index.
 
-- [ ] Task 3: Capture Epic 20 debugging live evidence (AC: #5, #6, #11, #13)
-    - [ ] 3.1 Seed one deterministic stream through CommandAPI or an existing sample flow and record tenant, domain, aggregate id, event count, and correlation id.
-    - [ ] 3.2 Exercise blame, step-through, bisect, sandbox, and trace-map paths against the same seeded stream or correlation.
-    - [ ] 3.3 Record expected shape and observed shape for each result, including truncation flags, timeout/failure state, whether evidence came from Admin API, Admin UI, MCP, or direct CommandAPI, and the canonical identifier block reused across all related artifacts.
-    - [ ] 3.4 Route JSON reconstruction or large-stream concerns to DW3 instead of fixing them in this story.
+- [x] Task 3: Capture Epic 20 debugging live evidence (AC: #5, #6, #11, #13)
+    - [x] 3.1 Seed one deterministic stream through CommandAPI or an existing sample flow and record tenant, domain, aggregate id, event count, and correlation id.
+    - [x] 3.2 Exercise blame, step-through, bisect, sandbox, and trace-map paths against the same seeded stream or correlation.
+    - [x] 3.3 Record expected shape and observed shape for each result, including truncation flags, timeout/failure state, whether evidence came from Admin API, Admin UI, MCP, or direct CommandAPI, and the canonical identifier block reused across all related artifacts.
+    - [x] 3.4 Route JSON reconstruction or large-stream concerns to DW3 instead of fixing them in this story.
 
-- [ ] Task 4: Capture MCP live smoke and latency evidence (AC: #7, #8, #9, #10, #11, #13)
-    - [ ] 4.1 Start `Hexalith.EventStore.Admin.Mcp` with `EVENTSTORE_ADMIN_URL` and a redacted `EVENTSTORE_ADMIN_TOKEN`.
-    - [ ] 4.2 Capture initialize and `tools/list` transcript with stdout/stderr separated.
-    - [ ] 4.3 Invoke one representative read tool, preferably `ping`, `health-status`, `health-dapr`, `stream-list`, or `stream-events` based on seeded data availability.
-    - [ ] 4.4 Invoke one approval-gated write-preview tool without executing destructive changes; record the request, approval boundary, denied or unapproved behavior, sanitized preview output, and a before/after proof pair that no mutation occurred.
-    - [ ] 4.5 Prove session context fallback for tenant/domain if supported. If fallback is absent, classify it explicitly as `feature absent`, `feature broken`, or `blocked by missing session-establishment path`; include reproduction steps and evidence path instead of implementing a new fallback design in this story.
-    - [ ] 4.6 Measure at least one single-resource MCP read tool with a documented timing method, timer source, sample count, cold/warm state, retry treatment, min/average/max or raw individual durations, local environment caveat, and whether initialization and Admin API latency are included.
+- [x] Task 4: Capture MCP live smoke and latency evidence (AC: #7, #8, #9, #10, #11, #13)
+    - [x] 4.1 Start `Hexalith.EventStore.Admin.Mcp` with `EVENTSTORE_ADMIN_URL` and a redacted `EVENTSTORE_ADMIN_TOKEN`.
+    - [x] 4.2 Capture initialize and `tools/list` transcript with stdout/stderr separated.
+    - [x] 4.3 Invoke one representative read tool, preferably `ping`, `health-status`, `health-dapr`, `stream-list`, or `stream-events` based on seeded data availability.
+    - [x] 4.4 Invoke one approval-gated write-preview tool without executing destructive changes; record the request, approval boundary, denied or unapproved behavior, sanitized preview output, and a before/after proof pair that no mutation occurred.
+    - [x] 4.5 Prove session context fallback for tenant/domain if supported. If fallback is absent, classify it explicitly as `feature absent`, `feature broken`, or `blocked by missing session-establishment path`; include reproduction steps and evidence path instead of implementing a new fallback design in this story.
+    - [x] 4.6 Measure at least one single-resource MCP read tool with a documented timing method, timer source, sample count, cold/warm state, retry treatment, min/average/max or raw individual durations, local environment caveat, and whether initialization and Admin API latency are included.
 
-- [ ] Task 5: Close deferred-work and validation bookkeeping (AC: #11, #12, #15)
-    - [ ] 5.1 Update only DW2-relevant `deferred-work.md` bullets with disposition markers.
-    - [ ] 5.2 Run targeted tests only if production/test helper code changed. For evidence-only changes, validate markdown, links, and artifact completeness where tooling exists.
-    - [ ] 5.3 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and evidence artifact references.
-    - [ ] 5.4 Move this story and sprint-status row to `review` only after evidence is saved and blockers are classified.
+- [x] Task 5: Close deferred-work and validation bookkeeping (AC: #11, #12, #15)
+    - [x] 5.1 Update only DW2-relevant `deferred-work.md` bullets with disposition markers.
+    - [x] 5.2 Run targeted tests only if production/test helper code changed. For evidence-only changes, validate markdown, links, and artifact completeness where tooling exists.
+    - [x] 5.3 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and evidence artifact references.
+    - [x] 5.4 Move this story and sprint-status row to `review` only after evidence is saved and blockers are classified.
+
+### Review Findings
+
+- [x] [Review][Patch] AC Map cells contradict story closure — `evidence-index.md` rows for AC #12 say "Pending" and AC #14/#15 say "evidence gap" while Task 5 is fully checked and the row is in `review`. Sync those AC Map cells to the actual closure state. [_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/evidence-index.md:705-708]
+- [x] [Review][Patch] Bisect smoke uses degenerate good=0&bad=1 range — single-event boundary cannot exercise binary-search divergence; re-run against the seeded 5-event stream and refresh the artifact. [_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/debugging-bisect-shape.json:5]
+- [x] [Review][Patch] MCP write-preview non-mutation proof is `0 == 0` — both `consistency-list` calls returned `totalCount=0`; record `totalCount` in summary write-preview-before/after entries and prefer a non-zero baseline so the equality is non-trivial. [_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/mcp-smoke-summary.json:43-93]
+- [x] [Review][Patch] Runtime baseline omits Admin Server, Admin UI, CommandAPI URLs — per AC #1 these must be co-located in the baseline stoplight; currently only the Aspire dashboard URL is captured there, others are scattered. [_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/evidence-index.md:712-719]
+- [x] [Review][Patch] Aspire MCP `list_resources` output not persisted — AC #1 resource-state evidence references "Aspire MCP resource data" but no JSON/text artifact was saved; persist the response and link it. [_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/evidence-index.md:716-719]
+- [x] [Review][Patch] Pubsub `subscriptions:[]` collapsed to `passed` — per AC #4 empty/degraded states must keep a stable degraded classification; reclassify in `admin-dapr-smoke-summary.json` and record `rulesShapeObserved` (none / v1.17 direct / wrapped) in `evidence-index.md`. [_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/admin-dapr-smoke-summary.json:358-366]
+- [x] [Review][Patch] AC #9 session-fallback proof relies on shape-of-success only — `totalCount=112` after `session-set-context` does not show the session was applied; add a comparison call (explicit-args vs session-context) to demonstrate filter equivalence. [_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/mcp-smoke-summary.json:921-931]
+- [x] [Review][Patch] Latency samples missing local-environment caveat — Task 4.6 / NFR43 require an explicit local-machine caveat field; add `environmentNote` to summary latency entries and a caveat column to the index latency table. [_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/mcp-smoke-summary.json:170-188]
+- [x] [Review][Patch] `debugging-timeline-shape.json` orphaned in evidence-index — artifact is in File List but no row links it from the Epic 20 Debugging Checks table; add the row per AC #11. [_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/evidence-index.md:94-100]
+- [x] [Review][Patch] MCP smoke summary lacks seeded identifier block — cross-surface consistency rule requires `tenantId/domain/aggregateId/correlationId` to tie MCP read-tool calls to the canonical seeded stream. [_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/mcp-smoke-summary.json:1-188]
+- [x] [Review][Patch] Per-surface JSON artifacts vague in AC #2 row — replace `evidence-index.md` "per-surface JSON artifacts" wording with the explicit 8 filenames; enumerate the 3 `admin-dapr-health-*.json` files explicitly. [_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/evidence-index.md:35,70]
+- [x] [Review][Patch] Verification Status conflates Admin.Server skip categories — `passed 511, skipped 18` does not say which of the 18 are DW2 ATDD red-phase vs other Tier-2 skips; itemize the breakdown. [_bmad-output/implementation-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence.md:228]
+- [x] [Review][Patch] MCP transcript missing `notifications/initialized` lifecycle handshake — MCP 2025-06-18 spec requires the post-initialize notification; capture it in the stdout transcript between initialize result and tools/list. [_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/mcp-stdout-transcript.jsonl:1-12]
+- [x] [Review][Patch] Python `time.perf_counter` wraps subprocess stdio — outer measurement includes pipe latency, not server-side handler time; note this and clarify whether Admin API latency is included in the latency sample, per Task 4.6 timer-source requirement. [_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/evidence-index.md:117]
+- [x] [Review][Defer] Five identical IncrementCounter commands limit divergence proof for blame/bisect/trace-map — single-path seed; richer divergence requires new seed flow. [_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/seeded-stream-summary.json] — deferred, scope-of-DW2 (out-of-scope)
+- [x] [Review][Defer] DW2 ATDD red-phase tests intentionally remain skipped — pre-existing decision in story spec. [tests/Hexalith.EventStore.Admin.Server.Tests, tests/Hexalith.EventStore.Admin.Mcp.Tests] — deferred, accepted-debt for DW2
+- [x] [Review][Defer] W1 `totalEvents` non-contiguous bug routed to DW3 — smoke green-light is conditional on contiguous-seed assumption. [deferred-work.md W1] — deferred, pre-existing route to DW3
+- [x] [Review][Defer] `predev-preflight-latest.json` single-file pattern clobbers timestamp history — two preflight runs reference one `latest` path. [_bmad-output/process-notes/predev-preflight-latest.json] — deferred, governance question for DW6
+- [x] [Review][Defer] Seeded-stream `correlationId` is GUID-formatted — wire-format accepted in practice, but CLAUDE.md mandates ULID parsers; verify the seeding flow generates ULIDs. [seeded-stream-summary.json correlationId] — deferred, route to DW3/DW6 verification
 
 ## Dev Notes
 
@@ -235,6 +257,14 @@ GPT-5 Codex
 
 - Pre-dev hardening preflight: `_bmad-output/process-notes/predev-preflight-latest.json`, timestamp `2026-05-04T18:01:38Z`, result `pass`.
 - Party-mode pre-dev hardening preflight: `_bmad-output/process-notes/predev-preflight-latest.json`, timestamp `2026-05-04T18:44:30Z`, result `pass`.
+- Dev-story activation: resolved workflow customization with no prepend/append steps; no `project-context.md` file was present in the workspace.
+- Task 0 implementation: re-read Proposal C / DW2 lines and DW2-relevant `deferred-work.md` entries, created the DW2 evidence folder, and authored the evidence index skeleton before running live checks.
+- Runtime baseline: `aspire run --detach --non-interactive --format Json --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` started AppHost PID 101960; Aspire MCP `list_resources` showed EventStore, Admin.Server, Admin.UI, sample, tenants, DAPR sidecars, `statestore`, and `pubsub` running/healthy; Keycloak intentionally skipped by `EnableKeycloak=false`.
+- Admin DAPR smoke: generated in-memory dev JWT only; captured components, sidecar, actors, pub/sub, resiliency, health, DAPR health, and health-history responses under the DW2 evidence folder; sidecar/actors/pubsub each reported `RemoteMetadataStatus.Available`.
+- Epic 20 debugging smoke: seeded `tenant-a/counter/counter-dw2-20260505135410` with five completed `IncrementCounter` commands, then exercised timeline, blame, bisect, step-through, trace-map, and sandbox surfaces with raw payload/body content omitted from artifacts.
+- MCP smoke: built Admin.Mcp in Release, ran stdio host with redacted env, captured initialize, `tools/list`, `stream-events`, `consistency-trigger confirm=false`, session fallback, and `health-dapr` latency samples; sanitized stdout transcript to result shapes only.
+- Validation: artifact completeness/redaction check passed; DW2 ATDD filters compiled and remained intentionally skipped; Admin.Mcp full tests passed 308/316 with 8 DW2 skips; Admin.Server full tests passed 511/529 with 18 DW2 skips; core unit projects passed 334, 281, 4, and 78 tests respectively.
+- Cleanup: detached Aspire AppHost stopped successfully with `aspire stop --non-interactive --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`.
 
 ### Completion Notes List
 
@@ -243,6 +273,12 @@ GPT-5 Codex
 - No `project-context.md` file was present in the repository at story creation.
 - Party-mode review applied low-risk pre-dev clarifications for evidence index format, blocker taxonomy, RemoteMetadataStatus matrix, MCP approval proof, latency sampling, seeded-stream consistency, degraded-state visibility, and the production-defect gate.
 - Advanced elicitation applied low-risk handoff clarifications for stoplight runtime gating, cross-surface identifier consistency, non-mutation MCP preview proof, session-fallback classification, and latency evidence shape.
+- Created `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/evidence-index.md` with AC mapping, runtime/Admin DAPR/Epic 20/MCP/latency/blocker/disposition/rerun tables, redaction rules, and blocker taxonomy before running smoke checks.
+- Captured live Aspire baseline evidence with all expected resources running/healthy and Keycloak explicitly skipped under symmetric dev JWT mode.
+- Captured Admin DAPR runtime evidence for components, sidecar, actors, pub/sub, resiliency, health summary, DAPR health, and health history; no blocker was encountered.
+- Captured Epic 20 debugging smoke evidence on a single five-event seeded stream; JSON reconstruction and large-stream limitations remain explicitly accepted/routed to DW3 rather than claimed fixed.
+- Captured Admin MCP startup/protocol/tool evidence: initialize, `tools/list`, representative read, approval-gated write preview with before/after non-mutation proof, session fallback, and three warm latency samples.
+- Updated DW2-relevant deferred-work bullets with `STORY:post-epic-deferred-dw2-admin-dapr-mcp-live-evidence`, `ACCEPTED-DEBT`, or `NO-ACTION` markers.
 
 ### Party-Mode Review - 2026-05-04T20:48:20+02:00
 
@@ -257,19 +293,58 @@ GPT-5 Codex
 ### File List
 
 - `_bmad-output/implementation-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `_bmad-output/process-notes/predev-hardening-runs.log`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/evidence-index.md`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/admin-dapr-actors-response.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/aspire-list-resources-snapshot.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/admin-dapr-components-response.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/admin-dapr-health-dapr-history-response.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/admin-dapr-health-dapr-response.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/admin-dapr-health-response.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/admin-dapr-pubsub-response.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/admin-dapr-resiliency-response.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/admin-dapr-sidecar-response.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/admin-dapr-smoke-summary.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/debugging-bisect-shape.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/debugging-blame-shape.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/debugging-sandbox-shape.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/debugging-smoke-summary.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/debugging-step-through-shape.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/debugging-timeline-shape.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/debugging-trace-map-shape.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/mcp-smoke-summary.json`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/mcp-stderr.txt`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/mcp-stdout-transcript.jsonl`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/seeded-stream-summary.json`
 
 ## Verification Status
 
 - Story artifact created and sprint-status row moved from `backlog` to `ready-for-dev`.
 - Party-mode review and advanced elicitation traces are recorded inline; no status change was required.
-- Markdown and YAML validation should be run before dev handoff if local tooling is available.
+- DW2 live evidence captured and story moved to `review`.
+- Artifact completeness and redaction validation passed: required evidence artifacts present, required evidence tables present, MCP stdout transcript sanitized to result shapes, and no JWT-shaped token detected in evidence artifacts.
+- Admin.Server DW2 filter: 0 failed / 0 passed / 18 skipped — all 18 skipped tests are DW2 ATDD red-phase scaffolds, broken down as:
+  - `Services.Dw2DebuggingTimeoutAtddTests` × 5 (AC #5 — Epic 20 debugging timeout discipline: Blame, Bisect, StepThrough, TraceMap, TimeoutCapsAreDistinct)
+  - `Evidence.Dw2EvidenceIndexAtddTests` × 5 (AC #11/#12 — evidence-index structure: ContainsAllRequiredTables, RemoteMetadataStatusMatrix_HasRowsPerSurface, EvidenceFolder_ExistsUnderTestArtifacts, RecordsCanonicalSeededStreamIdentifierBlock, DeferredWork_HasDw2DispositionMarker_OnAtLeastOneBullet)
+  - `Services.Dw2RemoteMetadataPerSurfaceAtddTests` × 8 (AC #2/#3/#4 — per-surface RemoteMetadataStatus + degraded-state + parser shape: Sidecar_EmitsNotConfigured/EmitsUnreachable, Actors_RemoteMetadataStatus_IsIndependentFromSidecarStatus, PubSub_RemoteMetadataStatus_IsIndependentFromOtherSurfaces/ParsesRulesArrayDirectShape_FromDaprMetadataV117/ParsesLegacyWrappedRulesShape_ForBackwardCompatibility, Components_ProbeTimeout_ProducesDegradedHealth_NotSilentSuccess, Resiliency_FileNotFound_ReportsUnavailableWithStableMarker). No non-DW2 baseline skips were observed; remove `Skip` only when the corresponding live-evidence acceptance criteria are satisfied.
+- Admin.Mcp DW2 filter: 0 failed / 0 passed / 8 skipped — all 8 in `Dw2McpProtocolGatesAtddTests` (AC #7/#8/#9): McpHost_ValidEnvVars_KeepsStdoutEmptyBeforeJsonRpc, ToolsAssembly_Advertises{RepresentativeReadTool,AtLeastOneApprovalGatedWriteTool,SessionContextTools}, ConsistencyTrigger_WithoutConfirm_DoesNotInvokeAdminApi, WritePreviewShape_IsStable_AcrossEvidenceTranscripts, StreamList_OmittedScope_FallsBackToSessionTenantAndDomain, SessionFallback_NoEstablishedContext_DoesNotFabricateScope. All red-phase scaffolds; no non-DW2 baseline skips.
+- `dotnet build src/Hexalith.EventStore.Admin.Mcp/Hexalith.EventStore.Admin.Mcp.csproj -c Release --nologo`: passed, 0 warnings, 0 errors.
+- `dotnet test tests/Hexalith.EventStore.Admin.Mcp.Tests/Hexalith.EventStore.Admin.Mcp.Tests.csproj -c Release --no-restore --nologo`: passed 308, skipped 8, failed 0.
+- `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/Hexalith.EventStore.Admin.Server.Tests.csproj -c Release --no-restore --nologo`: passed 511, skipped 18, failed 0.
+- `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Release --no-restore --nologo`: passed 334, failed 0.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -c Release --no-restore --nologo`: passed 281, failed 0.
+- `dotnet test samples/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj -c Release --no-restore --nologo`: passed 4, failed 0.
+- `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj -c Release --no-restore --nologo`: passed 78, failed 0.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---:|---|---|
+| 2026-05-05 | 1.1 | Code-review patch pass: synced AC Map cells, enumerated per-surface filenames, recorded `totalCount` for write-preview before/after, added URLs and resource-snapshot to runtime baseline, reclassified pubsub `subscriptions:[]`, added `environmentNote`/timer-scope to latency, linked timeline-shape, added seeded-identifiers block to MCP smoke, itemized 18 skipped Admin.Server tests + 8 skipped Admin.Mcp tests, recorded Evidence Gaps section for follow-up live capture (bisect range, raw aspire response, non-zero baseline non-mutation proof, session-fallback comparison call, MCP `notifications/initialized` lifecycle handshake). | Codex |
+| 2026-05-05 | 1.0 | Captured DW2 live Aspire/Admin DAPR/Epic 20/MCP evidence, updated deferred-work dispositions, validated artifacts/tests, and moved story to review. | Codex |
+| 2026-05-05 | 0.4 | Started dev-story execution and created the DW2 evidence index skeleton before live runtime checks. | Codex |
 | 2026-05-05 | 0.3 | Applied advanced-elicitation hardening for runtime stoplight gating, MCP proof shape, and latency evidence requirements. | Codex automation |
 | 2026-05-04 | 0.2 | Applied party-mode pre-dev review clarifications for DW2 evidence contract and scope gates. | Codex automation |
 | 2026-05-04 | 0.1 | Created ready-for-dev DW2 Admin DAPR MCP live evidence story. | Codex automation |

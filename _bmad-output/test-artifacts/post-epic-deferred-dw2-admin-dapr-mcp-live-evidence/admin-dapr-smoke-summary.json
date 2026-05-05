@@ -1,0 +1,76 @@
+[
+  {
+    "Time": "2026-05-05T13:52:51.4372429+02:00",
+    "Surface": "components",
+    "Url": "http://localhost:8090/api/v1/admin/dapr/components",
+    "StatusCode": 200,
+    "ElapsedMs": 122,
+    "Artifact": "_bmad-output\\test-artifacts\\post-epic-deferred-dw2-admin-dapr-mcp-live-evidence\\admin-dapr-components-response.json",
+    "Classification": "passed"
+  },
+  {
+    "Time": "2026-05-05T13:52:51.5329500+02:00",
+    "Surface": "sidecar",
+    "Url": "http://localhost:8090/api/v1/admin/dapr/sidecar",
+    "StatusCode": 200,
+    "ElapsedMs": 87,
+    "Artifact": "_bmad-output\\test-artifacts\\post-epic-deferred-dw2-admin-dapr-mcp-live-evidence\\admin-dapr-sidecar-response.json",
+    "Classification": "passed"
+  },
+  {
+    "Time": "2026-05-05T13:52:51.5548322+02:00",
+    "Surface": "actors",
+    "Url": "http://localhost:8090/api/v1/admin/dapr/actors",
+    "StatusCode": 200,
+    "ElapsedMs": 19,
+    "Artifact": "_bmad-output\\test-artifacts\\post-epic-deferred-dw2-admin-dapr-mcp-live-evidence\\admin-dapr-actors-response.json",
+    "Classification": "passed"
+  },
+  {
+    "Time": "2026-05-05T13:52:51.5681765+02:00",
+    "Surface": "pubsub",
+    "Url": "http://localhost:8090/api/v1/admin/dapr/pubsub",
+    "StatusCode": 200,
+    "ElapsedMs": 11,
+    "Artifact": "_bmad-output\\test-artifacts\\post-epic-deferred-dw2-admin-dapr-mcp-live-evidence\\admin-dapr-pubsub-response.json",
+    "Classification": "passed; degraded-empty-subscriptions",
+    "ClassificationDetail": "Endpoint returned 200 with subscriptions:[]. Per AC #4, empty subscriptions are preserved as a degraded-but-continue state, not collapsed into bare 'passed'. Pubsub component visible; no live subscription was observable at smoke time. RemoteMetadataStatus=Available, RemoteEndpoint=http://localhost:3501.",
+    "RulesShapeObserved": "none (no rules[] or rules.rules[] entries because subscriptions array was empty); v1.17 direct-rules vs older wrapped-rules parser shape NOT discriminated by this run because no live subscription was present"
+  },
+  {
+    "Time": "2026-05-05T13:52:51.6018281+02:00",
+    "Surface": "resiliency",
+    "Url": "http://localhost:8090/api/v1/admin/dapr/resiliency",
+    "StatusCode": 200,
+    "ElapsedMs": 31,
+    "Artifact": "_bmad-output\\test-artifacts\\post-epic-deferred-dw2-admin-dapr-mcp-live-evidence\\admin-dapr-resiliency-response.json",
+    "Classification": "passed"
+  },
+  {
+    "Time": "2026-05-05T13:52:51.6891732+02:00",
+    "Surface": "health",
+    "Url": "http://localhost:8090/api/v1/admin/health",
+    "StatusCode": 200,
+    "ElapsedMs": 85,
+    "Artifact": "_bmad-output\\test-artifacts\\post-epic-deferred-dw2-admin-dapr-mcp-live-evidence\\admin-dapr-health-response.json",
+    "Classification": "passed"
+  },
+  {
+    "Time": "2026-05-05T13:52:51.7002336+02:00",
+    "Surface": "health-dapr",
+    "Url": "http://localhost:8090/api/v1/admin/health/dapr",
+    "StatusCode": 200,
+    "ElapsedMs": 9,
+    "Artifact": "_bmad-output\\test-artifacts\\post-epic-deferred-dw2-admin-dapr-mcp-live-evidence\\admin-dapr-health-dapr-response.json",
+    "Classification": "passed"
+  },
+  {
+    "Time": "2026-05-05T13:52:51.7250190+02:00",
+    "Surface": "health-dapr-history",
+    "Url": "http://localhost:8090/api/v1/admin/health/dapr/history",
+    "StatusCode": 200,
+    "ElapsedMs": 23,
+    "Artifact": "_bmad-output\\test-artifacts\\post-epic-deferred-dw2-admin-dapr-mcp-live-evidence\\admin-dapr-health-dapr-history-response.json",
+    "Classification": "passed"
+  }
+]

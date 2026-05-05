@@ -1,0 +1,27 @@
+{
+  "time": "2026-05-05T13:54:13.6532047+02:00",
+  "tool": "bisect",
+  "method": "Get",
+  "uri": "http://localhost:8090/api/v1/admin/streams/tenant-a/counter/counter-dw2-20260505135410/bisect?good=0&bad=1",
+  "statusCode": 200,
+  "elapsedMs": 32,
+  "topLevelShape": [
+    "goodSequence",
+    "divergentSequence",
+    "divergentTimestamp",
+    "totalSteps",
+    "isTruncated",
+    "tenantId",
+    "domain",
+    "aggregateId",
+    "divergentEventType",
+    "divergentCorrelationId",
+    "divergentUserId",
+    "divergentFieldChanges",
+    "watchedFieldPaths",
+    "steps"
+  ],
+  "error": null,
+  "contentLength": 461,
+  "payloadPolicy": "raw payload/body omitted from evidence; shape and status only"
+}

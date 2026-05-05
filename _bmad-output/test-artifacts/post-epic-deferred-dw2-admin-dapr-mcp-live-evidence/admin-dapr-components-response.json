@@ -1,0 +1,1 @@
+[{"category":1,"version":"v1","status":0,"lastCheckUtc":"2026-05-05T11:52:51.3747668+00:00","capabilities":["ETAG","TRANSACTIONAL","TTL","KEYS_LIKE","ACTOR"],"componentName":"statestore","componentType":"state.redis"}]
