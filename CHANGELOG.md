@@ -1,3 +1,10 @@
+# [3.10.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.9.1...v3.10.0) (2026-05-05)
+
+
+### Features
+
+* **server:** add admin event detail endpoint and preserve 400/404 semantics ([#233](https://github.com/Hexalith/Hexalith.EventStore/issues/233)) ([15895b8](https://github.com/Hexalith/Hexalith.EventStore/commit/15895b8bd2ecc53ba2b0fdc30e8ec1f9ee779bae))
+
 ## [3.9.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.9.0...v3.9.1) (2026-05-04)
 
 
