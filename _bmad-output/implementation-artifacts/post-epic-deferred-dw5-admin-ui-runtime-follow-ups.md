@@ -98,6 +98,16 @@ Current HEAD at story creation: `2dc4986d`.
 - Fluent UI Blazor `FluentDialog` guidance expects `FluentDialogBody` to contain title, content, and action templates, and modal dialogs should contain focusable elements. Runtime DOM evidence is still required for the repository's `aria-label` claim.
 - Fluent UI Blazor `FluentDataGrid` accepts `IQueryable<T>` through `Items`; when behavior depends on browser rendering and Fluent internals, prefer evidence-driven changes over broad component replacement.
 
+## Party-Mode Hardening Notes
+
+- Treat DW5 as a closure pass with explicit dispositions, not an open-ended Admin UI rewrite. Each selected deferred-work item must finish as `fixed-with-evidence`, `not-reproduced-with-evidence`, or `deferred-with-target-and-reason`.
+- Runtime evidence must be first-class. The evidence index should list artifact filenames, route or dialog tested, viewport size, interaction path, pass/fail result, console/circuit status, and the related acceptance criteria.
+- TypeCatalog changes must be evidence-led. Do not replace FluentDataGrid, remove URL-driven tab state, or rewrite navigation unless the browser run ties that specific behavior to the sidebar navigation block.
+- Ctrl+B is a targeted Blazor renderer-context fix. Keep component state mutation and rerender dispatch on the renderer context, preserve viewport-tier storage keys, and prove Ctrl+K still opens, closes, and reopens in the same browser session.
+- Dialog accessibility evidence must distinguish component markup, live Fluent DOM, keyboard/focus behavior, and assistive-technology coverage. Do not claim full AT verification unless an AT tool or equivalent accessibility-tree evidence was actually captured.
+- Localization and broader Admin UI text changes are out of scope unless existing visible text is directly touched by the narrow fix.
+- Stop and record follow-up rather than absorbing backend/API/DAPR/MCP/evidence-schema work, generalized shortcut architecture, generalized Fluent UI migration work, or DW2/DW3/DW4/DW6 decisions.
+
 ## Tasks / Subtasks
 
 - [ ] Task 0: Baseline DW5 and decide closure shape (AC: #1, #13, #14)
@@ -105,13 +115,16 @@ Current HEAD at story creation: `2dc4986d`.
     - [ ] 0.2 Classify each selected deferred item as `patch-now`, `evidence-now`, `accepted-debt`, `obsolete-resolved`, `duplicate`, or `not-DW5`.
     - [ ] 0.3 Confirm DW2, DW3, DW4, and DW6 scopes are excluded.
     - [ ] 0.4 Create the DW5 evidence folder and an evidence index stub before runtime work begins.
+    - [ ] 0.5 Define the final disposition vocabulary in the evidence index before changing code: `fixed-with-evidence`, `not-reproduced-with-evidence`, or `deferred-with-target-and-reason`.
 
 - [ ] Task 1: Reproduce and close TypeCatalog navigation blocking (AC: #2, #3, #4, #10, #11)
     - [ ] 1.1 Start the Admin UI through Aspire when feasible and navigate to `/types`, `/types?tab=commands`, and `/types?tab=aggregates`.
     - [ ] 1.2 Click at least three sidebar links from each tested TypeCatalog tab and record URL/page-change timing plus console errors.
-    - [ ] 1.3 If blocked, isolate whether URL sync, refresh subscription, grid item source, viewport checks, or another render loop causes the issue.
-    - [ ] 1.4 Apply the smallest fix and keep deep-link, selection, search, and history behavior intact.
-    - [ ] 1.5 Add bUnit or Playwright coverage for the fixed behavior where deterministic.
+    - [ ] 1.3 Define blocking evidence as at least one of: route unchanged after bounded wait, visible page unchanged after click, render hang, console/circuit exception, data-grid interaction lock, focus trap, or repeated-click requirement.
+    - [ ] 1.4 If blocked, isolate whether URL sync, refresh subscription, grid item source, viewport checks, or another render loop causes the issue.
+    - [ ] 1.5 Apply the smallest fix and keep deep-link, selection, search, and history behavior intact.
+    - [ ] 1.6 Add bUnit or Playwright coverage for the fixed behavior where deterministic.
+    - [ ] 1.7 If not reproduced, record the tested starting page, tab, sidebar target, before/after URL, visible page marker, viewport, timing, and console result.
 
 - [ ] Task 2: Fix Ctrl+B sidebar toggle without regressing Ctrl+K (AC: #5, #6, #7, #11)
     - [ ] 2.1 Reproduce Ctrl+B in browser and capture the console/circuit symptom before fixing when possible.
@@ -119,6 +132,7 @@ Current HEAD at story creation: `2dc4986d`.
     - [ ] 2.3 Preserve viewport-tier storage keys and compact-default collapse behavior.
     - [ ] 2.4 Verify Ctrl+B collapse/expand across repeated presses and refresh.
     - [ ] 2.5 Verify Ctrl+K still opens, closes, and reopens the command palette in the same browser session.
+    - [ ] 2.6 Record the storage key observed for the current viewport tier and confirm no renderer-thread or SignalR circuit exception occurs.
 
 - [ ] Task 3: Complete dialog accessibility runtime evidence (AC: #8, #9, #10, #11, #12)
     - [ ] 3.1 Use a stream/command setup that opens the CommandSandbox event-payload dialog, or record why it is unavailable.
@@ -126,12 +140,14 @@ Current HEAD at story creation: `2dc4986d`.
     - [ ] 3.3 Capture DOM evidence showing whether `aria-label="Event payload"` lands on the rendered Fluent dialog element.
     - [ ] 3.4 Run an assistive-technology check when tooling is available; otherwise record the explicit blocker and classify as partial evidence.
     - [ ] 3.5 Keep or add bUnit regression-signal tests for both dialog attributes.
+    - [ ] 3.6 Record keyboard/focus behavior for dialog entry and close, including Escape or close-button behavior when available.
 
 - [ ] Task 4: Update deferred-work and evidence artifacts narrowly (AC: #10, #13, #15)
     - [ ] 4.1 Save runtime evidence under `_bmad-output/test-artifacts/post-epic-deferred-dw5-admin-ui-runtime-follow-ups/`.
-    - [ ] 4.2 Mark only DW5-relevant deferred-work bullets with disposition markers.
-    - [ ] 4.3 Mark obsolete Epic 21 resolved entries as `RESOLVED` or `NO-ACTION` with a one-line rationale.
-    - [ ] 4.4 Do not sweep unrelated deferred-work sections into this story.
+    - [ ] 4.2 Include an evidence index with dated artifact filenames, browser route, viewport size, interaction path, console/circuit status, and AC mapping.
+    - [ ] 4.3 Mark only DW5-relevant deferred-work bullets with disposition markers.
+    - [ ] 4.4 Mark obsolete Epic 21 resolved entries as `RESOLVED` or `NO-ACTION` with a one-line rationale.
+    - [ ] 4.5 Do not sweep unrelated deferred-work sections into this story.
 
 - [ ] Task 5: Validate and close bookkeeping (AC: #11, #15)
     - [ ] 5.1 Run targeted `tests/Hexalith.EventStore.Admin.UI.Tests` bUnit tests for changed components.
@@ -212,3 +228,15 @@ GPT-5 Codex
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
 | 2026-05-04 | 0.1 | Created ready-for-dev DW5 Admin UI runtime follow-ups story. | Codex automation |
+| 2026-05-05 | 0.2 | Applied party-mode hardening for runtime evidence, disposition rules, renderer-context closure, and scope stop signs. | Codex automation |
+
+## Party-Mode Review
+
+- Date/time: 2026-05-05T05:09:56+02:00
+- Selected story key: `post-epic-deferred-dw5-admin-ui-runtime-follow-ups`
+- Command/skill invocation used: `/bmad-party-mode post-epic-deferred-dw5-admin-ui-runtime-follow-ups; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor); Sally (UX Designer) was requested but did not return before the review timeout.
+- Findings summary: reviewers converged on `needs-story-update`; DW5 is directionally sound, but the development handoff needed sharper runtime evidence criteria, explicit per-item dispositions, concrete TypeCatalog blocking definitions, targeted Blazor renderer-context expectations for Ctrl+B, runtime Fluent dialog accessibility evidence, and stronger stop signs against absorbing adjacent Admin UI, backend, DAPR, MCP, evidence-schema, or deferred-work governance scope.
+- Changes applied: added Party-Mode Hardening Notes; tightened task details for disposition vocabulary, TypeCatalog blocking evidence, Ctrl+B/Ctrl+K verification, dialog focus/accessibility evidence, and the evidence index; added change-log row.
+- Findings deferred: exact browser evidence capture mechanism; whether TypeCatalog requires a code fix or a not-reproduced disposition; whether assistive-technology tooling is available during development; any broad FluentDataGrid, shortcut architecture, backend/API/DAPR/MCP, evidence-schema, localization, or DW2/DW3/DW4/DW6 follow-up decisions.
+- Final recommendation: needs-story-update

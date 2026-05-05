@@ -77,3 +77,4 @@
 2026-05-04T20:48:20+02:00	party-mode-review	post-epic-deferred-dw2-admin-dapr-mcp-live-evidence	ok	Applied party-mode review clarifications; final recommendation ready-for-dev.
 2026-05-04T21:55:21+02:00	party-mode-review	post-epic-deferred-dw3-admin-debugging-json-large-stream-hardening	ok	Applied party-mode review clarifications; final recommendation needs-story-update; soft working-tree warning from preflight timestamp 2026-05-04T19:02:38Z.
 2026-05-05T00:11:03+02:00	party-mode-review	post-epic-deferred-dw4-operational-evidence-schema-validation	ok	Applied party-mode hardening for validator contract, fixture matrix, diagnostics, fail-closed behavior, and CI expectations.
+2026-05-05T05:09:56+02:00	party-mode-review	post-epic-deferred-dw5-admin-ui-runtime-follow-ups	ok	Applied party-mode hardening for runtime evidence, disposition rules, renderer-context closure, and scope stop signs; soft working-tree warning from preflight timestamp 2026-05-04T22:10:57Z.
