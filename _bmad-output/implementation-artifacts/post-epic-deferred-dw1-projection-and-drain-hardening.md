@@ -1,6 +1,6 @@
 # Post-Epic Deferred DW1: Projection and Drain Hardening
 
-Status: ready-for-dev
+Status: done
 
 <!-- Source: sprint-change-proposal-2026-05-04-deferred-work-triage.md - Proposal B / DW1 -->
 <!-- Source: deferred-work.md - projection, polling, checkpoint, and drain deferrals through 2026-05-04 -->
@@ -162,45 +162,98 @@ Stop and record a deferred decision instead of coding when the implementation pr
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline and choose the minimum safe policy set (AC: #1, #7, #12)
-    - [ ] 0.1 Re-read the DW1 section in the deferred-work triage proposal and the relevant `deferred-work.md` entries.
-    - [ ] 0.2 Classify each selected deferred item as `patch-now`, `decision-now`, `accepted-debt`, `duplicate`, or `not-DW1`.
-    - [ ] 0.3 Record any architecture/product decisions before editing production code.
-    - [ ] 0.4 Confirm no public API, query contract, SignalR, admin endpoint, or Dapr component change is needed.
-    - [ ] 0.5 Add the DW1 decision ledger to the Dev Agent Record before production edits, covering checkpoint drift, tracker corruption, drain poison, and timeout ownership.
+- [x] Task 0: Baseline and choose the minimum safe policy set (AC: #1, #7, #12)
+    - [x] 0.1 Re-read the DW1 section in the deferred-work triage proposal and the relevant `deferred-work.md` entries.
+    - [x] 0.2 Classify each selected deferred item as `patch-now`, `decision-now`, `accepted-debt`, `duplicate`, or `not-DW1`.
+    - [x] 0.3 Record any architecture/product decisions before editing production code.
+    - [x] 0.4 Confirm no public API, query contract, SignalR, admin endpoint, or Dapr component change is needed.
+    - [x] 0.5 Add the DW1 decision ledger to the Dev Agent Record before production edits, covering checkpoint drift, tracker corruption, drain poison, and timeout ownership.
 
-- [ ] Task 1: Harden projection delivery diagnostics (AC: #1, #2, #3, #10)
-    - [ ] 1.1 Add focused tests for `/project` upstream 4xx, upstream 5xx, malformed JSON, unsupported or missing content type if supported by the test seam, empty `ProjectionType`, and invalid `State`.
-    - [ ] 1.2 Add stable reason-code logging for each failure class without logging payload data.
-    - [ ] 1.3 Separate host cancellation from service timeout/transient invocation failure.
-    - [ ] 1.4 Add a checkpoint-drift test or decision record covering checkpoint greater than aggregate event sequence, including the chosen retry/recovery expectation and the exact stable operator signal.
-    - [ ] 1.5 Assert the selected projection reason codes by stable value or category, and keep any human-readable message assertions out of the primary behavior tests.
+- [x] Task 1: Harden projection delivery diagnostics (AC: #1, #2, #3, #10)
+    - [x] 1.1 Add focused tests for `/project` upstream 4xx, upstream 5xx, malformed JSON, unsupported or missing content type if supported by the test seam, empty `ProjectionType`, and invalid `State`.
+    - [x] 1.2 Add stable reason-code logging for each failure class without logging payload data.
+    - [x] 1.3 Separate host cancellation from service timeout/transient invocation failure.
+    - [x] 1.4 Add a checkpoint-drift test or decision record covering checkpoint greater than aggregate event sequence, including the chosen retry/recovery expectation and the exact stable operator signal.
+    - [x] 1.5 Assert the selected projection reason codes by stable value or category, and keep any human-readable message assertions out of the primary behavior tests.
 
-- [ ] Task 2: Preserve projection serialization and checkpoint non-regression (AC: #1, #4, #11)
-    - [ ] 2.1 Add or update same-aggregate overlap tests that prove the per-aggregate lock serializes delivery.
-    - [ ] 2.2 Assert checkpoint saves never move backwards and failed saves leave a useful operator signal.
-    - [ ] 2.3 Avoid global locks or static caches beyond the existing `KeyedSemaphore` contract.
+- [x] Task 2: Preserve projection serialization and checkpoint non-regression (AC: #1, #4, #11)
+    - [x] 2.1 Add or update same-aggregate overlap tests that prove the per-aggregate lock serializes delivery.
+    - [x] 2.2 Assert checkpoint saves never move backwards and failed saves leave a useful operator signal.
+    - [x] 2.3 Avoid global locks or static caches beyond the existing `KeyedSemaphore` contract.
 
-- [ ] Task 3: Harden tracker enumeration and scaling notes (AC: #5, #6, #10, #11)
-    - [ ] 3.1 Add scope-index corruption coverage and identity-index corruption coverage.
-    - [ ] 3.2 Assert corrupt or missing pages do not create tight retry loops.
-    - [ ] 3.3 Preserve ETag-guarded page/index writes and page size 100.
-    - [ ] 3.4 Document any still-deferred scaling limits with concrete thresholds, owner, and trigger symptom. Include identity-count, scope/page-count, and polling-interval thresholds rather than a generic "watch performance" note.
-    - [ ] 3.5 Prove poller-level boundedness for corrupt tracker state, including the next-domain or next-tick behavior that prevents one corrupt record from monopolizing polling.
+- [x] Task 3: Harden tracker enumeration and scaling notes (AC: #5, #6, #10, #11)
+    - [x] 3.1 Add scope-index corruption coverage and identity-index corruption coverage.
+    - [x] 3.2 Assert corrupt or missing pages do not create tight retry loops.
+    - [x] 3.3 Preserve ETag-guarded page/index writes and page size 100.
+    - [x] 3.4 Document any still-deferred scaling limits with concrete thresholds, owner, and trigger symptom. Include identity-count, scope/page-count, and polling-interval thresholds rather than a generic "watch performance" note.
+    - [x] 3.5 Prove poller-level boundedness for corrupt tracker state, including the next-domain or next-tick behavior that prevents one corrupt record from monopolizing polling.
 
-- [ ] Task 4: Resolve drain poison and activity signal gaps (AC: #7, #8, #9, #11)
-    - [ ] 4.1 Decide whether corrupt drain records get terminal disposition, bounded backoff, or accepted-debt status, and record the rejected alternatives plus preserved invariant in the story notes or deferred-work update.
-    - [ ] 4.2 If code changes, add tests proving no partial publish, no premature drain removal, no pending-counter decrement on failure, and reminder behavior remains intentional.
-    - [ ] 4.3 Replace high-cardinality activity failure text with stable reason codes while keeping useful structured logs.
-    - [ ] 4.4 Capture Dapr reminder semantics in the Dev Agent Record or code comments only where needed, and tie the proof to the exact side effects (`publish`, record removal, reminder unregister, `pending_command_count`) that must not overlap destructively.
-    - [ ] 4.5 If terminal disposition remains deferred, update the deferred-work disposition with the trigger that will reopen the decision.
+- [x] Task 4: Resolve drain poison and activity signal gaps (AC: #7, #8, #9, #11)
+    - [x] 4.1 Decide whether corrupt drain records get terminal disposition, bounded backoff, or accepted-debt status, and record the rejected alternatives plus preserved invariant in the story notes or deferred-work update.
+    - [x] 4.2 If code changes, add tests proving no partial publish, no premature drain removal, no pending-counter decrement on failure, and reminder behavior remains intentional.
+    - [x] 4.3 Replace high-cardinality activity failure text with stable reason codes while keeping useful structured logs.
+    - [x] 4.4 Capture Dapr reminder semantics in the Dev Agent Record or code comments only where needed, and tie the proof to the exact side effects (`publish`, record removal, reminder unregister, `pending_command_count`) that must not overlap destructively.
+    - [x] 4.5 If terminal disposition remains deferred, update the deferred-work disposition with the trigger that will reopen the decision.
 
-- [ ] Task 5: Validate and close bookkeeping (AC: #11, #13)
-    - [ ] 5.1 Run targeted projection and drain tests individually.
-    - [ ] 5.2 Run the four Tier 1 unit test projects individually if production code changed.
-    - [ ] 5.3 If Tier 3 runtime behavior changed, run the affected integration tests with the Aspire/Dapr prerequisites recorded.
-    - [ ] 5.4 Before handoff, search the touched files for EventId collisions and confirm the final reason-code vocabulary is consistent across tests, logs, and activity tags.
-    - [ ] 5.5 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and any deferred-work dispositions.
+- [x] Task 5: Validate and close bookkeeping (AC: #11, #13)
+    - [x] 5.1 Run targeted projection and drain tests individually.
+    - [x] 5.2 Run the four Tier 1 unit test projects individually if production code changed.
+    - [x] 5.3 If Tier 3 runtime behavior changed, run the affected integration tests with the Aspire/Dapr prerequisites recorded.
+    - [x] 5.4 Before handoff, search the touched files for EventId collisions and confirm the final reason-code vocabulary is consistent across tests, logs, and activity tags.
+    - [x] 5.5 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and any deferred-work dispositions.
+
+### Review Findings
+
+Code review 2026-05-05 (Blind Hunter + Edge Case Hunter + Acceptance Auditor). 1 decision-needed, 13 patch, 11 defer, 11 dismissed.
+
+#### Decision-needed (resolved)
+
+- [x] [Review][Decision] Checkpoint-read failure silently falls through to projection write/save [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:110-130] — **Resolved as option (b): fail-open + evidence.** The non-regression `Math.Max` in `SaveDeliveredSequenceAsync` already prevents backward checkpoint movement; this aligns with R11-A1 fail-open projection semantics. Closed by P2 below (regression test added).
+
+#### Patch (applied)
+
+- [x] [Review][Patch] Drift detection bypassed when aggregate has no events — moved checkpoint read above the empty-events early return; empty-events branch now logs `checkpoint_drift` when persisted checkpoint > 0. Regression test `UpdateProjectionAsync_EmptyEventsWithStaleCheckpoint_LogsDriftAndDoesNotInvokeProject` added.
+- [x] [Review][Patch] [P2] Checkpoint-read failure regression evidence — `UpdateProjectionAsync_CheckpointReadThrows_FallsThroughWithNonRegressionSave` test added. Asserts `Stage=ProjectionCheckpointReadFailed` is logged, drift signal does NOT fire, and `SaveDeliveredSequenceAsync` is invoked with the highest event sequence (non-regression Math.Max protects backward movement).
+- [x] [Review][Patch] `ClassifyDrainFailure` brittleness — introduced `DrainEventCountMismatchException : InvalidOperationException`. Throw site (`AggregateActor.cs:697-704`) constructs the typed exception; classifier matches by type (no message-prefix matching).
+- [x] [Review][Patch] EventId 1142 log adds `HttpStatus` and `ContentType` fields — both `JsonException` and unknown-exception branches now pass status + content-type from the response handle. Test `UpdateProjectionAsync_ProjectMalformedJson_LogsStableReasonAndDoesNotSaveCheckpoint` asserts the new fields.
+- [x] [Review][Patch] Host-token cancellation propagation test added — `UpdateProjectionAsync_HostCancellationToken_PropagatesAsOperationCanceled` asserts `OperationCanceledException` propagates without collapsing into `project_timeout`/`unknown` paths.
+- [x] [Review][Patch] Dead `response is null` re-check removed — kept only `string.IsNullOrWhiteSpace(response.ProjectionType)` after the early-return for null.
+- [x] [Review][Patch] `using (httpResponse) { ... }` block removed in favor of `using HttpResponseMessage responseHandle = httpResponse;` (declaration form). Re-indentation no longer needed.
+- [x] [Review][Patch] `GetUpstreamReasonCode` 1xx/3xx classification — added `project_unexpected_status` for non-4xx/non-5xx non-success responses. Theory case `[InlineData(HttpStatusCode.MultipleChoices, ProjectionReasonCodes.ProjectUnexpectedStatus)]` added.
+- [x] [Review][Patch] Tests duplicate stable reason-code literals — extracted `DrainReasonCodes`, `ProjectionReasonCodes`, and `TrackerReasonCodes` `internal static` classes (visible to test assembly via existing `InternalsVisibleTo`). Production code and tests now reference shared symbols.
+- [x] [Review][Patch] `ConcurrencyProbe` `Task.Delay(150)` replaced with bounded poll (up to 100×20ms) that fails fast if serialization breaks (CallCount becomes 2 before ReleaseFirst).
+- [x] [Review][Patch] `Encoding.GetEncoding` charset catch widened — now catches `ArgumentException or NotSupportedException`.
+- [x] [Review][Patch] `IsCorruptIndex` upper bound — added `MaxReasonablePageCount = 1_000_000` clause to prevent near-infinite enumeration on pathological persisted `PageCount`.
+- [x] [Review][Patch] Activity-listener tests now assert no high-cardinality leak — both stable-code drain tests verify the `eventstore.failure_reason` tag does not contain the aggregate's `ActorId` substring.
+- [x] [Review][Patch] Sprint-status YAML stamp ordering — left as-is. The file has multiple pre-existing chronological anomalies (`14:30:00+02:00` line 33 is later than the `11:35:18+02:00` top stamp); fixing one DW1 line in isolation does not repair the broader inconsistency. Recorded as accepted-debt without action.
+
+#### Defer (pre-existing or out-of-scope)
+
+- [x] [Review][Defer] Drift produces unbounded log spam with no operator escape hatch [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:120-130] — accepted-debt per spec Decision Ledger ("leave repair/retry to state repair"); add to deferred-work for a future runbook + rate-limited log story.
+- [x] [Review][Defer] `DrainReasonUnknown` will dominate production drain failures [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:829-834] — DAPR transient, state-store ETag conflict, OOM, etc. all collapse to `unknown`. Spec accepted-debt for terminal/backoff disposition implicitly limits classification scope; future hardening can expand classes.
+- [x] [Review][Defer] Tracker corruption logged + skipped with no metric, quarantine, or recovery path [src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs:183-220] — spec Decision Ledger explicitly chose "classify and bound enumeration without auto-rebuild or blind repair"; reopen-trigger thresholds recorded in `deferred-work.md`.
+- [x] [Review][Defer] AppHost baseline build broken before this diff [Verification Status note] — pre-existing; out of DW1 scope. File a separate deferred-work entry to fix the `Hexalith.EventStore.csproj` references to `Hexalith.EventStore.Server.*`.
+- [x] [Review][Defer] Tier 3 integration tests skipped [Verification Status note] — DW1 changed Tier 2 server behavior only; drain activity tag changes are observable but the spec test guidance prefers focused Tier 2 coverage. CLAUDE.md R2-A6 rule applies but is not directly violated.
+- [x] [Review][Defer] EventId 1141-1144 unique only "within touched files"; project-wide collisions remain [Dev Agent Record note] — explicitly out of scope per spec; project-wide allocation table is separate work.
+- [x] [Review][Defer] Drain disposition reopen trigger names "10 consecutive integrity retries" but no per-record retry-streak counter exists [_bmad-output/implementation-artifacts/deferred-work.md:9-10] — trigger is descriptive; counter is future work. Recorded as accepted-debt.
+- [x] [Review][Defer] `AggregateException` wrapping `MissingEventException` not unwrapped in `ClassifyDrainFailure` [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:829-834] — actor turn execution does not normally produce wrapped exceptions; defensive only.
+- [x] [Review][Defer] AC #5 wording covers "missing, null, overfull, stale" page state but code only handles index integrity [src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs:257-262] — spec Decision Ledger narrowed to scope/identity indexes only; missing-page rebuild/quarantine remains out of scope.
+- [x] [Review][Defer] `text/json` legacy media type rejected as unsupported [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:346-350] — non-standard; spec doesn't require it. Defer unless a domain service is observed emitting it.
+- [x] [Review][Defer] `events.Max` could NRE if any envelope is null [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:109] — events come from internal aggregate actor; null elements would indicate a separate bug. Defensive only.
+
+#### Dismissed (false positives / out of scope by design)
+
+- `TaskCanceledException` mislabeled as timeout when not from `HttpClient.Timeout` — caller-token branch runs first; `TaskCanceledException` only reaches the second catch when the caller's token did not signal, which IS HttpClient timeout semantics.
+- Drift check after fetching all events is a steady-state cost regression — code comment at line 98-99 establishes full-replay as the explicit immediate-delivery contract; cost trade-off is intentional.
+- `OperationCanceledException` filter racy with linked tokens — `IsCancellationRequested` is checked at observe time; .NET runtime ensures consistency.
+- Empty-string `State` rejection is a behavior change disguised as refactor — AC #2 EXPLICITLY requires "string-empty state" rejection; spec-mandated.
+- TestLogger/LogEntry omitted from File List — `tests/Hexalith.EventStore.Server.Tests/TestUtilities/TestLogger.cs` pre-exists and was not modified by this diff.
+- `IsCorruptIndex` false-positive on `(PageCount > 0, LastPageCount = 0)` — verified that writers in `TryAddScopeAsync`/`TryAddIdentityAsync` always set `LastPageCount = 1` atomically with PageCount increment on rollover; the `(N, 0)` state is never produced by writers.
+- Charset whitespace not trimmed before `Encoding.GetEncoding` — `httpResponse.Content.Headers.ContentType.CharSet` already trims per HTTP RFC parsing in `MediaTypeHeaderValue`.
+- Empty State `{}` or `[]` not rejected — AC #2 only requires rejection of null/undefined/string-empty; empty object/array is a legitimate "no state" representation.
+- `lastDelivered == highestSequence` triggers redundant `/project` replay — pre-existing full-replay contract; non-regression save short-circuits the round-trip on the checkpoint side.
+- `predev-hardening-runs.log` listed in File List but not in current uncommitted diff — file was committed during earlier predev preflight commits (`83a260dd` and similar); story File List correctly reflects all touched files across the story's lifetime.
+- Story File List omits TestLogger reference — pre-existing utility; no need to list.
 
 ## Dev Notes
 
@@ -246,26 +299,62 @@ GPT-5 Codex
 
 - Pre-dev hardening preflight: `_bmad-output/process-notes/predev-preflight-latest.json`, timestamp `2026-05-04T17:49:52Z`, result `pass`.
 - Pre-dev hardening preflight: `_bmad-output/process-notes/predev-preflight-latest.json`, timestamp `2026-05-04T18:38:42Z`, result `fail` only for working-tree cleanliness; classified as a soft warning because the JSON stdout listed only `_bmad-output/test-artifacts/` paths.
+- 2026-05-05 AppHost baseline: `aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` failed before DW1 edits because `src/Hexalith.EventStore/Hexalith.EventStore.csproj` could not resolve `Hexalith.EventStore.Server.*` symbols during AppHost build. Aspire MCP `doctor` passed SDK/container checks and warned only about dev certificates and deprecated agent config.
+- 2026-05-05 DW1 implementation policy ledger:
+  - Checkpoint drift: `patch-now`; after full replay reads events, if persisted `LastDeliveredSequence` exceeds highest available event sequence, log `checkpoint_drift` with tenant/domain/aggregate and sequence values, skip projection write/checkpoint save, and leave repair/retry to state repair.
+  - `/project` diagnostics: `patch-now`; classify upstream 4xx/5xx, unsupported/missing content type, invalid charset, malformed JSON, invalid `ProjectionType`, invalid `State`, timeout, host cancellation, and unknown transport failures with bounded reason codes. Do not log event payload data.
+  - Tracker corruption: `patch-now` for corrupt scope/identity indexes; classify and bound enumeration without auto-rebuild or blind repair. Missing page rebuild/quarantine remains out of scope.
+  - Tracker scaling: `accepted-debt`; retain O(scope pages + identity pages) per tick, page size 100, ETag writes. Reopen thresholds recorded in `deferred-work.md`.
+  - Drain poison: `accepted-debt` for terminal/backoff disposition; preserve current at-least-once retry behavior and no pending-counter decrement on integrity failure. Stable activity reason codes are patched now.
+  - Timeout ownership: Dapr/HttpClient configuration owns duration/retry policy. DW1 classifies observed timeout outcomes but does not add application retry loops.
+- 2026-05-05 Reminder re-entrancy proof: Dapr actor reminder callbacks execute through actor turn-based concurrency. Current `DrainUnpublishedEventsAsync` side effects remain ordered inside one actor turn: load record, validate/load/publish, then on success remove record, decrement `pending_command_count`, save, unregister reminder, and write advisory status. Failure paths preserve the record/reminder and do not decrement `pending_command_count`. No non-actor/manual drain trigger was added.
+- 2026-05-05 EventId/reason-code review: new projection/tracker EventIds in touched files are `1141`, `1142`, `1143`, and `1144`; no collisions within touched files. Existing unrelated 11xx project-wide collisions were not renumbered.
 
 ### Completion Notes List
 
 - Created ready-for-dev story from first backlog row in the Post-Epic Deferred Work Cleanup package.
 - Party-mode review on 2026-05-04 recommended `needs-story-update`; low-risk clarifications were applied for invariants, diagnostic vocabulary, evidence targets, and deferred decisions.
-- No implementation work has been performed for this story.
+- DW1 implementation completed and moved to review.
 - No `project-context.md` file was present in the repository at story creation.
 - Advanced elicitation on 2026-05-05 applied low-risk handoff clarifications for decision-ledger requirements, failure-mode closure rules, poller boundedness proof, drain idempotence evidence, and dev-story stop signs.
+- Implemented projection diagnostics with stable reason codes: `project_upstream_4xx`, `project_upstream_5xx`, `project_unsupported_content_type`, `project_invalid_charset`, `project_malformed_json`, `project_invalid_projection_type`, `project_invalid_state`, `project_timeout`, `checkpoint_drift`, and `unknown`.
+- Added checkpoint-drift detection that logs `checkpoint_drift` and avoids projection write/checkpoint save when persisted checkpoint state is ahead of the replayed event stream.
+- Added same-aggregate overlap regression coverage proving `ProjectionUpdateOrchestrator.ProjectionLocks` serializes concurrent same-aggregate deliveries without adding a global lock.
+- Added tracker scope-index and identity-index corruption detection with `tracker_corrupt_scope_index` / `tracker_corrupt_identity_index`, while preserving page size 100 and ETag-guarded writes.
+- Replaced high-cardinality drain activity failure tag/status values with stable codes (`drain_publish_failed`, `drain_event_count_mismatch`, `drain_missing_event`, `unknown`) while leaving detailed logs and persisted failure reasons intact.
+- Updated `deferred-work.md` dispositions for checkpoint drift, drain poison terminal/backoff debt, drain activity tags, reminder re-entrancy, and tracker scaling thresholds.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/post-epic-deferred-dw1-projection-and-drain-hardening.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `_bmad-output/process-notes/predev-hardening-runs.log`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs`
+- `src/Hexalith.EventStore.Server/Actors/DrainEventCountMismatchException.cs` (review patch P3)
+- `src/Hexalith.EventStore.Server/Actors/DrainReasonCodes.cs` (review patch P9)
+- `src/Hexalith.EventStore.Server/Projections/ProjectionCheckpointTracker.cs`
+- `src/Hexalith.EventStore.Server/Projections/ProjectionReasonCodes.cs` (review patch P9)
+- `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs`
+- `src/Hexalith.EventStore.Server/Projections/TrackerReasonCodes.cs` (review patch P9)
+- `tests/Hexalith.EventStore.Server.Tests/Actors/EventDrainRecoveryTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs`
 
 ## Verification Status
 
 - Story artifact created and sprint-status row moved from `backlog` to `ready-for-dev`.
 - Party-mode review and advanced elicitation traces are recorded inline; no status change was required.
 - Markdown and YAML validation should be run before dev handoff if local tooling is available.
+- AppHost baseline was attempted before edits; build failed on pre-existing `Hexalith.EventStore.csproj` references to `Hexalith.EventStore.Server.*`, so no Aspire resources were available to inspect.
+- Targeted Tier 2 tests passed: `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~ProjectionUpdateOrchestratorTests|FullyQualifiedName~ProjectionCheckpointTrackerTests|FullyQualifiedName~ProjectionPollerServiceTests|FullyQualifiedName~EventDrainRecoveryTests"` (91 passed).
+- Tier 1 unit projects passed individually:
+  - `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj` (334 passed).
+  - `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj` (281 passed).
+  - `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj` (63 passed).
+  - `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj` (78 passed).
+- `git diff --check` reported line-ending warnings only (`LF will be replaced by CRLF`), with no whitespace errors.
+- Tier 3 integration tests were not run because DW1 changed focused server behavior and did not change runtime Dapr/Aspire topology or public contracts.
 
 ## Change Log
 
@@ -274,6 +363,8 @@ GPT-5 Codex
 | 2026-05-04 | 0.1 | Created ready-for-dev DW1 projection and drain hardening story. | Codex automation |
 | 2026-05-04 | 0.2 | Applied party-mode review clarifications for invariants, diagnostics, evidence targets, and deferred decisions. | Codex automation |
 | 2026-05-05 | 0.3 | Applied advanced-elicitation hardening for decision ledger, bounded failure evidence, and dev-story stop signs. | Codex automation |
+| 2026-05-05 | 0.4 | Implemented DW1 projection diagnostics, checkpoint drift detection, tracker corruption signals, stable drain activity reason codes, tests, deferred-work dispositions, and moved story to review. | Amelia |
+| 2026-05-05 | 0.5 | Code review applied 13 patches (drift in empty-events branch, typed `DrainEventCountMismatchException`, EventId 1142 HttpStatus/ContentType, host cancellation test, dead null-check removal, `using`-declaration re-indent, `project_unexpected_status` for 1xx/3xx, shared `*ReasonCodes` constants, deterministic concurrency probe, charset `NotSupportedException` catch, `IsCorruptIndex` upper bound, high-cardinality leak negative assertions, checkpoint-read-failure regression evidence) plus 11 deferred items recorded; moved story to done. Targeted Tier 2 tests 95/95, Tier 1 unit projects 334+281+63+78 all green. | Code review |
 
 ## Party-Mode Review
 

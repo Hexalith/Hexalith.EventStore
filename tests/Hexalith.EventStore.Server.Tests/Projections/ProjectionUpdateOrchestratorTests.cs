@@ -1,6 +1,7 @@
 
 using System.Text;
 using System.Text.Json;
+using System.Net;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -14,6 +15,7 @@ using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Queries;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -58,7 +60,8 @@ public class ProjectionUpdateOrchestratorTests {
     private static (ProjectionUpdateOrchestrator Sut, IActorProxyFactory ActorProxyFactory, DaprClient DaprClient, IDomainServiceResolver Resolver, IProjectionCheckpointTracker CheckpointTracker) CreateSut(
         IProjectionCheckpointTracker? checkpointTracker = null,
         DaprClient? daprClient = null,
-        IHttpClientFactory? httpClientFactory = null) {
+        IHttpClientFactory? httpClientFactory = null,
+        ILogger<ProjectionUpdateOrchestrator>? logger = null) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         daprClient ??= Substitute.For<DaprClient>();
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
@@ -68,8 +71,7 @@ public class ProjectionUpdateOrchestratorTests {
                 .Returns(0);
         }
         IOptions<ProjectionOptions> projectionOptions = Options.Create(new ProjectionOptions());
-        ILogger<ProjectionUpdateOrchestrator> logger = NullLogger<ProjectionUpdateOrchestrator>.Instance;
-        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, httpClientFactory ?? Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, logger);
+        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, httpClientFactory ?? Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, logger ?? NullLogger<ProjectionUpdateOrchestrator>.Instance);
         return (sut, actorProxyFactory, daprClient, resolver, checkpointTracker);
     }
 
@@ -213,10 +215,10 @@ public class ProjectionUpdateOrchestratorTests {
         // Act
         await sut.UpdateProjectionAsync(TestIdentity);
 
-        // Assert
+        // Assert -- full-replay contract preserved (no GetEventsAsync(7) shortcut). Checkpoint
+        // is read for drift detection (DW1), but immediate delivery still replays from 0.
         _ = await aggregateActor.Received(1).GetEventsAsync(0);
         _ = await aggregateActor.DidNotReceive().GetEventsAsync(7);
-        await checkpointTracker.DidNotReceiveWithAnyArgs().ReadLastDeliveredSequenceAsync(default!, default);
     }
 
     [Fact]
@@ -231,18 +233,21 @@ public class ProjectionUpdateOrchestratorTests {
             .Returns(registration);
 
         IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
-        _ = aggregateActor.GetEventsAsync(0).Returns(Array.Empty<EventEnvelope>());
+        // Use a non-empty stream so this test stays focused on full-replay contract rather
+        // than the drift-detection branch (covered by UpdateProjectionAsync_EmptyEventsWithStaleCheckpoint).
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(8)]);
         _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(aggregateActor);
 
         // Act
         await sut.UpdateProjectionAsync(TestIdentity);
 
-        // Assert - checkpoint state is tracked on save, but immediate delivery stays
-        // full-replay until the projection handler state contract is resolved.
+        // Assert -- immediate delivery stays full-replay (no GetEventsAsync(7)) until the
+        // projection handler state contract is resolved. The checkpoint read is now used
+        // for drift detection (DW1) but does not change the from-sequence value passed to
+        // GetEventsAsync.
         _ = await aggregateActor.Received(1).GetEventsAsync(0);
         _ = await aggregateActor.DidNotReceive().GetEventsAsync(7);
-        await checkpointTracker.DidNotReceiveWithAnyArgs().ReadLastDeliveredSequenceAsync(default!, default);
     }
 
     [Fact]
@@ -306,11 +311,11 @@ public class ProjectionUpdateOrchestratorTests {
         _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(aggregateActor);
 
-        // Act & Assert - checkpoint reads are not part of immediate delivery until
-        // the incremental projection contract is resolved.
+        // Act & Assert -- a throwing checkpoint read is logged and falls through to the
+        // empty-events branch without raising. The orchestrator must still call
+        // GetEventsAsync(0) and not propagate the read exception.
         await Should.NotThrowAsync(() => sut.UpdateProjectionAsync(TestIdentity));
         _ = await aggregateActor.Received(1).GetEventsAsync(0);
-        await checkpointTracker.DidNotReceiveWithAnyArgs().ReadLastDeliveredSequenceAsync(default!, default);
     }
 
     // --- Test 6: AC 3 - Domain service failure does not throw ---
@@ -458,6 +463,377 @@ public class ProjectionUpdateOrchestratorTests {
         await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
+    [Theory]
+    [InlineData(HttpStatusCode.BadRequest, ProjectionReasonCodes.ProjectUpstream4xx)]
+    [InlineData(HttpStatusCode.InternalServerError, ProjectionReasonCodes.ProjectUpstream5xx)]
+    [InlineData(HttpStatusCode.MultipleChoices, ProjectionReasonCodes.ProjectUnexpectedStatus)]
+    public async Task UpdateProjectionAsync_ProjectUpstreamFailure_LogsStableReasonAndDoesNotSaveCheckpoint(
+        HttpStatusCode statusCode,
+        string expectedReasonCode) {
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(0);
+        var entries = new List<LogEntry>();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(new FixedResponseHandler(
+            statusCode,
+            new StringContent("""{"error":"not logged"}""", Encoding.UTF8, "application/json")));
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory,
+            new TestLogger<ProjectionUpdateOrchestrator>(entries));
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(2)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        entries.ShouldContain(e =>
+            e.EventId.Id == 1141
+            && e.Message.Contains($"ReasonCode={expectedReasonCode}", StringComparison.Ordinal)
+            && e.Message.Contains($"HttpStatus={(int)statusCode}", StringComparison.Ordinal)
+            && e.Message.Contains("AppId=counter-service", StringComparison.Ordinal));
+        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+    }
+
+    [Theory]
+    [InlineData("text/plain", ProjectionReasonCodes.ProjectUnsupportedContentType)]
+    [InlineData(null, ProjectionReasonCodes.ProjectUnsupportedContentType)]
+    public async Task UpdateProjectionAsync_ProjectUnsupportedContentType_LogsStableReasonAndDoesNotSaveCheckpoint(
+        string? contentType,
+        string expectedReasonCode) {
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(0);
+        var entries = new List<LogEntry>();
+        HttpContent content = contentType is null
+            ? new ByteArrayContent(Encoding.UTF8.GetBytes("""{"projectionType":"counter-summary","state":{"value":1}}"""))
+            : new StringContent("""{"projectionType":"counter-summary","state":{"value":1}}""", Encoding.UTF8, contentType);
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(new FixedResponseHandler(HttpStatusCode.OK, content));
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory,
+            new TestLogger<ProjectionUpdateOrchestrator>(entries));
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(2)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        entries.ShouldContain(e => e.EventId.Id == 1141 && e.Message.Contains($"ReasonCode={expectedReasonCode}", StringComparison.Ordinal));
+        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+    }
+
+    [Fact]
+    public async Task UpdateProjectionAsync_ProjectMalformedJson_LogsStableReasonAndDoesNotSaveCheckpoint() {
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(0);
+        var entries = new List<LogEntry>();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory("{not-json");
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory,
+            new TestLogger<ProjectionUpdateOrchestrator>(entries));
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(2)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        entries.ShouldContain(e =>
+            e.EventId.Id == 1142
+            && e.Message.Contains($"ReasonCode={ProjectionReasonCodes.ProjectMalformedJson}", StringComparison.Ordinal)
+            && e.Message.Contains("ExceptionType=JsonException", StringComparison.Ordinal)
+            && e.Message.Contains("HttpStatus=200", StringComparison.Ordinal)
+            && e.Message.Contains("ContentType=application/json", StringComparison.Ordinal));
+        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+    }
+
+    [Fact]
+    public async Task UpdateProjectionAsync_ProjectInvalidCharset_LogsStableReasonAndDoesNotSaveCheckpoint() {
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(0);
+        var entries = new List<LogEntry>();
+        var content = new ByteArrayContent(Encoding.UTF8.GetBytes("""{"projectionType":"counter-summary","state":{"value":1}}"""));
+        _ = content.Headers.TryAddWithoutValidation("Content-Type", "application/json; charset=definitely-not-a-charset");
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(new FixedResponseHandler(HttpStatusCode.OK, content));
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory,
+            new TestLogger<ProjectionUpdateOrchestrator>(entries));
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(2)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        entries.ShouldContain(e => e.EventId.Id == 1141 && e.Message.Contains($"ReasonCode={ProjectionReasonCodes.ProjectInvalidCharset}", StringComparison.Ordinal));
+        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+    }
+
+    [Fact]
+    public async Task UpdateProjectionAsync_ProjectStringEmptyState_LogsStableReasonAndDoesNotSaveCheckpoint() {
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(0);
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        var entries = new List<LogEntry>();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory("""{"projectionType":"counter-summary","state":""}""");
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory,
+            new TestLogger<ProjectionUpdateOrchestrator>(entries));
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(2)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(writeActor);
+
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        entries.ShouldContain(e => e.EventId.Id == 1116 && e.Message.Contains($"ReasonCode={ProjectionReasonCodes.ProjectInvalidState}", StringComparison.Ordinal));
+        await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
+        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+    }
+
+    [Fact]
+    public async Task UpdateProjectionAsync_ProjectTimeout_LogsStableReasonAndDoesNotPropagateAsShutdown() {
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(0);
+        var entries = new List<LogEntry>();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(new ThrowingResponseHandler(new TaskCanceledException("service timeout")));
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory,
+            new TestLogger<ProjectionUpdateOrchestrator>(entries));
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(2)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+
+        await Should.NotThrowAsync(() => sut.UpdateProjectionAsync(TestIdentity));
+
+        entries.ShouldContain(e => e.EventId.Id == 1142 && e.Message.Contains($"ReasonCode={ProjectionReasonCodes.ProjectTimeout}", StringComparison.Ordinal));
+        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+    }
+
+    [Fact]
+    public async Task UpdateProjectionAsync_HostCancellationToken_PropagatesAsOperationCanceled() {
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(0);
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(new ThrowingResponseHandler(new TaskCanceledException("caller cancelled")));
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory);
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(2)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Caller-token cancellation must propagate as OperationCanceledException —
+        // it must NOT collapse into the project_timeout/unknown reason-code path.
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => sut.UpdateProjectionAsync(TestIdentity, cts.Token));
+        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+    }
+
+    [Fact]
+    public async Task UpdateProjectionAsync_CheckpointReadThrows_FallsThroughWithNonRegressionSave() {
+        // DW1 review patch P2: explicit regression evidence for the fail-open path. When
+        // ReadLastDeliveredSequenceAsync throws, the orchestrator logs CheckpointReadFailed
+        // (EventId 1118), continues with lastDeliveredSequence=0, drift comparison stays
+        // false, and SaveDeliveredSequenceAsync is invoked with the highest event sequence.
+        // The non-regression Math.Max in the tracker save protects against backward movement.
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns<long>(_ => throw new InvalidOperationException("checkpoint read failed"));
+        _ = checkpointTracker.SaveDeliveredSequenceAsync(TestIdentity, Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        var entries = new List<LogEntry>();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory("""{"projectionType":"counter-summary","state":{"value":1}}""");
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory,
+            new TestLogger<ProjectionUpdateOrchestrator>(entries));
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(5)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(Substitute.For<IProjectionWriteActor>());
+
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        entries.ShouldContain(e => e.EventId.Id == 1118 && e.Message.Contains("Stage=ProjectionCheckpointReadFailed", StringComparison.Ordinal));
+        // Drift signal must NOT fire on a read failure — the path is fail-open, not drift.
+        entries.ShouldNotContain(e => e.EventId.Id == 1143);
+        await checkpointTracker.Received(1).SaveDeliveredSequenceAsync(TestIdentity, 5, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateProjectionAsync_EmptyEventsWithStaleCheckpoint_LogsDriftAndDoesNotInvokeProject() {
+        // DW1 review patch P1: drift detection must cover the canonical "stale checkpoint +
+        // empty stream" case (state-store backup/restore mismatch) — without this branch the
+        // orchestrator would log NoEventsFound and silently skip projection delivery forever.
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(7);
+        var entries = new List<LogEntry>();
+        var handler = new CountingProjectionResponseHandler();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(handler);
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory,
+            new TestLogger<ProjectionUpdateOrchestrator>(entries));
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        handler.CallCount.ShouldBe(0);
+        entries.ShouldContain(e =>
+            e.EventId.Id == 1143
+            && e.Message.Contains($"ReasonCode={ProjectionReasonCodes.CheckpointDrift}", StringComparison.Ordinal)
+            && e.Message.Contains("LastDeliveredSequence=7", StringComparison.Ordinal)
+            && e.Message.Contains("HighestEventSequence=0", StringComparison.Ordinal));
+        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+    }
+
+    [Fact]
+    public async Task UpdateProjectionAsync_CheckpointGreaterThanEventSequence_LogsDriftAndDoesNotInvokeProject() {
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(7);
+        var entries = new List<LogEntry>();
+        var handler = new CountingProjectionResponseHandler();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(handler);
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory,
+            new TestLogger<ProjectionUpdateOrchestrator>(entries));
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(1), CreateTestEnvelope(2)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        handler.CallCount.ShouldBe(0);
+        entries.ShouldContain(e =>
+            e.EventId.Id == 1143
+            && e.Message.Contains($"ReasonCode={ProjectionReasonCodes.CheckpointDrift}", StringComparison.Ordinal)
+            && e.Message.Contains("LastDeliveredSequence=7", StringComparison.Ordinal)
+            && e.Message.Contains("HighestEventSequence=2", StringComparison.Ordinal));
+        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+    }
+
+    [Fact]
+    public async Task UpdateProjectionAsync_OverlappingSameAggregateDelivery_SerializesProjectInvocation() {
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(0);
+        _ = checkpointTracker.SaveDeliveredSequenceAsync(TestIdentity, Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        var handler = new ConcurrencyProbeProjectionResponseHandler();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory(handler);
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory);
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(1), CreateTestEnvelope(2)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(Substitute.For<IProjectionWriteActor>());
+
+        Task first = sut.UpdateProjectionAsync(TestIdentity);
+        await WaitForSignalAsync(handler.FirstEntered);
+        Task second = sut.UpdateProjectionAsync(TestIdentity);
+
+        // DW1 review patch P10: replace Task.Delay(150) with bounded polling. The polling
+        // wait fails fast if serialization breaks (CallCount becoming 2 before ReleaseFirst
+        // would mean the second task entered the handler concurrently) and tolerates slow
+        // CI without changing the assertion semantics.
+        for (int i = 0; i < 100 && handler.CallCount == 1; i++) {
+            await Task.Delay(20);
+        }
+
+        handler.CallCount.ShouldBe(1);
+        handler.ReleaseFirst();
+
+        await Task.WhenAll(first, second);
+
+        handler.CallCount.ShouldBe(2);
+        handler.MaxConcurrent.ShouldBe(1);
+    }
+
     [Fact]
     public async Task UpdateProjectionAsync_ProjectionActorWriteFails_DoesNotSaveCheckpoint() {
         // Arrange
@@ -513,6 +889,40 @@ public class ProjectionUpdateOrchestratorTests {
         await Should.NotThrowAsync(() => sut.UpdateProjectionAsync(TestIdentity));
         await writeActor.Received(1).UpdateProjectionAsync(Arg.Any<ProjectionState>());
         await checkpointTracker.Received(1).SaveDeliveredSequenceAsync(TestIdentity, 3, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateProjectionAsync_CheckpointSaveExhausted_LogsOperatorSignal() {
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(0);
+        _ = checkpointTracker.SaveDeliveredSequenceAsync(TestIdentity, Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory("""{"projectionType":"counter-summary","state":{"value":1}}""");
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        var entries = new List<LogEntry>();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory,
+            new TestLogger<ProjectionUpdateOrchestrator>(entries));
+        var registration = new DomainServiceRegistration("counter-service", "project", "test-tenant", "test-domain", "v1");
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(registration);
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(3)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(writeActor);
+
+        await sut.UpdateProjectionAsync(TestIdentity);
+
+        entries.ShouldContain(e =>
+            e.EventId.Id == 1120
+            && e.Message.Contains("Stage=ProjectionCheckpointSaveExhausted", StringComparison.Ordinal)
+            && e.Message.Contains("AttemptedSequence=3", StringComparison.Ordinal));
     }
 
     // --- Test 9: AC 1 - EventPublisher triggers orchestrator ---
@@ -733,7 +1143,10 @@ public class ProjectionUpdateOrchestratorTests {
     }
 
     private sealed class CountingProjectionResponseHandler : HttpMessageHandler {
+        public int CallCount { get; private set; }
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
+            CallCount++;
             string json = request.Content is null
                 ? "{}"
                 : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
@@ -748,6 +1161,51 @@ public class ProjectionUpdateOrchestratorTests {
             return new HttpResponseMessage(System.Net.HttpStatusCode.OK) {
                 Content = new StringContent(responseJson, Encoding.UTF8, "application/json"),
             };
+        }
+    }
+
+    private sealed class FixedResponseHandler(HttpStatusCode statusCode, HttpContent content) : HttpMessageHandler {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(statusCode) {
+                Content = content,
+            });
+    }
+
+    private sealed class ThrowingResponseHandler(Exception exception) : HttpMessageHandler {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromException<HttpResponseMessage>(exception);
+    }
+
+    private sealed class ConcurrencyProbeProjectionResponseHandler : HttpMessageHandler {
+        private readonly TaskCompletionSource _firstEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _releaseFirst = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _active;
+
+        public Task FirstEntered => _firstEntered.Task;
+
+        public int CallCount { get; private set; }
+
+        public int MaxConcurrent { get; private set; }
+
+        public void ReleaseFirst() => _releaseFirst.SetResult();
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
+            int active = Interlocked.Increment(ref _active);
+            MaxConcurrent = Math.Max(MaxConcurrent, active);
+            try {
+                CallCount++;
+                if (CallCount == 1) {
+                    _firstEntered.SetResult();
+                    await _releaseFirst.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.OK) {
+                    Content = new StringContent("""{"projectionType":"counter-summary","state":{"value":1}}""", Encoding.UTF8, "application/json"),
+                };
+            }
+            finally {
+                _ = Interlocked.Decrement(ref _active);
+            }
         }
     }
 }

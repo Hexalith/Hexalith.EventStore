@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Net;
+using System.Text;
 using System.Text.Json;
 
 using Dapr.Actors;
@@ -89,8 +91,47 @@ public partial class ProjectionUpdateOrchestrator(
                 .GetEventsAsync(0)
                 .ConfigureAwait(false);
 
+            long lastDeliveredSequence = 0;
+            try {
+                lastDeliveredSequence = await checkpointTracker
+                    .ReadLastDeliveredSequenceAsync(identity, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) {
+                Log.CheckpointReadFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
+            }
+
             if (events.Length == 0) {
+                // Drift detection covers the canonical "stale checkpoint + empty stream" case
+                // (e.g., state-store backup/restore mismatch) that the original deferred-work
+                // entry called out: without this branch the orchestrator would log NoEventsFound
+                // and silently return, hiding the drift indefinitely.
+                if (lastDeliveredSequence > 0) {
+                    Log.CheckpointDriftDetected(
+                        logger,
+                        identity.TenantId,
+                        identity.Domain,
+                        identity.AggregateId,
+                        ProjectionReasonCodes.CheckpointDrift,
+                        lastDeliveredSequence,
+                        0);
+                    return;
+                }
+
                 Log.NoEventsFound(logger, identity.TenantId, identity.Domain, identity.AggregateId);
+                return;
+            }
+
+            long highestAvailableSequence = events.Max(e => e.SequenceNumber);
+            if (lastDeliveredSequence > highestAvailableSequence) {
+                Log.CheckpointDriftDetected(
+                    logger,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    ProjectionReasonCodes.CheckpointDrift,
+                    lastDeliveredSequence,
+                    highestAvailableSequence);
                 return;
             }
 
@@ -114,17 +155,49 @@ public partial class ProjectionUpdateOrchestrator(
                 "project",
                 request);
             HttpClient httpClient = httpClientFactory.CreateClient();
-            using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
-            httpResponse.EnsureSuccessStatusCode();
-            ProjectionResponse? response = await httpResponse.Content.ReadFromJsonAsync<ProjectionResponse>(cancellationToken).ConfigureAwait(false);
-
-            if (response is null || string.IsNullOrWhiteSpace(response.ProjectionType)) {
-                Log.InvalidProjectionResponse(logger, identity.TenantId, identity.Domain, identity.AggregateId, "ProjectionType is null or empty.");
+            HttpResponseMessage? httpResponse = await SendProjectRequestAsync(
+                    httpClient,
+                    httpRequest,
+                    registration.AppId,
+                    identity,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (httpResponse is null) {
                 return;
             }
 
-            if (response.State.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined) {
-                Log.InvalidProjectionResponse(logger, identity.TenantId, identity.Domain, identity.AggregateId, "State is null or undefined.");
+            using HttpResponseMessage responseHandle = httpResponse;
+            if (!responseHandle.IsSuccessStatusCode) {
+                Log.ProjectInvocationRejected(
+                    logger,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    registration.AppId,
+                    GetUpstreamReasonCode(responseHandle.StatusCode),
+                    ((int)responseHandle.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    GetContentTypeForLog(responseHandle.Content));
+                return;
+            }
+
+            ProjectionResponse? response = await ReadProjectResponseAsync(
+                    responseHandle,
+                    registration.AppId,
+                    identity,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (response is null) {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(response.ProjectionType)) {
+                Log.InvalidProjectionResponse(logger, identity.TenantId, identity.Domain, identity.AggregateId, ProjectionReasonCodes.ProjectInvalidProjectionType);
+                return;
+            }
+
+            if (response.State.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+                || (response.State.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(response.State.GetString()))) {
+                Log.InvalidProjectionResponse(logger, identity.TenantId, identity.Domain, identity.AggregateId, ProjectionReasonCodes.ProjectInvalidState);
                 return;
             }
 
@@ -145,7 +218,7 @@ public partial class ProjectionUpdateOrchestrator(
                 .UpdateProjectionAsync(ProjectionState.FromJsonElement(response.ProjectionType, identity.TenantId, response.State))
                 .ConfigureAwait(false);
 
-            long highestDeliveredSequence = events.Max(e => e.SequenceNumber);
+            long highestDeliveredSequence = highestAvailableSequence;
             try {
                 bool checkpointSaved = await checkpointTracker
                     .SaveDeliveredSequenceAsync(identity, highestDeliveredSequence, cancellationToken)
@@ -164,6 +237,142 @@ public partial class ProjectionUpdateOrchestrator(
             Log.ProjectionUpdateFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId);
         }
     }
+
+    private async Task<HttpResponseMessage?> SendProjectRequestAsync(
+        HttpClient httpClient,
+        HttpRequestMessage httpRequest,
+        string appId,
+        AggregateIdentity identity,
+        CancellationToken cancellationToken) {
+        try {
+            return await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            throw;
+        }
+        catch (TaskCanceledException ex) {
+            Log.ProjectInvocationException(
+                logger,
+                ex,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                appId,
+                ProjectionReasonCodes.ProjectTimeout,
+                ex.GetType().Name,
+                "0",
+                "none");
+            return null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            Log.ProjectInvocationException(
+                logger,
+                ex,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                appId,
+                ProjectionReasonCodes.Unknown,
+                ex.GetType().Name,
+                "0",
+                "none");
+            return null;
+        }
+    }
+
+    private async Task<ProjectionResponse?> ReadProjectResponseAsync(
+        HttpResponseMessage httpResponse,
+        string appId,
+        AggregateIdentity identity,
+        CancellationToken cancellationToken) {
+        string contentType = GetContentTypeForLog(httpResponse.Content);
+        string httpStatus = ((int)httpResponse.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (!IsJsonContent(httpResponse.Content)) {
+            Log.ProjectInvocationRejected(
+                logger,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                appId,
+                ProjectionReasonCodes.ProjectUnsupportedContentType,
+                httpStatus,
+                contentType);
+            return null;
+        }
+
+        string? charset = httpResponse.Content.Headers.ContentType?.CharSet;
+        if (!string.IsNullOrWhiteSpace(charset)) {
+            try {
+                _ = Encoding.GetEncoding(charset.Trim('"'));
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException) {
+                _ = ex;
+                Log.ProjectInvocationRejected(
+                    logger,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    appId,
+                    ProjectionReasonCodes.ProjectInvalidCharset,
+                    httpStatus,
+                    contentType);
+                return null;
+            }
+        }
+
+        try {
+            return await httpResponse.Content
+                .ReadFromJsonAsync<ProjectionResponse>(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            throw;
+        }
+        catch (JsonException ex) {
+            Log.ProjectInvocationException(
+                logger,
+                ex,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                appId,
+                ProjectionReasonCodes.ProjectMalformedJson,
+                ex.GetType().Name,
+                httpStatus,
+                contentType);
+            return null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            Log.ProjectInvocationException(
+                logger,
+                ex,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                appId,
+                ProjectionReasonCodes.Unknown,
+                ex.GetType().Name,
+                httpStatus,
+                contentType);
+            return null;
+        }
+    }
+
+    private static bool IsJsonContent(HttpContent content) {
+        string? mediaType = content.Headers.ContentType?.MediaType;
+        return string.Equals(mediaType, "application/json", StringComparison.OrdinalIgnoreCase)
+            || (mediaType?.EndsWith("+json", StringComparison.OrdinalIgnoreCase) ?? false);
+    }
+
+    private static string GetContentTypeForLog(HttpContent? content) =>
+        content?.Headers.ContentType?.ToString() ?? "none";
+
+    private static string GetUpstreamReasonCode(HttpStatusCode statusCode) =>
+        (int)statusCode >= 400 && (int)statusCode <= 499
+            ? ProjectionReasonCodes.ProjectUpstream4xx
+            : (int)statusCode >= 500 && (int)statusCode <= 599
+                ? ProjectionReasonCodes.ProjectUpstream5xx
+                : ProjectionReasonCodes.ProjectUnexpectedStatus;
 
     private static partial class Log {
         [LoggerMessage(
@@ -205,8 +414,8 @@ public partial class ProjectionUpdateOrchestrator(
         [LoggerMessage(
             EventId = 1116,
             Level = LogLevel.Warning,
-            Message = "Invalid projection response: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Reason={Reason}, Stage=InvalidProjectionResponse")]
-        public static partial void InvalidProjectionResponse(ILogger logger, string tenantId, string domain, string aggregateId, string reason);
+            Message = "Invalid projection response: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ReasonCode={ReasonCode}, Stage=InvalidProjectionResponse")]
+        public static partial void InvalidProjectionResponse(ILogger logger, string tenantId, string domain, string aggregateId, string reasonCode);
 
         [LoggerMessage(
             EventId = 1117,
@@ -237,5 +446,23 @@ public partial class ProjectionUpdateOrchestrator(
             Level = LogLevel.Warning,
             Message = "Projection checkpoint save exhausted optimistic-concurrency attempts: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, AttemptedSequence={AttemptedSequence}, Stage=ProjectionCheckpointSaveExhausted")]
         public static partial void CheckpointSaveExhausted(ILogger logger, string tenantId, string domain, string aggregateId, long attemptedSequence);
+
+        [LoggerMessage(
+            EventId = 1141,
+            Level = LogLevel.Warning,
+            Message = "Projection /project response rejected: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, AppId={AppId}, ReasonCode={ReasonCode}, HttpStatus={HttpStatus}, ContentType={ContentType}, Stage=ProjectInvocationRejected")]
+        public static partial void ProjectInvocationRejected(ILogger logger, string tenantId, string domain, string aggregateId, string appId, string reasonCode, string httpStatus, string contentType);
+
+        [LoggerMessage(
+            EventId = 1142,
+            Level = LogLevel.Warning,
+            Message = "Projection /project invocation failed: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, AppId={AppId}, ReasonCode={ReasonCode}, ExceptionType={ExceptionType}, HttpStatus={HttpStatus}, ContentType={ContentType}, Stage=ProjectInvocationFailed")]
+        public static partial void ProjectInvocationException(ILogger logger, Exception ex, string tenantId, string domain, string aggregateId, string appId, string reasonCode, string exceptionType, string httpStatus, string contentType);
+
+        [LoggerMessage(
+            EventId = 1143,
+            Level = LogLevel.Warning,
+            Message = "Projection checkpoint drift detected: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ReasonCode={ReasonCode}, LastDeliveredSequence={LastDeliveredSequence}, HighestEventSequence={HighestEventSequence}, Stage=ProjectionCheckpointDrift")]
+        public static partial void CheckpointDriftDetected(ILogger logger, string tenantId, string domain, string aggregateId, string reasonCode, long lastDeliveredSequence, long highestEventSequence);
     }
 }

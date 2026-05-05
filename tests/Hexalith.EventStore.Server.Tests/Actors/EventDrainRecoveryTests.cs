@@ -1,5 +1,6 @@
 
 using System.Reflection;
+using System.Diagnostics;
 
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
@@ -10,6 +11,7 @@ using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -158,6 +160,25 @@ public class EventDrainRecoveryTests {
             "pending_command_count",
             Arg.Any<int>(),
             Arg.Any<CancellationToken>());
+    }
+
+    private static async Task<Activity> CaptureDrainActivityAsync(Func<Task> action) {
+        var stopped = new List<Activity>();
+        using var listener = new ActivityListener {
+            ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => {
+                if (activity.OperationName == EventStoreActivitySource.EventsDrain) {
+                    stopped.Add(activity);
+                }
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        await action().ConfigureAwait(false);
+
+        stopped.Count.ShouldBe(1);
+        return stopped[0];
     }
 
     // --- Task 7.2: Drain succeeds, events re-published ---
@@ -409,6 +430,31 @@ public class EventDrainRecoveryTests {
             Arg.Any<ActorReminderToken>());
     }
 
+    [Fact]
+    public async Task ReceiveReminder_DrainPublishFails_ActivityFailureReasonIsStableCode() {
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord();
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+        ConfigureEventsInState(stateManager, 2);
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new EventPublishResult(false, 0, "test-tenant:test-domain:agg-001 unavailable"));
+
+        Activity activity = await CaptureDrainActivityAsync(() =>
+            actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero));
+
+        activity.GetTagItem("eventstore.failure_reason").ShouldBe(DrainReasonCodes.PublishFailed);
+        // Negative assertion: high-cardinality leak guard. The publisher's failure message
+        // contained the aggregate ActorId; that must never reach the activity tag.
+        (activity.GetTagItem("eventstore.failure_reason")?.ToString() ?? string.Empty)
+            .ShouldNotContain("test-tenant:test-domain:agg-001");
+    }
+
     [Theory]
     [InlineData(10)]
     [InlineData(11)]
@@ -476,6 +522,34 @@ public class EventDrainRecoveryTests {
             eventPublisher,
             timerManager,
             "EventCount");
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_DrainRecordEventCountMismatch_ActivityFailureReasonIsStableCode() {
+        (AggregateActor actor, IActorStateManager stateManager, _, _, _, _) = CreateActorWithTimerManager();
+        var record = new UnpublishedEventsRecord(
+            CorrelationId: "corr-drain",
+            StartSequence: 10,
+            EndSequence: 12,
+            EventCount: 2,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: 0,
+            LastFailureReason: "Pub/sub unavailable");
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+        ConfigureEventsInState(stateManager, eventCount: 3, startSequence: 10);
+
+        Activity activity = await CaptureDrainActivityAsync(() =>
+            actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero));
+
+        activity.GetTagItem("eventstore.failure_reason").ShouldBe(DrainReasonCodes.EventCountMismatch);
+        // Negative assertion: high-cardinality leak guard. The integrity exception message
+        // contained the aggregate ActorId; that must never reach the activity tag.
+        (activity.GetTagItem("eventstore.failure_reason")?.ToString() ?? string.Empty)
+            .ShouldNotContain("test-tenant:test-domain:agg-001");
     }
 
     // --- Task 7.8: Orphaned reminder cleanup ---

@@ -11,7 +11,7 @@ namespace Hexalith.EventStore.Server.Projections;
 /// <summary>
 /// DAPR state-store implementation of <see cref="IProjectionCheckpointTracker"/>.
 /// </summary>
-public sealed class ProjectionCheckpointTracker(
+public sealed partial class ProjectionCheckpointTracker(
     DaprClient daprClient,
     IOptions<ProjectionOptions> options,
     ILogger<ProjectionCheckpointTracker> logger) : IProjectionCheckpointTracker {
@@ -22,6 +22,11 @@ public sealed class ProjectionCheckpointTracker(
     private const string IdentityScopePagePrefix = "projection-identities:scopes:";
     private const string IdentityIndexPrefix = "projection-identities:index:";
     private const string IdentityPagePrefix = "projection-identities:page:";
+
+    // Defensive upper bound on persisted PageCount. Healthy operation produces small page counts
+    // (page size is 100); a corrupt persisted index with PageCount near int.MaxValue would
+    // satisfy every other corruption clause yet still drive a near-infinite enumeration loop.
+    private const int MaxReasonablePageCount = 1_000_000;
 
     /// <inheritdoc/>
     public async Task<long> ReadLastDeliveredSequenceAsync(
@@ -178,6 +183,15 @@ public sealed class ProjectionCheckpointTracker(
         ProjectionIdentityIndex scopeIndex = await ReadStateAsync<ProjectionIdentityIndex>(IdentityScopeIndexKey, cancellationToken)
             .ConfigureAwait(false)
             ?? ProjectionIdentityIndex.Empty;
+        if (IsCorruptIndex(scopeIndex)) {
+            Log.TrackerCorruptionDetected(
+                logger,
+                TrackerReasonCodes.CorruptScopeIndex,
+                IdentityScopeIndexKey,
+                scopeIndex.PageCount,
+                scopeIndex.LastPageCount);
+            yield break;
+        }
 
         for (int scopePageNumber = 0; scopePageNumber < scopeIndex.PageCount; scopePageNumber++) {
             cancellationToken.ThrowIfCancellationRequested();
@@ -198,6 +212,15 @@ public sealed class ProjectionCheckpointTracker(
                         cancellationToken)
                     .ConfigureAwait(false)
                     ?? ProjectionIdentityIndex.Empty;
+                if (IsCorruptIndex(identityIndex)) {
+                    Log.TrackerCorruptionDetected(
+                        logger,
+                        TrackerReasonCodes.CorruptIdentityIndex,
+                        GetIdentityIndexKey(scope),
+                        identityIndex.PageCount,
+                        identityIndex.LastPageCount);
+                    continue;
+                }
 
                 for (int identityPageNumber = 0; identityPageNumber < identityIndex.PageCount; identityPageNumber++) {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -233,6 +256,14 @@ public sealed class ProjectionCheckpointTracker(
     }
 
     private static readonly System.Buffers.SearchValues<char> s_reservedChars = System.Buffers.SearchValues.Create(":\0|\r\n");
+
+    private static bool IsCorruptIndex(ProjectionIdentityIndex index) =>
+        index.PageCount < 0
+        || index.PageCount > MaxReasonablePageCount
+        || index.LastPageCount < 0
+        || index.LastPageCount > IdentityPageSize
+        || (index.PageCount == 0 && index.LastPageCount != 0)
+        || (index.PageCount > 0 && index.LastPageCount == 0);
 
     private static string GetIdentityIndexKey(ProjectionIdentityScope scope) =>
         IdentityIndexPrefix + scope.TenantId + ":" + scope.Domain;
@@ -488,5 +519,13 @@ public sealed class ProjectionCheckpointTracker(
 
     internal sealed record ProjectionIdentityPage(ProjectionIdentity[] Identities) {
         public static ProjectionIdentityPage Empty { get; } = new([]);
+    }
+
+    private static partial class Log {
+        [LoggerMessage(
+            EventId = 1144,
+            Level = LogLevel.Warning,
+            Message = "Projection tracker corruption detected: ReasonCode={ReasonCode}, StateKey={StateKey}, PageCount={PageCount}, LastPageCount={LastPageCount}, Stage=ProjectionTrackerCorruption")]
+        public static partial void TrackerCorruptionDetected(ILogger logger, string reasonCode, string stateKey, int pageCount, int lastPageCount);
     }
 }

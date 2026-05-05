@@ -691,8 +691,12 @@ public partial class AggregateActor(
         try {
             long expectedEventCount = record.EndSequence - record.StartSequence + 1;
             if (record.EventCount != expectedEventCount) {
-                throw new InvalidOperationException(
-                    $"Drain record EventCount mismatch for {identity.ActorId}: startSequence={record.StartSequence}, endSequence={record.EndSequence}, eventCount={record.EventCount}, expectedEventCount={expectedEventCount}.");
+                throw new DrainEventCountMismatchException(
+                    identity.ActorId,
+                    record.StartSequence,
+                    record.EndSequence,
+                    record.EventCount,
+                    expectedEventCount);
             }
 
             // Load exact persisted event range for this failed command
@@ -787,8 +791,8 @@ public partial class AggregateActor(
                     publishResult.FailureReason);
 
                 _ = (activity?.SetTag("eventstore.retry_count", updatedRecord.RetryCount));
-                _ = (activity?.SetTag("eventstore.failure_reason", publishResult.FailureReason));
-                _ = (activity?.SetStatus(ActivityStatusCode.Error, publishResult.FailureReason));
+                _ = (activity?.SetTag("eventstore.failure_reason", DrainReasonCodes.PublishFailed));
+                _ = (activity?.SetStatus(ActivityStatusCode.Error, DrainReasonCodes.PublishFailed));
             }
         }
         catch (OperationCanceledException) {
@@ -816,10 +820,18 @@ public partial class AggregateActor(
                 ex.Message);
 
             _ = (activity?.SetTag("eventstore.retry_count", updatedRecord.RetryCount));
-            _ = (activity?.SetTag("eventstore.failure_reason", ex.Message));
-            _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
+            string failureReasonCode = ClassifyDrainFailure(ex);
+            _ = (activity?.SetTag("eventstore.failure_reason", failureReasonCode));
+            _ = (activity?.SetStatus(ActivityStatusCode.Error, failureReasonCode));
         }
     }
+
+    private static string ClassifyDrainFailure(Exception exception) =>
+        exception switch {
+            DrainEventCountMismatchException => DrainReasonCodes.EventCountMismatch,
+            MissingEventException => DrainReasonCodes.MissingEvent,
+            _ => DrainReasonCodes.Unknown,
+        };
 
     // TODO: Future — reconcile counter against actual drain:* record count on actor activation
     private async Task<int> ReadPendingCommandCountAsync() {
