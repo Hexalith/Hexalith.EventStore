@@ -111,6 +111,45 @@ public class StateInspectorModalTests : AdminUITestContext {
         }, TimeSpan.FromSeconds(5));
     }
 
+    [Fact]
+    public void StateInspectorModal_KeepsStreamIdentityVisible() {
+        IRenderedComponent<StateInspectorModal> cut = RenderInspector(7L);
+
+        string markup = cut.Markup;
+        markup.ShouldContain("test-tenant");
+        markup.ShouldContain("counter");
+        markup.ShouldContain("agg-001");
+        markup.ShouldContain("#7");
+    }
+
+    [Fact]
+    public void StateInspectorModal_ShowsBackendErrorMessage_OnServiceUnavailable() {
+        _ = _mockApiClient.GetAggregateStateAtPositionAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns<Task<AggregateStateSnapshot?>>(_ => throw new Hexalith.EventStore.Admin.UI.Services.Exceptions.ServiceUnavailableException("backend"));
+
+        IRenderedComponent<StateInspectorModal> cut = RenderInspector(3L);
+        AngleSharp.Dom.IElement inspectBtn = cut.Find("fluent-button[appearance='primary']");
+        inspectBtn.Click();
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Backend unavailable"), TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public void StateInspectorModal_ShowsSignInError_OnUnauthorized() {
+        _ = _mockApiClient.GetAggregateStateAtPositionAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns<Task<AggregateStateSnapshot?>>(_ => throw new UnauthorizedAccessException());
+
+        IRenderedComponent<StateInspectorModal> cut = RenderInspector(3L);
+        AngleSharp.Dom.IElement inspectBtn = cut.Find("fluent-button[appearance='primary']");
+        inspectBtn.Click();
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Sign in required"), TimeSpan.FromSeconds(5));
+    }
+
     private IRenderedComponent<StateInspectorModal> RenderInspector(long? seq) => Render<StateInspectorModal>(p => p
                                                                                            .Add(c => c.TenantId, "test-tenant")
                                                                                            .Add(c => c.Domain, "counter")

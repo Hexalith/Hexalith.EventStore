@@ -41,6 +41,279 @@ public class AdminStreamQueryController(
     private const int _defaultMaxFields = 5_000;
 
     /// <summary>
+    /// Returns the reconstructed aggregate state at the requested sequence position.
+    /// Reuses <see cref="ReconstructState"/> for replay so this endpoint shares the same
+    /// JSON-merge semantics as <c>/diff</c>, <c>/step</c>, and <c>/blame</c>.
+    /// </summary>
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/state")]
+    [ProducesResponseType(typeof(AggregateStateSnapshot), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetAggregateStateAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromQuery] long at,
+        CancellationToken ct = default) {
+        if (at < 0) {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "Parameter 'at' must be >= 0.");
+        }
+
+        ct.ThrowIfCancellationRequested();
+
+        try {
+            if (at == 0) {
+                // Initial empty state — no actor lookup needed; use a deterministic
+                // timestamp so callers can distinguish "before any event" from a real snapshot.
+                return Ok(new AggregateStateSnapshot(
+                    TenantId: tenantId,
+                    Domain: domain,
+                    AggregateId: aggregateId,
+                    SequenceNumber: 0,
+                    Timestamp: DateTimeOffset.UnixEpoch,
+                    StateJson: "{}"));
+            }
+
+            var identity = new AggregateIdentity(tenantId, domain, aggregateId);
+            IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+                new ActorId(identity.ActorId), "AggregateActor");
+
+            ServerEventEnvelope[] allEvents = await actor.GetEventsAsync(0).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
+
+            if (allEvents.Length == 0) {
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "Stream not found or has no events.");
+            }
+
+            // Locate the event timestamp at or before the requested position; clipping
+            // matches ReconstructState's natural upper-bound behavior.
+            ServerEventEnvelope? eventAt = allEvents
+                .Where(e => e.SequenceNumber <= at)
+                .OrderByDescending(e => e.SequenceNumber)
+                .FirstOrDefault();
+            if (eventAt is null) {
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "No events found at or before the specified sequence.");
+            }
+
+            JsonObject state = ReconstructState(allEvents, at);
+            return Ok(new AggregateStateSnapshot(
+                TenantId: tenantId,
+                Domain: domain,
+                AggregateId: aggregateId,
+                SequenceNumber: at,
+                Timestamp: eventAt.Timestamp,
+                StateJson: state.ToJsonString()));
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            logger.LogError(ex, "Failed to reconstruct aggregate state for {TenantId}/{Domain}/{AggregateId} at {At}.",
+                tenantId, domain, aggregateId, at);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "Failed to reconstruct aggregate state.");
+        }
+    }
+
+    /// <summary>
+    /// Returns the diff of aggregate state between two sequence positions. Reuses the same
+    /// state replay and <see cref="JsonDiff"/> helper as <c>/step</c> and <c>/bisect</c>.
+    /// </summary>
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/diff")]
+    [ProducesResponseType(typeof(AggregateStateDiff), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DiffAggregateStateAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromQuery] long from,
+        [FromQuery] long to,
+        CancellationToken ct = default) {
+        if (from < 0) {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "Parameter 'from' must be >= 0.");
+        }
+
+        if (to <= from) {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "Parameter 'to' must be greater than 'from'.");
+        }
+
+        ct.ThrowIfCancellationRequested();
+
+        try {
+            var identity = new AggregateIdentity(tenantId, domain, aggregateId);
+            IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+                new ActorId(identity.ActorId), "AggregateActor");
+
+            ServerEventEnvelope[] allEvents = await actor.GetEventsAsync(0).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
+
+            if (allEvents.Length == 0) {
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "Stream not found or has no events.");
+            }
+
+            JsonObject fromState = ReconstructState(allEvents, from);
+            JsonObject toState = ReconstructState(allEvents, to);
+
+            Dictionary<string, (string NewValue, string OldValue)> changes = JsonDiff(
+                fromState, toState, prefix: string.Empty);
+
+            IReadOnlyList<FieldChange> changedFields = [.. changes
+                .Select(c => new FieldChange(c.Key, c.Value.OldValue, c.Value.NewValue))
+                .OrderBy(c => c.FieldPath, StringComparer.Ordinal)];
+
+            return Ok(new AggregateStateDiff(from, to, changedFields));
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            logger.LogError(ex, "Failed to diff aggregate state for {TenantId}/{Domain}/{AggregateId} from {From} to {To}.",
+                tenantId, domain, aggregateId, from, to);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "Failed to compute aggregate state diff.");
+        }
+    }
+
+    /// <summary>
+    /// Returns the truth-preserving causation chain rooted at the event at the requested
+    /// sequence. Same-correlation events are not promoted to direct causation links unless
+    /// proven through MessageId/CausationId linkage.
+    /// </summary>
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/causation")]
+    [ProducesResponseType(typeof(CausationChain), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> TraceCausationChainAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromQuery] long at,
+        CancellationToken ct = default) {
+        if (at < 1) {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: "Parameter 'at' must be >= 1.");
+        }
+
+        ct.ThrowIfCancellationRequested();
+
+        try {
+            var identity = new AggregateIdentity(tenantId, domain, aggregateId);
+            IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+                new ActorId(identity.ActorId), "AggregateActor");
+
+            ServerEventEnvelope[] allEvents = await actor.GetEventsAsync(0).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
+
+            if (allEvents.Length == 0) {
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "Stream not found or has no events.");
+            }
+
+            ServerEventEnvelope? target = allEvents.FirstOrDefault(e => e.SequenceNumber == at);
+            if (target is null) {
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: $"No event at sequence {at}.");
+            }
+
+            // Truth-preserving chain: target event always present, plus only events that
+            // are linked through MessageId/CausationId. Blank causation ids never fabricate
+            // links and same-correlation grouping is intentionally excluded.
+            var linked = new List<ServerEventEnvelope> { target };
+
+            if (!string.IsNullOrWhiteSpace(target.CausationId)) {
+                ServerEventEnvelope? upstream = allEvents.FirstOrDefault(e =>
+                    e.SequenceNumber != target.SequenceNumber
+                    && string.Equals(e.MessageId, target.CausationId, StringComparison.Ordinal));
+                if (upstream is not null) {
+                    linked.Add(upstream);
+                }
+            }
+
+            foreach (ServerEventEnvelope downstream in allEvents) {
+                if (downstream.SequenceNumber == target.SequenceNumber) {
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(downstream.CausationId)) {
+                    continue;
+                }
+
+                if (string.Equals(downstream.CausationId, target.MessageId, StringComparison.Ordinal)) {
+                    linked.Add(downstream);
+                }
+            }
+
+            IReadOnlyList<CausationEvent> chainEvents = [.. linked
+                .DistinctBy(e => e.SequenceNumber)
+                .OrderBy(e => e.SequenceNumber)
+                .Select(e => new CausationEvent(e.SequenceNumber, e.EventTypeName, e.Timestamp))];
+
+            // The event envelope does not store the originating command type. Use the target
+            // event's metadata so the UI can show what event the chain starts from without
+            // fabricating a command-side identifier we do not actually have.
+            string originatingCommandId = !string.IsNullOrWhiteSpace(target.CausationId)
+                ? target.CausationId
+                : target.MessageId;
+            string originatingCommandType = !string.IsNullOrWhiteSpace(target.EventTypeName)
+                ? target.EventTypeName
+                : "unknown";
+            string correlationId = !string.IsNullOrWhiteSpace(target.CorrelationId)
+                ? target.CorrelationId
+                : target.MessageId;
+
+            CausationChain chain = new(
+                OriginatingCommandType: originatingCommandType,
+                OriginatingCommandId: originatingCommandId,
+                CorrelationId: correlationId,
+                UserId: string.IsNullOrWhiteSpace(target.UserId) ? null : target.UserId,
+                Events: chainEvents,
+                AffectedProjections: []);
+
+            return Ok(chain);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            logger.LogError(ex, "Failed to trace causation chain for {TenantId}/{Domain}/{AggregateId} at {At}.",
+                tenantId, domain, aggregateId, at);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "Failed to trace causation chain.");
+        }
+    }
+
+    /// <summary>
     /// Performs a binary search through event history to find the exact event where aggregate state
     /// diverged from expected field values. Reconstructs state at O(log N) midpoints for comparison.
     /// </summary>

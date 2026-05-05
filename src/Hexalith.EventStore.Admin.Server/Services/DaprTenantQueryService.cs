@@ -210,7 +210,7 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
 
             HttpClient httpClient = _httpClientFactory.CreateClient(_serverOptions.EventStoreAppId);
             HttpResponseMessage httpResponse = await httpClient.SendAsync(request, ct).ConfigureAwait(false);
-            _ = httpResponse.EnsureSuccessStatusCode();
+            await EnsureQueryHttpSuccessAsync(httpResponse, $"{domain}/{queryType}", ct).ConfigureAwait(false);
 
             SubmitQueryResponse? queryResponse = await httpResponse.Content
                 .ReadFromJsonAsync<SubmitQueryResponse>(_options, ct).ConfigureAwait(false);
@@ -221,6 +221,57 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
         catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
             throw new TimeoutException(
                 $"Query to {_serverOptions.EventStoreAppId} timed out after {_serverOptions.ServiceInvocationTimeoutSeconds}s.");
+        }
+    }
+
+    private static async Task EnsureQueryHttpSuccessAsync(
+        HttpResponseMessage response,
+        string operation,
+        CancellationToken ct) {
+        if (response.IsSuccessStatusCode) {
+            return;
+        }
+
+        if (response.StatusCode is HttpStatusCode.InternalServerError or HttpStatusCode.NotImplemented) {
+            string upstreamMessage = await ReadUpstreamProblemMessageAsync(response, operation, ct).ConfigureAwait(false);
+            throw new TenantQueryFailedException(upstreamMessage);
+        }
+
+        _ = response.EnsureSuccessStatusCode();
+    }
+
+    private static async Task<string> ReadUpstreamProblemMessageAsync(
+        HttpResponseMessage response,
+        string operation,
+        CancellationToken ct) {
+        string fallback = $"{operation} returned HTTP {(int)response.StatusCode} {response.ReasonPhrase}.";
+        if (response.Content is null) {
+            return fallback;
+        }
+
+        string body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(body)) {
+            return fallback;
+        }
+
+        try {
+            using JsonDocument document = JsonDocument.Parse(body);
+            JsonElement root = document.RootElement;
+            string? detail = root.TryGetProperty("detail", out JsonElement detailElement)
+                && detailElement.ValueKind == JsonValueKind.String
+                    ? detailElement.GetString()
+                    : null;
+            string? title = root.TryGetProperty("title", out JsonElement titleElement)
+                && titleElement.ValueKind == JsonValueKind.String
+                    ? titleElement.GetString()
+                    : null;
+
+            return string.IsNullOrWhiteSpace(detail)
+                ? (string.IsNullOrWhiteSpace(title) ? fallback : title)
+                : detail;
+        }
+        catch (JsonException) {
+            return body.Length > 512 ? body[..512] : body;
         }
     }
 }

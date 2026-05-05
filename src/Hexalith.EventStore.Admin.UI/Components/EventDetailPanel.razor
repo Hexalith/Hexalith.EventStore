@@ -1,7 +1,9 @@
 @namespace Hexalith.EventStore.Admin.UI.Components
 @using Hexalith.EventStore.Admin.Abstractions.Models.Streams
 @using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
 @inject AdminStreamApiClient ApiClient
+@inject ILogger<EventDetailPanel> Logger
 
 <div class="event-detail-panel" role="complementary" aria-label="Event detail">
     @if (_loading)
@@ -71,6 +73,21 @@
                 <JsonViewer Json="@_stateSnapshot.StateJson"
                             AriaLabel="@($"Aggregate state at sequence {_eventDetail.SequenceNumber}")" />
             }
+            else if (_stateError is not null)
+            {
+                <div class="state-error" role="alert"
+                     style="color: var(--hexalith-status-error); padding: 8px;">
+                    @_stateError
+                    @if (_stateErrorRetryable)
+                    {
+                        <FluentButton Appearance="ButtonAppearance.Transparent"
+                                      OnClick="LoadStateAsync"
+                                      Style="margin-left: 8px;">
+                            Retry
+                        </FluentButton>
+                    }
+                </div>
+            }
             else
             {
                 <div class="state-unavailable" style="color: var(--colorNeutralForeground3); padding: 8px;">
@@ -116,6 +133,8 @@
     private bool _stateLoading;
     private bool _causationLoading;
     private string? _error;
+    private string? _stateError;
+    private bool _stateErrorRetryable;
     private string? _causationError;
     private long _previousSequenceNumber = -1;
     private string _previousAggregateId = string.Empty;
@@ -180,26 +199,74 @@
 
         if (_eventDetail is not null)
         {
-            _stateLoading = true;
-            StateHasChanged();
-            try
-            {
-                _stateSnapshot = await ApiClient.GetAggregateStateAtPositionAsync(
-                    TenantId, Domain, AggregateId, SequenceNumber);
-            }
-            catch
-            {
-                _stateSnapshot = null;
-            }
-            finally
-            {
-                _stateLoading = false;
-            }
+            await LoadStateAsync();
 
             if (AutoTraceCausation && _causationChain is null)
             {
                 await TraceCausation();
             }
+        }
+    }
+
+    private async Task LoadStateAsync()
+    {
+        _stateLoading = true;
+        _stateSnapshot = null;
+        _stateError = null;
+        _stateErrorRetryable = false;
+        StateHasChanged();
+
+        try
+        {
+            _stateSnapshot = await ApiClient.GetAggregateStateAtPositionAsync(
+                TenantId, Domain, AggregateId, SequenceNumber);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _stateError = "Sign in required to inspect state at this position.";
+            _stateErrorRetryable = false;
+        }
+        catch (ForbiddenAccessException)
+        {
+            _stateError = "Access denied. You do not have permission to inspect state for this stream.";
+            _stateErrorRetryable = false;
+        }
+        catch (ServiceUnavailableException)
+        {
+            _stateError = "Backend unavailable. State inspection is temporarily offline.";
+            _stateErrorRetryable = true;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (HttpRequestException ex)
+        {
+            _stateError = "State inspection request failed. Try again, or check the backend health.";
+            _stateErrorRetryable = true;
+            Logger.LogWarning(
+                ex,
+                "State inspection HTTP failure for {TenantId}/{Domain}/{AggregateId} at sequence {SequenceNumber}.",
+                TenantId,
+                Domain,
+                AggregateId,
+                SequenceNumber);
+        }
+        catch (Exception ex)
+        {
+            _stateError = "Unexpected error while inspecting state. Try again or report this if it persists.";
+            _stateErrorRetryable = true;
+            Logger.LogError(
+                ex,
+                "Unexpected state inspection failure for {TenantId}/{Domain}/{AggregateId} at sequence {SequenceNumber}.",
+                TenantId,
+                Domain,
+                AggregateId,
+                SequenceNumber);
+        }
+        finally
+        {
+            _stateLoading = false;
         }
     }
 

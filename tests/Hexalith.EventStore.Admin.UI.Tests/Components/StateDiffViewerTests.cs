@@ -133,10 +133,10 @@ public class StateDiffViewerTests : AdminUITestContext {
 
         // Act
         IRenderedComponent<StateDiffViewer> cut = RenderDiffViewer(5, 10);
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No differences found"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No state changes detected"), TimeSpan.FromSeconds(5));
 
-        // Assert
-        cut.Markup.ShouldContain("States are identical");
+        // Assert — non-error empty-diff copy distinguishes legitimate no-diff from upstream failure.
+        cut.Markup.ShouldContain("identical");
     }
 
     [Fact]
@@ -188,6 +188,59 @@ public class StateDiffViewerTests : AdminUITestContext {
                                                                                                  .Add(c => c.AggregateId, "agg-001")
                                                                                                  .Add(c => c.FromSequence, from)
                                                                                                  .Add(c => c.ToSequence, to));
+
+    [Fact]
+    public void StateDiffViewer_BackendUnavailable_ShowsBackendErrorNotRangeError() {
+        // Arrange — the diff API faults with ServiceUnavailableException (backend down).
+        _ = _mockApiClient.GetAggregateStateDiffAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AggregateStateDiff?>(
+                new Hexalith.EventStore.Admin.UI.Services.Exceptions.ServiceUnavailableException("backend")));
+        _ = _mockApiClient.GetAggregateStateAtPositionAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<AggregateStateSnapshot?>(null));
+
+        // Act
+        IRenderedComponent<StateDiffViewer> cut = RenderDiffViewer(5, 10);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Backend unavailable"), TimeSpan.FromSeconds(5));
+
+        // Assert — must not surface as range-too-large
+        cut.Markup.ShouldNotContain("Diff range too large");
+    }
+
+    [Fact]
+    public void StateDiffViewer_SignInRequired_ShowsSignInError() {
+        _ = _mockApiClient.GetAggregateStateDiffAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AggregateStateDiff?>(new UnauthorizedAccessException()));
+        _ = _mockApiClient.GetAggregateStateAtPositionAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<AggregateStateSnapshot?>(null));
+
+        IRenderedComponent<StateDiffViewer> cut = RenderDiffViewer(5, 10);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Sign in required"), TimeSpan.FromSeconds(5));
+        cut.Markup.ShouldNotContain("Diff range too large");
+    }
+
+    [Fact]
+    public void StateDiffViewer_HttpFailure_ShowsRequestFailedNotRangeError() {
+        _ = _mockApiClient.GetAggregateStateDiffAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AggregateStateDiff?>(new HttpRequestException("502 bad gateway")));
+        _ = _mockApiClient.GetAggregateStateAtPositionAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<AggregateStateSnapshot?>(null));
+
+        IRenderedComponent<StateDiffViewer> cut = RenderDiffViewer(5, 10);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("State diff request failed"), TimeSpan.FromSeconds(5));
+        cut.Markup.ShouldNotContain("Diff range too large");
+    }
 
     private void SetupDiffMocks(AggregateStateDiff diff, string fromStateJson, string toStateJson) {
         _ = _mockApiClient.GetAggregateStateDiffAsync(

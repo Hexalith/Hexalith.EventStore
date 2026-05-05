@@ -127,6 +127,38 @@ public class DaprTenantQueryServiceTests {
     }
 
     [Fact]
+    public async Task ListTenantsAsync_HttpForbidden_ThrowsHttpRequestForbiddenAsync() {
+        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupErrorResponse(HttpStatusCode.Forbidden);
+
+        HttpRequestException ex = await Should.ThrowAsync<HttpRequestException>(() => service.ListTenantsAsync());
+        ex.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task GetTenantUsersAsync_HttpNotFound_ThrowsHttpRequestNotFoundAsync() {
+        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupErrorResponse(HttpStatusCode.NotFound);
+
+        HttpRequestException ex = await Should.ThrowAsync<HttpRequestException>(() => service.GetTenantUsersAsync("missing-tenant"));
+        ex.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task ListTenantsAsync_HttpInternalServerErrorProblemDetails_ThrowsTenantQueryFailedAsync() {
+        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(
+            new {
+                title = "Internal Server Error",
+                detail = "Projection query execution failed.",
+            },
+            HttpStatusCode.InternalServerError);
+
+        TenantQueryFailedException ex = await Should.ThrowAsync<TenantQueryFailedException>(() => service.ListTenantsAsync());
+        ex.UpstreamMessage.ShouldBe("Projection query execution failed.");
+    }
+
+    [Fact]
     public async Task GetTenantUsersAsync_FollowsPaginationUntilAllPagesReturned() {
         ContractsTenantMemberPage firstPage = new(
             [new ContractsTenantMember("user-001", TenantRole.TenantOwner)],
@@ -357,6 +389,18 @@ public class DaprTenantQueryServiceTests {
 
         HttpRequestException ex = await Should.ThrowAsync<HttpRequestException>(() => service.ListTenantsAsync());
         ex.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ListTenantsAsync_SuccessfulEnvelopeWithMalformedPayload_ThrowsJsonExceptionAsync() {
+        SubmitQueryResponse response = new(
+            "corr-1",
+            JsonDocument.Parse("\"unparsable scalar\"").RootElement.Clone());
+
+        (DaprTenantQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(response);
+
+        _ = await Should.ThrowAsync<JsonException>(() => service.ListTenantsAsync());
     }
 
     // ST2: GetTenantDetailAsync uses the same shared options and must accept both wire formats.

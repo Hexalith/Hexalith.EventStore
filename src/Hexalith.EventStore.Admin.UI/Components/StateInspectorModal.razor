@@ -1,14 +1,15 @@
 @namespace Hexalith.EventStore.Admin.UI.Components
 @using Hexalith.EventStore.Admin.Abstractions.Models.Streams
 @using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
 @inject AdminStreamApiClient ApiClient
+@inject ILogger<StateInspectorModal> Logger
 
 <FluentDialog @ref="_dialog"
               Modal="true"
               aria-label="Aggregate state inspector"
-              OnStateChange="OnDialogStateChangeAsync"
-              Style="min-width: 500px; max-width: 800px; max-height: 80vh;">
-    <FluentDialogBody Style="overflow-y: auto;">
+              OnStateChange="OnDialogStateChangeAsync">
+    <FluentDialogBody>
         <TitleTemplate>
             <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
                 <h3 style="margin: 0; flex: 1;">State Inspector</h3>
@@ -21,83 +22,117 @@
             </FluentStack>
         </TitleTemplate>
         <ChildContent>
-        <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
-            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center">
-                <span style="font-weight: 600;">Mode:</span>
-                <FluentSwitch @bind-Value="_useTimestampMode"
-                              Label="By Timestamp"
-                              aria-label="Toggle between sequence and timestamp mode" />
-            </FluentStack>
+            <div class="state-inspector-modal-body" style="min-width: 500px; max-width: 800px; max-height: 70vh; overflow: auto;">
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+                    <div class="stream-identity"
+                         style="font-size: 12px; color: var(--colorNeutralForeground3); padding: 4px 0; border-bottom: 1px solid var(--colorNeutralStroke2);"
+                         aria-label="Stream identity">
+                        <span class="monospace"><strong>Tenant:</strong> @TenantId</span>
+                        <span style="margin: 0 8px;">·</span>
+                        <span class="monospace"><strong>Domain:</strong> @Domain</span>
+                        <span style="margin: 0 8px;">·</span>
+                        <span class="monospace"><strong>Aggregate:</strong> @AggregateId</span>
+                        @if (_useTimestampMode)
+                        {
+                            <span style="margin: 0 8px;">·</span>
+                            <span class="monospace"><strong>Mode:</strong> timestamp</span>
+                            @if (!string.IsNullOrWhiteSpace(_timestampInput))
+                            {
+                                <span style="margin: 0 8px;">·</span>
+                                <span class="monospace"><strong>At:</strong> @_timestampInput</span>
+                            }
+                        }
+                        else if (_sequenceInput.HasValue)
+                        {
+                            <span style="margin: 0 8px;">·</span>
+                            <span class="monospace"><strong>Sequence:</strong> #@_sequenceInput.Value</span>
+                        }
+                    </div>
 
-            @if (!_useTimestampMode)
-            {
-                <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center">
-                    <FluentButton Appearance="ButtonAppearance.Outline"
-                                  OnClick="DecrementSequence"
-                                  Disabled="@(_sequenceInput is null or <= 0 || _fetching)"
-                                  aria-label="Previous sequence"
-                                  Title="Previous position">
-                        -1
-                    </FluentButton>
-                    <NumericInput TValue="long" @bind-Value="_sequenceInput"
-                                  Min="0"
-                                  Label="Sequence Number"
-                                  aria-label="Sequence number to inspect"
-                                  Style="flex: 1;"
-                                  Autofocus="true" />
-                    <FluentButton Appearance="ButtonAppearance.Outline"
-                                  OnClick="IncrementSequence"
+                    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center">
+                        <span style="font-weight: 600;">Mode:</span>
+                        <FluentSwitch @bind-Value="_useTimestampMode"
+                                      Label="By Timestamp"
+                                      aria-label="Toggle between sequence and timestamp mode" />
+                    </FluentStack>
+
+                    @if (!_useTimestampMode)
+                    {
+                        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center">
+                            <FluentButton Appearance="ButtonAppearance.Outline"
+                                          OnClick="DecrementSequence"
+                                          Disabled="@(_sequenceInput is null or <= 0 || _fetching)"
+                                          aria-label="Previous sequence"
+                                          Title="Previous position">
+                                -1
+                            </FluentButton>
+                            <NumericInput TValue="long" @bind-Value="_sequenceInput"
+                                          Min="0"
+                                          Label="Sequence Number"
+                                          aria-label="Sequence number to inspect"
+                                          Style="flex: 1;"
+                                          Autofocus="true" />
+                            <FluentButton Appearance="ButtonAppearance.Outline"
+                                          OnClick="IncrementSequence"
+                                          Disabled="@_fetching"
+                                          aria-label="Next sequence"
+                                          Title="Next position">
+                                +1
+                            </FluentButton>
+                        </FluentStack>
+                    }
+                    else
+                    {
+                        <FluentTextInput @bind-Value="_timestampInput"
+                                         Label="Timestamp (ISO 8601)"
+                                         Placeholder="2026-03-23T12:00:00Z"
+                                         aria-label="ISO 8601 timestamp to inspect"
+                                         Title="Enter ISO 8601 format: YYYY-MM-DDThh:mm:ssZ" />
+                        <span style="font-size: 12px; color: var(--colorNeutralForeground3);">
+                            Current time: @DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                        </span>
+                        @if (_timestampError is not null)
+                        {
+                            <span style="color: var(--hexalith-status-error); font-size: 13px;" role="alert">@_timestampError</span>
+                        }
+                    }
+
+                    <FluentButton Appearance="ButtonAppearance.Primary"
+                                  OnClick="FetchState"
                                   Disabled="@_fetching"
-                                  aria-label="Next sequence"
-                                  Title="Next position">
-                        +1
+                                  Style="align-self: flex-start;">
+                        @(_fetching ? "Loading..." : "Inspect")
                     </FluentButton>
+
+                    @if (_fetching)
+                    {
+                        <SkeletonCard />
+                    }
+                    else if (_fetched && _snapshot is not null)
+                    {
+                        <div>
+                            <h4 style="margin: 8px 0;">State at Sequence #@_snapshot.SequenceNumber</h4>
+                            <span class="monospace" style="font-size: 12px; color: var(--colorNeutralForeground3);">
+                                @_snapshot.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff zzz")
+                            </span>
+                            <JsonViewer Json="@_snapshot.StateJson"
+                                        AriaLabel="@($"Aggregate state at sequence {_snapshot.SequenceNumber}")" />
+                        </div>
+                    }
+                    else if (_fetched && _fetchError is not null)
+                    {
+                        <div class="state-inspector-error" role="alert"
+                             style="color: var(--hexalith-status-error); padding: 8px;">
+                            @_fetchError
+                        </div>
+                    }
+                    else if (_fetched && _snapshot is null)
+                    {
+                        <EmptyState Title="No state available at this position"
+                                    Description="@(_capExceeded ? "Timestamp too far in history — use sequence number instead." : "The aggregate has no state at the requested position.")" />
+                    }
                 </FluentStack>
-            }
-            else
-            {
-                <FluentTextInput @bind-Value="_timestampInput"
-                                 Label="Timestamp (ISO 8601)"
-                                 Placeholder="2026-03-23T12:00:00Z"
-                                 aria-label="ISO 8601 timestamp to inspect"
-                                 Title="Enter ISO 8601 format: YYYY-MM-DDThh:mm:ssZ" />
-                <span style="font-size: 12px; color: var(--colorNeutralForeground3);">
-                    Current time: @DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
-                </span>
-                @if (_timestampError is not null)
-                {
-                    <span style="color: var(--hexalith-status-error); font-size: 13px;" role="alert">@_timestampError</span>
-                }
-            }
-
-            <FluentButton Appearance="ButtonAppearance.Primary"
-                          OnClick="FetchState"
-                          Disabled="@_fetching"
-                          Style="align-self: flex-start;">
-                @(_fetching ? "Loading..." : "Inspect")
-            </FluentButton>
-
-            @if (_fetching)
-            {
-                <SkeletonCard />
-            }
-            else if (_fetched && _snapshot is not null)
-            {
-                <div>
-                    <h4 style="margin: 8px 0;">State at Sequence #@_snapshot.SequenceNumber</h4>
-                    <span class="monospace" style="font-size: 12px; color: var(--colorNeutralForeground3);">
-                        @_snapshot.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff zzz")
-                    </span>
-                    <JsonViewer Json="@_snapshot.StateJson"
-                                AriaLabel="@($"Aggregate state at sequence {_snapshot.SequenceNumber}")" />
-                </div>
-            }
-            else if (_fetched && _snapshot is null)
-            {
-                <EmptyState Title="No state available at this position"
-                            Description="@(_capExceeded ? "Timestamp too far in history \u2014 use sequence number instead." : "The aggregate has no state at the requested position.")" />
-            }
-        </FluentStack>
+            </div>
         </ChildContent>
     </FluentDialogBody>
 </FluentDialog>
@@ -111,8 +146,10 @@
     private bool _fetched;
     private bool _capExceeded;
     private string? _timestampError;
+    private string? _fetchError;
     private AggregateStateSnapshot? _snapshot;
     private long? _previousInitialSequence;
+    private bool _pendingShow = true;
 
     [Parameter, EditorRequired]
     public string TenantId { get; set; } = string.Empty;
@@ -157,6 +194,7 @@
         _fetched = false;
         _snapshot = null;
         _capExceeded = false;
+        _fetchError = null;
         StateHasChanged();
 
         try
@@ -177,9 +215,41 @@
                     TenantId, Domain, AggregateId, _sequenceInput ?? 0L).ConfigureAwait(false);
             }
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (UnauthorizedAccessException)
         {
-            _snapshot = null;
+            _fetchError = "Sign in required to inspect state.";
+        }
+        catch (ForbiddenAccessException)
+        {
+            _fetchError = "Access denied. You do not have permission to inspect this stream.";
+        }
+        catch (ServiceUnavailableException)
+        {
+            _fetchError = "Backend unavailable. State inspection is temporarily offline.";
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (HttpRequestException ex)
+        {
+            _fetchError = "State inspection request failed. Try again or pick a different position.";
+            Logger.LogWarning(
+                ex,
+                "State inspector HTTP failure for {TenantId}/{Domain}/{AggregateId}.",
+                TenantId,
+                Domain,
+                AggregateId);
+        }
+        catch (Exception ex)
+        {
+            _fetchError = "Unexpected error while inspecting state.";
+            Logger.LogError(
+                ex,
+                "Unexpected state inspector failure for {TenantId}/{Domain}/{AggregateId}.",
+                TenantId,
+                Domain,
+                AggregateId);
         }
         finally
         {
@@ -205,8 +275,9 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && _dialog is not null)
+        if (_pendingShow && _dialog is not null)
         {
+            _pendingShow = false;
             await _dialog.ShowAsync().ConfigureAwait(false);
         }
     }

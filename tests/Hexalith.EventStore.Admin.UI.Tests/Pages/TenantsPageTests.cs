@@ -341,6 +341,22 @@ public class TenantsPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public void TenantsPage_CreateDialogInputs_AreImmediateBound() {
+        string source = File.ReadAllText(FindTenantsPageSource());
+        int dialogStart = source.IndexOf("aria-label=\"Create Tenant\"", StringComparison.Ordinal);
+        dialogStart.ShouldBeGreaterThanOrEqualTo(0);
+        int dialogEnd = source.IndexOf("</FluentDialog>", dialogStart, StringComparison.Ordinal);
+        dialogEnd.ShouldBeGreaterThan(dialogStart);
+
+        string createDialog = source[dialogStart..dialogEnd];
+
+        createDialog.Split("Immediate=\"true\"", StringSplitOptions.None).Length.ShouldBe(4);
+        createDialog.ShouldContain("@bind-Value=\"_createTenantId\"");
+        createDialog.ShouldContain("@bind-Value=\"_createName\"");
+        createDialog.ShouldContain("@bind-Value=\"_createDescription\"");
+    }
+
+    [Fact]
     public async Task TenantsPage_SearchFilter_FiltersByTenantId() {
         // Arrange (AC: 3)
         SetupTenants([
@@ -598,6 +614,25 @@ public class TenantsPageTests : AdminUITestContext {
         FieldInfo field = instance.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
             ?? throw new InvalidOperationException($"Field '{fieldName}' not found.");
         field.SetValue(instance, value);
+    }
+
+    private static string FindTenantsPageSource() {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null) {
+            string candidate = Path.Combine(
+                directory.FullName,
+                "src",
+                "Hexalith.EventStore.Admin.UI",
+                "Pages",
+                "Tenants.razor");
+            if (File.Exists(candidate)) {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException("Could not locate Tenants.razor from the test output directory.");
     }
 
     private static TenantSummary CreateTenant(
