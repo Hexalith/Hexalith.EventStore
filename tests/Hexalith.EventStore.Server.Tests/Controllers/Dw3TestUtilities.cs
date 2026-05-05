@@ -37,10 +37,12 @@ internal static class Dw3TestUtilities {
     public static readonly IReadOnlyDictionary<string, string> Dw3GetEventsAsyncDispositionMatrix
         = new Dictionary<string, string>(StringComparer.Ordinal) {
             ["timeline"] = "bounded-range-read",
+            ["event-detail"] = "bounded-range-read",
             ["blame"] = "preserve-legacy",
             ["bisect"] = "preserve-legacy",
             ["step"] = "preserve-legacy",
             ["sandbox"] = "preserve-legacy",
+            ["diff-helper"] = "accepted-debt",
             ["trace-map"] = "preserve-legacy",
         };
 
@@ -50,6 +52,7 @@ internal static class Dw3TestUtilities {
     /// </summary>
     public static readonly IReadOnlySet<string> Dw3DirectBoundReasonCodes
         = new HashSet<string>(StringComparer.Ordinal) {
+            "bad_above_stream",
             "count_above_limit",
             "max_events_above_limit",
             "max_fields_above_limit",

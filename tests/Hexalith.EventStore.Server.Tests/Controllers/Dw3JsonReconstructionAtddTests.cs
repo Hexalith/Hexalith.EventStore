@@ -4,6 +4,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.Server.Actors;
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 using NSubstitute;
@@ -103,19 +104,18 @@ public class Dw3JsonReconstructionAtddTests {
         OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
         EventStepFrame frame = ok.Value.ShouldBeOfType<EventStepFrame>();
 
-        // RED: dev must explicitly choose. Test asserts the nested-removal
-        // behavior is internally consistent: if the diff records "obj.y → null",
-        // it must align with the documented disposition; if it does not, the
-        // FieldChange list must reflect the supported semantics only.
+        // Decision Ledger (docs/operations/admin-debugging-json-large-stream-hardening.md):
+        // omitted properties are `preserved-limitation` — NOT synthesized as deletes.
+        // The reconstructed state must still contain "y":2 (DeepMerge keeps it), and the
+        // FieldChange list must NOT report "obj.y → null" because that would imply a delete
+        // the event payload model cannot prove.
         bool nestedRemovalReported = frame.FieldChanges.Any(
             fc => fc.FieldPath == "obj.y" && fc.NewValue == "null");
 
-        if (nestedRemovalReported) {
-            // Currently true under existing code — mark as preserved-limitation
-            // explicitly via response metadata when the dev implements AC #1.
-            frame.StateJson.Contains("\"y\":2", StringComparison.Ordinal).ShouldBeTrue(
-                "DW3 AC#2: if nested removal is reported in FieldChanges, the reconstructed state must still contain the previous value because DeepMerge cannot infer deletions from omission.");
-        }
+        nestedRemovalReported.ShouldBeFalse(
+            "DW3 AC#2: nested removal must NOT be synthesized — Decision Ledger marks omitted properties as preserved-limitation.");
+        frame.StateJson.Contains("\"y\":2", StringComparison.Ordinal).ShouldBeTrue(
+            "DW3 AC#2: reconstructed state must retain the previous value because DeepMerge cannot infer deletions from omission.");
     }
 
     // ---------------------------------------------------------------
@@ -203,10 +203,12 @@ public class Dw3JsonReconstructionAtddTests {
             at: 1, ct: CancellationToken.None);
 
         // Either 200 with bounded result or 400 with stable reason — not 500.
-        result.ShouldSatisfyAllConditions(
-            () => result.ShouldNotBeOfType<ObjectResult>(
-                "DW3 AC#4: deep recursion must not surface as a 500 InternalServerError with stack trace.")
-        );
+        // Status code is what matters: 500 is forbidden; 200 (OkObjectResult) and 400 (ObjectResult
+        // wrapping ProblemDetails via Problem(...)) are both acceptable.
+        ObjectResult obj = result.ShouldBeAssignableTo<ObjectResult>()!;
+        obj.StatusCode.ShouldNotBe(StatusCodes.Status500InternalServerError,
+            "DW3 AC#4: deep recursion must not surface as a 500 InternalServerError with stack trace.");
+        obj.StatusCode.ShouldBeOneOf(StatusCodes.Status200OK, StatusCodes.Status400BadRequest);
     }
 
     [Fact]
@@ -223,8 +225,10 @@ public class Dw3JsonReconstructionAtddTests {
 
         // RED: current FieldChange ctor throws ArgumentException on whitespace
         // FieldPath. The endpoint must skip such fields instead of returning 500.
-        result.ShouldNotBeOfType<ObjectResult>(
+        ObjectResult obj = result.ShouldBeAssignableTo<ObjectResult>()!;
+        obj.StatusCode.ShouldNotBe(StatusCodes.Status500InternalServerError,
             "DW3 AC#4: empty property names must be skipped or surfaced as 400 — never 500.");
+        obj.StatusCode.ShouldBeOneOf(StatusCodes.Status200OK, StatusCodes.Status400BadRequest);
     }
 
     [Fact]

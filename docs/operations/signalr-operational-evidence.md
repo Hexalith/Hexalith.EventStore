@@ -15,6 +15,13 @@ _bmad-output/test-artifacts/<story-or-proof-key>/index.md
 
 The folder index should list the run id, date, commit SHA, environment, topology, result, classification, and links to the evidence files. Do not commit raw production logs, HAR files with sensitive payloads, bearer tokens, connection strings, full network traces, production hostnames, user identifiers, or tenant identifiers that are not already safe test aliases. Use stable placeholders such as `<redacted-token>`, `<redacted-host>`, `<redacted-connection-string>`, and `tenant-alias-001`.
 
+DW4 adds a curated static validator for `signalr-operational-evidence/v1`.
+Run `scripts/validate-evidence.ps1 --self-test` or
+`bash scripts/validate-evidence.sh --self-test` to prove the validator's
+positive and negative fixtures. Pass explicit copied evidence files to validate
+concrete runs; do not validate the template itself because it intentionally
+contains placeholders.
+
 ## Mandatory Artifacts
 
 Every evidence file must include:

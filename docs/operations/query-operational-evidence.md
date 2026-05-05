@@ -45,6 +45,13 @@ Use stable aliases such as `tenant-alias-001`, `domain-alias-001`,
 `projection-alias-001`, `<redacted-token>`, and
 `<redacted-connection-string>`.
 
+DW4 adds a curated static validator for `query-operational-evidence/v1`.
+Run `scripts/validate-evidence.ps1 --self-test` or
+`bash scripts/validate-evidence.sh --self-test` to prove the validator's
+positive and negative fixtures. Pass explicit copied evidence files to validate
+concrete runs; do not validate the template itself because it intentionally
+contains placeholders.
+
 ## Mandatory Artifacts
 
 Every evidence file must include:

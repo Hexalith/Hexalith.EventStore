@@ -4,18 +4,44 @@ This folder is the curated root for DW4 (`post-epic-deferred-dw4-operational-evi
 
 ## Contents
 
-- `fixtures/` — Positive and negative evidence fixtures used by the validator's
-  test project (`tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests`).
-- `entrypoint.txt` — **(dev-created during implementation)** Single line declaring
-  the validator entrypoint. One of:
-  - `pwsh:scripts/validate-evidence.ps1`
-  - `sh:scripts/validate-evidence.sh`
-  - `dotnet:Hexalith.EventStore.OperationalEvidenceValidator.Validator, Hexalith.EventStore.OperationalEvidenceValidator`
-  Until this file is committed, all DW4 ATDD scaffolds remain skipped.
-- `deferred-work-snapshot.md` — **(dev-created during implementation)** A snapshot of
-  `_bmad-output/implementation-artifacts/deferred-work.md` taken at the start of
-  DW4 implementation, used by `Dw4DeferredWorkDispositionAtddTests` to detect
-  drift in unrelated bullets.
+- `fixtures/` - Positive and negative evidence fixtures used by
+  `scripts/validate-operational-evidence.py --self-test`.
+- `entrypoint.txt` - Single line declaring the script entrypoint used by the
+  existing DW4 test scaffold: `pwsh:scripts/validate-evidence.ps1`.
+
+## Validator Scope
+
+DW4 validates only these schema versions:
+
+- `query-operational-evidence/v1`
+- `signalr-operational-evidence/v1`
+
+Unknown or future schema versions fail closed until a later story maps them.
+The default docs-validation gate runs the curated fixture self-test only; it
+does not scan historical evidence folders.
+
+Run locally:
+
+```powershell
+.\scripts\validate-evidence.ps1 --self-test
+.\scripts\validate-evidence.ps1 --json path\to\evidence.md
+```
+
+```bash
+bash scripts/validate-evidence.sh --self-test
+bash scripts/validate-evidence.sh --json path/to/evidence.md
+```
+
+## Classification Mapping
+
+| Schema | Allowed run-level classifications |
+| --- | --- |
+| `query-operational-evidence/v1` | `pass`, `path-viability`, `sample-only`, `diagnostic-only`, `not-claimable`, `product-failure`, `environment-blocker`, `instrumentation-gap`, `inconclusive` |
+| `signalr-operational-evidence/v1` | `pass`, `product-failure`, `environment-blocker`, `instrumentation-gap`, `sample-only`, `inconclusive` |
+
+Query-only downgrade values are `path-viability`, `diagnostic-only`, and
+`not-claimable`. `instrumentation-gap` is shared even though the proof
+boundaries differ by schema.
 
 ## Fixture Layout
 
@@ -35,9 +61,5 @@ The expected outcome and rule-id set per fixture is pinned in
 
 - All fixtures must be **safe to commit** — no real tokens, no real production
   hostnames, no customer payload data.
-- Fixture stubs created by the ATDD red-phase scaffolding are intentionally
-  minimal. Dev fills the body during implementation so the validator's rule
-  evaluation has something concrete to fire against.
-- Adding a new fixture requires a matching entry in `Dw4FixtureCatalog.All`.
-- Removing a fixture requires updating both the catalog and any test method
-  that references the fixture filename.
+- Adding a new fixture requires adding the expected rule id to
+  `EXPECTED_FIXTURE_RULES` in `scripts/validate-operational-evidence.py`.

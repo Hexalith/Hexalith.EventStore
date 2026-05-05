@@ -108,7 +108,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
 
         IActionResult result = await controller.GetAggregateBlameAsync(
             Dw3TestUtilities.TenantId, Dw3TestUtilities.Domain, Dw3TestUtilities.AggregateId,
-            at: null, maxEvents: int.MaxValue, maxFields: 5_000, _: CancellationToken.None);
+            at: null, maxEvents: int.MaxValue, maxFields: 5_000, ct: CancellationToken.None);
 
         ProblemDetails details = ShouldBeBadRequestProblem(result);
         ShouldHaveStableReasonCode(details, "max_events_above_limit");
@@ -122,7 +122,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
 
         IActionResult result = await controller.GetAggregateBlameAsync(
             Dw3TestUtilities.TenantId, Dw3TestUtilities.Domain, Dw3TestUtilities.AggregateId,
-            at: null, maxEvents: 10_000, maxFields: int.MaxValue, _: CancellationToken.None);
+            at: null, maxEvents: 10_000, maxFields: int.MaxValue, ct: CancellationToken.None);
 
         ProblemDetails details = ShouldBeBadRequestProblem(result);
         ShouldHaveStableReasonCode(details, "max_fields_above_limit");

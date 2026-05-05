@@ -1,6 +1,6 @@
 # Post-Epic Deferred DW3: Admin Debugging JSON and Large-Stream Hardening
 
-Status: review
+Status: done
 
 <!-- Source: sprint-change-proposal-2026-05-04-deferred-work-triage.md - Proposal D / DW3 -->
 <!-- Source: deferred-work.md - Epic 20 JSON reconstruction, direct CommandApi bounds, and large-stream deferrals through 2026-05-04 -->
@@ -255,6 +255,7 @@ GPT-5 Codex
 - `tests/Hexalith.EventStore.Server.Tests/Controllers/Dw3FacadeCompatibilityAtddTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Controllers/Dw3JsonReconstructionAtddTests.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Controllers/Dw3LargeStreamSurfaceAtddTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Controllers/Dw3TestUtilities.cs`
 - `tests/Hexalith.EventStore.Server.Tests/Controllers/Dw3TraceMapScanCapAtddTests.cs`
 
 ## Verification Status
@@ -264,6 +265,7 @@ GPT-5 Codex
 - `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~Dw3" --no-restore` passed: 30/30.
 - `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~AdminStreamQueryController|FullyQualifiedName~AdminTraceQueryController" --no-restore` passed: 28/28.
 - `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~Dw3" -c Release --no-restore` passed: 30/30.
+- **Post-code-review re-validation (Release)**: `Dw3` filter passed 30/30; combined Admin stream/trace + DW3 filter passed 58/58; Client 334/334; Contracts 281/281; Sample 63/63; Testing 78/78.
 - `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --no-restore` passed: 334/334.
 - `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-restore` passed: 281/281.
 - `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj --no-restore` passed: 63/63.
@@ -287,6 +289,7 @@ GPT-5 Codex
 
 | Date | Version | Description | Author |
 |---|---:|---|---|
+| 2026-05-05 | 1.1 | Code-review patches: align `JsonDiff` to no-synthesis decision; exclusive timeline cursor + documented `TotalCount` contract change; `BadRequestWithReasonCode` via `Problem(...)` factory; explicit `MaxDepth=64` on payload parse; bisect `bad>stream` carries `bad_above_stream` reason code; blame `ct` propagated; tightened ATDD assertions; extended disposition matrix to 8 surfaces; added `Dw3TestUtilities.cs` to File List. `[AllowAnonymous]` runtime defense deferred per AC #9. | Code Review |
 | 2026-05-05 | 1.0 | Implemented DW3 direct bounds, JSON reconstruction guards, trace-map scan-cap honesty, large-stream/trust-boundary documentation, deferred-work dispositions, and validation handoff. | Codex |
 | 2026-05-05 | 0.3 | Applied advanced-elicitation hardening for DW3 decision ledger, JSON behavior proof, direct bounds, and trace-map partial coverage. | Codex automation |
 | 2026-05-04 | 0.2 | Applied party-mode review clarifications for DW3 contracts, evidence, and implementation guardrails. | Codex automation |
@@ -303,3 +306,35 @@ GPT-5 Codex
 - Changes applied: Added Advanced Elicitation Clarifications for decision-ledger requirements, stop signs, behavior-proof requirements, review handoff, and sensitive-output boundaries. Tightened Tasks 0.5, 1.5, 2.2b, 3.1a, 4.2a, and 6.5, and updated Completion Notes, Verification Status, and Change Log.
 - Findings deferred: Numeric limits, exact recursion/depth thresholds, final endpoint-by-endpoint `GetEventsAsync(0)` dispositions, trust-boundary automation versus documentation, broad actor APIs, JSON Patch/domain replay semantics, public CommandApi auth changes, DAPR topology/access-control changes, DW2 runtime evidence, DW4 schema validation, and DW5 UI polish remain out of scope until separate product or architecture decisions approve them.
 - Final recommendation: `ready-for-dev`
+
+## Review Findings
+
+Recorded by `/bmad-code-review` on 2026-05-05. Sources: Blind Hunter (no project context), Edge Case Hunter (diff + project read), Acceptance Auditor (diff + spec). Triage: 7 decision-needed (resolved), 9 original patch + 5 derived from decisions = 14 patches (applied), 6 defer, ~11 dismissed as noise.
+
+### Decisions resolved
+
+- [x] [Review][Decision→Patch] Bisect `maxSteps`/`maxFields` direct caps equal defaults — kept the constants as-is (constraining direct work without widening scope) and **clarified the intent in the operations doc** (`docs/operations/admin-debugging-json-large-stream-hardening.md` Direct Parameter Bounds note: parameter exists for facade-defaults parity; cap raise is a follow-up product change).
+- [x] [Review][Decision→Patch] Timeline `TotalCount` semantic — kept the new "filtered total available" semantic (required for AC #6 truncation visibility), **documented the contract change** in the operations doc Timeline `PagedResult` Contract section, and **pinned the new meaning in tests** (`Dw3LargeStreamSurfaceAtddTests.Timeline_StreamLengthExceedsCount_*` now asserts `TotalCount == 200` for a 200-event stream paged at 10).
+- [x] [Review][Decision→Patch] Timeline `ContinuationToken` inclusive/exclusive — chose **exclusive cursor** (next page = `from = ContinuationToken`); patched controller to emit `entries[^1].SequenceNumber + 1`; documented in the Timeline `PagedResult` Contract section; the surface-truncation test now asserts the exact cursor value.
+- [x] [Review][Decision→Patch] Timeline materializes full filtered stream — accepted as documented limitation: surface matrix wording changed from "bounded-range-read" to "range-read with response-size cap (memory bounded by `from`)"; remaining-debt column names the actor-side range API as future work. No actor-API reshape (out of DW3 scope per Scope Boundaries).
+- [x] [Review][Decision→Patch] `JsonDiff` nested-deletion synthesis vs decision-ledger — chose to **align code to doc**: removed the `if (!after.ContainsKey(prop.Key) && prop.Value is not null) changes[...] = ("null", ...)` branch from `JsonDiff`. Decision ledger states omitted properties are `preserved-limitation`; code now never synthesizes a delete. Test `Step_NestedPropertyRemovedFromObject_BehaviorMatchesMatrix` updated to assert the no-synthesis contract directly.
+- [x] [Review][Decision→Defer] `[AllowAnonymous]` runtime defense — **deferred**. AC #9 explicitly forbids public-auth changes in DW3 ("Do not silently add public authentication changes to CommandApi in this story"). Already documented as `accepted-debt`; routed to a future service-to-service auth story tracked in `deferred-work.md`.
+- [x] [Review][Decision→Patch] `Dw3TestUtilities.cs` missing from File List — **added** to File List (above) per AC #14.
+
+### Patches applied
+
+- [x] [Review][Patch] Bisect `GetAggregateBlameAsync` discarded CancellationToken — renamed `_` → `ct` and added `ct.ThrowIfCancellationRequested()` before and after the actor read. [src/Hexalith.EventStore/Controllers/AdminStreamQueryController.cs:444]
+- [x] [Review][Patch] `Step_DeeplyNestedJsonPayload_DoesNotCauseStackOverflow` assertion tightened — replaced `ShouldNotBeOfType<ObjectResult>` (which incorrectly rejected the explicitly-allowed 400 path) with explicit `StatusCode != 500` check that admits both 200 and 400. [tests/.../Dw3JsonReconstructionAtddTests.cs:207–209]
+- [x] [Review][Patch] `Step_EmptyPropertyNameInPayload_*` tightened with the same fix. [tests/.../Dw3JsonReconstructionAtddTests.cs:225–227]
+- [x] [Review][Patch] Disposition matrix expanded to 8 surfaces — added `event-detail = bounded-range-read` and `diff-helper = accepted-debt` to `Dw3GetEventsAsyncDispositionMatrix`; `expectedSurfaces` in `Dw3LargeStreamSurfaceAtddTests` now enumerates all 8. [tests/.../Dw3TestUtilities.cs:37–45 + Dw3LargeStreamSurfaceAtddTests.cs:33]
+- [x] [Review][Patch] `Bisect_BadSequenceBeyondStream_Returns400WithGuidance` tightened — disjunctive 400-OR-200 acceptance replaced with strict 400 + `reasonCode = bad_above_stream` requirement; controller now uses `BadRequestWithReasonCode` to emit the new `bad_above_stream` reason code (added to `Dw3DirectBoundReasonCodes`). [tests/.../Dw3LargeStreamSurfaceAtddTests.cs nested test + src/.../AdminStreamQueryController.cs:134–139]
+- [x] [Review][Patch] `Step_NestedPropertyRemovedFromObject_BehaviorMatchesMatrix` no-else hole closed — replaced conditional `if (nestedRemovalReported)` with unconditional `ShouldBeFalse` against synthesis (matches the new code behavior after the JsonDiff fix above) plus state-retention assertion. [tests/.../Dw3JsonReconstructionAtddTests.cs nested-removal test]
+- [x] [Review][Patch] `BadRequestWithReasonCode` refactored — now calls `Problem(...)` (instance method) so responses go through `IProblemDetailsService` and pick up `traceId`/`instance` enrichment, then sets `Extensions["reasonCode"]` on the resulting `ProblemDetails`. Both wire-format families for 400 now share the same shape. [src/.../AdminStreamQueryController.cs:995–1003]
+- [x] [Review][Patch] `JsonNode.Parse` defense-in-depth — added a `_payloadParseOptions = new() { MaxDepth = 64 }` field and threaded it through every payload-parsing call site (step-through, blame, sandbox, ReconstructState). The depth cap is now in source, not implicit. [src/.../AdminStreamQueryController.cs constants block + 4 parse sites]
+- [x] [Review][Patch] `Timeline_StreamLengthExceedsCount_ResponseExposesTruncationSignal` tightened — disjunctive `TotalCount > Items.Count OR ContinuationToken` replaced with conjunctive: `TotalCount == 200 AND ContinuationToken == last+1`. [tests/.../Dw3LargeStreamSurfaceAtddTests.cs nested test]
+- [x] [Review][Defer] `JsonDiff` field-path-with-`.`-in-property-name ambiguity — pre-existing helper limitation; `{"a.b":1}` and `{"a":{"b":1}}` produce identical paths. Tracked for a future encoding/escape decision. [src/Hexalith.EventStore/Controllers/AdminStreamQueryController.cs JsonDiff helper] — deferred, pre-existing
+- [x] [Review][Defer] Bisect equal `good=bad` empty-range edge — pre-existing logic not changed by DW3. — deferred, pre-existing
+- [x] [Review][Defer] Type-changing JSON merge (object↔scalar↔array silent overwrite via `DeepClone`) — pre-existing; merge behavior unchanged in DW3. Decision ledger documents arrays only; type-changes between objects/scalars not separately specified. — deferred, pre-existing
+- [x] [Review][Defer] `GetEventDetailAsync` issues — `{}` substitution for empty payload; no JSON validation on returned `PayloadJson`; no `sequenceNumber` upper bound; no ULID validation on `aggregateId` segment. From PR #233 / Story 15.12b, included in the diff window but not in DW3 File List — defer to that story. [src/Hexalith.EventStore/Controllers/AdminStreamQueryController.cs:211,239,258,397] — deferred, sibling story
+- [x] [Review][Defer] `IsValidFieldPath` doesn't reject leading `.`, control characters, or `[]` — beyond DW3's narrow guard scope; ledger lists "empty/whitespace path" as supported. Tracked for future hardening. [src/Hexalith.EventStore/Controllers/AdminStreamQueryController.cs:IsValidFieldPath] — deferred, pre-existing
+- [x] [Review][Defer] Trace-map `producedEvents` list grows unbounded up to MaxEventScan when `expectedEventCount` is null — pre-existing scan loop; DW3 only flipped `ScanCapped`. Response-size cap is separate work. [src/Hexalith.EventStore/Controllers/AdminTraceQueryController.cs:142–156] — deferred, pre-existing

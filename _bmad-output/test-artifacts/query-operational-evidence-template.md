@@ -2,6 +2,12 @@
 
 Schema version: `query-operational-evidence/v1`
 
+Validator support: DW4 validates curated query/v1 fixtures with
+`scripts/validate-evidence.ps1 --self-test` or
+`bash scripts/validate-evidence.sh --self-test`. This template intentionally
+contains placeholders, so copy it to a concrete evidence file before running
+the validator against the evidence path.
+
 Copy this file to
 `_bmad-output/test-artifacts/<story-or-proof-key>/evidence-YYYY-MM-DD[-short-run-id].md`
 for each run. Replace every angle-bracket placeholder (`<...>`) before

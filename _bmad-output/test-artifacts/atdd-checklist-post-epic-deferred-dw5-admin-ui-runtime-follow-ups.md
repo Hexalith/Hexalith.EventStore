@@ -5,7 +5,8 @@ stepsCompleted:
   - step-03-test-strategy
   - step-04-generate-tests
   - step-04c-aggregate
-lastStep: step-04c-aggregate
+  - step-05-validate-and-complete
+lastStep: step-05-validate-and-complete
 lastSaved: '2026-05-05'
 storyId: DW5
 storyKey: post-epic-deferred-dw5-admin-ui-runtime-follow-ups
@@ -208,4 +209,40 @@ The DW5 dev should:
 The E2E scaffolds are runnable once the E2E project is properly tracked and added to the
 solution; that scope does not belong to DW5.
 
+## Step 5: Validate & Complete
 
+### Validation Results
+
+- Checklist frontmatter includes `storyId`, `storyKey`, `storyFile`, `atddChecklistPath`, and deterministic generated test paths.
+- Red-phase scaffold check passed: DW5 bUnit scaffolds use `[Fact(Skip = ...)]` / `[Theory(Skip = ...)]` and E2E scaffolds use `[Fact(Skip = ...)]`; no active DW5 scaffold was emitted.
+- Placeholder assertion check passed: no `expect(true).toBe(true)` / equivalent placeholder pattern was found in the generated DW5 scaffolds.
+- CLI session hygiene: no Playwright CLI/browser recording session was opened for this ATDD run.
+- Temp artifact storage: no new random temp artifacts were required during Step 5; final workflow state is stored in this checklist.
+
+### Commands Run
+
+```powershell
+dotnet test tests/Hexalith.EventStore.Admin.UI.Tests/Hexalith.EventStore.Admin.UI.Tests.csproj --configuration Release --filter "FullyQualifiedName~Dw5"
+```
+
+Result: `0 failed, 0 passed, 25 skipped, 25 total`. This is the intended ATDD red phase.
+
+```powershell
+dotnet test tests/Hexalith.EventStore.Admin.UI.Tests/Hexalith.EventStore.Admin.UI.Tests.csproj --configuration Release
+```
+
+Result: `0 failed, 622 passed, 25 skipped, 647 total`.
+
+```powershell
+dotnet test tests/Hexalith.EventStore.Admin.UI.E2E/Hexalith.EventStore.Admin.UI.E2E.csproj --configuration Release --filter "FullyQualifiedName~Dw5"
+```
+
+Result: restore failed with `NU1010` because `tests/Hexalith.EventStore.Admin.UI.E2E/Hexalith.EventStore.Admin.UI.E2E.csproj` references `xunit` while central package management only defines `xunit.v3`. This confirms the pre-existing E2E project blocker already documented above; the E2E source folder is also matched by `.gitignore` pattern `*.e2e`.
+
+### Completion Summary
+
+- Test files created/tracked by this checklist: 10 generated DW5 files (7 bUnit-side files including helper, 3 E2E-side browser scaffolds).
+- Checklist output path: `_bmad-output/test-artifacts/atdd-checklist-post-epic-deferred-dw5-admin-ui-runtime-follow-ups.md`.
+- Story handoff path: `_bmad-output/implementation-artifacts/post-epic-deferred-dw5-admin-ui-runtime-follow-ups.md`.
+- Key assumption: DW5 browser runtime proof remains manual or blocked until the E2E project tracking/CPM issue is handled outside this ATDD workflow.
+- Next recommended workflow: `bmad-dev-story` for DW5 implementation, activating skipped scaffolds task by task after first confirming red.

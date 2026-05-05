@@ -30,21 +30,21 @@ done
 
 # --- Stage 1: Markdown Linting ---
 echo ""
-echo "=== Stage 1/4: Markdown Linting ==="
+echo "=== Stage 1/5: Markdown Linting ==="
 CURRENT_STAGE="Markdown linting"
 eval npx markdownlint-cli2 $DOCS_GLOB
 echo "PASSED: Markdown linting"
 
 # --- Stage 2: Link Checking ---
 echo ""
-echo "=== Stage 2/4: Link Checking ==="
+echo "=== Stage 2/5: Link Checking ==="
 CURRENT_STAGE="Link checking"
 eval lychee --config lychee.toml $DOCS_GLOB
 echo "PASSED: Link checking"
 
 # --- Stage 3: Sample Build & Test ---
 echo ""
-echo "=== Stage 3/4: Sample Build & Test ==="
+echo "=== Stage 3/5: Sample Build & Test ==="
 CURRENT_STAGE="Sample build & test"
 dotnet restore samples/Hexalith.EventStore.Sample.Tests/
 dotnet restore tests/Hexalith.EventStore.Sample.Tests/
@@ -56,10 +56,17 @@ echo "PASSED: Sample build & test"
 
 # --- Stage 4: DAPR SDK Version Pin Consistency ---
 echo ""
-echo "=== Stage 4/4: DAPR SDK Version Pin Consistency ==="
+echo "=== Stage 4/5: DAPR SDK Version Pin Consistency ==="
 CURRENT_STAGE="DAPR SDK version pin consistency"
 bash scripts/check-doc-versions.sh
 echo "PASSED: DAPR SDK version pin consistency"
+
+# --- Stage 5: Operational Evidence Validator Fixtures ---
+echo ""
+echo "=== Stage 5/5: Operational Evidence Validator Fixtures ==="
+CURRENT_STAGE="Operational evidence validator fixtures"
+bash scripts/validate-evidence.sh --self-test
+echo "PASSED: Operational evidence validator fixtures"
 
 CURRENT_STAGE=""
 trap - ERR

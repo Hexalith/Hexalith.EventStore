@@ -72,6 +72,14 @@ public class Dw3FacadeCompatibilityAtddTests {
         }
     }
 
+    /// <summary>
+    /// Pins both the public properties AND the runtime semantic of
+    /// <c>PagedResult&lt;TimelineEntry&gt;.TotalCount</c>: it is the FULL filtered count
+    /// available, NOT the returned-page size. This is required for AC #6 large-stream
+    /// truncation visibility, and it is a documented contract change from the prior
+    /// 'page size' semantic. The runtime-semantic check lives in
+    /// <see cref="Dw3LargeStreamSurfaceAtddTests.Timeline_StreamLengthExceedsCount_ResponseExposesTruncationSignal"/>.
+    /// </summary>
     [Fact]
     public void PagedResult_OfTimelineEntry_PublicPropertiesUnchanged() {
         Type pagedTimeline = typeof(PagedResult<TimelineEntry>);

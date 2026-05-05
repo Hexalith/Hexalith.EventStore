@@ -30,7 +30,7 @@ public class Dw3LargeStreamSurfaceAtddTests {
     public void GetEventsAsyncDisposition_AllSurfacesHaveExplicitDisposition() {
         // Surfaces calling GetEventsAsync(0) per source-code reconnaissance
         // (see ATDD checklist Step 03).
-        IReadOnlyList<string> expectedSurfaces = ["timeline", "blame", "bisect", "step", "sandbox", "trace-map"];
+        IReadOnlyList<string> expectedSurfaces = ["timeline", "event-detail", "blame", "bisect", "step", "sandbox", "diff-helper", "trace-map"];
 
         foreach (string surface in expectedSurfaces) {
             Dw3TestUtilities.Dw3GetEventsAsyncDispositionMatrix.ShouldContainKey(surface,
@@ -65,7 +65,7 @@ public class Dw3LargeStreamSurfaceAtddTests {
 
         IActionResult result = await controller.GetAggregateBlameAsync(
             Dw3TestUtilities.TenantId, Dw3TestUtilities.Domain, Dw3TestUtilities.AggregateId,
-            at: null, maxEvents: 50, maxFields: 5_000, _: CancellationToken.None);
+            at: null, maxEvents: 50, maxFields: 5_000, ct: CancellationToken.None);
 
         OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
         AggregateBlameView view = ok.Value.ShouldBeOfType<AggregateBlameView>();
@@ -87,13 +87,18 @@ public class Dw3LargeStreamSurfaceAtddTests {
         OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
         PagedResult<TimelineEntry> paged = ok.Value.ShouldBeOfType<PagedResult<TimelineEntry>>();
 
-        // RED: today TotalCount = entries.Count = 10, hiding that 200 events exist.
-        // Dev must surface truncation via TotalCount or ContinuationToken.
-        bool truncationExposed = paged.TotalCount > paged.Items.Count
-            || !string.IsNullOrEmpty(paged.ContinuationToken);
-        truncationExposed.ShouldBeTrue(
-            "DW3 AC#6: timeline must expose truncation when stream length > count "
-            + "(via TotalCount > Items.Count or non-null ContinuationToken).");
+        // AC #6: timeline must expose truncation through BOTH the count signal
+        // (TotalCount = total filtered events, not just the returned page) AND
+        // the cursor signal (ContinuationToken non-null when a next page exists).
+        // Disjunctive checks let regressions drop one signal silently.
+        paged.Items.Count.ShouldBe(10);
+        paged.TotalCount.ShouldBe(200,
+            "DW3 AC#6: TotalCount must reflect the full filtered count (200), not the returned page (10).");
+        paged.ContinuationToken.ShouldNotBeNullOrEmpty(
+            "DW3 AC#6: ContinuationToken must be non-null when a next page exists.");
+        // Cursor is exclusive: next request uses `from = ContinuationToken`, which is last-returned + 1.
+        paged.ContinuationToken.ShouldBe((paged.Items[^1].SequenceNumber + 1).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            "DW3 AC#6: ContinuationToken must be the next sequence (last returned + 1) for exclusive cursor semantics.");
     }
 
     [Fact]
@@ -132,21 +137,17 @@ public class Dw3LargeStreamSurfaceAtddTests {
             good: 1, bad: 9999, fields: "a", maxSteps: 30, maxFields: 1_000,
             ct: CancellationToken.None);
 
-        // RED: today the controller may compute against a partial range. AC #6
-        // requires explicit out-of-range guidance for the "bad" parameter.
-        if (result is ObjectResult obj && obj.StatusCode == StatusCodes.Status400BadRequest) {
-            ProblemDetails details = obj.Value.ShouldBeOfType<ProblemDetails>();
-            (details.Detail ?? string.Empty).ShouldNotBeNullOrWhiteSpace(
-                "DW3 AC#6: bisect with bad>stream must include guidance text.");
-        }
-        else {
-            // If it returned 200, the response must explicitly indicate the
-            // sequence was clamped to the stream length.
-            OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
-            BisectResult bisect = ok.Value.ShouldBeOfType<BisectResult>();
-            bisect.IsTruncated.ShouldBeTrue(
-                "DW3 AC#6: if bisect returns 200 for bad>stream, IsTruncated must be true.");
-        }
+        // AC #6: bisect with bad>stream must reject with 400 + stable reason code.
+        // The previous silent-clamp behavior is no longer accepted.
+        ObjectResult obj = result.ShouldBeAssignableTo<ObjectResult>()!;
+        obj.StatusCode.ShouldBe(StatusCodes.Status400BadRequest,
+            "DW3 AC#6: bisect with bad>stream must reject with 400, not silently clamp.");
+        ProblemDetails details = obj.Value.ShouldBeOfType<ProblemDetails>();
+        (details.Detail ?? string.Empty).ShouldNotBeNullOrWhiteSpace(
+            "DW3 AC#6: bisect with bad>stream must include guidance text.");
+        details.Extensions.ShouldContainKey("reasonCode",
+            "DW3 AC#10: 400 responses must carry a stable machine-readable reason code.");
+        details.Extensions["reasonCode"].ShouldBe("bad_above_stream");
     }
 
     [Fact]

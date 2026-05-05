@@ -2,6 +2,12 @@
 
 Schema version: `signalr-operational-evidence/v1`
 
+Validator support: DW4 validates curated signalr/v1 fixtures with
+`scripts/validate-evidence.ps1 --self-test` or
+`bash scripts/validate-evidence.sh --self-test`. This template intentionally
+contains placeholders, so copy it to a concrete evidence file before running
+the validator against the evidence path.
+
 Copy this file to `_bmad-output/test-artifacts/<story-or-proof-key>/evidence-YYYY-MM-DD[-short-run-id].md` for each run. Keep production secrets and raw diagnostics out of committed evidence.
 
 Authoritative field definitions, latency intervals, classification table, and redaction rules live in [`docs/operations/signalr-operational-evidence.md`](../../docs/operations/signalr-operational-evidence.md). The Mandatory Artifacts list in that document is the canonical checklist; the section headings below mirror it. Do not skip a section without recording the reason in the section's body.

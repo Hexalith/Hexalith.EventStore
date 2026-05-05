@@ -30,6 +30,9 @@ This note records the DW3 architecture decision for Admin debugging surfaces. Th
 | blame | `maxFields` | 5,000 | `<= 0` normalizes to 5,000 | 5,000 | HTTP 400 before actor read | `max_fields_above_limit` |
 | bisect | `maxSteps` | 30 | `<= 0` normalizes to 30 | 30 | HTTP 400 before actor read | `max_steps_above_limit` |
 | bisect | `maxFields` | 1,000 | `<= 0` normalizes to 1,000 | 1,000 | HTTP 400 before actor read | `max_fields_above_limit` |
+| bisect | `bad` | n/a | (route param) | stream length | HTTP 400 before midpoint replay | `bad_above_stream` |
+
+For `bisect maxSteps` and `maxFields`, the direct-CommandApi maximum equals the controller default. This is intentional: the parameter exists for facade-defaults parity (Admin.Server may publish values up to the same caps), but any value above the default is rejected at the direct layer to keep computation work bounded. If a caller needs higher bisect breadth, the cap must be raised explicitly in a follow-up change rather than supplied per-request.
 
 Admin.Server facade options remain compatibility defaults. They are not the only protection; the CommandApi computation layer enforces the direct upper bounds above.
 
@@ -37,7 +40,7 @@ Admin.Server facade options remain compatibility defaults. They are not the only
 
 | Surface | Current read pattern | Bound or signal | `GetEventsAsync(0)` disposition | Remaining debt |
 |---|---|---|---|---|
-| timeline | `GetEventsAsync(fromSequence)` materializes from the lower bound. | `count` is capped; response `TotalCount` and `ContinuationToken` expose truncation. | bounded-range-read | Actor still returns an array from the lower bound; true page-size range API remains future work. |
+| timeline | `GetEventsAsync(fromSequence)` materializes from the lower bound. | `count` capped; response carries the **filtered total** in `TotalCount` (NOT the page size — see contract note below) and an **exclusive** `ContinuationToken` (last returned sequence + 1). | range-read with response-size cap (memory bounded by `from`) | Actor still returns an array from the lower bound; the controller still sorts the full filtered set in memory. True page-size range API remains future actor work. |
 | event detail | `GetEventsAsync(sequenceNumber - 1)` reads from just before the target event. | 400 for sequence `< 1`; 404 when target is absent. | bounded-range-read | True single-event actor API would avoid materializing the tail. |
 | blame | `GetEventsAsync(0)` full-stream read, then local `maxEvents` truncation. | `maxEvents` and `maxFields` capped; response keeps `IsTruncated` and `IsFieldsTruncated`. | preserve-legacy | Future actor range/snapshot API should avoid the full read. |
 | bisect | `GetEventsAsync(0)` full-stream read for midpoint replay. | `maxSteps` and `maxFields` capped; `bad` beyond stream returns 400 with guidance. | preserve-legacy | Snapshot-aware reconstruction or range reads are future actor API work. |
@@ -45,6 +48,12 @@ Admin.Server facade options remain compatibility defaults. They are not the only
 | sandbox | `GetEventsAsync(0)` full-stream read unless `AtSequence = 0`. | `AtSequence = 0` skips actor read; beyond-stream `AtSequence` returns 400. | preserve-legacy | Snapshot-aware state reconstruction is future actor API work. |
 | diff helper | No standalone route; `JsonDiff` feeds blame, bisect, step-through, and sandbox responses. | Arrays are opaque, omitted properties are not deletes, empty paths are skipped. | accepted-debt | Domain `Apply` replay or JSON Patch semantics require a product decision. |
 | trace map | `GetEventsAsync(0)` full stream, then latest 10,000 events are scanned. | `ScanCapped` and `ScanCapMessage` are set whenever the stream exceeds the scan window. | preserve-legacy | Actor tail/range scan API should replace full-stream loading. |
+
+### Timeline `PagedResult` Contract (Change Note)
+
+- `Items`: ordered timeline entries for the requested page (`<= count`).
+- `TotalCount`: full count of events matching the `from`/`to` filter, **before** `count` is applied. This is a contract change: prior implementations populated this with `Items.Count`, which made truncation invisible to clients. Admin UI / CLI / MCP must read `TotalCount` as "total filtered events available," not "page size."
+- `ContinuationToken`: when present, the **exclusive** sequence at which the next page begins. Callers re-issue the request with `from = ContinuationToken` to fetch the page strictly after the current one. The token is `null` when no further pages exist.
 
 ## Future Actor API Shape
 

@@ -45,6 +45,8 @@ public class AdminStreamQueryController(
     private const int _maxDirectBlameFields = _defaultMaxFields;
     private const int _maxDirectTimelineCount = 1_000;
 
+    private static readonly JsonDocumentOptions _payloadParseOptions = new() { MaxDepth = 64 };
+
     /// <summary>
     /// Performs a binary search through event history to find the exact event where aggregate state
     /// diverged from expected field values. Reconstructs state at O(log N) midpoints for comparison.
@@ -132,10 +134,9 @@ public class AdminStreamQueryController(
             }
 
             if (bad > actualMaxSequence) {
-                return Problem(
-                    statusCode: StatusCodes.Status400BadRequest,
-                    title: "Bad Request",
-                    detail: $"Parameter 'bad' ({bad}) exceeds stream length ({actualMaxSequence}); choose a sequence within the stream before bisecting.");
+                return BadRequestWithReasonCode(
+                    $"Parameter 'bad' ({bad}) exceeds stream length ({actualMaxSequence}); choose a sequence within the stream before bisecting.",
+                    "bad_above_stream");
             }
 
             // Reconstruct state at the good sequence to establish expected field values
@@ -327,8 +328,11 @@ public class AdminStreamQueryController(
                     e.CorrelationId,
                     string.IsNullOrWhiteSpace(e.UserId) ? null : e.UserId))];
 
-            string? continuationToken = filteredEvents.Count > entries.Count
-                ? entries.LastOrDefault()?.SequenceNumber.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            // Cursor is exclusive: callers re-issue the request with `from = continuationToken` to fetch
+            // the next page starting after the last entry of this page (since `from` is inclusive on the
+            // controller and the cursor is the last entry's sequence + 1).
+            string? continuationToken = filteredEvents.Count > entries.Count && entries.Count > 0
+                ? (entries[^1].SequenceNumber + 1).ToString(System.Globalization.CultureInfo.InvariantCulture)
                 : null;
 
             return Ok(new PagedResult<TimelineEntry>(entries, filteredEvents.Count, continuationToken));
@@ -441,7 +445,7 @@ public class AdminStreamQueryController(
         [FromQuery] long? at,
         [FromQuery] int maxEvents = _defaultMaxEvents,
         [FromQuery] int maxFields = _defaultMaxFields,
-        CancellationToken _ = default) {
+        CancellationToken ct = default) {
         if (at.HasValue && at.Value < 1) {
             return Problem(
                 statusCode: StatusCodes.Status400BadRequest,
@@ -469,12 +473,15 @@ public class AdminStreamQueryController(
                 "max_fields_above_limit");
         }
 
+        ct.ThrowIfCancellationRequested();
+
         try {
             var identity = new AggregateIdentity(tenantId, domain, aggregateId);
             IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(identity.ActorId), "AggregateActor");
 
             ServerEventEnvelope[] allEvents = await actor.GetEventsAsync(0).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
 
             if (allEvents.Length == 0) {
                 return Ok(new AggregateBlameView(
@@ -606,7 +613,7 @@ public class AdminStreamQueryController(
                 }
 
                 try {
-                    var eventPayload = JsonNode.Parse(evt.Payload);
+                    var eventPayload = JsonNode.Parse(evt.Payload, documentOptions: _payloadParseOptions);
                     if (eventPayload is JsonObject payloadObj) {
                         DeepMerge(stateAtCurrent, payloadObj);
                     }
@@ -835,10 +842,10 @@ public class AdminStreamQueryController(
                 producedEvents = ExtractSandboxEvents(domainResult.Events);
 
                 // Apply produced events to input state to compute resulting state
-                JsonObject resultingState = (JsonObject?)JsonNode.Parse(inputState.ToJsonString()) ?? [];
+                JsonObject resultingState = (JsonObject?)JsonNode.Parse(inputState.ToJsonString(), documentOptions: _payloadParseOptions) ?? [];
                 foreach (SandboxEvent sandboxEvent in producedEvents) {
                     try {
-                        var eventNode = JsonNode.Parse(sandboxEvent.PayloadJson);
+                        var eventNode = JsonNode.Parse(sandboxEvent.PayloadJson, documentOptions: _payloadParseOptions);
                         if (eventNode is JsonObject eventObj) {
                             DeepMerge(resultingState, eventObj);
                         }
@@ -914,7 +921,7 @@ public class AdminStreamQueryController(
 
             // Apply event payload to state using JSON merge
             try {
-                var eventPayload = JsonNode.Parse(evt.Payload);
+                var eventPayload = JsonNode.Parse(evt.Payload, documentOptions: _payloadParseOptions);
                 if (eventPayload is JsonObject payloadObj && currentState is JsonObject stateObj) {
                     DeepMerge(stateObj, payloadObj);
                 }
@@ -992,14 +999,16 @@ public class AdminStreamQueryController(
             IsFieldsTruncated: isFieldsTruncated);
     }
 
-    private static ObjectResult BadRequestWithReasonCode(string detail, string reasonCode) {
-        var problem = new ProblemDetails {
-            Status = StatusCodes.Status400BadRequest,
-            Title = "Bad Request",
-            Detail = detail,
-        };
-        problem.Extensions["reasonCode"] = reasonCode;
-        return new ObjectResult(problem) { StatusCode = StatusCodes.Status400BadRequest };
+    private ObjectResult BadRequestWithReasonCode(string detail, string reasonCode) {
+        ObjectResult problem = (ObjectResult)Problem(
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "Bad Request",
+            detail: detail);
+        if (problem.Value is ProblemDetails pd) {
+            pd.Extensions["reasonCode"] = reasonCode;
+        }
+
+        return problem;
     }
 
     private static bool IsValidFieldPath(string fieldPath)
@@ -1182,24 +1191,9 @@ public class AdminStreamQueryController(
             }
         }
 
-        // Check for fields removed in 'after' (present in before, missing in after)
-        if (before is not null) {
-            foreach (KeyValuePair<string, JsonNode?> prop in before) {
-                if (string.IsNullOrWhiteSpace(prop.Key)) {
-                    continue;
-                }
-
-                string fieldPath = string.IsNullOrEmpty(prefix) ? prop.Key : $"{prefix}.{prop.Key}";
-                if (!IsValidFieldPath(fieldPath)) {
-                    continue;
-                }
-
-                if (!after.ContainsKey(prop.Key) && prop.Value is not null) {
-                    changes[fieldPath] = ("null", prop.Value.ToJsonString());
-                }
-            }
-        }
-
+        // Per the Decision Ledger in docs/operations/admin-debugging-json-large-stream-hardening.md,
+        // omitted properties are a `preserved-limitation` — they are NOT synthesized as deletes.
+        // DeepMerge never removes keys, so this branch is unreachable in normal reconstruction flow.
         return changes;
     }
 
@@ -1215,7 +1209,7 @@ public class AdminStreamQueryController(
             }
 
             try {
-                var eventPayload = JsonNode.Parse(evt.Payload);
+                var eventPayload = JsonNode.Parse(evt.Payload, documentOptions: _payloadParseOptions);
                 if (eventPayload is JsonObject payloadObj) {
                     DeepMerge(state, payloadObj);
                 }

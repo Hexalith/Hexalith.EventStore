@@ -1,2 +1,11 @@
-<!-- TODO(dev): valid query/v1 layout with malformed YAML metadata block (unbalanced quotes). Expects rule 'parse-yaml-malformed' and NO business-rule diagnostics. -->
+# Parser Fixture - Malformed YAML
+
 Schema version: `query-operational-evidence/v1`
+
+## Metadata
+
+```yaml
+schema_version: query-operational-evidence/v1
+evidence_run_id: "unterminated
+story_key: post-epic-deferred-dw4-operational-evidence-schema-validation
+```

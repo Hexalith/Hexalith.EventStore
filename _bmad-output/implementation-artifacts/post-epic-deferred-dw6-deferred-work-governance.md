@@ -131,6 +131,12 @@ Current HEAD at story creation: `7ade91f4`.
 
 ## Dev Notes
 
+### ATDD Artifacts
+
+- Checklist: `_bmad-output/test-artifacts/atdd-checklist-post-epic-deferred-dw6-deferred-work-governance.md`
+- Red-phase test project: `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/Hexalith.EventStore.DeferredWorkGovernance.Tests.csproj`
+- Checker handoff notes: `_bmad-output/test-artifacts/deferred-work-governance/README.md`
+
 ### Architecture Guardrails
 
 - Treat `deferred-work.md` as a human-readable ledger with light machine checks, not as a database migration.
