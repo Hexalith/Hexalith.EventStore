@@ -1,0 +1,31 @@
+{
+  "time": "2026-05-05T13:54:13.7347540+02:00",
+  "tool": "trace-map",
+  "method": "Get",
+  "uri": "http://localhost:8090/api/v1/admin/traces/tenant-a/d5bf0400-f474-49c4-b833-f83f77287a45?domain=counter&aggregateId=counter-dw2-20260505135410",
+  "statusCode": 200,
+  "elapsedMs": 49,
+  "topLevelShape": [
+    "userId",
+    "commandReceivedAt",
+    "commandCompletedAt",
+    "durationMs",
+    "rejectionEventType",
+    "errorMessage",
+    "externalTraceUrl",
+    "totalStreamEvents",
+    "scanCapped",
+    "scanCapMessage",
+    "correlationId",
+    "tenantId",
+    "domain",
+    "aggregateId",
+    "commandType",
+    "commandStatus",
+    "producedEvents",
+    "affectedProjections"
+  ],
+  "error": null,
+  "contentLength": 725,
+  "payloadPolicy": "raw payload/body omitted from evidence; shape and status only"
+}

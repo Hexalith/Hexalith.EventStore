@@ -1,0 +1,16 @@
+{
+  "time": "2026-05-05T13:54:13.5771413+02:00",
+  "tool": "timeline",
+  "method": "Get",
+  "uri": "http://localhost:8090/api/v1/admin/streams/tenant-a/counter/counter-dw2-20260505135410/timeline?count=10",
+  "statusCode": 200,
+  "elapsedMs": 61,
+  "topLevelShape": [
+    "totalCount",
+    "continuationToken",
+    "items"
+  ],
+  "error": null,
+  "contentLength": 1246,
+  "payloadPolicy": "raw payload/body omitted from evidence; shape and status only"
+}

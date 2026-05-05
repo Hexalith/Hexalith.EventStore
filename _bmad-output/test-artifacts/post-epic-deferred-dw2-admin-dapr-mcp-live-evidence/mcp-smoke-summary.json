@@ -1,0 +1,189 @@
+[
+  {
+    "phase": "initialize",
+    "serverInfo": {
+      "name": "hexalith-eventstore-admin",
+      "version": "1.0.0+7b0a6d87d1b69ad143a6385685df028a035a81c2",
+      "description": "Hexalith EventStore administration MCP server \u2014 query streams, inspect projections, diagnose issues, and manage operations via AI-callable tools"
+    },
+    "capabilities": [
+      "logging",
+      "tools"
+    ],
+    "classification": "passed"
+  },
+  {
+    "phase": "tools/list",
+    "toolCount": 28,
+    "requiredPresent": true,
+    "sampleTools": [
+      "projection-pause",
+      "tenant-detail",
+      "projection-reset",
+      "ping",
+      "consistency-detail",
+      "storage-overview",
+      "consistency-trigger",
+      "stream-state",
+      "projection-list",
+      "stream-events",
+      "backup-trigger",
+      "stream-event-detail",
+      "stream-list",
+      "stream-diff",
+      "health-status",
+      "session-get-context",
+      "causation-chain",
+      "session-clear-context",
+      "types-list",
+      "projection-detail"
+    ],
+    "classification": "passed"
+  },
+  {
+    "phase": "write-preview-before",
+    "tool": "consistency-list",
+    "elapsedMs": 107.901,
+    "hasError": false,
+    "contentItems": 1,
+    "textShape": [
+      "list"
+    ],
+    "classification": "passed"
+  },
+  {
+    "phase": "representative-read",
+    "tool": "stream-events",
+    "elapsedMs": 22.506,
+    "hasError": false,
+    "contentItems": 1,
+    "textShape": [
+      "totalCount",
+      "continuationToken",
+      "items"
+    ],
+    "classification": "passed"
+  },
+  {
+    "phase": "write-preview",
+    "tool": "consistency-trigger",
+    "elapsedMs": 2.264,
+    "hasError": false,
+    "contentItems": 1,
+    "textShape": [
+      "preview",
+      "action",
+      "description",
+      "endpoint",
+      "parameters",
+      "warning"
+    ],
+    "classification": "passed"
+  },
+  {
+    "phase": "write-preview-after",
+    "tool": "consistency-list",
+    "elapsedMs": 3.321,
+    "hasError": false,
+    "contentItems": 1,
+    "textShape": [
+      "list"
+    ],
+    "classification": "passed"
+  },
+  {
+    "phase": "session-set-context",
+    "tool": "session-set-context",
+    "elapsedMs": 1.725,
+    "hasError": false,
+    "contentItems": 1,
+    "textShape": [
+      "contextSet",
+      "tenantId",
+      "domain",
+      "previousTenantId",
+      "previousDomain",
+      "startedAtUtc"
+    ],
+    "classification": "passed"
+  },
+  {
+    "phase": "session-fallback-stream-list",
+    "tool": "stream-list",
+    "elapsedMs": 20.286,
+    "hasError": false,
+    "contentItems": 1,
+    "textShape": [
+      "totalCount",
+      "continuationToken",
+      "items"
+    ],
+    "classification": "passed"
+  },
+  {
+    "phase": "session-get-context",
+    "tool": "session-get-context",
+    "elapsedMs": 1.203,
+    "hasError": false,
+    "contentItems": 1,
+    "textShape": [
+      "tenantId",
+      "domain",
+      "startedAtUtc",
+      "hasContext"
+    ],
+    "classification": "passed"
+  },
+  {
+    "phase": "latency-health-dapr-1",
+    "tool": "health-dapr",
+    "elapsedMs": 8.378,
+    "hasError": false,
+    "contentItems": 1,
+    "textShape": [
+      "list"
+    ],
+    "classification": "passed"
+  },
+  {
+    "phase": "latency-health-dapr-2",
+    "tool": "health-dapr",
+    "elapsedMs": 1.895,
+    "hasError": false,
+    "contentItems": 1,
+    "textShape": [
+      "list"
+    ],
+    "classification": "passed"
+  },
+  {
+    "phase": "latency-health-dapr-3",
+    "tool": "health-dapr",
+    "elapsedMs": 1.411,
+    "hasError": false,
+    "contentItems": 1,
+    "textShape": [
+      "list"
+    ],
+    "classification": "passed"
+  },
+  {
+    "phase": "latency-sample",
+    "tool": "health-dapr",
+    "timerSource": "python time.perf_counter",
+    "coldWarm": "warm after initialize/tools-list",
+    "sampleCount": 3,
+    "retriesIncluded": false,
+    "initializationIncluded": false,
+    "adminApiLatencyIncluded": true,
+    "durationsMs": [
+      8.378,
+      1.895,
+      1.411
+    ],
+    "minMs": 1.411,
+    "avgMs": 3.895,
+    "maxMs": 8.378,
+    "classification": "sample-only"
+  }
+]

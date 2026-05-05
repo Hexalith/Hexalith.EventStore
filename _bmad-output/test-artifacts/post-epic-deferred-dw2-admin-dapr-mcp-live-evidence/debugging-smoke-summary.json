@@ -1,0 +1,62 @@
+[
+  {
+    "Time": "2026-05-05T13:54:13.5797000+02:00",
+    "Tool": "timeline",
+    "Url": "http://localhost:8090/api/v1/admin/streams/tenant-a/counter/counter-dw2-20260505135410/timeline?count=10",
+    "StatusCode": 200,
+    "ElapsedMs": 61,
+    "Shape": "totalCount,continuationToken,items",
+    "Artifact": "_bmad-output\\test-artifacts\\post-epic-deferred-dw2-admin-dapr-mcp-live-evidence\\debugging-timeline-shape.json",
+    "Classification": "passed"
+  },
+  {
+    "Time": "2026-05-05T13:54:13.6201355+02:00",
+    "Tool": "blame",
+    "Url": "http://localhost:8090/api/v1/admin/streams/tenant-a/counter/counter-dw2-20260505135410/blame?at=1",
+    "StatusCode": 200,
+    "ElapsedMs": 35,
+    "Shape": "atSequence,timestamp,isTruncated,isFieldsTruncated,tenantId,domain,aggregateId,fields",
+    "Artifact": "_bmad-output\\test-artifacts\\post-epic-deferred-dw2-admin-dapr-mcp-live-evidence\\debugging-blame-shape.json",
+    "Classification": "passed"
+  },
+  {
+    "Time": "2026-05-05T13:54:13.6544593+02:00",
+    "Tool": "bisect",
+    "Url": "http://localhost:8090/api/v1/admin/streams/tenant-a/counter/counter-dw2-20260505135410/bisect?good=0&bad=1",
+    "StatusCode": 200,
+    "ElapsedMs": 32,
+    "Shape": "goodSequence,divergentSequence,divergentTimestamp,totalSteps,isTruncated,tenantId,domain,aggregateId,divergentEventType,divergentCorrelationId,divergentUserId,divergentFieldChanges,watchedFieldPaths,steps",
+    "Artifact": "_bmad-output\\test-artifacts\\post-epic-deferred-dw2-admin-dapr-mcp-live-evidence\\debugging-bisect-shape.json",
+    "Classification": "passed"
+  },
+  {
+    "Time": "2026-05-05T13:54:13.6837664+02:00",
+    "Tool": "step-through",
+    "Url": "http://localhost:8090/api/v1/admin/streams/tenant-a/counter/counter-dw2-20260505135410/step?at=1",
+    "StatusCode": 200,
+    "ElapsedMs": 27,
+    "Shape": "sequenceNumber,timestamp,totalEvents,tenantId,domain,aggregateId,eventTypeName,correlationId,causationId,userId,eventPayloadJson,stateJson,fieldChanges,hasPrevious,hasNext",
+    "Artifact": "_bmad-output\\test-artifacts\\post-epic-deferred-dw2-admin-dapr-mcp-live-evidence\\debugging-step-through-shape.json",
+    "Classification": "passed"
+  },
+  {
+    "Time": "2026-05-05T13:54:13.7363740+02:00",
+    "Tool": "trace-map",
+    "Url": "http://localhost:8090/api/v1/admin/traces/tenant-a/d5bf0400-f474-49c4-b833-f83f77287a45?domain=counter&aggregateId=counter-dw2-20260505135410",
+    "StatusCode": 200,
+    "ElapsedMs": 49,
+    "Shape": "userId,commandReceivedAt,commandCompletedAt,durationMs,rejectionEventType,errorMessage,externalTraceUrl,totalStreamEvents,scanCapped,scanCapMessage,correlationId,tenantId,domain,aggregateId,commandType,commandStatus,producedEvents,affectedProjections",
+    "Artifact": "_bmad-output\\test-artifacts\\post-epic-deferred-dw2-admin-dapr-mcp-live-evidence\\debugging-trace-map-shape.json",
+    "Classification": "passed"
+  },
+  {
+    "Time": "2026-05-05T13:54:13.8060997+02:00",
+    "Tool": "sandbox",
+    "Url": "http://localhost:8090/api/v1/admin/streams/tenant-a/counter/counter-dw2-20260505135410/sandbox",
+    "StatusCode": 200,
+    "ElapsedMs": 66,
+    "Shape": "atSequence,errorMessage,executionTimeMs,tenantId,domain,aggregateId,commandType,outcome,producedEvents,resultingStateJson,stateChanges",
+    "Artifact": "_bmad-output\\test-artifacts\\post-epic-deferred-dw2-admin-dapr-mcp-live-evidence\\debugging-sandbox-shape.json",
+    "Classification": "passed"
+  }
+]
