@@ -1,3 +1,10 @@
+# [3.11.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.10.0...v3.11.0) (2026-05-05)
+
+
+### Features
+
+* **server:** close DW1 projection and drain hardening ([7b0a6d8](https://github.com/Hexalith/Hexalith.EventStore/commit/7b0a6d87d1b69ad143a6385685df028a035a81c2)), closes [hi#cardinality](https://github.com/hi/issues/cardinality) [hi#cardinality](https://github.com/hi/issues/cardinality)
+
 # [3.10.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.9.1...v3.10.0) (2026-05-05)
 
 
