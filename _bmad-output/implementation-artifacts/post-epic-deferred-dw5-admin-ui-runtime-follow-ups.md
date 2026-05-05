@@ -108,6 +108,30 @@ Current HEAD at story creation: `2dc4986d`.
 - Localization and broader Admin UI text changes are out of scope unless existing visible text is directly touched by the narrow fix.
 - Stop and record follow-up rather than absorbing backend/API/DAPR/MCP/evidence-schema work, generalized shortcut architecture, generalized Fluent UI migration work, or DW2/DW3/DW4/DW6 decisions.
 
+## Advanced Elicitation Hardening Notes
+
+The 2026-05-05 advanced-elicitation pass treated the party-mode notes as the baseline and tightened only the implementation handoff. These notes are binding for dev-story execution unless a human product or architecture decision supersedes them.
+
+### Evidence-First Stop Rules
+
+- Start with a pre-edit route and shortcut decision ledger. For TypeCatalog, record each tested starting tab, sidebar target, expected route marker, observed URL, visible page marker, elapsed time, and console/circuit result before deciding `patch-now` versus `not-reproduced-with-evidence`.
+- A fix is allowed only for a reproduced DW5 defect or for deterministic bUnit coverage that protects a reproduced defect. Do not patch TypeCatalog, shortcut infrastructure, or dialog markup from hypothesis alone.
+- Browser evidence must preserve the first failed observation before retrying. If a retry passes, keep both rows and classify the first failure instead of erasing it as "flaky".
+- Stop and defer rather than coding if the path requires Admin.Server contract changes, new seed-data APIs, broad Fluent component replacement, global shortcut architecture, or new accessibility tooling integration.
+
+### Runtime Proof Requirements
+
+- TypeCatalog navigation proof must show both URL transition and rendered-page transition. A URL-only change is insufficient if the old TypeCatalog content remains visible; a DOM-only change is insufficient if navigation history or query state is wrong.
+- Ctrl+B proof must include repeated toggle behavior, viewport-tier storage key, refresh persistence, and absence of renderer-context or SignalR circuit errors. Ctrl+K proof must run in the same browser session after Ctrl+B.
+- Dialog accessibility proof must name the evidence tier: component markup, live DOM, browser accessibility snapshot, keyboard/focus behavior, and assistive-technology pass. Only the tiers actually captured may be claimed.
+- If stream data is unavailable for CommandSandbox or EventDebugger dialogs, record the blocker separately for each dialog. Do not let one unavailable dialog block or falsely close the other.
+
+### Review Handoff
+
+- Reviewers should reject DW5 completion if deferred-work dispositions are narrative-only, if evidence artifacts are not linked from the index, if TypeCatalog proof lacks both URL and visible content checks, if shortcut proof omits persistence, or if dialog accessibility claims exceed captured evidence.
+- The final Dev Agent Record should identify which closure mode was used for each selected deferred item: `fixed-with-evidence`, `not-reproduced-with-evidence`, or `deferred-with-target-and-reason`.
+- Keep screenshots, DOM extracts, console snippets, and Playwright traces sanitized. Do not store bearer tokens, event payloads, customer-sensitive identifiers, local storage secrets, or raw actor state.
+
 ## Tasks / Subtasks
 
 - [ ] Task 0: Baseline DW5 and decide closure shape (AC: #1, #13, #14)
@@ -116,6 +140,7 @@ Current HEAD at story creation: `2dc4986d`.
     - [ ] 0.3 Confirm DW2, DW3, DW4, and DW6 scopes are excluded.
     - [ ] 0.4 Create the DW5 evidence folder and an evidence index stub before runtime work begins.
     - [ ] 0.5 Define the final disposition vocabulary in the evidence index before changing code: `fixed-with-evidence`, `not-reproduced-with-evidence`, or `deferred-with-target-and-reason`.
+    - [ ] 0.6 Create a pre-edit decision ledger for TypeCatalog route proof, shortcut proof, dialog evidence tiers, and data/AT blockers before production edits.
 
 - [ ] Task 1: Reproduce and close TypeCatalog navigation blocking (AC: #2, #3, #4, #10, #11)
     - [ ] 1.1 Start the Admin UI through Aspire when feasible and navigate to `/types`, `/types?tab=commands`, and `/types?tab=aggregates`.
@@ -125,6 +150,7 @@ Current HEAD at story creation: `2dc4986d`.
     - [ ] 1.5 Apply the smallest fix and keep deep-link, selection, search, and history behavior intact.
     - [ ] 1.6 Add bUnit or Playwright coverage for the fixed behavior where deterministic.
     - [ ] 1.7 If not reproduced, record the tested starting page, tab, sidebar target, before/after URL, visible page marker, viewport, timing, and console result.
+    - [ ] 1.8 If patched, prove the same route matrix after the fix and include at least one browser history or deep-link check so URL synchronization remains honest.
 
 - [ ] Task 2: Fix Ctrl+B sidebar toggle without regressing Ctrl+K (AC: #5, #6, #7, #11)
     - [ ] 2.1 Reproduce Ctrl+B in browser and capture the console/circuit symptom before fixing when possible.
@@ -133,6 +159,7 @@ Current HEAD at story creation: `2dc4986d`.
     - [ ] 2.4 Verify Ctrl+B collapse/expand across repeated presses and refresh.
     - [ ] 2.5 Verify Ctrl+K still opens, closes, and reopens the command palette in the same browser session.
     - [ ] 2.6 Record the storage key observed for the current viewport tier and confirm no renderer-thread or SignalR circuit exception occurs.
+    - [ ] 2.7 If the first browser attempt does not reproduce Ctrl+B failure, still validate the current implementation against the same storage, refresh, and console/circuit evidence before choosing `not-reproduced-with-evidence`.
 
 - [ ] Task 3: Complete dialog accessibility runtime evidence (AC: #8, #9, #10, #11, #12)
     - [ ] 3.1 Use a stream/command setup that opens the CommandSandbox event-payload dialog, or record why it is unavailable.
@@ -141,6 +168,7 @@ Current HEAD at story creation: `2dc4986d`.
     - [ ] 3.4 Run an assistive-technology check when tooling is available; otherwise record the explicit blocker and classify as partial evidence.
     - [ ] 3.5 Keep or add bUnit regression-signal tests for both dialog attributes.
     - [ ] 3.6 Record keyboard/focus behavior for dialog entry and close, including Escape or close-button behavior when available.
+    - [ ] 3.7 When available, capture a browser accessibility snapshot or equivalent tree evidence and label it separately from full assistive-technology verification.
 
 - [ ] Task 4: Update deferred-work and evidence artifacts narrowly (AC: #10, #13, #15)
     - [ ] 4.1 Save runtime evidence under `_bmad-output/test-artifacts/post-epic-deferred-dw5-admin-ui-runtime-follow-ups/`.
@@ -148,12 +176,14 @@ Current HEAD at story creation: `2dc4986d`.
     - [ ] 4.3 Mark only DW5-relevant deferred-work bullets with disposition markers.
     - [ ] 4.4 Mark obsolete Epic 21 resolved entries as `RESOLVED` or `NO-ACTION` with a one-line rationale.
     - [ ] 4.5 Do not sweep unrelated deferred-work sections into this story.
+    - [ ] 4.6 Link each deferred-work disposition to one evidence row or blocker row in the DW5 evidence index.
 
 - [ ] Task 5: Validate and close bookkeeping (AC: #11, #15)
     - [ ] 5.1 Run targeted `tests/Hexalith.EventStore.Admin.UI.Tests` bUnit tests for changed components.
     - [ ] 5.2 Run `tests/Hexalith.EventStore.Admin.UI.E2E` Playwright tests or record environment blockers.
     - [ ] 5.3 Run the Admin UI project build if production UI code changed.
     - [ ] 5.4 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and sprint-status row at dev handoff.
+    - [ ] 5.5 Record final per-item closure modes and reject the handoff if any selected DW5 item lacks evidence, blocker, or deferred-work disposition.
 
 ## Dev Notes
 
@@ -211,6 +241,7 @@ GPT-5 Codex
 - Created ready-for-dev story from first backlog row after DW4 in the Post-Epic Deferred Work Cleanup package.
 - No implementation work has been performed for this story.
 - No `project-context.md` file was present in the repository at story creation.
+- Advanced elicitation applied low-risk handoff clarifications for evidence-first stop rules, TypeCatalog URL and visible-content proof, shortcut persistence proof, dialog evidence tiers, and reviewer rejection criteria.
 
 ### File List
 
@@ -221,7 +252,8 @@ GPT-5 Codex
 ## Verification Status
 
 - Story artifact created and sprint-status row moved from `backlog` to `ready-for-dev`.
-- Markdown and YAML validation should be run before dev handoff if local tooling is available.
+- Party-mode review and advanced elicitation traces are recorded inline; no status change was required.
+- Markdown, targeted bUnit, and browser evidence validation should be run before dev handoff if local tooling is available.
 
 ## Change Log
 
@@ -229,6 +261,7 @@ GPT-5 Codex
 | --- | ---: | --- | --- |
 | 2026-05-04 | 0.1 | Created ready-for-dev DW5 Admin UI runtime follow-ups story. | Codex automation |
 | 2026-05-05 | 0.2 | Applied party-mode hardening for runtime evidence, disposition rules, renderer-context closure, and scope stop signs. | Codex automation |
+| 2026-05-05 | 0.3 | Applied advanced-elicitation hardening for evidence-first stop rules, route proof, shortcut persistence, and dialog evidence tiers. | Codex automation |
 
 ## Party-Mode Review
 
@@ -240,3 +273,15 @@ GPT-5 Codex
 - Changes applied: added Party-Mode Hardening Notes; tightened task details for disposition vocabulary, TypeCatalog blocking evidence, Ctrl+B/Ctrl+K verification, dialog focus/accessibility evidence, and the evidence index; added change-log row.
 - Findings deferred: exact browser evidence capture mechanism; whether TypeCatalog requires a code fix or a not-reproduced disposition; whether assistive-technology tooling is available during development; any broad FluentDataGrid, shortcut architecture, backend/API/DAPR/MCP, evidence-schema, localization, or DW2/DW3/DW4/DW6 follow-up decisions.
 - Final recommendation: needs-story-update
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-05T10:02:42+02:00
+- Selected story key: `post-epic-deferred-dw5-admin-ui-runtime-follow-ups`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-deferred-dw5-admin-ui-runtime-follow-ups`
+- Batch 1 method names: Self-Consistency Validation; Red Team vs Blue Team; Architecture Decision Records; Security Audit Personas; Failure Mode Analysis.
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Occam's Razor Application; First Principles Analysis; 5 Whys Deep Dive; Lessons Learned Extraction.
+- Findings summary: The story was directionally ready after party-mode review, but elicitation exposed five handoff risks: patches could be made from TypeCatalog hypotheses rather than reproduced evidence, route proof could overclaim from URL-only changes, Ctrl+B proof could miss storage persistence and same-session Ctrl+K regression, dialog accessibility claims could exceed captured evidence tiers, and deferred-work dispositions could remain narrative-only.
+- Changes applied: Added Advanced Elicitation Hardening Notes for evidence-first stop rules, runtime proof requirements, and review rejection criteria. Tightened Tasks 0.6, 1.8, 2.7, 3.7, 4.6, and 5.5, and updated Completion Notes, Verification Status, and Change Log.
+- Findings deferred: Exact browser evidence capture mechanism, whether TypeCatalog is patched or closed as not reproduced, assistive-technology availability, seed data availability for each dialog, and any broad Admin UI, backend/API, DAPR, MCP, evidence-schema, or deferred-work governance changes remain out of scope until separate product or architecture decisions approve them.
+- Final recommendation: ready-for-dev
