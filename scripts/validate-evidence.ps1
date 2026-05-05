@@ -5,14 +5,18 @@
 #>
 $ErrorActionPreference = 'Stop'
 
-$python = Get-Command python -ErrorAction SilentlyContinue
-if (-not $python) {
-    $python = Get-Command py -ErrorAction SilentlyContinue
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$validator = Join-Path $repoRoot 'scripts/validate-operational-evidence.py'
+
+$python = $null
+foreach ($candidate in @('python', 'python3', 'py')) {
+    $resolved = Get-Command $candidate -ErrorAction SilentlyContinue
+    if ($resolved) { $python = $resolved; break }
 }
 if (-not $python) {
     Write-Error "ERROR: Python is required to run scripts/validate-operational-evidence.py."
     exit 1
 }
 
-& $python.Source scripts/validate-operational-evidence.py @args
+& $python.Source $validator @args
 exit $LASTEXITCODE

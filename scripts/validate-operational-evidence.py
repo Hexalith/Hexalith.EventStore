@@ -41,6 +41,10 @@ SIGNALR_CLASSIFICATIONS = {
     "inconclusive",
 }
 
+# Required metadata fields are checked by validate_required_metadata.
+# Control fields are checked separately by validate_required_value so reviewers see
+# a more specific control-required-missing diagnostic instead of a generic metadata
+# missing rule.
 QUERY_REQUIRED = {
     "schema_version",
     "evidence_run_id",
@@ -49,8 +53,6 @@ QUERY_REQUIRED = {
     "final_classification",
     "reviewer_verdict",
     "redaction_statement",
-    "false_positive_control",
-    "correlation_control",
 }
 
 SIGNALR_REQUIRED = {
@@ -61,7 +63,6 @@ SIGNALR_REQUIRED = {
     "classification",
     "reviewer_verdict",
     "redaction_statement",
-    "reliability_control",
 }
 
 PROFILE_ASPIRE_FIELDS = {
@@ -93,7 +94,15 @@ EXPECTED_FIXTURE_RULES: dict[str, set[str]] = {
     "signalr-invalid-placeholder-unreplaced.md": {"placeholder-unreplaced"},
     "signalr-invalid-classification-not-in-enum.md": {"classification-invalid"},
     "signalr-invalid-control-missing.md": {"control-required-missing"},
+    "signalr-invalid-empty-required-table-cell.md": {"required-table-cell-empty"},
     "signalr-invalid-redaction-bearer-token.md": {"redaction-unsafe-bearer-token"},
+    "signalr-invalid-redaction-connection-string.md": {"redaction-unsafe-connection-string"},
+    "signalr-invalid-redaction-production-hostname.md": {"redaction-unsafe-production-hostname"},
+    "signalr-invalid-redaction-section-missing.md": {"redaction-section-missing"},
+    "signalr-invalid-raw-secret-marker.md": {"redaction-raw-secret-marker"},
+    "signalr-invalid-not-applicable-empty-reason.md": {"not-applicable-reason-missing"},
+    "signalr-invalid-not-applicable-on-required-field.md": {"not-applicable-not-allowed-here"},
+    "signalr-invalid-aspire-claimed-but-fields-missing.md": {"profile-aspire-fields-missing"},
     "schema-missing.md": {"schema-version-missing"},
     "schema-duplicate-markers.md": {"schema-version-duplicate"},
     "schema-contradictory.md": {"schema-version-contradictory"},
@@ -135,20 +144,35 @@ class SchemaMarker:
     source: str
 
 
+DEFAULT_FIXTURES_ROOT = (
+    Path(__file__).resolve().parent.parent
+    / "_bmad-output"
+    / "test-artifacts"
+    / "operational-evidence-validator"
+    / "fixtures"
+)
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="Emit JSON diagnostics only.")
     parser.add_argument("--self-test", action="store_true", help="Validate curated fixtures against expected rule ids.")
     parser.add_argument(
         "--fixtures-root",
-        default="_bmad-output/test-artifacts/operational-evidence-validator/fixtures",
-        help="Fixture root for --self-test.",
+        default=str(DEFAULT_FIXTURES_ROOT),
+        help="Fixture root for --self-test (defaults to repo-relative fixtures dir).",
     )
     parser.add_argument("paths", nargs="*", help="Evidence markdown files or directories to validate.")
     args = parser.parse_args(argv)
 
     if args.self_test:
         return run_self_test(Path(args.fixtures_root), args.json)
+
+    missing_paths = [p for p in args.paths if not Path(p).exists()]
+    if missing_paths:
+        for missing in missing_paths:
+            print(f"ERROR: path not found: {missing}", file=sys.stderr)
+        return 2
 
     diagnostics = validate_paths(args.paths)
     emit(diagnostics, args.json)
@@ -170,8 +194,11 @@ def run_self_test(fixtures_root: Path, emit_json: bool) -> int:
         diagnostics.extend(result)
         if expected:
             missing = expected - rules
+            extra = rules - expected
             if missing:
                 failures.append(f"{file_name}: missing expected rule(s) {', '.join(sorted(missing))}")
+            if extra:
+                failures.append(f"{file_name}: emitted unexpected rule(s) {', '.join(sorted(extra))}")
         elif rules:
             failures.append(f"{file_name}: expected pass but emitted {', '.join(sorted(rules))}")
 
@@ -240,15 +267,53 @@ def validate_file(path: Path) -> list[Diagnostic]:
 
     diagnostics.extend(validate_not_applicable(path, schema, metadata, metadata_line))
     diagnostics.extend(validate_profile_scope(path, schema, metadata, metadata_line))
-    diagnostics.extend(validate_placeholders(path, schema, lines))
+    diagnostics.extend(validate_placeholders(path, schema, lines, metadata))
     diagnostics.extend(validate_redaction(path, schema, text, lines, sections))
     return sort_diagnostics(diagnostics)
+
+
+def strip_fenced_blocks_for_scan(text: str) -> str:
+    """Replace fenced code blocks with blank lines so prose-style scanners see only narrative.
+
+    The first YAML metadata block is preserved (its `schema_version` line is a real declaration).
+    Subsequent fenced blocks (illustrative examples, JSON snippets, etc.) are masked.
+    """
+    lines = text.splitlines()
+    output: list[str] = []
+    in_fence = False
+    fence_lang: str | None = None
+    yaml_block_seen = False
+    for line in lines:
+        stripped = line.strip()
+        if not in_fence and stripped.startswith("```"):
+            fence_lang = stripped[3:].strip().lower() or None
+            keep = (fence_lang in {"yaml", "yml"}) and not yaml_block_seen
+            if keep:
+                yaml_block_seen = True
+            in_fence = True
+            output.append(line if keep else "")
+            output[-1] = output[-1] if keep else ""
+            output.append("__FENCE_KEEP__" if keep else "__FENCE_MASK__")
+            continue
+        if in_fence and stripped == "```":
+            in_fence = False
+            mode = output[-1]
+            output[-1] = line if mode == "__FENCE_KEEP__" else ""
+            fence_lang = None
+            continue
+        if in_fence:
+            mode = output[-1] if output and output[-1] in {"__FENCE_KEEP__", "__FENCE_MASK__"} else "__FENCE_MASK__"
+            output.append(line if mode == "__FENCE_KEEP__" else "")
+        else:
+            output.append(line)
+    return "\n".join(output)
 
 
 def find_schema_markers(text: str) -> list[SchemaMarker]:
     markers: list[SchemaMarker] = []
     pattern = re.compile(r"(schema_version\s*:\s*|Schema version:\s*`?)([A-Za-z0-9/_\-.]+)", re.IGNORECASE)
-    for index, line in enumerate(text.splitlines(), start=1):
+    scan_text = strip_fenced_blocks_for_scan(text)
+    for index, line in enumerate(scan_text.splitlines(), start=1):
         match = pattern.search(line)
         if match:
             source = "yaml" if match.group(1).lower().startswith("schema_version") else "markdown"
@@ -266,9 +331,13 @@ def identify_schema(path: Path, markers: list[SchemaMarker]) -> tuple[list[Diagn
         return [diag(path, None, "schema-version-unsupported", "Schema", "schema_version", markers[0].line, "Supported schemas: query-operational-evidence/v1, signalr-operational-evidence/v1.")], None
 
     if len(values) > 1:
-        sources = {m.source for m in markers}
-        rule = "schema-version-contradictory" if len(sources) > 1 else "schema-version-duplicate"
-        return [diag(path, None, rule, "Schema", "schema_version", markers[0].line, "Use exactly one supported schema marker.")], None
+        return [diag(path, None, "schema-version-contradictory", "Schema", "schema_version", markers[0].line, "Different schema values declared. Use exactly one supported schema.")], None
+
+    source_counts: dict[str, int] = {}
+    for marker in markers:
+        source_counts[marker.source] = source_counts.get(marker.source, 0) + 1
+    if any(count > 1 for count in source_counts.values()):
+        return [diag(path, None, "schema-version-duplicate", "Schema", "schema_version", markers[0].line, "Same schema declared multiple times in one source. Keep one canonical declaration per source.")], None
 
     return [], next(iter(supported_values))
 
@@ -277,6 +346,7 @@ def parse_first_yaml_block(lines: list[str]) -> tuple[dict[str, str], int | None
     in_block = False
     start_line: int | None = None
     metadata: dict[str, str] = {}
+    key_pattern = re.compile(r"^[A-Za-z_][\w.\-]*$")
     for index, line in enumerate(lines, start=1):
         if not in_block and line.strip().lower() in {"```yaml", "```yml"}:
             in_block = True
@@ -285,17 +355,20 @@ def parse_first_yaml_block(lines: list[str]) -> tuple[dict[str, str], int | None
         if in_block and line.strip() == "```":
             return metadata, start_line, None
         if in_block:
-            if line.count('"') % 2 == 1 or line.count("'") % 2 == 1:
-                return metadata, start_line, index
             if not line.strip() or line.lstrip().startswith("#"):
                 continue
             if ":" not in line:
                 return metadata, start_line, index
             key, value = line.split(":", 1)
             key = key.strip()
-            if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", key):
+            if not key_pattern.match(key):
                 return metadata, start_line, index
-            metadata[key] = value.strip().strip('"').strip("'")
+            stripped_value = value.strip()
+            if (stripped_value.startswith('"') and not stripped_value.endswith('"')) or (
+                stripped_value.startswith("'") and not stripped_value.endswith("'")
+            ):
+                return metadata, start_line, index
+            metadata[key] = stripped_value.strip('"').strip("'")
     return metadata, start_line, None
 
 
@@ -318,12 +391,32 @@ def validate_duplicate_headings(path: Path, schema: str | None, headings: dict[s
     return result
 
 
+REQUIRED_TABLE_HEADINGS = {
+    "controls",
+    "cache state matrix",
+    "cache-state matrix",
+    "latency calculation",
+    "correlation",
+    "correlation matrix",
+    "scenario matrix",
+    "false-positive controls",
+    "fail-closed reviewer checklist",
+}
+
+
 def validate_tables(path: Path, schema: str | None, lines: list[str]) -> list[Diagnostic]:
     result: list[Diagnostic] = []
     previous_pipe_count: int | None = None
     table_active = False
+    current_heading: str = ""
     for index, line in enumerate(lines, start=1):
         stripped = line.strip()
+        heading_match = re.match(r"^#{2,6}\s+(.+?)\s*$", stripped)
+        if heading_match:
+            current_heading = heading_match.group(1).strip().lower()
+            previous_pipe_count = None
+            table_active = False
+            continue
         if not stripped.startswith("|"):
             previous_pipe_count = None
             table_active = False
@@ -331,15 +424,17 @@ def validate_tables(path: Path, schema: str | None, lines: list[str]) -> list[Di
         pipe_count = stripped.count("|")
         if previous_pipe_count is not None and pipe_count != previous_pipe_count:
             result.append(diag(path, schema, "parse-table-malformed", "Markdown table", None, index, "Keep each table row at the same column count."))
+            previous_pipe_count = pipe_count
+            table_active = False
             continue
         previous_pipe_count = pipe_count
-        if re.match(r"^\|\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$", stripped):
+        if re.match(r"^\|\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?$", stripped):
             table_active = True
             continue
-        if table_active:
+        if table_active and current_heading in REQUIRED_TABLE_HEADINGS:
             cells = [cell.strip() for cell in stripped.strip("|").split("|")]
             if any(cell == "" for cell in cells):
-                result.append(diag(path, schema, "required-table-cell-empty", "Markdown table", None, index, "Fill required table cells or mark the row out of scope explicitly."))
+                result.append(diag(path, schema, "required-table-cell-empty", current_heading.title(), None, index, "Fill required table cells or mark the row out of scope explicitly."))
     return result
 
 
@@ -385,22 +480,35 @@ def validate_classification(
     return [diag(path, schema, "classification-invalid", "Metadata", field, metadata_line, f"Use one of: {', '.join(sorted(allowed))}.")]
 
 
+NOT_APPLICABLE_STOPWORDS = {"", "-", "n/a", "na", "tbd", "todo", "?", "none", "unspecified"}
+
+
 def validate_not_applicable(path: Path, schema: str | None, metadata: dict[str, str], metadata_line: int | None) -> list[Diagnostic]:
     result: list[Diagnostic] = []
     for field, value in metadata.items():
         if not value.lower().startswith("not-applicable"):
             continue
         reason = value.split(":", 1)[1].strip() if ":" in value else ""
-        if not reason:
-            result.append(diag(path, schema, "not-applicable-reason-missing", "Metadata", field, metadata_line, "Use 'not-applicable: <reason>' with a specific reason."))
+        if reason.lower() in NOT_APPLICABLE_STOPWORDS:
+            result.append(diag(path, schema, "not-applicable-reason-missing", "Metadata", field, metadata_line, "Use 'not-applicable: <reason>' with a specific, non-generic reason."))
         if field not in PROFILE_ASPIRE_FIELDS:
             result.append(diag(path, schema, "not-applicable-not-allowed-here", "Metadata", field, metadata_line, "Only profile-scoped Aspire/DAPR fields may use not-applicable."))
     return result
 
 
+def _is_aspire_profile(profile: str) -> bool:
+    """Recognise an Aspire/DAPR runtime-proof profile.
+
+    Match by token rather than substring so values like `non-aspire-static-fixture`
+    do not accidentally claim Aspire scope.
+    """
+    tokens = re.split(r"[^a-z0-9]+", profile.lower())
+    return "aspire" in tokens or "dapr" in tokens
+
+
 def validate_profile_scope(path: Path, schema: str | None, metadata: dict[str, str], metadata_line: int | None) -> list[Diagnostic]:
     profile = metadata.get("run_profile", "").lower()
-    if "aspire" not in profile and "dapr" not in profile:
+    if not _is_aspire_profile(profile):
         return []
     missing = [field for field in sorted(PROFILE_ASPIRE_FIELDS) if not clean_value(metadata.get(field))]
     if not missing:
@@ -408,24 +516,63 @@ def validate_profile_scope(path: Path, schema: str | None, metadata: dict[str, s
     return [diag(path, schema, "profile-aspire-fields-missing", "Metadata", ",".join(missing), metadata_line, "Aspire/DAPR proof profiles require AppHost, DAPR placement/scheduler, and resource snapshot fields.")]
 
 
-def validate_placeholders(path: Path, schema: str | None, lines: list[str]) -> list[Diagnostic]:
-    placeholder = re.compile(r"<required>|<\.\.\.>|TODO\(dev\)|\bscenario-id\b", re.IGNORECASE)
+def validate_placeholders(path: Path, schema: str | None, lines: list[str], metadata: dict[str, str]) -> list[Diagnostic]:
+    """Flag unreplaced template tokens.
+
+    `<scenario-id>` is intentionally a literal angle-bracket placeholder; bare `scenario-id` is a
+    valid YAML key/value used by real evidence and must not trigger this rule.
+    """
+    placeholder = re.compile(r"<required>|<\.\.\.>|<scenario-id>|TODO\(dev\)", re.IGNORECASE)
+    result: list[Diagnostic] = []
+    current_heading = "Content"
+    yaml_keys_by_value: dict[str, str] = {value: key for key, value in metadata.items()}
     for index, line in enumerate(lines, start=1):
-        if placeholder.search(line):
-            return [diag(path, schema, "placeholder-unreplaced", "Content", None, index, "Replace template placeholders before evidence can close.")]
-    return []
+        heading_match = re.match(r"^#{2,6}\s+(.+?)\s*$", line)
+        if heading_match:
+            current_heading = heading_match.group(1).strip()
+            continue
+        match = placeholder.search(line)
+        if not match:
+            continue
+        field = None
+        yaml_match = re.match(r"^\s*([A-Za-z_][\w.\-]*)\s*:", line)
+        if yaml_match:
+            field = yaml_match.group(1)
+        elif match.group(0) in yaml_keys_by_value:
+            field = yaml_keys_by_value[match.group(0)]
+        result.append(diag(path, schema, "placeholder-unreplaced", current_heading, field, index, f"Replace template placeholder '{match.group(0)}' before evidence can close."))
+    return result
+
+
+def _has_redaction_section(headings: dict[str, list[int]]) -> bool:
+    return any(name == "redaction" or name.startswith("redaction ") or name.startswith("redaction:") for name in headings)
 
 
 def validate_redaction(path: Path, schema: str | None, text: str, lines: list[str], headings: dict[str, list[int]]) -> list[Diagnostic]:
     result: list[Diagnostic] = []
-    if "redaction" not in headings:
+    if not _has_redaction_section(headings):
         result.append(diag(path, schema, "redaction-section-missing", "Redaction", None, None, "Add a Redaction section that states evidence was reviewed/redacted."))
 
     unsafe_patterns = [
         ("redaction-unsafe-bearer-token", re.compile(r"Bearer\s+eyJ[A-Za-z0-9_.-]+", re.IGNORECASE), "Redact bearer/JWT tokens."),
-        ("redaction-unsafe-connection-string", re.compile(r"\b(Server|Password|AccountKey|SharedAccessKey)\s*=", re.IGNORECASE), "Redact connection strings and secret-bearing key/value pairs."),
-        ("redaction-unsafe-production-hostname", re.compile(r"\b[a-z0-9-]+\.prod\.[a-z0-9.-]+\b", re.IGNORECASE), "Replace production hostnames with synthetic or redacted values."),
-        ("redaction-raw-secret-marker", re.compile(r"\bAKIA[0-9A-Z]{16}\b|-----BEGIN [A-Z ]*PRIVATE KEY-----|\braw_secret\b|\bclient_secret\s*=", re.IGNORECASE), "Remove raw secret markers before committing evidence."),
+        (
+            "redaction-unsafe-connection-string",
+            re.compile(
+                r"\b(Server|Password|Pwd|User\s*Id|Uid|Initial\s*Catalog|AccountKey|SharedAccessKey|AccessKey|Secret)\s*=\s*\S",
+                re.IGNORECASE,
+            ),
+            "Redact connection strings and secret-bearing key/value pairs.",
+        ),
+        (
+            "redaction-unsafe-production-hostname",
+            re.compile(r"\b[a-z0-9-]+\.(prod|production|live)\.[a-z0-9.-]+\b", re.IGNORECASE),
+            "Replace production hostnames with synthetic or redacted values.",
+        ),
+        (
+            "redaction-raw-secret-marker",
+            re.compile(r"\bAKIA[0-9A-Z]{16}\b|-----BEGIN [A-Z ]*PRIVATE KEY-----|\braw_secret\b|\bclient_secret\s*=", re.IGNORECASE),
+            "Remove raw secret markers before committing evidence.",
+        ),
     ]
     for rule, pattern, hint in unsafe_patterns:
         match = pattern.search(text)
@@ -437,8 +584,8 @@ def validate_redaction(path: Path, schema: str | None, text: str, lines: list[st
 def clean_value(value: str | None) -> bool:
     if value is None:
         return False
-    stripped = value.strip()
-    return bool(stripped) and stripped not in {"-", "TODO", "TBD"}
+    stripped = value.strip().lower()
+    return bool(stripped) and stripped not in {"-", "todo", "tbd", "n/a", "na"}
 
 
 def line_for_offset(lines: list[str], text: str, offset: int) -> int:

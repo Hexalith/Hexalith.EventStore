@@ -1,5 +1,10 @@
 # Deferred Work
 
+## Deferred from: code review of post-epic-deferred-dw4-operational-evidence-schema-validation (2026-05-05)
+
+- **No fixture for blank/whitespace/non-linked control result (AC #6 partial)** — `_bmad-output/test-artifacts/operational-evidence-validator/fixtures/`. Validator's `clean_value` already rejects empty/`-`/`TODO`/`TBD` so missing-value control checks work, but AC #6's "control whose observed result must be tied to the same run or a clearly linked control run" requires cross-field correlation logic that is bigger than DW4. Reopen when a follow-up validator-rules story is scheduled.
+- **Templates self-trigger placeholder noise if repo-wide audit mode is later enabled** — `scripts/validate-operational-evidence.py:194-199`. `path.rglob("*.md")` traversal will hit the two intentionally-placeholder templates (`query-operational-evidence-template.md`, `signalr-operational-evidence-template.md`) and pollute results with known-OK placeholder failures. Default validation is fixture-only today, so this only matters when Task 4.6's "advisory repository-wide audit" path is implemented. Add a `<!-- evidence-validator: skip -->` opt-out marker or `**/*-template.md` skip-list at that point.
+
 ## Deferred from: code review of post-epic-deferred-dw1-projection-and-drain-hardening (2026-05-05)
 
 - **Drift produces unbounded log spam with no operator escape hatch** — `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:120-130`. On every poll tick the same `checkpoint_drift` warning fires for the same identity. Spec accepted-debt; future work: rate-limited log + runbook reference for operators. Reopen when an operator tooling story lands or when drift logs exceed N per minute in production.

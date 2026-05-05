@@ -22,12 +22,10 @@ resource_snapshot: not-applicable: non-aspire static fixture
 
 ## Controls
 
-Controls are present.
+| Scenario | Observed result |
+| --- | --- |
+| cache-hit-control |  |
 
 ## Redaction
 
 Synthetic sample only.
-
-| Scenario | Observed result |
-| --- | --- |
-| cache-hit-control |  |

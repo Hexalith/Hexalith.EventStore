@@ -18,11 +18,19 @@ $docsGlob = @(
 )
 
 # --- Prerequisite checks ---
-foreach ($cmd in @('node', 'npx', 'lychee', 'dotnet', 'python')) {
+foreach ($cmd in @('node', 'npx', 'lychee', 'dotnet')) {
     if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) {
         Write-Error "ERROR: '$cmd' is not installed or not in PATH. See docs/getting-started/prerequisites.md."
         exit 1
     }
+}
+$pythonFound = $false
+foreach ($candidate in @('python', 'python3', 'py')) {
+    if (Get-Command $candidate -ErrorAction SilentlyContinue) { $pythonFound = $true; break }
+}
+if (-not $pythonFound) {
+    Write-Error "ERROR: Python is required (any of: python, python3, py). See docs/getting-started/prerequisites.md."
+    exit 1
 }
 
 # --- Stage 1: Markdown Linting ---

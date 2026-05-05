@@ -34,14 +34,26 @@ bash scripts/validate-evidence.sh --json path/to/evidence.md
 
 ## Classification Mapping
 
-| Schema | Allowed run-level classifications |
-| --- | --- |
-| `query-operational-evidence/v1` | `pass`, `path-viability`, `sample-only`, `diagnostic-only`, `not-claimable`, `product-failure`, `environment-blocker`, `instrumentation-gap`, `inconclusive` |
-| `signalr-operational-evidence/v1` | `pass`, `product-failure`, `environment-blocker`, `instrumentation-gap`, `sample-only`, `inconclusive` |
+The validator, the operations docs, and the templates share this single mapping table.
+Update all four sources together when classifications change.
 
-Query-only downgrade values are `path-viability`, `diagnostic-only`, and
-`not-claimable`. `instrumentation-gap` is shared even though the proof
-boundaries differ by schema.
+| Classification | `query-operational-evidence/v1` | `signalr-operational-evidence/v1` | Notes |
+| --- | --- | --- | --- |
+| `pass` | yes | yes | Run met all required gates. |
+| `product-failure` | yes | yes | Product behaviour did not meet the proof. |
+| `environment-blocker` | yes | yes | Test rig/environment prevented evidence capture. |
+| `instrumentation-gap` | yes | yes | Required telemetry/instrumentation absent; verdict blocked. |
+| `sample-only` | yes | yes | Sample-sized data only; cannot ground a release claim. |
+| `inconclusive` | yes | yes | Evidence inconclusive — neither pass nor fail asserted. |
+| `path-viability` | yes | no | Query-only downgrade: shape works but coverage incomplete. |
+| `diagnostic-only` | yes | no | Query-only downgrade: diagnostics observed without product proof. |
+| `not-claimable` | yes | no | Query-only downgrade: redaction/legal/scope blocks claim. |
+
+Sources of truth (must agree):
+
+- `scripts/validate-operational-evidence.py` (`QUERY_CLASSIFICATIONS`, `SIGNALR_CLASSIFICATIONS`)
+- `docs/operations/query-operational-evidence.md` and `_bmad-output/test-artifacts/query-operational-evidence-template.md`
+- `docs/operations/signalr-operational-evidence.md` and `_bmad-output/test-artifacts/signalr-operational-evidence-template.md`
 
 ## Fixture Layout
 
