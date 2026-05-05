@@ -180,10 +180,16 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         try {
             AggregateStateSnapshot? result = await InvokeEventStoreAsync<AggregateStateSnapshot>(
                 HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
-            return result ?? CreateEmptyAggregateStateSnapshot(tenantId, domain, aggregateId, sequenceNumber, "not-found");
+            return result ?? throw new KeyNotFoundException("Aggregate state not found at the specified position.");
         }
         catch (OperationCanceledException) {
             throw;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound) {
+            throw new KeyNotFoundException("Aggregate state not found at the specified position.");
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.BadRequest) {
+            throw new ArgumentException("Invalid sequence position for aggregate state.");
         }
         catch (Exception ex) {
             _logger.LogError(ex, "Failed to get aggregate state at position {Sequence} for {TenantId}/{Domain}/{AggregateId} via DAPR service invocation to '{AppId}'.", sequenceNumber, tenantId, domain, aggregateId, _options.EventStoreAppId);
@@ -203,10 +209,16 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         try {
             AggregateStateDiff? result = await InvokeEventStoreAsync<AggregateStateDiff>(
                 HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
-            return result ?? new AggregateStateDiff(fromSequence, toSequence, []);
+            return result ?? throw new KeyNotFoundException("Aggregate state diff not found for the specified range.");
         }
         catch (OperationCanceledException) {
             throw;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound) {
+            throw new KeyNotFoundException("Aggregate state diff not found for the specified range.");
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.BadRequest) {
+            throw new ArgumentException("Invalid sequence range for aggregate state diff.");
         }
         catch (Exception ex) {
             _logger.LogError(ex, "Failed to diff aggregate state for {TenantId}/{Domain}/{AggregateId} via DAPR service invocation to '{AppId}'.", tenantId, domain, aggregateId, _options.EventStoreAppId);
@@ -403,10 +415,16 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         try {
             CausationChain? result = await InvokeEventStoreAsync<CausationChain>(
                 HttpMethod.Get, endpoint, ct).ConfigureAwait(false);
-            return result ?? CreateEmptyCausationChain("not-found");
+            return result ?? throw new KeyNotFoundException("Causation chain not found.");
         }
         catch (OperationCanceledException) {
             throw;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound) {
+            throw new KeyNotFoundException("Causation chain not found.");
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.BadRequest) {
+            throw new ArgumentException("Invalid sequence for causation chain.");
         }
         catch (Exception ex) {
             _logger.LogError(ex, "Failed to trace causation chain at {Sequence} for {TenantId}/{Domain}/{AggregateId} via DAPR service invocation to '{AppId}'.", sequenceNumber, tenantId, domain, aggregateId, _options.EventStoreAppId);
@@ -479,17 +497,6 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
             _ => commands,
         };
     }
-
-    private static AggregateStateSnapshot CreateEmptyAggregateStateSnapshot(
-        string tenantId,
-        string domain,
-        string aggregateId,
-        long sequenceNumber,
-        string status)
-        => new(tenantId, domain, aggregateId, sequenceNumber, DateTimeOffset.UnixEpoch, $"{{\"status\":\"{status}\"}}");
-
-    private static CausationChain CreateEmptyCausationChain(string status)
-        => new($"admin.command.{status}", $"admin-{status}", $"admin-{status}", null, [], []);
 
     private async Task<TResponse?> InvokeEventStoreAsync<TResponse>(
         HttpMethod method,

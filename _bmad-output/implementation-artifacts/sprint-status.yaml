@@ -359,9 +359,9 @@ development_status:
   # Consolidated story spanning Hexalith.EventStore + Hexalith.Tenants submodule.
   # ST1 (UI Immediate bind) + ST2 (admin JSON enum converter) applied in this commit.
   # ST3 (GlobalAdministratorProjectionHandler in Hexalith.Tenants) + ST4 (admin error-path handling) remain.
-  tenant-management-debug-cluster-fix: review
+  tenant-management-debug-cluster-fix: done
 
   # Admin UI Stream State-Inspection Cluster (sprint-change-proposal-2026-05-05-admin-ui-state-inspection-cluster.md)
   # ST1-ST3: add missing /state, /diff, /causation endpoints in Hexalith.EventStore.
   # ST4-ST7: UI defect fixes + categorized error handling + Fluent UI v5 dialog repair + tests.
-  admin-ui-state-inspection-cluster-fix: ready-for-dev
+  admin-ui-state-inspection-cluster-fix: review

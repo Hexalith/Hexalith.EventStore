@@ -117,6 +117,7 @@ public class AdminStreamsController(
     [HttpGet("{tenantId}/{domain}/{aggregateId}/state")]
     [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
     [ProducesResponseType(typeof(AggregateStateSnapshot), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -135,6 +136,12 @@ public class AdminStreamsController(
                 ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Aggregate state not found at the specified position.")
                 : Ok(result);
         }
+        catch (KeyNotFoundException) {
+            return CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Aggregate state not found at the specified position.");
+        }
+        catch (ArgumentException ex) {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
+        }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetAggregateState), ex);
         }
@@ -149,6 +156,7 @@ public class AdminStreamsController(
     [HttpGet("{tenantId}/{domain}/{aggregateId}/diff")]
     [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
     [ProducesResponseType(typeof(AggregateStateDiff), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -167,6 +175,12 @@ public class AdminStreamsController(
             return result is null
                 ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Aggregate state not found for the specified range.")
                 : Ok(result);
+        }
+        catch (KeyNotFoundException) {
+            return CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Aggregate state diff not found for the specified range.");
+        }
+        catch (ArgumentException ex) {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(DiffAggregateState), ex);
@@ -360,6 +374,7 @@ public class AdminStreamsController(
     [HttpGet("{tenantId}/{domain}/{aggregateId}/causation")]
     [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
     [ProducesResponseType(typeof(CausationChain), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -377,6 +392,12 @@ public class AdminStreamsController(
             return result is null
                 ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Causation chain not found.")
                 : Ok(result);
+        }
+        catch (KeyNotFoundException) {
+            return CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Causation chain not found.");
+        }
+        catch (ArgumentException ex) {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(TraceCausationChain), ex);

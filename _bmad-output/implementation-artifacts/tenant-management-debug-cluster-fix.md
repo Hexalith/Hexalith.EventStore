@@ -1,6 +1,6 @@
 # Story: tenant-management-debug-cluster-fix
 
-Status: review
+Status: done
 
 Context created: 2026-05-05
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-05-tenant-management-debug-cluster.md`
@@ -132,13 +132,13 @@ so that tenant management is usable and authorization/projection failures are no
 - [x] ST5 - Test and verify the cross-repo fix. (AC: 7, 8)
   - [x] Run targeted Admin Server tests:
         `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests --configuration Release`
-        Result: 539 passed / 18 skipped / 0 failed (557 total).
+        Result: 543 passed / 18 skipped / 0 failed (561 total).
   - [x] Run targeted Admin UI tests (TenantsPageTests existing bUnit coverage; no new UI bUnit tests added per testing guidance — AC #1 is "verify only"):
         `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --filter FullyQualifiedName~TenantsPageTests --configuration Release`
-        Result: 24/24 passed.
+        Result: 25/25 passed.
   - [x] Run targeted Tenants Server tests inside the submodule:
         `dotnet test Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests --configuration Release -- xUnit.ParallelizeTestCollections=false xUnit.MaxParallelThreads=1`
-        Result: 257/257 passed single-threaded. Pre-existing parallel-execution flake in `DomainServiceRequestHandlerTelemetryTests.ProcessAsync_NoProcessorFound_ShouldSetErrorStatusAndRecordMetric` is unrelated to this story's changes (telemetry test ordering, ActivitySource/Meter shared state); not a regression.
+        Result: 261/261 passed single-threaded. Pre-existing parallel-execution flake in `DomainServiceRequestHandlerTelemetryTests.ProcessAsync_NoProcessorFound_ShouldSetErrorStatusAndRecordMetric` is unrelated to this story's changes (telemetry test ordering, ActivitySource/Meter shared state); not a regression.
   - [x] Run Release builds for both repos: `dotnet build Hexalith.EventStore.slnx --configuration Release` (0 warnings, 0 errors). Submodule projects build through the parent solution.
   - [x] Start Aspire per repo instructions and smoke-test the projection path. Aspire AppHost started with `EnableKeycloak=false`. Bootstrap re-fired through the new dispatch path; `BootstrapGlobalAdmin` command persisted under `system:global-administrators:global-administrators` aggregate; projection request arrived at `/project` with `Domain="global-administrators"` and routed through `ProjectionDispatcher` to `GlobalAdministratorProjectionHandler`. (Browser-driven `Tenants.razor` UI smoke for Create→List→Detail not run; UI flow for ST1 is "verify only" per AC #1.)
   - [x] Remove the manual Redis global-admin singleton and prove bootstrap recreates it.
@@ -154,7 +154,18 @@ so that tenant management is usable and authorization/projection failures are no
         # -> 0
         ```
   - [x] Bump the `Hexalith.Tenants` submodule pin after ST3 lands. Submodule branch `fix/global-admin-projection-handler` (commit `ac63d48`) pushed to origin; parent submodule pointer updated in the same commit as the parent-side ST4 changes.
-  - [x] Move sprint status to `review` only after both repo changes and verification are complete.
+  - [x] Live clean-state admin API smoke passed after Redis cleanup: create `codex-smoke-20260505151457` returned 202; list returned 200 and contained the tenant; detail returned 200 and contained the tenant; users returned 200 with `[]`.
+  - [x] Move sprint status to `done` after review patches, targeted verification, Release build, and clean-state smoke were complete.
+
+### Review Findings
+
+- [x] [Review][Decision] Real failed-query-envelope behavior is not wired through the live EventStore query path. Resolution: keep EventStore's real non-success HTTP ProblemDetails path and make `DaprTenantQueryService` classify HTTP 500/501 query contract failures as `TenantQueryFailedException` -> admin 502, while preserving 403/404/503 mappings.
+- [x] [Review][Patch] Global administrator routing and projection can accept non-system aggregate identities. Resolution: removed wildcard global-admin routes and added `system`/`global-administrators` identity guards in the dispatcher and handler.
+- [x] [Review][Patch] `SubmitQueryResponse` positional record change is not binary/source compatible for existing consumers. Resolution: converted to a nominal record with explicit two-argument compatibility constructor plus two-value and four-value `Deconstruct` overloads.
+- [x] [Review][Patch] Create Tenant immediate binding is not protected by UI coverage. Resolution: added source-level UI regression coverage asserting the Create Tenant inputs keep `Immediate="true"` and bind the expected fields.
+- [x] [Review][Patch] Malformed successful tenant query payload path is not covered. Resolution: added successful-envelope malformed-payload coverage proving serialization/client-contract failures are not reclassified as Forbidden, NotFound, or transport unavailable.
+- [x] [Review][Patch] Clean-state create/list/detail smoke evidence required by AC8 is still missing from the story record. Resolution: recorded Redis cleanup evidence and live admin API create/list/detail/users smoke.
+- [x] [Review][Patch] Submodule carry-in treats every `MissingApplyMethodException` as processor mismatch without rethrowing if no processor succeeds. Resolution: preserve and rethrow the first `MissingApplyMethodException` when no later processor succeeds, with regression coverage.
 
 ## Dev Notes
 
@@ -321,30 +332,41 @@ Claude Opus 4.7 (1M context) via /bmad-dev-story.
 - ST3 (Hexalith.Tenants submodule): added `GlobalAdministratorProjectionHandler` (DAPR-backed, writes `projection:global-administrators:singleton` only — no tenant-index, no `projection:tenants:global-administrators`). Added `ProjectionDispatcher` and rewired `/project` to dispatch by `ProjectionRequest.Domain` ("tenants" / "global-administrators" / unknown→400 ProblemDetails). Negative test asserts no `SaveStateAsync` is called for unknown domains. 7 + 8 = 15 new unit tests, full Tenants Server suite 257/257 single-threaded.
 - ST4: extended `SubmitQueryResponse` with optional `Success` (default `true`) and `ErrorMessage` (default `null`) — additive non-breaking. `DaprTenantQueryService.ClassifyFailedEnvelope` checks `Success` BEFORE any payload deserialization. "Forbidden" → `HttpRequestException(Forbidden)` → 403 via existing `QueryFailure`. "Tenant not found" → `HttpRequestException(NotFound)` (Detail catches and returns null → 404; Users propagates → 404). "Tenant not found" on `ListTenantsAsync` → `TenantQueryFailedException` (semantic contract failure, never silent empty list). Unrecognized error → `TenantQueryFailedException` → 502 via dedicated controller catch. `IsServiceUnavailable` left untouched so transport BadGateway still maps to 503 (regression test added).
 - Pre-existing flake (`DomainServiceRequestHandlerTelemetryTests.ProcessAsync_NoProcessorFound_ShouldSetErrorStatusAndRecordMetric`) only fails under xUnit's default parallel collections; passes single-threaded and in isolation. Not introduced by this story; not a release blocker.
-- Live verification (Aspire smoke; Redis manual-hack cleanup; submodule pin bump after committing in `Hexalith.Tenants` repo) requires user-side DAPR/Docker access — handed off as the remaining ST5 unchecked items.
+- Review patches applied after BMAD code review: HTTP ProblemDetails query failure classification, global-admin identity guards, `SubmitQueryResponse` compatibility members, UI immediate-binding coverage, malformed successful-payload coverage, clean-state smoke evidence, and `MissingApplyMethodException` rethrow behavior.
 
 ### Verification Evidence Captured
 
-- Admin Server: 539/557 passed in Release (18 skipped, 0 failed).
-- Admin UI (TenantsPageTests): 24/24 passed in Release.
-- Hexalith.Tenants Server tests: 257/257 passed single-threaded in Release.
+- Admin Server: 543/561 passed in Release (18 skipped, 0 failed).
+- Admin UI (TenantsPageTests): 25/25 passed in Release.
+- Hexalith.Tenants Server tests: 261/261 passed single-threaded in Release.
 - Contracts tests: 281/281 passed (additive `Success`/`ErrorMessage` change is non-breaking).
 - Client tests: 334/334 passed.
 - Solution Release build: 0 warnings, 0 errors.
+- Aspire resources after rebuild/restart: `eventstore`, `eventstore-admin`, `eventstore-admin-ui`, and `tenants` all running healthy.
+- Clean-state Redis evidence after deleting projection keys and restarting through Aspire:
+  - `HGETALL projection:global-administrators:singleton` -> `data {"administrators":["admin-user"]}`, `version 1`.
+  - `EXISTS projection:tenants:global-administrators` -> `0`.
+  - `EXISTS projection:tenants:codex-smoke-20260505151457` -> `1` after live create smoke.
+- Live admin API smoke with generated dev JWT (`sub=admin-user`, `global_admin=true`): create `codex-smoke-20260505151457` -> 202; list -> 200 and contained tenant; detail -> 200 and contained tenant; users -> 200 with `[]`.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/tenant-management-debug-cluster-fix.md`
 - `src/Hexalith.EventStore.Contracts/Queries/SubmitQueryResponse.cs` (M, +Success/+ErrorMessage)
+- `src/Hexalith.EventStore/appsettings.json` (M, remove wildcard global-admin route)
+- `src/Hexalith.EventStore/appsettings.Development.json` (M, remove wildcard global-admin route)
 - `src/Hexalith.EventStore.Admin.Server/Services/DaprTenantQueryService.cs` (M, envelope classifier)
 - `src/Hexalith.EventStore.Admin.Server/Services/TenantQueryFailedException.cs` (A)
 - `src/Hexalith.EventStore.Admin.Server/Controllers/AdminTenantsController.cs` (M, +UpstreamQueryFailure / 502 catches / OpenAPI status types)
-- `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprTenantQueryServiceTests.cs` (M, +14 ST2 theory cases, +9 ST4 envelope tests)
+- `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprTenantQueryServiceTests.cs` (M, +14 ST2 theory cases, +ST4/ST4-review envelope, HTTP, and malformed-payload tests)
 - `tests/Hexalith.EventStore.Admin.Server.Tests/Controllers/AdminTenantsControllerTests.cs` (M, +4 ST4 controller mapping tests)
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/TenantsPageTests.cs` (M, +Create Tenant immediate-binding regression assertion)
+- `Hexalith.Tenants/src/Hexalith.Tenants/DomainProcessing/DomainServiceRequestHandler.cs` (M, rethrow first missing-apply exception when no processor succeeds)
 - `Hexalith.Tenants/src/Hexalith.Tenants/Projections/GlobalAdministratorProjectionHandler.cs` (A)
 - `Hexalith.Tenants/src/Hexalith.Tenants/Projections/ProjectionDispatcher.cs` (A)
 - `Hexalith.Tenants/src/Hexalith.Tenants/Program.cs` (M, /project endpoint dispatches via ProjectionDispatcher)
 - `Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/Projections/GlobalAdministratorProjectionHandlerTests.cs` (A)
+- `Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/DomainProcessing/DomainServiceRequestHandlerTests.cs` (M, +missing-apply rethrow regression)
 - `Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/Projections/ProjectionDispatcherTests.cs` (A)
 
 ### Change Log
@@ -354,3 +376,4 @@ Claude Opus 4.7 (1M context) via /bmad-dev-story.
 | 2026-05-05 | ST2 enum-payload theory tests added | 14 cases across List/Detail/Users covering "Active"/"Disabled"/"TenantOwner"/"TenantContributor"/"TenantReader" string and 0/1/2 numeric forms. |
 | 2026-05-05 | ST3 GlobalAdministratorProjectionHandler + ProjectionDispatcher | Live DAPR projection handler writes `projection:global-administrators:singleton` only; `/project` routes by `ProjectionRequest.Domain`; unknown domains fail closed with 400. |
 | 2026-05-05 | ST4 envelope classifier + 502 path | Additive `SubmitQueryResponse.Success`/`ErrorMessage`; `DaprTenantQueryService.ClassifyFailedEnvelope`; new internal `TenantQueryFailedException` mapped to 502 via dedicated controller catch (transport 503 path preserved). |
+| 2026-05-05 | Code-review patches and clean-state smoke | Applied all seven BMAD review findings; live Redis cleanup plus admin API create/list/detail/users smoke passed from clean state. |
