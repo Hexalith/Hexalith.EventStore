@@ -4,6 +4,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
+using Hexalith.EventStore.Admin.Server.Services;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -33,6 +34,7 @@ public class AdminTenantsController(
     [ProducesResponseType(typeof(IReadOnlyList<TenantSummary>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ListTenants(CancellationToken ct = default) {
         try {
@@ -43,6 +45,9 @@ public class AdminTenantsController(
         }
         catch (HttpRequestException ex) {
             return QueryFailure(nameof(ListTenants), ex);
+        }
+        catch (TenantQueryFailedException ex) {
+            return UpstreamQueryFailure(nameof(ListTenants), ex);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(ListTenants), ex);
@@ -58,7 +63,9 @@ public class AdminTenantsController(
     [HttpGet("{tenantId}")]
     [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
     [ProducesResponseType(typeof(TenantDetail), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetTenantDetail(
         string tenantId,
@@ -74,6 +81,9 @@ public class AdminTenantsController(
         catch (HttpRequestException ex) {
             return QueryFailure(nameof(GetTenantDetail), ex, tenantId);
         }
+        catch (TenantQueryFailedException ex) {
+            return UpstreamQueryFailure(nameof(GetTenantDetail), ex);
+        }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetTenantDetail), ex);
         }
@@ -88,6 +98,9 @@ public class AdminTenantsController(
     [HttpGet("{tenantId}/users")]
     [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
     [ProducesResponseType(typeof(IReadOnlyList<TenantUser>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetTenantUsers(
         string tenantId,
@@ -100,6 +113,9 @@ public class AdminTenantsController(
         }
         catch (HttpRequestException ex) {
             return QueryFailure(nameof(GetTenantUsers), ex, tenantId);
+        }
+        catch (TenantQueryFailedException ex) {
+            return UpstreamQueryFailure(nameof(GetTenantUsers), ex);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetTenantUsers), ex);
@@ -329,6 +345,14 @@ public class AdminTenantsController(
                 "The EventStore query pipeline is rate limiting tenant queries. Retry shortly."),
             _ => UnexpectedError(method, exception),
         };
+    }
+
+    private ObjectResult UpstreamQueryFailure(string method, TenantQueryFailedException ex) {
+        logger.LogError(ex, "Tenant query upstream contract failure: {Method}", method);
+        return CreateProblemResult(
+            StatusCodes.Status502BadGateway,
+            "Bad Gateway",
+            "The tenant query pipeline returned a failure that the admin server cannot classify.");
     }
 
     private ObjectResult ServiceUnavailable(string method, Exception ex) {
