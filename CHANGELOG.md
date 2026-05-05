@@ -1,3 +1,10 @@
+# [3.12.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.11.1...v3.12.0) (2026-05-05)
+
+
+### Features
+
+* Update sprint status and documentation for Admin debugging JSON and large-stream hardening ([7e2db13](https://github.com/Hexalith/Hexalith.EventStore/commit/7e2db13d08e6059c1a6b4e5e68c53ce25ce2d076))
+
 ## [3.11.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.11.0...v3.11.1) (2026-05-05)
 
 
