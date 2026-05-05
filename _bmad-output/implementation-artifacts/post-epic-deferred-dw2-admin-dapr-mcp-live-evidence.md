@@ -114,6 +114,7 @@ Current HEAD at story creation: `41fc73da`.
     - [ ] 1.2 Run `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` unless the developer intentionally chooses Keycloak proof.
     - [ ] 1.3 Record resource names, states, endpoints, dashboard URL, Admin Server URL, Admin UI URL if used, and CommandAPI URL.
     - [ ] 1.4 Record any runtime blocker with exact failing command/output excerpt and stop affected checks rather than claiming pass.
+    - [ ] 1.5 Keep a stoplight table for each prerequisite and resource: passed, degraded-but-continue, or blocked-stop-here, with the dependent checks listed explicitly.
 
 - [ ] Task 2: Capture Admin DAPR live evidence (AC: #2, #3, #4, #11, #13)
     - [ ] 2.1 Generate or obtain a dev JWT with read-only/admin claims without storing the token in evidence.
@@ -126,20 +127,20 @@ Current HEAD at story creation: `41fc73da`.
 - [ ] Task 3: Capture Epic 20 debugging live evidence (AC: #5, #6, #11, #13)
     - [ ] 3.1 Seed one deterministic stream through CommandAPI or an existing sample flow and record tenant, domain, aggregate id, event count, and correlation id.
     - [ ] 3.2 Exercise blame, step-through, bisect, sandbox, and trace-map paths against the same seeded stream or correlation.
-    - [ ] 3.3 Record expected shape and observed shape for each result, including truncation flags, timeout/failure state, and whether evidence came from Admin API, Admin UI, MCP, or direct CommandAPI.
+    - [ ] 3.3 Record expected shape and observed shape for each result, including truncation flags, timeout/failure state, whether evidence came from Admin API, Admin UI, MCP, or direct CommandAPI, and the canonical identifier block reused across all related artifacts.
     - [ ] 3.4 Route JSON reconstruction or large-stream concerns to DW3 instead of fixing them in this story.
 
 - [ ] Task 4: Capture MCP live smoke and latency evidence (AC: #7, #8, #9, #10, #11, #13)
     - [ ] 4.1 Start `Hexalith.EventStore.Admin.Mcp` with `EVENTSTORE_ADMIN_URL` and a redacted `EVENTSTORE_ADMIN_TOKEN`.
     - [ ] 4.2 Capture initialize and `tools/list` transcript with stdout/stderr separated.
     - [ ] 4.3 Invoke one representative read tool, preferably `ping`, `health-status`, `health-dapr`, `stream-list`, or `stream-events` based on seeded data availability.
-    - [ ] 4.4 Invoke one approval-gated write-preview tool without executing destructive changes; record the request, approval boundary, denied or unapproved behavior, sanitized preview output, and before/after proof that no mutation occurred.
-    - [ ] 4.5 Prove session context fallback for tenant/domain if supported. If fallback is absent, record a classified defect or deferred decision with reproduction steps and evidence path instead of implementing a new fallback design in this story.
-    - [ ] 4.6 Measure at least one single-resource MCP read tool with a documented timing method, sample count, cold/warm state, retry treatment, min/average/max or raw individual durations, local environment caveat, and whether Admin API latency is included.
+    - [ ] 4.4 Invoke one approval-gated write-preview tool without executing destructive changes; record the request, approval boundary, denied or unapproved behavior, sanitized preview output, and a before/after proof pair that no mutation occurred.
+    - [ ] 4.5 Prove session context fallback for tenant/domain if supported. If fallback is absent, classify it explicitly as `feature absent`, `feature broken`, or `blocked by missing session-establishment path`; include reproduction steps and evidence path instead of implementing a new fallback design in this story.
+    - [ ] 4.6 Measure at least one single-resource MCP read tool with a documented timing method, timer source, sample count, cold/warm state, retry treatment, min/average/max or raw individual durations, local environment caveat, and whether initialization and Admin API latency are included.
 
 - [ ] Task 5: Close deferred-work and validation bookkeeping (AC: #11, #12, #15)
     - [ ] 5.1 Update only DW2-relevant `deferred-work.md` bullets with disposition markers.
-    - [ ] 5.2 Run targeted tests only if production/test helper code changed. For evidence-only changes, validate markdown and links where tooling exists.
+    - [ ] 5.2 Run targeted tests only if production/test helper code changed. For evidence-only changes, validate markdown, links, and artifact completeness where tooling exists.
     - [ ] 5.3 Update this story's Dev Agent Record, File List, Change Log, Verification Status, and evidence artifact references.
     - [ ] 5.4 Move this story and sprint-status row to `review` only after evidence is saved and blockers are classified.
 
@@ -162,6 +163,29 @@ Current HEAD at story creation: `41fc73da`.
 - Use one deterministic seeded stream and correlation id for blame, bisect, step-through, sandbox, and trace-map evidence. Redact payloads, but keep tenant, domain, aggregate id, event count, correlation id, and structural metadata needed to reproduce the smoke.
 - Keep MCP proof split by protocol phase: startup environment, initialize, `tools/list`, representative read tool, approval-gated write-preview behavior, session fallback, and latency sample. A tool-discovery success alone is not MCP evidence.
 - If Admin UI is used for optional evidence, limit UI review to the tested path: no hidden critical status, keyboard reachability for tested controls, and no new unlabeled controls or hard-coded strings beyond existing patterns. Broader Admin UI polish remains DW5 scope.
+
+## Advanced Elicitation Clarifications
+
+The 2026-05-05 advanced-elicitation pass kept DW2 as an evidence-first story and tightened only the runtime proof contract. These notes are binding for dev-story execution unless a human product or architecture decision supersedes them.
+
+### Runtime Evidence Guardrails
+
+- Capture the runtime baseline as a stoplight table, not free prose: command, prerequisite state, target resource, expected result, observed result, blocker class, and whether later checks may continue.
+- A blocked prerequisite stops only the dependent evidence slice. Remote EventStore metadata failure does not erase local Admin.Server component proof; missing seeded-stream data does not invalidate DAPR baseline evidence.
+- When a smoke check fails, preserve the first failure shape before retrying. Later retries may be recorded, but the evidence index must keep the original degraded result visible.
+
+### Cross-Surface Consistency Rules
+
+- Use one canonical identifier block for seeded-stream evidence and repeat it across Admin API, Admin UI, MCP, and CommandAPI artifacts so reviewers can prove every tool targeted the same stream or correlation.
+- Remote metadata evidence must remain per-surface. Sidecar, actors, and pub/sub each need an independent `RemoteMetadataStatus` row even when they share the same remote endpoint and failure mode.
+- MCP write-preview proof needs a before/after non-mutation check. It is not enough to record "approval required"; the evidence should show the preview path stopped before any state change and that the inspected resource remained unchanged.
+- Session fallback proof must distinguish `feature absent`, `feature broken`, and `blocked by missing session-establishment path`. Only the first is a deferred decision; the second is a defect.
+
+### Latency and Validation Requirements
+
+- The NFR43 sample must name the timer source, cold/warm state, sample count, and whether initialization time is included. If only one sample is practical, call it out as a single-sample baseline rather than implying statistical confidence.
+- If production code is unchanged, validation for DW2 should prefer markdown/link checks plus artifact completeness review. Do not manufacture test churn to satisfy bookkeeping.
+- If a live defect requires a narrow fix, record the before/after evidence pair and the exact acceptance criteria it unlocks, then stop once the blocked proof path is recovered.
 
 ### Previous Story Intelligence
 
@@ -218,6 +242,7 @@ GPT-5 Codex
 - No implementation work has been performed for this story.
 - No `project-context.md` file was present in the repository at story creation.
 - Party-mode review applied low-risk pre-dev clarifications for evidence index format, blocker taxonomy, RemoteMetadataStatus matrix, MCP approval proof, latency sampling, seeded-stream consistency, degraded-state visibility, and the production-defect gate.
+- Advanced elicitation applied low-risk handoff clarifications for stoplight runtime gating, cross-surface identifier consistency, non-mutation MCP preview proof, session-fallback classification, and latency evidence shape.
 
 ### Party-Mode Review - 2026-05-04T20:48:20+02:00
 
@@ -238,11 +263,24 @@ GPT-5 Codex
 ## Verification Status
 
 - Story artifact created and sprint-status row moved from `backlog` to `ready-for-dev`.
+- Party-mode review and advanced elicitation traces are recorded inline; no status change was required.
 - Markdown and YAML validation should be run before dev handoff if local tooling is available.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 |---|---:|---|---|
+| 2026-05-05 | 0.3 | Applied advanced-elicitation hardening for runtime stoplight gating, MCP proof shape, and latency evidence requirements. | Codex automation |
 | 2026-05-04 | 0.2 | Applied party-mode pre-dev review clarifications for DW2 evidence contract and scope gates. | Codex automation |
 | 2026-05-04 | 0.1 | Created ready-for-dev DW2 Admin DAPR MCP live evidence story. | Codex automation |
+
+### Advanced Elicitation - 2026-05-05T05:42:00+02:00
+
+- Selected story key: `post-epic-deferred-dw2-admin-dapr-mcp-live-evidence`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-deferred-dw2-admin-dapr-mcp-live-evidence`
+- Batch 1 method names: Pre-mortem Analysis; Red Team vs Blue Team; Comparative Analysis Matrix; Critique and Refine; Challenge from Critical Perspective
+- Reshuffled Batch 2 method names: Architecture Decision Records; Self-Consistency Validation; Occam's Razor Application; Lessons Learned Extraction; Failure Mode Analysis
+- Findings summary: The story was already viable after party-mode review, but elicitation exposed five handoff gaps: prerequisite failures needed an explicit stoplight continuation rule; seeded-stream evidence needed a shared identifier block across surfaces; MCP write-preview proof needed before/after non-mutation evidence; session fallback needed clearer absent-versus-broken classification; and NFR43 evidence needed a tighter latency-sampling contract.
+- Changes applied: Added Advanced Elicitation Clarifications for runtime evidence guardrails, cross-surface consistency rules, and latency-validation requirements. Tightened Tasks 1.5, 3.3, 4.4, 4.5, 4.6, and 5.2, and updated Completion Notes, Verification Status, and Change Log.
+- Findings deferred: Any production defect found during DW2 smoke remains subject to the existing narrow defect gate; DW3 JSON/large-stream work, DW4 evidence-template validation, DW5 Admin UI polish, DW6 governance, public Admin API or MCP contract changes, and deployment-topology/DAPR YAML changes remain out of scope unless a smoke-proven blocker forces a separately reviewed follow-up.
+- Final recommendation: ready-for-dev
