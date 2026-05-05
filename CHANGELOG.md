@@ -1,3 +1,11 @@
+## [3.11.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.11.0...v3.11.1) (2026-05-05)
+
+
+### Bug Fixes
+
+* **tenants:** apply ST1+ST2 of tenant management debug cluster fix ([5bc2a3b](https://github.com/Hexalith/Hexalith.EventStore/commit/5bc2a3ba55ae4ef83de3621e28e46a723a2e9646))
+* **tenants:** live global-admin projection handler, failed-envelope 502 path, and submodule bump ([1839b9a](https://github.com/Hexalith/Hexalith.EventStore/commit/1839b9a0b1a8bbef610662766bae5acb046de9cf)), closes [#5](https://github.com/Hexalith/Hexalith.EventStore/issues/5) [#6](https://github.com/Hexalith/Hexalith.EventStore/issues/6)
+
 # [3.11.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.10.0...v3.11.0) (2026-05-05)
 
 
