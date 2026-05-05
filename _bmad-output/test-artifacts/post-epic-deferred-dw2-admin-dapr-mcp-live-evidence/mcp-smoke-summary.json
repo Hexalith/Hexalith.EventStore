@@ -1,10 +1,28 @@
 [
   {
+    "phase": "metadata",
+    "seededIdentifiers": {
+      "tenantId": "tenant-a",
+      "domain": "counter",
+      "aggregateId": "counter-dw2-20260505135410",
+      "eventCount": 5,
+      "correlationId": "d5bf0400-f474-49c4-b833-f83f77287a45",
+      "source": "seeded-stream-summary.json",
+      "appliesTo": [
+        "representative-read",
+        "session-fallback-stream-list"
+      ]
+    },
+    "environmentNote": "Local developer machine sample only; not a product SLA. Single Aspire AppHost on Windows, not a hosted environment.",
+    "timerSourceCaveat": "All elapsedMs and latency values are measured by the Python smoke harness using time.perf_counter wrapped around the JSON-RPC tools/call write-and-read cycle on the MCP server's stdio pipes. The values therefore include MCP stdio pipe latency plus server-side handler time plus Admin API HTTP latency, not server processing time alone.",
+    "lifecycleNote": "Per MCP 2025-06-18 spec, a notifications/initialized notification is expected after initialize. The current stdout transcript captures only client->server requests that elicit a response; the post-initialize notification is not present in mcp-stdout-transcript.jsonl. Recorded as evidence gap (DW2 review, P13)."
+  },
+  {
     "phase": "initialize",
     "serverInfo": {
       "name": "hexalith-eventstore-admin",
       "version": "1.0.0+7b0a6d87d1b69ad143a6385685df028a035a81c2",
-      "description": "Hexalith EventStore administration MCP server \u2014 query streams, inspect projections, diagnose issues, and manage operations via AI-callable tools"
+      "description": "Hexalith EventStore administration MCP server — query streams, inspect projections, diagnose issues, and manage operations via AI-callable tools"
     },
     "capabilities": [
       "logging",
@@ -38,6 +56,7 @@
       "types-list",
       "projection-detail"
     ],
+    "sampleNote": "sampleTools shows the first 20 of 28 tools by enumeration order; the full 28-name list is canonical in mcp-stdout-transcript.jsonl id=2 result.tools[].name. Truncation policy: 20-tool sample for summary readability.",
     "classification": "passed"
   },
   {
@@ -49,6 +68,8 @@
     "textShape": [
       "list"
     ],
+    "totalCount": 0,
+    "totalCountSource": "mcp-stdout-transcript.jsonl id=3 result.content[0].totalCount",
     "classification": "passed"
   },
   {
@@ -62,6 +83,11 @@
       "continuationToken",
       "items"
     ],
+    "seededTarget": {
+      "tenantId": "tenant-a",
+      "domain": "counter",
+      "aggregateId": "counter-dw2-20260505135410"
+    },
     "classification": "passed"
   },
   {
@@ -78,6 +104,7 @@
       "parameters",
       "warning"
     ],
+    "approvalGate": "confirm=false; preview returned without invoking destructive action",
     "classification": "passed"
   },
   {
@@ -89,6 +116,9 @@
     "textShape": [
       "list"
     ],
+    "totalCount": 0,
+    "totalCountSource": "mcp-stdout-transcript.jsonl id=6 result.content[0].totalCount",
+    "nonMutationProof": "before.totalCount (0) == after.totalCount (0); confirms no consistency-check entry was added by the confirm=false write-preview. Note: a non-zero baseline would make the equality non-trivial; current proof is minimum-bar (DW2 review, P3).",
     "classification": "passed"
   },
   {
@@ -118,6 +148,9 @@
       "continuationToken",
       "items"
     ],
+    "totalCount": 112,
+    "totalCountSource": "mcp-stdout-transcript.jsonl id=8 result.content[0].totalCount",
+    "fallbackProofShape": "shape-of-success only; the call omitted tenantId/domain after session-set-context for tenant-a/counter and returned 200 with shape. A comparison call with explicit tenantId=tenant-a/domain=counter is NOT recorded; without it the equality of session-applied filtering vs explicit-args filtering cannot be proven from this artifact alone (DW2 review, P7).",
     "classification": "passed"
   },
   {
@@ -143,6 +176,7 @@
     "textShape": [
       "list"
     ],
+    "environmentNote": "Local developer machine sample only; not a product SLA",
     "classification": "passed"
   },
   {
@@ -154,6 +188,7 @@
     "textShape": [
       "list"
     ],
+    "environmentNote": "Local developer machine sample only; not a product SLA",
     "classification": "passed"
   },
   {
@@ -165,12 +200,14 @@
     "textShape": [
       "list"
     ],
+    "environmentNote": "Local developer machine sample only; not a product SLA",
     "classification": "passed"
   },
   {
     "phase": "latency-sample",
     "tool": "health-dapr",
     "timerSource": "python time.perf_counter",
+    "timerScope": "Outer measurement wraps JSON-RPC tools/call write-and-read on MCP stdio pipes; includes pipe latency + server handler + Admin API HTTP roundtrip; not server-side handler time alone.",
     "coldWarm": "warm after initialize/tools-list",
     "sampleCount": 3,
     "retriesIncluded": false,
@@ -184,6 +221,7 @@
     "minMs": 1.411,
     "avgMs": 3.895,
     "maxMs": 8.378,
+    "environmentNote": "Local developer machine sample only; not a product SLA. Three-sample baseline; no statistical confidence implied.",
     "classification": "sample-only"
   }
 ]

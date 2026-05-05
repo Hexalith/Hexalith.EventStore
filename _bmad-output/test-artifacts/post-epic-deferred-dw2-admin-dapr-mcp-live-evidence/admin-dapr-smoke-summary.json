@@ -33,7 +33,9 @@
     "StatusCode": 200,
     "ElapsedMs": 11,
     "Artifact": "_bmad-output\\test-artifacts\\post-epic-deferred-dw2-admin-dapr-mcp-live-evidence\\admin-dapr-pubsub-response.json",
-    "Classification": "passed"
+    "Classification": "passed; degraded-empty-subscriptions",
+    "ClassificationDetail": "Endpoint returned 200 with subscriptions:[]. Per AC #4, empty subscriptions are preserved as a degraded-but-continue state, not collapsed into bare 'passed'. Pubsub component visible; no live subscription was observable at smoke time. RemoteMetadataStatus=Available, RemoteEndpoint=http://localhost:3501.",
+    "RulesShapeObserved": "none (no rules[] or rules.rules[] entries because subscriptions array was empty); v1.17 direct-rules vs older wrapped-rules parser shape NOT discriminated by this run because no live subscription was present"
   },
   {
     "Time": "2026-05-05T13:52:51.6018281+02:00",
