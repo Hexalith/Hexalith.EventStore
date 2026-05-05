@@ -314,6 +314,7 @@ public class AdminStreamsController(
     [HttpGet("{tenantId}/{domain}/{aggregateId}/events/{sequenceNumber:long}")]
     [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
     [ProducesResponseType(typeof(EventDetail), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -324,6 +325,13 @@ public class AdminStreamsController(
         string aggregateId,
         long sequenceNumber,
         CancellationToken ct = default) {
+        if (sequenceNumber <= 0) {
+            return CreateProblemResult(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                "Parameter 'sequenceNumber' must be >= 1.");
+        }
+
         try {
             EventDetail result = await streamQueryService
                 .GetEventDetailAsync(tenantId, domain, aggregateId, sequenceNumber, ct)
@@ -331,6 +339,12 @@ public class AdminStreamsController(
             return result is null
                 ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Event not found.")
                 : Ok(result);
+        }
+        catch (KeyNotFoundException) {
+            return CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Event not found.");
+        }
+        catch (ArgumentException ex) {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetEventDetail), ex);
