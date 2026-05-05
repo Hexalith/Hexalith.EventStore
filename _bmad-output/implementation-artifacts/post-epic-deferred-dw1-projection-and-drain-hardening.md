@@ -261,7 +261,6 @@ GPT-5 Codex
 
 - Created ready-for-dev story from first backlog row in the Post-Epic Deferred Work Cleanup package.
 - Party-mode review on 2026-05-04 recommended `needs-story-update`; low-risk clarifications were applied for invariants, diagnostic vocabulary, evidence targets, and deferred decisions.
-- Advanced elicitation on 2026-05-05 hardened decision points for checkpoint drift, tracker-scaling thresholds, drain-poison policy recording, reminder re-entrancy proof, and EventId/reason-code validation.
 - No implementation work has been performed for this story.
 - No `project-context.md` file was present in the repository at story creation.
 - Advanced elicitation on 2026-05-05 applied low-risk handoff clarifications for decision-ledger requirements, failure-mode closure rules, poller boundedness proof, drain idempotence evidence, and dev-story stop signs.
@@ -284,7 +283,6 @@ GPT-5 Codex
 |---|---:|---|---|
 | 2026-05-04 | 0.1 | Created ready-for-dev DW1 projection and drain hardening story. | Codex automation |
 | 2026-05-04 | 0.2 | Applied party-mode review clarifications for invariants, diagnostics, evidence targets, and deferred decisions. | Codex automation |
-| 2026-05-05 | 0.3 | Applied advanced elicitation hardening for policy gating, tracker thresholds, drain-decision recording, and validation requirements. | Codex automation |
 | 2026-05-05 | 0.3 | Applied advanced-elicitation hardening for decision ledger, bounded failure evidence, and dev-story stop signs. | Codex automation |
 
 ## Party-Mode Review
@@ -297,18 +295,6 @@ GPT-5 Codex
 - Changes applied: Added Party-Mode Review Clarifications with invariants, internal diagnostic vocabulary, evidence-target table, scope guardrails, and deferred decisions. Added Dev Agent Record and Change Log entries.
 - Findings deferred: Human architecture/product judgment is still needed for tracker rebuild/quarantine/classify policy, internal versus operator-visible terminal drain disposition, public supportability status of `/project` diagnostics, cross-process serialization guarantees, and timeout policy ownership.
 - Final recommendation: `needs-story-update`
-
-## Advanced Elicitation
-
-- ISO date and time: 2026-05-05T05:30:00+02:00
-- Selected story key: `post-epic-deferred-dw1-projection-and-drain-hardening`
-- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-deferred-dw1-projection-and-drain-hardening`
-- Batch 1 method names: `Pre-mortem Analysis`; `Red Team vs Blue Team`; `Architecture Decision Records`; `Failure Mode Analysis`; `Comparative Analysis Matrix`
-- Reshuffled Batch 2 method names: `First Principles Analysis`; `Self-Consistency Validation`; `Challenge from Critical Perspective`; `Occam's Razor Application`; `Lessons Learned Extraction`
-- Findings summary: The story was already directionally strong after party-mode review, but elicitation exposed five remaining handoff gaps: checkpoint drift needed an explicit policy/output matrix instead of an implied test-only fix; tracker scaling needed concrete deferred thresholds if left unresolved; drain poison work needed a recorded decision frame before code edits; reminder re-entrancy proof needed to bind Dapr semantics to current side effects; and EventId/reason-code validation needed to be called out as part of final bookkeeping.
-- Changes applied: Added Advanced Elicitation Hardening Notes; tightened Task 1.4, 3.4, 4.1, 4.4, and validation/bookkeeping tasks; updated Completion Notes, Verification Status, and Change Log; and recorded this dated canonical advanced-elicitation trace.
-- Findings deferred: The actual checkpoint-drift policy choice, tracker rebuild/quarantine policy, terminal drain disposition policy, cross-process serialization guarantees, timeout policy ownership, and any project-wide EventId allocation governance remain human architecture/product decisions unless the implementing developer can close them within DW1's existing scope.
-- Final recommendation: `ready-for-dev`
 
 ## Advanced Elicitation
 
