@@ -69,6 +69,11 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
                 null,
                 ct).ConfigureAwait(false);
 
+            // Envelope guard MUST run before any payload deserialization (story AC #5):
+            // for failed envelopes, payload contents are undefined and constructing models
+            // from them produces invalid state and misleading 503 responses.
+            ClassifyFailedEnvelope(response, nameof(GetTenantDetailAsync));
+
             ContractsTenantDetail? detail = response.Payload.Deserialize<ContractsTenantDetail>(_options);
             if (detail is null) {
                 return null;
@@ -97,6 +102,8 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
                 new { cursor, pageSize = _defaultPageSize },
                 ct).ConfigureAwait(false);
 
+            ClassifyFailedEnvelope(response, nameof(GetTenantUsersAsync));
+
             Hexalith.Tenants.Contracts.Queries.PaginatedResult<ContractsTenantMember>? page =
                 response.Payload.Deserialize<Hexalith.Tenants.Contracts.Queries.PaginatedResult<ContractsTenantMember>>(_options);
 
@@ -124,6 +131,10 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
                 new { cursor, pageSize = _defaultPageSize },
                 ct).ConfigureAwait(false);
 
+            // Tenant index queries treat semantic failures (Forbidden / Tenant not found / unknown)
+            // as upstream contract errors — never silently flatten to an empty list (story AC #5).
+            ClassifyFailedEnvelope(response, nameof(ListTenantsAsync), listSemantics: true);
+
             Hexalith.Tenants.Contracts.Queries.PaginatedResult<ContractsTenantSummary>? page =
                 response.Payload.Deserialize<Hexalith.Tenants.Contracts.Queries.PaginatedResult<ContractsTenantSummary>>(_options);
 
@@ -138,6 +149,35 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
         while (cursor is not null);
 
         return allTenants;
+    }
+
+    private void ClassifyFailedEnvelope(SubmitQueryResponse response, string method, bool listSemantics = false) {
+        if (response.Success) {
+            return;
+        }
+
+        string error = response.ErrorMessage ?? string.Empty;
+
+        if (string.Equals(error, "Forbidden", StringComparison.Ordinal)) {
+            // 403 – matches existing AdminTenantsController.QueryFailure HttpRequestException mapping.
+            throw new HttpRequestException("Upstream tenant query forbidden.", null, HttpStatusCode.Forbidden);
+        }
+
+        if (string.Equals(error, "Tenant not found", StringComparison.Ordinal) && !listSemantics) {
+            // Detail: caller's catch translates HttpRequestException(NotFound) to null, controller returns 404.
+            // Users: AdminTenantsController.QueryFailure maps HttpRequestException(NotFound) to 404 ProblemDetails.
+            throw new HttpRequestException("Tenant not found.", null, HttpStatusCode.NotFound);
+        }
+
+        _logger.LogWarning(
+            "Tenant query failed envelope from upstream: Method={Method}, ErrorMessage={ErrorMessage}",
+            method,
+            error);
+
+        // Semantic failure path -> 502 via dedicated typed exception. Must NOT be HttpRequestException
+        // with HttpStatusCode.BadGateway because AdminTenantsController.IsServiceUnavailable currently
+        // classifies BadGateway as transport 503; story explicitly forbids broadening that helper.
+        throw new TenantQueryFailedException(error);
     }
 
     private static TenantStatusType MapStatus(TenantStatus status) => status switch {
