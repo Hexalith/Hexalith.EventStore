@@ -28,9 +28,9 @@ Current HEAD at story creation: `7ade91f4`.
 
 3. **New deferrals include grouping guidance.** Given a future code-review or retrospective appends a deferred-work bullet, when it is added, then the entry must include a recommended grouping such as a story key, post-epic bucket, epic, component, or `needs-triage`. The grouping guidance must help sprint planning decide whether to promote the item to a story, accept the debt, or close it as duplicate/no-action.
 
-4. **Unresolved-count tooling is small and deterministic.** Given `deferred-work.md` exists, when the new script or checklist runs, then it reports counts for at least `OPEN`, `STORY`, `ACCEPTED-DEBT`, `RESOLVED`, `DUPLICATE`, `NO-ACTION`, and `unclassified`. For reporting, `OPEN`, `STORY:<id>`, and `ACCEPTED-DEBT` are tracked as unresolved or still-owned work; `RESOLVED`, `DUPLICATE`, and `NO-ACTION` are closed; missing or invalid disposition markers are `unclassified`. The output must be stable, sorted, concise, free of environment-specific absolute paths, and non-zero only for intentionally fail-closed cases such as unclassified live bullets or missing required metadata on `OPEN`/`STORY` items.
+4. **Unresolved-count tooling is small and deterministic.** Given `deferred-work.md` exists, when the new script or checklist runs, then it reports counts for at least `OPEN`, `STORY`, `ACCEPTED-DEBT`, `RESOLVED`, `DUPLICATE`, `NO-ACTION`, and `unclassified`. For reporting, `OPEN`, `STORY:<id>`, and `ACCEPTED-DEBT` are tracked as unresolved or still-owned work; `RESOLVED`, `DUPLICATE`, and `NO-ACTION` are closed; missing or invalid disposition markers are `unclassified`. The output must be stable, sorted, concise, free of environment-specific absolute paths, and non-zero only for intentionally fail-closed cases such as unclassified live bullets or missing required metadata on `OPEN`/`STORY` items. The checker or checklist must be read-only by default and must not auto-normalize ledger text, add markers, or rewrite historical entries unless a future story explicitly introduces a separate fix mode.
 
-5. **Legacy compatibility is deliberate.** Given existing entries already use mixed forms such as `STORY:<id> / ACCEPTED-DEBT`, `DW1 disposition`, `RESOLVED-IN-*`, checkmark-prefixed resolved lines, and free-text notes, when DW6 implements the checker, then it must either recognize those forms or document them as legacy-advisory. The checker must include at least one legacy fixture, sample input, or documented checklist case that proves irregular historical entries are reported without forcing a wholesale ledger rewrite. The checker must not turn every old historical bullet into a blocking failure before the story's curated sweep is complete.
+5. **Legacy compatibility is deliberate.** Given existing entries already use mixed forms such as `STORY:<id> / ACCEPTED-DEBT`, `DW1 disposition`, `RESOLVED-IN-*`, checkmark-prefixed resolved lines, and free-text notes, when DW6 implements the checker, then it must either recognize those forms or document them as legacy-advisory. When more than one recognizable disposition appears on one entry, the checker must choose a deterministic primary disposition, report any secondary marker as compatibility context, and document the precedence rule. The checker must include at least one legacy fixture, sample input, or documented checklist case that proves irregular historical entries are reported without forcing a wholesale ledger rewrite. The checker must not turn every old historical bullet into a blocking failure before the story's curated sweep is complete.
 
 6. **Resolved sweep is narrow and auditable.** Given some old entries are visibly resolved or already routed by DW1-DW5, when DW6 sweeps the ledger, then it may add disposition markers and grouping metadata, but it must not delete raw review text, reorder sections broadly, or rewrite unrelated technical detail. Each touched group must have a one-line rationale in the Dev Agent Record.
 
@@ -38,13 +38,15 @@ Current HEAD at story creation: `7ade91f4`.
 
 8. **Retrospective and story-review handoff is documented.** Given sprint retrospectives and code reviews create most deferred work, when DW6 closes, then the repository must contain concise guidance telling reviewers how to append a new deferred-work item and telling retrospectives to summarize current `OPEN` count plus items promoted to stories. This may live in `deferred-work.md`, a process note, a script help output, or another existing BMAD process artifact, but it must be linked from the story.
 
-9. **Automation scope stays local.** Given this is a governance story, when implementing the checker, then prefer built-in PowerShell, Bash, Python, or .NET code already available in the repo over adding new packages. If CI/local docs validation is changed, update PowerShell and Bash paths consistently and explain whether the check is blocking or advisory. Default to advisory behavior for legacy/historical findings; hard-fail only malformed canonical entries or current-scope missing metadata unless a human explicitly approves broader CI enforcement.
+9. **Automation scope stays local.** Given this is a governance story, when implementing the checker, then prefer built-in PowerShell, Bash, Python, or .NET code already available in the repo over adding new packages. If CI/local docs validation is changed, update PowerShell and Bash paths consistently and explain whether the check is blocking or advisory. Default to advisory behavior for legacy/historical findings; hard-fail only malformed canonical entries or current-scope missing metadata unless a human explicitly approves broader CI enforcement. The implementation must document the exit-code contract so reviewers can tell which findings are blocking, advisory, or informational without reading the script source.
 
 10. **Evidence and validation are recorded.** Given DW6 changes the ledger or adds tooling, when the story moves to review, then the Dev Agent Record must include before/after unresolved counts, command output or checklist output, files touched, validation commands run, legacy sweep scope, intentionally unclassified legacy sections left for later triage, confirmation that no product/runtime fixes were made, and confirmation that no nested submodules were initialized.
 
-11. **Scope boundaries stay intact.** DW6 must not implement the underlying product fixes described by deferred bullets, must not reopen completed epics, must not change application runtime behavior, must not edit generated preflight JSON audit files, and must not initialize or update nested submodules.
+11. **Evidence excerpts avoid accidental leakage.** Given deferred-work entries may quote review notes, paths, URLs, or captured operational evidence, when the checker reports excerpts for unclassified or malformed entries, then normal output must cap excerpt length and redact obvious token-like query strings or credential-looking values. This redaction is for report output only; the checker must not mutate the source ledger while redacting diagnostics.
 
-12. **Bookkeeping is closed.** At dev handoff, update this story's Dev Agent Record, File List, Change Log, Verification Status, and sprint-status row. Move this story and its sprint-status row to `review` only after the governance convention, checker or checklist, ledger sweep, and validation evidence are recorded. Move both to `done` only after code review signoff.
+12. **Scope boundaries stay intact.** DW6 must not implement the underlying product fixes described by deferred bullets, must not reopen completed epics, must not change application runtime behavior, must not edit generated preflight JSON audit files, and must not initialize or update nested submodules.
+
+13. **Bookkeeping is closed.** At dev handoff, update this story's Dev Agent Record, File List, Change Log, Verification Status, and sprint-status row. Move this story and its sprint-status row to `review` only after the governance convention, checker or checklist, ledger sweep, and validation evidence are recorded. Move both to `done` only after code review signoff.
 
 ## Scope Boundaries
 
@@ -110,7 +112,7 @@ The 2026-05-05 party-mode review found DW6 directionally ready but recommended t
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline the ledger and define the governance shape (AC: #1, #2, #3, #5, #11)
+- [ ] Task 0: Baseline the ledger and define the governance shape (AC: #1, #2, #3, #5, #12)
     - [ ] 0.1 Re-read Proposal G / DW6 and scan `deferred-work.md` headings and existing disposition forms.
     - [ ] 0.2 Record a baseline count of recognizable dispositions and unclassified bullets before editing the ledger.
     - [ ] 0.3 Decide the canonical marker format for new entries and document how legacy markers are interpreted.
@@ -126,32 +128,35 @@ The 2026-05-05 party-mode review found DW6 directionally ready but recommended t
     - [ ] 1.5 Add retrospective guidance to summarize `OPEN` counts and story promotions.
     - [ ] 1.6 Add one compact canonical deferred-work entry example.
 
-- [ ] Task 2: Implement the unresolved-count checker or checklist (AC: #4, #5, #7, #9)
+- [ ] Task 2: Implement the unresolved-count checker or checklist (AC: #4, #5, #7, #9, #11)
     - [ ] 2.1 Choose the smallest maintainable implementation path and record the choice.
     - [ ] 2.2 Count canonical and accepted legacy dispositions.
     - [ ] 2.3 Report `unclassified` bullets with heading, excerpt, and locator where practical.
     - [ ] 2.4 Fail closed only for selected current-scope rules, such as missing owner/date on new `OPEN` or `STORY` entries.
     - [ ] 2.5 Add a help or usage output that explains blocking versus advisory behavior.
+    - [ ] 2.5a Document the checker exit-code contract, including blocking, advisory, and informational findings.
     - [ ] 2.6 If wired into local or CI validation, update PowerShell, Bash, and workflow paths consistently or record why the integration is advisory/deferred.
     - [ ] 2.7 Prove deterministic output with a fixture, sample input, golden output, or documented before/after transcript.
     - [ ] 2.8 Include at least one legacy compatibility case covering mixed or historical marker forms.
+    - [ ] 2.9 Keep checker execution read-only by default and prove report redaction/truncation for excerpts that contain URL query strings or credential-looking values.
 
-- [ ] Task 3: Sweep old entries narrowly (AC: #5, #6, #7, #10, #11)
+- [ ] Task 3: Sweep old entries narrowly (AC: #5, #6, #7, #10, #12)
     - [ ] 3.1 Mark clearly resolved historical entries as `RESOLVED`, `DUPLICATE`, or `NO-ACTION` without deleting original wording.
     - [ ] 3.2 Mark already-routed DW1-DW5 entries with `STORY:<id>` or accepted legacy interpretation where appropriate.
     - [ ] 3.3 Leave ambiguous technical follow-ups as `OPEN` or `needs-triage` rather than inventing closure.
     - [ ] 3.4 Do not reorder sections broadly or normalize every sentence style.
     - [ ] 3.5 Record each touched heading group and rationale in the Dev Agent Record.
 
-- [ ] Task 4: Validate and capture evidence (AC: #4, #7, #9, #10)
+- [ ] Task 4: Validate and capture evidence (AC: #4, #7, #9, #10, #11)
     - [ ] 4.1 Run the checker before and after the curated sweep and save or paste the concise output in the Dev Agent Record.
     - [ ] 4.2 Run Markdown validation for changed Markdown files if tooling is available.
     - [ ] 4.3 Run script self-checks or focused tests if the checker has testable parsing logic.
     - [ ] 4.4 Confirm generated preflight JSON files remain unstaged.
     - [ ] 4.5 If any unclassified legacy entries remain, list their headings and planned follow-up path.
     - [ ] 4.6 Record whether local docs validation and CI validation are advisory or blocking after DW6.
+    - [ ] 4.7 Record the default read-only checker behavior and the diagnostic redaction/truncation evidence.
 
-- [ ] Task 5: Close story bookkeeping (AC: #10, #12)
+- [ ] Task 5: Close story bookkeeping (AC: #10, #13)
     - [ ] 5.1 Update this story's Dev Agent Record, File List, Change Log, and Verification Status.
     - [ ] 5.2 Update `sprint-status.yaml` only when moving from implementation to review.
     - [ ] 5.3 Ensure final deferred-work edits are narrow and auditable.
@@ -176,8 +181,10 @@ The 2026-05-05 party-mode review found DW6 directionally ready but recommended t
 - `RESOLVED`, `DUPLICATE`, and `NO-ACTION` require a short reason or source reference so future readers can tell why the bullet is no longer open.
 - Do not let the checker silently mark unknown text as resolved. Unknown current entries should surface as unclassified or needs-triage.
 - Treat `OPEN`, `STORY:<id>`, and `ACCEPTED-DEBT` as still visible in unresolved/owned-work reporting unless the final governance text deliberately separates `ACCEPTED-DEBT` into its own risk count.
+- If multiple disposition markers are present on a legacy entry, require deterministic precedence and visible compatibility context instead of letting parser order depend on regex match order.
 - Do not require every historical closed item to gain owner/date metadata; add metadata only to current or touched entries unless the story records a narrower rationale.
 - Keep any CI enforcement modest. Advisory reports are acceptable for legacy debt; hard failures should be limited to malformed canonical entries or missing metadata in the curated current scope.
+- Checker diagnostics should be useful but conservative: cap excerpts, avoid absolute paths in normal output, and redact obvious query-token or credential-like values without editing the source Markdown.
 
 ### Previous Story Intelligence
 
@@ -225,6 +232,7 @@ GPT-5 Codex
 - No implementation work has been performed for this story.
 - No `project-context.md` file was present in the repository at story creation.
 - Party-mode review tightened the governance handoff around disposition syntax, unresolved counts, legacy compatibility, validation boundaries, and required evidence fields.
+- Advanced elicitation tightened the checker handoff around read-only execution, multi-marker precedence, exit-code documentation, diagnostic redaction, and reviewer evidence obligations.
 
 ### File List
 
@@ -236,6 +244,7 @@ GPT-5 Codex
 
 - Story artifact created and sprint-status row moved from `backlog` to `ready-for-dev`.
 - Party-mode review trace is recorded inline; no sprint-status change was required.
+- Advanced elicitation trace is recorded inline; no sprint-status change was required.
 - Markdown and YAML validation should be run before dev handoff if local tooling is available.
 
 ## Change Log
@@ -244,6 +253,7 @@ GPT-5 Codex
 | --- | ---: | --- | --- |
 | 2026-05-05 | 0.1 | Created ready-for-dev DW6 deferred-work governance story. | Codex automation |
 | 2026-05-05 | 0.2 | Applied party-mode hardening for disposition semantics, checker determinism, legacy handling, validation boundaries, and evidence obligations. | Codex automation |
+| 2026-05-05 | 0.3 | Applied advanced elicitation hardening for read-only checker behavior, multi-marker precedence, exit-code contract, and diagnostic redaction. | Codex automation |
 
 ## Party-Mode Review
 
@@ -254,4 +264,16 @@ GPT-5 Codex
 - Findings summary: Reviewers agreed DW6 is directionally implementable but needed tighter pre-dev contracts so the governance work does not become a broad ledger rewrite, noisy CI migration, or judgment-heavy checker. The main risks were undefined disposition syntax, ambiguous unresolved-count semantics, unclear advisory versus blocking validation behavior, weak legacy compatibility proof, and incomplete Dev Agent Record evidence obligations.
 - Changes applied: Added Party-Mode Hardening Notes; tightened Acceptance Criteria 1, 2, 4, 5, 9, and 10; added tasks for `STORY:<id>` existence and stale-date policy, canonical examples, deterministic output proof, legacy compatibility coverage, validation-boundary evidence, and no-runtime/no-nested-submodule confirmation; updated Dev Notes, Completion Notes, Verification Status, and Change Log.
 - Findings deferred: Whether `ACCEPTED-DEBT` needs product-owner approval, whether `STORY:<id>` existence checks should be blocking, whether stale `next-review-date` should fail validation, the long-term owner taxonomy for deferred work, and whether unresolved-count thresholds should ever block CI require human product or architecture judgment.
+- Final recommendation: needs-story-update
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-05T18:09:43+02:00
+- Selected story key: `post-epic-deferred-dw6-deferred-work-governance`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-deferred-dw6-deferred-work-governance`
+- Batch 1 method names: Self-Consistency Validation; Red Team vs Blue Team; Architecture Decision Records; Security Audit Personas; Failure Mode Analysis.
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Occam's Razor Application; First Principles Analysis; 5 Whys Deep Dive; Lessons Learned Extraction.
+- Findings summary: The story was already coherent after party-mode review, but the checker contract still had four failure-prone edges: report runs could accidentally become mutating cleanup, mixed legacy markers could depend on parser order, developers could wire CI without a readable exit-code contract, and unclassified excerpts could leak sensitive-looking evidence text into logs. The root cause was under-specifying the checker as a diagnostic tool rather than an editor.
+- Changes applied: Tightened AC #4 to require read-only default behavior; tightened AC #5 to require deterministic primary disposition and compatibility context for multi-marker legacy entries; tightened AC #9 to require an explicit blocking/advisory/informational exit-code contract; added AC #11 for capped and redacted diagnostic excerpts; added tasks for exit-code documentation, read-only proof, and redaction/truncation evidence; updated Architecture Guardrails, Completion Notes, Verification Status, and Change Log.
+- Findings deferred: Product-owner approval for `ACCEPTED-DEBT`, blocking `STORY:<id>` existence validation, stale `next-review-date` enforcement, long-term owner taxonomy, and unresolved-count thresholds remain deferred to human product or architecture judgment.
 - Final recommendation: needs-story-update
