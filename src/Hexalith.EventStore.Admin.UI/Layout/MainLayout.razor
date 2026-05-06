@@ -10,6 +10,7 @@
 @inject EventStoreSignalRClient SignalRClient
 @inject DashboardRefreshService RefreshService
 @inject ThemeState ThemeState
+@inject ViewportService ViewportService
 @implements IAsyncDisposable
 
 <a href="#main-content" class="skip-to-main">Skip to main content</a>
@@ -26,8 +27,8 @@
         </div>
     </FluentLayoutItem>
 
-    <FluentLayoutItem Area="@LayoutArea.Navigation" Width="@(_sidebarCollapsed ? "48px" : "220px")" Class="@($"admin-sidebar{(_sidebarCollapsed ? " collapsed" : string.Empty)}")">
-        <NavMenu Width="@(_sidebarCollapsed ? "48px" : "220px")" UserRole="_userRole" />
+    <FluentLayoutItem Area="@LayoutArea.Navigation" Width="@(_sidebarCollapsed ? "140px" : "220px")" Class="@($"admin-sidebar{(_sidebarCollapsed ? " collapsed" : string.Empty)}")">
+        <NavMenu Width="@(_sidebarCollapsed ? "140px" : "220px")" UserRole="_userRole" />
     </FluentLayoutItem>
 
     <FluentLayoutItem Area="@LayoutArea.Content">
@@ -74,16 +75,15 @@
 
             try
             {
-                string storageKey = await GetSidebarStorageKeyAsync();
-                string? savedState = await JSRuntime.InvokeAsync<string?>("hexalithAdmin.getLocalStorage", storageKey);
-                if (bool.TryParse(savedState, out bool collapsed))
-                {
-                    _sidebarCollapsed = collapsed;
-                }
-                else if (IsNarrowTier(storageKey))
-                {
-                    _sidebarCollapsed = true;
-                }
+                await LoadSidebarStateForCurrentTierAsync();
+
+                // Subscribe to viewport changes so the sidebar auto-collapses when
+                // the window narrows below 1280px and restores the user's saved
+                // state for the new tier when it widens back. Without this, the
+                // sidebar stays at whatever state it had on first render and
+                // fights the CSS media queries.
+                await ViewportService.InitializeAsync();
+                ViewportService.OnViewportChanged += OnViewportChanged;
 
                 _dotNetRef = DotNetObjectReference.Create(this);
                 _shortcutRegistrationId = await JSRuntime.InvokeAsync<string>("hexalithAdmin.registerShortcuts", _dotNetRef);
@@ -95,6 +95,44 @@
 
             StateHasChanged();
         }
+    }
+
+    private async Task LoadSidebarStateForCurrentTierAsync()
+    {
+        string storageKey = await GetSidebarStorageKeyAsync();
+        string? savedState = await JSRuntime.InvokeAsync<string?>("hexalithAdmin.getLocalStorage", storageKey);
+        if (bool.TryParse(savedState, out bool collapsed))
+        {
+            _sidebarCollapsed = collapsed;
+        }
+        else
+        {
+            // Two states only:
+            //   _sidebarCollapsed = false → Normal: 220px, icons + labels (≥1280px default)
+            //   _sidebarCollapsed = true  → Compact-text: 140px, labels only, no icons (<1280px default)
+            // Ctrl+B toggles between the two regardless of viewport (saved per-tier).
+            _sidebarCollapsed = IsNarrowTier(storageKey);
+        }
+    }
+
+    private void OnViewportChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await LoadSidebarStateForCurrentTierAsync();
+                StateHasChanged();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Circuit disconnected during resize — safe to ignore
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component disposed mid-resize — safe to ignore
+            }
+        });
     }
 
     [JSInvokable]
@@ -216,6 +254,7 @@
         ThemeState.Changed -= OnThemeChanged;
         RefreshService.OnDataChanged -= OnPollingSuccess;
         RefreshService.OnError -= OnPollingFailure;
+        ViewportService.OnViewportChanged -= OnViewportChanged;
 
         try
         {
