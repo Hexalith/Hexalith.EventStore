@@ -1,3 +1,10 @@
+## [3.13.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.13.1...v3.13.2) (2026-05-06)
+
+
+### Bug Fixes
+
+* **deps:** restore Hexalith.Tenants pin to global-admin projection fix ([34a8790](https://github.com/Hexalith/Hexalith.EventStore/commit/34a879026319de0c86369d8d4d4b0f5ab1716e65))
+
 ## [3.13.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.13.0...v3.13.1) (2026-05-06)
 
 
