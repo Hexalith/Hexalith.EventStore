@@ -51,6 +51,24 @@ public class Dw6GovernanceVocabularyAtddTests {
     }
 
     [Fact]
+    public async Task LegacyCompatibility_CheckerClassifiesMixedMarkerFixture() {
+        IDw6GovernanceCheckerInvoker checker = Dw6GovernanceCheckerInvokerFactory.Create();
+        Dw6GovernanceReport report = await checker.CheckAsync(["--fixture", "legacy-mixed-marker"]);
+
+        // Counts prove that legacy bare-form STORY:..., RESOLVED-IN-..., and DW1-disposition:accepted-debt
+        // are actually recognized by the checker, not just documented in prose.
+        report.Counts["RESOLVED"].ShouldBeGreaterThan(0,
+            "RESOLVED-IN-VALIDATOR legacy form must classify as RESOLVED via the checker, not only via prose mention.");
+        report.Counts["ACCEPTED-DEBT"].ShouldBeGreaterThan(0,
+            "DW1 disposition: accepted-debt legacy form must classify as ACCEPTED-DEBT via the checker.");
+
+        // Multi-marker entries must surface secondary markers as compatibility context, proving
+        // the deterministic-precedence rule is implemented and not just documented.
+        report.EmittedRuleIds.ShouldContain("dw6-secondary-disposition-advisory",
+            "Mixed-marker legacy entries must produce secondary-disposition advisory diagnostics for traceability.");
+    }
+
+    [Fact]
     public void ReviewerAndRetrospectiveHandoffGuidance_IsDocumentedAndLinkedFromStory() {
         string deferredWork = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.DeferredWorkPath);
         string story = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.StoryPath);

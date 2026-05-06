@@ -34,26 +34,26 @@ if (-not $pythonFound) {
 }
 
 # --- Stage 1: Markdown Linting ---
-Write-Host "`n=== Stage 1/4: Markdown Linting ===" -ForegroundColor Cyan
+Write-Host "`n=== Stage 1/5: Markdown Linting ===" -ForegroundColor Cyan
 npx markdownlint-cli2 @docsGlob
 if ($LASTEXITCODE -ne 0) { Write-Error "FAILED: Markdown linting"; exit 1 }
 Write-Host "PASSED: Markdown linting" -ForegroundColor Green
 
 # --- Stage 2: Link Checking ---
-Write-Host "`n=== Stage 2/4: Link Checking ===" -ForegroundColor Cyan
+Write-Host "`n=== Stage 2/5: Link Checking ===" -ForegroundColor Cyan
 lychee --config lychee.toml @docsGlob
 if ($LASTEXITCODE -ne 0) { Write-Error "FAILED: Link checking"; exit 1 }
 Write-Host "PASSED: Link checking" -ForegroundColor Green
 
 # --- Stage 3: Operational Evidence Validator Fixtures ---
-Write-Host "`n=== Stage 3/4: Operational Evidence Validator Fixtures ===" -ForegroundColor Cyan
+Write-Host "`n=== Stage 3/5: Operational Evidence Validator Fixtures ===" -ForegroundColor Cyan
 .\scripts\validate-evidence.ps1 --self-test
 if ($LASTEXITCODE -ne 0) { Write-Error "FAILED: Operational evidence validator fixtures"; exit 1 }
 Write-Host "PASSED: Operational evidence validator fixtures" -ForegroundColor Green
 
 # --- Stage 4: Deferred-Work Governance Report (advisory) ---
 Write-Host "`n=== Stage 4/5: Deferred-Work Governance Report (advisory) ===" -ForegroundColor Cyan
-.\scripts\check-deferred-work.ps1 --legacy-advisory _bmad-output/implementation-artifacts/deferred-work.md
+.\scripts\check-deferred-work.ps1 _bmad-output/implementation-artifacts/deferred-work.md
 if ($LASTEXITCODE -ne 0) {
     Write-Warning "ADVISORY: Deferred-work governance reported blocking findings; local docs validation does not fail on legacy ledger findings yet."
 }

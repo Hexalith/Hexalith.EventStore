@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
 
 namespace Hexalith.EventStore.DeferredWorkGovernance.Tests;
@@ -15,11 +17,11 @@ internal static class Dw6GovernanceCheckerInvokerFactory {
         }
 
         if (entrypoint.StartsWith("pwsh:", StringComparison.Ordinal)) {
-            return new Dw6ShellGovernanceCheckerInvoker("pwsh", entrypoint["pwsh:".Length..]);
+            return BuildShellInvoker("pwsh", entrypoint["pwsh:".Length..]);
         }
 
         if (entrypoint.StartsWith("sh:", StringComparison.Ordinal)) {
-            return new Dw6ShellGovernanceCheckerInvoker("sh", entrypoint["sh:".Length..]);
+            return BuildShellInvoker("sh", entrypoint["sh:".Length..]);
         }
 
         if (entrypoint.StartsWith("dotnet:", StringComparison.Ordinal)) {
@@ -28,6 +30,35 @@ internal static class Dw6GovernanceCheckerInvokerFactory {
 
         throw new Dw6GovernanceCheckerNotConfiguredException(
             $"Unknown DW6 checker entrypoint scheme '{entrypoint}'. Use 'pwsh:', 'sh:', or 'dotnet:'.");
+    }
+
+    private static IDw6GovernanceCheckerInvoker BuildShellInvoker(string requestedShell, string scriptPath) {
+        // On non-Windows hosts without pwsh installed, swap a pwsh entrypoint to the bash wrapper
+        // so the test suite stays portable. The Bash wrapper invokes the same Python script.
+        if (string.Equals(requestedShell, "pwsh", StringComparison.OrdinalIgnoreCase)
+            && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            && !ShellExists("pwsh")) {
+            string fallbackScript = scriptPath.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase)
+                ? scriptPath[..^4] + ".sh"
+                : scriptPath;
+            return new Dw6ShellGovernanceCheckerInvoker("sh", fallbackScript);
+        }
+
+        return new Dw6ShellGovernanceCheckerInvoker(requestedShell, scriptPath);
+    }
+
+    private static bool ShellExists(string shell) {
+        try {
+            using Process probe = Process.Start(new ProcessStartInfo(shell, "--version") {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            }) ?? throw new InvalidOperationException();
+            probe.WaitForExit(2000);
+            return probe.HasExited && probe.ExitCode == 0;
+        } catch {
+            return false;
+        }
     }
 
     private static string? ReadEntrypointDeclaration() {
@@ -63,23 +94,35 @@ internal sealed class Dw6ShellGovernanceCheckerInvoker(string shell, string scri
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
         };
 
         using Process process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Could not start DW6 governance checker process.");
 
-        string stdout = await process.StandardOutput.ReadToEndAsync(cancellationToken);
-        string stderr = await process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
+        using CancellationTokenSource timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutSource.CancelAfter(TimeSpan.FromMinutes(1));
+        try {
+            string stdout = await process.StandardOutput.ReadToEndAsync(timeoutSource.Token);
+            string stderr = await process.StandardError.ReadToEndAsync(timeoutSource.Token);
+            await process.WaitForExitAsync(timeoutSource.Token);
+            return BuildReport(stdout, stderr, process.ExitCode);
+        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+            try { process.Kill(entireProcessTree: true); } catch { /* process already gone */ }
+            throw new TimeoutException("DW6 governance checker did not exit within the 1-minute test timeout.");
+        }
+    }
 
+    private static Dw6GovernanceReport BuildReport(string stdout, string stderr, int exitCode) {
         if (string.IsNullOrWhiteSpace(stdout)) {
             return new Dw6GovernanceReport(
-                process.ExitCode,
+                exitCode,
                 EmptyCounts(),
                 [new(Dw6TestPaths.DeferredWorkPath, "dw6-checker-no-json-output", null, string.Empty, stderr, null, "Checker emitted no JSON output.")]);
         }
 
-        return ParseReport(stdout, process.ExitCode);
+        return ParseReport(stdout, exitCode);
     }
 
     private static string Quote(string value)

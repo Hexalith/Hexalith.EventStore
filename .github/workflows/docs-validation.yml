@@ -40,7 +40,7 @@ jobs:
 
       - name: Report deferred-work governance
         continue-on-error: true
-        run: python scripts/check-deferred-work.py --legacy-advisory _bmad-output/implementation-artifacts/deferred-work.md
+        run: python scripts/check-deferred-work.py _bmad-output/implementation-artifacts/deferred-work.md
 
       - name: Restore lychee cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5

@@ -93,19 +93,33 @@ class Bullet:
     text: str
 
 
+def positive_excerpt_length(value: str) -> int:
+    parsed = int(value)
+    if parsed < 8:
+        raise argparse.ArgumentTypeError("--max-excerpt must be at least 8 to leave room for the truncation marker.")
+    return parsed
+
+
 def main(argv: list[str]) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     parser = argparse.ArgumentParser(
         description="Reports deferred-work disposition counts and governance diagnostics.",
+        epilog=(
+            "Exit codes: 0 = success or advisory-only diagnostics; "
+            "1 = blocking governance findings (malformed canonical OPEN/STORY entries, missing owner/next-review-date/grouping, "
+            "or unclassified live bullets in fixture mode); "
+            "2 = CLI usage error. "
+            "Legacy historical unclassified bullets, unknown STORY:<id> existence checks, and secondary mixed-marker context "
+            "are advisory and do not block."
+        ),
     )
     parser.add_argument("paths", nargs="*", help="Markdown ledger paths to inspect.")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     parser.add_argument("--help-json", action="store_true", help="Emit JSON help and exit.")
-    parser.add_argument("--legacy-advisory", action="store_true", help="Treat historical unclassified bullets as advisory.")
     parser.add_argument("--fixture", choices=sorted(FIXTURES), help="Run against a built-in deterministic fixture.")
-    parser.add_argument("--max-excerpt", type=int, default=160, help="Maximum diagnostic excerpt length.")
+    parser.add_argument("--max-excerpt", type=positive_excerpt_length, default=160, help="Maximum diagnostic excerpt length (minimum 8).")
     args = parser.parse_args(argv)
 
     if args.help_json:
@@ -230,48 +244,54 @@ def parse_bullets(content: str) -> list[Bullet]:
 
 
 def classify(text: str) -> tuple[str | None, list[str]]:
-    markers: set[str] = set()
+    canonical_markers: set[str] = set()
+    legacy_markers: set[str] = set()
 
     if re.search(r"\[(OPEN)\]", text):
-        markers.add("OPEN")
+        canonical_markers.add("OPEN")
     if re.search(r"\[(STORY:[A-Za-z0-9._-]+)\]", text):
-        markers.add("STORY")
+        canonical_markers.add("STORY")
     if re.search(r"\[(ACCEPTED-DEBT)\]", text):
-        markers.add("ACCEPTED-DEBT")
+        canonical_markers.add("ACCEPTED-DEBT")
     if re.search(r"\[(RESOLVED)\]", text):
-        markers.add("RESOLVED")
+        canonical_markers.add("RESOLVED")
     if re.search(r"\[(DUPLICATE)\]", text):
-        markers.add("DUPLICATE")
+        canonical_markers.add("DUPLICATE")
     if re.search(r"\[(NO-ACTION)\]", text):
-        markers.add("NO-ACTION")
+        canonical_markers.add("NO-ACTION")
 
     if re.search(r"\bSTORY:[A-Za-z0-9][A-Za-z0-9._-]*\b", text):
-        markers.add("STORY")
+        legacy_markers.add("STORY")
     if "ACCEPTED-DEBT" in text:
-        markers.add("ACCEPTED-DEBT")
+        legacy_markers.add("ACCEPTED-DEBT")
     if "RESOLVED-IN-" in text or re.search(r"\bRESOLVED\b", text):
-        markers.add("RESOLVED")
+        legacy_markers.add("RESOLVED")
     if re.search(r"\bDUPLICATE\b", text):
-        markers.add("DUPLICATE")
+        legacy_markers.add("DUPLICATE")
     if re.search(r"\bNO-ACTION\b", text):
-        markers.add("NO-ACTION")
+        legacy_markers.add("NO-ACTION")
 
     lower = text.lower()
     if re.match(r"^\[[xX]\]\s+", text):
-        markers.add("RESOLVED")
+        legacy_markers.add("RESOLVED")
     if "dw1 disposition" in lower or "dw2 disposition" in lower or "dw3 disposition" in lower or "dw4 disposition" in lower or "dw5 disposition" in lower:
         if "accepted-debt" in lower:
-            markers.add("ACCEPTED-DEBT")
+            legacy_markers.add("ACCEPTED-DEBT")
         if "patch-now" in lower or "closed by" in lower:
-            markers.add("RESOLVED")
+            legacy_markers.add("RESOLVED")
         if "decision-now" in lower or "not-dw" in lower:
-            markers.add("NO-ACTION")
+            legacy_markers.add("NO-ACTION")
+
+    # Canonical bracketed markers are authoritative. When any canonical marker is present,
+    # apply DISPOSITION_PRECEDENCE only among canonical markers and treat legacy markers
+    # (plus any non-primary canonical markers) as secondary compatibility context.
+    primary_pool = canonical_markers if canonical_markers else legacy_markers
+    all_markers = canonical_markers | legacy_markers
 
     for disposition in DISPOSITION_PRECEDENCE:
-        if disposition in markers:
-            secondary = sorted(markers - {disposition})
-            bucket = "STORY" if disposition == "STORY" else disposition
-            return bucket, secondary
+        if disposition in primary_pool:
+            secondary = sorted(all_markers - {disposition})
+            return disposition, secondary
 
     return None, []
 
@@ -364,8 +384,23 @@ def load_known_story_keys(repo_root: Path) -> set[str]:
 
 
 def sanitize_excerpt(text: str, max_len: int) -> str:
-    redacted = re.sub(r"https?://[^\s)]+?\?[^\s)]+", lambda m: m.group(0).split("?", 1)[0] + "?[redacted-query]", text)
-    redacted = re.sub(r"(?i)\b(token|secret|password|pwd|apikey|api-key|access[_-]?key)=([^\s,;]+)", r"\1=[redacted]", redacted)
+    # URL with userinfo: scheme://user:pass@host -> scheme://[redacted-userinfo]@host
+    redacted = re.sub(r"(https?://)[^\s/@]+:[^\s/@]+@", r"\1[redacted-userinfo]@", text)
+    # URL query strings with potentially-sensitive values
+    redacted = re.sub(r"https?://[^\s)\]>]+?\?[^\s)\]>]+", lambda m: m.group(0).split("?", 1)[0] + "?[redacted-query]", redacted)
+    # Bearer / Basic auth headers
+    redacted = re.sub(r"(?i)\b(Bearer|Basic)\s+[A-Za-z0-9._\-+/=]+", r"\1 [redacted]", redacted)
+    # Common provider tokens
+    redacted = re.sub(r"\b(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}\b", r"\1_[redacted]", redacted)
+    redacted = re.sub(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b", "github_pat_[redacted]", redacted)
+    redacted = re.sub(r"\bxox[abprs]-[A-Za-z0-9-]{10,}\b", "xox[redacted]", redacted)
+    redacted = re.sub(r"\bAKIA[0-9A-Z]{16}\b", "AKIA[redacted]", redacted)
+    # JWT-shaped tokens (three base64url segments separated by dots)
+    redacted = re.sub(r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\b", "[redacted-jwt]", redacted)
+    # name=value credential patterns (existing) - permits quoted values
+    redacted = re.sub(r"(?i)\b(token|secret|password|pwd|apikey|api[_-]?key|access[_-]?key|client[_-]?secret)\s*=\s*\"?([^\s,;\"`]+)\"?", r"\1=[redacted]", redacted)
+    # name: value credential patterns (colon form)
+    redacted = re.sub(r"(?i)\b(token|secret|password|pwd|apikey|api[_-]?key|access[_-]?key|client[_-]?secret)\s*:\s*\"?([^\s,;\"`]+)\"?", r"\1: [redacted]", redacted)
     redacted = " ".join(redacted.split())
     if len(redacted) <= max_len:
         return redacted

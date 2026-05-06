@@ -72,7 +72,7 @@ echo "PASSED: Operational evidence validator fixtures"
 echo ""
 echo "=== Stage 6/6: Deferred-Work Governance Report (advisory) ==="
 CURRENT_STAGE="Deferred-work governance report"
-if ! bash scripts/check-deferred-work.sh --legacy-advisory _bmad-output/implementation-artifacts/deferred-work.md; then
+if ! bash scripts/check-deferred-work.sh _bmad-output/implementation-artifacts/deferred-work.md; then
   echo "ADVISORY: Deferred-work governance reported blocking findings; local docs validation does not fail on legacy ledger findings yet."
 fi
 echo "PASSED: Deferred-work governance advisory report completed"
