@@ -21,15 +21,20 @@ public class CachingProjectionActorTests {
     private static string GenerateTestETag(string projectionType = "counter") =>
         SelfRoutingETag.GenerateNew(projectionType);
 
-    private static QueryEnvelope CreateEnvelope(string domain = "counter", string tenant = "tenant1") =>
+    private static QueryEnvelope CreateEnvelope(
+        string domain = "counter",
+        string tenant = "tenant1",
+        string queryType = "GetCounter",
+        byte[]? payload = null,
+        string userId = "user-1") =>
         new(
             tenantId: tenant,
             domain: domain,
             aggregateId: "agg-1",
-            queryType: "GetCounter",
-            payload: [],
+            queryType: queryType,
+            payload: payload ?? [],
             correlationId: "corr-1",
-            userId: "user-1");
+            userId: userId);
 
     [Fact]
     public async Task QueryAsync_CacheMiss_CallsExecuteQueryAsync() {
@@ -665,6 +670,163 @@ public class CachingProjectionActorTests {
         // Assert — third call uses discovered "valid-type" for ETag lookup
         _ = await actor.QueryAsync(CreateEnvelope());
         _ = await eTagService.Received(1).GetCurrentETagAsync("valid-type", "tenant1", Arg.Any<CancellationToken>());
+    }
+
+    // ===== Cache key isolation (cache-poisoning regression — trace 7a976a4) =====
+
+    [Fact]
+    public async Task QueryAsync_DifferentQueryTypes_DoNotShareCache() {
+        // Regression: a single projection actor instance is shared across QueryTypes for the same
+        // (projectionType, tenantId, entityId) — see QueryActorIdHelper.DeriveActorId. Before the fix,
+        // the cache was keyed only by ETag, so the first QueryType to populate it served its payload
+        // back for every other QueryType on the same actor (e.g. get-tenant-users poisoning get-tenant
+        // and triggering ArgumentException on TenantDetail deserialization in the admin server).
+        string stableETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(stableETag);
+
+        JsonElement payloadA = JsonDocument.Parse("{\"qt\":\"A\"}").RootElement;
+        JsonElement payloadB = JsonDocument.Parse("{\"qt\":\"B\"}").RootElement;
+
+        var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService,
+            QueryResult.FromPayload(payloadA), QueryResult.FromPayload(payloadB));
+
+        // Cold misses populate two distinct cache entries.
+        QueryResult coldA = await actor.QueryAsync(CreateEnvelope(queryType: "QueryA"));
+        QueryResult coldB = await actor.QueryAsync(CreateEnvelope(queryType: "QueryB"));
+
+        // Warm hits must each return their own payload — not the other QueryType's.
+        QueryResult warmA = await actor.QueryAsync(CreateEnvelope(queryType: "QueryA"));
+        QueryResult warmB = await actor.QueryAsync(CreateEnvelope(queryType: "QueryB"));
+
+        coldA.GetPayload().GetProperty("qt").GetString().ShouldBe("A");
+        coldB.GetPayload().GetProperty("qt").GetString().ShouldBe("B");
+        warmA.GetPayload().GetProperty("qt").GetString().ShouldBe("A");
+        warmB.GetPayload().GetProperty("qt").GetString().ShouldBe("B");
+        actor.ExecuteCallCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task QueryAsync_DifferentPayloads_DoNotShareCache() {
+        // Different pagination cursors (or any payload variation) must produce separate cache entries.
+        string stableETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(stableETag);
+
+        JsonElement page1 = JsonDocument.Parse("{\"page\":1}").RootElement;
+        JsonElement page2 = JsonDocument.Parse("{\"page\":2}").RootElement;
+
+        var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService,
+            QueryResult.FromPayload(page1), QueryResult.FromPayload(page2));
+
+        QueryResult cold1 = await actor.QueryAsync(CreateEnvelope(payload: [1]));
+        QueryResult cold2 = await actor.QueryAsync(CreateEnvelope(payload: [2]));
+        QueryResult warm1 = await actor.QueryAsync(CreateEnvelope(payload: [1]));
+        QueryResult warm2 = await actor.QueryAsync(CreateEnvelope(payload: [2]));
+
+        cold1.GetPayload().GetProperty("page").GetInt32().ShouldBe(1);
+        cold2.GetPayload().GetProperty("page").GetInt32().ShouldBe(2);
+        warm1.GetPayload().GetProperty("page").GetInt32().ShouldBe(1);
+        warm2.GetPayload().GetProperty("page").GetInt32().ShouldBe(2);
+        actor.ExecuteCallCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task QueryAsync_DifferentUsers_DoNotShareCache() {
+        // Some queries return per-user views (e.g. get-user-tenants for non-admin filters on the caller).
+        // Cache must isolate per UserId so user A doesn't observe user B's authorized-only result.
+        string stableETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(stableETag);
+
+        JsonElement aliceView = JsonDocument.Parse("{\"caller\":\"alice\"}").RootElement;
+        JsonElement bobView = JsonDocument.Parse("{\"caller\":\"bob\"}").RootElement;
+
+        var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService,
+            QueryResult.FromPayload(aliceView), QueryResult.FromPayload(bobView));
+
+        _ = await actor.QueryAsync(CreateEnvelope(userId: "alice"));
+        _ = await actor.QueryAsync(CreateEnvelope(userId: "bob"));
+        QueryResult aliceHit = await actor.QueryAsync(CreateEnvelope(userId: "alice"));
+        QueryResult bobHit = await actor.QueryAsync(CreateEnvelope(userId: "bob"));
+
+        aliceHit.GetPayload().GetProperty("caller").GetString().ShouldBe("alice");
+        bobHit.GetPayload().GetProperty("caller").GetString().ShouldBe("bob");
+        actor.ExecuteCallCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task QueryAsync_ETagChange_InvalidatesAllCachedEntries() {
+        // When the projection's ETag changes, EVERY cached entry (regardless of QueryType) must
+        // be invalidated — the underlying read model has moved.
+        string etag1 = GenerateTestETag();
+        string etag2 = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(etag1, etag1, etag2, etag2);
+
+        JsonElement aV1 = JsonDocument.Parse("{\"v\":1,\"qt\":\"A\"}").RootElement;
+        JsonElement bV1 = JsonDocument.Parse("{\"v\":1,\"qt\":\"B\"}").RootElement;
+        JsonElement aV2 = JsonDocument.Parse("{\"v\":2,\"qt\":\"A\"}").RootElement;
+        JsonElement bV2 = JsonDocument.Parse("{\"v\":2,\"qt\":\"B\"}").RootElement;
+
+        var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService,
+            QueryResult.FromPayload(aV1),
+            QueryResult.FromPayload(bV1),
+            QueryResult.FromPayload(aV2),
+            QueryResult.FromPayload(bV2));
+
+        // Round 1 — etag1: cold misses populate two cache entries.
+        _ = await actor.QueryAsync(CreateEnvelope(queryType: "A"));
+        _ = await actor.QueryAsync(CreateEnvelope(queryType: "B"));
+        actor.ExecuteCallCount.ShouldBe(2);
+
+        // Round 2 — etag flips: every cached entry must be invalidated.
+        QueryResult freshA = await actor.QueryAsync(CreateEnvelope(queryType: "A"));
+        QueryResult freshB = await actor.QueryAsync(CreateEnvelope(queryType: "B"));
+        freshA.GetPayload().GetProperty("v").GetInt32().ShouldBe(2);
+        freshB.GetPayload().GetProperty("v").GetInt32().ShouldBe(2);
+        actor.ExecuteCallCount.ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task QueryAsync_CacheCapExceeded_PurgesEntries() {
+        // Bound per-actor memory: filling the cache beyond MaxCacheEntries (32) triggers a wholesale
+        // purge. Re-querying any of the original entries must re-execute (their cached bytes are gone).
+        string stableETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(stableETag);
+
+        var responses = new QueryResult[40];
+        for (int i = 0; i < responses.Length; i++) {
+            JsonElement p = JsonDocument.Parse($"{{\"i\":{i}}}").RootElement;
+            responses[i] = QueryResult.FromPayload(p);
+        }
+
+        var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, responses);
+
+        // Fill cache to the cap (32 entries — payloads 0..31 are distinct byte sequences).
+        for (int i = 0; i < 32; i++) {
+            _ = await actor.QueryAsync(CreateEnvelope(payload: BitConverter.GetBytes(i)));
+        }
+        actor.ExecuteCallCount.ShouldBe(32);
+
+        // 33rd distinct query — count was 32, hits the cap, purges the map, then stores entry #33.
+        _ = await actor.QueryAsync(CreateEnvelope(payload: BitConverter.GetBytes(32)));
+        actor.ExecuteCallCount.ShouldBe(33);
+
+        // Re-query payload #0 — the original entry was purged, so this must re-execute.
+        _ = await actor.QueryAsync(CreateEnvelope(payload: BitConverter.GetBytes(0)));
+        actor.ExecuteCallCount.ShouldBe(34);
     }
 
     /// <summary>

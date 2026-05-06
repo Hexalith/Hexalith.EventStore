@@ -334,7 +334,7 @@
             _cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
 
             AggregateStateSnapshot? state = await ApiClient.GetAggregateStateAtPositionAsync(
-                TenantId, Domain, AggregateId, _goodSequence!.Value, _cts.Token).ConfigureAwait(false);
+                TenantId, Domain, AggregateId, _goodSequence!.Value, _cts.Token);
 
             if (state is not null && !string.IsNullOrWhiteSpace(state.StateJson))
             {

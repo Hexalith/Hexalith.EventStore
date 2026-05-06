@@ -13,10 +13,16 @@
                     <strong>Correlation ID:</strong>
                     <span class="monospace" title="@Entry.CorrelationId">@Entry.CorrelationId</span>
                     <FluentButton Appearance="ButtonAppearance.Transparent"
-                                  Title="Filter timeline by this correlation ID"
-                                  OnClick="() => OnCorrelationFilter.InvokeAsync(Entry.CorrelationId)"
-                                  aria-label="Filter by correlation ID">
-                        &#x1F517;
+                                  Title="Copy correlation ID"
+                                  OnClick="() => OnCopyCorrelation.InvokeAsync(Entry.CorrelationId)"
+                                  aria-label="Copy correlation ID">
+                        &#x1F4CB;
+                    </FluentButton>
+                    <FluentButton Appearance="ButtonAppearance.Transparent"
+                                  Title="Open trace map"
+                                  OnClick="() => OnOpenTraceMap.InvokeAsync(Entry.CorrelationId)"
+                                  aria-label="Open trace map">
+                        &#x1F50D; Trace
                     </FluentButton>
                 </div>
                 @if (Entry.UserId is not null)
@@ -36,5 +42,8 @@
     public TimelineEntry Entry { get; set; } = default!;
 
     [Parameter]
-    public EventCallback<string> OnCorrelationFilter { get; set; }
+    public EventCallback<string> OnCopyCorrelation { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnOpenTraceMap { get; set; }
 }

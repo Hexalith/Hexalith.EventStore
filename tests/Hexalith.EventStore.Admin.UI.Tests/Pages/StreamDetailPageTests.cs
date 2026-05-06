@@ -255,6 +255,125 @@ public class StreamDetailPageTests : AdminUITestContext {
         cut.Markup.ShouldContain("Event Debugger");
     }
 
+    [Fact]
+    public async Task StreamDetail_SwitchSandboxToBisect_RendersBisectMode() {
+        SetupTimeline(CreateTimelineResult(5));
+        SetupBlameMock();
+
+        IRenderedComponent<StreamDetail> cut = RenderStreamDetail();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Sandbox"), TimeSpan.FromSeconds(5));
+
+        AngleSharp.Dom.IElement sandboxButton = cut.FindAll("fluent-button")
+            .First(b => b.GetAttribute("aria-label") == "Open command sandbox");
+        await cut.InvokeAsync(() => sandboxButton.Click());
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("class=\"command-sandbox\""), TimeSpan.FromSeconds(5));
+
+        AngleSharp.Dom.IElement bisectButton = cut.FindAll("fluent-button")
+            .First(b => b.GetAttribute("aria-label") == "Open bisect tool");
+        await cut.InvokeAsync(() => bisectButton.Click());
+
+        cut.WaitForAssertion(
+            () => {
+                string markup = cut.Markup;
+                markup.ShouldContain("class=\"bisect-tool\"");
+                markup.ShouldNotContain("class=\"command-sandbox\"");
+            },
+            TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task StreamDetail_SwitchBisectToBlame_RendersBlameMode() {
+        SetupTimeline(CreateTimelineResult(5));
+        SetupBlameMock();
+
+        IRenderedComponent<StreamDetail> cut = RenderStreamDetail();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Blame"), TimeSpan.FromSeconds(5));
+
+        AngleSharp.Dom.IElement bisectButton = cut.FindAll("fluent-button")
+            .First(b => b.GetAttribute("aria-label") == "Open bisect tool");
+        await cut.InvokeAsync(() => bisectButton.Click());
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("class=\"bisect-tool\""), TimeSpan.FromSeconds(5));
+
+        AngleSharp.Dom.IElement blameButton = cut.FindAll("fluent-button")
+            .First(b => b.GetAttribute("aria-label") == "Open blame view");
+        await cut.InvokeAsync(() => blameButton.Click());
+
+        cut.WaitForAssertion(
+            () => {
+                string markup = cut.Markup;
+                markup.ShouldContain("class=\"blame-viewer\"");
+                markup.ShouldNotContain("class=\"bisect-tool\"");
+            },
+            TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task StreamDetail_SwitchBlameToStepThrough_RendersStepMode() {
+        SetupTimeline(CreateTimelineResult(5));
+        SetupBlameMock();
+        EventStepFrame frame = new(
+            "test-tenant", "counter", "agg-001",
+            1, "CounterIncremented",
+            DateTimeOffset.UtcNow,
+            "corr-1", "cause-1", "user-1",
+            "{\"Amount\":1}", "{\"Count\":1}",
+            [], 5);
+        _ = _mockApiClient.GetEventStepFrameAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<EventStepFrame?>(frame));
+
+        IRenderedComponent<StreamDetail> cut = RenderStreamDetail();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Blame"), TimeSpan.FromSeconds(5));
+
+        AngleSharp.Dom.IElement blameButton = cut.FindAll("fluent-button")
+            .First(b => b.GetAttribute("aria-label") == "Open blame view");
+        await cut.InvokeAsync(() => blameButton.Click());
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("class=\"blame-viewer\""), TimeSpan.FromSeconds(5));
+
+        AngleSharp.Dom.IElement stepButton = cut.FindAll("fluent-button")
+            .First(b => b.GetAttribute("aria-label") == "Open step-through debugger");
+        await cut.InvokeAsync(() => stepButton.Click());
+
+        cut.WaitForAssertion(
+            () => {
+                string markup = cut.Markup;
+                markup.ShouldContain("Event Debugger");
+                markup.ShouldNotContain("class=\"blame-viewer\"");
+            },
+            TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task StreamDetail_CopyStreamKey_InvokesClipboardInterop() {
+        SetupTimeline(CreateTimelineResult(2));
+
+        var copyHandler = JSInterop.Setup<bool>("hexalithAdmin.copyToClipboard", _ => true).SetResult(true);
+
+        IRenderedComponent<StreamDetail> cut = RenderStreamDetail();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("test-tenant"), TimeSpan.FromSeconds(5));
+
+        AngleSharp.Dom.IElement copyButton = cut.FindAll("fluent-button")
+            .First(b => b.GetAttribute("aria-label") == "Copy stream key to clipboard");
+        await cut.InvokeAsync(() => copyButton.Click());
+
+        cut.WaitForAssertion(
+            () => {
+                copyHandler.Invocations.Count.ShouldBe(1);
+                copyHandler.Invocations.Single().Arguments[0].ShouldBe("test-tenant/counter/agg-001");
+            },
+            TimeSpan.FromSeconds(5));
+    }
+
+    private void SetupBlameMock() => _ = _mockApiClient.GetAggregateBlameAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<long?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<AggregateBlameView?>(
+                new AggregateBlameView(
+                    "test-tenant", "counter", "agg-001",
+                    0, DateTimeOffset.UtcNow,
+                    [], false, false)));
+
     private static PagedResult<TimelineEntry> CreateTimelineResult(int count) {
         List<TimelineEntry> entries = [];
         for (int i = 1; i <= count; i++) {

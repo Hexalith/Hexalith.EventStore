@@ -36,6 +36,12 @@
                                       aria-label="Copy correlation ID">
                             &#x1F4CB;
                         </FluentButton>
+                        <FluentButton Appearance="ButtonAppearance.Transparent"
+                                      Title="Open trace map"
+                                      OnClick="() => OnOpenTraceMap.InvokeAsync(_eventDetail.CorrelationId)"
+                                      aria-label="Open trace map">
+                            &#x1F50D; Trace
+                        </FluentButton>
                     </div>
                     @if (_eventDetail.CausationId is not null)
                     {
@@ -112,7 +118,9 @@
 
             @if (_causationChain is not null)
             {
-                <CausationChainView Chain="@_causationChain" OnCorrelationClick="OnCopyCorrelation" />
+                <CausationChainView Chain="@_causationChain"
+                                    OnCorrelationClick="OnCopyCorrelation"
+                                    OnOpenTraceMap="OnOpenTraceMap" />
             }
             @if (_causationError is not null)
             {
@@ -153,6 +161,9 @@
 
     [Parameter]
     public EventCallback<string> OnCopyCorrelation { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnOpenTraceMap { get; set; }
 
     [Parameter]
     public EventCallback<long> OnInspectState { get; set; }
@@ -272,12 +283,12 @@
 
     private async Task OpenInspector()
     {
-        await OnInspectState.InvokeAsync(SequenceNumber).ConfigureAwait(false);
+        await OnInspectState.InvokeAsync(SequenceNumber);
     }
 
     private async Task DiffWithPrevious()
     {
-        await OnDiffRequested.InvokeAsync((SequenceNumber - 1, SequenceNumber)).ConfigureAwait(false);
+        await OnDiffRequested.InvokeAsync((SequenceNumber - 1, SequenceNumber));
     }
 
     private async Task TraceCausation()
@@ -290,7 +301,7 @@
         try
         {
             _causationChain = await ApiClient.TraceCausationChainAsync(
-                TenantId, Domain, AggregateId, SequenceNumber).ConfigureAwait(false);
+                TenantId, Domain, AggregateId, SequenceNumber);
             if (_causationChain is null)
             {
                 _causationError = "Causation chain not found.";

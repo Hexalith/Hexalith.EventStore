@@ -19,8 +19,14 @@ public abstract partial class CachingProjectionActor(
     IETagService eTagService,
     ILogger logger)
     : Actor(host), IProjectionActor {
+    // The actor instance is shared across QueryTypes for the same (projectionType, tenantId, entityId)
+    // — see QueryActorIdHelper.DeriveActorId. The cache MUST therefore be keyed by (QueryType, Payload,
+    // UserId) too, otherwise the first query to populate the cache poisons the response of every other
+    // query type on the same actor.
+    private const int MaxCacheEntries = 32;
+
+    private readonly Dictionary<CacheEntryKey, byte[]> _payloadCache = [];
     private string? _cachedETag;
-    private byte[]? _cachedPayloadBytes;
     private string? _discoveredProjectionType;
 
     /// <inheritdoc/>
@@ -32,10 +38,23 @@ public abstract partial class CachingProjectionActor(
             .GetCurrentETagAsync(GetEffectiveProjectionType(envelope.Domain), envelope.TenantId)
             .ConfigureAwait(false);
 
-        // Cache hit: ETag is non-null, matches cached, and payload exists
-        if (currentETag is not null && currentETag == _cachedETag && _cachedPayloadBytes is not null) {
-            Log.CacheHit(logger, envelope.CorrelationId, Id.GetId(), _cachedETag[..Math.Min(8, _cachedETag.Length)]);
-            return new QueryResult(true, _cachedPayloadBytes, ProjectionType: _discoveredProjectionType);
+        // ETag changed → every cached entry is now stale (the underlying read model moved). Wipe
+        // the whole map and track the new ETag as the validity stamp for subsequent stores.
+        if (currentETag is not null && !string.Equals(currentETag, _cachedETag, StringComparison.Ordinal)) {
+            _payloadCache.Clear();
+            _cachedETag = currentETag;
+        }
+
+        var cacheKey = new CacheEntryKey(
+            envelope.QueryType,
+            QueryActorIdHelper.ComputeChecksum(envelope.Payload),
+            envelope.UserId);
+
+        // Cache hit: ETag is non-null AND we have an entry matching this (QueryType, Payload, UserId).
+        if (currentETag is not null
+            && _payloadCache.TryGetValue(cacheKey, out byte[]? cachedBytes)) {
+            Log.CacheHit(logger, envelope.CorrelationId, Id.GetId(), currentETag[..Math.Min(8, currentETag.Length)]);
+            return new QueryResult(true, cachedBytes, ProjectionType: _discoveredProjectionType);
         }
 
         // Cache miss: execute the actual query
@@ -72,9 +91,14 @@ public abstract partial class CachingProjectionActor(
                 }
             }
 
-            // Cache the serialized payload bytes (already safe for long-lived caching).
-            _cachedPayloadBytes = result.PayloadBytes;
-            _cachedETag = currentETag;
+            // Bound per-actor memory. Purge-on-overflow is the simplest correct policy: an actor
+            // typically serves ~5 query types with a handful of cursor values; 32 covers that
+            // headroom. ETag invalidation already ensures we never serve stale data after a wipe.
+            if (_payloadCache.Count >= MaxCacheEntries) {
+                _payloadCache.Clear();
+            }
+
+            _payloadCache[cacheKey] = result.PayloadBytes!;
             Log.CacheMiss(logger, envelope.CorrelationId, Id.GetId(), currentETag[..Math.Min(8, currentETag.Length)]);
         }
         else if (currentETag is null) {
@@ -134,6 +158,8 @@ public abstract partial class CachingProjectionActor(
 
     private static bool IsValidProjectionType(string projectionType)
         => projectionType.Length <= 100 && !projectionType.Contains(':');
+
+    private readonly record struct CacheEntryKey(string QueryType, string PayloadChecksum, string UserId);
 
     private static partial class Log {
         [LoggerMessage(
