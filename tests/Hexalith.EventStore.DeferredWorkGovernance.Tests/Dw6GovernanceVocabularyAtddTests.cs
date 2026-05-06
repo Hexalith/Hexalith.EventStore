@@ -7,9 +7,7 @@ namespace Hexalith.EventStore.DeferredWorkGovernance.Tests;
 /// These tests pin the human-facing governance convention in deferred-work.md.
 /// </summary>
 public class Dw6GovernanceVocabularyAtddTests {
-    private const string _skip = "ATDD red phase - DW6 governance vocabulary. Remove Skip when implementing the matching AC.";
-
-    [Fact(Skip = _skip + " AC#1.")]
+    [Fact]
     public void DeferredWork_GovernanceSection_DefinesCanonicalDispositions() {
         string content = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.DeferredWorkPath);
 
@@ -22,7 +20,7 @@ public class Dw6GovernanceVocabularyAtddTests {
         }
     }
 
-    [Fact(Skip = _skip + " AC#2.")]
+    [Fact]
     public async Task OpenAndStoryDispositions_RequireOwnerAndNextReviewDate() {
         IDw6GovernanceCheckerInvoker checker = Dw6GovernanceCheckerInvokerFactory.Create();
         Dw6GovernanceReport report = await checker.CheckAsync(["--fixture", "missing-open-metadata"]);
@@ -32,7 +30,7 @@ public class Dw6GovernanceVocabularyAtddTests {
         report.EmittedRuleIds.ShouldContain("dw6-open-missing-next-review-date");
     }
 
-    [Fact(Skip = _skip + " AC#3.")]
+    [Fact]
     public void NewDeferralGuidance_RequiresGroupingHint() {
         string content = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.DeferredWorkPath);
 
@@ -42,7 +40,7 @@ public class Dw6GovernanceVocabularyAtddTests {
             "Governance guidance must name needs-triage as the fallback grouping.");
     }
 
-    [Fact(Skip = _skip + " AC#5.")]
+    [Fact]
     public void LegacyCompatibility_DocumentsRecognizedMixedForms() {
         string content = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.DeferredWorkPath);
 
@@ -52,7 +50,7 @@ public class Dw6GovernanceVocabularyAtddTests {
         }
     }
 
-    [Fact(Skip = _skip + " AC#8.")]
+    [Fact]
     public void ReviewerAndRetrospectiveHandoffGuidance_IsDocumentedAndLinkedFromStory() {
         string deferredWork = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.DeferredWorkPath);
         string story = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.StoryPath);

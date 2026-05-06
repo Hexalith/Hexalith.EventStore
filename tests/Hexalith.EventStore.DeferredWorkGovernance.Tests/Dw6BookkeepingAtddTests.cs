@@ -7,9 +7,7 @@ namespace Hexalith.EventStore.DeferredWorkGovernance.Tests;
 /// These tests pin evidence capture and story bookkeeping expectations.
 /// </summary>
 public class Dw6BookkeepingAtddTests {
-    private const string _skip = "ATDD red phase - DW6 bookkeeping. Remove Skip when implementing the matching AC.";
-
-    [Fact(Skip = _skip + " AC#10.")]
+    [Fact]
     public void DevAgentRecord_IncludesBeforeAfterCountsAndCheckerOutput() {
         string story = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.StoryPath);
 
@@ -21,7 +19,7 @@ public class Dw6BookkeepingAtddTests {
             "Dev Agent Record must paste or summarize the checker/checklist output.");
     }
 
-    [Fact(Skip = _skip + " AC#10.")]
+    [Fact]
     public void DevAgentRecord_ListsFilesTouchedAndRemainingUnclassifiedSections() {
         string story = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.StoryPath);
 
@@ -31,7 +29,7 @@ public class Dw6BookkeepingAtddTests {
             "Any remaining unclassified legacy sections must be listed with a follow-up path.");
     }
 
-    [Fact(Skip = _skip + " AC#12.")]
+    [Fact]
     public void SprintStatus_MovesToReviewOnlyAfterEvidenceIsRecorded() {
         string sprintStatus = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.SprintStatusPath);
         string story = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.StoryPath);
@@ -46,7 +44,7 @@ public class Dw6BookkeepingAtddTests {
         }
     }
 
-    [Fact(Skip = _skip + " workflow handoff.")]
+    [Fact]
     public void Story_LinksAtddArtifactsForDevStoryHandoff() {
         string story = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.StoryPath);
 

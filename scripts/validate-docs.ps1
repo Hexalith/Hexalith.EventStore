@@ -3,7 +3,7 @@
 .SYNOPSIS
     Local documentation validation — mirrors docs-validation.yml CI pipeline.
 .DESCRIPTION
-    Runs markdownlint, lychee link checking, operational evidence fixture validation, and sample build/test locally.
+    Runs markdownlint, lychee link checking, operational evidence fixture validation, deferred-work governance reporting, and sample build/test locally.
 .EXAMPLE
     .\scripts\validate-docs.ps1
 #>
@@ -51,8 +51,16 @@ Write-Host "`n=== Stage 3/4: Operational Evidence Validator Fixtures ===" -Foreg
 if ($LASTEXITCODE -ne 0) { Write-Error "FAILED: Operational evidence validator fixtures"; exit 1 }
 Write-Host "PASSED: Operational evidence validator fixtures" -ForegroundColor Green
 
-# --- Stage 4: Sample Build & Test ---
-Write-Host "`n=== Stage 4/4: Sample Build & Test ===" -ForegroundColor Cyan
+# --- Stage 4: Deferred-Work Governance Report (advisory) ---
+Write-Host "`n=== Stage 4/5: Deferred-Work Governance Report (advisory) ===" -ForegroundColor Cyan
+.\scripts\check-deferred-work.ps1 --legacy-advisory _bmad-output/implementation-artifacts/deferred-work.md
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "ADVISORY: Deferred-work governance reported blocking findings; local docs validation does not fail on legacy ledger findings yet."
+}
+Write-Host "PASSED: Deferred-work governance advisory report completed" -ForegroundColor Green
+
+# --- Stage 5: Sample Build & Test ---
+Write-Host "`n=== Stage 5/5: Sample Build & Test ===" -ForegroundColor Cyan
 dotnet restore samples/Hexalith.EventStore.Sample.Tests/
 if ($LASTEXITCODE -ne 0) { Write-Error "FAILED: Sample restore (samples)"; exit 1 }
 dotnet restore tests/Hexalith.EventStore.Sample.Tests/

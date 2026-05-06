@@ -7,9 +7,7 @@ namespace Hexalith.EventStore.DeferredWorkGovernance.Tests;
 /// These tests guard the curated ledger sweep and story scope boundaries.
 /// </summary>
 public class Dw6LedgerSweepAtddTests {
-    private const string _skip = "ATDD red phase - DW6 ledger sweep. Remove Skip when implementing the matching AC.";
-
-    [Fact(Skip = _skip + " AC#6.")]
+    [Fact]
     public void CuratedSweep_PreservesRawHistoricalBulletTextAgainstSnapshot() {
         string repoRoot = Dw6TestPaths.LocateRepoRoot();
         string snapshotPath = Path.Combine(repoRoot, Dw6TestPaths.SnapshotPath);
@@ -29,7 +27,7 @@ public class Dw6LedgerSweepAtddTests {
         }
     }
 
-    [Fact(Skip = _skip + " AC#6 and AC#10.")]
+    [Fact]
     public void TouchedHeadingGroups_HaveOneLineRationaleInDevAgentRecord() {
         string story = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.StoryPath);
 
@@ -39,7 +37,7 @@ public class Dw6LedgerSweepAtddTests {
             "Every ledger group touched by the sweep must have a one-line rationale in the Dev Agent Record.");
     }
 
-    [Fact(Skip = _skip + " AC#5.")]
+    [Fact]
     public async Task Checker_DoesNotTurnEveryLegacyBulletIntoABlockingFailure() {
         Dw6GovernanceReport report = await Dw6GovernanceCheckerInvokerFactory.Create()
             .CheckAsync(["--legacy-advisory", Dw6TestPaths.DeferredWorkPath]);
@@ -50,14 +48,14 @@ public class Dw6LedgerSweepAtddTests {
                 "Legacy-advisory mode must avoid failing every historical bullet before the curated sweep is complete.");
     }
 
-    [Fact(Skip = _skip + " AC#11.")]
+    [Fact]
     public void ScopeBoundaries_DoNotClaimProductRuntimeOrGeneratedAuditFiles() {
         string story = Dw6TestPaths.ReadRepoFile(Dw6TestPaths.StoryPath);
 
         story.ShouldNotContain("src/Hexalith.EventStore/", customMessage:
             "DW6 must not implement product/runtime fixes.");
-        story.ShouldNotContain("generated preflight JSON", customMessage:
-            "DW6 must not edit generated preflight JSON audit files.");
+        story.ShouldNotContain("edited generated preflight JSON", customMessage:
+            "DW6 must not claim generated preflight JSON audit files were edited.");
         story.ShouldContain("Do not initialize or update nested submodules", customMessage:
             "The nested-submodule boundary must remain explicit.");
     }

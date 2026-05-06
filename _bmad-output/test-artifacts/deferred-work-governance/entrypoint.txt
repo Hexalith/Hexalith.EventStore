@@ -1,0 +1,1 @@
+pwsh:scripts/check-deferred-work.ps1
