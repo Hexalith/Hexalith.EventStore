@@ -1,3 +1,11 @@
+## [3.13.3](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.13.2...v3.13.3) (2026-05-06)
+
+
+### Bug Fixes
+
+* **admin-ui:** stream page bug bundle (threading, mode-switch reset, copy semantics) ([dbb6a0a](https://github.com/Hexalith/Hexalith.EventStore/commit/dbb6a0a3fe81495950638e0390bc0a74a1f5b7ef))
+* **server:** isolate cache entries per (queryType, payload, userId) in CachingProjectionActor ([b7d1e24](https://github.com/Hexalith/Hexalith.EventStore/commit/b7d1e24a106103dd219cf0a4188acaff6ce9b980))
+
 ## [3.13.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.13.1...v3.13.2) (2026-05-06)
 
 
