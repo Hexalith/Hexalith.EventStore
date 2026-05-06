@@ -1,3 +1,10 @@
+## [3.13.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.13.0...v3.13.1) (2026-05-06)
+
+
+### Bug Fixes
+
+* **admin-ui:** close DW5 runtime follow-ups with shortcut and dialog hardening ([c0751b7](https://github.com/Hexalith/Hexalith.EventStore/commit/c0751b77cc3243e5e2ad6f94f2720d90f33d3329))
+
 # [3.13.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.12.0...v3.13.0) (2026-05-05)
 
 
