@@ -1,0 +1,150 @@
+- generic [ref=e1]:
+  - link "Skip to main content" [ref=e140] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e142]:
+    - generic [ref=e144]:
+      - generic [ref=e145]: Hexalith EventStore Admin
+      - generic [ref=e146]:
+        - generic [ref=e147]:
+          - 'generic "Connection status: Connected" [ref=e148]':
+            - generic: Connected
+          - generic [ref=e149]: Healthy
+        - generic "Switch to light theme" [ref=e150] [cursor=pointer]:
+          - generic [ref=e151]:
+            - generic: ⚙
+    - navigation [ref=e153]:
+      - link "Home" [ref=e154] [cursor=pointer]:
+        - /url: /
+        - img [ref=e155]
+        - text: Home
+      - link "Commands" [ref=e157] [cursor=pointer]:
+        - /url: /commands
+        - img [ref=e158]
+        - text: Commands
+      - link "Events" [ref=e160] [cursor=pointer]:
+        - /url: /events
+        - img [ref=e161]
+        - text: Events
+      - link "Streams" [ref=e163] [cursor=pointer]:
+        - /url: /streams
+        - img [ref=e164]
+        - text: Streams
+      - link "Health" [ref=e166] [cursor=pointer]:
+        - /url: /health
+        - img [ref=e167]
+        - text: Health
+      - link "DAPR" [ref=e169] [cursor=pointer]:
+        - /url: /dapr
+        - img [ref=e170]
+        - text: DAPR
+      - link "Dead Letters" [ref=e172] [cursor=pointer]:
+        - /url: /health/dead-letters
+        - img [ref=e173]
+        - text: Dead Letters
+      - link "Projections" [ref=e175] [cursor=pointer]:
+        - /url: /projections
+        - img [ref=e176]
+        - text: Projections
+      - link "Types" [ref=e178] [cursor=pointer]:
+        - /url: /types
+        - img [ref=e179]
+        - text: Types
+      - link "Services" [ref=e181] [cursor=pointer]:
+        - /url: /services
+        - img [ref=e182]
+        - text: Services
+      - link "Tenants" [ref=e184] [cursor=pointer]:
+        - /url: /tenants
+        - img [ref=e185]
+        - text: Tenants
+      - link "Storage" [ref=e187] [cursor=pointer]:
+        - /url: /storage
+        - img [ref=e188]
+        - text: Storage
+      - link "Snapshots" [ref=e190] [cursor=pointer]:
+        - /url: /snapshots
+        - img [ref=e191]
+        - text: Snapshots
+      - link "Compaction" [ref=e193] [cursor=pointer]:
+        - /url: /compaction
+        - img [ref=e194]
+        - text: Compaction
+      - link "Backups" [ref=e196] [cursor=pointer]:
+        - /url: /backups
+        - img [ref=e197]
+        - text: Backups
+      - link "Consistency" [ref=e199] [cursor=pointer]:
+        - /url: /consistency
+        - img [ref=e200]
+        - text: Consistency
+      - link "Settings" [ref=e202] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e203]
+        - text: Settings
+      - button "Topology" [ref=e205] [cursor=pointer]:
+        - img [ref=e206]
+        - text: Topology
+        - img [ref=e209]
+      - button "No tenants" [ref=e211]
+    - generic [ref=e212]:
+      - navigation "Breadcrumb" [ref=e213]:
+        - generic [ref=e214]:
+          - link "Home" [ref=e215] [cursor=pointer]:
+            - /url: /
+          - generic [ref=e216]: /
+          - generic [ref=e217]: Type Catalog
+        - button "Copy page URL to clipboard" [ref=e218] [cursor=pointer]:
+          - img [ref=e219]
+      - main [ref=e221]:
+        - generic [ref=e281]:
+          - heading "Type Catalog" [active] [level=1] [ref=e282]
+          - generic "Refresh type catalog" [ref=e283] [cursor=pointer]:
+            - generic [ref=e284]:
+              - generic: Refresh
+        - generic [ref=e285]:
+          - 'group "Event Types: 0" [ref=e286]':
+            - generic [ref=e287]:
+              - generic [ref=e288]: Event Types
+              - generic [ref=e289]: "0"
+              - generic [ref=e290]: 0 domains
+          - 'group "Command Types: 0" [ref=e292]':
+            - generic [ref=e293]:
+              - generic [ref=e294]: Command Types
+              - generic [ref=e295]: "0"
+              - generic [ref=e296]: 0 domains
+          - 'group "Aggregate Types: 0" [ref=e298]':
+            - generic [ref=e299]:
+              - generic [ref=e300]: Aggregate Types
+              - generic [ref=e301]: "0"
+              - generic [ref=e302]: 0 with projections
+        - generic [ref=e304]:
+          - generic "Filter by domain" [ref=e306] [cursor=pointer]:
+            - generic [ref=e307]:
+              - combobox [ref=e308]: All Domains
+              - img [ref=e310]
+          - generic "Search command types" [ref=e313]:
+            - generic [ref=e315]:
+              - img [ref=e317]
+              - textbox [ref=e319]:
+                - /placeholder: Search command types...
+              - generic "Clear search" [ref=e321]:
+                - img [ref=e323]
+        - generic [ref=e326]:
+          - generic [ref=e327]:
+            - tablist [ref=e328]:
+              - generic:
+                - tab "Events (0)" [ref=e329] [cursor=pointer]:
+                  - generic [ref=e330]:
+                    - generic: Events (0)
+                - tab "Commands (0)" [selected] [ref=e331] [cursor=pointer]:
+                  - generic [ref=e332]:
+                    - generic: Commands (0)
+                - tab "Aggregates (0)" [ref=e333] [cursor=pointer]:
+                  - generic [ref=e334]:
+                    - generic: Aggregates (0)
+            - tabpanel [ref=e335]
+          - tabpanel [ref=e336]:
+            - generic [ref=e337]:
+              - heading "No command types found" [level=2] [ref=e338]
+              - paragraph [ref=e339]: No command types registered.
+  - generic "Command palette"

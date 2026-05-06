@@ -25,29 +25,7 @@ public class Dw5GovernanceAtddTests {
     private const string _storyKey = "post-epic-deferred-dw5-admin-ui-runtime-follow-ups";
     private const string _storyMarker = "STORY:post-epic-deferred-dw5-admin-ui-runtime-follow-ups";
 
-    private const string _ac1SkipReason =
-        "ATDD red phase — DW5 AC#1 (decision ledger). Remove Skip after the evidence folder contains a "
-        + "classification ledger naming each selected deferred bullet with one of: patch-now, evidence-now, "
-        + "accepted-debt, obsolete-resolved, duplicate, not-DW5.";
-    private const string _ac10FolderSkipReason =
-        "ATDD red phase — DW5 AC#10 (evidence folder). Remove Skip after the evidence folder is created.";
-    private const string _ac10IndexSkipReason =
-        "ATDD red phase — DW5 AC#10 (evidence index file with required columns). Remove Skip after the index "
-        + "file is written with sections for environment, app URLs, TypeCatalog nav checks, shortcut checks, "
-        + "dialog checks, console errors, and deferred-work dispositions.";
-    private const string _ac13SkipReason =
-        "ATDD red phase — DW5 AC#13 (DW5 disposition marker on deferred-work.md). Remove Skip after at least "
-        + "one bullet in deferred-work.md carries STORY:" + _storyKey + " or DW5 + RESOLVED / ACCEPTED-DEBT / "
-        + "DUPLICATE / NO-ACTION.";
-    private const string _ac14SkipReason =
-        "ATDD red phase — DW5 AC#14 (scope boundaries on File List). Remove Skip after the story File List is "
-        + "updated and every entry is rooted under an allowed prefix (UI src/tests/E2E, evidence folder, "
-        + "story file itself, sprint-status, change log, predev process notes).";
-    private const string _ac15SkipReason =
-        "ATDD red phase — DW5 AC#15 (bookkeeping). Remove Skip after the story's Dev Agent Record Completion "
-        + "Notes, Change Log row, and Verification Status reflect the dev work — not the template/initial state.";
-
-    [Fact(Skip = _ac1SkipReason)]
+    [Fact]
     public void EvidenceFolder_DecisionLedger_ListsAllowedDispositionVocabulary() {
         // AC#1 — The decision ledger MUST exist (any of: ledger.md, decision-ledger.md, dispositions.md, or
         // index.md / README.md / evidence.md when those serve as the ledger) and MUST name every value in the
@@ -58,7 +36,7 @@ public class Dw5GovernanceAtddTests {
 
         string? ledgerPath = new[] {
                 "decision-ledger.md", "ledger.md", "dispositions.md",
-                "index.md", "README.md", "evidence.md",
+                "evidence-index.md", "index.md", "README.md", "evidence.md",
             }
             .Select(name => Path.Combine(folder, name))
             .FirstOrDefault(File.Exists);
@@ -82,7 +60,7 @@ public class Dw5GovernanceAtddTests {
         }
     }
 
-    [Fact(Skip = _ac10FolderSkipReason)]
+    [Fact]
     public void EvidenceFolder_ExistsUnderTestArtifacts() {
         // AC#10 — The evidence folder is the durable home for DW5 runtime artefacts.
         string folder = EvidenceFolder();
@@ -90,14 +68,15 @@ public class Dw5GovernanceAtddTests {
             customMessage: $"DW5 AC#10 requires evidence folder at: {folder}");
     }
 
-    [Fact(Skip = _ac10IndexSkipReason)]
+    [Fact]
     public void EvidenceIndex_ContainsAllRequiredSections() {
         // AC#10 — The evidence index MUST include the seven required sections from the
         // story (environment, app URLs, TypeCatalog nav checks, shortcut checks, dialog
-        // checks, console errors, deferred-work dispositions). Section headings are
-        // matched case-insensitively so dev can use either headings or table titles.
+        // checks, console errors, deferred-work dispositions). Sections must appear as
+        // markdown headings or as table-header rows — narrative substring mentions do
+        // not satisfy the gate, otherwise a skeleton with seven words pasted in passes.
         string folder = EvidenceFolder();
-        string? indexPath = new[] { "index.md", "README.md", "evidence.md" }
+        string? indexPath = new[] { "evidence-index.md", "index.md", "README.md", "evidence.md" }
             .Select(name => Path.Combine(folder, name))
             .FirstOrDefault(File.Exists);
 
@@ -116,35 +95,47 @@ public class Dw5GovernanceAtddTests {
         ];
 
         foreach (string section in requiredSections) {
-            content.ShouldContain(section, Case.Insensitive,
-                customMessage: $"DW5 AC#10 requires the evidence index to contain a '{section}' section/table.");
+            // Match either a markdown heading line (^#{1,6}\s+...section...) or a table-
+            // header pipe row whose cell starts with the section keyword. Both forms are
+            // structurally meaningful; loose narrative mentions are rejected.
+            string heading = $"^#{{1,6}}\\s+.*{Regex.Escape(section)}.*$";
+            string tableHeader = $"^\\|\\s*{Regex.Escape(section)}[^|]*\\|";
+            bool found = Regex.IsMatch(content, heading, RegexOptions.IgnoreCase | RegexOptions.Multiline)
+                || Regex.IsMatch(content, tableHeader, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+            found.ShouldBeTrue(
+                customMessage: $"DW5 AC#10 requires the evidence index to contain a '{section}' section heading or table-header column (narrative mention is not enough).");
         }
     }
 
-    [Fact(Skip = _ac13SkipReason)]
+    [Fact]
     public void DeferredWork_HasDw5DispositionMarker_OnAtLeastOneBullet() {
-        // AC#13 — At least ONE bullet in deferred-work.md MUST carry a DW5 disposition
-        // marker. Acceptable forms:
-        //   STORY:post-epic-deferred-dw5-admin-ui-runtime-follow-ups
-        //   DW5 + (RESOLVED | ACCEPTED-DEBT | DUPLICATE | NO-ACTION)
+        // AC#13 — At least ONE *bullet* in deferred-work.md MUST carry a DW5 disposition
+        // marker. The previous file-wide Contains pair (DW5 && RESOLVED) passed trivially
+        // because both words appear in unrelated narrative sections. This tightens the
+        // gate to require either:
+        //   - a bullet line containing STORY:post-epic-deferred-dw5-... ; or
+        //   - a bullet line containing DW5 alongside one of the disposition tokens.
         string deferredPath = DeferredWorkPath();
         File.Exists(deferredPath).ShouldBeTrue(
             customMessage: $"deferred-work.md not found at: {deferredPath}");
         string content = File.ReadAllText(deferredPath);
 
-        bool hasStoryMarker = content.Contains(_storyMarker, StringComparison.Ordinal);
-        bool hasDw5Disposition = content.Contains("DW5", StringComparison.Ordinal)
-            && (content.Contains("RESOLVED", StringComparison.Ordinal)
-                || content.Contains("ACCEPTED-DEBT", StringComparison.Ordinal)
-                || content.Contains("DUPLICATE", StringComparison.Ordinal)
-                || content.Contains("NO-ACTION", StringComparison.Ordinal));
+        string[] dispositionTokens = ["RESOLVED", "ACCEPTED-DEBT", "DUPLICATE", "NO-ACTION", "NOT-REPRODUCED-WITH-EVIDENCE"];
 
-        (hasStoryMarker || hasDw5Disposition).ShouldBeTrue(
-            customMessage: "DW5 AC#13 requires at least one bullet in deferred-work.md to carry a DW5 disposition "
-                + "marker (STORY:" + _storyKey + " or DW5 + RESOLVED/ACCEPTED-DEBT/DUPLICATE/NO-ACTION).");
+        bool hasMarkedBullet = content
+            .Split('\n')
+            .Where(line => line.TrimStart().StartsWith("- ", StringComparison.Ordinal))
+            .Any(line =>
+                line.Contains(_storyMarker, StringComparison.Ordinal)
+                || (line.Contains("DW5", StringComparison.Ordinal)
+                    && dispositionTokens.Any(t => line.Contains(t, StringComparison.Ordinal))));
+
+        hasMarkedBullet.ShouldBeTrue(
+            customMessage: "DW5 AC#13 requires at least one *bullet* in deferred-work.md to carry a DW5 disposition "
+                + "marker (STORY:" + _storyKey + " or DW5 + RESOLVED/ACCEPTED-DEBT/DUPLICATE/NO-ACTION/NOT-REPRODUCED-WITH-EVIDENCE).");
     }
 
-    [Fact(Skip = _ac14SkipReason)]
+    [Fact]
     public void StoryFileList_EntriesStayUnderAllowedRoots() {
         // AC#14 — Every entry in the story's `## File List` section MUST live under an
         // allowed root. This pins the scope-boundary contract so reviewers can reject
@@ -170,7 +161,7 @@ public class Dw5GovernanceAtddTests {
         ];
 
         List<string> violations = entries
-            .Where(e => !allowedPrefixes.Any(p => e.Replace('\\', '/').StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+            .Where(e => !allowedPrefixes.Any(p => e.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
             .ToList();
 
         violations.ShouldBeEmpty(
@@ -178,7 +169,7 @@ public class Dw5GovernanceAtddTests {
                 + string.Join(", ", violations));
     }
 
-    [Fact(Skip = _ac15SkipReason)]
+    [Fact]
     public void Story_BookkeepingSectionsReflectDevWork() {
         // AC#15 — At dev handoff the story MUST show evidence of dev work in:
         //   - Dev Agent Record / Completion Notes (a non-template Completion Note),
@@ -198,16 +189,29 @@ public class Dw5GovernanceAtddTests {
                 + "expected at least one dev-recorded Completion Note before handoff.");
 
         // Change Log signal: at least one Change Log row beyond the three story-creation
-        // entries (0.1, 0.2, 0.3 dated 2026-05-04 / 2026-05-05).
-        Match[] changeLogRows = Regex.Matches(content, "^\\| \\d{4}-\\d{2}-\\d{2} \\| 0\\.[0-9.]+ \\|", RegexOptions.Multiline)
+        // entries. Match any semver-shaped version (\d+\.[0-9.]+) so a 1.x major bump
+        // does not break this gate for an unrelated reason.
+        Match[] changeLogRows = Regex.Matches(content, "^\\| \\d{4}-\\d{2}-\\d{2} \\| \\d+\\.[0-9.]+ \\|", RegexOptions.Multiline)
             .ToArray();
         changeLogRows.Length.ShouldBeGreaterThan(3,
             customMessage: "DW5 AC#15: expected at least one new Change Log row added during dev work (story shipped with 3 rows).");
 
-        // Verification Status signal: mentions "evidence" or "browser" (case-insensitive).
-        Regex verificationStatus = new("## Verification Status[\\s\\S]*?(evidence|browser)", RegexOptions.IgnoreCase);
-        verificationStatus.IsMatch(content).ShouldBeTrue(
-            customMessage: "DW5 AC#15: Verification Status section must reference recorded evidence or browser runs by handoff.");
+        // Verification Status signal: must contain at least one structured evidence row
+        // (bullet or table row) referencing test/build/browser results — narrative
+        // mention of the word "evidence" alone is insufficient.
+        Match verificationSection = Regex.Match(
+            content,
+            "^## Verification Status\\s*$([\\s\\S]*?)(?=^## |\\z)",
+            RegexOptions.Multiline);
+        verificationSection.Success.ShouldBeTrue(
+            customMessage: "DW5 AC#15: Verification Status section is missing.");
+        string verificationBody = verificationSection.Groups[1].Value;
+        bool hasStructuredRow = Regex.IsMatch(
+            verificationBody,
+            "^[-|].*(test|build|evidence|browser|aspire|playwright|bUnit|E2E)",
+            RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        hasStructuredRow.ShouldBeTrue(
+            customMessage: "DW5 AC#15: Verification Status must include at least one bullet or table row referencing test/build/browser/evidence run results.");
     }
 
     private static string EvidenceFolder() => Path.Combine(
@@ -220,16 +224,20 @@ public class Dw5GovernanceAtddTests {
         Dw5TestPaths.RepoRoot(), "_bmad-output", "implementation-artifacts", _storyKey + ".md");
 
     private static IReadOnlyList<string> ParseFileListEntries(string storyContent) {
-        // The story File List section starts with "### File List" or "## File List" and
-        // contains "- `path`" or "- path" bullets until the next heading.
+        // The story File List section starts with "### File List" or "## File List".
+        // Allow trailing whitespace on the heading line and accept bullets in either
+        // backticked or plain form, with optional trailing notes (e.g. "(added)" or
+        // " - new component"). The entry is the first whitespace-delimited token after
+        // the bullet marker, stripped of backticks and Windows separators normalized.
         Match section = Regex.Match(storyContent, "^#{2,3} File List\\s*$([\\s\\S]*?)(?=^#{1,3} |\\z)", RegexOptions.Multiline);
         if (!section.Success) {
             return [];
         }
 
         List<string> entries = [];
-        foreach (Match bullet in Regex.Matches(section.Groups[1].Value, "^-\\s+`?([^`\\s][^`\n]*?)`?\\s*$", RegexOptions.Multiline)) {
-            entries.Add(bullet.Groups[1].Value.Trim());
+        foreach (Match bullet in Regex.Matches(section.Groups[1].Value, "^-\\s+`?([^`\\s]+)`?", RegexOptions.Multiline)) {
+            string raw = bullet.Groups[1].Value.Trim().Trim('`');
+            entries.Add(raw.Replace('\\', '/'));
         }
 
         return entries;

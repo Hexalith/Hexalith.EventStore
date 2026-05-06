@@ -5,7 +5,7 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<FluentNav Width="@Width" Padding="@Padding.All2" Style="height: 100%;">
+<FluentNav Width="@Width" Padding="@Padding.All2" Style="height: 100%;" aria-label="Main navigation">
     <FluentNavItem Href="/" Match="NavLinkMatch.All" IconRest="@(new Icons.Regular.Size20.Home())">Home</FluentNavItem>
     <FluentNavItem Href="/commands" IconRest="@(new Icons.Regular.Size20.List())">Commands</FluentNavItem>
     <FluentNavItem Href="/events" IconRest="@(new Icons.Regular.Size20.Timeline())">Events</FluentNavItem>

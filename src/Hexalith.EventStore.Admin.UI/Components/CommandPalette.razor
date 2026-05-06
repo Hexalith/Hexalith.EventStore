@@ -63,7 +63,9 @@
     private string? _searchQuery;
     private List<CommandPaletteItem> _filteredResults = [];
 
-    public async Task OpenAsync()
+    public Task OpenAsync() => OpenAsync(force: false);
+
+    public async Task OpenAsync(bool force)
     {
         if (_isTransitioning)
         {
@@ -72,7 +74,7 @@
 
         // UX contract: no-op when the dialog is genuinely open.
         // Recovery path: if _isOpen is stale but state says Closing/Closed, allow re-open.
-        if (_isOpen && _dialogState is DialogState.Open or DialogState.Opening)
+        if (!force && _isOpen && (_dialogState is DialogState.Open or DialogState.Opening))
         {
             return;
         }
@@ -86,7 +88,16 @@
             if (_dialog is not null)
             {
                 _dialogState = DialogState.Opening;
-                await _dialog.ShowAsync().ConfigureAwait(false);
+                try
+                {
+                    await _dialog.ShowAsync();
+                }
+                catch (JSException)
+                {
+                    // FluentDialog v5 ShowAsync invoked on a stale-open dialog
+                    // can throw via the underlying web component. The force path
+                    // is the recovery — preserve state machine and continue.
+                }
                 _isOpen = true;
             }
         }
@@ -108,7 +119,7 @@
         {
             if (_dialog is not null)
             {
-                await _dialog.HideAsync().ConfigureAwait(false);
+                await _dialog.HideAsync();
             }
 
             _isOpen = false;
@@ -129,7 +140,7 @@
         if (_focusSearchRequested && _isOpen)
         {
             _focusSearchRequested = false;
-            await JSRuntime.InvokeVoidAsync("hexalithAdmin.focusCommandPaletteSearch").ConfigureAwait(false);
+            await JSRuntime.InvokeVoidAsync("hexalithAdmin.focusCommandPaletteSearch");
         }
     }
 
@@ -153,7 +164,7 @@
 
     private async Task NavigateToAsync(string href)
     {
-        await CloseAsync().ConfigureAwait(false);
+        await CloseAsync();
         NavigationManager.NavigateTo(href);
     }
 }

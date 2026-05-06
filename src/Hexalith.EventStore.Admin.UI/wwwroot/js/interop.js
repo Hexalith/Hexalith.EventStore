@@ -8,13 +8,21 @@ window.hexalithAdmin = {
     registerShortcuts: function (dotNetRef) {
         const registrationId = `shortcuts-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const handler = function (e) {
+            // Only Ctrl+letter — exclude Shift/Alt/Meta so browser shortcuts
+            // (Ctrl+Shift+B bookmarks bar, Ctrl+Shift+K Firefox web console,
+            // AltGr-driven characters which raise ctrlKey+altKey) fall through.
+            if (!e.ctrlKey || e.shiftKey || e.altKey || e.metaKey) {
+                return;
+            }
+            const key = e.key?.toLowerCase();
             // Ctrl+K: Command palette
-            if (e.ctrlKey && e.key === "k") {
+            if (key === "k") {
                 e.preventDefault();
                 dotNetRef.invokeMethodAsync("OnCommandPaletteShortcut");
+                return;
             }
             // Ctrl+B: Toggle sidebar
-            if (e.ctrlKey && e.key === "b") {
+            if (key === "b") {
                 e.preventDefault();
                 dotNetRef.invokeMethodAsync("OnToggleSidebarShortcut");
             }

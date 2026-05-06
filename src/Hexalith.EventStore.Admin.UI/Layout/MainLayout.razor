@@ -80,7 +80,7 @@
                 {
                     _sidebarCollapsed = collapsed;
                 }
-                else if (storageKey.Contains("compact", StringComparison.Ordinal))
+                else if (IsNarrowTier(storageKey))
                 {
                     _sidebarCollapsed = true;
                 }
@@ -100,24 +100,37 @@
     [JSInvokable]
     public async Task OnCommandPaletteShortcut()
     {
-        if (_commandPalette is not null)
+        await InvokeAsync(async () =>
         {
-            await _commandPalette.OpenAsync().ConfigureAwait(false);
-        }
+            if (_commandPalette is not null)
+            {
+                await _commandPalette.OpenAsync(force: true);
+            }
+        });
     }
 
     [JSInvokable]
     public async Task OnToggleSidebarShortcut()
     {
-        _sidebarCollapsed = !_sidebarCollapsed;
-        string storageKey = await GetSidebarStorageKeyAsync().ConfigureAwait(false);
-        await JSRuntime.InvokeVoidAsync("hexalithAdmin.setLocalStorage", storageKey, _sidebarCollapsed.ToString().ToLowerInvariant()).ConfigureAwait(false);
-        StateHasChanged();
+        await InvokeAsync(async () =>
+        {
+            try
+            {
+                _sidebarCollapsed = !_sidebarCollapsed;
+                string storageKey = await GetSidebarStorageKeyAsync();
+                await JSRuntime.InvokeVoidAsync("hexalithAdmin.setLocalStorage", storageKey, _sidebarCollapsed.ToString().ToLowerInvariant());
+                StateHasChanged();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Circuit disconnected mid-shortcut — safe to ignore
+            }
+        });
     }
 
     private async Task<string> GetSidebarStorageKeyAsync()
     {
-        int viewportWidth = await JSRuntime.InvokeAsync<int>("hexalithAdmin.getViewportWidth").ConfigureAwait(false);
+        int viewportWidth = await JSRuntime.InvokeAsync<int>("hexalithAdmin.getViewportWidth");
         string tier = viewportWidth switch
         {
             >= 1920 => "optimal",
@@ -128,6 +141,12 @@
 
         return $"hexalith-sidebar-collapsed-{tier}";
     }
+
+    // Narrow viewport tiers default to a collapsed sidebar when no saved state exists.
+    // compact and minimum both qualify; optimal/standard do not.
+    private static bool IsNarrowTier(string storageKey)
+        => storageKey.EndsWith("-compact", StringComparison.Ordinal)
+            || storageKey.EndsWith("-minimum", StringComparison.Ordinal);
 
     private void OnPollingSuccess(DashboardData data)
     {

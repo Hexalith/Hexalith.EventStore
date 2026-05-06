@@ -21,16 +21,7 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 // are not the right level for this contract — source-based assertions are deterministic
 // and reviewer-auditable.
 public class Dw5DialogAccessibilityAtddTests {
-    private const string _ac8SkipReason =
-        "ATDD red phase — DW5 AC#8 (CommandSandbox dialog markup). Remove Skip after the dialog markup contract "
-        + "(FluentDialog with aria-label=\"Event payload\" wrapping FluentDialogBody) is confirmed during the live "
-        + "browser evidence pass.";
-    private const string _ac9SkipReason =
-        "ATDD red phase — DW5 AC#9 (EventDebugger dialog markup). Remove Skip after the dialog markup contract "
-        + "(FluentDialog with aria-label=\"Event payload\" wrapping FluentDialogBody) is confirmed during the live "
-        + "browser evidence pass.";
-
-    [Fact(Skip = _ac8SkipReason)]
+    [Fact]
     public void CommandSandbox_PayloadDialog_HasFluentDialogWithAriaLabel() {
         // AC#8 — The CommandSandbox event payload dialog MUST be wrapped in a
         // FluentDialog element with aria-label="Event payload" (case-sensitive).
@@ -45,7 +36,7 @@ public class Dw5DialogAccessibilityAtddTests {
                 + "wrapping <FluentDialogBody>.");
     }
 
-    [Fact(Skip = _ac9SkipReason)]
+    [Fact]
     public void EventDebugger_PayloadDialog_HasFluentDialogWithAriaLabel() {
         // AC#9 — Same contract for EventDebugger.
         string razor = ReadRazor("Components/EventDebugger.razor");
@@ -58,7 +49,7 @@ public class Dw5DialogAccessibilityAtddTests {
                 + "wrapping <FluentDialogBody>.");
     }
 
-    [Fact(Skip = _ac8SkipReason)]
+    [Fact]
     public void CommandSandbox_PayloadDialog_IsModal() {
         // AC#8 — Dialog MUST be Modal="true". A non-modal dialog escapes focus and
         // breaks the keyboard / assistive-technology contract this AC commits to.
@@ -72,7 +63,7 @@ public class Dw5DialogAccessibilityAtddTests {
             customMessage: "DW5 AC#8: CommandSandbox payload dialog must declare Modal=\"true\".");
     }
 
-    [Fact(Skip = _ac9SkipReason)]
+    [Fact]
     public void EventDebugger_PayloadDialog_IsModal() {
         // AC#9 — Same Modal=true contract.
         string razor = ReadRazor("Components/EventDebugger.razor");

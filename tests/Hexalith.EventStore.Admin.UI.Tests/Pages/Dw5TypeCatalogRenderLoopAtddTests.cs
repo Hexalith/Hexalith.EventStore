@@ -25,15 +25,6 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
 // within bounded render passes. Browser-level reproduction of the actual navigation block
 // (URL + visible page transition) lives in the E2E scaffold.
 public class Dw5TypeCatalogRenderLoopAtddTests : AdminUITestContext {
-    private const string _ac3HypothesisGuardSkipReason =
-        "ATDD red phase — DW5 AC#3 (render-loop hypothesis guard). Remove Skip after the dev confirms via "
-        + "browser evidence which suspect path (AsQueryable items, DashboardRefreshService subscription, "
-        + "Viewport flips, or FluentTabs URL sync) caused the navigation block — and that the targeted fix "
-        + "still permits rapid tab toggles without throwing or cycling.";
-    private const string _ac3NoRedirectLoopSkipReason =
-        "ATDD red phase — DW5 AC#3/#4 (no redirect loop). Remove Skip after UpdateUrl proves bounded NavigateTo "
-        + "calls under repeated tab toggles (no infinite recursion via FluentTabs ActiveTabIdChanged refire).";
-
     private readonly AdminTypeCatalogApiClient _mockApiClient;
 
     public Dw5TypeCatalogRenderLoopAtddTests() {
@@ -49,7 +40,7 @@ public class Dw5TypeCatalogRenderLoopAtddTests : AdminUITestContext {
         _ = Services.AddScoped(_ => _mockApiClient);
     }
 
-    [Fact(Skip = _ac3HypothesisGuardSkipReason)]
+    [Fact]
     public void TypeCatalog_RapidTabToggles_DoNotThrow() {
         // AC#3 — Repeated programmatic tab toggles MUST NOT throw. This catches a
         // common render-loop signal: the OnTabChanged handler reschedules itself or
@@ -68,33 +59,37 @@ public class Dw5TypeCatalogRenderLoopAtddTests : AdminUITestContext {
         });
     }
 
-    [Fact(Skip = _ac3NoRedirectLoopSkipReason)]
-    public void TypeCatalog_UpdateUrl_StableAfterMultipleSameTabSelections() {
-        // AC#3/#4 — Selecting the same tab twice MUST NOT cycle through UpdateUrl
-        // indefinitely. The current UpdateUrl implementation guards against this with
-        // a path/query equality check. This scaffold pins that guarantee so a future
-        // refactor cannot accidentally reintroduce the redirect loop.
+    [Fact]
+    public void TypeCatalog_UpdateUrl_DoesNotGrowRenderCount_OnRepeatedSameTabSelection() {
+        // AC#3/#4 — Re-selecting the same tab MUST be idempotent at the render level.
+        // OnTabChanged early-returns when the tab is already active, so calling it twice
+        // exercises that guard rather than UpdateUrl. We assert RenderCount does not
+        // grow on the second invocation, which is the loop-absence signal — markup
+        // equality on its own would pass even if a render loop converged to the same
+        // final state.
         IRenderedComponent<TypeCatalog> cut = Render<TypeCatalog>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Type Catalog"), TimeSpan.FromSeconds(5));
 
+        // Switch to a non-default tab so the second InvokeOnTabChanged exercises the
+        // already-active early-return path (rather than the no-op default tab).
         InvokeOnTabChanged(cut, "commands");
-        cut.Render();
-        string markupAfterFirst = cut.Markup;
+        cut.WaitForState(() => cut.RenderCount > 0, TimeSpan.FromSeconds(5));
+        int renderCountAfterFirst = cut.RenderCount;
 
-        // Re-select the same tab. UpdateUrl should detect URL idempotency and skip
-        // NavigateTo; the rendered markup MUST remain stable across the second
-        // invocation rather than oscillating.
         InvokeOnTabChanged(cut, "commands");
-        cut.Render();
-        string markupAfterSecond = cut.Markup;
+        // Allow any pending renders to flush.
+        Thread.Sleep(50);
+        int renderCountAfterSecond = cut.RenderCount;
 
-        markupAfterSecond.ShouldBe(markupAfterFirst,
-            customMessage: "DW5 AC#3/#4: re-selecting the same tab must not change rendered markup (UpdateUrl idempotency).");
+        renderCountAfterSecond.ShouldBe(renderCountAfterFirst,
+            customMessage: "DW5 AC#3/#4: re-selecting the already-active tab must not trigger a rerender (early-return guard, no oscillation).");
     }
 
     private static void InvokeOnTabChanged(IRenderedComponent<TypeCatalog> cut, string tabId) {
-        _ = cut.InvokeAsync(() => cut.Instance.GetType()
-            .GetMethod("OnTabChanged", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?.Invoke(cut.Instance, [tabId]));
+        System.Reflection.MethodInfo? method = cut.Instance.GetType()
+            .GetMethod("OnTabChanged", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        method.ShouldNotBeNull(
+            customMessage: "DW5 AC#3: TypeCatalog.OnTabChanged renamed/removed — test must be updated alongside the production refactor (?.Invoke would silently no-op).");
+        _ = cut.InvokeAsync(() => method!.Invoke(cut.Instance, [tabId]));
     }
 }

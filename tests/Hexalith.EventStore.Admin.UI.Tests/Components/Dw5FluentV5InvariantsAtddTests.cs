@@ -18,17 +18,7 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 // project: they run quickly, do not require a render context, and produce a clear
 // signal if a later refactor reintroduces a removed v4 API.
 public class Dw5FluentV5InvariantsAtddTests {
-    private const string _ac12NoTypoSkipReason =
-        "ATDD red phase — DW5 AC#12 (no v4 Typo/Typography on FluentText). Remove Skip after the dev confirms "
-        + "no FluentText element in the Admin.UI project carries the removed v4 Typo/Typography parameter.";
-    private const string _ac12FluentDialogBodySkipReason =
-        "ATDD red phase — DW5 AC#12 (FluentDialogBody retained for payload dialogs). Remove Skip after the "
-        + "dev confirms both event-payload dialogs still wrap their content in FluentDialogBody.";
-    private const string _ac12FluentTabsActiveTabIdSkipReason =
-        "ATDD red phase — DW5 AC#12 (FluentTabs ActiveTabId / ActiveTabIdChanged retained). Remove Skip after "
-        + "the dev confirms TypeCatalog FluentTabs still binds ActiveTabId and ActiveTabIdChanged (v5 API).";
-
-    [Fact(Skip = _ac12NoTypoSkipReason)]
+    [Fact]
     public void AdminUI_FluentText_DoesNotUseRemovedV4TypoOrTypographyParameter() {
         // AC#12 — Scan every .razor file under Admin.UI for any FluentText element that
         // carries the removed v4 Typo/Typography parameter. v5 uses As=TextTag.* with
@@ -53,7 +43,7 @@ public class Dw5FluentV5InvariantsAtddTests {
                 + string.Join(", ", violations));
     }
 
-    [Fact(Skip = _ac12FluentDialogBodySkipReason)]
+    [Fact]
     public void AdminUI_PayloadDialogs_RetainFluentDialogBody() {
         // AC#12 — Both event-payload dialogs MUST wrap content in FluentDialogBody.
         // Removing FluentDialogBody would break v5 dialog template slots
@@ -67,7 +57,7 @@ public class Dw5FluentV5InvariantsAtddTests {
             customMessage: "DW5 AC#12: EventDebugger payload dialog must retain <FluentDialogBody>.");
     }
 
-    [Fact(Skip = _ac12FluentTabsActiveTabIdSkipReason)]
+    [Fact]
     public void TypeCatalog_FluentTabs_BindsActiveTabIdAndActiveTabIdChanged() {
         // AC#12 — TypeCatalog FluentTabs MUST keep the v5 binding pattern:
         //   <FluentTabs ActiveTabId="..." ActiveTabIdChanged="...">.

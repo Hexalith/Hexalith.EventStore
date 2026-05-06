@@ -1,0 +1,48 @@
+- generic [ref=e1]:
+  - link "Skip to main content" [ref=e140] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e142]:
+    - generic [ref=e144]:
+      - generic [ref=e145]: Hexalith EventStore Admin
+      - generic [ref=e146]
+    - navigation [ref=e153]:
+      - link "Home" [ref=e154] [cursor=pointer]:
+        - /url: /
+      - link "Commands" [ref=e157] [cursor=pointer]:
+        - /url: /commands
+      - link "Events" [ref=e160] [cursor=pointer]:
+        - /url: /events
+      - link "Streams" [ref=e163] [cursor=pointer]:
+        - /url: /streams
+      - link "Health" [ref=e166] [cursor=pointer]:
+        - /url: /health
+      - link "DAPR" [ref=e169] [cursor=pointer]:
+        - /url: /dapr
+      - link "Dead Letters" [ref=e172] [cursor=pointer]:
+        - /url: /health/dead-letters
+      - link "Projections" [ref=e175] [cursor=pointer]:
+        - /url: /projections
+      - link "Types" [ref=e178] [cursor=pointer]:
+        - /url: /types
+      - link "Services" [ref=e181] [cursor=pointer]:
+        - /url: /services
+      - link "Tenants" [ref=e184] [cursor=pointer]:
+        - /url: /tenants
+      - link "Storage" [ref=e187] [cursor=pointer]:
+        - /url: /storage
+      - link "Snapshots" [ref=e190] [cursor=pointer]:
+        - /url: /snapshots
+      - link "Compaction" [ref=e193] [cursor=pointer]:
+        - /url: /compaction
+      - link "Backups" [ref=e196] [cursor=pointer]:
+        - /url: /backups
+      - link "Consistency" [ref=e199] [cursor=pointer]:
+        - /url: /consistency
+      - link "Settings" [ref=e202] [cursor=pointer]:
+        - /url: /settings
+      - button "Topology" [ref=e205] [cursor=pointer]
+      - button "No tenants" [ref=e211]
+    - generic [ref=e212]:
+      - navigation "Breadcrumb" [ref=e213]
+      - main [ref=e221]
+  - generic "Command palette"
