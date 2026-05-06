@@ -279,7 +279,7 @@
         try
         {
             _traceMap = await ApiClient.GetCorrelationTraceMapAsync(
-                TenantId, CorrelationId, Domain, AggregateId, token).ConfigureAwait(false);
+                TenantId, CorrelationId, Domain, AggregateId, token);
 
             if (loadVersion != _loadVersion || token.IsCancellationRequested)
             {

@@ -42,23 +42,44 @@ public class CommandDetailPanelTests : AdminUITestContext {
     }
 
     [Fact]
-    public void CommandDetailPanel_InvokesOnCorrelationFilter() {
+    public void CommandDetailPanel_InvokesOnCopyCorrelation_ForCopyButton() {
         var entry = new TimelineEntry(1, DateTimeOffset.UtcNow, TimelineEntryType.Command,
-            "IncrementCounter", "corr-filter-test", null);
-        string? filteredCorrelation = null;
+            "IncrementCounter", "corr-copy-test", null);
+        string? copiedCorrelation = null;
+        string? tracedCorrelation = null;
 
         IRenderedComponent<CommandDetailPanel> cut = Render<CommandDetailPanel>(p => p
             .Add(c => c.Entry, entry)
-            .Add(c => c.OnCorrelationFilter, id => filteredCorrelation = id));
+            .Add(c => c.OnCopyCorrelation, id => copiedCorrelation = id)
+            .Add(c => c.OnOpenTraceMap, id => tracedCorrelation = id));
 
-        // Find the correlation filter button
-        AngleSharp.Dom.IElement? filterButton = cut.FindAll("button")
-            .FirstOrDefault(b => b.InnerHtml.Contains("corr-filter") ||
-                b.GetAttribute("title")?.Contains("filter", StringComparison.OrdinalIgnoreCase) == true ||
-                b.GetAttribute("aria-label")?.Contains("filter", StringComparison.OrdinalIgnoreCase) == true);
-        if (filterButton is not null) {
-            filterButton.Click();
-            filteredCorrelation.ShouldBe("corr-filter-test");
-        }
+        AngleSharp.Dom.IElement? copyButton = cut.FindAll("fluent-button")
+            .FirstOrDefault(b => b.GetAttribute("aria-label") == "Copy correlation ID");
+        copyButton.ShouldNotBeNull();
+        copyButton!.Click();
+
+        copiedCorrelation.ShouldBe("corr-copy-test");
+        tracedCorrelation.ShouldBeNull();
+    }
+
+    [Fact]
+    public void CommandDetailPanel_InvokesOnOpenTraceMap_ForTraceButton() {
+        var entry = new TimelineEntry(1, DateTimeOffset.UtcNow, TimelineEntryType.Command,
+            "IncrementCounter", "corr-trace-test", null);
+        string? copiedCorrelation = null;
+        string? tracedCorrelation = null;
+
+        IRenderedComponent<CommandDetailPanel> cut = Render<CommandDetailPanel>(p => p
+            .Add(c => c.Entry, entry)
+            .Add(c => c.OnCopyCorrelation, id => copiedCorrelation = id)
+            .Add(c => c.OnOpenTraceMap, id => tracedCorrelation = id));
+
+        AngleSharp.Dom.IElement? traceButton = cut.FindAll("fluent-button")
+            .FirstOrDefault(b => b.GetAttribute("aria-label") == "Open trace map");
+        traceButton.ShouldNotBeNull();
+        traceButton!.Click();
+
+        tracedCorrelation.ShouldBe("corr-trace-test");
+        copiedCorrelation.ShouldBeNull();
     }
 }

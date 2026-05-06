@@ -2,12 +2,14 @@
 @namespace Hexalith.EventStore.Admin.UI.Pages
 @using Hexalith.EventStore.Admin.Abstractions.Models.Streams
 @using Hexalith.EventStore.Admin.UI.Services
+@using Microsoft.JSInterop
 @using static Hexalith.EventStore.Admin.UI.Components.Shared.StatusBadge
 @implements IAsyncDisposable
 @inject AdminStreamApiClient ApiClient
 @inject DashboardRefreshService RefreshService
 @inject ViewportService Viewport
 @inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Stream @AggregateId - Hexalith EventStore</PageTitle>
 
@@ -410,14 +412,17 @@ else
         {
             <EventDetailPanel TenantId="@TenantId" Domain="@Domain" AggregateId="@AggregateId"
                               SequenceNumber="@_selectedEntry.SequenceNumber"
-                              OnCopyCorrelation="@OpenTraceMapForCorrelation"
+                              OnCopyCorrelation="@CopyToClipboardAsync"
+                              OnOpenTraceMap="@OpenTraceMapForCorrelation"
                               OnInspectState="@OnInspectStateFromDetail"
                               OnDiffRequested="@OnDiffFromDetail"
                               AutoTraceCausation="@(QueryView == "causation")" />
         }
         else if (_selectedEntry?.EntryType == TimelineEntryType.Command)
         {
-            <CommandDetailPanel Entry="@_selectedEntry" OnCorrelationFilter="@OpenTraceMapForCorrelation" />
+            <CommandDetailPanel Entry="@_selectedEntry"
+                                OnCopyCorrelation="@CopyToClipboardAsync"
+                                OnOpenTraceMap="@OpenTraceMapForCorrelation" />
         }
     };
 
@@ -577,13 +582,32 @@ else
         UpdateUrl();
     }
 
-    private void OpenBlameViewer()
+    private void ResetAllViewModes()
     {
-        _blameMode = true;
-        _blameSequence = _selectedSequence; // null means latest
+        _traceMode = false;
+        _traceCorrelationId = null;
+        _sandboxMode = false;
+        _sandboxSequence = null;
+        _stepMode = false;
+        _stepSequence = null;
+        _bisectMode = false;
+        _bisectGood = null;
+        _bisectBad = null;
+        _blameMode = false;
+        _blameSequence = null;
         _diffMode = false;
+        _diffFrom = 0;
+        _diffTo = 0;
         _selectedSequence = null;
         _selectedEntry = null;
+    }
+
+    private void OpenBlameViewer()
+    {
+        long? prevSelected = _selectedSequence;
+        ResetAllViewModes();
+        _blameMode = true;
+        _blameSequence = prevSelected; // null means latest
         UpdateUrl();
     }
 
@@ -606,23 +630,16 @@ else
 
     private void OpenBisectTool()
     {
+        long? prevSelected = _selectedSequence;
+        ResetAllViewModes();
         _bisectMode = true;
         // If an event is selected, pre-fill bad with that sequence and good with 0
-        if (_selectedSequence.HasValue)
+        if (prevSelected.HasValue)
         {
-            _bisectBad = _selectedSequence.Value;
+            _bisectBad = prevSelected.Value;
             _bisectGood = 0;
         }
-        else
-        {
-            _bisectGood = null;
-            _bisectBad = null;
-        }
 
-        _blameMode = false;
-        _diffMode = false;
-        _selectedSequence = null;
-        _selectedEntry = null;
         UpdateUrl();
     }
 
@@ -657,13 +674,10 @@ else
 
     private void OpenStepDebugger()
     {
+        long? prevSelected = _selectedSequence;
+        ResetAllViewModes();
         _stepMode = true;
-        _stepSequence = _selectedSequence ?? 1;
-        _bisectMode = false;
-        _blameMode = false;
-        _diffMode = false;
-        _selectedSequence = null;
-        _selectedEntry = null;
+        _stepSequence = prevSelected ?? 1;
         UpdateUrl();
     }
 
@@ -711,14 +725,10 @@ else
 
     private void OpenSandbox()
     {
+        long? prevSelected = _selectedSequence;
+        ResetAllViewModes();
         _sandboxMode = true;
-        _sandboxSequence = _selectedSequence; // null means latest
-        _stepMode = false;
-        _bisectMode = false;
-        _blameMode = false;
-        _diffMode = false;
-        _selectedSequence = null;
-        _selectedEntry = null;
+        _sandboxSequence = prevSelected; // null means latest
         UpdateUrl();
     }
 
@@ -746,25 +756,18 @@ else
             return;
         }
 
+        string? correlationId = _selectedEntry.CorrelationId;
+        ResetAllViewModes();
         _traceMode = true;
-        _traceCorrelationId = _selectedEntry.CorrelationId;
-        _sandboxMode = false;
-        _stepMode = false;
-        _bisectMode = false;
-        _blameMode = false;
-        _diffMode = false;
+        _traceCorrelationId = correlationId;
         UpdateUrl();
     }
 
     private void OpenTraceMapForCorrelation(string correlationId)
     {
+        ResetAllViewModes();
         _traceMode = true;
         _traceCorrelationId = correlationId;
-        _sandboxMode = false;
-        _stepMode = false;
-        _bisectMode = false;
-        _blameMode = false;
-        _diffMode = false;
         UpdateUrl();
     }
 
@@ -827,15 +830,6 @@ else
         UpdateUrl();
     }
 
-    private async Task OnCorrelationFilterFromDetail(string correlationId)
-    {
-        _correlationFilter = correlationId;
-        _selectedSequence = null;
-        _selectedEntry = null;
-        UpdateUrl();
-        await LoadTimelineAsync();
-    }
-
     private void OnDetailKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
     {
         if (e.Key == "Escape")
@@ -871,9 +865,31 @@ else
         }
     }
 
-    private void CopyStreamKey()
+    private async Task CopyStreamKey()
     {
-        // Copy handled by clipboard JS interop if available; fallback is the title tooltip
+        string streamKey = $"{TenantId}/{Domain}/{AggregateId}";
+        await CopyToClipboardAsync(streamKey);
+    }
+
+    private async Task CopyToClipboardAsync(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return;
+        }
+
+        try
+        {
+            await JSRuntime.InvokeAsync<bool>("hexalithAdmin.copyToClipboard", text);
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit is already gone; clipboard failure must not create a second circuit error.
+        }
+        catch (TaskCanceledException)
+        {
+            // Disconnect raced with the JS call; safe to ignore.
+        }
     }
 
     private void UpdateUrl()

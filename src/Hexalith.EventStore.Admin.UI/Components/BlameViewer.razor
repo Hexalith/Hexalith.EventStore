@@ -206,7 +206,7 @@
         try
         {
             _blame = await ApiClient.GetAggregateBlameAsync(
-                TenantId, Domain, AggregateId, AtSequence, default).ConfigureAwait(false);
+                TenantId, Domain, AggregateId, AtSequence, default);
 
             if (_blame is null)
             {

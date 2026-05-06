@@ -25,6 +25,12 @@
                               aria-label="Copy correlation ID">
                     &#x1F4CB;
                 </FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Transparent"
+                              Title="Open trace map"
+                              OnClick="() => OnOpenTraceMap.InvokeAsync(Chain.CorrelationId)"
+                              aria-label="Open trace map">
+                    &#x1F50D; Trace
+                </FluentButton>
             </span>
         </div>
 
@@ -65,6 +71,9 @@
 
     [Parameter]
     public EventCallback<string> OnCorrelationClick { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnOpenTraceMap { get; set; }
 
     private static string TruncateId(string? id)
         => string.IsNullOrEmpty(id) ? "\u2014" : id.Length > 8 ? id[..8] + "\u2026" : id;

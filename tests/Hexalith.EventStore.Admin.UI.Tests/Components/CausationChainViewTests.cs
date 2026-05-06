@@ -61,21 +61,43 @@ public class CausationChainViewTests : AdminUITestContext {
     }
 
     [Fact]
-    public void CausationChainView_InvokesOnCorrelationClick() {
+    public void CausationChainView_InvokesOnCorrelationClick_ForCopyButton() {
         CausationChain chain = CreateChain("IncrementCounter", correlationId: "corr-click-test");
-        string? clickedCorrelation = null;
+        string? copiedCorrelation = null;
+        string? tracedCorrelation = null;
 
         IRenderedComponent<CausationChainView> cut = Render<CausationChainView>(p => p
             .Add(c => c.Chain, chain)
-            .Add(c => c.OnCorrelationClick, id => clickedCorrelation = id));
+            .Add(c => c.OnCorrelationClick, id => copiedCorrelation = id)
+            .Add(c => c.OnOpenTraceMap, id => tracedCorrelation = id));
 
-        // Find the correlation link/button and click it
-        AngleSharp.Dom.IElement? correlationButton = cut.FindAll("button, a, [role='button']")
-            .FirstOrDefault(el => el.InnerHtml.Contains("corr-click"));
-        if (correlationButton is not null) {
-            correlationButton.Click();
-            clickedCorrelation.ShouldBe("corr-click-test");
-        }
+        AngleSharp.Dom.IElement? copyButton = cut.FindAll("fluent-button")
+            .FirstOrDefault(b => b.GetAttribute("aria-label") == "Copy correlation ID");
+        copyButton.ShouldNotBeNull();
+        copyButton!.Click();
+
+        copiedCorrelation.ShouldBe("corr-click-test");
+        tracedCorrelation.ShouldBeNull();
+    }
+
+    [Fact]
+    public void CausationChainView_InvokesOnOpenTraceMap_ForTraceButton() {
+        CausationChain chain = CreateChain("IncrementCounter", correlationId: "corr-trace-test");
+        string? copiedCorrelation = null;
+        string? tracedCorrelation = null;
+
+        IRenderedComponent<CausationChainView> cut = Render<CausationChainView>(p => p
+            .Add(c => c.Chain, chain)
+            .Add(c => c.OnCorrelationClick, id => copiedCorrelation = id)
+            .Add(c => c.OnOpenTraceMap, id => tracedCorrelation = id));
+
+        AngleSharp.Dom.IElement? traceButton = cut.FindAll("fluent-button")
+            .FirstOrDefault(b => b.GetAttribute("aria-label") == "Open trace map");
+        traceButton.ShouldNotBeNull();
+        traceButton!.Click();
+
+        tracedCorrelation.ShouldBe("corr-trace-test");
+        copiedCorrelation.ShouldBeNull();
     }
 
     [Fact]
