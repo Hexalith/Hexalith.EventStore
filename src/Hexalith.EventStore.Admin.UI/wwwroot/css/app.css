@@ -121,9 +121,16 @@ body {
     border-right: 1px solid var(--colorNeutralStroke2);
 }
 
+/* Compact-text mode: fixed 140px, labels only (icons hidden below). */
 .admin-sidebar.collapsed {
-    width: 48px;
-    min-width: 48px;
+    width: 140px;
+    min-width: 140px;
+}
+
+/* Hide FluentNavItem icons in compact-text mode so labels sit immediately
+   after the active-page indicator (the blue bar on the left edge). */
+.admin-sidebar.collapsed fluent-nav-item [slot="start"] {
+    display: none !important;
 }
 
 /* Main content area */
@@ -263,15 +270,16 @@ body {
     }
 }
 
-/* Compact: 960-1279px — hide Domain and Snapshot columns */
+/* Narrow: <1280px — hide Domain/Snapshot columns, show banner, default to compact-text sidebar.
+   Sidebar width is driven by C# (_sidebarCollapsed in MainLayout), not CSS,
+   to avoid the two systems fighting each other when the user toggles via Ctrl+B. */
 @media (max-width: 1279px) {
-    .admin-sidebar {
-        width: 48px;
-        min-width: 48px;
-    }
-
     .stat-card-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+
+    .narrow-screen-warning {
+        display: block;
     }
 
     .streams-col-domain,
@@ -285,12 +293,9 @@ body {
     }
 }
 
-/* Minimum: <960px — also hide Tenant */
+/* Minimum: <960px — also hide Tenant column and stack stat cards vertically.
+   Banner already shows at <1280px (above), so no banner rule here. */
 @media (max-width: 959px) {
-    .narrow-screen-warning {
-        display: block;
-    }
-
     .stat-card-grid {
         grid-template-columns: 1fr;
     }

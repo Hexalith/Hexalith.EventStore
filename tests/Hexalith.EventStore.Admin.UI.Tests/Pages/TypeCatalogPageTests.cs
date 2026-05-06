@@ -292,6 +292,42 @@ public class TypeCatalogPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public async Task TypeCatalogPage_UpdateUrl_DoesNotNavigate_WhenUserHasLeftTypesPage() {
+        // Regression: when the user navigates away from /types (e.g. clicks a NavMenu link),
+        // FluentTabs v5 may still fire ActiveTabIdChanged during teardown. UpdateUrl must
+        // refuse to call NavigateTo("/types?...") in that case, otherwise the user is yanked
+        // back and the tab oscillates on every external click.
+        SetupMockData();
+
+        Microsoft.AspNetCore.Components.NavigationManager nav = Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
+
+        IRenderedComponent<TypeCatalog> cut = Render<TypeCatalog>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Event Types"), TimeSpan.FromSeconds(5));
+
+        // Simulate the user leaving /types via NavMenu.
+        nav.NavigateTo("/streams");
+
+        // Mutate _activeTab to simulate a stray ActiveTabIdChanged firing during teardown,
+        // which is what FluentTabs v5 does in this scenario.
+        System.Reflection.FieldInfo activeTabField = typeof(TypeCatalog)
+            .GetField("_activeTab", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        activeTabField.SetValue(cut.Instance, "commands");
+
+        int navigationCount = 0;
+        nav.LocationChanged += (_, _) => navigationCount++;
+
+        System.Reflection.MethodInfo updateUrl = typeof(TypeCatalog)
+            .GetMethod("UpdateUrl", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        await cut.InvokeAsync(() => {
+            _ = updateUrl.Invoke(cut.Instance, new object?[] { true });
+        });
+
+        // The guard must short-circuit: the user must stay on /streams, not be pulled back to /types.
+        cut.WaitForAssertion(() => navigationCount.ShouldBe(0), TimeSpan.FromMilliseconds(200));
+        nav.Uri.ShouldEndWith("/streams");
+    }
+
+    [Fact]
     public async Task TypeCatalogPage_UpdateUrl_IsIdempotent_WhenTargetEqualsCurrentUrl() {
         // Lower-level regression test: invoking UpdateUrl() when the target URL already
         // matches NavigationManager.Uri must NOT trigger LocationChanged.

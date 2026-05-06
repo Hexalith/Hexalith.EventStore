@@ -643,6 +643,17 @@ else
         // values are case-sensitive (type=UserCreated and type=usercreated are distinct).
         Uri currentUri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
         Uri targetUri = NavigationManager.ToAbsoluteUri(url);
+
+        // Guard against teardown re-navigation: when the user navigates away from /types
+        // (e.g. clicks a NavMenu link), FluentTabs v5 may still fire ActiveTabIdChanged
+        // during the component's teardown. Without this check, OnTabChanged → UpdateUrl
+        // would call NavigateTo("/types?...") and yank the user back to this page,
+        // alternating tabs on each external click.
+        if (!currentUri.AbsolutePath.Equals("/types", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         bool pathMatches = string.Equals(currentUri.AbsolutePath, targetUri.AbsolutePath, StringComparison.OrdinalIgnoreCase);
         bool queryMatches = string.Equals(currentUri.Query, targetUri.Query, StringComparison.Ordinal);
         if (pathMatches && queryMatches)
