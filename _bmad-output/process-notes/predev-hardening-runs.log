@@ -109,3 +109,4 @@
 2026-05-07T11:37:26+02:00	none	-	none	no backlog and all ready stories already have party-mode plus advanced-elicitation traces
 2026-05-07T11:40:25+02:00	none	-	none	no backlog and all ready stories already have party-mode plus advanced-elicitation traces
 2026-05-07T12:03:30+02:00	none	-	none	no backlog and all ready stories already have party-mode plus advanced-elicitation traces
+2026-05-07T13:03:01.3071196+02:00	failed	-	failed	preflight failed; json _bmad-output/process-notes/predev-preflight-latest.json timestamp 2026-05-07T11:02:38Z; working tree cleanliness details 3 dirty path(s); stdout " M _bmad-output/test-artifacts/automation-summary.md\n M tests/Hexalith.EventStore.Contracts.Tests/Commands/CommandEnvelopeTests.cs\n?? _bmad-output/test-artifacts/automation/archive/automation-summary-2026-05-07-tg1to3.md\n"
