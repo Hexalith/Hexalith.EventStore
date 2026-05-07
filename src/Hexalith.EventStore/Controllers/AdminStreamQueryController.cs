@@ -11,6 +11,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.DomainServices;
@@ -34,6 +35,7 @@ namespace Hexalith.EventStore.Controllers;
 public class AdminStreamQueryController(
     IActorProxyFactory actorProxyFactory,
     IDomainServiceInvoker domainServiceInvoker,
+    IAggregateStateReconstructor aggregateStateReconstructor,
     ILogger<AdminStreamQueryController> logger) : ControllerBase {
     private const int _defaultMaxBisectFields = 1_000;
     private const int _defaultMaxBisectSteps = 30;
@@ -45,17 +47,21 @@ public class AdminStreamQueryController(
     private const int _maxDirectBlameFields = _defaultMaxFields;
     private const int _maxDirectTimelineCount = 1_000;
 
+    private const string _replayProblemTypePrefix = "urn:hexalith:eventstore:replay:";
+
     private static readonly JsonDocumentOptions _payloadParseOptions = new() { MaxDepth = 64 };
 
     /// <summary>
-    /// Returns the reconstructed aggregate state at the requested sequence position.
-    /// Reuses <see cref="ReconstructState"/> for replay so this endpoint shares the same
-    /// JSON-merge semantics as <c>/diff</c>, <c>/step</c>, and <c>/blame</c>.
+    /// Returns the reconstructed aggregate state at the requested sequence position. Replay
+    /// is performed by the owning domain service via the canonical <c>POST /replay-state</c>
+    /// path; this controller never reconstructs state from raw payloads.
     /// </summary>
     [HttpGet("{tenantId}/{domain}/{aggregateId}/state")]
     [ProducesResponseType(typeof(AggregateStateSnapshot), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> GetAggregateStateAsync(
         string tenantId,
         string domain,
@@ -74,8 +80,8 @@ public class AdminStreamQueryController(
         try {
             if (at == 0) {
                 // Cheap baseline: clients use at=0 to obtain the empty pre-genesis state
-                // for diffing without paying for an actor round-trip. Existence is verified
-                // for at>0; this short-circuit is intentional and covered by tests.
+                // for diffing without paying for an actor round-trip or replay invocation.
+                // Existence is verified for at>0; this short-circuit is intentional.
                 return Ok(new AggregateStateSnapshot(
                     TenantId: tenantId,
                     Domain: domain,
@@ -118,14 +124,25 @@ public class AdminStreamQueryController(
                     detail: "No events found at or before the specified sequence.");
             }
 
-            JsonObject state = ReconstructState(allEvents, at);
+            AggregateReconstructionResult replay = await aggregateStateReconstructor
+                .ReconstructAsync(identity, eventAt.AggregateType, allEvents, at, includeTimeline: false, requestId: null, ct)
+                .ConfigureAwait(false);
+            IActionResult? failure = MapReplayFailureToProblem(replay);
+            if (failure is not null) {
+                return failure;
+            }
+
+            if (string.IsNullOrWhiteSpace(replay.StateJson)) {
+                return MalformedReplayResultProblem(replay, $"Replay result is missing valid state JSON for sequence {at}.", at);
+            }
+
             return Ok(new AggregateStateSnapshot(
                 TenantId: tenantId,
                 Domain: domain,
                 AggregateId: aggregateId,
                 SequenceNumber: at,
                 Timestamp: eventAt.Timestamp,
-                StateJson: state.ToJsonString()));
+                StateJson: replay.StateJson));
         }
         catch (OperationCanceledException) {
             throw;
@@ -200,8 +217,38 @@ public class AdminStreamQueryController(
                     detail: $"Sequence 'to'={to} exceeds latest event sequence {maxSequence}.");
             }
 
-            JsonObject fromState = ReconstructState(allEvents, from);
-            JsonObject toState = ReconstructState(allEvents, to);
+            // Single replay with timeline=true gives us state at every sequence in one
+            // round trip, including state at `from` (when from > 0) and state at `to`.
+            var identityForReplay = new AggregateIdentity(tenantId, domain, aggregateId);
+            AggregateReconstructionResult replay = await aggregateStateReconstructor
+                .ReconstructAsync(
+                    identityForReplay,
+                    allEvents[^1].AggregateType,
+                    allEvents,
+                    to,
+                    includeTimeline: true,
+                    requestId: null,
+                    ct)
+                .ConfigureAwait(false);
+            IActionResult? failure = MapReplayFailureToProblem(replay);
+            if (failure is not null) {
+                return failure;
+            }
+
+            JsonObject fromState;
+            if (from == 0) {
+                fromState = new JsonObject();
+            }
+            else if (!TryResolveTimelineState(replay.Timeline, from, out fromState)) {
+                return MalformedReplayResultProblem(replay, $"Replay timeline is missing state for sequence {from}.", from);
+            }
+
+            JsonObject? parsedToState = ParseStateJson(replay.StateJson);
+            if (parsedToState is null) {
+                return MalformedReplayResultProblem(replay, $"Replay result is missing valid state JSON for sequence {to}.", to);
+            }
+
+            JsonObject toState = parsedToState;
 
             Dictionary<string, (string NewValue, string OldValue)> changes = JsonDiff(
                 fromState, toState, prefix: string.Empty);
@@ -457,14 +504,34 @@ public class AdminStreamQueryController(
                     "bad_above_stream");
             }
 
+            // Single timeline replay covers every sequence the bisect/diff steps need.
+            var bisectIdentity = new AggregateIdentity(tenantId, domain, aggregateId);
+            AggregateReconstructionResult bisectReplay = await aggregateStateReconstructor
+                .ReconstructAsync(bisectIdentity, allEvents[^1].AggregateType, allEvents, bad, includeTimeline: true, requestId: null, ct)
+                .ConfigureAwait(false);
+            IActionResult? bisectFailure = MapReplayFailureToProblem(bisectReplay);
+            if (bisectFailure is not null) {
+                return bisectFailure;
+            }
+
             // Reconstruct state at the good sequence to establish expected field values
-            JsonObject goodState = ReconstructState(allEvents, good);
+            JsonObject goodState;
+            if (good == 0) {
+                goodState = new JsonObject();
+            }
+            else if (!TryResolveTimelineState(bisectReplay.Timeline, good, out goodState)) {
+                return MalformedReplayResultProblem(bisectReplay, $"Replay timeline is missing state for sequence {good}.", good);
+            }
+
             Dictionary<string, string> allLeafFields = FlattenJson(goodState, string.Empty);
 
             // If good state is empty (e.g., good=0), use bad state's fields as the watch set
             // to avoid vacuous comparisons where all midpoints report "good"
             if (allLeafFields.Count == 0 && fieldPaths.Count == 0) {
-                JsonObject badState = ReconstructState(allEvents, bad);
+                if (!TryResolveTimelineState(bisectReplay.Timeline, bad, out JsonObject badState)) {
+                    return MalformedReplayResultProblem(bisectReplay, $"Replay timeline is missing state for sequence {bad}.", bad);
+                }
+
                 allLeafFields = FlattenJson(badState, string.Empty);
             }
 
@@ -500,8 +567,10 @@ public class AdminStreamQueryController(
                 step++;
                 long mid = goodSeq + ((badSeq - goodSeq) / 2);
 
-                // Reconstruct state at midpoint
-                JsonObject midState = ReconstructState(allEvents, mid);
+                if (!TryResolveTimelineState(bisectReplay.Timeline, mid, out JsonObject midState)) {
+                    return MalformedReplayResultProblem(bisectReplay, $"Replay timeline is missing state for sequence {mid}.", mid);
+                }
+
                 Dictionary<string, JsonElement> midValues = ExtractFieldValues(midState, watchedFieldPaths);
 
                 // Compare field values using JsonElement.DeepEquals
@@ -525,8 +594,17 @@ public class AdminStreamQueryController(
 
             if (divergentEvent is not null) {
                 // Diff state at badSeq-1 vs badSeq to get the exact field changes at the divergent event
-                JsonObject stateBeforeDivergent = ReconstructState(allEvents, badSeq - 1);
-                JsonObject stateAtDivergent = ReconstructState(allEvents, badSeq);
+                JsonObject stateBeforeDivergent;
+                if (badSeq <= 1) {
+                    stateBeforeDivergent = new JsonObject();
+                }
+                else if (!TryResolveTimelineState(bisectReplay.Timeline, badSeq - 1, out stateBeforeDivergent)) {
+                    return MalformedReplayResultProblem(bisectReplay, $"Replay timeline is missing state for sequence {badSeq - 1}.", badSeq - 1);
+                }
+
+                if (!TryResolveTimelineState(bisectReplay.Timeline, badSeq, out JsonObject stateAtDivergent)) {
+                    return MalformedReplayResultProblem(bisectReplay, $"Replay timeline is missing state for sequence {badSeq}.", badSeq);
+                }
 
                 Dictionary<string, (string NewValue, string OldValue)> allChanges = JsonDiff(
                     stateBeforeDivergent,
@@ -814,18 +892,21 @@ public class AdminStreamQueryController(
             long actualMaxSequence = allEvents[^1].SequenceNumber;
             long atSequence = Math.Min(at ?? actualMaxSequence, actualMaxSequence);
 
-            // Filter events up to atSequence
-            ServerEventEnvelope[] eventsInRange = allEvents
+            // Replay must always start from the beginning of the stream. The displayed
+            // blame window may be truncated later, but the state snapshots remain absolute.
+            ServerEventEnvelope[] replayEvents = allEvents
                 .Where(e => e.SequenceNumber <= atSequence)
                 .OrderBy(e => e.SequenceNumber)
                 .ToArray();
 
-            if (eventsInRange.Length == 0) {
+            if (replayEvents.Length == 0) {
                 return Problem(
                     statusCode: StatusCodes.Status404NotFound,
                     title: "Not Found",
                     detail: "No events found at or before the specified sequence.");
             }
+
+            ServerEventEnvelope[] eventsInRange = replayEvents;
 
             // Truncation: if more events than maxEvents, start from a later position
             bool isTruncated = eventsInRange.Length > maxEvents;
@@ -841,10 +922,33 @@ public class AdminStreamQueryController(
                     .ToArray();
             }
 
-            // Incremental O(N) blame algorithm using JSON-level state tracking
+            // Single timeline replay drives blame state-after-each-event via the canonical Apply path.
+            string blameAggregateType = replayEvents[0].AggregateType;
+            AggregateReconstructionResult blameReplay = await aggregateStateReconstructor
+                .ReconstructAsync(identity, blameAggregateType, replayEvents, atSequence, includeTimeline: true, requestId: null, ct)
+                .ConfigureAwait(false);
+            IActionResult? blameFailure = MapReplayFailureToProblem(blameReplay);
+            if (blameFailure is not null) {
+                return blameFailure;
+            }
+
+            JsonObject blameBaseline;
+            if (startSequence <= 1) {
+                blameBaseline = new JsonObject();
+            }
+            else if (!TryResolveTimelineState(blameReplay.Timeline, startSequence - 1, out blameBaseline)) {
+                return MalformedReplayResultProblem(blameReplay, $"Replay timeline is missing state for sequence {startSequence - 1}.", startSequence - 1);
+            }
+
+            foreach (ServerEventEnvelope evt in eventsInRange) {
+                if (!TryResolveTimelineState(blameReplay.Timeline, evt.SequenceNumber, out _)) {
+                    return MalformedReplayResultProblem(blameReplay, $"Replay timeline is missing state for sequence {evt.SequenceNumber}.", evt.SequenceNumber);
+                }
+            }
+
             AggregateBlameView result = ComputeBlame(
                 tenantId, domain, aggregateId,
-                eventsInRange, atSequence, isTruncated, maxFields);
+                eventsInRange, atSequence, isTruncated, maxFields, blameReplay.Timeline, blameBaseline);
 
             return Ok(result);
         }
@@ -915,30 +1019,29 @@ public class AdminStreamQueryController(
                     detail: $"Event at sequence {at} not found.");
             }
 
-            // Single-pass optimization: reconstruct state at N and capture state at N-1 during the same replay
-            JsonObject stateAtPrev = [];
-            JsonObject stateAtCurrent = [];
-            foreach (ServerEventEnvelope evt in allEvents) {
-                if (evt.SequenceNumber > at) {
-                    break;
-                }
+            // Replay through the canonical Apply path with timeline=true so we can pluck
+            // state at N (current) and state at N-1 (previous) without any payload deep-merge.
+            var stepIdentity = new AggregateIdentity(tenantId, domain, aggregateId);
+            AggregateReconstructionResult stepReplay = await aggregateStateReconstructor
+                .ReconstructAsync(stepIdentity, targetEvent.AggregateType, allEvents, at, includeTimeline: true, requestId: null, ct)
+                .ConfigureAwait(false);
+            IActionResult? stepFailure = MapReplayFailureToProblem(stepReplay);
+            if (stepFailure is not null) {
+                return stepFailure;
+            }
 
-                ct.ThrowIfCancellationRequested();
+            JsonObject? parsedCurrentState = ParseStateJson(stepReplay.StateJson);
+            if (parsedCurrentState is null) {
+                return MalformedReplayResultProblem(stepReplay, $"Replay result is missing valid state JSON for sequence {at}.", at);
+            }
 
-                if (evt.SequenceNumber == at) {
-                    // Capture state at N-1 before applying the last event
-                    stateAtPrev = (JsonObject?)JsonNode.Parse(stateAtCurrent.ToJsonString()) ?? [];
-                }
-
-                try {
-                    var eventPayload = JsonNode.Parse(evt.Payload, documentOptions: _payloadParseOptions);
-                    if (eventPayload is JsonObject payloadObj) {
-                        DeepMerge(stateAtCurrent, payloadObj);
-                    }
-                }
-                catch (JsonException) {
-                    continue;
-                }
+            JsonObject stateAtCurrent = parsedCurrentState;
+            JsonObject stateAtPrev;
+            if (at <= 1) {
+                stateAtPrev = new JsonObject();
+            }
+            else if (!TryResolveTimelineState(stepReplay.Timeline, at - 1, out stateAtPrev)) {
+                return MalformedReplayResultProblem(stepReplay, $"Replay timeline is missing state for sequence {at - 1}.", at - 1);
             }
 
             string stateJson = stateAtCurrent.ToJsonString();
@@ -1043,10 +1146,12 @@ public class AdminStreamQueryController(
         long sw = Stopwatch.GetTimestamp();
 
         try {
-            // Step 2: Reconstruct state
+            // Step 2: Reconstruct state via the canonical Apply path
             ServerEventEnvelope[] allEvents;
             JsonObject inputState;
             long atSequence;
+            string sandboxAggregateType = string.Empty;
+            var sandboxIdentity = new AggregateIdentity(tenantId, domain, aggregateId);
 
             if (request.AtSequence == 0) {
                 // Empty initial state — no stream lookup needed
@@ -1055,9 +1160,8 @@ public class AdminStreamQueryController(
                 atSequence = 0;
             }
             else {
-                var identity = new AggregateIdentity(tenantId, domain, aggregateId);
                 IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
-                    new ActorId(identity.ActorId), "AggregateActor");
+                    new ActorId(sandboxIdentity.ActorId), "AggregateActor");
 
                 allEvents = await actor.GetEventsAsync(0).ConfigureAwait(false);
 
@@ -1083,7 +1187,21 @@ public class AdminStreamQueryController(
                     atSequence = actualMaxSequence;
                 }
 
-                inputState = ReconstructState(allEvents, atSequence);
+                sandboxAggregateType = allEvents[^1].AggregateType;
+                AggregateReconstructionResult sandboxInputReplay = await aggregateStateReconstructor
+                    .ReconstructAsync(sandboxIdentity, sandboxAggregateType, allEvents, atSequence, includeTimeline: false, requestId: null, ct)
+                    .ConfigureAwait(false);
+                IActionResult? sandboxFailure = MapReplayFailureToProblem(sandboxInputReplay);
+                if (sandboxFailure is not null) {
+                    return sandboxFailure;
+                }
+
+                JsonObject? parsedInputState = ParseStateJson(sandboxInputReplay.StateJson);
+                if (parsedInputState is null) {
+                    return MalformedReplayResultProblem(sandboxInputReplay, $"Replay result is missing valid state JSON for sequence {atSequence}.", atSequence);
+                }
+
+                inputState = parsedInputState;
             }
 
             ct.ThrowIfCancellationRequested();
@@ -1125,6 +1243,8 @@ public class AdminStreamQueryController(
                 throw;
             }
             catch (Exception ex) {
+                logger.LogWarning(ex, "Domain service invocation failed during sandbox command for {TenantId}/{Domain}/{AggregateId}.",
+                    tenantId, domain, aggregateId);
                 long elapsedError = (long)Stopwatch.GetElapsedTime(sw).TotalMilliseconds;
                 return Ok(new SandboxResult(
                     TenantId: tenantId,
@@ -1136,7 +1256,7 @@ public class AdminStreamQueryController(
                     ProducedEvents: [],
                     ResultingStateJson: string.Empty,
                     StateChanges: [],
-                    ErrorMessage: $"Domain service invocation failed: {ex.Message}",
+                    ErrorMessage: BuildSandboxInvocationErrorMessage(request.CommandType),
                     ExecutionTimeMs: elapsedError));
             }
 
@@ -1159,21 +1279,38 @@ public class AdminStreamQueryController(
                 outcome = "accepted";
                 producedEvents = ExtractSandboxEvents(domainResult.Events);
 
-                // Apply produced events to input state to compute resulting state
-                JsonObject resultingState = (JsonObject?)JsonNode.Parse(inputState.ToJsonString(), documentOptions: _payloadParseOptions) ?? [];
-                foreach (SandboxEvent sandboxEvent in producedEvents) {
-                    try {
-                        var eventNode = JsonNode.Parse(sandboxEvent.PayloadJson, documentOptions: _payloadParseOptions);
-                        if (eventNode is JsonObject eventObj) {
-                            DeepMerge(resultingState, eventObj);
-                        }
-                    }
-                    catch (JsonException) {
-                        // Skip malformed event payloads
-                        continue;
-                    }
+                // Apply produced events through the canonical Apply path. We synthesize
+                // ServerEventEnvelopes for the produced events using sequence numbers immediately
+                // after atSequence and append them to the input event list for replay.
+                ServerEventEnvelope[] synthesized = SynthesizeSandboxEnvelopes(
+                    producedEvents,
+                    tenantId,
+                    domain,
+                    aggregateId,
+                    sandboxAggregateType,
+                    atSequence,
+                    commandEnvelope.CorrelationId,
+                    commandEnvelope.MessageId);
+                ServerEventEnvelope[] sandboxBaseEvents = [.. allEvents.Where(e => e.SequenceNumber <= atSequence)];
+                ServerEventEnvelope[] combined = new ServerEventEnvelope[sandboxBaseEvents.Length + synthesized.Length];
+                Array.Copy(sandboxBaseEvents, combined, sandboxBaseEvents.Length);
+                Array.Copy(synthesized, 0, combined, sandboxBaseEvents.Length, synthesized.Length);
+
+                long sandboxTarget = atSequence + producedEvents.Count;
+                AggregateReconstructionResult sandboxResultingReplay = await aggregateStateReconstructor
+                    .ReconstructAsync(sandboxIdentity, sandboxAggregateType, combined, sandboxTarget, includeTimeline: false, requestId: null, ct)
+                    .ConfigureAwait(false);
+                IActionResult? sandboxResultingFailure = MapReplayFailureToProblem(sandboxResultingReplay);
+                if (sandboxResultingFailure is not null) {
+                    return sandboxResultingFailure;
                 }
 
+                JsonObject? parsedResultingState = ParseStateJson(sandboxResultingReplay.StateJson);
+                if (parsedResultingState is null) {
+                    return MalformedReplayResultProblem(sandboxResultingReplay, $"Replay result is missing valid state JSON for sequence {sandboxTarget}.", sandboxTarget);
+                }
+
+                JsonObject resultingState = parsedResultingState;
                 resultingStateJson = resultingState.ToJsonString();
 
                 // Compute state diff
@@ -1227,32 +1364,36 @@ public class AdminStreamQueryController(
         ServerEventEnvelope[] events,
         long atSequence,
         bool isTruncated,
-        int maxFields) {
+        int maxFields,
+        IReadOnlyList<AggregateReconstructionTimelineEntry>? timeline,
+        JsonObject initialState) {
         // blame_map: fieldPath -> FieldProvenance
         var blameMap = new Dictionary<string, FieldProvenance>(StringComparer.Ordinal);
-        var previousState = JsonNode.Parse("{}");
-        var currentState = JsonNode.Parse("{}");
+        JsonObject previousState = initialState;
+        JsonObject currentState = initialState;
         DateTimeOffset lastTimestamp = DateTimeOffset.MinValue;
 
-        foreach (ServerEventEnvelope evt in events) {
-            previousState = currentState?.DeepClone();
+        // The timeline carries one entry per applied event in stream sequence order. Pair it
+        // with the source envelope by SequenceNumber so blame metadata (correlation, user) stays
+        // aligned with the Apply-driven state snapshot.
+        Dictionary<long, AggregateReconstructionTimelineEntry> timelineBySequence = timeline is null
+            ? new Dictionary<long, AggregateReconstructionTimelineEntry>()
+            : timeline.ToDictionary(t => t.SequenceNumber);
 
-            // Apply event payload to state using JSON merge
-            try {
-                var eventPayload = JsonNode.Parse(evt.Payload, documentOptions: _payloadParseOptions);
-                if (eventPayload is JsonObject payloadObj && currentState is JsonObject stateObj) {
-                    DeepMerge(stateObj, payloadObj);
-                }
-            }
-            catch (JsonException) {
-                // Event payload is not valid JSON (e.g., binary format) — skip this event
+        foreach (ServerEventEnvelope evt in events) {
+            if (!timelineBySequence.TryGetValue(evt.SequenceNumber, out AggregateReconstructionTimelineEntry? entry)) {
+                // Domain replay skipped this event (e.g., partial replay before the at sequence).
+                // Without an authoritative state-after-event snapshot we cannot blame fields to it.
                 continue;
             }
 
+            previousState = currentState;
+            currentState = ParseStateJson(entry.StateJson)!;
+
             // Diff previous and current state to find changed fields
             Dictionary<string, (string NewValue, string OldValue)> changes = JsonDiff(
-                previousState as JsonObject,
-                currentState as JsonObject,
+                previousState,
+                currentState,
                 prefix: string.Empty);
 
             foreach (KeyValuePair<string, (string NewValue, string OldValue)> change in changes) {
@@ -1360,22 +1501,174 @@ public class AdminStreamQueryController(
     }
 
     /// <summary>
-    /// Deep-merges source into target (JSON object level).
+    /// Maps a domain replay result to an RFC 7807 ProblemDetails when the status is not
+    /// <see cref="AggregateReconstructionStatus.Succeeded"/>. Returns null on success so
+    /// the caller continues to its happy-path return. The HTTP status, type URI, and
+    /// extension fields follow the Failure and HTTP Semantics Matrix in
+    /// admin-ui-aggregate-state-replay-correctness.
     /// </summary>
-    private static void DeepMerge(JsonObject target, JsonObject source) {
-        foreach (KeyValuePair<string, JsonNode?> property in source) {
-            if (string.IsNullOrWhiteSpace(property.Key)) {
-                continue;
-            }
+    private IActionResult? MapReplayFailureToProblem(AggregateReconstructionResult replay) {
+        if (replay.Status == AggregateReconstructionStatus.Succeeded) {
+            return null;
+        }
 
-            if (property.Value is JsonObject sourceChild
-                && target[property.Key] is JsonObject targetChild) {
-                DeepMerge(targetChild, sourceChild);
-            }
-            else {
-                target[property.Key] = property.Value?.DeepClone();
+        (int statusCode, string typeSlug, string title) = replay.ErrorCategory switch {
+            AggregateReconstructionErrorCategory.UnknownAggregateType => (StatusCodes.Status404NotFound, "unknown-aggregate-type", "Unknown aggregate type"),
+            AggregateReconstructionErrorCategory.UnknownEventType => (StatusCodes.Status422UnprocessableEntity, "unknown-event-type", "Unknown event type"),
+            AggregateReconstructionErrorCategory.DeserializationFailed => (StatusCodes.Status422UnprocessableEntity, "deserialization-failed", "Replay deserialization failed"),
+            AggregateReconstructionErrorCategory.ApplyHandlerMissing => (StatusCodes.Status422UnprocessableEntity, "apply-handler-missing", "Apply handler missing"),
+            AggregateReconstructionErrorCategory.ApplyFailed => (StatusCodes.Status409Conflict, "apply-failed", "Replay partially applied"),
+            AggregateReconstructionErrorCategory.UnsupportedVersion => (StatusCodes.Status422UnprocessableEntity, "unsupported-version", "Unsupported event version"),
+            _ => (StatusCodes.Status500InternalServerError, "unexpected", "Unexpected replay failure"),
+        };
+
+        string safeMessage = SafeReplayProblemMessage(replay, title);
+        ObjectResult problem = (ObjectResult)Problem(
+            statusCode: statusCode,
+            title: title,
+            detail: safeMessage,
+            type: _replayProblemTypePrefix + typeSlug);
+        if (problem.Value is ProblemDetails pd) {
+            pd.Extensions["status"] = replay.Status.ToString();
+            pd.Extensions["failedSequenceNumber"] = replay.FailedSequenceNumber;
+            pd.Extensions["failedEventType"] = replay.FailedEventType ?? string.Empty;
+            pd.Extensions["errorCategory"] = replay.ErrorCategory.ToString();
+            pd.Extensions["message"] = safeMessage;
+            pd.Extensions["lastAppliedSequenceNumber"] = replay.LastAppliedSequenceNumber;
+        }
+
+        logger.LogWarning(
+            "Aggregate replay returned non-success: Status={Status}, Category={Category}, FailedSeq={FailedSequence}, FailedType={FailedEventType}, LastApplied={LastApplied}",
+            replay.Status,
+            replay.ErrorCategory,
+            replay.FailedSequenceNumber,
+            replay.FailedEventType,
+            replay.LastAppliedSequenceNumber);
+        return problem;
+    }
+
+    private IActionResult MalformedReplayResultProblem(AggregateReconstructionResult replay, string message, long sequence)
+        => MapReplayFailureToProblem(AggregateReconstructionResult.Failed(
+            AggregateReconstructionErrorCategory.Unexpected,
+            message,
+            failedSequenceNumber: sequence,
+            failedEventType: string.Empty,
+            lastAppliedSequenceNumber: replay.LastAppliedSequenceNumber))!;
+
+    private static string SafeReplayProblemMessage(AggregateReconstructionResult replay, string title) {
+        string sequenceSuffix = replay.FailedSequenceNumber.HasValue
+            ? $" at sequence {replay.FailedSequenceNumber.Value}"
+            : string.Empty;
+        return $"{title}{sequenceSuffix}.";
+    }
+
+    private static string BuildSandboxInvocationErrorMessage(string commandType) {
+        const string baseMessage = "Domain service invocation failed. Verify the command type is registered for this domain and that the payload matches the command schema.";
+        return commandType.Contains(".Events.", StringComparison.OrdinalIgnoreCase)
+            ? baseMessage + " The supplied type looks like an event type; Sandbox expects a command type."
+            : baseMessage;
+    }
+
+    /// <summary>
+    /// Parses a JSON state document into a <see cref="JsonObject"/>. Returns null when the
+    /// payload is missing, empty, or not a JSON object (e.g., null literal or primitive).
+    /// </summary>
+    private static JsonObject? ParseStateJson(string? stateJson) {
+        if (string.IsNullOrWhiteSpace(stateJson)) {
+            return null;
+        }
+
+        try {
+            return JsonNode.Parse(stateJson, documentOptions: _payloadParseOptions) as JsonObject;
+        }
+        catch (JsonException) {
+            return null;
+        }
+    }
+
+    private static bool TryResolveTimelineState(
+        IReadOnlyList<AggregateReconstructionTimelineEntry>? timeline,
+        long sequence,
+        out JsonObject state) {
+        state = new JsonObject();
+        if (sequence <= 0) {
+            return true;
+        }
+
+        if (timeline is null) {
+            return false;
+        }
+
+        AggregateReconstructionTimelineEntry? entry = null;
+        foreach (AggregateReconstructionTimelineEntry candidate in timeline) {
+            if (candidate.SequenceNumber == sequence) {
+                entry = candidate;
+                break;
             }
         }
+
+        if (entry is null) {
+            return false;
+        }
+
+        JsonObject? parsed = ParseStateJson(entry.StateJson);
+        if (parsed is null) {
+            return false;
+        }
+
+        state = parsed;
+        return true;
+    }
+
+    /// <summary>
+    /// Materializes synthetic <see cref="ServerEventEnvelope"/> instances for the events a
+    /// sandbox command produced so they can be replayed through the canonical Apply path
+    /// alongside the persisted stream.
+    /// </summary>
+    private static ServerEventEnvelope[] SynthesizeSandboxEnvelopes(
+        IReadOnlyList<SandboxEvent> producedEvents,
+        string tenantId,
+        string domain,
+        string aggregateId,
+        string aggregateType,
+        long startingSequence,
+        string correlationId,
+        string causationMessageId) {
+        if (producedEvents.Count == 0) {
+            return [];
+        }
+
+        ServerEventEnvelope[] result = new ServerEventEnvelope[producedEvents.Count];
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        long globalPosition = startingSequence;
+        for (int i = 0; i < producedEvents.Count; i++) {
+            SandboxEvent produced = producedEvents[i];
+            byte[] payload = string.IsNullOrEmpty(produced.PayloadJson)
+                ? Encoding.UTF8.GetBytes("{}")
+                : Encoding.UTF8.GetBytes(produced.PayloadJson);
+            long seq = startingSequence + i + 1;
+            globalPosition = seq;
+            result[i] = new ServerEventEnvelope(
+                MessageId: $"sandbox-{seq}",
+                AggregateId: aggregateId,
+                AggregateType: aggregateType,
+                TenantId: tenantId,
+                Domain: domain,
+                SequenceNumber: seq,
+                GlobalPosition: globalPosition,
+                Timestamp: now,
+                CorrelationId: correlationId,
+                CausationId: causationMessageId,
+                UserId: string.Empty,
+                DomainServiceVersion: "v1",
+                EventTypeName: produced.EventTypeName,
+                MetadataVersion: 1,
+                SerializationFormat: "json",
+                Payload: payload,
+                Extensions: null);
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -1515,29 +1808,4 @@ public class AdminStreamQueryController(
         return changes;
     }
 
-    /// <summary>
-    /// Reconstructs aggregate state by replaying events up to the specified sequence number.
-    /// Uses the same JSON merge strategy as the blame algorithm.
-    /// </summary>
-    private static JsonObject ReconstructState(ServerEventEnvelope[] allEvents, long upToSequence) {
-        var state = new JsonObject();
-        foreach (ServerEventEnvelope evt in allEvents) {
-            if (evt.SequenceNumber > upToSequence) {
-                break;
-            }
-
-            try {
-                var eventPayload = JsonNode.Parse(evt.Payload, documentOptions: _payloadParseOptions);
-                if (eventPayload is JsonObject payloadObj) {
-                    DeepMerge(state, payloadObj);
-                }
-            }
-            catch (JsonException) {
-                // Event payload is not valid JSON — skip
-                continue;
-            }
-        }
-
-        return state;
-    }
 }

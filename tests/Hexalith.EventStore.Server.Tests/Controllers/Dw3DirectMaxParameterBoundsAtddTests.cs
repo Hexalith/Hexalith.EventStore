@@ -38,6 +38,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
         AdminStreamQueryController controller = new(
             factory,
             invoker,
+            Dw3TestUtilities.CreateEmptyStateReconstructor(),
             NullLogger<AdminStreamQueryController>.Instance);
         return (controller, actor, factory);
     }

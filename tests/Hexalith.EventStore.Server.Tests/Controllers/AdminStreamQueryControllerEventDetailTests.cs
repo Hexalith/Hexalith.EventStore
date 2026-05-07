@@ -63,6 +63,7 @@ public class AdminStreamQueryControllerEventDetailTests {
         return new AdminStreamQueryController(
             actorProxyFactory,
             invoker,
+            Dw3TestUtilities.CreateEmptyStateReconstructor(),
             NullLogger<AdminStreamQueryController>.Instance);
     }
 

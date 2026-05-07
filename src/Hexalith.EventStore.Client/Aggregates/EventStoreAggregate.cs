@@ -8,6 +8,7 @@ using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Aggregates;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
+using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Contracts.Results;
 
 namespace Hexalith.EventStore.Client.Aggregates;
@@ -16,7 +17,7 @@ namespace Hexalith.EventStore.Client.Aggregates;
 /// and state rehydration so that concrete aggregates only declare typed Handle and Apply methods.
 /// </summary>
 /// <typeparam name="TState">The aggregate state type. Must be a reference type with a parameterless constructor.</typeparam>
-public abstract class EventStoreAggregate<TState> : IDomainProcessor
+public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregateReplay
     where TState : class, new() {
     private static readonly ConcurrentDictionary<Type, AggregateMetadata> _metadataCache = new();
 
@@ -38,6 +39,24 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor
     /// </summary>
     /// <param name="options">The domain options to configure.</param>
     internal void InvokeOnConfiguring(EventStoreDomainOptions options) => OnConfiguring(options);
+
+    /// <inheritdoc/>
+    public bool CanReplayAggregateType(string aggregateType) {
+        if (string.IsNullOrWhiteSpace(aggregateType)) {
+            return true;
+        }
+
+        string runtimeName = GetType().Name;
+        string conventionalName = runtimeName.EndsWith("Aggregate", StringComparison.Ordinal)
+            ? runtimeName[..^"Aggregate".Length]
+            : runtimeName;
+        return string.Equals(aggregateType, runtimeName, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(aggregateType, conventionalName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <inheritdoc/>
+    public AggregateReconstructionResult Replay(AggregateReconstructionRequest request)
+        => AggregateReplayer.Replay<TState>(request);
 
     /// <inheritdoc/>
     public async Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState) {

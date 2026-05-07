@@ -6,6 +6,8 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
+using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.DomainServices;
@@ -56,7 +58,12 @@ public class AdminStreamQueryControllerStateDiffCausationTests {
             Payload: payload ?? Encoding.UTF8.GetBytes("{}"),
             Extensions: null);
 
-    private static AdminStreamQueryController CreateController(IAggregateActor actor) {
+    private static AdminStreamQueryController CreateController(IAggregateActor actor)
+        => CreateController(actor, Dw3TestUtilities.CreateEmptyStateReconstructor());
+
+    private static AdminStreamQueryController CreateController(
+        IAggregateActor actor,
+        IAggregateStateReconstructor reconstructor) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         _ = actorProxyFactory
             .CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor", Arg.Any<ActorProxyOptions?>())
@@ -65,7 +72,54 @@ public class AdminStreamQueryControllerStateDiffCausationTests {
         return new AdminStreamQueryController(
             actorProxyFactory,
             invoker,
+            reconstructor,
             NullLogger<AdminStreamQueryController>.Instance);
+    }
+
+    /// <summary>
+    /// Builds an <see cref="IAggregateStateReconstructor"/> stub that returns the supplied
+    /// per-sequence state JSONs as the Apply-driven canonical replay would. Test seam used by
+    /// happy-path tests to assert controller wiring without actually round-tripping through Dapr.
+    /// </summary>
+    private static IAggregateStateReconstructor BuildReconstructorWithStateMap(
+        IReadOnlyDictionary<long, string> sequenceToStateJson) {
+        IAggregateStateReconstructor reconstructor = Substitute.For<IAggregateStateReconstructor>();
+        _ = reconstructor.ReconstructAsync(
+                Arg.Any<AggregateIdentity>(),
+                Arg.Any<string>(),
+                Arg.Any<IReadOnlyList<Hexalith.EventStore.Server.Events.EventEnvelope>>(),
+                Arg.Any<long>(),
+                Arg.Any<bool>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo => {
+                IReadOnlyList<Hexalith.EventStore.Server.Events.EventEnvelope> events =
+                    callInfo.ArgAt<IReadOnlyList<Hexalith.EventStore.Server.Events.EventEnvelope>>(2);
+                long upTo = callInfo.ArgAt<long>(3);
+                bool includeTimeline = callInfo.ArgAt<bool>(4);
+                string finalState = sequenceToStateJson.TryGetValue(upTo, out string? json) ? json : "{}";
+                IReadOnlyList<AggregateReconstructionTimelineEntry>? timeline = null;
+                if (includeTimeline) {
+                    var list = new List<AggregateReconstructionTimelineEntry>();
+                    foreach (var evt in events) {
+                        if (evt.SequenceNumber > upTo) {
+                            continue;
+                        }
+
+                        string snapshotState = sequenceToStateJson.TryGetValue(evt.SequenceNumber, out string? snap) ? snap : "{}";
+                        list.Add(new AggregateReconstructionTimelineEntry(
+                            SequenceNumber: evt.SequenceNumber,
+                            EventTypeName: evt.EventTypeName,
+                            StateJson: snapshotState));
+                    }
+
+                    timeline = list;
+                }
+
+                long lastApplied = events.Count == 0 ? 0 : Math.Min(upTo, events[^1].SequenceNumber);
+                return Task.FromResult(AggregateReconstructionResult.Succeeded(finalState, lastApplied, timeline));
+            });
+        return reconstructor;
     }
 
     // -------- /state endpoint --------
@@ -126,7 +180,11 @@ public class AdminStreamQueryControllerStateDiffCausationTests {
     }
 
     [Fact]
-    public async Task GetAggregateState_HappyPath_ReturnsReconstructedStateWithEventTimestamp() {
+    public async Task GetAggregateState_HappyPath_ReturnsReplayedStateWithEventTimestamp() {
+        // The controller delegates to the canonical IAggregateStateReconstructor and surfaces
+        // the StateJson it returns. The Apply-driven semantics are verified end-to-end by the
+        // ST3 fixtures; this test validates the controller's wiring (delegation, timestamp,
+        // sequence echo) without re-asserting the reconstructor's internals.
         ServerEventEnvelope[] events = [
             BuildEnvelope(1, payload: Encoding.UTF8.GetBytes("{\"value\":1}")),
             BuildEnvelope(2, payload: Encoding.UTF8.GetBytes("{\"label\":\"two\"}")),
@@ -134,7 +192,13 @@ public class AdminStreamQueryControllerStateDiffCausationTests {
         ];
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns(events);
-        AdminStreamQueryController controller = CreateController(actor);
+        IAggregateStateReconstructor reconstructor = BuildReconstructorWithStateMap(
+            new Dictionary<long, string> {
+                [1] = "{\"value\":1}",
+                [2] = "{\"value\":1,\"label\":\"two\"}",
+                [3] = "{\"value\":3,\"label\":\"two\"}",
+            });
+        AdminStreamQueryController controller = CreateController(actor, reconstructor);
 
         IActionResult result = await controller.GetAggregateStateAsync(_tenantId, _domain, _aggregateId, 2L, CancellationToken.None);
 
@@ -216,7 +280,12 @@ public class AdminStreamQueryControllerStateDiffCausationTests {
         ];
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns(events);
-        AdminStreamQueryController controller = CreateController(actor);
+        IAggregateStateReconstructor reconstructor = BuildReconstructorWithStateMap(
+            new Dictionary<long, string> {
+                [1] = "{\"value\":1}",
+                [2] = "{\"value\":2}",
+            });
+        AdminStreamQueryController controller = CreateController(actor, reconstructor);
 
         IActionResult result = await controller.DiffAggregateStateAsync(_tenantId, _domain, _aggregateId, 1L, 2L, CancellationToken.None);
 
@@ -254,7 +323,11 @@ public class AdminStreamQueryControllerStateDiffCausationTests {
         ];
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns(events);
-        AdminStreamQueryController controller = CreateController(actor);
+        IAggregateStateReconstructor reconstructor = BuildReconstructorWithStateMap(
+            new Dictionary<long, string> {
+                [1] = "{\"value\":7}",
+            });
+        AdminStreamQueryController controller = CreateController(actor, reconstructor);
 
         IActionResult result = await controller.DiffAggregateStateAsync(_tenantId, _domain, _aggregateId, 0L, 1L, CancellationToken.None);
 
