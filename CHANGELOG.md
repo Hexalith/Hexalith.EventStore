@@ -1,3 +1,10 @@
+# [3.14.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.13.5...v3.14.0) (2026-05-07)
+
+
+### Features
+
+* **replay:** domain-owned aggregate state replay service ([dd2d444](https://github.com/Hexalith/Hexalith.EventStore/commit/dd2d444752717cf457afc5fc9e0ea2ac0fb4c90a))
+
 ## [3.13.5](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.13.4...v3.13.5) (2026-05-07)
 
 
