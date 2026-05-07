@@ -28,7 +28,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-07T08:00:00+02:00' # Created ready-for-dev story post-epic-deferred-dw8-server-classifier-and-ulid-audit from the deferred-work OPEN cleanup backlog.
+last_updated: '2026-05-07T08:03:16+02:00' # Created ready-for-dev story post-epic-deferred-dw9-evidence-validator-and-governance-polish from the deferred-work OPEN cleanup backlog.
+# Previous last_updated detail preserved: 2026-05-07T08:00:00+02:00 - Created ready-for-dev story post-epic-deferred-dw8-server-classifier-and-ulid-audit from the deferred-work OPEN cleanup backlog.
 # Previous last_updated detail preserved: 2026-05-07T18:30:00+02:00 - Created ready-for-dev story post-epic-deferred-dw7-admin-ui-state-inspector-lifecycle-fix from the deferred-work OPEN cleanup backlog.
 # Previous last_updated detail preserved: 2026-05-07T18:00:00+02:00 - Approved deferred-work OPEN cleanup proposal (sprint-change-proposal-2026-05-07-deferred-work-open-cleanup.md); appended three post-epic deferred OPEN cleanup backlog rows (DW7 admin-ui-state-inspector-lifecycle-fix, DW8 server-classifier-and-ulid-audit, DW9 evidence-validator-and-governance-polish) to route 8 of 9 [OPEN] entries in deferred-work.md into stories; 1 remaining OPEN (AC #9 manual Aspire smoke evidence) flipped to [ACCEPTED-DEBT] as operator action OA1 with owner=Operator and next-review-date=2026-06-15.
 # Previous last_updated detail preserved: 2026-05-07T17:00:00+02:00 - admin-ui-state-inspection-cluster-fix moved review -> done after follow-up code review applied 2 patches and resolved 1 decision-needed across 1 production + 1 test file. Patches: (P1) replaced tautological StateInspectorModal_DialogBodyUsesFlatV5Content Razor-fragment-name assertions with an AngleSharp structural assertion (dialog body wrapper, h3 heading reachable, content wrapper present, heading NOT a descendant of the scrollable wrapper); (P2) moved title FluentStack (heading + close button) out of the state-inspector-modal-body wrapper so the close button stays pinned regardless of body content height (overflow:auto now applies only to body FluentStack; two flat children of FluentDialogBody retained per AC #6). Decision D1 resolved as split-commit (Conventional Commits: fix(admin-ui) for state-inspection vs test(admin-ui) for DW5 sidebar 140px alignment). 31 deferred items appended to deferred-work.md under "Deferred from: code review of admin-ui-state-inspection-cluster-fix follow-up (2026-05-07)". 17 dismissed as noise (positive findings, false positives, speculative concerns). Validation: Admin.UI.Tests 672/672, Release solution build clean 0 warn/0 err.
@@ -336,7 +337,7 @@ development_status:
   # tracked in deferred-work.md as [ACCEPTED-DEBT] owner=Operator next-review-date=2026-06-15.
   post-epic-deferred-dw7-admin-ui-state-inspector-lifecycle-fix: ready-for-dev
   post-epic-deferred-dw8-server-classifier-and-ulid-audit: ready-for-dev
-  post-epic-deferred-dw9-evidence-validator-and-governance-polish: backlog
+  post-epic-deferred-dw9-evidence-validator-and-governance-polish: ready-for-dev
 
   # Post-Epic-1 Retro Cleanup (sprint-change-proposal-2026-04-26.md)
   # Implementation order: A1 -> A6 -> A2 -> A7 (see proposal §3 sequencing rationale).
