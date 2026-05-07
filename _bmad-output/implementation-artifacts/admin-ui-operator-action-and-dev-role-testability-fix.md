@@ -54,6 +54,17 @@ Rules:
 - It must be absent, disabled, or replaced with documentation when Keycloak/production auth is active.
 - It must preserve all existing non-role development-token claims, including issuer, audience, subject, tenant/domain lists, permissions, and existing permission shape. Only the admin role claim may vary with the selected role.
 
+## Advanced Elicitation Hardening
+
+The 2026-05-07 advanced elicitation pass tightened this story around hidden coupling and implementation stop signs:
+
+- Treat selected developer role as a single session-scoped source of truth that drives header state, `AuthenticationStateProvider` notifications, `AuthorizedView` refresh, and the next Admin API token. Avoid separate local component flags that can drift from the JWT claim.
+- For `ReadOnly` and `Operator`, generated development tokens must not carry contradictory admin signals such as `global_admin=true`, duplicate role claims, or a stale `eventstore:admin-role=Admin` claim. If compatibility requires preserving a legacy permission shape, document why it does not override the selected role.
+- The role switcher gate must be derived from concrete runtime evidence: Development environment and absent Keycloak/auth authority. A stale cached "dev mode" value, a broad feature flag alone, or client-only hiding is insufficient evidence.
+- Dead-letter action recovery must be idempotent across success, failure, retry, double-submit, cancellation, and disposal. Each operation attempt should have one current action model so stale completions cannot overwrite the latest dialog state.
+- Sanitized diagnostics must be structured enough for support to reproduce a failed action without exposing secrets: status/category, action, bounded IDs, safe problem fields, trace/correlation/operation IDs, and redaction evidence.
+- Operator/admin dialog audit findings must stay evidence-focused. Fix only local parity defects in this story; endpoint gaps, missing business operations, or authorization policy changes are deferred product/architecture work.
+
 ## Acceptance Criteria
 
 1. **Dead-letter action dialogs always exit busy state on failure.**
@@ -66,6 +77,7 @@ Rules:
    - And a second click while an action is pending cannot start a duplicate action.
    - And closing or disposing the component during a pending action does not leave stale success/error UI after navigation.
    - And retrying after a full failure starts from the preserved selection and a clean failure model.
+   - And stale completion from an earlier action attempt cannot overwrite the visible state of a later retry or newly opened dialog.
 
 2. **Dead-letter failures are visible inside the dialog.**
    - Given an action failure from Retry, Skip, or Archive
@@ -95,6 +107,7 @@ Rules:
    - And the active role is visible to sighted users and exposed through an accessible label.
    - And the selector is absent or non-interactive when Keycloak authority is configured or when the app is not running in Development.
    - And negative tests prove the selector is unavailable in non-Development and in Development with Keycloak authority configured.
+   - And tests prove the gate is based on concrete runtime/auth configuration, not only a broad feature flag or client-side visibility condition.
 
 5. **Role switching updates UI guards and Admin API tokens consistently.**
    - Given the user switches to `ReadOnly`
@@ -107,6 +120,7 @@ Rules:
    - Then Admin-only navigation/actions such as Settings, backup/admin operations, and tenant admin controls are visible according to existing guards.
    - And outgoing Admin API calls use `eventstore:admin-role = Admin`.
    - Existing tenant/domain/permission claims from the development token must be preserved.
+   - `ReadOnly` and `Operator` development tokens must not include contradictory admin-role claims or `global_admin=true` unless a test documents why that legacy signal cannot grant Admin UI access.
    - Role changes must invalidate any cached development token and notify authentication-state subscribers so `AuthorizedView` and other guarded UI update in the same circuit/session without a page reload.
    - Switching back and forth between roles must not accumulate duplicate claims or drop tenant/domain/permission claims.
 
@@ -122,6 +136,7 @@ Rules:
    - MainLayout/header tests cover role selector visibility, active role text, and absence in non-dev/Keycloak modes.
    - `AdminApiAccessTokenProvider` or a new role-state service has tests proving token regeneration with the selected role and cache invalidation after role changes.
    - `AuthorizedView` or integration-style UI tests prove role updates refresh protected content in the same circuit/session, including switch-to-ReadOnly and switch-back-to-Operator/Admin cases after initial render.
+   - Tests cover stale-operation completion after retry and prove a previous failed/pending action cannot clear or replace the newer dialog state.
 
 7. **Manual-test guide and evidence are updated.**
    - Update the manual Admin UI test guide section that currently references the missing role toggle.
@@ -143,6 +158,7 @@ Rules:
   - [ ] Introduce a small dialog failure model, such as `BulkActionFailureState`, carrying action name, failed tenant/message IDs, status/error code, user-safe message, and trace/operation/correlation ID.
   - [ ] Reset this model when a dialog opens and when the action succeeds.
   - [ ] Ensure all awaited branches end in a single `finally` that clears operation state unless the component is disposed.
+  - [ ] Add an attempt/version marker or equivalent guard if needed so stale async completions cannot overwrite a later retry's state.
 
 - [ ] **ST2 - Inline error rendering for Retry, Skip, and Archive.** (AC: 1, 2)
   - [ ] Render the failure model inside each confirmation dialog using existing `IssueBanner`/status styling where practical.
@@ -156,6 +172,7 @@ Rules:
   - [ ] Preserve status code and parse RFC 7807 fields (`title`, `detail`, `status`, `traceId`/`traceId` extension if present) into a typed UI-safe exception or result.
   - [ ] Preserve `AdminOperationResult.OperationId` and `ErrorCode` for non-success results.
   - [ ] Do not expose raw response bodies directly to the UI.
+  - [ ] Preserve safe problem fields separately from redacted/truncated diagnostic text so tests can assert both support usefulness and secret redaction.
 
 - [ ] **ST4 - Operator/admin dialog audit.** (AC: 3)
   - [ ] Inspect pages/components: `Snapshots.razor`, `Compaction.razor`, `Backups.razor`, `Consistency.razor`, `Tenants.razor`, `Projections.razor`, and any shared action modal helpers.
@@ -169,6 +186,7 @@ Rules:
   - [ ] Invalidate the token cache when the selected role changes.
   - [ ] Notify `AuthenticationStateProvider` subscribers so UI guards refresh in the same session.
   - [ ] Preserve existing dev token issuer, audience, subject, tenants, domains, permissions, and optional `global_admin` behavior unless the selected role requires global admin to be disabled for ReadOnly/Operator.
+  - [ ] Ensure `ReadOnly` and `Operator` tokens cannot include contradictory Admin signals (`global_admin=true`, duplicate admin-role claims, or stale Admin role values).
   - [ ] Add regression coverage for role switch -> auth-state notification -> token cache invalidation -> next outgoing JWT claim.
 
 - [ ] **ST6 - Header role selector.** (AC: 4, 5)
@@ -199,6 +217,7 @@ Current observations from story creation:
 - The canonical roles live in `AdminRole` with ordering `ReadOnly < Operator < Admin`.
 - Treat `global_admin` carefully for ReadOnly/Operator development tokens. If existing dev-token generation adds broad admin semantics, tests must prove the selected role is still the effective UI role and that outgoing token claims do not contradict the selected role.
 - The party-mode review on 2026-05-07 recommended `needs-story-update`; updates were applied inline to clarify security boundaries, busy-state edge cases, audit evidence, redaction, same-session auth refresh, accessibility, and manual evidence requirements.
+- The advanced elicitation pass on 2026-05-07 kept the story `ready-for-dev` and added stop signs for stale async completions, contradictory dev-token admin signals, concrete environment/auth gating, and support-useful sanitized diagnostics.
 
 Local package context:
 
@@ -263,6 +282,7 @@ TBD by dev agent.
 ### Completion Notes List
 
 - 2026-05-07 pre-dev party-mode review applied story clarifications for dev-auth boundary, token/UI guard synchronization, sanitized failure diagnostics, scoped operator-dialog audit output, accessibility, and manual evidence.
+- 2026-05-07 pre-dev advanced elicitation applied story clarifications for selected-role single source of truth, stale action attempt handling, token-claim contradiction prevention, concrete gating evidence, and support-safe diagnostics.
 
 ### File List
 
@@ -270,6 +290,7 @@ TBD by dev agent.
 
 ## Change Log
 
+- 2026-05-07 - Advanced elicitation completed and story hardened for hidden auth coupling, stale async action recovery, token contradiction prevention, and support-safe diagnostics.
 - 2026-05-07 - Party-mode review completed and story hardened before development; recommendation remains ready-for-dev after applying low-risk clarifications.
 - 2026-05-07 - Story created and marked ready-for-dev. Context engine analysis completed from sprint-change proposal, manual-test issue evidence, current Admin UI auth/dead-letter code, sibling health story, and local package/test context.
 
@@ -291,4 +312,35 @@ TBD by dev agent.
   - Expanded AC1-AC7 and ST1-ST7 with duplicate-submit, disposal, retry, malformed response, negative-gating, audit-matrix, accessibility, localization, and manual evidence obligations.
   - Added Dev Agent Record notes so developers see the pre-dev hardening decision before implementation.
 - Findings deferred: None. All party-mode findings were story-clarification changes within existing Issue #9/#13 scope.
+- Final recommendation: `ready-for-dev`
+
+## Advanced Elicitation
+
+- ISO date and time: 2026-05-07T22:03:41+02:00
+- Selected story key: `admin-ui-operator-action-and-dev-role-testability-fix`
+- Command / skill invocation used: `/bmad-advanced-elicitation admin-ui-operator-action-and-dev-role-testability-fix`
+- Batch 1 method names:
+  - Self-Consistency Validation
+  - Red Team vs Blue Team
+  - Architecture Decision Records
+  - Security Audit Personas
+  - Failure Mode Analysis
+- Reshuffled Batch 2 method names:
+  - Chaos Monkey Scenarios
+  - Occam's Razor Application
+  - First Principles Analysis
+  - 5 Whys Deep Dive
+  - Lessons Learned Extraction
+- Findings summary:
+  - The role switcher needed a single session-scoped source of truth spanning header state, auth-state notification, UI guards, and outgoing JWT role claims.
+  - ReadOnly and Operator dev tokens could be undermined by contradictory legacy admin signals unless the story explicitly forbids or justifies them.
+  - The environment/auth gate needed concrete runtime evidence rather than a broad feature flag or client-only hiding.
+  - Dead-letter action recovery needed stale-completion protection so failed or canceled async attempts cannot overwrite a later retry.
+  - Dialog diagnostics needed enough structured safe fields for support without leaking secrets or raw service payloads.
+- Changes applied:
+  - Added `## Advanced Elicitation Hardening` with selected-role, gating, stale-action, diagnostic, and audit-scope rules.
+  - Tightened AC1, AC4, AC5, and AC6 for stale completion protection, concrete gate tests, contradictory token claims, and retry-state regression coverage.
+  - Added task-level implementation guidance for action attempt guards, safe problem-field preservation, and Admin-signal prevention in dev tokens.
+  - Added Dev Agent Record and Change Log notes for the advanced-elicitation pass.
+- Findings deferred: None. All accepted changes clarify the existing Issue #9/#13 scope without adding new product behavior.
 - Final recommendation: `ready-for-dev`
