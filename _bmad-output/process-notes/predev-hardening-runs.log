@@ -115,3 +115,4 @@
 2026-05-07T16:03:32.0192279+02:00	none	-	none	no backlog and all ready stories already have party-mode plus advanced-elicitation traces
 2026-05-07T17:02:30.5688449+02:00	none	-	none	no backlog and all ready stories already have party-mode plus advanced-elicitation traces
 2026-05-07T18:03:40.3893822+02:00	none	-	none	no backlog and all ready stories already have party-mode plus advanced-elicitation traces
+2026-05-07T19:31:00+02:00	create-story	admin-ui-operator-action-and-dev-role-testability-fix	ok	created ready-for-dev story for dead-letter action recovery and dev role switching
