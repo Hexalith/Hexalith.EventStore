@@ -97,3 +97,4 @@
 2026-05-05T18:09:43+02:00	advanced-elicitation	post-epic-deferred-dw6-deferred-work-governance	ok	Applied advanced elicitation hardening trace; final recommendation needs-story-update.
 2026-05-05T19:01:42+02:00	none	-	none	No backlog stories; all ready-for-dev stories already have party-mode and advanced-elicitation traces.
 2026-05-07T07:50:00+02:00	create-story	post-epic-deferred-dw7-admin-ui-state-inspector-lifecycle-fix	ok	created ready-for-dev story from deferred-work OPEN cleanup backlog
+2026-05-07T08:00:00+02:00	create-story	post-epic-deferred-dw8-server-classifier-and-ulid-audit	ok	created ready-for-dev DW8 server classifier and ULID audit story
