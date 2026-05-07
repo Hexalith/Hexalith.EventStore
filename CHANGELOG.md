@@ -1,3 +1,10 @@
+## [3.13.5](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.13.4...v3.13.5) (2026-05-07)
+
+
+### Bug Fixes
+
+* **admin-ui:** manual test bug bundle (tenant discovery, dashboard metrics, copy isolation) ([af8c227](https://github.com/Hexalith/Hexalith.EventStore/commit/af8c227c187727b5b14ea3b8d74f6c282b169763)), closes [#1](https://github.com/Hexalith/Hexalith.EventStore/issues/1) [#2](https://github.com/Hexalith/Hexalith.EventStore/issues/2) [#3](https://github.com/Hexalith/Hexalith.EventStore/issues/3) [#4](https://github.com/Hexalith/Hexalith.EventStore/issues/4) [#5](https://github.com/Hexalith/Hexalith.EventStore/issues/5)
+
 ## [3.13.4](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.13.3...v3.13.4) (2026-05-07)
 
 
