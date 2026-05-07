@@ -118,6 +118,24 @@ Every new or changed fixture must be represented in both `EXPECTED_FIXTURE_RULES
 
 No unreferenced fixture files or catalog-only rows should be left behind. The `--self-test` fixture matrix may grow only by the intentionally added DW9 fixtures; it must not become a recursive historical evidence or template audit.
 
+### Advanced Elicitation Hardening
+
+#### Batch 1 Findings
+
+- **Self-consistency validation:** Before editing the validator, capture the current curated fixture names, expected rule ids, and self-test count in the Dev Agent Record. The final evidence must explain exactly which DW9 fixtures were added so a larger-than-expected self-test expansion is review-blocking.
+- **Red Team vs Blue Team:** Do not satisfy control linkage from adjacent prose, section headings, timestamps alone, or "looks related" text. The validator must use explicit machine-readable fields tied to the evidence `evidence_run_id` or to a named linked control run; ambiguous or multiple conflicting references fail closed with the new linkage rule ids.
+- **Architecture decision records:** If implementation introduces a new metadata field for linked control runs, record the chosen field name and rationale in the story Dev Agent Record and evidence README. Keep the decision additive and fixture-local; do not rename existing schema fields or bump schema versions without recording a deferred architecture decision.
+- **Security audit personas:** Treat skip markers as a trust boundary. The exact `<!-- evidence-validator: skip -->` marker and template-pattern skip are allowed only to suppress validator diagnostics for intentionally skipped files; they must not suppress wrapper execution failures, unreadable-file errors, or governance checker failures.
+- **Failure mode analysis:** Each required control field is validated independently. A valid `false_positive_control` linkage must not satisfy `correlation_control`, and a query fixture must not silently cover the SignalR `reliability_control` path.
+
+#### Batch 2 Findings
+
+- **Chaos monkey scenarios:** Directory validation must behave deterministically when skipped files, valid evidence, invalid evidence, and unreadable or malformed files are mixed. The output should make skipped files visible without changing pass/fail totals for non-skipped files.
+- **Occam's razor application:** Prefer the smallest reusable helper for control-link validation and the smallest path-normalization helper for skip patterns. Do not introduce a Markdown parser, broad schema framework, or repository-wide audit mode for this story.
+- **First principles analysis:** DW9 succeeds only when the same developer-facing entrypoints are exercised in CI/local validation and in tests. Direct Python entrypoints may remain internal, but the acceptance evidence must prove wrapper symmetry where the story says wrappers are canonical.
+- **5 Whys deep dive:** Deferred-work dispositions must be closed because the validator or wrapper behavior is proven by targeted evidence, not because the story touched nearby files. Each DW9-owned deferred item needs a command result or fixture/test reference in the Dev Agent Record.
+- **Lessons learned extraction:** Reviewers should reject the story if new fixtures are not represented in both catalogs, skip diagnostics are invisible, wrapper exit-code behavior is not stated, unrelated deferred-work entries are edited, or preflight JSON audit files are staged.
+
 ## Implementation Inventory
 
 | Area | File / artifact | Expected use |
@@ -249,6 +267,7 @@ GPT-5 Codex
 - Scoped DW9 to four routed tooling items: evidence-validator control linkage, evidence-validator template skip behavior, deferred-work CI wrapper symmetry, and deferred-work governance entrypoint policy.
 - Recorded current implementation targets for the Python validators, wrappers, fixture catalogs, docs-validation workflow, and governance README.
 - Party-mode review applied pre-dev contract hardening for validator rule ids, template skip reporting, deferred-work entry allowlist, wrapper exit-code policy, entrypoint source of truth, and fixture catalog invariants.
+- Advanced elicitation applied pre-dev hardening for machine-readable control linkage, skip-marker trust boundaries, deterministic mixed directory validation, wrapper symmetry evidence, and review rejection criteria.
 
 ### File List
 
@@ -269,6 +288,7 @@ GPT-5 Codex
 | --- | ---: | --- | --- |
 | 2026-05-07 | 0.1 | Created ready-for-dev DW9 evidence validator and governance polish story. | Codex automation |
 | 2026-05-07 | 0.2 | Applied party-mode pre-dev contract hardening for validator, wrapper, fixture, and governance boundaries. | Codex automation |
+| 2026-05-07 | 0.3 | Applied advanced elicitation hardening for validator linkage, skip, wrapper, and disposition evidence. | Codex automation |
 
 ## Party-Mode Review
 
@@ -291,4 +311,25 @@ GPT-5 Codex
 - Findings deferred:
   - Any change to make deferred-work governance block PRs is deferred for explicit human approval.
   - Any broader deferred-work parser, vocabulary, owner taxonomy, stale-date, accepted-debt, DW6-CR7, DW7, DW8, product/runtime, Aspire, DAPR, package, or submodule cleanup remains out of scope.
+- Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-07T10:41:18+02:00
+- Selected story key: `post-epic-deferred-dw9-evidence-validator-and-governance-polish`
+- Command/skill invocation used: `/bmad-advanced-elicitation post-epic-deferred-dw9-evidence-validator-and-governance-polish`
+- Batch 1 method names: Self-Consistency Validation; Red Team vs Blue Team; Architecture Decision Records; Security Audit Personas; Failure Mode Analysis
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Occam's Razor Application; First Principles Analysis; 5 Whys Deep Dive; Lessons Learned Extraction
+- Findings summary:
+  - Control-linkage validation needed an explicit machine-readable basis and independent per-control checks.
+  - Skip-marker behavior needed trust-boundary wording and deterministic mixed-directory output expectations.
+  - Wrapper symmetry needed acceptance evidence from the same developer-facing entrypoints used locally and in CI.
+  - Deferred-work dispositions needed proof-backed closure criteria and reviewer rejection signals.
+- Changes applied:
+  - Added `### Advanced Elicitation Hardening` with batch findings for validator linkage, skip handling, fixture drift, wrapper symmetry, deferred-work closure, and review rejection criteria.
+  - Updated Completion Notes and Change Log with the elicitation result.
+- Findings deferred:
+  - Any schema version bump or existing schema-field rename remains deferred for explicit architecture approval.
+  - Any stricter PR-blocking governance policy remains deferred for human approval.
+  - Repository-wide audit mode and broad deferred-work parser or vocabulary cleanup remain out of scope.
 - Final recommendation: ready-for-dev
