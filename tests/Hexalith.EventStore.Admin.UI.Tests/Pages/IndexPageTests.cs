@@ -83,13 +83,16 @@ public class IndexPageTests : AdminUITestContext {
         SystemHealthReport health = CreateHealthReport(0, 0, 0);
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<SystemHealthReport?>(health));
+        _ = _mockApiClient.GetRecentlyActiveStreamsAsync(
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new PagedResult<StreamSummary>([], 0, null)));
 
         // Act
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Index> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Index>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("EventStore Admin is running."), TimeSpan.FromSeconds(5));
 
         // Assert — EmptyState shown, no ActivityChart or grid
-        cut.Markup.ShouldContain("0 commands processed");
+        cut.Markup.ShouldContain("No active streams yet");
         cut.Markup.ShouldNotContain("Stream Activity (24h)");
     }
 
@@ -119,6 +122,76 @@ public class IndexPageTests : AdminUITestContext {
         var tombConfig = StatusBadge.StatusDisplayConfig.FromStreamStatus(StreamStatus.Tombstoned);
         tombConfig.Label.ShouldBe("Tombstoned");
         tombConfig.CssColor.ShouldContain("error");
+    }
+
+    [Fact]
+    public void LandingPage_WhenMetricsUnavailable_RendersUnavailableInsteadOfFakeZero() {
+        // ADR-3 Truthful Metrics: dashboard must not display 0/0.0/s/0.00% for sources that have
+        // no implementation. The status flags drive an explicit "unavailable" string.
+        SystemHealthReport health = new(
+            HealthStatus.Healthy,
+            TotalEventCount: 0,
+            EventsPerSecond: 0,
+            ErrorPercentage: 0,
+            DaprComponents: [],
+            ObservabilityLinks: new ObservabilityLinks(null, null, null),
+            TotalEventCountStatus: SystemHealthMetricStatus.Unavailable,
+            EventsPerSecondStatus: SystemHealthMetricStatus.Unavailable,
+            ErrorPercentageStatus: SystemHealthMetricStatus.Unavailable);
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SystemHealthReport?>(health));
+        _ = _mockApiClient.GetRecentlyActiveStreamsAsync(
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new PagedResult<StreamSummary>([], 0, null)));
+
+        IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Index> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Index>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("unavailable"), TimeSpan.FromSeconds(5));
+
+        // No fake-precision values for the unimplemented metrics.
+        cut.Markup.ShouldNotContain("0.0/s");
+        cut.Markup.ShouldNotContain("0.00%");
+    }
+
+    [Fact]
+    public void LandingPage_WhenLoading_DoesNotFlashFakeZeros() {
+        // ADR-3: loading state must not render 0 / 0.0/s / 0.00% before health data arrives.
+        TaskCompletionSource<SystemHealthReport?> tcs = new();
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(tcs.Task);
+
+        IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Index> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Index>();
+
+        // The dash placeholder is the universal "not yet" indicator on the StatCard while loading.
+        cut.Markup.ShouldNotContain("0.0/s");
+        cut.Markup.ShouldNotContain("0.00%");
+
+        // Cleanup — let the page resolve so dispose doesn't dangle.
+        tcs.SetResult(null);
+    }
+
+    [Fact]
+    public void LandingPage_WhenStreamsExist_RendersActivityChartWithoutGatingOnTotalEventCount() {
+        // ST6: ActivityChart no longer gates on TotalEventCount > 0 (which was hardcoded to 0).
+        // Even if TotalEventCount comes back as 0 or unavailable, the chart should render when
+        // streams exist (proves the gate is no longer load-bearing on the stale metric).
+        SystemHealthReport health = new(
+            HealthStatus.Healthy,
+            TotalEventCount: 0,
+            EventsPerSecond: 0,
+            ErrorPercentage: 0,
+            DaprComponents: [],
+            ObservabilityLinks: new ObservabilityLinks(null, null, null),
+            TotalEventCountStatus: SystemHealthMetricStatus.Unavailable,
+            EventsPerSecondStatus: SystemHealthMetricStatus.Unavailable,
+            ErrorPercentageStatus: SystemHealthMetricStatus.Unavailable);
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SystemHealthReport?>(health));
+        _ = _mockApiClient.GetRecentlyActiveStreamsAsync(
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(CreateStreamsResult(3)));
+
+        IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Index> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Index>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Recent Streams"), TimeSpan.FromSeconds(5));
     }
 
     private static SystemHealthReport CreateHealthReport(long totalEvents, double eventsPerSec, double errorPct)

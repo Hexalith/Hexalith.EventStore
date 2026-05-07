@@ -1,7 +1,6 @@
 @page "/commands"
 
 @using Hexalith.EventStore.Admin.Abstractions.Models.Commands
-@using Hexalith.EventStore.Admin.Abstractions.Models.Tenants
 @using Hexalith.EventStore.Admin.UI.Components
 @using Hexalith.EventStore.Admin.UI.Components.Shared
 @using Hexalith.EventStore.Admin.UI.Services
@@ -11,6 +10,7 @@
 @implements IAsyncDisposable
 
 @inject AdminStreamApiClient ApiClient
+@inject AdminTenantOptionsProvider TenantOptionsProvider
 @inject NavigationManager NavigationManager
 @inject DashboardRefreshService RefreshService
 @inject IJSRuntime JSRuntime
@@ -59,11 +59,19 @@ else
         <FluentSelect TOption="string" TValue="string" @bind-Value="_tenantFilter" @bind-Value:after="OnTenantFilterChanged"
                       Label="Tenant" Style="min-width: 140px;">
             <FluentOption Value="@string.Empty">All Tenants</FluentOption>
-            @foreach (string tenant in _tenantOptions)
+            @foreach (TenantOption tenant in _tenantOptions)
             {
-                <FluentOption Value="@tenant">@tenant</FluentOption>
+                <FluentOption Value="@tenant.TenantId">@tenant.DisplayName</FluentOption>
             }
         </FluentSelect>
+
+        @if (!string.IsNullOrEmpty(_tenantsDiagnostic))
+        {
+            <span role="status" aria-live="polite" data-testid="tenant-options-diagnostic"
+                  style="font-size: 12px; color: var(--colorNeutralForeground3);">
+                @_tenantsDiagnostic
+            </span>
+        }
 
         <FluentTextInput @bind-Value="_commandTypeFilter" @bind-Value:after="OnCommandTypeFilterChanged"
                          Label="Command Type" Placeholder="Filter by type..."
@@ -136,7 +144,8 @@ else
     private string _commandTypeFilter = string.Empty;
     private IReadOnlyList<CommandSummary> _allItems = [];
     private IReadOnlyList<CommandSummary> _filteredItems = [];
-    private List<string> _tenantOptions = [];
+    private IReadOnlyList<TenantOption> _tenantOptions = [];
+    private string? _tenantsDiagnostic;
     private double? _pendingScrollTop;
     private bool _hasRendered;
     private bool _disposed;
@@ -239,15 +248,9 @@ else
 
     private async Task LoadTenantsAsync()
     {
-        try
-        {
-            IReadOnlyList<TenantSummary> tenants = await ApiClient.GetTenantsAsync().ConfigureAwait(false);
-            _tenantOptions = tenants.Select(t => t.TenantId).Distinct().OrderBy(t => t).ToList();
-        }
-        catch
-        {
-            _tenantOptions = [];
-        }
+        TenantOptionsResult result = await TenantOptionsProvider.GetTenantOptionsAsync().ConfigureAwait(false);
+        _tenantOptions = result.Options;
+        _tenantsDiagnostic = result.Diagnostic;
     }
 
     private async Task LoadCommandsAsync()

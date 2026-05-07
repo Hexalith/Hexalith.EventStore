@@ -47,37 +47,28 @@
 
 @if (!_isLoading && !_apiUnavailable)
 {
-    @if (_healthReport is not null && _healthReport.TotalEventCount > 0)
+    @* Activity chart gates on real stream data, not the previously hardcoded TotalEventCount. *@
+    @if (_streams is not null && _streams.Items.Count > 0)
     {
         <ActivityChart Buckets="_activityBuckets" IsLoading="false" />
 
-        @if (_streams is not null && _streams.Items.Count > 0)
-        {
-            <div style="margin-top: 24px;">
-                <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">Recent Streams</h3>
-                <FluentDataGrid Items="@(_streams.Items.Take(10).AsQueryable())" TGridItem="StreamSummary"
-                                Style="width: 100%;" GridTemplateColumns="100px 100px 1fr 80px 80px">
-                    <PropertyColumn Property="@(s => s.StreamStatus)" Title="Status" />
-                    <PropertyColumn Property="@(s => s.TenantId)" Title="Tenant" Class="monospace" />
-                    <TemplateColumn Title="Aggregate ID">
-                        <span class="monospace" title="@context.AggregateId">@(context.AggregateId.Length > 8 ? context.AggregateId[..8] + "\u2026" : context.AggregateId)</span>
-                    </TemplateColumn>
-                    <PropertyColumn Property="@(s => s.EventCount)" Title="Events" Align="DataGridCellAlignment.End" />
-                    <TemplateColumn Title="Last Activity">
-                        <span class="monospace">@context.LastActivityUtc.ToString("HH:mm:ss")</span>
-                    </TemplateColumn>
-                </FluentDataGrid>
-                <div style="margin-top: 8px;">
-                    <FluentLink Href="/streams" Appearance="LinkAppearance.Default">View all streams &rarr;</FluentLink>
-                </div>
+        <div style="margin-top: 24px;">
+            <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">Recent Streams</h3>
+            <FluentDataGrid Items="@(_streams.Items.Take(10).AsQueryable())" TGridItem="StreamSummary"
+                            Style="width: 100%;" GridTemplateColumns="100px 100px 1fr 80px 80px">
+                <PropertyColumn Property="@(s => s.StreamStatus)" Title="Status" />
+                <PropertyColumn Property="@(s => s.TenantId)" Title="Tenant" Class="monospace" />
+                <TemplateColumn Title="Aggregate ID">
+                    <span class="monospace" title="@context.AggregateId">@(context.AggregateId.Length > 8 ? context.AggregateId[..8] + "\u2026" : context.AggregateId)</span>
+                </TemplateColumn>
+                <PropertyColumn Property="@(s => s.EventCount)" Title="Events" Align="DataGridCellAlignment.End" />
+                <TemplateColumn Title="Last Activity">
+                    <span class="monospace">@context.LastActivityUtc.ToString("HH:mm:ss")</span>
+                </TemplateColumn>
+            </FluentDataGrid>
+            <div style="margin-top: 8px;">
+                <FluentLink Href="/streams" Appearance="LinkAppearance.Default">View all streams &rarr;</FluentLink>
             </div>
-        }
-    }
-    else if (_healthReport is not null && _healthReport.TotalEventCount == 0)
-    {
-        <div style="margin-top: 32px;">
-            <EmptyState Title="EventStore Admin is running."
-                        Description="0 commands processed. Send your first command via the Admin API." />
         </div>
     }
     else if (_streamsUnavailable)
@@ -85,6 +76,13 @@
         <div style="margin-top: 32px;">
             <EmptyState Title="Stream data temporarily unavailable"
                         Description="Health data loaded but stream data could not be fetched. Retrying automatically." />
+        </div>
+    }
+    else if (_streams is not null && _streams.Items.Count == 0)
+    {
+        <div style="margin-top: 32px;">
+            <EmptyState Title="EventStore Admin is running."
+                        Description="No active streams yet. Send your first command via the Admin API." />
         </div>
     }
 }
@@ -248,29 +246,24 @@
             _cachedHealthReport = _healthReport;
             _isStale = false;
 
-            if (_healthReport.TotalEventCount > 0)
+            // Fetch streams unconditionally — the previous gate on TotalEventCount > 0 was
+            // a no-op while TotalEventCount was hardcoded to zero, and is now redundant
+            // because the activity chart gates on _streams.Items.Count directly (ADR-3).
+            try
             {
-                try
+                _streams = await ApiClient
+                    .GetRecentlyActiveStreamsAsync(null, null, 100);
+                _cachedStreams = _streams;
+                _activityBuckets = BuildActivityBuckets(_streams.Items);
+            }
+            catch
+            {
+                _streamsUnavailable = true;
+                _streams = _cachedStreams;
+                if (_streams is not null)
                 {
-                    _streams = await ApiClient
-                        .GetRecentlyActiveStreamsAsync(null, null, 100);
-                    _cachedStreams = _streams;
                     _activityBuckets = BuildActivityBuckets(_streams.Items);
                 }
-                catch
-                {
-                    _streamsUnavailable = true;
-                    _streams = _cachedStreams;
-                    if (_streams is not null)
-                    {
-                        _activityBuckets = BuildActivityBuckets(_streams.Items);
-                    }
-                }
-            }
-            else
-            {
-                _streams = null;
-                _activityBuckets = null;
             }
 
             _lastRefreshUtc = DateTimeOffset.UtcNow;
@@ -342,20 +335,38 @@
         _streams is not null ? _streams.TotalCount.ToString("N0") :
         _healthReport?.TotalEventCount > 0 ? "\u2014" : "0";
 
+    // ADR-3 Truthful Metrics:
+    //   - Available    -> render the real measurement (zero is honest if measured zero)
+    //   - Unavailable  -> render an explicit indicator instead of a misleading numeric value
+    //   - Stale        -> render the cached value with a stale suffix (page-level _isStale handles this)
+
     private string FormatTotalEvents() =>
-        _healthReport?.TotalEventCount.ToString("N0") ?? "0";
+        _healthReport is null
+            ? "—"
+            : _healthReport.TotalEventCountStatus == SystemHealthMetricStatus.Unavailable
+                ? "unavailable"
+                : _healthReport.TotalEventCount.ToString("N0");
 
     private string FormatEventsPerSecond() =>
-        _healthReport is not null ? $"{_healthReport.EventsPerSecond:F1}/s" : "0.0/s";
+        _healthReport is null
+            ? "—"
+            : _healthReport.EventsPerSecondStatus == SystemHealthMetricStatus.Unavailable
+                ? "unavailable"
+                : $"{_healthReport.EventsPerSecond:F1}/s";
 
     private string FormatErrorRate() =>
-        _healthReport is not null ? $"{_healthReport.ErrorPercentage:F2}%" : "0.00%";
+        _healthReport is null
+            ? "—"
+            : _healthReport.ErrorPercentageStatus == SystemHealthMetricStatus.Unavailable
+                ? "unavailable"
+                : $"{_healthReport.ErrorPercentage:F2}%";
 
     private string GetErrorRateSeverity()
     {
-        if (_healthReport is null)
+        if (_healthReport is null
+            || _healthReport.ErrorPercentageStatus == SystemHealthMetricStatus.Unavailable)
         {
-            return "success";
+            return "neutral";
         }
 
         return _healthReport.ErrorPercentage switch

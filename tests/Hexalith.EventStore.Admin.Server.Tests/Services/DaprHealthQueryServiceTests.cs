@@ -2,7 +2,10 @@
 
 using Dapr.Client;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
+using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
+using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
 using Hexalith.EventStore.Admin.Server.Tests.Helpers;
@@ -18,7 +21,8 @@ namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 public class DaprHealthQueryServiceTests {
     private static (DaprHealthQueryService Service, TestHttpMessageHandler Handler) CreateService(
         DaprClient? daprClient = null,
-        AdminServerOptions? serverOptions = null) {
+        AdminServerOptions? serverOptions = null,
+        IStreamQueryService? streamQuery = null) {
         daprClient ??= Substitute.For<DaprClient>();
         serverOptions ??= new AdminServerOptions {
             TraceUrl = "https://traces",
@@ -33,11 +37,19 @@ public class DaprHealthQueryServiceTests {
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
         _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
 
+        if (streamQuery is null) {
+            streamQuery = Substitute.For<IStreamQueryService>();
+            _ = streamQuery.GetRecentlyActiveStreamsAsync(
+                    Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromResult(new PagedResult<StreamSummary>([], 0, null)));
+        }
+
         var service = new DaprHealthQueryService(
             daprClient,
             httpClientFactory,
             options,
             new NullAdminAuthContext(),
+            streamQuery,
             NullLogger<DaprHealthQueryService>.Instance);
 
         return (service, handler);
@@ -154,6 +166,94 @@ public class DaprHealthQueryServiceTests {
 
         _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.GetSystemHealthAsync(cts.Token));
+    }
+
+    [Fact]
+    public async Task GetSystemHealthAsync_TotalEventCount_SumsBoundedStreamActivityIndex() {
+        // ADR-3: TotalEventCount comes from the bounded admin:stream-activity:all source.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata());
+        _ = daprClient.GetStateAsync<string>(
+            "statestore", "admin:health-check",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => (string?)null);
+        _ = daprClient.CreateInvokeMethodRequest(
+            Arg.Any<HttpMethod>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(callInfo => new HttpRequestMessage(
+                callInfo.ArgAt<HttpMethod>(0),
+                new Uri($"http://localhost/{callInfo.ArgAt<string>(2)}")));
+
+        IStreamQueryService streamQuery = Substitute.For<IStreamQueryService>();
+        IReadOnlyList<StreamSummary> items =
+        [
+            new StreamSummary("tenant-a", "counter", "counter-1", 18, DateTimeOffset.UtcNow, 18, false, StreamStatus.Active),
+            new StreamSummary("tenant-a", "counter", "counter-2", 5, DateTimeOffset.UtcNow, 5, false, StreamStatus.Active),
+            new StreamSummary("tenant-b", "orders", "ord-1", 7, DateTimeOffset.UtcNow, 7, false, StreamStatus.Active),
+        ];
+        _ = streamQuery.GetRecentlyActiveStreamsAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new PagedResult<StreamSummary>(items, items.Count, null)));
+
+        (DaprHealthQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient, streamQuery: streamQuery);
+        handler.SetupJsonResponse("ok");
+
+        SystemHealthReport result = await service.GetSystemHealthAsync();
+
+        result.TotalEventCount.ShouldBe(30);
+        result.TotalEventCountStatus.ShouldBe(SystemHealthMetricStatus.Available);
+    }
+
+    [Fact]
+    public async Task GetSystemHealthAsync_TotalEventCount_FailureReportedAsUnavailable() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata());
+        _ = daprClient.GetStateAsync<string>(
+            "statestore", "admin:health-check",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => (string?)null);
+        _ = daprClient.CreateInvokeMethodRequest(
+            Arg.Any<HttpMethod>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(callInfo => new HttpRequestMessage(
+                callInfo.ArgAt<HttpMethod>(0),
+                new Uri($"http://localhost/{callInfo.ArgAt<string>(2)}")));
+
+        IStreamQueryService streamQuery = Substitute.For<IStreamQueryService>();
+        _ = streamQuery.GetRecentlyActiveStreamsAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("state store unavailable"));
+
+        (DaprHealthQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient, streamQuery: streamQuery);
+        handler.SetupJsonResponse("ok");
+
+        SystemHealthReport result = await service.GetSystemHealthAsync();
+
+        // Per ADR-3: render unavailable rather than a misleading zero.
+        result.TotalEventCount.ShouldBe(0);
+        result.TotalEventCountStatus.ShouldBe(SystemHealthMetricStatus.Unavailable);
+    }
+
+    [Fact]
+    public async Task GetSystemHealthAsync_EventsPerSecondAndErrorPercentage_ReportedAsUnavailable() {
+        // ADR-3: these metrics have no source wired; UI must distinguish unavailable from real zero.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata());
+        _ = daprClient.GetStateAsync<string>(
+            "statestore", "admin:health-check",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => (string?)null);
+        _ = daprClient.CreateInvokeMethodRequest(
+            Arg.Any<HttpMethod>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(callInfo => new HttpRequestMessage(
+                callInfo.ArgAt<HttpMethod>(0),
+                new Uri($"http://localhost/{callInfo.ArgAt<string>(2)}")));
+
+        (DaprHealthQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient);
+        handler.SetupJsonResponse("ok");
+
+        SystemHealthReport result = await service.GetSystemHealthAsync();
+
+        result.EventsPerSecondStatus.ShouldBe(SystemHealthMetricStatus.Unavailable);
+        result.ErrorPercentageStatus.ShouldBe(SystemHealthMetricStatus.Unavailable);
     }
 
     [Fact]

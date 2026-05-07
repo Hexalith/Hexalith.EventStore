@@ -85,7 +85,7 @@ public class AdminStreamApiClient(
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch streams from {Url}", url);
-            return _emptyStreamsResult;
+            throw new ServiceUnavailableException("Unable to load streams.");
         }
     }
 

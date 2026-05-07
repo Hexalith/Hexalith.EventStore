@@ -47,15 +47,13 @@ public class ProjectionFilterBarTests : AdminUITestContext {
     }
 
     [Fact]
-    public void ProjectionFilterBar_HidesTenantDropdown_WhenSingleTenant() {
+    public void ProjectionFilterBar_ShowsTenantDropdown_WhenSingleTenant() {
         IReadOnlyList<string> tenants = ["tenant-a"];
 
         IRenderedComponent<ProjectionFilterBar> cut = Render<ProjectionFilterBar>(p => p
             .Add(c => c.SelectedStatus, "All")
             .Add(c => c.Tenants, tenants));
 
-        // With single tenant, no dropdown needed — should not contain tenant selection UI
-        // The component should render without error
-        _ = cut.Markup.ShouldNotBeNull();
+        cut.Markup.ShouldContain("tenant-a");
     }
 }

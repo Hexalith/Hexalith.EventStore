@@ -214,7 +214,9 @@ public class EventsPageTests : AdminUITestContext {
         NavManager.Uri.ShouldContain("eventType=Create");
         _ = JSInterop.VerifyInvoke("hexalithAdmin.getScrollTop");
         cut.WaitForAssertion(() => JSInterop.VerifyInvoke("hexalithAdmin.setScrollTop"), TimeSpan.FromSeconds(5));
-        _ = _mockApiClient.Received(2).GetTenantsAsync(Arg.Any<CancellationToken>());
+        // Refresh re-fetches the events list (tenants now come from AdminTenantOptionsProvider, not GetTenantsAsync).
+        _ = _mockApiClient.Received().GetRecentlyActiveStreamsAsync(
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

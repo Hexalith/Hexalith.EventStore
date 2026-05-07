@@ -2,8 +2,10 @@ using System.Net.Http.Headers;
 
 using Dapr.Client;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
+using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
 
@@ -22,6 +24,7 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<DaprHealthQueryService> _logger;
     private readonly AdminServerOptions _options;
+    private readonly IStreamQueryService _streamQuery;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprHealthQueryService"/> class.
@@ -30,22 +33,26 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
     /// <param name="httpClientFactory">The HTTP client factory for DAPR service invocation.</param>
     /// <param name="options">The admin server options.</param>
     /// <param name="authContext">The admin auth context for JWT forwarding.</param>
+    /// <param name="streamQuery">The stream query service that backs the dashboard's TotalEventCount metric (bounded source: <c>admin:stream-activity:all</c>).</param>
     /// <param name="logger">The logger.</param>
     public DaprHealthQueryService(
         DaprClient daprClient,
         IHttpClientFactory httpClientFactory,
         IOptions<AdminServerOptions> options,
         IAdminAuthContext authContext,
+        IStreamQueryService streamQuery,
         ILogger<DaprHealthQueryService> logger) {
         ArgumentNullException.ThrowIfNull(daprClient);
         ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(authContext);
+        ArgumentNullException.ThrowIfNull(streamQuery);
         ArgumentNullException.ThrowIfNull(logger);
         _daprClient = daprClient;
         _httpClientFactory = httpClientFactory;
         _options = options.Value;
         _authContext = authContext;
+        _streamQuery = streamQuery;
         _logger = logger;
     }
 
@@ -127,13 +134,58 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
 
         ObservabilityLinks links = new(_options.TraceUrl, _options.MetricsUrl, _options.LogsUrl);
 
+        // ADR-3 (Truthful Metrics): TotalEventCount is derived from the bounded
+        // admin:stream-activity:all index; EventsPerSecond and ErrorPercentage have no
+        // injectable clock / rolling-window or rejection-rate source wired in this build,
+        // so they are reported with explicit Unavailable status. The numeric value stays
+        // 0 only as a wire-format fallback — UI must consult the *Status fields and render
+        // an unavailable indicator instead of the zero.
+        (long totalEventCount, SystemHealthMetricStatus totalEventCountStatus) =
+            await TryComputeTotalEventCountAsync(ct).ConfigureAwait(false);
+
         return new SystemHealthReport(
             overallStatus,
-            TotalEventCount: 0,
+            TotalEventCount: totalEventCount,
             EventsPerSecond: 0,
             ErrorPercentage: 0,
             components,
-            links);
+            links,
+            TotalEventCountStatus: totalEventCountStatus,
+            EventsPerSecondStatus: SystemHealthMetricStatus.Unavailable,
+            ErrorPercentageStatus: SystemHealthMetricStatus.Unavailable);
+    }
+
+    /// <summary>
+    /// Computes <see cref="SystemHealthReport.TotalEventCount"/> by summing
+    /// <see cref="StreamSummary.EventCount"/> across the bounded
+    /// <c>admin:stream-activity:all</c> index. The index is bounded by design and is
+    /// already used by every Admin UI page that lists streams, so this does not scan
+    /// unbounded storage on a health request.
+    /// </summary>
+    /// <returns>
+    /// A tuple of (sum, status). Status is <see cref="SystemHealthMetricStatus.Unavailable"/>
+    /// when the index read fails so the UI can render an explicit unavailable indicator
+    /// rather than a misleading zero.
+    /// </returns>
+    private async Task<(long Sum, SystemHealthMetricStatus Status)> TryComputeTotalEventCountAsync(CancellationToken ct) {
+        try {
+            PagedResult<StreamSummary> page = await _streamQuery
+                .GetRecentlyActiveStreamsAsync(tenantId: null, domain: null, count: int.MaxValue, ct)
+                .ConfigureAwait(false);
+            long sum = 0;
+            foreach (StreamSummary s in page.Items) {
+                sum += s.EventCount;
+            }
+
+            return (sum, SystemHealthMetricStatus.Available);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            _logger.LogWarning(ex, "Failed to compute TotalEventCount from stream activity index — reporting Unavailable.");
+            return (0, SystemHealthMetricStatus.Unavailable);
+        }
     }
 
     /// <inheritdoc/>

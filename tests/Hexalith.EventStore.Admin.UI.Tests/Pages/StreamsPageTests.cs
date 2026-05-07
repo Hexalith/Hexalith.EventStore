@@ -133,8 +133,9 @@ public class StreamsPageTests : AdminUITestContext {
 
         // Assert — truncated to 8 chars + ellipsis
         cut.Markup.ShouldContain("abcdefgh\u2026");
-        // Full ID in tooltip
-        cut.Markup.ShouldContain("title=\"abcdefghijklmnop\"");
+        // Full ID exposed via the copy-button title and aria-label (ST8: copy affordance is now a button).
+        cut.Markup.ShouldContain("title=\"abcdefghijklmnop (click to copy)\"");
+        cut.Markup.ShouldContain("aria-label=\"Copy aggregate ID abcdefghijklmnop to clipboard\"");
     }
 
     private static PagedResult<StreamSummary> CreateStreamsResult(int count) {

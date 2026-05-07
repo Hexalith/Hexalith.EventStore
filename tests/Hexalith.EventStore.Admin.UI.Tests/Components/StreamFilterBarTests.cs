@@ -1,7 +1,7 @@
 using Bunit;
 
-using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.UI.Components;
+using Hexalith.EventStore.Admin.UI.Services;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 
@@ -35,10 +35,10 @@ public class StreamFilterBarTests : AdminUITestContext {
 
     [Fact]
     public void StreamFilterBar_RendersTenantDropdown_WhenMultipleTenants() {
-        IReadOnlyList<TenantSummary> tenants =
+        IReadOnlyList<TenantOption> tenants =
         [
-            new("tenant-a", "Acme Corp", TenantStatusType.Active),
-            new("tenant-b", "Widget Co", TenantStatusType.Active),
+            new("tenant-a", "Acme Corp", TenantProvenance.Registered),
+            new("tenant-b", "Widget Co", TenantProvenance.ObservedOnly),
         ];
 
         IRenderedComponent<StreamFilterBar> cut = Render<StreamFilterBar>(p => p

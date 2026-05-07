@@ -1,8 +1,11 @@
 
 using Dapr.Client;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
+using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
+using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
 
@@ -23,11 +26,17 @@ public class DaprHealthQueryServiceHistoryTests {
 
         IOptions<AdminServerOptions> options = Options.Create(serverOptions);
 
+        IStreamQueryService streamQuery = Substitute.For<IStreamQueryService>();
+        _ = streamQuery.GetRecentlyActiveStreamsAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new PagedResult<StreamSummary>([], 0, null)));
+
         return new DaprHealthQueryService(
             daprClient,
             Substitute.For<IHttpClientFactory>(),
             options,
             new NullAdminAuthContext(),
+            streamQuery,
             NullLogger<DaprHealthQueryService>.Instance);
     }
 

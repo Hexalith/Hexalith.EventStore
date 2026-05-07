@@ -59,6 +59,10 @@ public static class AdminUIServiceExtensions {
         _ = builder.Services.AddScoped<AdminResiliencyApiClient>();
         _ = builder.Services.AddScoped<AdminHealthHistoryApiClient>();
 
+        // Shared tenant option provider — unions registered + authorized observed tenants
+        // for the dropdowns on /commands, /events, /streams, /projections.
+        _ = builder.Services.AddScoped<AdminTenantOptionsProvider>();
+
         // Dashboard polling refresh service
         _ = builder.Services.AddScoped<DashboardRefreshService>();
 
