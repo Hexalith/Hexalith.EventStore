@@ -31,12 +31,17 @@ public class DaprHealthQueryServiceHistoryTests {
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new PagedResult<StreamSummary>([], 0, null)));
 
+        IDaprInfrastructureQueryService infra = Substitute.For<IDaprInfrastructureQueryService>();
+        _ = infra.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(DaprCanonicalInventory.Empty with { LocalProbeAvailable = true }));
+
         return new DaprHealthQueryService(
             daprClient,
             Substitute.For<IHttpClientFactory>(),
             options,
             new NullAdminAuthContext(),
             streamQuery,
+            infra,
             NullLogger<DaprHealthQueryService>.Instance);
     }
 

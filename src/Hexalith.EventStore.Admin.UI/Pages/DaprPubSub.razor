@@ -57,13 +57,13 @@
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Active Subscriptions"
-                      Value="@(_overview.RemoteMetadataStatus == RemoteMetadataStatus.Available ? _overview.Subscriptions.Count.ToString() : "N/A")"
+                      Value="@(_overview.RemoteMetadataStatus == RemoteMetadataStatus.Available ? _overview.Subscriptions.Count.ToString() : "subscription data unavailable")"
                       Severity="@(_overview.RemoteMetadataStatus == RemoteMetadataStatus.Available && _overview.Subscriptions.Count > 0 ? "success" : "neutral")"
-                      Title="Number of active DAPR subscriptions" />
+                      Title="Number of active DAPR subscriptions reported by the remote EventStore sidecar metadata" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Unique Topics"
-                      Value="@(_overview.RemoteMetadataStatus == RemoteMetadataStatus.Available ? _overview.Subscriptions.Select(s => s.Topic).Distinct().Count().ToString() : "N/A")"
+                      Value="@(_overview.RemoteMetadataStatus == RemoteMetadataStatus.Available ? _overview.Subscriptions.Select(s => s.Topic).Distinct().Count().ToString() : "subscription data unavailable")"
                       Severity="neutral"
                       Title="Number of distinct subscription topics" />
         </FluentGridItem>
@@ -76,7 +76,7 @@
     }
 </FluentGrid>
 
-@* Empty states: No pub/sub components — distinguishes the three remote-metadata states *@
+@* Empty states: No pub/sub components — distinguishes the remote-metadata states *@
 @if (!_isLoading && _overview is not null && _overview.PubSubComponents.Count == 0 && _error is null)
 {
     @switch (_overview.RemoteMetadataStatus)
@@ -88,6 +88,14 @@
         case RemoteMetadataStatus.Unreachable:
             <EmptyState Title="EventStore sidecar unreachable"
                         Description="@($"Cannot list pub/sub components — the query to {_overview.RemoteEndpoint}/v1.0/metadata failed. Verify the EventStore DAPR sidecar is running on that port. Check Admin server logs for the exception details.")" />
+            break;
+        case RemoteMetadataStatus.InvalidPayload:
+            <EmptyState Title="Invalid remote metadata"
+                        Description="@($"The remote EventStore sidecar at {_overview.RemoteEndpoint}/v1.0/metadata responded but the payload could not be parsed. Pub/sub component and subscription totals are not derived from a partial parse.")" />
+            break;
+        case RemoteMetadataStatus.Initializing:
+            <EmptyState Title="Remote sidecar initializing"
+                        Description="@($"The remote EventStore sidecar at {_overview.RemoteEndpoint} is reachable but its app metadata is still loading. Pub/sub inventory will appear once initialization completes.")" />
             break;
         case RemoteMetadataStatus.Available:
             <EmptyState Title="No pub/sub components found"
@@ -149,6 +157,16 @@
             <IssueBanner Visible="true"
                          Title="EventStore sidecar unreachable"
                          Description="@($"Attempted to query {_overview.RemoteEndpoint}/v1.0/metadata but the call failed. Verify the EventStore DAPR sidecar is running. Check Admin server logs for details.")" />
+            break;
+        case RemoteMetadataStatus.InvalidPayload:
+            <IssueBanner Visible="true"
+                         Title="Invalid remote metadata"
+                         Description="@($"The remote EventStore sidecar at {_overview.RemoteEndpoint}/v1.0/metadata returned a payload that could not be parsed. Subscription counts are not derived from a partial parse.")" />
+            break;
+        case RemoteMetadataStatus.Initializing:
+            <IssueBanner Visible="true"
+                         Title="Remote sidecar initializing"
+                         Description="@($"The remote EventStore sidecar at {_overview.RemoteEndpoint} is reachable but app metadata is still loading. Subscription data will appear once initialization completes.")" />
             break;
         case RemoteMetadataStatus.Available:
             break;

@@ -93,10 +93,10 @@
                       Title="Number of registered DAPR components" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
-            <StatCard Label="Subscriptions"
-                      Value="@(_sidecar.RemoteMetadataStatus == RemoteMetadataStatus.Available ? _sidecar.SubscriptionCount.ToString() : "N/A")"
+            <StatCard Label="Active Subscriptions"
+                      Value="@(_sidecar.RemoteMetadataStatus == RemoteMetadataStatus.Available ? _sidecar.SubscriptionCount.ToString() : "subscription data unavailable")"
                       Severity="neutral"
-                      Subtitle="@(_sidecar.RemoteMetadataStatus == RemoteMetadataStatus.Available ? $"{_sidecar.HttpEndpointCount} HTTP endpoints" : "HTTP endpoints: N/A")"
+                      Subtitle="@(_sidecar.RemoteMetadataStatus == RemoteMetadataStatus.Available ? $"{_sidecar.HttpEndpointCount} HTTP endpoints" : "HTTP endpoints: unavailable")"
                       Title="@GetRemoteMetadataTitle(_sidecar)" />
         </FluentGridItem>
     }
@@ -158,6 +158,10 @@
         <PropertyColumn Property="@(c => c.ComponentName)" Title="Component Name" Class="monospace" Sortable="true" />
         <PropertyColumn Property="@(c => c.ComponentType)" Title="Type" Sortable="true" />
         <PropertyColumn Property="@(c => c.Version)" Title="Version" Sortable="true" />
+        <TemplateColumn Title="Source" Sortable="true"
+                        SortBy="@(GridSort<DaprComponentDetail>.ByAscending(c => (int)c.Source))">
+            <span title="@GetSourceTitle(context.Source)">@FormatSource(context.Source)</span>
+        </TemplateColumn>
         <TemplateColumn Title="Status"
                         SortBy="@(GridSort<DaprComponentDetail>.ByDescending(c => (int)c.Status))">
             <StatusBadge Severity="@GetHealthSeverity(context.Status)"
@@ -379,8 +383,26 @@
     {
         RemoteMetadataStatus.Available => $"Remote eventstore sidecar reachable at {sidecar.RemoteEndpoint}",
         RemoteMetadataStatus.Unreachable => $"Remote eventstore sidecar unreachable at {sidecar.RemoteEndpoint}",
+        RemoteMetadataStatus.InvalidPayload => $"Remote eventstore sidecar at {sidecar.RemoteEndpoint} returned an invalid payload",
+        RemoteMetadataStatus.Initializing => $"Remote eventstore sidecar at {sidecar.RemoteEndpoint} is initializing",
         RemoteMetadataStatus.NotConfigured => "Remote eventstore sidecar endpoint not configured (AdminServer:EventStoreDaprHttpEndpoint)",
         _ => "Number of active subscriptions",
+    };
+
+    private static string FormatSource(DaprComponentSource source) => source switch
+    {
+        DaprComponentSource.RemoteEventStoreMetadata => "Remote (eventstore)",
+        DaprComponentSource.LocalAdminProbe => "Local probe",
+        DaprComponentSource.LocalAdminMetadataFallback => "Local fallback",
+        _ => "unavailable",
+    };
+
+    private static string GetSourceTitle(DaprComponentSource source) => source switch
+    {
+        DaprComponentSource.RemoteEventStoreMetadata => "Reported by the remote EventStore sidecar metadata (canonical).",
+        DaprComponentSource.LocalAdminProbe => "Confirmed by an Admin.Server local dependency probe.",
+        DaprComponentSource.LocalAdminMetadataFallback => "Sourced from local Admin sidecar metadata as a degraded fallback only.",
+        _ => "Source attribution unavailable for this fact.",
     };
 
     private static string FormatTimeAgo(DateTimeOffset timestamp)

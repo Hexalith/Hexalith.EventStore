@@ -64,20 +64,20 @@
     {
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Total Events"
-                      Value="@_healthReport.TotalEventCount.ToString("N0")"
-                      Severity="neutral"
+                      Value="@FormatTotalEvents(_healthReport)"
+                      Severity="@MetricSeverity(_healthReport.TotalEventCountStatus)"
                       Title="Total events in the system" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Events/sec"
-                      Value="@_healthReport.EventsPerSecond.ToString("F1")"
-                      Severity="@(_healthReport.EventsPerSecond > 0 ? "success" : "neutral")"
+                      Value="@FormatEventsPerSecond(_healthReport)"
+                      Severity="@MetricSeverity(_healthReport.EventsPerSecondStatus)"
                       Title="Current event throughput" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Error Rate"
-                      Value="@($"{_healthReport.ErrorPercentage:F1}%")"
-                      Severity="@GetErrorRateSeverity(_healthReport.ErrorPercentage)"
+                      Value="@FormatErrorRate(_healthReport)"
+                      Severity="@(_healthReport.ErrorPercentageStatus == SystemHealthMetricStatus.Available ? GetErrorRateSeverity(_healthReport.ErrorPercentage) : MetricSeverity(_healthReport.ErrorPercentageStatus))"
                       Title="Current error rate" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
@@ -273,6 +273,32 @@
         _disposed = true;
         return ValueTask.CompletedTask;
     }
+
+    // ADR-3 Truthful Metrics shared with Index.razor:
+    //   - Available    -> render the real measurement (zero is honest if measured zero)
+    //   - Unavailable  -> render "unavailable" (never 0, 0.0/s, or 0.0%)
+    //   - Stale        -> render the stale value with a stale label
+    private static string FormatTotalEvents(SystemHealthReport report) =>
+        report.TotalEventCountStatus == SystemHealthMetricStatus.Unavailable
+            ? "unavailable"
+            : report.TotalEventCount.ToString("N0");
+
+    private static string FormatEventsPerSecond(SystemHealthReport report) =>
+        report.EventsPerSecondStatus == SystemHealthMetricStatus.Unavailable
+            ? "unavailable"
+            : report.EventsPerSecond.ToString("F1");
+
+    private static string FormatErrorRate(SystemHealthReport report) =>
+        report.ErrorPercentageStatus == SystemHealthMetricStatus.Unavailable
+            ? "unavailable"
+            : $"{report.ErrorPercentage:F1}%";
+
+    private static string MetricSeverity(SystemHealthMetricStatus status) => status switch
+    {
+        SystemHealthMetricStatus.Available => "neutral",
+        SystemHealthMetricStatus.Stale => "warning",
+        _ => "neutral",
+    };
 
     private static string GetHealthSeverity(HealthStatus status) => status switch
     {

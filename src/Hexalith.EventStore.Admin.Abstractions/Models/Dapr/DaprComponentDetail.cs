@@ -12,6 +12,11 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 /// <param name="Status">The current health status.</param>
 /// <param name="LastCheckUtc">When the health was last checked.</param>
 /// <param name="Capabilities">The component capabilities (e.g., ETAG, TRANSACTIONAL, TTL).</param>
+/// <param name="Source">
+/// Source attribution: which sidecar or probe supplied this fact. Defaults to
+/// <see cref="DaprComponentSource.Unavailable"/> so legacy/wire-default values cannot silently
+/// be presented as canonical evidence.
+/// </param>
 public record DaprComponentDetail(
     string ComponentName,
     string ComponentType,
@@ -19,7 +24,8 @@ public record DaprComponentDetail(
     string Version,
     HealthStatus Status,
     DateTimeOffset LastCheckUtc,
-    IReadOnlyList<string> Capabilities) {
+    IReadOnlyList<string> Capabilities,
+    DaprComponentSource Source = DaprComponentSource.Unavailable) {
     /// <summary>Gets the DAPR component name.</summary>
     public string ComponentName { get; } = !string.IsNullOrWhiteSpace(ComponentName)
         ? ComponentName

@@ -84,13 +84,21 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
             .GetRequiredService<IDaprInfrastructureQueryService>();
         DaprClient daprClient = scope.ServiceProvider.GetRequiredService<DaprClient>();
 
-        IReadOnlyList<DaprComponentDetail> components = await infraService
-            .GetComponentsAsync(ct)
+        // Use the canonical inventory so the captured set includes pub/sub from the remote
+        // EventStore sidecar metadata (AC4) — not just locally scoped state-store components.
+        DaprCanonicalInventory inventory = await infraService
+            .GetCanonicalDaprInventoryAsync(ct)
             .ConfigureAwait(false);
 
-        // Skip write if no components returned (sidecar unreachable) — avoids empty snapshots
-        if (components.Count == 0) {
-            _logger.LogDebug("No DAPR components returned — skipping health history snapshot");
+        IReadOnlyList<DaprComponentDetail> components = inventory.Components;
+
+        // Skip write only when canonical evidence is empty AND remote metadata was unavailable —
+        // never overwrite a previous healthy timeline with an empty successful sample (AC4).
+        if (components.Count == 0
+            && inventory.RemoteMetadataStatus is not RemoteMetadataStatus.Available) {
+            _logger.LogDebug(
+                "No canonical DAPR components returned (remote metadata status={Status}) — skipping health history snapshot to avoid empty overwrite",
+                inventory.RemoteMetadataStatus);
             return;
         }
 
@@ -124,7 +132,10 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to persist health history snapshot to state store");
+            // History persistence failed (e.g. Redis down). Live health/inventory APIs continue
+            // to expose the current canonical sample; the next read of GetComponentHealthHistoryAsync
+            // surfaces the persistence-unavailability via empty/null state-store result.
+            _logger.LogWarning(ex, "Failed to persist health history snapshot — prior samples retained, current sample available only via live APIs");
         }
     }
 

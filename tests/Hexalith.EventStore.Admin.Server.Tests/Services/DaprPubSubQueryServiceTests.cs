@@ -157,9 +157,11 @@ public class DaprPubSubQueryServiceTests {
         // Act
         DaprPubSubOverview result = await _sut.GetPubSubOverviewAsync();
 
-        // Assert — graceful degradation, not an exception
+        // Assert — graceful degradation, not an exception. Malformed JSON now surfaces as
+        // InvalidPayload (was Unreachable) so the UI can distinguish parse failures from
+        // transport failures.
         result.Subscriptions.ShouldBeEmpty();
-        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Unreachable);
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.InvalidPayload);
     }
 
     [Fact]

@@ -21,6 +21,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 public sealed class DaprHealthQueryService : IHealthQueryService {
     private readonly IAdminAuthContext _authContext;
     private readonly DaprClient _daprClient;
+    private readonly IDaprInfrastructureQueryService _infrastructure;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<DaprHealthQueryService> _logger;
     private readonly AdminServerOptions _options;
@@ -34,6 +35,7 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
     /// <param name="options">The admin server options.</param>
     /// <param name="authContext">The admin auth context for JWT forwarding.</param>
     /// <param name="streamQuery">The stream query service that backs the dashboard's TotalEventCount metric (bounded source: <c>admin:stream-activity:all</c>).</param>
+    /// <param name="infrastructure">The shared canonical DAPR inventory provider.</param>
     /// <param name="logger">The logger.</param>
     public DaprHealthQueryService(
         DaprClient daprClient,
@@ -41,62 +43,50 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
         IOptions<AdminServerOptions> options,
         IAdminAuthContext authContext,
         IStreamQueryService streamQuery,
+        IDaprInfrastructureQueryService infrastructure,
         ILogger<DaprHealthQueryService> logger) {
         ArgumentNullException.ThrowIfNull(daprClient);
         ArgumentNullException.ThrowIfNull(httpClientFactory);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(authContext);
         ArgumentNullException.ThrowIfNull(streamQuery);
+        ArgumentNullException.ThrowIfNull(infrastructure);
         ArgumentNullException.ThrowIfNull(logger);
         _daprClient = daprClient;
         _httpClientFactory = httpClientFactory;
         _options = options.Value;
         _authContext = authContext;
         _streamQuery = streamQuery;
+        _infrastructure = infrastructure;
         _logger = logger;
     }
 
     /// <inheritdoc/>
     public async Task<SystemHealthReport> GetSystemHealthAsync(CancellationToken ct = default) {
-        HealthStatus overallStatus = HealthStatus.Healthy;
-        List<DaprComponentHealth> components = [];
+        // Build the canonical inventory once. The infra service swallows dependency failures
+        // and exposes them as RemoteMetadataStatus values, so we never throw out of /health
+        // for downstream issues — only real cancellation propagates.
+        DaprCanonicalInventory inventory = await _infrastructure
+            .GetCanonicalDaprInventoryAsync(ct)
+            .ConfigureAwait(false);
 
-        // 1. DAPR sidecar health via metadata
-        try {
-            DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
-            if (metadata?.Components is not null) {
-                foreach (DaprComponentsMetadata component in metadata.Components) {
-                    components.Add(new DaprComponentHealth(
-                        component.Name,
-                        component.Type,
-                        HealthStatus.Healthy,
-                        DateTimeOffset.UtcNow));
-                }
-            }
-        }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception ex) {
-            _logger.LogWarning(ex, "DAPR sidecar metadata unavailable.");
-            overallStatus = HealthStatus.Unhealthy;
-        }
+        // 1. Probe the configured Admin.Server state-store dependency (Redis usability for Admin).
+        //    This is the canonical evidence for AC1: when Redis is down, the matching component
+        //    row must flip to Unhealthy and overall status must be Unhealthy. We never let the
+        //    probe exception bubble up — a failed probe is itself the health evidence.
+        (HealthStatus stateStoreStatus, bool stateStoreProbeFailed) =
+            await ProbeStateStoreAsync(ct).ConfigureAwait(false);
 
-        // 2. State store connectivity probe
-        try {
-            _ = await _daprClient
-                .GetStateAsync<string>(_options.StateStoreName, "admin:health-check", cancellationToken: ct)
-                .ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception ex) {
-            _logger.LogWarning(ex, "State store connectivity probe failed.");
-            overallStatus = HealthStatus.Unhealthy;
-        }
+        // Apply the local Admin probe to the matching canonical component (or synthesize one if
+        // the state-store name is not in the canonical set yet — e.g. when both local and remote
+        // metadata are unavailable).
+        List<DaprComponentHealth> components = MapToHealthComponents(
+            inventory,
+            stateStoreStatus,
+            stateStoreProbeFailed);
 
-        // 3. EventStore reachability (short timeout - degraded, not unhealthy)
+        // 2. EventStore reachability (short timeout - degraded, not unhealthy)
+        bool eventStoreFailed = false;
         try {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(2));
@@ -114,23 +104,22 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
             _ = httpResponse.EnsureSuccessStatusCode();
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
-            // EventStore timeout — degraded but not unhealthy
-            if (overallStatus == HealthStatus.Healthy) {
-                overallStatus = HealthStatus.Degraded;
-            }
-
+            eventStoreFailed = true;
             _logger.LogWarning("EventStore health check timed out — marking as Degraded.");
         }
         catch (OperationCanceledException) {
             throw;
         }
         catch (Exception ex) {
-            if (overallStatus == HealthStatus.Healthy) {
-                overallStatus = HealthStatus.Degraded;
-            }
-
+            eventStoreFailed = true;
             _logger.LogWarning(ex, "EventStore health check failed — marking as Degraded.");
         }
+
+        HealthStatus overallStatus = ComputeOverallStatus(
+            stateStoreProbeFailed,
+            eventStoreFailed,
+            inventory.RemoteMetadataStatus,
+            inventory.LocalProbeAvailable);
 
         ObservabilityLinks links = new(_options.TraceUrl, _options.MetricsUrl, _options.LogsUrl);
 
@@ -152,7 +141,98 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
             links,
             TotalEventCountStatus: totalEventCountStatus,
             EventsPerSecondStatus: SystemHealthMetricStatus.Unavailable,
-            ErrorPercentageStatus: SystemHealthMetricStatus.Unavailable);
+            ErrorPercentageStatus: SystemHealthMetricStatus.Unavailable,
+            InventorySourceStatus: inventory.RemoteMetadataStatus);
+    }
+
+    private async Task<(HealthStatus Status, bool ProbeFailed)> ProbeStateStoreAsync(CancellationToken ct) {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(3));
+
+        try {
+            _ = await _daprClient
+                .GetStateAsync<string>(_options.StateStoreName, "admin:health-check", cancellationToken: cts.Token)
+                .ConfigureAwait(false);
+            return (HealthStatus.Healthy, false);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
+            // Probe timed out without caller cancellation — treat as Unhealthy evidence.
+            _logger.LogWarning("State store connectivity probe timed out after 3 seconds.");
+            return (HealthStatus.Unhealthy, true);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            _logger.LogWarning(ex, "State store connectivity probe failed.");
+            return (HealthStatus.Unhealthy, true);
+        }
+    }
+
+    private List<DaprComponentHealth> MapToHealthComponents(
+        DaprCanonicalInventory inventory,
+        HealthStatus stateStoreStatus,
+        bool stateStoreProbeFailed) {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        List<DaprComponentHealth> components = [];
+        bool stateStoreApplied = false;
+        string configuredStateStore = _options.StateStoreName;
+
+        foreach (DaprComponentDetail c in inventory.Components) {
+            HealthStatus status = c.Status;
+            DaprComponentSource source = c.Source;
+
+            // Apply the local Admin.Server state-store probe to the configured state-store
+            // component, regardless of which sidecar reported it.
+            if (string.Equals(c.ComponentName, configuredStateStore, StringComparison.OrdinalIgnoreCase)
+                && c.Category == DaprComponentCategory.StateStore) {
+                status = stateStoreStatus;
+                source = DaprComponentSource.LocalAdminProbe;
+                stateStoreApplied = true;
+            }
+
+            components.Add(new DaprComponentHealth(c.ComponentName, c.ComponentType, status, now, source));
+        }
+
+        // If the canonical inventory did not include the configured state store, synthesize a
+        // row from the local probe so /health never silently omits a failed state-store outage.
+        if (!stateStoreApplied) {
+            components.Add(new DaprComponentHealth(
+                configuredStateStore,
+                "state",
+                stateStoreStatus,
+                now,
+                DaprComponentSource.LocalAdminProbe));
+        }
+
+        return components;
+    }
+
+    private static HealthStatus ComputeOverallStatus(
+        bool stateStoreProbeFailed,
+        bool eventStoreFailed,
+        RemoteMetadataStatus remoteStatus,
+        bool localProbeAvailable) {
+        if (stateStoreProbeFailed) {
+            return HealthStatus.Unhealthy;
+        }
+
+        if (!localProbeAvailable) {
+            // Local Admin sidecar unreachable — admin operations cannot be considered healthy.
+            return HealthStatus.Unhealthy;
+        }
+
+        if (remoteStatus is RemoteMetadataStatus.Unreachable
+            or RemoteMetadataStatus.InvalidPayload
+            or RemoteMetadataStatus.Initializing) {
+            return HealthStatus.Degraded;
+        }
+
+        if (eventStoreFailed) {
+            return HealthStatus.Degraded;
+        }
+
+        return HealthStatus.Healthy;
     }
 
     /// <summary>
@@ -200,7 +280,8 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
                 c.Name,
                 c.Type,
                 HealthStatus.Healthy,
-                DateTimeOffset.UtcNow))
+                DateTimeOffset.UtcNow,
+                DaprComponentSource.LocalAdminMetadataFallback))
             .ToList();
     }
 
