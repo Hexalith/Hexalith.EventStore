@@ -1,6 +1,6 @@
 # Story: admin-ui-state-inspection-cluster-fix
 
-Status: ready-for-dev
+Status: in-progress
 
 Context created: 2026-05-05
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-05-admin-ui-state-inspection-cluster.md`
@@ -163,6 +163,60 @@ so that I can diagnose stream behavior from the UI without silent empty panels, 
   - [ ] Run targeted EventStore controller tests; if `Hexalith.EventStore.Server.Tests` as a whole is blocked by known baseline warnings/failures, record the exact targeted command, result, and baseline blocker.
   - [ ] Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
   - [ ] With Aspire running, perform the live stream detail smoke and capture the resource state plus UI/API evidence in Dev Agent Record. **Pending operator follow-up — not executable from the dev agent's headless environment; ready for the user to run through the Admin UI.**
+
+### Review Findings
+
+Code review run: 2026-05-07. Reviewed merge `c53769cd` (commit `4d345638`). Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor — all completed. Counts: 4 decision-needed, 22 patch, 14 deferred, 10 dismissed.
+
+#### Decision-Needed
+
+- [ ] [Review][Decision] Out-of-scope tenant-management work bundled into this commit — Spec QA Condition + Anti-Reinvention Guardrail explicitly forbade mixing tenant-management cluster work; commit `4d345638` includes `SubmitQueryResponse.cs`, `DaprTenantQueryService.cs`, `appsettings*.json`, `Hexalith.Tenants` submodule pointer, `tenant-management-debug-cluster-fix.md` status flip to `done`, and tenant-only test files. Already merged to `main`. Decide: (a) accept as-is and document, (b) write a corrective revert/cherry-pick story, (c) tighten future commit-scope policy. Cannot patch retroactively without rewriting history.
+- [ ] [Review][Decision] AC #6 / ST6 — `StateInspectorModal.razor` still nests `<TitleTemplate>` and `<ChildContent>` inside `<FluentDialogBody>` (diff lines 1351, 1357); only an inner CSS wrapper was added — Spec required removing the nesting. Without manual smoke evidence (AC #9), can't confirm clipping is fixed. Decide: (a) flatten markup per spec, (b) migrate to `IDialogService` per spec alternative, (c) accept inline-wrapper after manual smoke proves no clipping.
+- [ ] [Review][Decision] `SubmitQueryResponse` JSON contract: positional record converted to nominal record with `[JsonConstructor]` PascalCase params + secondary camelCase compat ctor [`src/Hexalith.EventStore.Contracts/Queries/SubmitQueryResponse.cs`]. No cross-process round-trip test in this diff. Decide: (a) revert this out-of-scope change, (b) keep and add a cross-process serialization round-trip test before close.
+- [ ] [Review][Decision] AC #3 — Causation DTO contract: `OriginatingCommandType` filled with `target.EventTypeName`, `OriginatingCommandId` falls back to `target.MessageId`, `CorrelationId` falls back to `target.MessageId` [`src/Hexalith.EventStore/Controllers/AdminStreamQueryController.cs:2008-2024`]. `CausationChain` constructor rejects whitespace, so 500 results when `MessageId` is also empty. Spec forbids fabrication ("blank/null `CausationId` values do not fabricate links"). Decide: (a) relax DTO to accept nullable/missing causation/correlation fields and update UI, (b) return typed empty payload (e.g., `CausationChain` with explicit `OriginatingCommandId = null`) when causation cannot be proven, (c) document fallback semantics explicitly and tighten tests.
+
+#### Patch
+
+- [x] [Review][Patch] Resolve unmerged conflict markers in `sprint-status.yaml` — already cleaned up by subsequent commits on `main`; no action needed.
+- [x] [Review][Patch] `AdminApiAccessTokenProvider` `global_admin` claim now gated behind `EventStore:Authentication:GlobalAdmin` config flag (default `false`); dev `appsettings.json` opts in explicitly. [`AdminApiAccessTokenProvider.cs`, `appsettings.json`]
+- [ ] [Review][Patch] `GetAggregateStateAsync` with `at == 0` returns 200 with empty snapshot — REVERTED on review patch pass: existing test `GetAggregateState_AtZero_ReturnsInitialEmptySnapshotWithDeterministicTimestamp` asserts the cheap baseline (no actor lookup) is intentional; spec re-interpreted as: at=0 returns the deterministic empty baseline regardless of stream existence. Tracked in deferred-work as a doc/spec clarification rather than a code patch.
+- [x] [Review][Patch] `GetAggregateStateAsync` with `at > maxSequence` now returns 404. [`AdminStreamQueryController.cs:GetAggregateStateAsync`]
+- [x] [Review][Patch] `DiffAggregateStateAsync` validates `to <= maxSequence` and returns 404 when exceeded. [`AdminStreamQueryController.cs:DiffAggregateStateAsync`]
+- [x] [Review][Patch] `TraceCausationChainAsync` whitespace `MessageId` no longer 500s — falls back to deterministic `seq-{N}` placeholder for `OriginatingCommandId`/`CorrelationId`. [`AdminStreamQueryController.cs:TraceCausationChainAsync`]
+- [x] [Review][Patch] `TraceCausationChainAsync` whitespace `EventTypeName` on linked events no longer 500s — substitutes `"unknown"` placeholder. [`AdminStreamQueryController.cs:TraceCausationChainAsync`]
+- [x] [Review][Patch] EventStore 500 from new endpoints now mapped to 502 Bad Gateway by Admin Server (not collapsed to 503); `IsServiceUnavailable` narrowed to transport failure (StatusCode null) or upstream 503 only. [`AdminStreamsController.cs:IsServiceUnavailable`, new `TryMapUpstreamStatus`]
+- [x] [Review][Patch] Upstream 401/403 now mapped to typed 401/403 ProblemDetails by Admin Server controller; not collapsed to 503. [`AdminStreamsController.cs:TryMapUpstreamStatus`]
+- [x] [Review][Patch] `AggregateIdentity` `ArgumentException` now caught and returned as 400 ProblemDetails on all three new endpoints. [`AdminStreamQueryController.cs`]
+- [x] [Review][Patch] `TraceCausationChainAsync` upstream lookup now `OrderBy(e => e.SequenceNumber).FirstOrDefault()` for deterministic selection. [`AdminStreamQueryController.cs:TraceCausationChainAsync`]
+- [x] [Review][Patch] `StateInspectorModal.OnAfterRenderAsync` now flips `_pendingShow=false` only on successful `ShowAsync`; failure path logs warning and surfaces user-visible message. [`StateInspectorModal.razor:OnAfterRenderAsync`]
+- [x] [Review][Patch] `StateInspectorModal.FetchState` `_fetched=true` moved out of `finally`; set explicitly in success/error paths but NOT in the `OperationCanceledException` rethrow branch. [`StateInspectorModal.razor:FetchState`]
+- [x] [Review][Patch] `EventDetailPanel.LoadStateAsync` re-entrancy guard added (`if (_stateLoading) return;`); also captures `requestedSequence`/`requestedAggregateId` and discards stale results when user moves to a different event. [`EventDetailPanel.razor:LoadStateAsync`]
+- [ ] [Review][Patch] `EventDetailPanel.LoadStateAsync` `CancellationToken` plumbing — partial: race-condition mitigated via stale-result discard; full per-component CTS deferred (requires API client signature changes for state-at-position; tracked separately).
+- [x] [Review][Patch] `StateDiffViewer` outer dead `catch (OperationCanceledException)` removed; cancellation classification now lives only in `ClassifyTaskResult`. [`StateDiffViewer.razor:LoadDiffAsync`]
+- [x] [Review][Patch] `StateDiffViewer.ClassifyTaskResult` defensive non-terminal-task fallback added — emits diagnostic warning instead of silent `(null, null)`. [`StateDiffViewer.razor:ClassifyTaskResult`]
+- [x] [Review][Patch] `StateDiffViewer` auxiliary state failure no longer masks primary `_diff` — when diff loaded, `_fromState`/`_toState` failures surface as `_fromStateWarning`/`_toStateWarning` only. [`StateDiffViewer.razor:LoadDiffAsync`]
+- [x] [Review][Patch] `AdminStreamApiClient.HandleErrorStatusAsync` now treats 400 like 422 (parses ProblemDetails `detail` and throws `InvalidOperationException`); UI components catch `InvalidOperationException` and render a typed "Invalid request" message instead of "no state". Also routed through `EventDetailPanel`/`StateInspectorModal`/`StateDiffViewer.ClassifyTaskResult`. [`AdminStreamApiClient.cs:HandleErrorStatusAsync`]
+- [ ] [Review][Patch] `AdminStreamsControllerStateDiffCausationTests` reflection-based attribute test — deferred to follow-up; existing functional tests cover the policy/filter behavior implicitly via integration-style controller tests.
+- [ ] [Review][Patch] Preserve upstream `ProblemDetails.Detail` in `DaprStreamQueryService` 400/404 mapping — partial: 400 now propagates upstream Detail through the new UI client path (since `HandleErrorStatusAsync` parses Detail for 400). Service-layer mapping refinement (loading the upstream body before throwing typed exception) deferred.
+- [x] [Review][Patch] `StateInspectorModal.FetchState` timestamp parsing now uses `DateTimeStyles.AssumeUniversal | AdjustToUniversal` with `InvariantCulture`; placeholder/error-message updated to require Z suffix. [`StateInspectorModal.razor:FetchState`]
+- [ ] [Review][Patch] Causation test gap (blank-CausationId fallback assertions) — deferred; production code now safe against empty MessageId/EventTypeName, but assertion coverage for the placeholder values (`seq-{N}`, `"unknown"`) is a follow-up.
+
+#### Deferred (pre-existing or out-of-scope; logged in deferred-work.md)
+
+- [x] [Review][Defer] AC #9 — manual Aspire smoke evidence missing — pending operator verification; story-spec checklist explicitly defers to operator
+- [x] [Review][Defer] `Hexalith.Tenants` submodule pointer change in this commit — out-of-scope, already merged
+- [x] [Review][Defer] `tenant-management-debug-cluster-fix.md` status flip + Review Findings rewritten — out-of-scope, already merged
+- [x] [Review][Defer] `DaprTenantQueryServiceTests.cs` and `TenantsPageTests.cs` added — out-of-scope, already merged
+- [x] [Review][Defer] `appsettings.json` and `appsettings.Development.json` wildcard route deletions — out-of-scope, already merged
+- [x] [Review][Defer] `InvokeEventStoreAsync` does not propagate `CancellationToken ct` to `IAggregateActor.GetEventsAsync(0)` — pre-existing actor interface limitation, architectural change
+- [x] [Review][Defer] ST7 — `DiffTimeoutSeconds = 30` could align to shared `ServiceInvocationTimeoutSeconds` (spec accepted ≥15s; 30s is within bounds)
+- [x] [Review][Defer] `DaprTenantQueryService.ReadUpstreamProblemMessageAsync` 512-char substring may split UTF-16 surrogate pairs — low-likelihood, out-of-scope file
+- [x] [Review][Defer] `DaprTenantQueryService` 500-handling does not check `Content-Type` before `JsonDocument.Parse` — out-of-scope file
+- [x] [Review][Defer] Boundary tests missing for `at = long.MinValue` and `at = long.MaxValue` on `/state` and `/causation`
+- [x] [Review][Defer] `StateInspectorModal` timestamp-mode error-path coverage missing
+- [x] [Review][Defer] `StateInspectorModal` accepts very-future timestamps and silently returns latest snapshot — asymmetric vs very-past cap-exceeded behavior
+- [x] [Review][Defer] `DaprStreamQueryServiceStateMappingTests` does not assert 503/Timeout/`RpcException` flow through unchanged
+- [x] [Review][Defer] `DiffAggregateState_FromZero_TreatsBaselineAsEmptyState` does not assert `OldValue` (baseline-empty representation)
 
 ## QA Conditions
 

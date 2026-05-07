@@ -73,8 +73,9 @@ public class AdminStreamQueryController(
 
         try {
             if (at == 0) {
-                // Initial empty state — no actor lookup needed; use a deterministic
-                // timestamp so callers can distinguish "before any event" from a real snapshot.
+                // Cheap baseline: clients use at=0 to obtain the empty pre-genesis state
+                // for diffing without paying for an actor round-trip. Existence is verified
+                // for at>0; this short-circuit is intentional and covered by tests.
                 return Ok(new AggregateStateSnapshot(
                     TenantId: tenantId,
                     Domain: domain,
@@ -98,8 +99,14 @@ public class AdminStreamQueryController(
                     detail: "Stream not found or has no events.");
             }
 
-            // Locate the event timestamp at or before the requested position; clipping
-            // matches ReconstructState's natural upper-bound behavior.
+            long maxSequence = allEvents[^1].SequenceNumber;
+            if (at > maxSequence) {
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: $"Sequence {at} exceeds latest event sequence {maxSequence}.");
+            }
+
             ServerEventEnvelope? eventAt = allEvents
                 .Where(e => e.SequenceNumber <= at)
                 .OrderByDescending(e => e.SequenceNumber)
@@ -122,6 +129,12 @@ public class AdminStreamQueryController(
         }
         catch (OperationCanceledException) {
             throw;
+        }
+        catch (ArgumentException ex) {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: ex.Message);
         }
         catch (Exception ex) {
             logger.LogError(ex, "Failed to reconstruct aggregate state for {TenantId}/{Domain}/{AggregateId} at {At}.",
@@ -179,6 +192,14 @@ public class AdminStreamQueryController(
                     detail: "Stream not found or has no events.");
             }
 
+            long maxSequence = allEvents[^1].SequenceNumber;
+            if (to > maxSequence) {
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: $"Sequence 'to'={to} exceeds latest event sequence {maxSequence}.");
+            }
+
             JsonObject fromState = ReconstructState(allEvents, from);
             JsonObject toState = ReconstructState(allEvents, to);
 
@@ -193,6 +214,12 @@ public class AdminStreamQueryController(
         }
         catch (OperationCanceledException) {
             throw;
+        }
+        catch (ArgumentException ex) {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: ex.Message);
         }
         catch (Exception ex) {
             logger.LogError(ex, "Failed to diff aggregate state for {TenantId}/{Domain}/{AggregateId} from {From} to {To}.",
@@ -257,9 +284,11 @@ public class AdminStreamQueryController(
             var linked = new List<ServerEventEnvelope> { target };
 
             if (!string.IsNullOrWhiteSpace(target.CausationId)) {
-                ServerEventEnvelope? upstream = allEvents.FirstOrDefault(e =>
-                    e.SequenceNumber != target.SequenceNumber
-                    && string.Equals(e.MessageId, target.CausationId, StringComparison.Ordinal));
+                ServerEventEnvelope? upstream = allEvents
+                    .Where(e => e.SequenceNumber != target.SequenceNumber
+                        && string.Equals(e.MessageId, target.CausationId, StringComparison.Ordinal))
+                    .OrderBy(e => e.SequenceNumber)
+                    .FirstOrDefault();
                 if (upstream is not null) {
                     linked.Add(upstream);
                 }
@@ -282,20 +311,30 @@ public class AdminStreamQueryController(
             IReadOnlyList<CausationEvent> chainEvents = [.. linked
                 .DistinctBy(e => e.SequenceNumber)
                 .OrderBy(e => e.SequenceNumber)
-                .Select(e => new CausationEvent(e.SequenceNumber, e.EventTypeName, e.Timestamp))];
+                .Select(e => new CausationEvent(
+                    e.SequenceNumber,
+                    string.IsNullOrWhiteSpace(e.EventTypeName) ? "unknown" : e.EventTypeName,
+                    e.Timestamp))];
 
             // The event envelope does not store the originating command type. Use the target
             // event's metadata so the UI can show what event the chain starts from without
-            // fabricating a command-side identifier we do not actually have.
+            // fabricating a command-side identifier we do not actually have. When the target
+            // itself is missing identifiers (corrupt envelope), fall back to a deterministic
+            // sequence-derived placeholder rather than throwing into the generic 500 path.
+            string targetIdFallback = $"seq-{target.SequenceNumber}";
             string originatingCommandId = !string.IsNullOrWhiteSpace(target.CausationId)
                 ? target.CausationId
-                : target.MessageId;
+                : !string.IsNullOrWhiteSpace(target.MessageId)
+                    ? target.MessageId
+                    : targetIdFallback;
             string originatingCommandType = !string.IsNullOrWhiteSpace(target.EventTypeName)
                 ? target.EventTypeName
                 : "unknown";
             string correlationId = !string.IsNullOrWhiteSpace(target.CorrelationId)
                 ? target.CorrelationId
-                : target.MessageId;
+                : !string.IsNullOrWhiteSpace(target.MessageId)
+                    ? target.MessageId
+                    : targetIdFallback;
 
             CausationChain chain = new(
                 OriginatingCommandType: originatingCommandType,
@@ -309,6 +348,12 @@ public class AdminStreamQueryController(
         }
         catch (OperationCanceledException) {
             throw;
+        }
+        catch (ArgumentException ex) {
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad Request",
+                detail: ex.Message);
         }
         catch (Exception ex) {
             logger.LogError(ex, "Failed to trace causation chain for {TenantId}/{Domain}/{AggregateId} at {At}.",

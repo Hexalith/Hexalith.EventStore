@@ -142,6 +142,9 @@ public class AdminStreamsController(
         catch (ArgumentException ex) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
         }
+        catch (HttpRequestException ex) when (TryMapUpstreamStatus(ex, out IActionResult? mapped)) {
+            return mapped!;
+        }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetAggregateState), ex);
         }
@@ -181,6 +184,9 @@ public class AdminStreamsController(
         }
         catch (ArgumentException ex) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
+        }
+        catch (HttpRequestException ex) when (TryMapUpstreamStatus(ex, out IActionResult? mapped)) {
+            return mapped!;
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(DiffAggregateState), ex);
@@ -399,6 +405,9 @@ public class AdminStreamsController(
         catch (ArgumentException ex) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
         }
+        catch (HttpRequestException ex) when (TryMapUpstreamStatus(ex, out IActionResult? mapped)) {
+            return mapped!;
+        }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(TraceCausationChain), ex);
         }
@@ -468,12 +477,37 @@ public class AdminStreamsController(
     }
 
     private static bool IsServiceUnavailable(Exception ex)
-        => ex is HttpRequestException or TimeoutException
+        => ex is TimeoutException
+            || (ex is HttpRequestException http && IsTransportFailure(http))
             || (ex is Grpc.Core.RpcException rpc && rpc.StatusCode is
                 Grpc.Core.StatusCode.Unavailable or
                 Grpc.Core.StatusCode.DeadlineExceeded or
                 Grpc.Core.StatusCode.Aborted or
                 Grpc.Core.StatusCode.ResourceExhausted);
+
+    // A transport failure is one where no response was produced (StatusCode is null) or where
+    // the upstream explicitly returned 503. Other status codes (401/403/404/400/500) are NOT
+    // transport failures and must surface their own typed mapping rather than collapsing to 503.
+    private static bool IsTransportFailure(HttpRequestException ex)
+        => ex.StatusCode is null or System.Net.HttpStatusCode.ServiceUnavailable;
+
+    private bool TryMapUpstreamStatus(HttpRequestException ex, out IActionResult? mapped) {
+        switch (ex.StatusCode) {
+            case System.Net.HttpStatusCode.Unauthorized:
+                mapped = CreateProblemResult(StatusCodes.Status401Unauthorized, "Unauthorized", "Authentication is required.");
+                return true;
+            case System.Net.HttpStatusCode.Forbidden:
+                mapped = CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", "Access to the requested resource is denied.");
+                return true;
+            case System.Net.HttpStatusCode.InternalServerError:
+                logger.LogError(ex, "Upstream EventStore returned 500.");
+                mapped = CreateProblemResult(StatusCodes.Status502BadGateway, "Bad Gateway", "Upstream EventStore service failed to compute the response.");
+                return true;
+            default:
+                mapped = null;
+                return false;
+        }
+    }
 
     private ObjectResult ServiceUnavailable(string method, Exception ex) {
         logger.LogError(ex, "Admin service unavailable: {Method}", method);

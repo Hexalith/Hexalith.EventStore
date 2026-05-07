@@ -181,13 +181,20 @@
 
     private async Task FetchState()
     {
-        // P4: Validate timestamp before entering the try block to avoid
-        // the finally block setting _fetched=true on a validation failure
+        // Validate timestamp before entering the try block. Force UTC so server-side and
+        // WASM render paths agree regardless of operator timezone.
         _timestampError = null;
-        if (_useTimestampMode && !DateTimeOffset.TryParse(_timestampInput, out _))
+        DateTimeOffset parsedTimestamp = default;
+        if (_useTimestampMode)
         {
-            _timestampError = "Invalid timestamp format. Use ISO 8601: YYYY-MM-DDThh:mm:ssZ";
-            return;
+            const System.Globalization.DateTimeStyles styles =
+                System.Globalization.DateTimeStyles.AssumeUniversal
+                | System.Globalization.DateTimeStyles.AdjustToUniversal;
+            if (!DateTimeOffset.TryParse(_timestampInput, System.Globalization.CultureInfo.InvariantCulture, styles, out parsedTimestamp))
+            {
+                _timestampError = "Invalid timestamp format. Use ISO 8601 with Z suffix: YYYY-MM-DDThh:mm:ssZ";
+                return;
+            }
         }
 
         _fetching = true;
@@ -201,10 +208,8 @@
         {
             if (_useTimestampMode)
             {
-                DateTimeOffset.TryParse(_timestampInput, out DateTimeOffset ts);
-                // P8: Use tuple return to distinguish cap-exceeded from no-events
                 (AggregateStateSnapshot? snapshot, bool capExceeded) = await ApiClient
-                    .GetAggregateStateAtTimestampAsync(TenantId, Domain, AggregateId, ts)
+                    .GetAggregateStateAtTimestampAsync(TenantId, Domain, AggregateId, parsedTimestamp)
                     .ConfigureAwait(false);
                 _snapshot = snapshot;
                 _capExceeded = capExceeded;
@@ -214,26 +219,41 @@
                 _snapshot = await ApiClient.GetAggregateStateAtPositionAsync(
                     TenantId, Domain, AggregateId, _sequenceInput ?? 0L).ConfigureAwait(false);
             }
+
+            _fetched = true;
         }
         catch (UnauthorizedAccessException)
         {
             _fetchError = "Sign in required to inspect state.";
+            _fetched = true;
         }
         catch (ForbiddenAccessException)
         {
             _fetchError = "Access denied. You do not have permission to inspect this stream.";
+            _fetched = true;
         }
         catch (ServiceUnavailableException)
         {
             _fetchError = "Backend unavailable. State inspection is temporarily offline.";
+            _fetched = true;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _fetchError = string.IsNullOrWhiteSpace(ex.Message)
+                ? "Invalid request for this position."
+                : ex.Message;
+            _fetched = true;
         }
         catch (OperationCanceledException)
         {
+            // Component disposed or external cancellation: do not flip _fetched.
+            // The next render — if the component is still alive — will reflect the unchanged state.
             throw;
         }
         catch (HttpRequestException ex)
         {
             _fetchError = "State inspection request failed. Try again or pick a different position.";
+            _fetched = true;
             Logger.LogWarning(
                 ex,
                 "State inspector HTTP failure for {TenantId}/{Domain}/{AggregateId}.",
@@ -244,6 +264,7 @@
         catch (Exception ex)
         {
             _fetchError = "Unexpected error while inspecting state.";
+            _fetched = true;
             Logger.LogError(
                 ex,
                 "Unexpected state inspector failure for {TenantId}/{Domain}/{AggregateId}.",
@@ -254,7 +275,6 @@
         finally
         {
             _fetching = false;
-            _fetched = true;
         }
     }
 
@@ -277,8 +297,18 @@
     {
         if (_pendingShow && _dialog is not null)
         {
-            _pendingShow = false;
-            await _dialog.ShowAsync().ConfigureAwait(false);
+            try
+            {
+                await _dialog.ShowAsync().ConfigureAwait(false);
+                _pendingShow = false;
+            }
+            catch (Exception ex)
+            {
+                // Keep _pendingShow=true so a subsequent render can retry; surface the failure
+                // through _fetchError so the host page is not left with an invisible dialog.
+                _fetchError = "Could not open the state inspector dialog. Try again.";
+                Logger.LogWarning(ex, "FluentDialog.ShowAsync failed for state inspector.");
+            }
         }
     }
 

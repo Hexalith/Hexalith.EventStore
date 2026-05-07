@@ -74,6 +74,7 @@ public sealed class AdminApiAccessTokenProvider(IConfiguration configuration) {
         string signingKey = configuration["EventStore:Authentication:SigningKey"]
             ?? throw new InvalidOperationException("EventStore:Authentication:SigningKey is required for development token generation.");
         string subject = configuration["EventStore:Authentication:Subject"] ?? "admin-user";
+        bool globalAdmin = configuration.GetValue("EventStore:Authentication:GlobalAdmin", defaultValue: false);
 
         string[] tenants = configuration.GetSection("EventStore:Authentication:Tenants").Get<string[]>()
             ?? ["tenant-a"];
@@ -99,9 +100,12 @@ public sealed class AdminApiAccessTokenProvider(IConfiguration configuration) {
             ["tenants"] = JsonSerializer.Serialize(tenants),
             ["domains"] = JsonSerializer.Serialize(domains),
             ["permissions"] = JsonSerializer.Serialize(permissions),
-            ["global_admin"] = true,
             [AdminClaimTypes.Role] = "Admin",
         };
+
+        if (globalAdmin) {
+            payload["global_admin"] = true;
+        }
 
         string encodedHeader = Base64UrlEncode(JsonSerializer.SerializeToUtf8Bytes(header));
         string encodedPayload = Base64UrlEncode(JsonSerializer.SerializeToUtf8Bytes(payload));

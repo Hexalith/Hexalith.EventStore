@@ -712,7 +712,7 @@ public class AdminStreamApiClient(
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
 
-        if (statusCode == HttpStatusCode.UnprocessableEntity) {
+        if (statusCode is HttpStatusCode.UnprocessableEntity or HttpStatusCode.BadRequest) {
             string? errorDetail = null;
             try {
                 string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);

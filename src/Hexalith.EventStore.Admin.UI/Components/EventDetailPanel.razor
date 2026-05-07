@@ -221,16 +221,32 @@
 
     private async Task LoadStateAsync()
     {
+        if (_stateLoading)
+        {
+            return;
+        }
+
         _stateLoading = true;
         _stateSnapshot = null;
         _stateError = null;
         _stateErrorRetryable = false;
         StateHasChanged();
 
+        long requestedSequence = SequenceNumber;
+        string requestedAggregateId = AggregateId;
+
         try
         {
-            _stateSnapshot = await ApiClient.GetAggregateStateAtPositionAsync(
-                TenantId, Domain, AggregateId, SequenceNumber);
+            AggregateStateSnapshot? snapshot = await ApiClient.GetAggregateStateAtPositionAsync(
+                TenantId, Domain, AggregateId, requestedSequence);
+
+            // Drop the result if the user moved to a different event while this load was in flight.
+            if (requestedSequence != SequenceNumber || requestedAggregateId != AggregateId)
+            {
+                return;
+            }
+
+            _stateSnapshot = snapshot;
         }
         catch (UnauthorizedAccessException)
         {
@@ -247,6 +263,13 @@
             _stateError = "Backend unavailable. State inspection is temporarily offline.";
             _stateErrorRetryable = true;
         }
+        catch (InvalidOperationException ex)
+        {
+            _stateError = string.IsNullOrWhiteSpace(ex.Message)
+                ? "Invalid request for this position. Check the sequence value."
+                : ex.Message;
+            _stateErrorRetryable = false;
+        }
         catch (OperationCanceledException)
         {
             throw;
@@ -261,7 +284,7 @@
                 TenantId,
                 Domain,
                 AggregateId,
-                SequenceNumber);
+                requestedSequence);
         }
         catch (Exception ex)
         {
@@ -273,7 +296,7 @@
                 TenantId,
                 Domain,
                 AggregateId,
-                SequenceNumber);
+                requestedSequence);
         }
         finally
         {

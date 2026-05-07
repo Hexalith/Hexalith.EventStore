@@ -221,12 +221,31 @@
             ClassifyTaskResult(fromStateTask, "fromState", out _fromState, out string? fromStateWarning);
             ClassifyTaskResult(toStateTask, "toState", out _toState, out string? toStateWarning);
 
-            // Surface the most actionable error first if any task surfaced one.
-            _diffError = SelectPrimaryError(diffWarning, fromStateWarning, toStateWarning);
-
-            if (_diffError is null)
+            // If the primary diff succeeded, demote auxiliary state failures to side warnings
+            // so the diff itself is still rendered.
+            if (_diff is not null)
             {
-                if (_diff is null)
+                UpdateDisplayedChanges();
+
+                if (_fromState is null && FromSequence != 0)
+                {
+                    _fromStateWarning = fromStateWarning ?? $"Full state at #{FromSequence} not available.";
+                }
+
+                if (_toState is null)
+                {
+                    _toStateWarning = toStateWarning ?? $"Full state at #{ToSequence} not available.";
+                }
+
+                // Only the diff's own warning (if any) is surfaced as the primary error.
+                _diffError = diffWarning;
+            }
+            else
+            {
+                // Diff itself missing \u2014 pick the most actionable error across all three tasks.
+                _diffError = SelectPrimaryError(diffWarning, fromStateWarning, toStateWarning);
+
+                if (_diffError is null)
                 {
                     if (FromSequence == 0 && _toState is not null)
                     {
@@ -237,25 +256,7 @@
                         _diffError = "State diff not available \u2014 one or both positions have no state.";
                     }
                 }
-                else
-                {
-                    UpdateDisplayedChanges();
-
-                    if (_fromState is null && FromSequence != 0 && fromStateWarning is null)
-                    {
-                        _fromStateWarning = $"Full state at #{FromSequence} not available.";
-                    }
-
-                    if (_toState is null && toStateWarning is null)
-                    {
-                        _toStateWarning = $"Full state at #{ToSequence} not available.";
-                    }
-                }
             }
-        }
-        catch (OperationCanceledException)
-        {
-            _diffError = "Diff timed out \u2014 try a smaller range.";
         }
         finally
         {
@@ -286,6 +287,9 @@
                 ForbiddenAccessException => "Access denied. You do not have permission to compute this diff.",
                 ServiceUnavailableException => "Backend unavailable. Diff is temporarily offline.",
                 OperationCanceledException => "Diff timed out \u2014 try a smaller range.",
+                InvalidOperationException invalid => string.IsNullOrWhiteSpace(invalid.Message)
+                    ? "Invalid sequence range for diff."
+                    : invalid.Message,
                 HttpRequestException => "State diff request failed. Try again or check the backend health.",
                 _ => "Unexpected error while computing the diff.",
             };
@@ -309,7 +313,20 @@
         if (task.IsCompletedSuccessfully)
         {
             value = task.Result;
+            return;
         }
+
+        // Defensive: a non-terminal task should not reach here after WhenAll returns,
+        // but if it does, do not silently report "no diff" \u2014 surface a diagnostic warning.
+        warning = "State diff did not complete in time.";
+        Logger.LogWarning(
+            "State diff [{Tag}] task in unexpected non-terminal state for {TenantId}/{Domain}/{AggregateId} from {From} to {To}.",
+            tag,
+            TenantId,
+            Domain,
+            AggregateId,
+            FromSequence,
+            ToSequence);
     }
 
     private static string? SelectPrimaryError(string? a, string? b, string? c)
