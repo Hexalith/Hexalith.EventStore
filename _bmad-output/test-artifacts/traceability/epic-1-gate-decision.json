@@ -1,6 +1,8 @@
 {
   "scope": "Epic 1 — Domain Contract Foundation",
   "date": "2026-05-07",
+  "revision": 2,
+  "revisionNote": "G1 advisory closed by commit 0a0d9ac6 (CommandEnvelope_HasExactly10Fields canary committed). Gate verdict unchanged.",
   "author": "Murat / TEA",
   "gate": "PASS",
   "basis": "priority_thresholds",
@@ -62,7 +64,7 @@
     "highRiskMitigationsClosed": 100
   },
   "risks": [
-    { "id": "R-T1", "score": 6, "category": "TECH", "status": "mitigated", "control": "named-args + per-field tests + EventMetadata_HasExactly15Fields + CommandEnvelope_HasExactly10Fields canaries" },
+    { "id": "R-T1", "score": 6, "category": "TECH", "status": "mitigated", "control": "named-args + per-field tests + EventMetadata_HasExactly15Fields + CommandEnvelope_HasExactly10Fields canaries (both committed)" },
     { "id": "R-T2", "score": 6, "category": "TECH", "status": "mitigated", "control": "JSON round-trip on EventMetadata + Contracts.EventEnvelope; DCS round-trip on CommandEnvelope and Server.EventEnvelope" },
     { "id": "R-D1", "score": 4, "category": "DATA", "status": "accepted_by_design", "control": "ULID format validation lives in Epic 3 FluentValidation" },
     { "id": "R-T3", "score": 4, "category": "TECH", "status": "mitigated", "control": "TerminatableComplianceAssertions helper + ITerminatableSolutionComplianceTests scan + MissingApplyMethodException" },
@@ -82,14 +84,6 @@
   },
   "advisoryConditions": [
     {
-      "id": "G1",
-      "title": "Commit in-flight CommandEnvelopeTests.cs change",
-      "rationale": "CommandEnvelope_HasExactly10Fields canary (TG-4 / 1.2-UNIT-008) is in working tree but uncommitted as of 2026-05-07",
-      "owner": "Dev",
-      "priority": "low",
-      "blocking": false
-    },
-    {
       "id": "G2",
       "title": "Enable XML doc enforcement on remaining 5 packages (R1-A3)",
       "rationale": "Currently only Client.csproj enforces; future drift on UX-DR19 invisible without build-time check",
@@ -104,6 +98,14 @@
       "owner": "Dev",
       "priority": "low",
       "blocking": false
+    }
+  ],
+  "closedConditions": [
+    {
+      "id": "G1",
+      "title": "Commit in-flight CommandEnvelopeTests.cs change",
+      "closedBy": "0a0d9ac6 test(contracts): add CommandEnvelope_HasExactly10Fields canary (TG-4)",
+      "closedDate": "2026-05-07"
     }
   ],
   "totals": {

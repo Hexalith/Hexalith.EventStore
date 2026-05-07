@@ -17,14 +17,17 @@ oracleSources:
   - '_bmad-output/test-artifacts/test-design/test-design-epic-1.md'
   - '_bmad-output/implementation-artifacts/epic-1-retro-2026-04-26.md'
 externalPointerStatus: 'not_used'
+revision: '2 (refreshed after canary commit 0a0d9ac6 closed advisory G1)'
 ---
 
 # Traceability Matrix — Epic 1: Domain Contract Foundation
 
-**Date:** 2026-05-07
+**Date:** 2026-05-07 (revision 2)
 **Author:** Murat / TEA (with Jerome)
 **Scope:** Retroactive trace of Epic 1 (5 stories, all `done`, closed 2026-03-15) against the test inventory on `main` as of 2026-05-07.
-**Outcome:** **PASS** (with one chore — commit the in-flight `CommandEnvelopeTests.cs` change).
+**Outcome:** **PASS** (clean — no open chores from this trace; the prior G1 advisory closed by commit `0a0d9ac6`).
+
+> **Revision note.** Revision 1 (committed in `da47e708`) flagged `CommandEnvelope_HasExactly10Fields` as in working tree but uncommitted. Commit `0a0d9ac6` (test(contracts): add CommandEnvelope_HasExactly10Fields canary) durably lands the canary on `main` and closes advisory G1. Working tree clean as of this re-trace. The two remaining open R1 items (A3, A5) are unchanged Low-priority chores; gate verdict and risk closure unchanged.
 
 ---
 
@@ -76,7 +79,7 @@ Tests touching the Epic 1 surface, by location:
 | `tests/Hexalith.EventStore.Contracts.Tests/Events/EventMetadataTests.cs` | T1 | 1.1 | ~25 (incl. `Json_SerializationRoundTrip_PreservesAll15Fields` and `EventMetadata_HasExactly15Fields`) |
 | `tests/Hexalith.EventStore.Contracts.Tests/Events/EventEnvelopeTests.cs` | T1 | 1.1 | ~15 (incl. `Json_SerializationRoundTrip_PreservesEnvelope`) |
 | `tests/Hexalith.EventStore.Contracts.Tests/Events/AggregateTerminatedTests.cs` | T1 | 1.5 | ~5 |
-| `tests/Hexalith.EventStore.Contracts.Tests/Commands/CommandEnvelopeTests.cs` | T1 | 1.2 | 14 (incl. `CommandEnvelope_HasExactly10Fields` ⚠️ uncommitted, and `DataContract_SerializationRoundTrip_PreservesMessageId`) |
+| `tests/Hexalith.EventStore.Contracts.Tests/Commands/CommandEnvelopeTests.cs` | T1 | 1.2 | 14 (incl. `CommandEnvelope_HasExactly10Fields` ✅ committed `0a0d9ac6`, `DataContract_SerializationRoundTrip_PreservesMessageId`) |
 | `tests/Hexalith.EventStore.Contracts.Tests/Commands/CommandStatusTests.cs` | T1 | 1.5 | ~6 |
 | `tests/Hexalith.EventStore.Contracts.Tests/Commands/CommandStatusExtensionsTests.cs` | T1 | 1.5 (R1-A4) | ~5 |
 | `tests/Hexalith.EventStore.Contracts.Tests/Commands/CommandStatusRecordTests.cs` | T1 | 1.5 | ~4 |
@@ -127,7 +130,7 @@ Legend: **F** = full coverage, **P** = partial coverage, **N** = no coverage. **
 
 | AC | Description | Coverage | Pri | Given-When-Then | Tests |
 |---:|-------------|:--------:|:---:|------------------|-------|
-| 1.2.1 | `CommandEnvelope` carries `MessageId`, `AggregateId`, `CommandType`, `TenantId`, `Payload`, `CorrelationId`, `CausationId`, `UserId`, `Domain`, `Extensions` (10 positional fields). MessageId is unique command identity + idempotency key (FR49, D16); CorrelationId defaults to MessageId when not provided (FR4) | **F** | P0 | Given valid command, when constructed, then all 10 fields populate and `AggregateIdentity` derives correctly; given invalid MessageId/CorrelationId/UserId/CommandType empty/whitespace, then `ArgumentException`; given null Payload, then `ArgumentNullException`; given invalid TenantId or empty Domain, then `ArgumentException` | `CommandEnvelopeTests` (12+ tests) — includes `Constructor_WithValidInputs_*`, `AggregateIdentity_DerivesCorrectIdentity`, `Constructor_WithInvalidMessageId_*`, `AggregateIdentity_IsEagerlyValidated`, etc. |
+| 1.2.1 | `CommandEnvelope` carries `MessageId`, `AggregateId`, `CommandType`, `TenantId`, `Payload`, `CorrelationId`, `CausationId`, `UserId`, `Domain`, `Extensions` (10 positional fields). MessageId is unique command identity + idempotency key (FR49, D16); CorrelationId defaults to MessageId when not provided (FR4) | **F** | P0 | Given valid command, when constructed, then all 10 fields populate and `AggregateIdentity` derives correctly; given invalid MessageId/CorrelationId/UserId/CommandType empty/whitespace, then `ArgumentException`; given null Payload, then `ArgumentNullException`; given invalid TenantId or empty Domain, then `ArgumentException` | `CommandEnvelopeTests` (14 tests) — includes `Constructor_WithValidInputs_*`, `AggregateIdentity_DerivesCorrectIdentity`, `Constructor_WithInvalidMessageId_*`, `AggregateIdentity_IsEagerlyValidated`, etc. |
 | 1.2.2 | `DomainResult` immutable list of events + `IsSuccess`/`IsRejection`/`IsNoOp`; mixed regular+rejection events rejected at construction | **F** | P0 | Given a result with only success events, then `IsSuccess`; given only rejection events, then `IsRejection`; given an empty list, then `IsNoOp`; given a mixed list, then construction throws | `DomainResultTests` (~13 tests) |
 | 1.2.3 | Rejection events implement `IRejectionEvent`, follow past-tense negative naming (Rule 8) | **F** | P0 | Given a rejection event, when checked at runtime, then it is assignable to `IRejectionEvent` and follows past-tense naming | Counter sample tests verify `CounterCannotGoNegative` shape; `AggregateTerminatedTests` validates `AggregateTerminated` implements `IRejectionEvent` and follows naming convention |
 | 1.2.4 | All ULID fields (MessageId, AggregateId) are `string`-typed (D12) | **F** | P0 | Given a generated MessageId/AggregateId, when inspected, then it's a 26-char Crockford Base32 string (no custom value object) | `CommandEnvelopeTests` (typed shape) + `UniqueIdHelperIntegrationTests` |
@@ -140,8 +143,8 @@ Legend: **F** = full coverage, **P** = partial coverage, **N** = no coverage. **
 
 | Gap ID | Description | Test |
 |--------|-------------|------|
-| 1.2-UNIT-007 | `CommandEnvelope` `[DataContract]` round-trip preserves `MessageId` (DAPR actor-state pathway uses DCS — explicit `[DataMember]` on the property is a runtime-only contract; without it, MessageId silently vanishes) | ✅ `CommandEnvelopeTests.DataContract_SerializationRoundTrip_PreservesMessageId` (committed) |
-| 1.2-UNIT-008 | `CommandEnvelope_HasExactly10Fields` canary for R-T1 positional-record swap (TG-4) | ⚠️ `CommandEnvelopeTests.CommandEnvelope_HasExactly10Fields` (present in working tree, **uncommitted** as of 2026-05-07 — see Action Items below) |
+| 1.2-UNIT-007 | `CommandEnvelope` `[DataContract]` round-trip preserves `MessageId` (DAPR actor-state pathway uses DCS — explicit `[DataMember]` on the property is a runtime-only contract; without it, MessageId silently vanishes) | ✅ `CommandEnvelopeTests.DataContract_SerializationRoundTrip_PreservesMessageId` |
+| 1.2-UNIT-008 | `CommandEnvelope_HasExactly10Fields` canary for R-T1 positional-record swap (TG-4) | ✅ `CommandEnvelopeTests.CommandEnvelope_HasExactly10Fields` (committed `0a0d9ac6` — durable on `main`) |
 
 ### Story 1.3 — MessageType & Hexalith.Commons.UniqueIds (9 ACs)
 
@@ -195,7 +198,7 @@ Legend: **F** = full coverage, **P** = partial coverage, **N** = no coverage. **
 
 ### Headline
 
-**0 P0 gaps. 1 P1 chore (commit the canary). All 5 net-add tests proposed in the 2026-05-07 test design are merged or pending commit.**
+**0 P0 gaps. 0 P1 gaps. 0 open chores from this trace.** All 6 net-add tests proposed in the 2026-05-07 test design are merged on `main`. Working tree clean. Two open R1 retro items (A3, A5) remain — both Low priority, no test impact.
 
 ### Coverage by Priority
 
@@ -213,7 +216,7 @@ Legend: **F** = full coverage, **P** = partial coverage, **N** = no coverage. **
 
 | Risk | Score | Mitigation Status | Where Verified |
 |------|:-:|------|----------------|
-| R-T1 (positional-record swap) | 6 | ✅ Compensating control: named-args + per-field tests + 2 field-count canaries | `EventMetadata_HasExactly15Fields` (committed) + `CommandEnvelope_HasExactly10Fields` (⚠️ uncommitted) |
+| R-T1 (positional-record swap) | 6 | ✅ Compensating control: named-args + per-field tests + 2 field-count canaries (both committed) | `EventMetadata_HasExactly15Fields` + `CommandEnvelope_HasExactly10Fields` (committed `0a0d9ac6`) |
 | R-T2 (`[DataMember]` runtime contract) | 6 | ✅ Mitigation merged | `CommandEnvelope.DataContract_SerializationRoundTrip_PreservesMessageId` (DCS path) + `EventMetadata.Json_SerializationRoundTrip_PreservesAll15Fields` + `EventEnvelope.Json_SerializationRoundTrip_PreservesEnvelope` (JSON path — design pivot, see Drift Notes) |
 | R-D1 (ULID format silent acceptance at Contracts boundary) | 4 | ✅ Accepted by design — format validation lives in Epic 3 | Documented in design; no Tier 1 test required |
 | R-T3 (`Apply(AggregateTerminated)` runtime-only constraint) | 4 | ✅ Mitigation merged | `TerminatableComplianceAssertions` helper + `ITerminatableSolutionComplianceTests` solution-wide scan + `MissingApplyMethodException` |
@@ -245,9 +248,9 @@ Legend: **F** = full coverage, **P** = partial coverage, **N** = no coverage. **
 
 1. **DataContract → JSON design pivot (R-T2 / TG-1).** The 2026-05-07 test design proposed adding `[DataContract]` round-trip tests for `EventMetadata` and `Contracts.EventEnvelope`. The implementation team correctly diagnosed that `EventMetadata` and `Contracts.EventEnvelope` are **intentionally not `[DataContract]`-decorated** — they travel via `System.Text.Json` on the production DAPR pub/sub and projection paths. The actor-remoting DCS path uses the separate flat-record `Hexalith.EventStore.Server.Events.EventEnvelope` (covered by its own Server-side DCS round-trip test). The closing tests were correctly redirected to JSON round-trips with explicit `<remarks>` comments documenting the rationale. **Outcome:** R-T2 is fully mitigated by the actual-production-path test, which is strictly stronger than the originally proposed test.
 
-2. **`CommandEnvelope_HasExactly10Fields` not yet committed.** The canary test is present in the working tree (`tests/Hexalith.EventStore.Contracts.Tests/Commands/CommandEnvelopeTests.cs`, lines 263–269) but `git status` shows the file as modified — the change has not been committed. This is the single open chore from this trace.
+2. **R1-A3 (XML doc enforcement).** Five of six packages still rely on the honour system. UX-DR19 is met today (manual audits + IDE warnings + reviewer eyes) but a future drift risk exists. Out of scope for the gate — this is a process improvement, not a test gap.
 
-3. **R1-A3 (XML doc enforcement).** Five of six packages still rely on the honour system. UX-DR19 is met today (manual audits + IDE warnings + reviewer eyes) but a future drift risk exists. Out of scope for the gate — this is a process improvement, not a test gap.
+> Revision 1's drift note about the uncommitted `CommandEnvelope_HasExactly10Fields` canary is now resolved (commit `0a0d9ac6`). It has been removed from this revision.
 
 ---
 
@@ -257,23 +260,24 @@ Legend: **F** = full coverage, **P** = partial coverage, **N** = no coverage. **
 
 - **Coverage targets** (from test design Quality Gate Criteria):
   - P0 pass rate ≥100%: **Met** (Tier 1 baseline 651 green at epic close; today's count ratchets higher).
-  - P1 pass rate ≥95%: **Met** (5/5 P1 net-add tests merged or pending commit).
+  - P1 pass rate ≥95%: **Met** (6/6 net-add tests merged on `main`).
   - P2 pass rate ≥80%: **Met** (XML-doc cover-out is process; not a test gap).
-  - High-risk mitigations (≥6) 100% complete or with documented compensating control: **Met** for R-T1 (named-args + canaries) and R-T2 (round-trip tests on both JSON and DCS paths).
+  - High-risk mitigations (≥6) 100% complete or with documented compensating control: **Met** for R-T1 (named-args + 2 field-count canaries, both durable on `main`) and R-T2 (round-trip tests on both JSON and DCS paths).
 - **Action item closure:** 6/8 R1 items closed (A1, A2, A4, A6, A7, A8); 2 open are Low priority (A3 chore, A5 ergonomic) and do not affect any test outcome.
-- **No P0 gaps.** No high-risk un-mitigations.
+- **No P0 gaps.** No high-risk un-mitigations. No open chores from this trace.
 
 ### Decision: **PASS** ✅
 
-Epic 1 ships as designed and verified. The contract-layer surface that 21 downstream epics consume is fully covered: 30/30 P0 ACs full, 32/35 ACs full + 3 partial (all on the XML-doc enforcement chore), and every high-risk item carries an active compensating control or merged mitigation test. The 5 net-add tests proposed in the test design are all in the working tree.
+Epic 1 ships as designed and verified. The contract-layer surface that 21 downstream epics consume is fully covered: 30/30 P0 ACs full, 32/35 ACs full + 3 partial (all on the XML-doc enforcement chore), and every high-risk item carries an active compensating control or merged mitigation test. The 6 net-add tests proposed in the test design are all on `main`.
 
 ### Gate Conditions (advisory, non-blocking)
 
 | ID | Recommendation | Owner | Priority | Notes |
 |----|----------------|-------|:--------:|-------|
-| G1 | **Commit the in-flight `CommandEnvelopeTests.cs` change** so `CommandEnvelope_HasExactly10Fields` (TG-4 / 1.2-UNIT-008) is durable on `main`. The canary asserts the positional-constructor parameter count is exactly 10 — counting parameters rather than `GetProperties()` because `CommandEnvelope` exposes the computed `AggregateIdentity` projection. | Dev (Jerome) | Low | Suggested commit message: `test(contracts): add CommandEnvelope_HasExactly10Fields canary (TG-4)`. |
 | G2 | Close R1-A3 by enabling `<GenerateDocumentationFile>true</GenerateDocumentationFile>` on Contracts, Server, SignalR, Aspire, and Testing (one PR per package or all-in-one). Future drift on UX-DR19 will then be build-enforced. | Dev | Low | Out of scope for Epic 1 gate; track on Epic 2+ chore backlog. |
 | G3 | Close R1-A5 by adding `DomainResult.Rejection(IRejectionEvent e)` single-event overload — pure ergonomic, no correctness implication. | Dev | Low | Could fold into the next contracts-touching story. |
+
+> **G1 closed** in revision 2 — `CommandEnvelope_HasExactly10Fields` canary committed in `0a0d9ac6`. No replacement advisory.
 
 ### Gate Verdict Summary
 
@@ -285,9 +289,6 @@ p1_pass_rate: 100
 p2_pass_rate: 100
 high_risk_mitigations_closed: 100
 open_chores:
-  - id: G1
-    title: "Commit CommandEnvelope_HasExactly10Fields canary"
-    blocking: false
   - id: G2
     title: "Enable XML doc enforcement on remaining 5 packages (R1-A3)"
     blocking: false
@@ -322,6 +323,13 @@ open_chores:
   - `post-epic-1-r1a2-terminatable-compliance-helper.md` (R1-A2)
   - `post-epic-1-r1a6-missing-apply-method-exception.md` (R1-A6)
   - `post-epic-1-r1a7-tier2-tombstoning-lifecycle.md` (R1-A7)
+
+### Revision History
+
+| Rev | Date | Change | Commit Anchor |
+|----:|------|--------|---------------|
+| 1 | 2026-05-07 | Initial Epic 1 trace + gate decision | `da47e708 chore(test-artifacts): add Epic 1 traceability matrix and gate decision` |
+| 2 | 2026-05-07 | G1 closed (canary committed); coverage and gate verdict unchanged; drift note removed | `0a0d9ac6 test(contracts): add CommandEnvelope_HasExactly10Fields canary (TG-4)` |
 
 ---
 
