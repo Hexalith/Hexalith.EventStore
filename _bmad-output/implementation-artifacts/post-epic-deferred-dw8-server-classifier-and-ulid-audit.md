@@ -27,17 +27,17 @@ Current HEAD at story creation: `025872ab`.
 
 1. **Drain classifier taxonomy is explicit and bounded.** Given a drain attempt fails in `AggregateActor`, when the failure is classified for activity tags or structured logs, then the classifier returns one of the documented stable wire values and reserves `unknown` only for residual uncategorized failures.
 
-2. **New drain infrastructure categories are represented.** Given drain failure paths include state-store persistence failures, DAPR actor/runtime unavailability, and publish failures, when those failures are observed, then the activity tag `eventstore.failure_reason` uses stable codes such as `drain_state_store_failure`, `drain_dapr_unavailable`, and `drain_publish_failed` instead of raw exception text. If a proposed category cannot be observed safely in focused tests, document the reason and keep `unknown` as the explicit fallback.
+2. **New drain infrastructure categories are represented.** Given drain failure paths include state-store persistence failures, DAPR actor/runtime unavailability, and publish failures, when those failures are observed, then the activity tag `eventstore.failure_reason` uses stable codes such as `drain_state_store_failure`, `drain_dapr_unavailable`, and `drain_publish_failed` instead of raw exception text. If a proposed category cannot be observed safely in focused tests, document the reason and keep `unknown` as the explicit fallback. Publish-stage exceptions and unsuccessful publish results should both resolve to `drain_publish_failed` unless an already-established DW1 reason code is more specific.
 
 3. **Existing DW1 reason codes remain stable.** Given DW1 already established `drain_event_count_mismatch`, `drain_missing_event`, `drain_publish_failed`, and `unknown`, when DW8 adds categories, then those existing values keep their exact wire spelling and existing tests continue to pass.
 
-4. **Drain reason-code architecture note exists.** Given drain failure reasons are an observability contract, when DW8 closes, then repository docs include a concise reason-code taxonomy under `docs/architecture/` or another existing architecture/operations location. The note must list each code, when it is emitted, whether it is retryable/operator-actionable, and the compatibility rule for future additions.
+4. **Drain reason-code architecture note exists.** Given drain failure reasons are an observability contract, when DW8 closes, then repository docs include a concise reason-code taxonomy under `docs/architecture/` or another existing architecture/operations location. The note must list each code, when it is emitted, whether it is retryable/operator-actionable, and the compatibility rule for future additions. The note should be a compact table, not a drain lifecycle redesign.
 
 5. **Identifier parser audit covers protected fields.** Given controllers, validators, command/query handlers, and evidence seeders may touch `messageId`, `correlationId`, `aggregateId`, or `causationId`, when DW8 completes, then the Dev Agent Record lists the audited files and confirms no `Guid.TryParse` validation is used for those fields. Valid implementations use `Ulid.TryParse`, `UniqueIdHelper`, or documented non-whitespace `AggregateIdentity` acceptance.
 
-6. **Build-time guard prevents GUID parser regressions.** Add a focused parser audit test, Roslyn-style source scan, or existing-test helper that fails if `Guid.TryParse` is introduced on protected identifier fields. The guard must avoid false positives for unrelated middleware correlation IDs, temporary file names, `Guid.NewGuid()` implementation details not used as validators, and conversion helpers such as `UniqueIdHelper.ToGuid`.
+6. **Build-time guard prevents GUID parser regressions.** Add a focused parser audit test, Roslyn-style source scan, or existing-test helper that fails if `Guid.TryParse` or `Guid.Parse` is introduced as validation for protected identifier fields. The guard must avoid false positives for unrelated middleware correlation IDs, temporary file names, `Guid.NewGuid()` implementation details not used as validators, and conversion helpers such as `UniqueIdHelper.ToGuid`. Its failure message should name the protected fields and allowed exclusions so future maintainers can fix the right code path.
 
-7. **Seeded-stream identifier evidence is reconciled.** Given DW2-DF5 reported a GUID-formatted seeded-stream `correlationId`, when DW8 closes, then either the seeding flow produces ULID-shaped values or the story documents the precise acceptance rationale and the server-side parser semantics that make the value legal. Do not silently leave the evidence contradiction unresolved.
+7. **Seeded-stream identifier evidence is reconciled.** Given DW2-DF5 reported a GUID-formatted seeded-stream `correlationId`, when DW8 closes, then either the seeding flow produces ULID-shaped values or the story documents the precise acceptance rationale and the server-side parser semantics that make the value legal. GUID-shaped examples are acceptable only when they satisfy the documented protected-identifier semantics and do not imply or reintroduce GUID-only validation. Do not silently leave the evidence contradiction unresolved.
 
 8. **Deferred-work dispositions are auditable.** When development starts or completes, update only the DW8-owned entries in `_bmad-output/implementation-artifacts/deferred-work.md`: the drain-classifier entry near the DW1 section and DW2-DF5 identifier-validation entry. Do not sweep unrelated OPEN, STORY, ACCEPTED-DEBT, or legacy unclassified bullets.
 
@@ -48,12 +48,26 @@ Current HEAD at story creation: `025872ab`.
 ## Scope Boundaries
 
 - Do not redesign the drain retry/reminder/idempotence flow from DW1.
+- Do not invent drain reason-code taxonomy during implementation; new public wire values must be named in `DrainReasonCodes`, tested, and documented in the architecture note.
+- Do not introduce DAPR-specific subcategories beyond state-store persistence, DAPR actor/runtime unavailable, publish failed, existing DW1 mismatch/missing reasons, and `unknown` unless the extra category is recorded as a deferred decision.
 - Do not change public command/query payload contracts unless the identifier audit proves a direct validator defect.
 - Do not convert every test `Guid.NewGuid()` identifier to ULID; this story owns parser/validator safety and the routed seeded-stream evidence, not a broad test-data style sweep.
 - Do not modify Admin UI, Admin MCP, DAPR component topology, Aspire apphost, or Fluent UI packages.
+- Do not perform DW2 live-evidence regeneration unless it is the smallest practical way to reconcile DW2-DF5; documentation reconciliation is acceptable when production parser semantics are proven.
+- Do not broaden the audit guard into DW9 governance or generalized CI/static-analysis polish.
 - Do not claim live Aspire smoke evidence unless a dev-story run actually captures it.
 - Do not initialize or update nested submodules.
 - Do not edit generated preflight JSON audit files.
+
+## Party-Mode Review Clarifications
+
+The 2026-05-07 party-mode review tightened this story with the following implementation-facing constraints:
+
+- **Observable contract:** `eventstore.failure_reason` values are an operator-facing observability contract. Existing DW1 values (`drain_event_count_mismatch`, `drain_missing_event`, `drain_publish_failed`, `unknown`) are stable wire values. Additive DW8 values are allowed only when they are represented in `DrainReasonCodes`, focused tests, and the architecture note.
+- **Classifier scope:** Classification should be operation-boundary based: state-store persistence, DAPR actor/runtime unavailable, publish failed, existing DW1 mismatch/missing conditions, and residual `unknown`. Avoid localized exception-message substring matching and avoid broad `catch Exception` branches that hide actionable known categories.
+- **Architecture note requirements:** The architecture/operations note must include a table with `Reason code`, `Emitted when`, `Retry expectation`, `Operator action`, and `Compatibility rule`. It should identify where the code is observable: activity tag, structured log field, test assertion, and any non-persisted diagnostic surface.
+- **Identifier audit scope:** The protected fields are `messageId`, `correlationId`, `aggregateId`, and `causationId`. The audit guard fails only when `Guid.TryParse` or `Guid.Parse` is used to validate one of those protected fields. GUID-form example values, middleware correlation IDs, temporary names, `Guid.NewGuid()`, and `UniqueIdHelper.ToGuid` remain out of scope unless they become protected-ID validators.
+- **DW2 evidence reconciliation:** DW2 GUID-form seeded `correlationId` evidence may remain valid historical/test evidence if production validation accepts it through documented non-whitespace `AggregateIdentity` semantics or another approved non-GUID parser path. The reconciliation must make clear that GUID shape is not required and must not be used as a validation gate.
 
 ## Implementation Inventory
 
@@ -137,12 +151,15 @@ Current HEAD at story creation: `025872ab`.
 - Use `DrainReasonCodes` constants in production and tests. Avoid repeating string literals outside docs and explicit wire-value assertions.
 - The identifier audit is about parser/validator semantics. It must not become a wholesale conversion of test data, middleware-generated HTTP correlation IDs, or GUID-to-ULID conversion helper behavior.
 - For protected identifiers, the acceptable semantics are: `Ulid.TryParse`, `UniqueIdHelper` generation/validation where available, or documented non-whitespace acceptance per `AggregateIdentity`. `Guid.TryParse` is not acceptable as validation.
+- Treat GUID-shaped protected identifier examples as data-shape compatibility evidence, not as permission to add GUID-only parser branches.
+- If a state-store or DAPR runtime failure cannot be observed through a stable unit-test seam without widening production API, document the blocker and test the nearest deterministic classifier boundary instead.
 
 ### Testing Guidance
 
 - Start with `Dw1DrainHardeningAtddTests` and `EventDrainRecoveryTests` for activity-listener examples and existing drain setup helpers.
 - If new exception categories need fake state-manager/publisher behavior, prefer narrow substitutes in Server.Tests over live Aspire tests.
 - Add the identifier audit as a normal test if practical so it can run in CI with a clear failure message and a small allowlist.
+- Minimum DW8 evidence should include classifier table tests, publish-result failure preservation, one simulated persistence/runtime failure path if injectable today, and the protected-ID audit guard.
 - Do not run solution-level `dotnet test`.
 
 ### References
@@ -168,6 +185,7 @@ GPT-5 Codex
 ### Debug Log References
 
 - Pre-dev hardening preflight: `_bmad-output/process-notes/predev-preflight-latest.json`, timestamp `2026-05-07T05:57:38Z`, result `pass`.
+- Party-mode preflight: `_bmad-output/process-notes/predev-preflight-latest.json`, timestamp `2026-05-07T06:57:59Z`, result `fail` only for working tree cleanliness with stdout `_bmad-output/test-artifacts/test-design-progress.md`, `_bmad-output/test-artifacts/test-design/archive/`, and `_bmad-output/test-artifacts/test-design/test-design-epic-1.md`; classified as a soft working-tree warning outside BMAD pre-dev story-operation paths.
 - Create-story activation: resolved workflow customization with no prepend/append steps; no `project-context.md` file was present in the workspace.
 - Aspire pre-edit baseline attempt: `aspire run --detach --non-interactive --apphost src\Hexalith.EventStore.AppHost\Hexalith.EventStore.AppHost.csproj --format Json` failed to build. First blocker in `C:\Users\JeromePiquot\.aspire\logs\cli_20260507T055837606_detach-child_b13122c60ff54506bf1214503905369d.log`: `CS0009 Metadata file 'D:\Hexalith.EventStore\src\Hexalith.EventStore.Client\obj\Debug\net10.0\ref\Hexalith.EventStore.Client.dll' could not be opened -- PE image doesn't contain managed metadata`, followed by missing `Hexalith.EventStore.Client` and `Hexalith.EventStore.SignalR` namespace/type errors in Sample, Server, Sample.BlazorUI, and Admin.UI projects. No apphost code was changed by this story creation run.
 
@@ -176,6 +194,7 @@ GPT-5 Codex
 - Created ready-for-dev story from first backlog row in the Post-Epic Deferred Work OPEN Cleanup package.
 - Scoped DW8 to the server drain-classifier taxonomy and protected-identifier parser audit entries.
 - Recorded current code intelligence for `AggregateActor.ClassifyDrainFailure`, `DrainReasonCodes`, DW1 drain tests, R2-A7, D12, and the DW2 seeded-stream evidence contradiction.
+- Applied party-mode review clarifications for classifier compatibility, operation-boundary classification, audit-guard false-positive limits, DW2 correlationId reconciliation, and compact architecture-note requirements.
 
 ### File List
 
@@ -187,11 +206,24 @@ GPT-5 Codex
 
 - Story artifact created and sprint-status row moved from `backlog` to `ready-for-dev`.
 - Preflight passed before story creation.
+- Party-mode review completed on 2026-05-07; all participating agents recommended `needs-story-update`, and low-risk clarifications were applied without changing the story status.
 - AppHost baseline run attempted before edits but blocked by the existing Debug ref assembly metadata failure described in Debug Log References.
 - Story creation did not modify product code, tests, DAPR/Aspire configuration, or submodules.
+
+## Party-Mode Review
+
+- ISO date and time: `2026-05-07T09:01:02+02:00`
+- Selected story key: `post-epic-deferred-dw8-server-classifier-and-ulid-audit`
+- Command / skill invocation used: `/bmad-party-mode post-epic-deferred-dw8-server-classifier-and-ulid-audit; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), Paige (Technical Writer)
+- Findings summary: The story is close to ready, but the reviewers found ambiguity around final drain reason-code compatibility semantics, operation boundaries for state-store/DAPR/publish failures, protected-ID audit-guard scan scope, DW2 GUID-form `correlationId` reconciliation, and architecture-note size/observable surface.
+- Changes applied: Clarified publish exceptions vs unsuccessful publish results, stable DW1 wire-value compatibility, operation-boundary classifier scope, compact architecture-note table requirements, protected-ID audit exclusions, DW2 evidence reconciliation semantics, minimum focused validation evidence, and non-goals for DW1/DW2/DW3/DW6/DW7/DW9 scope.
+- Findings deferred: Formal public diagnostic-schema governance, deeper DAPR exception subcategories, centralized protected-ID parser API, broader identifier normalization, DW9 CI/static-analysis polish, and any drain retry/lifecycle redesign.
+- Final recommendation: `needs-story-update`
 
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-07 | 0.2 | Recorded party-mode review and clarified classifier contract, protected-ID audit scope, and DW2 evidence reconciliation. | Codex automation |
 | 2026-05-07 | 0.1 | Created ready-for-dev DW8 server classifier and ULID audit story. | Codex automation |
