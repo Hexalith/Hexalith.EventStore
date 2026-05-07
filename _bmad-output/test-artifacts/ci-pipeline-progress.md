@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight', 'step-02-generate-pipeline', 'step-03-configure-quality-gates', 'step-04-validate-and-summary']
-lastStep: 'step-04-validate-and-summary'
-lastSaved: '2026-03-29'
+lastStep: 'step-01-preflight'
+lastSaved: '2026-05-07T13:51:02.8463608+02:00'
 ---
 
 # CI/CD Pipeline Preflight Report
@@ -250,3 +250,63 @@ release.yml (push to main)
 - **Platform:** GitHub Actions
 - **CI config:** `.github/workflows/ci.yml` (updated), `.github/workflows/release.yml` (updated)
 - **Test coverage in CI:** 2,825+ tests across 12 projects (was 1,337 across 7)
+
+---
+
+# CI/CD Pipeline Preflight Report
+
+## Run Date
+
+2026-05-07T13:51:02.8463608+02:00
+
+## 1. Git Repository - PASS
+
+- `.git/` exists.
+- Remote: `origin` -> `https://github.com/Hexalith/Hexalith.EventStore.git`
+
+## 2. Test Stack Type
+
+- **Detected:** `fullstack`
+- **Basis:** .NET/C# solution with backend services, Blazor UI projects, Aspire AppHost, Dapr resources, and Playwright E2E test project.
+- **Note:** The configured `test_stack_type` is `auto`; this detection intentionally treats Blazor UI plus Playwright E2E as fullstack even though there is no standalone JavaScript app.
+
+## 3. Test Framework - PASS
+
+- **Configured framework:** `playwright`
+- **Detected primary test stack:** xUnit v3 for .NET tests, with `Microsoft.NET.Test.Sdk` and `coverlet.collector`.
+- **Detected E2E stack:** `Microsoft.Playwright` in `tests/Hexalith.EventStore.Admin.UI.E2E`.
+- **SDK:** `global.json` pins .NET SDK `10.0.103` with `rollForward: latestPatch`.
+- **Node:** root `package.json` is used for commitlint and semantic-release tooling.
+
+## 4. Local Test Results - BLOCKED FOR CLEAN BUILD, PASS WITH NO-BUILD
+
+The required clean test command attempted to build before running tests, but MSBuild failed because a running `Hexalith.EventStore` process held output DLLs open.
+
+- Locking process reported by MSBuild: `Hexalith.EventStore (143324)`
+- Aspire apphost detected: `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`
+- Aspire resources currently include running `eventstore`, `eventstore-admin`, `eventstore-admin-ui`, `sample`, `sample-blazor-ui`, `tenants`, Dapr sidecars, and Keycloak.
+
+The supported unit projects from the repository instructions passed when run with `--no-build`:
+
+| Project | Passed | Failed |
+|---|---:|---:|
+| `tests/Hexalith.EventStore.Client.Tests` | 334 | 0 |
+| `tests/Hexalith.EventStore.Contracts.Tests` | 281 | 0 |
+| `tests/Hexalith.EventStore.Sample.Tests` | 63 | 0 |
+| `tests/Hexalith.EventStore.Testing.Tests` | 78 | 0 |
+
+## 5. CI Platform
+
+- **Detected:** `github-actions`
+- Existing workflows found under `.github/workflows/`, including `ci.yml`, `release.yml`, `deploy-staging.yml`, `docs-api-reference.yml`, `docs-validation.yml`, and `perf-lab.yml`.
+- Per workflow rule, an existing CI configuration requires an explicit update-or-replace decision before generation continues.
+
+## 6. Environment Context
+
+- **.NET SDK:** `10.0.103` requested by `global.json`; local command used installed SDK `10.0.107` via roll-forward.
+- **NuGet cache strategy:** key from `Directory.Packages.props`.
+- **Node cache strategy:** root `package-lock.json`/`package.json` for npm tooling.
+
+## Preflight Gate Decision
+
+**HALT:** Clean local build/test verification is blocked by running Aspire resources locking build outputs. Stop the running Aspire app/resources, then rerun the clean test command before proceeding to pipeline generation.
