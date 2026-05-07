@@ -25,13 +25,13 @@ Current HEAD at story creation: `fe03cb2e`.
 
 ## Acceptance Criteria
 
-1. **Show failure does not retry indefinitely.** Given `StateInspectorModal.OnAfterRenderAsync` attempts to show the Fluent dialog and `_dialog.ShowAsync()` throws, when the component renders again, then `_pendingShow` is false and the component does not call `ShowAsync` again for that same failed open attempt.
+1. **Show failure does not retry indefinitely.** Given `StateInspectorModal.OnAfterRenderAsync` attempts to show the Fluent dialog and `_dialog.ShowAsync()` throws, when the component renders again, then `_pendingShow` is false and the component does not call `ShowAsync` again for that same failed open attempt. The failed show path must clear the pending-show state before any render-triggering error-state update can re-enter the show attempt.
 
-2. **Show failure leaves a visible component-level error.** Given `ShowAsync` fails, then the modal component renders the existing failure copy, "Could not open the state inspector dialog. Try again.", in the error region and logs a warning with stream metadata only. It must not log aggregate state JSON, event payloads, JWTs, or local-storage values.
+2. **Show failure leaves a visible component-level error.** Given `ShowAsync` fails, then the modal component renders the existing failure copy, "Could not open the state inspector dialog. Try again.", in the error region and logs a warning with stream metadata only. The error must stay in the existing flat Fluent UI Blazor v5 dialog body structure and must not introduce nested cards, custom modal chrome, or a new localization system. It must not log aggregate state JSON, event payloads, JWTs, or local-storage values.
 
-3. **Host gate closes exactly once on show failure.** Given the parent rendered `StateInspectorModal` because its host state said "show inspector", when `ShowAsync` fails, then the modal invokes the close callback once so the parent can collapse its modal-open gate. A persistent JS interop failure must not emit repeated close callbacks on later renders.
+3. **Host gate closes exactly once on show failure.** Given the parent rendered `StateInspectorModal` because its host state said "show inspector", when `ShowAsync` fails, then the modal invokes the close callback once so the parent can collapse its modal-open gate. A persistent JS interop failure must not emit repeated close callbacks on later renders, even if the error state causes additional renders or the parent disposes the modal after the callback.
 
-4. **Normal open and user close behavior stays intact.** Given `ShowAsync` succeeds, when the operator uses Inspect, sequence stepping, timestamp mode, or the close button, then existing behavior remains unchanged: the dialog stays open after successful inspection, stream identity remains visible, and `OnClose` is invoked by the normal Fluent `DialogState.Closed` path.
+4. **Normal open and user close behavior stays intact.** Given `ShowAsync` succeeds, when the operator uses Inspect, sequence stepping, timestamp mode, or the close button, then existing behavior remains unchanged: the dialog stays open after successful inspection, stream identity remains visible, and `OnClose` is invoked by the normal Fluent `DialogState.Closed` path. If the implementation shares close logic between failure and normal close paths, it must guard duplicate close notifications.
 
 5. **The fix stays local to StateInspectorModal lifecycle.** The implementation may touch `StateInspectorModal.razor`, its focused tests, this story, sprint status, and deferred-work disposition bookkeeping. It must not change Admin Server contracts, EventStore state/diff/causation endpoints, `AdminStreamApiClient`, `StateDiffViewer`, `EventDetailPanel`, sidebar shortcut code, DAPR/Aspire configuration, or Fluent UI package versions unless a failing focused test proves a directly related lifecycle dependency.
 
@@ -105,8 +105,8 @@ Current HEAD at story creation: `fe03cb2e`.
 - [ ] Task 2: Add focused regression tests (AC: #1, #3, #4, #6)
     - [ ] 2.1 Add a test that simulates `ShowAsync` JS interop failure and proves no repeated show call occurs after a follow-up render.
     - [ ] 2.2 Add a host-gate test that counts `OnClose` and proves exactly one close notification on failed show.
-    - [ ] 2.3 Add or extend an assertion that the failed show error copy is rendered.
-    - [ ] 2.4 Keep the existing flat Fluent UI Blazor v5 DOM test green.
+    - [ ] 2.3 Add or extend an assertion that the failed show error copy is rendered inside the existing flat Fluent UI Blazor v5 dialog body structure.
+    - [ ] 2.4 Keep the existing flat Fluent UI Blazor v5 DOM test green and assert warning logs remain metadata-only where the test harness can observe logging.
     - [ ] 2.5 If a tiny test seam is introduced, test through the rendered component and document why JSInterop alone was insufficient.
 
 - [ ] Task 3: Update deferred-work dispositions narrowly (AC: #7)
@@ -184,8 +184,20 @@ GPT-5 Codex
 - AppHost baseline run attempted before edits but blocked by the existing Debug ref assembly metadata failure described in Debug Log References.
 - Story creation did not modify product code, tests, DAPR/Aspire configuration, or submodules.
 
+## Party-Mode Review
+
+- Date: 2026-05-07T08:11:37+02:00
+- Selected story key: `post-epic-deferred-dw7-admin-ui-state-inspector-lifecycle-fix`
+- Command / skill invocation used: `/bmad-party-mode post-epic-deferred-dw7-admin-ui-state-inspector-lifecycle-fix; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), Sally (UX Designer)
+- Findings summary: Reviewers agreed the story is narrow and implementation-ready once the close-on-failure contract is explicit. `ShowAsync` failure must be terminal for the current open attempt, must clear `_pendingShow` before render-triggering error state can retry, must notify the host exactly once, must keep success-path dialog behavior intact, and must keep the error UI in the existing flat Fluent UI Blazor v5 body structure. Logs must remain metadata-only.
+- Changes applied: Clarified AC1 pending-show ordering and at-most-once show attempt semantics; clarified AC2 visible error/body-structure/logging expectations; clarified AC3 exactly-once host close behavior across rerenders or parent disposal; clarified AC4 duplicate-close guard if close logic is shared; tightened Task 2 test expectations for flat body structure and metadata-only logging.
+- Findings deferred: Broader DW5 accessibility debt; localization-system expansion unless already used by adjacent component copy; endpoint, TypeCatalog, Aspire/DAPR, package-version, and governance changes; advanced elicitation completion, which remains a later separate pass under L08.
+- Final recommendation: ready-for-dev
+
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-07 | 0.2 | Recorded party-mode review and clarified close-on-failure lifecycle/test contract. | Codex automation |
 | 2026-05-07 | 0.1 | Created ready-for-dev DW7 Admin UI state inspector lifecycle story. | Codex automation |
