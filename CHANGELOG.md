@@ -1,3 +1,10 @@
+## [3.14.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.14.0...v3.14.1) (2026-05-07)
+
+
+### Bug Fixes
+
+* **admin-ui:** unify DAPR inventory and harden health truthfulness across pages ([#241](https://github.com/Hexalith/Hexalith.EventStore/issues/241)) ([388ceb7](https://github.com/Hexalith/Hexalith.EventStore/commit/388ceb7803eb0c832575ced30b03e2fe53fd23ff)), closes [#6](https://github.com/Hexalith/Hexalith.EventStore/issues/6) [#7](https://github.com/Hexalith/Hexalith.EventStore/issues/7) [#8](https://github.com/Hexalith/Hexalith.EventStore/issues/8)
+
 # [3.14.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.13.5...v3.14.0) (2026-05-07)
 
 
