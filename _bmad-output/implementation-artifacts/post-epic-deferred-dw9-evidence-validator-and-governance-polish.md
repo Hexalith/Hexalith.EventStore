@@ -58,6 +58,66 @@ Current HEAD at story creation: `09ef237a`.
 - Do not initialize or update nested submodules.
 - Do not edit generated preflight JSON audit files.
 
+## DW9 Contract Constraints
+
+### Validator Rule Contract
+
+Use the repository's existing lower-case validator rule-id style. Additive rule ids are allowed; renaming existing rule ids is out of scope.
+
+| Rule id | Checked fields | Failure trigger | Diagnostic contract | Minimum fixture coverage |
+| --- | --- | --- | --- | --- |
+| `control-linkage-missing` | Query `false_positive_control`, query `correlation_control`, SignalR `reliability_control` | Required control result is present but no same-run or linked-control-run reference can be found. | `section=Controls`; `field` is the failing control field; line when available; hint names the missing same-run or linked-control-run relationship. | At least one query negative and one SignalR negative fixture. |
+| `control-linkage-unrelated` | Query `false_positive_control`, query `correlation_control`, SignalR `reliability_control` | A control reference exists but does not match the evidence file's `evidence_run_id` and is not explicitly linked to a control run named by the evidence. | `section=Controls`; `field` is the failing control field; line when available; hint names the mismatched evidence/control reference. | At least one negative fixture and one positive same-run or linked-run fixture. |
+
+Do not reuse `control-required-missing`, `correlation-control-required-missing`, parser, metadata, or placeholder diagnostics for linkage failures. If implementation discovers that an additional linkage failure class is needed, record it in this table, `EXPECTED_FIXTURE_RULES`, and `Dw4FixtureCatalog` in the same change.
+
+### Template Skip Contract
+
+Directory validation must skip files when either condition is true:
+
+- The file contains the exact marker `<!-- evidence-validator: skip -->`.
+- The file path matches the default template pattern `**/*-template.md`.
+
+Skipped files must be visible in human-readable output or JSON output as an informational skip with the reason `marker` or `template-pattern`; they must not count as pass or fail. Explicit validation of a skipped file should return the same informational skip result, not placeholder/schema diagnostics. Add one fixture or focused test proving a skipped template is quiet and one "looks like a template but does not match the marker or `**/*-template.md`" case that is still audited.
+
+### Deferred-Work Allowlist
+
+Only these deferred-work entries may be dispositioned by DW9:
+
+- `_bmad-output/implementation-artifacts/deferred-work.md` line item for "No fixture for blank/whitespace/non-linked control result" routed from DW4.
+- `_bmad-output/implementation-artifacts/deferred-work.md` line item for "Templates self-trigger placeholder noise if repo-wide audit mode is later enabled" routed from DW4.
+- `DW6-CR5` for CI workflow direct Python invocation of the deferred-work checker.
+- `DW6-CR6` for `entrypoint.txt` contradicting the governance README.
+
+Do not fix, rewrite, or reclassify unrelated DW6 parser/vocabulary items, DW6-CR7, future parser-refinement entries, accepted-debt entries, DW7, DW8, Admin UI, Server, product/runtime, or legacy deferred-work bullets except to keep validator compatibility.
+
+### Wrapper Exit-Code Policy
+
+DW9 must document and preserve the current deferred-work checker semantics unless a human explicitly approves stricter PR gating:
+
+| Exit code | Meaning | CI behavior for this story |
+| ---: | --- | --- |
+| `0` | No blocking governance failure. Advisory findings may still be printed. | Pass. |
+| `1` | Blocking governance failure for malformed canonical `OPEN` or `STORY:<id>` entries, missing required metadata on those entries, or unclassified live bullets. | GitHub docs validation may remain reporting-only with `continue-on-error: true`; the step name or comment must make that policy visible. |
+| `2` | Usage, configuration, or tool execution error, if the wrapper uses that convention. | Do not intentionally hide this as an advisory finding. If CI remains `continue-on-error: true`, document that usage errors are visible in job output but not yet PR-blocking. |
+
+Local docs validation and GitHub docs validation should use the wrapper path (`scripts/check-deferred-work.sh` on Linux, `scripts/check-deferred-work.ps1` on PowerShell). Direct `python scripts/check-deferred-work.py ...` should remain only an internal/debug form when explicitly labeled as such.
+
+### Governance Entrypoint Policy
+
+Prefer the low-risk policy that the committed `_bmad-output/test-artifacts/deferred-work-governance/entrypoint.txt` is canonical fixture evidence if tests or docs consume it. If implementation instead treats it as local/generated state, it must update `.gitignore`, README, and tests together and record that policy change in the Dev Agent Record.
+
+### Fixture Catalog Contract
+
+Every new or changed fixture must be represented in both `EXPECTED_FIXTURE_RULES` and `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/Fixtures/Dw4FixtureCatalog.cs` with:
+
+- Owning story `DW9`.
+- Scenario purpose.
+- Expected pass/fail result.
+- Expected rule id for each negative fixture.
+
+No unreferenced fixture files or catalog-only rows should be left behind. The `--self-test` fixture matrix may grow only by the intentionally added DW9 fixtures; it must not become a recursive historical evidence or template audit.
+
 ## Implementation Inventory
 
 | Area | File / artifact | Expected use |
@@ -147,6 +207,7 @@ Current HEAD at story creation: `09ef237a`.
 - Prefer explicit evidence metadata over inference from prose. Same-run control linkage should be machine-checkable and easy for reviewers to recognize.
 - Keep wrapper behavior testable in CI. The point of DW9 is to exercise the shell wrapper path, not to bypass it with direct Python.
 - Advisory governance checks may still return exit code 1. If CI should continue on advisory findings, keep that policy visible in workflow comments or step naming.
+- Do not regenerate or commit preflight JSON audit files as part of this story's validation.
 
 ### Testing Guidance
 
@@ -154,6 +215,7 @@ Current HEAD at story creation: `09ef237a`.
 - Assert expected rule ids for each negative fixture so a parser failure cannot masquerade as control-linkage coverage.
 - Use directory-level test inputs for skip-list behavior; file-level-only tests will not prove repo-wide audit safety.
 - For wrapper CI alignment, test the wrapper command directly from repo root and inspect both exit code and readable output.
+- Include a before/after self-test note in the Dev Agent Record: fixture count/output may change only by the explicitly added DW9 fixtures, and default validation must remain curated fixture validation rather than repo-wide audit.
 - Do not run solution-level `dotnet test`.
 
 ### References
@@ -186,6 +248,7 @@ GPT-5 Codex
 - Created ready-for-dev story from the first backlog row in the Post-Epic Deferred Work OPEN Cleanup package.
 - Scoped DW9 to four routed tooling items: evidence-validator control linkage, evidence-validator template skip behavior, deferred-work CI wrapper symmetry, and deferred-work governance entrypoint policy.
 - Recorded current implementation targets for the Python validators, wrappers, fixture catalogs, docs-validation workflow, and governance README.
+- Party-mode review applied pre-dev contract hardening for validator rule ids, template skip reporting, deferred-work entry allowlist, wrapper exit-code policy, entrypoint source of truth, and fixture catalog invariants.
 
 ### File List
 
@@ -205,3 +268,27 @@ GPT-5 Codex
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
 | 2026-05-07 | 0.1 | Created ready-for-dev DW9 evidence validator and governance polish story. | Codex automation |
+| 2026-05-07 | 0.2 | Applied party-mode pre-dev contract hardening for validator, wrapper, fixture, and governance boundaries. | Codex automation |
+
+## Party-Mode Review
+
+- Date/time: 2026-05-07T09:04:22+02:00
+- Selected story key: `post-epic-deferred-dw9-evidence-validator-and-governance-polish`
+- Command/skill invocation used: `/bmad-party-mode post-epic-deferred-dw9-evidence-validator-and-governance-polish; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), Paige (Technical Writer)
+- Findings summary:
+  - Validator linkage behavior was too prose-driven and needed stable rule ids, diagnostic contracts, and fixture mapping before development.
+  - Template skip behavior needed exact predicates and visible skip reporting to avoid silent audit gaps.
+  - Deferred-work wrapper exit-code behavior and CI reporting policy needed an explicit truth table.
+  - `entrypoint.txt` needed a clear canonical-or-generated policy before implementation.
+  - DW9-owned deferred-work entries needed an allowlist to prevent cleanup of unrelated DW6/DW7/DW8 debt.
+  - Fixture catalog alignment and self-test preservation needed stronger definition of done.
+- Changes applied:
+  - Added `## DW9 Contract Constraints` with validator rule contract, template skip contract, deferred-work allowlist, wrapper exit-code policy, governance entrypoint policy, and fixture catalog contract.
+  - Added Dev Notes guardrail against regenerating or committing preflight JSON during this story.
+  - Added Testing Guidance for before/after self-test fixture-shape evidence.
+  - Updated Completion Notes and Change Log with the party-mode hardening result.
+- Findings deferred:
+  - Any change to make deferred-work governance block PRs is deferred for explicit human approval.
+  - Any broader deferred-work parser, vocabulary, owner taxonomy, stale-date, accepted-debt, DW6-CR7, DW7, DW8, product/runtime, Aspire, DAPR, package, or submodule cleanup remains out of scope.
+- Final recommendation: ready-for-dev
