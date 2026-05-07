@@ -32,7 +32,7 @@ public class Dw5SidebarShortcutAtddTests : AdminUITestContext {
         // the new value to local storage via hexalithAdmin.setLocalStorage, and (c)
         // trigger a rerender on the Blazor synchronization context.
         // bUnit captures (a) and (b) deterministically; (c) is observable by asserting
-        // the layout markup width transitions between "220px" and "48px" without throwing
+        // the layout markup width transitions between "220px" and "140px" without throwing
         // InvalidOperationException("StateHasChanged was called outside of the renderer
         // synchronization context").
         IRenderedComponent<Hexalith.EventStore.Admin.UI.Layout.MainLayout> cut = Render<Hexalith.EventStore.Admin.UI.Layout.MainLayout>(
@@ -45,7 +45,7 @@ public class Dw5SidebarShortcutAtddTests : AdminUITestContext {
         await cut.InvokeAsync(() => cut.Instance.OnToggleSidebarShortcut());
 
         cut.WaitForAssertion(
-            () => cut.Markup.ShouldContain("48px"),
+            () => cut.Markup.ShouldContain("140px"),
             TimeSpan.FromSeconds(5));
     }
 
@@ -63,7 +63,7 @@ public class Dw5SidebarShortcutAtddTests : AdminUITestContext {
         int setCallsBefore = JSInterop.Invocations.Count(i => i.Identifier == "hexalithAdmin.setLocalStorage");
 
         await cut.InvokeAsync(() => cut.Instance.OnToggleSidebarShortcut());
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("48px"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("140px"), TimeSpan.FromSeconds(5));
 
         await cut.InvokeAsync(() => cut.Instance.OnToggleSidebarShortcut());
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("220px"), TimeSpan.FromSeconds(5));
@@ -111,7 +111,7 @@ public class Dw5SidebarShortcutAtddTests : AdminUITestContext {
 
         // Capture initial collapsed state for the tier (compact/minimum default to collapsed
         // when no saved state exists; optimal/standard default to expanded).
-        bool initialCollapsed = cut.Markup.Contains("48px", StringComparison.Ordinal);
+        bool initialCollapsed = cut.Markup.Contains("140px", StringComparison.Ordinal);
         string expectedValue = (!initialCollapsed).ToString().ToLowerInvariant();
 
         int setCallsBefore = JSInterop.Invocations.Count(i => i.Identifier == "hexalithAdmin.setLocalStorage");
@@ -144,8 +144,8 @@ public class Dw5SidebarShortcutAtddTests : AdminUITestContext {
             parameters => parameters.Add(p => p.Body, builder => builder.AddContent(0, "Body")));
 
         cut.WaitForAssertion(
-            () => cut.Markup.ShouldContain("48px",
-                customMessage: $"DW5 AC#6: {tier} viewport ({viewportWidth}px) must collapse to 48px width when no saved state."),
+            () => cut.Markup.ShouldContain("140px",
+                customMessage: $"DW5 AC#6: {tier} viewport ({viewportWidth}px) must collapse to 140px width when no saved state."),
             TimeSpan.FromSeconds(5));
     }
 
