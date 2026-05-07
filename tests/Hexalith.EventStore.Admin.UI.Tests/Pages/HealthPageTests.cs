@@ -199,7 +199,10 @@ public class HealthPageTests : AdminUITestContext {
             10.0,
             errorPercentage,
             [new DaprComponentHealth("store", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow)],
-            new ObservabilityLinks(null, null, null));
+            new ObservabilityLinks(null, null, null),
+            TotalEventCountStatus: SystemHealthMetricStatus.Available,
+            EventsPerSecondStatus: SystemHealthMetricStatus.Available,
+            ErrorPercentageStatus: SystemHealthMetricStatus.Available);
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<SystemHealthReport?>(report));
 
@@ -268,7 +271,10 @@ public class HealthPageTests : AdminUITestContext {
             10.0,
             0.1,
             [],
-            new ObservabilityLinks(null, null, null));
+            new ObservabilityLinks(null, null, null),
+            TotalEventCountStatus: SystemHealthMetricStatus.Available,
+            EventsPerSecondStatus: SystemHealthMetricStatus.Available,
+            ErrorPercentageStatus: SystemHealthMetricStatus.Available);
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<SystemHealthReport?>(report));
 
@@ -358,6 +364,89 @@ public class HealthPageTests : AdminUITestContext {
         cut.Markup.ShouldContain("component types");
     }
 
+    // ===== AC3: shared metric truthfulness on /health (Issue #7) =====
+
+    [Fact]
+    public void HealthPage_RendersUnavailable_ForUnavailableEventsPerSecond_AC3() {
+        // AC3: when a metric's *Status is Unavailable, render "unavailable" — never 0.0/s.
+        SystemHealthReport report = new(
+            HealthStatus.Healthy,
+            TotalEventCount: 100,
+            EventsPerSecond: 0,
+            ErrorPercentage: 0,
+            [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow)],
+            new ObservabilityLinks(null, null, null),
+            TotalEventCountStatus: SystemHealthMetricStatus.Available,
+            EventsPerSecondStatus: SystemHealthMetricStatus.Unavailable,
+            ErrorPercentageStatus: SystemHealthMetricStatus.Unavailable);
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SystemHealthReport?>(report));
+
+        IRenderedComponent<Health> cut = Render<Health>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Events/sec"), TimeSpan.FromSeconds(5));
+
+        string markup = cut.Markup;
+        markup.ShouldContain("unavailable");
+        // Critical regression guard: no fake zero for unavailable metrics on /health.
+        markup.ShouldNotContain("0.0/s");
+        markup.ShouldNotContain("0.0%");
+    }
+
+    [Fact]
+    public void HealthPage_RendersRealZero_ForAvailableZeroMetric_AC3() {
+        // AC3: when *Status is Available and value is 0, render real zero per page format.
+        SystemHealthReport report = new(
+            HealthStatus.Healthy,
+            TotalEventCount: 0,
+            EventsPerSecond: 0,
+            ErrorPercentage: 0,
+            [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow)],
+            new ObservabilityLinks(null, null, null),
+            TotalEventCountStatus: SystemHealthMetricStatus.Available,
+            EventsPerSecondStatus: SystemHealthMetricStatus.Available,
+            ErrorPercentageStatus: SystemHealthMetricStatus.Available);
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SystemHealthReport?>(report));
+
+        IRenderedComponent<Health> cut = Render<Health>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Total Events"), TimeSpan.FromSeconds(5));
+
+        string markup = cut.Markup;
+        markup.ShouldNotContain("unavailable");
+        // Real zero values rendered per page format. Culture-safe: F1 produces "0.0" or "0,0".
+        string formattedZero = 0.0.ToString("F1");
+        markup.ShouldContain(formattedZero); // EventsPerSecond F1
+    }
+
+    [Fact]
+    public void HealthPage_RendersPartialReport_WithStateStoreUnhealthy_AC1AC2() {
+        // AC1+AC2: HTTP 200 partial report with state-store Unhealthy renders the grid + grid
+        // entry, not a blank screen. Overall is Unhealthy and dependent metrics are unavailable.
+        SystemHealthReport report = new(
+            HealthStatus.Unhealthy,
+            TotalEventCount: 0,
+            EventsPerSecond: 0,
+            ErrorPercentage: 0,
+            [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Unhealthy, DateTimeOffset.UtcNow)],
+            new ObservabilityLinks(null, null, null),
+            TotalEventCountStatus: SystemHealthMetricStatus.Unavailable,
+            EventsPerSecondStatus: SystemHealthMetricStatus.Unavailable,
+            ErrorPercentageStatus: SystemHealthMetricStatus.Unavailable);
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SystemHealthReport?>(report));
+
+        IRenderedComponent<Health> cut = Render<Health>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("statestore"), TimeSpan.FromSeconds(5));
+
+        string markup = cut.Markup;
+        markup.ShouldContain("Unhealthy");
+        markup.ShouldContain("statestore");
+        // Total Events / Events per second / Error rate must render unavailable when status says so.
+        markup.ShouldContain("unavailable");
+        markup.ShouldNotContain("0.0/s");
+        markup.ShouldNotContain("0.0%");
+    }
+
     // ===== Test data helpers =====
 
     private static SystemHealthReport CreateHealthyReport() => new(
@@ -369,7 +458,10 @@ public class HealthPageTests : AdminUITestContext {
                 new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow.AddMinutes(-1)),
                 new DaprComponentHealth("pubsub", "pubsub.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow.AddMinutes(-2)),
             ],
-            new ObservabilityLinks(null, null, null));
+            new ObservabilityLinks(null, null, null),
+            TotalEventCountStatus: SystemHealthMetricStatus.Available,
+            EventsPerSecondStatus: SystemHealthMetricStatus.Available,
+            ErrorPercentageStatus: SystemHealthMetricStatus.Available);
 
     private static SystemHealthReport CreateReportWithStatus(HealthStatus status) => new(
             status,
@@ -377,7 +469,10 @@ public class HealthPageTests : AdminUITestContext {
             10.0,
             status == HealthStatus.Unhealthy ? 8.0 : 0.5,
             [new DaprComponentHealth("store", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow)],
-            new ObservabilityLinks(null, null, null));
+            new ObservabilityLinks(null, null, null),
+            TotalEventCountStatus: SystemHealthMetricStatus.Available,
+            EventsPerSecondStatus: SystemHealthMetricStatus.Available,
+            ErrorPercentageStatus: SystemHealthMetricStatus.Available);
 
     private static SystemHealthReport CreateReportWithObservabilityLinks() => new(
             HealthStatus.Healthy,
@@ -388,7 +483,10 @@ public class HealthPageTests : AdminUITestContext {
             new ObservabilityLinks(
                 "https://zipkin.example.com",
                 "https://grafana.example.com",
-                "https://seq.example.com"));
+                "https://seq.example.com"),
+            TotalEventCountStatus: SystemHealthMetricStatus.Available,
+            EventsPerSecondStatus: SystemHealthMetricStatus.Available,
+            ErrorPercentageStatus: SystemHealthMetricStatus.Available);
 
     private static SystemHealthReport CreateMixedHealthReport() => new(
             HealthStatus.Degraded,
@@ -400,5 +498,8 @@ public class HealthPageTests : AdminUITestContext {
                 new DaprComponentHealth("pubsub", "pubsub.redis", HealthStatus.Degraded, DateTimeOffset.UtcNow.AddMinutes(-5)),
                 new DaprComponentHealth("configstore", "configuration.redis", HealthStatus.Unhealthy, DateTimeOffset.UtcNow.AddMinutes(-10)),
             ],
-            new ObservabilityLinks(null, null, null));
+            new ObservabilityLinks(null, null, null),
+            TotalEventCountStatus: SystemHealthMetricStatus.Available,
+            EventsPerSecondStatus: SystemHealthMetricStatus.Available,
+            ErrorPercentageStatus: SystemHealthMetricStatus.Available);
 }

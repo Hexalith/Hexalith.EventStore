@@ -1,3 +1,5 @@
+using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
+
 namespace Hexalith.EventStore.Admin.Abstractions.Models.Health;
 
 /// <summary>
@@ -21,6 +23,11 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Health;
 /// Per-metric availability for <see cref="ErrorPercentage"/>. Defaults to <see cref="SystemHealthMetricStatus.Unavailable"/>
 /// because no source is wired (the historical name conflated infrastructure errors with command rejection rate).
 /// </param>
+/// <param name="InventorySourceStatus">
+/// The outcome of the canonical DAPR inventory source query (remote EventStore sidecar metadata).
+/// Defaults to <see cref="RemoteMetadataStatus.NotConfigured"/> so legacy zero-defaults cannot
+/// be misread as canonical evidence.
+/// </param>
 public record SystemHealthReport(
     HealthStatus OverallStatus,
     long TotalEventCount,
@@ -30,7 +37,8 @@ public record SystemHealthReport(
     ObservabilityLinks ObservabilityLinks,
     SystemHealthMetricStatus TotalEventCountStatus = SystemHealthMetricStatus.Available,
     SystemHealthMetricStatus EventsPerSecondStatus = SystemHealthMetricStatus.Unavailable,
-    SystemHealthMetricStatus ErrorPercentageStatus = SystemHealthMetricStatus.Unavailable) {
+    SystemHealthMetricStatus ErrorPercentageStatus = SystemHealthMetricStatus.Unavailable,
+    RemoteMetadataStatus InventorySourceStatus = RemoteMetadataStatus.NotConfigured) {
     /// <summary>Gets the current event throughput.</summary>
     public double EventsPerSecond { get; } = !double.IsNaN(EventsPerSecond) && !double.IsInfinity(EventsPerSecond)
         ? EventsPerSecond

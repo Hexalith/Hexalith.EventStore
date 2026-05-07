@@ -54,46 +54,103 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<DaprComponentDetail>> GetComponentsAsync(CancellationToken ct = default) {
-        DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
+        DaprCanonicalInventory inventory = await GetCanonicalDaprInventoryAsync(ct).ConfigureAwait(false);
+        return inventory.Components;
+    }
 
-        if (metadata?.Components is null || metadata.Components.Count == 0) {
-            return [];
+    /// <inheritdoc/>
+    public async Task<DaprCanonicalInventory> GetCanonicalDaprInventoryAsync(CancellationToken ct = default) {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        Dictionary<(string Name, string Type), DaprComponentDetail> merged
+            = new(InventoryKeyComparer.Instance);
+        bool localProbeAvailable = false;
+
+        // Local Admin sidecar metadata is a degraded fallback only; we still query it because the
+        // state-store probe lives on Admin.Server and probes need a component name to attach to.
+        DaprMetadata? localMetadata = null;
+        try {
+            localMetadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
+            localProbeAvailable = localMetadata is not null;
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            _logger.LogWarning(ex, "Local DAPR sidecar metadata unavailable for canonical inventory.");
         }
 
-        DaprComponentDetail[] components = metadata.Components
-            .Where(c => !string.IsNullOrEmpty(c.Name) && !string.IsNullOrEmpty(c.Type))
-            .Select(c => new DaprComponentDetail(
-                c.Name,
-                c.Type,
-                DaprComponentCategoryHelper.FromComponentType(c.Type),
-                c.Version ?? string.Empty,
-                HealthStatus.Healthy,
-                DateTimeOffset.UtcNow,
-                c.Capabilities ?? []))
+        if (localMetadata?.Components is not null) {
+            foreach (DaprComponentsMetadata c in localMetadata.Components) {
+                if (string.IsNullOrEmpty(c.Name) || string.IsNullOrEmpty(c.Type)) {
+                    continue;
+                }
+
+                DaprComponentDetail entry = new(
+                    c.Name,
+                    c.Type,
+                    DaprComponentCategoryHelper.FromComponentType(c.Type),
+                    c.Version ?? string.Empty,
+                    HealthStatus.Healthy,
+                    now,
+                    c.Capabilities ?? [],
+                    DaprComponentSource.LocalAdminMetadataFallback);
+                merged[(entry.ComponentName, entry.ComponentType)] = entry;
+            }
+        }
+
+        // Probe local Admin.Server state-store components.
+        using (var probeCts = CancellationTokenSource.CreateLinkedTokenSource(ct)) {
+            probeCts.CancelAfter(TimeSpan.FromSeconds(3));
+
+            List<Task<(DaprComponentDetail Updated, bool Replace)>> probes = [];
+            foreach (DaprComponentDetail entry in merged.Values.ToArray()) {
+                if (entry.Category != DaprComponentCategory.StateStore) {
+                    continue;
+                }
+
+                probes.Add(ProbeStateStoreEntryAsync(entry, probeCts.Token));
+            }
+
+            if (probes.Count > 0) {
+                try {
+                    (DaprComponentDetail Updated, bool Replace)[] probed
+                        = await Task.WhenAll(probes).ConfigureAwait(false);
+                    foreach ((DaprComponentDetail updated, bool replace) in probed) {
+                        if (replace) {
+                            merged[(updated.ComponentName, updated.ComponentType)] = updated;
+                        }
+                    }
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
+                    _logger.LogWarning("State store health probes timed out after 3 seconds.");
+                }
+            }
+        }
+
+        // Remote EventStore sidecar metadata: canonical for loaded EventStore-sidecar components
+        // and active pub/sub subscriptions.
+        RemoteMetadataPayload remote = await TryReadRemoteMetadataAsync(ct).ConfigureAwait(false);
+
+        if (remote.Components is not null) {
+            foreach (DaprComponentDetail c in remote.Components) {
+                merged[(c.ComponentName, c.ComponentType)] = c with { Source = DaprComponentSource.RemoteEventStoreMetadata };
+            }
+        }
+
+        IReadOnlyList<DaprSubscriptionInfo> subs = remote.Subscriptions ?? [];
+
+        IReadOnlyList<DaprComponentDetail> ordered = merged.Values
+            .OrderBy(c => (int)c.Category)
+            .ThenBy(c => c.ComponentName, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        // Run health probes for state store components in parallel
-        using var probeCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        probeCts.CancelAfter(TimeSpan.FromSeconds(3));
-
-        List<Task> probes = [];
-        for (int i = 0; i < components.Length; i++) {
-            if (components[i].Category == DaprComponentCategory.StateStore) {
-                probes.Add(ProbeStateStoreAsync(components, i, probeCts.Token));
-            }
-        }
-
-        if (probes.Count > 0) {
-            try {
-                await Task.WhenAll(probes).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
-                // Probe timeout — mark remaining probed components as Degraded
-                _logger.LogWarning("State store health probes timed out after 3 seconds.");
-            }
-        }
-
-        return components;
+        return new DaprCanonicalInventory(
+            ordered,
+            subs,
+            remote.Status,
+            remote.Endpoint,
+            localProbeAvailable,
+            now);
     }
 
     /// <inheritdoc/>
@@ -103,78 +160,24 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             return null;
         }
 
-        // The DAPR SDK metadata model exposes Id, Components, Actors, Extended for the local
-        // sidecar only. Subscriptions and HttpEndpoints live on the remote EventStore sidecar
-        // (the eventstore-admin sidecar references the state store only — it has no pub/sub
-        // subscriptions of its own), so we fetch them via HTTP from /v1.0/metadata, the same
-        // pattern used by GetPubSubOverviewAsync and GetActorRuntimeInfoAsync.
+        // Subscriptions and HttpEndpoints live on the remote EventStore sidecar; the local
+        // 'eventstore-admin' sidecar has no pub/sub subscriptions of its own. We delegate to
+        // the shared remote-metadata parser so every Admin surface sees the same status
+        // (Available / NotConfigured / Unreachable / InvalidPayload).
         string runtimeVersion = metadata.Extended?.TryGetValue("daprRuntimeVersion", out string? version) == true
             ? version ?? "unknown"
             : "unknown";
 
-        int subscriptionCount = 0;
-        int httpEndpointCount = 0;
-        bool remoteFetchSucceeded = false;
-
-        if (string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)) {
-            _logger.LogDebug("Skipping remote EventStore sidecar metadata query for sidecar info: endpoint not configured.");
-        }
-        else {
-            try {
-                HttpClient httpClient = _httpClientFactory.CreateClient("DaprSidecar");
-
-                string baseUrl = _options.EventStoreDaprHttpEndpoint.TrimEnd('/');
-                using HttpResponseMessage response = await httpClient
-                    .GetAsync($"{baseUrl}/v1.0/metadata", ct)
-                    .ConfigureAwait(false);
-                _ = response.EnsureSuccessStatusCode();
-
-                using JsonDocument doc = await JsonDocument.ParseAsync(
-                    await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false),
-                    cancellationToken: ct).ConfigureAwait(false);
-
-                if (doc.RootElement.TryGetProperty("subscriptions", out JsonElement subscriptionsElement)
-                    && subscriptionsElement.ValueKind == JsonValueKind.Array) {
-                    subscriptionCount = subscriptionsElement.GetArrayLength();
-                }
-
-                if (doc.RootElement.TryGetProperty("httpEndpoints", out JsonElement httpEndpointsElement)
-                    && httpEndpointsElement.ValueKind == JsonValueKind.Array) {
-                    httpEndpointCount = httpEndpointsElement.GetArrayLength();
-                }
-
-                remoteFetchSucceeded = true;
-            }
-            catch (OperationCanceledException) {
-                throw;
-            }
-            catch (Exception ex) {
-                _logger.LogWarning(
-                    ex,
-                    "Remote DAPR sidecar metadata unavailable at {Endpoint} for sidecar info. ExceptionType={ExceptionType}.",
-                    _options.EventStoreDaprHttpEndpoint,
-                    ex.GetType().Name);
-            }
-        }
-
-        string? remoteEndpoint = string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)
-            ? null
-            : _options.EventStoreDaprHttpEndpoint;
-
-        RemoteMetadataStatus status = remoteEndpoint is null
-            ? RemoteMetadataStatus.NotConfigured
-            : remoteFetchSucceeded
-                ? RemoteMetadataStatus.Available
-                : RemoteMetadataStatus.Unreachable;
+        RemoteMetadataPayload remote = await TryReadRemoteMetadataAsync(ct).ConfigureAwait(false);
 
         return new DaprSidecarInfo(
             string.IsNullOrWhiteSpace(metadata.Id) ? "unknown" : metadata.Id,
             runtimeVersion,
             metadata.Components?.Count ?? 0,
-            subscriptionCount,
-            httpEndpointCount,
-            status,
-            remoteEndpoint);
+            remote.SubscriptionCount,
+            remote.HttpEndpointCount,
+            remote.Status,
+            remote.Endpoint);
     }
 
     /// <inheritdoc/>
@@ -212,71 +215,32 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         }
 
         // If local sidecar has no actors, try remote EventStore server sidecar
-        bool remoteFetchSucceeded = false;
+        RemoteMetadataStatus remoteStatus;
+        string? remoteEndpoint;
         if (actorTypes.Count == 0) {
-            if (string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)) {
-                _logger.LogDebug("Skipping remote EventStore sidecar metadata query: endpoint not configured.");
-            }
-            else {
-                try {
-                    HttpClient httpClient = _httpClientFactory.CreateClient("DaprSidecar");
-
-                    string baseUrl = _options.EventStoreDaprHttpEndpoint.TrimEnd('/');
-                    using HttpResponseMessage response = await httpClient
-                        .GetAsync($"{baseUrl}/v1.0/metadata", ct)
-                        .ConfigureAwait(false);
-                    _ = response.EnsureSuccessStatusCode();
-
-                    using JsonDocument doc = await JsonDocument.ParseAsync(
-                        await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false),
-                        cancellationToken: ct).ConfigureAwait(false);
-
-                    if (doc.RootElement.TryGetProperty("actors", out JsonElement actorsElement)) {
-                        foreach (JsonElement actorElement in actorsElement.EnumerateArray()) {
-                            string type = actorElement.GetProperty("type").GetString() ?? string.Empty;
-                            int count = actorElement.TryGetProperty("count", out JsonElement countEl)
-                                ? countEl.GetInt32()
-                                : -1;
-
-                            if (!string.IsNullOrEmpty(type)) {
-                                KnownActorTypeDescriptor descriptor = KnownActorTypes.GetDescriptor(type);
-                                actorTypes.Add(new DaprActorTypeInfo(
-                                    type,
-                                    count,
-                                    descriptor.Description,
-                                    descriptor.ActorIdFormat));
-
-                                if (!KnownActorTypes.Types.ContainsKey(type)) {
-                                    _logger.LogWarning("Unknown actor type '{ActorType}' detected — update KnownActorTypes map", type);
-                                }
-                            }
-                        }
-
-                        remoteFetchSucceeded = true;
+            RemoteMetadataPayload remote = await TryReadRemoteMetadataAsync(ct).ConfigureAwait(false);
+            if (remote.Actors is not null) {
+                foreach (DaprActorTypeInfo actor in remote.Actors) {
+                    actorTypes.Add(actor);
+                    if (!KnownActorTypes.Types.ContainsKey(actor.TypeName)) {
+                        _logger.LogWarning("Unknown actor type '{ActorType}' detected — update KnownActorTypes map", actor.TypeName);
                     }
                 }
-                catch (OperationCanceledException) {
-                    throw;
-                }
-                catch (Exception ex) {
-                    _logger.LogWarning(
-                        ex,
-                        "Remote DAPR sidecar metadata unavailable at {Endpoint}. ExceptionType={ExceptionType}. Check whether DAPR sidecar for 'eventstore' is running on that port (port conflicts on 3501 cause silent fallback).",
-                        _options.EventStoreDaprHttpEndpoint,
-                        ex.GetType().Name);
-                }
             }
+
+            remoteStatus = remote.Status;
+            remoteEndpoint = remote.Endpoint;
         }
-
-        string? remoteEndpoint = string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)
-            ? null
-            : _options.EventStoreDaprHttpEndpoint;
-
-        RemoteMetadataStatus status = remoteEndpoint is null
-            ? RemoteMetadataStatus.NotConfigured
-            : remoteFetchSucceeded
-                ? RemoteMetadataStatus.Available
+        else {
+            // Local actors found — preserve original behavior: status reflects endpoint config
+            // but we did not exercise remote connectivity, so we cannot claim Available.
+            remoteEndpoint = string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)
+                ? null
+                : _options.EventStoreDaprHttpEndpoint;
+            remoteStatus = remoteEndpoint is null
+                ? RemoteMetadataStatus.NotConfigured
                 : RemoteMetadataStatus.Unreachable;
+        }
 
         int totalActive = actorTypes
             .Where(a => a.ActiveCount >= 0)
@@ -286,7 +250,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             actorTypes,
             totalActive,
             config,
-            status,
+            remoteStatus,
             remoteEndpoint);
     }
 
@@ -337,139 +301,20 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
     /// <inheritdoc/>
     public async Task<DaprPubSubOverview> GetPubSubOverviewAsync(CancellationToken ct = default) {
-        // Query the EventStore sidecar's metadata once to get BOTH pub/sub components AND
-        // subscriptions. We deliberately do NOT read the local Admin.Server sidecar's components
-        // here, because the 'eventstore-admin' sidecar (HexalithEventStoreExtensions.cs:97-102)
-        // is wired with state-store references only — it never sees the pub/sub component.
-        // The pub/sub component lives on the 'eventstore' sidecar, queryable via
-        // {EventStoreDaprHttpEndpoint}/v1.0/metadata.
-        List<DaprComponentDetail> pubSubComponents = [];
-        List<DaprSubscriptionInfo> subscriptions = [];
-        bool remoteFetchSucceeded = false;
+        RemoteMetadataPayload remote = await TryReadRemoteMetadataAsync(ct).ConfigureAwait(false);
 
-        if (string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)) {
-            _logger.LogDebug("Skipping remote EventStore sidecar metadata query: endpoint not configured.");
-        }
-        else {
-            try {
-                HttpClient httpClient = _httpClientFactory.CreateClient("DaprSidecar");
+        IReadOnlyList<DaprComponentDetail> pubSubComponents = remote.Components is null
+            ? []
+            : remote.Components
+                .Where(c => c.Category == DaprComponentCategory.PubSub)
+                .Select(c => c with { Source = DaprComponentSource.RemoteEventStoreMetadata })
+                .ToArray();
 
-                string baseUrl = _options.EventStoreDaprHttpEndpoint.TrimEnd('/');
-                using HttpResponseMessage response = await httpClient
-                    .GetAsync($"{baseUrl}/v1.0/metadata", ct)
-                    .ConfigureAwait(false);
-                _ = response.EnsureSuccessStatusCode();
-
-                using JsonDocument doc = await JsonDocument.ParseAsync(
-                    await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false),
-                    cancellationToken: ct).ConfigureAwait(false);
-
-                // Extract pub/sub components from the remote sidecar's components array.
-                if (doc.RootElement.TryGetProperty("components", out JsonElement componentsElement)
-                    && componentsElement.ValueKind == JsonValueKind.Array) {
-                    foreach (JsonElement comp in componentsElement.EnumerateArray()) {
-                        string? name = comp.TryGetProperty("name", out JsonElement n) ? n.GetString() : null;
-                        string? compType = comp.TryGetProperty("type", out JsonElement tp) ? tp.GetString() : null;
-                        string? version = comp.TryGetProperty("version", out JsonElement v) ? v.GetString() : null;
-
-                        if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(compType)
-                            || DaprComponentCategoryHelper.FromComponentType(compType) != DaprComponentCategory.PubSub) {
-                            continue;
-                        }
-
-                        List<string> capabilities = [];
-                        if (comp.TryGetProperty("capabilities", out JsonElement capsEl)
-                            && capsEl.ValueKind == JsonValueKind.Array) {
-                            foreach (JsonElement cap in capsEl.EnumerateArray()) {
-                                string? capValue = cap.GetString();
-                                if (!string.IsNullOrEmpty(capValue)) {
-                                    capabilities.Add(capValue);
-                                }
-                            }
-                        }
-
-                        pubSubComponents.Add(new DaprComponentDetail(
-                            name,
-                            compType,
-                            DaprComponentCategory.PubSub,
-                            version ?? string.Empty,
-                            HealthStatus.Healthy,
-                            DateTimeOffset.UtcNow,
-                            capabilities));
-                    }
-                }
-
-                // Extract subscriptions from the same payload.
-                if (doc.RootElement.TryGetProperty("subscriptions", out JsonElement subscriptionsElement)
-                    && subscriptionsElement.ValueKind == JsonValueKind.Array) {
-                    foreach (JsonElement sub in subscriptionsElement.EnumerateArray()) {
-                        string? pubsubName = sub.TryGetProperty("pubsubName", out JsonElement pn) ? pn.GetString() : null;
-                        string? topic = sub.TryGetProperty("topic", out JsonElement t) ? t.GetString() : null;
-                        string? type = sub.TryGetProperty("type", out JsonElement ty) ? ty.GetString() : null;
-                        string? deadLetterTopic = sub.TryGetProperty("deadLetterTopic", out JsonElement dlt) ? dlt.GetString() : null;
-
-                        // Extract route from rules[].path. DAPR /v1.0/metadata returns
-                        // 'rules' as a direct array of {match, path} objects. We also tolerate
-                        // a legacy wrapped form '{"rules": {"rules": [...]}}' for backward
-                        // compatibility with prior test fixtures.
-                        string route = "/";
-                        if (sub.TryGetProperty("rules", out JsonElement rulesElement)) {
-                            JsonElement rulesArray = rulesElement.ValueKind == JsonValueKind.Object
-                                && rulesElement.TryGetProperty("rules", out JsonElement nestedRules)
-                                && nestedRules.ValueKind == JsonValueKind.Array
-                                    ? nestedRules
-                                    : rulesElement;
-
-                            if (rulesArray.ValueKind == JsonValueKind.Array) {
-                                foreach (JsonElement rule in rulesArray.EnumerateArray()) {
-                                    if (rule.ValueKind == JsonValueKind.Object
-                                        && rule.TryGetProperty("path", out JsonElement pathElement)) {
-                                        string? path = pathElement.GetString();
-                                        if (!string.IsNullOrEmpty(path)) {
-                                            route = path;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        if (!string.IsNullOrEmpty(pubsubName) && !string.IsNullOrEmpty(topic)) {
-                            subscriptions.Add(new DaprSubscriptionInfo(
-                                pubsubName,
-                                topic,
-                                route,
-                                type ?? "UNKNOWN",
-                                string.IsNullOrWhiteSpace(deadLetterTopic) ? null : deadLetterTopic));
-                        }
-                    }
-                }
-
-                remoteFetchSucceeded = true;
-            }
-            catch (OperationCanceledException) {
-                throw;
-            }
-            catch (Exception ex) {
-                _logger.LogWarning(
-                    ex,
-                    "Remote DAPR sidecar metadata unavailable at {Endpoint}. ExceptionType={ExceptionType}. Check whether DAPR sidecar for 'eventstore' is running on that port (port conflicts on 3501 cause silent fallback).",
-                    _options.EventStoreDaprHttpEndpoint,
-                    ex.GetType().Name);
-            }
-        }
-
-        string? remoteEndpoint = string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)
-            ? null
-            : _options.EventStoreDaprHttpEndpoint;
-
-        RemoteMetadataStatus status = remoteEndpoint is null
-            ? RemoteMetadataStatus.NotConfigured
-            : remoteFetchSucceeded
-                ? RemoteMetadataStatus.Available
-                : RemoteMetadataStatus.Unreachable;
-
-        return new DaprPubSubOverview(pubSubComponents, subscriptions, status, remoteEndpoint);
+        return new DaprPubSubOverview(
+            pubSubComponents,
+            remote.Subscriptions ?? [],
+            remote.Status,
+            remote.Endpoint);
     }
 
     // DAPR internal actor state key convention — verify after SDK upgrades
@@ -750,25 +595,250 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
     private static string? GetScalar(YamlMappingNode node, string key) => node.Children.TryGetValue(new YamlScalarNode(key), out YamlNode? value)
             && value is YamlScalarNode scalar ? scalar.Value : null;
 
-    private async Task ProbeStateStoreAsync(
-        DaprComponentDetail[] components,
-        int index,
+    private async Task<(DaprComponentDetail Updated, bool Replace)> ProbeStateStoreEntryAsync(
+        DaprComponentDetail component,
         CancellationToken ct) {
-        DaprComponentDetail component = components[index];
         try {
             _ = await _daprClient
                 .GetStateAsync<string>(component.ComponentName, "admin:dapr-probe", cancellationToken: ct)
                 .ConfigureAwait(false);
 
-            // Success (null return = key missing, but store responded) → Healthy
+            // Success — store responded. Promote source to LocalAdminProbe to record canonical evidence.
+            return (component with { Status = HealthStatus.Healthy, LastCheckUtc = DateTimeOffset.UtcNow, Source = DaprComponentSource.LocalAdminProbe }, true);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
+            return (component with { Status = HealthStatus.Degraded, LastCheckUtc = DateTimeOffset.UtcNow, Source = DaprComponentSource.LocalAdminProbe }, true);
         }
         catch (OperationCanceledException) {
-            // Probe timed out or was cancelled — mark as Degraded (inconclusive)
-            components[index] = component with { Status = HealthStatus.Degraded, LastCheckUtc = DateTimeOffset.UtcNow };
+            throw;
         }
         catch (Exception ex) {
             _logger.LogWarning(ex, "State store probe failed for {ComponentName}.", component.ComponentName);
-            components[index] = component with { Status = HealthStatus.Unhealthy, LastCheckUtc = DateTimeOffset.UtcNow };
+            return (component with { Status = HealthStatus.Unhealthy, LastCheckUtc = DateTimeOffset.UtcNow, Source = DaprComponentSource.LocalAdminProbe }, true);
         }
+    }
+
+    /// <summary>
+    /// Reads the remote EventStore sidecar's <c>/v1.0/metadata</c> endpoint once and exposes the
+    /// shared-payload facts every Admin surface needs (components, subscriptions, actors, counts,
+    /// and the consolidated <see cref="RemoteMetadataStatus"/>). Returns explicit status values
+    /// for not-configured / unreachable / invalid-payload conditions so callers do not need to
+    /// translate transport exceptions into UI text.
+    /// </summary>
+    private async Task<RemoteMetadataPayload> TryReadRemoteMetadataAsync(CancellationToken ct) {
+        if (string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)) {
+            return new RemoteMetadataPayload {
+                Status = RemoteMetadataStatus.NotConfigured,
+                Endpoint = null,
+            };
+        }
+
+        string endpoint = _options.EventStoreDaprHttpEndpoint;
+        string baseUrl = endpoint.TrimEnd('/');
+
+        try {
+            HttpClient httpClient = _httpClientFactory.CreateClient("DaprSidecar");
+            using HttpResponseMessage response = await httpClient
+                .GetAsync($"{baseUrl}/v1.0/metadata", ct)
+                .ConfigureAwait(false);
+            _ = response.EnsureSuccessStatusCode();
+
+            using JsonDocument doc = await JsonDocument.ParseAsync(
+                await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false),
+                cancellationToken: ct).ConfigureAwait(false);
+
+            (List<DaprComponentDetail> components, List<DaprSubscriptionInfo> subscriptions,
+             List<DaprActorTypeInfo> actors, int subCount, int httpEndpointCount, bool initializing)
+                = ParseRemoteMetadata(doc.RootElement);
+
+            return new RemoteMetadataPayload {
+                Status = initializing ? RemoteMetadataStatus.Initializing : RemoteMetadataStatus.Available,
+                Endpoint = endpoint,
+                Components = components,
+                Subscriptions = subscriptions,
+                Actors = actors,
+                SubscriptionCount = subCount,
+                HttpEndpointCount = httpEndpointCount,
+            };
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (JsonException ex) {
+            _logger.LogWarning(
+                ex,
+                "Remote DAPR sidecar metadata at {Endpoint} returned an invalid JSON payload.",
+                endpoint);
+            return new RemoteMetadataPayload {
+                Status = RemoteMetadataStatus.InvalidPayload,
+                Endpoint = endpoint,
+            };
+        }
+        catch (Exception ex) {
+            _logger.LogWarning(
+                ex,
+                "Remote DAPR sidecar metadata unavailable at {Endpoint}. ExceptionType={ExceptionType}.",
+                endpoint,
+                ex.GetType().Name);
+            return new RemoteMetadataPayload {
+                Status = RemoteMetadataStatus.Unreachable,
+                Endpoint = endpoint,
+            };
+        }
+    }
+
+    private static (List<DaprComponentDetail> Components,
+                    List<DaprSubscriptionInfo> Subscriptions,
+                    List<DaprActorTypeInfo> Actors,
+                    int SubscriptionCount,
+                    int HttpEndpointCount,
+                    bool Initializing) ParseRemoteMetadata(JsonElement root) {
+        List<DaprComponentDetail> components = [];
+        List<DaprSubscriptionInfo> subscriptions = [];
+        List<DaprActorTypeInfo> actors = [];
+        int subCount = 0;
+        int httpEndpointCount = 0;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+
+        if (root.TryGetProperty("components", out JsonElement componentsElement)
+            && componentsElement.ValueKind == JsonValueKind.Array) {
+            foreach (JsonElement comp in componentsElement.EnumerateArray()) {
+                string? name = comp.TryGetProperty("name", out JsonElement n) ? n.GetString() : null;
+                string? compType = comp.TryGetProperty("type", out JsonElement tp) ? tp.GetString() : null;
+                string? version = comp.TryGetProperty("version", out JsonElement v) ? v.GetString() : null;
+
+                if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(compType)) {
+                    continue;
+                }
+
+                List<string> capabilities = [];
+                if (comp.TryGetProperty("capabilities", out JsonElement capsEl)
+                    && capsEl.ValueKind == JsonValueKind.Array) {
+                    foreach (JsonElement cap in capsEl.EnumerateArray()) {
+                        string? capValue = cap.GetString();
+                        if (!string.IsNullOrEmpty(capValue)) {
+                            capabilities.Add(capValue);
+                        }
+                    }
+                }
+
+                components.Add(new DaprComponentDetail(
+                    name,
+                    compType,
+                    DaprComponentCategoryHelper.FromComponentType(compType),
+                    version ?? string.Empty,
+                    HealthStatus.Healthy,
+                    now,
+                    capabilities,
+                    DaprComponentSource.RemoteEventStoreMetadata));
+            }
+        }
+
+        if (root.TryGetProperty("subscriptions", out JsonElement subscriptionsElement)
+            && subscriptionsElement.ValueKind == JsonValueKind.Array) {
+            subCount = subscriptionsElement.GetArrayLength();
+            foreach (JsonElement sub in subscriptionsElement.EnumerateArray()) {
+                string? pubsubName = sub.TryGetProperty("pubsubName", out JsonElement pn) ? pn.GetString() : null;
+                string? topic = sub.TryGetProperty("topic", out JsonElement t) ? t.GetString() : null;
+                string? type = sub.TryGetProperty("type", out JsonElement ty) ? ty.GetString() : null;
+                string? deadLetterTopic = sub.TryGetProperty("deadLetterTopic", out JsonElement dlt) ? dlt.GetString() : null;
+
+                string route = "/";
+                if (sub.TryGetProperty("rules", out JsonElement rulesElement)) {
+                    JsonElement rulesArray = rulesElement.ValueKind == JsonValueKind.Object
+                        && rulesElement.TryGetProperty("rules", out JsonElement nestedRules)
+                        && nestedRules.ValueKind == JsonValueKind.Array
+                            ? nestedRules
+                            : rulesElement;
+
+                    if (rulesArray.ValueKind == JsonValueKind.Array) {
+                        foreach (JsonElement rule in rulesArray.EnumerateArray()) {
+                            if (rule.ValueKind == JsonValueKind.Object
+                                && rule.TryGetProperty("path", out JsonElement pathElement)) {
+                                string? path = pathElement.GetString();
+                                if (!string.IsNullOrEmpty(path)) {
+                                    route = path;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(pubsubName) && !string.IsNullOrEmpty(topic)) {
+                    subscriptions.Add(new DaprSubscriptionInfo(
+                        pubsubName,
+                        topic,
+                        route,
+                        type ?? "UNKNOWN",
+                        string.IsNullOrWhiteSpace(deadLetterTopic) ? null : deadLetterTopic));
+                }
+            }
+        }
+
+        if (root.TryGetProperty("actors", out JsonElement actorsElement)
+            && actorsElement.ValueKind == JsonValueKind.Array) {
+            foreach (JsonElement actorElement in actorsElement.EnumerateArray()) {
+                string type = actorElement.TryGetProperty("type", out JsonElement typeEl)
+                    ? typeEl.GetString() ?? string.Empty
+                    : string.Empty;
+                int count = actorElement.TryGetProperty("count", out JsonElement countEl)
+                    ? countEl.GetInt32()
+                    : -1;
+
+                if (!string.IsNullOrEmpty(type)) {
+                    KnownActorTypeDescriptor descriptor = KnownActorTypes.GetDescriptor(type);
+                    actors.Add(new DaprActorTypeInfo(
+                        type,
+                        count,
+                        descriptor.Description,
+                        descriptor.ActorIdFormat));
+                }
+            }
+        }
+
+        if (root.TryGetProperty("httpEndpoints", out JsonElement httpEndpointsElement)
+            && httpEndpointsElement.ValueKind == JsonValueKind.Array) {
+            httpEndpointCount = httpEndpointsElement.GetArrayLength();
+        }
+
+        // Initializing heuristic: payload is reachable (200 OK) but the runtime reports neither
+        // components nor actors yet. The local sidecar may still be loading components.
+        bool initializing = components.Count == 0
+            && actors.Count == 0
+            && subscriptions.Count == 0
+            && root.TryGetProperty("id", out JsonElement idEl)
+            && string.IsNullOrEmpty(idEl.GetString());
+
+        return (components, subscriptions, actors, subCount, httpEndpointCount, initializing);
+    }
+
+    private readonly struct RemoteMetadataPayload {
+        public RemoteMetadataStatus Status { get; init; }
+
+        public string? Endpoint { get; init; }
+
+        public List<DaprComponentDetail>? Components { get; init; }
+
+        public List<DaprSubscriptionInfo>? Subscriptions { get; init; }
+
+        public List<DaprActorTypeInfo>? Actors { get; init; }
+
+        public int SubscriptionCount { get; init; }
+
+        public int HttpEndpointCount { get; init; }
+    }
+
+    private sealed class InventoryKeyComparer : IEqualityComparer<(string Name, string Type)> {
+        public static InventoryKeyComparer Instance { get; } = new();
+
+        public bool Equals((string Name, string Type) x, (string Name, string Type) y)
+            => StringComparer.OrdinalIgnoreCase.Equals(x.Name, y.Name)
+            && StringComparer.OrdinalIgnoreCase.Equals(x.Type, y.Type);
+
+        public int GetHashCode((string Name, string Type) obj)
+            => HashCode.Combine(
+                StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Name),
+                StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Type));
     }
 }

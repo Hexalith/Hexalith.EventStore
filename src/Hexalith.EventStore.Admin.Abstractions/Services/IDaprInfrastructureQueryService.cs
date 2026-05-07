@@ -49,4 +49,15 @@ public interface IDaprInfrastructureQueryService {
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The resiliency spec. Never null — returns <see cref="DaprResiliencySpec.Unavailable"/> when not configured.</returns>
     Task<DaprResiliencySpec> GetResiliencySpecAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the canonical DAPR inventory consumed by every Admin surface that renders component
+    /// or pub/sub facts. Merges remote EventStore sidecar metadata with local Admin.Server
+    /// dependency probes; component identity is the <c>{ ComponentName, ComponentType }</c>
+    /// pair and each entry preserves source attribution. Never throws for dependency failures —
+    /// returns explicit <see cref="DaprCanonicalInventory.RemoteMetadataStatus"/> values instead.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The canonical inventory.</returns>
+    Task<DaprCanonicalInventory> GetCanonicalDaprInventoryAsync(CancellationToken ct = default);
 }

@@ -68,15 +68,18 @@ public class DaprInfrastructureQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetComponentsAsync_Throws_WhenSidecarUnavailable() {
+    public async Task GetComponentsAsync_ReturnsEmpty_WhenLocalSidecarUnavailableAndNoRemote() {
+        // Canonical inventory swallows local-sidecar failures (the failure becomes evidence
+        // exposed via DaprCanonicalInventory.LocalProbeAvailable=false). With no remote endpoint
+        // configured we get an empty list rather than a thrown exception.
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Sidecar down"));
 
         DaprInfrastructureQueryService service = CreateService(daprClient);
 
-        _ = await Should.ThrowAsync<InvalidOperationException>(
-            () => service.GetComponentsAsync());
+        IReadOnlyList<DaprComponentDetail> result = await service.GetComponentsAsync();
+        result.ShouldBeEmpty();
     }
 
     [Fact]
@@ -354,5 +357,162 @@ public class DaprInfrastructureQueryServiceTests {
 
         result.Count.ShouldBe(1);
         result[0].ComponentName.ShouldBe("statestore");
+    }
+
+    [Fact]
+    public async Task GetCanonicalDaprInventoryAsync_MergesRemoteAndLocal_WithSourceAttribution() {
+        // Arrange — local sidecar sees state-store; remote eventstore sidecar adds pub/sub +
+        // confirms the state-store. Identity merges by { name, type } and remote wins for the
+        // shared component (state-store probe still attaches the local probe status).
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
+            new DaprComponentsMetadata("statestore", "state.redis", "v1", [])));
+        _ = daprClient.GetStateAsync<string>(
+            "statestore", "admin:dapr-probe",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => (string?)null);
+
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """
+        {
+            "id": "eventstore",
+            "components": [
+                {"name": "statestore", "type": "state.redis", "version": "v1", "capabilities": ["ETAG"]},
+                {"name": "pubsub", "type": "pubsub.redis", "version": "v1", "capabilities": []}
+            ],
+            "subscriptions": [
+                {"pubsubName": "pubsub", "topic": "events"}
+            ]
+        }
+        """));
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        // Act
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        // Assert
+        inventory.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
+        inventory.LocalProbeAvailable.ShouldBeTrue();
+        inventory.PubSubSubscriptions.Count.ShouldBe(1);
+
+        // Component identity is { name, type } so both sources collapse onto a single entry.
+        DaprComponentDetail stateStore = inventory.Components
+            .Where(c => c.Category == DaprComponentCategory.StateStore).ShouldHaveSingleItem();
+        stateStore.Source.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);
+
+        DaprComponentDetail pubSub = inventory.Components
+            .Where(c => c.Category == DaprComponentCategory.PubSub).ShouldHaveSingleItem();
+        pubSub.Source.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);
+        pubSub.ComponentName.ShouldBe("pubsub");
+    }
+
+    [Fact]
+    public async Task GetCanonicalDaprInventoryAsync_PreservesLocalEvidence_WhenRemoteUnreachable() {
+        // Arrange — remote sidecar unreachable; local Admin sidecar still reports state store.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
+            new DaprComponentsMetadata("statestore", "state.redis", "v1", [])));
+        _ = daprClient.GetStateAsync<string>(
+            "statestore", "admin:dapr-probe",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => (string?)null);
+
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.InternalServerError, "boom"));
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        // Act
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        // Assert — local fallback evidence kept; remote labelled Unreachable; pub/sub absent.
+        inventory.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Unreachable);
+        inventory.LocalProbeAvailable.ShouldBeTrue();
+        inventory.PubSubSubscriptions.ShouldBeEmpty();
+        DaprComponentDetail stateStore = inventory.Components.ShouldHaveSingleItem();
+        stateStore.ComponentName.ShouldBe("statestore");
+        // Local fallback OR local probe (state-store probe succeeded) — never RemoteEventStoreMetadata.
+        stateStore.Source.ShouldBeOneOf(
+            DaprComponentSource.LocalAdminProbe,
+            DaprComponentSource.LocalAdminMetadataFallback);
+    }
+
+    [Fact]
+    public async Task GetCanonicalDaprInventoryAsync_ReturnsInvalidPayload_OnMalformedRemoteJson() {
+        // Arrange
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata());
+
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, "this is not json"));
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        // Act
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        // Assert
+        inventory.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.InvalidPayload);
+        inventory.PubSubSubscriptions.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task GetCanonicalDaprInventoryAsync_ReturnsNotConfigured_WhenEndpointUnset() {
+        // Arrange — no endpoint configured
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata());
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        // Act
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        // Assert
+        inventory.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
+        inventory.RemoteEndpoint.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetCanonicalDaprInventoryAsync_DoesNotErasePubSub_WhenLocalSidecarFailsButRemoteAvailable() {
+        // Story scenario: Redis (state store) is down on Admin.Server, but the remote EventStore
+        // sidecar is still reachable. /dapr and /dapr/pubsub must still show pub/sub from remote.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("local sidecar transient error"));
+
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """
+        {
+            "id": "eventstore",
+            "components": [
+                {"name": "pubsub", "type": "pubsub.redis", "version": "v1"}
+            ]
+        }
+        """));
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        // Act
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        // Assert
+        inventory.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
+        inventory.LocalProbeAvailable.ShouldBeFalse();
+        DaprComponentDetail pubSub = inventory.Components
+            .Where(c => c.Category == DaprComponentCategory.PubSub).ShouldHaveSingleItem();
+        pubSub.Source.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);
     }
 }

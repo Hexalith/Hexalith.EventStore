@@ -35,7 +35,7 @@ public class DaprHealthHistoryCollectorTests {
         await collector.StopAsync(default);
 
         // Assert - infrastructure service should never be called
-        _ = await infraService.DidNotReceive().GetComponentsAsync(Arg.Any<CancellationToken>());
+        _ = await infraService.DidNotReceive().GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -54,8 +54,11 @@ public class DaprHealthHistoryCollectorTests {
             new DaprComponentDetail("statestore", "state.redis", DaprComponentCategory.StateStore, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, []),
         ];
 
-        _ = infraService.GetComponentsAsync(Arg.Any<CancellationToken>())
-            .Returns(components);
+        _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
+            .Returns(new DaprCanonicalInventory(
+                components, [], RemoteMetadataStatus.Available,
+                "http://eventstore-sidecar", LocalProbeAvailable: true,
+                CapturedAtUtc: DateTimeOffset.UtcNow));
 
         // Return null for existing timeline (first entry today)
         _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
@@ -81,16 +84,19 @@ public class DaprHealthHistoryCollectorTests {
     }
 
     [Fact]
-    public async Task ExecuteAsync_SkipsWrite_WhenNoComponentsReturned() {
+    public async Task ExecuteAsync_SkipsWrite_WhenNoComponentsAndRemoteUnavailable() {
         // Arrange
         var options = new AdminServerOptions { HealthHistoryEnabled = true };
 
         DaprClient daprClient = Substitute.For<DaprClient>();
         IDaprInfrastructureQueryService infraService = Substitute.For<IDaprInfrastructureQueryService>();
 
-        // Return empty component list (sidecar unreachable)
-        _ = infraService.GetComponentsAsync(Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<DaprComponentDetail>());
+        // Return empty component list with remote unreachable (do not overwrite history)
+        _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
+            .Returns(new DaprCanonicalInventory(
+                [], [], RemoteMetadataStatus.Unreachable,
+                "http://eventstore-sidecar", LocalProbeAvailable: false,
+                CapturedAtUtc: DateTimeOffset.UtcNow));
 
         DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService);
 
@@ -123,8 +129,11 @@ public class DaprHealthHistoryCollectorTests {
             new DaprComponentDetail("statestore", "state.redis", DaprComponentCategory.StateStore, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, []),
         ];
 
-        _ = infraService.GetComponentsAsync(Arg.Any<CancellationToken>())
-            .Returns(components);
+        _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
+            .Returns(new DaprCanonicalInventory(
+                components, [], RemoteMetadataStatus.Available,
+                "http://eventstore-sidecar", LocalProbeAvailable: true,
+                CapturedAtUtc: DateTimeOffset.UtcNow));
 
         _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
             Arg.Any<string>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
@@ -147,7 +156,7 @@ public class DaprHealthHistoryCollectorTests {
         await collector.StopAsync(default);
 
         // Assert - service was called (collector didn't crash)
-        _ = await infraService.Received().GetComponentsAsync(Arg.Any<CancellationToken>());
+        _ = await infraService.Received().GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>());
     }
 
     private static DaprHealthHistoryCollector CreateCollector(
