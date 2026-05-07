@@ -117,3 +117,4 @@
 2026-05-07T18:03:40.3893822+02:00	none	-	none	no backlog and all ready stories already have party-mode plus advanced-elicitation traces
 2026-05-07T19:31:00+02:00	create-story	admin-ui-operator-action-and-dev-role-testability-fix	ok	created ready-for-dev story for dead-letter action recovery and dev role switching
 2026-05-07T19:36:18+02:00	create-story	admin-ui-actor-diagnostics-honesty-fix	ok	created ready-for-dev story for actor diagnostics honesty and canonical AggregateActor inspection
+2026-05-07T19:42:32+02:00	party-mode-review	admin-ui-operator-action-and-dev-role-testability-fix	ok	recorded party-mode trace and hardened dev-role/action-failure story criteria
