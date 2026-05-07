@@ -328,7 +328,12 @@ internal static class DomainProcessorStateRehydrator {
         }
     }
 
-    private static MethodInfo? TryResolveApplyMethod(
+    /// <summary>
+    /// Resolves the Apply method for a persisted event type name using the runtime convention:
+    /// exact CLR-name match first, then a single-candidate <c>EndsWith</c> fallback for FQN-to-short-name
+    /// disambiguation. Internal so the replay path can share the same resolver as the command path.
+    /// </summary>
+    internal static MethodInfo? TryResolveApplyMethod(
         string eventTypeName,
         Dictionary<string, MethodInfo> applyMethods) {
         if (!applyMethods.TryGetValue(eventTypeName, out MethodInfo? applyMethod)) {
@@ -342,4 +347,7 @@ internal static class DomainProcessorStateRehydrator {
 
         return applyMethod;
     }
+
+    /// <summary>Gets the runtime serializer options used by replay/rehydration so payload deserialization is consistent across paths.</summary>
+    internal static JsonSerializerOptions SerializerOptions => WebJsonOptions;
 }

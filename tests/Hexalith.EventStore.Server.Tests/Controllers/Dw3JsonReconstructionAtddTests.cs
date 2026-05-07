@@ -58,11 +58,13 @@ public class Dw3JsonReconstructionAtddTests {
     }
 
     [Fact]
-    public async Task Step_ExplicitJsonNullValue_HasDocumentedRepresentation() {
-        // Event 1: {"a":1}. Event 2: {"a":null}. The disposition the dev picks
-        // (supported, preserved-limitation, accepted-debt, future-actor-api) must
-        // be encoded as test data in Dw3JsonBehaviorDispositions and reflected
-        // here. Current code: explicit null overwrites because of DeepMerge.
+    public async Task Step_ExplicitJsonNullValue_StateComesFromCanonicalReconstructor() {
+        // Re-anchored under admin-ui-aggregate-state-replay-correctness: the controller no
+        // longer deep-merges payloads. State JSON is whatever the canonical
+        // IAggregateStateReconstructor returns. Apply-driven null semantics are owned by the
+        // domain state type, not the controller — assert here only that the controller relays
+        // the reconstructor's state and never injects payload-derived field changes the Apply
+        // path did not produce.
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([
             Dw3TestUtilities.BuildEnvelope(1, """{"a":1}"""),
@@ -76,20 +78,18 @@ public class Dw3JsonReconstructionAtddTests {
 
         OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
         EventStepFrame frame = ok.Value.ShouldBeOfType<EventStepFrame>();
-
-        FieldChange? change = frame.FieldChanges.SingleOrDefault(fc => fc.FieldPath == "a");
-        change.ShouldNotBeNull("DW3 AC#2: explicit JSON null on a previously-set property must be visible in FieldChanges.");
-        change!.OldValue.ShouldBe("1");
-        change.NewValue.ShouldBe("null");
+        // Test stub returns {} for every sequence — proves the controller did not synthesize
+        // {a:null} via the legacy DeepMerge fallback that this story removed.
+        frame.StateJson.ShouldBe("{}");
+        frame.FieldChanges.ShouldBeEmpty();
     }
 
     [Fact]
-    public async Task Step_NestedPropertyRemovedFromObject_BehaviorMatchesMatrix() {
-        // Event 1: {"obj":{"x":1,"y":2}}. Event 2: {"obj":{"x":3}} (no "y").
-        // Current JsonDiff DOES emit "y → null" because the recursive nested
-        // diff scan picks it up via the "before-not-in-after" pass. This is
-        // the preserved-limitation case: dev must either (a) document this as
-        // accepted-debt or (b) tighten DeepMerge/JsonDiff to be consistent.
+    public async Task Step_NestedPropertyRemovedFromObject_StateComesFromCanonicalReconstructor() {
+        // Re-anchored: nested removal semantics now live with the domain Apply path. The
+        // controller no longer assembles state via DeepMerge so it cannot retain "y":2 from
+        // a prior payload nor synthesize "obj.y → null". Assert the state and field changes
+        // are exactly what the canonical IAggregateStateReconstructor returned.
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([
             Dw3TestUtilities.BuildEnvelope(1, """{"obj":{"x":1,"y":2}}"""),
@@ -103,19 +103,10 @@ public class Dw3JsonReconstructionAtddTests {
 
         OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
         EventStepFrame frame = ok.Value.ShouldBeOfType<EventStepFrame>();
-
-        // Decision Ledger (docs/operations/admin-debugging-json-large-stream-hardening.md):
-        // omitted properties are `preserved-limitation` — NOT synthesized as deletes.
-        // The reconstructed state must still contain "y":2 (DeepMerge keeps it), and the
-        // FieldChange list must NOT report "obj.y → null" because that would imply a delete
-        // the event payload model cannot prove.
-        bool nestedRemovalReported = frame.FieldChanges.Any(
-            fc => fc.FieldPath == "obj.y" && fc.NewValue == "null");
-
-        nestedRemovalReported.ShouldBeFalse(
-            "DW3 AC#2: nested removal must NOT be synthesized — Decision Ledger marks omitted properties as preserved-limitation.");
-        frame.StateJson.Contains("\"y\":2", StringComparison.Ordinal).ShouldBeTrue(
-            "DW3 AC#2: reconstructed state must retain the previous value because DeepMerge cannot infer deletions from omission.");
+        // Test stub returns {} — this guards that the legacy DeepMerge fallback is
+        // unreachable from /step (admin-ui-aggregate-state-replay-correctness AC #1).
+        frame.StateJson.ShouldBe("{}");
+        frame.FieldChanges.ShouldBeEmpty();
     }
 
     // ---------------------------------------------------------------
@@ -123,10 +114,11 @@ public class Dw3JsonReconstructionAtddTests {
     // ---------------------------------------------------------------
 
     [Fact]
-    public async Task Step_ArrayPayload_TreatedAsOpaqueLeaf_NoElementPaths() {
-        // Event with array property: {"items":[1,2,3]}. FlattenJson currently
-        // treats arrays as leaves. AC #3 requires this opaque-leaf behavior to
-        // be preserved with tests until a recorded decision changes it.
+    public async Task Step_ArrayPayload_StateComesFromCanonicalReconstructor() {
+        // Re-anchored: array semantics moved to the domain Apply path. The controller no
+        // longer synthesizes "items" from raw payload bytes; whatever the reconstructor
+        // returns is what the surface displays. The default test stub returns {} so no
+        // payload-derived field changes leak through.
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([
             Dw3TestUtilities.BuildEnvelope(1, """{"items":[1,2,3]}"""),
@@ -139,17 +131,13 @@ public class Dw3JsonReconstructionAtddTests {
 
         OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
         EventStepFrame frame = ok.Value.ShouldBeOfType<EventStepFrame>();
-
-        frame.FieldChanges
-            .Where(fc => fc.FieldPath.StartsWith("items[", StringComparison.Ordinal))
-            .ShouldBeEmpty(
-                "DW3 AC#3: arrays must remain opaque leaves — no element-level "
-                + "field paths (e.g. items[0]) until a recorded architecture decision approves it.");
-        frame.FieldChanges.ShouldContain(fc => fc.FieldPath == "items");
+        frame.StateJson.ShouldBe("{}");
+        frame.FieldChanges.ShouldBeEmpty();
     }
 
     [Fact]
-    public async Task Step_TwoEventsWithDifferentArrayContents_DiffRecordsWholeArray() {
+    public async Task Step_TwoEventsWithDifferentArrayContents_StateComesFromCanonicalReconstructor() {
+        // Re-anchored: same rationale as Step_ArrayPayload_StateComesFromCanonicalReconstructor.
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([
             Dw3TestUtilities.BuildEnvelope(1, """{"items":[1,2]}"""),
@@ -163,11 +151,8 @@ public class Dw3JsonReconstructionAtddTests {
 
         OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
         EventStepFrame frame = ok.Value.ShouldBeOfType<EventStepFrame>();
-
-        FieldChange? change = frame.FieldChanges.SingleOrDefault(fc => fc.FieldPath == "items");
-        change.ShouldNotBeNull("DW3 AC#3: array changes must be reported as a single FieldChange on the array path.");
-        change!.OldValue.ShouldBe("[1,2]");
-        change.NewValue.ShouldBe("[1,2,3]");
+        frame.StateJson.ShouldBe("{}");
+        frame.FieldChanges.ShouldBeEmpty();
     }
 
     // ---------------------------------------------------------------

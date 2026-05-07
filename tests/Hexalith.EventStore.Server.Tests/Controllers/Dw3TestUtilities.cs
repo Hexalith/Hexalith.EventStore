@@ -3,6 +3,8 @@ using System.Text;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
@@ -121,7 +123,54 @@ internal static class Dw3TestUtilities {
         return new AdminStreamQueryController(
             actorProxyFactory,
             invoker,
+            CreateEmptyStateReconstructor(),
             NullLogger<AdminStreamQueryController>.Instance);
+    }
+
+    /// <summary>
+    /// Test seam returning a permissive <see cref="IAggregateStateReconstructor"/> stub that always
+    /// reports Succeeded with an empty <c>{}</c> state and a per-event timeline mirroring the
+    /// supplied event list. Mirrors the historical deep-merge default for events with empty
+    /// payloads so existing controller test assertions continue to hold.
+    /// </summary>
+    public static IAggregateStateReconstructor CreateEmptyStateReconstructor() {
+        IAggregateStateReconstructor reconstructor = Substitute.For<IAggregateStateReconstructor>();
+        _ = reconstructor.ReconstructAsync(
+                Arg.Any<AggregateIdentity>(),
+                Arg.Any<string>(),
+                Arg.Any<IReadOnlyList<ServerEventEnvelope>>(),
+                Arg.Any<long>(),
+                Arg.Any<bool>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo => {
+                IReadOnlyList<ServerEventEnvelope> events = callInfo.ArgAt<IReadOnlyList<ServerEventEnvelope>>(2);
+                long upTo = callInfo.ArgAt<long>(3);
+                bool includeTimeline = callInfo.ArgAt<bool>(4);
+                IReadOnlyList<AggregateReconstructionTimelineEntry>? timeline = null;
+                if (includeTimeline) {
+                    var list = new List<AggregateReconstructionTimelineEntry>();
+                    foreach (ServerEventEnvelope evt in events) {
+                        if (evt.SequenceNumber > upTo) {
+                            continue;
+                        }
+
+                        list.Add(new AggregateReconstructionTimelineEntry(
+                            SequenceNumber: evt.SequenceNumber,
+                            EventTypeName: evt.EventTypeName,
+                            StateJson: "{}"));
+                    }
+
+                    timeline = list;
+                }
+
+                long lastApplied = events.Count == 0 ? 0 : Math.Min(upTo, events[^1].SequenceNumber);
+                return Task.FromResult(AggregateReconstructionResult.Succeeded(
+                    stateJson: "{}",
+                    lastAppliedSequenceNumber: lastApplied,
+                    timeline: timeline));
+            });
+        return reconstructor;
     }
 
     public static AdminTraceQueryController CreateTraceController(

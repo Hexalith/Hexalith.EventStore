@@ -1,6 +1,7 @@
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Sample.Counter.Projections;
 using Hexalith.EventStore.ServiceDefaults;
 
@@ -22,6 +23,9 @@ app.MapDefaultEndpoints();
 app.MapGet("/", () => "Hexalith EventStore Sample Domain Service");
 
 app.MapPost("/process", async (DomainServiceRequest request, IServiceProvider serviceProvider) => Results.Ok(await Hexalith.EventStore.Sample.DomainServiceRequestRouter.ProcessAsync(serviceProvider, request).ConfigureAwait(false)));
+
+app.MapPost("/replay-state", (AggregateReconstructionRequest request, IServiceProvider serviceProvider)
+    => Results.Ok(Hexalith.EventStore.Sample.DomainServiceRequestRouter.Replay(serviceProvider, request)));
 
 if (malformedProjectionResponse) {
     _ = app.MapPost("/project", () => {
