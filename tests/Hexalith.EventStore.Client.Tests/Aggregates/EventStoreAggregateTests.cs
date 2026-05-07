@@ -165,6 +165,13 @@ public class EventStoreAggregateTests : IDisposable {
             => DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = $"{_prefix}-{command.Name}" } });
     }
 
+    // --- Test Aggregate with zero Handle methods (Story 1.4 R-T4 / TG-3 boundary) ---
+    private sealed class EmptyAggregate : EventStoreAggregate<TestState> {
+        // Intentionally empty: zero Handle methods. Pins the current contract that any
+        // command dispatched against an aggregate with no Handle methods throws
+        // InvalidOperationException at command time, not at startup or registration.
+    }
+
     // --- Test Aggregate with wrong return type Handle method (should be silently skipped) ---
     private sealed class WrongReturnTypeCommand;
 
@@ -1086,6 +1093,27 @@ public class EventStoreAggregateTests : IDisposable {
         Assert.Equal("UnknownReplayEvent", ex.EventTypeName);
         Assert.Equal(messageId, ex.MessageId);
         Assert.Equal("agg-r1a6", ex.AggregateId);
+    }
+
+    /// <summary>
+    /// Test ID: 1.4-UNIT-010. Closes Epic-1 R-T4 / TG-3 (silent-skip on signature mismatch in Handle discovery).
+    /// Pins the boundary contract for an aggregate that declares zero Handle methods: discovery succeeds with
+    /// an empty handler dictionary (registration does NOT fail), and the failure surfaces at command time as
+    /// an InvalidOperationException naming both the unmatched command type and the aggregate type. This is
+    /// the documented runtime-only behavior; future framework refactors that change to startup-time validation
+    /// will need to update this test rather than discover the change at the next domain integration test.
+    /// </summary>
+    [Fact]
+    public async Task ProcessAsync_AggregateWithZeroHandleMethods_ThrowsInvalidOperationExceptionAtCommandTime() {
+        var aggregate = new EmptyAggregate();
+        CommandEnvelope command = CreateCommand(new AddItem("any-payload"));
+
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => aggregate.ProcessAsync(command, null));
+
+        Assert.Contains("No Handle method found", ex.Message);
+        Assert.Contains(nameof(AddItem), ex.Message);
+        Assert.Contains(nameof(EmptyAggregate), ex.Message);
     }
 
     [Fact]

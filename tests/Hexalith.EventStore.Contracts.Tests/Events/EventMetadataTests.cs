@@ -106,4 +106,58 @@ public class EventMetadataTests {
 
         m2.ShouldBe(m1);
     }
+
+    /// <summary>
+    /// Test ID: 1.1-UNIT-010. Closes Epic-1 R-T2 / TG-1 along the actual production serialization path.
+    /// <para>
+    /// <see cref="EventMetadata"/> is intentionally not <c>[DataContract]</c>-decorated — it travels via
+    /// <see cref="System.Text.Json.JsonSerializer"/> (DAPR pub/sub, cross-process projection state, the
+    /// Dapr <c>EventEnvelope</c> wire format used by <c>EventStoreAggregate</c>). The actor-remoting DCS
+    /// path uses the separate flat-record <c>Hexalith.EventStore.Server.Events.EventEnvelope</c>
+    /// (covered by the Server-side DCS round-trip test). This test pins that all 15 fields survive a
+    /// <c>JsonSerializerDefaults.Web</c> round-trip — the camelCase-property convention DAPR uses.
+    /// If a future refactor adds, removes, or reorders a positional parameter without keeping the
+    /// runtime contract intact, this test fails immediately rather than at first projection replay.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Json_SerializationRoundTrip_PreservesAll15Fields() {
+        var timestamp = new DateTimeOffset(2026, 5, 7, 12, 34, 56, TimeSpan.FromHours(2));
+        var original = new EventMetadata(
+            MessageId: "01HQK6Z0V8MFR3T1WKFB5J9YQX",
+            AggregateId: "01HQK6Z0V8MFR3T1WKFB5J9AGG",
+            AggregateType: "counter",
+            TenantId: "acme",
+            Domain: "billing",
+            SequenceNumber: 42,
+            GlobalPosition: 99_999,
+            Timestamp: timestamp,
+            CorrelationId: "01HQK6Z0V8MFR3T1WKFB5J9CRR",
+            CausationId: "01HQK6Z0V8MFR3T1WKFB5J9CAU",
+            UserId: "user-007",
+            DomainServiceVersion: "1.4.2",
+            EventTypeName: "Hexalith.Billing.Events.InvoiceIssued",
+            MetadataVersion: 1,
+            SerializationFormat: "json");
+        var webOptions = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
+
+        byte[] serialized = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(original, webOptions);
+        EventMetadata deserialized = System.Text.Json.JsonSerializer.Deserialize<EventMetadata>(serialized, webOptions)!;
+
+        deserialized.MessageId.ShouldBe(original.MessageId);
+        deserialized.AggregateId.ShouldBe(original.AggregateId);
+        deserialized.AggregateType.ShouldBe(original.AggregateType);
+        deserialized.TenantId.ShouldBe(original.TenantId);
+        deserialized.Domain.ShouldBe(original.Domain);
+        deserialized.SequenceNumber.ShouldBe(original.SequenceNumber);
+        deserialized.GlobalPosition.ShouldBe(original.GlobalPosition);
+        deserialized.Timestamp.ShouldBe(original.Timestamp);
+        deserialized.CorrelationId.ShouldBe(original.CorrelationId);
+        deserialized.CausationId.ShouldBe(original.CausationId);
+        deserialized.UserId.ShouldBe(original.UserId);
+        deserialized.DomainServiceVersion.ShouldBe(original.DomainServiceVersion);
+        deserialized.EventTypeName.ShouldBe(original.EventTypeName);
+        deserialized.MetadataVersion.ShouldBe(original.MetadataVersion);
+        deserialized.SerializationFormat.ShouldBe(original.SerializationFormat);
+    }
 }
