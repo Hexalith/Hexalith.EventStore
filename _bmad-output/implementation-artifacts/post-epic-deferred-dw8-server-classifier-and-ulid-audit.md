@@ -69,6 +69,17 @@ The 2026-05-07 party-mode review tightened this story with the following impleme
 - **Identifier audit scope:** The protected fields are `messageId`, `correlationId`, `aggregateId`, and `causationId`. The audit guard fails only when `Guid.TryParse` or `Guid.Parse` is used to validate one of those protected fields. GUID-form example values, middleware correlation IDs, temporary names, `Guid.NewGuid()`, and `UniqueIdHelper.ToGuid` remain out of scope unless they become protected-ID validators.
 - **DW2 evidence reconciliation:** DW2 GUID-form seeded `correlationId` evidence may remain valid historical/test evidence if production validation accepts it through documented non-whitespace `AggregateIdentity` semantics or another approved non-GUID parser path. The reconciliation must make clear that GUID shape is not required and must not be used as a validation gate.
 
+## Advanced Elicitation Clarifications
+
+The 2026-05-07 advanced elicitation pass tightened DW8 with the following implementation-facing constraints:
+
+- **Pre-edit audit baseline:** Before changing identifier code or the audit guard, capture the current `Guid.TryParse` / `Guid.Parse` hit list and classify each hit as protected-field validator, allowed HTTP/middleware correlation identifier, builder/test assertion, conversion helper, or unrelated generated identifier. The Dev Agent Record must preserve this classification so the final guard is reviewable instead of relying on an opaque source scan.
+- **Guard precision contract:** The regression guard must fail on a `Guid.TryParse` / `Guid.Parse` call only when the call participates in validating `messageId`, `correlationId`, `aggregateId`, or `causationId` as EventStore command/event metadata. It must report file, line, protected field, and the allowed alternatives (`Ulid.TryParse`, `UniqueIdHelper`, or documented non-whitespace `AggregateIdentity` semantics). Path-only allowlists are acceptable only for explicitly named non-metadata surfaces such as HTTP middleware correlation headers, not for generic test folders.
+- **Reason-code compatibility proof:** Tests or documentation must assert the literal values of all stable DW1 reason codes and every additive DW8 reason code. The implementation must not introduce `drain_failure_unknown` as a replacement for the existing `unknown` wire value; any aliasing proposal is a deferred architecture decision.
+- **Classifier decision boundary:** If state-store persistence and DAPR runtime failures surface through broad exception types, classify them only when the operation boundary is controlled by the drain code. Do not classify by localized exception-message substrings. If no stable boundary is available without widening production API, record the blocker and keep the failure in `unknown` until a future story adds a deterministic seam.
+- **Seeded-evidence closure rule:** DW2-DF5 is closed only when the story cites the exact seeded-stream artifact/value inspected and either updates the seeding path to ULID-shaped metadata or documents the precise server parser path that accepts the GUID-shaped value without using GUID validation. A generic statement that the live smoke passed is not sufficient evidence.
+- **Disposition gating:** Do not mark the two DW8-owned deferred-work entries as resolved until the classifier tests, identifier guard, architecture-note table, and DW2 evidence reconciliation are all recorded. If any part is intentionally deferred, update only that entry with an explicit `ACCEPTED-DEBT` or follow-up-story disposition.
+
 ## Implementation Inventory
 
 | Area | File / artifact | Expected use |
@@ -102,12 +113,14 @@ The 2026-05-07 party-mode review tightened this story with the following impleme
   - [ ] 0.2 Confirm current `AggregateActor.ClassifyDrainFailure` behavior and current `DrainReasonCodes` values before editing.
   - [ ] 0.3 Locate parser/validator seams for the protected fields and separate parser defects from ordinary `Guid.NewGuid()` test-data patterns.
   - [ ] 0.4 Confirm DW9 evidence-validator/governance CI work remains out of scope.
+  - [ ] 0.5 Capture and classify the current `Guid.TryParse` / `Guid.Parse` hit list before implementing the regression guard.
 
 - [ ] Task 1: Harden drain reason classification (AC: #1, #2, #3)
   - [ ] 1.1 Add stable constants for approved new reason codes without renaming existing DW1 constants.
   - [ ] 1.2 Classify DAPR/runtime unavailable exceptions and state-store persistence failures where the exception type or context can be identified deterministically.
   - [ ] 1.3 Preserve raw exception details in structured logs only; activity tags must remain bounded stable codes.
   - [ ] 1.4 Keep `unknown` as the explicit residual bucket and document when it is expected.
+  - [ ] 1.5 Assert literal wire values for existing and new reason codes so compatibility regressions are obvious.
 
 - [ ] Task 2: Add focused drain tests (AC: #1, #2, #3, #9)
   - [ ] 2.1 Add activity-listener coverage for each new reason code that can be triggered safely.
@@ -119,6 +132,7 @@ The 2026-05-07 party-mode review tightened this story with the following impleme
   - [ ] 3.2 Add allowlist comments or scoped exclusions for unrelated middleware/generated correlation IDs and `UniqueIdHelper.ToGuid` conversion paths.
   - [ ] 3.3 Reconcile DW2 seeded-stream `correlationId` evidence by changing the seeding flow to ULID generation or documenting the precise non-whitespace acceptance rationale.
   - [ ] 3.4 Record the final audit hit list and disposition in the Dev Agent Record.
+  - [ ] 3.5 Ensure the guard failure output includes file, line, protected field, and the approved parser/semantic alternatives.
 
 - [ ] Task 4: Document the reason-code taxonomy (AC: #4)
   - [ ] 4.1 Add or update an architecture/operations doc with the drain reason-code table.
@@ -195,6 +209,7 @@ GPT-5 Codex
 - Scoped DW8 to the server drain-classifier taxonomy and protected-identifier parser audit entries.
 - Recorded current code intelligence for `AggregateActor.ClassifyDrainFailure`, `DrainReasonCodes`, DW1 drain tests, R2-A7, D12, and the DW2 seeded-stream evidence contradiction.
 - Applied party-mode review clarifications for classifier compatibility, operation-boundary classification, audit-guard false-positive limits, DW2 correlationId reconciliation, and compact architecture-note requirements.
+- Applied advanced-elicitation clarifications for pre-edit parser-hit classification, guard diagnostics, reason-code literal compatibility proof, deterministic classifier boundaries, DW2 seeded-evidence closure, and deferred-work disposition gating.
 
 ### File List
 
@@ -207,6 +222,7 @@ GPT-5 Codex
 - Story artifact created and sprint-status row moved from `backlog` to `ready-for-dev`.
 - Preflight passed before story creation.
 - Party-mode review completed on 2026-05-07; all participating agents recommended `needs-story-update`, and low-risk clarifications were applied without changing the story status.
+- Advanced elicitation completed on 2026-05-07; low-risk story clarifications were applied without changing product scope, architecture policy, or story status.
 - AppHost baseline run attempted before edits but blocked by the existing Debug ref assembly metadata failure described in Debug Log References.
 - Story creation did not modify product code, tests, DAPR/Aspire configuration, or submodules.
 
@@ -221,9 +237,22 @@ GPT-5 Codex
 - Findings deferred: Formal public diagnostic-schema governance, deeper DAPR exception subcategories, centralized protected-ID parser API, broader identifier normalization, DW9 CI/static-analysis polish, and any drain retry/lifecycle redesign.
 - Final recommendation: `needs-story-update`
 
+## Advanced Elicitation
+
+- ISO date and time: `2026-05-07T10:16:00+02:00`
+- Selected story key: `post-epic-deferred-dw8-server-classifier-and-ulid-audit`
+- Command / skill invocation used: `/bmad-advanced-elicitation post-epic-deferred-dw8-server-classifier-and-ulid-audit`
+- Batch 1 methods: Self-Consistency Validation; Red Team vs Blue Team; Architecture Decision Records; Security Audit Personas; Failure Mode Analysis
+- Batch 2 methods: Chaos Monkey Scenarios; Occam's Razor Application; First Principles Analysis; 5 Whys Deep Dive; Lessons Learned Extraction
+- Findings summary: The story was ready to implement, but elicitation found review risks around opaque parser scans, over-broad allowlists, accidental `unknown` wire-value renames, exception-message-based classification, incomplete DW2 seeded-evidence closure, and premature deferred-work disposition updates.
+- Changes applied: Added advanced-elicitation clarifications, pre-edit parser-hit classification, literal reason-code compatibility proof, guard diagnostic requirements, deterministic classifier-boundary guidance, seeded-evidence closure criteria, disposition gating, and matching task updates.
+- Findings deferred: Central diagnostic-schema governance, a shared protected-identifier parser API, deterministic DAPR/state-store seams that require production API widening, broad ULID test-data sweeps, and DW9 generalized CI/static-analysis governance.
+- Final recommendation: `ready-for-dev`
+
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-07 | 0.3 | Applied advanced elicitation and tightened parser audit, reason-code compatibility, deterministic classifier, and evidence-closure guidance. | Codex automation |
 | 2026-05-07 | 0.2 | Recorded party-mode review and clarified classifier contract, protected-ID audit scope, and DW2 evidence reconciliation. | Codex automation |
 | 2026-05-07 | 0.1 | Created ready-for-dev DW8 server classifier and ULID audit story. | Codex automation |
