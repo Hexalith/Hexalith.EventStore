@@ -59,6 +59,33 @@ Avoid ambiguous `N/A` when the operator needs to know whether the value is unkno
   a separately approved, named configuration setting plus documented
   architecture decision.
 
+### Advanced Elicitation Hardening
+
+The 2026-05-07 advanced elicitation pass tightened this story around evidence
+precedence and implementation traps:
+
+- Classify actor diagnostics from explicit evidence tuples before rendering:
+  actor type, actor id, owner app id, inventory source, lookup source, state-key
+  family, failure category, observed time, and completeness. UI labels must not
+  infer exactness from HTTP success, non-empty rows, or a cached previous value.
+- When evidence conflicts, prefer the safer diagnostic state: `LookupUnavailable`
+  over `NotFound`, `Partial` over exact totals, and manual Redis evidence over
+  nothing only for evidence capture, never for production completeness claims.
+- Treat `AdminServerOptions.EventStoreAppId` as a configurable contract, not
+  only a default. Tests must prove the default `eventstore` path and an explicit
+  non-default owner app id both compose the owner-sidecar key correctly.
+- Inspect requests must be stale-result safe. If the operator changes actor
+  type or actor id while a lookup is in flight, a late response must not replace
+  the current form state or show a false not-found/unavailable banner for the
+  new input.
+- Live/manual evidence may include sample tenant/domain/aggregate identifiers
+  and Redis key names, but must redact or omit raw customer state, event payload
+  values, bearer tokens, connection strings, and secrets.
+- If DAPR changes or hides the internal Redis actor key convention, this story
+  should fail closed with `LookupUnavailable` plus a deferred architecture note;
+  it must not compensate by adding broad Redis keyspace scans to production
+  code.
+
 ## Acceptance Criteria
 
 1. **Actor counts are source-aware and never silently partial.**
@@ -134,6 +161,12 @@ Avoid ambiguous `N/A` when the operator needs to know whether the value is unkno
      - `/api/v1/admin/dapr/actors` payload;
      - `/api/v1/admin/dapr/actors/AggregateActor/state?id=tenant-a%3Acounter%3Acounter-1` payload;
      - `/dapr/actors` UI observation or screenshot showing the inspected actor state.
+   - Tests cover stale inspect responses so a late result for a previous
+     actor type/id cannot overwrite the current input's status banner or state
+     rows.
+   - Evidence artifacts redact raw state values, event payload data, secrets,
+     bearer tokens, and connection strings while preserving key names and
+     status/provenance fields needed to prove the diagnostic contract.
    - Unit/API/UI tests are the normal PR gate. Live Aspire/DAPR evidence is
      manual or integration evidence and must distinguish "endpoint reachable"
      from "inventory complete".
@@ -160,6 +193,9 @@ Avoid ambiguous `N/A` when the operator needs to know whether the value is unkno
   - [ ] Add focused tests for AggregateActor metadata lookup with `tenant-a:counter:counter-1`.
   - [ ] Add a regression test that fails if lookup composes keys with the Admin
         app id instead of `eventstore`.
+  - [ ] Add a configurable-owner regression proving a non-default
+        `EventStoreAppId` composes keys against the owner app id rather than a
+        hardcoded value.
   - [ ] Ensure state-store failures classify as lookup-unavailable, not not-found.
   - [ ] Preserve the DAPR internal-key warning and migration path to an EventStore-owned read proxy if DAPR changes the convention.
 
@@ -169,6 +205,9 @@ Avoid ambiguous `N/A` when the operator needs to know whether the value is unkno
   - [ ] Add separate issue banners for actor not found and lookup unavailable.
   - [ ] Ensure degraded states are text-visible and accessible, not conveyed by
         color alone.
+  - [ ] Guard inspect result rendering so late responses for an older
+        actor type/id cannot replace the currently selected actor's banner,
+        rows, or loading state.
   - [ ] Follow the existing localization/resource pattern if this page has one;
         otherwise record localization as deferred rather than inventing a new
         resource scheme in this story.
@@ -180,6 +219,8 @@ Avoid ambiguous `N/A` when the operator needs to know whether the value is unkno
         timeout/unavailable behavior, definitive not-found, and
         lookup-unavailable behavior.
   - [ ] Extend `DaprActorsPageTests` for unavailable/partial labels and differentiated failure states.
+  - [ ] Add UI tests for stale inspect-result discard after actor type/id
+        changes during an in-flight lookup.
   - [ ] Extend `AdminActorApiClientTests` or controller tests for API error
         differentiation, `404` mapping, timeout/network failures, and partial
         payloads.
@@ -189,6 +230,9 @@ Avoid ambiguous `N/A` when the operator needs to know whether the value is unkno
   - [ ] Run the project-standard Aspire dev mode with `EnableKeycloak=false` if the environment allows it.
   - [ ] Seed `tenant-a/counter/counter-1` through the canonical sample flow.
   - [ ] Save sanitized evidence under `_bmad-output/test-artifacts/admin-ui-actor-diagnostics-honesty-fix/`.
+  - [ ] Record a short redaction note in the evidence folder describing which
+        fields were preserved and which raw state/payload/secret fields were
+        omitted.
   - [ ] Update this story's Dev Agent Record, File List, Verification Status, Change Log, and any narrowly required deferred-work entry.
   - [ ] Move sprint status to `review` only after implementation and evidence are complete.
 
@@ -280,6 +324,9 @@ TBD by dev agent.
   inventory completeness/provenance, owner app-id proof, NotFound vs
   LookupUnavailable taxonomy, Redis production-inventory guardrails,
   operator-facing copy, accessibility/localization, and evidence boundaries.
+- 2026-05-07 pre-dev advanced elicitation applied story clarifications for
+  evidence precedence, configurable owner app-id proof, stale inspect result
+  handling, redaction boundaries, and fail-closed DAPR key-convention drift.
 - No implementation work has been performed for this story.
 - No `project-context.md` file was present in the repository at story creation.
 
@@ -294,12 +341,16 @@ TBD by dev agent.
 - Party-mode review completed on 2026-05-07 and story hardened before
   development; recommendation remains ready-for-dev after applying low-risk
   clarifications.
+- Advanced elicitation completed on 2026-05-07 and story hardened before
+  development; recommendation remains ready-for-dev after applying low-risk
+  clarifications.
 - Story creation did not modify product code, tests, DAPR/Aspire configuration, or submodules.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-07 | 0.3 | Advanced elicitation completed and story hardened for evidence precedence, owner app-id configurability, stale inspect results, redaction, and DAPR key-convention drift. | Codex automation |
 | 2026-05-07 | 0.2 | Party-mode review completed and story hardened for actor inventory semantics, lookup taxonomy, owner app-id proof, Redis guardrails, UI copy, accessibility, and evidence boundaries. | Codex automation |
 | 2026-05-07 | 0.1 | Created ready-for-dev story for Admin UI actor diagnostics honesty and canonical AggregateActor inspection. | Codex automation |
 
@@ -345,4 +396,55 @@ TBD by dev agent.
   - Broader DAPR health truthfulness outside `/dapr/actors`.
   - Operator role dialog behavior.
   - Snapshot/backup upstream endpoint work.
+- Final recommendation: `ready-for-dev`
+
+## Advanced Elicitation
+
+- ISO date and time: 2026-05-07T23:03:37+02:00
+- Selected story key: `admin-ui-actor-diagnostics-honesty-fix`
+- Command / skill invocation used:
+  `/bmad-advanced-elicitation admin-ui-actor-diagnostics-honesty-fix`
+- Batch 1 method names:
+  - Self-Consistency Validation
+  - Red Team vs Blue Team
+  - Architecture Decision Records
+  - Security Audit Personas
+  - Failure Mode Analysis
+- Reshuffled Batch 2 method names:
+  - Chaos Monkey Scenarios
+  - Occam's Razor Application
+  - First Principles Analysis
+  - 5 Whys Deep Dive
+  - Lessons Learned Extraction
+- Findings summary:
+  - The story needed an explicit evidence-precedence rule so dev work cannot
+    turn partial metadata, cached rows, or manual Redis observations into exact
+    production inventory claims.
+  - Owner app id behavior needed both default and configurable proofs, because
+    hardcoding `eventstore` would pass the current sample while violating the
+    intended options contract.
+  - The inspect form needed stale-result protection to avoid late async results
+    presenting an old actor lookup as the current actor's state.
+  - Manual evidence needed redaction boundaries that preserve diagnostic key
+    proof without leaking raw state, payloads, tokens, or secrets.
+  - DAPR key-convention drift needed an explicit fail-closed outcome rather
+    than an implicit production Redis scan fallback.
+- Changes applied:
+  - Added `Advanced Elicitation Hardening` with evidence tuple, conflict
+    precedence, configurable owner app-id, stale-result, redaction, and
+    fail-closed key-convention rules.
+  - Expanded AC7 with stale inspect-response tests and evidence redaction
+    requirements.
+  - Tightened ST2, ST3, ST4, and ST5 with configurable-owner regression,
+    stale-result rendering guard, UI test coverage, and evidence redaction
+    note requirements.
+  - Updated Dev Agent Record, Verification Status, and Change Log with the
+    advanced-elicitation result.
+- Findings deferred:
+  - A production actor activity index remains outside this story unless
+    separately approved by architecture.
+  - Broad Redis/keyspace enumeration remains limited to manual/local evidence
+    capture, not default production inventory.
+  - Broader localization infrastructure remains deferred unless the page
+    already uses an established resource pattern.
 - Final recommendation: `ready-for-dev`
