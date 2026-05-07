@@ -8,6 +8,7 @@
 @implements IAsyncDisposable
 
 @inject AdminProjectionApiClient ApiClient
+@inject AdminTenantOptionsProvider TenantOptionsProvider
 @inject DashboardRefreshService RefreshService
 @inject ViewportService Viewport
 @inject NavigationManager NavigationManager
@@ -61,6 +62,14 @@ else
                          SelectedTenantId="@_tenantFilter"
                          SelectedTenantIdChanged="OnTenantFilterChanged"
                          Tenants="_tenantList" />
+
+    @if (!string.IsNullOrEmpty(_tenantsDiagnostic))
+    {
+        <div role="status" aria-live="polite" data-testid="tenant-options-diagnostic"
+             style="font-size: 12px; color: var(--colorNeutralForeground3); margin-bottom: 8px;">
+            @_tenantsDiagnostic
+        </div>
+    }
 
     <!-- Grid + Detail Panel -->
     <div style="display: flex; gap: 16px; @(Viewport.IsWideViewport ? "flex-direction: row;" : "flex-direction: column;")">
@@ -127,6 +136,7 @@ else
     private IReadOnlyList<ProjectionStatus> _allProjections = [];
     private List<ProjectionStatus> _filteredProjections = [];
     private IReadOnlyList<string>? _tenantList;
+    private string? _tenantsDiagnostic;
 
     private int _runningCount;
     private int _unhealthyCount;
@@ -137,8 +147,16 @@ else
     protected override async Task OnInitializedAsync()
     {
         ReadUrlParameters();
+        await LoadTenantOptionsAsync().ConfigureAwait(false);
         await LoadDataAsync().ConfigureAwait(false);
         RefreshService.OnDataChanged += OnRefreshSignal;
+    }
+
+    private async Task LoadTenantOptionsAsync()
+    {
+        TenantOptionsResult result = await TenantOptionsProvider.GetTenantOptionsAsync().ConfigureAwait(false);
+        _tenantList = [.. result.Options.Select(o => o.TenantId)];
+        _tenantsDiagnostic = result.Diagnostic;
     }
 
     private void OnRefreshSignal(DashboardData data)
@@ -223,9 +241,8 @@ else
                 _maxLagTitle = "No projections";
             }
 
-            // Build tenant list from data
-            List<string> tenants = _allProjections.Select(p => p.TenantId).Distinct().OrderBy(t => t).ToList();
-            _tenantList = tenants;
+            // Tenant list now comes from AdminTenantOptionsProvider (loaded in LoadTenantOptionsAsync).
+            // Projection data is no longer the authoritative tenant source.
 
             // Preserve selected projection
             if (_selectedTenantId is not null && _selectedProjectionName is not null)

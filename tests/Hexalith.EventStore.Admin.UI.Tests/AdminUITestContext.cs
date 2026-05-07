@@ -59,6 +59,25 @@ public class AdminUITestContext : BunitContext {
         _ = Services.AddScoped(_ => Substitute.For<AdminStreamApiClient>(
             Substitute.For<IHttpClientFactory>(),
             NullLogger<AdminStreamApiClient>.Instance));
+
+        // Mock AdminTenantOptionsProvider — pages /commands /events /streams /projections inject it.
+        // Default substitute returns Empty so unrelated tests don't have to stub a tenant list.
+        _ = Services.AddScoped(sp => {
+            AdminTenantOptionsProvider provider = Substitute.For<AdminTenantOptionsProvider>(
+                Substitute.For<AdminTenantApiClient>(
+                    Substitute.For<IHttpClientFactory>(),
+                    NullLogger<AdminTenantApiClient>.Instance),
+                Substitute.For<AdminStreamApiClient>(
+                    Substitute.For<IHttpClientFactory>(),
+                    NullLogger<AdminStreamApiClient>.Instance),
+                NullLogger<AdminTenantOptionsProvider>.Instance);
+            provider.GetTenantOptionsAsync(Arg.Any<CancellationToken>())
+                .Returns(Task.FromResult(new TenantOptionsResult(
+                    [],
+                    TenantOptionsLoadStatus.Empty,
+                    AdminTenantOptionsProvider.EmptyMessage)));
+            return provider;
+        });
         _ = Services.AddScoped<DashboardRefreshService>();
         _ = Services.AddScoped<TopologyCacheService>();
         _ = Services.AddScoped<ViewportService>();

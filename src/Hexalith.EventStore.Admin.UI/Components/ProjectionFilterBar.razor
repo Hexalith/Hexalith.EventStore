@@ -14,7 +14,7 @@
         }
     </div>
 
-    @if (Tenants is not null && Tenants.Count > 1)
+    @if (Tenants is not null && Tenants.Count > 0)
     {
         <FluentSelect TOption="string" TValue="string"
                       Value="@SelectedTenantId"

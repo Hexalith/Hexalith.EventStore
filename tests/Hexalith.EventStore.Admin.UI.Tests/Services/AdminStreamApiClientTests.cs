@@ -2,6 +2,7 @@ using System.Net;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
+using Hexalith.EventStore.Admin.UI.Services.Exceptions;
 using Hexalith.EventStore.Testing.Http;
 
 using Microsoft.Extensions.Logging.Abstractions;
@@ -71,14 +72,12 @@ public class AdminStreamApiClientTests {
     }
 
     [Fact]
-    public async Task GetRecentlyActiveStreamsAsync_ReturnsEmpty_WhenApiReturnsError() {
+    public async Task GetRecentlyActiveStreamsAsync_ThrowsUnavailable_WhenApiReturnsError() {
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.InternalServerError, "{}");
 
         AdminStreamApiClient client = CreateClient(httpClient);
 
-        PagedResult<StreamSummary> result = await client.GetRecentlyActiveStreamsAsync(null, null, 10);
-
-        result.Items.ShouldBeEmpty();
-        result.TotalCount.ShouldBe(0);
+        _ = await Should.ThrowAsync<ServiceUnavailableException>(
+            () => client.GetRecentlyActiveStreamsAsync(null, null, 10));
     }
 }

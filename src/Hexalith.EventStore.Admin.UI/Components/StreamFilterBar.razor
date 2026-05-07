@@ -1,7 +1,7 @@
 @namespace Hexalith.EventStore.Admin.UI.Components
 
 @using Hexalith.EventStore.Admin.Abstractions.Models.Streams
-@using Hexalith.EventStore.Admin.Abstractions.Models.Tenants
+@using Hexalith.EventStore.Admin.UI.Services
 
 <div class="stream-filter-bar" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;">
     @* Status toggle chips *@
@@ -16,7 +16,7 @@
         }
     </div>
 
-    @* Tenant dropdown *@
+    @* Tenant dropdown — driven by AdminTenantOptionsProvider; preserves provenance via TenantOption *@
     <FluentSelect TOption="string" TValue="string"
                   Value="@SelectedTenantId"
                   ValueChanged="OnTenantChanged"
@@ -24,9 +24,9 @@
         <FluentOption Value="@string.Empty">All Tenants</FluentOption>
         @if (Tenants is not null)
         {
-            @foreach (TenantSummary tenant in Tenants)
+            @foreach (TenantOption tenant in Tenants)
             {
-                <FluentOption Value="@tenant.TenantId">@tenant.Name</FluentOption>
+                <FluentOption Value="@tenant.TenantId">@tenant.DisplayName</FluentOption>
             }
         }
     </FluentSelect>
@@ -69,7 +69,10 @@
     public EventCallback<string> SelectedDomainChanged { get; set; }
 
     [Parameter]
-    public IReadOnlyList<TenantSummary>? Tenants { get; set; }
+    public IReadOnlyList<TenantOption>? Tenants { get; set; }
+
+    [Parameter]
+    public string? TenantsDiagnostic { get; set; }
 
     [Parameter]
     public IReadOnlyList<string>? Domains { get; set; }
