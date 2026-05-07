@@ -40,6 +40,31 @@ public class StateInspectorModalTests : AdminUITestContext {
     }
 
     [Fact]
+    public void StateInspectorModal_DialogBodyUsesFlatV5Content() {
+        // Arrange & Act
+        IRenderedComponent<StateInspectorModal> cut = RenderInspector(42L);
+
+        // Assert: the dialog body element is rendered.
+        AngleSharp.Dom.IElement body = cut.Find("fluent-dialog-body");
+        body.ShouldNotBeNull();
+
+        // Assert: the State Inspector h3 heading is reachable inside the dialog body.
+        AngleSharp.Dom.IElement? heading = body.QuerySelector("h3");
+        heading.ShouldNotBeNull();
+        heading.TextContent.ShouldContain("State Inspector");
+
+        // Assert: the scrollable content wrapper exists for sizing/overflow control.
+        AngleSharp.Dom.IElement? contentWrapper = body.QuerySelector(".state-inspector-modal-body");
+        contentWrapper.ShouldNotBeNull();
+
+        // Assert: the heading is NOT a descendant of the scrollable wrapper. This proves
+        // the title row sits outside the overflow:auto region (close button stays visible
+        // on tall content) and that <TitleTemplate>/<ChildContent> render-fragment slots
+        // were not reintroduced as wrappers around the title bar.
+        contentWrapper.Contains(heading).ShouldBeFalse();
+    }
+
+    [Fact]
     public void StateInspectorModal_FetchesStateOnSubmit() {
         // Arrange
         AggregateStateSnapshot snapshot = new(

@@ -25,4 +25,26 @@ public class SubmitQueryResponseTests {
 
         response2.ShouldBe(response1);
     }
+
+    [Fact]
+    public void JsonRoundTrip_CamelCaseWireContract_PreservesFailureEnvelope() {
+        JsonSerializerOptions options = new(JsonSerializerDefaults.Web);
+        JsonElement payload = JsonDocument.Parse("{\"reason\":\"denied\"}").RootElement;
+        var response = new SubmitQueryResponse(
+            "corr-401",
+            payload,
+            Success: false,
+            ErrorMessage: "Forbidden");
+
+        string json = JsonSerializer.Serialize(response, options);
+        SubmitQueryResponse? roundTripped = JsonSerializer.Deserialize<SubmitQueryResponse>(json, options);
+
+        json.ShouldContain("\"correlationId\":\"corr-401\"");
+        json.ShouldContain("\"success\":false");
+        roundTripped.ShouldNotBeNull();
+        roundTripped.CorrelationId.ShouldBe("corr-401");
+        roundTripped.Success.ShouldBeFalse();
+        roundTripped.ErrorMessage.ShouldBe("Forbidden");
+        roundTripped.Payload.GetProperty("reason").GetString().ShouldBe("denied");
+    }
 }

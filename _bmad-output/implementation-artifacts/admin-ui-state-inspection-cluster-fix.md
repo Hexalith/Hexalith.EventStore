@@ -1,6 +1,6 @@
 # Story: admin-ui-state-inspection-cluster-fix
 
-Status: in-progress
+Status: done
 
 Context created: 2026-05-05
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-05-admin-ui-state-inspection-cluster.md`
@@ -99,70 +99,70 @@ so that I can diagnose stream behavior from the UI without silent empty panels, 
 
 ## Tasks / Subtasks
 
-- [ ] ST1 - Add EventStore `/state` endpoint in `AdminStreamQueryController`. (AC: 1, 4)
-  - [ ] Add `[HttpGet("{tenantId}/{domain}/{aggregateId}/state")]`.
-  - [ ] Accept `[FromQuery] long at`; do not use Admin Server's `sequenceNumber` query name on the EventStore route.
-  - [ ] Reuse `AggregateIdentity`, `IActorProxyFactory`, `IAggregateActor.GetEventsAsync(0)`, and `ReconstructState`.
-  - [ ] Set the snapshot timestamp to the event timestamp at `at` when `at > 0`; use a deterministic empty timestamp for `at == 0`.
-  - [ ] Return RFC 7807 `ProblemDetails` for 400/404, matching the controller's existing style.
+- [x] ST1 - Add EventStore `/state` endpoint in `AdminStreamQueryController`. (AC: 1, 4)
+  - [x] Add `[HttpGet("{tenantId}/{domain}/{aggregateId}/state")]`.
+  - [x] Accept `[FromQuery] long at`; do not use Admin Server's `sequenceNumber` query name on the EventStore route.
+  - [x] Reuse `AggregateIdentity`, `IActorProxyFactory`, `IAggregateActor.GetEventsAsync(0)`, and `ReconstructState`.
+  - [x] Set the snapshot timestamp to the event timestamp at `at` when `at > 0`; use a deterministic empty timestamp for `at == 0`.
+  - [x] Return RFC 7807 `ProblemDetails` for 400/404, matching the controller's existing style.
 
-- [ ] ST2 - Add EventStore `/diff` endpoint in `AdminStreamQueryController`. (AC: 2, 4)
-  - [ ] Add `[HttpGet("{tenantId}/{domain}/{aggregateId}/diff")]`.
-  - [ ] Accept `[FromQuery] long from`, `[FromQuery] long to`.
-  - [ ] Validate `0 <= from < to` before actor work.
-  - [ ] Reconstruct both states with existing helpers and map `JsonDiff` output to `FieldChange` records.
-  - [ ] Preserve empty-change success instead of treating it as not found.
+- [x] ST2 - Add EventStore `/diff` endpoint in `AdminStreamQueryController`. (AC: 2, 4)
+  - [x] Add `[HttpGet("{tenantId}/{domain}/{aggregateId}/diff")]`.
+  - [x] Accept `[FromQuery] long from`, `[FromQuery] long to`.
+  - [x] Validate `0 <= from < to` before actor work.
+  - [x] Reconstruct both states with existing helpers and map `JsonDiff` output to `FieldChange` records.
+  - [x] Preserve empty-change success instead of treating it as not found.
 
-- [ ] ST3 - Add EventStore `/causation` endpoint in `AdminStreamQueryController`. (AC: 3, 4)
-  - [ ] Add `[HttpGet("{tenantId}/{domain}/{aggregateId}/causation")]`.
-  - [ ] Accept `[FromQuery] long at`; validate `at >= 1`.
-  - [ ] Build `CausationChain` from stream metadata without logging payload content.
-  - [ ] Confirm `CausationChain` constructor semantics before coding; do not invent a new DTO.
-  - [ ] Cover causation traversal limits so a missing or blank causation id does not fabricate links.
-  - [ ] Include target event metadata in the chain response and distinguish related same-correlation events from direct causation links.
+- [x] ST3 - Add EventStore `/causation` endpoint in `AdminStreamQueryController`. (AC: 3, 4)
+  - [x] Add `[HttpGet("{tenantId}/{domain}/{aggregateId}/causation")]`.
+  - [x] Accept `[FromQuery] long at`; validate `at >= 1`.
+  - [x] Build `CausationChain` from stream metadata without logging payload content.
+  - [x] Confirm `CausationChain` constructor semantics before coding; do not invent a new DTO.
+  - [x] Cover causation traversal limits so a missing or blank causation id does not fabricate links.
+  - [x] Include target event metadata in the chain response and distinguish related same-correlation events from direct causation links.
 
-- [ ] ST4 - Preserve or refine Admin Server semantic behavior. (AC: 4)
-  - [ ] Review `DaprStreamQueryService` `GetAggregateStateAtPositionAsync`, `DiffAggregateStateAsync`, and `TraceCausationChainAsync` after ST1-ST3 exist.
-  - [ ] Keep existing EventStore query names (`at`, `from`, `to`) and Admin Server facade query names (`sequenceNumber`, `fromSequence`, `toSequence`) distinct.
-  - [ ] If upstream 400/404 currently becomes a misleading 503 in `AdminStreamsController.IsServiceUnavailable`, add tight method-level mappings similar to the recently fixed event-detail path. Do not broaden unrelated controllers.
-  - [ ] Preserve typed failures for UI classification; do not make the UI parse ProblemDetails `Detail` text.
-  - [ ] Do not add custom retries; architecture rule 4 leaves retries to DAPR resiliency.
+- [x] ST4 - Preserve or refine Admin Server semantic behavior. (AC: 4)
+  - [x] Review `DaprStreamQueryService` `GetAggregateStateAtPositionAsync`, `DiffAggregateStateAsync`, and `TraceCausationChainAsync` after ST1-ST3 exist.
+  - [x] Keep existing EventStore query names (`at`, `from`, `to`) and Admin Server facade query names (`sequenceNumber`, `fromSequence`, `toSequence`) distinct.
+  - [x] If upstream 400/404 currently becomes a misleading 503 in `AdminStreamsController.IsServiceUnavailable`, add tight method-level mappings similar to the recently fixed event-detail path. Do not broaden unrelated controllers.
+  - [x] Preserve typed failures for UI classification; do not make the UI parse ProblemDetails `Detail` text.
+  - [x] Do not add custom retries; architecture rule 4 leaves retries to DAPR resiliency.
 
-- [ ] ST5 - Replace bare state-load catch in `EventDetailPanel.razor`. (AC: 5)
-  - [ ] Inject `ILogger<EventDetailPanel>`.
-  - [ ] Add a separate `_stateError` or equivalent display state so error messages are not collapsed into `_stateSnapshot = null`.
-  - [ ] Handle `UnauthorizedAccessException`, `ForbiddenAccessException`, `ServiceUnavailableException`, `OperationCanceledException`, and unexpected `Exception` separately.
-  - [ ] Keep event detail metadata/payload visible when only the state snapshot request fails.
-  - [ ] Preserve event detail loading, payload rendering, copy-correlation callback, Inspect State callback, Diff callback, and Trace Causation behavior.
+- [x] ST5 - Replace bare state-load catch in `EventDetailPanel.razor`. (AC: 5)
+  - [x] Inject `ILogger<EventDetailPanel>`.
+  - [x] Add a separate `_stateError` or equivalent display state so error messages are not collapsed into `_stateSnapshot = null`.
+  - [x] Handle `UnauthorizedAccessException`, `ForbiddenAccessException`, `ServiceUnavailableException`, `OperationCanceledException`, and unexpected `Exception` separately.
+  - [x] Keep event detail metadata/payload visible when only the state snapshot request fails.
+  - [x] Preserve event detail loading, payload rendering, copy-correlation callback, Inspect State callback, Diff callback, and Trace Causation behavior.
 
-- [ ] ST6 - Repair `StateInspectorModal.razor` for Fluent UI Blazor v5. (AC: 6)
-  - [ ] Flatten dialog markup so title and body controls are direct content under `FluentDialogBody`, or migrate to the existing dialog-service pattern after verifying the local v5 API.
-  - [ ] Move sizing/scrolling to an inner wrapper class or v5 dialog parameters; do not rely on `Style` on `FluentDialog` if it does not affect the actual wrapper.
-  - [ ] Keep tenant/domain/aggregate/selected sequence context visible in the dialog so the operator never loses place while switching modes or retrying.
-  - [ ] Preserve `OnAfterRenderAsync` show lifecycle and `OnDialogStateChangeAsync` close callback unless switching to `IDialogService` makes those obsolete.
-  - [ ] Keep timestamp validation outside the try block so invalid timestamps do not set `_fetched = true`.
+- [x] ST6 - Repair `StateInspectorModal.razor` for Fluent UI Blazor v5. (AC: 6)
+  - [x] Flatten dialog markup so title and body controls are direct content under `FluentDialogBody`, or migrate to the existing dialog-service pattern after verifying the local v5 API.
+  - [x] Move sizing/scrolling to an inner wrapper class or v5 dialog parameters; do not rely on `Style` on `FluentDialog` if it does not affect the actual wrapper.
+  - [x] Keep tenant/domain/aggregate/selected sequence context visible in the dialog so the operator never loses place while switching modes or retrying.
+  - [x] Preserve `OnAfterRenderAsync` show lifecycle and `OnDialogStateChangeAsync` close callback unless switching to `IDialogService` makes those obsolete.
+  - [x] Keep timestamp validation outside the try block so invalid timestamps do not set `_fetched = true`.
 
-- [ ] ST7 - Fix `StateDiffViewer.razor` timeout and message branches. (AC: 7)
-  - [ ] Replace the hardcoded 5-second CTS with at least 15 seconds or a shared configured value.
-  - [ ] Do not treat a timeout increase as the fix by itself; the EventStore `/diff` endpoint and typed error classification remain required.
-  - [ ] Keep parallel diff/from/to state calls, but avoid one failure masking all outcomes as a range problem.
-  - [ ] Make timeout, HTTP/backend failure, missing-state, and no-diff messages distinct.
-  - [ ] Use non-error empty-diff copy for unchanged adjacent states.
-  - [ ] Preserve the `FromSequence == 0` initial-state fallback and `MaxDisplayChanges` behavior.
+- [x] ST7 - Fix `StateDiffViewer.razor` timeout and message branches. (AC: 7)
+  - [x] Replace the hardcoded 5-second CTS with at least 15 seconds or a shared configured value.
+  - [x] Do not treat a timeout increase as the fix by itself; the EventStore `/diff` endpoint and typed error classification remain required.
+  - [x] Keep parallel diff/from/to state calls, but avoid one failure masking all outcomes as a range problem.
+  - [x] Make timeout, HTTP/backend failure, missing-state, and no-diff messages distinct.
+  - [x] Use non-error empty-diff copy for unchanged adjacent states.
+  - [x] Preserve the `FromSequence == 0` initial-state fallback and `MaxDisplayChanges` behavior.
 
-- [ ] ST8 - Add targeted tests. (AC: 8)
-  - [ ] Add/extend EventStore tests in `tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerTests*.cs`.
-  - [ ] Add/extend Admin Server tests in `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprStreamQueryServiceTests*.cs` and `Controllers/AdminStreamsControllerTests*.cs`.
-  - [ ] Add/extend Admin UI tests in `tests/Hexalith.EventStore.Admin.UI.Tests/Components/StateInspectorModalTests.cs`, `StateDiffViewerTests.cs`, and page/panel coverage near `StreamDetailPageTests.cs`.
-  - [ ] Add at least one API-client classification test for state/diff/causation failures so the UI is not forced into string matching.
-  - [ ] Prefer existing test seams (`TestHttpMessageHandler`, bUnit, Shouldly, NSubstitute) over new infrastructure.
+- [x] ST8 - Add targeted tests. (AC: 8)
+  - [x] Add/extend EventStore tests in `tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStreamQueryControllerTests*.cs`.
+  - [x] Add/extend Admin Server tests in `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprStreamQueryServiceTests*.cs` and `Controllers/AdminStreamsControllerTests*.cs`.
+  - [x] Add/extend Admin UI tests in `tests/Hexalith.EventStore.Admin.UI.Tests/Components/StateInspectorModalTests.cs`, `StateDiffViewerTests.cs`, and page/panel coverage near `StreamDetailPageTests.cs`.
+  - [x] Add at least one API-client classification test for state/diff/causation failures so the UI is not forced into string matching.
+  - [x] Prefer existing test seams (`TestHttpMessageHandler`, bUnit, Shouldly, NSubstitute) over new infrastructure.
 
-- [ ] ST9 - Verify and record evidence. (AC: 9)
-  - [ ] Run `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release`.
-  - [ ] Run `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests --configuration Release`.
-  - [ ] Run targeted EventStore controller tests; if `Hexalith.EventStore.Server.Tests` as a whole is blocked by known baseline warnings/failures, record the exact targeted command, result, and baseline blocker.
-  - [ ] Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
-  - [ ] With Aspire running, perform the live stream detail smoke and capture the resource state plus UI/API evidence in Dev Agent Record. **Pending operator follow-up — not executable from the dev agent's headless environment; ready for the user to run through the Admin UI.**
+- [x] ST9 - Verify and record evidence. (AC: 9)
+  - [x] Run `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release`.
+  - [x] Run `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests --configuration Release`.
+  - [x] Run targeted EventStore controller tests; if `Hexalith.EventStore.Server.Tests` as a whole is blocked by known baseline warnings/failures, record the exact targeted command, result, and baseline blocker.
+  - [x] Run `dotnet build Hexalith.EventStore.slnx --configuration Release`.
+  - [x] With Aspire running, perform the live stream detail smoke and capture the resource state plus UI/API evidence in Dev Agent Record.
 
 ### Review Findings
 
@@ -217,6 +217,53 @@ Code review run: 2026-05-07. Reviewed merge `c53769cd` (commit `4d345638`). Laye
 - [x] [Review][Defer] `StateInspectorModal` accepts very-future timestamps and silently returns latest snapshot — asymmetric vs very-past cap-exceeded behavior
 - [x] [Review][Defer] `DaprStreamQueryServiceStateMappingTests` does not assert 503/Timeout/`RpcException` flow through unchanged
 - [x] [Review][Defer] `DiffAggregateState_FromZero_TreatsBaselineAsEmptyState` does not assert `OldValue` (baseline-empty representation)
+
+### Follow-up Review Findings (2026-05-07)
+
+Code review run: 2026-05-07 (follow-up). Reviewed uncommitted working-tree changes scoped to admin-ui state-inspection follow-ups (4 files: `StateInspectorModal.razor` flat-body refactor + `StateInspectorModalTests.cs`, `Dw5SidebarShortcutAtddTests.cs`, `SubmitQueryResponseTests.cs`). Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor — all completed. Counts: 1 decision-needed, 2 patch, 31 deferred, 17 dismissed.
+
+#### Decision-Needed
+
+- [x] [Review][Decision] Sidebar test edits cross story scope per QA Conditions ("keep the scope to Admin UI state inspection") — `tests/Hexalith.EventStore.Admin.UI.Tests/Layout/Dw5SidebarShortcutAtddTests.cs` flips 4 collapsed-width assertions from 48px to 140px to align with production sidebar code already shipped on `main` (commit `a99fff4f`, MainLayout.razor / app.css). Dev Agent Record line 444 discloses this as stale-test reconciliation that was required for ST9 green-suite verification (Admin.UI.Tests 672/672). **Resolution: option (b) — split into a separate `test(admin-ui): align DW5 sidebar tests with 140px contract` commit at next commit boundary.** Per Conventional Commits the state-inspection follow-ups belong under `fix(admin-ui)` and the sidebar test alignment under `test(admin-ui)`; splitting satisfies both the QA scope guardrail (whose named target was the tenant-management cluster) and the test fix that ST9 required. Sources: Blind Hunter F6, Acceptance Auditor F4.
+
+#### Patch
+
+- [x] [Review][Patch] `StateInspectorModal_DialogBodyUsesFlatV5Content` test was tautological — `ShouldNotContain("<titletemplate")` and `ShouldNotContain("<childcontent")` asserted on Razor render-fragment parameter names that never appear as literal HTML in rendered DOM. Replaced with an AngleSharp structural assertion: dialog body element rendered, h3 heading reachable inside, scrollable wrapper present, and `contentWrapper.Contains(heading).ShouldBeFalse()` — proves both the flatten took effect AND the title row sits outside the overflow:auto region. [`tests/Hexalith.EventStore.Admin.UI.Tests/Components/StateInspectorModalTests.cs:42-65`] Sources: Blind Hunter F2/F4/F15, Edge Case Hunter E17.
+- [x] [Review][Patch] Flatten side-effect resolved: title `FluentStack` (heading + close button) moved out of the `state-inspector-modal-body` wrapper and now sits as a direct sibling under `<FluentDialogBody>`. The wrapper's `overflow: auto` now applies only to the body `FluentStack`, so the close button stays pinned regardless of body content height. Two flat children of `<FluentDialogBody>` still satisfy AC #6 (no `<TitleTemplate>`/`<ChildContent>` slot wrappers reintroduced). [`src/Hexalith.EventStore.Admin.UI/Components/StateInspectorModal.razor:12-22`] Source: Blind Hunter F5.
+
+#### Deferred (pre-existing or out-of-scope; logged in deferred-work.md)
+
+- [x] [Review][Defer] Sidebar toggle test (`140px ↔ 220px`) lacks a state-transition proof beyond width measurement (no aria-expanded / persisted-value cross-check) — pre-existing test pattern. Source: Blind F7.
+- [x] [Review][Defer] `SubmitQueryResponse` round-trip test couples to `JsonSerializerDefaults.Web` rather than the production serializer options actually used by the wire path. Source: Blind F8.
+- [x] [Review][Defer] `JsonElement` payload lifetime — `JsonDocument.Parse(...).RootElement` captured in tests without disposing or `Clone()`-ing the document; payload access could throw `ObjectDisposedException` after GC. Sources: Blind F11, Edge E31.
+- [x] [Review][Defer] Modal `<h3>` heading-order accessibility — flatten places `<h3>State Inspector</h3>` directly under the dialog body wrapper outside any TitleTemplate scope; consider WCAG 1.3.1 heading hierarchy interaction with host page. Source: Blind F13.
+- [x] [Review][Defer] Empty / whitespace `_timestampInput` shows generic "Invalid timestamp format" instead of "Timestamp required" hint. Source: Edge E1.
+- [x] [Review][Defer] Timestamp parser silently accepts non-Z input (no offset, or `+05:00`) despite help text stating Z suffix is required. Source: Edge E2.
+- [x] [Review][Defer] Far-future / very-past timestamps not bounded client-side — already on prior deferred list. Source: Edge E3.
+- [x] [Review][Defer] Negative `_sequenceInput` via paste bypasses client-side `Min="0"`. Source: Edge E5.
+- [x] [Review][Defer] Mode switch (sequence ↔ timestamp) not `Disabled` while `_fetching == true` — user can flip mid-fetch and see cross-mode result panel above mismatched form controls. No bUnit coverage. Sources: Edge E6, E22.
+- [x] [Review][Defer] `OperationCanceledException` rethrow during shutdown / dispose may bubble to the Blazor circuit. Source: Edge E7.
+- [x] [Review][Defer] `OnAfterRenderAsync` catch leaves `_pendingShow = true`, causing infinite retry on persistent JS interop failure (e.g., `JSDisconnectedException`). Source: Edge E8.
+- [x] [Review][Defer] `ShowAsync` failure leaves dialog invisible without firing `OnDialogStateChange.Closed` → host page's "show modal" gate stays stuck open. Source: Edge E9.
+- [x] [Review][Defer] `_pendingShow = false` is set after the `await _dialog.ShowAsync()`, allowing double-`ShowAsync` on rapid parent re-render. Source: Edge E10.
+- [x] [Review][Defer] `OnParametersSet` updates `_sequenceInput` on `InitialSequenceNumber` change but does not reset `_snapshot` / `_fetched` / `_fetchError` / `_useTimestampMode` — stale result vs new input. Source: Edge E11.
+- [x] [Review][Defer] Mode toggle without re-fetch keeps prior `_fetched` / `_snapshot` so identity strip and result panel disagree on which mode produced the displayed state. Source: Edge E12.
+- [x] [Review][Defer] Three different timestamp formats render in the same modal (identity strip raw input, current-time `…Z`, snapshot `…zzz`). Source: Edge E13.
+- [x] [Review][Defer] `JsonViewer` rendering with `_snapshot.StateJson == null` or `""` is not guarded. Source: Edge E14.
+- [x] [Review][Defer] Cleared `_timestampInput` keeps a stale `_timestampError` message visible. Source: Edge E15.
+- [x] [Review][Defer] Identity strip never shows the resolved sequence number after a successful timestamp lookup. Source: Edge E16.
+- [x] [Review][Defer] No bUnit coverage for `OnAfterRenderAsync` `ShowAsync` failure path. Source: Edge E18.
+- [x] [Review][Defer] No test asserts `OperationCanceledException` rethrow does not set `_fetched = true`. Source: Edge E19.
+- [x] [Review][Defer] No test for invalid timestamp format error path — already on prior deferred list. Source: Edge E20.
+- [x] [Review][Defer] Sidebar tests use raw `ShouldContain("140px")` substring match — collision risk with hypothetical `1140px` / `2140px` markup. Source: Edge E23.
+- [x] [Review][Defer] `initialCollapsed` heuristic in `OnToggleSidebarShortcut_PersistsUnderViewportTierKey` reads full markup substring — fragile if expanded + collapsed states ever co-render. Source: Edge E24.
+- [x] [Review][Defer] Sidebar tier-boundary widths (1279, 959) not asserted against the new collapsed value 140px. Source: Edge E25.
+- [x] [Review][Defer] No test for legacy two-field `SubmitQueryResponse` JSON deserialization (pre-`Success`/`ErrorMessage` producers must default to `Success=true, ErrorMessage=null`). Source: Edge E27.
+- [x] [Review][Defer] No assertion that `errorMessage` JSON property is omitted when null. Source: Edge E28.
+- [x] [Review][Defer] No test for `payload: null` round-trip on failure envelope (common producer shape). Source: Edge E29.
+- [x] [Review][Defer] No test for empty / whitespace `CorrelationId` round-trip. Source: Edge E30.
+- [x] [Review][Defer] Causation placeholder assertion coverage (`seq-{N}`, `"unknown"`) still missing — already on prior deferred list. Source: Acceptance Auditor F5.
+- [x] [Review][Defer] `AdminStreamsController` reflection-based attribute test still deferred — already on prior deferred list. Source: Acceptance Auditor F6.
 
 ## QA Conditions
 
@@ -424,19 +471,37 @@ Before moving the story to `review`, record the minimum live evidence in the Dev
 
 ### Agent Model Used
 
-TBD by implementing dev agent.
+GPT-5 Codex
 
 ### Debug Log References
 
 - Story context restored on `main` after preflight reported `admin-ui-state-inspection-cluster-fix` as `ready-for-dev` with missing artifact.
+- 2026-05-07: Resumed review-continuation story; sprint status was already `in-progress`.
+- 2026-05-07: Flattened `StateInspectorModal.razor` so the title row, close button, controls, loading/result/error regions, and stream identity are direct content under `FluentDialogBody`.
+- 2026-05-07: Added bUnit coverage proving the modal uses flat v5 dialog body content without rendered `titletemplate`/`childcontent` wrapper nodes.
+- 2026-05-07: Added `SubmitQueryResponse` camelCase JSON round-trip coverage for the failure envelope contract.
+- 2026-05-07: Reconciled stale DW5 sidebar shortcut tests with the current 140px compact-text collapsed sidebar contract so the Admin UI regression suite reflects production behavior.
 
 ### Completion Notes List
 
-- Pending implementation.
+- Implemented the remaining review follow-ups for the Admin UI state-inspection cluster: `StateInspectorModal` now uses flat v5 dialog body markup, and its regression tests assert the repaired shape.
+- Added a focused `SubmitQueryResponse` JSON round-trip test to guard the existing nominal-record/failure-envelope contract.
+- Preserved existing endpoint, Admin Server, UI error-classification, and diff behavior; no new retry loops or DTO forks were introduced.
+- Verified the live Admin UI workflow against a running Aspire topology using stream `tenant-a/counter/counter-dw2-20260505135410` with 5 events.
+- Corrected stale DW5 sidebar shortcut test expectations from the old 48px collapsed width to the current 140px compact-text contract so the full Admin UI suite is green.
 
 ### Verification Evidence Captured
 
-- Pending implementation.
+- `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests --configuration Release --filter "FullyQualifiedName~StateInspectorModalTests"`: Passed, 9/9.
+- `dotnet test tests\Hexalith.EventStore.Contracts.Tests --configuration Release --filter "FullyQualifiedName~SubmitQueryResponseTests"`: Passed, 3/3.
+- `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests --configuration Release --filter "FullyQualifiedName~Dw5SidebarShortcutAtddTests"`: Passed, 15/15 after stale 48px expectation was aligned to the current 140px compact-text production contract.
+- `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests --configuration Release`: Passed, 672/672.
+- `dotnet test tests\Hexalith.EventStore.Admin.Server.Tests --configuration Release`: Passed, 561/561, 18 skipped.
+- `dotnet test tests\Hexalith.EventStore.Server.Tests --configuration Release --filter "FullyQualifiedName~AdminStreamQueryControllerStateDiffCausationTests"`: Passed, 21/21.
+- `dotnet test tests\Hexalith.EventStore.Contracts.Tests --configuration Release`: Passed, 282/282.
+- `dotnet build Hexalith.EventStore.slnx --configuration Release`: Passed, 0 warnings, 0 errors.
+- Aspire MCP resource snapshot selected `src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`; key resources `eventstore`, `eventstore-admin`, `eventstore-admin-ui`, Dapr sidecars, `statestore`, `pubsub`, and `keycloak` were Running/Healthy.
+- Playwright smoke visited `https://localhost:8093/streams/tenant-a/counter/counter-dw2-20260505135410?detail=5`; selected sequence 5; State After This Event rendered `{}`; Inspect State opened with visible title, close button, stream identity, mode switch, sequence input, step buttons, Inspect button, and result region; Inspect returned State at Sequence #5; Diff with Previous for 4 -> 5 rendered "No state changes detected for this event"; Trace Causation rendered a causation chain. Screenshot: `admin-ui-state-inspector-smoke-2026-05-07.png`.
 
 ### File List
 
@@ -453,6 +518,9 @@ TBD by implementing dev agent.
 - `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprStreamQueryServiceStateMappingTests.cs` (new)
 - `tests/Hexalith.EventStore.Admin.UI.Tests/Components/StateInspectorModalTests.cs`
 - `tests/Hexalith.EventStore.Admin.UI.Tests/Components/StateDiffViewerTests.cs`
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Layout/Dw5SidebarShortcutAtddTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Queries/SubmitQueryResponseTests.cs`
+- `admin-ui-state-inspector-smoke-2026-05-07.png`
 
 ### Change Log
 
@@ -460,3 +528,5 @@ TBD by implementing dev agent.
 |------|--------|-------|
 | 2026-05-05 | Story context created | Backlog story moved to ready-for-dev with implementation guardrails and verification plan. |
 | 2026-05-05 | Artifact restored on main | Repaired sprint status/artifact drift; implementation remains pending. |
+| 2026-05-07 | Review follow-ups completed | Flattened StateInspectorModal v5 body, added modal and SubmitQueryResponse tests, reconciled stale sidebar width test, captured automated and live Aspire/Admin UI smoke evidence, and moved story to review. |
+| 2026-05-07 | Follow-up review patches applied | (P1) Replaced tautological `DialogBodyUsesFlatV5Content` Razor-fragment-name assertions with an AngleSharp structural assertion proving the dialog body wrapper, h3 heading, and content wrapper exist and that the heading is NOT a descendant of the scrollable wrapper. (P2) Moved the title `FluentStack` (heading + close button) out of the `state-inspector-modal-body` wrapper so the close button stays pinned regardless of body content height; the wrapper's overflow:auto now applies only to the body FluentStack. Two flat children of `<FluentDialogBody>` retained per AC #6. Decision D1 resolved as split-commit (Conventional Commits: `fix(admin-ui)` for state-inspection vs `test(admin-ui)` for sidebar-test alignment). 31 deferred items logged in `deferred-work.md`. Validation: Admin.UI.Tests 672/672, Release solution build 0 warn / 0 err. Story moved to done. |
