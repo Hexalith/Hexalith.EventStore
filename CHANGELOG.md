@@ -1,3 +1,12 @@
+## [3.13.4](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.13.3...v3.13.4) (2026-05-07)
+
+
+### Bug Fixes
+
+* **admin-ui:** pin StateInspectorModal title bar outside scroll region ([ebbad7c](https://github.com/Hexalith/Hexalith.EventStore/commit/ebbad7cbb642f091a190b17eae8be2cc9bdeecbe)), closes [#6](https://github.com/Hexalith/Hexalith.EventStore/issues/6)
+* **admin-ui:** types page redirect-back + responsive sidebar 2-state model ([a99fff4](https://github.com/Hexalith/Hexalith.EventStore/commit/a99fff4f2477139aca0a8fe6edd27570ce4e27fe))
+* **admin:** apply code review patches for admin-ui state inspection cluster ([a219cf8](https://github.com/Hexalith/Hexalith.EventStore/commit/a219cf8873112615d97b5c0fd94e340810bd8280)), closes [AC#9](https://github.com/AC/issues/9)
+
 ## [3.13.3](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.13.2...v3.13.3) (2026-05-06)
 
 
