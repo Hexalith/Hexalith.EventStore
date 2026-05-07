@@ -1,3 +1,5 @@
+using System.Reflection;
+
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 
@@ -251,6 +253,19 @@ public class CommandEnvelopeTests {
 
         result.ShouldContain("MessageId = msg-tostring");
         result.ShouldContain("[REDACTED]");
+    }
+
+    /// <summary>
+    /// Canary for R-T1 (positional-record swap vulnerability) per Epic 1 test design TG-4 / 1.2-UNIT-008.
+    /// Counts primary-constructor parameters, not <c>GetProperties()</c>, because <c>CommandEnvelope</c>
+    /// exposes the computed <c>AggregateIdentity</c> projection — only positional fields drive the swap risk.
+    /// </summary>
+    [Fact]
+    public void CommandEnvelope_HasExactly10Fields() {
+        int positionalFieldCount = typeof(CommandEnvelope)
+            .GetConstructors()
+            .Max(c => c.GetParameters().Length);
+        positionalFieldCount.ShouldBe(10);
     }
 
     [Fact]
