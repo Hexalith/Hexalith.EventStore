@@ -92,10 +92,13 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
 
         IReadOnlyList<DaprComponentDetail> components = inventory.Components;
 
-        // Skip write only when canonical evidence is empty AND remote metadata was unavailable —
-        // never overwrite a previous healthy timeline with an empty successful sample (AC4).
-        if (components.Count == 0
-            && inventory.RemoteMetadataStatus is not RemoteMetadataStatus.Available) {
+        // Never overwrite a previous healthy timeline with an empty sample (AC4). An empty
+        // canonical inventory can occur in two ways: (a) both metadata sources unavailable and
+        // no configured state-store synth survived (transient), or (b) remote returns 200 OK
+        // with an empty components array (genuinely zero — but persisting that erases history).
+        // Treating both the same way is the only way to keep the AC4 contract "current sample
+        // unavailable" rather than "current sample says nothing exists".
+        if (components.Count == 0) {
             _logger.LogDebug(
                 "No canonical DAPR components returned (remote metadata status={Status}) — skipping health history snapshot to avoid empty overwrite",
                 inventory.RemoteMetadataStatus);

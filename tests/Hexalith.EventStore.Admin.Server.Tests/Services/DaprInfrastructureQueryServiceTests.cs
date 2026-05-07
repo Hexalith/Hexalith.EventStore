@@ -68,18 +68,29 @@ public class DaprInfrastructureQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetComponentsAsync_ReturnsEmpty_WhenLocalSidecarUnavailableAndNoRemote() {
+    public async Task GetComponentsAsync_SurfacesSynthesizedStateStore_WhenBothMetadataSourcesUnavailable() {
         // Canonical inventory swallows local-sidecar failures (the failure becomes evidence
         // exposed via DaprCanonicalInventory.LocalProbeAvailable=false). With no remote endpoint
-        // configured we get an empty list rather than a thrown exception.
+        // configured we still surface the configured state store as an Unhealthy synth row so
+        // operators see the dependency rather than an empty list (AC1 truth contract: "absent
+        // local evidence cannot be misread as healthy").
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Sidecar down"));
+        _ = daprClient.GetStateAsync<string>(
+            Arg.Any<string>(), "admin:dapr-probe",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("State store unreachable"));
 
         DaprInfrastructureQueryService service = CreateService(daprClient);
 
         IReadOnlyList<DaprComponentDetail> result = await service.GetComponentsAsync();
-        result.ShouldBeEmpty();
+
+        DaprComponentDetail synth = result.ShouldHaveSingleItem();
+        synth.ComponentName.ShouldBe("statestore");
+        synth.Category.ShouldBe(DaprComponentCategory.StateStore);
+        synth.Status.ShouldBe(HealthStatus.Unhealthy);
+        synth.Source.ShouldBe(DaprComponentSource.LocalAdminProbe);
     }
 
     [Fact]
@@ -115,8 +126,13 @@ public class DaprInfrastructureQueryServiceTests {
 
         IReadOnlyList<DaprComponentDetail> result = await service.GetComponentsAsync();
 
-        result.Count.ShouldBe(2);
-        result.ShouldAllBe(c => c.Status == HealthStatus.Healthy);
+        // Non-state-store components are surfaced as Healthy. The configured state-store synth
+        // row is also produced (probe-default success), but this test only pins the contract
+        // for non-state-store rows.
+        IReadOnlyList<DaprComponentDetail> nonStateStore =
+            result.Where(c => c.Category != DaprComponentCategory.StateStore).ToArray();
+        nonStateStore.Count.ShouldBe(2);
+        nonStateStore.ShouldAllBe(c => c.Status == HealthStatus.Healthy);
     }
 
     [Fact]
@@ -167,7 +183,7 @@ public class DaprInfrastructureQueryServiceTests {
         const string endpoint = "http://localhost:3501";
         AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """
+        using HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """
         {
             "subscriptions": [
                 {"pubsubName": "pubsub", "topic": "events"},
@@ -205,7 +221,7 @@ public class DaprInfrastructureQueryServiceTests {
         const string endpoint = "http://localhost:3501";
         AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """{"actors": []}"""));
+        using HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """{"actors": []}"""));
         _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
 
         DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
@@ -230,7 +246,7 @@ public class DaprInfrastructureQueryServiceTests {
         const string endpoint = "http://localhost:3501";
         AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.InternalServerError, "boom"));
+        using HttpClient httpClient = new(new FakeHandler(HttpStatusCode.InternalServerError, "boom"));
         _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
 
         DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
@@ -362,8 +378,10 @@ public class DaprInfrastructureQueryServiceTests {
     [Fact]
     public async Task GetCanonicalDaprInventoryAsync_MergesRemoteAndLocal_WithSourceAttribution() {
         // Arrange — local sidecar sees state-store; remote eventstore sidecar adds pub/sub +
-        // confirms the state-store. Identity merges by { name, type } and remote wins for the
-        // shared component (state-store probe still attaches the local probe status).
+        // confirms the state-store. Identity merges by { name, type } so each component gets
+        // a single row. Probe-last ordering means the state-store row carries
+        // Source=LocalAdminProbe (probe wins on the probed component); pub/sub stays
+        // Source=RemoteEventStoreMetadata (no probe runs against it).
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
             new DaprComponentsMetadata("statestore", "state.redis", "v1", [])));
@@ -375,7 +393,7 @@ public class DaprInfrastructureQueryServiceTests {
         const string endpoint = "http://localhost:3501";
         AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """
+        using HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """
         {
             "id": "eventstore",
             "components": [
@@ -399,15 +417,127 @@ public class DaprInfrastructureQueryServiceTests {
         inventory.LocalProbeAvailable.ShouldBeTrue();
         inventory.PubSubSubscriptions.Count.ShouldBe(1);
 
-        // Component identity is { name, type } so both sources collapse onto a single entry.
+        // State-store: probe-last ordering means the probed source wins on the shared key.
         DaprComponentDetail stateStore = inventory.Components
             .Where(c => c.Category == DaprComponentCategory.StateStore).ShouldHaveSingleItem();
-        stateStore.Source.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);
+        stateStore.Source.ShouldBe(DaprComponentSource.LocalAdminProbe);
+        stateStore.Status.ShouldBe(HealthStatus.Healthy);
 
+        // Pub/sub: not probed, so remote attribution stays put.
         DaprComponentDetail pubSub = inventory.Components
             .Where(c => c.Category == DaprComponentCategory.PubSub).ShouldHaveSingleItem();
         pubSub.Source.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);
         pubSub.ComponentName.ShouldBe("pubsub");
+    }
+
+    [Fact]
+    public async Task GetCanonicalDaprInventoryAsync_RemoteWinsOverLocalFallback_OnSharedNonProbedKey() {
+        // Real "remote-wins-on-shared-key" proof for components that are NOT subject to a
+        // local probe (e.g. pub/sub). Local fallback sees pub/sub with v1; remote sees pub/sub
+        // with v2. Identity is { name, type } so collisions need a SAME type to actually merge.
+        // This covers the merge contract's non-probed branch — orthogonal to the state-store
+        // probe-wins case above.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
+            new DaprComponentsMetadata("pubsub", "pubsub.redis", "v1-local", ["LOCAL_CAP"])));
+
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        using HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """
+        {
+            "id": "eventstore",
+            "components": [
+                {"name": "pubsub", "type": "pubsub.redis", "version": "v2-remote", "capabilities": ["REMOTE_CAP"]}
+            ]
+        }
+        """));
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        DaprComponentDetail pubSub = inventory.Components
+            .Where(c => c.Category == DaprComponentCategory.PubSub).ShouldHaveSingleItem();
+        pubSub.Source.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);
+        pubSub.Version.ShouldBe("v2-remote");
+        pubSub.Capabilities.ShouldContain("REMOTE_CAP");
+    }
+
+    [Fact]
+    public async Task GetCanonicalDaprInventoryAsync_PreservesProbeUnhealthy_WhenRemoteReportsStateStoreLoaded() {
+        // Operator Truth Contract conflict rule: "Local probe fails, remote says loaded ->
+        // one row, loaded inventory + unhealthy probe evidence." Probe-last ordering keeps
+        // the probe Status (Unhealthy) on the shared state-store key even when the remote
+        // EventStore sidecar also reports the component (which would otherwise overwrite
+        // Status to Healthy under the previous merge order).
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
+            new DaprComponentsMetadata("statestore", "state.redis", "v1", [])));
+        _ = daprClient.GetStateAsync<string>(
+            "statestore", "admin:dapr-probe",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Redis connection refused"));
+
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        using HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """
+        {
+            "id": "eventstore",
+            "components": [
+                {"name": "statestore", "type": "state.redis", "version": "v1"},
+                {"name": "pubsub", "type": "pubsub.redis", "version": "v1"}
+            ]
+        }
+        """));
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        DaprComponentDetail stateStore = inventory.Components
+            .Where(c => c.Category == DaprComponentCategory.StateStore).ShouldHaveSingleItem();
+        stateStore.Status.ShouldBe(HealthStatus.Unhealthy);
+        stateStore.Source.ShouldBe(DaprComponentSource.LocalAdminProbe);
+
+        // Pub/sub still surfaced from remote — probe failure does not erase remote pub/sub.
+        DaprComponentDetail pubSub = inventory.Components
+            .Where(c => c.Category == DaprComponentCategory.PubSub).ShouldHaveSingleItem();
+        pubSub.Source.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);
+    }
+
+    [Fact]
+    public async Task GetCanonicalDaprInventoryAsync_ZeroSubscriptions_WithAvailable_DistinguishesValidEmptyFromFailed() {
+        // Operator Truth Contract: a remote payload that genuinely contains zero pub/sub
+        // subscriptions reports Available + zero (not Unavailable). This pins the boundary
+        // between "real zero with successful evidence" vs "unavailable evidence".
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata());
+
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        using HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """
+        {
+            "id": "eventstore",
+            "components": [
+                {"name": "pubsub", "type": "pubsub.redis", "version": "v1"}
+            ],
+            "subscriptions": []
+        }
+        """));
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        inventory.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
+        inventory.PubSubSubscriptions.ShouldBeEmpty();
+        inventory.Components.ShouldContain(c => c.Category == DaprComponentCategory.PubSub);
     }
 
     [Fact]
@@ -424,7 +554,7 @@ public class DaprInfrastructureQueryServiceTests {
         const string endpoint = "http://localhost:3501";
         AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.InternalServerError, "boom"));
+        using HttpClient httpClient = new(new FakeHandler(HttpStatusCode.InternalServerError, "boom"));
         _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
 
         DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
@@ -453,7 +583,7 @@ public class DaprInfrastructureQueryServiceTests {
         const string endpoint = "http://localhost:3501";
         AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, "this is not json"));
+        using HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, "this is not json"));
         _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
 
         DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
@@ -493,7 +623,7 @@ public class DaprInfrastructureQueryServiceTests {
         const string endpoint = "http://localhost:3501";
         AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """
+        using HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """
         {
             "id": "eventstore",
             "components": [

@@ -51,7 +51,7 @@ public class DaprHealthHistoryCollectorTests {
 
         IReadOnlyList<DaprComponentDetail> components =
         [
-            new DaprComponentDetail("statestore", "state.redis", DaprComponentCategory.StateStore, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, []),
+            new DaprComponentDetail("statestore", "state.redis", DaprComponentCategory.StateStore, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [], DaprComponentSource.LocalAdminProbe),
         ];
 
         _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
@@ -117,6 +117,90 @@ public class DaprHealthHistoryCollectorTests {
     }
 
     [Fact]
+    public async Task ExecuteAsync_SkipsWrite_WhenComponentsEmpty_EvenWhenRemoteAvailable() {
+        // AC4: never overwrite a previous healthy timeline with an empty sample. An "Available"
+        // remote payload that genuinely contains zero components must NOT be persisted as an
+        // empty timeline — otherwise prior history is silently erased on the next snapshot tick.
+        var options = new AdminServerOptions { HealthHistoryEnabled = true };
+
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IDaprInfrastructureQueryService infraService = Substitute.For<IDaprInfrastructureQueryService>();
+
+        _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
+            .Returns(new DaprCanonicalInventory(
+                [], [], RemoteMetadataStatus.Available,
+                "http://eventstore-sidecar", LocalProbeAvailable: true,
+                CapturedAtUtc: DateTimeOffset.UtcNow));
+
+        DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService);
+
+        using CancellationTokenSource cts = new();
+
+        await collector.StartAsync(cts.Token);
+        await Task.Delay(TimeSpan.FromSeconds(17));
+        await cts.CancelAsync();
+        await collector.StopAsync(default);
+
+        await daprClient.DidNotReceive().SaveStateAsync(
+            Arg.Any<string>(),
+            Arg.Is<string>(k => k.StartsWith("admin:health-history:")),
+            Arg.Any<DaprComponentHealthTimeline>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_PersistsRemotePubSubRow_WhenInventoryIncludesPubSub() {
+        // ST5 cross-page regression: a fixture with remote `pubsub` metadata yields a Pub/Sub
+        // entry on the persisted timeline. Pairs with the same regression on /dapr and /health.
+        var options = new AdminServerOptions { HealthHistoryEnabled = true };
+
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IDaprInfrastructureQueryService infraService = Substitute.For<IDaprInfrastructureQueryService>();
+
+        IReadOnlyList<DaprComponentDetail> components =
+        [
+            new DaprComponentDetail("statestore", "state.redis", DaprComponentCategory.StateStore, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [], DaprComponentSource.LocalAdminProbe),
+            new DaprComponentDetail("pubsub", "pubsub.redis", DaprComponentCategory.PubSub, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [], DaprComponentSource.RemoteEventStoreMetadata),
+        ];
+
+        _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
+            .Returns(new DaprCanonicalInventory(
+                components, [], RemoteMetadataStatus.Available,
+                "http://eventstore-sidecar", LocalProbeAvailable: true,
+                CapturedAtUtc: DateTimeOffset.UtcNow));
+
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+            Arg.Any<string>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((DaprComponentHealthTimeline)null!);
+
+        DaprComponentHealthTimeline? captured = null;
+        _ = daprClient.SaveStateAsync(
+                Arg.Any<string>(),
+                Arg.Is<string>(k => k.StartsWith("admin:health-history:")),
+                Arg.Any<DaprComponentHealthTimeline>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(callInfo => {
+                captured = callInfo.ArgAt<DaprComponentHealthTimeline>(2);
+                return Task.CompletedTask;
+            });
+
+        DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService);
+
+        using CancellationTokenSource cts = new();
+
+        await collector.StartAsync(cts.Token);
+        await Task.Delay(TimeSpan.FromSeconds(17));
+        await cts.CancelAsync();
+        await collector.StopAsync(default);
+
+        _ = captured.ShouldNotBeNull();
+        captured.Entries.ShouldContain(e =>
+            e.ComponentName == "pubsub"
+            && e.ComponentType == "pubsub.redis"
+            && e.Status == HealthStatus.Healthy);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_ContinuesOnWriteFailure() {
         // Arrange
         var options = new AdminServerOptions { HealthHistoryEnabled = true };
@@ -126,7 +210,7 @@ public class DaprHealthHistoryCollectorTests {
 
         IReadOnlyList<DaprComponentDetail> components =
         [
-            new DaprComponentDetail("statestore", "state.redis", DaprComponentCategory.StateStore, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, []),
+            new DaprComponentDetail("statestore", "state.redis", DaprComponentCategory.StateStore, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [], DaprComponentSource.LocalAdminProbe),
         ];
 
         _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())

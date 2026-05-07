@@ -30,9 +30,11 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 /// <see cref="Dapr.RemoteMetadataStatus.NotConfigured"/>.
 /// </param>
 /// <param name="LocalProbeAvailable">
-/// Whether the local Admin.Server dependency probe layer (state-store reachability) returned
-/// any usable evidence. Defaults to <c>false</c> so absent local evidence cannot be misread
-/// as healthy.
+/// Whether the local Admin.Server DAPR sidecar metadata API responded successfully. The
+/// per-component state-store probe result lives on each <see cref="DaprComponentDetail.Status"/>
+/// row instead. <c>ComputeOverallStatus</c> in <c>DaprHealthQueryService</c> uses this flag to
+/// decide that admin operations cannot be served when the local sidecar metadata is missing.
+/// Defaults to <c>false</c> so absent local evidence cannot be misread as healthy.
 /// </param>
 /// <param name="CapturedAtUtc">When this canonical sample was assembled.</param>
 public record DaprCanonicalInventory(

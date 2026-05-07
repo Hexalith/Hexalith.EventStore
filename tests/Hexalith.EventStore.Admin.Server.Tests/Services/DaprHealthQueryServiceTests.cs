@@ -48,8 +48,21 @@ public class DaprHealthQueryServiceTests {
 
         if (infrastructure is null) {
             infrastructure = Substitute.For<IDaprInfrastructureQueryService>();
+            // Default-healthy canonical inventory so tests not focused on state-store probe
+            // failure get a green baseline. Tests that simulate Redis down inject their own.
             _ = infrastructure.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
-                .Returns(Task.FromResult(DaprCanonicalInventory.Empty with { LocalProbeAvailable = true }));
+                .Returns(Task.FromResult(new DaprCanonicalInventory(
+                    [
+                        new DaprComponentDetail(
+                            "statestore", "state.redis", DaprComponentCategory.StateStore,
+                            "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [],
+                            DaprComponentSource.LocalAdminProbe),
+                    ],
+                    [],
+                    RemoteMetadataStatus.Available,
+                    "http://eventstore-sidecar",
+                    LocalProbeAvailable: true,
+                    CapturedAtUtc: DateTimeOffset.UtcNow)));
         }
 
         var service = new DaprHealthQueryService(
@@ -159,19 +172,31 @@ public class DaprHealthQueryServiceTests {
     public async Task GetSystemHealthAsync_ReturnsUnhealthy_WhenStateStoreProbeFails() {
         // AC1: when Redis/state-store is unreachable, /health must return HTTP 200 partial,
         // mark the matching state-store component Unhealthy, and overall=Unhealthy. The probe
-        // exception must NOT escape — it is the health evidence.
+        // runs inside DaprInfrastructureQueryService.GetCanonicalDaprInventoryAsync; here we
+        // simulate that by injecting an inventory whose state-store row is already Unhealthy.
         DaprClient daprClient = Substitute.For<DaprClient>();
-        _ = daprClient.GetStateAsync<string>(
-            "statestore", "admin:health-check",
-            cancellationToken: Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Redis connection refused"));
         _ = daprClient.CreateInvokeMethodRequest(
             Arg.Any<HttpMethod>(), Arg.Any<string>(), Arg.Any<string>())
             .Returns(callInfo => new HttpRequestMessage(
                 callInfo.ArgAt<HttpMethod>(0),
                 new Uri($"http://localhost/{callInfo.ArgAt<string>(2)}")));
 
-        (DaprHealthQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient);
+        IDaprInfrastructureQueryService infra = Substitute.For<IDaprInfrastructureQueryService>();
+        _ = infra.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new DaprCanonicalInventory(
+                [
+                    new DaprComponentDetail(
+                        "statestore", "state.redis", DaprComponentCategory.StateStore,
+                        "v1", HealthStatus.Unhealthy, DateTimeOffset.UtcNow, [],
+                        DaprComponentSource.LocalAdminProbe),
+                ],
+                [],
+                RemoteMetadataStatus.Available,
+                "http://eventstore-sidecar",
+                LocalProbeAvailable: true,
+                CapturedAtUtc: DateTimeOffset.UtcNow)));
+
+        (DaprHealthQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient, infrastructure: infra);
         handler.SetupJsonResponse("ok");
 
         SystemHealthReport result = await service.GetSystemHealthAsync();
@@ -187,11 +212,21 @@ public class DaprHealthQueryServiceTests {
     [Fact]
     public async Task GetSystemHealthAsync_DoesNotLeakConnectionDetails_OnStateStoreFailure() {
         // AC1: response bodies must not leak raw exception messages, connection strings, or
-        // host details from the state-store probe failure.
-        DaprClient daprClient = Substitute.For<DaprClient>();
+        // host details from the state-store probe failure. After consolidation, the probe lives
+        // in DaprInfrastructureQueryService — so this test exercises the full real path: a real
+        // service whose DaprClient throws with the secret, then walks every reachable string in
+        // the resulting SystemHealthReport.
         const string SecretConnectionDetails = "redis://my-secret-host:6379,password=p@ssw0rd";
+
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+            .Returns(new DaprMetadata(
+                id: "test-app",
+                actors: [],
+                extended: new Dictionary<string, string>(),
+                components: [new DaprComponentsMetadata("statestore", "state.redis", "v1", [])]));
         _ = daprClient.GetStateAsync<string>(
-            "statestore", "admin:health-check",
+            "statestore", "admin:dapr-probe",
             cancellationToken: Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException(SecretConnectionDetails));
         _ = daprClient.CreateInvokeMethodRequest(
@@ -200,17 +235,45 @@ public class DaprHealthQueryServiceTests {
                 callInfo.ArgAt<HttpMethod>(0),
                 new Uri($"http://localhost/{callInfo.ArgAt<string>(2)}")));
 
-        (DaprHealthQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient);
+        // Use a real DaprInfrastructureQueryService backed by the throwing DaprClient so the
+        // probe path actually runs and we observe its leak surface end-to-end.
+        IHttpClientFactory infraHttpFactory = Substitute.For<IHttpClientFactory>();
+        _ = infraHttpFactory.CreateClient(Arg.Any<string>()).Returns(new HttpClient());
+        var realInfra = new DaprInfrastructureQueryService(
+            daprClient,
+            infraHttpFactory,
+            Options.Create(new AdminServerOptions()),
+            NullLogger<DaprInfrastructureQueryService>.Instance);
+
+        (DaprHealthQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient, infrastructure: realInfra);
         handler.SetupJsonResponse("ok");
 
         SystemHealthReport result = await service.GetSystemHealthAsync();
 
-        // Walk every string field to confirm the connection details are not echoed back.
-        string overall = result.OverallStatus.ToString();
-        overall.ShouldNotContain("p@ssw0rd");
+        // Walk every string field of the report to confirm the connection details are not
+        // echoed back. Any new string-bearing field must be added here when the contract grows.
+        result.OverallStatus.ToString().ShouldNotContain("p@ssw0rd");
+        result.OverallStatus.ToString().ShouldNotContain("my-secret-host");
+        result.InventorySourceStatus.ToString().ShouldNotContain("p@ssw0rd");
         foreach (DaprComponentHealth c in result.DaprComponents) {
             c.ComponentName.ShouldNotContain("p@ssw0rd");
+            c.ComponentName.ShouldNotContain("my-secret-host");
             c.ComponentType.ShouldNotContain("p@ssw0rd");
+            c.ComponentType.ShouldNotContain("my-secret-host");
+            c.Source.ToString().ShouldNotContain("p@ssw0rd");
+            c.Status.ToString().ShouldNotContain("p@ssw0rd");
+        }
+
+        if (result.ObservabilityLinks.TraceUrl is not null) {
+            result.ObservabilityLinks.TraceUrl.ShouldNotContain("p@ssw0rd");
+        }
+
+        if (result.ObservabilityLinks.MetricsUrl is not null) {
+            result.ObservabilityLinks.MetricsUrl.ShouldNotContain("p@ssw0rd");
+        }
+
+        if (result.ObservabilityLinks.LogsUrl is not null) {
+            result.ObservabilityLinks.LogsUrl.ShouldNotContain("p@ssw0rd");
         }
     }
 

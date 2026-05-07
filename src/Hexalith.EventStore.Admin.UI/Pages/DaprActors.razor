@@ -76,9 +76,21 @@
             <EmptyState Title="EventStore sidecar unreachable"
                         Description="@($"Attempted to query {_runtimeInfo.RemoteEndpoint}/v1.0/metadata but the call failed. Verify the EventStore DAPR sidecar is running on that port (port conflicts on 3501 cause silent fallback). Check Admin server logs for the exception details.")" />
             break;
+        case RemoteMetadataStatus.InvalidPayload:
+            <EmptyState Title="EventStore sidecar metadata invalid"
+                        Description="@($"The remote sidecar at {_runtimeInfo.RemoteEndpoint} responded but the metadata payload could not be parsed. Actor information is unavailable until the sidecar returns a well-formed response. Check Admin server logs for the parse error.")" />
+            break;
+        case RemoteMetadataStatus.Initializing:
+            <EmptyState Title="EventStore sidecar initializing"
+                        Description="@($"The remote sidecar at {_runtimeInfo.RemoteEndpoint} is reachable but has not finished loading metadata. Refresh in a few seconds.")" />
+            break;
         case RemoteMetadataStatus.Available:
             <EmptyState Title="No actor types registered"
                         Description="The EventStore sidecar is reachable but reports no actor types." />
+            break;
+        default:
+            <EmptyState Title="Actor metadata unavailable"
+                        Description="The remote sidecar metadata source returned an unrecognized status. Refresh; if the issue persists, check Admin server logs." />
             break;
     }
 }

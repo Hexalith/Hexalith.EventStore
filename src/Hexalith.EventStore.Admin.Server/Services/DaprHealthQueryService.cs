@@ -65,25 +65,20 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
     public async Task<SystemHealthReport> GetSystemHealthAsync(CancellationToken ct = default) {
         // Build the canonical inventory once. The infra service swallows dependency failures
         // and exposes them as RemoteMetadataStatus values, so we never throw out of /health
-        // for downstream issues — only real cancellation propagates.
+        // for downstream issues — only real cancellation propagates. The canonical inventory
+        // is also the sole source of state-store probe evidence: it ensures the configured
+        // state store is probed (synthesizing a row when neither metadata source listed it)
+        // and writes the probe result with Source = LocalAdminProbe.
         DaprCanonicalInventory inventory = await _infrastructure
             .GetCanonicalDaprInventoryAsync(ct)
             .ConfigureAwait(false);
 
-        // 1. Probe the configured Admin.Server state-store dependency (Redis usability for Admin).
-        //    This is the canonical evidence for AC1: when Redis is down, the matching component
-        //    row must flip to Unhealthy and overall status must be Unhealthy. We never let the
-        //    probe exception bubble up — a failed probe is itself the health evidence.
-        (HealthStatus stateStoreStatus, bool stateStoreProbeFailed) =
-            await ProbeStateStoreAsync(ct).ConfigureAwait(false);
+        // Derive state-store evidence from the canonical inventory. AC1 requires that when
+        // Redis is down, the matching component row is Unhealthy and overall status is
+        // Unhealthy. The probe ran inside GetCanonicalDaprInventoryAsync; here we only read.
+        bool stateStoreProbeFailed = IsStateStoreProbeFailed(inventory, _options.StateStoreName);
 
-        // Apply the local Admin probe to the matching canonical component (or synthesize one if
-        // the state-store name is not in the canonical set yet — e.g. when both local and remote
-        // metadata are unavailable).
-        List<DaprComponentHealth> components = MapToHealthComponents(
-            inventory,
-            stateStoreStatus,
-            stateStoreProbeFailed);
+        List<DaprComponentHealth> components = MapToHealthComponents(inventory);
 
         // 2. EventStore reachability (short timeout - degraded, not unhealthy)
         bool eventStoreFailed = false;
@@ -145,64 +140,33 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
             InventorySourceStatus: inventory.RemoteMetadataStatus);
     }
 
-    private async Task<(HealthStatus Status, bool ProbeFailed)> ProbeStateStoreAsync(CancellationToken ct) {
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        cts.CancelAfter(TimeSpan.FromSeconds(3));
+    private static bool IsStateStoreProbeFailed(DaprCanonicalInventory inventory, string configuredStateStoreName) {
+        // The probe runs inside GetCanonicalDaprInventoryAsync and writes Source = LocalAdminProbe
+        // on the matching state-store entry. Any non-Healthy status on that row is treated as
+        // probe failure for overall-status purposes.
+        DaprComponentDetail? row = inventory.Components.FirstOrDefault(c =>
+            string.Equals(c.ComponentName, configuredStateStoreName, StringComparison.OrdinalIgnoreCase)
+            && c.Category == DaprComponentCategory.StateStore);
 
-        try {
-            _ = await _daprClient
-                .GetStateAsync<string>(_options.StateStoreName, "admin:health-check", cancellationToken: cts.Token)
-                .ConfigureAwait(false);
-            return (HealthStatus.Healthy, false);
+        if (row is null) {
+            // Configured state store has no row at all — canonical inventory always synthesizes
+            // one when neither metadata source listed it, so this branch only fires if the name
+            // was filtered out for a category mismatch upstream. Treat as probe failure to honor
+            // the truth contract ("absent local evidence cannot be misread as healthy").
+            return true;
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
-            // Probe timed out without caller cancellation — treat as Unhealthy evidence.
-            _logger.LogWarning("State store connectivity probe timed out after 3 seconds.");
-            return (HealthStatus.Unhealthy, true);
-        }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception ex) {
-            _logger.LogWarning(ex, "State store connectivity probe failed.");
-            return (HealthStatus.Unhealthy, true);
-        }
+
+        return row.Status != HealthStatus.Healthy;
     }
 
-    private List<DaprComponentHealth> MapToHealthComponents(
-        DaprCanonicalInventory inventory,
-        HealthStatus stateStoreStatus,
-        bool stateStoreProbeFailed) {
+    private static List<DaprComponentHealth> MapToHealthComponents(DaprCanonicalInventory inventory) {
+        // After ST3 / probe-last ordering, canonical inventory rows already carry probe Status
+        // and Source for state-store components (and remote-source attribution for everything
+        // else). /health is now a pure projection.
         DateTimeOffset now = DateTimeOffset.UtcNow;
-        List<DaprComponentHealth> components = [];
-        bool stateStoreApplied = false;
-        string configuredStateStore = _options.StateStoreName;
-
+        List<DaprComponentHealth> components = new(inventory.Components.Count);
         foreach (DaprComponentDetail c in inventory.Components) {
-            HealthStatus status = c.Status;
-            DaprComponentSource source = c.Source;
-
-            // Apply the local Admin.Server state-store probe to the configured state-store
-            // component, regardless of which sidecar reported it.
-            if (string.Equals(c.ComponentName, configuredStateStore, StringComparison.OrdinalIgnoreCase)
-                && c.Category == DaprComponentCategory.StateStore) {
-                status = stateStoreStatus;
-                source = DaprComponentSource.LocalAdminProbe;
-                stateStoreApplied = true;
-            }
-
-            components.Add(new DaprComponentHealth(c.ComponentName, c.ComponentType, status, now, source));
-        }
-
-        // If the canonical inventory did not include the configured state store, synthesize a
-        // row from the local probe so /health never silently omits a failed state-store outage.
-        if (!stateStoreApplied) {
-            components.Add(new DaprComponentHealth(
-                configuredStateStore,
-                "state",
-                stateStoreStatus,
-                now,
-                DaprComponentSource.LocalAdminProbe));
+            components.Add(new DaprComponentHealth(c.ComponentName, c.ComponentType, c.Status, now, c.Source));
         }
 
         return components;
@@ -222,9 +186,11 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
             return HealthStatus.Unhealthy;
         }
 
-        if (remoteStatus is RemoteMetadataStatus.Unreachable
-            or RemoteMetadataStatus.InvalidPayload
-            or RemoteMetadataStatus.Initializing) {
+        // Decision D1: only Unreachable signals an operator-meaningful connectivity gap.
+        // InvalidPayload and Initializing are diagnostic states surfaced via
+        // SystemHealthReport.InventorySourceStatus and per-page banners; they do not double-
+        // count against overall health.
+        if (remoteStatus == RemoteMetadataStatus.Unreachable) {
             return HealthStatus.Degraded;
         }
 

@@ -102,11 +102,32 @@
     }
 </FluentGrid>
 
-@* Empty state (AC9) *@
+@* Empty state (AC9) — copy mirrors DaprPubSub.razor by RemoteMetadataStatus *@
 @if (!_isLoading && (_sidecar is null || _components.Count == 0) && !_apiUnavailable)
 {
-    <EmptyState Title="No DAPR components detected"
-                Description="DAPR sidecar is not available or has no registered components. Check sidecar connectivity and ensure DAPR is running alongside the application." />
+    @switch (_sidecar?.RemoteMetadataStatus)
+    {
+        case RemoteMetadataStatus.NotConfigured:
+            <EmptyState Title="DAPR component inventory not configured"
+                        Description="Remote EventStore sidecar metadata is disabled. Set 'AdminServer:EventStoreDaprHttpEndpoint' in appsettings (under Aspire, this is wired automatically)." />
+            break;
+        case RemoteMetadataStatus.Unreachable:
+            <EmptyState Title="EventStore sidecar unreachable"
+                        Description="@($"Attempted to query {_sidecar?.RemoteEndpoint}/v1.0/metadata but the call failed. Verify the EventStore DAPR sidecar is running. Check Admin server logs for exception details.")" />
+            break;
+        case RemoteMetadataStatus.InvalidPayload:
+            <EmptyState Title="EventStore sidecar metadata invalid"
+                        Description="@($"The remote sidecar at {_sidecar?.RemoteEndpoint} responded but the metadata payload could not be parsed. Component inventory is unavailable until the sidecar returns a well-formed response.")" />
+            break;
+        case RemoteMetadataStatus.Initializing:
+            <EmptyState Title="EventStore sidecar initializing"
+                        Description="@($"The remote sidecar at {_sidecar?.RemoteEndpoint} is reachable but has not finished loading metadata. Refresh in a few seconds.")" />
+            break;
+        default:
+            <EmptyState Title="No DAPR components detected"
+                        Description="DAPR sidecar is not available or has no registered components. Check sidecar connectivity and ensure DAPR is running alongside the application." />
+            break;
+    }
 }
 
 @* Component grid (AC2, AC3, AC4, AC5) *@
@@ -394,7 +415,11 @@
         DaprComponentSource.RemoteEventStoreMetadata => "Remote (eventstore)",
         DaprComponentSource.LocalAdminProbe => "Local probe",
         DaprComponentSource.LocalAdminMetadataFallback => "Local fallback",
-        _ => "unavailable",
+        DaprComponentSource.Unavailable => "unavailable",
+        // New enum values must be added explicitly. Until the UI map is updated, render the
+        // raw enum name so operators can flag the missing translation rather than silently
+        // bucketing it under "unavailable".
+        _ => $"unknown ({source})",
     };
 
     private static string GetSourceTitle(DaprComponentSource source) => source switch
@@ -402,7 +427,8 @@
         DaprComponentSource.RemoteEventStoreMetadata => "Reported by the remote EventStore sidecar metadata (canonical).",
         DaprComponentSource.LocalAdminProbe => "Confirmed by an Admin.Server local dependency probe.",
         DaprComponentSource.LocalAdminMetadataFallback => "Sourced from local Admin sidecar metadata as a degraded fallback only.",
-        _ => "Source attribution unavailable for this fact.",
+        DaprComponentSource.Unavailable => "Source attribution unavailable for this fact.",
+        _ => $"Unrecognized DaprComponentSource value '{source}' — UI translation missing.",
     };
 
     private static string FormatTimeAgo(DateTimeOffset timestamp)

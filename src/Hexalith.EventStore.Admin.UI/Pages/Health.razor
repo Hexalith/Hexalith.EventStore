@@ -277,27 +277,37 @@
     // ADR-3 Truthful Metrics shared with Index.razor:
     //   - Available    -> render the real measurement (zero is honest if measured zero)
     //   - Unavailable  -> render "unavailable" (never 0, 0.0/s, or 0.0%)
-    //   - Stale        -> render the stale value with a stale label
-    private static string FormatTotalEvents(SystemHealthReport report) =>
-        report.TotalEventCountStatus == SystemHealthMetricStatus.Unavailable
-            ? "unavailable"
-            : report.TotalEventCount.ToString("N0");
+    //   - Stale        -> render the stale value with a "(stale)" suffix
+    private static string FormatTotalEvents(SystemHealthReport report) => report.TotalEventCountStatus switch
+    {
+        SystemHealthMetricStatus.Unavailable => "unavailable",
+        SystemHealthMetricStatus.Stale => $"{report.TotalEventCount:N0} (stale)",
+        _ => report.TotalEventCount.ToString("N0"),
+    };
 
-    private static string FormatEventsPerSecond(SystemHealthReport report) =>
-        report.EventsPerSecondStatus == SystemHealthMetricStatus.Unavailable
-            ? "unavailable"
-            : report.EventsPerSecond.ToString("F1");
+    private static string FormatEventsPerSecond(SystemHealthReport report) => report.EventsPerSecondStatus switch
+    {
+        SystemHealthMetricStatus.Unavailable => "unavailable",
+        SystemHealthMetricStatus.Stale => $"{report.EventsPerSecond:F1} (stale)",
+        _ => report.EventsPerSecond.ToString("F1"),
+    };
 
-    private static string FormatErrorRate(SystemHealthReport report) =>
-        report.ErrorPercentageStatus == SystemHealthMetricStatus.Unavailable
-            ? "unavailable"
-            : $"{report.ErrorPercentage:F1}%";
+    private static string FormatErrorRate(SystemHealthReport report) => report.ErrorPercentageStatus switch
+    {
+        SystemHealthMetricStatus.Unavailable => "unavailable",
+        SystemHealthMetricStatus.Stale => $"{report.ErrorPercentage:F1}% (stale)",
+        _ => $"{report.ErrorPercentage:F1}%",
+    };
 
+    // Severity must visually distinguish Unavailable from Available so an operator scanning the
+    // dashboard cannot confuse a healthy zero with an unknown-zero. Stale also signals reduced
+    // trust (last-good cached value).
     private static string MetricSeverity(SystemHealthMetricStatus status) => status switch
     {
         SystemHealthMetricStatus.Available => "neutral",
         SystemHealthMetricStatus.Stale => "warning",
-        _ => "neutral",
+        SystemHealthMetricStatus.Unavailable => "warning",
+        _ => "warning",
     };
 
     private static string GetHealthSeverity(HealthStatus status) => status switch

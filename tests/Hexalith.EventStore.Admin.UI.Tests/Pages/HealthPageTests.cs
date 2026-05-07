@@ -447,6 +447,37 @@ public class HealthPageTests : AdminUITestContext {
         markup.ShouldNotContain("0.0%");
     }
 
+    [Fact]
+    public void HealthPage_RendersStaleSuffix_ForStaleMetric_AC3() {
+        // AC3 stale-rendering rule: when *Status is Stale, the cached value renders with a
+        // visible "(stale)" marker so an operator does not mistake last-good cache for a fresh
+        // measurement. Severity must NOT be neutral (which would look identical to a healthy
+        // fresh value).
+        SystemHealthReport report = new(
+            HealthStatus.Healthy,
+            TotalEventCount: 12345,
+            EventsPerSecond: 7.5,
+            ErrorPercentage: 1.2,
+            [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow)],
+            new ObservabilityLinks(null, null, null),
+            TotalEventCountStatus: SystemHealthMetricStatus.Stale,
+            EventsPerSecondStatus: SystemHealthMetricStatus.Stale,
+            ErrorPercentageStatus: SystemHealthMetricStatus.Stale);
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SystemHealthReport?>(report));
+
+        IRenderedComponent<Health> cut = Render<Health>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Total Events"), TimeSpan.FromSeconds(5));
+
+        string markup = cut.Markup;
+        // Each stat card renders the cached numeric formatted per page convention plus "(stale)".
+        // Format strings respect the runtime culture (N0 / F1).
+        markup.ShouldContain($"{12345L.ToString("N0")} (stale)");
+        markup.ShouldContain($"{7.5.ToString("F1")} (stale)");
+        markup.ShouldContain($"{1.2.ToString("F1")}% (stale)");
+        markup.ShouldNotContain("unavailable");
+    }
+
     // ===== Test data helpers =====
 
     private static SystemHealthReport CreateHealthyReport() => new(
