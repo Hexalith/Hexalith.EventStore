@@ -25,21 +25,22 @@ Current HEAD at story creation: `fe03cb2e`.
 
 ## Acceptance Criteria
 
-1. **Show failure does not retry indefinitely.** Given `StateInspectorModal.OnAfterRenderAsync` attempts to show the Fluent dialog and `_dialog.ShowAsync()` throws, when the component renders again, then `_pendingShow` is false and the component does not call `ShowAsync` again for that same failed open attempt. The failed show path must clear the pending-show state before any render-triggering error-state update can re-enter the show attempt.
+1. **Show failure does not retry indefinitely.** Given `StateInspectorModal.OnAfterRenderAsync` attempts to show the Fluent dialog and `_dialog.ShowAsync()` throws, when the component renders again, then `_pendingShow` is false and the component does not call `ShowAsync` again for that same failed open attempt. The failed show path must clear the pending-show state before any render-triggering error-state update, host close callback, or disposal cascade can re-enter the show attempt. Do not add a retry loop, timer, or background retry policy for this failure.
 
 2. **Show failure leaves a visible component-level error.** Given `ShowAsync` fails, then the modal component renders the existing failure copy, "Could not open the state inspector dialog. Try again.", in the error region and logs a warning with stream metadata only. The error must stay in the existing flat Fluent UI Blazor v5 dialog body structure and must not introduce nested cards, custom modal chrome, or a new localization system. It must not log aggregate state JSON, event payloads, JWTs, or local-storage values.
 
-3. **Host gate closes exactly once on show failure.** Given the parent rendered `StateInspectorModal` because its host state said "show inspector", when `ShowAsync` fails, then the modal invokes the close callback once so the parent can collapse its modal-open gate. A persistent JS interop failure must not emit repeated close callbacks on later renders, even if the error state causes additional renders or the parent disposes the modal after the callback.
+3. **Host gate closes exactly once on show failure.** Given the parent rendered `StateInspectorModal` because its host state said "show inspector", when `ShowAsync` fails, then the modal invokes the close callback once so the parent can collapse its modal-open gate. A persistent JS interop failure must not emit repeated close callbacks on later renders, even if the error state causes additional renders or the parent disposes the modal after the callback. The duplicate-notification guard must be set before awaiting or invoking the callback so a re-entrant render cannot produce a second notification.
 
-4. **Normal open and user close behavior stays intact.** Given `ShowAsync` succeeds, when the operator uses Inspect, sequence stepping, timestamp mode, or the close button, then existing behavior remains unchanged: the dialog stays open after successful inspection, stream identity remains visible, and `OnClose` is invoked by the normal Fluent `DialogState.Closed` path. If the implementation shares close logic between failure and normal close paths, it must guard duplicate close notifications.
+4. **Normal open and user close behavior stays intact.** Given `ShowAsync` succeeds, when the operator uses Inspect, sequence stepping, timestamp mode, or the close button, then existing behavior remains unchanged: the dialog stays open after successful inspection, stream identity remains visible, and `OnClose` is invoked by the normal Fluent `DialogState.Closed` path. If the implementation shares close logic between failure and normal close paths, it must guard duplicate close notifications. The show-failure path should not call `HideAsync` for a dialog that never opened unless a focused test proves Fluent requires it.
 
-5. **The fix stays local to StateInspectorModal lifecycle.** The implementation may touch `StateInspectorModal.razor`, its focused tests, this story, sprint status, and deferred-work disposition bookkeeping. It must not change Admin Server contracts, EventStore state/diff/causation endpoints, `AdminStreamApiClient`, `StateDiffViewer`, `EventDetailPanel`, sidebar shortcut code, DAPR/Aspire configuration, or Fluent UI package versions unless a failing focused test proves a directly related lifecycle dependency.
+5. **The fix stays local to StateInspectorModal lifecycle.** The implementation may touch `StateInspectorModal.razor`, its focused tests, this story, sprint status, and deferred-work disposition bookkeeping. It must not change Admin Server contracts, EventStore state/diff/causation endpoints, `AdminStreamApiClient`, `StateDiffViewer`, `EventDetailPanel`, sidebar shortcut code, DAPR/Aspire configuration, or Fluent UI package versions unless a failing focused test proves a directly related lifecycle dependency. Do not change the `StreamDetail` host gate beyond the minimum callback wiring needed to observe the existing close event.
 
 6. **Focused bUnit coverage proves the failure path.** Add or extend tests in `tests/Hexalith.EventStore.Admin.UI.Tests/Components/StateInspectorModalTests.cs` that prove:
    - `ShowAsync` throwing `JSDisconnectedException` or an equivalent JS interop failure does not call `ShowAsync` again after a follow-up render.
    - The host close callback fires exactly once on show failure.
    - The user-facing error is rendered after the failed open.
    - The existing flat Fluent UI Blazor v5 dialog body structure remains covered.
+   - A parent callback that triggers another render or removes the modal still observes exactly one close notification and no second show attempt.
 
 7. **Deferred-work dispositions are auditable.** When development starts or completes, update only the DW7-owned entries in `_bmad-output/implementation-artifacts/deferred-work.md`: lines currently routed to `STORY:post-epic-deferred-dw7-admin-ui-state-inspector-lifecycle-fix` for the infinite retry and stuck host gate, plus the related `No bUnit coverage for OnAfterRenderAsync ShowAsync failure path` test-coverage entry. Do not sweep unrelated accepted-debt lifecycle or UX bullets.
 
@@ -101,6 +102,7 @@ Current HEAD at story creation: `fe03cb2e`.
     - [ ] 1.3 Invoke the host close callback once when show fails, either directly or through a small idempotent close helper.
     - [ ] 1.4 Ensure a successful show path still supports Inspect, sequence stepping, timestamp mode, and normal close.
     - [ ] 1.5 Avoid broad component redesign or unrelated UI copy changes.
+    - [ ] 1.6 Keep lifecycle state mutations on the Blazor renderer context; if existing `ConfigureAwait(false)` calls are touched, remove them or marshal state updates through `InvokeAsync`.
 
 - [ ] Task 2: Add focused regression tests (AC: #1, #3, #4, #6)
     - [ ] 2.1 Add a test that simulates `ShowAsync` JS interop failure and proves no repeated show call occurs after a follow-up render.
@@ -108,6 +110,7 @@ Current HEAD at story creation: `fe03cb2e`.
     - [ ] 2.3 Add or extend an assertion that the failed show error copy is rendered inside the existing flat Fluent UI Blazor v5 dialog body structure.
     - [ ] 2.4 Keep the existing flat Fluent UI Blazor v5 DOM test green and assert warning logs remain metadata-only where the test harness can observe logging.
     - [ ] 2.5 If a tiny test seam is introduced, test through the rendered component and document why JSInterop alone was insufficient.
+    - [ ] 2.6 Include a re-entrant parent-render or parent-removal case so exactly-once close behavior is proven across the failure callback boundary.
 
 - [ ] Task 3: Update deferred-work dispositions narrowly (AC: #7)
     - [ ] 3.1 Update the infinite-retry and stuck-host-gate entries only after the code/test fix lands.
@@ -134,6 +137,8 @@ Current HEAD at story creation: `fe03cb2e`.
 - Keep component logs metadata-only per SEC-5. Authorized state JSON may render in the UI, but logs must not contain payload or state content.
 - Prefer idempotent state transitions over timing assumptions. A persistent JS interop failure should leave the component in one stable failed state.
 - Avoid `.ConfigureAwait(false)` on Blazor component lifecycle paths when subsequent code mutates component state or participates in rendering. If existing awaits are touched, use the Microsoft Learn renderer-context guidance above.
+- Treat close notification as a one-way lifecycle signal. Set the duplicate guard before awaiting user callbacks, and keep the failure path stable even when the callback causes the parent to stop rendering the modal.
+- Any test seam for `ShowAsync` must stay local to the component's dialog-show operation and must not become a new product service, dependency-injection contract, or generic dialog abstraction.
 
 ### Testing Guidance
 
@@ -195,9 +200,22 @@ GPT-5 Codex
 - Findings deferred: Broader DW5 accessibility debt; localization-system expansion unless already used by adjacent component copy; endpoint, TypeCatalog, Aspire/DAPR, package-version, and governance changes; advanced elicitation completion, which remains a later separate pass under L08.
 - Final recommendation: ready-for-dev
 
+## Advanced Elicitation
+
+- Date: 2026-05-07T09:14:41+02:00
+- Selected story key: `post-epic-deferred-dw7-admin-ui-state-inspector-lifecycle-fix`
+- Command / skill invocation used: `/bmad-advanced-elicitation post-epic-deferred-dw7-admin-ui-state-inspector-lifecycle-fix`
+- Batch 1 methods: Self-Consistency Validation; Red Team vs Blue Team; Architecture Decision Records; Security Audit Personas; Failure Mode Analysis.
+- Batch 2 methods: Chaos Monkey Scenarios; Occam's Razor Application; First Principles Analysis; 5 Whys Deep Dive; Lessons Learned Extraction.
+- Findings summary: The story already scoped the bug well, but needed stronger ordering around `_pendingShow`, close-callback idempotency, re-entrant parent renders, and renderer-context safety. The highest-risk failure mode is a show-failure callback causing disposal or rerender before duplicate guards are set.
+- Changes applied: Clarified that failed show attempts must clear pending state before render-triggering updates or close callbacks; required duplicate close guards before awaiting callbacks; constrained `HideAsync` use on never-opened dialogs; narrowed allowed `StreamDetail` changes; added re-entrant render/removal test coverage; added renderer-context and local test-seam guidance.
+- Findings deferred: Broader dialog accessibility follow-ups, endpoint/state-inspection product changes, generic dialog abstractions, package-version changes, and manual Aspire smoke evidence remain outside DW7.
+- Final recommendation: ready-for-dev
+
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-07 | 0.3 | Applied advanced elicitation and hardened lifecycle ordering, close idempotency, renderer-context, and re-entrant test guidance. | Codex automation |
 | 2026-05-07 | 0.2 | Recorded party-mode review and clarified close-on-failure lifecycle/test contract. | Codex automation |
 | 2026-05-07 | 0.1 | Created ready-for-dev DW7 Admin UI state inspector lifecycle story. | Codex automation |
