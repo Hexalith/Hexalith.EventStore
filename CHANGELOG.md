@@ -1,3 +1,10 @@
+# [3.15.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.14.2...v3.15.0) (2026-05-09)
+
+
+### Features
+
+* Enhance drain failure handling with new reason codes and exceptions ([336a494](https://github.com/Hexalith/Hexalith.EventStore/commit/336a494891e2946bb432b2ebf2e0679582adc9ad))
+
 ## [3.14.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.14.1...v3.14.2) (2026-05-09)
 
 
