@@ -3,6 +3,10 @@ namespace Hexalith.EventStore.OperationalEvidence.Validator.Tests;
 /// <summary>
 /// Stable diagnostic shape pinned by AC #13. Every emitted diagnostic must
 /// be projectable into this record. JSON output uses the same field names.
+///
+/// <see cref="Level"/> reflects the validator's `level` field added in DW9
+/// alongside the informational `evidence-file-skipped` rule. Defaults to
+/// <c>"error"</c> for diagnostics that pre-date the field.
 /// </summary>
 internal sealed record Dw4Diagnostic(
     string File,
@@ -11,7 +15,8 @@ internal sealed record Dw4Diagnostic(
     string? Section,
     string? Field,
     int? Line,
-    string Hint);
+    string Hint,
+    string Level = "error");
 
 /// <summary>
 /// Aggregated outcome for a single fixture invocation: the run's exit/return

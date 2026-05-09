@@ -28,6 +28,8 @@ internal static class Dw4RuleVocabulary {
     // --- Control / correlation family ---------------------------------
     public const string ControlRequiredMissing = "control-required-missing";
     public const string CorrelationControlRequiredMissing = "correlation-control-required-missing";
+    public const string ControlLinkageMissing = "control-linkage-missing";
+    public const string ControlLinkageUnrelated = "control-linkage-unrelated";
 
     // --- Redaction family ---------------------------------------------
     public const string RedactionSectionMissing = "redaction-section-missing";
@@ -64,6 +66,8 @@ internal static class Dw4RuleVocabulary {
         ClassificationInvalid,
         ControlRequiredMissing,
         CorrelationControlRequiredMissing,
+        ControlLinkageMissing,
+        ControlLinkageUnrelated,
         RedactionSectionMissing,
         RedactionUnsafeBearerToken,
         RedactionUnsafeConnectionString,

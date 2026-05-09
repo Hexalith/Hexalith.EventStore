@@ -1,4 +1,4 @@
-# SignalR Operational Evidence Fixture - Valid Minimal
+# SignalR Operational Evidence Fixture - Invalid Control Linkage Missing
 
 Schema version: `signalr-operational-evidence/v1`
 
@@ -6,13 +6,13 @@ Schema version: `signalr-operational-evidence/v1`
 
 ```yaml
 schema_version: signalr-operational-evidence/v1
-evidence_run_id: dw4-signalr-valid-001
-story_key: post-epic-deferred-dw4-operational-evidence-schema-validation
+evidence_run_id: dw9-signalr-link-missing-001
+story_key: post-epic-deferred-dw9-evidence-validator-and-governance-polish
 run_profile: non-aspire-static-fixture
 classification: pass
 reviewer_verdict: pass
 redaction_statement: reviewed synthetic fixture; no bearer tokens, secrets, production hostnames, or customer payloads are present
-reliability_control: same-run reliability control evidence_run_id:dw4-signalr-valid-001 recorded pass
+reliability_control: reliability control recorded pass but no explicit run reference
 apphost_url: not-applicable: non-aspire static fixture
 dapr_placement: not-applicable: non-aspire static fixture
 dapr_scheduler: not-applicable: non-aspire static fixture
@@ -21,7 +21,7 @@ resource_snapshot: not-applicable: non-aspire static fixture
 
 ## Controls
 
-Reliability control is tied to the same synthetic run id.
+Reliability control intentionally omits both same-run and linked-control-run references.
 
 ## Redaction
 
@@ -29,4 +29,4 @@ Synthetic sample only.
 
 | Signal | Observed result |
 | --- | --- |
-| hub-broadcast | pass |
+| missing-link | fail |

@@ -1,6 +1,6 @@
 # Post-Epic Deferred DW9: Evidence Validator and Governance Polish
 
-Status: ready-for-dev
+Status: done
 
 <!-- Source: sprint-change-proposal-2026-05-07-deferred-work-open-cleanup.md - Proposal D / DW9 -->
 <!-- Source: deferred-work.md - operational evidence validator and DW6 governance routed entries -->
@@ -168,53 +168,73 @@ No unreferenced fixture files or catalog-only rows should be left behind. The `-
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline routed defects and lock scope (AC: #1, #4, #6, #8, #9)
-    - [ ] 0.1 Re-read Proposal D / DW9 and the four DW9-owned deferred-work bullets.
-    - [ ] 0.2 Confirm the current evidence validator control checks and directory traversal behavior before editing.
-    - [ ] 0.3 Confirm current docs-validation CI and local docs-validation wrapper behavior.
-    - [ ] 0.4 Decide whether `entrypoint.txt` is committed canonical state or local-only state before editing README or `.gitignore`.
-    - [ ] 0.5 Confirm DW7 and DW8 entries remain out of scope.
+- [x] Task 0: Baseline routed defects and lock scope (AC: #1, #4, #6, #8, #9)
+    - [x] 0.1 Re-read Proposal D / DW9 and the four DW9-owned deferred-work bullets.
+    - [x] 0.2 Confirm the current evidence validator control checks and directory traversal behavior before editing.
+    - [x] 0.3 Confirm current docs-validation CI and local docs-validation wrapper behavior.
+    - [x] 0.4 Decide whether `entrypoint.txt` is committed canonical state or local-only state before editing README or `.gitignore`.
+    - [x] 0.5 Confirm DW7 and DW8 entries remain out of scope.
 
-- [ ] Task 1: Add control-linkage validation (AC: #1, #2, #3)
-    - [ ] 1.1 Define the smallest explicit metadata convention that links a control result to the same `evidence_run_id` or a named linked control run.
-    - [ ] 1.2 Implement rule ids for missing or unrelated control linkage without weakening existing missing-control diagnostics.
-    - [ ] 1.3 Add query and SignalR positive/negative fixtures, or document why one schema cannot exercise the rule safely.
-    - [ ] 1.4 Update Python `EXPECTED_FIXTURE_RULES`, C# fixture catalog expectations, and rule-vocabulary tests together.
+- [x] Task 1: Add control-linkage validation (AC: #1, #2, #3)
+    - [x] 1.1 Define the smallest explicit metadata convention that links a control result to the same `evidence_run_id` or a named linked control run.
+    - [x] 1.2 Implement rule ids for missing or unrelated control linkage without weakening existing missing-control diagnostics.
+    - [x] 1.3 Add query and SignalR positive/negative fixtures, or document why one schema cannot exercise the rule safely.
+    - [x] 1.4 Update Python `EXPECTED_FIXTURE_RULES`, C# fixture catalog expectations, and rule-vocabulary tests together.
 
-- [ ] Task 2: Add template skip behavior (AC: #4, #5)
-    - [ ] 2.1 Add `<!-- evidence-validator: skip -->` marker detection before schema parsing.
-    - [ ] 2.2 Add default skip-list coverage for `**/*-template.md`.
-    - [ ] 2.3 Add fixtures or focused tests proving directory validation skips template files and does not emit placeholder noise.
-    - [ ] 2.4 Preserve `--self-test` behavior as curated fixtures only.
+- [x] Task 2: Add template skip behavior (AC: #4, #5)
+    - [x] 2.1 Add `<!-- evidence-validator: skip -->` marker detection before schema parsing.
+    - [x] 2.2 Add default skip-list coverage for `**/*-template.md`.
+    - [x] 2.3 Add fixtures or focused tests proving directory validation skips template files and does not emit placeholder noise.
+    - [x] 2.4 Preserve `--self-test` behavior as curated fixtures only.
 
-- [ ] Task 3: Align deferred-work governance CI with wrappers (AC: #6, #7)
-    - [ ] 3.1 Change `.github/workflows/docs-validation.yml` to invoke `bash scripts/check-deferred-work.sh _bmad-output/implementation-artifacts/deferred-work.md`.
-    - [ ] 3.2 Preserve or explicitly revise `continue-on-error` behavior and document the exit-code trade-off.
-    - [ ] 3.3 Confirm local `scripts/validate-docs.ps1` and `.sh` still invoke wrapper scripts.
-    - [ ] 3.4 Run a local wrapper smoke and record the result.
+- [x] Task 3: Align deferred-work governance CI with wrappers (AC: #6, #7)
+    - [x] 3.1 Change `.github/workflows/docs-validation.yml` to invoke `bash scripts/check-deferred-work.sh _bmad-output/implementation-artifacts/deferred-work.md`.
+    - [x] 3.2 Preserve or explicitly revise `continue-on-error` behavior and document the exit-code trade-off.
+    - [x] 3.3 Confirm local `scripts/validate-docs.ps1` and `.sh` still invoke wrapper scripts.
+    - [x] 3.4 Run a local wrapper smoke and record the result.
 
-- [ ] Task 4: Reconcile deferred-work governance entrypoint policy (AC: #8)
-    - [ ] 4.1 Choose canonical committed entrypoint or local-only ignored entrypoint.
-    - [ ] 4.2 Align `_bmad-output/test-artifacts/deferred-work-governance/README.md` and either `.gitignore` or test expectations with that choice.
-    - [ ] 4.3 Avoid touching unrelated DW6 parser/vocabulary accepted-debt items.
+- [x] Task 4: Reconcile deferred-work governance entrypoint policy (AC: #8)
+    - [x] 4.1 Choose canonical committed entrypoint or local-only ignored entrypoint.
+    - [x] 4.2 Align `_bmad-output/test-artifacts/deferred-work-governance/README.md` and either `.gitignore` or test expectations with that choice.
+    - [x] 4.3 Avoid touching unrelated DW6 parser/vocabulary accepted-debt items.
 
-- [ ] Task 5: Update deferred-work dispositions narrowly (AC: #9)
-    - [ ] 5.1 Update only the cross-field control-linkage entry after validator rule coverage lands.
-    - [ ] 5.2 Update only the template skip-list entry after skip behavior lands.
-    - [ ] 5.3 Update only DW6-CR5 after CI wrapper invocation is aligned.
-    - [ ] 5.4 Update only DW6-CR6 after README or `.gitignore` policy is aligned.
+- [x] Task 5: Update deferred-work dispositions narrowly (AC: #9)
+    - [x] 5.1 Update only the cross-field control-linkage entry after validator rule coverage lands.
+    - [x] 5.2 Update only the template skip-list entry after skip behavior lands.
+    - [x] 5.3 Update only DW6-CR5 after CI wrapper invocation is aligned.
+    - [x] 5.4 Update only DW6-CR6 after README or `.gitignore` policy is aligned.
 
-- [ ] Task 6: Validate and capture evidence (AC: #10, #11)
-    - [ ] 6.1 Run `.\scripts\validate-evidence.ps1 --self-test` and/or `bash scripts/validate-evidence.sh --self-test`.
-    - [ ] 6.2 Run `dotnet test tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests --configuration Release -p:NuGetAudit=false` if practical.
-    - [ ] 6.3 Run a deferred-work wrapper smoke through `.\scripts\check-deferred-work.ps1` or `bash scripts/check-deferred-work.sh`.
-    - [ ] 6.4 Run Markdown/YAML validation for changed BMAD artifacts.
-    - [ ] 6.5 Confirm generated preflight JSON files remain unstaged and no nested submodules were initialized or updated.
+- [x] Task 6: Validate and capture evidence (AC: #10, #11)
+    - [x] 6.1 Run `.\scripts\validate-evidence.ps1 --self-test` and/or `bash scripts/validate-evidence.sh --self-test`.
+    - [x] 6.2 Run `dotnet test tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests --configuration Release -p:NuGetAudit=false` if practical.
+    - [x] 6.3 Run a deferred-work wrapper smoke through `.\scripts\check-deferred-work.ps1` or `bash scripts/check-deferred-work.sh`.
+    - [x] 6.4 Run Markdown/YAML validation for changed BMAD artifacts.
+    - [x] 6.5 Confirm generated preflight JSON files remain unstaged and no nested submodules were initialized or updated.
 
-- [ ] Task 7: Close story bookkeeping (AC: #11)
-    - [ ] 7.1 Update Dev Agent Record, File List, Verification Status, and Change Log.
-    - [ ] 7.2 Move this story and `sprint-status.yaml` to `review` only after implementation evidence is present.
-    - [ ] 7.3 Move both to `done` only after code-review signoff.
+- [x] Task 7: Close story bookkeeping (AC: #11)
+    - [x] 7.1 Update Dev Agent Record, File List, Verification Status, and Change Log.
+    - [x] 7.2 Move this story and `sprint-status.yaml` to `review` only after implementation evidence is present.
+    - [x] 7.3 Move both to `done` only after code-review signoff.
+
+### Review Findings
+
+Code review run on 2026-05-09 — Blind Hunter + Edge Case Hunter + Acceptance Auditor (parallel layers).
+
+- [x] [Review][Decision] Canonical entrypoint policy contradicts CI invocation path — **Resolved 2026-05-09: option A (co-canonical).** Updated `_bmad-output/test-artifacts/deferred-work-governance/README.md` to declare `scripts/check-deferred-work.{ps1,sh}` co-canonical thin wrappers over `scripts/check-deferred-work.py`, with `entrypoint.txt` keeping the `pwsh:` value as the local-dev default and CI using the bash wrapper because GitHub Actions runners are Linux. Each wrapper must keep behavioural parity; changes to either must update `entrypoint.txt`, README, wrapper smoke commands, and ATDD test expectations together.
+- [x] [Review][Patch] **HIGH** Skip marker substring match poisons the evidence-validator README, deferred-work ledger, and snapshot — `skip_reason_for` does a plain `SKIP_MARKER in text` substring scan, so any markdown that *describes* the marker (the validator's own README, `_bmad-output/implementation-artifacts/deferred-work.md:43`, `_bmad-output/test-artifacts/deferred-work-governance/deferred-work-snapshot.md:6`) is silently shadow-banned. Fix: anchor the scan to the pre-frontmatter region (first ~20 lines) or strip fenced code blocks before searching. Edge Case Hunter reproduced via `python scripts/validate-operational-evidence.py _bmad-output/test-artifacts/operational-evidence-validator/README.md` returning `INFO ... evidence-file-skipped` and exit 0. [`scripts/validate-operational-evidence.py:248-250, 293-301`]
+- [x] [Review][Patch] **MEDIUM** `validate-docs.{sh,ps1}` print `PASSED:` after the deferred-work stage even when checker exits 2 (usage/tool error) — the PASSED banner masks real bugs (unparseable args, Python crash) into a green line, recreating the asymmetric-CI-vs-local risk DW6-CR5 was meant to close. Fix: print `FAILED:` (or `ADVISORY (exit N):`) when `exit_code -ne 0`. [`scripts/validate-docs.sh +83..+87`, `scripts/validate-docs.ps1 +55..+60`]
+- [x] [Review][Patch] **MEDIUM** `extract_references` regex captures dot-suffixed ids and rstrips them, but the YAML metadata value retains the dot — yields false `control-linkage-unrelated` for ids like `dw9-edge-dot-001.`. Edge Case Hunter reproduced. Fix: stop rstripping (the regex character class already excludes `,;)` so only `.` survives) OR normalize both sides identically. [`scripts/validate-operational-evidence.py:557-561`]
+- [x] [Review][Patch] **MEDIUM** `extract_references` rejects quoted YAML reference values — when authors write `evidence_run_id: "dw9-edge-quoted-001"` and `false_positive_control: ... evidence_run_id:"dw9-edge-quoted-001" ...`, YAML strips quotes from metadata but the inline scan does not (regex char class excludes `"`/`'`), producing false `control-linkage-missing`. Edge Case Hunter reproduced. Fix: extend the pattern to allow optional surrounding quotes: `(?:["']?)([A-Za-z0-9_.:-]+)(?:["']?)`. [`scripts/validate-operational-evidence.py:557-561`]
+- [x] [Review][Patch] **MEDIUM** `*-template.md` skip pattern is case-sensitive on a Windows-first project (CRLF + UTF-8 per CLAUDE.md) — `Foo-Template.md` is fully audited while `foo-template.md` is skipped. Fix: `path.name.lower().endswith("-template.md")`. [`scripts/validate-operational-evidence.py:299`]
+- [x] [Review][Patch] **LOW** Skip marker requires byte-exact spelling — `<!--   evidence-validator: skip   -->` (with HTML-comment-idiomatic inner whitespace) does NOT skip. Fix: tolerant regex `r"<!--\s*evidence-validator:\s*skip\s*-->"` and document that exact spelling is required if not relaxing. [`scripts/validate-operational-evidence.py:293-298`]
+- [x] [Review][Patch] **LOW** New `level` JSON field is undocumented in the C# diagnostic contract — `Diagnostic.to_dict` now emits `"level"` always, but `Dw4Diagnostic` has no `Level` member, `ShellScriptValidatorInvoker` XML doc still lists only `file/schema/rule/section/field/line/hint`, and only DW9-specific tests rely on `Rule == "evidence-file-skipped"` to detect skips. Fix: add `Level` to `Dw4Diagnostic`, parse it in the invoker, update XML doc. [`scripts/validate-operational-evidence.py:131-146`, `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/{Dw4Diagnostic.cs,ShellScriptValidatorInvoker.cs}`]
+- [x] [Review][Patch] **LOW** New `skip-marker-optout.md`, `skip-template.md`, and `template-looking-invalid.md` fixtures live under the curated `fixtures/` directory but are not registered in `EXPECTED_FIXTURE_RULES` or `Dw4FixtureCatalog`, contradicting the spec's Fixture Catalog Contract ("every new or changed fixture must be in both registries"). The `--self-test` carve-out is necessary to preserve AC-5, but it is undocumented in the README/Dev Agent Record. Fix: add a one-paragraph explicit "skip-fixture catalog exception" to the validator README and Dev Agent Record so future fixture audits do not flag them as orphans. [`_bmad-output/test-artifacts/operational-evidence-validator/README.md`, story Dev Agent Record]
+- [x] [Review][Patch] **LOW** `linked_control_run_ids` / `control_run_id` field-name choice missing rationale — spec asks for "field name AND rationale" in Dev Agent Record/README; current entries record only the names. Fix: add a 2-3 line rationale paragraph (additive, fixture-local, no schema bump) to the Dev Agent Record. [story Dev Agent Record line 272, `_bmad-output/test-artifacts/operational-evidence-validator/README.md`]
+- [x] [Review][Patch] **LOW** File List does not annotate which positive fixtures were modified vs newly added — `query-valid-minimal.md`, `query-valid-not-applicable-aspire.md`, and `signalr-valid-minimal.md` had their control fields rewritten to use the new `evidence_run_id:<id>` linkage form, but the File List does not distinguish them from new files. Fix: add `(modified)` / `(new)` markers in the File List entries. [story File List]
+- [x] [Review][Patch] **LOW** `_bmad-output/process-notes/predev-hardening-runs.log` listed in File List but not present in `git status` — either the file was edited and is unstaged (need to verify and stage) or it was inherited from the story template and should be removed from File List. [story File List line 284]
+- [x] [Review][Defer] **LOW** `run_self_test` filters info diagnostics out of the rules set, so a future regression that silently relabels an error rule as info or makes skip over-eager on a pinned valid fixture would silently report PASS — speculative regression risk; no concrete failure mode in the diff. Track for follow-up validator hardening. [`scripts/validate-operational-evidence.py:200-212`] — deferred, follow-up
+- [x] [Review][Defer] **LOW** `check-deferred-work.py` `load_sources` does not guard `path.exists()`, so missing-input usage errors propagate as exit 1 (FileNotFoundError) instead of the documented exit 2 — pre-existing in `check-deferred-work.py`, related to DW6-CR7 ACCEPTED-DEBT and out of DW9 scope (DW9 only required wrapper symmetry). [`scripts/check-deferred-work.py:215-221`] — deferred, pre-existing
+- [x] [Review][Defer] **LOW** `ShellScriptValidatorInvoker.LocateRepoRoot` walks up from `AppContext.BaseDirectory` with no max-depth guard or `HEXALITH_REPOROOT`/`[CallerFilePath]` fallback — same pattern DW8 retro patched in `FindRepositoryRoot`; reintroduces a less-resilient sibling. Test-only impact under shadow-copy/extracted-test-runner scenarios. [`tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/ShellScriptValidatorInvoker.cs:109-128`] — deferred, follow-up
 
 ## Dev Notes
 
@@ -260,6 +280,7 @@ GPT-5 Codex
 - Pre-dev hardening preflight: `_bmad-output/process-notes/predev-preflight-2026-05-07T060109Z.json`, timestamp `2026-05-07T06:01:09Z`, result `pass`.
 - Create-story activation: resolved workflow customization with no prepend/append steps; no `project-context.md` file was present in the workspace.
 - Aspire pre-edit baseline: `aspire run --detach --non-interactive --apphost src\Hexalith.EventStore.AppHost\Hexalith.EventStore.AppHost.csproj --format Json` succeeded and returned dashboard URL `https://localhost:17017/login?t=ba423de6424509000c7433aef5e657c2`. Aspire MCP resource snapshot showed sample, DAPR sidecars, statestore, and pubsub running/healthy; Keycloak was running with the known HTTPS readiness health-check failure; EventStore/Admin/Tenants projects were waiting on Keycloak. No apphost code was changed.
+- Dev-story activation on 2026-05-09: resolved workflow customization with no prepend/append steps; no `project-context.md` file was present in the workspace. `aspire run --detach --non-interactive --project src\Hexalith.EventStore.AppHost\Hexalith.EventStore.AppHost.csproj --format Json` succeeded, stopped the previous instance, and returned dashboard URL `https://localhost:17017/login?t=0134b282facee0328c32a5b5b28b9b28`. Sprint status moved `ready-for-dev` -> `in-progress`.
 
 ### Completion Notes List
 
@@ -268,12 +289,43 @@ GPT-5 Codex
 - Recorded current implementation targets for the Python validators, wrappers, fixture catalogs, docs-validation workflow, and governance README.
 - Party-mode review applied pre-dev contract hardening for validator rule ids, template skip reporting, deferred-work entry allowlist, wrapper exit-code policy, entrypoint source of truth, and fixture catalog invariants.
 - Advanced elicitation applied pre-dev hardening for machine-readable control linkage, skip-marker trust boundaries, deterministic mixed directory validation, wrapper symmetry evidence, and review rejection criteria.
+- Implemented explicit control-link validation using `evidence_run_id:<same-run>` or `control_run_id:<linked-control-run>` references plus optional `linked_control_run_ids`; added precise `control-linkage-missing` and `control-linkage-unrelated` diagnostics.
+- **Field-name ADR (DW9, additive only):** Chose `evidence_run_id:<id>` and `control_run_id:<id>` inline reference tokens plus an optional metadata field `linked_control_run_ids` (whitespace/comma/semicolon-separated). Rationale: (1) inline tokens reuse the existing free-form metadata payloads that authors already write into `false_positive_control` / `correlation_control` / `reliability_control`, so no schema bump is required and existing schema versions (`query-operational-evidence/v1`, `signalr-operational-evidence/v1`) remain stable; (2) names mirror the existing `evidence_run_id` metadata key so the same identifier travels both ways with no translation; (3) the optional `linked_control_run_ids` set lives in metadata rather than per-control because a single evidence run typically links a small fixed set of control runs reused across multiple controls. Alternatives considered and rejected: bumping schema to v2 with structured `controls[]` (too invasive for a polish story; reopens DW4 schema design); using opaque `link:<id>` tokens (loses the same-run vs linked-run distinction the validator must enforce). Decision recorded here so a future schema-v2 story has the prior art.
+- Preserved existing required-control diagnostics by running linkage checks only after older schema, required-field, profile, placeholder, redaction, and parse checks are clean.
+- Added DW9 query and SignalR linked-control positive fixtures plus missing/unrelated negative fixtures; curated self-test grew intentionally from 37 to 43 fixtures.
+- Added informational skip handling for exact `<!-- evidence-validator: skip -->` marker and `*-template.md` paths, with focused tests covering skipped files and template-looking files that remain audited.
+- Aligned deferred-work governance CI to call `bash scripts/check-deferred-work.sh`; local docs wrappers remain wrapper-based and now document advisory exit-code behavior.
+- Declared committed deferred-work governance `entrypoint.txt` canonical in the README rather than local-only generated state.
+- Resolved only the four DW9-owned deferred-work entries: two operational-evidence-validator rows plus DW6-CR5 and DW6-CR6.
 
 ### File List
 
-- `_bmad-output/implementation-artifacts/post-epic-deferred-dw9-evidence-validator-and-governance-polish.md`
-- `_bmad-output/implementation-artifacts/sprint-status.yaml`
-- `_bmad-output/process-notes/predev-hardening-runs.log`
+- `_bmad-output/implementation-artifacts/post-epic-deferred-dw9-evidence-validator-and-governance-polish.md` (modified — story bookkeeping)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified — moved DW9 row to `review`)
+- `.github/workflows/docs-validation.yml` (modified — wrapper invocation)
+- `_bmad-output/implementation-artifacts/deferred-work.md` (modified — narrow DW9-allowlisted dispositions only)
+- `_bmad-output/test-artifacts/deferred-work-governance/README.md` (modified — entrypoint policy clarified)
+- `_bmad-output/test-artifacts/operational-evidence-validator/README.md` (modified — control-linkage and skip-marker semantics)
+- `_bmad-output/test-artifacts/operational-evidence-validator/fixtures/query-invalid-control-linkage-missing.md` (new — DW9 negative fixture)
+- `_bmad-output/test-artifacts/operational-evidence-validator/fixtures/query-invalid-control-linkage-unrelated.md` (new — DW9 negative fixture)
+- `_bmad-output/test-artifacts/operational-evidence-validator/fixtures/query-valid-linked-control-run.md` (new — DW9 positive linked-run fixture)
+- `_bmad-output/test-artifacts/operational-evidence-validator/fixtures/query-valid-minimal.md` (modified — control fields rewritten to use new explicit `evidence_run_id:<id>` linkage form)
+- `_bmad-output/test-artifacts/operational-evidence-validator/fixtures/query-valid-not-applicable-aspire.md` (modified — control fields rewritten to use new explicit `evidence_run_id:<id>` linkage form)
+- `_bmad-output/test-artifacts/operational-evidence-validator/fixtures/signalr-invalid-control-linkage-missing.md` (new — DW9 negative fixture)
+- `_bmad-output/test-artifacts/operational-evidence-validator/fixtures/signalr-invalid-control-linkage-unrelated.md` (new — DW9 negative fixture)
+- `_bmad-output/test-artifacts/operational-evidence-validator/fixtures/signalr-valid-linked-control-run.md` (new — DW9 positive linked-run fixture)
+- `_bmad-output/test-artifacts/operational-evidence-validator/fixtures/signalr-valid-minimal.md` (modified — control fields rewritten to use new explicit `evidence_run_id:<id>` linkage form)
+- `_bmad-output/test-artifacts/operational-evidence-validator/fixtures/skip-marker-optout.md` (new — DW9 skip-marker fixture; intentionally outside `EXPECTED_FIXTURE_RULES` to preserve AC-5 self-test invariant)
+- `_bmad-output/test-artifacts/operational-evidence-validator/fixtures/skip-template.md` (new — DW9 template-pattern skip fixture; intentionally outside `EXPECTED_FIXTURE_RULES` to preserve AC-5 self-test invariant)
+- `_bmad-output/test-artifacts/operational-evidence-validator/fixtures/template-looking-invalid.md` (new — DW9 template-looking fixture that remains audited; intentionally outside `EXPECTED_FIXTURE_RULES`)
+- `scripts/validate-docs.ps1` (modified — wrapper PASSED banner is now FAILED on non-zero exit, plus deferred-work wrapper invocation)
+- `scripts/validate-docs.sh` (modified — wrapper PASSED banner is now FAILED on non-zero exit, plus deferred-work wrapper invocation)
+- `scripts/validate-operational-evidence.py` (modified — added `control-linkage-missing`/`control-linkage-unrelated` rules; tolerant skip-marker matcher anchored to first 20 lines and stand-alone HTML comment; quote-tolerant `extract_references`; case-insensitive `*-template.md`)
+- `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/Dw4Diagnostic.cs` (modified — added `Level` field for the new info/error JSON contract)
+- `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/Dw4RuleVocabulary.cs` (modified — registered `control-linkage-missing` and `control-linkage-unrelated`)
+- `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/Dw9EvidenceValidatorPolishTests.cs` (new — DW9 polish tests for linkage rules and skip handling)
+- `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/Fixtures/Dw4FixtureCatalog.cs` (modified — added DW9 linkage fixture rows)
+- `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/ShellScriptValidatorInvoker.cs` (modified — repo-root-relative working directory; XML doc + JSON parser now include `level` field)
 
 ## Verification Status
 
@@ -281,6 +333,15 @@ GPT-5 Codex
 - Preflight passed before story creation.
 - AppHost baseline run succeeded before edits; Keycloak showed the known HTTPS readiness health-check failure while supporting resources were running/healthy.
 - Story creation did not modify product code, tests, DAPR/Aspire configuration, package versions, or submodules.
+- `.\scripts\validate-evidence.ps1 --self-test` passed: 43 fixtures checked; baseline before DW9 was 37 fixtures.
+- `bash scripts/validate-evidence.sh --self-test` passed: 43 fixtures checked.
+- `dotnet test tests\Hexalith.EventStore.OperationalEvidence.Validator.Tests --configuration Release -p:NuGetAudit=false` passed: 9 passed, 50 skipped, 0 failed.
+- `.\scripts\check-deferred-work.ps1 _bmad-output/implementation-artifacts/deferred-work.md` returned exit code 1 as expected for current advisory ledger findings.
+- `bash scripts/check-deferred-work.sh _bmad-output/implementation-artifacts/deferred-work.md` returned exit code 1 as expected for current advisory ledger findings.
+- `python scripts\validate-operational-evidence.py --json _bmad-output\test-artifacts\operational-evidence-validator\fixtures | python -m json.tool` passed, proving directory-mode JSON output stays well-formed with skip diagnostics mixed in.
+- Focused markdownlint passed for changed validator/governance READMEs and clean DW9 fixtures. Broad fixture-glob markdownlint still reports intentionally malformed parse fixtures and pre-existing story-list indentation; full `scripts/validate-docs.sh` is blocked in this workspace because `lychee` is not installed.
+- `git diff --check` passed with line-ending warnings only; no generated preflight JSON files were staged or modified, and no submodules were initialized or updated.
+- **Code review (2026-05-09):** Three-layer parallel review (Blind Hunter + Edge Case Hunter + Acceptance Auditor). 1 HIGH, 4 MEDIUM, 7 LOW patches applied; 1 decision-needed resolved (co-canonical entrypoint policy); 3 LOW deferred to follow-up. Post-patch validation: `python scripts/validate-operational-evidence.py --self-test` 43/43 PASS; `dotnet test tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests --configuration Release -p:NuGetAudit=false --no-build` 9 passed / 50 skipped / 0 failed. Subprocess regression checks confirm: `Foo-Template.md` now skips on case-insensitive `*-template.md`; `<!--   evidence-validator: skip   -->` (whitespace-tolerant) skips; prose mention of the marker buried in body or in inline backticks no longer shadow-bans the file; quoted YAML reference values are recognized by `extract_references`; trailing punctuation on inline references no longer produces false `control-linkage-unrelated`.
 
 ## Change Log
 
@@ -289,6 +350,8 @@ GPT-5 Codex
 | 2026-05-07 | 0.1 | Created ready-for-dev DW9 evidence validator and governance polish story. | Codex automation |
 | 2026-05-07 | 0.2 | Applied party-mode pre-dev contract hardening for validator, wrapper, fixture, and governance boundaries. | Codex automation |
 | 2026-05-07 | 0.3 | Applied advanced elicitation hardening for validator linkage, skip, wrapper, and disposition evidence. | Codex automation |
+| 2026-05-09 | 1.0 | Implemented DW9 validator linkage, template skip behavior, deferred-work wrapper CI alignment, canonical governance entrypoint docs, narrow deferred-work dispositions, and validation evidence; moved story to review. | Codex |
+| 2026-05-09 | 1.1 | Applied bmad-code-review patches: skip-marker line-anchored to first 20 lines (prose-poison fix), whitespace-tolerant marker regex, case-insensitive `*-template.md`, quote-tolerant `extract_references`, symmetric trailing-punctuation normalization on both reference sides, `validate-docs.{sh,ps1}` no longer prints PASSED on non-zero exit, JSON `level` field plumbed through `Dw4Diagnostic`/`ShellScriptValidatorInvoker`, validator README documents skip-fixture catalog carve-out, governance README declares pwsh and bash co-canonical wrappers, Dev Agent Record records field-name ADR rationale, File List annotated `(new)`/`(modified)`, `predev-hardening-runs.log` removed from File List. Three LOW findings deferred. | Claude (bmad-code-review) |
 
 ## Party-Mode Review
 

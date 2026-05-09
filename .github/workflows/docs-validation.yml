@@ -38,9 +38,12 @@ jobs:
       - name: Validate operational evidence fixtures
         run: bash scripts/validate-evidence.sh --self-test
 
-      - name: Report deferred-work governance
+      - name: Report deferred-work governance via wrapper (advisory)
+        # Advisory policy: exit 1 reports current deferred-work ledger findings without blocking PRs.
+        # Usage/tool errors such as exit 2 remain visible in job output but are not PR-blocking yet
+        # while the governance gate is intentionally reporting-only.
         continue-on-error: true
-        run: python scripts/check-deferred-work.py _bmad-output/implementation-artifacts/deferred-work.md
+        run: bash scripts/check-deferred-work.sh _bmad-output/implementation-artifacts/deferred-work.md
 
       - name: Restore lychee cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5

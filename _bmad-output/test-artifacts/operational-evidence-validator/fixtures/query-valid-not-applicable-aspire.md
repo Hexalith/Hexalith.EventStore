@@ -12,8 +12,8 @@ run_profile: non-aspire-static-fixture
 final_classification: diagnostic-only
 reviewer_verdict: pass
 redaction_statement: reviewed synthetic fixture; Aspire and DAPR fields are explicitly out of scope
-false_positive_control: same-run false-positive control dw4-query-control-002 recorded pass
-correlation_control: same-run correlation control dw4-query-correlation-002 recorded pass
+false_positive_control: same-run false-positive control evidence_run_id:dw4-query-non-aspire-001 recorded pass
+correlation_control: same-run correlation control evidence_run_id:dw4-query-non-aspire-001 recorded pass
 apphost_url: not-applicable: non-aspire proof
 dapr_placement: not-applicable: non-aspire proof
 dapr_scheduler: not-applicable: non-aspire proof

@@ -74,6 +74,7 @@ PROFILE_ASPIRE_FIELDS = {
 
 EXPECTED_FIXTURE_RULES: dict[str, set[str]] = {
     "query-valid-minimal.md": set(),
+    "query-valid-linked-control-run.md": set(),
     "query-valid-not-applicable-aspire.md": set(),
     "query-invalid-missing-metadata.md": {"query-required-metadata-missing"},
     "query-invalid-placeholder-unreplaced.md": {"placeholder-unreplaced"},
@@ -81,6 +82,8 @@ EXPECTED_FIXTURE_RULES: dict[str, set[str]] = {
     "query-invalid-classification-not-in-enum.md": {"classification-invalid"},
     "query-invalid-control-missing.md": {"control-required-missing"},
     "query-invalid-correlation-control-missing.md": {"correlation-control-required-missing"},
+    "query-invalid-control-linkage-missing.md": {"control-linkage-missing"},
+    "query-invalid-control-linkage-unrelated.md": {"control-linkage-unrelated"},
     "query-invalid-redaction-bearer-token.md": {"redaction-unsafe-bearer-token"},
     "query-invalid-redaction-connection-string.md": {"redaction-unsafe-connection-string"},
     "query-invalid-redaction-production-hostname.md": {"redaction-unsafe-production-hostname"},
@@ -90,10 +93,13 @@ EXPECTED_FIXTURE_RULES: dict[str, set[str]] = {
     "query-invalid-not-applicable-on-required-field.md": {"not-applicable-not-allowed-here"},
     "query-invalid-aspire-claimed-but-fields-missing.md": {"profile-aspire-fields-missing"},
     "signalr-valid-minimal.md": set(),
+    "signalr-valid-linked-control-run.md": set(),
     "signalr-invalid-missing-metadata.md": {"signalr-required-metadata-missing"},
     "signalr-invalid-placeholder-unreplaced.md": {"placeholder-unreplaced"},
     "signalr-invalid-classification-not-in-enum.md": {"classification-invalid"},
     "signalr-invalid-control-missing.md": {"control-required-missing"},
+    "signalr-invalid-control-linkage-missing.md": {"control-linkage-missing"},
+    "signalr-invalid-control-linkage-unrelated.md": {"control-linkage-unrelated"},
     "signalr-invalid-empty-required-table-cell.md": {"required-table-cell-empty"},
     "signalr-invalid-redaction-bearer-token.md": {"redaction-unsafe-bearer-token"},
     "signalr-invalid-redaction-connection-string.md": {"redaction-unsafe-connection-string"},
@@ -122,6 +128,7 @@ class Diagnostic:
     field: str | None
     line: int | None
     hint: str
+    level: str = "error"
 
     def to_json(self) -> dict[str, object]:
         data: dict[str, object] = {
@@ -131,6 +138,7 @@ class Diagnostic:
             "section": self.section,
             "field": self.field,
             "hint": self.hint,
+            "level": self.level,
         }
         if self.line is not None:
             data["line"] = self.line
@@ -176,7 +184,7 @@ def main(argv: list[str]) -> int:
 
     diagnostics = validate_paths(args.paths)
     emit(diagnostics, args.json)
-    return 1 if diagnostics else 0
+    return 1 if has_errors(diagnostics) else 0
 
 
 def run_self_test(fixtures_root: Path, emit_json: bool) -> int:
@@ -190,7 +198,7 @@ def run_self_test(fixtures_root: Path, emit_json: bool) -> int:
             continue
 
         result = validate_file(path)
-        rules = {d.rule for d in result}
+        rules = {d.rule for d in result if d.level == "error"}
         diagnostics.extend(result)
         if expected:
             missing = expected - rules
@@ -237,6 +245,10 @@ def validate_file(path: Path) -> list[Diagnostic]:
     except OSError as exc:
         return [diag(path, None, "parse-file-unreadable", None, None, None, str(exc))]
 
+    skip_reason = skip_reason_for(path, text)
+    if skip_reason is not None:
+        return [info(path, None, "evidence-file-skipped", "Skip", None, None, f"Skipped by {skip_reason}.")]
+
     markers = find_schema_markers(text)
     schema_diagnostics, schema = identify_schema(path, markers)
     if schema_diagnostics:
@@ -269,7 +281,35 @@ def validate_file(path: Path) -> list[Diagnostic]:
     diagnostics.extend(validate_profile_scope(path, schema, metadata, metadata_line))
     diagnostics.extend(validate_placeholders(path, schema, lines, metadata))
     diagnostics.extend(validate_redaction(path, schema, text, lines, sections))
+    if not has_errors(diagnostics):
+        if schema == SCHEMA_QUERY_V1:
+            diagnostics.extend(validate_control_linkage(path, schema, metadata, metadata_line, "false_positive_control"))
+            diagnostics.extend(validate_control_linkage(path, schema, metadata, metadata_line, "correlation_control"))
+        else:
+            diagnostics.extend(validate_control_linkage(path, schema, metadata, metadata_line, "reliability_control"))
     return sort_diagnostics(diagnostics)
+
+
+SKIP_MARKER = "<!-- evidence-validator: skip -->"
+# Stand-alone marker: HTML comment occupying its own line in the head of the
+# file. Whitespace-tolerant inside the comment so authors can format it like a
+# normal HTML idiom. Anchored to start/end of line so prose mentions of the
+# marker (e.g. validator README, deferred-work ledger entries quoting it
+# inline in backticks) do NOT silently shadow-ban the surrounding doc.
+SKIP_MARKER_LINE_RE = re.compile(r"^\s*<!--\s*evidence-validator:\s*skip\s*-->\s*$", re.IGNORECASE)
+# Only the head of the file is considered; an opt-out marker belongs at the top
+# (typically before the first metadata block), not buried in the body where a
+# legitimate prose discussion of skip behavior could plausibly sit.
+SKIP_MARKER_HEAD_LINES = 20
+
+
+def skip_reason_for(path: Path, text: str) -> str | None:
+    head = text.splitlines()[:SKIP_MARKER_HEAD_LINES]
+    if any(SKIP_MARKER_LINE_RE.match(line) for line in head):
+        return "marker"
+    if path.name.lower().endswith("-template.md"):
+        return "template-pattern"
+    return None
 
 
 def strip_fenced_blocks_for_scan(text: str) -> str:
@@ -466,6 +506,86 @@ def validate_required_value(
     return [diag(path, schema, rule, "Controls", field, metadata_line, "Record the required control result and same-run linkage.")]
 
 
+def validate_control_linkage(
+    path: Path,
+    schema: str | None,
+    metadata: dict[str, str],
+    metadata_line: int | None,
+    field: str,
+) -> list[Diagnostic]:
+    value = metadata.get(field)
+    if not clean_value(value):
+        return []
+
+    evidence_run_id = normalize_reference(metadata.get("evidence_run_id", ""))
+    linked_control_run_ids = parse_linked_control_run_ids(metadata.get("linked_control_run_ids", ""))
+    evidence_refs = set(extract_references(value, "evidence_run_id"))
+    control_refs = set(extract_references(value, "control_run_id"))
+
+    if not evidence_refs and not control_refs:
+        return [
+            diag(
+                path,
+                schema,
+                "control-linkage-missing",
+                "Controls",
+                field,
+                metadata_line,
+                "Add an explicit evidence_run_id:<same-run> reference or control_run_id:<linked-control-run> reference.",
+            ),
+        ]
+
+    invalid_evidence_refs = sorted(ref for ref in evidence_refs if ref != evidence_run_id)
+    invalid_control_refs = sorted(ref for ref in control_refs if ref not in linked_control_run_ids)
+    if invalid_evidence_refs or invalid_control_refs:
+        mismatches = []
+        if invalid_evidence_refs:
+            mismatches.append(f"evidence_run_id {', '.join(invalid_evidence_refs)} does not match {evidence_run_id}")
+        if invalid_control_refs:
+            allowed = ", ".join(sorted(linked_control_run_ids)) or "(none declared in linked_control_run_ids)"
+            mismatches.append(f"control_run_id {', '.join(invalid_control_refs)} is not in linked control runs {allowed}")
+        return [
+            diag(
+                path,
+                schema,
+                "control-linkage-unrelated",
+                "Controls",
+                field,
+                metadata_line,
+                "; ".join(mismatches),
+            ),
+        ]
+
+    return []
+
+
+def parse_linked_control_run_ids(value: str) -> set[str]:
+    if not clean_value(value):
+        return set()
+    return {normalize_reference(part.strip()) for part in re.split(r"[,;\s]+", value) if part.strip()}
+
+
+_REFERENCE_TRAILING_PUNCT = ".,;:)]'\"`"
+
+
+def normalize_reference(value: str) -> str:
+    """Strip trailing punctuation that authors commonly append (sentence
+    enders, list separators, closing brackets/quotes). Applied symmetrically
+    to inline references and to the metadata value they are compared against.
+    """
+    return value.rstrip(_REFERENCE_TRAILING_PUNCT)
+
+
+def extract_references(value: str | None, key: str) -> list[str]:
+    if value is None:
+        return []
+    # Surrounding quotes are tolerated because YAML strips them from metadata
+    # values but authors may still paste quoted inline references inside the
+    # control field's free-form text.
+    pattern = re.compile(rf"\b{re.escape(key)}\s*[:=]\s*[\"']?([A-Za-z0-9_.:-]+)[\"']?")
+    return [normalize_reference(match.group(1)) for match in pattern.finditer(value)]
+
+
 def validate_classification(
     path: Path,
     schema: str | None,
@@ -596,6 +716,14 @@ def diag(path: Path, schema: str | None, rule: str, section: str | None, field: 
     return Diagnostic(str(path).replace("\\", "/"), schema, rule, section, field, line, hint)
 
 
+def info(path: Path, schema: str | None, rule: str, section: str | None, field: str | None, line: int | None, hint: str) -> Diagnostic:
+    return Diagnostic(str(path).replace("\\", "/"), schema, rule, section, field, line, hint, "info")
+
+
+def has_errors(diagnostics: list[Diagnostic]) -> bool:
+    return any(d.level == "error" for d in diagnostics)
+
+
 def sort_diagnostics(diagnostics: list[Diagnostic]) -> list[Diagnostic]:
     return sorted(
         diagnostics,
@@ -615,7 +743,8 @@ def emit(diagnostics: list[Diagnostic], emit_json: bool) -> None:
         schema = d.schema or "(schema unknown)"
         section = d.section or "(section unknown)"
         field = d.field or "(field unknown)"
-        print(f"{location} | schema={schema} | rule={d.rule} | section={section} | field={field} | hint={d.hint}")
+        level = d.level.upper()
+        print(f"{level}: {location} | schema={schema} | rule={d.rule} | section={section} | field={field} | hint={d.hint}")
 
 
 if __name__ == "__main__":
