@@ -1,3 +1,10 @@
+## [3.14.2](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.14.1...v3.14.2) (2026-05-09)
+
+
+### Bug Fixes
+
+* Implement lifecycle fix for StateInspectorModal to handle show failures ([e83c83d](https://github.com/Hexalith/Hexalith.EventStore/commit/e83c83d7afbdd6e3b0348a35f3eb784f6da0aa3a))
+
 ## [3.14.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.14.0...v3.14.1) (2026-05-07)
 
 
