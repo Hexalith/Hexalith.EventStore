@@ -136,3 +136,4 @@
 2026-05-09T13:58:00+02:00	create-story	admin-operational-index-populators	ok	created ready-for-dev story for Admin operational index population
 2026-05-09T14:03:32+02:00	create-story	admin-storage-snapshot-compaction-backup-operations	ok	created ready-for-dev story for Issue #15 upstream storage operations
 2026-05-09T15:09:46+02:00	party-mode-review	admin-operational-index-populators	ok	recorded party-mode trace and hardened operational index story contracts
+2026-05-09T17:01:52+02:00	failed	-	failed	preflight failed; json=_bmad-output/process-notes/predev-preflight-latest.json; timestamp=2026-05-09T15:01:26Z; failed check: working tree cleanliness; details=1 dirty path(s); stdout="?? _bmad-output/implementation-artifacts/admin-ui-health-dapr-truthfulness-fix-review3-diff.patch\n"
