@@ -1,6 +1,6 @@
 # Post-Epic Deferred DW7: Admin UI State Inspector Lifecycle Fix
 
-Status: ready-for-dev
+Status: done
 
 <!-- Source: sprint-change-proposal-2026-05-07-deferred-work-open-cleanup.md - Proposal B / DW7 -->
 <!-- Source: deferred-work.md - admin-ui-state-inspection-cluster-fix follow-up lifecycle entries -->
@@ -90,43 +90,77 @@ Current HEAD at story creation: `fe03cb2e`.
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Baseline the failure and lock scope (AC: #1, #3, #5, #7)
-    - [ ] 0.1 Re-read Proposal B / DW7 and the three DW7-related deferred-work bullets.
-    - [ ] 0.2 Confirm current `StateInspectorModal.razor` show path still leaves `_pendingShow = true` on failure before editing.
-    - [ ] 0.3 Identify how `StreamDetail.razor` hosts `StateInspectorModal` and how `OnClose` collapses the parent gate.
-    - [ ] 0.4 Record that OA1 manual clipping smoke evidence remains out of scope.
+- [x] Task 0: Baseline the failure and lock scope (AC: #1, #3, #5, #7)
+    - [x] 0.1 Re-read Proposal B / DW7 and the three DW7-related deferred-work bullets.
+    - [x] 0.2 Confirm current `StateInspectorModal.razor` show path still leaves `_pendingShow = true` on failure before editing.
+    - [x] 0.3 Identify how `StreamDetail.razor` hosts `StateInspectorModal` and how `OnClose` collapses the parent gate.
+    - [x] 0.4 Record that OA1 manual clipping smoke evidence remains out of scope.
 
-- [ ] Task 1: Add the local lifecycle fix (AC: #1, #2, #3, #4, #5)
-    - [ ] 1.1 Make the failed show path idempotent by setting `_pendingShow = false` before, during, or immediately after the first show attempt so a failure cannot re-enter endlessly.
-    - [ ] 1.2 Preserve the existing user-facing error copy and warning log, with metadata-only logging.
-    - [ ] 1.3 Invoke the host close callback once when show fails, either directly or through a small idempotent close helper.
-    - [ ] 1.4 Ensure a successful show path still supports Inspect, sequence stepping, timestamp mode, and normal close.
-    - [ ] 1.5 Avoid broad component redesign or unrelated UI copy changes.
-    - [ ] 1.6 Keep lifecycle state mutations on the Blazor renderer context; if existing `ConfigureAwait(false)` calls are touched, remove them or marshal state updates through `InvokeAsync`.
+- [x] Task 1: Add the local lifecycle fix (AC: #1, #2, #3, #4, #5)
+    - [x] 1.1 Make the failed show path idempotent by setting `_pendingShow = false` before, during, or immediately after the first show attempt so a failure cannot re-enter endlessly.
+    - [x] 1.2 Preserve the existing user-facing error copy and warning log, with metadata-only logging.
+    - [x] 1.3 Invoke the host close callback once when show fails, either directly or through a small idempotent close helper.
+    - [x] 1.4 Ensure a successful show path still supports Inspect, sequence stepping, timestamp mode, and normal close.
+    - [x] 1.5 Avoid broad component redesign or unrelated UI copy changes.
+    - [x] 1.6 Keep lifecycle state mutations on the Blazor renderer context; if existing `ConfigureAwait(false)` calls are touched, remove them or marshal state updates through `InvokeAsync`.
 
-- [ ] Task 2: Add focused regression tests (AC: #1, #3, #4, #6)
-    - [ ] 2.1 Add a test that simulates `ShowAsync` JS interop failure and proves no repeated show call occurs after a follow-up render.
-    - [ ] 2.2 Add a host-gate test that counts `OnClose` and proves exactly one close notification on failed show.
-    - [ ] 2.3 Add or extend an assertion that the failed show error copy is rendered inside the existing flat Fluent UI Blazor v5 dialog body structure.
-    - [ ] 2.4 Keep the existing flat Fluent UI Blazor v5 DOM test green and assert warning logs remain metadata-only where the test harness can observe logging.
-    - [ ] 2.5 If a tiny test seam is introduced, test through the rendered component and document why JSInterop alone was insufficient.
-    - [ ] 2.6 Include a re-entrant parent-render or parent-removal case so exactly-once close behavior is proven across the failure callback boundary.
+- [x] Task 2: Add focused regression tests (AC: #1, #3, #4, #6)
+    - [x] 2.1 Add a test that simulates `ShowAsync` JS interop failure and proves no repeated show call occurs after a follow-up render.
+    - [x] 2.2 Add a host-gate test that counts `OnClose` and proves exactly one close notification on failed show.
+    - [x] 2.3 Add or extend an assertion that the failed show error copy is rendered inside the existing flat Fluent UI Blazor v5 dialog body structure.
+    - [x] 2.4 Keep the existing flat Fluent UI Blazor v5 DOM test green and assert warning logs remain metadata-only where the test harness can observe logging.
+    - [x] 2.5 If a tiny test seam is introduced, test through the rendered component and document why JSInterop alone was insufficient.
+    - [x] 2.6 Include a re-entrant parent-render or parent-removal case so exactly-once close behavior is proven across the failure callback boundary.
 
-- [ ] Task 3: Update deferred-work dispositions narrowly (AC: #7)
-    - [ ] 3.1 Update the infinite-retry and stuck-host-gate entries only after the code/test fix lands.
-    - [ ] 3.2 Promote or resolve the related bUnit coverage entry according to actual test coverage.
-    - [ ] 3.3 Do not edit adjacent accepted-debt StateInspector UX/lifecycle bullets unless a direct code change resolves them.
+- [x] Task 3: Update deferred-work dispositions narrowly (AC: #7)
+    - [x] 3.1 Update the infinite-retry and stuck-host-gate entries only after the code/test fix lands.
+    - [x] 3.2 Promote or resolve the related bUnit coverage entry according to actual test coverage.
+    - [x] 3.3 Do not edit adjacent accepted-debt StateInspector UX/lifecycle bullets unless a direct code change resolves them.
 
-- [ ] Task 4: Validate and capture evidence (AC: #8)
-    - [ ] 4.1 Run `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release --filter "FullyQualifiedName~StateInspectorModalTests"`.
-    - [ ] 4.2 If focused tests pass, run `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release`.
-    - [ ] 4.3 If test execution is blocked by a pre-existing build/environment issue, record the exact command and first blocker.
-    - [ ] 4.4 Confirm generated preflight JSON files remain unstaged.
+- [x] Task 4: Validate and capture evidence (AC: #8)
+    - [x] 4.1 Run `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release --filter "FullyQualifiedName~StateInspectorModalTests"`.
+    - [x] 4.2 If focused tests pass, run `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release`.
+    - [x] 4.3 If test execution is blocked by a pre-existing build/environment issue, record the exact command and first blocker.
+    - [x] 4.4 Confirm generated preflight JSON files remain unstaged.
 
-- [ ] Task 5: Close story bookkeeping (AC: #9)
-    - [ ] 5.1 Update Dev Agent Record, File List, Verification Status, and Change Log.
-    - [ ] 5.2 Update `sprint-status.yaml` only when moving from implementation to review or done.
-    - [ ] 5.3 Confirm no nested submodules were initialized or updated.
+- [x] Task 5: Close story bookkeeping (AC: #9)
+    - [x] 5.1 Update Dev Agent Record, File List, Verification Status, and Change Log.
+    - [x] 5.2 Update `sprint-status.yaml` only when moving from implementation to review or done.
+    - [x] 5.3 Confirm no nested submodules were initialized or updated.
+
+### Review Findings
+
+Code review on 2026-05-09 (Blind Hunter + Edge Case Hunter + Acceptance Auditor). 2 patch findings, 0 decisions, 1 deferred (pre-existing), 17 dismissed.
+
+#### Decision Needed
+
+(none)
+
+#### Patches
+
+- [x] [Review][Patch] Guard post-failure NotifyClosedOnceAsync against circuit disposal [src/Hexalith.EventStore.Admin.UI/Components/StateInspectorModal.razor:319-321] — Wrapped `await InvokeAsync(StateHasChanged)` + `await NotifyClosedOnceAsync()` in a try/catch swallowing `JSDisconnectedException` and `TaskCanceledException`, matching the established pattern in `StreamDetail.CopyToClipboardAsync`. Cleanup no longer escapes `OnAfterRenderAsync` and tears down the circuit a second time. (Sources: edge-hunter E2.)
+- [x] [Review][Patch] Tighten test-seam visibility assertion to express intent [tests/Hexalith.EventStore.Admin.UI.Tests/Components/StateInspectorModalTests.cs:280-284] — Replaced `IsAssembly.ShouldBeTrue()` with `IsPublic.ShouldBeFalse()` + `IsStatic.ShouldBeTrue()` for both accessors. Expresses the policed invariant ("not public, scoped to type") without fail-positives on stricter visibility (`protected internal`, `private protected`). (Sources: blind-hunter B4, edge-hunter E8, auditor A1.)
+
+#### Deferred
+
+- [x] [Review][Defer] Pre-existing catch-all `catch (Exception ex)` in OnAfterRenderAsync [src/Hexalith.EventStore.Admin.UI/Components/StateInspectorModal.razor:309] — deferred, pre-existing. The catch type was unchanged by this story; tightening to JS-related exception types (`JSDisconnectedException`, `JSException`) would more precisely match the AC #1 "persistent JS interop failure" intent and avoid surfacing programming-error exceptions as "user closed dialog" via the host close callback. Recorded in `deferred-work.md` under "Deferred from: code review of post-epic-deferred-dw7-admin-ui-state-inspector-lifecycle-fix (2026-05-09)".
+
+#### Dismissed (17, summary)
+
+The full triage examined 17 additional findings across the three reviewer layers that did not survive triage:
+
+- **Test seam concurrency / `internal static` design** (blind B1/B5/B12, edge E7) — `AsyncLocal` mitigates xUnit v3 per-test ExecutionContext bleed; spec explicitly authorized "smallest internal test seam" pattern under Current Code Intelligence and Architecture Guardrails.
+- **`_pendingShow=false` set before await as silent regression** (blind B2, edge E5) — required by AC #1 to prevent re-entry; the deleted comment captured the OLD bug behavior.
+- **`NotifyClosedOnceAsync` non-atomic race** (blind B3) — Blazor renderer sync context serializes; no actual race in single-circuit dispatcher model.
+- **Log assertion brittleness** — substring matching, `.Single`, vacuous "no PII" guards (blind B6, edge E3/E4) — current assertions intentionally strict; `.Single` correctly fails on unexpected warnings, which is desired test-failure behavior.
+- **`cut.Render()` no-op pump critique** (blind B7) — exercises idempotency on follow-up render; paired with `_ParentRemovalCallbackDoesNotReenterShowOrClose` for the realistic re-entrancy path via `StateInspectorFailureHost`.
+- **`JSDisconnectedException` ctor coupling** (blind B8) — intentional; documented Blazor failure case.
+- **`_fetched = true` semantic conflation** (blind B9) — required by the existing markup chain `_fetched && _fetchError is not null` to surface the error in the flat dialog body. Without `_fetched=true`, no result branch renders.
+- **`ConfigureAwait(false)` removal** (blind B10) — explicitly mandated by Architecture Guardrail per Microsoft Learn renderer-context guidance.
+- **Multi-instance double `OnClose` on parent re-mount** (edge E1) — spec-compliant per-attempt exactly-once semantics; new instance is a new attempt and a new close.
+- **`OnDialogStateChange Closed` race after failure-path notify** (edge E6) — handled by `_closeNotified` idempotent guard; later `Closed` event is a no-op.
+- **Fixture-evolution speculative concerns** (edge E9/E10) — speculative future fixture additions, not current bugs.
+- **Auditor informational items** (A2, A3, A4, A5) — `OnAfterRenderAsync` ignoring `firstRender`, `_pendingShow` not externally re-set, `ShowDialogAsync` static helper, deferred-work field preservation — all non-actionable observations confirming spec compliance.
 
 ## Dev Notes
 
@@ -164,30 +198,53 @@ Current HEAD at story creation: `fe03cb2e`.
 
 GPT-5 Codex
 
+### Implementation Plan
+
+- Add a tiny internal `AsyncLocal` test seam around only the `FluentDialog.ShowAsync` operation because bUnit loose JSInterop cannot force the v5 dialog show failure directly.
+- Make the failed-show lifecycle terminal for the current open attempt by clearing `_pendingShow` before awaiting the show operation.
+- Preserve the current error copy and flat dialog body, render the error state on the renderer context, and notify the host close callback through an idempotent guard shared with the normal Fluent `Closed` path.
+- Keep scope local to `StateInspectorModal.razor`, focused bUnit coverage, DW7 deferred-work dispositions, and story/sprint bookkeeping.
+
 ### Debug Log References
 
 - Pre-dev hardening preflight: `_bmad-output/process-notes/predev-preflight-latest.json`, timestamp `2026-05-07T05:47:55Z`, result `pass`.
 - Create-story activation: resolved workflow customization with no prepend/append steps; no `project-context.md` file was present in the workspace.
 - Aspire pre-edit baseline attempt: `aspire run --detach --non-interactive --apphost src\Hexalith.EventStore.AppHost\Hexalith.EventStore.AppHost.csproj --format Json` stopped a prior instance, then failed to build. First blocker in `C:\Users\JeromePiquot\.aspire\logs\cli_20260507T054915013_detach-child_103d8a4ef49942c1958e93734468d4e0.log`: `CS0009 Metadata file 'D:\Hexalith.EventStore\src\Hexalith.EventStore.Contracts\obj\Debug\net10.0\ref\Hexalith.EventStore.Contracts.dll' could not be opened -- PE image doesn't contain managed metadata`, followed by missing `Hexalith.EventStore.Contracts` namespace/type errors in Client, Admin.Abstractions, SignalR, and Hexalith.Tenants projects. No apphost code was changed by this story creation run.
+- Dev-start apphost baseline: `aspire run --detach --non-interactive --apphost src\Hexalith.EventStore.AppHost\Hexalith.EventStore.AppHost.csproj --format Json` succeeded on 2026-05-09T11:50:21+02:00; Aspire MCP showed Dapr sidecars/components running and `sample` healthy, while Keycloak health was `Unhealthy` and dependent project resources (`eventstore`, `eventstore-admin`, `eventstore-admin-ui`, `tenants`, `sample-blazor-ui`) were `Waiting`.
+- Red phase: `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release --filter "FullyQualifiedName~StateInspectorModalTests"` failed as expected with 3 DW7 failures: repeated show attempt, missing close callback, and missing rendered error copy.
+- Green phase: `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release --filter "FullyQualifiedName~StateInspectorModalTests"` passed 13/13.
+- Regression phase: `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release` passed 713/713.
+- Bookkeeping check: `git status --short` showed only DW7 story/sprint/deferred-work files plus `StateInspectorModal.razor` and `StateInspectorModalTests.cs`; no generated preflight JSON files were modified or staged.
 
 ### Completion Notes List
 
 - Created ready-for-dev story from first backlog row in the Post-Epic Deferred Work OPEN Cleanup package.
 - Scoped DW7 to the `StateInspectorModal` failed-show lifecycle bug and the paired host-gate/test-coverage entries.
 - Recorded current package pins and Microsoft Blazor renderer-context guidance for the future developer.
+- Implemented the DW7 lifecycle fix in `StateInspectorModal`: failed `ShowAsync` attempts now clear `_pendingShow` before the await, surface the existing error copy, log stream metadata only, and invoke the host close callback exactly once through a shared idempotent guard.
+- Added focused bUnit coverage for failed dialog show, no repeat show on rerender, exactly-once close notification, flat v5 dialog body error rendering, metadata-only warning message content, and parent-removal re-entrancy.
+- Updated only the DW7-owned deferred-work dispositions for infinite retry, stuck host gate, and missing failure-path coverage.
+- OA1 manual StateInspectorModal clipping smoke evidence remains out of scope and operator-owned.
 
 ### File List
 
-- `_bmad-output/implementation-artifacts/post-epic-deferred-dw7-admin-ui-state-inspector-lifecycle-fix.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
-- `_bmad-output/process-notes/predev-hardening-runs.log`
+- `_bmad-output/implementation-artifacts/post-epic-deferred-dw7-admin-ui-state-inspector-lifecycle-fix.md`
+- `src/Hexalith.EventStore.Admin.UI/Components/StateInspectorModal.razor`
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Components/StateInspectorModalTests.cs`
 
 ## Verification Status
 
-- Story artifact created and sprint-status row moved from `backlog` to `ready-for-dev`.
-- Preflight passed before story creation.
-- AppHost baseline run attempted before edits but blocked by the existing Debug ref assembly metadata failure described in Debug Log References.
-- Story creation did not modify product code, tests, DAPR/Aspire configuration, or submodules.
+- Story artifact moved to `done` after code-review patches applied and re-validated; sprint-status row moved to `done`.
+- Pre-dev apphost baseline detached successfully on 2026-05-09; Aspire resource state recorded in Debug Log References.
+- Focused DW7 lifecycle tests (pre-review): `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release --filter "FullyQualifiedName~StateInspectorModalTests"` passed 13/13.
+- Full Admin UI tests (pre-review): `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release` passed 713/713.
+- Code review on 2026-05-09 applied 2 patches (P1 circuit-disposal guard around post-failure cleanup; P2 tightened seam-visibility assertion) and recorded 1 deferred entry (pre-existing catch-all) plus 17 dismissed findings.
+- Focused DW7 lifecycle tests (post-review): `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release --filter "FullyQualifiedName~StateInspectorModalTests"` passed 13/13.
+- Full Admin UI tests (post-review): `dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release` passed 713/713.
+- Deferred-work dispositions updated only for the two DW7-routed lifecycle bugs and the paired missing bUnit coverage entry; one new code-review deferred entry recorded under "Deferred from: code review of post-epic-deferred-dw7-admin-ui-state-inspector-lifecycle-fix (2026-05-09)".
+- Generated preflight JSON files remain unstaged; no nested submodules were initialized or updated.
 
 ## Party-Mode Review
 
@@ -216,6 +273,8 @@ GPT-5 Codex
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-09 | 1.1 | Code review applied 2 patches (post-failure cleanup guarded against `JSDisconnectedException`/`TaskCanceledException`; seam-visibility assertion tightened to `IsPublic`/`IsStatic`); 1 entry deferred to `deferred-work.md`; 17 dismissed; 13/13 + 713/713 re-validated; story moved to done. | Claude Opus 4.7 |
+| 2026-05-09 | 1.0 | Implemented DW7 failed-show lifecycle fix, added focused bUnit coverage, resolved DW7 deferred-work entries, and moved story to review. | Codex |
 | 2026-05-07 | 0.3 | Applied advanced elicitation and hardened lifecycle ordering, close idempotency, renderer-context, and re-entrant test guidance. | Codex automation |
 | 2026-05-07 | 0.2 | Recorded party-mode review and clarified close-on-failure lifecycle/test contract. | Codex automation |
 | 2026-05-07 | 0.1 | Created ready-for-dev DW7 Admin UI state inspector lifecycle story. | Codex automation |

@@ -146,6 +146,14 @@
     private AggregateStateSnapshot? _snapshot;
     private long? _previousInitialSequence;
     private bool _pendingShow = true;
+    private bool _closeNotified;
+    private static readonly System.Threading.AsyncLocal<Func<FluentDialog, Task>?> DialogShowAsyncOverride = new();
+
+    internal static Func<FluentDialog, Task>? ShowDialogAsyncOverride
+    {
+        get => DialogShowAsyncOverride.Value;
+        set => DialogShowAsyncOverride.Value = value;
+    }
 
     [Parameter, EditorRequired]
     public string TenantId { get; set; } = string.Empty;
@@ -293,26 +301,46 @@
     {
         if (_pendingShow && _dialog is not null)
         {
+            _pendingShow = false;
             try
             {
-                await _dialog.ShowAsync().ConfigureAwait(false);
-                _pendingShow = false;
+                await ShowDialogAsync(_dialog);
             }
             catch (Exception ex)
             {
-                // Keep _pendingShow=true so a subsequent render can retry; surface the failure
-                // through _fetchError so the host page is not left with an invisible dialog.
                 _fetchError = "Could not open the state inspector dialog. Try again.";
-                Logger.LogWarning(ex, "FluentDialog.ShowAsync failed for state inspector.");
+                _fetched = true;
+                Logger.LogWarning(
+                    ex,
+                    "FluentDialog.ShowAsync failed for state inspector {TenantId}/{Domain}/{AggregateId}.",
+                    TenantId,
+                    Domain,
+                    AggregateId);
+                try
+                {
+                    await InvokeAsync(StateHasChanged);
+                    await NotifyClosedOnceAsync();
+                }
+                catch (JSDisconnectedException)
+                {
+                    // The circuit is already gone; cleanup must not escape OnAfterRenderAsync and tear down the circuit a second time.
+                }
+                catch (TaskCanceledException)
+                {
+                    // Disconnect raced with the cleanup await; safe to ignore.
+                }
             }
         }
     }
+
+    private static Task ShowDialogAsync(FluentDialog dialog)
+        => ShowDialogAsyncOverride?.Invoke(dialog) ?? dialog.ShowAsync();
 
     private async Task HandleCloseAsync()
     {
         if (_dialog is not null)
         {
-            await _dialog.HideAsync().ConfigureAwait(false);
+            await _dialog.HideAsync();
         }
     }
 
@@ -320,7 +348,18 @@
     {
         if (args.State == DialogState.Closed)
         {
-            await OnClose.InvokeAsync().ConfigureAwait(false);
+            await NotifyClosedOnceAsync();
         }
+    }
+
+    private async Task NotifyClosedOnceAsync()
+    {
+        if (_closeNotified)
+        {
+            return;
+        }
+
+        _closeNotified = true;
+        await OnClose.InvokeAsync();
     }
 }

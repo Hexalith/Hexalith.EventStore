@@ -3,8 +3,13 @@ using Bunit;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.UI.Components;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 using NSubstitute;
 
@@ -14,6 +19,9 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 /// bUnit tests for the StateInspectorModal component.
 /// </summary>
 public class StateInspectorModalTests : AdminUITestContext {
+    private const System.Reflection.BindingFlags PrivateStatic =
+        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static;
+
     private readonly AdminStreamApiClient _mockApiClient;
 
     public StateInspectorModalTests() {
@@ -175,9 +183,163 @@ public class StateInspectorModalTests : AdminUITestContext {
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Sign in required"), TimeSpan.FromSeconds(5));
     }
 
+    [Fact]
+    public void StateInspectorModal_Dw7_ShowFailureDoesNotRetryAndClosesHostOnce() {
+        int showAttempts = 0;
+        int closeNotifications = 0;
+        StateInspectorModal.ShowDialogAsyncOverride = _ => {
+            showAttempts++;
+            throw new JSDisconnectedException("simulated dialog show failure");
+        };
+
+        try {
+            IRenderedComponent<StateInspectorModal> cut = RenderInspector(42L, () => closeNotifications++);
+
+            cut.WaitForAssertion(() => showAttempts.ShouldBe(1), TimeSpan.FromSeconds(5));
+
+            cut.Render();
+
+            cut.WaitForAssertion(() => {
+                showAttempts.ShouldBe(1);
+                closeNotifications.ShouldBe(1);
+            }, TimeSpan.FromSeconds(5));
+        }
+        finally {
+            StateInspectorModal.ShowDialogAsyncOverride = null;
+        }
+    }
+
+    [Fact]
+    public void StateInspectorModal_Dw7_ShowFailureRendersExistingErrorInFlatBodyAndLogsMetadataOnly() {
+        CapturingStateInspectorLogger logger = new();
+        _ = Services.RemoveAll<ILogger<StateInspectorModal>>();
+        _ = Services.AddSingleton<ILogger<StateInspectorModal>>(logger);
+
+        StateInspectorModal.ShowDialogAsyncOverride = _ => throw new JSDisconnectedException("simulated dialog show failure");
+
+        try {
+            IRenderedComponent<StateInspectorModal> cut = RenderInspector(42L);
+
+            cut.WaitForAssertion(() => {
+                cut.Markup.ShouldContain("Could not open the state inspector dialog. Try again.");
+                AngleSharp.Dom.IElement body = cut.Find("fluent-dialog-body");
+                AngleSharp.Dom.IElement? contentWrapper = body.QuerySelector(".state-inspector-modal-body");
+                contentWrapper.ShouldNotBeNull();
+                AngleSharp.Dom.IElement? error = contentWrapper.QuerySelector(".state-inspector-error");
+                error.ShouldNotBeNull();
+                error.TextContent.ShouldContain("Could not open the state inspector dialog. Try again.");
+            }, TimeSpan.FromSeconds(5));
+
+            CapturedLog log = logger.Entries.Single(e => e.Level == LogLevel.Warning);
+            log.Message.ShouldContain("test-tenant");
+            log.Message.ShouldContain("counter");
+            log.Message.ShouldContain("agg-001");
+            log.Message.ShouldNotContain("{\"count\"");
+            log.Message.ShouldNotContain("Bearer ");
+            log.Message.ShouldNotContain("localStorage");
+        }
+        finally {
+            StateInspectorModal.ShowDialogAsyncOverride = null;
+        }
+    }
+
+    [Fact]
+    public void StateInspectorModal_Dw7_ParentRemovalCallbackDoesNotReenterShowOrClose() {
+        int showAttempts = 0;
+        StateInspectorModal.ShowDialogAsyncOverride = _ => {
+            showAttempts++;
+            throw new JSDisconnectedException("simulated dialog show failure");
+        };
+
+        try {
+            IRenderedComponent<StateInspectorFailureHost> host = Render<StateInspectorFailureHost>();
+
+            host.WaitForAssertion(() => {
+                showAttempts.ShouldBe(1);
+                host.Instance.CloseNotifications.ShouldBe(1);
+                host.Markup.ShouldNotContain("State Inspector");
+            }, TimeSpan.FromSeconds(5));
+
+            host.Render();
+
+            host.WaitForAssertion(() => {
+                showAttempts.ShouldBe(1);
+                host.Instance.CloseNotifications.ShouldBe(1);
+            }, TimeSpan.FromSeconds(5));
+        }
+        finally {
+            StateInspectorModal.ShowDialogAsyncOverride = null;
+        }
+    }
+
+    [Fact]
+    public void StateInspectorModal_Dw7_ShowFailureTestSeamStaysInternal() {
+        System.Reflection.PropertyInfo? seam = typeof(StateInspectorModal)
+            .GetProperty(nameof(StateInspectorModal.ShowDialogAsyncOverride), PrivateStatic);
+
+        seam.ShouldNotBeNull();
+        seam.GetMethod!.IsPublic.ShouldBeFalse();
+        seam.GetMethod!.IsStatic.ShouldBeTrue();
+        seam.SetMethod!.IsPublic.ShouldBeFalse();
+        seam.SetMethod!.IsStatic.ShouldBeTrue();
+    }
+
     private IRenderedComponent<StateInspectorModal> RenderInspector(long? seq) => Render<StateInspectorModal>(p => p
                                                                                            .Add(c => c.TenantId, "test-tenant")
                                                                                            .Add(c => c.Domain, "counter")
                                                                                            .Add(c => c.AggregateId, "agg-001")
                                                                                            .Add(c => c.InitialSequenceNumber, seq));
+
+    private IRenderedComponent<StateInspectorModal> RenderInspector(long? seq, Action onClose) => Render<StateInspectorModal>(p => p
+                                                                                           .Add(c => c.TenantId, "test-tenant")
+                                                                                           .Add(c => c.Domain, "counter")
+                                                                                           .Add(c => c.AggregateId, "agg-001")
+                                                                                           .Add(c => c.InitialSequenceNumber, seq)
+                                                                                           .Add(c => c.OnClose, EventCallback.Factory.Create(this, onClose)));
+
+    private sealed class StateInspectorFailureHost : ComponentBase {
+        private bool _show = true;
+
+        public int CloseNotifications { get; private set; }
+
+        protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder) {
+            if (!_show) {
+                return;
+            }
+
+            builder.OpenComponent<StateInspectorModal>(0);
+            builder.AddAttribute(1, nameof(StateInspectorModal.TenantId), "test-tenant");
+            builder.AddAttribute(2, nameof(StateInspectorModal.Domain), "counter");
+            builder.AddAttribute(3, nameof(StateInspectorModal.AggregateId), "agg-001");
+            builder.AddAttribute(4, nameof(StateInspectorModal.InitialSequenceNumber), 42L);
+            builder.AddAttribute(5, nameof(StateInspectorModal.OnClose), EventCallback.Factory.Create(this, CloseInspector));
+            builder.CloseComponent();
+        }
+
+        private void CloseInspector() {
+            CloseNotifications++;
+            _show = false;
+            StateHasChanged();
+        }
+    }
+
+    private sealed record CapturedLog(LogLevel Level, string Message);
+
+    private sealed class CapturingStateInspectorLogger : ILogger<StateInspectorModal> {
+        public List<CapturedLog> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+            => NullLogger.Instance.BeginScope(state);
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Entries.Add(new CapturedLog(logLevel, formatter(state, exception)));
+    }
 }
