@@ -1,3 +1,10 @@
+## [3.15.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.15.0...v3.15.1) (2026-05-09)
+
+
+### Bug Fixes
+
+* **server:** harden drain failure classifier and audit guard from code review ([f8c81c8](https://github.com/Hexalith/Hexalith.EventStore/commit/f8c81c8cd5e67114f1df589019c023091e41e90b))
+
 # [3.15.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.14.2...v3.15.0) (2026-05-09)
 
 
