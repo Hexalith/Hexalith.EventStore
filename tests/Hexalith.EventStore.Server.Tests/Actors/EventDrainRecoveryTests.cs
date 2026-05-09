@@ -162,13 +162,24 @@ public class EventDrainRecoveryTests {
             Arg.Any<CancellationToken>());
     }
 
-    private static async Task<Activity> CaptureDrainActivityAsync(Func<Task> action) {
+    private static Task<Activity> CaptureDrainActivityAsync(Func<Task> action)
+        => CaptureDrainActivityAsync(correlationId: "corr-drain", action);
+
+    private static async Task<Activity> CaptureDrainActivityAsync(string correlationId, Func<Task> action) {
         var stopped = new List<Activity>();
         using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
             ActivityStopped = activity => {
-                if (activity.OperationName == EventStoreActivitySource.EventsDrain) {
+                // ActivitySource.AddActivityListener registers the listener process-globally; xUnit collections
+                // run in parallel by default, so filter strictly by the operation name AND the correlationId
+                // tag set by AggregateActor before action() runs. This prevents cross-test capture between
+                // EventDrainRecoveryTests and Dw8DrainReasonClassifierTests when both fire drain activities.
+                if (activity.OperationName == EventStoreActivitySource.EventsDrain
+                    && string.Equals(
+                        activity.GetTagItem(EventStoreActivitySource.TagCorrelationId)?.ToString(),
+                        correlationId,
+                        StringComparison.Ordinal)) {
                     stopped.Add(activity);
                 }
             },

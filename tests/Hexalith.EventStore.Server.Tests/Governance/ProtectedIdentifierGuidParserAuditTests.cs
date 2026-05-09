@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
 using Shouldly;
@@ -12,9 +13,20 @@ public partial class ProtectedIdentifierGuidParserAuditTests {
         "causationId",
     ];
 
+    private static readonly string[] AllowedMiddlewarePaths = [
+        "src/Hexalith.EventStore/Middleware/CorrelationIdMiddleware.cs",
+        "src/Hexalith.EventStore.Admin.Server.Host/Middleware/CorrelationIdMiddleware.cs",
+    ];
+
     [Fact]
     public void ProtectedIdentifierValidators_DoNotUseGuidParseOrTryParse() {
-        string root = FindRepositoryRoot();
+        string? root = TryFindRepositoryRoot();
+        if (root is null) {
+            Assert.Skip(
+                "Repository root unavailable; protected identifier audit requires source tree access (set HEXALITH_REPOROOT or run from the repo workspace).");
+            return;
+        }
+
         string[] rootsToScan = [
             Path.Combine(root, "src"),
             Path.Combine(root, "samples"),
@@ -36,12 +48,12 @@ public partial class ProtectedIdentifierGuidParserAuditTests {
                 string context = GetContext(lines, index);
                 string? protectedField = ProtectedFields.FirstOrDefault(
                     field => context.Contains(field, StringComparison.OrdinalIgnoreCase));
-                if (protectedField is null || IsAllowedNonValidatorHit(file, line, context)) {
+                if (protectedField is null || IsAllowedNonValidatorHit(file, line)) {
                     continue;
                 }
 
                 findings.Add(
-                    $"{Path.GetRelativePath(root, file)}:{index + 1}: Guid.Parse/TryParse appears to validate protected field '{protectedField}'. Use Ulid.TryParse, UniqueIdHelper, or documented non-whitespace AggregateIdentity semantics. Allowed exclusions: HTTP middleware correlation headers, GUID generators, UniqueIdHelper.ToGuid conversion, and assertion-only tests.");
+                    $"{Path.GetRelativePath(root, file)}:{index + 1}: Guid.Parse/TryParse appears to validate protected field '{protectedField}'. Use Ulid.TryParse, UniqueIdHelper, or documented non-whitespace AggregateIdentity semantics. Allowed exclusions: HTTP middleware correlation headers, GUID generators, UniqueIdHelper.ToGuid conversion, and assertion-only test lines.");
             }
         }
 
@@ -49,20 +61,42 @@ public partial class ProtectedIdentifierGuidParserAuditTests {
             "Protected EventStore identifiers (messageId, correlationId, aggregateId, causationId) must not be validated with Guid.Parse/TryParse.");
     }
 
-    private static string FindRepositoryRoot() {
-        DirectoryInfo? current = new(AppContext.BaseDirectory);
+    private static string? TryFindRepositoryRoot() {
+        string? envRoot = Environment.GetEnvironmentVariable("HEXALITH_REPOROOT");
+        if (!string.IsNullOrWhiteSpace(envRoot) && IsRepositoryRoot(envRoot)) {
+            return envRoot;
+        }
+
+        // Compile-time source path of THIS test file: ...\tests\Hexalith.EventStore.Server.Tests\Governance\<this>.cs
+        string sourcePath = GetThisSourceFilePath();
+        DirectoryInfo? current = new FileInfo(sourcePath).Directory;
         while (current is not null) {
-            if (File.Exists(Path.Combine(current.FullName, "Directory.Packages.props"))
-                && Directory.Exists(Path.Combine(current.FullName, "src"))
-                && Directory.Exists(Path.Combine(current.FullName, "tests"))) {
+            if (IsRepositoryRoot(current.FullName)) {
                 return current.FullName;
             }
 
             current = current.Parent;
         }
 
-        throw new DirectoryNotFoundException("Could not locate repository root for protected identifier audit.");
+        // Fallback: walk up from the test runtime base directory (covers `dotnet test` with sources still on disk).
+        current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null) {
+            if (IsRepositoryRoot(current.FullName)) {
+                return current.FullName;
+            }
+
+            current = current.Parent;
+        }
+
+        return null;
     }
+
+    private static bool IsRepositoryRoot(string path) =>
+        File.Exists(Path.Combine(path, "Directory.Packages.props"))
+            && Directory.Exists(Path.Combine(path, "src"))
+            && Directory.Exists(Path.Combine(path, "tests"));
+
+    private static string GetThisSourceFilePath([CallerFilePath] string path = "") => path;
 
     private static string GetContext(string[] lines, int index) {
         int start = Math.Max(0, index - 3);
@@ -78,9 +112,11 @@ public partial class ProtectedIdentifierGuidParserAuditTests {
             || normalized.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsAllowedNonValidatorHit(string file, string line, string context) {
+    private static bool IsAllowedNonValidatorHit(string file, string line) {
         string normalized = file.Replace('\\', '/');
-        if (normalized.EndsWith("/Middleware/CorrelationIdMiddleware.cs", StringComparison.OrdinalIgnoreCase)) {
+        if (AllowedMiddlewarePaths.Any(allowed =>
+            normalized.EndsWith("/" + allowed, StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith(allowed, StringComparison.OrdinalIgnoreCase))) {
             return true;
         }
 
@@ -88,17 +124,24 @@ public partial class ProtectedIdentifierGuidParserAuditTests {
             return true;
         }
 
-        if (context.Contains("UniqueIdHelper.ToGuid", StringComparison.Ordinal)) {
+        if (line.Contains("UniqueIdHelper.ToGuid", StringComparison.Ordinal)) {
             return true;
         }
 
+        // Allow assertion-only test patterns ONLY when the assertion is on the same line as the Guid parser call.
+        // A 7-line context window was previously used and is too permissive: a real validator in a test file
+        // accompanied by a separate Should... assertion would be silently allowed.
         return normalized.Contains("/tests/", StringComparison.OrdinalIgnoreCase)
-            && AssertionContext().IsMatch(context);
+            && SameLineAssertion().IsMatch(line);
     }
 
     [GeneratedRegex(@"Guid\.(TryParse|Parse)\s*\(", RegexOptions.CultureInvariant)]
     private static partial Regex GuidParserCall();
 
-    [GeneratedRegex(@"(\bShould(Be|NotBe|BeTrue|BeFalse)?\b|\bAssert\.|bool\s+isGuid\s*=)", RegexOptions.CultureInvariant)]
-    private static partial Regex AssertionContext();
+    // Allow same-line patterns that prove a value is/isn't GUID-shaped without using Guid.Parse as a validator:
+    //   - `Guid.TryParse(...).ShouldBeTrue()` / `.ShouldBeFalse()` (Shouldly fluent assertion)
+    //   - `Assert.True(Guid.TryParse(...))` (xUnit assertion)
+    //   - `bool isGuid = Guid.TryParse(...)` (assertion-evidence pattern; companion `Assert.False(isGuid)` follows)
+    [GeneratedRegex(@"(\bShould(Be|NotBe|BeTrue|BeFalse|Throw|NotThrow)\b|\bAssert\.[A-Z]|\bbool\s+isGuid\s*=)", RegexOptions.CultureInvariant)]
+    private static partial Regex SameLineAssertion();
 }

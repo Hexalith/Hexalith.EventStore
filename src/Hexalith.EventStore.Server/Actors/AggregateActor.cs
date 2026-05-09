@@ -727,6 +727,9 @@ public partial class AggregateActor(
                     record.EndSequence)
                     .ConfigureAwait(false);
             }
+            catch (OperationCanceledException) {
+                throw;
+            }
             catch (Exception ex) when (IsDrainStateStoreBoundaryFailure(ex)) {
                 throw new DrainStateStoreException("Failed to read persisted drain events from state store.", ex);
             }
@@ -741,7 +744,7 @@ public partial class AggregateActor(
             catch (OperationCanceledException) {
                 throw;
             }
-            catch (Exception ex) {
+            catch (Exception ex) when (IsDrainPublishBoundaryFailure(ex)) {
                 throw new DrainPublishException("Drain publish operation failed.", ex);
             }
 
@@ -871,6 +874,7 @@ public partial class AggregateActor(
             DaprException when ContainsDaprUnavailableSignal(exception) => DrainReasonCodes.DaprUnavailable,
             RpcException rpc when IsUnavailableStatusCode(rpc.StatusCode) => DrainReasonCodes.DaprUnavailable,
             HttpRequestException { StatusCode: HttpStatusCode.ServiceUnavailable or HttpStatusCode.BadGateway or HttpStatusCode.GatewayTimeout or HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests } => DrainReasonCodes.DaprUnavailable,
+            DaprException => DrainReasonCodes.StateStoreFailure,
             _ => DrainReasonCodes.Unknown,
         };
 
@@ -879,6 +883,13 @@ public partial class AggregateActor(
         || exception is DaprException
         || exception is RpcException
         || exception is HttpRequestException;
+
+    private static bool IsDrainPublishBoundaryFailure(Exception exception) =>
+        exception is DaprException
+        || exception is RpcException
+        || exception is HttpRequestException
+        || exception is IOException
+        || exception is TimeoutException;
 
     private static bool ContainsDaprUnavailableSignal(Exception exception) {
         for (Exception? current = exception; current is not null; current = current.InnerException) {
@@ -891,13 +902,12 @@ public partial class AggregateActor(
             }
         }
 
-        return exception is DaprException;
+        return false;
     }
 
     private static bool IsUnavailableStatusCode(StatusCode statusCode) =>
         statusCode is StatusCode.Unavailable
             or StatusCode.DeadlineExceeded
-            or StatusCode.Aborted
             or StatusCode.ResourceExhausted;
 
     // TODO: Future — reconcile counter against actual drain:* record count on actor activation
