@@ -29,9 +29,10 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 /// <c>null</c> when <paramref name="RemoteMetadataStatus"/> is
 /// <see cref="Dapr.RemoteMetadataStatus.NotConfigured"/>.
 /// </param>
-/// <param name="LocalProbeAvailable">
-/// Whether the local Admin.Server DAPR sidecar metadata API responded successfully. The
-/// per-component state-store probe result lives on each <see cref="DaprComponentDetail.Status"/>
+/// <param name="LocalSidecarMetadataAvailable">
+/// Whether the local Admin.Server DAPR sidecar metadata API responded successfully and returned
+/// a payload carrying usable evidence (non-null <c>Components</c> or non-null <c>Extended</c>).
+/// The per-component state-store probe result lives on each <see cref="DaprComponentDetail.Status"/>
 /// row instead. <c>ComputeOverallStatus</c> in <c>DaprHealthQueryService</c> uses this flag to
 /// decide that admin operations cannot be served when the local sidecar metadata is missing.
 /// Defaults to <c>false</c> so absent local evidence cannot be misread as healthy.
@@ -42,7 +43,7 @@ public record DaprCanonicalInventory(
     IReadOnlyList<DaprSubscriptionInfo> PubSubSubscriptions,
     RemoteMetadataStatus RemoteMetadataStatus,
     string? RemoteEndpoint,
-    bool LocalProbeAvailable,
+    bool LocalSidecarMetadataAvailable,
     DateTimeOffset CapturedAtUtc) {
     /// <summary>Gets the merged components.</summary>
     public IReadOnlyList<DaprComponentDetail> Components { get; } = Components

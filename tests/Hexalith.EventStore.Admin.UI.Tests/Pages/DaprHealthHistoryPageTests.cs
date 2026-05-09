@@ -184,6 +184,36 @@ public class DaprHealthHistoryPageTests : AdminUITestContext {
         cut.Markup.ShouldContain("Refresh");
     }
 
+    [Fact]
+    public void DaprHealthHistoryPage_ShowsPubSubRow_WhenRemoteMetadataAvailable() {
+        // ST5 — round-3 patch F21. The collector test covers the persistence write; this page-
+        // level regression asserts the heatmap/grid actually renders the pub/sub row sourced
+        // from remote EventStore metadata, not just the locally-scoped state-store entries.
+        // Without this guard the canonical inventory unification could regress into "history
+        // page silently omits pub/sub rows that /dapr/components shows" — exactly the AC4
+        // contradiction the round-1 ST5 task targeted.
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        DaprComponentHealthTimeline timeline = new(
+            [
+                new DaprHealthHistoryEntry("statestore", "state.redis", HealthStatus.Healthy, now.AddMinutes(-15)),
+                new DaprHealthHistoryEntry("pubsub", "pubsub.redis", HealthStatus.Healthy, now.AddMinutes(-15)),
+                new DaprHealthHistoryEntry("pubsub", "pubsub.redis", HealthStatus.Healthy, now.AddMinutes(-5)),
+            ],
+            HasData: true);
+        _ = _mockClient.GetHealthHistoryAsync(
+            Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprComponentHealthTimeline?>(timeline));
+
+        IRenderedComponent<DaprHealthHistory> cut = Render<DaprHealthHistory>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("statestore"), TimeSpan.FromSeconds(5));
+
+        string markup = cut.Markup;
+        // The heatmap groups by component name; pub/sub must surface as its own row, not be
+        // collapsed into the state-store row.
+        markup.ShouldContain("pubsub");
+        markup.ShouldContain("statestore");
+    }
+
     // ===== Helper methods =====
 
     private void SetupSuccessfulResponse() {

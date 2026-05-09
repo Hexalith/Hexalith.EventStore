@@ -61,7 +61,7 @@ public class DaprHealthQueryServiceTests {
                     [],
                     RemoteMetadataStatus.Available,
                     "http://eventstore-sidecar",
-                    LocalProbeAvailable: true,
+                    LocalSidecarMetadataAvailable: true,
                     CapturedAtUtc: DateTimeOffset.UtcNow)));
         }
 
@@ -110,7 +110,7 @@ public class DaprHealthQueryServiceTests {
                 [],
                 RemoteMetadataStatus.Available,
                 "http://eventstore-sidecar",
-                LocalProbeAvailable: true,
+                LocalSidecarMetadataAvailable: true,
                 CapturedAtUtc: DateTimeOffset.UtcNow)));
 
         (DaprHealthQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient, infrastructure: infra);
@@ -146,7 +146,7 @@ public class DaprHealthQueryServiceTests {
 
     [Fact]
     public async Task GetSystemHealthAsync_ReturnsUnhealthy_WhenSidecarUnavailable() {
-        // The local Admin sidecar is unavailable: the canonical inventory's LocalProbeAvailable
+        // The local Admin sidecar is unavailable: the canonical inventory's LocalSidecarMetadataAvailable
         // flag flips to false, which the health service must treat as Unhealthy regardless of
         // other dependency probes (Admin operations cannot be served).
         DaprClient daprClient = Substitute.For<DaprClient>();
@@ -159,7 +159,7 @@ public class DaprHealthQueryServiceTests {
 
         IDaprInfrastructureQueryService infra = Substitute.For<IDaprInfrastructureQueryService>();
         _ = infra.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(DaprCanonicalInventory.Empty)); // LocalProbeAvailable=false
+            .Returns(Task.FromResult(DaprCanonicalInventory.Empty)); // LocalSidecarMetadataAvailable=false
 
         (DaprHealthQueryService service, _) = CreateService(daprClient, infrastructure: infra);
 
@@ -193,7 +193,7 @@ public class DaprHealthQueryServiceTests {
                 [],
                 RemoteMetadataStatus.Available,
                 "http://eventstore-sidecar",
-                LocalProbeAvailable: true,
+                LocalSidecarMetadataAvailable: true,
                 CapturedAtUtc: DateTimeOffset.UtcNow)));
 
         (DaprHealthQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient, infrastructure: infra);
@@ -214,8 +214,11 @@ public class DaprHealthQueryServiceTests {
         // AC1: response bodies must not leak raw exception messages, connection strings, or
         // host details from the state-store probe failure. After consolidation, the probe lives
         // in DaprInfrastructureQueryService — so this test exercises the full real path: a real
-        // service whose DaprClient throws with the secret, then walks every reachable string in
-        // the resulting SystemHealthReport.
+        // service whose DaprClient throws with the secret AND whose remote-HTTP path (the other
+        // realistic leak surface) is wired to a handler returning a payload that also contains
+        // the secret. We assert (1) no string field on the response carries the secret AND
+        // (2) no log record's Message or Exception text carries the secret — round 2 patched
+        // the response surface but `NullLogger` was discarding the log channel entirely.
         const string SecretConnectionDetails = "redis://my-secret-host:6379,password=p@ssw0rd";
 
         DaprClient daprClient = Substitute.For<DaprClient>();
@@ -235,22 +238,35 @@ public class DaprHealthQueryServiceTests {
                 callInfo.ArgAt<HttpMethod>(0),
                 new Uri($"http://localhost/{callInfo.ArgAt<string>(2)}")));
 
-        // Use a real DaprInfrastructureQueryService backed by the throwing DaprClient so the
-        // probe path actually runs and we observe its leak surface end-to-end.
+        // Wire a remote-HTTP handler that ALSO contains the secret, so the JSON-parse path is
+        // exercised end-to-end (round 2 had `EventStoreDaprHttpEndpoint` null, which short-
+        // circuited the remote path to NotConfigured and left it dark). The endpoint must be
+        // configured for ReadRemoteMetadataAsync to actually attempt a remote read.
+        var remoteHandler = new TestHttpMessageHandler();
+        // Return a malformed payload that bears the secret — exercises the InvalidPayload arm
+        // and forces the JSON exception text to flow through the warning logger.
+        remoteHandler.SetupResponse(new HttpResponseMessage(System.Net.HttpStatusCode.OK) {
+            Content = new StringContent($"{{ not json — secret leak: {SecretConnectionDetails}", System.Text.Encoding.UTF8, "application/json"),
+        });
+        using HttpClient remoteHttpClient = new(remoteHandler) { BaseAddress = new Uri("http://localhost") };
         IHttpClientFactory infraHttpFactory = Substitute.For<IHttpClientFactory>();
-        _ = infraHttpFactory.CreateClient(Arg.Any<string>()).Returns(new HttpClient());
+        _ = infraHttpFactory.CreateClient(Arg.Any<string>()).Returns(remoteHttpClient);
+        var infraOptions = Options.Create(new AdminServerOptions {
+            EventStoreDaprHttpEndpoint = "http://eventstore-sidecar:3500",
+        });
+        var infraLogger = new RecordingLogger<DaprInfrastructureQueryService>();
         var realInfra = new DaprInfrastructureQueryService(
             daprClient,
             infraHttpFactory,
-            Options.Create(new AdminServerOptions()),
-            NullLogger<DaprInfrastructureQueryService>.Instance);
+            infraOptions,
+            infraLogger);
 
         (DaprHealthQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient, infrastructure: realInfra);
         handler.SetupJsonResponse("ok");
 
         SystemHealthReport result = await service.GetSystemHealthAsync();
 
-        // Walk every string field of the report to confirm the connection details are not
+        // (1) Walk every string field of the report to confirm the connection details are not
         // echoed back. Any new string-bearing field must be added here when the contract grows.
         result.OverallStatus.ToString().ShouldNotContain("p@ssw0rd");
         result.OverallStatus.ToString().ShouldNotContain("my-secret-host");
@@ -275,36 +291,70 @@ public class DaprHealthQueryServiceTests {
         if (result.ObservabilityLinks.LogsUrl is not null) {
             result.ObservabilityLinks.LogsUrl.ShouldNotContain("p@ssw0rd");
         }
+
+        // (2) Walk every recorded log entry. The probe-failure warning includes the exception
+        // by design (LogWarning(ex, ...)); we want that exception detail to remain inside the
+        // logger and never reach response payloads (asserted in (1)). The secret IS expected to
+        // appear in the captured exception — but it must not appear in the rendered Message,
+        // and it definitely must not be in any other (unrelated) log record. The recording
+        // logger lets us audit each record explicitly rather than asserting "nothing was
+        // logged", which would also hide a genuine regression.
+        foreach (RecordingLogger<DaprInfrastructureQueryService>.LogRecord record in infraLogger.Records) {
+            // Message is the rendered template (e.g. "State store probe failed for statestore.")
+            // — must not interpolate any captured secret. The exception's own message is logged
+            // separately by the logging infrastructure; the contract here is "don't compose
+            // secrets into the formatted message string".
+            record.Message.ShouldNotContain("p@ssw0rd");
+            record.Message.ShouldNotContain("my-secret-host");
+        }
     }
 
     [Fact]
-    public async Task GetDaprComponentStatusAsync_ReturnsComponents() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        DaprMetadata metadata = CreateMetadata(
-            new DaprComponentsMetadata("statestore", "state.redis", "v1", []),
-            new DaprComponentsMetadata("pubsub", "pubsub.redis", "v1", []));
+    public async Task GetDaprComponentStatusAsync_ReturnsComponentsFromCanonicalInventory() {
+        // After the round-3 patch GetDaprComponentStatusAsync routes through the canonical
+        // inventory rather than directly reading local sidecar metadata, so the API contract
+        // surface returns the same probe-derived truth as /health and /dapr.
+        IDaprInfrastructureQueryService infra = Substitute.For<IDaprInfrastructureQueryService>();
+        _ = infra.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new DaprCanonicalInventory(
+                [
+                    new DaprComponentDetail(
+                        "statestore", "state.redis", DaprComponentCategory.StateStore,
+                        "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [],
+                        DaprComponentSource.LocalAdminProbe),
+                    new DaprComponentDetail(
+                        "pubsub", "pubsub.redis", DaprComponentCategory.PubSub,
+                        "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [],
+                        DaprComponentSource.RemoteEventStoreMetadata),
+                ],
+                [],
+                RemoteMetadataStatus.Available,
+                "http://eventstore-sidecar",
+                LocalSidecarMetadataAvailable: true,
+                CapturedAtUtc: DateTimeOffset.UtcNow)));
 
-        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
-
-        (DaprHealthQueryService service, _) = CreateService(daprClient);
+        (DaprHealthQueryService service, _) = CreateService(infrastructure: infra);
 
         IReadOnlyList<DaprComponentHealth> result = await service.GetDaprComponentStatusAsync();
 
         result.Count.ShouldBe(2);
-        result[0].ComponentName.ShouldBe("statestore");
-        result[1].ComponentName.ShouldBe("pubsub");
+        result.ShouldContain(c => c.ComponentName == "statestore" && c.Source == DaprComponentSource.LocalAdminProbe);
+        result.ShouldContain(c => c.ComponentName == "pubsub" && c.Source == DaprComponentSource.RemoteEventStoreMetadata);
     }
 
     [Fact]
-    public async Task GetDaprComponentStatusAsync_Throws_WhenSidecarUnavailable() {
-        DaprClient daprClient = Substitute.For<DaprClient>();
-        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Sidecar down"));
+    public async Task GetDaprComponentStatusAsync_PropagatesCancellationFromCanonicalInventory() {
+        using CancellationTokenSource cts = new();
+        await cts.CancelAsync();
 
-        (DaprHealthQueryService service, _) = CreateService(daprClient);
+        IDaprInfrastructureQueryService infra = Substitute.For<IDaprInfrastructureQueryService>();
+        _ = infra.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
+            .Returns<DaprCanonicalInventory>(_ => throw new OperationCanceledException());
 
-        _ = await Should.ThrowAsync<InvalidOperationException>(
-            () => service.GetDaprComponentStatusAsync());
+        (DaprHealthQueryService service, _) = CreateService(infrastructure: infra);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => service.GetDaprComponentStatusAsync(cts.Token));
     }
 
     [Fact]

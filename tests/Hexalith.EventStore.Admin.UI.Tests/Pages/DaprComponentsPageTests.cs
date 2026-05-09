@@ -87,18 +87,19 @@ public class DaprComponentsPageTests : AdminUITestContext {
 
     [Fact]
     public void DaprPage_RendersEmptyState_WhenSidecarUnavailable() {
-        // Arrange
+        // After round-3 patch F23 the empty-state copy distinguishes "API returned null sidecar"
+        // from a non-Available RemoteMetadataStatus, surfacing the actual unavailability cause.
         _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprSidecarInfo?>(null));
         _ = _mockApiClient.GetComponentsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<DaprComponentDetail>>([]));
 
-        // Act
         IRenderedComponent<DaprComponents> cut = Render<DaprComponents>();
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No DAPR components detected"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldContain("DAPR sidecar metadata unavailable"),
+            TimeSpan.FromSeconds(5));
 
-        // Assert
-        cut.Markup.ShouldContain("No DAPR components detected");
+        cut.Markup.ShouldContain("DAPR sidecar metadata unavailable");
     }
 
     [Fact]
@@ -153,18 +154,21 @@ public class DaprComponentsPageTests : AdminUITestContext {
 
     [Fact]
     public void DaprPage_RendersEmptyState_WhenSidecarUpButNoComponents() {
-        // Arrange — sidecar available but zero components
+        // Sidecar reachable AND remote metadata Available, but the canonical inventory has
+        // zero components. Round 3 (F23) surfaces this as "No DAPR components reported" so
+        // operators can distinguish "sidecar said zero" from the generic "no metadata at all"
+        // case (which now renders different copy).
         _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprSidecarInfo?>(CreateSidecarInfo()));
         _ = _mockApiClient.GetComponentsAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<DaprComponentDetail>>([]));
 
-        // Act
         IRenderedComponent<DaprComponents> cut = Render<DaprComponents>();
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No DAPR components detected"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldContain("No DAPR components reported"),
+            TimeSpan.FromSeconds(5));
 
-        // Assert
-        cut.Markup.ShouldContain("No DAPR components detected");
+        cut.Markup.ShouldContain("No DAPR components reported");
     }
 
     // ===== Helper methods =====

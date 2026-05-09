@@ -92,15 +92,24 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
 
         IReadOnlyList<DaprComponentDetail> components = inventory.Components;
 
-        // Never overwrite a previous healthy timeline with an empty sample (AC4). An empty
-        // canonical inventory can occur in two ways: (a) both metadata sources unavailable and
-        // no configured state-store synth survived (transient), or (b) remote returns 200 OK
-        // with an empty components array (genuinely zero — but persisting that erases history).
-        // Treating both the same way is the only way to keep the AC4 contract "current sample
-        // unavailable" rather than "current sample says nothing exists".
-        if (components.Count == 0) {
+        // Never overwrite a previous healthy timeline with a sample that has no usable evidence
+        // (AC4). The skip rule deliberately considers BOTH the remote metadata status AND the
+        // source attribution of every component:
+        //
+        //   * If remote is Available, persist — even when the components list is empty, that is
+        //     a real "remote responded with zero components" sample worth recording.
+        //   * If remote is non-Available AND every component carries Source = Unavailable, the
+        //     canonical inventory has no usable evidence: skip to preserve last-good history.
+        //   * If remote is non-Available but at least one row has real source attribution
+        //     (LocalAdminProbe / LocalAdminMetadataFallback / RemoteEventStoreMetadata), persist
+        //     — we have probe evidence for the configured state store even when remote inventory
+        //     is unreachable, and that outage signal is what operators want recorded over time.
+        bool remoteAvailable = inventory.RemoteMetadataStatus == RemoteMetadataStatus.Available;
+        bool everyRowHasNoSource = components.Count > 0
+            && components.All(c => c.Source == DaprComponentSource.Unavailable);
+        if (!remoteAvailable && (components.Count == 0 || everyRowHasNoSource)) {
             _logger.LogDebug(
-                "No canonical DAPR components returned (remote metadata status={Status}) — skipping health history snapshot to avoid empty overwrite",
+                "Skipping health history snapshot — remote metadata status={Status} and components carry no usable source attribution. Live APIs may still expose the current sample; persisted history is preserved.",
                 inventory.RemoteMetadataStatus);
             return;
         }
@@ -135,10 +144,15 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
             throw;
         }
         catch (Exception ex) {
-            // History persistence failed (e.g. Redis down). Live health/inventory APIs continue
-            // to expose the current canonical sample; the next read of GetComponentHealthHistoryAsync
-            // surfaces the persistence-unavailability via empty/null state-store result.
-            _logger.LogWarning(ex, "Failed to persist health history snapshot — prior samples retained, current sample available only via live APIs");
+            // History persistence failed (e.g. Redis down). The persisted timeline is in the
+            // same DAPR state store we just failed to write to, so previously persisted samples
+            // are unreachable until that store recovers — we do NOT claim "prior samples
+            // retained" here. Live health/inventory APIs still expose the current canonical
+            // sample; the next read of GetComponentHealthHistoryAsync surfaces the persistence
+            // outage via an empty/null state-store result. Once the store recovers, prior
+            // samples become readable again because they were never deleted; nothing here
+            // overwrites them.
+            _logger.LogWarning(ex, "Failed to persist health history snapshot — persisted history is unreachable while the state store is unavailable; live APIs remain authoritative for the current sample");
         }
     }
 

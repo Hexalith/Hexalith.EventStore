@@ -57,13 +57,15 @@ public class DaprHealthHistoryCollectorTests {
         _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
             .Returns(new DaprCanonicalInventory(
                 components, [], RemoteMetadataStatus.Available,
-                "http://eventstore-sidecar", LocalProbeAvailable: true,
+                "http://eventstore-sidecar", LocalSidecarMetadataAvailable: true,
                 CapturedAtUtc: DateTimeOffset.UtcNow));
 
-        // Return null for existing timeline (first entry today)
+        // Return an empty-but-non-null timeline (first entry today). A null! cast would mask
+        // a future short-circuit-on-null behaviour added to the collector — the empty
+        // timeline is the canonical "first entry today, nothing persisted yet" sentinel.
         _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
             Arg.Any<string>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((DaprComponentHealthTimeline)null!);
+            .Returns(new DaprComponentHealthTimeline([], HasData: false));
 
         DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService);
 
@@ -95,7 +97,7 @@ public class DaprHealthHistoryCollectorTests {
         _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
             .Returns(new DaprCanonicalInventory(
                 [], [], RemoteMetadataStatus.Unreachable,
-                "http://eventstore-sidecar", LocalProbeAvailable: false,
+                "http://eventstore-sidecar", LocalSidecarMetadataAvailable: false,
                 CapturedAtUtc: DateTimeOffset.UtcNow));
 
         DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService);
@@ -117,10 +119,12 @@ public class DaprHealthHistoryCollectorTests {
     }
 
     [Fact]
-    public async Task ExecuteAsync_SkipsWrite_WhenComponentsEmpty_EvenWhenRemoteAvailable() {
-        // AC4: never overwrite a previous healthy timeline with an empty sample. An "Available"
-        // remote payload that genuinely contains zero components must NOT be persisted as an
-        // empty timeline — otherwise prior history is silently erased on the next snapshot tick.
+    public async Task ExecuteAsync_PersistsEmptyAvailableSample_AsRealZero() {
+        // Round 3 patch F18 — refined skip rule: the collector now distinguishes "remote
+        // confirmed empty payload" (persist as a real-zero sample) from "no usable evidence"
+        // (skip to preserve last-good). An Available status with zero components is the
+        // canonical "no components configured" signal and must be recorded — operators need
+        // to see real-zero in the timeline.
         var options = new AdminServerOptions { HealthHistoryEnabled = true };
 
         DaprClient daprClient = Substitute.For<DaprClient>();
@@ -129,7 +133,46 @@ public class DaprHealthHistoryCollectorTests {
         _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
             .Returns(new DaprCanonicalInventory(
                 [], [], RemoteMetadataStatus.Available,
-                "http://eventstore-sidecar", LocalProbeAvailable: true,
+                "http://eventstore-sidecar", LocalSidecarMetadataAvailable: true,
+                CapturedAtUtc: DateTimeOffset.UtcNow));
+
+        // Empty existing timeline — first sample today.
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+            Arg.Any<string>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(new DaprComponentHealthTimeline([], HasData: false));
+
+        DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService);
+
+        using CancellationTokenSource cts = new();
+
+        await collector.StartAsync(cts.Token);
+        await Task.Delay(TimeSpan.FromSeconds(17));
+        await cts.CancelAsync();
+        await collector.StopAsync(default);
+
+        // Available + zero components is persisted as a real-zero sample — the SaveStateAsync
+        // call carries an empty Entries collection with HasData: true.
+        await daprClient.Received().SaveStateAsync(
+            Arg.Any<string>(),
+            Arg.Is<string>(k => k.StartsWith("admin:health-history:")),
+            Arg.Is<DaprComponentHealthTimeline>(t => t.HasData && t.Entries.Count == 0),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_SkipsWrite_WhenRemoteUnreachableAndNoUsableEvidence() {
+        // AC4: never overwrite a previous healthy timeline when canonical evidence is empty
+        // (remote unreachable AND no probed/local-attributed component rows). Preserves
+        // last-good history.
+        var options = new AdminServerOptions { HealthHistoryEnabled = true };
+
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        IDaprInfrastructureQueryService infraService = Substitute.For<IDaprInfrastructureQueryService>();
+
+        _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
+            .Returns(new DaprCanonicalInventory(
+                [], [], RemoteMetadataStatus.Unreachable,
+                "http://eventstore-sidecar", LocalSidecarMetadataAvailable: false,
                 CapturedAtUtc: DateTimeOffset.UtcNow));
 
         DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService);
@@ -166,7 +209,7 @@ public class DaprHealthHistoryCollectorTests {
         _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
             .Returns(new DaprCanonicalInventory(
                 components, [], RemoteMetadataStatus.Available,
-                "http://eventstore-sidecar", LocalProbeAvailable: true,
+                "http://eventstore-sidecar", LocalSidecarMetadataAvailable: true,
                 CapturedAtUtc: DateTimeOffset.UtcNow));
 
         _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
@@ -216,7 +259,7 @@ public class DaprHealthHistoryCollectorTests {
         _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
             .Returns(new DaprCanonicalInventory(
                 components, [], RemoteMetadataStatus.Available,
-                "http://eventstore-sidecar", LocalProbeAvailable: true,
+                "http://eventstore-sidecar", LocalSidecarMetadataAvailable: true,
                 CapturedAtUtc: DateTimeOffset.UtcNow));
 
         _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(

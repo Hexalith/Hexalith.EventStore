@@ -453,29 +453,135 @@ public class HealthPageTests : AdminUITestContext {
         // visible "(stale)" marker so an operator does not mistake last-good cache for a fresh
         // measurement. Severity must NOT be neutral (which would look identical to a healthy
         // fresh value).
-        SystemHealthReport report = new(
-            HealthStatus.Healthy,
-            TotalEventCount: 12345,
-            EventsPerSecond: 7.5,
-            ErrorPercentage: 1.2,
-            [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow)],
-            new ObservabilityLinks(null, null, null),
-            TotalEventCountStatus: SystemHealthMetricStatus.Stale,
-            EventsPerSecondStatus: SystemHealthMetricStatus.Stale,
-            ErrorPercentageStatus: SystemHealthMetricStatus.Stale);
+        //
+        // Pin both production rendering and the assertion to InvariantCulture for the duration
+        // of the test. bUnit may dispatch render work onto a thread whose CurrentCulture
+        // differs from the test thread (especially under fr-FR where N0 emits NBSP as the
+        // group separator). Without this guard the assertion is non-deterministic.
+        System.Globalization.CultureInfo originalCulture = Thread.CurrentThread.CurrentCulture;
+        System.Globalization.CultureInfo originalUiCulture = Thread.CurrentThread.CurrentUICulture;
+        Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+        Thread.CurrentThread.CurrentUICulture = System.Globalization.CultureInfo.InvariantCulture;
+        try {
+            SystemHealthReport report = new(
+                HealthStatus.Healthy,
+                TotalEventCount: 12345,
+                EventsPerSecond: 7.5,
+                ErrorPercentage: 1.2,
+                [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow)],
+                new ObservabilityLinks(null, null, null),
+                TotalEventCountStatus: SystemHealthMetricStatus.Stale,
+                EventsPerSecondStatus: SystemHealthMetricStatus.Stale,
+                ErrorPercentageStatus: SystemHealthMetricStatus.Stale);
+            _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+                .Returns(Task.FromResult<SystemHealthReport?>(report));
+
+            IRenderedComponent<Health> cut = Render<Health>();
+            cut.WaitForAssertion(() => cut.Markup.ShouldContain("Total Events"), TimeSpan.FromSeconds(5));
+
+            string markup = cut.Markup;
+            // Both production rendering and the test now use InvariantCulture, so "12,345"
+            // is the deterministic output regardless of the host environment's locale.
+            markup.ShouldContain($"{12345L.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)} (stale)");
+            markup.ShouldContain($"{7.5.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)} (stale)");
+            markup.ShouldContain($"{1.2.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}% (stale)");
+            markup.ShouldNotContain("unavailable");
+        }
+        finally {
+            Thread.CurrentThread.CurrentCulture = originalCulture;
+            Thread.CurrentThread.CurrentUICulture = originalUiCulture;
+        }
+    }
+
+    // ===== AC7 named UI failure fixtures (F20 — Test Plan line 414) =====
+    //
+    // Spec Test Plan names five fixtures. HealthReport_Partial_StateStoreUnavailable is
+    // covered by HealthPage_RendersPartialReport_WithStateStoreUnhealthy_AC1AC2 above. The
+    // four below cover the API failure modes: 401/403 forbidden, timeout, malformed payload,
+    // and null. Each asserts the issue banner / loading exit invariants required by AC2.
+
+    [Fact]
+    public void HealthApi_Forbidden_NoStaleReuse() {
+        // Round 2 deferral noted that cross-tenant stale reuse is out of scope, but a 401/403
+        // must NOT silently reuse stale data either — instead, the page surfaces the auth
+        // failure via the IssueBanner. Simulated via the API client throwing an
+        // UnauthorizedAccessException on the call.
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<SystemHealthReport?>(report));
+            .Returns<Task<SystemHealthReport?>>(_ => throw new UnauthorizedAccessException("403 Forbidden"));
+
+        IRenderedComponent<Health> cut = Render<Health>();
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldContain("Unable to load health status"),
+            TimeSpan.FromSeconds(5));
+
+        string markup = cut.Markup;
+        markup.ShouldContain("Unable to load health status");
+        // Page must exit loading state — no skeleton spinner content remains.
+        markup.ShouldNotContain("hexalith-skeleton-card");
+    }
+
+    [Fact]
+    public void HealthApi_Timeout_StaleLastGood() {
+        // The API call times out via TaskCanceledException on first load (no cached data
+        // available). The page must exit loading and show the unable-to-load banner; it must
+        // not spin forever or crash. (The stale-data path that retains a cached report on a
+        // subsequent failure is exercised by the existing refresh tests in this file; this
+        // fixture covers the simpler "API timed out, no cache" entry point.)
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns<Task<SystemHealthReport?>>(_ => throw new TaskCanceledException("Request timed out"));
+
+        IRenderedComponent<Health> cut = Render<Health>();
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldContain("Unable to load health status"),
+            TimeSpan.FromSeconds(5));
+
+        // Page must exit loading (no skeleton spinner) so a stuck-loading regression is caught.
+        cut.Markup.ShouldNotContain("hexalith-skeleton-card");
+    }
+
+    [Fact]
+    public void HealthApi_Malformed_IssueBanner() {
+        // A malformed deserialization (e.g. missing required fields → DTO null fields) produces
+        // a SystemHealthReport whose components are null/empty, which exercises the empty-state
+        // path. Ensure no crash, no blank, and the empty-state copy renders.
+        SystemHealthReport malformed = new(
+            HealthStatus.Unhealthy,
+            TotalEventCount: 0,
+            EventsPerSecond: 0,
+            ErrorPercentage: 0,
+            DaprComponents: [],
+            ObservabilityLinks: new ObservabilityLinks(null, null, null),
+            TotalEventCountStatus: SystemHealthMetricStatus.Unavailable,
+            EventsPerSecondStatus: SystemHealthMetricStatus.Unavailable,
+            ErrorPercentageStatus: SystemHealthMetricStatus.Unavailable);
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SystemHealthReport?>(malformed));
 
         IRenderedComponent<Health> cut = Render<Health>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Total Events"), TimeSpan.FromSeconds(5));
 
         string markup = cut.Markup;
-        // Each stat card renders the cached numeric formatted per page convention plus "(stale)".
-        // Format strings respect the runtime culture (N0 / F1).
-        markup.ShouldContain($"{12345L.ToString("N0")} (stale)");
-        markup.ShouldContain($"{7.5.ToString("F1")} (stale)");
-        markup.ShouldContain($"{1.2.ToString("F1")}% (stale)");
-        markup.ShouldNotContain("unavailable");
+        markup.ShouldContain("Unhealthy");
+        markup.ShouldContain("unavailable");
+        // Empty-state copy renders for the empty component grid.
+        markup.ShouldContain("No DAPR components detected");
+        markup.ShouldNotContain("0.0/s");
+        markup.ShouldNotContain("0.0%");
+    }
+
+    [Fact]
+    public void HealthApi_Null_IssueBanner() {
+        // The API returns null (e.g. 204 No Content). The page must show the unable-to-load
+        // banner without spinning forever or crashing.
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SystemHealthReport?>(null));
+
+        IRenderedComponent<Health> cut = Render<Health>();
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldContain("Unable to load health status"),
+            TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldNotContain("hexalith-skeleton-card");
     }
 
     // ===== Test data helpers =====

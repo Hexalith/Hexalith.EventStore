@@ -15,7 +15,4 @@ public enum RemoteMetadataStatus {
 
     /// <summary>Remote endpoint responded but the body could not be parsed or lacked required shape.</summary>
     InvalidPayload,
-
-    /// <summary>Remote sidecar reachable but its app metadata is still initializing/not yet ready.</summary>
-    Initializing,
 }

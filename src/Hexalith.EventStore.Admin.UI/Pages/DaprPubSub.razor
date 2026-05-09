@@ -58,13 +58,13 @@
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Active Subscriptions"
                       Value="@(_overview.RemoteMetadataStatus == RemoteMetadataStatus.Available ? _overview.Subscriptions.Count.ToString() : "subscription data unavailable")"
-                      Severity="@(_overview.RemoteMetadataStatus == RemoteMetadataStatus.Available && _overview.Subscriptions.Count > 0 ? "success" : "neutral")"
+                      Severity="@GetSubscriptionsSeverity(_overview)"
                       Title="Number of active DAPR subscriptions reported by the remote EventStore sidecar metadata" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Unique Topics"
                       Value="@(_overview.RemoteMetadataStatus == RemoteMetadataStatus.Available ? _overview.Subscriptions.Select(s => s.Topic).Distinct().Count().ToString() : "subscription data unavailable")"
-                      Severity="neutral"
+                      Severity="@(_overview.RemoteMetadataStatus == RemoteMetadataStatus.Available ? "neutral" : "warning")"
                       Title="Number of distinct subscription topics" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
@@ -93,13 +93,16 @@
             <EmptyState Title="Invalid remote metadata"
                         Description="@($"The remote EventStore sidecar at {_overview.RemoteEndpoint}/v1.0/metadata responded but the payload could not be parsed. Pub/sub component and subscription totals are not derived from a partial parse.")" />
             break;
-        case RemoteMetadataStatus.Initializing:
-            <EmptyState Title="Remote sidecar initializing"
-                        Description="@($"The remote EventStore sidecar at {_overview.RemoteEndpoint} is reachable but its app metadata is still loading. Pub/sub inventory will appear once initialization completes.")" />
-            break;
         case RemoteMetadataStatus.Available:
             <EmptyState Title="No pub/sub components found"
                         Description="The EventStore sidecar is reachable but reports no pub/sub components. Check that 'pubsub' is registered as a DAPR component and referenced by the EventStore sidecar in HexalithEventStoreExtensions.cs." />
+            break;
+        default:
+            // Future RemoteMetadataStatus members fall here. Log a warning so the missing UI
+            // translation is observable rather than silently rendering an empty container.
+            Logger.LogWarning("Unrecognised RemoteMetadataStatus '{Status}' in DaprPubSub empty state.", _overview.RemoteMetadataStatus);
+            <EmptyState Title="Pub/sub inventory unavailable"
+                        Description="@($"The remote EventStore sidecar reported an unrecognised metadata status ({_overview.RemoteMetadataStatus}). Pub/sub inventory cannot be displayed.")" />
             break;
     }
 }
@@ -163,12 +166,15 @@
                          Title="Invalid remote metadata"
                          Description="@($"The remote EventStore sidecar at {_overview.RemoteEndpoint}/v1.0/metadata returned a payload that could not be parsed. Subscription counts are not derived from a partial parse.")" />
             break;
-        case RemoteMetadataStatus.Initializing:
-            <IssueBanner Visible="true"
-                         Title="Remote sidecar initializing"
-                         Description="@($"The remote EventStore sidecar at {_overview.RemoteEndpoint} is reachable but app metadata is still loading. Subscription data will appear once initialization completes.")" />
-            break;
         case RemoteMetadataStatus.Available:
+            break;
+        default:
+            // Future RemoteMetadataStatus members fall here. Log a warning so the missing UI
+            // translation is observable rather than silently dropping the banner.
+            Logger.LogWarning("Unrecognised RemoteMetadataStatus '{Status}' in DaprPubSub subscription banner.", _overview.RemoteMetadataStatus);
+            <IssueBanner Visible="true"
+                         Title="Subscription metadata status unavailable"
+                         Description="@($"The remote EventStore sidecar reported an unrecognised metadata status ({_overview.RemoteMetadataStatus}). Subscription data may be incomplete.")" />
             break;
     }
 
@@ -480,6 +486,21 @@
         }
 
         return _deadLetterCount.Value == 0 ? "success" : "warning";
+    }
+
+    // Subscription-card severity must visually distinguish "subscription data unavailable" from
+    // a healthy zero. When remote metadata is non-Available the value field renders the literal
+    // "subscription data unavailable" text; we mirror that with a warning severity rather than
+    // the neutral cue used for a real zero (AC3 — status fields, not numeric defaults, are the
+    // source of truth).
+    private static string GetSubscriptionsSeverity(DaprPubSubOverview overview)
+    {
+        if (overview.RemoteMetadataStatus != RemoteMetadataStatus.Available)
+        {
+            return "warning";
+        }
+
+        return overview.Subscriptions.Count > 0 ? "success" : "neutral";
     }
 
     private string GetDeadLetterColor()

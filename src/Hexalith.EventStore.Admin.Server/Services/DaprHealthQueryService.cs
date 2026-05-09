@@ -114,7 +114,7 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
             stateStoreProbeFailed,
             eventStoreFailed,
             inventory.RemoteMetadataStatus,
-            inventory.LocalProbeAvailable);
+            inventory.LocalSidecarMetadataAvailable);
 
         ObservabilityLinks links = new(_options.TraceUrl, _options.MetricsUrl, _options.LogsUrl);
 
@@ -141,22 +141,37 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
     }
 
     private static bool IsStateStoreProbeFailed(DaprCanonicalInventory inventory, string configuredStateStoreName) {
-        // The probe runs inside GetCanonicalDaprInventoryAsync and writes Source = LocalAdminProbe
-        // on the matching state-store entry. Any non-Healthy status on that row is treated as
-        // probe failure for overall-status purposes.
-        DaprComponentDetail? row = inventory.Components.FirstOrDefault(c =>
-            string.Equals(c.ComponentName, configuredStateStoreName, StringComparison.OrdinalIgnoreCase)
-            && c.Category == DaprComponentCategory.StateStore);
-
-        if (row is null) {
-            // Configured state store has no row at all — canonical inventory always synthesizes
-            // one when neither metadata source listed it, so this branch only fires if the name
-            // was filtered out for a category mismatch upstream. Treat as probe failure to honor
-            // the truth contract ("absent local evidence cannot be misread as healthy").
+        if (string.IsNullOrWhiteSpace(configuredStateStoreName)) {
+            // Without a configured state-store name we cannot identify the probe row; absent
+            // probe evidence cannot be presented as healthy, so treat as probe failure.
             return true;
         }
 
-        return row.Status != HealthStatus.Healthy;
+        // The probe runs inside GetCanonicalDaprInventoryAsync and writes Source = LocalAdminProbe
+        // on the matching state-store entry. Scope the lookup to LocalAdminProbe rows so we
+        // match the probe-written entry deterministically and ignore remote-only rows that
+        // happen to share a name (a remote sidecar can report a state-store with a different
+        // category mapping; that row is inventory evidence, not probe evidence).
+        DaprComponentDetail[] probeRows = inventory.Components
+            .Where(c =>
+                string.Equals(c.ComponentName, configuredStateStoreName, StringComparison.OrdinalIgnoreCase)
+                && c.Source == DaprComponentSource.LocalAdminProbe)
+            .OrderBy(c => c.ComponentType, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (probeRows.Length == 0) {
+            // No probe-attributed row for the configured state-store name. This means either
+            // the synth was not inserted (pre-condition: name was missing/empty/whitespace —
+            // already handled above) or the probe never overwrote a remote-attributed row.
+            // Either way we have no probe evidence; treat as probe failure to honour the
+            // truth contract ("absent local evidence cannot be misread as healthy").
+            return true;
+        }
+
+        // Only Status == Unhealthy counts as probe failure. The probe writes Healthy on
+        // success, Unhealthy on exception/timeout; Degraded would never be probe-written and
+        // collapsing it into "failed" would misclassify any future-emitted state.
+        return probeRows.Any(r => r.Status == HealthStatus.Unhealthy);
     }
 
     private static List<DaprComponentHealth> MapToHealthComponents(DaprCanonicalInventory inventory) {
@@ -176,21 +191,22 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
         bool stateStoreProbeFailed,
         bool eventStoreFailed,
         RemoteMetadataStatus remoteStatus,
-        bool localProbeAvailable) {
+        bool localSidecarMetadataAvailable) {
         if (stateStoreProbeFailed) {
             return HealthStatus.Unhealthy;
         }
 
-        if (!localProbeAvailable) {
-            // Local Admin sidecar unreachable — admin operations cannot be considered healthy.
+        if (!localSidecarMetadataAvailable) {
+            // Local Admin sidecar unreachable or returned an empty payload — admin operations
+            // cannot be considered healthy.
             return HealthStatus.Unhealthy;
         }
 
-        // Decision D1: only Unreachable signals an operator-meaningful connectivity gap.
-        // InvalidPayload and Initializing are diagnostic states surfaced via
-        // SystemHealthReport.InventorySourceStatus and per-page banners; they do not double-
-        // count against overall health.
-        if (remoteStatus == RemoteMetadataStatus.Unreachable) {
+        // Round 3 D4: a remote metadata source that is Unreachable OR InvalidPayload is
+        // functionally equivalent — the canonical inventory is missing usable evidence either
+        // way — so both downgrade overall to Degraded. NotConfigured is intentional ("we did
+        // not ask"), Available means we got a payload, and Initializing is no longer emitted.
+        if (remoteStatus is RemoteMetadataStatus.Unreachable or RemoteMetadataStatus.InvalidPayload) {
             return HealthStatus.Degraded;
         }
 
@@ -236,19 +252,15 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<DaprComponentHealth>> GetDaprComponentStatusAsync(CancellationToken ct = default) {
-        DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
-        if (metadata?.Components is null) {
-            return [];
-        }
+        // Route through the canonical inventory so this API contract surface returns the same
+        // truth as /health and /dapr — every row carries probe-derived Status and Source
+        // attribution rather than the pre-refactor "everything from local sidecar metadata is
+        // Healthy + LocalAdminMetadataFallback" answer.
+        DaprCanonicalInventory inventory = await _infrastructure
+            .GetCanonicalDaprInventoryAsync(ct)
+            .ConfigureAwait(false);
 
-        return metadata.Components
-            .Select(c => new DaprComponentHealth(
-                c.Name,
-                c.Type,
-                HealthStatus.Healthy,
-                DateTimeOffset.UtcNow,
-                DaprComponentSource.LocalAdminMetadataFallback))
-            .ToList();
+        return MapToHealthComponents(inventory);
     }
 
     /// <inheritdoc/>

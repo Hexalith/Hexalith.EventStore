@@ -8,6 +8,7 @@
 
 @inject AdminActorApiClient ApiClient
 @inject NavigationManager NavigationManager
+@inject ILogger<DaprActors> Logger
 
 <PageTitle>DAPR Actor Inspector - Hexalith EventStore</PageTitle>
 
@@ -80,17 +81,16 @@
             <EmptyState Title="EventStore sidecar metadata invalid"
                         Description="@($"The remote sidecar at {_runtimeInfo.RemoteEndpoint} responded but the metadata payload could not be parsed. Actor information is unavailable until the sidecar returns a well-formed response. Check Admin server logs for the parse error.")" />
             break;
-        case RemoteMetadataStatus.Initializing:
-            <EmptyState Title="EventStore sidecar initializing"
-                        Description="@($"The remote sidecar at {_runtimeInfo.RemoteEndpoint} is reachable but has not finished loading metadata. Refresh in a few seconds.")" />
-            break;
         case RemoteMetadataStatus.Available:
             <EmptyState Title="No actor types registered"
                         Description="The EventStore sidecar is reachable but reports no actor types." />
             break;
         default:
+            // Future RemoteMetadataStatus members fall here. Log a warning so the missing UI
+            // translation is observable rather than silently bucketing under generic copy.
+            Logger.LogWarning("Unrecognised RemoteMetadataStatus '{Status}' in DaprActors empty state.", _runtimeInfo.RemoteMetadataStatus);
             <EmptyState Title="Actor metadata unavailable"
-                        Description="The remote sidecar metadata source returned an unrecognized status. Refresh; if the issue persists, check Admin server logs." />
+                        Description="@($"The remote sidecar metadata source returned an unrecognised status ({_runtimeInfo.RemoteMetadataStatus}). Refresh; if the issue persists, check Admin server logs.")" />
             break;
     }
 }

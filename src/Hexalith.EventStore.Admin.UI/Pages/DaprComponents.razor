@@ -9,6 +9,7 @@
 
 @inject AdminDaprApiClient ApiClient
 @inject NavigationManager NavigationManager
+@inject ILogger<DaprComponents> Logger
 
 <PageTitle>DAPR - Hexalith EventStore</PageTitle>
 
@@ -88,14 +89,15 @@
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Components"
-                      Value="@_sidecar.ComponentCount.ToString()"
-                      Severity="success"
-                      Title="Number of registered DAPR components" />
+                      Value="@_components.Count.ToString()"
+                      Severity="@GetComponentsCountSeverity()"
+                      Subtitle="@GetComponentsCountSubtitle()"
+                      Title="Number of components in the canonical inventory (merged remote + local)" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Active Subscriptions"
                       Value="@(_sidecar.RemoteMetadataStatus == RemoteMetadataStatus.Available ? _sidecar.SubscriptionCount.ToString() : "subscription data unavailable")"
-                      Severity="neutral"
+                      Severity="@(_sidecar.RemoteMetadataStatus == RemoteMetadataStatus.Available ? "neutral" : "warning")"
                       Subtitle="@(_sidecar.RemoteMetadataStatus == RemoteMetadataStatus.Available ? $"{_sidecar.HttpEndpointCount} HTTP endpoints" : "HTTP endpoints: unavailable")"
                       Title="@GetRemoteMetadataTitle(_sidecar)" />
         </FluentGridItem>
@@ -119,13 +121,22 @@
             <EmptyState Title="EventStore sidecar metadata invalid"
                         Description="@($"The remote sidecar at {_sidecar?.RemoteEndpoint} responded but the metadata payload could not be parsed. Component inventory is unavailable until the sidecar returns a well-formed response.")" />
             break;
-        case RemoteMetadataStatus.Initializing:
-            <EmptyState Title="EventStore sidecar initializing"
-                        Description="@($"The remote sidecar at {_sidecar?.RemoteEndpoint} is reachable but has not finished loading metadata. Refresh in a few seconds.")" />
+        case RemoteMetadataStatus.Available:
+            // Available + zero-component grid: no inventory but the canonical source confirmed
+            // the empty payload, so render an honest empty-state rather than the generic copy.
+            <EmptyState Title="No DAPR components reported"
+                        Description="@($"The remote sidecar at {_sidecar?.RemoteEndpoint} returned a valid metadata response with no components. If components are expected here, verify the sidecar configuration.")" />
+            break;
+        case null:
+            <EmptyState Title="DAPR sidecar metadata unavailable"
+                        Description="The Admin API did not return DAPR sidecar metadata for this view. Check Admin server logs and DAPR connectivity." />
             break;
         default:
-            <EmptyState Title="No DAPR components detected"
-                        Description="DAPR sidecar is not available or has no registered components. Check sidecar connectivity and ensure DAPR is running alongside the application." />
+            // Future RemoteMetadataStatus members fall here. Log a warning so the missing UI
+            // translation is observable, then render a generic explanation rather than blank.
+            Logger.LogWarning("Unrecognised RemoteMetadataStatus '{Status}' in DaprComponents empty state.", _sidecar?.RemoteMetadataStatus);
+            <EmptyState Title="DAPR component inventory unavailable"
+                        Description="@($"The remote sidecar reported an unrecognised metadata status ({_sidecar?.RemoteMetadataStatus}). Component inventory cannot be displayed.")" />
             break;
     }
 }
@@ -400,15 +411,49 @@
         _ => "neutral",
     };
 
-    private static string GetRemoteMetadataTitle(DaprSidecarInfo sidecar) => sidecar.RemoteMetadataStatus switch
+    // Severity for the canonical-inventory components count. Surfaces inventory-level health
+    // rather than the prior hardcoded "success" — any Unhealthy row tints the card.
+    private string GetComponentsCountSeverity()
     {
-        RemoteMetadataStatus.Available => $"Remote eventstore sidecar reachable at {sidecar.RemoteEndpoint}",
-        RemoteMetadataStatus.Unreachable => $"Remote eventstore sidecar unreachable at {sidecar.RemoteEndpoint}",
-        RemoteMetadataStatus.InvalidPayload => $"Remote eventstore sidecar at {sidecar.RemoteEndpoint} returned an invalid payload",
-        RemoteMetadataStatus.Initializing => $"Remote eventstore sidecar at {sidecar.RemoteEndpoint} is initializing",
-        RemoteMetadataStatus.NotConfigured => "Remote eventstore sidecar endpoint not configured (AdminServer:EventStoreDaprHttpEndpoint)",
-        _ => "Number of active subscriptions",
-    };
+        if (_components.Any(c => c.Status == HealthStatus.Unhealthy))
+        {
+            return "error";
+        }
+
+        if (_components.Any(c => c.Status == HealthStatus.Degraded))
+        {
+            return "warning";
+        }
+
+        // Empty canonical inventory or all-Healthy.
+        return _components.Count == 0 ? "warning" : "success";
+    }
+
+    private string GetComponentsCountSubtitle()
+    {
+        int localOnly = _components.Count(c => c.Source == DaprComponentSource.LocalAdminMetadataFallback);
+        int probed = _components.Count(c => c.Source == DaprComponentSource.LocalAdminProbe);
+        int remote = _components.Count(c => c.Source == DaprComponentSource.RemoteEventStoreMetadata);
+        return $"{remote} remote / {probed} probed / {localOnly} local";
+    }
+
+    private string GetRemoteMetadataTitle(DaprSidecarInfo sidecar)
+    {
+        switch (sidecar.RemoteMetadataStatus)
+        {
+            case RemoteMetadataStatus.Available:
+                return $"Remote eventstore sidecar reachable at {sidecar.RemoteEndpoint}";
+            case RemoteMetadataStatus.Unreachable:
+                return $"Remote eventstore sidecar unreachable at {sidecar.RemoteEndpoint}";
+            case RemoteMetadataStatus.InvalidPayload:
+                return $"Remote eventstore sidecar at {sidecar.RemoteEndpoint} returned an invalid payload";
+            case RemoteMetadataStatus.NotConfigured:
+                return "Remote eventstore sidecar endpoint not configured (AdminServer:EventStoreDaprHttpEndpoint)";
+            default:
+                Logger.LogWarning("Unrecognised RemoteMetadataStatus '{Status}' in DaprComponents tooltip.", sidecar.RemoteMetadataStatus);
+                return "Number of active subscriptions";
+        }
+    }
 
     private static string FormatSource(DaprComponentSource source) => source switch
     {

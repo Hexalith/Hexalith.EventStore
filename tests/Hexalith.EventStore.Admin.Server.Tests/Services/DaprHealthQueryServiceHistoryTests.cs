@@ -33,7 +33,7 @@ public class DaprHealthQueryServiceHistoryTests {
 
         IDaprInfrastructureQueryService infra = Substitute.For<IDaprInfrastructureQueryService>();
         _ = infra.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(DaprCanonicalInventory.Empty with { LocalProbeAvailable = true }));
+            .Returns(Task.FromResult(DaprCanonicalInventory.Empty with { LocalSidecarMetadataAvailable = true }));
 
         return new DaprHealthQueryService(
             daprClient,

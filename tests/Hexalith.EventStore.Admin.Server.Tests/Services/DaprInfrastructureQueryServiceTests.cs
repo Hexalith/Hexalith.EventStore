@@ -70,7 +70,7 @@ public class DaprInfrastructureQueryServiceTests {
     [Fact]
     public async Task GetComponentsAsync_SurfacesSynthesizedStateStore_WhenBothMetadataSourcesUnavailable() {
         // Canonical inventory swallows local-sidecar failures (the failure becomes evidence
-        // exposed via DaprCanonicalInventory.LocalProbeAvailable=false). With no remote endpoint
+        // exposed via DaprCanonicalInventory.LocalSidecarMetadataAvailable=false). With no remote endpoint
         // configured we still surface the configured state store as an Unhealthy synth row so
         // operators see the dependency rather than an empty list (AC1 truth contract: "absent
         // local evidence cannot be misread as healthy").
@@ -270,15 +270,20 @@ public class DaprInfrastructureQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetSidecarInfoAsync_Throws_WhenSidecarUnavailable() {
+    public async Task GetSidecarInfoAsync_ReturnsNull_WhenSidecarUnavailable() {
+        // Round 3: local metadata read is now memoized via TryReadLocalMetadataAsync, which
+        // catches non-cancellation exceptions (the sidecar-down case) and surfaces them as
+        // "metadata not available". GetSidecarInfoAsync therefore returns null rather than
+        // letting the InvalidOperationException escape — graceful-degradation contract.
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Sidecar down"));
 
         DaprInfrastructureQueryService service = CreateService(daprClient);
 
-        _ = await Should.ThrowAsync<InvalidOperationException>(
-            () => service.GetSidecarInfoAsync());
+        DaprSidecarInfo? info = await service.GetSidecarInfoAsync();
+
+        info.ShouldBeNull();
     }
 
     [Fact]
@@ -414,7 +419,7 @@ public class DaprInfrastructureQueryServiceTests {
 
         // Assert
         inventory.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
-        inventory.LocalProbeAvailable.ShouldBeTrue();
+        inventory.LocalSidecarMetadataAvailable.ShouldBeTrue();
         inventory.PubSubSubscriptions.Count.ShouldBe(1);
 
         // State-store: probe-last ordering means the probed source wins on the shared key.
@@ -564,7 +569,7 @@ public class DaprInfrastructureQueryServiceTests {
 
         // Assert — local fallback evidence kept; remote labelled Unreachable; pub/sub absent.
         inventory.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Unreachable);
-        inventory.LocalProbeAvailable.ShouldBeTrue();
+        inventory.LocalSidecarMetadataAvailable.ShouldBeTrue();
         inventory.PubSubSubscriptions.ShouldBeEmpty();
         DaprComponentDetail stateStore = inventory.Components.ShouldHaveSingleItem();
         stateStore.ComponentName.ShouldBe("statestore");
@@ -613,6 +618,120 @@ public class DaprInfrastructureQueryServiceTests {
     }
 
     [Fact]
+    public async Task GetCanonicalDaprInventoryAsync_PreservesRemoteVersion_WhenStateStoreProbeSucceeds() {
+        // F25 — round 3 added a "remote wins on shared key" test using pubsub (which is not
+        // probed). The state-store probe path was unproven: when probe succeeds, the resulting
+        // row's Version field must come from the documented merge winner (remote takes the
+        // pre-probe seat in the merged dictionary, then probe rewrites Status/LastCheck/Source
+        // but preserves the remote-supplied Version).
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateMetadata(
+                new DaprComponentsMetadata("statestore", "state.redis", "v1-local", [])));
+        _ = daprClient.GetStateAsync<string>(
+            "statestore", "admin:dapr-probe",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => (string?)null);
+
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        using HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """
+        {
+            "id": "eventstore",
+            "components": [
+                {"name": "statestore", "type": "state.redis", "version": "v2-remote"}
+            ]
+        }
+        """));
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        DaprComponentDetail stateStore = inventory.Components
+            .ShouldHaveSingleItem();
+        stateStore.ComponentName.ShouldBe("statestore");
+        stateStore.Status.ShouldBe(HealthStatus.Healthy); // probe succeeded
+        stateStore.Source.ShouldBe(DaprComponentSource.LocalAdminProbe); // probe rewrote source
+        stateStore.Version.ShouldBe("v2-remote"); // remote-supplied version survives probe rewrite
+    }
+
+    [Theory]
+    [InlineData(RemoteMetadataStatus.NotConfigured)]
+    [InlineData(RemoteMetadataStatus.Unreachable)]
+    [InlineData(RemoteMetadataStatus.InvalidPayload)]
+    public async Task GetCanonicalDaprInventoryAsync_PubSubSubscriptionsCountIsZero_ForEachNonAvailableStatus(
+        RemoteMetadataStatus expectedStatus) {
+        // F37 — the conflict-rule "subscription count != 0 only when status is Available" had
+        // assertions only on the status field, never on the count. Pin the negative invariant:
+        // when remote is Unreachable / InvalidPayload / NotConfigured, PubSubSubscriptions.Count
+        // is always 0 — and consumers must treat that as "unavailable", not real zero. The UI
+        // already does (driven by RemoteMetadataStatus), but the server contract was unpinned.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata());
+
+        AdminServerOptions options = new();
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+
+        if (expectedStatus is RemoteMetadataStatus.Unreachable) {
+            options = new AdminServerOptions { EventStoreDaprHttpEndpoint = "http://localhost:3501" };
+            using HttpClient httpClient = new(new FakeHandler(HttpStatusCode.InternalServerError, "boom"));
+            _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+            DaprInfrastructureQueryService unreachableService = CreateService(daprClient, options, httpClientFactory);
+            DaprCanonicalInventory inv = await unreachableService.GetCanonicalDaprInventoryAsync();
+
+            inv.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Unreachable);
+            inv.PubSubSubscriptions.Count.ShouldBe(0);
+            return;
+        }
+
+        if (expectedStatus is RemoteMetadataStatus.InvalidPayload) {
+            options = new AdminServerOptions { EventStoreDaprHttpEndpoint = "http://localhost:3501" };
+            using HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, "{ malformed"));
+            _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+            DaprInfrastructureQueryService invalidService = CreateService(daprClient, options, httpClientFactory);
+            DaprCanonicalInventory inv = await invalidService.GetCanonicalDaprInventoryAsync();
+
+            inv.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.InvalidPayload);
+            inv.PubSubSubscriptions.Count.ShouldBe(0);
+            return;
+        }
+
+        // NotConfigured — no endpoint set
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        inventory.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
+        inventory.PubSubSubscriptions.Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetCanonicalDaprInventoryAsync_PreservesProbeUnhealthy_WhenStateStoreProbeFails() {
+        // F2 (CRITICAL probe-timeout fix) regression coverage. We assert the *ProbeFails*
+        // branch separately: a thrown exception from GetStateAsync must convert the row to
+        // Status = Unhealthy + Source = LocalAdminProbe and survive the merge.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata());
+        _ = daprClient.GetStateAsync<string>(
+            "statestore", "admin:dapr-probe",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Redis connection refused"));
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        DaprComponentDetail stateStore = inventory.Components.ShouldHaveSingleItem();
+        stateStore.ComponentName.ShouldBe("statestore");
+        stateStore.Status.ShouldBe(HealthStatus.Unhealthy);
+        stateStore.Source.ShouldBe(DaprComponentSource.LocalAdminProbe);
+    }
+
+    [Fact]
     public async Task GetCanonicalDaprInventoryAsync_DoesNotErasePubSub_WhenLocalSidecarFailsButRemoteAvailable() {
         // Story scenario: Redis (state store) is down on Admin.Server, but the remote EventStore
         // sidecar is still reachable. /dapr and /dapr/pubsub must still show pub/sub from remote.
@@ -640,7 +759,7 @@ public class DaprInfrastructureQueryServiceTests {
 
         // Assert
         inventory.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
-        inventory.LocalProbeAvailable.ShouldBeFalse();
+        inventory.LocalSidecarMetadataAvailable.ShouldBeFalse();
         DaprComponentDetail pubSub = inventory.Components
             .Where(c => c.Category == DaprComponentCategory.PubSub).ShouldHaveSingleItem();
         pubSub.Source.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);

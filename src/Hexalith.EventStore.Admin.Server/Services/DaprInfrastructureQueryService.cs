@@ -29,7 +29,22 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
     // scoped so each HTTP request gets a fresh instance; sharing the parsed payload across the
     // four consumers (canonical inventory, sidecar info, actor info, pub/sub overview) keeps
     // /dapr and /dapr/pubsub on the same snapshot rather than racing separate roundtrips.
-    private Task<RemoteMetadataPayload>? _remoteMetadataTask;
+    //
+    // We cache the *result* (a value-type RemoteMetadataPayload), not the in-flight Task. The
+    // task captures the first caller's CancellationToken; if that caller cancels, every later
+    // in-scope consumer awaiting the cached task would re-throw the cancellation even when its
+    // own token is fine. By caching only on successful completion (any non-throwing return —
+    // Available / NotConfigured / Unreachable / InvalidPayload), a cancelled first caller does
+    // not poison subsequent consumers; they retry with their own token.
+    private RemoteMetadataPayload? _cachedRemoteMetadata;
+
+    // Per-request memoization of the local Admin sidecar's DaprClient.GetMetadataAsync result.
+    // Same rationale as _cachedRemoteMetadata: keeps GetCanonicalDaprInventoryAsync,
+    // GetSidecarInfoAsync, and GetActorRuntimeInfoAsync on a single snapshot of the local
+    // sidecar's component/actor lists within one request without capturing caller CTs.
+    // null sentinel = "not yet successfully read". A successful read with a null DaprMetadata
+    // (sidecar reachable but returned no metadata) is cached as LocalMetadataResult.Empty.
+    private LocalMetadataResult? _cachedLocalMetadata;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprInfrastructureQueryService"/> class.
@@ -69,21 +84,22 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         DateTimeOffset now = DateTimeOffset.UtcNow;
         Dictionary<(string Name, string Type), DaprComponentDetail> merged
             = new(InventoryKeyComparer.Instance);
-        bool localProbeAvailable = false;
 
         // Stage 1 — local Admin sidecar metadata (degraded fallback; supplies component names that
         // probes need to attach to when the remote EventStore sidecar metadata is also unavailable).
-        DaprMetadata? localMetadata = null;
-        try {
-            localMetadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
-            localProbeAvailable = localMetadata is not null;
-        }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception ex) {
-            _logger.LogWarning(ex, "Local DAPR sidecar metadata unavailable for canonical inventory.");
-        }
+        LocalMetadataResult local = await TryReadLocalMetadataAsync(ct).ConfigureAwait(false);
+        DaprMetadata? localMetadata = local.Metadata;
+
+        // The local sidecar carries usable evidence only if the metadata API responded AND the
+        // payload is non-empty: the sidecar can hand back a DaprMetadata whose Components/
+        // Actors/Extended are all null when the app is reachable but its app-metadata has not
+        // loaded yet. Trusting `local.Available` alone would let ComputeOverallStatus skip the
+        // Unhealthy branch in that initialising state.
+        bool localSidecarMetadataAvailable = local.Available
+            && localMetadata is not null
+            && (localMetadata.Components is { Count: > 0 }
+                || localMetadata.Actors is { Count: > 0 }
+                || localMetadata.Extended is { Count: > 0 });
 
         if (localMetadata?.Components is not null) {
             foreach (DaprComponentsMetadata c in localMetadata.Components) {
@@ -119,26 +135,44 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         // neither metadata source listed it (both unavailable). Without this synth, a Redis
         // outage with no local/remote metadata would silently omit the state-store row from
         // /health and /dapr instead of surfacing it as Unhealthy.
+        //
+        // Skip when the configured state-store name is empty/whitespace: `DaprComponentDetail`
+        // validates ComponentName non-empty and would throw, replacing the "graceful degradation"
+        // contract with an unhandled 500.
         string configuredStateStore = _options.StateStoreName;
-        if (!merged.Keys.Any(k => string.Equals(k.Name, configuredStateStore, StringComparison.OrdinalIgnoreCase))) {
+        if (!string.IsNullOrWhiteSpace(configuredStateStore)
+            && !merged.Keys.Any(k => string.Equals(k.Name, configuredStateStore, StringComparison.OrdinalIgnoreCase))) {
             const string SyntheticStateStoreType = "state.unknown";
             DaprComponentDetail synth = new(
                 configuredStateStore,
                 SyntheticStateStoreType,
-                DaprComponentCategory.StateStore,
+                // Derive Category from the helper rather than hardcoding StateStore: keeps
+                // synth.Category aligned with helper logic if the literal or mapping changes.
+                DaprComponentCategoryHelper.FromComponentType(SyntheticStateStoreType),
                 Version: string.Empty,
                 Status: HealthStatus.Unhealthy,
                 LastCheckUtc: now,
                 Capabilities: [],
-                Source: DaprComponentSource.Unavailable);
+                // The synth row exists *only* because the local probe is about to run; that is
+                // local-probe evidence even when the probe itself ends up timing out without
+                // overwriting Source. `Source = Unavailable` would contradict the truth contract
+                // ("a successfully reported component must never carry Source = Unavailable").
+                Source: DaprComponentSource.LocalAdminProbe);
             merged[(configuredStateStore, SyntheticStateStoreType)] = synth;
         }
 
-        // Stage 4 — probe state-store entries last so probe Status wins over remote Status
-        // (Operator Truth Contract conflict rule: "Local probe fails, remote says loaded ->
-        // one row, loaded inventory + unhealthy probe evidence"). The probe also rewrites
-        // Source to LocalAdminProbe to record the canonical health-check evidence.
-        using (var probeCts = CancellationTokenSource.CreateLinkedTokenSource(ct)) {
+        // Stage 4 — probe the configured Admin state store last so probe Status wins over
+        // remote Status (Operator Truth Contract conflict rule: "Local probe fails, remote says
+        // loaded -> one row, loaded inventory + unhealthy probe evidence"). The probe also
+        // rewrites Source to LocalAdminProbe to record the canonical health-check evidence.
+        //
+        // Filter to entries whose ComponentName matches the configured Admin state-store name:
+        // probing every state-store category entry would call _daprClient.GetStateAsync against
+        // the *Admin* sidecar for components that only exist on the EventStore sidecar (e.g.
+        // `eventstore-state`), and DAPR returns "component not found" — which would falsely
+        // mark a remote-only component as Unhealthy with Source = LocalAdminProbe.
+        if (!string.IsNullOrWhiteSpace(configuredStateStore)) {
+            using var probeCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             probeCts.CancelAfter(TimeSpan.FromSeconds(3));
 
             List<Task<(DaprComponentDetail Updated, bool Replace)>> probes = [];
@@ -147,21 +181,30 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                     continue;
                 }
 
-                probes.Add(ProbeStateStoreEntryAsync(entry, probeCts.Token));
+                if (!string.Equals(entry.ComponentName, configuredStateStore, StringComparison.OrdinalIgnoreCase)) {
+                    continue;
+                }
+
+                probes.Add(ProbeStateStoreEntryAsync(entry, ct, probeCts.Token));
             }
 
-            if (probes.Count > 0) {
+            // Run probes individually rather than via Task.WhenAll so a single throw does not
+            // discard the results of sibling probes that completed successfully. (Today there
+            // is at most one probe given the configured-name filter above, but the loop is
+            // already shaped for n probes; failing-batch semantics would be a future-trap.)
+            foreach (Task<(DaprComponentDetail Updated, bool Replace)> probe in probes) {
                 try {
-                    (DaprComponentDetail Updated, bool Replace)[] probed
-                        = await Task.WhenAll(probes).ConfigureAwait(false);
-                    foreach ((DaprComponentDetail updated, bool replace) in probed) {
-                        if (replace) {
-                            merged[(updated.ComponentName, updated.ComponentType)] = updated;
-                        }
+                    (DaprComponentDetail updated, bool replace) = await probe.ConfigureAwait(false);
+                    if (replace) {
+                        merged[(updated.ComponentName, updated.ComponentType)] = updated;
                     }
                 }
                 catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
-                    _logger.LogWarning("State store health probes timed out after 3 seconds.");
+                    // Linked CTS fired its 3-second timeout without the caller cancelling.
+                    // Probe entry already attempted to translate this into an Unhealthy row;
+                    // if we get here the translation re-threw (e.g. probeCts cancellation
+                    // raced an inner await). Leave the merged row as-is.
+                    _logger.LogWarning("State store health probe timed out after 3 seconds.");
                 }
             }
         }
@@ -178,13 +221,16 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             subs,
             remote.Status,
             remote.Endpoint,
-            localProbeAvailable,
+            localSidecarMetadataAvailable,
             now);
     }
 
     /// <inheritdoc/>
     public async Task<DaprSidecarInfo?> GetSidecarInfoAsync(CancellationToken ct = default) {
-        DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
+        // Use the per-request cached local sidecar metadata so /dapr and /dapr/pubsub agree on
+        // local component count (round 3 D2). Direct GetMetadataAsync would race the cache.
+        LocalMetadataResult local = await TryReadLocalMetadataAsync(ct).ConfigureAwait(false);
+        DaprMetadata? metadata = local.Metadata;
         if (metadata is null) {
             return null;
         }
@@ -199,12 +245,16 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
         RemoteMetadataPayload remote = await TryReadRemoteMetadataAsync(ct).ConfigureAwait(false);
 
+        // Counts are meaningful only when remote.Status == Available; consumers reading
+        // SubscriptionCount/HttpEndpointCount unconditionally would surface "0" for an
+        // unreachable remote, exactly the unknown-zero pattern we forbid elsewhere.
+        bool remoteAvailable = remote.Status == RemoteMetadataStatus.Available;
         return new DaprSidecarInfo(
             string.IsNullOrWhiteSpace(metadata.Id) ? "unknown" : metadata.Id,
             runtimeVersion,
             metadata.Components?.Count ?? 0,
-            remote.SubscriptionCount,
-            remote.HttpEndpointCount,
+            remoteAvailable ? remote.SubscriptionCount : 0,
+            remoteAvailable ? remote.HttpEndpointCount : 0,
             remote.Status,
             remote.Endpoint);
     }
@@ -220,27 +270,20 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             ReentrancyEnabled: false,
             ReentrancyMaxStackDepth: 32);
 
-        // Try local sidecar first
+        // Try local sidecar first (memoized per-request so /dapr and /dapr/pubsub agree).
         List<DaprActorTypeInfo> actorTypes = [];
 
-        try {
-            DaprMetadata metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
-            if (metadata?.Actors is not null && metadata.Actors.Count > 0) {
-                foreach (DaprActorMetadata actor in metadata.Actors) {
-                    KnownActorTypeDescriptor descriptor = KnownActorTypes.GetDescriptor(actor.Type);
-                    actorTypes.Add(new DaprActorTypeInfo(
-                        actor.Type,
-                        actor.Count,
-                        descriptor.Description,
-                        descriptor.ActorIdFormat));
-                }
+        LocalMetadataResult local = await TryReadLocalMetadataAsync(ct).ConfigureAwait(false);
+        DaprMetadata? metadata = local.Metadata;
+        if (metadata?.Actors is not null && metadata.Actors.Count > 0) {
+            foreach (DaprActorMetadata actor in metadata.Actors) {
+                KnownActorTypeDescriptor descriptor = KnownActorTypes.GetDescriptor(actor.Type);
+                actorTypes.Add(new DaprActorTypeInfo(
+                    actor.Type,
+                    actor.Count,
+                    descriptor.Description,
+                    descriptor.ActorIdFormat));
             }
-        }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception ex) {
-            _logger.LogWarning(ex, "Local DAPR sidecar metadata unavailable for actor types.");
         }
 
         // If local sidecar has no actors, try remote EventStore server sidecar
@@ -261,14 +304,15 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             remoteEndpoint = remote.Endpoint;
         }
         else {
-            // Local actors found — preserve original behavior: status reflects endpoint config
-            // but we did not exercise remote connectivity, so we cannot claim Available.
+            // Local actors found — remote was deliberately not consulted. Reuse NotConfigured
+            // semantics rather than reporting Unreachable: the Unreachable XML doc says "query
+            // failed (transport, timeout, or non-success status)", which is a lie when no
+            // attempt was made. NotConfigured cleanly communicates "no remote evidence in this
+            // result" without expanding the status vocabulary.
             remoteEndpoint = string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)
                 ? null
                 : _options.EventStoreDaprHttpEndpoint;
-            remoteStatus = remoteEndpoint is null
-                ? RemoteMetadataStatus.NotConfigured
-                : RemoteMetadataStatus.Unreachable;
+            remoteStatus = RemoteMetadataStatus.NotConfigured;
         }
 
         int totalActive = actorTypes
@@ -626,23 +670,31 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
     private async Task<(DaprComponentDetail Updated, bool Replace)> ProbeStateStoreEntryAsync(
         DaprComponentDetail component,
-        CancellationToken ct) {
+        CancellationToken outerCt,
+        CancellationToken probeCt) {
         try {
             _ = await _daprClient
-                .GetStateAsync<string>(component.ComponentName, "admin:dapr-probe", cancellationToken: ct)
+                .GetStateAsync<string>(component.ComponentName, "admin:dapr-probe", cancellationToken: probeCt)
                 .ConfigureAwait(false);
 
             // Success — store responded. Promote source to LocalAdminProbe to record canonical evidence.
             return (component with { Status = HealthStatus.Healthy, LastCheckUtc = DateTimeOffset.UtcNow, Source = DaprComponentSource.LocalAdminProbe }, true);
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
-            // Probe timed out without caller cancellation — treat as Unhealthy evidence.
-            // A bounded probe that does not respond within the budget is not "degraded but
-            // usable"; for AC1 purposes it is the same signal as an exception.
+        catch (OperationCanceledException) when (!outerCt.IsCancellationRequested) {
+            // Probe timed out without the *outer caller* cancelling — treat as Unhealthy
+            // evidence. A bounded probe that does not respond within the budget is not
+            // "degraded but usable"; for AC1 purposes it is the same signal as an exception.
+            //
+            // The filter explicitly inspects `outerCt` rather than `probeCt`: at the point this
+            // catch runs, `probeCt` is the linked CTS token and IS already cancelled (that is
+            // exactly why GetStateAsync threw). Filtering on `probeCt.IsCancellationRequested`
+            // would always be false, leaving the timeout branch unreachable and leaking a
+            // "Healthy by metadata default" state-store row through the AC1 contract.
             _logger.LogWarning("State store probe timed out for {ComponentName} after 3 seconds.", component.ComponentName);
             return (component with { Status = HealthStatus.Unhealthy, LastCheckUtc = DateTimeOffset.UtcNow, Source = DaprComponentSource.LocalAdminProbe }, true);
         }
         catch (OperationCanceledException) {
+            // Outer caller cancelled — propagate cancellation to the request pipeline.
             throw;
         }
         catch (Exception ex) {
@@ -661,12 +713,22 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
     /// <remarks>
     /// Memoized per scoped instance so the canonical inventory, sidecar info, actor info and
     /// pub/sub overview consumers all observe the same snapshot when serving one HTTP request.
-    /// Cancellation is honored on the first caller; later callers receive the cached result
-    /// regardless of their token state since the I/O has already completed.
+    /// Only the *result* is cached; in-flight tasks would close over the first caller's
+    /// CancellationToken and re-throw cancellation/transport faults to subsequent in-scope
+    /// consumers. Caching the result instead means a cancelled first caller leaves the cache
+    /// empty and the next consumer gets a fresh attempt with its own token.
     /// </remarks>
-    private Task<RemoteMetadataPayload> TryReadRemoteMetadataAsync(CancellationToken ct) {
-        // Race-free: scoped lifetime guarantees single-threaded access within a request.
-        return _remoteMetadataTask ??= ReadRemoteMetadataAsync(ct);
+    private async Task<RemoteMetadataPayload> TryReadRemoteMetadataAsync(CancellationToken ct) {
+        if (_cachedRemoteMetadata is { } cached) {
+            return cached;
+        }
+
+        RemoteMetadataPayload result = await ReadRemoteMetadataAsync(ct).ConfigureAwait(false);
+        // Store the result *after* the await so a cancellation throw above leaves the cache
+        // null; subsequent callers retry with their own token. Concurrent callers may both
+        // perform the read; the deterministic-per-request payload makes either outcome safe.
+        _cachedRemoteMetadata = result;
+        return result;
     }
 
     private async Task<RemoteMetadataPayload> ReadRemoteMetadataAsync(CancellationToken ct) {
@@ -695,10 +757,11 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
              List<DaprActorTypeInfo> actors, int subCount, int httpEndpointCount)
                 = ParseRemoteMetadata(doc.RootElement);
 
-            // RemoteMetadataStatus.Initializing is reserved for an explicit signal we don't yet
-            // receive from DAPR's /v1.0/metadata endpoint; a successful 200 OK with parseable
-            // JSON is reported as Available even when the component/actor/subscription arrays
-            // are empty (which is itself observable by consumers via empty collections).
+            // A successful 200 OK with parseable JSON is reported as Available regardless of
+            // whether the component/actor/subscription arrays are empty; consumers that need
+            // to distinguish "available but empty" from "no information" inspect the explicit
+            // collections. (RemoteMetadataStatus.Initializing was removed in round 3 — it had
+            // no reachable producer; if a future signal source becomes available file a story.)
             return new RemoteMetadataPayload {
                 Status = RemoteMetadataStatus.Available,
                 Endpoint = endpoint,
@@ -733,6 +796,39 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 Endpoint = endpoint,
             };
         }
+    }
+
+    /// <summary>
+    /// Reads the local Admin sidecar's <c>DaprClient.GetMetadataAsync</c> result once per request
+    /// and caches the outcome. Same memoization rationale as the remote variant: returning a
+    /// cached result (not an in-flight Task) keeps the four consumers on a single snapshot
+    /// without poisoning later consumers when the first caller's CT is cancelled.
+    /// </summary>
+    private async Task<LocalMetadataResult> TryReadLocalMetadataAsync(CancellationToken ct) {
+        if (_cachedLocalMetadata is { } cached) {
+            return cached;
+        }
+
+        DaprMetadata? metadata = null;
+        bool available = false;
+        try {
+            metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
+            available = metadata is not null;
+        }
+        catch (OperationCanceledException) {
+            // Caller-driven cancellation — propagate; do not poison the cache.
+            throw;
+        }
+        catch (Exception ex) {
+            _logger.LogWarning(ex, "Local DAPR sidecar metadata unavailable.");
+        }
+
+        LocalMetadataResult result = new() {
+            Available = available,
+            Metadata = metadata,
+        };
+        _cachedLocalMetadata = result;
+        return result;
     }
 
     private static (List<DaprComponentDetail> Components,
@@ -866,6 +962,19 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         public int SubscriptionCount { get; init; }
 
         public int HttpEndpointCount { get; init; }
+    }
+
+    /// <summary>
+    /// Memoized outcome of a local <c>DaprClient.GetMetadataAsync</c> read.
+    /// <c>Available</c> is <c>true</c> when the call returned a non-null DaprMetadata; the
+    /// caller still needs to inspect <c>Metadata</c> to decide whether the payload carries
+    /// usable evidence (a sidecar may respond before its app-metadata has loaded, in which
+    /// case <c>Components</c>/<c>Actors</c>/<c>Extended</c> can all be empty/null).
+    /// </summary>
+    private readonly struct LocalMetadataResult {
+        public bool Available { get; init; }
+
+        public DaprMetadata? Metadata { get; init; }
     }
 
     private sealed class InventoryKeyComparer : IEqualityComparer<(string Name, string Type)> {

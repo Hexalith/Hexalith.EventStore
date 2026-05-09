@@ -10,6 +10,7 @@
 @inject DashboardRefreshService RefreshService
 @inject ViewportService Viewport
 @inject NavigationManager NavigationManager
+@inject ILogger<Health> Logger
 
 <PageTitle>Health - Hexalith EventStore</PageTitle>
 
@@ -71,13 +72,13 @@
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Events/sec"
                       Value="@FormatEventsPerSecond(_healthReport)"
-                      Severity="@MetricSeverity(_healthReport.EventsPerSecondStatus)"
+                      Severity="@(IsValueShown(_healthReport.EventsPerSecondStatus) ? GetEventsPerSecondSeverity(_healthReport.EventsPerSecond) : MetricSeverity(_healthReport.EventsPerSecondStatus))"
                       Title="Current event throughput" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Error Rate"
                       Value="@FormatErrorRate(_healthReport)"
-                      Severity="@(_healthReport.ErrorPercentageStatus == SystemHealthMetricStatus.Available ? GetErrorRateSeverity(_healthReport.ErrorPercentage) : MetricSeverity(_healthReport.ErrorPercentageStatus))"
+                      Severity="@(IsValueShown(_healthReport.ErrorPercentageStatus) ? GetErrorRateSeverity(_healthReport.ErrorPercentage) : MetricSeverity(_healthReport.ErrorPercentageStatus))"
                       Title="Current error rate" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
@@ -300,15 +301,32 @@
     };
 
     // Severity must visually distinguish Unavailable from Available so an operator scanning the
-    // dashboard cannot confuse a healthy zero with an unknown-zero. Stale also signals reduced
-    // trust (last-good cached value).
-    private static string MetricSeverity(SystemHealthMetricStatus status) => status switch
+    // dashboard cannot confuse a healthy zero with an unknown-zero. For metrics with a
+    // value-based gradient (Events/sec, Error Rate) the call site uses IsValueShown to bypass
+    // this method and pick the gradient-derived severity for both Available AND Stale: a stale
+    // 50% error rate must still render as "error", not flatten to "warning". Total Events has
+    // no gradient so this method's "neutral" arm applies for Available/Stale.
+    private string MetricSeverity(SystemHealthMetricStatus status) => status switch
     {
         SystemHealthMetricStatus.Available => "neutral",
-        SystemHealthMetricStatus.Stale => "warning",
+        SystemHealthMetricStatus.Stale => "neutral",
         SystemHealthMetricStatus.Unavailable => "warning",
-        _ => "warning",
+        _ => LogUnknownMetricSeverity(status),
     };
+
+    private string LogUnknownMetricSeverity(SystemHealthMetricStatus status)
+    {
+        Logger.LogWarning("Unrecognised SystemHealthMetricStatus '{Status}' in Health page severity mapping.", status);
+        return "warning";
+    }
+
+    // True when a value should be rendered to the user (Available or Stale). Drives the choice
+    // between value-gradient severity and status-derived severity.
+    private static bool IsValueShown(SystemHealthMetricStatus status)
+        => status is SystemHealthMetricStatus.Available or SystemHealthMetricStatus.Stale;
+
+    private static string GetEventsPerSecondSeverity(double value)
+        => value > 0 ? "success" : "neutral";
 
     private static string GetHealthSeverity(HealthStatus status) => status switch
     {
