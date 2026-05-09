@@ -10,5 +10,7 @@ internal static class DrainReasonCodes
     public const string EventCountMismatch = "drain_event_count_mismatch";
     public const string MissingEvent = "drain_missing_event";
     public const string PublishFailed = "drain_publish_failed";
+    public const string StateStoreFailure = "drain_state_store_failure";
+    public const string DaprUnavailable = "drain_dapr_unavailable";
     public const string Unknown = "unknown";
 }

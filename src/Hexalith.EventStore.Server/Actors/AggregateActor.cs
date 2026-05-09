@@ -1,7 +1,10 @@
 
 using System.Diagnostics;
+using System.Net;
 
+using Dapr;
 using Dapr.Actors.Runtime;
+using Grpc.Core;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
@@ -648,9 +651,25 @@ public partial class AggregateActor(
         _ = (activity?.SetTag(EventStoreActivitySource.TagAggregateId, identity.AggregateId));
 
         // Load the unpublished events record
-        ConditionalValue<UnpublishedEventsRecord> recordResult = await StateManager
-            .TryGetStateAsync<UnpublishedEventsRecord>(UnpublishedEventsRecord.GetStateKey(correlationId))
-            .ConfigureAwait(false);
+        ConditionalValue<UnpublishedEventsRecord> recordResult;
+        try {
+            recordResult = await StateManager
+                .TryGetStateAsync<UnpublishedEventsRecord>(UnpublishedEventsRecord.GetStateKey(correlationId))
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            _ = (activity?.SetTag("eventstore.failure_reason", DrainReasonCodes.StateStoreFailure));
+            _ = (activity?.SetStatus(ActivityStatusCode.Error, DrainReasonCodes.StateStoreFailure));
+            logger.LogWarning(
+                ex,
+                "Failed to load drain record from state store: CorrelationId={CorrelationId}, ActorId={ActorId}",
+                correlationId,
+                Host.Id);
+            throw new DrainStateStoreException("Failed to load drain record from state store.", ex);
+        }
 
         if (!recordResult.HasValue) {
             // Orphaned reminder -- record was already drained or removed
@@ -700,16 +719,31 @@ public partial class AggregateActor(
             }
 
             // Load exact persisted event range for this failed command
-            IReadOnlyList<EventEnvelope> events = await LoadPersistedEventsRangeAsync(
-                identity,
-                record.StartSequence,
-                record.EndSequence)
-                .ConfigureAwait(false);
+            IReadOnlyList<EventEnvelope> events;
+            try {
+                events = await LoadPersistedEventsRangeAsync(
+                    identity,
+                    record.StartSequence,
+                    record.EndSequence)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex) when (IsDrainStateStoreBoundaryFailure(ex)) {
+                throw new DrainStateStoreException("Failed to read persisted drain events from state store.", ex);
+            }
 
             // Re-publish events
-            EventPublishResult publishResult = await eventPublisher
-                .PublishEventsAsync(identity, events, correlationId)
-                .ConfigureAwait(false);
+            EventPublishResult publishResult;
+            try {
+                publishResult = await eventPublisher
+                    .PublishEventsAsync(identity, events, correlationId)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) {
+                throw new DrainPublishException("Drain publish operation failed.", ex);
+            }
 
             if (publishResult.Success) {
                 // Success: remove record, decrement backpressure counter, unregister reminder, update advisory status
@@ -800,6 +834,10 @@ public partial class AggregateActor(
         }
         catch (Exception ex) {
             // Drain infrastructure failure: increment retry, save, reminder continues
+            string failureReasonCode = ClassifyDrainFailure(ex);
+            _ = (activity?.SetTag("eventstore.failure_reason", failureReasonCode));
+            _ = (activity?.SetStatus(ActivityStatusCode.Error, failureReasonCode));
+
             UnpublishedEventsRecord updatedRecord = record.IncrementRetry(ex.Message);
             await StateManager.SetStateAsync(
                 UnpublishedEventsRecord.GetStateKey(correlationId),
@@ -820,18 +858,47 @@ public partial class AggregateActor(
                 ex.Message);
 
             _ = (activity?.SetTag("eventstore.retry_count", updatedRecord.RetryCount));
-            string failureReasonCode = ClassifyDrainFailure(ex);
-            _ = (activity?.SetTag("eventstore.failure_reason", failureReasonCode));
-            _ = (activity?.SetStatus(ActivityStatusCode.Error, failureReasonCode));
         }
     }
 
-    private static string ClassifyDrainFailure(Exception exception) =>
+    internal static string ClassifyDrainFailure(Exception exception) =>
         exception switch {
+            DrainPublishException => DrainReasonCodes.PublishFailed,
+            DrainStateStoreException => DrainReasonCodes.StateStoreFailure,
             DrainEventCountMismatchException => DrainReasonCodes.EventCountMismatch,
             MissingEventException => DrainReasonCodes.MissingEvent,
+            EventDeserializationException => DrainReasonCodes.StateStoreFailure,
+            DaprException when ContainsDaprUnavailableSignal(exception) => DrainReasonCodes.DaprUnavailable,
+            RpcException rpc when IsUnavailableStatusCode(rpc.StatusCode) => DrainReasonCodes.DaprUnavailable,
+            HttpRequestException { StatusCode: HttpStatusCode.ServiceUnavailable or HttpStatusCode.BadGateway or HttpStatusCode.GatewayTimeout or HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests } => DrainReasonCodes.DaprUnavailable,
             _ => DrainReasonCodes.Unknown,
         };
+
+    private static bool IsDrainStateStoreBoundaryFailure(Exception exception) =>
+        exception is EventDeserializationException
+        || exception is DaprException
+        || exception is RpcException
+        || exception is HttpRequestException;
+
+    private static bool ContainsDaprUnavailableSignal(Exception exception) {
+        for (Exception? current = exception; current is not null; current = current.InnerException) {
+            if (current is RpcException rpc && IsUnavailableStatusCode(rpc.StatusCode)) {
+                return true;
+            }
+
+            if (current is HttpRequestException { StatusCode: HttpStatusCode.ServiceUnavailable or HttpStatusCode.BadGateway or HttpStatusCode.GatewayTimeout or HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests }) {
+                return true;
+            }
+        }
+
+        return exception is DaprException;
+    }
+
+    private static bool IsUnavailableStatusCode(StatusCode statusCode) =>
+        statusCode is StatusCode.Unavailable
+            or StatusCode.DeadlineExceeded
+            or StatusCode.Aborted
+            or StatusCode.ResourceExhausted;
 
     // TODO: Future — reconcile counter against actual drain:* record count on actor activation
     private async Task<int> ReadPendingCommandCountAsync() {
