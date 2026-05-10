@@ -105,19 +105,10 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             // for any category — local sidecar metadata names a component but does not prove the
             // backing dependency is usable. Only the configured Admin state-store row receives
             // probe evidence later in Stage 4; every other local-fallback row stays unverified
-            // for the lifetime of the canonical inventory. We therefore stamp Stage-1 rows as
-            // follows:
-            //   * The configured state-store row (will be probed in Stage 4) → Healthy default
-            //     because Stage 4 always overwrites it with the actual probe Status.
-            //   * Any other state-store row (different name, or no configured name) → Unhealthy:
-            //     the truth contract forbids Healthy without probe evidence, and a state-store
-            //     missing the probe is closer to "not operational" than "operational with caveats".
-            //     Preserves the original isStateStoreRowWithoutProbeCoverage semantics.
-            //   * Non-state-store rows (bindings, secret-stores, etc.) → Degraded: the dependency
-            //     is configured per local metadata but Admin.Server has no probe to attest its
-            //     usability. "Operational but with caveats" is the most accurate severity.
-            // The projection / UI surfaces these rows as "configured + unverified" via Source =
-            // LocalAdminMetadataFallback rather than a green check the operator cannot trust.
+            // for the lifetime of the canonical inventory. Stamp non-probed rows as Unhealthy
+            // uniformly so Source=LocalAdminMetadataFallback always pairs with a non-Healthy
+            // status the operator cannot misread as probe-attested. The probed state-store row
+            // defaults Healthy because Stage 4 always overwrites with the actual probe Status.
             string configuredName = _options.StateStoreName;
             bool stateStoreProbeWillRun = !string.IsNullOrWhiteSpace(configuredName);
             foreach (DaprComponentsMetadata c in localMetadata.Components) {
@@ -131,18 +122,12 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                     && stateStoreProbeWillRun
                     && string.Equals(c.Name, configuredName, StringComparison.OrdinalIgnoreCase);
 
-                HealthStatus defaultStatus = willBeProbed
-                    ? HealthStatus.Healthy
-                    : category == DaprComponentCategory.StateStore
-                        ? HealthStatus.Unhealthy
-                        : HealthStatus.Degraded;
-
                 DaprComponentDetail entry = new(
                     c.Name,
                     c.Type,
                     category,
                     c.Version ?? string.Empty,
-                    defaultStatus,
+                    willBeProbed ? HealthStatus.Healthy : HealthStatus.Unhealthy,
                     now,
                     c.Capabilities ?? [],
                     DaprComponentSource.LocalAdminMetadataFallback);
