@@ -614,6 +614,74 @@ public class DeadLettersPageTests : AdminUITestContext {
         searchField.GetValue(page).ShouldBe("deserialization");
     }
 
+    [Theory]
+    [InlineData("retry", "Retry Selected", "Retry Dead Letters", "Retry", "RetryDeadLettersAsync")]
+    [InlineData("skip", "Skip Selected", "Skip Dead Letters", "Skip", "SkipDeadLettersAsync")]
+    [InlineData("archive", "Archive Selected", "Archive Dead Letters", "Archive", "ArchiveDeadLettersAsync")]
+    public async Task DeadLetters_BulkActionFullFailure_RendersInlineErrorAndPreservesSelection(
+        string action,
+        string openButton,
+        string dialogTitle,
+        string confirmText,
+        string apiMethod) {
+        List<DeadLetterEntry> entries = CreateSampleEntries();
+        SetupEntries(entries, 2);
+        SetupBulkFailure(apiMethod, new AdminOperationResult(false, "op-failed-123", "Backend rejected retry for bearer token secret-value at redis://internal-host:6379.", "DLQ_REJECTED"));
+
+        IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+
+        SelectRowCheckbox(cut, entries[0].MessageId);
+        ClickButton(cut, openButton);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain(dialogTitle), TimeSpan.FromSeconds(5));
+
+        await InvokeDialogButtonAsync(cut, confirmText);
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain($"{char.ToUpperInvariant(action[0]) + action[1..]} failed"), TimeSpan.FromSeconds(5));
+        cut.Markup.ShouldContain("DLQ_REJECTED");
+        cut.Markup.ShouldContain("op-failed-123");
+        cut.Markup.ShouldContain(entries[0].MessageId);
+        cut.Markup.ShouldContain(entries[0].TenantId);
+        GetSelectedIds(cut.Instance).ShouldContain(entries[0].MessageId);
+        cut.Markup.ShouldContain(confirmText);
+        cut.Markup.ShouldNotContain("secret-value");
+        cut.Markup.ShouldNotContain("redis://internal-host:6379");
+        cut.Markup.ShouldNotContain("fluent-progress-ring");
+        cut.Markup.ShouldNotContain("fluent-spinner");
+    }
+
+    [Fact]
+    public async Task DeadLetters_DoubleSubmit_OnlyStartsOnePendingAction() {
+        List<DeadLetterEntry> entries = CreateSampleEntries();
+        SetupEntries(entries, 2);
+        TaskCompletionSource<AdminOperationResult?> pending = new();
+        _ = _mockDeadLetterApi.RetryDeadLettersAsync(
+            entries[0].TenantId,
+            Arg.Any<IReadOnlyList<string>>(),
+            Arg.Any<CancellationToken>())
+            .Returns(pending.Task);
+
+        IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+        SelectRowCheckbox(cut, entries[0].MessageId);
+        ClickButton(cut, "Retry Selected");
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Retry Dead Letters"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> confirmBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains(">Retry<"));
+        Task first = confirmBtn.InvokeAsync(confirmBtn.Instance.OnClick.InvokeAsync);
+        Task second = confirmBtn.InvokeAsync(confirmBtn.Instance.OnClick.InvokeAsync);
+
+        await Task.Delay(50);
+        _ = await _mockDeadLetterApi.Received(1).RetryDeadLettersAsync(
+            entries[0].TenantId,
+            Arg.Any<IReadOnlyList<string>>(),
+            Arg.Any<CancellationToken>());
+
+        pending.SetResult(new AdminOperationResult(true, "op-1", "OK", null));
+        await Task.WhenAll(first, second);
+    }
+
     // ===== Helpers =====
 
     private static List<DeadLetterEntry> CreateSampleEntries() =>
@@ -646,6 +714,44 @@ public class DeadLettersPageTests : AdminUITestContext {
         IRenderedComponent<FluentButton> btn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains(text));
         btn.Find("fluent-button").Click();
+    }
+
+    private static Task InvokeDialogButtonAsync(IRenderedComponent<DeadLetters> cut, string text) {
+        IRenderedComponent<FluentButton> confirmBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains($">{text}<"));
+        return confirmBtn.InvokeAsync(confirmBtn.Instance.OnClick.InvokeAsync);
+    }
+
+    private void SetupBulkFailure(string apiMethod, AdminOperationResult result) {
+        switch (apiMethod) {
+            case "RetryDeadLettersAsync":
+                _ = _mockDeadLetterApi.RetryDeadLettersAsync(
+                    Arg.Any<string>(),
+                    Arg.Any<IReadOnlyList<string>>(),
+                    Arg.Any<CancellationToken>())
+                    .Returns(Task.FromResult<AdminOperationResult?>(result));
+                break;
+            case "SkipDeadLettersAsync":
+                _ = _mockDeadLetterApi.SkipDeadLettersAsync(
+                    Arg.Any<string>(),
+                    Arg.Any<IReadOnlyList<string>>(),
+                    Arg.Any<CancellationToken>())
+                    .Returns(Task.FromResult<AdminOperationResult?>(result));
+                break;
+            case "ArchiveDeadLettersAsync":
+                _ = _mockDeadLetterApi.ArchiveDeadLettersAsync(
+                    Arg.Any<string>(),
+                    Arg.Any<IReadOnlyList<string>>(),
+                    Arg.Any<CancellationToken>())
+                    .Returns(Task.FromResult<AdminOperationResult?>(result));
+                break;
+        }
+    }
+
+    private static HashSet<string> GetSelectedIds(DeadLetters page) {
+        System.Reflection.FieldInfo field = typeof(DeadLetters).GetField("_selectedIds", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            ?? throw new InvalidOperationException("_selectedIds field missing.");
+        return (HashSet<string>)field.GetValue(page)!;
     }
 
     private void SetupReadOnlyUser() {

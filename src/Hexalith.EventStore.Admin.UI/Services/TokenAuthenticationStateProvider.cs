@@ -1,32 +1,42 @@
 using System.Security.Claims;
 using System.Text.Json;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace Hexalith.EventStore.Admin.UI.Services;
 
 /// <summary>
 /// Provides Blazor authentication state by decoding the JWT acquired
-/// by <see cref="AdminApiAccessTokenProvider"/>. In a Blazor Server app
-/// the default <c>ServerAuthenticationStateProvider</c> reads from
-/// HttpContext which has no JWT (WebSocket connection). This provider
-/// bridges the gap by parsing the server-side token into a ClaimsPrincipal.
+/// by <see cref="AdminApiAccessTokenProvider"/>.
 /// </summary>
-public sealed class TokenAuthenticationStateProvider(
-    AdminApiAccessTokenProvider tokenProvider,
-    ILogger<TokenAuthenticationStateProvider> logger) : AuthenticationStateProvider {
+public sealed class TokenAuthenticationStateProvider : AuthenticationStateProvider {
+    private readonly AdminApiAccessTokenProvider _tokenProvider;
+    private readonly ILogger<TokenAuthenticationStateProvider> _logger;
+
+    public TokenAuthenticationStateProvider(
+        AdminApiAccessTokenProvider tokenProvider,
+        DevelopmentAdminRoleState roleState,
+        ILogger<TokenAuthenticationStateProvider> logger) {
+        ArgumentNullException.ThrowIfNull(roleState);
+        _tokenProvider = tokenProvider ?? throw new ArgumentNullException(nameof(tokenProvider));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        roleState.RoleChanged += OnRoleChanged;
+    }
+
     public override async Task<AuthenticationState> GetAuthenticationStateAsync() {
         try {
-            string token = await tokenProvider.GetAccessTokenAsync().ConfigureAwait(false);
+            string token = await _tokenProvider.GetAccessTokenAsync().ConfigureAwait(false);
             ClaimsPrincipal principal = ParseJwtClaims(token);
-            logger.LogDebug(
+            _logger.LogDebug(
                 "TokenAuthenticationStateProvider: authenticated={IsAuthenticated}, claims={ClaimCount}",
                 principal.Identity?.IsAuthenticated ?? false,
                 principal.Claims.Count());
             return new AuthenticationState(principal);
         }
         catch (Exception ex) {
-            logger.LogWarning(ex, "TokenAuthenticationStateProvider: failed to acquire token, returning anonymous user.");
+            _logger.LogWarning(ex, "TokenAuthenticationStateProvider: failed to acquire token, returning anonymous user.");
             return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
         }
     }
@@ -71,4 +81,7 @@ public sealed class TokenAuthenticationStateProvider(
 
         return Convert.FromBase64String(padded);
     }
+
+    private void OnRoleChanged(AdminRole role)
+        => NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
 }

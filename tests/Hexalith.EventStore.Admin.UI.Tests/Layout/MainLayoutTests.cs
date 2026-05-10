@@ -1,5 +1,12 @@
 using Bunit;
 
+using Hexalith.EventStore.Admin.UI.Services;
+
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+
 namespace Hexalith.EventStore.Admin.UI.Tests.Layout;
 
 /// <summary>
@@ -56,5 +63,53 @@ public class MainLayoutTests : AdminUITestContext {
             parameters => parameters.Add(p => p.Body, builder => builder.AddContent(0, "Content")));
 
         cut.Markup.ShouldNotContain("admin-breadcrumb");
+    }
+
+    [Fact]
+    public void MainLayout_RendersDevelopmentRoleSelector_WhenDevelopmentWithoutAuthority() {
+        ConfigureRoleSwitcher("Development", authority: null);
+
+        IRenderedComponent<Hexalith.EventStore.Admin.UI.Layout.MainLayout> cut = Render<Hexalith.EventStore.Admin.UI.Layout.MainLayout>(
+            parameters => parameters.Add(p => p.Body, builder => builder.AddContent(0, "Content")));
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Development role"), TimeSpan.FromSeconds(5));
+        cut.Markup.ShouldContain("ReadOnly");
+        cut.Markup.ShouldContain("Operator");
+        cut.Markup.ShouldContain("Admin");
+    }
+
+    [Theory]
+    [InlineData("Production", null)]
+    [InlineData("Development", "https://keycloak/realms/test")]
+    public void MainLayout_HidesDevelopmentRoleSelector_WhenGateFails(string environmentName, string? authority) {
+        ConfigureRoleSwitcher(environmentName, authority);
+
+        IRenderedComponent<Hexalith.EventStore.Admin.UI.Layout.MainLayout> cut = Render<Hexalith.EventStore.Admin.UI.Layout.MainLayout>(
+            parameters => parameters.Add(p => p.Body, builder => builder.AddContent(0, "Content")));
+
+        cut.Markup.ShouldNotContain("Development role");
+    }
+
+    private void ConfigureRoleSwitcher(string environmentName, string? authority) {
+        _ = Services.RemoveAll<IConfiguration>();
+        _ = Services.RemoveAll<IHostEnvironment>();
+        _ = Services.RemoveAll<DevelopmentAdminRoleState>();
+        IConfiguration config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> {
+                ["EventStore:Authentication:Authority"] = authority,
+                ["EventStore:Authentication:SigningKey"] = "DevOnlySigningKey-AtLeast32Chars!",
+            })
+            .Build();
+        _ = Services.AddSingleton(config);
+        _ = Services.AddSingleton<IHostEnvironment>(new TestHostEnvironment(environmentName));
+        _ = Services.AddScoped<DevelopmentAdminRoleState>();
+    }
+
+    private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment {
+        public string EnvironmentName { get; set; } = environmentName;
+        public string ApplicationName { get; set; } = "Hexalith.EventStore.Admin.UI.Tests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } =
+            new Microsoft.Extensions.FileProviders.NullFileProvider();
     }
 }

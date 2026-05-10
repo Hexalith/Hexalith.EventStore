@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+
 namespace Hexalith.EventStore.Admin.UI.Services;
 
 /// <summary>
@@ -9,9 +11,19 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 /// Uses Keycloak direct access grants when an authority is configured, otherwise
 /// generates a development HS256 token.
 /// </summary>
-public sealed class AdminApiAccessTokenProvider(IConfiguration configuration) {
+public sealed class AdminApiAccessTokenProvider {
+    private readonly IConfiguration _configuration;
+    private readonly DevelopmentAdminRoleState? _roleState;
     private readonly SemaphoreSlim _tokenLock = new(1, 1);
     private AccessTokenCacheEntry? _cachedToken;
+
+    public AdminApiAccessTokenProvider(IConfiguration configuration, DevelopmentAdminRoleState? roleState = null) {
+        _configuration = configuration;
+        _roleState = roleState;
+        if (_roleState is not null) {
+            _roleState.RoleChanged += _ => InvalidateCache();
+        }
+    }
 
     public async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default) {
         if (_cachedToken is { } cached && cached.ExpiresAtUtc > DateTimeOffset.UtcNow.AddMinutes(1)) {
@@ -24,7 +36,7 @@ public sealed class AdminApiAccessTokenProvider(IConfiguration configuration) {
                 return refreshed.Token;
             }
 
-            string? authority = configuration["EventStore:Authentication:Authority"];
+            string? authority = _configuration["EventStore:Authentication:Authority"];
             _cachedToken = !string.IsNullOrWhiteSpace(authority)
                 ? await RequestKeycloakTokenAsync(authority, cancellationToken).ConfigureAwait(false)
                 : CreateDevelopmentToken();
@@ -37,10 +49,10 @@ public sealed class AdminApiAccessTokenProvider(IConfiguration configuration) {
     }
 
     private async Task<AccessTokenCacheEntry> RequestKeycloakTokenAsync(string authority, CancellationToken cancellationToken) {
-        string clientId = configuration["EventStore:Authentication:ClientId"] ?? "hexalith-eventstore";
-        string username = configuration["EventStore:Authentication:Username"]
+        string clientId = _configuration["EventStore:Authentication:ClientId"] ?? "hexalith-eventstore";
+        string username = _configuration["EventStore:Authentication:Username"]
             ?? throw new InvalidOperationException("EventStore:Authentication:Username is required when Authority is configured.");
-        string password = configuration["EventStore:Authentication:Password"]
+        string password = _configuration["EventStore:Authentication:Password"]
             ?? throw new InvalidOperationException("EventStore:Authentication:Password is required when Authority is configured.");
 
         string tokenEndpoint = authority.TrimEnd('/') + "/protocol/openid-connect/token";
@@ -69,18 +81,21 @@ public sealed class AdminApiAccessTokenProvider(IConfiguration configuration) {
     }
 
     private AccessTokenCacheEntry CreateDevelopmentToken() {
-        string issuer = configuration["EventStore:Authentication:Issuer"] ?? "hexalith-dev";
-        string audience = configuration["EventStore:Authentication:Audience"] ?? "hexalith-eventstore";
-        string signingKey = configuration["EventStore:Authentication:SigningKey"]
+        string issuer = _configuration["EventStore:Authentication:Issuer"] ?? "hexalith-dev";
+        string audience = _configuration["EventStore:Authentication:Audience"] ?? "hexalith-eventstore";
+        string signingKey = _configuration["EventStore:Authentication:SigningKey"]
             ?? throw new InvalidOperationException("EventStore:Authentication:SigningKey is required for development token generation.");
-        string subject = configuration["EventStore:Authentication:Subject"] ?? "admin-user";
-        bool globalAdmin = configuration.GetValue("EventStore:Authentication:GlobalAdmin", defaultValue: false);
+        string subject = _configuration["EventStore:Authentication:Subject"] ?? "admin-user";
+        bool globalAdmin = _configuration.GetValue("EventStore:Authentication:GlobalAdmin", defaultValue: false);
 
-        string[] tenants = configuration.GetSection("EventStore:Authentication:Tenants").Get<string[]>()
+        string[] tenants = _configuration.GetSection("EventStore:Authentication:Tenants").Get<string[]>()
             ?? ["tenant-a"];
-        string[] domains = configuration.GetSection("EventStore:Authentication:Domains").Get<string[]>() ?? ["counter"];
-        string[] permissions = configuration.GetSection("EventStore:Authentication:Permissions").Get<string[]>()
+        string[] domains = _configuration.GetSection("EventStore:Authentication:Domains").Get<string[]>() ?? ["counter"];
+        string[] permissions = _configuration.GetSection("EventStore:Authentication:Permissions").Get<string[]>()
             ?? ["command:submit", "query:read", "admin:read", "admin:write"];
+        AdminRole role = _roleState?.IsRoleSwitcherAvailable == true
+            ? _roleState.SelectedRole
+            : AdminRole.Admin;
 
         DateTimeOffset now = DateTimeOffset.UtcNow;
         DateTimeOffset expiresAt = now.AddHours(1);
@@ -100,10 +115,10 @@ public sealed class AdminApiAccessTokenProvider(IConfiguration configuration) {
             ["tenants"] = JsonSerializer.Serialize(tenants),
             ["domains"] = JsonSerializer.Serialize(domains),
             ["permissions"] = JsonSerializer.Serialize(permissions),
-            [AdminClaimTypes.Role] = "Admin",
+            [AdminClaimTypes.Role] = role.ToString(),
         };
 
-        if (globalAdmin) {
+        if (globalAdmin && role == AdminRole.Admin) {
             payload["global_admin"] = true;
         }
 
@@ -116,6 +131,8 @@ public sealed class AdminApiAccessTokenProvider(IConfiguration configuration) {
 
         return new AccessTokenCacheEntry($"{unsignedToken}.{signature}", expiresAt);
     }
+
+    private void InvalidateCache() => _cachedToken = null;
 
     private static string Base64UrlEncode(byte[] bytes) => Convert.ToBase64String(bytes)
         .TrimEnd('=')

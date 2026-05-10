@@ -1,6 +1,6 @@
 # Story: admin-ui-operator-action-and-dev-role-testability-fix
 
-Status: ready-for-dev
+Status: review
 
 Context created: 2026-05-07
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-07-admin-ui-manual-test-suite-issues.md`
@@ -153,54 +153,54 @@ The 2026-05-07 advanced elicitation pass tightened this story around hidden coup
 
 ## Tasks / Subtasks
 
-- [ ] **ST1 - Dead-letter action failure-state audit and model.** (AC: 1, 2)
-  - [ ] Review `DeadLetters.razor` `ExecuteBulkActionAsync` and dialog render branches.
-  - [ ] Introduce a small dialog failure model, such as `BulkActionFailureState`, carrying action name, failed tenant/message IDs, status/error code, user-safe message, and trace/operation/correlation ID.
-  - [ ] Reset this model when a dialog opens and when the action succeeds.
-  - [ ] Ensure all awaited branches end in a single `finally` that clears operation state unless the component is disposed.
-  - [ ] Add an attempt/version marker or equivalent guard if needed so stale async completions cannot overwrite a later retry's state.
+- [x] **ST1 - Dead-letter action failure-state audit and model.** (AC: 1, 2)
+  - [x] Review `DeadLetters.razor` `ExecuteBulkActionAsync` and dialog render branches.
+  - [x] Introduce a small dialog failure model, such as `BulkActionFailureState`, carrying action name, failed tenant/message IDs, status/error code, user-safe message, and trace/operation/correlation ID.
+  - [x] Reset this model when a dialog opens and when the action succeeds.
+  - [x] Ensure all awaited branches end in a single `finally` that clears operation state unless the component is disposed.
+  - [x] Add an attempt/version marker or equivalent guard if needed so stale async completions cannot overwrite a later retry's state.
 
-- [ ] **ST2 - Inline error rendering for Retry, Skip, and Archive.** (AC: 1, 2)
-  - [ ] Render the failure model inside each confirmation dialog using existing `IssueBanner`/status styling where practical.
-  - [ ] Keep selection after full failure.
-  - [ ] Preserve current success and partial-success behavior unless tests prove partial-success selection handling is misleading.
-  - [ ] Add safe truncation and redaction for long IDs/messages.
-  - [ ] Preserve focus or restore it to the dialog error/retry affordance after failure.
+- [x] **ST2 - Inline error rendering for Retry, Skip, and Archive.** (AC: 1, 2)
+  - [x] Render the failure model inside each confirmation dialog using existing `IssueBanner`/status styling where practical.
+  - [x] Keep selection after full failure.
+  - [x] Preserve current success and partial-success behavior unless tests prove partial-success selection handling is misleading.
+  - [x] Add safe truncation and redaction for long IDs/messages.
+  - [x] Preserve focus or restore it to the dialog error/retry affordance after failure.
 
-- [ ] **ST3 - Error-detail plumbing.** (AC: 2, 6)
-  - [ ] Audit `AdminDeadLetterApiClient.HandleErrorStatusAsync`.
-  - [ ] Preserve status code and parse RFC 7807 fields (`title`, `detail`, `status`, `traceId`/`traceId` extension if present) into a typed UI-safe exception or result.
-  - [ ] Preserve `AdminOperationResult.OperationId` and `ErrorCode` for non-success results.
-  - [ ] Do not expose raw response bodies directly to the UI.
-  - [ ] Preserve safe problem fields separately from redacted/truncated diagnostic text so tests can assert both support usefulness and secret redaction.
+- [x] **ST3 - Error-detail plumbing.** (AC: 2, 6)
+  - [x] Audit `AdminDeadLetterApiClient.HandleErrorStatusAsync`.
+  - [x] Preserve status code and parse RFC 7807 fields (`title`, `detail`, `status`, `traceId`/`traceId` extension if present) into a typed UI-safe exception or result.
+  - [x] Preserve `AdminOperationResult.OperationId` and `ErrorCode` for non-success results.
+  - [x] Do not expose raw response bodies directly to the UI.
+  - [x] Preserve safe problem fields separately from redacted/truncated diagnostic text so tests can assert both support usefulness and secret redaction.
 
-- [ ] **ST4 - Operator/admin dialog audit.** (AC: 3)
-  - [ ] Inspect pages/components: `Snapshots.razor`, `Compaction.razor`, `Backups.razor`, `Consistency.razor`, `Tenants.razor`, `Projections.razor`, and any shared action modal helpers.
-  - [ ] Apply the same recoverable busy-state pattern where the change is local and low risk.
-  - [ ] Record the required audit matrix with explicit `fixed`, `already-safe`, `not-applicable`, or `deferred` disposition for each inspected surface.
-  - [ ] Record deferred items for broader endpoint/product work.
+- [x] **ST4 - Operator/admin dialog audit.** (AC: 3)
+  - [x] Inspect pages/components: `Snapshots.razor`, `Compaction.razor`, `Backups.razor`, `Consistency.razor`, `Tenants.razor`, `Projections.razor`, and any shared action modal helpers.
+  - [x] Apply the same recoverable busy-state pattern where the change is local and low risk.
+  - [x] Record the required audit matrix with explicit `fixed`, `already-safe`, `not-applicable`, or `deferred` disposition for each inspected surface.
+  - [x] Record deferred items for broader endpoint/product work.
 
-- [ ] **ST5 - Development role state and token regeneration.** (AC: 4, 5, 6)
-  - [ ] Add a scoped role-state service, or extend the token provider with a safe dev-only override API.
-  - [ ] Make `AdminApiAccessTokenProvider.CreateDevelopmentToken` use the selected role instead of hardcoding `Admin`.
-  - [ ] Invalidate the token cache when the selected role changes.
-  - [ ] Notify `AuthenticationStateProvider` subscribers so UI guards refresh in the same session.
-  - [ ] Preserve existing dev token issuer, audience, subject, tenants, domains, permissions, and optional `global_admin` behavior unless the selected role requires global admin to be disabled for ReadOnly/Operator.
-  - [ ] Ensure `ReadOnly` and `Operator` tokens cannot include contradictory Admin signals (`global_admin=true`, duplicate admin-role claims, or stale Admin role values).
-  - [ ] Add regression coverage for role switch -> auth-state notification -> token cache invalidation -> next outgoing JWT claim.
+- [x] **ST5 - Development role state and token regeneration.** (AC: 4, 5, 6)
+  - [x] Add a scoped role-state service, or extend the token provider with a safe dev-only override API.
+  - [x] Make `AdminApiAccessTokenProvider.CreateDevelopmentToken` use the selected role instead of hardcoding `Admin`.
+  - [x] Invalidate the token cache when the selected role changes.
+  - [x] Notify `AuthenticationStateProvider` subscribers so UI guards refresh in the same session.
+  - [x] Preserve existing dev token issuer, audience, subject, tenants, domains, permissions, and optional `global_admin` behavior unless the selected role requires global admin to be disabled for ReadOnly/Operator.
+  - [x] Ensure `ReadOnly` and `Operator` tokens cannot include contradictory Admin signals (`global_admin=true`, duplicate admin-role claims, or stale Admin role values).
+  - [x] Add regression coverage for role switch -> auth-state notification -> token cache invalidation -> next outgoing JWT claim.
 
-- [ ] **ST6 - Header role selector.** (AC: 4, 5)
-  - [ ] Add a compact role selector to `MainLayout.razor` near `HeaderStatusIndicator` and `ThemeToggle`.
-  - [ ] Gate it to Development plus no Keycloak authority, or a clearly named non-production config flag.
-  - [ ] Use Fluent UI v5-compatible components already in the app (`FluentSelect`, `FluentOption`, `FluentButton`, or equivalent).
-  - [ ] Provide accessible label and polite status announcement after role changes.
+- [x] **ST6 - Header role selector.** (AC: 4, 5)
+  - [x] Add a compact role selector to `MainLayout.razor` near `HeaderStatusIndicator` and `ThemeToggle`.
+  - [x] Gate it to Development plus no Keycloak authority, or a clearly named non-production config flag.
+  - [x] Use Fluent UI v5-compatible components already in the app (`FluentSelect`, `FluentOption`, `FluentButton`, or equivalent).
+  - [x] Provide accessible label and polite status announcement after role changes.
 
-- [ ] **ST7 - Tests and manual guide evidence.** (AC: 6, 7)
-  - [ ] Add/extend `DeadLettersPageTests`.
-  - [ ] Add/extend `MainLayoutTests`, `AdminUserContextTests`, `AdminApiAccessTokenProvider` tests, and role-guard tests as needed.
-  - [ ] Update the manual Admin UI test guide role-switch instructions.
-  - [ ] Capture the operator/admin action dialog audit matrix.
-  - [ ] Capture evidence under `_bmad-output/test-artifacts/` or append concise evidence to this story.
+- [x] **ST7 - Tests and manual guide evidence.** (AC: 6, 7)
+  - [x] Add/extend `DeadLettersPageTests`.
+  - [x] Add/extend `MainLayoutTests`, `AdminUserContextTests`, `AdminApiAccessTokenProvider` tests, and role-guard tests as needed.
+  - [x] Update the manual Admin UI test guide role-switch instructions.
+  - [x] Capture the operator/admin action dialog audit matrix.
+  - [x] Capture evidence under `_bmad-output/test-artifacts/` or append concise evidence to this story.
 
 ## Developer Notes
 
@@ -273,23 +273,69 @@ Local package context:
 
 ### Agent Model Used
 
-TBD by dev agent.
+GPT-5 Codex
 
 ### Debug Log References
 
-TBD by dev agent.
+- 2026-05-09 Dev-start baseline: selected the existing Aspire AppHost with Aspire MCP and confirmed EventStore, Admin Server, Admin UI, Keycloak, Dapr sidecars/components, sample, and tenants were Running/Healthy before code changes.
+- 2026-05-09 Focused bUnit tests: `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests\Hexalith.EventStore.Admin.UI.Tests.csproj --no-restore --filter "DeadLetters_BulkActionFullFailure|DeadLetters_DoubleSubmit|AdminApiAccessTokenProviderRoleTests|MainLayout_RendersDevelopmentRoleSelector|MainLayout_HidesDevelopmentRoleSelector"` passed 14/14.
+- 2026-05-09 Error parsing tests: `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests\Hexalith.EventStore.Admin.UI.Tests.csproj --no-restore --filter "AdminDeadLetterApiClientErrorTests"` passed 6/6.
+- 2026-05-09 Role refresh tests: `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests\Hexalith.EventStore.Admin.UI.Tests.csproj --no-restore --filter "AuthorizedViewRoleChangeTests"` passed 1/1.
+- 2026-05-09 Full Admin UI test project: `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests\Hexalith.EventStore.Admin.UI.Tests.csproj --no-restore` passed 739/739 after restoring query-method compatibility for non-operation API failures.
+- 2026-05-09 Release build: `dotnet build src\Hexalith.EventStore.Admin.UI\Hexalith.EventStore.Admin.UI.csproj --configuration Release --no-restore` completed with 0 warnings and 0 errors.
+- 2026-05-09 Listed repo unit tests: Contracts.Tests passed 291/291; Testing.Tests passed 78/78; Client.Tests passed 334/334 with `--no-build` after a live Aspire process locked Debug DLLs; Sample.Tests passed 63/63 with `--no-build` after a live Aspire process locked Debug DLLs.
+- 2026-05-09 Aspire rebuild/smoke: rebuilt and restarted the Admin UI resource; live Playwright smoke reached `https://localhost:8093/` through `http://localhost:8092` and confirmed the development-role selector is gated away while Keycloak authority is configured. Artifact paths: `_bmad-output/test-artifacts/admin-ui-role-switch-keycloak-gated-snapshot.md`, `_bmad-output/test-artifacts/admin-ui-role-switch-keycloak-gated-2026-05-09.png`.
+- 2026-05-09 No-Keycloak Aspire smoke: restarted the AppHost with `EnableKeycloak=false`, confirmed the no-authority topology through Aspire MCP, and captured Playwright role-switch evidence for Admin header, ReadOnly Dead Letters, Operator Dead Letters/Consistency, and Admin Settings under `_bmad-output/test-artifacts/admin-ui-role-switch-dev-*`.
 
 ### Completion Notes List
 
 - 2026-05-07 pre-dev party-mode review applied story clarifications for dev-auth boundary, token/UI guard synchronization, sanitized failure diagnostics, scoped operator-dialog audit output, accessibility, and manual evidence.
 - 2026-05-07 pre-dev advanced elicitation applied story clarifications for selected-role single source of truth, stale action attempt handling, token-claim contradiction prevention, concrete gating evidence, and support-safe diagnostics.
+- 2026-05-09 implemented recoverable Retry, Skip, and Archive dialog failure handling with dialog-local safe diagnostics, full-failure selection preservation, duplicate-submit protection, cancellation/disposal protection, and stale-attempt guarding.
+- 2026-05-09 added typed problem-detail plumbing for dead-letter operation failures while preserving legacy query behavior for count/list calls.
+- 2026-05-09 added a scoped development role-state service, header role selector gated to Development with no configured authority, token cache invalidation, auth-state notification, and `AuthorizedView` refresh on same-session role changes.
+- 2026-05-09 updated the manual Admin UI guide and captured the required operator/admin action audit matrix in `_bmad-output/test-artifacts/admin-ui-operator-action-and-dev-role-testability-fix-evidence.md`; no broader endpoint/product deferred-work item was needed for the audited local dialog surfaces.
+- 2026-05-09 captured live Keycloak-gated negative evidence and no-Keycloak positive role-switch evidence. The seeded live workspace had no selected dead-letter rows to expose bulk controls through a screenshot, so Retry/Skip/Archive role/action behavior is pinned by focused bUnit tests and the live smoke records the role-state surface plus Consistency/Admin guard behavior.
 
 ### File List
 
-TBD by dev agent.
+- `_bmad-output/implementation-artifacts/admin-ui-operator-action-and-dev-role-testability-fix.md` (modified)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified)
+- `_bmad-output/test-artifacts/admin-ui-manual-test-guide.md` (modified)
+- `_bmad-output/test-artifacts/admin-ui-operator-action-and-dev-role-testability-fix-evidence.md` (new)
+- `_bmad-output/test-artifacts/admin-ui-role-switch-dev-admin-2026-05-09.png` (new)
+- `_bmad-output/test-artifacts/admin-ui-role-switch-dev-admin-settings-2026-05-09.png` (new)
+- `_bmad-output/test-artifacts/admin-ui-role-switch-dev-admin-settings-snapshot.md` (new)
+- `_bmad-output/test-artifacts/admin-ui-role-switch-dev-admin-snapshot.md` (new)
+- `_bmad-output/test-artifacts/admin-ui-role-switch-dev-operator-consistency-2026-05-09.png` (new)
+- `_bmad-output/test-artifacts/admin-ui-role-switch-dev-operator-consistency-snapshot.md` (new)
+- `_bmad-output/test-artifacts/admin-ui-role-switch-dev-operator-deadletters-2026-05-09.png` (new)
+- `_bmad-output/test-artifacts/admin-ui-role-switch-dev-operator-deadletters-snapshot.md` (new)
+- `_bmad-output/test-artifacts/admin-ui-role-switch-dev-readonly-2026-05-09.png` (new)
+- `_bmad-output/test-artifacts/admin-ui-role-switch-dev-readonly-deadletters-2026-05-09.png` (new)
+- `_bmad-output/test-artifacts/admin-ui-role-switch-dev-readonly-deadletters-snapshot.md` (new)
+- `_bmad-output/test-artifacts/admin-ui-role-switch-dev-readonly-snapshot.md` (new)
+- `_bmad-output/test-artifacts/admin-ui-role-switch-keycloak-gated-2026-05-09.png` (new)
+- `_bmad-output/test-artifacts/admin-ui-role-switch-keycloak-gated-snapshot.md` (new)
+- `src/Hexalith.EventStore.Admin.UI/AdminUIServiceExtensions.cs` (modified)
+- `src/Hexalith.EventStore.Admin.UI/Components/Shared/AuthorizedView.razor` (modified)
+- `src/Hexalith.EventStore.Admin.UI/Layout/MainLayout.razor` (modified)
+- `src/Hexalith.EventStore.Admin.UI/Pages/DeadLetters.razor` (modified)
+- `src/Hexalith.EventStore.Admin.UI/Services/AdminApiAccessTokenProvider.cs` (modified)
+- `src/Hexalith.EventStore.Admin.UI/Services/AdminDeadLetterApiClient.cs` (modified)
+- `src/Hexalith.EventStore.Admin.UI/Services/DevelopmentAdminRoleState.cs` (new)
+- `src/Hexalith.EventStore.Admin.UI/Services/Exceptions/AdminApiProblemException.cs` (new)
+- `src/Hexalith.EventStore.Admin.UI/Services/TokenAuthenticationStateProvider.cs` (modified)
+- `tests/Hexalith.EventStore.Admin.UI.Tests/AdminUITestContext.cs` (modified)
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Components/AuthorizedViewRoleChangeTests.cs` (new)
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Layout/MainLayoutTests.cs` (modified)
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/DeadLettersPageTests.cs` (modified)
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Services/AdminApiAccessTokenProviderRoleTests.cs` (new)
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Services/AdminDeadLetterApiClientErrorTests.cs` (new)
 
 ## Change Log
 
+- 2026-05-09 - Implemented dead-letter action failure recovery, safe operation-error details, dev-only role switching/token regeneration, role-guard refresh tests, manual-guide updates, and evidence artifacts; story marked ready for review.
 - 2026-05-07 - Advanced elicitation completed and story hardened for hidden auth coupling, stale async action recovery, token contradiction prevention, and support-safe diagnostics.
 - 2026-05-07 - Party-mode review completed and story hardened before development; recommendation remains ready-for-dev after applying low-risk clarifications.
 - 2026-05-07 - Story created and marked ready-for-dev. Context engine analysis completed from sprint-change proposal, manual-test issue evidence, current Admin UI auth/dead-letter code, sibling health story, and local package/test context.

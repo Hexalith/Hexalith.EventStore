@@ -19,7 +19,7 @@ Ce guide te permet de valider chaque page de l'Admin UI après un démarrage à 
    - Admin UI : `https://localhost:8093`
    - Sample Blazor UI : voir resource `sample-blazor-ui` dans le dashboard
    - EventStore API : `https://localhost:7141`
-4. **Compte de test** : démarre par défaut en rôle `ReadOnly`. Pour les actions qui exigent `Operator` ou `Admin`, utilise le toggle de rôle dans l'Admin UI (header) ou le claim dans la config.
+4. **Compte de test / dev role switch** : en mode `Development` avec Keycloak désactivé ou sans `EventStore:Authentication:Authority`, le header Admin UI affiche un sélecteur compact **Development role** près de l'état système et du thème. Il propose exactement `ReadOnly`, `Operator`, et `Admin`. Le changement met à jour la visibilité UI et le prochain JWT Admin API (`eventstore:admin-role`) pour la session courante. Si Keycloak est configuré ou si l'environnement n'est pas `Development`, le sélecteur doit être absent.
 
 ---
 
@@ -175,6 +175,8 @@ Total : 1 stream `tenant-a/counter/counter-1`, 18 évènements environ, 18 comma
 | 7 | Cliquer **Retry Selected** (Operator) | Toast succès, ligne disparaît ou status = retried |
 | 8 | Bouton **Skip Selected** / **Archive Selected** | Idem, ligne sort de la liste |
 | 9 | En `ReadOnly` | Boutons grisés / cachés |
+| 10 | Simuler un échec backend sur **Retry**, **Skip**, ou **Archive** | Le dialog reste ouvert, le spinner s'arrête, la sélection est conservée, et un panneau d'erreur inline affiche l'action, tenant, message ID, status/code ou operation ID disponible. Les secrets, bearer tokens, chaînes Redis/connection strings et dumps bruts ne doivent pas apparaître. |
+| 11 | Après un échec complet, cliquer de nouveau sur l'action | Une nouvelle tentative repart depuis la sélection conservée, sans double-submit pendant l'état pending. |
 
 ---
 
@@ -373,6 +375,14 @@ Total : 1 stream `tenant-a/counter/counter-1`, 18 évènements environ, 18 comma
 | Erreurs API | Stopper EventStore service via Aspire dashboard | IssueBanner sur Home + cards en empty state, pas de crash |
 | 403 / Auth | Forcer rôle `ReadOnly` puis aller sur `/tenants` boutons d'action | Boutons cachés ou message "Access denied" |
 | Reload "froid" | F5 sur chaque page | Pas d'erreur console, données rechargées |
+
+### 4.1 Dev role switch RBAC smoke
+
+| Rôle sélectionné | Pages/actions à vérifier | Résultat attendu |
+|---|---|---|
+| `ReadOnly` | `/health/dead-letters`, `/snapshots`, `/compaction`, `/consistency`, `/tenants`, `/backups`, `/settings` | Les actions Operator/Admin et le lien Settings sont cachés ou non-interactifs. Le prochain token Admin API contient `eventstore:admin-role=ReadOnly` et ne contient pas `global_admin=true`. |
+| `Operator` | `/health/dead-letters`, `/consistency`, `/snapshots`, `/compaction` | Retry/Skip/Archive, Run Check, snapshot policy et compaction actions sont visibles selon les guards existants. Settings, backup admin operations et tenant admin controls restent cachés. Le prochain token contient `eventstore:admin-role=Operator` et ne contient pas `global_admin=true`. |
+| `Admin` | `/settings`, `/backups`, `/tenants` | Les actions et navigations Admin-only sont visibles selon les guards existants. Le prochain token contient `eventstore:admin-role=Admin`; `global_admin=true` peut être présent seulement si la config dev le demande. |
 
 ---
 

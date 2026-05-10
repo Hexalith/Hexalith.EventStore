@@ -255,6 +255,20 @@
                         Processing tenant @_bulkProgressCurrent of @_bulkProgressTotal...
                     </p>
                 }
+                @if (ShouldShowFailure("retry"))
+                {
+                    <div class="issue-banner" role="alert" aria-live="assertive" tabindex="-1" style="margin-top: 12px;">
+                        <strong>@_bulkActionFailure!.Title</strong>
+                        <p>@_bulkActionFailure.Message</p>
+                        <dl style="display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 8px 0 0;">
+                            @foreach ((string Label, string Value) detail in _bulkActionFailure.Details)
+                            {
+                                <dt>@detail.Label</dt>
+                                <dd class="monospace" title="@detail.Value">@Truncate(detail.Value, 80)</dd>
+                            }
+                        </dl>
+                    </div>
+                }
             </ChildContent>
             <ActionTemplate>
                 <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseRetryDialogAsync" Disabled="@_isOperating">Cancel</FluentButton>
@@ -291,6 +305,20 @@
                         Processing tenant @_bulkProgressCurrent of @_bulkProgressTotal...
                     </p>
                 }
+                @if (ShouldShowFailure("skip"))
+                {
+                    <div class="issue-banner" role="alert" aria-live="assertive" tabindex="-1" style="margin-top: 12px;">
+                        <strong>@_bulkActionFailure!.Title</strong>
+                        <p>@_bulkActionFailure.Message</p>
+                        <dl style="display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 8px 0 0;">
+                            @foreach ((string Label, string Value) detail in _bulkActionFailure.Details)
+                            {
+                                <dt>@detail.Label</dt>
+                                <dd class="monospace" title="@detail.Value">@Truncate(detail.Value, 80)</dd>
+                            }
+                        </dl>
+                    </div>
+                }
             </ChildContent>
             <ActionTemplate>
                 <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseSkipDialogAsync" Disabled="@_isOperating">Cancel</FluentButton>
@@ -326,6 +354,20 @@
                     <p style="font-size: 13px; color: var(--colorNeutralForeground3);">
                         Processing tenant @_bulkProgressCurrent of @_bulkProgressTotal...
                     </p>
+                }
+                @if (ShouldShowFailure("archive"))
+                {
+                    <div class="issue-banner" role="alert" aria-live="assertive" tabindex="-1" style="margin-top: 12px;">
+                        <strong>@_bulkActionFailure!.Title</strong>
+                        <p>@_bulkActionFailure.Message</p>
+                        <dl style="display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 8px 0 0;">
+                            @foreach ((string Label, string Value) detail in _bulkActionFailure.Details)
+                            {
+                                <dt>@detail.Label</dt>
+                                <dd class="monospace" title="@detail.Value">@Truncate(detail.Value, 80)</dd>
+                            }
+                        </dl>
+                    </div>
                 }
             </ChildContent>
             <ActionTemplate>
@@ -381,6 +423,9 @@
     private bool _pendingShowArchive;
     private int _bulkProgressCurrent;
     private int _bulkProgressTotal;
+    private int _bulkActionAttempt;
+    private BulkActionFailureState? _bulkActionFailure;
+    private CancellationTokenSource? _bulkActionCts;
 
     private bool _isAnyDialogOpen => _showRetryDialog || _showSkipDialog || _showArchiveDialog;
 
@@ -766,6 +811,7 @@
     private void OpenBulkDialog(string action)
     {
         if (_isAnyDialogOpen) { return; }
+        _bulkActionFailure = null;
         if (string.Equals(action, "retry", StringComparison.OrdinalIgnoreCase))
         {
             _showRetryDialog = true;
@@ -817,7 +863,18 @@
         string actionName,
         Func<string, IReadOnlyList<string>, CancellationToken, Task<AdminOperationResult?>> apiCall)
     {
+        if (_isOperating || _disposed)
+        {
+            return;
+        }
+
+        int attempt = ++_bulkActionAttempt;
+        _bulkActionCts?.Cancel();
+        _bulkActionCts?.Dispose();
+        _bulkActionCts = new CancellationTokenSource();
+        CancellationToken ct = _bulkActionCts.Token;
         _isOperating = true;
+        _bulkActionFailure = null;
         StateHasChanged();
 
         int totalCount = _selectedIds.Count;
@@ -832,6 +889,7 @@
         int successCount = 0;
         int failCount = 0;
         string? lastError = null;
+        List<BulkActionFailureItem> failures = [];
 
         try
         {
@@ -845,7 +903,7 @@
                     AdminOperationResult? result = await apiCall(
                         group.Key,
                         group.Select(e => e.MessageId).ToList(),
-                        CancellationToken.None);
+                        ct);
 
                     if (result?.Success == true)
                     {
@@ -855,12 +913,14 @@
                     {
                         failCount += group.Count();
                         lastError = result?.Message ?? $"Failed to {actionName} entries.";
+                        failures.Add(BulkActionFailureItem.FromResult(actionName, group.Key, group.Select(e => e.MessageId), result));
                     }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     failCount += group.Count();
                     lastError = ex.Message;
+                    failures.Add(BulkActionFailureItem.FromException(actionName, group.Key, group.Select(e => e.MessageId), ex));
                 }
             }
 
@@ -893,13 +953,25 @@
             else
             {
                 // Full failure — stay on dialog, keep selection
+                if (!_disposed && attempt == _bulkActionAttempt)
+                {
+                    _bulkActionFailure = BulkActionFailureState.Create(actionName, failures);
+                }
+
                 await ToastService.ShowErrorAsync($"Failed to {actionName} entries: {lastError}");
             }
         }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
         finally
         {
-            _isOperating = false;
-            StateHasChanged();
+            if (!_disposed && attempt == _bulkActionAttempt)
+            {
+                _isOperating = false;
+                StateHasChanged();
+            }
         }
     }
 
@@ -911,6 +983,7 @@
         _showRetryDialog = false;
         _showSkipDialog = false;
         _showArchiveDialog = false;
+        _bulkActionFailure = null;
     }
 
     // Helpers
@@ -923,11 +996,117 @@
         return lastDot >= 0 ? fullTypeName[(lastDot + 1)..] : fullTypeName;
     }
 
+    private bool ShouldShowFailure(string actionName) =>
+        _bulkActionFailure is not null
+        && string.Equals(_bulkActionFailure.ActionName, actionName, StringComparison.OrdinalIgnoreCase);
+
+    private static string Sanitize(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Unavailable";
+        }
+
+        string sanitized = value;
+        string[] blockedMarkers = ["bearer ", "signingkey", "signing key", "redis://", "connectionstring", "connection string", "password=", "secret"];
+        foreach (string marker in blockedMarkers)
+        {
+            int index = sanitized.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (index >= 0)
+            {
+                sanitized = sanitized[..index] + "[redacted]";
+                break;
+            }
+        }
+
+        return sanitized.Length <= 240 ? sanitized : sanitized[..240] + "...";
+    }
+
+    private sealed record BulkActionFailureState(string ActionName, string Title, string Message, IReadOnlyList<(string Label, string Value)> Details)
+    {
+        public static BulkActionFailureState Create(string actionName, IReadOnlyList<BulkActionFailureItem> failures)
+        {
+            string action = char.ToUpperInvariant(actionName[0]) + actionName[1..];
+            string message = failures.LastOrDefault()?.Message ?? $"Failed to {actionName} selected entries.";
+            List<(string Label, string Value)> details =
+            [
+                ("Action", action),
+                ("Tenants", string.Join(", ", failures.Select(f => f.TenantId).Distinct())),
+                ("Message IDs", string.Join(", ", failures.SelectMany(f => f.MessageIds).Distinct())),
+            ];
+
+            string? status = failures.Select(f => f.Status).FirstOrDefault(s => !string.IsNullOrWhiteSpace(s));
+            if (!string.IsNullOrWhiteSpace(status)) { details.Add(("Status", status)); }
+            string? errorCode = failures.Select(f => f.ErrorCode).FirstOrDefault(s => !string.IsNullOrWhiteSpace(s));
+            if (!string.IsNullOrWhiteSpace(errorCode)) { details.Add(("Error Code", errorCode)); }
+            string? operationId = failures.Select(f => f.OperationId).FirstOrDefault(s => !string.IsNullOrWhiteSpace(s));
+            if (!string.IsNullOrWhiteSpace(operationId)) { details.Add(("Operation ID", operationId)); }
+            string? traceId = failures.Select(f => f.TraceId).FirstOrDefault(s => !string.IsNullOrWhiteSpace(s));
+            if (!string.IsNullOrWhiteSpace(traceId)) { details.Add(("Trace ID", traceId)); }
+
+            return new BulkActionFailureState(actionName, $"{action} failed", Sanitize(message), details.Select(d => (d.Label, Sanitize(d.Value))).ToList());
+        }
+    }
+
+    private sealed record BulkActionFailureItem(
+        string TenantId,
+        IReadOnlyList<string> MessageIds,
+        string Message,
+        string? Status,
+        string? ErrorCode,
+        string? OperationId,
+        string? TraceId)
+    {
+        public static BulkActionFailureItem FromResult(
+            string actionName,
+            string tenantId,
+            IEnumerable<string> messageIds,
+            AdminOperationResult? result) =>
+            new(
+                tenantId,
+                messageIds.ToList(),
+                result?.Message ?? $"Failed to {actionName} entries.",
+                null,
+                result?.ErrorCode,
+                result?.OperationId,
+                null);
+
+        public static BulkActionFailureItem FromException(
+            string actionName,
+            string tenantId,
+            IEnumerable<string> messageIds,
+            Exception exception)
+        {
+            if (exception is AdminApiProblemException problem)
+            {
+                return new(
+                    tenantId,
+                    messageIds.ToList(),
+                    problem.Detail ?? problem.Message,
+                    problem.StatusCode is null ? null : $"{(int)problem.StatusCode} {problem.StatusCode}",
+                    problem.ErrorCode,
+                    problem.OperationId,
+                    problem.TraceId);
+            }
+
+            return new(
+                tenantId,
+                messageIds.ToList(),
+                exception.Message,
+                exception is HttpRequestException http && http.StatusCode is not null ? $"{(int)http.StatusCode} {http.StatusCode}" : null,
+                null,
+                null,
+                null);
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         _disposed = true;
         _loadCts?.Cancel();
         _loadCts?.Dispose();
+        _bulkActionCts?.Cancel();
+        _bulkActionCts?.Dispose();
         if (_tenantDebounceTimer is not null)
         {
             await _tenantDebounceTimer.DisposeAsync();

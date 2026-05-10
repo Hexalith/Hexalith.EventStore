@@ -32,10 +32,11 @@ public static class AdminUIServiceExtensions {
             .AddJwtBearer();
         _ = builder.Services.AddAuthorization();
         _ = builder.Services.AddCascadingAuthenticationState();
+        _ = builder.Services.AddScoped<DevelopmentAdminRoleState>();
         _ = builder.Services.AddScoped<AuthenticationStateProvider, TokenAuthenticationStateProvider>();
 
         // Admin API authentication for protected Admin.Server endpoints
-        _ = builder.Services.AddSingleton<AdminApiAccessTokenProvider>();
+        _ = builder.Services.AddScoped<AdminApiAccessTokenProvider>();
         _ = builder.Services.AddTransient<AdminApiAuthorizationHandler>();
 
         // Admin user context for role-based UI rendering

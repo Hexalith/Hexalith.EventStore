@@ -1,11 +1,14 @@
 using Bunit;
 
 using Hexalith.EventStore.Admin.UI.Tests.Services;
+using Hexalith.EventStore.Admin.UI.Services;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.FluentUI.AspNetCore.Components;
 
@@ -92,9 +95,18 @@ public class AdminUITestContext : BunitContext {
                 ["EventStore:AdminServer:BaseUrl"] = "https://eventstore-admin",
             })
             .Build());
+        _ = Services.AddSingleton<IHostEnvironment>(new TestHostEnvironment());
+        _ = Services.AddScoped<DevelopmentAdminRoleState>();
         _ = Services.AddCascadingValue(sp => {
             AuthenticationStateProvider asp = sp.GetRequiredService<AuthenticationStateProvider>();
             return asp.GetAuthenticationStateAsync();
         });
+    }
+
+    private sealed class TestHostEnvironment : IHostEnvironment {
+        public string EnvironmentName { get; set; } = "Production";
+        public string ApplicationName { get; set; } = "Hexalith.EventStore.Admin.UI.Tests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 }

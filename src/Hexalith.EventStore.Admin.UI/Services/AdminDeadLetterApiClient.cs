@@ -113,6 +113,7 @@ public class AdminDeadLetterApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to retry dead-letter entries at {Url}", url);
@@ -145,6 +146,7 @@ public class AdminDeadLetterApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to skip dead-letter entries at {Url}", url);
@@ -177,6 +179,7 @@ public class AdminDeadLetterApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to archive dead-letter entries at {Url}", url);
@@ -191,35 +194,52 @@ public class AdminDeadLetterApiClient(
 
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
+        AdminApiProblem problem = await ReadProblemAsync(response).ConfigureAwait(false);
+        string message = problem.Detail
+            ?? problem.Title
+            ?? statusCode switch {
+                HttpStatusCode.Unauthorized => "Authentication required. Please sign in again.",
+                HttpStatusCode.Forbidden => "Access denied. Insufficient permissions to access this resource.",
+                HttpStatusCode.ServiceUnavailable => "The admin backend service is temporarily unavailable.",
+                HttpStatusCode.UnprocessableEntity => "The operation was rejected by the server.",
+                _ => $"Admin API returned {(int)statusCode}: {reasonPhrase}",
+            };
 
-        if (statusCode == HttpStatusCode.UnprocessableEntity) {
-            string? errorDetail = null;
-            try {
-                string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                using var doc = JsonDocument.Parse(body);
-                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail)) {
-                    errorDetail = detail.GetString();
-                }
-            }
-            catch {
-                // Ignore parse failures — fall through to default message
-            }
-
-            throw new InvalidOperationException(
-                errorDetail ?? reasonPhrase ?? "The operation was rejected by the server.");
-        }
-
-        throw statusCode switch {
-            HttpStatusCode.Unauthorized => new UnauthorizedAccessException(
-                "Authentication required. Please sign in again."),
-            HttpStatusCode.Forbidden => new ForbiddenAccessException(
-                "Access denied. Insufficient permissions to access this resource."),
-            HttpStatusCode.ServiceUnavailable => new ServiceUnavailableException(
-                "The admin backend service is temporarily unavailable."),
-            _ => new HttpRequestException(
-                $"Admin API returned {(int)statusCode}: {reasonPhrase}",
-                null,
-                statusCode),
-        };
+        throw new AdminApiProblemException(
+            message,
+            statusCode,
+            problem.Title,
+            problem.Detail,
+            problem.ErrorCode,
+            problem.TraceId,
+            problem.OperationId);
     }
+
+    private static async Task<AdminApiProblem> ReadProblemAsync(HttpResponseMessage response) {
+        try {
+            string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(body)) {
+                return new AdminApiProblem(null, null, null, null, null);
+            }
+
+            using var doc = JsonDocument.Parse(body);
+            JsonElement root = doc.RootElement;
+            return new AdminApiProblem(
+                TryGetString(root, "title"),
+                TryGetString(root, "detail"),
+                TryGetString(root, "errorCode") ?? TryGetString(root, "code"),
+                TryGetString(root, "traceId") ?? TryGetString(root, "traceID") ?? TryGetString(root, "traceIdentifier"),
+                TryGetString(root, "operationId"));
+        }
+        catch (JsonException) {
+            return new AdminApiProblem("Malformed error response", "The server returned an error response that could not be parsed.", null, null, null);
+        }
+    }
+
+    private static string? TryGetString(JsonElement root, string propertyName)
+        => root.TryGetProperty(propertyName, out JsonElement value) && value.ValueKind != JsonValueKind.Null
+            ? value.ToString()
+            : null;
+
+    private sealed record AdminApiProblem(string? Title, string? Detail, string? ErrorCode, string? TraceId, string? OperationId);
 }

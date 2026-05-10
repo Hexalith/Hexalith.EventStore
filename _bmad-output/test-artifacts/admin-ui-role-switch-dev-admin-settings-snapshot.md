@@ -1,0 +1,110 @@
+- generic [ref=e1]:
+  - link "Skip to main content" [ref=e198] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e200]:
+    - generic [ref=e202]:
+      - generic [ref=e203]: Hexalith EventStore Admin
+      - generic [ref=e204]:
+        - generic [ref=e205]:
+          - 'generic "Connection status: Connected" [ref=e206]':
+            - generic: Connected
+          - generic [ref=e207]: Healthy
+        - generic [ref=e208]:
+          - generic "Development role" [ref=e210] [cursor=pointer]:
+            - generic [ref=e211]:
+              - combobox [ref=e212]: Admin
+              - img [ref=e214]
+          - generic [ref=e216]: "Role: Admin"
+        - generic [ref=e217]: Development role Admin selected.
+        - generic "Switch to light theme" [ref=e218] [cursor=pointer]:
+          - generic [ref=e219]:
+            - generic: ⚙
+    - navigation "Main navigation" [ref=e221]:
+      - link "Home" [ref=e222] [cursor=pointer]:
+        - /url: /
+        - img [ref=e223]
+        - text: Home
+      - link "Commands" [ref=e225] [cursor=pointer]:
+        - /url: /commands
+        - img [ref=e226]
+        - text: Commands
+      - link "Events" [ref=e228] [cursor=pointer]:
+        - /url: /events
+        - img [ref=e229]
+        - text: Events
+      - link "Streams" [ref=e231] [cursor=pointer]:
+        - /url: /streams
+        - img [ref=e232]
+        - text: Streams
+      - link "Health" [ref=e234] [cursor=pointer]:
+        - /url: /health
+        - img [ref=e235]
+        - text: Health
+      - link "Dead Letters" [ref=e237] [cursor=pointer]:
+        - /url: /health/dead-letters
+        - img [ref=e238]
+        - text: Dead Letters
+      - link "DAPR" [ref=e240] [cursor=pointer]:
+        - /url: /dapr
+        - img [ref=e241]
+        - text: DAPR
+      - link "Projections" [ref=e243] [cursor=pointer]:
+        - /url: /projections
+        - img [ref=e244]
+        - text: Projections
+      - link "Types" [ref=e246] [cursor=pointer]:
+        - /url: /types
+        - img [ref=e247]
+        - text: Types
+      - link "Services" [ref=e249] [cursor=pointer]:
+        - /url: /services
+        - img [ref=e250]
+        - text: Services
+      - link "Tenants" [ref=e252] [cursor=pointer]:
+        - /url: /tenants
+        - img [ref=e253]
+        - text: Tenants
+      - link "Storage" [ref=e255] [cursor=pointer]:
+        - /url: /storage
+        - img [ref=e256]
+        - text: Storage
+      - link "Snapshots" [ref=e258] [cursor=pointer]:
+        - /url: /snapshots
+        - img [ref=e259]
+        - text: Snapshots
+      - link "Compaction" [ref=e261] [cursor=pointer]:
+        - /url: /compaction
+        - img [ref=e262]
+        - text: Compaction
+      - link "Backups" [ref=e264] [cursor=pointer]:
+        - /url: /backups
+        - img [ref=e265]
+        - text: Backups
+      - link "Consistency" [ref=e267] [cursor=pointer]:
+        - /url: /consistency
+        - img [ref=e268]
+        - text: Consistency
+      - link "Settings" [ref=e401] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e402]
+        - text: Settings
+      - button "Topology" [ref=e273] [cursor=pointer]:
+        - img [ref=e274]
+        - text: Topology
+        - img [ref=e277]
+      - button "No domains" [ref=e279]
+    - generic [ref=e280]:
+      - navigation "Breadcrumb" [ref=e281]:
+        - generic [ref=e282]:
+          - link "Home" [ref=e283] [cursor=pointer]:
+            - /url: /
+          - generic [ref=e284]: /
+          - generic [ref=e287]: Settings
+        - button "Copy page URL to clipboard" [ref=e288] [cursor=pointer]:
+          - img [ref=e289]
+      - main [ref=e291]:
+        - heading "Settings" [active] [level=1] [ref=e404]
+        - generic [ref=e405]:
+          - heading "Configure admin dashboard preferences." [level=2] [ref=e406]
+          - paragraph [ref=e407]: Dashboard settings and configuration options will be available here.
+  - generic "Command palette"
