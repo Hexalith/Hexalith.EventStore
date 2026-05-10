@@ -97,7 +97,8 @@ public class DaprPubSubQueryServiceTests {
                 {"name": "statestore", "type": "state.redis", "version": "v1", "capabilities": []},
                 {"name": "pubsub", "type": "pubsub.redis", "version": "v1", "capabilities": []},
                 {"name": "mybinding", "type": "bindings.http", "version": "v1", "capabilities": []}
-            ]
+            ],
+            "subscriptions": []
         }
         """);
 
@@ -110,19 +111,19 @@ public class DaprPubSubQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetPubSubOverviewAsync_HandlesSubscriptionsKeyAbsent() {
-        // Arrange — remote returns metadata without subscriptions key
+    public async Task GetPubSubOverviewAsync_ReturnsInvalidPayload_WhenSubscriptionsKeyAbsent() {
+        // Arrange — remote returns metadata without the required subscriptions key.
         DaprMetadata metadata = CreateMetadata([]);
         _ = _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
 
-        SetupRemoteSidecar("""{"actors": []}""");
+        SetupRemoteSidecar("""{"components": []}""");
 
         // Act
         DaprPubSubOverview result = await _sut.GetPubSubOverviewAsync();
 
         // Assert
         result.Subscriptions.ShouldBeEmpty();
-        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.InvalidPayload);
     }
 
     [Fact]
@@ -132,6 +133,7 @@ public class DaprPubSubQueryServiceTests {
 
         SetupRemoteSidecar("""
         {
+            "components": [],
             "subscriptions": [
                 {"pubsubName": "pubsub", "topic": "*.*.events", "type": "DECLARATIVE", "deadLetterTopic": "dl.topic", "rules": {"rules": [{"path": "/events/handle"}]}},
                 {"pubsubName": "pubsub", "topic": "projection.changed", "type": "PROGRAMMATIC", "deadLetterTopic": "", "rules": {"rules": [{"path": "/projections/notify"}]}}
@@ -218,7 +220,7 @@ public class DaprPubSubQueryServiceTests {
         DaprMetadata metadata = CreateMetadata([]);
         _ = _daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
 
-        string remoteJson = """{"subscriptions":[{"pubsubName":"pubsub","topic":"*.*.events","type":"DECLARATIVE","deadLetterTopic":"","rules":{"rules":[{"path":"/events/handle"}]}}]}""";
+        string remoteJson = """{"components":[],"subscriptions":[{"pubsubName":"pubsub","topic":"*.*.events","type":"DECLARATIVE","deadLetterTopic":"","rules":{"rules":[{"path":"/events/handle"}]}}]}""";
         HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, remoteJson));
         _ = _httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
 

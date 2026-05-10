@@ -156,15 +156,14 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
             return true;
         }
 
-        // The probe runs inside GetCanonicalDaprInventoryAsync and writes Source = LocalAdminProbe
-        // on the matching state-store entry. Scope the lookup to LocalAdminProbe rows so we
-        // match the probe-written entry deterministically and ignore remote-only rows that
-        // happen to share a name (a remote sidecar can report a state-store with a different
-        // category mapping; that row is inventory evidence, not probe evidence).
+        // The probe runs inside GetCanonicalDaprInventoryAsync and writes the probe result onto
+        // the matching state-store entry. Remote-attributed rows intentionally keep Source =
+        // RemoteEventStoreMetadata so /health can show where the inventory fact came from while
+        // still using the local probe Status as health evidence.
         DaprComponentDetail[] probeRows = inventory.Components
             .Where(c =>
                 string.Equals(c.ComponentName, configuredStateStoreName, StringComparison.OrdinalIgnoreCase)
-                && c.Source == DaprComponentSource.LocalAdminProbe)
+                && c.Category == DaprComponentCategory.StateStore)
             .OrderBy(c => c.ComponentType, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -319,6 +318,15 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
         }
         catch (OperationCanceledException) {
             throw;
+        }
+        catch (Exception ex) {
+            _logger.LogWarning(ex, "Failed to read DAPR component health history — reporting history source unavailable.");
+            return new DaprComponentHealthTimeline(
+                [],
+                HasData: false,
+                IsTruncated: false,
+                HistoryStatus: SystemHealthMetricStatus.Unavailable,
+                StatusMessage: "Health history storage is unavailable; live health and DAPR inventory remain authoritative for the current sample.");
         }
     }
 }

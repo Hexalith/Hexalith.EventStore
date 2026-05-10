@@ -134,7 +134,7 @@ public class DaprActorQueryServiceTests {
         _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(emptyMetadata);
 
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        string remoteJson = """{"actors":[{"type":"ETagActor","count":1}]}""";
+        string remoteJson = """{"components":[],"subscriptions":[],"actors":[{"type":"ETagActor","count":1}]}""";
         HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, remoteJson));
         _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
 
@@ -243,7 +243,7 @@ public class DaprActorQueryServiceTests {
         _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(emptyMetadata);
 
         IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
-        string remoteJson = """{"actors":[{"type":"AggregateActor","count":3}]}""";
+        string remoteJson = """{"components":[],"subscriptions":[],"actors":[{"type":"AggregateActor","count":3}]}""";
         HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, remoteJson));
         _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
 

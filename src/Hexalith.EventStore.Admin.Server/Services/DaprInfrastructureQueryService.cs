@@ -154,7 +154,9 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         // contract with an unhandled 500.
         string configuredStateStore = _options.StateStoreName;
         if (!string.IsNullOrWhiteSpace(configuredStateStore)
-            && !merged.Keys.Any(k => string.Equals(k.Name, configuredStateStore, StringComparison.OrdinalIgnoreCase))) {
+            && !merged.Values.Any(c =>
+                c.Category == DaprComponentCategory.StateStore
+                && string.Equals(c.ComponentName, configuredStateStore, StringComparison.OrdinalIgnoreCase))) {
             const string SyntheticStateStoreType = "state.unknown";
             DaprComponentDetail synth = new(
                 configuredStateStore,
@@ -258,28 +260,29 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         // local component count (round 3 D2). Direct GetMetadataAsync would race the cache.
         LocalMetadataResult local = await TryReadLocalMetadataAsync(ct).ConfigureAwait(false);
         DaprMetadata? metadata = local.Metadata;
-        if (metadata is null) {
-            return null;
-        }
 
         // Subscriptions and HttpEndpoints live on the remote EventStore sidecar; the local
         // 'eventstore-admin' sidecar has no pub/sub subscriptions of its own. We delegate to
         // the shared remote-metadata parser so every Admin surface sees the same status
         // (Available / NotConfigured / Unreachable / InvalidPayload).
-        string runtimeVersion = metadata.Extended?.TryGetValue("daprRuntimeVersion", out string? version) == true
+        string runtimeVersion = metadata?.Extended?.TryGetValue("daprRuntimeVersion", out string? version) == true
             ? version ?? "unknown"
             : "unknown";
 
         RemoteMetadataPayload remote = await TryReadRemoteMetadataAsync(ct).ConfigureAwait(false);
+
+        if (metadata is null && remote.Status == RemoteMetadataStatus.NotConfigured) {
+            return null;
+        }
 
         // Counts are meaningful only when remote.Status == Available; consumers reading
         // SubscriptionCount/HttpEndpointCount unconditionally would surface "0" for an
         // unreachable remote, exactly the unknown-zero pattern we forbid elsewhere.
         bool remoteAvailable = remote.Status == RemoteMetadataStatus.Available;
         return new DaprSidecarInfo(
-            string.IsNullOrWhiteSpace(metadata.Id) ? "unknown" : metadata.Id,
+            string.IsNullOrWhiteSpace(metadata?.Id) ? "unknown" : metadata.Id,
             runtimeVersion,
-            metadata.Components?.Count ?? 0,
+            metadata?.Components?.Count ?? 0,
             remoteAvailable ? remote.SubscriptionCount : 0,
             remoteAvailable ? remote.HttpEndpointCount : 0,
             remote.Status,
@@ -874,8 +877,13 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 .GetStateAsync<string>(component.ComponentName, "admin:dapr-probe", cancellationToken: probeCt)
                 .ConfigureAwait(false);
 
-            // Success — store responded. Promote source to LocalAdminProbe to record canonical evidence.
-            return (component with { Status = HealthStatus.Healthy, LastCheckUtc = DateTimeOffset.UtcNow, Source = DaprComponentSource.LocalAdminProbe }, true);
+            // Success — store responded. Preserve remote inventory provenance when the row came
+            // from the EventStore sidecar; the local probe owns Status/LastCheckUtc, but Source
+            // still answers where the component inventory fact came from.
+            DaprComponentSource source = component.Source == DaprComponentSource.RemoteEventStoreMetadata
+                ? component.Source
+                : DaprComponentSource.LocalAdminProbe;
+            return (component with { Status = HealthStatus.Healthy, LastCheckUtc = DateTimeOffset.UtcNow, Source = source }, true);
         }
         catch (OperationCanceledException) when (!outerCt.IsCancellationRequested) {
             // Probe timed out without the *outer caller* cancelling — treat as Unhealthy
@@ -888,7 +896,10 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             // would always be false, leaving the timeout branch unreachable and leaking a
             // "Healthy by metadata default" state-store row through the AC1 contract.
             _logger.LogWarning("State store probe timed out for {ComponentName} after 3 seconds.", component.ComponentName);
-            return (component with { Status = HealthStatus.Unhealthy, LastCheckUtc = DateTimeOffset.UtcNow, Source = DaprComponentSource.LocalAdminProbe }, true);
+            DaprComponentSource source = component.Source == DaprComponentSource.RemoteEventStoreMetadata
+                ? component.Source
+                : DaprComponentSource.LocalAdminProbe;
+            return (component with { Status = HealthStatus.Unhealthy, LastCheckUtc = DateTimeOffset.UtcNow, Source = source }, true);
         }
         catch (OperationCanceledException) {
             // Outer caller cancelled — propagate cancellation to the request pipeline.
@@ -896,7 +907,10 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         }
         catch (Exception ex) {
             _logger.LogWarning(ex, "State store probe failed for {ComponentName}.", component.ComponentName);
-            return (component with { Status = HealthStatus.Unhealthy, LastCheckUtc = DateTimeOffset.UtcNow, Source = DaprComponentSource.LocalAdminProbe }, true);
+            DaprComponentSource source = component.Source == DaprComponentSource.RemoteEventStoreMetadata
+                ? component.Source
+                : DaprComponentSource.LocalAdminProbe;
+            return (component with { Status = HealthStatus.Unhealthy, LastCheckUtc = DateTimeOffset.UtcNow, Source = source }, true);
         }
     }
 
@@ -1005,7 +1019,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         catch (OperationCanceledException) {
             throw;
         }
-        catch (JsonException ex) {
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException) {
             _logger.LogWarning(
                 ex,
                 "Remote DAPR sidecar metadata at {Endpoint} returned an invalid JSON payload.",
@@ -1080,8 +1094,14 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         int httpEndpointCount = 0;
         DateTimeOffset now = DateTimeOffset.UtcNow;
 
-        if (root.TryGetProperty("components", out JsonElement componentsElement)
-            && componentsElement.ValueKind == JsonValueKind.Array) {
+        if (root.ValueKind != JsonValueKind.Object) {
+            throw new JsonException("Remote DAPR sidecar metadata root must be a JSON object.");
+        }
+
+        JsonElement componentsElement = RequiredArray(root, "components");
+        JsonElement subscriptionsElement = RequiredArray(root, "subscriptions");
+
+        if (componentsElement.ValueKind == JsonValueKind.Array) {
             foreach (JsonElement comp in componentsElement.EnumerateArray()) {
                 string? name = comp.TryGetProperty("name", out JsonElement n) ? n.GetString() : null;
                 string? compType = comp.TryGetProperty("type", out JsonElement tp) ? tp.GetString() : null;
@@ -1114,8 +1134,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             }
         }
 
-        if (root.TryGetProperty("subscriptions", out JsonElement subscriptionsElement)
-            && subscriptionsElement.ValueKind == JsonValueKind.Array) {
+        if (subscriptionsElement.ValueKind == JsonValueKind.Array) {
             // subCount is finalised from the filtered subscriptions list below so
             // /dapr's "Active Subscriptions" stat card and /dapr/pubsub's filtered grid
             // agree on the same canonical payload. The unfiltered array length is
@@ -1162,8 +1181,11 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             subCount = subscriptions.Count;
         }
 
-        if (root.TryGetProperty("actors", out JsonElement actorsElement)
-            && actorsElement.ValueKind == JsonValueKind.Array) {
+        if (root.TryGetProperty("actors", out JsonElement actorsElement)) {
+            if (actorsElement.ValueKind != JsonValueKind.Array) {
+                throw new JsonException("Remote DAPR sidecar metadata property 'actors' must be an array.");
+            }
+
             foreach (JsonElement actorElement in actorsElement.EnumerateArray()) {
                 string type = actorElement.TryGetProperty("type", out JsonElement typeEl)
                     ? typeEl.GetString() ?? string.Empty
@@ -1191,12 +1213,27 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             }
         }
 
-        if (root.TryGetProperty("httpEndpoints", out JsonElement httpEndpointsElement)
-            && httpEndpointsElement.ValueKind == JsonValueKind.Array) {
+        if (root.TryGetProperty("httpEndpoints", out JsonElement httpEndpointsElement)) {
+            if (httpEndpointsElement.ValueKind != JsonValueKind.Array) {
+                throw new JsonException("Remote DAPR sidecar metadata property 'httpEndpoints' must be an array.");
+            }
+
             httpEndpointCount = httpEndpointsElement.GetArrayLength();
         }
 
         return (components, subscriptions, actors, subCount, httpEndpointCount);
+    }
+
+    private static JsonElement RequiredArray(JsonElement root, string propertyName) {
+        if (!root.TryGetProperty(propertyName, out JsonElement element)) {
+            throw new JsonException($"Remote DAPR sidecar metadata property '{propertyName}' is required.");
+        }
+
+        if (element.ValueKind != JsonValueKind.Array) {
+            throw new JsonException($"Remote DAPR sidecar metadata property '{propertyName}' must be an array.");
+        }
+
+        return element;
     }
 
     private readonly struct RemoteMetadataPayload {

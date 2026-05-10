@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using Bunit;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.UI.Pages;
 
@@ -85,10 +86,13 @@ public class HealthPageTests : AdminUITestContext {
         string markup = cut.Markup;
         markup.ShouldContain("Component Name");
         markup.ShouldContain("Component Type");
+        markup.ShouldContain("Source");
         markup.ShouldContain("Status");
         markup.ShouldContain("Last Check");
         markup.ShouldContain("statestore");
         markup.ShouldContain("state.redis");
+        markup.ShouldContain("Local probe");
+        markup.ShouldContain("Remote (eventstore)");
     }
 
     [Fact]
@@ -375,7 +379,7 @@ public class HealthPageTests : AdminUITestContext {
             TotalEventCount: 100,
             EventsPerSecond: 0,
             ErrorPercentage: 0,
-            [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow)],
+            [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow, DaprComponentSource.LocalAdminProbe)],
             new ObservabilityLinks(null, null, null),
             TotalEventCountStatus: SystemHealthMetricStatus.Available,
             EventsPerSecondStatus: SystemHealthMetricStatus.Unavailable,
@@ -401,7 +405,7 @@ public class HealthPageTests : AdminUITestContext {
             TotalEventCount: 0,
             EventsPerSecond: 0,
             ErrorPercentage: 0,
-            [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow)],
+            [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow, DaprComponentSource.LocalAdminProbe)],
             new ObservabilityLinks(null, null, null),
             TotalEventCountStatus: SystemHealthMetricStatus.Available,
             EventsPerSecondStatus: SystemHealthMetricStatus.Available,
@@ -469,7 +473,7 @@ public class HealthPageTests : AdminUITestContext {
                 TotalEventCount: 12345,
                 EventsPerSecond: 7.5,
                 ErrorPercentage: 1.2,
-                [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow)],
+                [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow, DaprComponentSource.LocalAdminProbe)],
                 new ObservabilityLinks(null, null, null),
                 TotalEventCountStatus: SystemHealthMetricStatus.Stale,
                 EventsPerSecondStatus: SystemHealthMetricStatus.Stale,
@@ -642,8 +646,8 @@ public class HealthPageTests : AdminUITestContext {
             42.5,
             0.3,
             [
-                new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow.AddMinutes(-1)),
-                new DaprComponentHealth("pubsub", "pubsub.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow.AddMinutes(-2)),
+                new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow.AddMinutes(-1), DaprComponentSource.LocalAdminProbe),
+                new DaprComponentHealth("pubsub", "pubsub.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow.AddMinutes(-2), DaprComponentSource.RemoteEventStoreMetadata),
             ],
             new ObservabilityLinks(null, null, null),
             TotalEventCountStatus: SystemHealthMetricStatus.Available,

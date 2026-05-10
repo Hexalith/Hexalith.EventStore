@@ -98,6 +98,26 @@ public class DaprHealthHistoryPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public void HealthHistoryPage_RendersUnavailableBanner_WhenHistoryStorageUnavailable() {
+        _ = _mockClient.GetHealthHistoryAsync(
+            Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprComponentHealthTimeline?>(
+                new DaprComponentHealthTimeline(
+                    [],
+                    HasData: false,
+                    HistoryStatus: SystemHealthMetricStatus.Unavailable,
+                    StatusMessage: "Health history storage is unavailable.")));
+
+        IRenderedComponent<DaprHealthHistory> cut = Render<DaprHealthHistory>();
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldContain("Health history storage unavailable"),
+            TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("Health history storage unavailable");
+        cut.Markup.ShouldNotContain("No health history available yet");
+    }
+
+    [Fact]
     public void HealthHistoryPage_RendersTruncationWarning_WhenIsTruncated() {
         // Arrange
         var timeline = new DaprComponentHealthTimeline(

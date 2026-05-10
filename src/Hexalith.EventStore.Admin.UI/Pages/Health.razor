@@ -125,6 +125,10 @@
                         aria-label="DAPR component health status">
             <PropertyColumn Property="@(c => c.ComponentName)" Title="Component Name" Class="monospace" Sortable="true" />
             <PropertyColumn Property="@(c => c.ComponentType)" Title="Component Type" Sortable="true" />
+            <TemplateColumn Title="Source"
+                            SortBy="@(GridSort<DaprComponentHealth>.ByAscending(c => (int)c.Source))">
+                <span title="@GetSourceTitle(context.Source)">@FormatSource(context.Source)</span>
+            </TemplateColumn>
             <TemplateColumn Title="Status"
                             SortBy="@(GridSort<DaprComponentHealth>.ByDescending(c => (int)c.Status))"
                             IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Descending">
@@ -362,6 +366,24 @@
         HealthStatus.Degraded => "warning",
         HealthStatus.Unhealthy => "error",
         _ => "neutral",
+    };
+
+    private static string FormatSource(DaprComponentSource source) => source switch
+    {
+        DaprComponentSource.RemoteEventStoreMetadata => "Remote (eventstore)",
+        DaprComponentSource.LocalAdminProbe => "Local probe",
+        DaprComponentSource.LocalAdminMetadataFallback => "Local fallback",
+        DaprComponentSource.Unavailable => "unavailable",
+        _ => $"unknown ({source})",
+    };
+
+    private static string GetSourceTitle(DaprComponentSource source) => source switch
+    {
+        DaprComponentSource.RemoteEventStoreMetadata => "Inventory reported by the remote EventStore sidecar metadata; status may include local probe evidence for the configured state store.",
+        DaprComponentSource.LocalAdminProbe => "Confirmed by an Admin.Server local dependency probe.",
+        DaprComponentSource.LocalAdminMetadataFallback => "Sourced from local Admin sidecar metadata as a degraded fallback only.",
+        DaprComponentSource.Unavailable => "Source attribution unavailable for this fact.",
+        _ => $"Unrecognized DaprComponentSource value '{source}' — UI translation missing.",
     };
 
     private static string GetErrorRateSeverity(double percentage)

@@ -103,6 +103,21 @@ public class DaprComponentsPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public void DaprPage_RendersComponentGrid_WhenSidecarInfoMissingButComponentsAvailable() {
+        _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprSidecarInfo?>(null));
+        _ = _mockApiClient.GetComponentsAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<DaprComponentDetail>>(CreateComponents()));
+
+        IRenderedComponent<DaprComponents> cut = Render<DaprComponents>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("statestore"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("statestore");
+        cut.Markup.ShouldContain("pubsub");
+        cut.Markup.ShouldNotContain("DAPR sidecar metadata unavailable");
+    }
+
+    [Fact]
     public void DaprPage_RendersRefreshButton() {
         // Arrange
         _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())

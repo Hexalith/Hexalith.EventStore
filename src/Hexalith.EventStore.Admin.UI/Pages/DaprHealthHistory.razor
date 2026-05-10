@@ -44,6 +44,13 @@
                  Description="Results truncated — narrow the time range or filter by component for complete data." />
 }
 
+@if (!_isLoading && _timeline?.HistoryStatus == SystemHealthMetricStatus.Unavailable)
+{
+    <IssueBanner Visible="true"
+                 Title="Health history storage unavailable"
+                 Description="@(_timeline.StatusMessage ?? "Health history storage could not be read. Live health and DAPR inventory remain authoritative for the current sample.")" />
+}
+
 @* Time range picker (AC7) *@
 <div style="display: flex; gap: 8px; margin-bottom: 16px;" role="group" aria-label="Time range selection">
     @foreach (var range in _timeRanges)
@@ -101,7 +108,7 @@
     <EmptyState Title="Health history collection is disabled"
                 Description="Set 'AdminServer:HealthHistoryEnabled' to 'true' in appsettings to enable background health snapshot collection." />
 }
-@if (!_isLoading && _timeline is not null && !_timeline.HasData)
+@if (!_isLoading && _timeline is not null && !_timeline.HasData && _timeline.HistoryStatus == SystemHealthMetricStatus.Available)
 {
     <EmptyState Title="No health history available yet"
                 Description="Health snapshots are collected every 60 seconds. Data will appear after the first collection cycle." />

@@ -181,7 +181,7 @@ public class DaprHealthQueryServiceHistoryTests {
     }
 
     [Fact]
-    public async Task GetComponentHealthHistoryAsync_Throws_WhenStateStoreUnavailable() {
+    public async Task GetComponentHealthHistoryAsync_ReturnsUnavailableTimeline_WhenStateStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DateTimeOffset now = DateTimeOffset.UtcNow;
 
@@ -192,9 +192,14 @@ public class DaprHealthQueryServiceHistoryTests {
 
         DaprHealthQueryService service = CreateService(daprClient);
 
-        _ = await Should.ThrowAsync<InvalidOperationException>(
-            () => service.GetComponentHealthHistoryAsync(
-                now.AddHours(-1), now, null, default));
+        DaprComponentHealthTimeline result = await service.GetComponentHealthHistoryAsync(
+            now.AddHours(-1), now, null, default);
+
+        result.HasData.ShouldBeFalse();
+        result.Entries.ShouldBeEmpty();
+        result.HistoryStatus.ShouldBe(SystemHealthMetricStatus.Unavailable);
+        result.StatusMessage.ShouldNotBeNull();
+        result.StatusMessage.ShouldContain("Health history storage is unavailable");
     }
 
     [Fact]
