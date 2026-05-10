@@ -20,7 +20,11 @@ public enum RemoteMetadataStatus {
     /// <summary>Remote endpoint configured and successfully queried.</summary>
     Available = 1,
 
-    /// <summary>Remote endpoint configured but query failed (transport, timeout, or non-success status).</summary>
+    /// <summary>Remote endpoint configured but query failed (transport, timeout, or non-success
+    /// status). Currently this also subsumes the "reachable but app metadata still loading"
+    /// case: the canonical way to signal that distinct condition would be a dedicated
+    /// <c>Initializing</c> value with a producer (round 3 D5 chose to remove the previous
+    /// `Initializing` member because no producer existed; round 5 D1 left this gap intentional).</summary>
     Unreachable = 2,
 
     /// <summary>Remote endpoint responded but the body could not be parsed or lacked required shape.</summary>

@@ -9,9 +9,21 @@ namespace Hexalith.EventStore.Admin.Server.Tests.Helpers;
 /// assertion vacuous.
 /// </summary>
 internal sealed class RecordingLogger<T> : ILogger<T> {
+    // ASP.NET Core / DAPR client / HttpClient pipelines log from arbitrary thread-pool threads.
+    // Tests that wire a real DaprInfrastructureQueryService can have probe and remote-fetch
+    // logs arrive concurrently; an unsynchronised List would race on Add (IndexOutOfRangeException
+    // or silently lost records) and could mask a regression that adds a secret to the log.
+    // Snapshot reads under the same lock to avoid mid-iteration mutation.
+    private readonly Lock _gate = new();
     private readonly List<LogRecord> _records = [];
 
-    public IReadOnlyList<LogRecord> Records => _records;
+    public IReadOnlyList<LogRecord> Records {
+        get {
+            lock (_gate) {
+                return _records.ToArray();
+            }
+        }
+    }
 
     public IDisposable BeginScope<TState>(TState state)
         where TState : notnull => NullScope.Instance;
@@ -25,10 +37,10 @@ internal sealed class RecordingLogger<T> : ILogger<T> {
         Exception? exception,
         Func<TState, Exception?, string> formatter) {
         ArgumentNullException.ThrowIfNull(formatter);
-        _records.Add(new LogRecord(
-            logLevel,
-            formatter(state, exception),
-            exception));
+        LogRecord record = new(logLevel, formatter(state, exception), exception);
+        lock (_gate) {
+            _records.Add(record);
+        }
     }
 
     internal sealed record LogRecord(LogLevel Level, string Message, Exception? Exception);

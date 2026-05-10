@@ -91,15 +91,14 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         DaprMetadata? localMetadata = local.Metadata;
 
         // The local sidecar carries usable evidence only if the metadata API responded AND the
-        // payload is non-empty: the sidecar can hand back a DaprMetadata whose Components/
-        // Actors/Extended are all null when the app is reachable but its app-metadata has not
-        // loaded yet. Trusting `local.Available` alone would let ComputeOverallStatus skip the
-        // Unhealthy branch in that initialising state.
+        // payload reports app-registered facts (Components or Actors). Round 5 P5: dropped
+        // `Extended` from the disjunction because DAPR populates Extended at sidecar startup
+        // (e.g., daprRuntimeVersion) before app registration; including it neutralised the
+        // very initialisation-state heuristic this check was added to catch.
         bool localSidecarMetadataAvailable = local.Available
             && localMetadata is not null
             && (localMetadata.Components is { Count: > 0 }
-                || localMetadata.Actors is { Count: > 0 }
-                || localMetadata.Extended is { Count: > 0 });
+                || localMetadata.Actors is { Count: > 0 });
 
         if (localMetadata?.Components is not null) {
             // When the configured state-store probe will not run (name empty/whitespace),
@@ -234,9 +233,14 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
         IReadOnlyList<DaprSubscriptionInfo> subs = remote.Subscriptions ?? [];
 
+        // Round 5 P16: tertiary tiebreaker on ComponentType so two rows with identical
+        // (Category, ComponentName) but different Type (e.g., synth `state.unknown` + remote
+        // `state.redis`) order deterministically across .NET runtime / Dictionary internals.
+        // Without it, snapshot tests and history-persistence ordering can flip between runs.
         IReadOnlyList<DaprComponentDetail> ordered = merged.Values
             .OrderBy(c => (int)c.Category)
             .ThenBy(c => c.ComponentName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(c => c.ComponentType, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         return new DaprCanonicalInventory(
@@ -762,6 +766,18 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         return result;
     }
 
+    /// <summary>Returns the configured endpoint with any embedded userinfo (user:password)
+    /// stripped. Falls back to the original string if it cannot be parsed as an absolute URI.</summary>
+    private static string SanitizeEndpoint(string raw) {
+        if (!Uri.TryCreate(raw, UriKind.Absolute, out Uri? uri)
+            || string.IsNullOrEmpty(uri.UserInfo)) {
+            return raw;
+        }
+
+        UriBuilder builder = new(uri) { UserName = string.Empty, Password = string.Empty };
+        return builder.Uri.ToString();
+    }
+
     private async Task<RemoteMetadataPayload> ReadRemoteMetadataAsync(CancellationToken ct) {
         if (string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)) {
             return new RemoteMetadataPayload {
@@ -770,7 +786,12 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             };
         }
 
-        string endpoint = _options.EventStoreDaprHttpEndpoint;
+        // Round 5 P14: strip credentials from the endpoint before assigning to the
+        // RemoteMetadataPayload — `Endpoint` flows directly into UI tooltips and the round-4
+        // empty-state Description copy. A misconfigured endpoint such as
+        // `http://user:pass@host:3500` would echo credentials verbatim into rendered HTML.
+        // The AC1 leak test pins response bodies but not this UI render path.
+        string endpoint = SanitizeEndpoint(_options.EventStoreDaprHttpEndpoint);
         string baseUrl = endpoint.TrimEnd('/');
 
         try {
@@ -796,9 +817,9 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             return new RemoteMetadataPayload {
                 Status = RemoteMetadataStatus.Available,
                 Endpoint = endpoint,
-                Components = components,
-                Subscriptions = subscriptions,
-                Actors = actors,
+                Components = components.AsReadOnly(),
+                Subscriptions = subscriptions.AsReadOnly(),
+                Actors = actors.AsReadOnly(),
                 SubscriptionCount = subCount,
                 HttpEndpointCount = httpEndpointCount,
             };
@@ -1005,11 +1026,14 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
         public string? Endpoint { get; init; }
 
-        public List<DaprComponentDetail>? Components { get; init; }
+        // Round 5 P15: expose as IReadOnlyList so a single shared payload cannot be mutated
+        // by one consumer in a way that corrupts other in-scope consumers' views. The parser
+        // wraps its mutable working lists in `.AsReadOnly()` before assignment below.
+        public IReadOnlyList<DaprComponentDetail>? Components { get; init; }
 
-        public List<DaprSubscriptionInfo>? Subscriptions { get; init; }
+        public IReadOnlyList<DaprSubscriptionInfo>? Subscriptions { get; init; }
 
-        public List<DaprActorTypeInfo>? Actors { get; init; }
+        public IReadOnlyList<DaprActorTypeInfo>? Actors { get; init; }
 
         public int SubscriptionCount { get; init; }
 

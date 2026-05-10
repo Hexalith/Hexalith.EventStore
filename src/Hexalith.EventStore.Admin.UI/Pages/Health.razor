@@ -258,6 +258,11 @@
 
     private async Task LoadDataAsync()
     {
+        // Set _isLoading so the SkeletonCard reappears during a Retry attempt; otherwise the page
+        // looks frozen while the API call is in flight after a previous failure (AC2 spec line 98:
+        // "the Refresh button returns to an idle state after success or failure" implies the
+        // intermediate state is observable).
+        _isLoading = true;
         try
         {
             SystemHealthReport? health = await ApiClient.GetSystemHealthAsync();
@@ -279,6 +284,10 @@
         {
             _isStale = _cachedHealthReport is not null;
             _apiUnavailable = _cachedHealthReport is null;
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
