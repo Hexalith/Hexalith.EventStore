@@ -52,6 +52,7 @@
             return;
         }
 
+        _liveAnnouncement = string.Empty;
         _lastValue = Value;
         QueueAnnouncement();
     }
@@ -83,6 +84,7 @@
     private string _severityColor => Severity.ToLowerInvariant() switch
     {
         "success" => "var(--hexalith-status-success)",
+        "accent" => "var(--hexalith-status-inflight)",
         "warning" => "var(--hexalith-status-warning)",
         "error" => "var(--hexalith-status-error)",
         _ => "var(--colorNeutralForeground1)",

@@ -17,7 +17,12 @@
 <PageTitle>Consistency - Hexalith EventStore</PageTitle>
 
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-    <h1 style="margin: 0;">Consistency</h1>
+    <div>
+        <h1 style="margin: 0;">Consistency</h1>
+        <p style="margin: 4px 0 0; color: var(--colorNeutralForeground3); font-size: 13px;">
+            Scope: @FormatTenantScope(_tenantFilter) / @FormatDomainScope(_domainFilter)
+        </p>
+    </div>
     <div style="display: flex; gap: 8px;">
         <AuthorizedView MinimumRole="AdminRole.Operator">
             <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
@@ -107,7 +112,7 @@
     @if (_filteredChecks.Count == 0)
     {
         <EmptyState Title="No consistency checks yet"
-                    Description="No checks have been run yet for your visible scope." />
+                    Description="No checks have been run yet for the selected tenant and domain scope." />
     }
     else
     {
@@ -121,11 +126,11 @@
             </TemplateColumn>
             <TemplateColumn Title="Tenant" Class="monospace" Sortable="true"
                             SortBy="@(GridSort<ConsistencyCheckSummary>.ByAscending(c => c.TenantId ?? ""))">
-                @(context.TenantId ?? "All")
+                @FormatTenantScope(context.TenantId)
             </TemplateColumn>
             <TemplateColumn Title="Domain" Sortable="true"
                             SortBy="@(GridSort<ConsistencyCheckSummary>.ByAscending(c => c.Domain ?? ""))">
-                @(context.Domain ?? "All")
+                @FormatDomainScope(context.Domain)
             </TemplateColumn>
             <TemplateColumn Title="Status" Sortable="true"
                             SortBy="@(GridSort<ConsistencyCheckSummary>.ByAscending(c => c.Status))">
@@ -190,8 +195,8 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
             <div><strong>Check ID:</strong> <span class="monospace">@_expandedCheckResult.CheckId</span></div>
             <div><strong>Status:</strong> @_expandedCheckResult.Status</div>
-            <div><strong>Tenant:</strong> @(_expandedCheckResult.TenantId ?? "All")</div>
-            <div><strong>Domain:</strong> @(_expandedCheckResult.Domain ?? "All")</div>
+            <div><strong>Tenant:</strong> @FormatTenantScope(_expandedCheckResult.TenantId)</div>
+            <div><strong>Domain:</strong> @FormatDomainScope(_expandedCheckResult.Domain)</div>
             <div><strong>Started:</strong> @_expandedCheckResult.StartedAtUtc.ToString("u")</div>
             <div><strong>Completed:</strong> @(_expandedCheckResult.CompletedAtUtc?.ToString("u") ?? "—")</div>
             <div><strong>Streams Checked:</strong> @_expandedCheckResult.StreamsChecked.ToString("N0")</div>
@@ -321,11 +326,11 @@
             </TitleTemplate>
             <ChildContent>
                 <FluentTextInput @bind-Value="_triggerTenantId"
-                                 Label="Tenant ID (optional)"
+                                 Label="Tenant ID (optional, all tenants when empty)"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Tenant ID" />
                 <FluentTextInput @bind-Value="_triggerDomain"
-                                 Label="Domain (optional)"
+                                 Label="Domain (optional, all domains when empty)"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Domain" />
                 <div style="margin-bottom: 12px;">
@@ -905,6 +910,12 @@
 
         return $"{(int)duration.TotalMinutes}m {duration.Seconds}s";
     }
+
+    private static string FormatTenantScope(string? tenantId)
+        => string.IsNullOrWhiteSpace(tenantId) ? "All tenants" : tenantId;
+
+    private static string FormatDomainScope(string? domain)
+        => string.IsNullOrWhiteSpace(domain) ? "All domains" : domain;
 
     public async ValueTask DisposeAsync()
     {

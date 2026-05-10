@@ -135,6 +135,22 @@ public class TenantsPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public void TenantsPage_ExplainsDisableInsteadOfDeleteLifecycle() {
+        // Arrange
+        SetupTenants([
+            CreateTenant("t-1", "Tenant One", TenantStatusType.Active),
+        ]);
+
+        // Act
+        IRenderedComponent<Tenants> cut = Render<Tenants>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Tenants are retained for audit"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        cut.Markup.ShouldContain("Disable a tenant to suspend command processing");
+        cut.Markup.ShouldContain("deletion is not supported from the admin UI");
+    }
+
+    [Fact]
     public void TenantsPage_CreateButton_HiddenForReadOnlyUser() {
         // Arrange (AC: 14)
         SetupReadOnlyUser();

@@ -19,6 +19,7 @@ public class StatCardTests : AdminUITestContext {
 
     [Theory]
     [InlineData("success", "color: var(--hexalith-status-success)")]
+    [InlineData("accent", "color: var(--hexalith-status-inflight)")]
     [InlineData("warning", "color: var(--hexalith-status-warning)")]
     [InlineData("error", "color: var(--hexalith-status-error)")]
     [InlineData("neutral", "color: var(--colorNeutralForeground1)")]
@@ -62,5 +63,24 @@ public class StatCardTests : AdminUITestContext {
 
         string markup = cut.Markup;
         markup.ShouldContain("aria-live=\"polite\"");
+    }
+
+    [Fact]
+    public void StatCard_ClearsStaleLiveAnnouncement_WhenValueChanges() {
+        IRenderedComponent<StatCard> cut = Render<StatCard>(
+            parameters => parameters
+                .Add(p => p.Label, "Total Checks")
+                .Add(p => p.Value, "0"));
+
+        typeof(StatCard)
+            .GetField("_liveAnnouncement", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .SetValue(cut.Instance, "Total Checks: 0");
+
+        cut.Render(parameters => parameters
+            .Add(p => p.Label, "Total Checks")
+            .Add(p => p.Value, "1"));
+
+        cut.Markup.ShouldNotContain("Total Checks: 0");
+        cut.Markup.ShouldContain("aria-label=\"Total Checks: 1\"");
     }
 }

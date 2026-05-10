@@ -15,7 +15,12 @@
 <PageTitle>Tenants - Hexalith EventStore</PageTitle>
 
 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-    <h1 style="margin: 0;">Tenants</h1>
+    <div>
+        <h1 style="margin: 0;">Tenants</h1>
+        <p class="tenant-lifecycle-note" role="note">
+            Tenants are retained for audit. Disable a tenant to suspend command processing; deletion is not supported from the admin UI.
+        </p>
+    </div>
     <div style="display: flex; gap: 8px;">
         <AuthorizedView MinimumRole="AdminRole.Admin">
             <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"

@@ -519,6 +519,13 @@ body {
 
 /* ── Tenants page (Story 16-5) ── */
 
+.tenant-lifecycle-note {
+    margin: 4px 0 0;
+    color: var(--colorNeutralForeground3);
+    font-size: 13px;
+    max-width: 680px;
+}
+
 .tenant-status-active {
     background-color: var(--hexalith-status-success) !important;
     color: white !important;

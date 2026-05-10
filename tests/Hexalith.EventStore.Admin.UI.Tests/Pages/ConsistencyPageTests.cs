@@ -53,7 +53,7 @@ public class ConsistencyPageTests : AdminUITestContext {
 
         // Assert
         cut.Markup.ShouldContain("No consistency checks yet");
-        cut.Markup.ShouldContain("No checks have been run yet for your visible scope.");
+        cut.Markup.ShouldContain("No checks have been run yet for the selected tenant and domain scope.");
     }
 
     [Fact]
@@ -495,7 +495,23 @@ public class ConsistencyPageTests : AdminUITestContext {
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
 
         // Assert
-        cut.Markup.ShouldContain("All");
+        cut.Markup.ShouldContain("All domains");
+    }
+
+    [Fact]
+    public void Consistency_TenantColumn_ShowsAllTenants_WhenNull() {
+        // Arrange
+        SetupChecks([
+            CreateSummary("check-1", null, ConsistencyCheckStatus.Completed, 50, 0, "orders"),
+        ]);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("All tenants"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        cut.Markup.ShouldContain("All tenants");
+        cut.Markup.ShouldContain("orders");
     }
 
     // ===== Helpers =====
@@ -505,7 +521,7 @@ public class ConsistencyPageTests : AdminUITestContext {
 
     private static ConsistencyCheckSummary CreateSummary(
         string checkId,
-        string tenantId,
+        string? tenantId,
         ConsistencyCheckStatus status,
         int streamsChecked,
         int anomaliesFound,
