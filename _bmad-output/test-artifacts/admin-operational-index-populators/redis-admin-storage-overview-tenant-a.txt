@@ -1,0 +1,4 @@
+version
+3
+data
+{"totalEventCount":3,"totalSizeBytes":null,"tenantBreakdown":[{"eventCount":3,"sizeBytes":null,"tenantId":"tenant-a","growthRatePerDay":null}],"totalStreamCount":1}

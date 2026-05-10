@@ -10,6 +10,7 @@ using Hexalith.EventStore.Commands;
 using Hexalith.EventStore.Configuration;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Filters;
+using Hexalith.EventStore.Indexes;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.OpenApi;
 using Hexalith.EventStore.Pipeline;
@@ -150,6 +151,7 @@ public static class EventStoreServiceCollectionExtensions {
         // Writer only — the reader lives in DaprStreamQueryService on the Admin.Server side.
         _ = services.AddSingleton<DaprStreamActivityTracker>();
         _ = services.AddSingleton<IStreamActivityTracker>(sp => sp.GetRequiredService<DaprStreamActivityTracker>());
+        _ = services.AddHostedService<AdminOperationalIndexHostedService>();
 
         // Extension metadata sanitization (Story 5.4, SEC-4)
         _ = services.AddOptions<ExtensionMetadataOptions>()

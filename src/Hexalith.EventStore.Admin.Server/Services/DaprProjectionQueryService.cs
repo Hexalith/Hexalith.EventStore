@@ -58,6 +58,15 @@ public sealed class DaprProjectionQueryService : IProjectionQueryService {
             .GetStateAsync<List<ProjectionStatus>>(_options.StateStoreName, indexKey, cancellationToken: ct)
             .ConfigureAwait(false);
 
+        if (result is null && tenantId is not null) {
+            _logger.LogWarning(
+                "Admin projection index '{IndexKey}' not found. Falling back to wildcard projection index.",
+                indexKey);
+            result = await _daprClient
+                .GetStateAsync<List<ProjectionStatus>>(_options.StateStoreName, "admin:projections:all", cancellationToken: ct)
+                .ConfigureAwait(false);
+        }
+
         if (result is null) {
             _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
             return [];

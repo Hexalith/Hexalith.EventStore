@@ -390,6 +390,12 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
                 .GetStateAsync<StorageOverview>(_options.StateStoreName, storageOverviewKey)
                 .ConfigureAwait(false);
 
+            if (projections is null && tenantId is not null) {
+                projections = await _daprClient
+                    .GetStateAsync<List<ProjectionStatus>>(_options.StateStoreName, "admin:projections:all")
+                    .ConfigureAwait(false);
+            }
+
             if (projections is null) {
                 anomalies.Add(new ConsistencyAnomaly(
                     UniqueIdHelper.GenerateSortableUniqueStringId(),

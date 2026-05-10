@@ -1,5 +1,6 @@
 using Dapr.Client;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Commands;
 using Hexalith.EventStore.Server.Commands;
@@ -165,6 +166,48 @@ public class DaprStreamActivityTrackerTests {
             ActivityIndexKey,
             Arg.Any<List<StreamSummary>>(),
             Arg.Any<string>(),
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TrackAsync_NewStream_WritesStorageOperationalIndexes() {
+        DaprStreamActivityTracker tracker = CreateTracker();
+        SetupGetStateAndEtag(ActivityIndexKey, null, "etag-1");
+        SetupTrySave(ActivityIndexKey, true);
+
+        await tracker.TrackAsync("tenant-a", "counter", "counter-1", 3, DateTimeOffset.UtcNow);
+
+        await _daprClient.Received(1).SaveStateAsync(
+            "statestore",
+            "admin:storage-overview:all",
+            Arg.Is<StorageOverview>(overview =>
+                overview.TotalEventCount == 3
+                && overview.TotalStreamCount == 1
+                && overview.TotalSizeBytes == null
+                && overview.TenantBreakdown.Single().TenantId == "tenant-a"
+                && overview.TenantBreakdown.Single().EventCount == 3),
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+        await _daprClient.Received(1).SaveStateAsync(
+            "statestore",
+            "admin:storage-hot-streams:tenant-a",
+            Arg.Is<List<StreamStorageInfo>>(streams =>
+                streams.Count == 1
+                && streams[0].TenantId == "tenant-a"
+                && streams[0].Domain == "counter"
+                && streams[0].AggregateId == "counter-1"
+                && streams[0].EventCount == 3
+                && streams[0].SizeBytes == null),
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+        await _daprClient.Received(1).SaveStateAsync(
+            "statestore",
+            "admin:storage-stream-count:tenant-a",
+            1,
             stateOptions: Arg.Any<StateOptions?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>());

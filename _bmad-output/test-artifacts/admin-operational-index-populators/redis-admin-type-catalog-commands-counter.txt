@@ -1,0 +1,4 @@
+version
+1
+data
+[{"typeName":"Hexalith.EventStore.Sample.Counter.Commands.CloseCounter","domain":"counter","targetAggregateType":"Hexalith.EventStore.Sample.Counter.CounterAggregate"},{"typeName":"Hexalith.EventStore.Sample.Counter.Commands.DecrementCounter","domain":"counter","targetAggregateType":"Hexalith.EventStore.Sample.Counter.CounterAggregate"},{"typeName":"Hexalith.EventStore.Sample.Counter.Commands.IncrementCounter","domain":"counter","targetAggregateType":"Hexalith.EventStore.Sample.Counter.CounterAggregate"},{"typeName":"Hexalith.EventStore.Sample.Counter.Commands.ResetCounter","domain":"counter","targetAggregateType":"Hexalith.EventStore.Sample.Counter.CounterAggregate"}]

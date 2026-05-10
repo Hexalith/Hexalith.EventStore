@@ -1,0 +1,4 @@
+version
+1
+data
+[{"isRejection":true,"schemaVersion":1,"typeName":"Hexalith.EventStore.Contracts.Events.AggregateTerminated","domain":"counter"},{"isRejection":false,"schemaVersion":1,"typeName":"Hexalith.EventStore.Sample.Counter.Events.CounterClosed","domain":"counter"},{"isRejection":false,"schemaVersion":1,"typeName":"Hexalith.EventStore.Sample.Counter.Events.CounterDecremented","domain":"counter"},{"isRejection":false,"schemaVersion":1,"typeName":"Hexalith.EventStore.Sample.Counter.Events.CounterIncremented","domain":"counter"},{"isRejection":false,"schemaVersion":1,"typeName":"Hexalith.EventStore.Sample.Counter.Events.CounterReset","domain":"counter"}]

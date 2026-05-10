@@ -1,6 +1,6 @@
 # Story: admin-operational-index-populators
 
-Status: ready-for-dev
+Status: review
 
 Context created: 2026-05-09
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-07-admin-ui-manual-test-suite-issues.md`
@@ -95,50 +95,50 @@ so that `/projections`, `/types`, `/storage`, and the projection-related consist
 
 ## Tasks / Subtasks
 
-- [ ] **ST0 - Baseline existing readers, writers, and manual evidence.** (AC: 1, 3, 4, 7)
-  - [ ] Re-read Issues #11, #12, #14, and #17 in the manual-test issue file before editing.
-  - [ ] Inspect `DaprProjectionQueryService`, `DaprTypeCatalogService`, `DaprStorageQueryService`, `DaprConsistencyCommandService`, `DaprStreamActivityTracker`, `EventStoreServiceCollectionExtensions`, `AssemblyScanner`, and relevant controllers/UI pages.
-  - [ ] Confirm current state-store keys and existing writer coverage with tests or local evidence.
-  - [ ] Capture a short baseline in the Dev Agent Record if Aspire is unavailable.
+- [x] **ST0 - Baseline existing readers, writers, and manual evidence.** (AC: 1, 3, 4, 7)
+  - [x] Re-read Issues #11, #12, #14, and #17 in the manual-test issue file before editing.
+  - [x] Inspect `DaprProjectionQueryService`, `DaprTypeCatalogService`, `DaprStorageQueryService`, `DaprConsistencyCommandService`, `DaprStreamActivityTracker`, `EventStoreServiceCollectionExtensions`, `AssemblyScanner`, and relevant controllers/UI pages.
+  - [x] Confirm current state-store keys and existing writer coverage with tests or local evidence.
+  - [x] Capture a short baseline in the Dev Agent Record if Aspire is unavailable.
 
-- [ ] **ST1 - Design and implement the index writer boundary.** (AC: 1, 3, 4, 5)
-  - [ ] Choose the minimal EventStore-side service(s) needed for projection, type-catalog, and storage index population.
-  - [ ] Record the chosen writer boundary and any rejected Admin.Server/Admin.UI writer option in the Dev Agent Record.
-  - [ ] Reuse existing discovery and stream activity metadata; do not duplicate naming convention logic.
-  - [ ] Use bounded DAPR state-store writes with ETag retry where multiple writers can touch the same index.
-  - [ ] Define retryable conflict conditions, retry exhaustion behavior, and diagnostic fields before wiring the writer.
-  - [ ] Add source/status fields only where required to avoid fake zero semantics; keep DTO changes backward compatible where practical.
+- [x] **ST1 - Design and implement the index writer boundary.** (AC: 1, 3, 4, 5)
+  - [x] Choose the minimal EventStore-side service(s) needed for projection, type-catalog, and storage index population.
+  - [x] Record the chosen writer boundary and any rejected Admin.Server/Admin.UI writer option in the Dev Agent Record.
+  - [x] Reuse existing discovery and stream activity metadata; do not duplicate naming convention logic.
+  - [x] Use bounded DAPR state-store writes with ETag retry where multiple writers can touch the same index.
+  - [x] Define retryable conflict conditions, retry exhaustion behavior, and diagnostic fields before wiring the writer.
+  - [x] Add source/status fields only where required to avoid fake zero semantics; keep DTO changes backward compatible where practical.
 
-- [ ] **ST2 - Populate projection indexes.** (AC: 1, 2)
-  - [ ] Add or wire a named projection registry source; if the sample lacks one, add a minimal Counter named projection only if it is within the approved product/architecture scope.
-  - [ ] Write `admin:projections:all` and tenant/domain scoped variants needed by current readers.
-  - [ ] Ensure query-cache `ProjectionActor` state is excluded by tests and comments.
-  - [ ] Re-run or unit-test the projection-position consistency path against the populated index.
+- [x] **ST2 - Populate projection indexes.** (AC: 1, 2)
+  - [x] Add or wire a named projection registry source; if the sample lacks one, add a minimal Counter named projection only if it is within the approved product/architecture scope.
+  - [x] Write `admin:projections:all` and tenant/domain scoped variants needed by current readers.
+  - [x] Ensure query-cache `ProjectionActor` state is excluded by tests and comments.
+  - [x] Re-run or unit-test the projection-position consistency path against the populated index.
 
-- [ ] **ST3 - Populate type catalog indexes.** (AC: 3)
-  - [ ] Build `EventTypeInfo`, `CommandTypeInfo`, and `AggregateTypeInfo` from existing discovery/convention metadata.
-  - [ ] Write `all` and per-domain keys.
-  - [ ] Define schema version fallback explicitly; do not infer unsupported version history.
-  - [ ] Add tests for Counter sample event/command/aggregate catalog entries and idempotent restart.
+- [x] **ST3 - Populate type catalog indexes.** (AC: 3)
+  - [x] Build `EventTypeInfo`, `CommandTypeInfo`, and `AggregateTypeInfo` from existing discovery/convention metadata.
+  - [x] Write `all` and per-domain keys.
+  - [x] Define schema version fallback explicitly; do not infer unsupported version history.
+  - [x] Add tests for Counter sample event/command/aggregate catalog entries and idempotent restart.
 
-- [ ] **ST4 - Populate storage overview and hot-stream indexes.** (AC: 4)
-  - [ ] Extend `DaprStreamActivityTracker` or a companion pipeline writer to update storage overview, tenant breakdown, exact stream count, and hot-stream rows from append evidence.
-  - [ ] Preserve existing `admin:stream-activity:all` behavior and tests.
-  - [ ] Treat size bytes and growth rate as unavailable unless a backend-agnostic source exists.
-  - [ ] Add tests for distinct stream counting, per-tenant breakdown, hot-stream ordering, and ETag retry failure logging.
+- [x] **ST4 - Populate storage overview and hot-stream indexes.** (AC: 4)
+  - [x] Extend `DaprStreamActivityTracker` or a companion pipeline writer to update storage overview, tenant breakdown, exact stream count, and hot-stream rows from append evidence.
+  - [x] Preserve existing `admin:stream-activity:all` behavior and tests.
+  - [x] Treat size bytes and growth rate as unavailable unless a backend-agnostic source exists.
+  - [x] Add tests for distinct stream counting, per-tenant breakdown, hot-stream ordering, and ETag retry failure logging.
 
-- [ ] **ST5 - Update UI/API honesty only where the writer contract exposes unavailable states.** (AC: 4, 6)
-  - [ ] Keep `/projections`, `/types`, and `/storage` layouts stable unless copy must distinguish unavailable from empty.
-  - [ ] Replace misleading zero/empty copy only where missing index data can still occur after this story.
-  - [ ] Avoid broad visual redesign or unrelated Fluent UI cleanup.
+- [x] **ST5 - Update UI/API honesty only where the writer contract exposes unavailable states.** (AC: 4, 6)
+  - [x] Keep `/projections`, `/types`, and `/storage` layouts stable unless copy must distinguish unavailable from empty.
+  - [x] Replace misleading zero/empty copy only where missing index data can still occur after this story.
+  - [x] Avoid broad visual redesign or unrelated Fluent UI cleanup.
 
-- [ ] **ST6 - Validate and record evidence.** (AC: 6, 7)
-  - [ ] Run impacted unit test projects individually per repository guidance.
-  - [ ] Run canonical Aspire dev-mode seed when environment allows.
-  - [ ] Save sanitized payload/screenshot/key evidence under `_bmad-output/test-artifacts/admin-operational-index-populators/`.
-  - [ ] Include a dated baseline-vs-post-change evidence note in the Dev Agent Record with test command timestamps or run IDs.
-  - [ ] Record Issue #17 retest result and any deferred follow-up in `deferred-work.md`.
-  - [ ] Update this story's Dev Agent Record, File List, Verification Status, and Change Log.
+- [x] **ST6 - Validate and record evidence.** (AC: 6, 7)
+  - [x] Run impacted unit test projects individually per repository guidance.
+  - [x] Run canonical Aspire dev-mode seed when environment allows.
+  - [x] Save sanitized payload/screenshot/key evidence under `_bmad-output/test-artifacts/admin-operational-index-populators/`.
+  - [x] Include a dated baseline-vs-post-change evidence note in the Dev Agent Record with test command timestamps or run IDs.
+  - [x] Record Issue #17 retest result and any deferred follow-up in `deferred-work.md`.
+  - [x] Update this story's Dev Agent Record, File List, Verification Status, and Change Log.
 
 ## Developer Notes
 
@@ -226,22 +226,68 @@ Architecture and product guardrails:
 
 ### Agent Model Used
 
-TBD by dev agent.
+GPT-5 Codex
 
 ### Debug Log References
 
-TBD by dev agent.
+- 2026-05-10 dev-start baseline: `aspire run --detach --non-interactive --project src\Hexalith.EventStore.AppHost\Hexalith.EventStore.AppHost.csproj --format Json` succeeded; baseline noted that the admin operational keys were not being populated by an EventStore-owned writer.
+- Focused validation: `dotnet test tests\Hexalith.EventStore.Client.Tests\Hexalith.EventStore.Client.Tests.csproj -c Release --filter "FullyQualifiedName~AdminOperationalIndexHostedServiceTests|FullyQualifiedName~DaprStreamActivityTrackerTests" --no-restore` passed 10/10.
+- Focused validation: `dotnet test tests\Hexalith.EventStore.Admin.Server.Tests\Hexalith.EventStore.Admin.Server.Tests.csproj -c Release --filter DaprProjectionQueryServiceTests --no-restore` passed 7/7.
+- Focused validation: `dotnet test tests\Hexalith.EventStore.Sample.Tests\Hexalith.EventStore.Sample.Tests.csproj -c Release --filter AdminOperationalIndexMetadataTests --no-restore` passed 1/1.
+- Impacted project validation: `dotnet test tests\Hexalith.EventStore.Client.Tests\Hexalith.EventStore.Client.Tests.csproj -c Release --no-restore` passed 362/362.
+- Impacted project validation: `dotnet test tests\Hexalith.EventStore.Sample.Tests\Hexalith.EventStore.Sample.Tests.csproj -c Release --no-restore` passed 74/74.
+- Impacted project validation: `dotnet test tests\Hexalith.EventStore.Admin.Server.Tests\Hexalith.EventStore.Admin.Server.Tests.csproj -c Release --no-restore` passed 586/586 with 18 skipped.
+- Impacted project validation: `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests\Hexalith.EventStore.Admin.UI.Tests.csproj -c Release --no-restore` passed 744/744.
+- Evidence validator: `python scripts\validate-operational-evidence.py _bmad-output\test-artifacts\admin-operational-index-populators --json` passed with one informational README skip marker diagnostic.
+- Live Aspire evidence run: Redis flushed, Aspire restarted with `EnableKeycloak=false`, three `IncrementCounter` commands seeded for `tenant-a/counter/counter-1`, and evidence saved under `_bmad-output/test-artifacts/admin-operational-index-populators/`.
 
 ### Completion Notes List
 
 - Story created and marked ready-for-dev by the BMAD pre-dev hardening automation.
 - No `project-context.md` file was present in the repository at story creation.
 - 2026-05-09 party-mode review applied pre-dev clarifications for operational state vocabulary, writer placement boundaries, retry/idempotency expectations, Issue #17 retest scope, and AC7 evidence shape.
-- No implementation work has been performed for this story.
+- Writer boundary: EventStore-owned code now populates the derived admin indexes. `AdminOperationalIndexHostedService` owns startup projection/type-catalog population from domain service metadata, while `DaprStreamActivityTracker` owns storage overview/hot-stream/stream-count updates from append-time stream activity.
+- Rejected boundary: Admin.Server and Admin.UI remain readers; no UI-time aggregation, query-cache actor scanning, or read-time state-store scan was introduced as a primary writer.
+- Projection index population writes `admin:projections:all` and tenant-scoped indexes, filters query-cache `ProjectionActor`/`projection-state` keys, and materializes wildcard domain registrations into known tenant indexes so the canonical `tenant-a` path sees `counter`, `greeting`, and `orders`.
+- Type catalog population writes `admin:type-catalog:{events|commands|aggregates}:all` and per-domain keys from discovered sample domain metadata. Schema version fallback is explicitly `1` where no richer version source exists.
+- Storage population now writes `admin:storage-overview:{scope}`, `admin:storage-hot-streams:{scope}`, and `admin:storage-stream-count:{scope}` from append evidence. Hot-stream ordering is deterministic by event count, last activity time, tenant, domain, and aggregate id. Byte size and growth rate remain unavailable because no backend-agnostic authoritative source exists.
+- Issue #17 retest check `01KR8N6MTQJGVF7BNN9ZZEAWV5` completed after projection indexes existed. The missing projection-index false positive is resolved; one residual anomaly remains because domain-specific projection position validation is not granular. That residual was recorded in `deferred-work.md`.
+- Initial Debug test execution hit a live Aspire process file lock on `src\Hexalith.EventStore\bin\Debug\net10.0\Hexalith.EventStore.exe`; Release test runs were used for final validation without stopping the live evidence environment.
 
 ### File List
 
-TBD by dev agent.
+- `src/Hexalith.EventStore/Commands/DaprStreamActivityTracker.cs`
+- `src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs`
+- `src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs`
+- `src/Hexalith.EventStore.Admin.Server/Services/DaprConsistencyCommandService.cs`
+- `src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionQueryService.cs`
+- `samples/Hexalith.EventStore.Sample/AdminOperationalIndexMetadata.cs`
+- `samples/Hexalith.EventStore.Sample/Program.cs`
+- `tests/Hexalith.EventStore.Client.Tests/Commands/DaprStreamActivityTrackerTests.cs`
+- `tests/Hexalith.EventStore.Client.Tests/Indexes/AdminOperationalIndexHostedServiceTests.cs`
+- `tests/Hexalith.EventStore.Sample.Tests/AdminOperationalIndexMetadataTests.cs`
+- `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprProjectionQueryServiceTests.cs`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/README.md`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/api-consistency-result.json`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/api-consistency-trigger.json`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/api-projections-tenant-a.json`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/api-storage-hot-streams-tenant-a.json`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/api-storage-overview-tenant-a.json`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/api-types-aggregates-counter.json`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/api-types-commands-counter.json`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/api-types-events-counter.json`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/redis-admin-key-list.txt`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/redis-admin-projections-all.txt`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/redis-admin-projections-tenant-a.txt`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/redis-admin-storage-hot-streams-tenant-a.txt`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/redis-admin-storage-overview-tenant-a.txt`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/redis-admin-storage-stream-count-tenant-a.txt`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/redis-admin-stream-activity-all.txt`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/redis-admin-type-catalog-aggregates-counter.txt`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/redis-admin-type-catalog-commands-counter.txt`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/redis-admin-type-catalog-events-counter.txt`
+- `_bmad-output/test-artifacts/admin-operational-index-populators/seed-summary.json`
 
 ## Verification Status
 
@@ -250,11 +296,13 @@ TBD by dev agent.
 - Story creation did not modify product code, tests, DAPR/Aspire configuration, or submodules.
 - Party-mode review completed on 2026-05-09 and is recorded below.
 - Advanced elicitation has NOT yet been run for this story.
+- 2026-05-10 implementation moved to review after EventStore-owned projection/type-catalog/storage index population, focused and impacted test runs, live Aspire evidence, and Issue #17 retest/defer recording.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-10 | 0.3 | Implemented EventStore-owned admin operational index populators for projections, type catalog, and storage; added tests, live Aspire evidence, and Issue #17 retest/deferred residual. | GPT-5 Codex |
 | 2026-05-09 | 0.2 | Applied party-mode review hardening for index state vocabulary, writer boundaries, retry/test expectations, and manual evidence requirements. | Codex automation |
 | 2026-05-09 | 0.1 | Created ready-for-dev story for Admin operational index population across projections, type catalog, storage, and initial consistency retest. | Codex automation |
 

@@ -1,0 +1,51 @@
+{
+  "seeded": [
+    {
+      "messageId": "aoip-20260510115853-1",
+      "correlationId": "aoip-20260510115853-1"
+    },
+    {
+      "messageId": "aoip-20260510115853-2",
+      "correlationId": "aoip-20260510115853-2"
+    },
+    {
+      "messageId": "aoip-20260510115853-3",
+      "correlationId": "aoip-20260510115853-3"
+    }
+  ],
+  "statuses": [
+    {
+      "correlationId": "aoip-20260510115853-1",
+      "status": "Completed",
+      "statusCode": 4,
+      "timestamp": "2026-05-10T11:58:53.7805525+02:00",
+      "aggregateId": "counter-1",
+      "eventCount": 1,
+      "rejectionEventType": null,
+      "failureReason": null,
+      "timeoutDuration": null
+    },
+    {
+      "correlationId": "aoip-20260510115853-2",
+      "status": "Completed",
+      "statusCode": 4,
+      "timestamp": "2026-05-10T11:58:53.8359962+02:00",
+      "aggregateId": "counter-1",
+      "eventCount": 1,
+      "rejectionEventType": null,
+      "failureReason": null,
+      "timeoutDuration": null
+    },
+    {
+      "correlationId": "aoip-20260510115853-3",
+      "status": "Completed",
+      "statusCode": 4,
+      "timestamp": "2026-05-10T11:58:53.8719854+02:00",
+      "aggregateId": "counter-1",
+      "eventCount": 1,
+      "rejectionEventType": null,
+      "failureReason": null,
+      "timeoutDuration": null
+    }
+  ]
+}

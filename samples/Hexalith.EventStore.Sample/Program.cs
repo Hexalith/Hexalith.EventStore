@@ -2,6 +2,7 @@ using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Replay;
+using Hexalith.EventStore.Sample;
 using Hexalith.EventStore.Sample.Counter.Projections;
 using Hexalith.EventStore.ServiceDefaults;
 
@@ -26,6 +27,9 @@ app.MapPost("/process", async (DomainServiceRequest request, IServiceProvider se
 
 app.MapPost("/replay-state", (AggregateReconstructionRequest request, IServiceProvider serviceProvider)
     => Results.Ok(Hexalith.EventStore.Sample.DomainServiceRequestRouter.Replay(serviceProvider, request)));
+
+app.MapPost("/admin/operational-index-metadata", (AdminOperationalIndexMetadata.Request request, Hexalith.EventStore.Client.Discovery.DiscoveryResult discovery)
+    => Results.Ok(AdminOperationalIndexMetadata.Create(discovery, request.Domains)));
 
 if (malformedProjectionResponse) {
     _ = app.MapPost("/project", () => {

@@ -1,5 +1,6 @@
 using Dapr.Client;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Server.Commands;
 
@@ -17,6 +18,9 @@ public sealed class DaprStreamActivityTracker(
     IOptions<CommandStatusOptions> options,
     ILogger<DaprStreamActivityTracker> logger) : IStreamActivityTracker {
     private const string _activityIndexKey = "admin:stream-activity:all";
+    private const string _storageHotStreamsPrefix = "admin:storage-hot-streams:";
+    private const string _storageOverviewPrefix = "admin:storage-overview:";
+    private const string _storageStreamCountPrefix = "admin:storage-stream-count:";
     private const int _maxEntries = 1000;
     private const int _maxEtagRetries = 3;
     private readonly string _stateStoreName = options.Value.StateStoreName;
@@ -36,7 +40,7 @@ public sealed class DaprStreamActivityTracker(
         try {
             ArgumentNullException.ThrowIfNull(tenantId);
 
-            bool saved = await TryUpsertActivityIndexAsync(
+            (bool saved, List<StreamSummary>? updatedActivity) = await TryUpsertActivityIndexAsync(
                 tenantId, domain, aggregateId, newEventsAppended, timestamp, ct).ConfigureAwait(false);
             if (!saved) {
                 logger.LogWarning(
@@ -45,6 +49,11 @@ public sealed class DaprStreamActivityTracker(
                     tenantId,
                     domain,
                     aggregateId);
+                return;
+            }
+
+            if (updatedActivity is not null) {
+                await SaveStorageIndexesAsync(updatedActivity, ct).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) {
@@ -102,7 +111,61 @@ public sealed class DaprStreamActivityTracker(
             .ToList();
     }
 
-    private async Task<bool> TryUpsertActivityIndexAsync(
+    private static string ToAggregateTypeName(string domain)
+        => string.IsNullOrWhiteSpace(domain)
+            ? "UnknownAggregate"
+            : $"{char.ToUpperInvariant(domain[0])}{domain[1..]}Aggregate";
+
+    private static StreamStorageInfo ToStorageInfo(StreamSummary stream)
+        => new(
+            stream.TenantId,
+            stream.Domain,
+            stream.AggregateId,
+            ToAggregateTypeName(stream.Domain),
+            stream.EventCount,
+            SizeBytes: null,
+            stream.HasSnapshot,
+            SnapshotAge: null);
+
+    private static StorageOverview BuildOverview(IEnumerable<StreamSummary> streams) {
+        List<StreamSummary> materialized = streams.ToList();
+        IReadOnlyList<TenantStorageInfo> tenantBreakdown = [.. materialized
+            .GroupBy(s => s.TenantId, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new TenantStorageInfo(g.Key, g.Sum(s => s.EventCount), SizeBytes: null, GrowthRatePerDay: null))
+            .OrderBy(t => t.TenantId, StringComparer.OrdinalIgnoreCase)];
+
+        return new StorageOverview(
+            materialized.Sum(s => s.EventCount),
+            TotalSizeBytes: null,
+            tenantBreakdown,
+            materialized.Count);
+    }
+
+    private async Task SaveStorageIndexesAsync(IReadOnlyList<StreamSummary> activity, CancellationToken ct) {
+        await SaveStorageScopeAsync("all", activity, ct).ConfigureAwait(false);
+
+        foreach (IGrouping<string, StreamSummary> tenantGroup in activity.GroupBy(s => s.TenantId, StringComparer.OrdinalIgnoreCase)) {
+            await SaveStorageScopeAsync(tenantGroup.Key, tenantGroup.ToList(), ct).ConfigureAwait(false);
+        }
+    }
+
+    private async Task SaveStorageScopeAsync(string scope, IReadOnlyList<StreamSummary> streams, CancellationToken ct) {
+        StorageOverview overview = BuildOverview(streams);
+        List<StreamStorageInfo> hotStreams = [.. streams
+            .OrderByDescending(s => s.EventCount)
+            .ThenByDescending(s => s.LastActivityUtc)
+            .ThenBy(s => s.TenantId, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(s => s.Domain, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(s => s.AggregateId, StringComparer.OrdinalIgnoreCase)
+            .Take(100)
+            .Select(ToStorageInfo)];
+
+        await daprClient.SaveStateAsync(_stateStoreName, $"{_storageOverviewPrefix}{scope}", overview, cancellationToken: ct).ConfigureAwait(false);
+        await daprClient.SaveStateAsync(_stateStoreName, $"{_storageHotStreamsPrefix}{scope}", hotStreams, cancellationToken: ct).ConfigureAwait(false);
+        await daprClient.SaveStateAsync(_stateStoreName, $"{_storageStreamCountPrefix}{scope}", streams.Count, cancellationToken: ct).ConfigureAwait(false);
+    }
+
+    private async Task<(bool Saved, List<StreamSummary>? UpdatedActivity)> TryUpsertActivityIndexAsync(
         string tenantId,
         string domain,
         string aggregateId,
@@ -122,7 +185,7 @@ public sealed class DaprStreamActivityTracker(
                     .ConfigureAwait(false);
 
                 if (saved) {
-                    return true;
+                    return (true, updated);
                 }
 
                 logger.LogDebug(
@@ -142,6 +205,6 @@ public sealed class DaprStreamActivityTracker(
             }
         }
 
-        return false;
+        return (false, null);
     }
 }

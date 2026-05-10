@@ -1,0 +1,4 @@
+version
+1
+data
+[{"status":0,"lag":0,"errorCount":0,"lastProcessedPosition":0,"lastProcessedUtc":"1970-01-01T00:00:00+00:00","name":"counter","tenantId":"all","throughput":0},{"status":0,"lag":0,"errorCount":0,"lastProcessedPosition":0,"lastProcessedUtc":"1970-01-01T00:00:00+00:00","name":"greeting","tenantId":"all","throughput":0},{"status":0,"lag":0,"errorCount":0,"lastProcessedPosition":0,"lastProcessedUtc":"1970-01-01T00:00:00+00:00","name":"global-administrators","tenantId":"system","throughput":0},{"status":0,"lag":0,"errorCount":0,"lastProcessedPosition":0,"lastProcessedUtc":"1970-01-01T00:00:00+00:00","name":"orders","tenantId":"tenant-a","throughput":0},{"status":0,"lag":0,"errorCount":0,"lastProcessedPosition":0,"lastProcessedUtc":"1970-01-01T00:00:00+00:00","name":"inventory","tenantId":"tenant-b","throughput":0}]

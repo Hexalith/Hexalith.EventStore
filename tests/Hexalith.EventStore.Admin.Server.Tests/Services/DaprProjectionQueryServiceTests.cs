@@ -82,6 +82,33 @@ public class DaprProjectionQueryServiceTests {
     }
 
     [Fact]
+    public async Task ListProjectionsAsync_FallsBackToAllIndex_WhenTenantScopedIndexMissing() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var projections = new List<ProjectionStatus>
+        {
+            new("counter", "all", ProjectionStatusType.Running, 0, 0, 0, 0, DateTimeOffset.UnixEpoch),
+        };
+
+        _ = daprClient.GetStateAsync<List<ProjectionStatus>>(
+            StateStoreName,
+            "admin:projections:tenant-a",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => (List<ProjectionStatus>?)null);
+        _ = daprClient.GetStateAsync<List<ProjectionStatus>>(
+            StateStoreName,
+            "admin:projections:all",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => projections);
+
+        (DaprProjectionQueryService service, _) = CreateService(daprClient);
+
+        IReadOnlyList<ProjectionStatus> result = await service.ListProjectionsAsync("tenant-a");
+
+        result.Count.ShouldBe(1);
+        result[0].Name.ShouldBe("counter");
+    }
+
+    [Fact]
     public async Task GetProjectionDetailAsync_ReturnsFallback_WhenEventStoreUnavailable() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         (DaprProjectionQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient);
