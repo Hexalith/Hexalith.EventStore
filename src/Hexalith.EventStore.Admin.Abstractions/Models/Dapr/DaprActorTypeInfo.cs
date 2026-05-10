@@ -7,11 +7,17 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 /// <param name="ActiveCount">The number of active actor instances (-1 if unknown).</param>
 /// <param name="Description">A human-readable description of the actor type's purpose.</param>
 /// <param name="ActorIdFormat">The expected format for actor IDs of this type.</param>
+/// <param name="CountStatus">The trust status of <paramref name="ActiveCount"/>.</param>
+/// <param name="InventorySource">The source that supplied this actor type row.</param>
+/// <param name="CountMessage">Operator-facing detail for unavailable or limited counts.</param>
 public record DaprActorTypeInfo(
     string TypeName,
     int ActiveCount,
     string Description,
-    string ActorIdFormat) {
+    string ActorIdFormat,
+    DaprActorCountStatus CountStatus = DaprActorCountStatus.Exact,
+    string InventorySource = "DaprMetadata",
+    string? CountMessage = null) {
     /// <summary>Gets the actor type name as registered with DAPR.</summary>
     public string TypeName { get; } = !string.IsNullOrWhiteSpace(TypeName)
         ? TypeName
@@ -31,4 +37,9 @@ public record DaprActorTypeInfo(
     public string ActorIdFormat { get; } = !string.IsNullOrWhiteSpace(ActorIdFormat)
         ? ActorIdFormat
         : throw new ArgumentException("ActorIdFormat cannot be null, empty, or whitespace.", nameof(ActorIdFormat));
+
+    /// <summary>Gets the source that supplied this actor type row.</summary>
+    public string InventorySource { get; init; } = !string.IsNullOrWhiteSpace(InventorySource)
+        ? InventorySource
+        : throw new ArgumentException("InventorySource cannot be null, empty, or whitespace.", nameof(InventorySource));
 }

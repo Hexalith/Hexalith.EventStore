@@ -1,0 +1,47 @@
+{
+  "totalActiveActors": 6,
+  "remoteMetadataStatus": "Available",
+  "remoteEndpoint": "http://localhost:3501",
+  "isInventoryComplete": true,
+  "inventoryMessage": "All known EventStore actor types returned active counts from the EventStore sidecar metadata.",
+  "observedAtUtc": "2026-05-10T11:30:17.3890106+02:00",
+  "totalKnownTypes": 3,
+  "actorTypes": [
+    {
+      "countStatus": "Exact",
+      "countMessage": null,
+      "typeName": "AggregateActor",
+      "activeCount": 2,
+      "description": "Processes commands and persists events for domain aggregates",
+      "actorIdFormat": "tenant:domain:aggregate-id",
+      "inventorySource": "RemoteEventStoreSidecarMetadata"
+    },
+    {
+      "countStatus": "Exact",
+      "countMessage": null,
+      "typeName": "ETagActor",
+      "activeCount": 2,
+      "description": "Manages projection ETag values for cache invalidation",
+      "actorIdFormat": "ProjectionType:TenantId",
+      "inventorySource": "RemoteEventStoreSidecarMetadata"
+    },
+    {
+      "countStatus": "Exact",
+      "countMessage": null,
+      "typeName": "ProjectionActor",
+      "activeCount": 2,
+      "description": "Handles projection queries with in-memory page caching",
+      "actorIdFormat": "QueryType:TenantId[:EntityId]",
+      "inventorySource": "RemoteEventStoreSidecarMetadata"
+    }
+  ],
+  "configuration": {
+    "idleTimeout": "01:00:00",
+    "scanInterval": "00:00:30",
+    "drainOngoingCallTimeout": "00:01:00",
+    "drainRebalancedActors": true,
+    "reentrancyEnabled": false,
+    "reentrancyMaxStackDepth": 32
+  },
+  "inventorySource": "RemoteEventStoreSidecarMetadata"
+}

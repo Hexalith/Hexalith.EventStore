@@ -1,6 +1,6 @@
 # Story: admin-ui-actor-diagnostics-honesty-fix
 
-Status: ready-for-dev
+Status: review
 
 Context created: 2026-05-07
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-07-admin-ui-manual-test-suite-issues.md`
@@ -173,68 +173,68 @@ precedence and implementation traps:
 
 ## Tasks / Subtasks
 
-- [ ] **ST0 - Baseline the live defect and current seams.** (AC: 1, 3, 4, 6)
-  - [ ] Re-read issue #10 in the manual-test evidence and this story before editing.
-  - [ ] Inspect `DaprInfrastructureQueryService.GetActorRuntimeInfoAsync`, `GetActorInstanceStateAsync`, `KnownActorTypes`, `AdminDaprController`, `AdminActorApiClient`, and `DaprActors.razor`.
-  - [ ] Confirm current `AdminServerOptions.EventStoreAppId` default and AppHost wiring for the actor-hosting service.
-  - [ ] Capture the current live failure if Aspire is available; if blocked, record the exact runtime blocker before relying on unit-level evidence.
+- [x] **ST0 - Baseline the live defect and current seams.** (AC: 1, 3, 4, 6)
+  - [x] Re-read issue #10 in the manual-test evidence and this story before editing.
+  - [x] Inspect `DaprInfrastructureQueryService.GetActorRuntimeInfoAsync`, `GetActorInstanceStateAsync`, `KnownActorTypes`, `AdminDaprController`, `AdminActorApiClient`, and `DaprActors.razor`.
+  - [x] Confirm current `AdminServerOptions.EventStoreAppId` default and AppHost wiring for the actor-hosting service.
+  - [x] Capture the current live failure if Aspire is available; if blocked, record the exact runtime blocker before relying on unit-level evidence.
 
-- [ ] **ST1 - Make actor count semantics honest.** (AC: 1, 2, 6)
-  - [ ] Extend or adapt actor runtime DTOs to carry count source/status without breaking existing JSON consumers unnecessarily.
-  - [ ] Add explicit provenance/completeness fields or an equivalent typed
+- [x] **ST1 - Make actor count semantics honest.** (AC: 1, 2, 6)
+  - [x] Extend or adapt actor runtime DTOs to carry count source/status without breaking existing JSON consumers unnecessarily.
+  - [x] Add explicit provenance/completeness fields or an equivalent typed
         result contract for source, completeness, lookup status, owner app id,
         message, and observation time.
-  - [ ] Treat `-1`, missing actor types, failed remote metadata, or mixed local/remote sources as unavailable/partial instead of exact totals.
-  - [ ] Keep known actor types visible even when live metadata omits their counts.
-  - [ ] Add a concise deferred decision if exact inventory requires a new admin-maintained actor index.
+  - [x] Treat `-1`, missing actor types, failed remote metadata, or mixed local/remote sources as unavailable/partial instead of exact totals.
+  - [x] Keep known actor types visible even when live metadata omits their counts.
+  - [x] Add a concise deferred decision if exact inventory requires a new admin-maintained actor index.
 
-- [ ] **ST2 - Harden owner-app-id actor state lookup.** (AC: 3, 4, 5)
-  - [ ] Verify `ComposeActorStateKey` uses `AdminServerOptions.EventStoreAppId`, defaulting to `eventstore`.
-  - [ ] Add focused tests for AggregateActor metadata lookup with `tenant-a:counter:counter-1`.
-  - [ ] Add a regression test that fails if lookup composes keys with the Admin
+- [x] **ST2 - Harden owner-app-id actor state lookup.** (AC: 3, 4, 5)
+  - [x] Verify `ComposeActorStateKey` uses `AdminServerOptions.EventStoreAppId`, defaulting to `eventstore`.
+  - [x] Add focused tests for AggregateActor metadata lookup with `tenant-a:counter:counter-1`.
+  - [x] Add a regression test that fails if lookup composes keys with the Admin
         app id instead of `eventstore`.
-  - [ ] Add a configurable-owner regression proving a non-default
+  - [x] Add a configurable-owner regression proving a non-default
         `EventStoreAppId` composes keys against the owner app id rather than a
         hardcoded value.
-  - [ ] Ensure state-store failures classify as lookup-unavailable, not not-found.
-  - [ ] Preserve the DAPR internal-key warning and migration path to an EventStore-owned read proxy if DAPR changes the convention.
+  - [x] Ensure state-store failures classify as lookup-unavailable, not not-found.
+  - [x] Preserve the DAPR internal-key warning and migration path to an EventStore-owned read proxy if DAPR changes the convention.
 
-- [ ] **ST3 - Update UI copy and state handling.** (AC: 1, 2, 5)
-  - [ ] Replace ambiguous `N/A` rendering with explicit `unavailable` or equivalent visible copy.
-  - [ ] Make the summary card title/value reflect exact vs partial count status.
-  - [ ] Add separate issue banners for actor not found and lookup unavailable.
-  - [ ] Ensure degraded states are text-visible and accessible, not conveyed by
+- [x] **ST3 - Update UI copy and state handling.** (AC: 1, 2, 5)
+  - [x] Replace ambiguous `N/A` rendering with explicit `unavailable` or equivalent visible copy.
+  - [x] Make the summary card title/value reflect exact vs partial count status.
+  - [x] Add separate issue banners for actor not found and lookup unavailable.
+  - [x] Ensure degraded states are text-visible and accessible, not conveyed by
         color alone.
-  - [ ] Guard inspect result rendering so late responses for an older
+  - [x] Guard inspect result rendering so late responses for an older
         actor type/id cannot replace the currently selected actor's banner,
         rows, or loading state.
-  - [ ] Follow the existing localization/resource pattern if this page has one;
+  - [x] Follow the existing localization/resource pattern if this page has one;
         otherwise record localization as deferred rather than inventing a new
         resource scheme in this story.
-  - [ ] Keep the lookup form, deep links, refresh button, and existing dynamic-key-family rendering stable.
+  - [x] Keep the lookup form, deep links, refresh button, and existing dynamic-key-family rendering stable.
 
-- [ ] **ST4 - Add targeted tests.** (AC: 1, 2, 3, 5, 7)
-  - [ ] Extend `DaprActorQueryServiceTests` for success, count status,
+- [x] **ST4 - Add targeted tests.** (AC: 1, 2, 3, 5, 7)
+  - [x] Extend `DaprActorQueryServiceTests` for success, count status,
         known-type fallback, owner-app-id key composition, malformed response,
         timeout/unavailable behavior, definitive not-found, and
         lookup-unavailable behavior.
-  - [ ] Extend `DaprActorsPageTests` for unavailable/partial labels and differentiated failure states.
-  - [ ] Add UI tests for stale inspect-result discard after actor type/id
+  - [x] Extend `DaprActorsPageTests` for unavailable/partial labels and differentiated failure states.
+  - [x] Add UI tests for stale inspect-result discard after actor type/id
         changes during an in-flight lookup.
-  - [ ] Extend `AdminActorApiClientTests` or controller tests for API error
+  - [x] Extend `AdminActorApiClientTests` or controller tests for API error
         differentiation, `404` mapping, timeout/network failures, and partial
         payloads.
-  - [ ] Keep tests focused; do not add broad live-DAPR tests unless the unit seam cannot prove the contract.
+  - [x] Keep tests focused; do not add broad live-DAPR tests unless the unit seam cannot prove the contract.
 
-- [ ] **ST5 - Capture manual/live evidence and bookkeeping.** (AC: 4, 7)
-  - [ ] Run the project-standard Aspire dev mode with `EnableKeycloak=false` if the environment allows it.
-  - [ ] Seed `tenant-a/counter/counter-1` through the canonical sample flow.
-  - [ ] Save sanitized evidence under `_bmad-output/test-artifacts/admin-ui-actor-diagnostics-honesty-fix/`.
-  - [ ] Record a short redaction note in the evidence folder describing which
+- [x] **ST5 - Capture manual/live evidence and bookkeeping.** (AC: 4, 7)
+  - [x] Run the project-standard Aspire dev mode with `EnableKeycloak=false` if the environment allows it.
+  - [x] Seed `tenant-a/counter/counter-1` through the canonical sample flow.
+  - [x] Save sanitized evidence under `_bmad-output/test-artifacts/admin-ui-actor-diagnostics-honesty-fix/`.
+  - [x] Record a short redaction note in the evidence folder describing which
         fields were preserved and which raw state/payload/secret fields were
         omitted.
-  - [ ] Update this story's Dev Agent Record, File List, Verification Status, Change Log, and any narrowly required deferred-work entry.
-  - [ ] Move sprint status to `review` only after implementation and evidence are complete.
+  - [x] Update this story's Dev Agent Record, File List, Verification Status, Change Log, and any narrowly required deferred-work entry.
+  - [x] Move sprint status to `review` only after implementation and evidence are complete.
 
 ## Developer Notes
 
@@ -311,11 +311,18 @@ Architecture and product guardrails:
 
 ### Agent Model Used
 
-TBD by dev agent.
+Codex GPT-5.
 
 ### Debug Log References
 
-TBD by dev agent.
+- `aspire run --detach --non-interactive --project src\Hexalith.EventStore.AppHost\Hexalith.EventStore.AppHost.csproj --format Json` baseline: Keycloak unhealthy with default settings; EventStore/Admin resources waited behind Keycloak.
+- `EnableKeycloak=false aspire run --detach --non-interactive --project src\Hexalith.EventStore.AppHost\Hexalith.EventStore.AppHost.csproj --format Json`: live evidence run with EventStore, Admin Server, Admin UI, Dapr sidecars, sample, tenants, statestore, and pubsub healthy.
+- `dotnet test tests\Hexalith.EventStore.Admin.Server.Tests\Hexalith.EventStore.Admin.Server.Tests.csproj --no-restore --filter "FullyQualifiedName~DaprActorQueryServiceTests|FullyQualifiedName~AdminDaprControllerActorTests"`: passed 32/32.
+- `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests\Hexalith.EventStore.Admin.UI.Tests.csproj --no-restore --filter "FullyQualifiedName~AdminActorApiClientTests|FullyQualifiedName~DaprActorsPageTests"`: passed 18/18.
+- `dotnet test tests\Hexalith.EventStore.Admin.Abstractions.Tests\Hexalith.EventStore.Admin.Abstractions.Tests.csproj --no-restore --filter "FullyQualifiedName~DaprActor"`: passed 33/33.
+- Full no-build sweeps: Admin.Server.Tests 585 passed / 18 skipped; Admin.UI.Tests 744 passed; Admin.Abstractions.Tests 404 passed.
+- Deferred-work checker: `.\scripts\check-deferred-work.ps1 _bmad-output\implementation-artifacts\deferred-work.md --legacy-advisory` is not supported by this wrapper; without the flag it exits 1 on historical legacy-advisory bullets unrelated to the new canonical entry.
+- Live UI observation and sanitized API/Redis evidence: `_bmad-output/test-artifacts/admin-ui-actor-diagnostics-honesty-fix/`.
 
 ### Completion Notes List
 
@@ -327,12 +334,37 @@ TBD by dev agent.
 - 2026-05-07 pre-dev advanced elicitation applied story clarifications for
   evidence precedence, configurable owner app-id proof, stale inspect result
   handling, redaction boundaries, and fail-closed DAPR key-convention drift.
-- No implementation work has been performed for this story.
 - No `project-context.md` file was present in the repository at story creation.
+- Added explicit actor count status, lookup status, provenance, completeness, owner app id, lookup source, and observation fields across actor diagnostics DTOs.
+- Runtime actor inventory now reads remote EventStore sidecar metadata first, keeps all known EventStore actor types visible, classifies missing counts as unavailable/partial, and avoids presenting partial data as an authoritative total.
+- Actor inspection now uses the configured owner sidecar actor-state API when available; the internal state-store key convention remains tested as a fallback and fails closed as `LookupUnavailable` when Dapr rejects illegal `||` keys.
+- Admin UI now renders exact/source-limited/unavailable count states, separates not-found from lookup-unavailable banners, replaces `N/A` with explicit copy, and discards stale inspect responses.
+- Added canonical deferred-work entry for an admin-maintained actor activity index if exact active actor inventory becomes a requirement.
 
 ### File List
 
-TBD by dev agent.
+- `_bmad-output/implementation-artifacts/admin-ui-actor-diagnostics-honesty-fix.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/test-artifacts/admin-ui-actor-diagnostics-honesty-fix/actors-runtime.json`
+- `_bmad-output/test-artifacts/admin-ui-actor-diagnostics-honesty-fix/aggregate-state.json`
+- `_bmad-output/test-artifacts/admin-ui-actor-diagnostics-honesty-fix/admin-ui-actor-diagnostics-honesty-fix.png`
+- `_bmad-output/test-artifacts/admin-ui-actor-diagnostics-honesty-fix/redaction-note.md`
+- `_bmad-output/test-artifacts/admin-ui-actor-diagnostics-honesty-fix/redis-actor-keys.txt`
+- `_bmad-output/test-artifacts/admin-ui-actor-diagnostics-honesty-fix/redis-flush-result.txt`
+- `_bmad-output/test-artifacts/admin-ui-actor-diagnostics-honesty-fix/seed-command-statuses.json`
+- `_bmad-output/test-artifacts/admin-ui-actor-diagnostics-honesty-fix/ui-observation.md`
+- `src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprActorCountStatus.cs`
+- `src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprActorInstanceState.cs`
+- `src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprActorLookupStatus.cs`
+- `src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprActorRuntimeInfo.cs`
+- `src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprActorTypeInfo.cs`
+- `src/Hexalith.EventStore.Admin.Server/Services/DaprInfrastructureQueryService.cs`
+- `src/Hexalith.EventStore.Admin.UI/Pages/DaprActors.razor`
+- `src/Hexalith.EventStore.Admin.UI/Services/AdminActorApiClient.cs`
+- `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprActorQueryServiceTests.cs`
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/DaprActorsPageTests.cs`
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Services/AdminActorApiClientTests.cs`
 
 ## Verification Status
 
@@ -345,11 +377,20 @@ TBD by dev agent.
   development; recommendation remains ready-for-dev after applying low-risk
   clarifications.
 - Story creation did not modify product code, tests, DAPR/Aspire configuration, or submodules.
+- Red phase: focused `DaprActorQueryServiceTests` failed before implementation on missing lookup/count status fields, proving the new contract was test-driven.
+- Focused server/controller actor tests passed 32/32 after implementation.
+- Focused UI actor page/client tests passed 18/18 after implementation.
+- Focused actor DTO serialization tests passed 33/33 after implementation.
+- Full Admin.Server.Tests passed 585/585 with 18 skipped on 2026-05-10.
+- Full Admin.UI.Tests passed 744/744 on 2026-05-10.
+- Full Admin.Abstractions.Tests passed 404/404 on 2026-05-10.
+- Live Aspire evidence with `EnableKeycloak=false` seeded `tenant-a/counter/counter-1`, captured 8 Redis actor keys, runtime actor metadata, sanitized aggregate state lookup with `lookupStatus=Available`, and a UI screenshot showing found state rows without not-found or lookup-unavailable banners.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-10 | 0.4 | Implemented source-aware actor diagnostics, owner-sidecar actor state inspection, UI honesty states, targeted tests, live Aspire evidence, and deferred exact-inventory note. | Codex |
 | 2026-05-07 | 0.3 | Advanced elicitation completed and story hardened for evidence precedence, owner app-id configurability, stale inspect results, redaction, and DAPR key-convention drift. | Codex automation |
 | 2026-05-07 | 0.2 | Party-mode review completed and story hardened for actor inventory semantics, lookup taxonomy, owner app-id proof, Redis guardrails, UI copy, accessibility, and evidence boundaries. | Codex automation |
 | 2026-05-07 | 0.1 | Created ready-for-dev story for Admin UI actor diagnostics honesty and canonical AggregateActor inspection. | Codex automation |

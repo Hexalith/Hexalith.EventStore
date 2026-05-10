@@ -297,12 +297,42 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             ReentrancyEnabled: false,
             ReentrancyMaxStackDepth: 32);
 
-        // Try local sidecar first (memoized per-request so /dapr and /dapr/pubsub agree).
-        List<DaprActorTypeInfo> actorTypes = [];
-
+        DateTimeOffset observedAt = DateTimeOffset.UtcNow;
+        Dictionary<string, DaprActorTypeInfo> actorTypes = new(StringComparer.Ordinal);
         LocalMetadataResult local = await TryReadLocalMetadataAsync(ct).ConfigureAwait(false);
         DaprMetadata? metadata = local.Metadata;
-        if (metadata?.Actors is not null && metadata.Actors.Count > 0) {
+
+        RemoteMetadataPayload remote = await TryReadRemoteMetadataAsync(ct).ConfigureAwait(false);
+        string inventorySource;
+        RemoteMetadataStatus remoteStatus = remote.Status;
+        string? remoteEndpoint = remote.Endpoint;
+
+        if (remote.Status == RemoteMetadataStatus.Available) {
+            inventorySource = "RemoteEventStoreSidecarMetadata";
+            if (remote.Actors is not null) {
+                foreach (DaprActorTypeInfo actor in remote.Actors) {
+                    DaprActorCountStatus status = actor.ActiveCount >= 0
+                        ? DaprActorCountStatus.Exact
+                        : DaprActorCountStatus.Unavailable;
+                    actorTypes[actor.TypeName] = new DaprActorTypeInfo(
+                        actor.TypeName,
+                        actor.ActiveCount,
+                        actor.Description,
+                        actor.ActorIdFormat,
+                        status,
+                        inventorySource,
+                        status == DaprActorCountStatus.Exact
+                            ? null
+                            : "The EventStore sidecar metadata did not include an active count for this actor type.");
+
+                    if (!KnownActorTypes.Types.ContainsKey(actor.TypeName)) {
+                        _logger.LogWarning("Unknown actor type '{ActorType}' detected — update KnownActorTypes map", actor.TypeName);
+                    }
+                }
+            }
+        }
+        else if (metadata?.Actors is not null && metadata.Actors.Count > 0) {
+            inventorySource = "LocalAdminMetadataFallback";
             foreach (DaprActorMetadata actor in metadata.Actors) {
                 // Guard against null/empty actor.Type — DAPR sidecar can return it during
                 // init in some versions; KnownActorTypes.GetDescriptor(null) would NRE on
@@ -313,53 +343,73 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 }
 
                 KnownActorTypeDescriptor descriptor = KnownActorTypes.GetDescriptor(actor.Type);
-                actorTypes.Add(new DaprActorTypeInfo(
+                actorTypes[actor.Type] = new DaprActorTypeInfo(
                     actor.Type,
                     actor.Count,
                     descriptor.Description,
-                    descriptor.ActorIdFormat));
+                    descriptor.ActorIdFormat,
+                    actor.Count >= 0 ? DaprActorCountStatus.SourceLimited : DaprActorCountStatus.Unavailable,
+                    inventorySource,
+                    "Count came from the local Admin sidecar fallback, not the EventStore actor owner sidecar.");
             }
-        }
-
-        // If local sidecar has no actors, try remote EventStore server sidecar
-        RemoteMetadataStatus remoteStatus;
-        string? remoteEndpoint;
-        if (actorTypes.Count == 0) {
-            RemoteMetadataPayload remote = await TryReadRemoteMetadataAsync(ct).ConfigureAwait(false);
-            if (remote.Actors is not null) {
-                foreach (DaprActorTypeInfo actor in remote.Actors) {
-                    actorTypes.Add(actor);
-                    if (!KnownActorTypes.Types.ContainsKey(actor.TypeName)) {
-                        _logger.LogWarning("Unknown actor type '{ActorType}' detected — update KnownActorTypes map", actor.TypeName);
-                    }
-                }
-            }
-
-            remoteStatus = remote.Status;
-            remoteEndpoint = remote.Endpoint;
         }
         else {
-            // Local actors found — remote was deliberately not consulted. Reuse NotConfigured
-            // semantics rather than reporting Unreachable: the Unreachable XML doc says "query
-            // failed (transport, timeout, or non-success status)", which is a lie when no
-            // attempt was made. NotConfigured cleanly communicates "no remote evidence in this
-            // result" without expanding the status vocabulary.
-            remoteEndpoint = string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)
-                ? null
-                : _options.EventStoreDaprHttpEndpoint;
-            remoteStatus = RemoteMetadataStatus.NotConfigured;
+            inventorySource = remote.Status == RemoteMetadataStatus.NotConfigured
+                ? "NotConfigured"
+                : "Unavailable";
         }
 
-        int totalActive = actorTypes
-            .Where(a => a.ActiveCount >= 0)
+        foreach ((string knownType, KnownActorTypeDescriptor descriptor) in KnownActorTypes.Types) {
+            if (actorTypes.ContainsKey(knownType)) {
+                continue;
+            }
+
+            actorTypes[knownType] = new DaprActorTypeInfo(
+                knownType,
+                -1,
+                descriptor.Description,
+                descriptor.ActorIdFormat,
+                DaprActorCountStatus.Unavailable,
+                inventorySource,
+                remote.Status == RemoteMetadataStatus.Available
+                    ? "The EventStore sidecar metadata omitted this known actor type; active count is unavailable."
+                    : "Actor count source is unavailable.");
+        }
+
+        DaprActorTypeInfo[] orderedActorTypes = actorTypes.Values
+            .OrderBy(a => KnownActorTypes.Types.ContainsKey(a.TypeName) ? 0 : 1)
+            .ThenBy(a => a.TypeName, StringComparer.Ordinal)
+            .ToArray();
+
+        int totalActive = orderedActorTypes
+            .Where(a => a.CountStatus != DaprActorCountStatus.Unavailable && a.ActiveCount >= 0)
             .Sum(a => a.ActiveCount);
+        bool hasExactKnownCounts = orderedActorTypes.Any(a =>
+            KnownActorTypes.Types.ContainsKey(a.TypeName)
+            && a.CountStatus != DaprActorCountStatus.Unavailable
+            && a.ActiveCount >= 0);
+        bool isInventoryComplete = remote.Status == RemoteMetadataStatus.Available
+            && KnownActorTypes.Types.Keys.All(type =>
+                actorTypes.TryGetValue(type, out DaprActorTypeInfo? actor)
+                && actor.CountStatus == DaprActorCountStatus.Exact
+                && actor.ActiveCount >= 0);
+        string inventoryMessage = isInventoryComplete
+            ? "All known EventStore actor types returned active counts from the EventStore sidecar metadata."
+            : hasExactKnownCounts
+                ? "Partial actor inventory: some known EventStore actor type counts are unavailable, so the active count is not total inventory."
+                : "Active actor data unavailable: no authoritative source returned active counts for the known EventStore actor types.";
 
         return new DaprActorRuntimeInfo(
-            actorTypes,
+            orderedActorTypes,
             totalActive,
             config,
             remoteStatus,
-            remoteEndpoint);
+            remoteEndpoint,
+            isInventoryComplete,
+            inventorySource,
+            inventoryMessage,
+            observedAt,
+            KnownActorTypes.Types.Count);
     }
 
     /// <inheritdoc/>
@@ -374,37 +424,72 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
 
-        List<Task<DaprActorStateEntry>> tasks = [];
+        List<Task<ActorStateReadResult>> tasks = [];
         foreach (string stateKey in descriptor.StateKeys) {
             string? resolvedKey = KnownActorTypes.ResolveStateKey(stateKey, actorId);
             if (resolvedKey is null) {
                 // Dynamic key family — report as not-found with the pattern as the display key
-                tasks.Add(Task.FromResult(new DaprActorStateEntry(stateKey, null, 0, false)));
+                tasks.Add(Task.FromResult(new ActorStateReadResult(
+                    new DaprActorStateEntry(stateKey, null, 0, false),
+                    false,
+                    null)));
                 continue;
             }
 
             tasks.Add(ReadActorStateKeyAsync(actorType, actorId, stateKey, resolvedKey, timeoutCts.Token));
         }
 
-        DaprActorStateEntry[] entries;
+        ActorStateReadResult[] readResults;
+        bool lookupUnavailable = false;
+        string? unavailableMessage = null;
         try {
-            entries = await Task.WhenAll(tasks).ConfigureAwait(false);
+            readResults = await Task.WhenAll(tasks).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
+            lookupUnavailable = true;
+            unavailableMessage = "Actor lookup unavailable: state store reads timed out before the owner app id/key convention could be verified.";
             _logger.LogWarning("Actor state reads timed out after 5 seconds for {ActorType}/{ActorId}.", actorType, actorId);
-            entries = tasks
-                .Select(t => t.IsCompletedSuccessfully ? t.Result : new DaprActorStateEntry("timeout", null, 0, false))
+            readResults = tasks
+                .Select(t => t.IsCompletedSuccessfully
+                    ? t.Result
+                    : new ActorStateReadResult(new DaprActorStateEntry("timeout", null, 0, false), true, unavailableMessage))
                 .ToArray();
         }
 
+        if (!lookupUnavailable) {
+            ActorStateReadResult unavailable = readResults.FirstOrDefault(r => r.LookupUnavailable);
+            if (unavailable.LookupUnavailable) {
+                lookupUnavailable = true;
+                unavailableMessage = unavailable.Message;
+            }
+        }
+
+        DaprActorStateEntry[] entries = readResults.Select(r => r.Entry).ToArray();
         long totalSize = entries.Sum(e => e.EstimatedSizeBytes);
+        DaprActorLookupStatus lookupStatus = lookupUnavailable
+            ? DaprActorLookupStatus.LookupUnavailable
+            : entries.Any(e => e.Found)
+                ? DaprActorLookupStatus.Available
+                : DaprActorLookupStatus.NotFound;
+        string message = lookupStatus switch {
+            DaprActorLookupStatus.Available => "Actor state lookup completed using the configured EventStore owner app id.",
+            DaprActorLookupStatus.NotFound => "Actor instance not found. The lookup path completed, but no known state key exists for this actor id.",
+            _ => unavailableMessage ?? "Actor lookup unavailable: state store read failed or returned inconclusive evidence.",
+        };
 
         return new DaprActorInstanceState(
             actorType,
             actorId,
             entries,
             totalSize,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            lookupStatus,
+            _options.EventStoreAppId,
+            _options.StateStoreName,
+            string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)
+                ? "DaprStateStoreActorKeys"
+                : "RemoteOwnerSidecarActorStateApi",
+            message);
     }
 
     /// <inheritdoc/>
@@ -429,27 +514,104 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
     private static string ComposeActorStateKey(string appId, string actorType, string actorId, string stateKey)
         => $"{appId}||{actorType}||{actorId}||{stateKey}";
 
-    private async Task<DaprActorStateEntry> ReadActorStateKeyAsync(
+    private async Task<ActorStateReadResult> ReadActorStateKeyAsync(
         string actorType, string actorId, string displayKey, string resolvedKey, CancellationToken ct) {
+        if (!string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)) {
+            return await ReadActorStateKeyFromOwnerSidecarAsync(actorType, actorId, displayKey, resolvedKey, ct)
+                .ConfigureAwait(false);
+        }
+
         string composedKey = ComposeActorStateKey(_options.EventStoreAppId, actorType, actorId, resolvedKey);
         try {
-            string? value = await _daprClient
-                .GetStateAsync<string>(_options.StateStoreName, composedKey, cancellationToken: ct)
+            JsonElement? value = await _daprClient
+                .GetStateAsync<JsonElement?>(_options.StateStoreName, composedKey, cancellationToken: ct)
                 .ConfigureAwait(false);
 
             if (value is null) {
-                return new DaprActorStateEntry(displayKey, null, 0, false);
+                return new ActorStateReadResult(new DaprActorStateEntry(displayKey, null, 0, false), false, null);
             }
 
-            long size = Encoding.UTF8.GetByteCount(value);
-            return new DaprActorStateEntry(displayKey, value, size, true);
+            string jsonValue = FormatStateValue(value.Value);
+            long size = Encoding.UTF8.GetByteCount(jsonValue);
+            return new ActorStateReadResult(new DaprActorStateEntry(displayKey, jsonValue, size, true), false, null);
         }
         catch (OperationCanceledException) {
             throw;
         }
         catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to read actor state key '{StateKey}' for {ActorType}/{ActorId}.", displayKey, actorType, actorId);
-            return new DaprActorStateEntry(displayKey, null, 0, false);
+            return new ActorStateReadResult(
+                new DaprActorStateEntry(displayKey, null, 0, false),
+                true,
+                $"Actor lookup unavailable: failed to read state key '{displayKey}' from state store '{_options.StateStoreName}'.");
+        }
+    }
+
+    private async Task<ActorStateReadResult> ReadActorStateKeyFromOwnerSidecarAsync(
+        string actorType, string actorId, string displayKey, string resolvedKey, CancellationToken ct) {
+        string endpoint = _options.EventStoreDaprHttpEndpoint!.TrimEnd('/');
+        string uri =
+            $"{endpoint}/v1.0/actors/{Uri.EscapeDataString(actorType)}/{Uri.EscapeDataString(actorId)}/state/{Uri.EscapeDataString(resolvedKey)}";
+
+        try {
+            HttpClient client = _httpClientFactory.CreateClient();
+            using HttpResponseMessage response = await client
+                .GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct)
+                .ConfigureAwait(false);
+
+            if (response.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.NoContent) {
+                return new ActorStateReadResult(new DaprActorStateEntry(displayKey, null, 0, false), false, null);
+            }
+
+            if (!response.IsSuccessStatusCode) {
+                string message = $"Actor lookup unavailable: owner sidecar state API returned {(int)response.StatusCode} for state key '{displayKey}'.";
+                _logger.LogWarning(
+                    "Owner sidecar actor state read failed with {StatusCode} for {ActorType}/{ActorId}/{StateKey}.",
+                    (int)response.StatusCode,
+                    actorType,
+                    actorId,
+                    displayKey);
+                return new ActorStateReadResult(new DaprActorStateEntry(displayKey, null, 0, false), true, message);
+            }
+
+            string value = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(value) || string.Equals(value, "null", StringComparison.OrdinalIgnoreCase)) {
+                return new ActorStateReadResult(new DaprActorStateEntry(displayKey, null, 0, false), false, null);
+            }
+
+            string jsonValue = FormatStateValue(value);
+            long size = Encoding.UTF8.GetByteCount(jsonValue);
+            return new ActorStateReadResult(new DaprActorStateEntry(displayKey, jsonValue, size, true), false, null);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            _logger.LogWarning(ex, "Failed to read actor state key '{StateKey}' from owner sidecar for {ActorType}/{ActorId}.", displayKey, actorType, actorId);
+            return new ActorStateReadResult(
+                new DaprActorStateEntry(displayKey, null, 0, false),
+                true,
+                $"Actor lookup unavailable: failed to read state key '{displayKey}' from owner sidecar '{_options.EventStoreAppId}'.");
+        }
+    }
+
+    private readonly record struct ActorStateReadResult(
+        DaprActorStateEntry Entry,
+        bool LookupUnavailable,
+        string? Message);
+
+    private static string FormatStateValue(JsonElement value)
+        => value.ValueKind == JsonValueKind.String
+            ? value.GetString() ?? string.Empty
+            : value.GetRawText();
+
+    private static string FormatStateValue(string value) {
+        try {
+            using JsonDocument document = JsonDocument.Parse(value);
+            return FormatStateValue(document.RootElement);
+        }
+        catch (JsonException) {
+            return value;
         }
     }
 

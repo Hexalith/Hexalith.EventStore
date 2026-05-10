@@ -16,12 +16,22 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 /// The attempted remote endpoint URL (from <c>AdminServer:EventStoreDaprHttpEndpoint</c>).
 /// <c>null</c> only when <paramref name="RemoteMetadataStatus"/> is <see cref="RemoteMetadataStatus.NotConfigured"/>.
 /// </param>
+/// <param name="IsInventoryComplete">Whether all known EventStore actor types have exact counts from an authoritative source.</param>
+/// <param name="InventorySource">The source used for actor inventory evidence.</param>
+/// <param name="InventoryMessage">Operator-facing explanation of inventory completeness.</param>
+/// <param name="ObservedAtUtc">The UTC time when the inventory evidence was observed.</param>
+/// <param name="TotalKnownTypes">The bounded count of known EventStore actor types considered by this payload.</param>
 public record DaprActorRuntimeInfo(
     IReadOnlyList<DaprActorTypeInfo> ActorTypes,
     int TotalActiveActors,
     DaprActorRuntimeConfig Configuration,
     RemoteMetadataStatus RemoteMetadataStatus,
-    string? RemoteEndpoint) {
+    string? RemoteEndpoint,
+    bool IsInventoryComplete = true,
+    string InventorySource = "DaprMetadata",
+    string? InventoryMessage = null,
+    DateTimeOffset? ObservedAtUtc = null,
+    int TotalKnownTypes = 0) {
     /// <summary>Gets the list of registered actor types with their details.</summary>
     public IReadOnlyList<DaprActorTypeInfo> ActorTypes { get; } = ActorTypes
         ?? throw new ArgumentNullException(nameof(ActorTypes));
@@ -29,4 +39,9 @@ public record DaprActorRuntimeInfo(
     /// <summary>Gets the actor runtime configuration.</summary>
     public DaprActorRuntimeConfig Configuration { get; } = Configuration
         ?? throw new ArgumentNullException(nameof(Configuration));
+
+    /// <summary>Gets the source used for actor inventory evidence.</summary>
+    public string InventorySource { get; init; } = !string.IsNullOrWhiteSpace(InventorySource)
+        ? InventorySource
+        : throw new ArgumentException("InventorySource cannot be null, empty, or whitespace.", nameof(InventorySource));
 }

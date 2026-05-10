@@ -52,10 +52,31 @@ public class AdminActorApiClient(
             using HttpResponseMessage response = await client
                 .GetAsync($"api/v1/admin/dapr/actors/{Uri.EscapeDataString(actorType)}/state?id={Uri.EscapeDataString(actorId)}", ct)
                 .ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound) {
+                string message = await TryReadProblemDetailAsync(response).ConfigureAwait(false)
+                    ?? "Actor instance not found. The actor may be inactive or the id may be incorrect.";
+                return new DaprActorInstanceState(
+                    actorType,
+                    actorId,
+                    [],
+                    0,
+                    DateTimeOffset.UtcNow,
+                    DaprActorLookupStatus.NotFound,
+                    Message: message);
+            }
+
             await HandleErrorStatusAsync(response).ConfigureAwait(false);
             return await response.Content
                 .ReadFromJsonAsync<DaprActorInstanceState>(ct)
                 .ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) {
+            logger.LogError(ex, "Actor state lookup unavailable for {ActorType}/{ActorId}", actorType, actorId);
+            return LookupUnavailable(actorType, actorId);
+        }
+        catch (TimeoutException ex) {
+            logger.LogError(ex, "Actor state lookup timed out for {ActorType}/{ActorId}", actorType, actorId);
+            return LookupUnavailable(actorType, actorId);
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
@@ -63,9 +84,19 @@ public class AdminActorApiClient(
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch actor state for {ActorType}/{ActorId}", actorType, actorId);
-            return null;
+            return LookupUnavailable(actorType, actorId);
         }
     }
+
+    private static DaprActorInstanceState LookupUnavailable(string actorType, string actorId)
+        => new(
+            actorType,
+            actorId,
+            [],
+            0,
+            DateTimeOffset.UtcNow,
+            DaprActorLookupStatus.LookupUnavailable,
+            Message: "Actor lookup unavailable. The admin UI could not verify the state-store lookup path.");
 
     private static async Task HandleErrorStatusAsync(HttpResponseMessage response) {
         if (response.IsSuccessStatusCode) {
@@ -104,5 +135,24 @@ public class AdminActorApiClient(
                 null,
                 statusCode),
         };
+    }
+
+    private static async Task<string?> TryReadProblemDetailAsync(HttpResponseMessage response) {
+        try {
+            string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("detail", out JsonElement detail)) {
+                return detail.GetString();
+            }
+
+            if (doc.RootElement.TryGetProperty("title", out JsonElement title)) {
+                return title.GetString();
+            }
+        }
+        catch {
+            // Ignore parse failures.
+        }
+
+        return null;
     }
 }

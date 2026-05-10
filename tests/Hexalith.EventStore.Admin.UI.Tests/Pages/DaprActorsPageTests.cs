@@ -3,6 +3,7 @@ using Bunit;
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.UI.Pages;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -65,6 +66,36 @@ public class DaprActorsPageTests : AdminUITestContext {
         markup.ShouldContain("Registered Types");
         markup.ShouldContain("Total Active Actors");
         markup.ShouldContain("Inspected Actor State Size");
+    }
+
+    [Fact]
+    public void DaprActorsPage_RendersPartialInventoryWithoutTotalLanguage_WhenCountsUnavailable() {
+        DaprActorRuntimeInfo runtimeInfo = new(
+            [
+                new DaprActorTypeInfo("AggregateActor", -1, "Processes commands", "tenant:domain:id", DaprActorCountStatus.Unavailable, "RemoteEventStoreSidecarMetadata"),
+                new DaprActorTypeInfo("ETagActor", 1, "Manages ETags", "ProjectionType:TenantId", DaprActorCountStatus.Exact, "RemoteEventStoreSidecarMetadata"),
+                new DaprActorTypeInfo("ProjectionActor", -1, "Handles projections", "QueryType:TenantId", DaprActorCountStatus.Unavailable, "RemoteEventStoreSidecarMetadata"),
+            ],
+            1,
+            _defaultConfig,
+            RemoteMetadataStatus.Available,
+            "http://localhost:3501",
+            IsInventoryComplete: false,
+            InventorySource: "RemoteEventStoreSidecarMetadata",
+            InventoryMessage: "Partial actor inventory: some known EventStore actor type counts are unavailable.",
+            ObservedAtUtc: DateTimeOffset.UtcNow,
+            TotalKnownTypes: 3);
+        _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprActorRuntimeInfo?>(runtimeInfo));
+
+        IRenderedComponent<DaprActors> cut = Render<DaprActors>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Known Active Actors"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("Known Active Actors");
+        cut.Markup.ShouldContain("unavailable");
+        cut.Markup.ShouldContain("Actor inventory is partial");
+        cut.Markup.ShouldNotContain("Total Active Actors");
+        cut.Markup.ShouldNotContain("N/A");
     }
 
     [Fact]
@@ -159,6 +190,62 @@ public class DaprActorsPageTests : AdminUITestContext {
         cut.Markup.ShouldContain("consistent-hashing");
     }
 
+    [Fact]
+    public void DaprActorsPage_RendersLookupUnavailableBanner_DifferentFromNotFound() {
+        _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprActorRuntimeInfo?>(CreateRuntimeInfo()));
+        _ = _mockApiClient.GetActorInstanceStateAsync("ETagActor", "counter:tenant-a", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprActorInstanceState?>(new DaprActorInstanceState(
+                "ETagActor",
+                "counter:tenant-a",
+                [],
+                0,
+                DateTimeOffset.UtcNow,
+                DaprActorLookupStatus.LookupUnavailable,
+                "eventstore",
+                "statestore",
+                "DaprStateStoreActorKeys",
+                "Actor lookup unavailable: state store read failed.")));
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo("/dapr/actors?type=ETagActor&id=counter%3Atenant-a");
+
+        IRenderedComponent<DaprActors> cut = Render<DaprActors>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Actor lookup unavailable"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("state store read failed");
+        cut.Markup.ShouldNotContain("Actor instance not found");
+    }
+
+    [Fact]
+    public async Task DaprActorsPage_DiscardsStaleInspectResult_WhenActorInputChangesBeforeResponse() {
+        _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprActorRuntimeInfo?>(CreateRuntimeInfo()));
+        TaskCompletionSource<DaprActorInstanceState?> staleLookup = new();
+        _ = _mockApiClient.GetActorInstanceStateAsync("ETagActor", "counter:old", Arg.Any<CancellationToken>())
+            .Returns(staleLookup.Task);
+
+        IRenderedComponent<DaprActors> cut = Render<DaprActors>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Instance Lookup"), TimeSpan.FromSeconds(5));
+
+        SetPrivateField(cut.Instance, "_selectedActorType", "ETagActor");
+        SetPrivateField(cut.Instance, "_actorId", "counter:old");
+        Task inspectTask = cut.InvokeAsync(() => InvokeInspectAsync(cut.Instance));
+
+        SetPrivateField(cut.Instance, "_actorId", "counter:new");
+        staleLookup.SetResult(new DaprActorInstanceState(
+            "ETagActor",
+            "counter:old",
+            [],
+            0,
+            DateTimeOffset.UtcNow,
+            DaprActorLookupStatus.NotFound,
+            Message: "Actor instance not found for old input."));
+        await inspectTask;
+
+        cut.Markup.ShouldNotContain("Actor instance not found");
+        cut.Markup.ShouldNotContain("old input");
+    }
+
     // ===== Helper methods =====
 
     private static DaprActorRuntimeInfo CreateRuntimeInfo() => new(
@@ -170,4 +257,18 @@ public class DaprActorsPageTests : AdminUITestContext {
         _defaultConfig,
         RemoteMetadataStatus.Available,
         "http://localhost:3501");
+
+    private static void SetPrivateField(object instance, string name, object? value) {
+        System.Reflection.FieldInfo field = typeof(DaprActors)
+            .GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Field {name} was not found.");
+        field.SetValue(instance, value);
+    }
+
+    private static Task InvokeInspectAsync(DaprActors instance) {
+        System.Reflection.MethodInfo method = typeof(DaprActors)
+            .GetMethod("InspectActorAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("InspectActorAsync was not found.");
+        return (Task)(method.Invoke(instance, []) ?? throw new InvalidOperationException("InspectActorAsync returned null."));
+    }
 }

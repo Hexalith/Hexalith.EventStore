@@ -54,4 +54,43 @@ public class AdminActorApiClientTests {
         _ = await Should.ThrowAsync<ServiceUnavailableException>(
             () => client.GetActorRuntimeInfoAsync());
     }
+
+    [Fact]
+    public async Task GetActorInstanceStateAsync_ReturnsNotFoundResult_WhenApiReturns404() {
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(
+            HttpStatusCode.NotFound,
+            """{"title":"Not Found","detail":"Actor instance not found"}""");
+
+        AdminActorApiClient client = CreateClient(httpClient);
+
+        DaprActorInstanceState? result = await client.GetActorInstanceStateAsync("AggregateActor", "tenant-a:counter:counter-1");
+
+        _ = result.ShouldNotBeNull();
+        result.ActorType.ShouldBe("AggregateActor");
+        result.ActorId.ShouldBe("tenant-a:counter:counter-1");
+        result.LookupStatus.ShouldBe(DaprActorLookupStatus.NotFound);
+        result.Message.ShouldNotBeNull();
+        result.Message!.ShouldContain("not found", Case.Insensitive);
+    }
+
+    [Fact]
+    public async Task GetActorInstanceStateAsync_ReturnsLookupUnavailableResult_WhenNetworkFails() {
+        using HttpClient httpClient = new(new ThrowingHandler(new HttpRequestException("network down"))) {
+            BaseAddress = new Uri("https://admin.example/")
+        };
+
+        AdminActorApiClient client = CreateClient(httpClient);
+
+        DaprActorInstanceState? result = await client.GetActorInstanceStateAsync("ETagActor", "counter:tenant-a");
+
+        _ = result.ShouldNotBeNull();
+        result.LookupStatus.ShouldBe(DaprActorLookupStatus.LookupUnavailable);
+        result.Message.ShouldNotBeNull();
+        result.Message!.ShouldContain("unavailable", Case.Insensitive);
+    }
+
+    private sealed class ThrowingHandler(Exception exception) : HttpMessageHandler {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => Task.FromException<HttpResponseMessage>(exception);
+    }
 }
