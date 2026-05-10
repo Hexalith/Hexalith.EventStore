@@ -1,5 +1,6 @@
 using System.Net;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
 using Hexalith.EventStore.Testing.Http;
@@ -40,5 +41,50 @@ public class AdminSnapshotApiClientTests {
 
         _ = await Should.ThrowAsync<ServiceUnavailableException>(
             () => client.GetSnapshotPoliciesAsync());
+    }
+
+    [Fact]
+    public async Task SetSnapshotPolicyAsync_ReturnsDeferredResult_WhenApiReturnsTypedOutcome() {
+        string json = """{"success":false,"operationId":"deferred-snapshot-policy-set","message":"Snapshot policy changes are deferred.","errorCode":"Deferred"}""";
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
+
+        AdminSnapshotApiClient client = CreateClient(httpClient);
+
+        AdminOperationResult? result = await client.SetSnapshotPolicyAsync("tenant-a", "Counter", "CounterAggregate", 100);
+
+        _ = result.ShouldNotBeNull();
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("deferred");
+    }
+
+    [Fact]
+    public async Task CreateSnapshotAsync_ReturnsDeferredResult_WhenApiReturnsTypedOutcome() {
+        string json = """{"success":false,"operationId":"deferred-manual-snapshot","message":"Manual snapshot creation is deferred.","errorCode":"Deferred"}""";
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
+
+        AdminSnapshotApiClient client = CreateClient(httpClient);
+
+        AdminOperationResult? result = await client.CreateSnapshotAsync("tenant-a", "Counter", "counter-1");
+
+        _ = result.ShouldNotBeNull();
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("deferred");
+    }
+
+    [Fact]
+    public async Task DeleteSnapshotPolicyAsync_ReturnsDeferredResult_WhenApiReturnsTypedOutcome() {
+        string json = """{"success":false,"operationId":"deferred-snapshot-policy-delete","message":"Snapshot policy deletion is deferred.","errorCode":"Deferred"}""";
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
+
+        AdminSnapshotApiClient client = CreateClient(httpClient);
+
+        AdminOperationResult? result = await client.DeleteSnapshotPolicyAsync("tenant-a", "Counter", "CounterAggregate");
+
+        _ = result.ShouldNotBeNull();
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("deferred");
     }
 }

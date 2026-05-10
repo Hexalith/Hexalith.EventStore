@@ -1,5 +1,3 @@
-using System.Net;
-
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
@@ -17,11 +15,8 @@ namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 public class DaprStorageCommandServiceTests {
     private const string EventStoreAppId = "eventstore";
 
-    private static (DaprStorageCommandService Service, TestHttpMessageHandler Handler) CreateService(
-        DaprClient? daprClient = null,
-        IAdminAuthContext? authContext = null) {
-        daprClient ??= Substitute.For<DaprClient>();
-        authContext ??= new NullAdminAuthContext();
+    private static (DaprStorageCommandService Service, TestHttpMessageHandler Handler) CreateService() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             EventStoreAppId = EventStoreAppId,
             ServiceInvocationTimeoutSeconds = 30,
@@ -36,153 +31,61 @@ public class DaprStorageCommandServiceTests {
             daprClient,
             httpClientFactory,
             options,
-            authContext,
+            new NullAdminAuthContext(),
             NullLogger<DaprStorageCommandService>.Instance);
 
         return (service, handler);
     }
 
-    // === TriggerCompactionAsync ===
-
     [Fact]
-    public async Task TriggerCompactionAsync_ReturnsSuccess_WhenEventStoreResponds() {
-        var expected = new AdminOperationResult(true, "op-1", "Compaction started", null);
+    public async Task TriggerCompactionAsync_ReturnsDeferred_WithoutCallingEventStore() {
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.TriggerCompactionAsync("tenant-a", "Counter");
 
-        result.Success.ShouldBeTrue();
-        result.OperationId.ShouldBe("op-1");
-    }
-
-    [Fact]
-    public async Task TriggerCompactionAsync_ForwardsJwtToken() {
-        IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
-        _ = authContext.GetToken().Returns("storage-token");
-
-        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService(authContext: authContext);
-        handler.SetupJsonResponse(new AdminOperationResult(true, "op-1", null, null));
-
-        _ = await service.TriggerCompactionAsync("tenant-a", null);
-
-        _ = handler.LastRequest.ShouldNotBeNull();
-        handler.LastRequest!.Headers.Authorization!.Parameter.ShouldBe("storage-token");
-    }
-
-    [Fact]
-    public async Task TriggerCompactionAsync_ReturnsError_WhenServiceUnavailable() {
-        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupException(new InvalidOperationException("EventStore down"));
-
-        AdminOperationResult result = await service.TriggerCompactionAsync("tenant-a", null);
-
         result.Success.ShouldBeFalse();
-        _ = result.ErrorCode.ShouldNotBeNull();
+        result.OperationId.ShouldBe("deferred-compaction");
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("Compaction is deferred");
+        handler.RequestCount.ShouldBe(0);
     }
 
     [Fact]
-    public async Task TriggerCompactionAsync_ReturnsNullResponseError() {
+    public async Task CreateSnapshotAsync_ReturnsDeferred_WithoutCallingEventStore() {
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupNullJsonResponse();
-
-        AdminOperationResult result = await service.TriggerCompactionAsync("tenant-a", null);
-
-        result.Success.ShouldBeFalse();
-        result.ErrorCode.ShouldBe("NULL_RESPONSE");
-    }
-
-    [Fact]
-    public async Task TriggerCompactionAsync_PropagatesCancellation() {
-        using CancellationTokenSource cts = new();
-        await cts.CancelAsync();
-
-        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupException(new OperationCanceledException());
-
-        _ = await Should.ThrowAsync<OperationCanceledException>(
-            () => service.TriggerCompactionAsync("tenant-a", null, cts.Token));
-    }
-
-    // === CreateSnapshotAsync ===
-
-    [Fact]
-    public async Task CreateSnapshotAsync_ReturnsSuccess_WhenEventStoreResponds() {
-        var expected = new AdminOperationResult(true, "op-2", "Snapshot created", null);
-        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupJsonResponse(expected);
-
-        AdminOperationResult result = await service.CreateSnapshotAsync("tenant-a", "Counter", "counter-1");
-
-        result.Success.ShouldBeTrue();
-    }
-
-    [Fact]
-    public async Task CreateSnapshotAsync_ReturnsError_WhenServiceUnavailable() {
-        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupException(new HttpRequestException("Connection refused"));
 
         AdminOperationResult result = await service.CreateSnapshotAsync("tenant-a", "Counter", "counter-1");
 
         result.Success.ShouldBeFalse();
-    }
-
-    // === SetSnapshotPolicyAsync ===
-
-    [Fact]
-    public async Task SetSnapshotPolicyAsync_ReturnsSuccess_WhenEventStoreResponds() {
-        var expected = new AdminOperationResult(true, "op-3", "Policy set", null);
-        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupJsonResponse(expected);
-
-        AdminOperationResult result = await service.SetSnapshotPolicyAsync("tenant-a", "Counter", "CounterAggregate", 100);
-
-        result.Success.ShouldBeTrue();
+        result.OperationId.ShouldBe("deferred-manual-snapshot");
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("Manual snapshot creation is deferred");
+        handler.RequestCount.ShouldBe(0);
     }
 
     [Fact]
-    public async Task SetSnapshotPolicyAsync_ReturnsError_WhenServiceUnavailable() {
+    public async Task SetSnapshotPolicyAsync_ReturnsDeferred_WithoutCallingEventStore() {
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupException(new InvalidOperationException("EventStore down"));
 
         AdminOperationResult result = await service.SetSnapshotPolicyAsync("tenant-a", "Counter", "CounterAggregate", 100);
 
         result.Success.ShouldBeFalse();
-    }
-
-    // === DeleteSnapshotPolicyAsync ===
-
-    [Fact]
-    public async Task DeleteSnapshotPolicyAsync_ReturnsSuccess_WhenEventStoreResponds() {
-        var expected = new AdminOperationResult(true, "op-4", "Policy deleted", null);
-        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupJsonResponse(expected);
-
-        AdminOperationResult result = await service.DeleteSnapshotPolicyAsync("tenant-a", "Counter", "CounterAggregate");
-
-        result.Success.ShouldBeTrue();
+        result.OperationId.ShouldBe("deferred-snapshot-policy-set");
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("Snapshot policy changes are deferred");
+        handler.RequestCount.ShouldBe(0);
     }
 
     [Fact]
-    public async Task DeleteSnapshotPolicyAsync_ReturnsError_WhenServiceUnavailable() {
+    public async Task DeleteSnapshotPolicyAsync_ReturnsDeferred_WithoutCallingEventStore() {
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupException(new InvalidOperationException("EventStore down"));
 
         AdminOperationResult result = await service.DeleteSnapshotPolicyAsync("tenant-a", "Counter", "CounterAggregate");
 
         result.Success.ShouldBeFalse();
-    }
-
-    // === Error code extraction ===
-
-    [Fact]
-    public async Task InvokePost_ExtractsHttpStatusCode_FromHttpRequestException() {
-        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupErrorResponse(HttpStatusCode.NotFound);
-
-        AdminOperationResult result = await service.TriggerCompactionAsync("tenant-a", null);
-
-        result.Success.ShouldBeFalse();
-        result.ErrorCode.ShouldBe("404");
+        result.OperationId.ShouldBe("deferred-snapshot-policy-delete");
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("Snapshot policy deletion is deferred");
+        handler.RequestCount.ShouldBe(0);
     }
 }

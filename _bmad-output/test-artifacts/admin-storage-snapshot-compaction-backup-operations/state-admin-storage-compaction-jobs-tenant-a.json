@@ -1,0 +1,11 @@
+{
+  "name": "state-admin-storage-compaction-jobs-tenant-a",
+  "method": "Get",
+  "url": "http://localhost:55105/v1.0/state/statestore/admin%3Astorage-compaction-jobs%3Atenant-a",
+  "statusCode": 204,
+  "startedAt": "2026-05-10T13:24:15.5679499+02:00",
+  "completedAt": "2026-05-10T13:24:15.5718362+02:00",
+  "requestBody": null,
+  "response": "",
+  "error": null
+}

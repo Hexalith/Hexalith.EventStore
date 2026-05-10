@@ -59,27 +59,18 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
         string tenantId,
         string? description,
         bool includeSnapshots,
-        CancellationToken ct = default) {
-        StringBuilder urlBuilder = new();
-        _ = urlBuilder.Append($"api/v1/admin/backups/{Uri.EscapeDataString(tenantId)}?includeSnapshots={includeSnapshots}");
-        if (!string.IsNullOrEmpty(description)) {
-            _ = urlBuilder.Append($"&description={Uri.EscapeDataString(description)}");
-        }
-
-        return await InvokeEventStorePostAsync<object?>(
-            urlBuilder.ToString(),
-            null,
-            ct).ConfigureAwait(false);
-    }
+        CancellationToken ct = default)
+        => await Task.FromResult(CreateDeferredResult(
+            "deferred-backup-trigger",
+            "Backup creation is deferred. EventStore does not yet have an approved backup engine and manifest model.")).ConfigureAwait(false);
 
     /// <inheritdoc/>
     public async Task<AdminOperationResult> ValidateBackupAsync(
         string backupId,
         CancellationToken ct = default)
-        => await InvokeEventStorePostAsync(
-            $"api/v1/admin/backups/{Uri.EscapeDataString(backupId)}/validate",
-            new { backupId },
-            ct).ConfigureAwait(false);
+        => await Task.FromResult(CreateDeferredResult(
+            "deferred-backup-validate",
+            "Backup validation is deferred. EventStore does not yet have an approved backup manifest and validation model.")).ConfigureAwait(false);
 
     /// <inheritdoc/>
     public async Task<AdminOperationResult> TriggerRestoreAsync(
@@ -87,50 +78,25 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
         DateTimeOffset? pointInTime,
         bool dryRun,
         CancellationToken ct = default)
-        => await InvokeEventStorePostAsync(
-            $"api/v1/admin/backups/{Uri.EscapeDataString(backupId)}/restore",
-            new { backupId, pointInTime, dryRun },
-            ct).ConfigureAwait(false);
+        => await Task.FromResult(CreateDeferredResult(
+            "deferred-backup-restore",
+            "Restore is deferred. EventStore needs an approved safe restore namespace, idempotency rule, tenant isolation rule, and audit model before this operation can run.")).ConfigureAwait(false);
 
     /// <inheritdoc/>
     public async Task<StreamExportResult> ExportStreamAsync(
         StreamExportRequest request,
         CancellationToken ct = default) {
         ArgumentNullException.ThrowIfNull(request);
-        try {
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
+        return await Task.FromResult(new StreamExportResult(
+            false,
+            request.TenantId,
+            request.Domain,
+            request.AggregateId,
+            0,
+            null,
+            null,
+            "Stream export is deferred. EventStore needs an approved bounded export contract, format, and event limit before this operation can run.")).ConfigureAwait(false);
 
-            using HttpRequestMessage httpRequest = _daprClient.CreateInvokeMethodRequest(
-                _options.EventStoreAppId,
-                "api/v1/admin/backups/export-stream",
-                request)
-                ?? CreateFallbackRequest(HttpMethod.Post, "api/v1/admin/backups/export-stream", request);
-            httpRequest.Method = HttpMethod.Post;
-
-            string? token = _authContext.GetToken();
-            if (token is not null) {
-                httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            }
-
-            HttpClient httpClient = _httpClientFactory.CreateClient();
-            using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cts.Token).ConfigureAwait(false);
-            _ = httpResponse.EnsureSuccessStatusCode();
-            StreamExportResult? result = await httpResponse.Content.ReadFromJsonAsync<StreamExportResult>(cts.Token).ConfigureAwait(false);
-
-            return result ?? new StreamExportResult(false, request.TenantId, request.Domain, request.AggregateId, 0, null, null, "Null response from EventStore");
-        }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
-            _logger.LogWarning("EventStore export-stream timed out.");
-            return new StreamExportResult(false, request.TenantId, request.Domain, request.AggregateId, 0, null, null, "Service invocation timed out");
-        }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception ex) {
-            _logger.LogWarning(ex, "Failed to invoke EventStore export-stream.");
-            return new StreamExportResult(false, request.TenantId, request.Domain, request.AggregateId, 0, null, null, ex.Message);
-        }
     }
 
     /// <inheritdoc/>
@@ -138,10 +104,12 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
         string tenantId,
         string content,
         CancellationToken ct = default)
-        => await InvokeEventStorePostAsync(
-            "api/v1/admin/backups/import-stream",
-            new { tenantId, content },
-            ct).ConfigureAwait(false);
+        => await Task.FromResult(CreateDeferredResult(
+            "deferred-backup-import-stream",
+            "Stream import is deferred. EventStore needs approved payload validation, idempotency, target namespace, and audit rules before this operation can run.")).ConfigureAwait(false);
+
+    private static AdminOperationResult CreateDeferredResult(string operationId, string message)
+        => new(false, operationId, message, "Deferred");
 
     private async Task<AdminOperationResult> InvokeEventStorePostAsync<TRequest>(
         string endpoint,

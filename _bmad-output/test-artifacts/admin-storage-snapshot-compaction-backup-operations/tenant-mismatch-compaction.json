@@ -1,0 +1,17 @@
+{
+  "name": "tenant-mismatch-compaction",
+  "method": "Post",
+  "url": "http://localhost:8090/api/v1/admin/storage/tenant-b/compact?domain=counter",
+  "statusCode": 403,
+  "startedAt": "2026-05-10T13:24:15.5170869+02:00",
+  "completedAt": "2026-05-10T13:24:15.5386709+02:00",
+  "requestBody": null,
+  "response": {
+    "title": "Tenant Access Denied",
+    "status": 403,
+    "detail": "Not authorized for the requested tenant.",
+    "instance": "/api/v1/admin/storage/tenant-b/compact",
+    "correlationId": "1a41c8b0-8313-42da-8987-4f6988c5f040"
+  },
+  "error": null
+}

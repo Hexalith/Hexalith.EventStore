@@ -1,0 +1,20 @@
+[
+  {
+    "name": "ui-snapshots-page",
+    "url": "https://localhost:8093/snapshots",
+    "title": "Snapshots - Hexalith EventStore",
+    "bytes": 48486
+  },
+  {
+    "name": "ui-compaction-page",
+    "url": "https://localhost:8093/compaction",
+    "title": "Compaction - Hexalith EventStore",
+    "bytes": 46468
+  },
+  {
+    "name": "ui-backups-page",
+    "url": "https://localhost:8093/backups",
+    "title": "Backups - Hexalith EventStore",
+    "bytes": 45843
+  }
+]

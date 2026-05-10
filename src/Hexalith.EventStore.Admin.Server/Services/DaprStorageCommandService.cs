@@ -57,10 +57,9 @@ public sealed class DaprStorageCommandService : IStorageCommandService {
         string tenantId,
         string? domain,
         CancellationToken ct = default)
-        => await InvokeEventStorePostAsync(
-            "api/v1/admin/storage/compact",
-            new { tenantId, domain },
-            ct).ConfigureAwait(false);
+        => await Task.FromResult(CreateDeferredResult(
+            "deferred-compaction",
+            "Compaction is deferred. EventStore write-once event keys require an approved non-destructive compaction model before this operation can run.")).ConfigureAwait(false);
 
     /// <inheritdoc/>
     public async Task<AdminOperationResult> CreateSnapshotAsync(
@@ -68,10 +67,9 @@ public sealed class DaprStorageCommandService : IStorageCommandService {
         string domain,
         string aggregateId,
         CancellationToken ct = default)
-        => await InvokeEventStorePostAsync(
-            "api/v1/admin/storage/snapshot",
-            new { tenantId, domain, aggregateId },
-            ct).ConfigureAwait(false);
+        => await Task.FromResult(CreateDeferredResult(
+            "deferred-manual-snapshot",
+            "Manual snapshot creation is deferred. EventStore does not yet have an approved snapshot job model for operator-triggered snapshots.")).ConfigureAwait(false);
 
     /// <inheritdoc/>
     public async Task<AdminOperationResult> SetSnapshotPolicyAsync(
@@ -80,11 +78,9 @@ public sealed class DaprStorageCommandService : IStorageCommandService {
         string aggregateType,
         int intervalEvents,
         CancellationToken ct = default)
-        => await InvokeEventStoreAsync(
-            HttpMethod.Put,
-            "api/v1/admin/storage/snapshot-policy",
-            new { tenantId, domain, aggregateType, intervalEvents },
-            ct).ConfigureAwait(false);
+        => await Task.FromResult(CreateDeferredResult(
+            "deferred-snapshot-policy-set",
+            "Snapshot policy changes are deferred. EventStore does not yet have an approved runtime snapshot policy engine.")).ConfigureAwait(false);
 
     /// <inheritdoc/>
     public async Task<AdminOperationResult> DeleteSnapshotPolicyAsync(
@@ -92,11 +88,12 @@ public sealed class DaprStorageCommandService : IStorageCommandService {
         string domain,
         string aggregateType,
         CancellationToken ct = default)
-        => await InvokeEventStoreAsync(
-            HttpMethod.Delete,
-            "api/v1/admin/storage/snapshot-policy",
-            new { tenantId, domain, aggregateType },
-            ct).ConfigureAwait(false);
+        => await Task.FromResult(CreateDeferredResult(
+            "deferred-snapshot-policy-delete",
+            "Snapshot policy deletion is deferred. EventStore does not yet have an approved runtime snapshot policy engine.")).ConfigureAwait(false);
+
+    private static AdminOperationResult CreateDeferredResult(string operationId, string message)
+        => new(false, operationId, message, "Deferred");
 
     private async Task<AdminOperationResult> InvokeEventStorePostAsync<TRequest>(
         string endpoint,

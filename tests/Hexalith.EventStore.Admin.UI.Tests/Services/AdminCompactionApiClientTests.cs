@@ -1,5 +1,6 @@
 using System.Net;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
 using Hexalith.EventStore.Testing.Http;
@@ -40,5 +41,20 @@ public class AdminCompactionApiClientTests {
 
         _ = await Should.ThrowAsync<ServiceUnavailableException>(
             () => client.GetCompactionJobsAsync());
+    }
+
+    [Fact]
+    public async Task TriggerCompactionAsync_ReturnsDeferredResult_WhenApiReturnsTypedOutcome() {
+        string json = """{"success":false,"operationId":"deferred-compaction","message":"Compaction is deferred.","errorCode":"Deferred"}""";
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
+
+        AdminCompactionApiClient client = CreateClient(httpClient);
+
+        AdminOperationResult? result = await client.TriggerCompactionAsync("tenant-a");
+
+        _ = result.ShouldNotBeNull();
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("deferred");
     }
 }

@@ -1,0 +1,101 @@
+- link "Skip to main content":
+  - /url: "#main-content"
+- generic: Hexalith EventStore Admin
+- 'generic "Connection status: Connected"':
+  - generic: Connected
+- generic: Healthy
+- generic "Development role":
+  - combobox: Admin
+- generic: "Role: Admin"
+- generic: Development role Admin selected.
+- generic "Switch to light theme":
+  - generic: ⚙
+- navigation "Main navigation":
+  - link "Home":
+    - /url: /
+    - text: Home
+  - link "Commands":
+    - /url: /commands
+    - text: Commands
+  - link "Events":
+    - /url: /events
+    - text: Events
+  - link "Streams":
+    - /url: /streams
+    - text: Streams
+  - link "Health":
+    - /url: /health
+    - text: Health
+  - link "Dead Letters":
+    - /url: /health/dead-letters
+    - text: Dead Letters
+  - link "DAPR":
+    - /url: /dapr
+    - text: DAPR
+  - link "Projections":
+    - /url: /projections
+    - text: Projections
+  - link "Types":
+    - /url: /types
+    - text: Types
+  - link "Services":
+    - /url: /services
+    - text: Services
+  - link "Tenants":
+    - /url: /tenants
+    - text: Tenants
+  - link "Storage":
+    - /url: /storage
+    - text: Storage
+  - link "Snapshots":
+    - /url: /snapshots
+    - text: Snapshots
+  - link "Compaction":
+    - /url: /compaction
+    - text: Compaction
+  - link "Backups":
+    - /url: /backups
+    - text: Backups
+  - link "Consistency":
+    - /url: /consistency
+    - text: Consistency
+  - link "Settings":
+    - /url: /settings
+    - text: Settings
+  - button "Topology":
+    - text: Topology
+  - button "No tenants"
+- navigation "Breadcrumb":
+  - link "Home":
+    - /url: /
+  - generic: /
+  - generic: Backups
+  - button "Copy page URL to clipboard":
+- main:
+  - heading "Backups" [active] [level=1]
+  - generic "Create backup":
+    - generic: Create Backup
+  - generic "Export stream":
+    - generic: Export Stream
+  - generic "Import stream":
+    - generic: Import Stream
+  - generic "Refresh backup jobs":
+    - generic: Refresh
+  - generic "Filter by tenant ID":
+    - textbox:
+      - /placeholder: Filter by tenant ID...
+  - 'group "Active Backups: 0"':
+    - generic: Active Backups
+    - generic: "0"
+  - 'group "Completed (30d): 0"':
+    - generic: Completed (30d)
+    - generic: "0"
+  - 'group "Total Backup Size: N/A"':
+    - generic: Total Backup Size
+    - generic: N/A
+  - 'group "Last Successful: Never"':
+    - generic: Last Successful
+    - generic: Never
+  - heading "No backups" [level=2]
+  - paragraph: Create a backup to protect your event store data.
+- generic "Command palette"

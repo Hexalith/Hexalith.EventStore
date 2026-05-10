@@ -1,5 +1,3 @@
-using System.Net;
-
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
@@ -18,11 +16,8 @@ namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 public class DaprBackupCommandServiceTests {
     private const string EventStoreAppId = "eventstore";
 
-    private static (DaprBackupCommandService Service, TestHttpMessageHandler Handler) CreateService(
-        DaprClient? daprClient = null,
-        IAdminAuthContext? authContext = null) {
-        daprClient ??= Substitute.For<DaprClient>();
-        authContext ??= new NullAdminAuthContext();
+    private static (DaprBackupCommandService Service, TestHttpMessageHandler Handler) CreateService() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             EventStoreAppId = EventStoreAppId,
             ServiceInvocationTimeoutSeconds = 30,
@@ -37,208 +32,73 @@ public class DaprBackupCommandServiceTests {
             daprClient,
             httpClientFactory,
             options,
-            authContext,
+            new NullAdminAuthContext(),
             NullLogger<DaprBackupCommandService>.Instance);
 
         return (service, handler);
     }
 
-    // === TriggerBackupAsync ===
-
     [Fact]
-    public async Task TriggerBackupAsync_ReturnsSuccess_WhenEventStoreResponds() {
-        var expected = new AdminOperationResult(true, "op-1", "Backup started", null);
+    public async Task TriggerBackupAsync_ReturnsDeferred_WithoutCallingEventStore() {
         (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.TriggerBackupAsync("tenant-a", "nightly", true);
 
-        result.Success.ShouldBeTrue();
-        result.OperationId.ShouldBe("op-1");
-    }
-
-    [Fact]
-    public async Task TriggerBackupAsync_ForwardsJwtToken() {
-        IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
-        _ = authContext.GetToken().Returns("backup-token");
-
-        (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService(authContext: authContext);
-        handler.SetupJsonResponse(new AdminOperationResult(true, "op-1", null, null));
-
-        _ = await service.TriggerBackupAsync("tenant-a", null, false);
-
-        _ = handler.LastRequest.ShouldNotBeNull();
-        handler.LastRequest!.Headers.Authorization!.Parameter.ShouldBe("backup-token");
-    }
-
-    [Fact]
-    public async Task TriggerBackupAsync_ReturnsError_WhenServiceUnavailable() {
-        (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupException(new InvalidOperationException("EventStore down"));
-
-        AdminOperationResult result = await service.TriggerBackupAsync("tenant-a", null, true);
-
         result.Success.ShouldBeFalse();
-        _ = result.ErrorCode.ShouldNotBeNull();
+        result.OperationId.ShouldBe("deferred-backup-trigger");
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("Backup creation is deferred");
+        handler.RequestCount.ShouldBe(0);
     }
 
     [Fact]
-    public async Task TriggerBackupAsync_ReturnsNullResponseError_WhenEventStoreReturnsNull() {
+    public async Task ValidateBackupAsync_ReturnsDeferred_WithoutCallingEventStore() {
         (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupNullJsonResponse();
-
-        AdminOperationResult result = await service.TriggerBackupAsync("tenant-a", null, true);
-
-        result.Success.ShouldBeFalse();
-        result.ErrorCode.ShouldBe("NULL_RESPONSE");
-    }
-
-    [Fact]
-    public async Task TriggerBackupAsync_PropagatesCancellation() {
-        using CancellationTokenSource cts = new();
-        await cts.CancelAsync();
-
-        (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupException(new OperationCanceledException());
-
-        _ = await Should.ThrowAsync<OperationCanceledException>(
-            () => service.TriggerBackupAsync("tenant-a", null, true, cts.Token));
-    }
-
-    // === ValidateBackupAsync ===
-
-    [Fact]
-    public async Task ValidateBackupAsync_ReturnsSuccess_WhenBackupValid() {
-        var expected = new AdminOperationResult(true, "op-2", "Backup valid", null);
-        (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupJsonResponse(expected);
-
-        AdminOperationResult result = await service.ValidateBackupAsync("backup-123");
-
-        result.Success.ShouldBeTrue();
-    }
-
-    [Fact]
-    public async Task ValidateBackupAsync_ReturnsError_WhenServiceUnavailable() {
-        (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupException(new HttpRequestException("Connection refused"));
 
         AdminOperationResult result = await service.ValidateBackupAsync("backup-123");
 
         result.Success.ShouldBeFalse();
-    }
-
-    // === TriggerRestoreAsync ===
-
-    [Fact]
-    public async Task TriggerRestoreAsync_ReturnsSuccess_WithPointInTimeAndDryRun() {
-        var expected = new AdminOperationResult(true, "op-3", "Restore started", null);
-        (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupJsonResponse(expected);
-
-        AdminOperationResult result = await service.TriggerRestoreAsync(
-            "backup-123",
-            DateTimeOffset.UtcNow.AddHours(-1),
-            dryRun: true);
-
-        result.Success.ShouldBeTrue();
+        result.OperationId.ShouldBe("deferred-backup-validate");
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("Backup validation is deferred");
+        handler.RequestCount.ShouldBe(0);
     }
 
     [Fact]
-    public async Task TriggerRestoreAsync_ReturnsError_WhenServiceUnavailable() {
+    public async Task TriggerRestoreAsync_ReturnsDeferred_WithoutCallingEventStore() {
         (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupException(new InvalidOperationException("EventStore down"));
 
-        AdminOperationResult result = await service.TriggerRestoreAsync("backup-123", null, false);
+        AdminOperationResult result = await service.TriggerRestoreAsync("backup-123", null, dryRun: true);
 
         result.Success.ShouldBeFalse();
-    }
-
-    // === ExportStreamAsync ===
-
-    [Fact]
-    public async Task ExportStreamAsync_ReturnsResult_WhenEventStoreResponds() {
-        var expected = new StreamExportResult(true, "tenant-a", "Counter", "counter-1", 42, "{}", "export.json", null);
-        (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupJsonResponse(expected);
-
-        StreamExportResult result = await service.ExportStreamAsync(
-            new StreamExportRequest("tenant-a", "Counter", "counter-1"));
-
-        result.Success.ShouldBeTrue();
-        result.EventCount.ShouldBe(42);
+        result.OperationId.ShouldBe("deferred-backup-restore");
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("Restore is deferred");
+        handler.RequestCount.ShouldBe(0);
     }
 
     [Fact]
-    public async Task ExportStreamAsync_ReturnsError_WhenEventStoreReturnsNull() {
+    public async Task ExportStreamAsync_ReturnsDeferredResult_WithoutCallingEventStore() {
         (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupNullJsonResponse();
 
-        StreamExportResult result = await service.ExportStreamAsync(
-            new StreamExportRequest("tenant-a", "Counter", "counter-1"));
+        StreamExportResult result = await service.ExportStreamAsync(new StreamExportRequest("tenant-a", "Counter", "counter-1"));
 
         result.Success.ShouldBeFalse();
-        result.ErrorMessage!.ShouldContain("Null response");
+        result.EventCount.ShouldBe(0);
+        result.ErrorMessage!.ShouldContain("Stream export is deferred");
+        handler.RequestCount.ShouldBe(0);
     }
 
     [Fact]
-    public async Task ExportStreamAsync_ReturnsError_WhenServiceUnavailable() {
+    public async Task ImportStreamAsync_ReturnsDeferred_WithoutCallingEventStore() {
         (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupException(new HttpRequestException("Connection refused"));
 
-        StreamExportResult result = await service.ExportStreamAsync(
-            new StreamExportRequest("tenant-a", "Counter", "counter-1"));
+        AdminOperationResult result = await service.ImportStreamAsync("tenant-a", """{"Events":[]}""");
 
         result.Success.ShouldBeFalse();
-        _ = result.ErrorMessage.ShouldNotBeNull();
-    }
-
-    [Fact]
-    public async Task ExportStreamAsync_PropagatesCancellation() {
-        using CancellationTokenSource cts = new();
-        await cts.CancelAsync();
-
-        (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupException(new OperationCanceledException());
-
-        _ = await Should.ThrowAsync<OperationCanceledException>(
-            () => service.ExportStreamAsync(
-                new StreamExportRequest("tenant-a", "Counter", "counter-1"), cts.Token));
-    }
-
-    // === ImportStreamAsync ===
-
-    [Fact]
-    public async Task ImportStreamAsync_ReturnsSuccess_WhenEventStoreAccepts() {
-        var expected = new AdminOperationResult(true, "op-4", "Import complete", null);
-        (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupJsonResponse(expected);
-
-        AdminOperationResult result = await service.ImportStreamAsync("tenant-a", "{events:[]}");
-
-        result.Success.ShouldBeTrue();
-    }
-
-    [Fact]
-    public async Task ImportStreamAsync_ReturnsError_WhenServiceUnavailable() {
-        (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupException(new InvalidOperationException("EventStore down"));
-
-        AdminOperationResult result = await service.ImportStreamAsync("tenant-a", "{events:[]}");
-
-        result.Success.ShouldBeFalse();
-    }
-
-    // === Error code extraction ===
-
-    [Fact]
-    public async Task InvokePost_ExtractsHttpStatusCode_FromHttpRequestException() {
-        (DaprBackupCommandService service, TestHttpMessageHandler handler) = CreateService();
-        handler.SetupErrorResponse(HttpStatusCode.NotFound);
-
-        AdminOperationResult result = await service.TriggerBackupAsync("tenant-a", null, true);
-
-        result.Success.ShouldBeFalse();
-        result.ErrorCode.ShouldBe("404");
+        result.OperationId.ShouldBe("deferred-backup-import-stream");
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("Stream import is deferred");
+        handler.RequestCount.ShouldBe(0);
     }
 }

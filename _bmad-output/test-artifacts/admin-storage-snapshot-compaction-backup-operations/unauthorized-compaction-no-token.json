@@ -1,0 +1,11 @@
+{
+  "name": "unauthorized-compaction-no-token",
+  "method": "Post",
+  "url": "http://localhost:8090/api/v1/admin/storage/tenant-a/compact?domain=counter",
+  "statusCode": 401,
+  "startedAt": "2026-05-10T13:24:15.4648551+02:00",
+  "completedAt": "2026-05-10T13:24:15.5153632+02:00",
+  "requestBody": null,
+  "response": "",
+  "error": null
+}

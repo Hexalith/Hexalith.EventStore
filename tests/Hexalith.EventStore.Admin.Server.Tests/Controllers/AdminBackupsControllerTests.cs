@@ -120,8 +120,20 @@ public class AdminBackupsControllerTests {
 
         IActionResult result = await _sut.TriggerBackup("tenant-a", null, true);
 
-        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
-        objectResult.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
+        OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
+        okResult.Value.ShouldBe(failed);
+    }
+
+    [Fact]
+    public async Task TriggerBackup_ReturnsOkWithTypedResult_WhenOperationDeferred() {
+        var expected = new AdminOperationResult(false, "deferred-backup-trigger", "Backup creation is deferred.", "Deferred");
+        _ = _commandService.TriggerBackupAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        IActionResult result = await _sut.TriggerBackup("tenant-a", null, true);
+
+        OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
+        okResult.Value.ShouldBe(expected);
     }
 
     [Fact]
@@ -173,6 +185,37 @@ public class AdminBackupsControllerTests {
 
         AcceptedResult acceptedResult = result.ShouldBeOfType<AcceptedResult>();
         acceptedResult.Value.ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData("Deferred")]
+    [InlineData("RejectedValidation")]
+    [InlineData("RejectedUnauthorized")]
+    [InlineData("NotFound")]
+    [InlineData("UpstreamUnavailable")]
+    [InlineData("UnsupportedBackend")]
+    [InlineData("UnexpectedError")]
+    public async Task ValidateBackup_ReturnsOkWithTypedOperationOutcome(string errorCode) {
+        var expected = new AdminOperationResult(false, $"op-{errorCode}", $"{errorCode} outcome", errorCode);
+        _ = _commandService.ValidateBackupAsync("backup-123", Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        IActionResult result = await _sut.ValidateBackup("backup-123");
+
+        OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
+        okResult.Value.ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task TriggerRestore_ReturnsOkWithTypedResult_WhenOperationDeferred() {
+        var expected = new AdminOperationResult(false, "deferred-backup-restore", "Restore is deferred.", "Deferred");
+        _ = _commandService.TriggerRestoreAsync("backup-123", Arg.Any<DateTimeOffset?>(), false, Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        IActionResult result = await _sut.TriggerRestore("backup-123", null, false);
+
+        OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
+        okResult.Value.ShouldBe(expected);
     }
 
     [Fact]
@@ -249,6 +292,18 @@ public class AdminBackupsControllerTests {
 
         IActionResult result = await _sut.ImportStream("tenant-a", "{}");
         _ = result.ShouldBeOfType<AcceptedResult>();
+    }
+
+    [Fact]
+    public async Task ImportStream_ReturnsOkWithTypedResult_WhenOperationDeferred() {
+        var expected = new AdminOperationResult(false, "deferred-backup-import-stream", "Stream import is deferred.", "Deferred");
+        _ = _commandService.ImportStreamAsync("tenant-a", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        IActionResult result = await _sut.ImportStream("tenant-a", "{}");
+
+        OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
+        okResult.Value.ShouldBe(expected);
     }
 
     [Fact]

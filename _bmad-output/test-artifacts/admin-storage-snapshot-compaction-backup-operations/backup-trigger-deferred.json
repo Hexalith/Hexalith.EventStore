@@ -1,0 +1,16 @@
+{
+  "name": "backup-trigger-deferred",
+  "method": "Post",
+  "url": "http://localhost:8090/api/v1/admin/backups/tenant-a?includeSnapshots=true",
+  "statusCode": 200,
+  "startedAt": "2026-05-10T13:24:15.3843573+02:00",
+  "completedAt": "2026-05-10T13:24:15.3966054+02:00",
+  "requestBody": null,
+  "response": {
+    "success": false,
+    "message": "Backup creation is deferred. EventStore does not yet have an approved backup engine and manifest model.",
+    "errorCode": "Deferred",
+    "operationId": "deferred-backup-trigger"
+  },
+  "error": null
+}

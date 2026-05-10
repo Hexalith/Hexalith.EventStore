@@ -51,12 +51,71 @@ public class AdminStorageControllerTests {
     }
 
     [Fact]
+    public async Task TriggerCompaction_ReturnsOkWithTypedResult_WhenOperationDeferred() {
+        var expected = new AdminOperationResult(false, "deferred-compaction", "Compaction is deferred.", "Deferred");
+        _ = _commandService.TriggerCompactionAsync("tenant-a", null, Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        IActionResult result = await _sut.TriggerCompaction("tenant-a", null);
+
+        OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
+        okResult.Value.ShouldBe(expected);
+    }
+
+    [Fact]
     public async Task CreateSnapshot_DelegatesToCommandService() {
         var expected = new AdminOperationResult(true, "op-2", "Snapshot created", null);
         _ = _commandService.CreateSnapshotAsync("tenant-a", "domain1", "agg1", Arg.Any<CancellationToken>())
             .Returns(expected);
 
         IActionResult result = await _sut.CreateSnapshot("tenant-a", "domain1", "agg1");
+
+        OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
+        okResult.Value.ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task CreateSnapshot_ReturnsOkWithTypedResult_WhenOperationDeferred() {
+        var expected = new AdminOperationResult(false, "deferred-manual-snapshot", "Manual snapshot creation is deferred.", "Deferred");
+        _ = _commandService.CreateSnapshotAsync("tenant-a", "domain1", "agg1", Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        IActionResult result = await _sut.CreateSnapshot("tenant-a", "domain1", "agg1");
+
+        OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
+        okResult.Value.ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData("RejectedValidation")]
+    [InlineData("RejectedUnauthorized")]
+    [InlineData("NotFound")]
+    [InlineData("UpstreamUnavailable")]
+    [InlineData("UnsupportedBackend")]
+    [InlineData("UnexpectedError")]
+    public async Task SetSnapshotPolicy_ReturnsOkWithTypedOperationOutcome(string errorCode) {
+        var expected = new AdminOperationResult(false, $"op-{errorCode}", $"{errorCode} outcome", errorCode);
+        _ = _commandService.SetSnapshotPolicyAsync(
+                "tenant-a",
+                "domain1",
+                "aggType",
+                100,
+                Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        IActionResult result = await _sut.SetSnapshotPolicy("tenant-a", "domain1", "aggType", 100);
+
+        OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
+        okResult.Value.ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task DeleteSnapshotPolicy_ReturnsOkWithTypedResult_WhenOperationDeferred() {
+        var expected = new AdminOperationResult(false, "deferred-snapshot-policy-delete", "Snapshot policy deletion is deferred.", "Deferred");
+        _ = _commandService.DeleteSnapshotPolicyAsync("tenant-a", "domain1", "aggType", Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        IActionResult result = await _sut.DeleteSnapshotPolicy("tenant-a", "domain1", "aggType");
 
         OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         okResult.Value.ShouldBe(expected);

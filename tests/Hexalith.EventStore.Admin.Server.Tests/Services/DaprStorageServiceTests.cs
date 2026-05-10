@@ -197,70 +197,69 @@ public class DaprStorageServiceTests {
     }
 
     [Fact]
-    public async Task TriggerCompactionAsync_DelegatesToEventStore() {
-        var expected = new AdminOperationResult(true, "op-1", null, null);
+    public async Task TriggerCompactionAsync_ReturnsDeferred_WithoutCallingEventStore() {
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
-        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.TriggerCompactionAsync("tenant1", "orders");
 
-        result.Success.ShouldBeTrue();
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("Compaction is deferred");
+        handler.RequestCount.ShouldBe(0);
     }
 
     [Fact]
-    public async Task CreateSnapshotAsync_DelegatesToEventStore() {
-        var expected = new AdminOperationResult(true, "op-1", null, null);
+    public async Task CreateSnapshotAsync_ReturnsDeferred_WithoutCallingEventStore() {
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
-        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.CreateSnapshotAsync("tenant1", "orders", "order-1");
 
-        result.Success.ShouldBeTrue();
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("Manual snapshot creation is deferred");
+        handler.RequestCount.ShouldBe(0);
     }
 
     [Fact]
-    public async Task TriggerCompactionAsync_ReturnsFailure_WhenExceptionThrown() {
+    public async Task TriggerCompactionAsync_DoesNotInvokeEventStore_WhenHandlerWouldThrow() {
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
         handler.SetupException(new InvalidOperationException("Timeout"));
 
         AdminOperationResult result = await service.TriggerCompactionAsync("tenant1", null);
 
         result.Success.ShouldBeFalse();
-        result.Message!.ShouldContain("Timeout");
+        result.ErrorCode.ShouldBe("Deferred");
+        handler.RequestCount.ShouldBe(0);
     }
 
     [Fact]
-    public async Task SetSnapshotPolicyAsync_DelegatesToEventStore() {
+    public async Task SetSnapshotPolicyAsync_ReturnsDeferred_WithoutCallingEventStore() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
         _ = authContext.GetToken().Returns("storage-token");
 
-        var expected = new AdminOperationResult(true, "op-1", null, null);
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService(daprClient, authContext);
-        handler.SetupJsonResponse(expected);
 
         AdminOperationResult result = await service.SetSnapshotPolicyAsync("tenant1", "orders", "OrderAggregate", 100);
 
-        result.Success.ShouldBeTrue();
-        _ = handler.LastRequest.ShouldNotBeNull();
-        handler.LastRequest!.Method.ShouldBe(HttpMethod.Put);
-        _ = handler.LastRequest.RequestUri.ShouldNotBeNull();
-        handler.LastRequest.RequestUri!.ToString().ShouldContain("api/v1/admin/storage/snapshot-policy");
-        _ = handler.LastRequest.Headers.Authorization.ShouldNotBeNull();
-        handler.LastRequest.Headers.Authorization!.Scheme.ShouldBe("Bearer");
-        handler.LastRequest.Headers.Authorization.Parameter.ShouldBe("storage-token");
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("Snapshot policy changes are deferred");
+        handler.RequestCount.ShouldBe(0);
     }
 
     [Fact]
-    public async Task TriggerCompactionAsync_PropagatesCancellation() {
+    public async Task TriggerCompactionAsync_ReturnsDeferred_WhenCancellationAlreadyRequested() {
         using CancellationTokenSource cts = new();
         await cts.CancelAsync();
 
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
-        handler.SetupException(new OperationCanceledException());
 
-        _ = await Should.ThrowAsync<OperationCanceledException>(
-            () => service.TriggerCompactionAsync("tenant1", null, cts.Token));
+        AdminOperationResult result = await service.TriggerCompactionAsync("tenant1", null, cts.Token);
+
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("Deferred");
+        handler.RequestCount.ShouldBe(0);
     }
 
     [Fact]
@@ -272,14 +271,15 @@ public class DaprStorageServiceTests {
     }
 
     [Fact]
-    public async Task SetSnapshotPolicyAsync_MapsHttpStatusCode_WhenRequestFails() {
+    public async Task SetSnapshotPolicyAsync_ReturnsDeferred_WhenHandlerWouldReturnForbidden() {
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
         handler.SetupErrorResponse(HttpStatusCode.Forbidden);
 
         AdminOperationResult result = await service.SetSnapshotPolicyAsync("tenant1", "orders", "OrderAggregate", 100);
 
         result.Success.ShouldBeFalse();
-        result.ErrorCode.ShouldBe("403");
+        result.ErrorCode.ShouldBe("Deferred");
+        handler.RequestCount.ShouldBe(0);
     }
 
     [Fact]

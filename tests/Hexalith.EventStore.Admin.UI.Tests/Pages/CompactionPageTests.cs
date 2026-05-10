@@ -3,6 +3,7 @@ using Bunit;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.UI.Pages;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
+using Hexalith.EventStore.Admin.UI.Tests.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -225,6 +226,41 @@ public class CompactionPageTests : AdminUITestContext {
         // Assert — API was called
         _ = await _mockCompactionApi.Received(1).TriggerCompactionAsync(
             "test-tenant", Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CompactionPage_TriggerDialog_ShowsDeferredToastAndClearsBusyState() {
+        SetupJobs([]);
+        const string deferredMessage = "Compaction is deferred.";
+        _ = _mockCompactionApi.TriggerCompactionAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
+                false,
+                "deferred-compaction",
+                deferredMessage,
+                "Deferred")));
+
+        IRenderedComponent<Compaction> cut = Render<Compaction>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Trigger Compaction"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> triggerBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Trigger Compaction"));
+        await triggerBtn.InvokeAsync(triggerBtn.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Compaction"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentTextInput> tenantField = cut.FindComponents<FluentTextInput>()
+            .First(f => f.Markup.Contains("Tenant ID"));
+        await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("test-tenant"));
+
+        IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Start Compaction"));
+        await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
+
+        TestToastService toastService = Services.GetRequiredService<TestToastService>();
+        ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
+        toastOptions.Body.ShouldBe(deferredMessage);
+        cut.Markup.ShouldContain("Start Compaction");
+        startBtn.Instance.Disabled.ShouldBeFalse();
     }
 
     [Fact]

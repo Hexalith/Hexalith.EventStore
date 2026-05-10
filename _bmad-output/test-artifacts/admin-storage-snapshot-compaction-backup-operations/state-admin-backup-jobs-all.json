@@ -1,0 +1,11 @@
+{
+  "name": "state-admin-backup-jobs-all",
+  "method": "Get",
+  "url": "http://localhost:55105/v1.0/state/statestore/admin%3Abackup-jobs%3Aall",
+  "statusCode": 204,
+  "startedAt": "2026-05-10T13:24:15.5730868+02:00",
+  "completedAt": "2026-05-10T13:24:15.5770183+02:00",
+  "requestBody": null,
+  "response": "",
+  "error": null
+}

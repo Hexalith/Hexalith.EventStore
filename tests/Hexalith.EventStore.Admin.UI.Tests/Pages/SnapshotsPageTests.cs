@@ -3,6 +3,7 @@ using Bunit;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.UI.Pages;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
+using Hexalith.EventStore.Admin.UI.Tests.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -206,6 +207,45 @@ public class SnapshotsPageTests : AdminUITestContext {
         cut.Markup.ShouldContain("Create Snapshot Policy");
         _ = await _mockSnapshotApi.Received(1).SetSnapshotPolicyAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SnapshotsPage_CreateSnapshotDialog_ShowsDeferredToastAndClearsBusyState() {
+        SetupPolicies([]);
+        const string deferredMessage = "Manual snapshot creation is deferred.";
+        _ = _mockSnapshotApi.CreateSnapshotAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
+                false,
+                "deferred-manual-snapshot",
+                deferredMessage,
+                "Deferred")));
+
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Snapshot"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> openButton = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Create Snapshot"));
+        await openButton.InvokeAsync(openButton.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Aggregate ID"), TimeSpan.FromSeconds(5));
+
+        IReadOnlyList<IRenderedComponent<FluentTextInput>> fields = cut.FindComponents<FluentTextInput>();
+        await fields.First(f => f.Markup.Contains("Tenant ID")).InvokeAsync(
+            () => fields.First(f => f.Markup.Contains("Tenant ID")).Instance.ValueChanged.InvokeAsync("tenant-a"));
+        await fields.First(f => f.Markup.Contains("Domain")).InvokeAsync(
+            () => fields.First(f => f.Markup.Contains("Domain")).Instance.ValueChanged.InvokeAsync("Counter"));
+        await fields.First(f => f.Markup.Contains("Aggregate ID")).InvokeAsync(
+            () => fields.First(f => f.Markup.Contains("Aggregate ID")).Instance.ValueChanged.InvokeAsync("counter-1"));
+
+        IRenderedComponent<FluentButton> submitButton = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("<span>Create Snapshot</span>"));
+        await submitButton.InvokeAsync(submitButton.Instance.OnClick.InvokeAsync);
+
+        TestToastService toastService = Services.GetRequiredService<TestToastService>();
+        ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
+        toastOptions.Body.ShouldBe(deferredMessage);
+        cut.Markup.ShouldContain("Create Snapshot");
+        submitButton.Instance.Disabled.ShouldBeFalse();
     }
 
     [Fact]

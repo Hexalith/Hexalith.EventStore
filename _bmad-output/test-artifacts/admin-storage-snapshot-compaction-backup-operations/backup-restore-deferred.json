@@ -1,0 +1,16 @@
+{
+  "name": "backup-restore-deferred",
+  "method": "Post",
+  "url": "http://localhost:8090/api/v1/admin/backups/backup-1/restore?dryRun=true",
+  "statusCode": 200,
+  "startedAt": "2026-05-10T13:24:15.4125098+02:00",
+  "completedAt": "2026-05-10T13:24:15.4241383+02:00",
+  "requestBody": null,
+  "response": {
+    "success": false,
+    "message": "Restore is deferred. EventStore needs an approved safe restore namespace, idempotency rule, tenant isolation rule, and audit model before this operation can run.",
+    "errorCode": "Deferred",
+    "operationId": "deferred-backup-restore"
+  },
+  "error": null
+}

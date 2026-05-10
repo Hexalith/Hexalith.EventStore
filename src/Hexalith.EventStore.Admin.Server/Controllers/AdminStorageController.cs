@@ -272,6 +272,10 @@ public class AdminStorageController(
             return Ok(result);
         }
 
+        if (IsTypedBusinessOutcome(result.ErrorCode)) {
+            return Ok(result);
+        }
+
         return result.ErrorCode switch {
             "NotFound" => CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", result.Message),
             "Unauthorized" => CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", result.Message),
@@ -289,6 +293,10 @@ public class AdminStorageController(
             return Accepted(result);
         }
 
+        if (IsTypedBusinessOutcome(result.ErrorCode)) {
+            return Ok(result);
+        }
+
         return result.ErrorCode switch {
             "NotFound" => CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", result.Message),
             "Unauthorized" => CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", result.Message),
@@ -304,6 +312,16 @@ public class AdminStorageController(
                 Grpc.Core.StatusCode.DeadlineExceeded or
                 Grpc.Core.StatusCode.Aborted or
                 Grpc.Core.StatusCode.ResourceExhausted);
+
+    private static bool IsTypedBusinessOutcome(string? errorCode)
+        => errorCode is "Deferred"
+            or "Blocked"
+            or "RejectedValidation"
+            or "RejectedUnauthorized"
+            or "NotFound"
+            or "UpstreamUnavailable"
+            or "UnsupportedBackend"
+            or "UnexpectedError";
 
     private ObjectResult ServiceUnavailable(string method, Exception ex) {
         logger.LogError(ex, "Admin service unavailable: {Method}", method);

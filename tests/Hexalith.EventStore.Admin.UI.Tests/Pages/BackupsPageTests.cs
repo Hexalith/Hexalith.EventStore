@@ -3,6 +3,7 @@ using Bunit;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.UI.Pages;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
+using Hexalith.EventStore.Admin.UI.Tests.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -220,6 +221,41 @@ public class BackupsPageTests : AdminUITestContext {
         // Assert — API was called (failure toast is handled by toast service)
         _ = await _mockBackupApi.Received(1).TriggerBackupAsync(
             "test-tenant", Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task BackupsPage_CreateDialog_ShowsDeferredToastAndClearsBusyState() {
+        SetupJobs([]);
+        const string deferredMessage = "Backup creation is deferred.";
+        _ = _mockBackupApi.TriggerBackupAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
+                false,
+                "deferred-backup-trigger",
+                deferredMessage,
+                "Deferred")));
+
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Backup"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> createBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Create Backup"));
+        await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Backup"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentTextInput> tenantField = cut.FindComponents<FluentTextInput>()
+            .First(f => f.Markup.Contains("Tenant ID"));
+        await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("test-tenant"));
+
+        IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Start Backup"));
+        await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
+
+        TestToastService toastService = Services.GetRequiredService<TestToastService>();
+        ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
+        toastOptions.Body.ShouldBe(deferredMessage);
+        cut.Markup.ShouldContain("Start Backup");
+        startBtn.Instance.Disabled.ShouldBeFalse();
     }
 
     [Fact]

@@ -1,0 +1,16 @@
+{
+  "name": "import-stream-deferred",
+  "method": "Post",
+  "url": "http://localhost:8090/api/v1/admin/backups/import-stream?tenantId=tenant-a",
+  "statusCode": 200,
+  "startedAt": "2026-05-10T13:24:15.4501827+02:00",
+  "completedAt": "2026-05-10T13:24:15.4627239+02:00",
+  "requestBody": "\"{\\\"TenantId\\\":\\\"tenant-a\\\",\\\"Domain\\\":\\\"counter\\\",\\\"AggregateId\\\":\\\"counter-1\\\",\\\"Events\\\":[]}\"",
+  "response": {
+    "success": false,
+    "message": "Stream import is deferred. EventStore needs approved payload validation, idempotency, target namespace, and audit rules before this operation can run.",
+    "errorCode": "Deferred",
+    "operationId": "deferred-backup-import-stream"
+  },
+  "error": null
+}

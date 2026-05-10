@@ -1,5 +1,6 @@
 using System.Net;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
 using Hexalith.EventStore.Testing.Http;
@@ -41,5 +42,79 @@ public class AdminBackupApiClientTests {
 
         _ = await Should.ThrowAsync<ServiceUnavailableException>(
             () => client.GetBackupJobsAsync());
+    }
+
+    [Fact]
+    public async Task TriggerBackupAsync_ReturnsDeferredResult_WhenApiReturnsTypedOutcome() {
+        string json = """{"success":false,"operationId":"deferred-backup-trigger","message":"Backup creation is deferred.","errorCode":"Deferred"}""";
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
+
+        AdminBackupApiClient client = CreateClient(httpClient);
+
+        AdminOperationResult? result = await client.TriggerBackupAsync("tenant-a");
+
+        _ = result.ShouldNotBeNull();
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("deferred");
+    }
+
+    [Fact]
+    public async Task ValidateBackupAsync_ReturnsDeferredResult_WhenApiReturnsTypedOutcome() {
+        string json = """{"success":false,"operationId":"deferred-backup-validate","message":"Backup validation is deferred.","errorCode":"Deferred"}""";
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
+
+        AdminBackupApiClient client = CreateClient(httpClient);
+
+        AdminOperationResult? result = await client.ValidateBackupAsync("backup-1");
+
+        _ = result.ShouldNotBeNull();
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("deferred");
+    }
+
+    [Fact]
+    public async Task TriggerRestoreAsync_ReturnsDeferredResult_WhenApiReturnsTypedOutcome() {
+        string json = """{"success":false,"operationId":"deferred-backup-restore","message":"Restore is deferred.","errorCode":"Deferred"}""";
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
+
+        AdminBackupApiClient client = CreateClient(httpClient);
+
+        AdminOperationResult? result = await client.TriggerRestoreAsync("backup-1", dryRun: true);
+
+        _ = result.ShouldNotBeNull();
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("deferred");
+    }
+
+    [Fact]
+    public async Task ExportStreamAsync_ReturnsDeferredResult_WhenApiReturnsTypedExportFailure() {
+        string json = """{"success":false,"tenantId":"tenant-a","domain":"Counter","aggregateId":"counter-1","eventCount":0,"content":null,"fileName":null,"errorMessage":"Stream export is deferred."}""";
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
+
+        AdminBackupApiClient client = CreateClient(httpClient);
+
+        StreamExportResult? result = await client.ExportStreamAsync(new StreamExportRequest("tenant-a", "Counter", "counter-1"));
+
+        _ = result.ShouldNotBeNull();
+        result.Success.ShouldBeFalse();
+        result.ErrorMessage!.ShouldContain("deferred");
+    }
+
+    [Fact]
+    public async Task ImportStreamAsync_ReturnsDeferredResult_WhenApiReturnsTypedOutcome() {
+        string json = """{"success":false,"operationId":"deferred-backup-import-stream","message":"Stream import is deferred.","errorCode":"Deferred"}""";
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
+
+        AdminBackupApiClient client = CreateClient(httpClient);
+
+        AdminOperationResult? result = await client.ImportStreamAsync("tenant-a", """{"Events":[]}""");
+
+        _ = result.ShouldNotBeNull();
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("Deferred");
+        result.Message!.ShouldContain("deferred");
     }
 }

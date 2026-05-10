@@ -1,0 +1,16 @@
+{
+  "name": "compaction-deferred",
+  "method": "Post",
+  "url": "http://localhost:8090/api/v1/admin/storage/tenant-a/compact?domain=counter",
+  "statusCode": 200,
+  "startedAt": "2026-05-10T13:24:15.3716853+02:00",
+  "completedAt": "2026-05-10T13:24:15.3825507+02:00",
+  "requestBody": null,
+  "response": {
+    "success": false,
+    "message": "Compaction is deferred. EventStore write-once event keys require an approved non-destructive compaction model before this operation can run.",
+    "errorCode": "Deferred",
+    "operationId": "deferred-compaction"
+  },
+  "error": null
+}

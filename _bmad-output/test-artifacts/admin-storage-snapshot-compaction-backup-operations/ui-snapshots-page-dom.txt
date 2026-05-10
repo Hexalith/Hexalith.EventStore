@@ -1,0 +1,96 @@
+- link "Skip to main content":
+  - /url: "#main-content"
+- generic: Hexalith EventStore Admin
+- 'generic "Connection status: Connected"':
+  - generic: Connected
+- generic: Healthy
+- generic "Development role":
+  - combobox: Admin
+- generic: "Role: Admin"
+- generic: Development role Admin selected.
+- generic "Switch to light theme":
+  - generic: ⚙
+- navigation "Main navigation":
+  - link "Home":
+    - /url: /
+    - text: Home
+  - link "Commands":
+    - /url: /commands
+    - text: Commands
+  - link "Events":
+    - /url: /events
+    - text: Events
+  - link "Streams":
+    - /url: /streams
+    - text: Streams
+  - link "Health":
+    - /url: /health
+    - text: Health
+  - link "Dead Letters":
+    - /url: /health/dead-letters
+    - text: Dead Letters
+  - link "DAPR":
+    - /url: /dapr
+    - text: DAPR
+  - link "Projections":
+    - /url: /projections
+    - text: Projections
+  - link "Types":
+    - /url: /types
+    - text: Types
+  - link "Services":
+    - /url: /services
+    - text: Services
+  - link "Tenants":
+    - /url: /tenants
+    - text: Tenants
+  - link "Storage":
+    - /url: /storage
+    - text: Storage
+  - link "Snapshots":
+    - /url: /snapshots
+    - text: Snapshots
+  - link "Compaction":
+    - /url: /compaction
+    - text: Compaction
+  - link "Backups":
+    - /url: /backups
+    - text: Backups
+  - link "Consistency":
+    - /url: /consistency
+    - text: Consistency
+  - link "Settings":
+    - /url: /settings
+    - text: Settings
+  - button "Topology":
+    - text: Topology
+  - button "No tenants"
+- navigation "Breadcrumb":
+  - link "Home":
+    - /url: /
+  - generic: /
+  - generic: Snapshots
+  - button "Copy page URL to clipboard":
+- main:
+  - heading "Snapshots" [active] [level=1]
+  - generic "Add snapshot policy":
+    - generic: Add Policy
+  - generic "Create snapshot for aggregate":
+    - generic: Create Snapshot
+  - generic "Refresh snapshot policies":
+    - generic: Refresh
+  - generic "Filter by tenant ID":
+    - textbox:
+      - /placeholder: Filter by tenant ID...
+  - 'group "Total Policies: 0"':
+    - generic: Total Policies
+    - generic: "0"
+  - 'group "Tenants Covered: 0"':
+    - generic: Tenants Covered
+    - generic: "0"
+  - 'group "Avg Interval: N/A"':
+    - generic: Avg Interval
+    - generic: N/A
+  - heading "No snapshot policies configured" [level=2]
+  - paragraph: Create an auto-snapshot policy to automatically snapshot aggregates after a specified number of events.
+- generic "Command palette"
