@@ -95,6 +95,44 @@ public class ConsistencyPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public async Task Consistency_RefreshUpdatesStatCardSecondaryText_FromCurrentSummary() {
+        // Arrange
+        _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult<IReadOnlyList<ConsistencyCheckSummary>>([]),
+                Task.FromResult<IReadOnlyList<ConsistencyCheckSummary>>([
+                    CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 3),
+                    CreateSummary("check-2", "tenant-a", ConsistencyCheckStatus.Running, 10, 0),
+                ]));
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => (FindStatCard(cut, "Total Checks").GetAttribute("aria-label") ?? string.Empty).ShouldContain("Total Checks: 0"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> refreshButton = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Refresh"));
+        await refreshButton.InvokeAsync(refreshButton.Instance.OnClick.InvokeAsync);
+
+        // Assert
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement totalCard = FindStatCard(cut, "Total Checks");
+            AngleSharp.Dom.IElement lastCard = FindStatCard(cut, "Last Check");
+            AngleSharp.Dom.IElement anomaliesCard = FindStatCard(cut, "Total Anomalies");
+            AngleSharp.Dom.IElement runningCard = FindStatCard(cut, "Running Now");
+
+            totalCard.TextContent.ShouldContain("Total Checks: 2");
+            anomaliesCard.TextContent.ShouldContain("Total Anomalies: 3");
+            runningCard.TextContent.ShouldContain("Running Now: 1");
+            (totalCard.GetAttribute("title") ?? string.Empty).ShouldContain("2");
+            (anomaliesCard.GetAttribute("title") ?? string.Empty).ShouldContain("3");
+
+            totalCard.TextContent.ShouldNotContain("Total Checks: 0");
+            lastCard.TextContent.ShouldNotContain("Last Check: Never");
+            anomaliesCard.TextContent.ShouldNotContain("Total Anomalies: 0");
+        }, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public void Consistency_FiltersChecks_WhenTenantFilterApplied() {
         // Arrange
         SetupChecks([
@@ -518,6 +556,9 @@ public class ConsistencyPageTests : AdminUITestContext {
 
     private void SetupChecks(IReadOnlyList<ConsistencyCheckSummary> checks) => _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(checks));
+
+    private static AngleSharp.Dom.IElement FindStatCard(IRenderedComponent<Consistency> cut, string label)
+        => cut.FindAll(".stat-card").First(card => card.TextContent.Contains(label, StringComparison.Ordinal));
 
     private static ConsistencyCheckSummary CreateSummary(
         string checkId,

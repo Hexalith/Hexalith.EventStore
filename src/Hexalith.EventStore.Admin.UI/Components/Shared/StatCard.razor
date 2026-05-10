@@ -2,7 +2,7 @@
 
 @implements IDisposable
 
-<FluentCard class="stat-card" aria-label="@($"{Label}: {(IsLoading ? "Loading" : Value)}")" title="@Title">
+<FluentCard class="stat-card" aria-label="@AccessibleLabel" title="@Title">
     @if (IsLoading)
     {
         <SkeletonCard />
@@ -39,6 +39,17 @@
 
     [Parameter]
     public bool IsLoading { get; set; }
+
+    private string AccessibleLabel
+    {
+        get
+        {
+            string value = IsLoading ? "Loading" : Value;
+            return string.IsNullOrWhiteSpace(Subtitle)
+                ? $"{Label}: {value}"
+                : $"{Label}: {value}. {Subtitle}";
+        }
+    }
 
     private string? _liveAnnouncement;
     private string? _lastValue;

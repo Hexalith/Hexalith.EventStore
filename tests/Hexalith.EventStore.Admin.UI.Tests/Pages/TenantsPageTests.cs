@@ -151,6 +151,44 @@ public class TenantsPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public void TenantsPage_ExplainsLifecycle_WhenTenantListIsEmpty() {
+        // Arrange
+        SetupTenants([]);
+
+        // Act
+        IRenderedComponent<Tenants> cut = Render<Tenants>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No tenants configured"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        cut.Markup.ShouldContain("Tenants are retained for audit");
+        cut.Markup.ShouldContain("deletion is not supported from the admin UI");
+        cut.Markup.ShouldNotContain("Delete Tenant");
+    }
+
+    [Fact]
+    public async Task TenantsPage_ExplainsLifecycle_WhenFilterHidesAllTenants() {
+        // Arrange
+        SetupTenants([
+            CreateTenant("t-1", "Tenant One", TenantStatusType.Active),
+        ]);
+
+        // Act
+        IRenderedComponent<Tenants> cut = Render<Tenants>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Tenant One"), TimeSpan.FromSeconds(5));
+
+        SetPrivateField(cut.Instance, "_statusFilterInput", "Disabled");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnStatusFilterChanged"));
+
+        // Assert
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("No tenants configured");
+            cut.Markup.ShouldContain("Tenants are retained for audit");
+            cut.Markup.ShouldContain("deletion is not supported from the admin UI");
+            cut.Markup.ShouldNotContain("Delete Tenant");
+        }, TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
     public void TenantsPage_CreateButton_HiddenForReadOnlyUser() {
         // Arrange (AC: 14)
         SetupReadOnlyUser();

@@ -70,7 +70,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             "EventStoreDaprHttpEndpoint={Endpoint}",
             string.IsNullOrWhiteSpace(_options.EventStoreDaprHttpEndpoint)
                 ? "<not configured — remote sidecar metadata disabled>"
-                : _options.EventStoreDaprHttpEndpoint);
+                : SanitizeEndpoint(_options.EventStoreDaprHttpEndpoint));
     }
 
     /// <inheritdoc/>
@@ -929,15 +929,30 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
     }
 
     /// <summary>Returns the configured endpoint with any embedded userinfo (user:password)
-    /// stripped. Falls back to the original string if it cannot be parsed as an absolute URI.</summary>
+    /// stripped. Falls back to a best-effort string scrub if the value is not a valid URI.</summary>
     private static string SanitizeEndpoint(string raw) {
-        if (!Uri.TryCreate(raw, UriKind.Absolute, out Uri? uri)
-            || string.IsNullOrEmpty(uri.UserInfo)) {
+        if (Uri.TryCreate(raw, UriKind.Absolute, out Uri? uri)) {
+            if (string.IsNullOrEmpty(uri.UserInfo)) {
+                return raw;
+            }
+
+            UriBuilder builder = new(uri) { UserName = string.Empty, Password = string.Empty };
+            return builder.Uri.ToString();
+        }
+
+        int schemeEnd = raw.IndexOf("://", StringComparison.Ordinal);
+        if (schemeEnd < 0) {
             return raw;
         }
 
-        UriBuilder builder = new(uri) { UserName = string.Empty, Password = string.Empty };
-        return builder.Uri.ToString();
+        int authorityStart = schemeEnd + 3;
+        int authorityEnd = raw.IndexOfAny(['/', '?', '#'], authorityStart);
+        int at = raw.IndexOf('@', authorityStart);
+        if (at < 0 || (authorityEnd >= 0 && at > authorityEnd)) {
+            return raw;
+        }
+
+        return string.Concat(raw.AsSpan(0, authorityStart), raw.AsSpan(at + 1));
     }
 
     private async Task<RemoteMetadataPayload> ReadRemoteMetadataAsync(CancellationToken ct) {
@@ -953,8 +968,9 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         // empty-state Description copy. A misconfigured endpoint such as
         // `http://user:pass@host:3500` would echo credentials verbatim into rendered HTML.
         // The AC1 leak test pins response bodies but not this UI render path.
-        string endpoint = SanitizeEndpoint(_options.EventStoreDaprHttpEndpoint);
-        string baseUrl = endpoint.TrimEnd('/');
+        string rawEndpoint = _options.EventStoreDaprHttpEndpoint;
+        string endpoint = SanitizeEndpoint(rawEndpoint);
+        string baseUrl = rawEndpoint.TrimEnd('/');
 
         try {
             HttpClient httpClient = _httpClientFactory.CreateClient("DaprSidecar");

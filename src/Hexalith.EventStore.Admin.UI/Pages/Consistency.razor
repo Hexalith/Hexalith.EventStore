@@ -81,27 +81,31 @@
     {
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Total Checks"
-                      Value="@TotalChecks.ToString("N0")"
+                      Value="@CurrentSummary.TotalChecks.ToString("N0")"
                       Severity="neutral"
-                      Title="Total consistency checks" />
+                      Title="@($"Total Checks: {CurrentSummary.TotalChecks:N0} in the current filter")"
+                      Subtitle="@($"Total Checks: {CurrentSummary.TotalChecks:N0}")" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Last Check"
-                      Value="@LastCheckDisplay"
+                      Value="@CurrentSummary.LastCheckDisplay"
                       Severity="neutral"
-                      Title="Time of most recent completed check" />
+                      Title="@($"Last Check: {CurrentSummary.LastCheckDisplay}")"
+                      Subtitle="@($"Last Check: {CurrentSummary.LastCheckDisplay}")" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Total Anomalies"
-                      Value="@TotalAnomalies.ToString("N0")"
-                      Severity="@(TotalAnomalies > 0 ? "warning" : "neutral")"
-                      Title="Total anomalies found across all completed checks" />
+                      Value="@CurrentSummary.TotalAnomalies.ToString("N0")"
+                      Severity="@(CurrentSummary.TotalAnomalies > 0 ? "warning" : "neutral")"
+                      Title="@($"Total Anomalies: {CurrentSummary.TotalAnomalies:N0} in completed checks")"
+                      Subtitle="@($"Total Anomalies: {CurrentSummary.TotalAnomalies:N0}")" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Running Now"
-                      Value="@RunningCount.ToString("N0")"
-                      Severity="@(RunningCount > 0 ? "accent" : "neutral")"
-                      Title="Checks currently running" />
+                      Value="@CurrentSummary.RunningCount.ToString("N0")"
+                      Severity="@(CurrentSummary.RunningCount > 0 ? "accent" : "neutral")"
+                      Title="@($"Running Now: {CurrentSummary.RunningCount:N0}")"
+                      Subtitle="@($"Running Now: {CurrentSummary.RunningCount:N0}")" />
         </FluentGridItem>
     }
 </FluentGrid>
@@ -439,28 +443,7 @@
 
     private bool _isAnyDialogOpen => _selectedAnomaly is not null || _showTriggerDialog || _showCancelDialog;
 
-    // Computed properties
-    private int TotalChecks => _allChecks.Count;
-
-    private string LastCheckDisplay
-    {
-        get
-        {
-            ConsistencyCheckSummary? lastCompleted = _allChecks
-                .Where(c => c.CompletedAtUtc is not null)
-                .OrderByDescending(c => c.CompletedAtUtc)
-                .FirstOrDefault();
-            return lastCompleted?.CompletedAtUtc is not null
-                ? TimeFormatHelper.FormatRelativeTime(lastCompleted.CompletedAtUtc.Value)
-                : "Never";
-        }
-    }
-
-    private int TotalAnomalies => _allChecks
-        .Where(c => c.Status == ConsistencyCheckStatus.Completed)
-        .Sum(c => c.AnomaliesFound);
-
-    private int RunningCount => _allChecks.Count(c => c.Status == ConsistencyCheckStatus.Running);
+    private ConsistencySummary CurrentSummary => ConsistencySummary.From(_filteredChecks);
 
     private bool HasAnyCheckType =>
         _checkSequenceContinuity || _checkSnapshotIntegrity
@@ -916,6 +899,33 @@
 
     private static string FormatDomainScope(string? domain)
         => string.IsNullOrWhiteSpace(domain) ? "All domains" : domain;
+
+    private readonly record struct ConsistencySummary(
+        int TotalChecks,
+        string LastCheckDisplay,
+        int TotalAnomalies,
+        int RunningCount)
+    {
+        public static ConsistencySummary From(IReadOnlyList<ConsistencyCheckSummary> checks)
+        {
+            ConsistencyCheckSummary? lastCompleted = checks
+                .Where(c => c.CompletedAtUtc is not null)
+                .OrderByDescending(c => c.CompletedAtUtc)
+                .FirstOrDefault();
+
+            string lastCheckDisplay = lastCompleted?.CompletedAtUtc is not null
+                ? TimeFormatHelper.FormatRelativeTime(lastCompleted.CompletedAtUtc.Value)
+                : "Never";
+
+            return new ConsistencySummary(
+                checks.Count,
+                lastCheckDisplay,
+                checks
+                    .Where(c => c.Status == ConsistencyCheckStatus.Completed)
+                    .Sum(c => c.AnomaliesFound),
+                checks.Count(c => c.Status == ConsistencyCheckStatus.Running));
+        }
+    }
 
     public async ValueTask DisposeAsync()
     {

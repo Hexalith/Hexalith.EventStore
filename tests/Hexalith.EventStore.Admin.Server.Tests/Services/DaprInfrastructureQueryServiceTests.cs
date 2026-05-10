@@ -9,7 +9,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
+using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -22,17 +24,19 @@ public class DaprInfrastructureQueryServiceTests {
     private static DaprInfrastructureQueryService CreateService(
         DaprClient? daprClient = null,
         AdminServerOptions? serverOptions = null,
-        IHttpClientFactory? httpClientFactory = null) {
+        IHttpClientFactory? httpClientFactory = null,
+        ILogger<DaprInfrastructureQueryService>? logger = null) {
         daprClient ??= Substitute.For<DaprClient>();
         serverOptions ??= new AdminServerOptions();
         httpClientFactory ??= Substitute.For<IHttpClientFactory>();
+        logger ??= NullLogger<DaprInfrastructureQueryService>.Instance;
         IOptions<AdminServerOptions> options = Options.Create(serverOptions);
 
         return new DaprInfrastructureQueryService(
             daprClient,
             httpClientFactory,
             options,
-            NullLogger<DaprInfrastructureQueryService>.Instance);
+            logger);
     }
 
     private static DaprMetadata CreateMetadata(params DaprComponentsMetadata[] components) => new(
@@ -237,6 +241,42 @@ public class DaprInfrastructureQueryServiceTests {
     }
 
     [Fact]
+    public async Task GetSidecarInfoAsync_UsesRawEndpointForRequest_ButReportsSanitizedEndpoint() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata(
+            new DaprComponentsMetadata("statestore", "state.redis", "v1", [])));
+
+        const string rawEndpoint = "http://user:p%40ss@localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = rawEndpoint };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        FakeHandler handler = new(HttpStatusCode.OK, """{"subscriptions": []}""");
+        using HttpClient httpClient = new(handler);
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        DaprSidecarInfo? result = await service.GetSidecarInfoAsync();
+
+        _ = result.ShouldNotBeNull();
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
+        result.RemoteEndpoint.ShouldBe("http://localhost:3501/");
+        handler.LastRequestUri.ShouldBe("http://user:p%40ss@localhost:3501/v1.0/metadata");
+        httpClientFactory.Received(1).CreateClient("DaprSidecar");
+    }
+
+    [Fact]
+    public void Constructor_DoesNotLogRemoteEndpointCredentials() {
+        RecordingLogger<DaprInfrastructureQueryService> logger = new();
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = "http://user:p%40ss@localhost:3501" };
+
+        _ = CreateService(serverOptions: options, logger: logger);
+
+        logger.Records.Any(r => r.Message.Contains("p%40ss", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
+        logger.Records.Any(r => r.Message.Contains("user:", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
+        logger.Records.Any(r => r.Message.Contains("http://localhost:3501", StringComparison.OrdinalIgnoreCase)).ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task GetSidecarInfoAsync_ReturnsUnreachable_WhenRemoteSidecarFails() {
         // Arrange
         DaprClient daprClient = Substitute.For<DaprClient>();
@@ -264,9 +304,14 @@ public class DaprInfrastructureQueryServiceTests {
     }
 
     private sealed class FakeHandler(HttpStatusCode statusCode, string content) : HttpMessageHandler {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(new HttpResponseMessage(statusCode) {
-            Content = new StringContent(content, Encoding.UTF8, "application/json"),
-        });
+        public string? LastRequestUri { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
+            LastRequestUri = request.RequestUri?.ToString();
+            return Task.FromResult(new HttpResponseMessage(statusCode) {
+                Content = new StringContent(content, Encoding.UTF8, "application/json"),
+            });
+        }
     }
 
     [Fact]

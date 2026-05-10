@@ -1,6 +1,6 @@
 # Story: admin-ui-health-dapr-truthfulness-fix
 
-Status: review
+Status: in-progress
 
 Context created: 2026-05-07
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-07-admin-ui-manual-test-suite-issues.md`
@@ -74,7 +74,7 @@ Conflict rules:
 | --- | --- |
 | Remote EventStore metadata says `pubsub` exists, but local Admin metadata omits it. | Show remote `pubsub` with source `RemoteEventStoreMetadata`; do not treat the local omission as missing pub/sub. |
 | Local state-store probe fails, but remote metadata says the component is loaded. | Show one component row with loaded inventory evidence plus unhealthy local probe evidence. |
-| Remote metadata is unreachable, invalid, initializing, or not configured. | Show source unavailable/invalid/initializing/not-configured; do not convert to zero components or zero subscriptions. |
+| Remote metadata is unreachable, invalid, or not configured. | Show source unavailable/invalid/not-configured; do not convert to zero components or zero subscriptions. |
 | Remote metadata succeeds and contains zero pub/sub components or subscriptions. | Show real zero with source status `Available`. |
 
 ## Acceptance Criteria
@@ -173,7 +173,7 @@ Conflict rules:
   - [x] Reuse `AdminServerOptions.EventStoreDaprHttpEndpoint` and the existing `/v1.0/metadata` parsing pattern already used by `GetPubSubOverviewAsync`.
   - [x] Keep local admin sidecar state-store probe behavior so `state.redis` health still reflects Admin.Server's dependency.
   - [x] Include remote EventStore pub/sub components without requiring Admin.Server to publish or subscribe.
-  - [x] If remote metadata is unavailable, invalid, not configured, or initializing, expose `RemoteMetadataStatus` and visible explanatory text; do not silently drop pub/sub.
+  - [x] If remote metadata is unavailable, invalid, or not configured, expose `RemoteMetadataStatus` and visible explanatory text; do not silently drop pub/sub.
 
 - [x] **ST5 - Align `/dapr`, `/dapr/pubsub`, and health-history counts.** (AC: 4, 6)
   - [x] Update `DaprComponents.razor` to label component and subscription counts by source when they differ.
@@ -487,6 +487,16 @@ Three reviewer layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor) ran i
 
 
 
+### Review Findings (round 6 — 2026-05-10 — bmad-code-review of `f0e46f20^..f0e46f20`)
+
+Three reviewer layers ran against the latest isolated story-owned patch while excluding the current working tree changes for `admin-ui-consistency-and-tenant-clarity-polish`. Triage kept 3 actionable patch findings and dismissed 6 as already recorded in the round-5 pending Phase 2/3 action list.
+
+**Patches (apply before status advances)**
+
+- [x] [Review][Patch][applied 2026-05-10][HIGH] Remote endpoint credentials are still logged by the service constructor [`src/Hexalith.EventStore.Admin.Server/Services/DaprInfrastructureQueryService.cs:69`] — Round-5 P14 sanitizes `RemoteMetadataPayload.Endpoint` before it reaches UI payloads, but the constructor still logs `_options.EventStoreDaprHttpEndpoint` directly. A configured value like `http://user:pass@host:3500` is redacted in the new payload path but still written to logs at startup, leaving a credential leak on the same `EventStoreDaprHttpEndpoint` surface the patch is trying to close.
+- [x] [Review][Patch][applied 2026-05-10][MEDIUM] Sanitized endpoint is also used for the outbound metadata request [`src/Hexalith.EventStore.Admin.Server/Services/DaprInfrastructureQueryService.cs:794`] — `ReadRemoteMetadataAsync` assigns `endpoint = SanitizeEndpoint(_options.EventStoreDaprHttpEndpoint)` and then builds `baseUrl` from that sanitized value. The patch intent is to strip userinfo before assigning to `RemoteMetadataPayload.Endpoint`; using the stripped URI for transport can turn a valid userinfo/proxy-auth endpoint into `RemoteMetadataStatus.Unreachable`.
+- [x] [Review][Patch][applied 2026-05-10][MEDIUM] Round-5 D1 still leaves stale `Initializing` references in the story/spec [`_bmad-output/implementation-artifacts/admin-ui-health-dapr-truthfulness-fix.md:77`] — The round-5 decision says all stale `Initializing` references were excised after removing `RemoteMetadataStatus.Initializing`, but the conflict table still says "unreachable, invalid, initializing, or not configured" and the Dev Agent Record/File List still describe `Initializing` UI branches. The spec and implementation remain contradictory, which invites future tests or UI work for an enum value that no longer exists.
+
 ### Current State
 
 - `src/Hexalith.EventStore.Admin.Server/Services/DaprHealthQueryService.cs` already catches several dependency exceptions and returns `SystemHealthMetricStatus.Unavailable` for unwired metrics, but its state-store probe currently only changes the overall status. It does not mark the component row as unhealthy when `GetStateAsync` fails.
@@ -553,7 +563,7 @@ Merge rules:
 - Remote EventStore sidecar metadata is canonical for loaded EventStore-sidecar components and active pub/sub subscriptions.
 - Local Admin.Server probes are canonical for Admin.Server dependency usability, including state-store probe health.
 - Local Admin sidecar metadata is a degraded fallback only when remote metadata cannot provide the fact.
-- Failed metadata sources produce explicit unavailable/invalid/not-configured/initializing status and must not become empty successful collections.
+- Failed metadata sources produce explicit unavailable/invalid/not-configured status and must not become empty successful collections.
 - If the same component appears from multiple sources, merge by `{ name, type }`, keep all relevant source/status fields, and avoid double counting.
 
 Support copy examples:
@@ -630,7 +640,7 @@ Support copy examples:
 - Do `/health`, `/dapr`, `/dapr/pubsub`, and `/dapr/health-history` tell the same story for the same evidence?
 - Does HTTP 200 partial health still render as non-green `Unhealthy` when dependencies are unhealthy?
 - Is `eventstore-admin` still out of pub/sub component scopes unless this story contains an ADR-style exception and tests?
-- Are invalid, initializing, unreachable, and not-configured remote metadata states distinct in API and UI behavior?
+- Are invalid, unreachable, not-configured, and not-consulted remote metadata states distinct in API and UI behavior?
 
 ### Files Likely Touched
 
@@ -705,8 +715,8 @@ Claude Opus 4.7 (1M context).
 - DaprInfrastructureQueryService — introduced `GetCanonicalDaprInventoryAsync` and `TryReadRemoteMetadataAsync` helpers. Centralised remote sidecar metadata parsing across `GetSidecarInfoAsync`, `GetActorRuntimeInfoAsync`, `GetPubSubOverviewAsync`, and `GetCanonicalDaprInventoryAsync`. Components are merged deterministically by `{ ComponentName, ComponentType }` (case-insensitive); remote source wins for shared keys; local Admin probe results overwrite the state-store row's status while keeping its source attribution truthful.
 - DaprHealthHistoryCollector — switched from `GetComponentsAsync` to `GetCanonicalDaprInventoryAsync` so captured snapshots include pub/sub from the remote EventStore sidecar metadata. Skips writes only when canonical evidence is empty AND remote status is not `Available` — guarantees we never overwrite a previously-good timeline with an empty successful sample.
 - Health.razor — extracted `FormatTotalEvents`/`FormatEventsPerSecond`/`FormatErrorRate` helpers consuming `*Status` fields, mirroring `Index.razor` behavior. Stat cards no longer render raw 0.0/s or 0.0% when the corresponding metric status is `Unavailable`.
-- DaprComponents.razor — added Source column with friendly source labels and tooltips (Remote/Local probe/Local fallback/unavailable). Subscription cards now use the explicit "Active Subscriptions" / "subscription data unavailable" labels per AC6. New `RemoteMetadataStatus.InvalidPayload`/`Initializing` titles wired through `GetRemoteMetadataTitle`.
-- DaprPubSub.razor — additional empty-state and IssueBanner branches for `RemoteMetadataStatus.InvalidPayload` and `RemoteMetadataStatus.Initializing`. Active subscription value displays "subscription data unavailable" when remote metadata is not Available.
+- DaprComponents.razor — added Source column with friendly source labels and tooltips (Remote/Local probe/Local fallback/unavailable). Subscription cards now use the explicit "Active Subscriptions" / "subscription data unavailable" labels per AC6. New `RemoteMetadataStatus.InvalidPayload` titles wired through `GetRemoteMetadataTitle`.
+- DaprPubSub.razor — additional empty-state and IssueBanner branches for `RemoteMetadataStatus.InvalidPayload` and unavailable remote metadata states. Active subscription value displays "subscription data unavailable" when remote metadata is not Available.
 
 ### Completion Notes List
 
@@ -727,7 +737,7 @@ Claude Opus 4.7 (1M context).
 - ✅ AC4: DAPR component inventory is canonical across `/health`, `/dapr`, `/dapr/pubsub`, and `/dapr/health-history`.
   - New `IDaprInfrastructureQueryService.GetCanonicalDaprInventoryAsync` returns `DaprCanonicalInventory { Components, PubSubSubscriptions, RemoteMetadataStatus, RemoteEndpoint, LocalProbeAvailable, CapturedAtUtc }`. Implementation merges remote EventStore sidecar metadata (canonical) with local Admin sidecar metadata fallback, then applies local Admin state-store probes. Component identity is `{ ComponentName, ComponentType }` (case-insensitive); each entry preserves `DaprComponentSource` attribution (`RemoteEventStoreMetadata` / `LocalAdminProbe` / `LocalAdminMetadataFallback` / `Unavailable`).
   - `DaprHealthQueryService` consumes the canonical inventory; `DaprHealthHistoryCollector` consumes it (so `/dapr/health-history` heatmap no longer silently omits pub/sub); `IDaprInfrastructureQueryService.GetComponentsAsync` delegates to the canonical method; `GetPubSubOverviewAsync` and `GetSidecarInfoAsync` reuse the shared remote-metadata reader so the four surfaces see the same payload.
-  - `RemoteMetadataStatus` enum extended with `InvalidPayload` (returned on `JsonException`) and `Initializing` (heuristic on reachable-but-empty payload with empty `id`). UI banners on `/dapr/pubsub` distinguish all five states.
+  - `RemoteMetadataStatus` enum extended with `InvalidPayload` (returned on `JsonException`). UI banners on `/dapr/pubsub` distinguish available, unavailable, not-configured, and invalid-payload states.
   - New tests `GetCanonicalDaprInventoryAsync_MergesRemoteAndLocal_WithSourceAttribution`, `_PreservesLocalEvidence_WhenRemoteUnreachable`, `_ReturnsInvalidPayload_OnMalformedRemoteJson`, `_ReturnsNotConfigured_WhenEndpointUnset`, and `_DoesNotErasePubSub_WhenLocalSidecarFailsButRemoteAvailable` pin the merge rules and source attribution.
 
 - ✅ AC5: Default implementation path used (remote EventStore sidecar metadata via `AdminServerOptions.EventStoreDaprHttpEndpoint`). `pubsub.yaml` was NOT modified — `eventstore-admin` remains absent from component scopes per the existing security model.
@@ -751,7 +761,7 @@ Claude Opus 4.7 (1M context).
 ### File List
 
 **Models (Hexalith.EventStore.Admin.Abstractions):**
-- `src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/RemoteMetadataStatus.cs` — added `InvalidPayload`, `Initializing` enum members.
+- `src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/RemoteMetadataStatus.cs` — added `InvalidPayload` enum member.
 - `src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprComponentSource.cs` — new enum (`Unavailable`/`RemoteEventStoreMetadata`/`LocalAdminProbe`/`LocalAdminMetadataFallback`).
 - `src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprComponentDetail.cs` — added optional `Source` parameter (defaults to `Unavailable`).
 - `src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprCanonicalInventory.cs` — new record + `Empty` static.
@@ -766,8 +776,8 @@ Claude Opus 4.7 (1M context).
 
 **UI (Hexalith.EventStore.Admin.UI):**
 - `src/Hexalith.EventStore.Admin.UI/Pages/Health.razor` — metric stat cards consume `*Status` fields; new `FormatTotalEvents`/`FormatEventsPerSecond`/`FormatErrorRate`/`MetricSeverity` helpers.
-- `src/Hexalith.EventStore.Admin.UI/Pages/DaprComponents.razor` — Source column, source label/title helpers, "Active Subscriptions" + "subscription data unavailable" copy, `InvalidPayload`/`Initializing` titles in tooltip.
-- `src/Hexalith.EventStore.Admin.UI/Pages/DaprPubSub.razor` — "Active Subscriptions"/"Unique Topics" use "subscription data unavailable" copy when remote not Available; new empty-state + IssueBanner branches for `InvalidPayload` and `Initializing`.
+- `src/Hexalith.EventStore.Admin.UI/Pages/DaprComponents.razor` — Source column, source label/title helpers, "Active Subscriptions" + "subscription data unavailable" copy, and `InvalidPayload` titles in tooltip.
+- `src/Hexalith.EventStore.Admin.UI/Pages/DaprPubSub.razor` — "Active Subscriptions"/"Unique Topics" use "subscription data unavailable" copy when remote not Available; new empty-state + IssueBanner branches for `InvalidPayload` and unavailable remote metadata states.
 
 **Tests (Hexalith.EventStore.Admin.Server.Tests):**
 - `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprHealthQueryServiceTests.cs` — added `IDaprInfrastructureQueryService` substitute parameter; updated `GetSystemHealthAsync_ReturnsHealthy_WhenAllProbesSucceed`, `_ReturnsUnhealthy_WhenSidecarUnavailable`, `_PropagatesCancellation` for new contract; added `_ReturnsUnhealthy_WhenStateStoreProbeFails`, `_DoesNotLeakConnectionDetails_OnStateStoreFailure`.

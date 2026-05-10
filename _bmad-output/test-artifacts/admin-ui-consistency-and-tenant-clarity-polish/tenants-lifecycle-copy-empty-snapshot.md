@@ -1,0 +1,127 @@
+- generic [ref=e1]:
+  - link "Skip to main content" [ref=e193] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e195]:
+    - generic [ref=e197]:
+      - generic [ref=e198]: Hexalith EventStore Admin
+      - generic [ref=e199]:
+        - generic [ref=e200]:
+          - 'generic "Connection status: Connected" [ref=e201]':
+            - generic: Connected
+          - generic [ref=e202]: Healthy
+        - generic [ref=e203]:
+          - generic "Development role" [ref=e205] [cursor=pointer]:
+            - generic [ref=e206]
+          - generic [ref=e211]: "Role: Admin"
+        - generic [ref=e212]: Development role Admin selected.
+        - generic "Switch to light theme" [ref=e213] [cursor=pointer]:
+          - generic [ref=e214]:
+            - generic: ⚙
+    - navigation "Main navigation" [ref=e216]:
+      - link "Home" [ref=e217] [cursor=pointer]:
+        - /url: /
+        - img [ref=e218]
+        - text: Home
+      - link "Commands" [ref=e220] [cursor=pointer]:
+        - /url: /commands
+        - img [ref=e221]
+        - text: Commands
+      - link "Events" [ref=e223] [cursor=pointer]:
+        - /url: /events
+        - img [ref=e224]
+        - text: Events
+      - link "Streams" [ref=e226] [cursor=pointer]:
+        - /url: /streams
+        - img [ref=e227]
+        - text: Streams
+      - link "Health" [ref=e229] [cursor=pointer]:
+        - /url: /health
+        - img [ref=e230]
+        - text: Health
+      - link "Dead Letters" [ref=e232] [cursor=pointer]:
+        - /url: /health/dead-letters
+        - img [ref=e233]
+        - text: Dead Letters
+      - link "DAPR" [ref=e235] [cursor=pointer]:
+        - /url: /dapr
+        - img [ref=e236]
+        - text: DAPR
+      - link "Projections" [ref=e238] [cursor=pointer]:
+        - /url: /projections
+        - img [ref=e239]
+        - text: Projections
+      - link "Types" [ref=e241] [cursor=pointer]:
+        - /url: /types
+        - img [ref=e242]
+        - text: Types
+      - link "Services" [ref=e244] [cursor=pointer]:
+        - /url: /services
+        - img [ref=e245]
+        - text: Services
+      - link "Tenants" [ref=e247] [cursor=pointer]:
+        - /url: /tenants
+        - img [ref=e248]
+        - text: Tenants
+      - link "Storage" [ref=e250] [cursor=pointer]:
+        - /url: /storage
+        - img [ref=e251]
+        - text: Storage
+      - link "Snapshots" [ref=e253] [cursor=pointer]:
+        - /url: /snapshots
+        - img [ref=e254]
+        - text: Snapshots
+      - link "Compaction" [ref=e256] [cursor=pointer]:
+        - /url: /compaction
+        - img [ref=e257]
+        - text: Compaction
+      - link "Backups" [ref=e259] [cursor=pointer]:
+        - /url: /backups
+        - img [ref=e260]
+        - text: Backups
+      - link "Consistency" [ref=e262] [cursor=pointer]:
+        - /url: /consistency
+        - img [ref=e263]
+        - text: Consistency
+      - link "Settings" [ref=e265] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e266]
+        - text: Settings
+      - button "Topology" [ref=e268] [cursor=pointer]:
+        - img [ref=e269]
+        - text: Topology
+        - img [ref=e272]
+      - button "No tenants" [ref=e274]
+    - generic [ref=e275]:
+      - navigation "Breadcrumb" [ref=e276]:
+        - generic [ref=e277]:
+          - link "Home" [ref=e278] [cursor=pointer]:
+            - /url: /
+          - generic [ref=e279]: /
+          - generic [ref=e280]: Tenants
+        - button "Copy page URL to clipboard" [ref=e281] [cursor=pointer]:
+          - img [ref=e282]
+      - main [ref=e284]:
+        - generic [ref=e285]:
+          - generic [ref=e286]:
+            - heading "Tenants" [active] [level=1] [ref=e287]
+            - note [ref=e288]: Tenants are retained for audit. Disable a tenant to suspend command processing; deletion is not supported from the admin UI.
+          - generic [ref=e289]:
+            - generic "Create tenant" [ref=e290] [cursor=pointer]
+            - generic "Refresh tenant list" [ref=e292] [cursor=pointer]
+        - generic [ref=e294]:
+          - generic "Filter by status" [ref=e296] [cursor=pointer]:
+            - generic [ref=e297]
+          - generic "Search tenants" [ref=e303]:
+            - textbox [ref=e305]:
+              - /placeholder: Filter by tenant ID or name...
+        - generic [ref=e306]:
+          - 'group "Total Tenants: 0" [ref=e308]':
+            - generic [ref=e309]
+          - 'group "Active: 0" [ref=e314]':
+            - generic [ref=e315]
+          - 'group "Disabled: 0" [ref=e320]':
+            - generic [ref=e321]
+        - generic [ref=e325]:
+          - heading "No tenants configured." [level=2] [ref=e326]
+          - paragraph [ref=e327]: Create your first tenant to start managing multi-tenant event streams.
+  - generic "Command palette"
