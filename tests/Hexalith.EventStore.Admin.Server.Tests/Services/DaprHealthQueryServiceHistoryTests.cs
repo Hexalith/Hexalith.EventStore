@@ -1,4 +1,6 @@
 
+using System.Diagnostics;
+
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
@@ -200,6 +202,36 @@ public class DaprHealthQueryServiceHistoryTests {
         result.HistoryStatus.ShouldBe(SystemHealthMetricStatus.Unavailable);
         result.StatusMessage.ShouldNotBeNull();
         result.StatusMessage.ShouldContain("Health history storage is unavailable");
+    }
+
+    [Fact]
+    public async Task GetComponentHealthHistoryAsync_ReturnsUnavailableTimeline_WhenStateStoreReadTimesOut() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+
+        string dayKey = $"admin:health-history:{now:yyyyMMdd}";
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+                "statestore", dayKey, cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(call => NeverCompletesHistoryReadAsync(call.Arg<CancellationToken>()));
+
+        DaprHealthQueryService service = CreateService(daprClient);
+        Stopwatch stopwatch = Stopwatch.StartNew();
+
+        DaprComponentHealthTimeline result = await service.GetComponentHealthHistoryAsync(
+            now.AddHours(-1), now, null, default);
+
+        stopwatch.Stop();
+        result.HasData.ShouldBeFalse();
+        result.Entries.ShouldBeEmpty();
+        result.HistoryStatus.ShouldBe(SystemHealthMetricStatus.Unavailable);
+        result.StatusMessage.ShouldNotBeNull();
+        result.StatusMessage.ShouldContain("Health history storage is unavailable");
+        stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(5));
+
+        static async Task<DaprComponentHealthTimeline> NeverCompletesHistoryReadAsync(CancellationToken ct) {
+            await Task.Delay(TimeSpan.FromSeconds(30), ct).ConfigureAwait(false);
+            return new DaprComponentHealthTimeline([], HasData: false);
+        }
     }
 
     [Fact]

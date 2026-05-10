@@ -1,5 +1,7 @@
 #pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
 
+using System.Diagnostics;
+
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
@@ -468,6 +470,38 @@ public class DaprHealthQueryServiceTests {
         // Per ADR-3: render unavailable rather than a misleading zero.
         result.TotalEventCount.ShouldBe(0);
         result.TotalEventCountStatus.ShouldBe(SystemHealthMetricStatus.Unavailable);
+    }
+
+    [Fact]
+    public async Task GetSystemHealthAsync_TotalEventCount_TimeoutReportedAsUnavailable() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata());
+        _ = daprClient.CreateInvokeMethodRequest(
+            Arg.Any<HttpMethod>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(callInfo => new HttpRequestMessage(
+                callInfo.ArgAt<HttpMethod>(0),
+                new Uri($"http://localhost/{callInfo.ArgAt<string>(2)}")));
+
+        IStreamQueryService streamQuery = Substitute.For<IStreamQueryService>();
+        _ = streamQuery.GetRecentlyActiveStreamsAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(call => NeverCompletesStreamQueryAsync(call.Arg<CancellationToken>()));
+
+        (DaprHealthQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient, streamQuery: streamQuery);
+        handler.SetupJsonResponse("ok");
+        Stopwatch stopwatch = Stopwatch.StartNew();
+
+        SystemHealthReport result = await service.GetSystemHealthAsync();
+
+        stopwatch.Stop();
+        result.TotalEventCount.ShouldBe(0);
+        result.TotalEventCountStatus.ShouldBe(SystemHealthMetricStatus.Unavailable);
+        stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(5));
+
+        static async Task<PagedResult<StreamSummary>> NeverCompletesStreamQueryAsync(CancellationToken ct) {
+            await Task.Delay(TimeSpan.FromSeconds(30), ct).ConfigureAwait(false);
+            return new PagedResult<StreamSummary>([], 0, null);
+        }
     }
 
     [Fact]

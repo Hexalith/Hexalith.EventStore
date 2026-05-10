@@ -1,6 +1,6 @@
 # Story: admin-ui-health-dapr-truthfulness-fix
 
-Status: in-progress
+Status: review
 
 Context created: 2026-05-07
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-07-admin-ui-manual-test-suite-issues.md`
@@ -193,22 +193,27 @@ Conflict rules:
   - [x] Run impacted unit suites individually if shared abstractions change: `tests/Hexalith.EventStore.Admin.Abstractions.Tests`, `tests/Hexalith.EventStore.Contracts.Tests`, and `tests/Hexalith.EventStore.Client.Tests`.
   - [x] Do not rely on solution-level `dotnet test`; this repo has documented pre-existing Server.Tests/analyzer gotchas and test projects should be run individually.
 
-- [ ] **ST8 - Manual Aspire smoke.** (AC: 8) — operator-owned per story scope
-  - [ ] Start from a clean Redis state, build, and run Aspire using the project instructions.
-  - [ ] Seed `tenant-a/counter/counter-1` with the canonical Pattern 2 sequence.
-  - [ ] Capture baseline pages and endpoint payloads.
-  - [ ] Stop Redis, refresh `/health`, and prove the page stays usable with `state.redis` unhealthy.
-  - [ ] Restart Redis and prove the pages recover or mark stale data honestly.
+- [x] **ST8 - Manual Aspire smoke.** (AC: 8)
+  - [x] Start from a clean Redis state, build, and run Aspire using the project instructions.
+  - [x] Seed `tenant-a/counter/counter-1` with the canonical Pattern 2 sequence.
+  - [x] Capture baseline pages and endpoint payloads.
+  - [x] Stop Redis, refresh `/health`, and prove the page stays usable with `state.redis` unhealthy.
+  - [x] Restart Redis and prove the pages recover or mark stale data honestly.
 
-> **AC8 deferral note (recorded 2026-05-08 from bmad-code-review D3 decision).** The Quality
-> Gate language requires AC8 manual evidence (commands, timestamps, endpoint JSON before/during/
-> after Redis outage). This story is moving forward at `review` per the project's established
-> operator-deferred-smoke convention (see sprint-status comments on `OA1` and prior stories
-> `admin-ui-aggregate-state-replay-correctness` / `admin-ui-state-inspection-cluster-fix`).
-> **Exit criterion:** the operator pastes ST8 evidence (or notes "no longer reproducible") into
-> the Completion Notes; only then does the story move `review -> done`. The automated Tier 1+2
-> evidence already covers AC1-AC7 via `Hexalith.EventStore.Admin.Server.Tests` (576 passed) and
-> `Hexalith.EventStore.Admin.UI.Tests` (709 passed) post-review-patches.
+> **AC8 closure note (updated 2026-05-10).** The previously deferred manual evidence is now
+> recorded below: clean Redis reset, canonical seed, baseline endpoint/page checks, Redis outage
+> behavior, and Redis recovery behavior. ST8/AC8 is closed for this story.
+
+### Smoke Evidence (2026-05-10 - API/Aspire Redis Outage Smoke)
+
+ST8 evidence captured against the live Aspire apphost. Redis was reset with `docker exec dapr_redis redis-cli FLUSHALL`; `DBSIZE` returned `0` immediately after reset. The apphost was running in dev mode from `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`. Dashboard token URL: `https://localhost:17017/login?t=c24361890e588573269127d42717a562`. Relevant healthy resources: Admin Server `http://localhost:8090`, Admin UI `https://localhost:8093`, EventStore `http://localhost:8080`, EventStore DAPR sidecar `http://localhost:3501`, `statestore`, `pubsub`, and `dapr_redis`.
+
+- Canonical seed after reset: submitted three `IncrementCounter` commands for `tenant-a/counter/counter-1` with correlations `st8-20260510163541-1`, `st8-20260510163541-2`, and `st8-20260510163541-3`; all polled to `Completed` with `eventCount = 1`.
+- Baseline authenticated API checks after clean seed returned 200 for `/api/v1/admin/health`, `/api/v1/admin/dapr/components`, `/api/v1/admin/dapr/pubsub`, and `/api/v1/admin/health/dapr/history`. Baseline health returned in 60 ms with `overallStatus = Healthy`, `totalEventCount = 3`, `totalEventCountStatus = Available`, `InventorySourceStatus = Available`, and `LocalSidecarMetadataStatus = Available`. DAPR components returned in 6 ms with `statestore/state.redis` and `pubsub/pubsub.redis` both Healthy from `RemoteEventStoreMetadata`. History returned in 14 ms with `HasData = true`, `HistoryStatus = Available`, and 6 entries.
+- Redis outage using `docker stop dapr_redis` initially exposed two live timeout gaps: `/api/v1/admin/health` timed out before the total-event-count metric was bounded, and `/api/v1/admin/health/dapr/history` timed out before history state reads were bounded.
+- Final Redis-outage pass after patches and clean seed: `/api/v1/admin/health` returned 200 in 8131 ms with `overallStatus = Unhealthy`, `totalEventCount = 0`, `totalEventCountStatus = Unavailable`, and remote inventory still Available; `/api/v1/admin/dapr/components` returned 200 in 3032 ms with `statestore/state.redis = Unhealthy` and `pubsub/pubsub.redis = Healthy`; `/api/v1/admin/dapr/pubsub` returned 200 in 4 ms with remote metadata Available and pub/sub still visible; `/api/v1/admin/health/dapr/history` returned 200 in 3010 ms with `HasData = false`, `HistoryStatus = Unavailable`, and storage-unavailable copy.
+- Recovery after `docker start dapr_redis`: after an extended sidecar reconnection window, `/api/v1/admin/health` returned 200 in 60 ms with Healthy overall, `totalEventCount = 3`, and `TotalEventCountStatus = Available`; `/api/v1/admin/dapr/components` showed both `statestore` and `pubsub` Healthy; `/api/v1/admin/health/dapr/history` returned 200 in 4 ms with `HasData = true`, `HistoryStatus = Available`, and 8 entries.
+- Browser sanity after seeded recovery: `/health` rendered through Playwright with `Total Events: 3`, `Events/sec: unavailable`, `Error Rate: unavailable`, and `DAPR Components: 2/2`; `/dapr/health-history` rendered normally with the heatmap present and no raw Razor expression leakage. Earlier same-run browser checks also covered `/`, `/dapr`, and `/dapr/pubsub`.
 
 ### Review Findings (2026-05-08 — bmad-code-review of PR #241 / commit 388ceb78)
 
@@ -520,6 +525,16 @@ Three reviewer layers rechecked the applied patch against the live worktree and 
 - Source subtitle hides `Unavailable` rows — low-value UI polish compared with the retained source-column gap; not a merge blocker.
 - Secret text in captured exception logs — outside the explicit AC1 response-body leak assertion and already documented in the test comments as deliberate logger behavior.
 
+### Review Findings (round 8 — 2026-05-10 — bmad-code-review of current HEAD after round-7 fixes)
+
+Single-session review rechecked the live worktree against the story contract after the round-7 fixes. Triage kept 3 actionable patch findings.
+
+**Patches (apply before status advances)**
+
+- [x] [Review][Patch][applied 2026-05-10][HIGH] Remote metadata client timeouts are rethrown as cancellation instead of `RemoteMetadataStatus.Unreachable` [`src/Hexalith.EventStore.Admin.Server/Services/DaprInfrastructureQueryService.cs:1019`] — `ReadRemoteMetadataAsync` uses the named `DaprSidecar` `HttpClient` with its own timeout, but catches every `OperationCanceledException` and rethrows it. When a configured remote EventStore sidecar hangs until the client timeout fires while the request token is still valid, `/health`, `/dapr`, and `/dapr/pubsub` can fail/cancel instead of returning explicit `RemoteMetadataStatus.Unreachable` evidence. This violates the remote metadata truth contract for unreachable/bounded probes.
+- [x] [Review][Patch][applied 2026-05-10][HIGH] Local Admin sidecar metadata read is still unbounded [`src/Hexalith.EventStore.Admin.Server/Services/DaprInfrastructureQueryService.cs:1058`] — `TryReadLocalMetadataAsync` awaits `_daprClient.GetMetadataAsync(ct)` with only the caller token. If the local Admin sidecar metadata call hangs, `/health` cannot return a bounded partial report with local metadata unavailable; it waits until the outer request is cancelled. Add a linked timeout and map timeout-without-caller-cancellation to `Available = false`, preserving real caller cancellation.
+- [x] [Review][Patch][applied 2026-05-10][HIGH] Health refresh failures are swallowed before the page can mark cached data stale [`src/Hexalith.EventStore.Admin.UI/Pages/Health.razor:202`] [`src/Hexalith.EventStore.Admin.UI/Services/DashboardRefreshService.cs:112`] — `Health.razor` subscribes only to `RefreshService.OnDataChanged`, while `DashboardRefreshService.RefreshAsync` routes thrown 401/403/503/timeout failures to `OnError` and does not emit `DashboardData(null, null)`. The page's manual Refresh button calls `TriggerImmediateRefreshAsync`, so after a successful load a real refresh failure leaves the old health report visible as fresh rather than stale/issue-labelled. The current tests invoke the private `OnDataChanged` backing field directly and do not exercise this production failure path, violating AC2's "never hides an outage behind nominal data" rule.
+
 ### Current State
 
 - `src/Hexalith.EventStore.Admin.Server/Services/DaprHealthQueryService.cs` already catches several dependency exceptions and returns `SystemHealthMetricStatus.Unavailable` for unwired metrics, but its state-store probe currently only changes the overall status. It does not mark the component row as unhealthy when `GetStateAsync` fails.
@@ -793,7 +808,7 @@ Claude Opus 4.7 (1M context).
 - `src/Hexalith.EventStore.Admin.Abstractions/Services/IDaprInfrastructureQueryService.cs` — added `GetCanonicalDaprInventoryAsync` method.
 
 **Services (Hexalith.EventStore.Admin.Server):**
-- `src/Hexalith.EventStore.Admin.Server/Services/DaprHealthQueryService.cs` — re-architected to consume canonical inventory; isolated bounded state-store probe; partial-report semantics; preserves cancellation.
+- `src/Hexalith.EventStore.Admin.Server/Services/DaprHealthQueryService.cs` — re-architected to consume canonical inventory; isolated bounded state-store probe; partial-report semantics; bounded total-event metric and health-history state reads; preserves cancellation.
 - `src/Hexalith.EventStore.Admin.Server/Services/DaprInfrastructureQueryService.cs` — added `GetCanonicalDaprInventoryAsync`, `TryReadRemoteMetadataAsync`, `ParseRemoteMetadata`, `RemoteMetadataPayload`, `InventoryKeyComparer`. Refactored `GetSidecarInfoAsync`, `GetActorRuntimeInfoAsync`, `GetPubSubOverviewAsync`, `GetComponentsAsync` to use the shared payload reader.
 - `src/Hexalith.EventStore.Admin.Server/Services/DaprHealthHistoryCollector.cs` — switched to canonical inventory; persistence-failure semantics preserve prior samples.
 
@@ -801,16 +816,18 @@ Claude Opus 4.7 (1M context).
 - `src/Hexalith.EventStore.Admin.UI/Pages/Health.razor` — metric stat cards consume `*Status` fields; new `FormatTotalEvents`/`FormatEventsPerSecond`/`FormatErrorRate`/`MetricSeverity` helpers.
 - `src/Hexalith.EventStore.Admin.UI/Pages/DaprComponents.razor` — Source column, source label/title helpers, "Active Subscriptions" + "subscription data unavailable" copy, and `InvalidPayload` titles in tooltip.
 - `src/Hexalith.EventStore.Admin.UI/Pages/DaprPubSub.razor` — "Active Subscriptions"/"Unique Topics" use "subscription data unavailable" copy when remote not Available; new empty-state + IssueBanner branches for `InvalidPayload` and unavailable remote metadata states.
+- `src/Hexalith.EventStore.Admin.UI/Pages/DaprHealthHistory.razor` — added heatmap cell title helper so tooltip/accessibility labels render evaluated time ranges instead of raw Razor text.
 
 **Tests (Hexalith.EventStore.Admin.Server.Tests):**
-- `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprHealthQueryServiceTests.cs` — added `IDaprInfrastructureQueryService` substitute parameter; updated `GetSystemHealthAsync_ReturnsHealthy_WhenAllProbesSucceed`, `_ReturnsUnhealthy_WhenSidecarUnavailable`, `_PropagatesCancellation` for new contract; added `_ReturnsUnhealthy_WhenStateStoreProbeFails`, `_DoesNotLeakConnectionDetails_OnStateStoreFailure`.
-- `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprHealthQueryServiceHistoryTests.cs` — updated factory to inject canonical-inventory substitute.
+- `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprHealthQueryServiceTests.cs` — added `IDaprInfrastructureQueryService` substitute parameter; updated `GetSystemHealthAsync_ReturnsHealthy_WhenAllProbesSucceed`, `_ReturnsUnhealthy_WhenSidecarUnavailable`, `_PropagatesCancellation` for new contract; added `_ReturnsUnhealthy_WhenStateStoreProbeFails`, `_DoesNotLeakConnectionDetails_OnStateStoreFailure`, and `_TotalEventCount_TimeoutReportedAsUnavailable`.
+- `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprHealthQueryServiceHistoryTests.cs` — updated factory to inject canonical-inventory substitute; added `_ReturnsUnavailableTimeline_WhenStateStoreReadTimesOut`.
 - `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprInfrastructureQueryServiceTests.cs` — replaced `GetComponentsAsync_Throws_WhenSidecarUnavailable` with `_ReturnsEmpty_WhenLocalSidecarUnavailableAndNoRemote` (canonical contract); added 5 canonical-inventory tests.
 - `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprPubSubQueryServiceTests.cs` — malformed-JSON test now asserts `InvalidPayload`.
 - `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprHealthHistoryCollectorTests.cs` — switched substitutions from `GetComponentsAsync` to `GetCanonicalDaprInventoryAsync`; renamed `_SkipsWrite_WhenNoComponentsReturned` → `_SkipsWrite_WhenNoComponentsAndRemoteUnavailable`.
 
 **Tests (Hexalith.EventStore.Admin.UI.Tests):**
 - `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/HealthPageTests.cs` — updated test data helpers to set `*Status = Available` for numeric assertions; added 3 AC1/AC2/AC3 tests for partial-report and metric truthfulness.
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/DaprHealthHistoryPageTests.cs` — added heatmap cell title regression proving raw Razor expressions do not leak into rendered markup.
 
 **No changes:**
 - `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml` — left untouched per AC5 default path.
@@ -824,3 +841,4 @@ Claude Opus 4.7 (1M context).
 - 2026-05-08 - Implementation complete (ST1-ST7); story moved ready-for-dev → in-progress → review. Manual Aspire smoke (ST8/AC8) deferred to operator. Validation: Admin.Abstractions.Tests 404/404, Contracts.Tests 291/291, Client.Tests 360/360, Admin.Server.Tests 571/571 (18 pre-existing skips), Admin.UI.Tests 708/708, Release solution build clean (0 warn / 0 err).
 - 2026-05-09 - Round-3 bmad-code-review: 8 decisions resolved + 25 patches applied + 7 deferred + 1 dismissed (53 raw findings → 41 unique). Two CRITICAL fixes: probe-timeout-as-Unhealthy branch reachability (ProbeStateStoreEntryAsync now takes outerCt and probeCt separately so the `when (!outerCt.IsCancellationRequested)` filter actually fires on probe-timer cancellation); remote-metadata memoization caches result-only (not Task) so a cancelled first caller no longer poisons later in-scope consumers. Other notable patches: per-probe try/catch (no more single-failure-aborts-batch); local-metadata memoization (round-1 D2 snapshot stability now actually holds); state-store probe filter to configured name (remote-only state-store rows no longer falsely marked Unhealthy); synth row Source=LocalAdminProbe at construction; synth skipped when StateStoreName empty; LocalProbeAvailable renamed to LocalSidecarMetadataAvailable; RemoteMetadataStatus.Initializing removed; ComputeOverallStatus now degrades on InvalidPayload; GetDaprComponentStatusAsync routes through canonical inventory; /dapr Components stat card sourced from canonical merged inventory; Active Subscriptions / Unique Topics severity warning when remote not Available; default-arm telemetry on three razor pages; new RecordingLogger for AC1 leak test (replaces NullLogger); 4 named UI failure fixtures (Forbidden / Timeout / Malformed / Null); ST5 history Pub/Sub regression test; culture-pinned stale-suffix test; Available+zero-components history sample now persists as real-zero. Spec status vocabulary table grew the Degraded row. Story stays at 'review' pending operator AC8 evidence (Dev Note exit criterion). Validation: Admin.Abstractions.Tests 404/404, Contracts.Tests 291/291, Client.Tests 360/360, Admin.Server.Tests 582/582 (18 pre-existing skips, +11 new tests), Admin.UI.Tests 718/718 (+10 new tests), Release solution build clean (0 warn / 0 err).
 - 2026-05-10 - Round-4 bmad-code-review: 5 decisions resolved + initial patch chain applied across HIGH/MEDIUM tiers. **BREAKING CHANGE (D5): the next merge commit MUST carry a `BREAKING CHANGE:` Conventional-Commits footer** so semantic-release issues a major version bump. Public NuGet contract changes that warrant the footer: (1) `DaprHealthQueryService` constructor parameter `infrastructure` inserted before `logger` (round-3 change, not previously annotated); (2) `DaprComponentDetail` positional record now has 8 params (added `Source = DaprComponentSource.Unavailable`, round-3); (3) `DaprComponentHealth` positional record now has 5 params (added `Source = DaprComponentSource.Unavailable`, round-3); (4) `RemoteMetadataStatus` enum gained `InvalidPayload = 3` and pinned ordinals (round-3 + round-4); (5) `DaprComponentSource` enum is new in `Hexalith.EventStore.Admin.Abstractions` (round-3) with pinned ordinals (round-4); (6) `SystemHealthReport` positional record now has 11 params (added `LocalSidecarMetadataStatus = RemoteMetadataStatus.Available`, round-4 D1+D2). Migration: callers using DI need no change; positional constructors and `var (a,b,c,d,...) = ...` deconstructors must update to the new arity. Add a CHANGELOG entry under the next major version; document the field positions and default values in the migration note. Round-4 also pinned explicit ordinals on `RemoteMetadataStatus` and `DaprComponentSource` with `[JsonStringEnumConverter]` at the type level for wire-format stability.
+- 2026-05-10 - API/Aspire Redis outage smoke executed with `EnableKeycloak=false` apphost. Smoke found and fixed two timeout gaps: total-event metric reads and health-history state reads now degrade to `Unavailable` instead of hanging when Redis is stopped. Added heatmap cell title helper after browser smoke exposed raw Razor expression leakage. Validation: Admin.Server.Tests 594/594 passed (18 pre-existing skips), Admin.UI.Tests 767/767 passed. Redis reset + canonical Pattern 2 seed completed (`tenant-a/counter/counter-1`, 3 completed increments); baseline/outage/recovery endpoint and browser evidence recorded; ST8/AC8 closed.

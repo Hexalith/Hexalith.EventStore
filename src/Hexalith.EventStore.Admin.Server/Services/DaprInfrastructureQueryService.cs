@@ -1016,6 +1016,16 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 HttpEndpointCount = httpEndpointCount,
             };
         }
+        catch (OperationCanceledException ex) when (!ct.IsCancellationRequested) {
+            _logger.LogWarning(
+                ex,
+                "Remote DAPR sidecar metadata unavailable at {Endpoint}: request timed out.",
+                endpoint);
+            return new RemoteMetadataPayload {
+                Status = RemoteMetadataStatus.Unreachable,
+                Endpoint = endpoint,
+            };
+        }
         catch (OperationCanceledException) {
             throw;
         }
@@ -1055,7 +1065,16 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
         DaprMetadata? metadata;
         try {
-            metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
+            using var localMetadataCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            localMetadataCts.CancelAfter(TimeSpan.FromSeconds(3));
+            metadata = await _daprClient.GetMetadataAsync(localMetadataCts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException ex) when (!ct.IsCancellationRequested) {
+            _logger.LogWarning(ex, "Local DAPR sidecar metadata unavailable: request timed out.");
+            return new LocalMetadataResult {
+                Available = false,
+                Metadata = null,
+            };
         }
         catch (OperationCanceledException) {
             // Caller-driven cancellation — propagate; do not poison the cache.

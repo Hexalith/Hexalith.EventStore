@@ -146,7 +146,7 @@
                 var cellColor = StatusToColor(cellStatus);
                 <div role="gridcell"
                      style="background: @cellColor; min-height: 24px; cursor: pointer;"
-                     title="@component | @slot.Label\u2013@slot.End.ToString(slot.Start.Date == slot.End.Date ? "HH:mm" : "MMM dd HH:mm") | @GetStatusSummary(component, slot)"
+                     title="@GetCellTitle(component, slot)"
                      @onclick="() => FilterByCell(component, slot)">
                 </div>
             }
@@ -539,6 +539,12 @@
         int degraded = entries.Count(e => e.Status == HealthStatus.Degraded);
         int unhealthy = entries.Count(e => e.Status == HealthStatus.Unhealthy);
         return $"Healthy: {healthy}, Degraded: {degraded}, Unhealthy: {unhealthy}";
+    }
+
+    private string GetCellTitle(string component, TimeSlot slot)
+    {
+        string end = slot.End.ToString(slot.Start.Date == slot.End.Date ? "HH:mm" : "MMM dd HH:mm");
+        return $"{component} | {slot.Label}-{end} | {GetStatusSummary(component, slot)}";
     }
 
     private static string StatusToColor(HealthStatus? status) => status switch

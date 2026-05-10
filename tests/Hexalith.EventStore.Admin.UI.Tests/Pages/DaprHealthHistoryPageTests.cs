@@ -234,6 +234,25 @@ public class DaprHealthHistoryPageTests : AdminUITestContext {
         markup.ShouldContain("statestore");
     }
 
+    [Fact]
+    public void DaprHealthHistoryPage_CellTitle_DoesNotRenderRawRazorExpression() {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        DaprComponentHealthTimeline timeline = new(
+            [
+                new DaprHealthHistoryEntry("statestore", "state.redis", HealthStatus.Healthy, now.AddMinutes(-15)),
+            ],
+            HasData: true);
+        _ = _mockClient.GetHealthHistoryAsync(
+            Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprComponentHealthTimeline?>(timeline));
+
+        IRenderedComponent<DaprHealthHistory> cut = Render<DaprHealthHistory>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("statestore"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("statestore |");
+        cut.Markup.ShouldNotContain("@slot.End.ToString");
+    }
+
     // ===== Helper methods =====
 
     private void SetupSuccessfulResponse() {

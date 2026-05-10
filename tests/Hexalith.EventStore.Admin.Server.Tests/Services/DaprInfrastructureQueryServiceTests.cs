@@ -1,5 +1,6 @@
 #pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
 
+using System.Diagnostics;
 using System.Net;
 using System.Text;
 
@@ -315,6 +316,15 @@ public class DaprInfrastructureQueryServiceTests {
         }
     }
 
+    private sealed class TimeoutHandler : HttpMessageHandler {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
+            await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
+            return new HttpResponseMessage(HttpStatusCode.OK) {
+                Content = new StringContent("""{"components":[],"subscriptions":[]}""", Encoding.UTF8, "application/json"),
+            };
+        }
+    }
+
     [Fact]
     public async Task GetSidecarInfoAsync_ReturnsNull_WhenSidecarUnavailable() {
         // Round 3: local metadata read is now memoized via TryReadLocalMetadataAsync, which
@@ -330,6 +340,52 @@ public class DaprInfrastructureQueryServiceTests {
         DaprSidecarInfo? info = await service.GetSidecarInfoAsync();
 
         info.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetCanonicalDaprInventoryAsync_ReturnsUnreachable_WhenRemoteMetadataTimesOut() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+            .Returns(CreateMetadata());
+
+        const string endpoint = "http://localhost:3501";
+        using HttpClient httpClient = new(new TimeoutHandler()) {
+            Timeout = TimeSpan.FromMilliseconds(10),
+        };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(
+            daprClient,
+            new AdminServerOptions { EventStoreDaprHttpEndpoint = endpoint },
+            httpClientFactory);
+
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        inventory.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Unreachable);
+        inventory.RemoteEndpoint.ShouldBe(endpoint);
+    }
+
+    [Fact]
+    public async Task GetCanonicalDaprInventoryAsync_ReturnsLocalUnavailable_WhenLocalMetadataTimesOut() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+            .Returns(call => NeverCompletesMetadataAsync(call.Arg<CancellationToken>()));
+        Stopwatch stopwatch = Stopwatch.StartNew();
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        stopwatch.Stop();
+        inventory.LocalSidecarMetadataAvailable.ShouldBeFalse();
+        inventory.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
+        stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(5));
+
+        static async Task<DaprMetadata> NeverCompletesMetadataAsync(CancellationToken ct) {
+            await Task.Delay(TimeSpan.FromSeconds(30), ct).ConfigureAwait(false);
+            return CreateMetadata();
+        }
     }
 
     [Fact]

@@ -200,6 +200,7 @@
     protected override async Task OnInitializedAsync()
     {
         RefreshService.OnDataChanged += OnRefreshSignal;
+        RefreshService.OnError += OnRefreshError;
 
         try
         {
@@ -260,6 +261,28 @@
         });
     }
 
+    private void OnRefreshError(Exception exception)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _ = exception;
+        _ = InvokeAsync(() =>
+        {
+            try
+            {
+                _isStale = _cachedHealthReport is not null;
+                _apiUnavailable = _cachedHealthReport is null;
+                StateHasChanged();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        });
+    }
+
     private async Task LoadDataAsync()
     {
         // Set _isLoading so the SkeletonCard reappears during a Retry attempt; otherwise the page
@@ -303,6 +326,7 @@
     public ValueTask DisposeAsync()
     {
         RefreshService.OnDataChanged -= OnRefreshSignal;
+        RefreshService.OnError -= OnRefreshError;
         _disposed = true;
         return ValueTask.CompletedTask;
     }

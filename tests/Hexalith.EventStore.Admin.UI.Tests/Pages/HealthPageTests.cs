@@ -135,6 +135,33 @@ public class HealthPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public async Task HealthPage_MarksCachedReportStale_WhenDashboardRefreshRaisesError() {
+        SystemHealthReport report = CreateHealthyReport();
+        int callCount = 0;
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                callCount++;
+                if (callCount == 1) {
+                    return Task.FromResult<SystemHealthReport?>(report);
+                }
+
+                throw new HttpRequestException("backend unavailable");
+            });
+
+        IRenderedComponent<Health> cut = Render<Health>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Total Events"), TimeSpan.FromSeconds(5));
+
+        DashboardRefreshService refreshService = Services.GetRequiredService<DashboardRefreshService>();
+        await cut.InvokeAsync(() => refreshService.TriggerImmediateRefreshAsync());
+
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldContain("Health data may be stale"),
+            TimeSpan.FromSeconds(5));
+        cut.Markup.ShouldContain("Total Events");
+        callCount.ShouldBe(2);
+    }
+
+    [Fact]
     public void HealthPage_RendersObservabilityButtons_WhenUrlsConfigured() {
         // Arrange
         SystemHealthReport report = CreateReportWithObservabilityLinks();

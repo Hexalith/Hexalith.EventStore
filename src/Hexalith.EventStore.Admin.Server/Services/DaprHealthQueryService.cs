@@ -241,8 +241,10 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
     /// </returns>
     private async Task<(long Sum, SystemHealthMetricStatus Status)> TryComputeTotalEventCountAsync(CancellationToken ct) {
         try {
+            using var metricCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            metricCts.CancelAfter(TimeSpan.FromSeconds(3));
             PagedResult<StreamSummary> page = await _streamQuery
-                .GetRecentlyActiveStreamsAsync(tenantId: null, domain: null, count: int.MaxValue, ct)
+                .GetRecentlyActiveStreamsAsync(tenantId: null, domain: null, count: int.MaxValue, metricCts.Token)
                 .ConfigureAwait(false);
             long sum = 0;
             foreach (StreamSummary s in page.Items) {
@@ -250,6 +252,10 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
             }
 
             return (sum, SystemHealthMetricStatus.Available);
+        }
+        catch (OperationCanceledException ex) when (!ct.IsCancellationRequested) {
+            _logger.LogWarning(ex, "Timed out computing TotalEventCount from stream activity index — reporting Unavailable.");
+            return (0, SystemHealthMetricStatus.Unavailable);
         }
         catch (OperationCanceledException) {
             throw;
@@ -280,6 +286,9 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
         string? componentName,
         CancellationToken ct = default) {
         try {
+            using var historyCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            historyCts.CancelAfter(TimeSpan.FromSeconds(3));
+
             // Calculate which day keys to query
             List<string> dayKeys = [];
             for (DateTimeOffset date = from.UtcDateTime.Date; date.Date <= to.UtcDateTime.Date; date = date.AddDays(1)) {
@@ -289,7 +298,7 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
             // Read all day partitions in parallel
             Task<DaprComponentHealthTimeline>[] tasks = dayKeys
                 .Select(key => _daprClient.GetStateAsync<DaprComponentHealthTimeline>(
-                    _options.StateStoreName, key, cancellationToken: ct))
+                    _options.StateStoreName, key, cancellationToken: historyCts.Token))
                 .ToArray();
 
             DaprComponentHealthTimeline[] results = await Task.WhenAll(tasks).ConfigureAwait(false);
@@ -315,6 +324,15 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
             }
 
             return new DaprComponentHealthTimeline(allEntries.AsReadOnly(), HasData: allEntries.Count > 0, IsTruncated: isTruncated);
+        }
+        catch (OperationCanceledException ex) when (!ct.IsCancellationRequested) {
+            _logger.LogWarning(ex, "Timed out reading DAPR component health history — reporting history source unavailable.");
+            return new DaprComponentHealthTimeline(
+                [],
+                HasData: false,
+                IsTruncated: false,
+                HistoryStatus: SystemHealthMetricStatus.Unavailable,
+                StatusMessage: "Health history storage is unavailable; live health and DAPR inventory remain authoritative for the current sample.");
         }
         catch (OperationCanceledException) {
             throw;
