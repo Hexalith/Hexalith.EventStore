@@ -190,9 +190,13 @@
         <PropertyColumn Property="@(c => c.ComponentName)" Title="Component Name" Class="monospace" Sortable="true" />
         <PropertyColumn Property="@(c => c.ComponentType)" Title="Type" Sortable="true" />
         <PropertyColumn Property="@(c => c.Version)" Title="Version" Sortable="true" />
-        <TemplateColumn Title="Source" Sortable="true"
+        <TemplateColumn Title="Inventory Source" Sortable="true"
                         SortBy="@(GridSort<DaprComponentDetail>.ByAscending(c => (int)c.Source))">
             <span title="@GetSourceTitle(context.Source)">@FormatSource(context.Source)</span>
+        </TemplateColumn>
+        <TemplateColumn Title="Health Evidence" Sortable="true"
+                        SortBy="@(GridSort<DaprComponentDetail>.ByAscending(c => (int)c.HealthEvidenceSource))">
+            <span title="@GetHealthEvidenceTitle(context.HealthEvidenceSource)">@FormatSource(context.HealthEvidenceSource)</span>
         </TemplateColumn>
         <TemplateColumn Title="Status"
                         SortBy="@(GridSort<DaprComponentDetail>.ByDescending(c => (int)c.Status))">
@@ -432,7 +436,7 @@
     private string GetComponentsCountSubtitle()
     {
         int localOnly = _components.Count(c => c.Source == DaprComponentSource.LocalAdminMetadataFallback);
-        int probed = _components.Count(c => c.Source == DaprComponentSource.LocalAdminProbe);
+        int probed = _components.Count(c => c.HealthEvidenceSource == DaprComponentSource.LocalAdminProbe);
         int remote = _components.Count(c => c.Source == DaprComponentSource.RemoteEventStoreMetadata);
         return $"{remote} remote / {probed} probed / {localOnly} local";
     }
@@ -473,6 +477,15 @@
         DaprComponentSource.LocalAdminProbe => "Confirmed by an Admin.Server local dependency probe.",
         DaprComponentSource.LocalAdminMetadataFallback => "Sourced from local Admin sidecar metadata as a degraded fallback only.",
         DaprComponentSource.Unavailable => "Source attribution unavailable for this fact.",
+        _ => $"Unrecognized DaprComponentSource value '{source}' — UI translation missing.",
+    };
+
+    private static string GetHealthEvidenceTitle(DaprComponentSource source) => source switch
+    {
+        DaprComponentSource.RemoteEventStoreMetadata => "Status evidence came from remote EventStore sidecar metadata.",
+        DaprComponentSource.LocalAdminProbe => "Status evidence came from an Admin.Server local dependency probe.",
+        DaprComponentSource.LocalAdminMetadataFallback => "Status evidence came from local Admin sidecar metadata fallback.",
+        DaprComponentSource.Unavailable => "Health evidence source unavailable for this status.",
         _ => $"Unrecognized DaprComponentSource value '{source}' — UI translation missing.",
     };
 

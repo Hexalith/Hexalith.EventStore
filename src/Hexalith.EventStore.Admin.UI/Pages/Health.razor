@@ -4,6 +4,7 @@
 @using Hexalith.EventStore.Admin.Abstractions.Models.Health
 @using Hexalith.EventStore.Admin.UI.Components.Shared
 @using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
 
 @implements IAsyncDisposable
 
@@ -84,19 +85,19 @@
     {
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Total Events"
-                      Value="@FormatTotalEvents(_healthReport)"
+                      Value="@FormatTotalEvents(_healthReport, _isStale)"
                       Severity="@MetricSeverity(_healthReport.TotalEventCountStatus)"
                       Title="Total events in the system" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Events/sec"
-                      Value="@FormatEventsPerSecond(_healthReport)"
+                      Value="@FormatEventsPerSecond(_healthReport, _isStale)"
                       Severity="@(IsValueShown(_healthReport.EventsPerSecondStatus) ? GetEventsPerSecondSeverity(_healthReport.EventsPerSecond) : MetricSeverity(_healthReport.EventsPerSecondStatus))"
                       Title="Current event throughput" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Error Rate"
-                      Value="@FormatErrorRate(_healthReport)"
+                      Value="@FormatErrorRate(_healthReport, _isStale)"
                       Severity="@(IsValueShown(_healthReport.ErrorPercentageStatus) ? GetErrorRateSeverity(_healthReport.ErrorPercentage) : MetricSeverity(_healthReport.ErrorPercentageStatus))"
                       Title="Current error rate" />
         </FluentGridItem>
@@ -138,9 +139,13 @@
                         aria-label="DAPR component health status">
             <PropertyColumn Property="@(c => c.ComponentName)" Title="Component Name" Class="monospace" Sortable="true" />
             <PropertyColumn Property="@(c => c.ComponentType)" Title="Component Type" Sortable="true" />
-            <TemplateColumn Title="Source"
+            <TemplateColumn Title="Inventory Source"
                             SortBy="@(GridSort<DaprComponentHealth>.ByAscending(c => (int)c.Source))">
                 <span title="@GetSourceTitle(context.Source)">@FormatSource(context.Source)</span>
+            </TemplateColumn>
+            <TemplateColumn Title="Health Evidence"
+                            SortBy="@(GridSort<DaprComponentHealth>.ByAscending(c => (int)c.HealthEvidenceSource))">
+                <span title="@GetHealthEvidenceTitle(context.HealthEvidenceSource)">@FormatSource(context.HealthEvidenceSource)</span>
             </TemplateColumn>
             <TemplateColumn Title="Status"
                             SortBy="@(GridSort<DaprComponentHealth>.ByDescending(c => (int)c.Status))"
@@ -286,8 +291,18 @@
         {
             try
             {
-                _isStale = _cachedHealthReport is not null;
-                _apiUnavailable = _cachedHealthReport is null;
+                if (IsAuthContextFailure(exception))
+                {
+                    _cachedHealthReport = null;
+                    _healthReport = null;
+                    _isStale = false;
+                    _apiUnavailable = true;
+                }
+                else
+                {
+                    _isStale = _cachedHealthReport is not null;
+                    _apiUnavailable = _cachedHealthReport is null;
+                }
                 StateHasChanged();
             }
             catch (ObjectDisposedException)
@@ -320,10 +335,20 @@
                 _apiUnavailable = _cachedHealthReport is null;
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            _isStale = _cachedHealthReport is not null;
-            _apiUnavailable = _cachedHealthReport is null;
+            if (IsAuthContextFailure(ex))
+            {
+                _cachedHealthReport = null;
+                _healthReport = null;
+                _isStale = false;
+                _apiUnavailable = true;
+            }
+            else
+            {
+                _isStale = _cachedHealthReport is not null;
+                _apiUnavailable = _cachedHealthReport is null;
+            }
         }
         finally
         {
@@ -348,25 +373,25 @@
     //   - Available    -> render the real measurement (zero is honest if measured zero)
     //   - Unavailable  -> render "unavailable" (never 0, 0.0/s, or 0.0%)
     //   - Stale        -> render the stale value with a "(stale)" suffix
-    private static string FormatTotalEvents(SystemHealthReport report) => report.TotalEventCountStatus switch
+    private static string FormatTotalEvents(SystemHealthReport report, bool isStale) => report.TotalEventCountStatus switch
     {
         SystemHealthMetricStatus.Unavailable => "unavailable",
         SystemHealthMetricStatus.Stale => $"{report.TotalEventCount:N0} (stale)",
-        _ => report.TotalEventCount.ToString("N0"),
+        _ => isStale ? $"{report.TotalEventCount:N0} (stale)" : report.TotalEventCount.ToString("N0"),
     };
 
-    private static string FormatEventsPerSecond(SystemHealthReport report) => report.EventsPerSecondStatus switch
+    private static string FormatEventsPerSecond(SystemHealthReport report, bool isStale) => report.EventsPerSecondStatus switch
     {
         SystemHealthMetricStatus.Unavailable => "unavailable",
         SystemHealthMetricStatus.Stale => $"{report.EventsPerSecond:F1} (stale)",
-        _ => report.EventsPerSecond.ToString("F1"),
+        _ => isStale ? $"{report.EventsPerSecond:F1} (stale)" : report.EventsPerSecond.ToString("F1"),
     };
 
-    private static string FormatErrorRate(SystemHealthReport report) => report.ErrorPercentageStatus switch
+    private static string FormatErrorRate(SystemHealthReport report, bool isStale) => report.ErrorPercentageStatus switch
     {
         SystemHealthMetricStatus.Unavailable => "unavailable",
         SystemHealthMetricStatus.Stale => $"{report.ErrorPercentage:F1}% (stale)",
-        _ => $"{report.ErrorPercentage:F1}%",
+        _ => isStale ? $"{report.ErrorPercentage:F1}% (stale)" : $"{report.ErrorPercentage:F1}%",
     };
 
     // Severity must visually distinguish Unavailable from Available so an operator scanning the
@@ -456,6 +481,20 @@
         DaprComponentSource.Unavailable => "Source attribution unavailable for this fact.",
         _ => $"Unrecognized DaprComponentSource value '{source}' — UI translation missing.",
     };
+
+    private static string GetHealthEvidenceTitle(DaprComponentSource source) => source switch
+    {
+        DaprComponentSource.RemoteEventStoreMetadata => "Status evidence came from remote EventStore sidecar metadata.",
+        DaprComponentSource.LocalAdminProbe => "Status evidence came from an Admin.Server local dependency probe.",
+        DaprComponentSource.LocalAdminMetadataFallback => "Status evidence came from local Admin sidecar metadata fallback.",
+        DaprComponentSource.Unavailable => "Health evidence source unavailable for this status.",
+        _ => $"Unrecognized DaprComponentSource value '{source}' — UI translation missing.",
+    };
+
+    private static bool IsAuthContextFailure(Exception exception)
+        => exception is UnauthorizedAccessException
+            or ForbiddenAccessException
+            or AdminApiProblemException { StatusCode: System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden };
 
     private static string GetErrorRateSeverity(double percentage)
     {

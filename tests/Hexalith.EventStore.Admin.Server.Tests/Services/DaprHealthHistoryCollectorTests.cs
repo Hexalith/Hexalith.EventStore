@@ -93,7 +93,7 @@ public class DaprHealthHistoryCollectorTests {
     }
 
     [Fact]
-    public async Task ExecuteAsync_SkipsWrite_WhenNoComponentsAndRemoteUnavailable() {
+    public async Task ExecuteAsync_PersistsSourceStatus_WhenNoComponentsAndRemoteUnavailable() {
         // Arrange
         var options = new AdminServerOptions { HealthHistoryEnabled = true };
 
@@ -101,30 +101,38 @@ public class DaprHealthHistoryCollectorTests {
         IDaprInfrastructureQueryService infraService = Substitute.For<IDaprInfrastructureQueryService>();
         FakeTimeProvider fakeClock = new(new DateTimeOffset(2026, 5, 10, 12, 0, 0, TimeSpan.Zero));
 
-        bool inventoryObserved = false;
-        // Return empty component list with remote unreachable (do not overwrite history)
+        // Return empty component list with remote unreachable. The collector records a source
+        // status sample so prior rows do not remain visually fresh forever.
         _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => {
-                inventoryObserved = true;
-                return new DaprCanonicalInventory(
-                    [], [], RemoteMetadataStatus.Unreachable,
-                    "http://eventstore-sidecar", LocalSidecarMetadataAvailable: false,
-                    CapturedAtUtc: fakeClock.GetUtcNow());
-            });
+            .Returns(new DaprCanonicalInventory(
+                [], [], RemoteMetadataStatus.Unreachable,
+                "http://eventstore-sidecar", LocalSidecarMetadataAvailable: false,
+                CapturedAtUtc: fakeClock.GetUtcNow()));
 
         DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService, fakeClock);
 
         using CancellationTokenSource cts = new();
 
-        // Act — wait for inventory to be queried; SaveStateAsync should never fire on this branch.
-        await DriveFirstCaptureAsync(collector, fakeClock, cts, () => inventoryObserved);
+        DaprComponentHealthTimeline? captured = null;
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+            Arg.Any<string>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(new DaprComponentHealthTimeline([], HasData: false));
+        _ = daprClient.SaveStateAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<DaprComponentHealthTimeline>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(callInfo => {
+                captured = callInfo.ArgAt<DaprComponentHealthTimeline>(2);
+                return Task.CompletedTask;
+            });
 
-        // Assert - SaveStateAsync should NOT have been called
-        await daprClient.DidNotReceive().SaveStateAsync(
-            Arg.Any<string>(),
-            Arg.Is<string>(k => k.StartsWith("admin:health-history:")),
-            Arg.Any<DaprComponentHealthTimeline>(),
-            cancellationToken: Arg.Any<CancellationToken>());
+        // Act — wait for the source-status sample to be saved.
+        await DriveFirstCaptureAsync(collector, fakeClock, cts, () => captured is not null);
+
+        DaprHealthHistoryEntry entry = captured.ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        entry.ComponentName.ShouldBe("remote-eventstore-metadata");
+        entry.SourceStatus.ShouldBe(RemoteMetadataStatus.Unreachable);
     }
 
     [Fact]
@@ -175,10 +183,9 @@ public class DaprHealthHistoryCollectorTests {
     }
 
     [Fact]
-    public async Task ExecuteAsync_SkipsWrite_WhenRemoteUnreachableAndNoUsableEvidence() {
-        // AC4: never overwrite a previous healthy timeline when canonical evidence is empty
-        // (remote unreachable AND no probed/local-attributed component rows). Preserves
-        // last-good history.
+    public async Task ExecuteAsync_PersistsInvalidPayloadSourceStatus_WhenRemoteInvalidAndNoUsableEvidence() {
+        // AC4: current invalid remote metadata must be represented in history so prior
+        // component samples do not remain visually fresh.
         var options = new AdminServerOptions { HealthHistoryEnabled = true };
 
         DaprClient daprClient = Substitute.For<DaprClient>();
@@ -190,22 +197,34 @@ public class DaprHealthHistoryCollectorTests {
             .Returns(_ => {
                 inventoryObserved = true;
                 return new DaprCanonicalInventory(
-                    [], [], RemoteMetadataStatus.Unreachable,
+                    [], [], RemoteMetadataStatus.InvalidPayload,
                     "http://eventstore-sidecar", LocalSidecarMetadataAvailable: false,
                     CapturedAtUtc: fakeClock.GetUtcNow());
+            });
+
+        DaprComponentHealthTimeline? captured = null;
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+            Arg.Any<string>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(new DaprComponentHealthTimeline([], HasData: false));
+        _ = daprClient.SaveStateAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<DaprComponentHealthTimeline>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(callInfo => {
+                captured = callInfo.ArgAt<DaprComponentHealthTimeline>(2);
+                return Task.CompletedTask;
             });
 
         DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService, fakeClock);
 
         using CancellationTokenSource cts = new();
 
-        await DriveFirstCaptureAsync(collector, fakeClock, cts, () => inventoryObserved);
+        await DriveFirstCaptureAsync(collector, fakeClock, cts, () => captured is not null && inventoryObserved);
 
-        await daprClient.DidNotReceive().SaveStateAsync(
-            Arg.Any<string>(),
-            Arg.Is<string>(k => k.StartsWith("admin:health-history:")),
-            Arg.Any<DaprComponentHealthTimeline>(),
-            cancellationToken: Arg.Any<CancellationToken>());
+        DaprHealthHistoryEntry entry = captured.ShouldNotBeNull().Entries.ShouldHaveSingleItem();
+        entry.ComponentName.ShouldBe("remote-eventstore-metadata");
+        entry.SourceStatus.ShouldBe(RemoteMetadataStatus.InvalidPayload);
     }
 
     [Fact]
@@ -258,7 +277,9 @@ public class DaprHealthHistoryCollectorTests {
         captured.Entries.ShouldContain(e =>
             e.ComponentName == "pubsub"
             && e.ComponentType == "pubsub.redis"
-            && e.Status == HealthStatus.Healthy);
+            && e.Status == HealthStatus.Healthy
+            && e.InventorySource == DaprComponentSource.RemoteEventStoreMetadata
+            && e.SourceStatus == RemoteMetadataStatus.Available);
     }
 
     [Fact]

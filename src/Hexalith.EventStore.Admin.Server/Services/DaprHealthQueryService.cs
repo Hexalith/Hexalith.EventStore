@@ -158,13 +158,14 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
         }
 
         // The probe runs inside GetCanonicalDaprInventoryAsync and writes the probe result onto
-        // the matching state-store entry. Remote-attributed rows intentionally keep Source =
-        // RemoteEventStoreMetadata so /health can show where the inventory fact came from while
-        // still using the local probe Status as health evidence.
+        // the matching state-store entry. Inventory provenance and health evidence are split:
+        // Source can remain RemoteEventStoreMetadata while HealthEvidenceSource proves the
+        // Status came from LocalAdminProbe.
         DaprComponentDetail[] probeRows = inventory.Components
             .Where(c =>
                 string.Equals(c.ComponentName, configuredStateStoreName, StringComparison.OrdinalIgnoreCase)
-                && c.Category == DaprComponentCategory.StateStore)
+                && c.Category == DaprComponentCategory.StateStore
+                && c.HealthEvidenceSource == DaprComponentSource.LocalAdminProbe)
             .OrderBy(c => c.ComponentType, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -205,11 +206,18 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
         List<DaprComponentHealth> components = new(inventory.Components.Count);
         foreach (IGrouping<string, DaprComponentDetail> group in inventory.Components.GroupBy(c => c.ComponentName, StringComparer.OrdinalIgnoreCase)) {
             DaprComponentDetail winner = group
-                .OrderBy(c => SourcePreferenceRank(c.Source))
+                .OrderBy(c => SourcePreferenceRank(c.HealthEvidenceSource))
+                .ThenBy(c => SourcePreferenceRank(c.Source))
                 .ThenBy(c => string.Equals(c.ComponentType, "state.unknown", StringComparison.OrdinalIgnoreCase) ? 1 : 0)
                 .ThenByDescending(c => c.LastCheckUtc)
                 .First();
-            components.Add(new DaprComponentHealth(winner.ComponentName, winner.ComponentType, winner.Status, winner.LastCheckUtc, winner.Source));
+            components.Add(new DaprComponentHealth(
+                winner.ComponentName,
+                winner.ComponentType,
+                winner.Status,
+                winner.LastCheckUtc,
+                winner.Source,
+                winner.HealthEvidenceSource));
         }
 
         return components;

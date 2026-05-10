@@ -58,6 +58,7 @@ public class DaprHealthQueryServiceTests {
                         new DaprComponentDetail(
                             "statestore", "state.redis", DaprComponentCategory.StateStore,
                             "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [],
+                            DaprComponentSource.LocalAdminMetadataFallback,
                             DaprComponentSource.LocalAdminProbe),
                     ],
                     [],
@@ -107,6 +108,7 @@ public class DaprHealthQueryServiceTests {
                     new DaprComponentDetail(
                         "statestore", "state.redis", DaprComponentCategory.StateStore,
                         "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [],
+                        DaprComponentSource.LocalAdminMetadataFallback,
                         DaprComponentSource.LocalAdminProbe),
                 ],
                 [],
@@ -190,6 +192,7 @@ public class DaprHealthQueryServiceTests {
                     new DaprComponentDetail(
                         "statestore", "state.redis", DaprComponentCategory.StateStore,
                         "v1", HealthStatus.Unhealthy, DateTimeOffset.UtcNow, [],
+                        DaprComponentSource.LocalAdminMetadataFallback,
                         DaprComponentSource.LocalAdminProbe),
                 ],
                 [],
@@ -208,7 +211,7 @@ public class DaprHealthQueryServiceTests {
             .ShouldHaveSingleItem();
         stateStore.ComponentName.ShouldBe("statestore");
         stateStore.Status.ShouldBe(HealthStatus.Unhealthy);
-        stateStore.Source.ShouldBe(DaprComponentSource.LocalAdminProbe);
+        stateStore.HealthEvidenceSource.ShouldBe(DaprComponentSource.LocalAdminProbe);
     }
 
     [Fact]
@@ -355,10 +358,12 @@ public class DaprHealthQueryServiceTests {
                     new DaprComponentDetail(
                         "statestore", "state.redis", DaprComponentCategory.StateStore,
                         "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [],
+                        DaprComponentSource.LocalAdminMetadataFallback,
                         DaprComponentSource.LocalAdminProbe),
                     new DaprComponentDetail(
                         "pubsub", "pubsub.redis", DaprComponentCategory.PubSub,
                         "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [],
+                        DaprComponentSource.RemoteEventStoreMetadata,
                         DaprComponentSource.RemoteEventStoreMetadata),
                 ],
                 [],
@@ -372,7 +377,7 @@ public class DaprHealthQueryServiceTests {
         IReadOnlyList<DaprComponentHealth> result = await service.GetDaprComponentStatusAsync();
 
         result.Count.ShouldBe(2);
-        result.ShouldContain(c => c.ComponentName == "statestore" && c.Source == DaprComponentSource.LocalAdminProbe);
+        result.ShouldContain(c => c.ComponentName == "statestore" && c.HealthEvidenceSource == DaprComponentSource.LocalAdminProbe);
         result.ShouldContain(c => c.ComponentName == "pubsub" && c.Source == DaprComponentSource.RemoteEventStoreMetadata);
     }
 

@@ -1,6 +1,7 @@
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
+using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
 
@@ -108,7 +109,7 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
         //
         //   * If remote is Available, persist — even when the components list is empty, that is
         //     a real "remote responded with zero components" sample worth recording.
-        //   * If remote is non-Available AND every component carries Source = Unavailable, the
+        //   * If remote is non-Available AND every component carries no source attribution, the
         //     canonical inventory has no usable evidence: skip to preserve last-good history.
         //   * If remote is non-Available but at least one row has real source attribution
         //     (LocalAdminProbe / LocalAdminMetadataFallback / RemoteEventStoreMetadata), persist
@@ -123,14 +124,15 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
         // attribution into the timeline.
         bool everyRowHasNoSource = components.Count > 0
             && components.All(c =>
-                c.Source is not DaprComponentSource.RemoteEventStoreMetadata
-                    and not DaprComponentSource.LocalAdminProbe
-                    and not DaprComponentSource.LocalAdminMetadataFallback);
+                !HasUsableSource(c.Source)
+                && !HasUsableSource(c.HealthEvidenceSource));
         if (!remoteAvailable && (components.Count == 0 || everyRowHasNoSource)) {
-            _logger.LogDebug(
-                "Skipping health history snapshot — remote metadata status={Status} and components carry no usable source attribution. Live APIs may still expose the current sample; persisted history is preserved.",
-                inventory.RemoteMetadataStatus);
-            return;
+            if (inventory.RemoteMetadataStatus is not (RemoteMetadataStatus.Unreachable or RemoteMetadataStatus.InvalidPayload)) {
+                _logger.LogDebug(
+                    "Skipping health history snapshot — remote metadata status={Status} and components carry no usable source attribution. Live APIs may still expose the current sample; persisted history is preserved.",
+                    inventory.RemoteMetadataStatus);
+                return;
+            }
         }
 
         DateTimeOffset now = _timeProvider.GetUtcNow();
@@ -144,13 +146,30 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
 
             List<DaprHealthHistoryEntry> entries = existing?.Entries?.ToList() ?? [];
 
-            // Append new entries for each component
-            foreach (DaprComponentDetail component in components) {
+            if (!remoteAvailable && (components.Count == 0 || everyRowHasNoSource)) {
                 entries.Add(new DaprHealthHistoryEntry(
-                    ComponentName: component.ComponentName,
-                    ComponentType: component.ComponentType,
-                    Status: component.Status,
-                    CapturedAtUtc: now));
+                    ComponentName: "remote-eventstore-metadata",
+                    ComponentType: "metadata.dapr",
+                    Status: inventory.RemoteMetadataStatus == RemoteMetadataStatus.InvalidPayload
+                        ? HealthStatus.Degraded
+                        : HealthStatus.Unhealthy,
+                    CapturedAtUtc: now,
+                    InventorySource: DaprComponentSource.Unavailable,
+                    HealthEvidenceSource: DaprComponentSource.Unavailable,
+                    SourceStatus: inventory.RemoteMetadataStatus));
+            }
+            else {
+                // Append new entries for each component
+                foreach (DaprComponentDetail component in components) {
+                    entries.Add(new DaprHealthHistoryEntry(
+                        ComponentName: component.ComponentName,
+                        ComponentType: component.ComponentType,
+                        Status: component.Status,
+                        CapturedAtUtc: now,
+                        InventorySource: component.Source,
+                        HealthEvidenceSource: component.HealthEvidenceSource,
+                        SourceStatus: inventory.RemoteMetadataStatus));
+                }
             }
 
             DaprComponentHealthTimeline updated = new(entries.AsReadOnly(), HasData: true);
@@ -205,4 +224,9 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
             }
         }
     }
+
+    private static bool HasUsableSource(DaprComponentSource source)
+        => source is DaprComponentSource.RemoteEventStoreMetadata
+            or DaprComponentSource.LocalAdminProbe
+            or DaprComponentSource.LocalAdminMetadataFallback;
 }

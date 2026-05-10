@@ -10,16 +10,21 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Health;
 /// <param name="Status">The current health status.</param>
 /// <param name="LastCheckUtc">When the health was last checked.</param>
 /// <param name="Source">
-/// Source attribution: which sidecar or probe supplied this fact. Defaults to
+/// Inventory source attribution: which sidecar or fallback supplied this component fact. Defaults to
 /// <see cref="DaprComponentSource.Unavailable"/> for forward-compatibility — clients that do
 /// not yet read this field continue to work, but the UI must never treat the default as canonical.
+/// </param>
+/// <param name="HealthEvidenceSource">
+/// Health evidence attribution: which source supplied <paramref name="Status"/> and
+/// <paramref name="LastCheckUtc"/>.
 /// </param>
 public record DaprComponentHealth(
     string ComponentName,
     string ComponentType,
     HealthStatus Status,
     DateTimeOffset LastCheckUtc,
-    DaprComponentSource Source = DaprComponentSource.Unavailable) {
+    DaprComponentSource Source = DaprComponentSource.Unavailable,
+    DaprComponentSource HealthEvidenceSource = DaprComponentSource.Unavailable) {
     /// <summary>Gets the DAPR component name.</summary>
     public string ComponentName { get; } = !string.IsNullOrWhiteSpace(ComponentName)
         ? ComponentName

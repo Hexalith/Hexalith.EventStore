@@ -130,6 +130,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                     willBeProbed ? HealthStatus.Healthy : HealthStatus.Unhealthy,
                     now,
                     c.Capabilities ?? [],
+                    DaprComponentSource.LocalAdminMetadataFallback,
                     DaprComponentSource.LocalAdminMetadataFallback);
                 merged[(entry.ComponentName, entry.ComponentType)] = entry;
             }
@@ -165,8 +166,15 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                     && c.Status == HealthStatus.Healthy;
 
                 DaprComponentDetail entry = needsStateStoreDowngrade
-                    ? c with { Status = HealthStatus.Degraded, Source = DaprComponentSource.RemoteEventStoreMetadata }
-                    : c with { Source = DaprComponentSource.RemoteEventStoreMetadata };
+                    ? c with {
+                        Status = HealthStatus.Degraded,
+                        Source = DaprComponentSource.RemoteEventStoreMetadata,
+                        HealthEvidenceSource = DaprComponentSource.RemoteEventStoreMetadata,
+                    }
+                    : c with {
+                        Source = DaprComponentSource.RemoteEventStoreMetadata,
+                        HealthEvidenceSource = DaprComponentSource.RemoteEventStoreMetadata,
+                    };
                 merged[(entry.ComponentName, entry.ComponentType)] = entry;
             }
         }
@@ -201,7 +209,8 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 // the synth row reporting "probed and Unhealthy" without an actual probe call.
                 // Stage 4 (the only writer of LocalAdminProbe) updates Source on probe completion,
                 // so the synth's Source attribution is correct only *after* Stage 4 runs.
-                Source: DaprComponentSource.Unavailable);
+                Source: DaprComponentSource.Unavailable,
+                HealthEvidenceSource: DaprComponentSource.Unavailable);
             merged[(configuredStateStore, SyntheticStateStoreType)] = synth;
         }
 
@@ -261,7 +270,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                     probeResults[(pair.Entry.ComponentName, pair.Entry.ComponentType)] = pair.Entry with {
                         Status = HealthStatus.Unhealthy,
                         LastCheckUtc = DateTimeOffset.UtcNow,
-                        Source = DaprComponentSource.LocalAdminProbe,
+                        HealthEvidenceSource = DaprComponentSource.LocalAdminProbe,
                     };
                 }
             }
@@ -541,7 +550,10 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             ? []
             : remote.Components
                 .Where(c => c.Category == DaprComponentCategory.PubSub)
-                .Select(c => c with { Source = DaprComponentSource.RemoteEventStoreMetadata })
+                .Select(c => c with {
+                    Source = DaprComponentSource.RemoteEventStoreMetadata,
+                    HealthEvidenceSource = DaprComponentSource.RemoteEventStoreMetadata,
+                })
                 .ToArray();
 
         return new DaprPubSubOverview(
@@ -918,10 +930,11 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             // Success — store responded. Preserve remote inventory provenance when the row came
             // from the EventStore sidecar; the local probe owns Status/LastCheckUtc, but Source
             // still answers where the component inventory fact came from.
-            DaprComponentSource source = component.Source == DaprComponentSource.RemoteEventStoreMetadata
-                ? component.Source
-                : DaprComponentSource.LocalAdminProbe;
-            return (component with { Status = HealthStatus.Healthy, LastCheckUtc = DateTimeOffset.UtcNow, Source = source }, true);
+            return (component with {
+                Status = HealthStatus.Healthy,
+                LastCheckUtc = DateTimeOffset.UtcNow,
+                HealthEvidenceSource = DaprComponentSource.LocalAdminProbe,
+            }, true);
         }
         catch (OperationCanceledException) when (!outerCt.IsCancellationRequested) {
             // Probe timed out without the *outer caller* cancelling — treat as Unhealthy
@@ -934,10 +947,11 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             // would always be false, leaving the timeout branch unreachable and leaking a
             // "Healthy by metadata default" state-store row through the AC1 contract.
             _logger.LogWarning("State store probe timed out for {ComponentName} after 3 seconds.", component.ComponentName);
-            DaprComponentSource source = component.Source == DaprComponentSource.RemoteEventStoreMetadata
-                ? component.Source
-                : DaprComponentSource.LocalAdminProbe;
-            return (component with { Status = HealthStatus.Unhealthy, LastCheckUtc = DateTimeOffset.UtcNow, Source = source }, true);
+            return (component with {
+                Status = HealthStatus.Unhealthy,
+                LastCheckUtc = DateTimeOffset.UtcNow,
+                HealthEvidenceSource = DaprComponentSource.LocalAdminProbe,
+            }, true);
         }
         catch (OperationCanceledException) {
             // Outer caller cancelled — propagate cancellation to the request pipeline.
@@ -945,10 +959,11 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         }
         catch (Exception ex) {
             _logger.LogWarning(ex, "State store probe failed for {ComponentName}.", component.ComponentName);
-            DaprComponentSource source = component.Source == DaprComponentSource.RemoteEventStoreMetadata
-                ? component.Source
-                : DaprComponentSource.LocalAdminProbe;
-            return (component with { Status = HealthStatus.Unhealthy, LastCheckUtc = DateTimeOffset.UtcNow, Source = source }, true);
+            return (component with {
+                Status = HealthStatus.Unhealthy,
+                LastCheckUtc = DateTimeOffset.UtcNow,
+                HealthEvidenceSource = DaprComponentSource.LocalAdminProbe,
+            }, true);
         }
     }
 
@@ -1187,6 +1202,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                     HealthStatus.Healthy,
                     now,
                     capabilities,
+                    DaprComponentSource.RemoteEventStoreMetadata,
                     DaprComponentSource.RemoteEventStoreMetadata));
             }
         }

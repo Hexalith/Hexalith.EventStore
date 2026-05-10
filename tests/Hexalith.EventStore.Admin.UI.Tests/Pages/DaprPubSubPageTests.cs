@@ -116,6 +116,25 @@ public class DaprPubSubPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public void PubSubPage_RendersComponentDataUnavailable_WhenRemoteMetadataUnavailable() {
+        DaprPubSubOverview overview = new(
+            [],
+            [],
+            RemoteMetadataStatus.Unreachable,
+            "http://localhost:3501");
+        _ = _mockPubSubClient.GetPubSubOverviewAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprPubSubOverview?>(overview));
+        _ = _mockDeadLetterClient.GetDeadLetterCountAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<int?>(0));
+
+        IRenderedComponent<DaprPubSub> cut = Render<DaprPubSub>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("component data unavailable"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("component data unavailable");
+        cut.Markup.ShouldContain("subscription data unavailable");
+    }
+
+    [Fact]
     public void PubSubPage_RendersSubscriptionGrid_WithData() {
         // Arrange
         SetupSuccessfulResponse();

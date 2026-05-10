@@ -95,7 +95,8 @@ public class DaprInfrastructureQueryServiceTests {
         synth.ComponentName.ShouldBe("statestore");
         synth.Category.ShouldBe(DaprComponentCategory.StateStore);
         synth.Status.ShouldBe(HealthStatus.Unhealthy);
-        synth.Source.ShouldBe(DaprComponentSource.LocalAdminProbe);
+        synth.Source.ShouldBe(DaprComponentSource.Unavailable);
+        synth.HealthEvidenceSource.ShouldBe(DaprComponentSource.LocalAdminProbe);
     }
 
     [Fact]
@@ -529,12 +530,14 @@ public class DaprInfrastructureQueryServiceTests {
         DaprComponentDetail stateStore = inventory.Components
             .Where(c => c.Category == DaprComponentCategory.StateStore).ShouldHaveSingleItem();
         stateStore.Source.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);
+        stateStore.HealthEvidenceSource.ShouldBe(DaprComponentSource.LocalAdminProbe);
         stateStore.Status.ShouldBe(HealthStatus.Healthy);
 
         // Pub/sub: not probed, so remote attribution stays put.
         DaprComponentDetail pubSub = inventory.Components
             .Where(c => c.Category == DaprComponentCategory.PubSub).ShouldHaveSingleItem();
         pubSub.Source.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);
+        pubSub.HealthEvidenceSource.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);
         pubSub.ComponentName.ShouldBe("pubsub");
     }
 
@@ -570,6 +573,7 @@ public class DaprInfrastructureQueryServiceTests {
         DaprComponentDetail pubSub = inventory.Components
             .Where(c => c.Category == DaprComponentCategory.PubSub).ShouldHaveSingleItem();
         pubSub.Source.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);
+        pubSub.HealthEvidenceSource.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);
         pubSub.Version.ShouldBe("v2-remote");
         pubSub.Capabilities.ShouldContain("REMOTE_CAP");
     }
@@ -612,11 +616,13 @@ public class DaprInfrastructureQueryServiceTests {
             .Where(c => c.Category == DaprComponentCategory.StateStore).ShouldHaveSingleItem();
         stateStore.Status.ShouldBe(HealthStatus.Unhealthy);
         stateStore.Source.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);
+        stateStore.HealthEvidenceSource.ShouldBe(DaprComponentSource.LocalAdminProbe);
 
         // Pub/sub still surfaced from remote — probe failure does not erase remote pub/sub.
         DaprComponentDetail pubSub = inventory.Components
             .Where(c => c.Category == DaprComponentCategory.PubSub).ShouldHaveSingleItem();
         pubSub.Source.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);
+        pubSub.HealthEvidenceSource.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata);
     }
 
     [Fact]
@@ -678,10 +684,9 @@ public class DaprInfrastructureQueryServiceTests {
         inventory.PubSubSubscriptions.ShouldBeEmpty();
         DaprComponentDetail stateStore = inventory.Components.ShouldHaveSingleItem();
         stateStore.ComponentName.ShouldBe("statestore");
-        // Local fallback OR local probe (state-store probe succeeded) — never RemoteEventStoreMetadata.
-        stateStore.Source.ShouldBeOneOf(
-            DaprComponentSource.LocalAdminProbe,
-            DaprComponentSource.LocalAdminMetadataFallback);
+        // Local fallback owns inventory provenance; the successful state-store probe owns health evidence.
+        stateStore.Source.ShouldBe(DaprComponentSource.LocalAdminMetadataFallback);
+        stateStore.HealthEvidenceSource.ShouldBe(DaprComponentSource.LocalAdminProbe);
     }
 
     [Fact]
@@ -761,6 +766,7 @@ public class DaprInfrastructureQueryServiceTests {
         stateStore.ComponentName.ShouldBe("statestore");
         stateStore.Status.ShouldBe(HealthStatus.Healthy); // probe succeeded
         stateStore.Source.ShouldBe(DaprComponentSource.RemoteEventStoreMetadata); // probe preserved remote inventory source
+        stateStore.HealthEvidenceSource.ShouldBe(DaprComponentSource.LocalAdminProbe);
         stateStore.Version.ShouldBe("v2-remote"); // remote-supplied version survives probe rewrite
     }
 
@@ -782,7 +788,8 @@ public class DaprInfrastructureQueryServiceTests {
         DaprComponentDetail stateStore = inventory.Components
             .Where(c => c.ComponentName == "statestore" && c.Category == DaprComponentCategory.StateStore)
             .ShouldHaveSingleItem();
-        stateStore.Source.ShouldBe(DaprComponentSource.LocalAdminProbe);
+        stateStore.Source.ShouldBe(DaprComponentSource.Unavailable);
+        stateStore.HealthEvidenceSource.ShouldBe(DaprComponentSource.LocalAdminProbe);
         stateStore.Status.ShouldBe(HealthStatus.Healthy);
     }
 
@@ -856,7 +863,7 @@ public class DaprInfrastructureQueryServiceTests {
         DaprComponentDetail stateStore = inventory.Components.ShouldHaveSingleItem();
         stateStore.ComponentName.ShouldBe("statestore");
         stateStore.Status.ShouldBe(HealthStatus.Unhealthy);
-        stateStore.Source.ShouldBe(DaprComponentSource.LocalAdminProbe);
+        stateStore.HealthEvidenceSource.ShouldBe(DaprComponentSource.LocalAdminProbe);
     }
 
     [Fact]

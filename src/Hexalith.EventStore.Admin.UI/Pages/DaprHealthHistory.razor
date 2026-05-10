@@ -51,6 +51,13 @@
                  Description="@(_timeline.StatusMessage ?? "Health history storage could not be read. Live health and DAPR inventory remain authoritative for the current sample.")" />
 }
 
+@if (!_isLoading && GetLatestSourceStatusIssue() is { } sourceIssue)
+{
+    <IssueBanner Visible="true"
+                 Title="@sourceIssue.Title"
+                 Description="@sourceIssue.Description" />
+}
+
 @* Time range picker (AC7) *@
 <div style="display: flex; gap: 8px; margin-bottom: 16px;" role="group" aria-label="Time range selection">
     @foreach (var range in _timeRanges)
@@ -544,7 +551,10 @@
     private string GetCellTitle(string component, TimeSlot slot)
     {
         string end = slot.End.ToString(slot.Start.Date == slot.End.Date ? "HH:mm" : "MMM dd HH:mm");
-        return $"{component} | {slot.Label}-{end} | {GetStatusSummary(component, slot)}";
+        string sourceSummary = GetSourceSummary(component, slot);
+        return string.IsNullOrEmpty(sourceSummary)
+            ? $"{component} | {slot.Label}-{end} | {GetStatusSummary(component, slot)}"
+            : $"{component} | {slot.Label}-{end} | {GetStatusSummary(component, slot)} | {sourceSummary}";
     }
 
     private static string StatusToColor(HealthStatus? status) => status switch
@@ -630,6 +640,53 @@
         }
 
         return "";
+    }
+
+    private (string Title, string Description)? GetLatestSourceStatusIssue()
+    {
+        DaprHealthHistoryEntry? latestIssue = _timeline?.Entries?
+            .Where(e => e.SourceStatus is RemoteMetadataStatus.Unreachable or RemoteMetadataStatus.InvalidPayload)
+            .OrderByDescending(e => e.CapturedAtUtc)
+            .FirstOrDefault();
+        if (latestIssue is null)
+        {
+            return null;
+        }
+
+        string status = latestIssue.SourceStatus == RemoteMetadataStatus.InvalidPayload
+            ? "invalid"
+            : "unreachable";
+        return (
+            "DAPR inventory source unavailable",
+            $"The latest history sample recorded remote EventStore metadata as {status} at {latestIssue.CapturedAtUtc:HH:mm:ss}. Prior component rows may be stale until the metadata source recovers.");
+    }
+
+    private string GetSourceSummary(string component, TimeSlot slot)
+    {
+        DaprHealthHistoryEntry[] entries = _timeline?.Entries?
+            .Where(e => e.ComponentName.Equals(component, StringComparison.OrdinalIgnoreCase)
+                && e.CapturedAtUtc >= slot.Start
+                && e.CapturedAtUtc < slot.End)
+            .ToArray() ?? [];
+        if (entries.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        DaprHealthHistoryEntry latest = entries.OrderByDescending(e => e.CapturedAtUtc).First();
+        if (latest.SourceStatus is RemoteMetadataStatus.Unreachable or RemoteMetadataStatus.InvalidPayload)
+        {
+            return $"source status: {latest.SourceStatus}";
+        }
+
+        if (latest.HealthEvidenceSource != DaprComponentSource.Unavailable)
+        {
+            return $"health evidence: {latest.HealthEvidenceSource}";
+        }
+
+        return latest.InventorySource == DaprComponentSource.Unavailable
+            ? string.Empty
+            : $"inventory source: {latest.InventorySource}";
     }
 
     private double GetAverageUptime()

@@ -86,7 +86,8 @@ public class HealthPageTests : AdminUITestContext {
         string markup = cut.Markup;
         markup.ShouldContain("Component Name");
         markup.ShouldContain("Component Type");
-        markup.ShouldContain("Source");
+        markup.ShouldContain("Inventory Source");
+        markup.ShouldContain("Health Evidence");
         markup.ShouldContain("Status");
         markup.ShouldContain("Last Check");
         markup.ShouldContain("statestore");
@@ -533,16 +534,13 @@ public class HealthPageTests : AdminUITestContext {
     // and null. Each asserts the issue banner / loading exit invariants required by AC2.
 
     [Fact]
-    public void HealthApi_Forbidden_NoStaleReuse() {
+    public async Task HealthApi_Forbidden_NoStaleReuse() {
         // AC2 contract: a cold-start 401/403 must surface the issue banner (not crash, not
         // spin forever). Round 4 patch ALSO exercises the warm-cache → 401/403 sequence: a
-        // successful first load populates the cache, then a refresh signal with no fresh data
-        // simulates the auth-failure refresh — production marks stale, but the cached report
-        // remains visible. The fixture asserts BOTH branches:
+        // successful first load populates the cache, then a production refresh throws 401/403.
+        // The fixture asserts BOTH branches:
         //   (1) cold-start 401: banner, no cache to reuse;
-        //   (2) warm-cache + null-data refresh: stale banner appears AND cached data remains
-        //       visible (today the page does reuse cache on any failure; future cross-tenant
-        //       invalidation is tracked separately under spec line 99).
+        //   (2) warm-cache + 401 refresh: prior cached data is cleared, not reused as stale.
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
             .Returns<Task<SystemHealthReport?>>(_ => throw new UnauthorizedAccessException("403 Forbidden"));
 
@@ -562,22 +560,28 @@ public class HealthPageTests : AdminUITestContext {
         // equivalent of "the dashboard refresh saw an auth failure"). Use a separate scope so
         // the previous failure doesn't poison this one.
         SystemHealthReport report = CreateHealthyReport();
+        int callCount = 0;
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<SystemHealthReport?>(report));
+            .Returns(_ => {
+                callCount++;
+                if (callCount == 1) {
+                    return Task.FromResult<SystemHealthReport?>(report);
+                }
+
+                throw new UnauthorizedAccessException("403 Forbidden");
+            });
 
         IRenderedComponent<Health> warmCut = Render<Health>();
         warmCut.WaitForAssertion(() => warmCut.Markup.ShouldContain("Total Events"), TimeSpan.FromSeconds(5));
 
         DashboardRefreshService refreshService = Services.GetRequiredService<DashboardRefreshService>();
-        FieldInfo? eventField = typeof(DashboardRefreshService)
-            .GetField("OnDataChanged", BindingFlags.Instance | BindingFlags.NonPublic);
-        var handler = (Action<DashboardData>?)eventField?.GetValue(refreshService);
-        handler?.Invoke(new DashboardData(null, null));
+        await warmCut.InvokeAsync(() => refreshService.TriggerImmediateRefreshAsync());
 
         warmCut.WaitForAssertion(
-            () => warmCut.Markup.ShouldContain("Health data may be stale"),
+            () => warmCut.Markup.ShouldContain("Unable to load health status"),
             TimeSpan.FromSeconds(5));
-        warmCut.Markup.ShouldContain("Total Events");
+        warmCut.Markup.ShouldNotContain("Health data may be stale");
+        warmCut.Markup.ShouldNotContain("DAPR Components");
     }
 
     [Fact]
@@ -622,6 +626,7 @@ public class HealthPageTests : AdminUITestContext {
             () => warmCut.Markup.ShouldContain("Health data may be stale"),
             TimeSpan.FromSeconds(5));
         warmCut.Markup.ShouldContain("Total Events");
+        warmCut.Markup.ShouldContain("(stale)");
     }
 
     [Fact]

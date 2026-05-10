@@ -118,6 +118,32 @@ public class DaprHealthHistoryPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public void HealthHistoryPage_RendersSourceStatusBanner_WhenRemoteMetadataUnavailableSampleExists() {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        var timeline = new DaprComponentHealthTimeline(
+            [
+                new DaprHealthHistoryEntry(
+                    "remote-eventstore-metadata",
+                    "metadata.dapr",
+                    HealthStatus.Unhealthy,
+                    now,
+                    SourceStatus: RemoteMetadataStatus.Unreachable),
+            ],
+            HasData: true);
+        _ = _mockClient.GetHealthHistoryAsync(
+            Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprComponentHealthTimeline?>(timeline));
+
+        IRenderedComponent<DaprHealthHistory> cut = Render<DaprHealthHistory>();
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldContain("DAPR inventory source unavailable"),
+            TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("remote EventStore metadata as unreachable");
+        cut.Markup.ShouldContain("remote-eventstore-metadata");
+    }
+
+    [Fact]
     public void HealthHistoryPage_RendersTruncationWarning_WhenIsTruncated() {
         // Arrange
         var timeline = new DaprComponentHealthTimeline(

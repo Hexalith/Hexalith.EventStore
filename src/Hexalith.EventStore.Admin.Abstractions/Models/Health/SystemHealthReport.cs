@@ -49,7 +49,7 @@ public record SystemHealthReport(
     SystemHealthMetricStatus EventsPerSecondStatus = SystemHealthMetricStatus.Unavailable,
     SystemHealthMetricStatus ErrorPercentageStatus = SystemHealthMetricStatus.Unavailable,
     RemoteMetadataStatus InventorySourceStatus = RemoteMetadataStatus.NotConfigured,
-    RemoteMetadataStatus LocalSidecarMetadataStatus = RemoteMetadataStatus.Available) {
+    RemoteMetadataStatus LocalSidecarMetadataStatus = RemoteMetadataStatus.Unreachable) {
     /// <summary>Gets the current event throughput.</summary>
     public double EventsPerSecond { get; } = !double.IsNaN(EventsPerSecond) && !double.IsInfinity(EventsPerSecond)
         ? EventsPerSecond

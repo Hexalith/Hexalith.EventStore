@@ -51,8 +51,8 @@
     {
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Pub/Sub Components"
-                      Value="@_overview.PubSubComponents.Count.ToString()"
-                      Severity="@(_overview.PubSubComponents.Count > 0 ? "success" : "neutral")"
+                      Value="@(_overview.RemoteMetadataStatus == RemoteMetadataStatus.Available ? _overview.PubSubComponents.Count.ToString() : "component data unavailable")"
+                      Severity="@GetPubSubComponentSeverity(_overview)"
                       Title="Number of registered pub/sub components" />
         </FluentGridItem>
         <FluentGridItem xs="6" sm="6" md="3">
@@ -501,6 +501,16 @@
         }
 
         return overview.Subscriptions.Count > 0 ? "success" : "neutral";
+    }
+
+    private static string GetPubSubComponentSeverity(DaprPubSubOverview overview)
+    {
+        if (overview.RemoteMetadataStatus != RemoteMetadataStatus.Available)
+        {
+            return "warning";
+        }
+
+        return overview.PubSubComponents.Count > 0 ? "success" : "neutral";
     }
 
     private string GetDeadLetterColor()
