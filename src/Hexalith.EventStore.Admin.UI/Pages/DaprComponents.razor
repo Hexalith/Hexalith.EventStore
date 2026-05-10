@@ -340,18 +340,17 @@
     {
         try
         {
-            DaprSidecarInfo? sidecar = await ApiClient.GetSidecarInfoAsync(_cts.Token);
-            IReadOnlyList<DaprComponentDetail> components = await ApiClient.GetComponentsAsync(_cts.Token);
+            DaprInfrastructureOverview? overview = await ApiClient.GetInfrastructureOverviewAsync(_cts.Token);
 
-            _sidecar = sidecar;
-            _components = components;
+            _sidecar = overview?.Sidecar;
+            _components = overview?.Components ?? [];
             _apiUnavailable = false;
             _isStale = false;
             _lastRefreshUtc = DateTimeOffset.UtcNow;
 
-            if (sidecar is not null)
+            if (_sidecar is not null)
             {
-                _cachedSidecar = sidecar;
+                _cachedSidecar = _sidecar;
             }
         }
         catch (OperationCanceledException)

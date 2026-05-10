@@ -65,6 +65,32 @@ public class AdminDaprApiClient(
         }
     }
 
+    /// <summary>
+    /// Gets the DAPR sidecar summary and canonical component inventory from one server-side snapshot.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The infrastructure overview, or null on failure.</returns>
+    public virtual async Task<DaprInfrastructureOverview?> GetInfrastructureOverviewAsync(CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        try {
+            using HttpResponseMessage response = await client
+                .GetAsync("api/v1/admin/dapr/overview", ct)
+                .ConfigureAwait(false);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            return await response.Content
+                .ReadFromJsonAsync<DaprInfrastructureOverview>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogError(ex, "Failed to fetch DAPR infrastructure overview");
+            return null;
+        }
+    }
+
     private static async Task HandleErrorStatusAsync(HttpResponseMessage response) {
         if (response.IsSuccessStatusCode) {
             return;

@@ -67,6 +67,29 @@ public class AdminDaprController(
     }
 
     /// <summary>
+    /// Gets sidecar summary and canonical component inventory from one DAPR evidence snapshot.
+    /// </summary>
+    [HttpGet("overview")]
+    [ProducesResponseType(typeof(DaprInfrastructureOverview), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetInfrastructureOverview(CancellationToken ct = default) {
+        try {
+            DaprInfrastructureOverview result = await daprService
+                .GetInfrastructureOverviewAsync(ct)
+                .ConfigureAwait(false);
+            return Ok(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(GetInfrastructureOverview), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(GetInfrastructureOverview), ex);
+        }
+    }
+
+    /// <summary>
     /// Gets actor runtime information including registered types, active counts, and configuration.
     /// </summary>
     [HttpGet("actors")]

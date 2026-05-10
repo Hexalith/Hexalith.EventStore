@@ -117,8 +117,8 @@
 }
 @if (!_isLoading && _timeline is not null && !_timeline.HasData && _timeline.HistoryStatus == SystemHealthMetricStatus.Available)
 {
-    <EmptyState Title="No health history available yet"
-                Description="Health snapshots are collected every 60 seconds. Data will appear after the first collection cycle." />
+    <EmptyState Title="@GetEmptyAvailableHistoryTitle()"
+                Description="@GetEmptyAvailableHistoryDescription()" />
 }
 
 @* Heatmap (AC4) *@
@@ -564,6 +564,16 @@
         HealthStatus.Unhealthy => "var(--hexalith-status-error)",
         _ => "var(--hexalith-status-neutral)",
     };
+
+    private string GetEmptyAvailableHistoryTitle()
+        => string.IsNullOrWhiteSpace(_timeline?.StatusMessage)
+            ? "No health history available yet"
+            : "No component rows recorded";
+
+    private string GetEmptyAvailableHistoryDescription()
+        => string.IsNullOrWhiteSpace(_timeline?.StatusMessage)
+            ? "Health snapshots are collected every 60 seconds. Data will appear after the first collection cycle."
+            : _timeline.StatusMessage!;
 
     private static List<StatusTransition> ComputeTransitions(DaprComponentHealthTimeline timeline)
     {

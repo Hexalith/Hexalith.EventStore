@@ -180,7 +180,10 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
             DaprComponentHealthTimeline updated = new(
                 entries.AsReadOnly(),
                 HasData: entries.Count > 0,
-                HistoryStatus: SystemHealthMetricStatus.Available);
+                HistoryStatus: SystemHealthMetricStatus.Available,
+                StatusMessage: remoteAvailable && components.Count == 0
+                    ? "Health history source was read successfully; the remote DAPR inventory reported no component rows for this sample."
+                    : null);
 
             await daprClient
                 .SaveStateAsync(_options.StateStoreName, dayKey, updated, cancellationToken: ct)

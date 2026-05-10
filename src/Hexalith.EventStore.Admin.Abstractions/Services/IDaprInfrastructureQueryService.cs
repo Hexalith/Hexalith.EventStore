@@ -21,6 +21,13 @@ public interface IDaprInfrastructureQueryService {
     Task<DaprSidecarInfo?> GetSidecarInfoAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Gets sidecar summary and canonical components from one server-side query scope.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The DAPR infrastructure overview.</returns>
+    Task<DaprInfrastructureOverview> GetInfrastructureOverviewAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Gets actor runtime information including registered types, active counts, and configuration.
     /// </summary>
     /// <param name="ct">Cancellation token.</param>

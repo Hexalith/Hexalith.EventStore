@@ -363,6 +363,13 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
     }
 
     /// <inheritdoc/>
+    public async Task<DaprInfrastructureOverview> GetInfrastructureOverviewAsync(CancellationToken ct = default) {
+        DaprCanonicalInventory inventory = await GetCanonicalDaprInventoryAsync(ct).ConfigureAwait(false);
+        DaprSidecarInfo? sidecar = await GetSidecarInfoAsync(ct).ConfigureAwait(false);
+        return new DaprInfrastructureOverview(sidecar, inventory.Components);
+    }
+
+    /// <inheritdoc/>
     public async Task<DaprActorRuntimeInfo> GetActorRuntimeInfoAsync(CancellationToken ct = default) {
         // DAPR default actor runtime configuration (no custom values are set in this project)
         DaprActorRuntimeConfig config = new(
@@ -681,8 +688,8 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
     private static string FormatStateValue(JsonElement value)
         => value.ValueKind == JsonValueKind.String
-            ? value.GetString() ?? string.Empty
-            : value.GetRawText();
+            ? TruncateStateValueForDisplay(value.GetString() ?? string.Empty)
+            : TruncateStateValueForDisplay(value.GetRawText());
 
     // Round 10 P16: cap input to 64 KiB before parsing arbitrary state-store payloads through
     // JsonDocument.Parse. A hostile or oversized actor state blob can otherwise stall the
@@ -696,8 +703,9 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             return string.Empty;
         }
 
-        if (value.Length > MaxFormatStateValueBytes) {
-            return string.Concat(value.AsSpan(0, MaxFormatStateValueBytes), "… [truncated, exceeds 64 KiB display cap]");
+        string capped = TruncateStateValueForDisplay(value);
+        if (capped.Length != value.Length) {
+            return capped;
         }
 
         try {
@@ -709,6 +717,11 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             return value;
         }
     }
+
+    private static string TruncateStateValueForDisplay(string value)
+        => value.Length > MaxFormatStateValueBytes
+            ? string.Concat(value.AsSpan(0, MaxFormatStateValueBytes), "… [truncated, exceeds 64 KiB display cap]")
+            : value;
 
     /// <inheritdoc/>
     public async Task<DaprResiliencySpec> GetResiliencySpecAsync(CancellationToken ct = default) {
