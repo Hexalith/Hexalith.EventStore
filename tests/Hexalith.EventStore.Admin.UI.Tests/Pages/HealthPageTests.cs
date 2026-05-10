@@ -433,11 +433,17 @@ public class HealthPageTests : AdminUITestContext {
             TotalEventCount: 0,
             EventsPerSecond: 0,
             ErrorPercentage: 0,
-            [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow, DaprComponentSource.LocalAdminProbe)],
+            [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow, DaprComponentSource.LocalAdminProbe, DaprComponentSource.LocalAdminProbe)],
             new ObservabilityLinks(null, null, null),
             TotalEventCountStatus: SystemHealthMetricStatus.Available,
             EventsPerSecondStatus: SystemHealthMetricStatus.Available,
-            ErrorPercentageStatus: SystemHealthMetricStatus.Available);
+            ErrorPercentageStatus: SystemHealthMetricStatus.Available,
+            // Round 9: SystemHealthReport defaults LocalSidecarMetadataStatus to Unreachable (truth
+            // contract: status fields default to non-green). For an "all green" fixture the page
+            // would otherwise raise the "Local Admin sidecar metadata: Unreachable" banner whose
+            // description contains "unavailable", failing the ShouldNotContain assertion below.
+            InventorySourceStatus: RemoteMetadataStatus.Available,
+            LocalSidecarMetadataStatus: RemoteMetadataStatus.Available);
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<SystemHealthReport?>(report));
 
@@ -501,11 +507,13 @@ public class HealthPageTests : AdminUITestContext {
                 TotalEventCount: 12345,
                 EventsPerSecond: 7.5,
                 ErrorPercentage: 1.2,
-                [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow, DaprComponentSource.LocalAdminProbe)],
+                [new DaprComponentHealth("statestore", "state.redis", HealthStatus.Healthy, DateTimeOffset.UtcNow, DaprComponentSource.LocalAdminProbe, DaprComponentSource.LocalAdminProbe)],
                 new ObservabilityLinks(null, null, null),
                 TotalEventCountStatus: SystemHealthMetricStatus.Stale,
                 EventsPerSecondStatus: SystemHealthMetricStatus.Stale,
-                ErrorPercentageStatus: SystemHealthMetricStatus.Stale);
+                ErrorPercentageStatus: SystemHealthMetricStatus.Stale,
+                InventorySourceStatus: RemoteMetadataStatus.Available,
+                LocalSidecarMetadataStatus: RemoteMetadataStatus.Available);
             _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
                 .Returns(Task.FromResult<SystemHealthReport?>(report));
 

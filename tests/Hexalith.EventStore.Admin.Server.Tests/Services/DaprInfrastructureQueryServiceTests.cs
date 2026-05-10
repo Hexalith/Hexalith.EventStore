@@ -95,7 +95,10 @@ public class DaprInfrastructureQueryServiceTests {
         synth.ComponentName.ShouldBe("statestore");
         synth.Category.ShouldBe(DaprComponentCategory.StateStore);
         synth.Status.ShouldBe(HealthStatus.Unhealthy);
-        synth.Source.ShouldBe(DaprComponentSource.Unavailable);
+        // Round 10 P6: when the synth row carried Source=Unavailable and the probe ran (succeeding
+        // or failing), the probe attestation IS the inventory evidence — Source is upgraded to
+        // LocalAdminProbe so the UI does not render "Source: unavailable" beside a probed status.
+        synth.Source.ShouldBe(DaprComponentSource.LocalAdminProbe);
         synth.HealthEvidenceSource.ShouldBe(DaprComponentSource.LocalAdminProbe);
     }
 
@@ -135,11 +138,17 @@ public class DaprInfrastructureQueryServiceTests {
         // Local sidecar metadata proves a component is configured, not that its backing
         // dependency is usable. Non-state-store local fallback rows stay unverified until remote
         // EventStore metadata or a dedicated probe supplies health evidence.
+        //
+        // Round 10 P18: the spec status vocabulary's `Degraded` row ("operational but a non-Admin
+        // dependency lacks evidence") is a closer fit than `Unhealthy` for "loaded inventory only,
+        // no probe attestation". State-store rows still get Unhealthy because they have a probe
+        // path that produces hard health evidence; non-state-store categories never had probe
+        // attestation expected of them so Degraded is the correct truth-contract reading.
         IReadOnlyList<DaprComponentDetail> nonStateStore =
             result.Where(c => c.Category != DaprComponentCategory.StateStore).ToArray();
         nonStateStore.Count.ShouldBe(2);
         nonStateStore.ShouldAllBe(c => c.Source == DaprComponentSource.LocalAdminMetadataFallback);
-        nonStateStore.ShouldAllBe(c => c.Status == HealthStatus.Unhealthy);
+        nonStateStore.ShouldAllBe(c => c.Status == HealthStatus.Degraded);
     }
 
     [Fact]
@@ -788,7 +797,9 @@ public class DaprInfrastructureQueryServiceTests {
         DaprComponentDetail stateStore = inventory.Components
             .Where(c => c.ComponentName == "statestore" && c.Category == DaprComponentCategory.StateStore)
             .ShouldHaveSingleItem();
-        stateStore.Source.ShouldBe(DaprComponentSource.Unavailable);
+        // Round 10 P6: synth row's Source upgraded to LocalAdminProbe after probe runs (probe
+        // attestation IS the inventory evidence for synth rows that started with Source=Unavailable).
+        stateStore.Source.ShouldBe(DaprComponentSource.LocalAdminProbe);
         stateStore.HealthEvidenceSource.ShouldBe(DaprComponentSource.LocalAdminProbe);
         stateStore.Status.ShouldBe(HealthStatus.Healthy);
     }

@@ -27,7 +27,7 @@ public record DaprActorRuntimeInfo(
     DaprActorRuntimeConfig Configuration,
     RemoteMetadataStatus RemoteMetadataStatus,
     string? RemoteEndpoint,
-    bool IsInventoryComplete = true,
+    bool IsInventoryComplete = false,
     string InventorySource = "DaprMetadata",
     string? InventoryMessage = null,
     DateTimeOffset? ObservedAtUtc = null,

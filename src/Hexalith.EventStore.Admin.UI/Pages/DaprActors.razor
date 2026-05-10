@@ -443,11 +443,24 @@
     private bool HasReportedActorCount()
         => _runtimeInfo?.ActorTypes.Any(a => a.CountStatus != DaprActorCountStatus.Unavailable && a.ActiveCount >= 0) == true;
 
+    // Round 10 P10: when every reported count is SourceLimited (local fallback only), the label
+    // must signal the degraded source so an operator does not read the value as authoritative.
+    // Operator truth contract: a number sourced from local fallback is not the same evidence
+    // class as a number sourced from the EventStore actor owner sidecar.
+    private bool HasOnlySourceLimitedCounts()
+        => _runtimeInfo is not null
+            && HasReportedActorCount()
+            && _runtimeInfo.ActorTypes
+                .Where(a => a.CountStatus != DaprActorCountStatus.Unavailable && a.ActiveCount >= 0)
+                .All(a => a.CountStatus == DaprActorCountStatus.SourceLimited);
+
     private string GetActorInventoryLabel()
         => _runtimeInfo?.IsInventoryComplete == true
             ? "Total Active Actors"
             : HasReportedActorCount()
-                ? "Known Active Actors"
+                ? HasOnlySourceLimitedCounts()
+                    ? "Known Active Actors (source-limited)"
+                    : "Known Active Actors"
                 : "Active actor data unavailable";
 
     private string GetActorInventoryValue()

@@ -248,6 +248,10 @@ public class DaprActorsPageTests : AdminUITestContext {
 
     // ===== Helper methods =====
 
+    // Round 10 P0b: DaprActorRuntimeInfo.IsInventoryComplete now defaults to false (truth-contract
+    // alignment with the spec line 580 architecture rule: new status fields must default to
+    // non-green semantics). Tests that want the legacy "Total Active Actors" headline label must
+    // pass IsInventoryComplete: true explicitly.
     private static DaprActorRuntimeInfo CreateRuntimeInfo() => new(
         [
             new DaprActorTypeInfo("AggregateActor", 10, "Processes commands", "tenant:domain:id"),
@@ -256,7 +260,8 @@ public class DaprActorsPageTests : AdminUITestContext {
         15,
         _defaultConfig,
         RemoteMetadataStatus.Available,
-        "http://localhost:3501");
+        "http://localhost:3501",
+        IsInventoryComplete: true);
 
     private static void SetPrivateField(object instance, string name, object? value) {
         System.Reflection.FieldInfo field = typeof(DaprActors)

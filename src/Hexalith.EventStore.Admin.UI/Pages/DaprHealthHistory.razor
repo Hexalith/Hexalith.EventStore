@@ -684,8 +684,11 @@
             return $"health evidence: {latest.HealthEvidenceSource}";
         }
 
+        // Round 10 P17: explicit text for Unavailable instead of an empty string. Operators
+        // could not previously distinguish "no source recorded" (legacy entry) from "source
+        // actively unavailable" (current outage); both rendered as a blank tooltip slot.
         return latest.InventorySource == DaprComponentSource.Unavailable
-            ? string.Empty
+            ? "inventory source: unavailable"
             : $"inventory source: {latest.InventorySource}";
     }
 

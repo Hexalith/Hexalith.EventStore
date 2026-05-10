@@ -388,7 +388,11 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
                     .ToList();
             }
 
-            return new DaprComponentHealthTimeline(allEntries.AsReadOnly(), HasData: allEntries.Count > 0, IsTruncated: isTruncated);
+            return new DaprComponentHealthTimeline(
+                allEntries.AsReadOnly(),
+                HasData: allEntries.Count > 0,
+                IsTruncated: isTruncated,
+                HistoryStatus: SystemHealthMetricStatus.Available);
         }
         catch (OperationCanceledException ex) when (!ct.IsCancellationRequested) {
             _logger.LogWarning(ex, "Timed out reading DAPR component health history — reporting history source unavailable.");

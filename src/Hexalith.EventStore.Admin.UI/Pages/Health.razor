@@ -286,7 +286,6 @@
             return;
         }
 
-        _ = exception;
         _ = InvokeAsync(() =>
         {
             try
@@ -303,6 +302,12 @@
                     _isStale = _cachedHealthReport is not null;
                     _apiUnavailable = _cachedHealthReport is null;
                 }
+
+                // Round 10 P4: refresh failures must clear the loading state. After a successful
+                // initial load + a manual Retry that sets _isLoading = true, a refresh failure
+                // would otherwise leave the skeleton card visible alongside the issue banner —
+                // the page looks stuck in loading instead of presenting the failure outcome.
+                _isLoading = false;
                 StateHasChanged();
             }
             catch (ObjectDisposedException)
@@ -491,6 +496,15 @@
         _ => $"Unrecognized DaprComponentSource value '{source}' — UI translation missing.",
     };
 
+    // Round 10 P0a (auth-user half): cache invalidation on auth-user change is signalled here
+    // via 401/403 from the API. Any subsequent request issued under a different identity (after
+    // logout/relogin/role change) sees this rejection and clears `_cachedHealthReport`,
+    // preventing prior-user data from rendering as stale. The tenant-context half of the
+    // round-9 finding is a no-op for this page: `/health` is system-wide (per Round 1 deferral
+    // rationale "Health is system-wide so cross-tenant stale-data reuse is not in scope") — it
+    // does NOT render tenant-scoped data, so a tenant-id change in another component does not
+    // make any displayed value stale. Adding a tenant-changed subscription here would invalidate
+    // the cache after every tenant-filter click on other pages with no operator benefit.
     private static bool IsAuthContextFailure(Exception exception)
         => exception is UnauthorizedAccessException
             or ForbiddenAccessException

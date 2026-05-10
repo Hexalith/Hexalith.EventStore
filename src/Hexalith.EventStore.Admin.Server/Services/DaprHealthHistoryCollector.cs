@@ -172,7 +172,15 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
                 }
             }
 
-            DaprComponentHealthTimeline updated = new(entries.AsReadOnly(), HasData: true);
+            // P15: HasData reflects actual entry count, not a hardcoded true. The producer must
+            // be honest about empty timelines so consumers (UI banners, history-status helpers)
+            // can distinguish a never-populated timeline from a successfully read one.
+            // P2 producer side: pin HistoryStatus = Available because we successfully read+wrote
+            // (the DTO default is Unavailable so omitting it would silently lie about success).
+            DaprComponentHealthTimeline updated = new(
+                entries.AsReadOnly(),
+                HasData: entries.Count > 0,
+                HistoryStatus: SystemHealthMetricStatus.Available);
 
             await daprClient
                 .SaveStateAsync(_options.StateStoreName, dayKey, updated, cancellationToken: ct)

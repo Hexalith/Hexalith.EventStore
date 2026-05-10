@@ -90,15 +90,17 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         LocalMetadataResult local = await TryReadLocalMetadataAsync(ct).ConfigureAwait(false);
         DaprMetadata? localMetadata = local.Metadata;
 
-        // The local sidecar carries usable evidence only if the metadata API responded AND the
-        // payload reports app-registered facts (Components or Actors). Round 5 P5: dropped
-        // `Extended` from the disjunction because DAPR populates Extended at sidecar startup
-        // (e.g., daprRuntimeVersion) before app registration; including it neutralised the
-        // very initialisation-state heuristic this check was added to catch.
-        bool localSidecarMetadataAvailable = local.Available
-            && localMetadata is not null
-            && (localMetadata.Components is { Count: > 0 }
-                || localMetadata.Actors is { Count: > 0 });
+        // Round 10 P3: `LocalSidecarMetadataAvailable` answers ONE narrow question: did the local
+        // sidecar's `/v1.0/metadata` endpoint respond successfully? It is propagated into
+        // `SystemHealthReport.LocalSidecarMetadataStatus` and consumed by `ComputeOverallStatus`
+        // as a proxy for "Admin operations can be served". A freshly-started sidecar that
+        // responds with empty `Components` and `Actors` arrays during init is reachable — the
+        // app simply has not registered yet — and forcing `Unreachable` here triggers a global
+        // Unhealthy on cold start (false-positive outage). The empty-inventory signal is
+        // separately surfaced through the canonical inventory's emptiness, not through this
+        // flag. Round 5 P5's "evidence required" check is dropped because it conflated transport
+        // success with app-registration completeness.
+        bool localSidecarMetadataAvailable = local.Available && localMetadata is not null;
 
         if (localMetadata?.Components is not null) {
             // Round 5 P1 (D4 option a): the truth contract forbids "Healthy by metadata default"
@@ -122,12 +124,25 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                     && stateStoreProbeWillRun
                     && string.Equals(c.Name, configuredName, StringComparison.OrdinalIgnoreCase);
 
+                // Round 10 P18: distinguish state-store category from other categories for the
+                // non-probed default Status. The configured Admin state-store row gets Healthy
+                // (Stage 4 will overwrite with the actual probe status). For any other state-store
+                // row that won't be probed, mark Unhealthy — operators must not see a green
+                // state-store row that lacks probe attestation. For non-state-store categories
+                // (pubsub / bindings / secret stores / etc.), Stage 4 never probes them, so
+                // "loaded inventory only, no probe attestation" maps to Degraded per the spec
+                // status vocabulary ("operational but a non-Admin dependency lacks evidence").
+                HealthStatus defaultStatus = (willBeProbed, category) switch {
+                    (true, _) => HealthStatus.Healthy,
+                    (false, DaprComponentCategory.StateStore) => HealthStatus.Unhealthy,
+                    _ => HealthStatus.Degraded,
+                };
                 DaprComponentDetail entry = new(
                     c.Name,
                     c.Type,
                     category,
                     c.Version ?? string.Empty,
-                    willBeProbed ? HealthStatus.Healthy : HealthStatus.Unhealthy,
+                    defaultStatus,
                     now,
                     c.Capabilities ?? [],
                     DaprComponentSource.LocalAdminMetadataFallback,
@@ -266,11 +281,22 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                     // the prior LocalAdminMetadataFallback row would let /dapr render Healthy
                     // while IsStateStoreProbeFailed (which scopes to LocalAdminProbe rows)
                     // independently treats absence as failure on /health.
+                    //
+                    // Round 10 P9: use captured `now` from method entry, not DateTimeOffset.UtcNow.
+                    // Test seams that inject a fixed clock (FakeTimeProvider) must observe
+                    // deterministic timestamps that match the canonical inventory's `CapturedAtUtc`.
                     _logger.LogWarning("State store health probe timed out after 3 seconds for {ComponentName}.", pair.Entry.ComponentName);
                     probeResults[(pair.Entry.ComponentName, pair.Entry.ComponentType)] = pair.Entry with {
                         Status = HealthStatus.Unhealthy,
-                        LastCheckUtc = DateTimeOffset.UtcNow,
+                        LastCheckUtc = now,
                         HealthEvidenceSource = DaprComponentSource.LocalAdminProbe,
+                        // Round 10 P6: when the entry came from Stage-3 synth (Source = Unavailable),
+                        // probe attestation IS the inventory evidence — the row exists only because
+                        // we attempted a probe. Upgrade Source to LocalAdminProbe so the UI does not
+                        // render "Source: unavailable" beside a probed status badge.
+                        Source = pair.Entry.Source == DaprComponentSource.Unavailable
+                            ? DaprComponentSource.LocalAdminProbe
+                            : pair.Entry.Source,
                     };
                 }
             }
@@ -658,9 +684,25 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             ? value.GetString() ?? string.Empty
             : value.GetRawText();
 
+    // Round 10 P16: cap input to 64 KiB before parsing arbitrary state-store payloads through
+    // JsonDocument.Parse. A hostile or oversized actor state blob can otherwise stall the
+    // request thread and consume large amounts of LOH while the parser walks the structure.
+    // Above the cap, return the raw string truncated with a sentinel so operators see the
+    // payload was unsafe to render rather than getting a silent slow-path render.
+    private const int MaxFormatStateValueBytes = 64 * 1024;
+
     private static string FormatStateValue(string value) {
+        if (value is null) {
+            return string.Empty;
+        }
+
+        if (value.Length > MaxFormatStateValueBytes) {
+            return string.Concat(value.AsSpan(0, MaxFormatStateValueBytes), "… [truncated, exceeds 64 KiB display cap]");
+        }
+
         try {
-            using JsonDocument document = JsonDocument.Parse(value);
+            JsonDocumentOptions options = new() { MaxDepth = 64 };
+            using JsonDocument document = JsonDocument.Parse(value, options);
             return FormatStateValue(document.RootElement);
         }
         catch (JsonException) {
@@ -930,10 +972,20 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             // Success — store responded. Preserve remote inventory provenance when the row came
             // from the EventStore sidecar; the local probe owns Status/LastCheckUtc, but Source
             // still answers where the component inventory fact came from.
+            //
+            // Round 10 P6: when the original Source is Unavailable (Stage-3 synth row that had
+            // no inventory evidence before the probe ran), upgrade Source to LocalAdminProbe.
+            // The probe attestation IS the inventory evidence for synth rows — the row exists
+            // only because we attempted a probe. Without this upgrade, the UI renders the row's
+            // Source column as "unavailable" beside a Healthy probe badge — exactly the
+            // truth-contract violation Round 5 P2 was trying to avoid in the opposite direction.
             return (component with {
                 Status = HealthStatus.Healthy,
                 LastCheckUtc = DateTimeOffset.UtcNow,
                 HealthEvidenceSource = DaprComponentSource.LocalAdminProbe,
+                Source = component.Source == DaprComponentSource.Unavailable
+                    ? DaprComponentSource.LocalAdminProbe
+                    : component.Source,
             }, true);
         }
         catch (OperationCanceledException) when (!outerCt.IsCancellationRequested) {
@@ -951,6 +1003,9 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 Status = HealthStatus.Unhealthy,
                 LastCheckUtc = DateTimeOffset.UtcNow,
                 HealthEvidenceSource = DaprComponentSource.LocalAdminProbe,
+                Source = component.Source == DaprComponentSource.Unavailable
+                    ? DaprComponentSource.LocalAdminProbe
+                    : component.Source,
             }, true);
         }
         catch (OperationCanceledException) {
@@ -963,6 +1018,9 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 Status = HealthStatus.Unhealthy,
                 LastCheckUtc = DateTimeOffset.UtcNow,
                 HealthEvidenceSource = DaprComponentSource.LocalAdminProbe,
+                Source = component.Source == DaprComponentSource.Unavailable
+                    ? DaprComponentSource.LocalAdminProbe
+                    : component.Source,
             }, true);
         }
     }

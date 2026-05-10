@@ -83,11 +83,18 @@ public class DaprHealthHistoryPageTests : AdminUITestContext {
 
     [Fact]
     public void HealthHistoryPage_RendersEmptyState_WhenNoData() {
-        // Arrange
+        // Round 10 P2: DaprComponentHealthTimeline.HistoryStatus now defaults to Unavailable
+        // (truth-contract alignment: new status fields default to non-green semantics). The
+        // "empty success" path requires HistoryStatus = Available + HasData = false explicitly.
+        // The HistoryStorageUnavailable banner branch is covered by the sibling test
+        // HealthHistoryPage_RendersUnavailableBanner_WhenHistoryStorageUnavailable.
         _ = _mockClient.GetHealthHistoryAsync(
             Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprComponentHealthTimeline?>(
-                new DaprComponentHealthTimeline([], HasData: false)));
+                new DaprComponentHealthTimeline(
+                    [],
+                    HasData: false,
+                    HistoryStatus: SystemHealthMetricStatus.Available)));
 
         // Act
         IRenderedComponent<DaprHealthHistory> cut = Render<DaprHealthHistory>();

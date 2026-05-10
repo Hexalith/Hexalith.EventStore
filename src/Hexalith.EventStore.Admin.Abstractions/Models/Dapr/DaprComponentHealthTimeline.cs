@@ -18,7 +18,7 @@ public record DaprComponentHealthTimeline(
     IReadOnlyList<DaprHealthHistoryEntry> Entries,
     bool HasData,
     bool IsTruncated = false,
-    SystemHealthMetricStatus HistoryStatus = SystemHealthMetricStatus.Available,
+    SystemHealthMetricStatus HistoryStatus = SystemHealthMetricStatus.Unavailable,
     string? StatusMessage = null) {
     /// <summary>
     /// Gets an empty timeline indicating no data is available.

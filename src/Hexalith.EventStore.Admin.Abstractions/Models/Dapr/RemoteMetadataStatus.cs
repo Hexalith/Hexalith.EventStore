@@ -29,4 +29,10 @@ public enum RemoteMetadataStatus {
 
     /// <summary>Remote endpoint responded but the body could not be parsed or lacked required shape.</summary>
     InvalidPayload = 3,
+
+    /// <summary>Remote endpoint is configured but this code path deliberately did not consult it
+    /// (e.g., the call site relies exclusively on local sidecar evidence). Distinct from
+    /// <see cref="NotConfigured"/> ("no endpoint to consult") and <see cref="Unreachable"/>
+    /// ("endpoint configured, query attempted, transport failed").</summary>
+    NotConsulted = 4,
 }

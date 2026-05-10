@@ -19,7 +19,7 @@ public record DaprActorInstanceState(
     IReadOnlyList<DaprActorStateEntry> StateEntries,
     long TotalSizeBytes,
     DateTimeOffset InspectedAtUtc,
-    DaprActorLookupStatus LookupStatus = DaprActorLookupStatus.Available,
+    DaprActorLookupStatus LookupStatus = DaprActorLookupStatus.LookupUnavailable,
     string OwnerAppId = "eventstore",
     string StateStoreName = "statestore",
     string LookupSource = "DaprStateStoreActorKeys",

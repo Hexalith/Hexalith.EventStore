@@ -433,12 +433,43 @@
         return _components.Count == 0 ? "warning" : "success";
     }
 
+    // Round 10 P7: partition rows into mutually exclusive buckets so the subtitle counts always
+    // sum to `_components.Count`. The previous implementation mixed `Source` and
+    // `HealthEvidenceSource` predicates: a row carrying `Source = RemoteEventStoreMetadata` and
+    // `HealthEvidenceSource = LocalAdminProbe` was double-counted as 1 remote + 1 probed.
+    //
+    // The new partition prefers the most authoritative health evidence (probe) over inventory
+    // attribution: any row with `HealthEvidenceSource == LocalAdminProbe` is counted as probed
+    // regardless of its inventory `Source`. Inventory-only rows fall through to the remote /
+    // local-fallback / unavailable buckets by their `Source`.
     private string GetComponentsCountSubtitle()
     {
-        int localOnly = _components.Count(c => c.Source == DaprComponentSource.LocalAdminMetadataFallback);
-        int probed = _components.Count(c => c.HealthEvidenceSource == DaprComponentSource.LocalAdminProbe);
-        int remote = _components.Count(c => c.Source == DaprComponentSource.RemoteEventStoreMetadata);
-        return $"{remote} remote / {probed} probed / {localOnly} local";
+        int probed = 0;
+        int remote = 0;
+        int localOnly = 0;
+        int unavailable = 0;
+        foreach (DaprComponentDetail c in _components)
+        {
+            if (c.HealthEvidenceSource == DaprComponentSource.LocalAdminProbe)
+            {
+                probed++;
+            }
+            else if (c.Source == DaprComponentSource.RemoteEventStoreMetadata)
+            {
+                remote++;
+            }
+            else if (c.Source == DaprComponentSource.LocalAdminMetadataFallback)
+            {
+                localOnly++;
+            }
+            else
+            {
+                unavailable++;
+            }
+        }
+        return unavailable > 0
+            ? $"{remote} remote / {probed} probed / {localOnly} local / {unavailable} unattributed"
+            : $"{remote} remote / {probed} probed / {localOnly} local";
     }
 
     private string GetRemoteMetadataTitle(DaprSidecarInfo sidecar)
@@ -453,9 +484,15 @@
                 return $"Remote eventstore sidecar at {sidecar.RemoteEndpoint} returned an invalid payload";
             case RemoteMetadataStatus.NotConfigured:
                 return "Remote eventstore sidecar endpoint not configured (AdminServer:EventStoreDaprHttpEndpoint)";
+            case RemoteMetadataStatus.NotConsulted:
+                return "Remote eventstore sidecar metadata was not consulted by this code path";
             default:
+                // Round 10 P20: explicit "unknown status" fallback instead of the misleading
+                // "Number of active subscriptions" tooltip leftover from an earlier copy. The
+                // log line lets operators discover an unrecognised enum value rather than seeing
+                // wrong-looking but plausible tooltip text.
                 Logger.LogWarning("Unrecognised RemoteMetadataStatus '{Status}' in DaprComponents tooltip.", sidecar.RemoteMetadataStatus);
-                return "Number of active subscriptions";
+                return $"Remote metadata status unknown ({sidecar.RemoteMetadataStatus})";
         }
     }
 

@@ -173,12 +173,19 @@ public class DaprHealthHistoryCollectorTests {
 
         await DriveFirstCaptureAsync(collector, fakeClock, cts, () => saveObserved);
 
-        // Available + zero components is persisted as a real-zero sample — the SaveStateAsync
-        // call carries an empty Entries collection with HasData: true.
+        // Round 10 P15: HasData reflects entries.Count > 0. Available + zero components is still
+        // persisted (we observed remote-reported real-zero), but the persisted timeline carries
+        // HasData=false because no entries were appended. HistoryStatus stays Available because
+        // the read+write completed successfully — operators can distinguish "remote confirmed
+        // zero today" (HistoryStatus=Available, HasData=false) from "history storage unreadable"
+        // (HistoryStatus=Unavailable).
         await daprClient.Received().SaveStateAsync(
             Arg.Any<string>(),
             Arg.Is<string>(k => k.StartsWith("admin:health-history:")),
-            Arg.Is<DaprComponentHealthTimeline>(t => t.HasData && t.Entries.Count == 0),
+            Arg.Is<DaprComponentHealthTimeline>(t =>
+                !t.HasData
+                && t.Entries.Count == 0
+                && t.HistoryStatus == SystemHealthMetricStatus.Available),
             cancellationToken: Arg.Any<CancellationToken>());
     }
 
