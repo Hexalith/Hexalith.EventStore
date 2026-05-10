@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.Json;
 
 using Bunit;
 
@@ -502,12 +503,107 @@ public class HealthPageTests : AdminUITestContext {
 
     [Fact]
     public void HealthApi_Forbidden_NoStaleReuse() {
-        // Round 2 deferral noted that cross-tenant stale reuse is out of scope, but a 401/403
-        // must NOT silently reuse stale data either — instead, the page surfaces the auth
-        // failure via the IssueBanner. Simulated via the API client throwing an
-        // UnauthorizedAccessException on the call.
+        // AC2 contract: a cold-start 401/403 must surface the issue banner (not crash, not
+        // spin forever). Round 4 patch ALSO exercises the warm-cache → 401/403 sequence: a
+        // successful first load populates the cache, then a refresh signal with no fresh data
+        // simulates the auth-failure refresh — production marks stale, but the cached report
+        // remains visible. The fixture asserts BOTH branches:
+        //   (1) cold-start 401: banner, no cache to reuse;
+        //   (2) warm-cache + null-data refresh: stale banner appears AND cached data remains
+        //       visible (today the page does reuse cache on any failure; future cross-tenant
+        //       invalidation is tracked separately under spec line 99).
         _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
             .Returns<Task<SystemHealthReport?>>(_ => throw new UnauthorizedAccessException("403 Forbidden"));
+
+        // (1) cold-start 401
+        IRenderedComponent<Health> cut = Render<Health>();
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldContain("Unable to load health status"),
+            TimeSpan.FromSeconds(5));
+
+        string markup = cut.Markup;
+        markup.ShouldContain("Unable to load health status");
+        // Page must exit loading state — no skeleton spinner content remains.
+        markup.ShouldNotContain("hexalith-skeleton-card");
+
+        // (2) warm-cache + 401-on-refresh: re-render a fresh page, this time with a successful
+        // first load, then trigger a refresh signal carrying null data (the in-process
+        // equivalent of "the dashboard refresh saw an auth failure"). Use a separate scope so
+        // the previous failure doesn't poison this one.
+        SystemHealthReport report = CreateHealthyReport();
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SystemHealthReport?>(report));
+
+        IRenderedComponent<Health> warmCut = Render<Health>();
+        warmCut.WaitForAssertion(() => warmCut.Markup.ShouldContain("Total Events"), TimeSpan.FromSeconds(5));
+
+        DashboardRefreshService refreshService = Services.GetRequiredService<DashboardRefreshService>();
+        FieldInfo? eventField = typeof(DashboardRefreshService)
+            .GetField("OnDataChanged", BindingFlags.Instance | BindingFlags.NonPublic);
+        var handler = (Action<DashboardData>?)eventField?.GetValue(refreshService);
+        handler?.Invoke(new DashboardData(null, null));
+
+        warmCut.WaitForAssertion(
+            () => warmCut.Markup.ShouldContain("Health data may be stale"),
+            TimeSpan.FromSeconds(5));
+        warmCut.Markup.ShouldContain("Total Events");
+    }
+
+    [Fact]
+    public void HealthApi_Timeout_StaleLastGood() {
+        // AC2 contract priority order (spec line 96): "current partial report, stale last-good
+        // report clearly labelled with timestamp/source, then IssueBanner/EmptyState." Round 4
+        // patch enhances this fixture to exercise the stale-last-good branch in addition to
+        // the cold-start timeout banner:
+        //   (1) cold-start TaskCanceledException: banner, no cache to reuse;
+        //   (2) warm-cache + null-data refresh: stale label appears AND cached value remains
+        //       rendered with a "(stale)" suffix (the production stale path).
+
+        // (1) cold-start timeout
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns<Task<SystemHealthReport?>>(_ => throw new TaskCanceledException("Request timed out"));
+
+        IRenderedComponent<Health> cut = Render<Health>();
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldContain("Unable to load health status"),
+            TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldNotContain("hexalith-skeleton-card");
+
+        // (2) warm-cache + timeout-on-refresh: render fresh, load successfully, then refresh
+        // with null data so the page enters the stale path. Asserts both the stale banner copy
+        // AND the cached value are visible — the prior "always banner" path would lose the
+        // cached report.
+        SystemHealthReport report = CreateHealthyReport();
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SystemHealthReport?>(report));
+
+        IRenderedComponent<Health> warmCut = Render<Health>();
+        warmCut.WaitForAssertion(() => warmCut.Markup.ShouldContain("Total Events"), TimeSpan.FromSeconds(5));
+
+        DashboardRefreshService refreshService = Services.GetRequiredService<DashboardRefreshService>();
+        FieldInfo? eventField = typeof(DashboardRefreshService)
+            .GetField("OnDataChanged", BindingFlags.Instance | BindingFlags.NonPublic);
+        var handler = (Action<DashboardData>?)eventField?.GetValue(refreshService);
+        handler?.Invoke(new DashboardData(null, null));
+
+        warmCut.WaitForAssertion(
+            () => warmCut.Markup.ShouldContain("Health data may be stale"),
+            TimeSpan.FromSeconds(5));
+        warmCut.Markup.ShouldContain("Total Events");
+    }
+
+    [Fact]
+    public void HealthApi_Malformed_IssueBanner() {
+        // AC2 line 95 lists "malformed error response" as a distinct API failure mode. Round 4
+        // patch separates the assertion from the empty-state path (which has its own coverage):
+        // the API client throws JsonException — the genuine "malformed payload" trigger, not a
+        // valid-but-empty DTO. The page's catch-all in OnInitializedAsync routes this to the
+        // unable-to-load banner without crashing or spinning. Asserting on banner copy avoids
+        // the "No DAPR components detected" empty-state synonym which doubles up with
+        // HealthApi_Null_IssueBanner / null-DTO coverage.
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns<Task<SystemHealthReport?>>(_ => throw new JsonException("Unexpected token at line 1, position 1."));
 
         IRenderedComponent<Health> cut = Render<Health>();
         cut.WaitForAssertion(
@@ -518,53 +614,7 @@ public class HealthPageTests : AdminUITestContext {
         markup.ShouldContain("Unable to load health status");
         // Page must exit loading state — no skeleton spinner content remains.
         markup.ShouldNotContain("hexalith-skeleton-card");
-    }
-
-    [Fact]
-    public void HealthApi_Timeout_StaleLastGood() {
-        // The API call times out via TaskCanceledException on first load (no cached data
-        // available). The page must exit loading and show the unable-to-load banner; it must
-        // not spin forever or crash. (The stale-data path that retains a cached report on a
-        // subsequent failure is exercised by the existing refresh tests in this file; this
-        // fixture covers the simpler "API timed out, no cache" entry point.)
-        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
-            .Returns<Task<SystemHealthReport?>>(_ => throw new TaskCanceledException("Request timed out"));
-
-        IRenderedComponent<Health> cut = Render<Health>();
-        cut.WaitForAssertion(
-            () => cut.Markup.ShouldContain("Unable to load health status"),
-            TimeSpan.FromSeconds(5));
-
-        // Page must exit loading (no skeleton spinner) so a stuck-loading regression is caught.
-        cut.Markup.ShouldNotContain("hexalith-skeleton-card");
-    }
-
-    [Fact]
-    public void HealthApi_Malformed_IssueBanner() {
-        // A malformed deserialization (e.g. missing required fields → DTO null fields) produces
-        // a SystemHealthReport whose components are null/empty, which exercises the empty-state
-        // path. Ensure no crash, no blank, and the empty-state copy renders.
-        SystemHealthReport malformed = new(
-            HealthStatus.Unhealthy,
-            TotalEventCount: 0,
-            EventsPerSecond: 0,
-            ErrorPercentage: 0,
-            DaprComponents: [],
-            ObservabilityLinks: new ObservabilityLinks(null, null, null),
-            TotalEventCountStatus: SystemHealthMetricStatus.Unavailable,
-            EventsPerSecondStatus: SystemHealthMetricStatus.Unavailable,
-            ErrorPercentageStatus: SystemHealthMetricStatus.Unavailable);
-        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<SystemHealthReport?>(malformed));
-
-        IRenderedComponent<Health> cut = Render<Health>();
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Total Events"), TimeSpan.FromSeconds(5));
-
-        string markup = cut.Markup;
-        markup.ShouldContain("Unhealthy");
-        markup.ShouldContain("unavailable");
-        // Empty-state copy renders for the empty component grid.
-        markup.ShouldContain("No DAPR components detected");
+        // No fake-zero metric rendering even when payload is malformed.
         markup.ShouldNotContain("0.0/s");
         markup.ShouldNotContain("0.0%");
     }

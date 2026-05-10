@@ -105,8 +105,17 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
         //     — we have probe evidence for the configured state store even when remote inventory
         //     is unreachable, and that outage signal is what operators want recorded over time.
         bool remoteAvailable = inventory.RemoteMetadataStatus == RemoteMetadataStatus.Available;
+
+        // Use a positive whitelist of currently-defined non-Unavailable source values so a
+        // future DaprComponentSource enum addition default-treats as "no usable evidence" and
+        // forces an explicit decision to add the new value to the whitelist. Without this, a
+        // future enum value silently bypasses the skip rule and persists rows with unknown
+        // attribution into the timeline.
         bool everyRowHasNoSource = components.Count > 0
-            && components.All(c => c.Source == DaprComponentSource.Unavailable);
+            && components.All(c =>
+                c.Source is not DaprComponentSource.RemoteEventStoreMetadata
+                    and not DaprComponentSource.LocalAdminProbe
+                    and not DaprComponentSource.LocalAdminMetadataFallback);
         if (!remoteAvailable && (components.Count == 0 || everyRowHasNoSource)) {
             _logger.LogDebug(
                 "Skipping health history snapshot — remote metadata status={Status} and components carry no usable source attribution. Live APIs may still expose the current sample; persisted history is preserved.",

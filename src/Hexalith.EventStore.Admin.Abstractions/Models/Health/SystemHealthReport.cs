@@ -28,6 +28,16 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Health;
 /// Defaults to <see cref="RemoteMetadataStatus.NotConfigured"/> so legacy zero-defaults cannot
 /// be misread as canonical evidence.
 /// </param>
+/// <param name="LocalSidecarMetadataStatus">
+/// The outcome of the local Admin DAPR sidecar metadata read. Distinct from
+/// <see cref="InventorySourceStatus"/>: when <see cref="OverallStatus"/> is
+/// <see cref="HealthStatus.Unhealthy"/> while <see cref="InventorySourceStatus"/> is
+/// <see cref="RemoteMetadataStatus.Available"/>, this field surfaces whether the cause is the
+/// local sidecar (<see cref="RemoteMetadataStatus.Unreachable"/> / <see cref="RemoteMetadataStatus.InvalidPayload"/>)
+/// rather than a state-store probe failure. Reuses <see cref="RemoteMetadataStatus"/> for
+/// vocabulary symmetry with <see cref="InventorySourceStatus"/>; <see cref="RemoteMetadataStatus.NotConfigured"/>
+/// is not produced for the local sidecar (the Admin server always reads its own sidecar).
+/// </param>
 public record SystemHealthReport(
     HealthStatus OverallStatus,
     long TotalEventCount,
@@ -38,7 +48,8 @@ public record SystemHealthReport(
     SystemHealthMetricStatus TotalEventCountStatus = SystemHealthMetricStatus.Available,
     SystemHealthMetricStatus EventsPerSecondStatus = SystemHealthMetricStatus.Unavailable,
     SystemHealthMetricStatus ErrorPercentageStatus = SystemHealthMetricStatus.Unavailable,
-    RemoteMetadataStatus InventorySourceStatus = RemoteMetadataStatus.NotConfigured) {
+    RemoteMetadataStatus InventorySourceStatus = RemoteMetadataStatus.NotConfigured,
+    RemoteMetadataStatus LocalSidecarMetadataStatus = RemoteMetadataStatus.Available) {
     /// <summary>Gets the current event throughput.</summary>
     public double EventsPerSecond { get; } = !double.IsNaN(EventsPerSecond) && !double.IsInfinity(EventsPerSecond)
         ? EventsPerSecond

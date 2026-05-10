@@ -212,9 +212,12 @@ public class DaprHealthHistoryCollectorTests {
                 "http://eventstore-sidecar", LocalSidecarMetadataAvailable: true,
                 CapturedAtUtc: DateTimeOffset.UtcNow));
 
+        // Seed an empty-but-non-null timeline so the test exercises the
+        // "first sample of the day" path explicitly. Returning null! would mask a future
+        // defensive null short-circuit added to the collector.
         _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
             Arg.Any<string>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((DaprComponentHealthTimeline)null!);
+            .Returns(new DaprComponentHealthTimeline([], HasData: false));
 
         DaprComponentHealthTimeline? captured = null;
         _ = daprClient.SaveStateAsync(
@@ -262,9 +265,12 @@ public class DaprHealthHistoryCollectorTests {
                 "http://eventstore-sidecar", LocalSidecarMetadataAvailable: true,
                 CapturedAtUtc: DateTimeOffset.UtcNow));
 
+        // Seed an empty-but-non-null timeline so the test exercises the
+        // "first sample of the day" path explicitly. Returning null! would mask a future
+        // defensive null short-circuit added to the collector.
         _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
             Arg.Any<string>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((DaprComponentHealthTimeline)null!);
+            .Returns(new DaprComponentHealthTimeline([], HasData: false));
 
         // Fail on save
         _ = daprClient.SaveStateAsync(

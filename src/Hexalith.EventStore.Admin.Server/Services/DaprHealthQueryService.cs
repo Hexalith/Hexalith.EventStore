@@ -76,7 +76,7 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
         // Derive state-store evidence from the canonical inventory. AC1 requires that when
         // Redis is down, the matching component row is Unhealthy and overall status is
         // Unhealthy. The probe ran inside GetCanonicalDaprInventoryAsync; here we only read.
-        bool stateStoreProbeFailed = IsStateStoreProbeFailed(inventory, _options.StateStoreName);
+        bool stateStoreProbeFailed = IsStateStoreProbeFailed(inventory, _options.StateStoreName, _logger);
 
         List<DaprComponentHealth> components = MapToHealthComponents(inventory);
 
@@ -137,13 +137,22 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
             TotalEventCountStatus: totalEventCountStatus,
             EventsPerSecondStatus: SystemHealthMetricStatus.Unavailable,
             ErrorPercentageStatus: SystemHealthMetricStatus.Unavailable,
-            InventorySourceStatus: inventory.RemoteMetadataStatus);
+            InventorySourceStatus: inventory.RemoteMetadataStatus,
+            LocalSidecarMetadataStatus: inventory.LocalSidecarMetadataAvailable
+                ? RemoteMetadataStatus.Available
+                : RemoteMetadataStatus.Unreachable);
     }
 
-    private static bool IsStateStoreProbeFailed(DaprCanonicalInventory inventory, string configuredStateStoreName) {
+    private static bool IsStateStoreProbeFailed(DaprCanonicalInventory inventory, string configuredStateStoreName, ILogger logger) {
         if (string.IsNullOrWhiteSpace(configuredStateStoreName)) {
             // Without a configured state-store name we cannot identify the probe row; absent
-            // probe evidence cannot be presented as healthy, so treat as probe failure.
+            // probe evidence cannot be presented as healthy, so treat as probe failure. Log a
+            // single warning per call so operators chasing an "Unhealthy" alert see the
+            // configuration cause instead of mistaking it for a Redis outage. The throttling is
+            // implicit: /health is called per request, but the log is a structured warning that
+            // can be filtered by message template.
+            logger.LogWarning(
+                "AdminServerOptions.StateStoreName is empty/whitespace; the configured state-store probe is disabled and /health will report Unhealthy until the option is set. This is a configuration error, not a Redis outage.");
             return true;
         }
 
@@ -175,13 +184,15 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
     }
 
     private static List<DaprComponentHealth> MapToHealthComponents(DaprCanonicalInventory inventory) {
-        // After ST3 / probe-last ordering, canonical inventory rows already carry probe Status
-        // and Source for state-store components (and remote-source attribution for everything
-        // else). /health is now a pure projection.
-        DateTimeOffset now = DateTimeOffset.UtcNow;
+        // After ST3 / probe-last ordering, canonical inventory rows already carry probe Status,
+        // Source, and the timestamp at which the evidence was captured (probe time for state
+        // stores, remote-payload-parse time for remote-attributed rows, fallback insertion time
+        // otherwise). /health is now a pure projection — preserving c.LastCheckUtc keeps the
+        // operator's "when was this last checked?" triage signal intact instead of stamping the
+        // request rendering time over real probe latency.
         List<DaprComponentHealth> components = new(inventory.Components.Count);
         foreach (DaprComponentDetail c in inventory.Components) {
-            components.Add(new DaprComponentHealth(c.ComponentName, c.ComponentType, c.Status, now, c.Source));
+            components.Add(new DaprComponentHealth(c.ComponentName, c.ComponentType, c.Status, c.LastCheckUtc, c.Source));
         }
 
         return components;

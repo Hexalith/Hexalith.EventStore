@@ -102,17 +102,31 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 || localMetadata.Extended is { Count: > 0 });
 
         if (localMetadata?.Components is not null) {
+            // When the configured state-store probe will not run (name empty/whitespace),
+            // Stage 1 must not stamp state-store rows as Healthy: there is no probe evidence
+            // to back the claim and the truth contract forbids "Healthy by metadata default"
+            // for state stores. Mark such rows Unhealthy with Source = LocalAdminMetadataFallback;
+            // the projection layer will surface them as "configured + unverified" rather than
+            // a green check the operator cannot trust.
+            string configuredName = _options.StateStoreName;
+            bool stateStoreProbeWillRun = !string.IsNullOrWhiteSpace(configuredName);
             foreach (DaprComponentsMetadata c in localMetadata.Components) {
                 if (string.IsNullOrEmpty(c.Name) || string.IsNullOrEmpty(c.Type)) {
                     continue;
                 }
 
+                DaprComponentCategory category = DaprComponentCategoryHelper.FromComponentType(c.Type);
+                bool isStateStoreRowWithoutProbeCoverage =
+                    category == DaprComponentCategory.StateStore
+                    && (!stateStoreProbeWillRun
+                        || !string.Equals(c.Name, configuredName, StringComparison.OrdinalIgnoreCase));
+
                 DaprComponentDetail entry = new(
                     c.Name,
                     c.Type,
-                    DaprComponentCategoryHelper.FromComponentType(c.Type),
+                    category,
                     c.Version ?? string.Empty,
-                    HealthStatus.Healthy,
+                    isStateStoreRowWithoutProbeCoverage ? HealthStatus.Unhealthy : HealthStatus.Healthy,
                     now,
                     c.Capabilities ?? [],
                     DaprComponentSource.LocalAdminMetadataFallback);
@@ -175,7 +189,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             using var probeCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             probeCts.CancelAfter(TimeSpan.FromSeconds(3));
 
-            List<Task<(DaprComponentDetail Updated, bool Replace)>> probes = [];
+            List<(DaprComponentDetail Entry, Task<(DaprComponentDetail Updated, bool Replace)> Task)> probesByEntry = [];
             foreach (DaprComponentDetail entry in merged.Values.ToArray()) {
                 if (entry.Category != DaprComponentCategory.StateStore) {
                     continue;
@@ -185,26 +199,35 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                     continue;
                 }
 
-                probes.Add(ProbeStateStoreEntryAsync(entry, ct, probeCts.Token));
+                probesByEntry.Add((entry, ProbeStateStoreEntryAsync(entry, ct, probeCts.Token)));
             }
 
             // Run probes individually rather than via Task.WhenAll so a single throw does not
             // discard the results of sibling probes that completed successfully. (Today there
             // is at most one probe given the configured-name filter above, but the loop is
             // already shaped for n probes; failing-batch semantics would be a future-trap.)
-            foreach (Task<(DaprComponentDetail Updated, bool Replace)> probe in probes) {
+            foreach ((DaprComponentDetail Entry, Task<(DaprComponentDetail Updated, bool Replace)> Task) pair in probesByEntry) {
                 try {
-                    (DaprComponentDetail updated, bool replace) = await probe.ConfigureAwait(false);
+                    (DaprComponentDetail updated, bool replace) = await pair.Task.ConfigureAwait(false);
                     if (replace) {
                         merged[(updated.ComponentName, updated.ComponentType)] = updated;
                     }
                 }
                 catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
-                    // Linked CTS fired its 3-second timeout without the caller cancelling.
-                    // Probe entry already attempted to translate this into an Unhealthy row;
-                    // if we get here the translation re-threw (e.g. probeCts cancellation
-                    // raced an inner await). Leave the merged row as-is.
-                    _logger.LogWarning("State store health probe timed out after 3 seconds.");
+                    // Linked CTS fired its 3-second timeout without the caller cancelling. The
+                    // inner ProbeStateStoreEntryAsync attempts to translate this into an
+                    // Unhealthy row; if we get here the translation re-threw (e.g. probeCts
+                    // cancellation raced an inner await). Stamp the merged row Unhealthy with
+                    // LocalAdminProbe attribution so /dapr and /health do not diverge: leaving
+                    // the prior LocalAdminMetadataFallback row would let /dapr render Healthy
+                    // while IsStateStoreProbeFailed (which scopes to LocalAdminProbe rows)
+                    // independently treats absence as failure on /health.
+                    _logger.LogWarning("State store health probe timed out after 3 seconds for {ComponentName}.", pair.Entry.ComponentName);
+                    merged[(pair.Entry.ComponentName, pair.Entry.ComponentType)] = pair.Entry with {
+                        Status = HealthStatus.Unhealthy,
+                        LastCheckUtc = DateTimeOffset.UtcNow,
+                        Source = DaprComponentSource.LocalAdminProbe,
+                    };
                 }
             }
         }
@@ -277,6 +300,14 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         DaprMetadata? metadata = local.Metadata;
         if (metadata?.Actors is not null && metadata.Actors.Count > 0) {
             foreach (DaprActorMetadata actor in metadata.Actors) {
+                // Guard against null/empty actor.Type — DAPR sidecar can return it during
+                // init in some versions; KnownActorTypes.GetDescriptor(null) would NRE on
+                // Dictionary.TryGetValue(null, out _). The remote actor branch already
+                // applies the same guard.
+                if (string.IsNullOrEmpty(actor.Type)) {
+                    continue;
+                }
+
                 KnownActorTypeDescriptor descriptor = KnownActorTypes.GetDescriptor(actor.Type);
                 actorTypes.Add(new DaprActorTypeInfo(
                     actor.Type,
@@ -809,22 +840,29 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
             return cached;
         }
 
-        DaprMetadata? metadata = null;
-        bool available = false;
+        DaprMetadata? metadata;
         try {
             metadata = await _daprClient.GetMetadataAsync(ct).ConfigureAwait(false);
-            available = metadata is not null;
         }
         catch (OperationCanceledException) {
             // Caller-driven cancellation — propagate; do not poison the cache.
             throw;
         }
         catch (Exception ex) {
+            // Cache-on-success only — mirror the remote pattern. Caching a failure result here
+            // would poison the request scope: a transient socket exception on the first caller
+            // would force every subsequent consumer (GetSidecarInfoAsync, GetActorRuntimeInfoAsync)
+            // to read the same failure rather than retry on its own. Returning the failure
+            // without caching means the next consumer gets a fresh attempt with its own token.
             _logger.LogWarning(ex, "Local DAPR sidecar metadata unavailable.");
+            return new LocalMetadataResult {
+                Available = false,
+                Metadata = null,
+            };
         }
 
         LocalMetadataResult result = new() {
-            Available = available,
+            Available = metadata is not null,
             Metadata = metadata,
         };
         _cachedLocalMetadata = result;
@@ -879,7 +917,11 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
         if (root.TryGetProperty("subscriptions", out JsonElement subscriptionsElement)
             && subscriptionsElement.ValueKind == JsonValueKind.Array) {
-            subCount = subscriptionsElement.GetArrayLength();
+            // subCount is finalised from the filtered subscriptions list below so
+            // /dapr's "Active Subscriptions" stat card and /dapr/pubsub's filtered grid
+            // agree on the same canonical payload. The unfiltered array length is
+            // discarded — partial subscription entries (missing pubsubName or topic)
+            // are not "active" by AC6 and must not inflate the count.
             foreach (JsonElement sub in subscriptionsElement.EnumerateArray()) {
                 string? pubsubName = sub.TryGetProperty("pubsubName", out JsonElement pn) ? pn.GetString() : null;
                 string? topic = sub.TryGetProperty("topic", out JsonElement t) ? t.GetString() : null;
@@ -917,6 +959,8 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                         string.IsNullOrWhiteSpace(deadLetterTopic) ? null : deadLetterTopic));
                 }
             }
+
+            subCount = subscriptions.Count;
         }
 
         if (root.TryGetProperty("actors", out JsonElement actorsElement)
@@ -925,8 +969,16 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 string type = actorElement.TryGetProperty("type", out JsonElement typeEl)
                     ? typeEl.GetString() ?? string.Empty
                     : string.Empty;
+                // Guard against non-integer JSON tokens for "count" (string "3", null, fractional).
+                // GetInt32() throws InvalidOperationException for those, which the catch-all in
+                // ReadRemoteMetadataAsync collapses into RemoteMetadataStatus.Unreachable —
+                // misclassifying a malformed payload as a transport failure. TryGetInt32 keeps
+                // parsing intact and falls back to -1 (the same sentinel already used for the
+                // missing-property branch).
                 int count = actorElement.TryGetProperty("count", out JsonElement countEl)
-                    ? countEl.GetInt32()
+                    && countEl.ValueKind == JsonValueKind.Number
+                    && countEl.TryGetInt32(out int parsedCount)
+                    ? parsedCount
                     : -1;
 
                 if (!string.IsNullOrEmpty(type)) {

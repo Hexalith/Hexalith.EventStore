@@ -1,5 +1,6 @@
 @page "/health"
 
+@using Hexalith.EventStore.Admin.Abstractions.Models.Dapr
 @using Hexalith.EventStore.Admin.Abstractions.Models.Health
 @using Hexalith.EventStore.Admin.UI.Components.Shared
 @using Hexalith.EventStore.Admin.UI.Services
@@ -43,6 +44,24 @@
 <IssueBanner Visible="@(_isStale && _cachedHealthReport is not null)"
              Title="@_staleBannerTitle"
              Description="" />
+
+@* Inventory source diagnostic banners — surface the canonical-inventory truth contract
+   so an operator can tell when the overall status is degraded by a metadata-source
+   failure rather than a state-store probe failure. *@
+@if (_healthReport is not null && _healthReport.InventorySourceStatus != RemoteMetadataStatus.Available
+    && _healthReport.InventorySourceStatus != RemoteMetadataStatus.NotConfigured)
+{
+    <IssueBanner Visible="true"
+                 Title="@($"Remote DAPR inventory source: {_healthReport.InventorySourceStatus}")"
+                 Description="The EventStore sidecar metadata could not be read; component and subscription inventory may be incomplete. Live state-store health remains authoritative." />
+}
+
+@if (_healthReport is not null && _healthReport.LocalSidecarMetadataStatus != RemoteMetadataStatus.Available)
+{
+    <IssueBanner Visible="true"
+                 Title="@($"Local Admin sidecar metadata: {_healthReport.LocalSidecarMetadataStatus}")"
+                 Description="Admin sidecar metadata is unavailable; this typically affects local component fallback evidence and actor inventory only. Configured state-store health is unaffected." />
+}
 
 @* Summary stat cards *@
 <FluentGrid Spacing="3" style="margin-bottom: 16px;">

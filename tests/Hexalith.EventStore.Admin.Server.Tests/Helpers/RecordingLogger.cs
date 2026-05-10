@@ -13,8 +13,8 @@ internal sealed class RecordingLogger<T> : ILogger<T> {
 
     public IReadOnlyList<LogRecord> Records => _records;
 
-    public IDisposable? BeginScope<TState>(TState state)
-        where TState : notnull => null;
+    public IDisposable BeginScope<TState>(TState state)
+        where TState : notnull => NullScope.Instance;
 
     public bool IsEnabled(LogLevel logLevel) => true;
 
@@ -32,4 +32,17 @@ internal sealed class RecordingLogger<T> : ILogger<T> {
     }
 
     internal sealed record LogRecord(LogLevel Level, string Message, Exception? Exception);
+
+    /// <summary>
+    /// No-op disposable returned from <see cref="BeginScope{TState}"/>. Returning a sentinel
+    /// instead of <c>null</c> keeps third-party log wrappers that do
+    /// <c>scope.Dispose();</c> without a null-check from NREing under this test harness.
+    /// </summary>
+    private sealed class NullScope : IDisposable {
+        public static readonly NullScope Instance = new();
+
+        public void Dispose() {
+            // intentional no-op
+        }
+    }
 }
