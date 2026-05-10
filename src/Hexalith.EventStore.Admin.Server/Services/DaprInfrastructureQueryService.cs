@@ -101,12 +101,23 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 || localMetadata.Actors is { Count: > 0 });
 
         if (localMetadata?.Components is not null) {
-            // When the configured state-store probe will not run (name empty/whitespace),
-            // Stage 1 must not stamp state-store rows as Healthy: there is no probe evidence
-            // to back the claim and the truth contract forbids "Healthy by metadata default"
-            // for state stores. Mark such rows Unhealthy with Source = LocalAdminMetadataFallback;
-            // the projection layer will surface them as "configured + unverified" rather than
-            // a green check the operator cannot trust.
+            // Round 5 P1 (D4 option a): the truth contract forbids "Healthy by metadata default"
+            // for any category — local sidecar metadata names a component but does not prove the
+            // backing dependency is usable. Only the configured Admin state-store row receives
+            // probe evidence later in Stage 4; every other local-fallback row stays unverified
+            // for the lifetime of the canonical inventory. We therefore stamp Stage-1 rows as
+            // follows:
+            //   * The configured state-store row (will be probed in Stage 4) → Healthy default
+            //     because Stage 4 always overwrites it with the actual probe Status.
+            //   * Any other state-store row (different name, or no configured name) → Unhealthy:
+            //     the truth contract forbids Healthy without probe evidence, and a state-store
+            //     missing the probe is closer to "not operational" than "operational with caveats".
+            //     Preserves the original isStateStoreRowWithoutProbeCoverage semantics.
+            //   * Non-state-store rows (bindings, secret-stores, etc.) → Degraded: the dependency
+            //     is configured per local metadata but Admin.Server has no probe to attest its
+            //     usability. "Operational but with caveats" is the most accurate severity.
+            // The projection / UI surfaces these rows as "configured + unverified" via Source =
+            // LocalAdminMetadataFallback rather than a green check the operator cannot trust.
             string configuredName = _options.StateStoreName;
             bool stateStoreProbeWillRun = !string.IsNullOrWhiteSpace(configuredName);
             foreach (DaprComponentsMetadata c in localMetadata.Components) {
@@ -115,17 +126,23 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 }
 
                 DaprComponentCategory category = DaprComponentCategoryHelper.FromComponentType(c.Type);
-                bool isStateStoreRowWithoutProbeCoverage =
+                bool willBeProbed =
                     category == DaprComponentCategory.StateStore
-                    && (!stateStoreProbeWillRun
-                        || !string.Equals(c.Name, configuredName, StringComparison.OrdinalIgnoreCase));
+                    && stateStoreProbeWillRun
+                    && string.Equals(c.Name, configuredName, StringComparison.OrdinalIgnoreCase);
+
+                HealthStatus defaultStatus = willBeProbed
+                    ? HealthStatus.Healthy
+                    : category == DaprComponentCategory.StateStore
+                        ? HealthStatus.Unhealthy
+                        : HealthStatus.Degraded;
 
                 DaprComponentDetail entry = new(
                     c.Name,
                     c.Type,
                     category,
                     c.Version ?? string.Empty,
-                    isStateStoreRowWithoutProbeCoverage ? HealthStatus.Unhealthy : HealthStatus.Healthy,
+                    defaultStatus,
                     now,
                     c.Capabilities ?? [],
                     DaprComponentSource.LocalAdminMetadataFallback);
@@ -136,11 +153,36 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         // Stage 2 — remote EventStore sidecar metadata. Canonical for loaded EventStore-sidecar
         // components and active pub/sub subscriptions. Remote evidence supersedes the local
         // fallback for any (name, type) it reports, but never the local probe — that runs after.
+        //
+        // Round 5 P3: ParseRemoteMetadata stamps every component with HealthStatus.Healthy, but
+        // a remote state-store named differently from the configured Admin state-store name is
+        // never probed by Stage 4 (the probe filter scopes to `_options.StateStoreName` to avoid
+        // false-negative "component not found" results when the Admin sidecar does not host the
+        // remote-only state store). Without intervention, a remote-reported `eventstore-state`
+        // would render green on `/dapr` and `/health` with zero probe evidence — exactly the
+        // truth-contract violation P3 forbids. Downgrade such rows to Degraded ("loaded
+        // inventory only, no probe attestation"); the configured state-store row is still
+        // written Healthy/Unhealthy by the Stage 4 probe.
         RemoteMetadataPayload remote = await TryReadRemoteMetadataAsync(ct).ConfigureAwait(false);
 
         if (remote.Components is not null) {
+            string configuredStateStoreForRemote = _options.StateStoreName;
+            bool stateStoreProbeWillRun = !string.IsNullOrWhiteSpace(configuredStateStoreForRemote);
             foreach (DaprComponentDetail c in remote.Components) {
-                merged[(c.ComponentName, c.ComponentType)] = c with { Source = DaprComponentSource.RemoteEventStoreMetadata };
+                bool willBeProbed =
+                    c.Category == DaprComponentCategory.StateStore
+                    && stateStoreProbeWillRun
+                    && string.Equals(c.ComponentName, configuredStateStoreForRemote, StringComparison.OrdinalIgnoreCase);
+
+                bool needsStateStoreDowngrade =
+                    c.Category == DaprComponentCategory.StateStore
+                    && !willBeProbed
+                    && c.Status == HealthStatus.Healthy;
+
+                DaprComponentDetail entry = needsStateStoreDowngrade
+                    ? c with { Status = HealthStatus.Degraded, Source = DaprComponentSource.RemoteEventStoreMetadata }
+                    : c with { Source = DaprComponentSource.RemoteEventStoreMetadata };
+                merged[(entry.ComponentName, entry.ComponentType)] = entry;
             }
         }
 
@@ -168,11 +210,13 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 Status: HealthStatus.Unhealthy,
                 LastCheckUtc: now,
                 Capabilities: [],
-                // The synth row exists *only* because the local probe is about to run; that is
-                // local-probe evidence even when the probe itself ends up timing out without
-                // overwriting Source. `Source = Unavailable` would contradict the truth contract
-                // ("a successfully reported component must never carry Source = Unavailable").
-                Source: DaprComponentSource.LocalAdminProbe);
+                // Round 5 P2: ship synth with Source = Unavailable. Source = LocalAdminProbe is
+                // a truth-contract claim that probe evidence exists; setting it before the probe
+                // runs would mean a future refactor that short-circuits Stage 4 silently leaves
+                // the synth row reporting "probed and Unhealthy" without an actual probe call.
+                // Stage 4 (the only writer of LocalAdminProbe) updates Source on probe completion,
+                // so the synth's Source attribution is correct only *after* Stage 4 runs.
+                Source: DaprComponentSource.Unavailable);
             merged[(configuredStateStore, SyntheticStateStoreType)] = synth;
         }
 
@@ -203,33 +247,42 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
                 probesByEntry.Add((entry, ProbeStateStoreEntryAsync(entry, ct, probeCts.Token)));
             }
 
-            // Run probes individually rather than via Task.WhenAll so a single throw does not
-            // discard the results of sibling probes that completed successfully. (Today there
-            // is at most one probe given the configured-name filter above, but the loop is
-            // already shaped for n probes; failing-batch semantics would be a future-trap.)
+            // Round 5 P6: stage probe results into a local dictionary, then merge once after
+            // all probes settle. The previous shape iterated `merged.Values.ToArray()` then
+            // awaited probes sequentially while overwriting `merged` mid-loop. Today benign
+            // with one probe (configured-name filter), but the loop is documented as "shaped
+            // for n probes" — at n>1 a probe returning a key already overwritten by a sibling
+            // would race with last-write-wins. Staging keeps the merge step deterministic and
+            // independent of probe completion order.
+            Dictionary<(string Name, string Type), DaprComponentDetail> probeResults
+                = new(InventoryKeyComparer.Instance);
             foreach ((DaprComponentDetail Entry, Task<(DaprComponentDetail Updated, bool Replace)> Task) pair in probesByEntry) {
                 try {
                     (DaprComponentDetail updated, bool replace) = await pair.Task.ConfigureAwait(false);
                     if (replace) {
-                        merged[(updated.ComponentName, updated.ComponentType)] = updated;
+                        probeResults[(updated.ComponentName, updated.ComponentType)] = updated;
                     }
                 }
                 catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
                     // Linked CTS fired its 3-second timeout without the caller cancelling. The
                     // inner ProbeStateStoreEntryAsync attempts to translate this into an
                     // Unhealthy row; if we get here the translation re-threw (e.g. probeCts
-                    // cancellation raced an inner await). Stamp the merged row Unhealthy with
+                    // cancellation raced an inner await). Stamp the row Unhealthy with
                     // LocalAdminProbe attribution so /dapr and /health do not diverge: leaving
                     // the prior LocalAdminMetadataFallback row would let /dapr render Healthy
                     // while IsStateStoreProbeFailed (which scopes to LocalAdminProbe rows)
                     // independently treats absence as failure on /health.
                     _logger.LogWarning("State store health probe timed out after 3 seconds for {ComponentName}.", pair.Entry.ComponentName);
-                    merged[(pair.Entry.ComponentName, pair.Entry.ComponentType)] = pair.Entry with {
+                    probeResults[(pair.Entry.ComponentName, pair.Entry.ComponentType)] = pair.Entry with {
                         Status = HealthStatus.Unhealthy,
                         LastCheckUtc = DateTimeOffset.UtcNow,
                         Source = DaprComponentSource.LocalAdminProbe,
                     };
                 }
+            }
+
+            foreach (KeyValuePair<(string Name, string Type), DaprComponentDetail> result in probeResults) {
+                merged[result.Key] = result.Value;
             }
         }
 

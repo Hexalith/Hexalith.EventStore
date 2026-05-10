@@ -115,8 +115,21 @@
 {
     @if (_healthReport.DaprComponents.Count == 0)
     {
-        <EmptyState Title="No DAPR components detected"
-                    Description="DAPR component health information will appear here when components are registered." />
+        @* Round 5 P9: when OverallStatus is Unhealthy and the canonical inventory is empty, the
+           friendly "no components yet" copy hides an outage behind nominal data (AC2 violation).
+           Surface the underlying cause from InventorySourceStatus / LocalSidecarMetadataStatus
+           so operators can act, rather than waiting for a "components" column that will never
+           arrive while the metadata sources are unavailable. *@
+        @if (_healthReport.OverallStatus == HealthStatus.Unhealthy)
+        {
+            <EmptyState Title="DAPR component inventory unavailable"
+                        Description="@BuildEmptyInventoryOutageDescription(_healthReport)" />
+        }
+        else
+        {
+            <EmptyState Title="No DAPR components detected"
+                        Description="DAPR component health information will appear here when components are registered." />
+        }
     }
     else
     {
@@ -399,6 +412,40 @@
         DaprComponentSource.LocalAdminMetadataFallback => "Local fallback",
         DaprComponentSource.Unavailable => "unavailable",
         _ => $"unknown ({source})",
+    };
+
+    // Round 5 P9: build outage-cause description for the empty-inventory empty-state when
+    // OverallStatus is Unhealthy. Operators see the canonical metadata-source statuses
+    // explicitly rather than a friendly "no components yet" message that hides the cause.
+    private static string BuildEmptyInventoryOutageDescription(SystemHealthReport report)
+    {
+        List<string> causes = [];
+        if (report.LocalSidecarMetadataStatus != RemoteMetadataStatus.Available)
+        {
+            causes.Add($"the local Admin sidecar metadata is {FormatRemoteMetadataStatus(report.LocalSidecarMetadataStatus)}");
+        }
+
+        if (report.InventorySourceStatus != RemoteMetadataStatus.Available
+            && report.InventorySourceStatus != RemoteMetadataStatus.NotConfigured)
+        {
+            causes.Add($"the remote EventStore sidecar metadata is {FormatRemoteMetadataStatus(report.InventorySourceStatus)}");
+        }
+
+        return causes.Count switch
+        {
+            0 => "No DAPR components were reported. The configured state store may be misconfigured; see logs for the AdminServerOptions.StateStoreName diagnostic warning.",
+            1 => $"DAPR component inventory is unavailable because {causes[0]}. Live health and DAPR pages will refresh once the metadata source recovers.",
+            _ => $"DAPR component inventory is unavailable because {string.Join(" and ", causes)}. Live health and DAPR pages will refresh once the metadata sources recover.",
+        };
+    }
+
+    private static string FormatRemoteMetadataStatus(RemoteMetadataStatus status) => status switch
+    {
+        RemoteMetadataStatus.Available => "available",
+        RemoteMetadataStatus.NotConfigured => "not configured",
+        RemoteMetadataStatus.Unreachable => "unreachable",
+        RemoteMetadataStatus.InvalidPayload => "invalid (payload could not be parsed)",
+        _ => $"unknown ({status})",
     };
 
     private static string GetSourceTitle(DaprComponentSource source) => source switch

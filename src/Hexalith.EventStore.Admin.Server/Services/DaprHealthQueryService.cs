@@ -114,7 +114,8 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
             stateStoreProbeFailed,
             eventStoreFailed,
             inventory.RemoteMetadataStatus,
-            inventory.LocalSidecarMetadataAvailable);
+            inventory.LocalSidecarMetadataAvailable,
+            _logger);
 
         ObservabilityLinks links = new(_options.TraceUrl, _options.MetricsUrl, _options.LogsUrl);
 
@@ -189,34 +190,83 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
         // otherwise). /health is now a pure projection — preserving c.LastCheckUtc keeps the
         // operator's "when was this last checked?" triage signal intact instead of stamping the
         // request rendering time over real probe latency.
+        //
+        // Round 5 P4: collapse rows that share ComponentName so the /health grid does not show
+        // two rows for the same component when its types differ across sources (e.g., the synth
+        // `state.unknown` placeholder and a real `state.redis` row coexisting because Stage 3's
+        // skip predicate only inspects category/name and a future change could leave the synth
+        // behind). Prefer the row with the most authoritative probe evidence:
+        //   1. LocalAdminProbe Source (probe attestation present)
+        //   2. RemoteEventStoreMetadata Source (canonical inventory present)
+        //   3. LocalAdminMetadataFallback (degraded inventory)
+        //   4. Unavailable (truly no source attribution)
+        // Within a tier, prefer the row whose ComponentType is *not* `state.unknown` so a real
+        // type wins over the synth placeholder.
         List<DaprComponentHealth> components = new(inventory.Components.Count);
-        foreach (DaprComponentDetail c in inventory.Components) {
-            components.Add(new DaprComponentHealth(c.ComponentName, c.ComponentType, c.Status, c.LastCheckUtc, c.Source));
+        foreach (IGrouping<string, DaprComponentDetail> group in inventory.Components.GroupBy(c => c.ComponentName, StringComparer.OrdinalIgnoreCase)) {
+            DaprComponentDetail winner = group
+                .OrderBy(c => SourcePreferenceRank(c.Source))
+                .ThenBy(c => string.Equals(c.ComponentType, "state.unknown", StringComparison.OrdinalIgnoreCase) ? 1 : 0)
+                .ThenByDescending(c => c.LastCheckUtc)
+                .First();
+            components.Add(new DaprComponentHealth(winner.ComponentName, winner.ComponentType, winner.Status, winner.LastCheckUtc, winner.Source));
         }
 
         return components;
     }
 
+    private static int SourcePreferenceRank(DaprComponentSource source) => source switch {
+        DaprComponentSource.LocalAdminProbe => 0,
+        DaprComponentSource.RemoteEventStoreMetadata => 1,
+        DaprComponentSource.LocalAdminMetadataFallback => 2,
+        _ => 3,
+    };
+
+    /// <summary>
+    /// Aggregates dependency evidence into a single <see cref="HealthStatus"/>.
+    /// Round 5 P8: this method intentionally implements first-failure-wins ordering — the
+    /// returned status reflects the *highest-severity* dependency outcome, but the cause is
+    /// not embedded in the return value. Operators looking for multi-cause diagnosis should
+    /// inspect <see cref="SystemHealthReport.InventorySourceStatus"/>,
+    /// <see cref="SystemHealthReport.LocalSidecarMetadataStatus"/>, and the per-component
+    /// <see cref="DaprComponentHealth"/> rows directly. The /health UI surfaces these via
+    /// dedicated banners so a two-cause failure (e.g., Unhealthy state-store + Unreachable
+    /// remote metadata) renders all causes side-by-side rather than collapsing into a single
+    /// reason string. Spec status vocabulary table documents the same first-failure-wins rule.
+    /// </summary>
     private static HealthStatus ComputeOverallStatus(
         bool stateStoreProbeFailed,
         bool eventStoreFailed,
         RemoteMetadataStatus remoteStatus,
-        bool localSidecarMetadataAvailable) {
+        bool localSidecarMetadataAvailable,
+        ILogger logger) {
+        // First-failure-wins: state-store probe failure dominates because Admin operations
+        // require a usable state store. Multi-cause callers must also consult inventory/local
+        // sidecar status fields for full diagnosis.
         if (stateStoreProbeFailed) {
             return HealthStatus.Unhealthy;
         }
 
         if (!localSidecarMetadataAvailable) {
             // Local Admin sidecar unreachable or returned an empty payload — admin operations
-            // cannot be considered healthy.
+            // cannot be considered healthy. (The per-cause breakdown lives in
+            // SystemHealthReport.LocalSidecarMetadataStatus.)
             return HealthStatus.Unhealthy;
         }
 
-        // Round 3 D4: a remote metadata source that is Unreachable OR InvalidPayload is
-        // functionally equivalent — the canonical inventory is missing usable evidence either
-        // way — so both downgrade overall to Degraded. NotConfigured is intentional ("we did
-        // not ask"), Available means we got a payload, and Initializing is no longer emitted.
-        if (remoteStatus is RemoteMetadataStatus.Unreachable or RemoteMetadataStatus.InvalidPayload) {
+        // Round 5 P7: explicit switch with a default arm so a future RemoteMetadataStatus
+        // member added without updating this method does not silently fall through to Healthy.
+        // The truth contract forbids "unknown evidence presented as healthy", and the rest of
+        // this rewrite goes to lengths to prevent unknown-default traps; this method must too.
+        HealthStatus remoteContribution = remoteStatus switch {
+            RemoteMetadataStatus.NotConfigured => HealthStatus.Healthy,
+            RemoteMetadataStatus.Available => HealthStatus.Healthy,
+            RemoteMetadataStatus.Unreachable => HealthStatus.Degraded,
+            RemoteMetadataStatus.InvalidPayload => HealthStatus.Degraded,
+            _ => LogUnknownAndDegrade(remoteStatus, logger),
+        };
+
+        if (remoteContribution == HealthStatus.Degraded) {
             return HealthStatus.Degraded;
         }
 
@@ -225,6 +275,13 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
         }
 
         return HealthStatus.Healthy;
+    }
+
+    private static HealthStatus LogUnknownAndDegrade(RemoteMetadataStatus status, ILogger logger) {
+        logger.LogWarning(
+            "Unrecognised RemoteMetadataStatus '{Status}' encountered in ComputeOverallStatus; treating as Degraded so unknown evidence does not render as healthy.",
+            status);
+        return HealthStatus.Degraded;
     }
 
     /// <summary>

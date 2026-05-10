@@ -10,6 +10,7 @@ using Hexalith.EventStore.Admin.Server.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -48,17 +49,18 @@ public class DaprHealthHistoryCollectorTests {
 
         DaprClient daprClient = Substitute.For<DaprClient>();
         IDaprInfrastructureQueryService infraService = Substitute.For<IDaprInfrastructureQueryService>();
+        FakeTimeProvider fakeClock = new(new DateTimeOffset(2026, 5, 10, 12, 0, 0, TimeSpan.Zero));
 
         IReadOnlyList<DaprComponentDetail> components =
         [
-            new DaprComponentDetail("statestore", "state.redis", DaprComponentCategory.StateStore, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [], DaprComponentSource.LocalAdminProbe),
+            new DaprComponentDetail("statestore", "state.redis", DaprComponentCategory.StateStore, "v1", HealthStatus.Healthy, fakeClock.GetUtcNow(), [], DaprComponentSource.LocalAdminProbe),
         ];
 
         _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
             .Returns(new DaprCanonicalInventory(
                 components, [], RemoteMetadataStatus.Available,
                 "http://eventstore-sidecar", LocalSidecarMetadataAvailable: true,
-                CapturedAtUtc: DateTimeOffset.UtcNow));
+                CapturedAtUtc: fakeClock.GetUtcNow()));
 
         // Return an empty-but-non-null timeline (first entry today). A null! cast would mask
         // a future short-circuit-on-null behaviour added to the collector — the empty
@@ -67,15 +69,20 @@ public class DaprHealthHistoryCollectorTests {
             Arg.Any<string>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
             .Returns(new DaprComponentHealthTimeline([], HasData: false));
 
-        DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService);
+        bool saveObserved = false;
+        _ = daprClient.SaveStateAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<DaprComponentHealthTimeline>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => { saveObserved = true; return Task.CompletedTask; });
+
+        DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService, fakeClock);
 
         using CancellationTokenSource cts = new();
 
-        // Act - start, wait for initial delay + first capture, then stop
-        await collector.StartAsync(cts.Token);
-        await Task.Delay(TimeSpan.FromSeconds(17)); // 15s delay + 2s buffer
-        await cts.CancelAsync();
-        await collector.StopAsync(default);
+        // Act — drive past the 15s startup delay deterministically.
+        await DriveFirstCaptureAsync(collector, fakeClock, cts, () => saveObserved);
 
         // Assert - state should have been saved
         await daprClient.Received().SaveStateAsync(
@@ -92,23 +99,25 @@ public class DaprHealthHistoryCollectorTests {
 
         DaprClient daprClient = Substitute.For<DaprClient>();
         IDaprInfrastructureQueryService infraService = Substitute.For<IDaprInfrastructureQueryService>();
+        FakeTimeProvider fakeClock = new(new DateTimeOffset(2026, 5, 10, 12, 0, 0, TimeSpan.Zero));
 
+        bool inventoryObserved = false;
         // Return empty component list with remote unreachable (do not overwrite history)
         _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
-            .Returns(new DaprCanonicalInventory(
-                [], [], RemoteMetadataStatus.Unreachable,
-                "http://eventstore-sidecar", LocalSidecarMetadataAvailable: false,
-                CapturedAtUtc: DateTimeOffset.UtcNow));
+            .Returns(_ => {
+                inventoryObserved = true;
+                return new DaprCanonicalInventory(
+                    [], [], RemoteMetadataStatus.Unreachable,
+                    "http://eventstore-sidecar", LocalSidecarMetadataAvailable: false,
+                    CapturedAtUtc: fakeClock.GetUtcNow());
+            });
 
-        DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService);
+        DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService, fakeClock);
 
         using CancellationTokenSource cts = new();
 
-        // Act
-        await collector.StartAsync(cts.Token);
-        await Task.Delay(TimeSpan.FromSeconds(17));
-        await cts.CancelAsync();
-        await collector.StopAsync(default);
+        // Act — wait for inventory to be queried; SaveStateAsync should never fire on this branch.
+        await DriveFirstCaptureAsync(collector, fakeClock, cts, () => inventoryObserved);
 
         // Assert - SaveStateAsync should NOT have been called
         await daprClient.DidNotReceive().SaveStateAsync(
@@ -129,26 +138,32 @@ public class DaprHealthHistoryCollectorTests {
 
         DaprClient daprClient = Substitute.For<DaprClient>();
         IDaprInfrastructureQueryService infraService = Substitute.For<IDaprInfrastructureQueryService>();
+        FakeTimeProvider fakeClock = new(new DateTimeOffset(2026, 5, 10, 12, 0, 0, TimeSpan.Zero));
 
         _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
             .Returns(new DaprCanonicalInventory(
                 [], [], RemoteMetadataStatus.Available,
                 "http://eventstore-sidecar", LocalSidecarMetadataAvailable: true,
-                CapturedAtUtc: DateTimeOffset.UtcNow));
+                CapturedAtUtc: fakeClock.GetUtcNow()));
 
         // Empty existing timeline — first sample today.
         _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
             Arg.Any<string>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
             .Returns(new DaprComponentHealthTimeline([], HasData: false));
 
-        DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService);
+        bool saveObserved = false;
+        _ = daprClient.SaveStateAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<DaprComponentHealthTimeline>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => { saveObserved = true; return Task.CompletedTask; });
+
+        DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService, fakeClock);
 
         using CancellationTokenSource cts = new();
 
-        await collector.StartAsync(cts.Token);
-        await Task.Delay(TimeSpan.FromSeconds(17));
-        await cts.CancelAsync();
-        await collector.StopAsync(default);
+        await DriveFirstCaptureAsync(collector, fakeClock, cts, () => saveObserved);
 
         // Available + zero components is persisted as a real-zero sample — the SaveStateAsync
         // call carries an empty Entries collection with HasData: true.
@@ -168,21 +183,23 @@ public class DaprHealthHistoryCollectorTests {
 
         DaprClient daprClient = Substitute.For<DaprClient>();
         IDaprInfrastructureQueryService infraService = Substitute.For<IDaprInfrastructureQueryService>();
+        FakeTimeProvider fakeClock = new(new DateTimeOffset(2026, 5, 10, 12, 0, 0, TimeSpan.Zero));
 
+        bool inventoryObserved = false;
         _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
-            .Returns(new DaprCanonicalInventory(
-                [], [], RemoteMetadataStatus.Unreachable,
-                "http://eventstore-sidecar", LocalSidecarMetadataAvailable: false,
-                CapturedAtUtc: DateTimeOffset.UtcNow));
+            .Returns(_ => {
+                inventoryObserved = true;
+                return new DaprCanonicalInventory(
+                    [], [], RemoteMetadataStatus.Unreachable,
+                    "http://eventstore-sidecar", LocalSidecarMetadataAvailable: false,
+                    CapturedAtUtc: fakeClock.GetUtcNow());
+            });
 
-        DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService);
+        DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService, fakeClock);
 
         using CancellationTokenSource cts = new();
 
-        await collector.StartAsync(cts.Token);
-        await Task.Delay(TimeSpan.FromSeconds(17));
-        await cts.CancelAsync();
-        await collector.StopAsync(default);
+        await DriveFirstCaptureAsync(collector, fakeClock, cts, () => inventoryObserved);
 
         await daprClient.DidNotReceive().SaveStateAsync(
             Arg.Any<string>(),
@@ -199,18 +216,19 @@ public class DaprHealthHistoryCollectorTests {
 
         DaprClient daprClient = Substitute.For<DaprClient>();
         IDaprInfrastructureQueryService infraService = Substitute.For<IDaprInfrastructureQueryService>();
+        FakeTimeProvider fakeClock = new(new DateTimeOffset(2026, 5, 10, 12, 0, 0, TimeSpan.Zero));
 
         IReadOnlyList<DaprComponentDetail> components =
         [
-            new DaprComponentDetail("statestore", "state.redis", DaprComponentCategory.StateStore, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [], DaprComponentSource.LocalAdminProbe),
-            new DaprComponentDetail("pubsub", "pubsub.redis", DaprComponentCategory.PubSub, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [], DaprComponentSource.RemoteEventStoreMetadata),
+            new DaprComponentDetail("statestore", "state.redis", DaprComponentCategory.StateStore, "v1", HealthStatus.Healthy, fakeClock.GetUtcNow(), [], DaprComponentSource.LocalAdminProbe),
+            new DaprComponentDetail("pubsub", "pubsub.redis", DaprComponentCategory.PubSub, "v1", HealthStatus.Healthy, fakeClock.GetUtcNow(), [], DaprComponentSource.RemoteEventStoreMetadata),
         ];
 
         _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
             .Returns(new DaprCanonicalInventory(
                 components, [], RemoteMetadataStatus.Available,
                 "http://eventstore-sidecar", LocalSidecarMetadataAvailable: true,
-                CapturedAtUtc: DateTimeOffset.UtcNow));
+                CapturedAtUtc: fakeClock.GetUtcNow()));
 
         // Seed an empty-but-non-null timeline so the test exercises the
         // "first sample of the day" path explicitly. Returning null! would mask a future
@@ -230,14 +248,11 @@ public class DaprHealthHistoryCollectorTests {
                 return Task.CompletedTask;
             });
 
-        DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService);
+        DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService, fakeClock);
 
         using CancellationTokenSource cts = new();
 
-        await collector.StartAsync(cts.Token);
-        await Task.Delay(TimeSpan.FromSeconds(17));
-        await cts.CancelAsync();
-        await collector.StopAsync(default);
+        await DriveFirstCaptureAsync(collector, fakeClock, cts, () => captured is not null);
 
         _ = captured.ShouldNotBeNull();
         captured.Entries.ShouldContain(e =>
@@ -253,17 +268,22 @@ public class DaprHealthHistoryCollectorTests {
 
         DaprClient daprClient = Substitute.For<DaprClient>();
         IDaprInfrastructureQueryService infraService = Substitute.For<IDaprInfrastructureQueryService>();
+        FakeTimeProvider fakeClock = new(new DateTimeOffset(2026, 5, 10, 12, 0, 0, TimeSpan.Zero));
 
         IReadOnlyList<DaprComponentDetail> components =
         [
-            new DaprComponentDetail("statestore", "state.redis", DaprComponentCategory.StateStore, "v1", HealthStatus.Healthy, DateTimeOffset.UtcNow, [], DaprComponentSource.LocalAdminProbe),
+            new DaprComponentDetail("statestore", "state.redis", DaprComponentCategory.StateStore, "v1", HealthStatus.Healthy, fakeClock.GetUtcNow(), [], DaprComponentSource.LocalAdminProbe),
         ];
 
+        bool inventoryObserved = false;
         _ = infraService.GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>())
-            .Returns(new DaprCanonicalInventory(
-                components, [], RemoteMetadataStatus.Available,
-                "http://eventstore-sidecar", LocalSidecarMetadataAvailable: true,
-                CapturedAtUtc: DateTimeOffset.UtcNow));
+            .Returns(_ => {
+                inventoryObserved = true;
+                return new DaprCanonicalInventory(
+                    components, [], RemoteMetadataStatus.Available,
+                    "http://eventstore-sidecar", LocalSidecarMetadataAvailable: true,
+                    CapturedAtUtc: fakeClock.GetUtcNow());
+            });
 
         // Seed an empty-but-non-null timeline so the test exercises the
         // "first sample of the day" path explicitly. Returning null! would mask a future
@@ -278,15 +298,11 @@ public class DaprHealthHistoryCollectorTests {
             cancellationToken: Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Write failed"));
 
-        DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService);
+        DaprHealthHistoryCollector collector = CreateCollector(options, daprClient, infraService, fakeClock);
 
         using CancellationTokenSource cts = new();
 
-        // Act - should not throw
-        await collector.StartAsync(cts.Token);
-        await Task.Delay(TimeSpan.FromSeconds(17));
-        await cts.CancelAsync();
-        await collector.StopAsync(default);
+        await DriveFirstCaptureAsync(collector, fakeClock, cts, () => inventoryObserved);
 
         // Assert - service was called (collector didn't crash)
         _ = await infraService.Received().GetCanonicalDaprInventoryAsync(Arg.Any<CancellationToken>());
@@ -295,7 +311,8 @@ public class DaprHealthHistoryCollectorTests {
     private static DaprHealthHistoryCollector CreateCollector(
         AdminServerOptions options,
         DaprClient daprClient,
-        IDaprInfrastructureQueryService infraService) {
+        IDaprInfrastructureQueryService infraService,
+        TimeProvider? timeProvider = null) {
         ServiceCollection services = new();
         _ = services.AddSingleton(daprClient);
         _ = services.AddSingleton(infraService);
@@ -307,6 +324,36 @@ public class DaprHealthHistoryCollectorTests {
         return new DaprHealthHistoryCollector(
             scopeFactory,
             opts,
-            NullLogger<DaprHealthHistoryCollector>.Instance);
+            NullLogger<DaprHealthHistoryCollector>.Instance,
+            timeProvider);
+    }
+
+    /// <summary>
+    /// Round 5 P11: deterministic helper that drives the collector past its 15-second startup
+    /// delay using a <see cref="FakeTimeProvider"/> instead of a 17-second wall-clock sleep.
+    /// Advances the fake clock past the startup delay and polls <paramref name="observationReady"/>
+    /// for up to 2 seconds so the awaited continuation can run. Tests can pass a predicate that
+    /// closes over an <see cref="NSubstitute"/> received-call check or a captured-state flag.
+    /// </summary>
+    private static async Task DriveFirstCaptureAsync(
+        DaprHealthHistoryCollector collector,
+        FakeTimeProvider fakeClock,
+        CancellationTokenSource cts,
+        Func<bool> observationReady) {
+        await collector.StartAsync(cts.Token);
+
+        // Advance in small slices so ExecuteAsync has a chance to schedule its TimeProvider-backed
+        // startup delay before the fake clock moves past it. A single eager Advance can race the
+        // background task and leave the delay scheduled in the future.
+        DateTime deadline = DateTime.UtcNow.AddSeconds(5);
+        while (DateTime.UtcNow < deadline && !observationReady()) {
+            fakeClock.Advance(TimeSpan.FromSeconds(1));
+            await Task.Delay(20).ConfigureAwait(false);
+        }
+
+        await cts.CancelAsync();
+        await collector.StopAsync(default);
+
+        observationReady().ShouldBeTrue("collector should capture its first snapshot after the fake startup delay is advanced");
     }
 }

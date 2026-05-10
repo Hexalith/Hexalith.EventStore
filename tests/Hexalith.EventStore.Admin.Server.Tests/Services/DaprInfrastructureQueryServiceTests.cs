@@ -119,7 +119,7 @@ public class DaprInfrastructureQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetComponentsAsync_NonStateStoreComponents_AreAlwaysHealthy() {
+    public async Task GetComponentsAsync_LocalFallbackComponents_AreUnverifiedUntilProbeOrRemoteEvidence() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DaprMetadata metadata = CreateMetadata(
             new DaprComponentsMetadata("pubsub", "pubsub.redis", "v1", []),
@@ -131,13 +131,14 @@ public class DaprInfrastructureQueryServiceTests {
 
         IReadOnlyList<DaprComponentDetail> result = await service.GetComponentsAsync();
 
-        // Non-state-store components are surfaced as Healthy. The configured state-store synth
-        // row is also produced (probe-default success), but this test only pins the contract
-        // for non-state-store rows.
+        // Local sidecar metadata proves a component is configured, not that its backing
+        // dependency is usable. Non-state-store local fallback rows stay unverified until remote
+        // EventStore metadata or a dedicated probe supplies health evidence.
         IReadOnlyList<DaprComponentDetail> nonStateStore =
             result.Where(c => c.Category != DaprComponentCategory.StateStore).ToArray();
         nonStateStore.Count.ShouldBe(2);
-        nonStateStore.ShouldAllBe(c => c.Status == HealthStatus.Healthy);
+        nonStateStore.ShouldAllBe(c => c.Source == DaprComponentSource.LocalAdminMetadataFallback);
+        nonStateStore.ShouldAllBe(c => c.Status == HealthStatus.Unhealthy);
     }
 
     [Fact]
@@ -924,5 +925,85 @@ public class DaprInfrastructureQueryServiceTests {
         info.ComponentCount.ShouldBe(0);
         info.SubscriptionCount.ShouldBe(1);
         info.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
+    }
+
+    // Round 5 P12: pin transport-level failure classification so a future change to
+    // ReadRemoteMetadataAsync's catch graph does not silently retag transport failures
+    // (HTTP 429, 503, 5xx) as Available with empty inventory. Each fixture fires the
+    // canonical inventory path and asserts both RemoteMetadataStatus == Unreachable and
+    // PubSubSubscriptions.Count == 0 so the consumer-facing "subscription data unavailable"
+    // contract holds for every transport-error variant.
+    [Theory]
+    [InlineData((int)HttpStatusCode.TooManyRequests)]
+    [InlineData((int)HttpStatusCode.ServiceUnavailable)]
+    [InlineData((int)HttpStatusCode.BadGateway)]
+    [InlineData((int)HttpStatusCode.GatewayTimeout)]
+    public async Task GetCanonicalDaprInventoryAsync_ReturnsUnreachable_OnTransportFailureStatusCodes(int statusCode) {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata());
+
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        using HttpClient httpClient = new(new FakeHandler((HttpStatusCode)statusCode, """{"detail":"upstream throttled"}"""));
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        inventory.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Unreachable);
+        inventory.PubSubSubscriptions.Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetCanonicalDaprInventoryAsync_ReturnsAvailable_WithEmptyOptionalSections_WhenJsonHasZeroLengthBody() {
+        // 200 OK + empty body must still be classified as InvalidPayload — a successful HTTP
+        // status with no parseable JSON cannot become "Available with empty inventory" because
+        // that would silently lose components/subscriptions evidence. The handler returns an
+        // empty body which JsonDocument.ParseAsync rejects with JsonException → InvalidPayload.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata());
+
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        using HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, string.Empty));
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        inventory.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.InvalidPayload);
+        inventory.PubSubSubscriptions.Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetCanonicalDaprInventoryAsync_ReturnsInvalidPayload_OnMixedCaseRequiredProperties() {
+        // System.Text.Json TryGetProperty is case-sensitive by default; a sidecar returning
+        // `Components` (capitalised) instead of `components` must be classified as InvalidPayload
+        // rather than Available with an empty list. Pin the contract: "successful HTTP, parseable
+        // JSON, but missing required property" -> InvalidPayload, never Available with silent
+        // empty data.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata());
+
+        const string endpoint = "http://localhost:3501";
+        AdminServerOptions options = new() { EventStoreDaprHttpEndpoint = endpoint };
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        using HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, """
+        {
+            "Components": [],
+            "Subscriptions": []
+        }
+        """));
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        DaprCanonicalInventory inventory = await service.GetCanonicalDaprInventoryAsync();
+
+        inventory.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.InvalidPayload);
     }
 }

@@ -108,9 +108,16 @@ public static class ServiceCollectionExtensions {
         this IServiceCollection services,
         IConfiguration configuration) {
         ArgumentNullException.ThrowIfNull(configuration);
-        _ = services.Configure<AdminServerOptions>(
-            configuration.GetSection(AdminServerOptions.SectionName));
+        // Round 5 P10: AddOptions + ValidateOnStart so AdminServerOptionsValidator runs at host
+        // startup. Without ValidateOnStart, validation fires lazily on first IOptions resolution
+        // and a misconfigured deployment (e.g., StateStoreName whitespace) only surfaces when
+        // /health is called — at which point the truth-contract still requires a coherent
+        // partial report. Hard-failing at startup means /health never enters that ambiguous state.
         services.TryAddSingleton<IValidateOptions<AdminServerOptions>, AdminServerOptionsValidator>();
+        _ = services
+            .AddOptions<AdminServerOptions>()
+            .Bind(configuration.GetSection(AdminServerOptions.SectionName))
+            .ValidateOnStart();
 
         // Host-agnostic default auth context.
         // ASP.NET Core hosts can override this with an IHttpContextAccessor-based implementation.

@@ -19,6 +19,7 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
     private readonly ILogger<DaprHealthHistoryCollector> _logger;
     private readonly AdminServerOptions _options;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly TimeProvider _timeProvider;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprHealthHistoryCollector"/> class.
@@ -26,16 +27,24 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
     /// <param name="scopeFactory">The service scope factory for creating scoped service instances per tick.</param>
     /// <param name="options">The admin server options.</param>
     /// <param name="logger">The logger.</param>
+    /// <param name="timeProvider">
+    /// Optional <see cref="TimeProvider"/> seam (Round 5 P11). Defaults to
+    /// <see cref="TimeProvider.System"/> in production. Tests inject
+    /// <c>FakeTimeProvider</c> to drive the 15-second startup delay and the periodic timer
+    /// deterministically without 17-second wall-clock sleeps.
+    /// </param>
     public DaprHealthHistoryCollector(
         IServiceScopeFactory scopeFactory,
         IOptions<AdminServerOptions> options,
-        ILogger<DaprHealthHistoryCollector> logger) {
+        ILogger<DaprHealthHistoryCollector> logger,
+        TimeProvider? timeProvider = null) {
         ArgumentNullException.ThrowIfNull(scopeFactory);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(logger);
         _scopeFactory = scopeFactory;
         _options = options.Value;
         _logger = logger;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     /// <inheritdoc/>
@@ -46,7 +55,7 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
         }
 
         // Allow DAPR sidecar to initialize before first probe
-        await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken).ConfigureAwait(false);
+        await Task.Delay(TimeSpan.FromSeconds(15), _timeProvider, stoppingToken).ConfigureAwait(false);
 
         // Run retention cleanup on startup
         await CleanupExpiredHistoryAsync(stoppingToken).ConfigureAwait(false);
@@ -55,17 +64,18 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
         await CaptureSnapshotAsync(stoppingToken).ConfigureAwait(false);
 
         int intervalSeconds = Math.Max(10, _options.HealthHistoryCaptureIntervalSeconds);
-        using PeriodicTimer timer = new(TimeSpan.FromSeconds(intervalSeconds));
-        DateTimeOffset lastCleanup = DateTimeOffset.UtcNow;
+        using PeriodicTimer timer = new(TimeSpan.FromSeconds(intervalSeconds), _timeProvider);
+        DateTimeOffset lastCleanup = _timeProvider.GetUtcNow();
 
         while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false)) {
             try {
                 await CaptureSnapshotAsync(stoppingToken).ConfigureAwait(false);
 
                 // Daily cleanup check
-                if (DateTimeOffset.UtcNow.Date > lastCleanup.Date) {
+                DateTimeOffset utcNow = _timeProvider.GetUtcNow();
+                if (utcNow.Date > lastCleanup.Date) {
                     await CleanupExpiredHistoryAsync(stoppingToken).ConfigureAwait(false);
-                    lastCleanup = DateTimeOffset.UtcNow;
+                    lastCleanup = utcNow;
                 }
             }
             catch (OperationCanceledException) {
@@ -123,7 +133,7 @@ public sealed class DaprHealthHistoryCollector : BackgroundService {
             return;
         }
 
-        DateTimeOffset now = DateTimeOffset.UtcNow;
+        DateTimeOffset now = _timeProvider.GetUtcNow();
         string dayKey = $"admin:health-history:{now:yyyyMMdd}";
 
         try {
