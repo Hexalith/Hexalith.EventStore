@@ -479,7 +479,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
         string inventoryMessage = isInventoryComplete
             ? "All known EventStore actor types returned active counts from the EventStore sidecar metadata."
             : hasExactKnownCounts
-                ? "Partial actor inventory: some known EventStore actor type counts are unavailable, so the active count is not total inventory."
+                ? "Partial actor inventory: some known EventStore actor type counts are unavailable, so the active count is bounded diagnostic evidence."
                 : "Active actor data unavailable: no authoritative source returned active counts for the known EventStore actor types.";
 
         return new DaprActorRuntimeInfo(

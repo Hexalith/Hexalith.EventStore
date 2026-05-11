@@ -96,7 +96,7 @@
 }
 
 <IssueBanner Visible="@(_runtimeInfo is not null && !_runtimeInfo.IsInventoryComplete)"
-             Title="Actor inventory is partial"
+             Title="@GetActorInventoryBannerTitle()"
              Description="@(_runtimeInfo?.InventoryMessage ?? "Some actor counts are unavailable.")" />
 
 @* Actor type grid (AC1) *@
@@ -470,6 +470,11 @@
         => _runtimeInfo?.IsInventoryComplete == true
             ? "Active actor instances reported for every known EventStore actor type"
             : _runtimeInfo?.InventoryMessage ?? "Actor inventory completeness is unavailable";
+
+    private string GetActorInventoryBannerTitle()
+        => HasReportedActorCount()
+            ? "Actor inventory is partial"
+            : "Active actor data unavailable";
 
     private static string FormatActiveCount(DaprActorTypeInfo actor)
         => actor.CountStatus != DaprActorCountStatus.Unavailable && actor.ActiveCount >= 0

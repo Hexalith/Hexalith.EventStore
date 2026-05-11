@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Tests.Models.Dapr;
@@ -11,6 +13,8 @@ public class DaprActorTypeInfoTests {
         info.ActiveCount.ShouldBe(42);
         info.Description.ShouldBe("Processes commands");
         info.ActorIdFormat.ShouldBe("tenant:domain:id");
+        info.CountStatus.ShouldBe(DaprActorCountStatus.Unavailable);
+        info.InventorySource.ShouldBe("Unavailable");
     }
 
     [Theory]
@@ -50,5 +54,25 @@ public class DaprActorTypeInfoTests {
         var info = new DaprActorTypeInfo("Type", 0, "Description", "format");
 
         info.ActiveCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public void Deserialize_WhenEvidenceFieldsMissing_DefaultsToUnavailable() {
+        const string Json = """
+            {
+              "typeName": "AggregateActor",
+              "activeCount": 42,
+              "description": "Processes commands",
+              "actorIdFormat": "tenant:domain:id"
+            }
+            """;
+
+        DaprActorTypeInfo? info = JsonSerializer.Deserialize<DaprActorTypeInfo>(
+            Json,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        _ = info.ShouldNotBeNull();
+        info.CountStatus.ShouldBe(DaprActorCountStatus.Unavailable);
+        info.InventorySource.ShouldBe("Unavailable");
     }
 }

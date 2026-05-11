@@ -95,7 +95,35 @@ public class DaprActorsPageTests : AdminUITestContext {
         cut.Markup.ShouldContain("unavailable");
         cut.Markup.ShouldContain("Actor inventory is partial");
         cut.Markup.ShouldNotContain("Total Active Actors");
+        cut.Markup.ShouldNotContain("total inventory");
         cut.Markup.ShouldNotContain("N/A");
+    }
+
+    [Fact]
+    public void DaprActorsPage_RendersUnavailableInventoryBanner_WhenNoCountsAvailable() {
+        DaprActorRuntimeInfo runtimeInfo = new(
+            [
+                new DaprActorTypeInfo("AggregateActor", -1, "Processes commands", "tenant:domain:id", DaprActorCountStatus.Unavailable, "RemoteEventStoreSidecarMetadata"),
+                new DaprActorTypeInfo("ETagActor", -1, "Manages ETags", "ProjectionType:TenantId", DaprActorCountStatus.Unavailable, "RemoteEventStoreSidecarMetadata"),
+            ],
+            0,
+            _defaultConfig,
+            RemoteMetadataStatus.Unreachable,
+            "http://localhost:3501",
+            IsInventoryComplete: false,
+            InventorySource: "Unavailable",
+            InventoryMessage: "Active actor data unavailable: no authoritative source returned active counts for the known EventStore actor types.",
+            ObservedAtUtc: DateTimeOffset.UtcNow,
+            TotalKnownTypes: 3);
+        _ = _mockApiClient.GetActorRuntimeInfoAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprActorRuntimeInfo?>(runtimeInfo));
+
+        IRenderedComponent<DaprActors> cut = Render<DaprActors>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Active actor data unavailable"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("Active actor data unavailable");
+        cut.Markup.ShouldNotContain("Actor inventory is partial");
+        cut.Markup.ShouldNotContain("Total Active Actors");
     }
 
     [Fact]
@@ -254,8 +282,8 @@ public class DaprActorsPageTests : AdminUITestContext {
     // pass IsInventoryComplete: true explicitly.
     private static DaprActorRuntimeInfo CreateRuntimeInfo() => new(
         [
-            new DaprActorTypeInfo("AggregateActor", 10, "Processes commands", "tenant:domain:id"),
-            new DaprActorTypeInfo("ETagActor", 5, "Manages ETags", "ProjectionType:TenantId"),
+            new DaprActorTypeInfo("AggregateActor", 10, "Processes commands", "tenant:domain:id", DaprActorCountStatus.Exact, "RemoteEventStoreSidecarMetadata"),
+            new DaprActorTypeInfo("ETagActor", 5, "Manages ETags", "ProjectionType:TenantId", DaprActorCountStatus.Exact, "RemoteEventStoreSidecarMetadata"),
         ],
         15,
         _defaultConfig,

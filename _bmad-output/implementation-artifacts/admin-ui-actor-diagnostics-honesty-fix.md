@@ -1,6 +1,6 @@
 # Story: admin-ui-actor-diagnostics-honesty-fix
 
-Status: review
+Status: done
 
 Context created: 2026-05-07
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-07-admin-ui-manual-test-suite-issues.md`
@@ -109,7 +109,7 @@ precedence and implementation traps:
 3. **Actor state inspection uses the owner app id and DAPR Redis actor key convention.**
    - Given EventStore actors are hosted by the `eventstore` app id in Aspire
    - When Admin.Server reads actor state for `AggregateActor`, `ProjectionActor`, or `ETagActor`
-   - Then it composes state-store keys as `{EventStoreAppId}||{actorType}||{actorId}||{stateKey}` using `AdminServerOptions.EventStoreAppId`.
+   - Then the preferred path is the configured EventStore owner sidecar actor-state API, and the fallback state-store path composes keys as `{EventStoreAppId}||{actorType}||{actorId}||{stateKey}` using `AdminServerOptions.EventStoreAppId`.
    - And default `EventStoreAppId` remains `eventstore`; do not regress to `eventstore-admin` or legacy `commandapi` assumptions.
    - And tests pin colon-delimited aggregate ids such as `tenant-a:counter:counter-1`.
    - And at least one regression test would fail if the Admin UI/server app id
@@ -189,7 +189,7 @@ precedence and implementation traps:
   - [x] Add a concise deferred decision if exact inventory requires a new admin-maintained actor index.
 
 - [x] **ST2 - Harden owner-app-id actor state lookup.** (AC: 3, 4, 5)
-  - [x] Verify `ComposeActorStateKey` uses `AdminServerOptions.EventStoreAppId`, defaulting to `eventstore`.
+  - [x] Verify the owner-sidecar actor-state API path is preferred when configured, and `ComposeActorStateKey` uses `AdminServerOptions.EventStoreAppId`, defaulting to `eventstore`, on the fallback state-store path.
   - [x] Add focused tests for AggregateActor metadata lookup with `tenant-a:counter:counter-1`.
   - [x] Add a regression test that fails if lookup composes keys with the Admin
         app id instead of `eventstore`.
@@ -235,6 +235,13 @@ precedence and implementation traps:
         omitted.
   - [x] Update this story's Dev Agent Record, File List, Verification Status, Change Log, and any narrowly required deferred-work entry.
   - [x] Move sprint status to `review` only after implementation and evidence are complete.
+
+### Review Findings
+
+- [x] [Review][Decision][resolved 2026-05-11: option 1] Owner-sidecar actor API bypasses the story's explicit Redis-key composition requirement — Accepted the DAPR actor-state API as the preferred configured owner-sidecar path; Redis-key composition remains required as fallback proof when the owner-sidecar endpoint is not configured. AC3/ST2 updated accordingly. Evidence: `src/Hexalith.EventStore.Admin.Server/Services/DaprInfrastructureQueryService.cs:605`, `src/Hexalith.EventStore.Admin.Server/Services/DaprInfrastructureQueryService.cs:638`, `src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs:116`.
+- [x] [Review][Patch] DTO defaults classify missing evidence as complete, exact, or available [`src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprActorRuntimeInfo.cs:30`, `src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprActorTypeInfo.cs:18`, `src/Hexalith.EventStore.Admin.Abstractions/Models/Dapr/DaprActorInstanceState.cs:22`] — fixed 2026-05-11: current branch already had `IsInventoryComplete=false` and `LookupStatus=LookupUnavailable`; changed `DaprActorTypeInfo` to default missing count evidence to `Unavailable` / `Unavailable` source and added JSON-deserialization coverage.
+- [x] [Review][Patch] Unavailable actor inventory is always bannered as partial [`src/Hexalith.EventStore.Admin.UI/Pages/DaprActors.razor:98`] — fixed 2026-05-11: banner title now distinguishes partial inventory from fully unavailable actor data, with UI coverage for no-count payloads.
+- [x] [Review][Patch] Partial inventory copy still emits forbidden total wording [`src/Hexalith.EventStore.Admin.Server/Services/DaprInfrastructureQueryService.cs:399`] — fixed 2026-05-11: partial inventory message now describes bounded diagnostic evidence without using forbidden total-inventory wording, with UI negative assertion coverage.
 
 ## Developer Notes
 
@@ -340,6 +347,8 @@ Codex GPT-5.
 - Actor inspection now uses the configured owner sidecar actor-state API when available; the internal state-store key convention remains tested as a fallback and fails closed as `LookupUnavailable` when Dapr rejects illegal `||` keys.
 - Admin UI now renders exact/source-limited/unavailable count states, separates not-found from lookup-unavailable banners, replaces `N/A` with explicit copy, and discards stale inspect responses.
 - Added canonical deferred-work entry for an admin-maintained actor activity index if exact active actor inventory becomes a requirement.
+- Code-review decision resolved on 2026-05-11: owner-sidecar actor-state API is the preferred configured path; Redis-key composition remains fallback proof.
+- Code-review patches applied on 2026-05-11: fail-closed actor count DTO default, unavailable-vs-partial actor inventory banner, and partial inventory copy without forbidden total wording.
 
 ### File List
 
@@ -363,6 +372,7 @@ Codex GPT-5.
 - `src/Hexalith.EventStore.Admin.UI/Pages/DaprActors.razor`
 - `src/Hexalith.EventStore.Admin.UI/Services/AdminActorApiClient.cs`
 - `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprActorQueryServiceTests.cs`
+- `tests/Hexalith.EventStore.Admin.Abstractions.Tests/Models/Dapr/DaprActorTypeInfoTests.cs`
 - `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/DaprActorsPageTests.cs`
 - `tests/Hexalith.EventStore.Admin.UI.Tests/Services/AdminActorApiClientTests.cs`
 
@@ -385,11 +395,13 @@ Codex GPT-5.
 - Full Admin.UI.Tests passed 744/744 on 2026-05-10.
 - Full Admin.Abstractions.Tests passed 404/404 on 2026-05-10.
 - Live Aspire evidence with `EnableKeycloak=false` seeded `tenant-a/counter/counter-1`, captured 8 Redis actor keys, runtime actor metadata, sanitized aggregate state lookup with `lookupStatus=Available`, and a UI screenshot showing found state rows without not-found or lookup-unavailable banners.
+- Code-review patch validation on 2026-05-11: Admin.UI actor/client filter passed 19/19; Admin.Abstractions DaprActor filter passed 34/34; Admin.Server actor/controller filter passed 32/32. Initial parallel run hit a compiler file lock on `Hexalith.EventStore.Contracts.dll`; sequential rerun with `UseSharedCompilation=false` passed.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-11 | 0.5 | Resolved code-review decision for owner-sidecar actor-state API path, applied truthfulness patches for DTO defaults and actor inventory UI copy, and moved story to done. | Codex |
 | 2026-05-10 | 0.4 | Implemented source-aware actor diagnostics, owner-sidecar actor state inspection, UI honesty states, targeted tests, live Aspire evidence, and deferred exact-inventory note. | Codex |
 | 2026-05-07 | 0.3 | Advanced elicitation completed and story hardened for evidence precedence, owner app-id configurability, stale inspect results, redaction, and DAPR key-convention drift. | Codex automation |
 | 2026-05-07 | 0.2 | Party-mode review completed and story hardened for actor inventory semantics, lookup taxonomy, owner app-id proof, Redis guardrails, UI copy, accessibility, and evidence boundaries. | Codex automation |

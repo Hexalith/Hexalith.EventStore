@@ -28,7 +28,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-10T22:25:00+02:00' # admin-ui-operator-action-and-dev-role-testability-fix review patches applied and story moved to done. Validation: Admin.UI review regression suite 29/29, full Admin.UI.Tests 780/780.
+last_updated: '2026-05-11T08:29:41+02:00' # admin-ui-actor-diagnostics-honesty-fix review decision resolved and 3 review patches applied; story moved to done. Validation: Admin.UI actor/client filter 19/19, Admin.Abstractions DaprActor filter 34/34, Admin.Server actor/controller filter 32/32.
+# Previous last_updated detail preserved: 2026-05-10T22:25:00+02:00 - admin-ui-operator-action-and-dev-role-testability-fix review patches applied and story moved to done. Validation: Admin.UI review regression suite 29/29, full Admin.UI.Tests 780/780.
 # Previous last_updated detail preserved: 2026-05-10T21:53:15+02:00 - admin-ui-health-dapr-truthfulness-fix Round-11 patches applied and story moved to done: single /dapr infrastructure overview snapshot, explicit Available+zero-component health-history copy, and local actor-state JsonElement display cap. Validation: Admin.Abstractions.Tests 404/404, Admin.Server.Tests 602/602 (18 pre-existing skips), Admin.UI.Tests 773/773.
 # Previous last_updated detail preserved: 2026-05-10T17:30:00+02:00 - Round-5 Phase 2/3 patches applied: 11 of 11 unchecked Round-5 patches landed. Story stays at `review` with all explicit Round-5 phases complete.
 # Previous last_updated detail preserved: 2026-05-10T17:16:06+02:00 - admin-ui-health-dapr-truthfulness-fix moved in-progress -> review after Redis reset, canonical Pattern 2 seed, baseline/outage/recovery Aspire smoke evidence, and ST8/AC8 closure. Validation: Admin.Server.Tests 594/594 + 18 skipped; Admin.UI.Tests 767/767.
@@ -355,7 +356,7 @@ development_status:
   # admin operational index population, missing upstream DBA operations, and consistency/tenant UX polish.
   admin-ui-health-dapr-truthfulness-fix: done
   admin-ui-operator-action-and-dev-role-testability-fix: done
-  admin-ui-actor-diagnostics-honesty-fix: review
+  admin-ui-actor-diagnostics-honesty-fix: done
   admin-operational-index-populators: review
   admin-storage-snapshot-compaction-backup-operations: review
   admin-ui-consistency-and-tenant-clarity-polish: review

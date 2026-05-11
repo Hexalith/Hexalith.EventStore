@@ -15,8 +15,8 @@ public record DaprActorTypeInfo(
     int ActiveCount,
     string Description,
     string ActorIdFormat,
-    DaprActorCountStatus CountStatus = DaprActorCountStatus.Exact,
-    string InventorySource = "DaprMetadata",
+    DaprActorCountStatus CountStatus = DaprActorCountStatus.Unavailable,
+    string InventorySource = "Unavailable",
     string? CountMessage = null) {
     /// <summary>Gets the actor type name as registered with DAPR.</summary>
     public string TypeName { get; } = !string.IsNullOrWhiteSpace(TypeName)
