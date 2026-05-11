@@ -45,9 +45,10 @@
         get
         {
             string value = IsLoading ? "Loading" : Value;
-            return string.IsNullOrWhiteSpace(Subtitle)
-                ? $"{Label}: {value}"
-                : $"{Label}: {value}. {Subtitle}";
+            string primary = $"{Label}: {value}";
+            return string.IsNullOrWhiteSpace(Subtitle) || string.Equals(Subtitle, primary, StringComparison.Ordinal)
+                ? primary
+                : $"{primary}. {Subtitle}";
         }
     }
 

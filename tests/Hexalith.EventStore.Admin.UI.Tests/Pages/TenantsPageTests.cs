@@ -148,6 +148,7 @@ public class TenantsPageTests : AdminUITestContext {
         // Assert
         cut.Markup.ShouldContain("Disable a tenant to suspend command processing");
         cut.Markup.ShouldContain("deletion is not supported from the admin UI");
+        cut.Markup.ShouldNotContain("Delete Tenant");
     }
 
     [Fact]

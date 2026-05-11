@@ -636,19 +636,19 @@
     {
         Uri uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
         System.Collections.Specialized.NameValueCollection query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-        _tenantFilter = query["tenant"];
-        _domainFilter = query["domain"];
+        _tenantFilter = NormalizeScope(query["tenant"]);
+        _domainFilter = NormalizeScope(query["domain"]);
     }
 
     private void UpdateUrl()
     {
         List<string> queryParams = [];
-        if (!string.IsNullOrEmpty(_tenantFilter))
+        if (!string.IsNullOrWhiteSpace(_tenantFilter))
         {
             queryParams.Add($"tenant={Uri.EscapeDataString(_tenantFilter)}");
         }
 
-        if (!string.IsNullOrEmpty(_domainFilter))
+        if (!string.IsNullOrWhiteSpace(_domainFilter))
         {
             queryParams.Add($"domain={Uri.EscapeDataString(_domainFilter)}");
         }
@@ -899,6 +899,9 @@
 
     private static string FormatDomainScope(string? domain)
         => string.IsNullOrWhiteSpace(domain) ? "All domains" : domain;
+
+    private static string? NormalizeScope(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private readonly record struct ConsistencySummary(
         int TotalChecks,

@@ -66,6 +66,18 @@ public class StatCardTests : AdminUITestContext {
     }
 
     [Fact]
+    public void StatCard_DoesNotDuplicateAccessibleLabel_WhenSubtitleRepeatsPrimaryText() {
+        IRenderedComponent<StatCard> cut = Render<StatCard>(
+            parameters => parameters
+                .Add(p => p.Label, "Total Checks")
+                .Add(p => p.Value, "2")
+                .Add(p => p.Subtitle, "Total Checks: 2"));
+
+        cut.Markup.ShouldContain("aria-label=\"Total Checks: 2\"");
+        cut.Markup.ShouldNotContain("aria-label=\"Total Checks: 2. Total Checks: 2\"");
+    }
+
+    [Fact]
     public void StatCard_ClearsStaleLiveAnnouncement_WhenValueChanges() {
         IRenderedComponent<StatCard> cut = Render<StatCard>(
             parameters => parameters

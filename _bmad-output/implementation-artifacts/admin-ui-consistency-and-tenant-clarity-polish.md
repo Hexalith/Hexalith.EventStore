@@ -1,6 +1,6 @@
 # Story: admin-ui-consistency-and-tenant-clarity-polish
 
-Status: review
+Status: done
 
 Context created: 2026-05-10
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-07-admin-ui-manual-test-suite-issues.md`
@@ -115,6 +115,15 @@ so that the Admin UI no longer presents stale accessible values or ambiguous ten
   - [x] Capture Aspire/manual evidence if available.
   - [x] Update this story's Dev Agent Record, File List, Verification Status, and Change Log.
 
+### Review Findings
+
+- [x] [Review][Patch] Normalize consistency URL scope parameters before querying or displaying scope [`src/Hexalith.EventStore.Admin.UI/Pages/Consistency.razor:639`]
+- [x] [Review][Patch] Assert refreshed stat-card accessible labels after the non-empty refresh [`tests/Hexalith.EventStore.Admin.UI.Tests/Pages/ConsistencyPageTests.cs:123`]
+- [x] [Review][Patch] Assert no loaded tenant row renders a Delete Tenant action [`tests/Hexalith.EventStore.Admin.UI.Tests/Pages/TenantsPageTests.cs:138`]
+- [x] [Review][Patch] Capture tenant lifecycle browser evidence with active and disabled tenant rows [`_bmad-output/test-artifacts/admin-ui-consistency-and-tenant-clarity-polish/README.md:15`] - Aspire recapture blocked by missing DAPR CLI; AC6 fallback blocker and bUnit evidence recorded.
+- [x] [Review][Patch] Complete the story File List for all changed story-owned files [`_bmad-output/implementation-artifacts/admin-ui-consistency-and-tenant-clarity-polish.md:199`]
+- [x] [Review][Patch] De-duplicate stat-card accessible labels when subtitle repeats the primary label and value [`src/Hexalith.EventStore.Admin.UI/Components/Shared/StatCard.razor:48`]
+
 ## Developer Notes
 
 Current code intelligence from story creation:
@@ -195,6 +204,7 @@ GPT-5 Codex
 - Added stale-secondary regression coverage for an empty-to-non-empty consistency refresh and added tenant lifecycle coverage for empty and filtered-empty tenant states with negative `Delete Tenant` assertions.
 - Issue #17 prerequisite evidence from `admin-operational-index-populators` shows check `01KR8N6MTQJGVF7BNN9ZZEAWV5` resolved the missing projection-index false-positive cluster; the one residual granularity warning is already recorded in `deferred-work.md`, so no consistency algorithm change was made here.
 - Captured rebuilt Aspire dev-mode browser evidence under `_bmad-output/test-artifacts/admin-ui-consistency-and-tenant-clarity-polish/`.
+- Applied code review patches: normalized whitespace URL scope parameters, pinned refreshed stat-card aria labels, asserted no loaded-row Delete Tenant action, de-duplicated repeated stat-card accessible labels, completed the File List, and recorded the AC6 runtime evidence blocker/fallback.
 
 ### File List
 
@@ -203,10 +213,14 @@ GPT-5 Codex
 - `_bmad-output/test-artifacts/admin-ui-consistency-and-tenant-clarity-polish/README.md`
 - `_bmad-output/test-artifacts/admin-ui-consistency-and-tenant-clarity-polish/consistency-empty-summary-subtitles-snapshot.md`
 - `_bmad-output/test-artifacts/admin-ui-consistency-and-tenant-clarity-polish/consistency-empty-summary-subtitles.png`
+- `_bmad-output/test-artifacts/admin-ui-consistency-and-tenant-clarity-polish/tenants-lifecycle-copy-active-disabled-blocker.md`
 - `_bmad-output/test-artifacts/admin-ui-consistency-and-tenant-clarity-polish/tenants-lifecycle-copy-empty-snapshot.md`
 - `_bmad-output/test-artifacts/admin-ui-consistency-and-tenant-clarity-polish/tenants-lifecycle-copy-empty.png`
 - `src/Hexalith.EventStore.Admin.UI/Components/Shared/StatCard.razor`
 - `src/Hexalith.EventStore.Admin.UI/Pages/Consistency.razor`
+- `src/Hexalith.EventStore.Admin.UI/Pages/Tenants.razor`
+- `src/Hexalith.EventStore.Admin.UI/wwwroot/css/app.css`
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Components/Shared/StatCardTests.cs`
 - `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/ConsistencyPageTests.cs`
 - `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/TenantsPageTests.cs`
 
@@ -223,10 +237,15 @@ GPT-5 Codex
 - Validation: `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests\Hexalith.EventStore.Admin.UI.Tests.csproj -c Release` passed 763/763.
 - Validation: `git diff --check` passed with line-ending warnings only.
 - Debug validation note: the equivalent Debug test command was blocked by the live Aspire `Hexalith.EventStore.Admin.UI.exe` file lock, so final validation was performed in Release without stopping the evidence environment.
+- Review patch validation: `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests\Hexalith.EventStore.Admin.UI.Tests.csproj -c Release --filter "FullyQualifiedName~Consistency_RefreshUpdatesStatCardSecondaryText_FromCurrentSummary|FullyQualifiedName~Consistency_NormalizesWhitespaceFiltersFromUrl_OnInit|FullyQualifiedName~TenantsPage_ExplainsLifecycle|FullyQualifiedName~TenantsPage_ExplainsDisableInsteadOfDeleteLifecycle|FullyQualifiedName~StatCard_ClearsStaleLiveAnnouncement|FullyQualifiedName~StatCard_DoesNotDuplicateAccessibleLabel"` passed 7/7.
+- Review patch validation: `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests\Hexalith.EventStore.Admin.UI.Tests.csproj -c Release --filter "FullyQualifiedName~ConsistencyPageTests|FullyQualifiedName~TenantsPageTests|FullyQualifiedName~StatCardTests"` passed 67/67.
+- Review patch validation: `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests\Hexalith.EventStore.Admin.UI.Tests.csproj -c Release` passed 789/789.
+- Review patch runtime evidence attempt: `$env:EnableKeycloak='false'; aspire run --detach --non-interactive --project src\Hexalith.EventStore.AppHost\Hexalith.EventStore.AppHost.csproj --format Json` built successfully but AppHost startup exited with code 2 because the DAPR CLI is not installed/on PATH; blocker recorded in `_bmad-output/test-artifacts/admin-ui-consistency-and-tenant-clarity-polish/tenants-lifecycle-copy-active-disabled-blocker.md`.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-11 | 0.3 | Applied code review patches for URL scope normalization, stat-card accessibility proof, tenant no-delete proof, evidence fallback, and story bookkeeping. | GPT-5 Codex |
 | 2026-05-10 | 0.2 | Implemented consistency summary subtitle/accessibility freshness, tenant lifecycle clarity test hardening, Issue #17 prerequisite disposition, and browser evidence. | GPT-5 Codex |
 | 2026-05-10 | 0.1 | Created ready-for-dev story for consistency subtitle freshness, tenant lifecycle clarity, and conditional Issue #17 follow-up. | Codex automation |

@@ -125,6 +125,10 @@ public class ConsistencyPageTests : AdminUITestContext {
             runningCard.TextContent.ShouldContain("Running Now: 1");
             (totalCard.GetAttribute("title") ?? string.Empty).ShouldContain("2");
             (anomaliesCard.GetAttribute("title") ?? string.Empty).ShouldContain("3");
+            (totalCard.GetAttribute("aria-label") ?? string.Empty).ShouldBe("Total Checks: 2");
+            (lastCard.GetAttribute("aria-label") ?? string.Empty).ShouldNotContain("Last Check: Never");
+            (anomaliesCard.GetAttribute("aria-label") ?? string.Empty).ShouldBe("Total Anomalies: 3");
+            (runningCard.GetAttribute("aria-label") ?? string.Empty).ShouldBe("Running Now: 1");
 
             totalCard.TextContent.ShouldNotContain("Total Checks: 0");
             lastCard.TextContent.ShouldNotContain("Last Check: Never");
@@ -406,6 +410,25 @@ public class ConsistencyPageTests : AdminUITestContext {
 
         // Assert
         _ = _mockConsistencyApi.Received().GetChecksAsync("prefilled", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void Consistency_NormalizesWhitespaceFiltersFromUrl_OnInit() {
+        // Arrange
+        SetupChecks([
+            CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 0, "orders"),
+        ]);
+        NavManager.NavigateTo("/consistency?tenant=%20&domain=%20");
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+
+        // Assert
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("Scope: All tenants / All domains");
+            cut.Markup.ShouldContain("orders");
+        }, TimeSpan.FromSeconds(5));
+        _ = _mockConsistencyApi.Received().GetChecksAsync(null, Arg.Any<CancellationToken>());
     }
 
     [Fact]
