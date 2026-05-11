@@ -3,6 +3,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 
 using Dapr.Client;
 
@@ -45,6 +46,30 @@ public class DaprInfrastructureQueryServiceTests {
         actors: [],
         extended: new Dictionary<string, string> { ["daprRuntimeVersion"] = "1.14.0" },
         components: components);
+
+    [Fact]
+    public async Task GetActorInstanceStateAsync_LocalJsonElementValue_IsCappedForDisplay() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        string largeValue = new('x', 70 * 1024);
+        using JsonDocument document = JsonDocument.Parse(JsonSerializer.Serialize(largeValue));
+        JsonElement stateValue = document.RootElement.Clone();
+
+        _ = daprClient.GetStateAsync<JsonElement?>(
+            "statestore",
+            "eventstore||ETagActor||actor-1||etag",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns((JsonElement?)stateValue);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        DaprActorInstanceState? result = await service.GetActorInstanceStateAsync("ETagActor", "actor-1");
+
+        DaprActorStateEntry entry = result.ShouldNotBeNull().StateEntries.ShouldHaveSingleItem();
+        entry.Found.ShouldBeTrue();
+        entry.JsonValue.ShouldNotBeNull();
+        entry.JsonValue.Length.ShouldBeLessThan(largeValue.Length);
+        entry.JsonValue.ShouldContain("[truncated, exceeds 64 KiB display cap]");
+    }
 
     [Fact]
     public async Task GetComponentsAsync_ReturnsComponents_WhenMetadataAvailable() {

@@ -28,7 +28,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-10T19:00:00+02:00' # admin-ui-health-dapr-truthfulness-fix Round-10 patches applied: 13 of 22 patches landed + 3 verified-already-correct + 4 deferred + 4 dismissed (85 raw → 34 unique). Applied HIGH: P0a auth-user cache invalidation already covered by IsAuthContextFailure + tenant no-op documented for system-wide page; P0b 3 DTO defaults flipped to non-green (DaprActorRuntimeInfo.IsInventoryComplete=false, DaprActorInstanceState.LookupStatus=LookupUnavailable, DaprComponentHealthTimeline.HistoryStatus=Unavailable); P2/P15 collector HasData=entries.Count>0 + producer HistoryStatus=Available explicit; P3 localSidecarMetadataAvailable cold-start fix; P4 OnRefreshError sets _isLoading=false; P6 probe upgrades synth Source from Unavailable→LocalAdminProbe; P7 mutually-exclusive count buckets. Applied MEDIUM: P9 captured `now` in probe-loop catch; P10 Known Active Actors source-limited label; P14 RemoteMetadataStatus.NotConsulted=4 enum value. Applied LOW: P16 FormatStateValue 64 KiB cap + MaxDepth=64; P17 explicit "inventory source: unavailable" text; P18 Stage-1 non-state-store local-fallback Degraded instead of Unhealthy; P20 GetRemoteMetadataTitle default arm. Verified-already-correct: P1 IsValueShown bypass already correct (auditor finding based on incomplete reading); P5 OrdinalIgnoreCase used everywhere; P11 NotConfigured skip already correct (auditor misread inverted condition). Deferred: P8 ordering tiebreaker, P12 leak test redaction strategy, P13 test seam refactor scope, P19 FakeTimeProvider polling perf. Validation: Admin.Abstractions.Tests 404/404, Contracts.Tests 291/291, Client.Tests 362/362, Admin.Server.Tests 600/600 (18 pre-existing skips), Admin.UI.Tests 769/769, Admin.UI + Admin.Server Release builds clean (0 warn / 0 err). Story stays at `review` for the next reviewer pass.
+last_updated: '2026-05-10T22:25:00+02:00' # admin-ui-operator-action-and-dev-role-testability-fix review patches applied and story moved to done. Validation: Admin.UI review regression suite 29/29, full Admin.UI.Tests 780/780.
+# Previous last_updated detail preserved: 2026-05-10T21:53:15+02:00 - admin-ui-health-dapr-truthfulness-fix Round-11 patches applied and story moved to done: single /dapr infrastructure overview snapshot, explicit Available+zero-component health-history copy, and local actor-state JsonElement display cap. Validation: Admin.Abstractions.Tests 404/404, Admin.Server.Tests 602/602 (18 pre-existing skips), Admin.UI.Tests 773/773.
 # Previous last_updated detail preserved: 2026-05-10T17:30:00+02:00 - Round-5 Phase 2/3 patches applied: 11 of 11 unchecked Round-5 patches landed. Story stays at `review` with all explicit Round-5 phases complete.
 # Previous last_updated detail preserved: 2026-05-10T17:16:06+02:00 - admin-ui-health-dapr-truthfulness-fix moved in-progress -> review after Redis reset, canonical Pattern 2 seed, baseline/outage/recovery Aspire smoke evidence, and ST8/AC8 closure. Validation: Admin.Server.Tests 594/594 + 18 skipped; Admin.UI.Tests 767/767.
 project: Hexalith.EventStore
@@ -352,8 +353,8 @@ development_status:
   # Admin UI Manual Test Suite Issues #6-#18 (sprint-change-proposal-2026-05-07-admin-ui-manual-test-suite-issues.md)
   # Approved 2026-05-07. Split into focused workstreams because the bundle mixes direct UI fixes, DAPR metadata truthfulness,
   # admin operational index population, missing upstream DBA operations, and consistency/tenant UX polish.
-  admin-ui-health-dapr-truthfulness-fix: review
-  admin-ui-operator-action-and-dev-role-testability-fix: review
+  admin-ui-health-dapr-truthfulness-fix: done
+  admin-ui-operator-action-and-dev-role-testability-fix: done
   admin-ui-actor-diagnostics-honesty-fix: review
   admin-operational-index-populators: review
   admin-storage-snapshot-compaction-backup-operations: review

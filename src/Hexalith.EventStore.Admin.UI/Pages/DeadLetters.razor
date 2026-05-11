@@ -888,7 +888,6 @@
 
         int successCount = 0;
         int failCount = 0;
-        string? lastError = null;
         List<BulkActionFailureItem> failures = [];
 
         try
@@ -912,16 +911,19 @@
                     else
                     {
                         failCount += group.Count();
-                        lastError = result?.Message ?? $"Failed to {actionName} entries.";
                         failures.Add(BulkActionFailureItem.FromResult(actionName, group.Key, group.Select(e => e.MessageId), result));
                     }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     failCount += group.Count();
-                    lastError = ex.Message;
                     failures.Add(BulkActionFailureItem.FromException(actionName, group.Key, group.Select(e => e.MessageId), ex));
                 }
+            }
+
+            if (_disposed || attempt != _bulkActionAttempt)
+            {
+                return;
             }
 
             // Report results
@@ -945,20 +947,27 @@
             else if (successCount > 0)
             {
                 // Partial failure
-                await ToastService.ShowWarningAsync($"{pastTense} {successCount} commands. {failCount} failed: {lastError}");
-                _selectedIds = [];
+                BulkActionFailureState failureState = BulkActionFailureState.Create(actionName, failures);
+                _selectedIds = failures
+                    .SelectMany(f => f.MessageIds)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToHashSet(StringComparer.Ordinal);
+                string failedIds = BuildFailedMessageSummary(_selectedIds);
+                await ToastService.ShowWarningAsync(
+                    $"{pastTense} {successCount} commands. {failCount} failed: {failureState.Message}. {failedIds}");
                 await CloseAllDialogsAsync().ConfigureAwait(false);
                 await LoadDataAsync();
             }
             else
             {
                 // Full failure — stay on dialog, keep selection
+                BulkActionFailureState failureState = BulkActionFailureState.Create(actionName, failures);
                 if (!_disposed && attempt == _bulkActionAttempt)
                 {
-                    _bulkActionFailure = BulkActionFailureState.Create(actionName, failures);
+                    _bulkActionFailure = failureState;
                 }
 
-                await ToastService.ShowErrorAsync($"Failed to {actionName} entries: {lastError}");
+                await ToastService.ShowErrorAsync($"Failed to {actionName} entries: {failureState.Message}");
             }
         }
         catch (OperationCanceledException)
@@ -1008,7 +1017,24 @@
         }
 
         string sanitized = value;
-        string[] blockedMarkers = ["bearer ", "signingkey", "signing key", "redis://", "connectionstring", "connection string", "password=", "secret"];
+        string[] blockedMarkers =
+        [
+            "bearer ",
+            "signingkey",
+            "signing key",
+            "redis://",
+            "redis ",
+            "connectionstring",
+            "connection string",
+            "data source=",
+            "server=",
+            "host=",
+            "user id=",
+            "password=",
+            "secret",
+            " at ",
+            ".internal",
+        ];
         foreach (string marker in blockedMarkers)
         {
             int index = sanitized.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
@@ -1020,6 +1046,15 @@
         }
 
         return sanitized.Length <= 240 ? sanitized : sanitized[..240] + "...";
+    }
+
+    private static string BuildFailedMessageSummary(IEnumerable<string> messageIds)
+    {
+        string[] ids = messageIds.Take(4).Select(id => Truncate(Sanitize(id), 80)).ToArray();
+        string summary = ids.Length == 0
+            ? "Failed message IDs are unavailable."
+            : $"Failed message IDs: {string.Join(", ", ids)}.";
+        return summary.Length <= 240 ? summary : summary[..240] + "...";
     }
 
     private sealed record BulkActionFailureState(string ActionName, string Title, string Message, IReadOnlyList<(string Label, string Value)> Details)

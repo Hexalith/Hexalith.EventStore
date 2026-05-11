@@ -69,4 +69,24 @@ public class AdminDeadLetterApiClientTests {
         _ = await Should.ThrowAsync<ServiceUnavailableException>(
             () => client.GetDeadLettersAsync());
     }
+
+    [Fact]
+    public async Task GetDeadLettersAsync_ThrowsUnauthorized_WhenApiReturnsUnauthorized() {
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.Unauthorized, "{}");
+
+        AdminDeadLetterApiClient client = CreateClient(httpClient);
+
+        _ = await Should.ThrowAsync<UnauthorizedAccessException>(
+            () => client.GetDeadLettersAsync());
+    }
+
+    [Fact]
+    public async Task GetDeadLettersAsync_ThrowsForbidden_WhenApiReturnsForbidden() {
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.Forbidden, "{}");
+
+        AdminDeadLetterApiClient client = CreateClient(httpClient);
+
+        _ = await Should.ThrowAsync<ForbiddenAccessException>(
+            () => client.GetDeadLettersAsync());
+    }
 }

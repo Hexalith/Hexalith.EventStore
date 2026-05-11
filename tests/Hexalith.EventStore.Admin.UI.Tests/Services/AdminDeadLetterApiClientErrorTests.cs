@@ -76,6 +76,46 @@ public class AdminDeadLetterApiClientErrorTests {
         ex.Message.ShouldNotContain("raw service dump");
     }
 
+    [Theory]
+    [InlineData("\"oops\"")]
+    [InlineData("[]")]
+    public async Task RetryDeadLettersAsync_NonObjectProblemBody_UsesBoundedDiagnostic(string body) {
+        using var response = new HttpResponseMessage(HttpStatusCode.InternalServerError) {
+            Content = new StringContent(body, Encoding.UTF8, "application/json"),
+        };
+        AdminDeadLetterApiClient client = CreateClient(response);
+
+        AdminApiProblemException ex = await Should.ThrowAsync<AdminApiProblemException>(
+            () => client.RetryDeadLettersAsync("tenant-a", ["msg-1"]));
+
+        ex.Message.ShouldContain("could not be parsed");
+    }
+
+    [Fact]
+    public async Task RetryDeadLettersAsync_ProblemDetailRedactsSecretsAndInternalEvidence() {
+        using var response = new HttpResponseMessage(HttpStatusCode.UnprocessableEntity) {
+            Content = new StringContent(
+                JsonSerializer.Serialize(new {
+                    title = "Validation failed",
+                    detail = "Bearer secret-token at Internal.Type.Method() server01.internal Data Source=db;User ID=sa;Password=pw",
+                    errorCode = "DLQ_INVALID_STATE",
+                }),
+                Encoding.UTF8,
+                "application/problem+json"),
+        };
+        AdminDeadLetterApiClient client = CreateClient(response);
+
+        AdminApiProblemException ex = await Should.ThrowAsync<AdminApiProblemException>(
+            () => client.RetryDeadLettersAsync("tenant-a", ["msg-1"]));
+
+        ex.Detail.ShouldNotBeNull();
+        ex.Detail.ShouldContain("[redacted]");
+        ex.Detail.ShouldNotContain("secret-token");
+        ex.Detail.ShouldNotContain("server01.internal");
+        ex.Detail.ShouldNotContain("Data Source=");
+        ex.Detail.ShouldNotContain("Password=");
+    }
+
     private static AdminDeadLetterApiClient CreateClient(HttpResponseMessage response) {
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
         _ = factory.CreateClient("AdminApi").Returns(new HttpClient(new StubHandler(response)) {

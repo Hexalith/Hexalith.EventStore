@@ -481,6 +481,8 @@ public class DeadLettersPageTests : AdminUITestContext {
             "tenant-a", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
         _ = await _mockDeadLetterApi.Received(1).RetryDeadLettersAsync(
             "tenant-b", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>());
+        GetSelectedIds(cut.Instance).ShouldNotContain("msg-1");
+        GetSelectedIds(cut.Instance).ShouldContain("msg-2");
     }
 
     [Fact]
@@ -680,6 +682,59 @@ public class DeadLettersPageTests : AdminUITestContext {
 
         pending.SetResult(new AdminOperationResult(true, "op-1", "OK", null));
         await Task.WhenAll(first, second);
+    }
+
+    [Fact]
+    public async Task DeadLetters_RetryAfterFullFailure_ClearsFailureAndSelectionOnSuccess() {
+        List<DeadLetterEntry> entries = CreateSampleEntries();
+        SetupEntries(entries, 2);
+        _ = _mockDeadLetterApi.RetryDeadLettersAsync(
+            entries[0].TenantId,
+            Arg.Any<IReadOnlyList<string>>(),
+            Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult<AdminOperationResult?>(new AdminOperationResult(false, "op-failed", "backend secret-value", "DLQ_REJECTED")),
+                Task.FromResult<AdminOperationResult?>(new AdminOperationResult(true, "op-ok", "OK", null)));
+
+        IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+        SelectRowCheckbox(cut, entries[0].MessageId);
+        ClickButton(cut, "Retry Selected");
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Retry Dead Letters"), TimeSpan.FromSeconds(5));
+
+        await InvokeDialogButtonAsync(cut, "Retry");
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Retry failed"), TimeSpan.FromSeconds(5));
+        GetSelectedIds(cut.Instance).ShouldContain(entries[0].MessageId);
+
+        await InvokeDialogButtonAsync(cut, "Retry");
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldNotContain("Retry failed"), TimeSpan.FromSeconds(5));
+        GetSelectedIds(cut.Instance).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task DeadLetters_DisposeDuringPendingAction_DoesNotRenderStaleFailure() {
+        List<DeadLetterEntry> entries = CreateSampleEntries();
+        SetupEntries(entries, 2);
+        TaskCompletionSource<AdminOperationResult?> pending = new();
+        _ = _mockDeadLetterApi.RetryDeadLettersAsync(
+            entries[0].TenantId,
+            Arg.Any<IReadOnlyList<string>>(),
+            Arg.Any<CancellationToken>())
+            .Returns(pending.Task);
+
+        IRenderedComponent<DeadLetters> cut = Render<DeadLetters>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+        SelectRowCheckbox(cut, entries[0].MessageId);
+        ClickButton(cut, "Retry Selected");
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Retry Dead Letters"), TimeSpan.FromSeconds(5));
+
+        Task action = InvokeDialogButtonAsync(cut, "Retry");
+        cut.Dispose();
+        pending.SetResult(new AdminOperationResult(false, "op-failed", "Backend failure", "DLQ_REJECTED"));
+
+        await action;
     }
 
     // ===== Helpers =====

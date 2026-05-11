@@ -155,6 +155,33 @@ public class DaprHealthQueryServiceHistoryTests {
     }
 
     [Fact]
+    public async Task GetComponentHealthHistoryAsync_PreservesEmptyAvailableStatusMessage() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+
+        const string message = "Health history source was read successfully; the remote DAPR inventory reported no component rows for this sample.";
+        var timeline = new DaprComponentHealthTimeline(
+            [],
+            HasData: false,
+            HistoryStatus: SystemHealthMetricStatus.Available,
+            StatusMessage: message);
+
+        string dayKey = $"admin:health-history:{now:yyyyMMdd}";
+        _ = daprClient.GetStateAsync<DaprComponentHealthTimeline>(
+            "statestore", dayKey, cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(timeline);
+
+        DaprHealthQueryService service = CreateService(daprClient);
+
+        DaprComponentHealthTimeline result = await service.GetComponentHealthHistoryAsync(
+            now.AddHours(-1), now, null, default);
+
+        result.HasData.ShouldBeFalse();
+        result.HistoryStatus.ShouldBe(SystemHealthMetricStatus.Available);
+        result.StatusMessage.ShouldBe(message);
+    }
+
+    [Fact]
     public async Task GetComponentHealthHistoryAsync_TruncatesResults_WhenExceedingCap() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DateTimeOffset now = DateTimeOffset.UtcNow;

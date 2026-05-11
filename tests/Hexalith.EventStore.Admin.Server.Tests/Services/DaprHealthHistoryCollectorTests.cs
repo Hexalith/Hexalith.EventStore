@@ -185,7 +185,8 @@ public class DaprHealthHistoryCollectorTests {
             Arg.Is<DaprComponentHealthTimeline>(t =>
                 !t.HasData
                 && t.Entries.Count == 0
-                && t.HistoryStatus == SystemHealthMetricStatus.Available),
+                && t.HistoryStatus == SystemHealthMetricStatus.Available
+                && t.StatusMessage == "Health history source was read successfully; the remote DAPR inventory reported no component rows for this sample."),
             cancellationToken: Arg.Any<CancellationToken>());
     }
 

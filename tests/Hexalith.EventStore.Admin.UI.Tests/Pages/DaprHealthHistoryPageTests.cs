@@ -105,6 +105,24 @@ public class DaprHealthHistoryPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public void HealthHistoryPage_RendersRealZeroInventoryCopy_WhenHistorySourceReportsNoComponentRows() {
+        _ = _mockClient.GetHealthHistoryAsync(
+            Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprComponentHealthTimeline?>(
+                new DaprComponentHealthTimeline(
+                    [],
+                    HasData: false,
+                    HistoryStatus: SystemHealthMetricStatus.Available,
+                    StatusMessage: "Health history source was read successfully; the remote DAPR inventory reported no component rows for this sample.")));
+
+        IRenderedComponent<DaprHealthHistory> cut = Render<DaprHealthHistory>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No component rows recorded"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("remote DAPR inventory reported no component rows");
+        cut.Markup.ShouldNotContain("No health history available yet");
+    }
+
+    [Fact]
     public void HealthHistoryPage_RendersUnavailableBanner_WhenHistoryStorageUnavailable() {
         _ = _mockClient.GetHealthHistoryAsync(
             Arg.Any<DateTimeOffset>(), Arg.Any<DateTimeOffset>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())

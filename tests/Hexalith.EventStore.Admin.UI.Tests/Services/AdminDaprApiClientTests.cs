@@ -109,4 +109,55 @@ public class AdminDaprApiClientTests {
         _ = await Should.ThrowAsync<UnauthorizedAccessException>(
             () => client.GetSidecarInfoAsync());
     }
+
+    // === GetInfrastructureOverviewAsync ===
+
+    [Fact]
+    public async Task GetInfrastructureOverviewAsync_ReturnsOverview_WhenApiResponds() {
+        string json = """
+        {
+          "sidecar": {
+            "appId": "eventstore-admin",
+            "runtimeVersion": "1.14.0",
+            "componentCount": 1,
+            "subscriptionCount": 2,
+            "httpEndpointCount": 1,
+            "remoteMetadataStatus": 1,
+            "remoteEndpoint": "http://localhost:3501"
+          },
+          "components": [
+            {
+              "componentName": "statestore",
+              "componentType": "state.redis",
+              "category": 1,
+              "version": "v1",
+              "status": 0,
+              "lastCheckUtc": "2026-01-01T00:00:00Z",
+              "capabilities": [],
+              "source": 2,
+              "healthEvidenceSource": 2
+            }
+          ]
+        }
+        """;
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
+
+        AdminDaprApiClient client = CreateClient(httpClient);
+
+        DaprInfrastructureOverview? result = await client.GetInfrastructureOverviewAsync();
+
+        _ = result.ShouldNotBeNull();
+        result.Sidecar.ShouldNotBeNull().AppId.ShouldBe("eventstore-admin");
+        result.Components.ShouldHaveSingleItem().ComponentName.ShouldBe("statestore");
+    }
+
+    [Fact]
+    public async Task GetInfrastructureOverviewAsync_ThrowsUnauthorized_When401() {
+        using HttpClient httpClient = MockHttpMessageHandler.CreateStatusClient(HttpStatusCode.Unauthorized);
+
+        AdminDaprApiClient client = CreateClient(httpClient);
+
+        _ = await Should.ThrowAsync<UnauthorizedAccessException>(
+            () => client.GetInfrastructureOverviewAsync());
+    }
 }

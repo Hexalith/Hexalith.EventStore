@@ -29,10 +29,7 @@ public class DaprComponentsPageTests : AdminUITestContext {
     [Fact]
     public void DaprPage_RendersTitle() {
         // Arrange
-        _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<DaprSidecarInfo?>(CreateSidecarInfo()));
-        _ = _mockApiClient.GetComponentsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<DaprComponentDetail>>(CreateComponents()));
+        SetupOverview(CreateSidecarInfo(), CreateComponents());
 
         // Act
         IRenderedComponent<DaprComponents> cut = Render<DaprComponents>();
@@ -46,10 +43,7 @@ public class DaprComponentsPageTests : AdminUITestContext {
     public void DaprPage_RendersStatCards_WithSidecarInfo() {
         // Arrange
         DaprSidecarInfo sidecar = CreateSidecarInfo();
-        _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<DaprSidecarInfo?>(sidecar));
-        _ = _mockApiClient.GetComponentsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<DaprComponentDetail>>(CreateComponents()));
+        SetupOverview(sidecar, CreateComponents());
 
         // Act
         IRenderedComponent<DaprComponents> cut = Render<DaprComponents>();
@@ -68,10 +62,7 @@ public class DaprComponentsPageTests : AdminUITestContext {
     [Fact]
     public void DaprPage_RendersComponentGrid() {
         // Arrange
-        _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<DaprSidecarInfo?>(CreateSidecarInfo()));
-        _ = _mockApiClient.GetComponentsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<DaprComponentDetail>>(CreateComponents()));
+        SetupOverview(CreateSidecarInfo(), CreateComponents());
 
         // Act
         IRenderedComponent<DaprComponents> cut = Render<DaprComponents>();
@@ -86,13 +77,22 @@ public class DaprComponentsPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public void DaprPage_UsesSingleOverviewSnapshot() {
+        SetupOverview(CreateSidecarInfo(), CreateComponents());
+
+        IRenderedComponent<DaprComponents> cut = Render<DaprComponents>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("statestore"), TimeSpan.FromSeconds(5));
+
+        _ = _mockApiClient.Received(1).GetInfrastructureOverviewAsync(Arg.Any<CancellationToken>());
+        _ = _mockApiClient.DidNotReceive().GetSidecarInfoAsync(Arg.Any<CancellationToken>());
+        _ = _mockApiClient.DidNotReceive().GetComponentsAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public void DaprPage_RendersEmptyState_WhenSidecarUnavailable() {
         // After round-3 patch F23 the empty-state copy distinguishes "API returned null sidecar"
         // from a non-Available RemoteMetadataStatus, surfacing the actual unavailability cause.
-        _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<DaprSidecarInfo?>(null));
-        _ = _mockApiClient.GetComponentsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<DaprComponentDetail>>([]));
+        SetupOverview(null, []);
 
         IRenderedComponent<DaprComponents> cut = Render<DaprComponents>();
         cut.WaitForAssertion(
@@ -104,10 +104,7 @@ public class DaprComponentsPageTests : AdminUITestContext {
 
     [Fact]
     public void DaprPage_RendersComponentGrid_WhenSidecarInfoMissingButComponentsAvailable() {
-        _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<DaprSidecarInfo?>(null));
-        _ = _mockApiClient.GetComponentsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<DaprComponentDetail>>(CreateComponents()));
+        SetupOverview(null, CreateComponents());
 
         IRenderedComponent<DaprComponents> cut = Render<DaprComponents>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("statestore"), TimeSpan.FromSeconds(5));
@@ -120,10 +117,7 @@ public class DaprComponentsPageTests : AdminUITestContext {
     [Fact]
     public void DaprPage_RendersRefreshButton() {
         // Arrange
-        _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<DaprSidecarInfo?>(CreateSidecarInfo()));
-        _ = _mockApiClient.GetComponentsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<DaprComponentDetail>>(CreateComponents()));
+        SetupOverview(CreateSidecarInfo(), CreateComponents());
 
         // Act
         IRenderedComponent<DaprComponents> cut = Render<DaprComponents>();
@@ -136,10 +130,8 @@ public class DaprComponentsPageTests : AdminUITestContext {
     [Fact]
     public void DaprPage_RendersIssueBanner_WhenApiUnavailable() {
         // Arrange
-        _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
-            .Returns<DaprSidecarInfo?>(_ => throw new InvalidOperationException("API down"));
-        _ = _mockApiClient.GetComponentsAsync(Arg.Any<CancellationToken>())
-            .Returns<IReadOnlyList<DaprComponentDetail>>(_ => throw new InvalidOperationException("API down"));
+        _ = _mockApiClient.GetInfrastructureOverviewAsync(Arg.Any<CancellationToken>())
+            .Returns<DaprInfrastructureOverview?>(_ => throw new InvalidOperationException("API down"));
 
         // Act
         IRenderedComponent<DaprComponents> cut = Render<DaprComponents>();
@@ -152,10 +144,7 @@ public class DaprComponentsPageTests : AdminUITestContext {
     [Fact]
     public void DaprPage_RendersFilterControls() {
         // Arrange
-        _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<DaprSidecarInfo?>(CreateSidecarInfo()));
-        _ = _mockApiClient.GetComponentsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<DaprComponentDetail>>(CreateComponents()));
+        SetupOverview(CreateSidecarInfo(), CreateComponents());
 
         // Act
         IRenderedComponent<DaprComponents> cut = Render<DaprComponents>();
@@ -173,10 +162,7 @@ public class DaprComponentsPageTests : AdminUITestContext {
         // zero components. Round 3 (F23) surfaces this as "No DAPR components reported" so
         // operators can distinguish "sidecar said zero" from the generic "no metadata at all"
         // case (which now renders different copy).
-        _ = _mockApiClient.GetSidecarInfoAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<DaprSidecarInfo?>(CreateSidecarInfo()));
-        _ = _mockApiClient.GetComponentsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<DaprComponentDetail>>([]));
+        SetupOverview(CreateSidecarInfo(), []);
 
         IRenderedComponent<DaprComponents> cut = Render<DaprComponents>();
         cut.WaitForAssertion(
@@ -187,6 +173,12 @@ public class DaprComponentsPageTests : AdminUITestContext {
     }
 
     // ===== Helper methods =====
+
+    private void SetupOverview(DaprSidecarInfo? sidecar, IReadOnlyList<DaprComponentDetail> components) {
+        _ = _mockApiClient.GetInfrastructureOverviewAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DaprInfrastructureOverview?>(
+                new DaprInfrastructureOverview(sidecar, components)));
+    }
 
     private static DaprSidecarInfo CreateSidecarInfo() => new(
         "test-app",

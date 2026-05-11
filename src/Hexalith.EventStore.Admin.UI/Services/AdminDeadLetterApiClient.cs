@@ -78,6 +78,9 @@ public class AdminDeadLetterApiClient(
                 .ConfigureAwait(false);
             return result ?? new PagedResult<DeadLetterEntry>([], 0, null);
         }
+        catch (AdminApiProblemException ex) {
+            throw MapQueryException(ex, "Unable to load dead-letter entries.");
+        }
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
@@ -195,8 +198,10 @@ public class AdminDeadLetterApiClient(
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
         AdminApiProblem problem = await ReadProblemAsync(response).ConfigureAwait(false);
-        string message = problem.Detail
-            ?? problem.Title
+        string? safeDetail = SanitizeProblemField(problem.Detail);
+        string? safeTitle = SanitizeProblemField(problem.Title);
+        string message = safeDetail
+            ?? safeTitle
             ?? statusCode switch {
                 HttpStatusCode.Unauthorized => "Authentication required. Please sign in again.",
                 HttpStatusCode.Forbidden => "Access denied. Insufficient permissions to access this resource.",
@@ -208,11 +213,11 @@ public class AdminDeadLetterApiClient(
         throw new AdminApiProblemException(
             message,
             statusCode,
-            problem.Title,
-            problem.Detail,
-            problem.ErrorCode,
-            problem.TraceId,
-            problem.OperationId);
+            safeTitle,
+            safeDetail,
+            SanitizeProblemField(problem.ErrorCode),
+            SanitizeProblemField(problem.TraceId),
+            SanitizeProblemField(problem.OperationId));
     }
 
     private static async Task<AdminApiProblem> ReadProblemAsync(HttpResponseMessage response) {
@@ -224,6 +229,10 @@ public class AdminDeadLetterApiClient(
 
             using var doc = JsonDocument.Parse(body);
             JsonElement root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) {
+                return new AdminApiProblem("Malformed error response", "The server returned an error response that could not be parsed.", null, null, null);
+            }
+
             return new AdminApiProblem(
                 TryGetString(root, "title"),
                 TryGetString(root, "detail"),
@@ -234,6 +243,50 @@ public class AdminDeadLetterApiClient(
         catch (JsonException) {
             return new AdminApiProblem("Malformed error response", "The server returned an error response that could not be parsed.", null, null, null);
         }
+    }
+
+    private static Exception MapQueryException(AdminApiProblemException exception, string fallbackMessage)
+        => exception.StatusCode switch {
+            HttpStatusCode.Unauthorized => new UnauthorizedAccessException("Authentication required. Please sign in again.", exception),
+            HttpStatusCode.Forbidden => new ForbiddenAccessException("Access denied. Insufficient permissions to access this resource.", exception),
+            HttpStatusCode.ServiceUnavailable => new ServiceUnavailableException("The admin backend service is temporarily unavailable.", exception),
+            _ => new ServiceUnavailableException(fallbackMessage, exception),
+        };
+
+    private static string? SanitizeProblemField(string? value) {
+        if (string.IsNullOrWhiteSpace(value)) {
+            return null;
+        }
+
+        string sanitized = value;
+        string[] blockedMarkers =
+        [
+            "bearer ",
+            "signingkey",
+            "signing key",
+            "redis://",
+            "redis ",
+            "connectionstring",
+            "connection string",
+            "data source=",
+            "server=",
+            "host=",
+            "user id=",
+            "password=",
+            "secret",
+            " at ",
+            ".internal",
+        ];
+
+        foreach (string marker in blockedMarkers) {
+            int index = sanitized.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (index >= 0) {
+                sanitized = sanitized[..index] + "[redacted]";
+                break;
+            }
+        }
+
+        return sanitized.Length <= 240 ? sanitized : sanitized[..240] + "...";
     }
 
     private static string? TryGetString(JsonElement root, string propertyName)

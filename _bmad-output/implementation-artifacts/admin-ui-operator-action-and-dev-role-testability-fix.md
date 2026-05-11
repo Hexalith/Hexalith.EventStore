@@ -1,6 +1,6 @@
 # Story: admin-ui-operator-action-and-dev-role-testability-fix
 
-Status: review
+Status: done
 
 Context created: 2026-05-07
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-07-admin-ui-manual-test-suite-issues.md`
@@ -202,6 +202,15 @@ The 2026-05-07 advanced elicitation pass tightened this story around hidden coup
   - [x] Capture the operator/admin action dialog audit matrix.
   - [x] Capture evidence under `_bmad-output/test-artifacts/` or append concise evidence to this story.
 
+### Review Findings
+
+- [x] [Review][Patch] Dead-letter list failures from `AdminApiProblemException` are wrapped as backend unavailable [`src/Hexalith.EventStore.Admin.UI/Services/AdminDeadLetterApiClient.cs`:81]
+- [x] [Review][Patch] Development role token cache invalidation races with in-flight token creation [`src/Hexalith.EventStore.Admin.UI/Services/AdminApiAccessTokenProvider.cs`:23]
+- [x] [Review][Patch] Non-object JSON error bodies can escape `ReadProblemAsync` as `InvalidOperationException` [`src/Hexalith.EventStore.Admin.UI/Services/AdminDeadLetterApiClient.cs`:225]
+- [x] [Review][Patch] Backend error details can still leak through toast and dialog diagnostics [`src/Hexalith.EventStore.Admin.UI/Pages/DeadLetters.razor`:922]
+- [x] [Review][Patch] Partial dead-letter failures clear selection without preserving failed-message context [`src/Hexalith.EventStore.Admin.UI/Pages/DeadLetters.razor`:945]
+- [x] [Review][Patch] Required stale-retry/disposal tests and dev JWT claim evidence are missing [`tests/Hexalith.EventStore.Admin.UI.Tests/Pages/DeadLettersPageTests.cs`:617]
+
 ## Developer Notes
 
 Current observations from story creation:
@@ -282,6 +291,8 @@ GPT-5 Codex
 - 2026-05-09 Error parsing tests: `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests\Hexalith.EventStore.Admin.UI.Tests.csproj --no-restore --filter "AdminDeadLetterApiClientErrorTests"` passed 6/6.
 - 2026-05-09 Role refresh tests: `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests\Hexalith.EventStore.Admin.UI.Tests.csproj --no-restore --filter "AuthorizedViewRoleChangeTests"` passed 1/1.
 - 2026-05-09 Full Admin UI test project: `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests\Hexalith.EventStore.Admin.UI.Tests.csproj --no-restore` passed 739/739 after restoring query-method compatibility for non-operation API failures.
+- 2026-05-10 Review patch regression suite: `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests\Hexalith.EventStore.Admin.UI.Tests.csproj --no-restore --filter "AdminDeadLetterApiClientTests|AdminDeadLetterApiClientErrorTests|DeadLetters_HandlesPartialFailure_OnRetry|DeadLetters_BulkActionFullFailure|DeadLetters_DoubleSubmit|DeadLetters_RetryAfterFullFailure|DeadLetters_DisposeDuringPendingAction|AdminApiAccessTokenProviderRoleTests"` passed 29/29.
+- 2026-05-10 Full Admin UI test project: `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests\Hexalith.EventStore.Admin.UI.Tests.csproj --no-restore` passed 780/780 after review patches.
 - 2026-05-09 Release build: `dotnet build src\Hexalith.EventStore.Admin.UI\Hexalith.EventStore.Admin.UI.csproj --configuration Release --no-restore` completed with 0 warnings and 0 errors.
 - 2026-05-09 Listed repo unit tests: Contracts.Tests passed 291/291; Testing.Tests passed 78/78; Client.Tests passed 334/334 with `--no-build` after a live Aspire process locked Debug DLLs; Sample.Tests passed 63/63 with `--no-build` after a live Aspire process locked Debug DLLs.
 - 2026-05-09 Aspire rebuild/smoke: rebuilt and restarted the Admin UI resource; live Playwright smoke reached `https://localhost:8093/` through `http://localhost:8092` and confirmed the development-role selector is gated away while Keycloak authority is configured. Artifact paths: `_bmad-output/test-artifacts/admin-ui-role-switch-keycloak-gated-snapshot.md`, `_bmad-output/test-artifacts/admin-ui-role-switch-keycloak-gated-2026-05-09.png`.
@@ -296,6 +307,7 @@ GPT-5 Codex
 - 2026-05-09 added a scoped development role-state service, header role selector gated to Development with no configured authority, token cache invalidation, auth-state notification, and `AuthorizedView` refresh on same-session role changes.
 - 2026-05-09 updated the manual Admin UI guide and captured the required operator/admin action audit matrix in `_bmad-output/test-artifacts/admin-ui-operator-action-and-dev-role-testability-fix-evidence.md`; no broader endpoint/product deferred-work item was needed for the audited local dialog surfaces.
 - 2026-05-09 captured live Keycloak-gated negative evidence and no-Keycloak positive role-switch evidence. The seeded live workspace had no selected dead-letter rows to expose bulk controls through a screenshot, so Retry/Skip/Archive role/action behavior is pinned by focused bUnit tests and the live smoke records the role-state surface plus Consistency/Admin guard behavior.
+- 2026-05-10 addressed review findings: preserved auth/forbidden semantics for dead-letter list failures, hardened problem-body parsing and redaction, made role-token cache invalidation version-aware, preserved failed IDs after partial bulk failure, added retry/disposal regression coverage, and recorded redacted dev JWT claim evidence.
 
 ### File List
 
@@ -336,6 +348,7 @@ GPT-5 Codex
 ## Change Log
 
 - 2026-05-09 - Implemented dead-letter action failure recovery, safe operation-error details, dev-only role switching/token regeneration, role-guard refresh tests, manual-guide updates, and evidence artifacts; story marked ready for review.
+- 2026-05-10 - Addressed code-review findings, expanded regression coverage, and marked story done.
 - 2026-05-07 - Advanced elicitation completed and story hardened for hidden auth coupling, stale async action recovery, token contradiction prevention, and support-safe diagnostics.
 - 2026-05-07 - Party-mode review completed and story hardened before development; recommendation remains ready-for-dev after applying low-risk clarifications.
 - 2026-05-07 - Story created and marked ready-for-dev. Context engine analysis completed from sprint-change proposal, manual-test issue evidence, current Admin UI auth/dead-letter code, sibling health story, and local package/test context.

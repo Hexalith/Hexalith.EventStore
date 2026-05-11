@@ -15,6 +15,7 @@ public sealed class AdminApiAccessTokenProvider {
     private readonly IConfiguration _configuration;
     private readonly DevelopmentAdminRoleState? _roleState;
     private readonly SemaphoreSlim _tokenLock = new(1, 1);
+    private int _tokenVersion;
     private AccessTokenCacheEntry? _cachedToken;
 
     public AdminApiAccessTokenProvider(IConfiguration configuration, DevelopmentAdminRoleState? roleState = null) {
@@ -26,29 +27,43 @@ public sealed class AdminApiAccessTokenProvider {
     }
 
     public async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default) {
-        if (_cachedToken is { } cached && cached.ExpiresAtUtc > DateTimeOffset.UtcNow.AddMinutes(1)) {
-            return cached.Token;
-        }
-
-        await _tokenLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try {
-            if (_cachedToken is { } refreshed && refreshed.ExpiresAtUtc > DateTimeOffset.UtcNow.AddMinutes(1)) {
-                return refreshed.Token;
+        while (true) {
+            int observedVersion = Volatile.Read(ref _tokenVersion);
+            if (_cachedToken is { } cached
+                && cached.Version == observedVersion
+                && cached.ExpiresAtUtc > DateTimeOffset.UtcNow.AddMinutes(1)) {
+                return cached.Token;
             }
 
-            string? authority = _configuration["EventStore:Authentication:Authority"];
-            _cachedToken = !string.IsNullOrWhiteSpace(authority)
-                ? await RequestKeycloakTokenAsync(authority, cancellationToken).ConfigureAwait(false)
-                : CreateDevelopmentToken();
+            await _tokenLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try {
+                observedVersion = Volatile.Read(ref _tokenVersion);
+                if (_cachedToken is { } refreshed
+                    && refreshed.Version == observedVersion
+                    && refreshed.ExpiresAtUtc > DateTimeOffset.UtcNow.AddMinutes(1)) {
+                    return refreshed.Token;
+                }
 
-            return _cachedToken.Token;
-        }
-        finally {
-            _ = _tokenLock.Release();
+                string? authority = _configuration["EventStore:Authentication:Authority"];
+                AccessTokenCacheEntry newToken = !string.IsNullOrWhiteSpace(authority)
+                    ? await RequestKeycloakTokenAsync(authority, observedVersion, cancellationToken).ConfigureAwait(false)
+                    : CreateDevelopmentToken(observedVersion);
+
+                if (observedVersion != Volatile.Read(ref _tokenVersion)) {
+                    _cachedToken = null;
+                    continue;
+                }
+
+                _cachedToken = newToken;
+                return newToken.Token;
+            }
+            finally {
+                _ = _tokenLock.Release();
+            }
         }
     }
 
-    private async Task<AccessTokenCacheEntry> RequestKeycloakTokenAsync(string authority, CancellationToken cancellationToken) {
+    private async Task<AccessTokenCacheEntry> RequestKeycloakTokenAsync(string authority, int version, CancellationToken cancellationToken) {
         string clientId = _configuration["EventStore:Authentication:ClientId"] ?? "hexalith-eventstore";
         string username = _configuration["EventStore:Authentication:Username"]
             ?? throw new InvalidOperationException("EventStore:Authentication:Username is required when Authority is configured.");
@@ -77,10 +92,10 @@ public sealed class AdminApiAccessTokenProvider {
             ? expiresElement.GetInt32()
             : 3600;
 
-        return new AccessTokenCacheEntry(token, DateTimeOffset.UtcNow.AddSeconds(expiresIn));
+        return new AccessTokenCacheEntry(token, DateTimeOffset.UtcNow.AddSeconds(expiresIn), version);
     }
 
-    private AccessTokenCacheEntry CreateDevelopmentToken() {
+    private AccessTokenCacheEntry CreateDevelopmentToken(int version) {
         string issuer = _configuration["EventStore:Authentication:Issuer"] ?? "hexalith-dev";
         string audience = _configuration["EventStore:Authentication:Audience"] ?? "hexalith-eventstore";
         string signingKey = _configuration["EventStore:Authentication:SigningKey"]
@@ -129,15 +144,18 @@ public sealed class AdminApiAccessTokenProvider {
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(signingKey));
         string signature = Base64UrlEncode(hmac.ComputeHash(Encoding.UTF8.GetBytes(unsignedToken)));
 
-        return new AccessTokenCacheEntry($"{unsignedToken}.{signature}", expiresAt);
+        return new AccessTokenCacheEntry($"{unsignedToken}.{signature}", expiresAt, version);
     }
 
-    private void InvalidateCache() => _cachedToken = null;
+    private void InvalidateCache() {
+        _ = Interlocked.Increment(ref _tokenVersion);
+        _cachedToken = null;
+    }
 
     private static string Base64UrlEncode(byte[] bytes) => Convert.ToBase64String(bytes)
         .TrimEnd('=')
         .Replace('+', '-')
         .Replace('/', '_');
 
-    private sealed record AccessTokenCacheEntry(string Token, DateTimeOffset ExpiresAtUtc);
+    private sealed record AccessTokenCacheEntry(string Token, DateTimeOffset ExpiresAtUtc, int Version);
 }
