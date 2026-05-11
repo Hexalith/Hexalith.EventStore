@@ -1,6 +1,6 @@
 # Story: admin-storage-snapshot-compaction-backup-operations
 
-Status: review
+Status: done
 
 Context created: 2026-05-09
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-07-admin-ui-manual-test-suite-issues.md`
@@ -203,6 +203,11 @@ not infer behavior locally, and the UI must not call a missing upstream route.
   - [x] Save sanitized payload/screenshot/key evidence under `_bmad-output/test-artifacts/admin-storage-snapshot-compaction-backup-operations/`, including request/response bodies, UI screenshots, EventStore/Admin.Server log excerpts, typed result examples, and an AC mapping README.
   - [x] Update this story's Dev Agent Record, File List, Verification Status, and Change Log.
 
+### Review Findings
+
+- [x] [Review][Patch] Add deferred-operation UI coverage for every Issue #15 action [_bmad-output/implementation-artifacts/admin-storage-snapshot-compaction-backup-operations.md:145]
+- [x] [Review][Patch] Document HTTP 200 typed-deferred responses in controller metadata [src/Hexalith.EventStore.Admin.Server/Controllers/AdminBackupsController.cs:58]
+
 ## Developer Notes
 
 Current code intelligence from story creation:
@@ -382,12 +387,14 @@ GPT-5 Codex
 - Focused Admin.Server, Admin.UI, Admin.Abstractions, Client, Contracts, Sample, and Testing test projects passed individually.
 - Canonical EnableKeycloak=false Aspire evidence captured typed deferred outcomes, authorization and tenant rejection paths, state-index non-mutation probes, relevant logs, and UI screenshots.
 - `Hexalith.EventStore.Server.Tests` was not run because repository guidance identifies a pre-existing CA2007 warnings-as-errors build failure for that project.
+- Code review completed on 2026-05-11; both review patch findings were applied, focused Admin.Server and Admin.UI test slices passed, and the story moved to `done`.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
 | 2026-05-10 | 1.0 | Implemented honest-defer Issue #15 behavior, typed Admin.Server result preservation, UI busy-state/deferred-result coverage, live Aspire evidence, and moved story to review. | Codex |
+| 2026-05-11 | 1.1 | Applied code review patches for complete deferred-operation UI coverage and HTTP 200 typed-deferred controller metadata; moved story to done. | Codex |
 | 2026-05-10 | 0.2 | Applied party-mode review hardening for operation ownership, destructive-operation safety defaults, typed result mapping, route/auth/state-index tests, and manual evidence requirements. | Codex automation |
 | 2026-05-09 | 0.1 | Created ready-for-dev story for Issue #15 upstream snapshot, compaction, and backup operation behavior. | Codex automation |
 

@@ -210,6 +210,33 @@ public class SnapshotsPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public async Task SnapshotsPage_CreatePolicyDialog_ShowsDeferredToastAndClearsBusyState() {
+        SetupPolicies([]);
+        const string deferredMessage = "Snapshot policy changes are deferred.";
+        _ = _mockSnapshotApi.SetSnapshotPolicyAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
+                false,
+                "deferred-snapshot-policy-set",
+                deferredMessage,
+                "Deferred")));
+
+        NavManager.NavigateTo("/snapshots?create=true&tenant=tenant-x&domain=sales&aggregateType=OrderAggregate");
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Snapshot Policy"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> createBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Create Policy"));
+        await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
+
+        TestToastService toastService = Services.GetRequiredService<TestToastService>();
+        ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
+        toastOptions.Body.ShouldBe(deferredMessage);
+        cut.Markup.ShouldContain("Create Snapshot Policy");
+        createBtn.Instance.Disabled.ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task SnapshotsPage_CreateSnapshotDialog_ShowsDeferredToastAndClearsBusyState() {
         SetupPolicies([]);
         const string deferredMessage = "Manual snapshot creation is deferred.";
@@ -274,6 +301,38 @@ public class SnapshotsPageTests : AdminUITestContext {
         // Assert
         _ = await _mockSnapshotApi.Received(1).DeleteSnapshotPolicyAsync(
             "tenant-a", "orders", "OrderAggregate", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SnapshotsPage_DeleteDialog_ShowsDeferredToastAndClearsBusyState() {
+        SnapshotPolicy policy = new("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5));
+        SetupPolicies([policy]);
+        const string deferredMessage = "Snapshot policy deletion is deferred.";
+        _ = _mockSnapshotApi.DeleteSnapshotPolicyAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
+                false,
+                "deferred-snapshot-policy-delete",
+                deferredMessage,
+                "Deferred")));
+
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> deleteButton = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Delete") && !b.Markup.Contains("Delete Snapshot Policy"));
+        await deleteButton.InvokeAsync(deleteButton.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Delete Snapshot Policy"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> confirmBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Delete Policy"));
+        await confirmBtn.InvokeAsync(confirmBtn.Instance.OnClick.InvokeAsync);
+
+        TestToastService toastService = Services.GetRequiredService<TestToastService>();
+        ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
+        toastOptions.Body.ShouldBe(deferredMessage);
+        cut.Markup.ShouldContain("Delete Snapshot Policy");
+        confirmBtn.Instance.Disabled.ShouldBeFalse();
     }
 
     // ===== Recommended tests (4.12-4.21) =====

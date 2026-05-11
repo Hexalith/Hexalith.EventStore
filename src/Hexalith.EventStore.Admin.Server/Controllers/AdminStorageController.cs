@@ -140,6 +140,7 @@ public class AdminStorageController(
     [HttpPost("{tenantId}/compact")]
     [Authorize(Policy = AdminAuthorizationPolicies.Operator)]
     [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]

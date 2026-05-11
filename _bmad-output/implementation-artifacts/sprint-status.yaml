@@ -28,7 +28,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-11T18:52:08+02:00' # admin-operational-index-populators review patches applied; story moved to done. Validation: operational-index client focus 11/11, Admin.Server projection/storage/consistency focus 46/46, Admin.UI storage focus 19/19, Sample metadata 1/1, Admin.Abstractions storage 5/5.
+last_updated: '2026-05-11T19:20:00+02:00' # admin-storage-snapshot-compaction-backup-operations review patches applied; story moved to done. Validation: Admin.Server focused slice 54/54, Admin.UI focused slice 85/85.
+# Previous last_updated detail preserved: 2026-05-11T18:52:08+02:00 - admin-operational-index-populators review patches applied; story moved to done. Validation: operational-index client focus 11/11, Admin.Server projection/storage/consistency focus 46/46, Admin.UI storage focus 19/19, Sample metadata 1/1, Admin.Abstractions storage 5/5.
 # Previous last_updated detail preserved: 2026-05-11T08:29:41+02:00 - admin-ui-actor-diagnostics-honesty-fix review decision resolved and 3 review patches applied; story moved to done. Validation: Admin.UI actor/client filter 19/19, Admin.Abstractions DaprActor filter 34/34, Admin.Server actor/controller filter 32/32.
 # Previous last_updated detail preserved: 2026-05-10T22:25:00+02:00 - admin-ui-operator-action-and-dev-role-testability-fix review patches applied and story moved to done. Validation: Admin.UI review regression suite 29/29, full Admin.UI.Tests 780/780.
 # Previous last_updated detail preserved: 2026-05-10T21:53:15+02:00 - admin-ui-health-dapr-truthfulness-fix Round-11 patches applied and story moved to done: single /dapr infrastructure overview snapshot, explicit Available+zero-component health-history copy, and local actor-state JsonElement display cap. Validation: Admin.Abstractions.Tests 404/404, Admin.Server.Tests 602/602 (18 pre-existing skips), Admin.UI.Tests 773/773.
@@ -359,5 +360,5 @@ development_status:
   admin-ui-operator-action-and-dev-role-testability-fix: done
   admin-ui-actor-diagnostics-honesty-fix: done
   admin-operational-index-populators: done
-  admin-storage-snapshot-compaction-backup-operations: review
+  admin-storage-snapshot-compaction-backup-operations: done
   admin-ui-consistency-and-tenant-clarity-polish: review
