@@ -140,6 +140,15 @@ so that `/projections`, `/types`, `/storage`, and the projection-related consist
   - [x] Record Issue #17 retest result and any deferred follow-up in `deferred-work.md`.
   - [x] Update this story's Dev Agent Record, File List, Verification Status, and Change Log.
 
+### Review Findings
+
+- [ ] [Review][Patch] Projection index writer invents healthy named projections when metadata is absent [`src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs:111`]
+- [ ] [Review][Patch] Metadata load failures can overwrite valid indexes with empty or partial data [`src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs:77`]
+- [ ] [Review][Patch] Storage operational indexes are blind-saved from stale activity snapshots after ETag-protected writes [`src/Hexalith.EventStore/Commands/DaprStreamActivityTracker.cs:163`]
+- [ ] [Review][Patch] Storage totals and stream counts are computed from the capped 1000-row activity list [`src/Hexalith.EventStore/Commands/DaprStreamActivityTracker.cs:108`]
+- [ ] [Review][Patch] Tenant projection fallback returns the raw all-scope index across tenant boundaries [`src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionQueryService.cs:61`]
+- [ ] [Review][Patch] Missing storage overview still collapses unavailable index state into healthy zero facts [`src/Hexalith.EventStore.Admin.Server/Services/DaprStorageQueryService.cs:54`]
+
 ## Developer Notes
 
 Current code intelligence from story creation:
