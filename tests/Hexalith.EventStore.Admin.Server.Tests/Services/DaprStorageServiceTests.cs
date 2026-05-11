@@ -153,7 +153,7 @@ public class DaprStorageServiceTests {
     }
 
     [Fact]
-    public async Task GetStorageOverviewAsync_ReturnsEmpty_WhenIndexNotFound() {
+    public async Task GetStorageOverviewAsync_ReturnsMissingWriter_WhenIndexNotFound() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetStateAsync<StorageOverview>(
             StateStoreName,
@@ -168,7 +168,8 @@ public class DaprStorageServiceTests {
         result.TotalEventCount.ShouldBe(0);
         result.TotalSizeBytes.ShouldBeNull();
         result.TenantBreakdown.ShouldBeEmpty();
-        result.TotalStreamCount.ShouldBe(0);
+        result.TotalStreamCount.ShouldBeNull();
+        result.IndexStatus.ShouldBe(StorageIndexStatus.MissingWriter);
     }
 
     [Fact]

@@ -73,7 +73,7 @@ public class DaprStorageQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetStorageOverviewAsync_ReturnsEmpty_WhenIndexNotFound() {
+    public async Task GetStorageOverviewAsync_ReturnsMissingWriter_WhenIndexNotFound() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetStateAsync<StorageOverview>(
             StateStoreName,
@@ -86,7 +86,8 @@ public class DaprStorageQueryServiceTests {
         StorageOverview result = await service.GetStorageOverviewAsync("tenant-a");
 
         result.TotalEventCount.ShouldBe(0);
-        result.TotalStreamCount.ShouldBe(0);
+        result.TotalStreamCount.ShouldBeNull();
+        result.IndexStatus.ShouldBe(StorageIndexStatus.MissingWriter);
     }
 
     [Fact]

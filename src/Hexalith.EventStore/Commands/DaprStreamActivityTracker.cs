@@ -20,6 +20,7 @@ public sealed class DaprStreamActivityTracker(
     private const string _activityIndexKey = "admin:stream-activity:all";
     private const string _storageHotStreamsPrefix = "admin:storage-hot-streams:";
     private const string _storageOverviewPrefix = "admin:storage-overview:";
+    private const string _storageStreamInfoPrefix = "admin:storage-stream-info:";
     private const string _storageStreamCountPrefix = "admin:storage-stream-count:";
     private const int _maxEntries = 1000;
     private const int _maxEtagRetries = 3;
@@ -40,7 +41,7 @@ public sealed class DaprStreamActivityTracker(
         try {
             ArgumentNullException.ThrowIfNull(tenantId);
 
-            (bool saved, List<StreamSummary>? updatedActivity) = await TryUpsertActivityIndexAsync(
+            bool saved = await TryUpsertActivityIndexAsync(
                 tenantId, domain, aggregateId, newEventsAppended, timestamp, ct).ConfigureAwait(false);
             if (!saved) {
                 logger.LogWarning(
@@ -52,8 +53,14 @@ public sealed class DaprStreamActivityTracker(
                 return;
             }
 
-            if (updatedActivity is not null) {
-                await SaveStorageIndexesAsync(updatedActivity, ct).ConfigureAwait(false);
+            (StreamStorageInfo? storageInfo, bool isNewStream) = await UpsertStreamStorageInfoAsync(
+                tenantId,
+                domain,
+                aggregateId,
+                newEventsAppended,
+                ct).ConfigureAwait(false);
+            if (storageInfo is not null) {
+                await SaveStorageIndexesAsync(storageInfo, newEventsAppended, isNewStream, ct).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) {
@@ -116,56 +123,216 @@ public sealed class DaprStreamActivityTracker(
             ? "UnknownAggregate"
             : $"{char.ToUpperInvariant(domain[0])}{domain[1..]}Aggregate";
 
-    private static StreamStorageInfo ToStorageInfo(StreamSummary stream)
+    private static StreamStorageInfo CreateStorageInfo(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long eventCount,
+        bool hasSnapshot,
+        TimeSpan? snapshotAge)
         => new(
-            stream.TenantId,
-            stream.Domain,
-            stream.AggregateId,
-            ToAggregateTypeName(stream.Domain),
-            stream.EventCount,
+            tenantId,
+            domain,
+            aggregateId,
+            ToAggregateTypeName(domain),
+            eventCount,
             SizeBytes: null,
-            stream.HasSnapshot,
-            SnapshotAge: null);
+            hasSnapshot,
+            snapshotAge);
 
-    private static StorageOverview BuildOverview(IEnumerable<StreamSummary> streams) {
-        List<StreamSummary> materialized = streams.ToList();
-        IReadOnlyList<TenantStorageInfo> tenantBreakdown = [.. materialized
-            .GroupBy(s => s.TenantId, StringComparer.OrdinalIgnoreCase)
-            .Select(g => new TenantStorageInfo(g.Key, g.Sum(s => s.EventCount), SizeBytes: null, GrowthRatePerDay: null))
-            .OrderBy(t => t.TenantId, StringComparer.OrdinalIgnoreCase)];
+    private static StorageOverview AddToOverview(
+        StorageOverview? existing,
+        string tenantId,
+        long newEventsAppended,
+        bool isNewStream) {
+        long totalEvents = (existing?.TotalEventCount ?? 0) + newEventsAppended;
+        long totalStreams = (existing?.TotalStreamCount ?? 0) + (isNewStream ? 1 : 0);
+        List<TenantStorageInfo> tenants = existing?.TenantBreakdown.ToList() ?? [];
+        int tenantIndex = tenants.FindIndex(t => t.TenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase));
+        if (tenantIndex >= 0) {
+            TenantStorageInfo tenant = tenants[tenantIndex];
+            tenants[tenantIndex] = new TenantStorageInfo(
+                tenant.TenantId,
+                tenant.EventCount + newEventsAppended,
+                tenant.SizeBytes,
+                tenant.GrowthRatePerDay);
+        }
+        else {
+            tenants.Add(new TenantStorageInfo(tenantId, newEventsAppended, SizeBytes: null, GrowthRatePerDay: null));
+        }
 
         return new StorageOverview(
-            materialized.Sum(s => s.EventCount),
-            TotalSizeBytes: null,
-            tenantBreakdown,
-            materialized.Count);
+            totalEvents,
+            existing?.TotalSizeBytes,
+            [.. tenants.OrderBy(t => t.TenantId, StringComparer.OrdinalIgnoreCase)],
+            totalStreams,
+            totalEvents > 0 ? StorageIndexStatus.Populated : StorageIndexStatus.Empty);
     }
 
-    private async Task SaveStorageIndexesAsync(IReadOnlyList<StreamSummary> activity, CancellationToken ct) {
-        await SaveStorageScopeAsync("all", activity, ct).ConfigureAwait(false);
+    private static bool MatchesStorageIdentity(StreamStorageInfo existing, StreamStorageInfo updated)
+        => existing.TenantId.Equals(updated.TenantId, StringComparison.OrdinalIgnoreCase)
+            && existing.Domain.Equals(updated.Domain, StringComparison.OrdinalIgnoreCase)
+            && existing.AggregateId.Equals(updated.AggregateId, StringComparison.OrdinalIgnoreCase);
 
-        foreach (IGrouping<string, StreamSummary> tenantGroup in activity.GroupBy(s => s.TenantId, StringComparer.OrdinalIgnoreCase)) {
-            await SaveStorageScopeAsync(tenantGroup.Key, tenantGroup.ToList(), ct).ConfigureAwait(false);
-        }
-    }
-
-    private async Task SaveStorageScopeAsync(string scope, IReadOnlyList<StreamSummary> streams, CancellationToken ct) {
-        StorageOverview overview = BuildOverview(streams);
-        List<StreamStorageInfo> hotStreams = [.. streams
+    private static List<StreamStorageInfo> UpsertHotStream(IReadOnlyList<StreamStorageInfo>? existing, StreamStorageInfo updated)
+        => [.. (existing ?? [])
+            .Where(s => !MatchesStorageIdentity(s, updated))
+            .Append(updated)
             .OrderByDescending(s => s.EventCount)
-            .ThenByDescending(s => s.LastActivityUtc)
             .ThenBy(s => s.TenantId, StringComparer.OrdinalIgnoreCase)
             .ThenBy(s => s.Domain, StringComparer.OrdinalIgnoreCase)
             .ThenBy(s => s.AggregateId, StringComparer.OrdinalIgnoreCase)
-            .Take(100)
-            .Select(ToStorageInfo)];
+            .Take(100)];
 
-        await daprClient.SaveStateAsync(_stateStoreName, $"{_storageOverviewPrefix}{scope}", overview, cancellationToken: ct).ConfigureAwait(false);
-        await daprClient.SaveStateAsync(_stateStoreName, $"{_storageHotStreamsPrefix}{scope}", hotStreams, cancellationToken: ct).ConfigureAwait(false);
-        await daprClient.SaveStateAsync(_stateStoreName, $"{_storageStreamCountPrefix}{scope}", streams.Count, cancellationToken: ct).ConfigureAwait(false);
+    private static StreamStorageInfo AddToStorageInfo(
+        StreamStorageInfo? existing,
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long newEventsAppended)
+        => existing is null
+            ? CreateStorageInfo(tenantId, domain, aggregateId, newEventsAppended, hasSnapshot: false, snapshotAge: null)
+            : CreateStorageInfo(
+                existing.TenantId,
+                existing.Domain,
+                existing.AggregateId,
+                existing.EventCount + newEventsAppended,
+                existing.HasSnapshot,
+                existing.SnapshotAge);
+
+    private async Task SaveStorageIndexesAsync(
+        StreamStorageInfo storageInfo,
+        long newEventsAppended,
+        bool isNewStream,
+        CancellationToken ct) {
+        await SaveStorageScopeAsync("all", storageInfo, newEventsAppended, isNewStream, ct).ConfigureAwait(false);
+        await SaveStorageScopeAsync(storageInfo.TenantId, storageInfo, newEventsAppended, isNewStream, ct).ConfigureAwait(false);
     }
 
-    private async Task<(bool Saved, List<StreamSummary>? UpdatedActivity)> TryUpsertActivityIndexAsync(
+    private async Task SaveStorageScopeAsync(
+        string scope,
+        StreamStorageInfo storageInfo,
+        long newEventsAppended,
+        bool isNewStream,
+        CancellationToken ct) {
+        await UpdateStorageOverviewAsync(scope, storageInfo.TenantId, newEventsAppended, isNewStream, ct).ConfigureAwait(false);
+        await UpdateStorageStreamCountAsync(scope, isNewStream, ct).ConfigureAwait(false);
+        await UpdateHotStreamsAsync(scope, storageInfo, ct).ConfigureAwait(false);
+    }
+
+    private async Task<(StreamStorageInfo? Info, bool IsNewStream)> UpsertStreamStorageInfoAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long newEventsAppended,
+        CancellationToken ct) {
+        string key = $"{_storageStreamInfoPrefix}{tenantId}:{domain}:{aggregateId}";
+        for (int attempt = 0; attempt < _maxEtagRetries; attempt++) {
+            (StreamStorageInfo? existing, string etag) = await daprClient
+                .GetStateAndETagAsync<StreamStorageInfo>(_stateStoreName, key, cancellationToken: ct)
+                .ConfigureAwait(false);
+            StreamStorageInfo updated = AddToStorageInfo(existing, tenantId, domain, aggregateId, newEventsAppended);
+            bool saved = await daprClient
+                .TrySaveStateAsync(_stateStoreName, key, updated, etag, cancellationToken: ct)
+                .ConfigureAwait(false);
+            if (saved) {
+                return (updated, existing is null);
+            }
+
+            logger.LogDebug(
+                "ETag mismatch while updating storage stream info index '{IndexKey}', retry {Attempt}.",
+                key,
+                attempt + 1);
+        }
+
+        logger.LogWarning(
+            "Failed to update storage stream info after {MaxRetries} optimistic-concurrency attempts: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}",
+            _maxEtagRetries,
+            tenantId,
+            domain,
+            aggregateId);
+        return (null, false);
+    }
+
+    private async Task UpdateStorageOverviewAsync(
+        string scope,
+        string tenantId,
+        long newEventsAppended,
+        bool isNewStream,
+        CancellationToken ct) {
+        string key = $"{_storageOverviewPrefix}{scope}";
+        for (int attempt = 0; attempt < _maxEtagRetries; attempt++) {
+            (StorageOverview? existing, string etag) = await daprClient
+                .GetStateAndETagAsync<StorageOverview>(_stateStoreName, key, cancellationToken: ct)
+                .ConfigureAwait(false);
+            StorageOverview updated = AddToOverview(existing, tenantId, newEventsAppended, isNewStream);
+            bool saved = await daprClient
+                .TrySaveStateAsync(_stateStoreName, key, updated, etag, cancellationToken: ct)
+                .ConfigureAwait(false);
+            if (saved) {
+                return;
+            }
+
+            logger.LogDebug(
+                "ETag mismatch while updating storage overview index '{IndexKey}', retry {Attempt}.",
+                key,
+                attempt + 1);
+        }
+
+        logger.LogWarning("Failed to update storage overview index '{IndexKey}' after {MaxRetries} optimistic-concurrency attempts.", key, _maxEtagRetries);
+    }
+
+    private async Task UpdateStorageStreamCountAsync(string scope, bool isNewStream, CancellationToken ct) {
+        if (!isNewStream) {
+            return;
+        }
+
+        string key = $"{_storageStreamCountPrefix}{scope}";
+        for (int attempt = 0; attempt < _maxEtagRetries; attempt++) {
+            (long? existing, string etag) = await daprClient
+                .GetStateAndETagAsync<long?>(_stateStoreName, key, cancellationToken: ct)
+                .ConfigureAwait(false);
+            long updated = (existing ?? 0) + 1;
+            bool saved = await daprClient
+                .TrySaveStateAsync(_stateStoreName, key, updated, etag, cancellationToken: ct)
+                .ConfigureAwait(false);
+            if (saved) {
+                return;
+            }
+
+            logger.LogDebug(
+                "ETag mismatch while updating storage stream count index '{IndexKey}', retry {Attempt}.",
+                key,
+                attempt + 1);
+        }
+
+        logger.LogWarning("Failed to update storage stream count index '{IndexKey}' after {MaxRetries} optimistic-concurrency attempts.", key, _maxEtagRetries);
+    }
+
+    private async Task UpdateHotStreamsAsync(string scope, StreamStorageInfo storageInfo, CancellationToken ct) {
+        string key = $"{_storageHotStreamsPrefix}{scope}";
+        for (int attempt = 0; attempt < _maxEtagRetries; attempt++) {
+            (List<StreamStorageInfo>? existing, string etag) = await daprClient
+                .GetStateAndETagAsync<List<StreamStorageInfo>>(_stateStoreName, key, cancellationToken: ct)
+                .ConfigureAwait(false);
+            List<StreamStorageInfo> updated = UpsertHotStream(existing, storageInfo);
+            bool saved = await daprClient
+                .TrySaveStateAsync(_stateStoreName, key, updated, etag, cancellationToken: ct)
+                .ConfigureAwait(false);
+            if (saved) {
+                return;
+            }
+
+            logger.LogDebug(
+                "ETag mismatch while updating storage hot streams index '{IndexKey}', retry {Attempt}.",
+                key,
+                attempt + 1);
+        }
+
+        logger.LogWarning("Failed to update storage hot streams index '{IndexKey}' after {MaxRetries} optimistic-concurrency attempts.", key, _maxEtagRetries);
+    }
+
+    private async Task<bool> TryUpsertActivityIndexAsync(
         string tenantId,
         string domain,
         string aggregateId,
@@ -185,7 +352,7 @@ public sealed class DaprStreamActivityTracker(
                     .ConfigureAwait(false);
 
                 if (saved) {
-                    return (true, updated);
+                    return true;
                 }
 
                 logger.LogDebug(
@@ -205,6 +372,6 @@ public sealed class DaprStreamActivityTracker(
             }
         }
 
-        return (false, null);
+        return false;
     }
 }

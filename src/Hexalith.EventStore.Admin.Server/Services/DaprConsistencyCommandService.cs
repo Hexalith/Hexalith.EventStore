@@ -394,6 +394,13 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
                 projections = await _daprClient
                     .GetStateAsync<List<ProjectionStatus>>(_options.StateStoreName, "admin:projections:all")
                     .ConfigureAwait(false);
+                projections = projections?
+                    .Where(p => p.TenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
+                        || p.TenantId.Equals("all", StringComparison.OrdinalIgnoreCase))
+                    .Select(p => p.TenantId.Equals("all", StringComparison.OrdinalIgnoreCase)
+                        ? CopyProjectionForTenant(p, tenantId)
+                        : p)
+                    .ToList();
             }
 
             if (projections is null) {
@@ -519,6 +526,17 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
                 stream.EventCount));
         }
     }
+
+    private static ProjectionStatus CopyProjectionForTenant(ProjectionStatus projection, string tenantId)
+        => new(
+            projection.Name,
+            tenantId,
+            projection.Status,
+            projection.Lag,
+            projection.Throughput,
+            projection.ErrorCount,
+            projection.LastProcessedPosition,
+            projection.LastProcessedUtc);
 
     private async Task CheckSnapshotIntegrityAsync(StreamSummary stream, List<ConsistencyAnomaly> anomalies) {
         // Check: no snapshot for aggregate with > 100 events

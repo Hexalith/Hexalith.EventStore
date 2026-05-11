@@ -106,6 +106,35 @@ public class DaprProjectionQueryServiceTests {
 
         result.Count.ShouldBe(1);
         result[0].Name.ShouldBe("counter");
+        result[0].TenantId.ShouldBe("tenant-a");
+    }
+
+    [Fact]
+    public async Task ListProjectionsAsync_FiltersAllIndexFallback_ToRequestedTenant() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var projections = new List<ProjectionStatus>
+        {
+            new("counter", "tenant-b", ProjectionStatusType.Running, 0, 0, 0, 0, DateTimeOffset.UnixEpoch),
+            new("orders", "all", ProjectionStatusType.Running, 0, 0, 0, 0, DateTimeOffset.UnixEpoch),
+        };
+
+        _ = daprClient.GetStateAsync<List<ProjectionStatus>>(
+            StateStoreName,
+            "admin:projections:tenant-a",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => (List<ProjectionStatus>?)null);
+        _ = daprClient.GetStateAsync<List<ProjectionStatus>>(
+            StateStoreName,
+            "admin:projections:all",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => projections);
+
+        (DaprProjectionQueryService service, _) = CreateService(daprClient);
+
+        IReadOnlyList<ProjectionStatus> result = await service.ListProjectionsAsync("tenant-a");
+
+        result.Single().Name.ShouldBe("orders");
+        result.Single().TenantId.ShouldBe("tenant-a");
     }
 
     [Fact]

@@ -1,6 +1,6 @@
 # Story: admin-operational-index-populators
 
-Status: review
+Status: done
 
 Context created: 2026-05-09
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-07-admin-ui-manual-test-suite-issues.md`
@@ -142,12 +142,12 @@ so that `/projections`, `/types`, `/storage`, and the projection-related consist
 
 ### Review Findings
 
-- [ ] [Review][Patch] Projection index writer invents healthy named projections when metadata is absent [`src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs:111`]
-- [ ] [Review][Patch] Metadata load failures can overwrite valid indexes with empty or partial data [`src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs:77`]
-- [ ] [Review][Patch] Storage operational indexes are blind-saved from stale activity snapshots after ETag-protected writes [`src/Hexalith.EventStore/Commands/DaprStreamActivityTracker.cs:163`]
-- [ ] [Review][Patch] Storage totals and stream counts are computed from the capped 1000-row activity list [`src/Hexalith.EventStore/Commands/DaprStreamActivityTracker.cs:108`]
-- [ ] [Review][Patch] Tenant projection fallback returns the raw all-scope index across tenant boundaries [`src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionQueryService.cs:61`]
-- [ ] [Review][Patch] Missing storage overview still collapses unavailable index state into healthy zero facts [`src/Hexalith.EventStore.Admin.Server/Services/DaprStorageQueryService.cs:54`]
+- [x] [Review][Patch] Projection index writer invents healthy named projections when metadata is absent [`src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs:111`]
+- [x] [Review][Patch] Metadata load failures can overwrite valid indexes with empty or partial data [`src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs:77`]
+- [x] [Review][Patch] Storage operational indexes are blind-saved from stale activity snapshots after ETag-protected writes [`src/Hexalith.EventStore/Commands/DaprStreamActivityTracker.cs:163`]
+- [x] [Review][Patch] Storage totals and stream counts are computed from the capped 1000-row activity list [`src/Hexalith.EventStore/Commands/DaprStreamActivityTracker.cs:108`]
+- [x] [Review][Patch] Tenant projection fallback returns the raw all-scope index across tenant boundaries [`src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionQueryService.cs:61`]
+- [x] [Review][Patch] Missing storage overview still collapses unavailable index state into healthy zero facts [`src/Hexalith.EventStore.Admin.Server/Services/DaprStorageQueryService.cs:54`]
 
 ## Developer Notes
 
@@ -270,13 +270,20 @@ GPT-5 Codex
 - `src/Hexalith.EventStore/Indexes/AdminOperationalIndexHostedService.cs`
 - `src/Hexalith.EventStore.Admin.Server/Services/DaprConsistencyCommandService.cs`
 - `src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionQueryService.cs`
+- `src/Hexalith.EventStore.Admin.Server/Services/DaprStorageQueryService.cs`
+- `src/Hexalith.EventStore.Admin.Abstractions/Models/Storage/StorageIndexStatus.cs`
+- `src/Hexalith.EventStore.Admin.Abstractions/Models/Storage/StorageOverview.cs`
+- `src/Hexalith.EventStore.Admin.UI/Pages/Storage.razor`
 - `samples/Hexalith.EventStore.Sample/AdminOperationalIndexMetadata.cs`
 - `samples/Hexalith.EventStore.Sample/Program.cs`
 - `tests/Hexalith.EventStore.Client.Tests/Commands/DaprStreamActivityTrackerTests.cs`
 - `tests/Hexalith.EventStore.Client.Tests/Indexes/AdminOperationalIndexHostedServiceTests.cs`
 - `tests/Hexalith.EventStore.Sample.Tests/AdminOperationalIndexMetadataTests.cs`
 - `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprProjectionQueryServiceTests.cs`
+- `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprStorageQueryServiceTests.cs`
+- `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprStorageServiceTests.cs`
 - `_bmad-output/implementation-artifacts/deferred-work.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `_bmad-output/test-artifacts/admin-operational-index-populators/README.md`
 - `_bmad-output/test-artifacts/admin-operational-index-populators/api-consistency-result.json`
 - `_bmad-output/test-artifacts/admin-operational-index-populators/api-consistency-trigger.json`
@@ -306,11 +313,14 @@ GPT-5 Codex
 - Party-mode review completed on 2026-05-09 and is recorded below.
 - Advanced elicitation has NOT yet been run for this story.
 - 2026-05-10 implementation moved to review after EventStore-owned projection/type-catalog/storage index population, focused and impacted test runs, live Aspire evidence, and Issue #17 retest/defer recording.
+- 2026-05-11 code review patches applied: projection indexes no longer invent metadata-derived rows, metadata load failures preserve existing indexes, storage indexes use exact per-stream state plus ETag-protected overview/count/hot-stream writes, tenant projection fallbacks are filtered, and missing storage overview now reports `MissingWriter` instead of healthy zero facts.
+- 2026-05-11 validation after review patches: Client.Tests 363/363, Admin.Abstractions.Tests 405/405, Sample.Tests 74/74, Admin.Server.Tests 603/603 with 18 skipped, and Admin.UI.Tests 781/781.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-11 | 0.4 | Applied code review patches for metadata truthfulness, storage index concurrency/exact counts, tenant-safe projection fallback, and missing storage overview status. | GPT-5 Codex |
 | 2026-05-10 | 0.3 | Implemented EventStore-owned admin operational index populators for projections, type catalog, and storage; added tests, live Aspire evidence, and Issue #17 retest/deferred residual. | GPT-5 Codex |
 | 2026-05-09 | 0.2 | Applied party-mode review hardening for index state vocabulary, writer boundaries, retry/test expectations, and manual evidence requirements. | Codex automation |
 | 2026-05-09 | 0.1 | Created ready-for-dev story for Admin operational index population across projections, type catalog, storage, and initial consistency retest. | Codex automation |

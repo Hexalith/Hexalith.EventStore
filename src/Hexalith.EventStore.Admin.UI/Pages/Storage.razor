@@ -61,7 +61,7 @@
             <SkeletonCard />
         </FluentGridItem>
     }
-    else if (_overview is not null)
+    else if (_overview is not null && !IsStorageIndexUnavailable)
     {
         <FluentGridItem xs="6" sm="6" md="3">
             <StatCard Label="Total Events"
@@ -101,7 +101,13 @@
 </FluentGrid>
 
 @* Tenant breakdown table *@
-@if (!_isLoading && _overview is not null)
+@if (!_isLoading && IsStorageIndexUnavailable)
+{
+    <EmptyState Title="Storage index unavailable"
+                Description="Storage operational indexes have not been populated yet. Event and stream counts are unavailable." />
+}
+
+@if (!_isLoading && _overview is not null && !IsStorageIndexUnavailable)
 {
     @if (FilteredTenants.Count == 0)
     {
@@ -167,7 +173,7 @@
 }
 
 @* Hot streams grid *@
-@if (!_isLoading && _overview is not null)
+@if (!_isLoading && _overview is not null && !IsStorageIndexUnavailable)
 {
     @if (FilteredHotStreams.Count == 0)
     {
@@ -294,6 +300,9 @@
 
     private int AtRiskStreamCount =>
         FilteredHotStreams.Count(s => !s.HasSnapshot && s.EventCount > 1000);
+
+    private bool IsStorageIndexUnavailable =>
+        _overview?.IndexStatus is StorageIndexStatus.MissingWriter or StorageIndexStatus.Unavailable;
 
     protected override async Task OnInitializedAsync()
     {

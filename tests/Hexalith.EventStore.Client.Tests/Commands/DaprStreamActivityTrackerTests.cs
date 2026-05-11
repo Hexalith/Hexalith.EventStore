@@ -1,3 +1,5 @@
+#pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
+
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
@@ -176,10 +178,11 @@ public class DaprStreamActivityTrackerTests {
         DaprStreamActivityTracker tracker = CreateTracker();
         SetupGetStateAndEtag(ActivityIndexKey, null, "etag-1");
         SetupTrySave(ActivityIndexKey, true);
+        SetupStorageIndexEtags();
 
         await tracker.TrackAsync("tenant-a", "counter", "counter-1", 3, DateTimeOffset.UtcNow);
 
-        await _daprClient.Received(1).SaveStateAsync(
+        _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             "admin:storage-overview:all",
             Arg.Is<StorageOverview>(overview =>
@@ -187,11 +190,13 @@ public class DaprStreamActivityTrackerTests {
                 && overview.TotalStreamCount == 1
                 && overview.TotalSizeBytes == null
                 && overview.TenantBreakdown.Single().TenantId == "tenant-a"
-                && overview.TenantBreakdown.Single().EventCount == 3),
+                && overview.TenantBreakdown.Single().EventCount == 3
+                && overview.IndexStatus == StorageIndexStatus.Populated),
+            Arg.Any<string>(),
             stateOptions: Arg.Any<StateOptions?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>());
-        await _daprClient.Received(1).SaveStateAsync(
+        _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             "admin:storage-hot-streams:tenant-a",
             Arg.Is<List<StreamStorageInfo>>(streams =>
@@ -201,13 +206,15 @@ public class DaprStreamActivityTrackerTests {
                 && streams[0].AggregateId == "counter-1"
                 && streams[0].EventCount == 3
                 && streams[0].SizeBytes == null),
+            Arg.Any<string>(),
             stateOptions: Arg.Any<StateOptions?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>());
-        await _daprClient.Received(1).SaveStateAsync(
+        _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             "admin:storage-stream-count:tenant-a",
-            1,
+            1L,
+            Arg.Any<string>(),
             stateOptions: Arg.Any<StateOptions?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>());
@@ -280,4 +287,71 @@ public class DaprStreamActivityTrackerTests {
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>())
             .Returns(result);
+
+    private void SetupStorageIndexEtags() {
+        _ = _daprClient.GetStateAndETagAsync<StreamStorageInfo>(
+            "statestore",
+            Arg.Any<string>(),
+            consistencyMode: Arg.Any<ConsistencyMode?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(((StreamStorageInfo?, string))(null, "etag-stream"));
+        _ = _daprClient.TrySaveStateAsync(
+            "statestore",
+            Arg.Any<string>(),
+            Arg.Any<StreamStorageInfo>(),
+            Arg.Any<string>(),
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = _daprClient.GetStateAndETagAsync<StorageOverview>(
+            "statestore",
+            Arg.Any<string>(),
+            consistencyMode: Arg.Any<ConsistencyMode?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(((StorageOverview?, string))(null, "etag-overview"));
+        _ = _daprClient.TrySaveStateAsync(
+            "statestore",
+            Arg.Any<string>(),
+            Arg.Any<StorageOverview>(),
+            Arg.Any<string>(),
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = _daprClient.GetStateAndETagAsync<long?>(
+            "statestore",
+            Arg.Any<string>(),
+            consistencyMode: Arg.Any<ConsistencyMode?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(((long?, string))(null, "etag-count"));
+        _ = _daprClient.TrySaveStateAsync(
+            "statestore",
+            Arg.Any<string>(),
+            Arg.Any<long>(),
+            Arg.Any<string>(),
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+        _ = _daprClient.GetStateAndETagAsync<List<StreamStorageInfo>>(
+            "statestore",
+            Arg.Any<string>(),
+            consistencyMode: Arg.Any<ConsistencyMode?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(((List<StreamStorageInfo>?, string))(null, "etag-hot"));
+        _ = _daprClient.TrySaveStateAsync(
+            "statestore",
+            Arg.Any<string>(),
+            Arg.Any<List<StreamStorageInfo>>(),
+            Arg.Any<string>(),
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(true);
+    }
 }

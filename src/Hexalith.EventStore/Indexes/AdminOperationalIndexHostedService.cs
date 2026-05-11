@@ -28,9 +28,14 @@ public sealed partial class AdminOperationalIndexHostedService(
 
     /// <inheritdoc/>
     public async Task StartAsync(CancellationToken cancellationToken) {
-        IReadOnlyList<AdminOperationalIndexDomainMetadata> metadata = await LoadDomainMetadataAsync(cancellationToken).ConfigureAwait(false);
+        AdminOperationalIndexMetadataLoadResult metadataLoad = await LoadDomainMetadataAsync(cancellationToken).ConfigureAwait(false);
+        if (metadataLoad.HasFailures) {
+            Log.MetadataWriteSkipped(logger);
+            return;
+        }
+
         AdminOperationalIndexSnapshot snapshot = BuildSnapshot(
-            metadata,
+            metadataLoad.Metadata,
             domainServiceOptions.Value.Registrations.Values,
             projectionOptions.Value);
         await WriteProjectionIndexAsync(snapshot, cancellationToken).ConfigureAwait(false);
@@ -40,7 +45,7 @@ public sealed partial class AdminOperationalIndexHostedService(
     /// <inheritdoc/>
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    private async Task<IReadOnlyList<AdminOperationalIndexDomainMetadata>> LoadDomainMetadataAsync(CancellationToken ct) {
+    private async Task<AdminOperationalIndexMetadataLoadResult> LoadDomainMetadataAsync(CancellationToken ct) {
         Dictionary<string, HashSet<string>> domainsByAppId = new(StringComparer.OrdinalIgnoreCase);
         foreach (DomainServiceRegistration registration in domainServiceOptions.Value.Registrations.Values) {
             if (string.IsNullOrWhiteSpace(registration.AppId) || string.IsNullOrWhiteSpace(registration.Domain)) {
@@ -56,6 +61,7 @@ public sealed partial class AdminOperationalIndexHostedService(
         }
 
         var results = new List<AdminOperationalIndexDomainMetadata>();
+        bool hasFailures = false;
         foreach ((string appId, HashSet<string> domains) in domainsByAppId) {
             try {
                 var request = new AdminOperationalIndexMetadataRequest([.. domains.Order(StringComparer.OrdinalIgnoreCase)]);
@@ -64,25 +70,27 @@ public sealed partial class AdminOperationalIndexHostedService(
                 using HttpResponseMessage response = await httpClient.SendAsync(httpRequest, ct).ConfigureAwait(false);
                 _ = response.EnsureSuccessStatusCode();
 
-                AdminOperationalIndexMetadataResponse? metadata = await response.Content
+                AdminOperationalIndexMetadataResponse? responseMetadata = await response.Content
                     .ReadFromJsonAsync<AdminOperationalIndexMetadataResponse>(ct)
                     .ConfigureAwait(false);
-                if (metadata is not null) {
-                    results.AddRange(metadata.Domains);
+                if (responseMetadata is not null) {
+                    results.AddRange(responseMetadata.Domains);
                 }
             }
             catch (OperationCanceledException) {
                 throw;
             }
             catch (Exception ex) {
+                hasFailures = true;
                 Log.MetadataUnavailable(logger, appId, ex.GetType().Name);
             }
         }
 
-        return [.. results
+        IReadOnlyList<AdminOperationalIndexDomainMetadata> metadata = [.. results
             .GroupBy(d => d.Domain, StringComparer.OrdinalIgnoreCase)
             .Select(g => MergeDomainMetadata(g.Key, g))
             .OrderBy(d => d.Domain, StringComparer.OrdinalIgnoreCase)];
+        return new AdminOperationalIndexMetadataLoadResult(metadata, hasFailures);
     }
 
     public static AdminOperationalIndexSnapshot BuildSnapshot(
@@ -109,9 +117,8 @@ public sealed partial class AdminOperationalIndexHostedService(
             }
 
             IReadOnlyList<string> projectionNames = metadataByDomain.TryGetValue(registration.Domain, out AdminOperationalIndexDomainMetadata? domainMetadata)
-                && domainMetadata.ProjectionNames.Count > 0
-                    ? domainMetadata.ProjectionNames
-                    : [registration.Domain];
+                ? domainMetadata.ProjectionNames
+                : [];
 
             foreach (string projectionName in projectionNames.Where(static p => !IsProjectionActorStateKey(p))) {
                 ProjectionStatus projection = new(
@@ -245,8 +252,18 @@ public sealed partial class AdminOperationalIndexHostedService(
             Level = LogLevel.Warning,
             Message = "Operational index metadata unavailable from domain service AppId={AppId}; type catalog entries for that app may be incomplete. ExceptionType={ExceptionType}")]
         public static partial void MetadataUnavailable(ILogger logger, string appId, string exceptionType);
+
+        [LoggerMessage(
+            EventId = 6101,
+            Level = LogLevel.Warning,
+            Message = "Skipping admin operational index writes because one or more domain metadata sources failed. Existing indexes are preserved.")]
+        public static partial void MetadataWriteSkipped(ILogger logger);
     }
 }
+
+internal sealed record AdminOperationalIndexMetadataLoadResult(
+    IReadOnlyList<AdminOperationalIndexDomainMetadata> Metadata,
+    bool HasFailures);
 
 /// <summary>Metadata request sent from EventStore to domain services for admin index population.</summary>
 /// <param name="Domains">Configured domains for the target domain service.</param>

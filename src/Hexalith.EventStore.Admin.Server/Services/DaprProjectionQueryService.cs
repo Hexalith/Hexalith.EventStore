@@ -65,6 +65,13 @@ public sealed class DaprProjectionQueryService : IProjectionQueryService {
             result = await _daprClient
                 .GetStateAsync<List<ProjectionStatus>>(_options.StateStoreName, "admin:projections:all", cancellationToken: ct)
                 .ConfigureAwait(false);
+            result = result?
+                .Where(p => p.TenantId.Equals(tenantId, StringComparison.OrdinalIgnoreCase)
+                    || p.TenantId.Equals("all", StringComparison.OrdinalIgnoreCase))
+                .Select(p => p.TenantId.Equals("all", StringComparison.OrdinalIgnoreCase)
+                    ? CopyProjectionForTenant(p, tenantId)
+                    : p)
+                .ToList();
         }
 
         if (result is null) {
@@ -114,4 +121,15 @@ public sealed class DaprProjectionQueryService : IProjectionQueryService {
             [new ProjectionError(0, DateTimeOffset.UnixEpoch, $"Projection detail {status}.", null)],
             $"{{\"status\":\"{status}\"}}",
             []);
+
+    private static ProjectionStatus CopyProjectionForTenant(ProjectionStatus projection, string tenantId)
+        => new(
+            projection.Name,
+            tenantId,
+            projection.Status,
+            projection.Lag,
+            projection.Throughput,
+            projection.ErrorCount,
+            projection.LastProcessedPosition,
+            projection.LastProcessedUtc);
 }

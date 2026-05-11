@@ -53,7 +53,7 @@ public sealed class DaprStorageQueryService : IStorageQueryService {
 
         if (result is null) {
             _logger.LogWarning("Admin index '{IndexKey}' not found. Index population requires admin projection setup.", indexKey);
-            return new StorageOverview(0, null, [], 0);
+            return new StorageOverview(0, null, [], null, StorageIndexStatus.MissingWriter);
         }
 
         if (result.TotalStreamCount is null) {
