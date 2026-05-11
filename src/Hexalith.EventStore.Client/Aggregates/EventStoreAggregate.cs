@@ -111,8 +111,10 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
                 continue;
             }
 
-            bool isAsync = method.ReturnType == typeof(Task<DomainResult>);
-            bool isSync = method.ReturnType == typeof(DomainResult);
+            bool isAsync = method.ReturnType.IsGenericType
+                && method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)
+                && typeof(DomainResult).IsAssignableFrom(method.ReturnType.GenericTypeArguments[0]);
+            bool isSync = typeof(DomainResult).IsAssignableFrom(method.ReturnType);
             if (!isAsync && !isSync) {
                 continue;
             }
@@ -156,10 +158,18 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
         object? result = handleInfo.Method.Invoke(handleInfo.IsStatic ? null : this, args);
         return result switch {
             Task<DomainResult> asyncResult => await asyncResult.ConfigureAwait(false),
+            Task asyncResult when handleInfo.IsAsync => await GetAsyncDomainResultAsync(asyncResult).ConfigureAwait(false),
             DomainResult syncResult => syncResult,
             _ => throw new InvalidOperationException(
                 $"Handle method for '{command.CommandType}' returned unexpected type '{result?.GetType().Name ?? "null"}'."),
         };
+    }
+
+    private static async Task<DomainResult> GetAsyncDomainResultAsync(Task asyncResult) {
+        await asyncResult.ConfigureAwait(false);
+        return asyncResult.GetType().GetProperty(nameof(Task<object>.Result))?.GetValue(asyncResult) as DomainResult
+            ?? throw new InvalidOperationException(
+                $"Handle method returned unexpected async result type '{asyncResult.GetType().Name}'.");
     }
 
     /// <summary>

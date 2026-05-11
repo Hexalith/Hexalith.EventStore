@@ -85,6 +85,12 @@ public class EventStoreAggregateTests : IDisposable {
 
     private sealed record UnknownCommand;
 
+    private sealed record DerivedResultCommand(string Name);
+
+    private sealed record AsyncDerivedResultCommand(string Name);
+
+    private sealed record DerivedDomainResult(IReadOnlyList<IEventPayload> Events, string Marker) : DomainResult(Events);
+
     // --- Test Aggregate with sync Handle methods ---
     private sealed class TestAggregate : EventStoreAggregate<TestState> {
         public static DomainResult Handle(AddItem command, TestState? state)
@@ -125,6 +131,15 @@ public class EventStoreAggregateTests : IDisposable {
     private sealed class AsyncTestAggregate : EventStoreAggregate<TestState> {
         public static Task<DomainResult> Handle(AsyncAddItem command, TestState? state) =>
             Task.FromResult(DomainResult.Success(new IEventPayload[] { new ItemAdded { Name = command.Name } }));
+    }
+
+    // --- Test Aggregate with derived DomainResult return methods ---
+    private sealed class DerivedResultAggregate : EventStoreAggregate<TestState> {
+        public static DerivedDomainResult Handle(DerivedResultCommand command, TestState? state) =>
+            new(new IEventPayload[] { new ItemAdded { Name = command.Name } }, "sync-derived");
+
+        public static Task<DerivedDomainResult> Handle(AsyncDerivedResultCommand command, TestState? state) =>
+            Task.FromResult(new DerivedDomainResult(new IEventPayload[] { new ItemAdded { Name = command.Name } }, "async-derived"));
     }
 
     // --- Test Aggregate with mixed sync/async Handle methods ---
@@ -555,6 +570,32 @@ public class EventStoreAggregateTests : IDisposable {
         Assert.True(result.IsSuccess);
         ItemAdded evt = Assert.IsType<ItemAdded>(result.Events[0]);
         Assert.Equal("async-test", evt.Name);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_DerivedDomainResultHandle_ReturnsDerivedResult() {
+        var aggregate = new DerivedResultAggregate();
+        CommandEnvelope command = CreateCommand(new DerivedResultCommand("derived-test"));
+
+        DomainResult result = await aggregate.ProcessAsync(command, null);
+
+        var derived = Assert.IsType<DerivedDomainResult>(result);
+        Assert.Equal("sync-derived", derived.Marker);
+        ItemAdded evt = Assert.IsType<ItemAdded>(derived.Events[0]);
+        Assert.Equal("derived-test", evt.Name);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_AsyncDerivedDomainResultHandle_AwaitsAndReturnsDerivedResult() {
+        var aggregate = new DerivedResultAggregate();
+        CommandEnvelope command = CreateCommand(new AsyncDerivedResultCommand("async-derived-test"));
+
+        DomainResult result = await aggregate.ProcessAsync(command, null);
+
+        var derived = Assert.IsType<DerivedDomainResult>(result);
+        Assert.Equal("async-derived", derived.Marker);
+        ItemAdded evt = Assert.IsType<ItemAdded>(derived.Events[0]);
+        Assert.Equal("async-derived-test", evt.Name);
     }
 
     [Fact]
