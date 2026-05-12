@@ -222,6 +222,62 @@ Independent re-review run via `bmad-code-review` after the original GPT-5.3-Code
 - `Guid.TryParse` accepts B/P/X formats causing archive lookup mismatch — subsumed by the patch that removes `Guid.TryParse` entirely.
 - Docs error table 413/415 wording on GET status — not actually inconsistent (GET correctly omits, "All POST endpoints" qualifier is precise).
 
+### Review Findings (2026-05-12 — second adversarial re-review)
+
+Second independent re-review run via `bmad-code-review` after the first 2026-05-12 review (commit c6f8edff). Three parallel reviewer layers (Blind Hunter / Edge Case Hunter / Acceptance Auditor) on the full Story 12-7 surface (docs + controllers + filters + models + validators + sanitizer + correlation middleware). Findings deduplicated and triaged. **The second pass surfaced one HIGH-severity contract bug missed by the first pass (`messageId` required field omitted from docs and every curl example) plus the R2-A7 violation in `CorrelationIdMiddleware`.**
+
+#### Decision-Needed (resolved 2026-05-12)
+
+- [x] [Review][Decision] **Correlation-ID identity divergence between middleware and command body.** Resolution: **option (a) — fix middleware to accept identifier regex** (R2-A7 alignment). Becomes a patch: replace `Guid.TryParse` in `CorrelationIdMiddleware.InvokeAsync` with a length+regex check matching the `SubmitCommandRequestValidator` identifier pattern (`^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$`, ≤128 chars). Controller-side `SubmitCommand.CorrelationId` assembly is unchanged.
+- [x] [Review][Decision] **`timeoutDuration` wire format: docs say `.NET TimeSpan ("00:00:30")`, code emits ISO 8601 (`"PT30S"`).** Resolution: **option (a) — fix docs to ISO 8601** (no breaking change for any existing PT-format consumer). Update `docs/reference/command-api.md:277` to "ISO 8601 duration (e.g., `PT30S`) — see [`XmlConvert.ToString(TimeSpan)`](https://learn.microsoft.com/dotnet/api/system.xml.xmlconvert.tostring) for the exact format".
+
+#### Patches
+
+- [ ] [Review][Patch] **Required `messageId` field omitted from docs request body table and every curl example.** `SubmitCommandRequestValidator` requires `MessageId` (NotNull, NotEmpty, ≤128 chars, identifier regex). Docs request body table (`docs/reference/command-api.md:82-89`) lists 6 fields excluding `messageId`. The three endpoint curl examples (`IncrementCounter`, `DecrementCounter`, `ResetCounter`) plus the Complete Flow Example Step 2 omit it. Every example as written will return `400 MessageId is required`. **HIGH — copy-pasteable curl is dead on arrival.**
+- [ ] [Review][Patch] **Optional `correlationId` request body field undocumented.** Model defines `CorrelationId` (string?, ≤128 chars, identifier regex, defaults to `MessageId`). Docs body table never mentions it; only the `X-Correlation-ID` header is described. Add row: `correlationId | string | No | 1-128 chars, identifier regex. Defaults to MessageId when omitted.`
+- [ ] [Review][Patch] **Submit endpoint error table omits 404, 422, 503 — but controller declares all three via `[ProducesResponseType]`.** `DomainCommandRejectedExceptionHandler` returns 422 (`src/Hexalith.EventStore/ErrorHandling/DomainCommandRejectedExceptionHandler.cs:63`). Add the three rows to the Submit error response table (`docs/reference/command-api.md:158-167`).
+- [ ] [Review][Patch] **Doc claims sanitizer runs first; in fact `ValidateModelFilter` runs first (action filter, before action body), then the sanitizer runs inside the action body.** Affects both the table cell at `docs/reference/command-api.md:89` ("the sanitizer applies first") and the Extensions section at `docs/reference/command-api.md:192` ("The sanitizer runs before the validator, so the sanitizer's defaults are the effective contract"). The validator's lower limits (50 entries / 100-char keys / 1000-char values / 64 KB total) are the **effective** first gate; the sanitizer further restricts to (32 / 128 / 2048 / 4096 bytes).
+- [ ] [Review][Patch] **Path-parameter `correlationId` is NOT regex-validated, despite docs claiming it is.** Docs lines 256 and 344 promise the validator regex `^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$` is applied. `CommandStatusController.GetStatus:74` and `ReplayController.Replay:77` only check `string.IsNullOrWhiteSpace`. Arbitrary path values (e.g., URL-encoded `../etc/passwd`, unicode, control chars) reach the DAPR state-store lookup. Add explicit regex+length validation in both controllers (length ≤128, identifier regex) returning 400 on mismatch.
+- [ ] [Review][Patch] **`ReplayCommandResponse.PreviousStatus` and `OriginalCorrelationId` declared `string?` but docs say "always populated on a 202 response".** `Models/ReplayCommandResponse.cs:10`. Controller always passes non-null values at `ReplayController.cs:216`. Make both non-nullable on the record so generated typed clients (NSwag/Kiota) reflect the contract.
+- [ ] [Review][Patch] **`SubmitCommandRequestValidator.Payload` only blocks `JsonValueKind.Undefined` — `null`, strings, numbers, booleans, arrays all pass.** Docs say `payload | object | Yes | JSON object`. Tighten to `.Must(p => p.ValueKind == JsonValueKind.Object).WithMessage("Payload must be a JSON object")`.
+- [ ] [Review][Patch] **`ReplayController.cs:177` generates new correlation ID via `Guid.NewGuid().ToString()` — violates R2-A7.** Replace with `Ulid.NewUlid().ToString()` (or the project's standard ULID helper). System identifiers are ULIDs per CLAUDE.md; the replay path emits GUIDs into the same correlation chain.
+- [ ] [Review][Patch] **`CommandsController.cs:58` fallback correlationId also uses `Guid.NewGuid().ToString()`.** Same R2-A7 violation when `HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]` is absent. Replace with `Ulid.NewUlid().ToString()`.
+- [ ] [Review][Patch] **`ValidateModelFilter.cs:39` hardcodes the literal `"CorrelationId"` instead of `CorrelationIdMiddleware.HttpContextKey`.** Both happen to equal `"CorrelationId"` today; the literal silently drifts to `"unknown"` if the constant is ever renamed. Replace with the constant.
+- [ ] [Review][Patch] **Spec file references `src/Hexalith.EventStore.CommandApi/` paths but the code lives in `src/Hexalith.EventStore/`.** Story 12-7 spec's "Content Source" and "References" sections (lines 239-261, 497-507) all point at the renamed-away project. Update to the actual current paths so future re-reviews can find the implementation by following the spec.
+- [ ] [Review][Patch] **(Resolution of Decision-Needed item 1)** Apply the chosen Correlation-ID identity fix.
+- [ ] [Review][Patch] **(Resolution of Decision-Needed item 2)** Apply the chosen `timeoutDuration` fix.
+
+#### Deferred
+
+- [x] [Review][Defer] **`CommandsController.cs:61-63` stores user-supplied `request.Tenant` into `HttpContext.Items["RequestTenantId"]` before the MediatR `AuthorizationBehavior` runs.** Used by rate-limit `OnRejected` and error-handler ProblemDetails for tenant attribution. A client submitting `"tenant": "victim"` taints log records and the `tenantId` field of subsequent error responses with a tenant the user is not authorized for. Pre-existing pattern; needs a coordinated decision on tenant-attribution source-of-truth across controllers + error handlers.
+- [x] [Review][Defer] **`ValidateModelFilter` resolves the validator by argument's runtime type, not by walking the type hierarchy.** If a controller binds `[FromBody] Hexalith.EventStore.Contracts.Commands.SubmitCommandRequest` (base type) instead of the `Models` wrapper, the validator is silently not invoked. Pre-existing fragility; not specific to 12-7.
+- [x] [Review][Defer] **`CommandsController.BuildTrustedExtensions` uses `OrdinalIgnoreCase` dictionary but iterates the case-sensitive source dictionary, silently dropping case-variant duplicates.** Pre-existing behavior; broader contract on extension key normalization is needed before patching.
+- [x] [Review][Defer] **`ExtensionMetadataSanitizer` SQL / XSS / path-traversal regexes are bypassable (no `--` mid-string, no URL-encoded path traversal, no `<svg>` / `<img>` XSS, no Unicode-overlong escapes).** Defense-in-depth theatre; primary defense is at the persistence and rendering layers. Tightening these regexes touches every metadata path and isn't a 12-7 concern.
+- [x] [Review][Defer] **Replay performs N sequential state-store reads (archive + status) per tenant claim; users with many tenant claims pay a multiplier per request — both as legitimate cost and as a DOS amplifier for non-existent correlationIds.** Same pattern in `CommandStatusController.GetStatus`. Architectural: needs per-tenant indexing or tenant hint in the request to remove the fanout.
+- [x] [Review][Defer] **`SubmitCommandRequestValidator` identifier regex permits any alphanumeric+hyphen up to 128 chars — does not enforce strict ULID format on `MessageId` / `CorrelationId` body fields.** Tightening the boundary toward strict ULID (per R2-A7 spirit) is broader than 12-7 (affects every command sent via the existing GUID-based test fixtures).
+- [x] [Review][Defer] **`SubmitCommandRequestValidator.ContainsDangerousCharacters` does not block null bytes (`\0`), newlines, tabs, or other control characters in `commandType` and extension keys/values.** Pre-existing; tightening risks rejecting legitimate inputs.
+- [x] [Review][Defer] **Replay `Location` header builds URI from `Request.Scheme://Request.Host` with no `UseForwardedHeaders` wired** — same finding as the first 2026-05-12 review; already deferred. Re-surfaced by Edge Case Hunter for completeness.
+- [x] [Review][Defer] **`[Consumes("application/json")]` on body-less Replay POST may return 415 for null-body callers** — same finding as the first 2026-05-12 review; already deferred.
+
+#### Dismissed
+
+- Blind Hunter "errors shape mismatch" claim that `Dictionary<string,string>` is unverified — `ValidationProblemDetailsFactory.Create` (`src/Hexalith.EventStore/ErrorHandling/ValidationProblemDetailsFactory.cs:41-46`) actually does group by camelCase property and join with `"; "`. Docs are correct.
+- Activity-status `_ = (activity?.SetStatus(…))` parenthesized noise — cosmetic style only; first review already let this stand.
+- `Models/CommandStatusResponse.FromRecord` `ArgumentException.ThrowIfNullOrWhiteSpace(correlationId)` defensive throw is "dead code" — fine; defense-in-depth pattern.
+- Auditor "Prerequisites callout adds a second blockquote line" and "Next Steps footer NuGet vs Query API ordering" — post-12-7 evolution (Query API page now exists). Accepted.
+- Auditor "`POST /api/v1/commands/validate` endpoint not in 12-7 scope" — out of scope, not introduced by 12-7.
+- Auditor "Sample 400 ProblemDetails `tenantId: null` example" — matches code behavior; `System.Text.Json` defaults to writing null values for Extensions entries.
+- `CommandStatusController` IsNullOrWhiteSpace 400 branch unreachable for `""` due to routing — defensive 400 still reachable for whitespace path segments.
+- `Unauthorized()` returns bare 401 with no `X-Correlation-ID` in body — middleware sets the response header regardless of action result.
+- `SubmitCommand` named-positional constructor invocation style — readability call, not a bug.
+- Sanitizer error messages leak per-limit values — limits are not secrets.
+- `RequestSizeLimit` Kestrel-startup pre-`ApplicationStarted` window — non-exploitable edge.
+- 415 vs auth precedence in `[Consumes]` interaction — documented ASP.NET behavior, acceptable.
+- `CorrelationId` validator skips whitespace then controller coerces to `MessageId` — same regex bound, same length; the coercion is documented behavior.
+- `CommandType` 256-char cap and downstream log truncation — sink concern, not API contract.
+- `CommandStatusController.ToList()` perf nit — irrelevant at any realistic tenant-claim count.
+- `ReplayController` `ArgumentNullException.ThrowIfNull(correlationId)` is dead today — guard is harmless.
+
 ## Dev Notes
 
 ### Implementation Approach — New Reference Page (MUST follow)
