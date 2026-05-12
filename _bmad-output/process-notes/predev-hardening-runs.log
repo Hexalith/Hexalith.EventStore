@@ -163,3 +163,4 @@
 2026-05-12T21:44:06+02:00	create-story	22-3-gateway-owned-tenant-and-rbac-enforcement	ok	created ready-for-dev story for gateway-owned Hexalith.Tenants/RBAC enforcement after clean preflight 2026-05-12T19:36:49Z
 2026-05-12T22:23:43+02:00	create-story	22-4-query-behavior-policy-and-error-taxonomy	ok	created ready-for-dev story for query behavior policy/error taxonomy after clean preflight 2026-05-12T20:02:08Z
 2026-05-12T23:04:13+02:00	create-story	22-5-event-publishing-guarantees-and-backend-deployment-matrix	ok	created ready-for-dev story for event publishing guarantees and backend deployment matrix
+2026-05-13T00:09:15+02:00	party-mode-review	22-1-gateway-command-query-contract-closure-and-package-docs	ok	party-mode review applied gateway contract decision hardening
