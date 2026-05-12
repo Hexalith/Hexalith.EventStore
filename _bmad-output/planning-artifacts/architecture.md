@@ -30,28 +30,35 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 
 ### Requirements Overview
 
-#### Functional Requirements: 47 FRs across 8 categories
+#### Functional Requirements: 104 FRs across current PRD categories
 
-| Category                          | FRs       | Architectural Significance                                                         |
-| --------------------------------- | --------- | ---------------------------------------------------------------------------------- |
-| Command Processing                | FR1-FR8   | REST API gateway, command routing, dead-letter handling, idempotency               |
-| Event Management                  | FR9-FR16  | Append-only storage, sequence ordering, envelope schema, atomic writes, snapshots  |
-| Event Distribution                | FR17-FR20 | Pub/sub with CloudEvents 1.0, at-least-once delivery, per-tenant-per-domain topics |
-| Domain Service Integration        | FR21-FR25 | Pure function contract, DAPR config-based registration, multi-domain/multi-tenant  |
-| Identity & Multi-Tenancy          | FR26-FR29 | Canonical `tenant:domain:aggregate-id` tuple, triple-layer isolation               |
-| Security & Authorization          | FR30-FR34 | Six-layer defense in depth (JWT -> Claims -> Endpoint -> MediatR -> Actor -> DAPR) |
-| Observability & Operations        | FR35-FR39 | OpenTelemetry traces, structured logs, health/readiness endpoints                  |
-| Developer Experience & Deployment | FR40-FR47 | Aspire orchestration, sample domain service, NuGet packages, three-tier testing    |
+| Category | FRs | Architectural Significance |
+| --- | --- | --- |
+| Command Processing | FR1-FR8, FR49 | REST API gateway, command routing, dead-letter handling, optimistic concurrency, idempotency |
+| Event Management | FR9-FR16, FR65-FR66 | Append-only storage, sequence ordering, envelope schema, atomic writes, snapshots, metadata versioning, tombstoning |
+| Event Distribution | FR17-FR20, FR67 | Pub/sub with CloudEvents 1.0, at-least-once delivery, per-tenant-per-domain topics, backlog drain, aggregate backpressure |
+| Domain Service Integration | FR21-FR25, FR48 | Pure function contract, aggregate base class, convention-first DAPR routing, multi-domain/multi-tenant validation |
+| Identity, Security & Multi-Tenancy | FR26-FR34 | Canonical `tenant:domain:aggregate-id` tuple, JWT, claims authorization, actor tenant validation, DAPR access control |
+| Observability & Operations | FR35-FR39 | OpenTelemetry traces, structured logs, health/readiness endpoints |
+| Developer Experience & Deployment | FR40-FR47 | Aspire orchestration, sample domain service, NuGet packages, deployment manifests, three-tier testing |
+| Query Pipeline & ETag Caching | FR50-FR54, FR57-FR58, FR61-FR64 | Query actors, ETag actors, self-routing ETags, projection change notification, compile-time query response contract |
+| SignalR & Blazor Refresh Patterns | FR55-FR60 | SignalR change broadcast, Redis backplane, reconnection group rejoin, reference Blazor refresh patterns |
+| Administration Tooling | FR68-FR82 | Admin API, Blazor Web UI, CLI, MCP, storage/tenant/dead-letter operations, observability deep links |
+| Public Gateway Contracts | FR83-FR95 | API-facing contracts, high-level clients, test fakes, projection adapter, gateway-owned tenant/RBAC, query policy and error taxonomy |
+| Publishing, Replay & Protection Contracts | FR96-FR104 | Published event durability/ordering, pub/sub backend matrix, stream read/replay APIs, rebuild checkpoints, payload/snapshot protection and redaction |
 
-#### Non-Functional Requirements: 32 NFRs across 5 categories
+#### Non-Functional Requirements: 46 NFRs across current PRD categories
 
-| Category    | NFRs        | Key Targets                                                                                                    |
-| ----------- | ----------- | -------------------------------------------------------------------------------------------------------------- |
-| Performance | NFR1-NFR8   | Command submission <50ms p99, end-to-end lifecycle <200ms p99, event append <10ms p99, 100 cmd/sec/instance    |
-| Security    | NFR9-NFR15  | TLS 1.2+, JWT validation every request, no payload in logs, triple-layer tenant isolation, DAPR access control |
-| Scalability | NFR16-NFR20 | Horizontal scaling via actor placement, 10K+ active aggregates, 10+ tenants, dynamic config                    |
-| Reliability | NFR21-NFR26 | 99.9%+ availability, zero data loss, deterministic replay, checkpointed state machine recovery                 |
-| Integration | NFR27-NFR32 | Backend-agnostic (DAPR state store/pub/sub), OTLP-compatible telemetry, Aspire publisher deployment            |
+| Category | NFRs | Key Targets |
+| --- | --- | --- |
+| Performance | NFR1-NFR8 | Command submission <50ms p99, lifecycle <200ms p99, event append <10ms p99, 100 cmd/sec/instance |
+| Security | NFR9-NFR15 | TLS 1.2+, JWT validation every request, no payload in logs, triple-layer tenant isolation, DAPR access control |
+| Scalability | NFR16-NFR20 | Horizontal scaling via actor placement, 10K+ active aggregates, 10+ tenants, dynamic config |
+| Reliability | NFR21-NFR26 | 99.9%+ availability, zero data loss, deterministic replay, checkpointed state machine recovery |
+| Integration & Deployment | NFR27-NFR32 | Backend-agnostic DAPR state store/pub/sub, OTLP-compatible telemetry, Aspire publisher deployment |
+| API Protection | NFR33-NFR34 | Per-tenant and per-consumer rate limiting with 429 and Retry-After |
+| Query & Real-Time Performance | NFR35-NFR39 | Warm ETag pre-check <5ms p99, query cache hit <10ms p99, query miss <200ms p99, SignalR delivery <100ms p99 |
+| Administration Tooling | NFR40-NFR46 | Admin API/UI/CLI/MCP latency targets, DAPR-only admin data access, 10 concurrent admin users, role-based access |
 
 ### Fundamental Tension: Infrastructure Portability vs. Feature Parity
 
@@ -1158,28 +1165,38 @@ All 10 architectural decisions (D1-D10) verified for mutual compatibility:
 
 ### Requirements Coverage
 
-#### Functional Requirements: 47/47 covered
+#### Functional Requirements: 104/104 covered or intentionally delegated
 
-| Category                   | FRs       | Coverage                                                                                                 |
-| -------------------------- | --------- | -------------------------------------------------------------------------------------------------------- |
-| Command Processing         | FR1-FR8   | EventStore controllers, MediatR pipeline, actor routing, idempotency check, dead-letter topic            |
-| Event Management           | FR9-FR16  | EventPersister (D1 write-once keys), EventStreamReader, SnapshotManager (100-event default), actor ACID  |
-| Event Distribution         | FR17-FR20 | EventPublisher (D6 topic naming), CloudEvents 1.0, at-least-once delivery, persist-then-publish          |
-| Domain Service Integration | FR21-FR25 | DaprDomainServiceInvoker (D7), DomainServiceResolver (convention-first, config store opt-in), pure function contract (D3) |
-| Identity & Multi-Tenancy   | FR26-FR29 | AggregateIdentity (canonical tuple), triple-layer isolation, tenant-scoped state store keys              |
-| Security & Authorization   | FR30-FR34 | Six-layer auth (JWT → Claims → Endpoint → MediatR → Actor → DAPR), TenantValidator (SEC-2)               |
+| Category | FRs | Coverage |
+| --- | --- | --- |
+| Command Processing | FR1-FR8, FR49 | EventStore controllers, MediatR pipeline, actor routing, idempotency check, dead-letter topic |
+| Event Management | FR9-FR16, FR65-FR66 | EventPersister (D1 write-once keys), EventStreamReader, SnapshotManager (100-event default), actor ACID, metadata version checks, tombstoning |
+| Event Distribution | FR17-FR20, FR67 | EventPublisher (D6 topic naming), CloudEvents 1.0, at-least-once delivery, persist-then-publish, aggregate queue backpressure |
+| Domain Service Integration | FR21-FR25, FR48 | DaprDomainServiceInvoker (D7), DomainServiceResolver (convention-first, config store opt-in), pure function contract (D3), EventStoreAggregate base |
+| Identity & Multi-Tenancy | FR26-FR29 | AggregateIdentity (canonical tuple), triple-layer isolation, tenant-scoped state store keys |
+| Security & Authorization | FR30-FR34 | Six-layer auth (JWT -> Claims -> Endpoint -> MediatR -> Actor -> DAPR), TenantValidator (SEC-2), access control policies |
 | Observability & Operations | FR35-FR39 | OpenTelemetry activities, structured logging pattern, health checks (sidecar + config store + readiness) |
-| Developer Experience       | FR40-FR47 | AppHost orchestration, sample domain service (de-facto template), NuGet packages, three-tier testing     |
+| Developer Experience | FR40-FR47 | AppHost orchestration, sample domain service, NuGet packages, three-tier testing, deployment manifests |
+| Query Pipeline & ETag Caching | FR50-FR54, FR57-FR58, FR61-FR64 | Query actors, ETag actors, projection change notifications, self-routing ETags, query response contract enforcement |
+| SignalR & Blazor Refresh Patterns | FR55-FR60 | SignalR hub, Redis backplane, automatic group rejoin, sample refresh patterns |
+| Administration Tooling | FR68-FR82 | ADR-P4 single Admin.Server/API architecture, CLI/MCP thin clients, ADR-P5 observability deep links, Hexalith.Tenants delegation for tenant lifecycle |
+| Public Gateway Contracts | FR83-FR95 | Contracts/Client/Testing package boundaries, projection adapter, gateway-owned tenant/RBAC adapters, query policy and ProblemDetails taxonomy |
+| Publishing, Replay & Protection Contracts | FR96-FR104 | Pub/sub guarantee matrix, stream read/replay APIs, rebuild checkpoints, payload/snapshot protection hooks, redaction obligations |
 
-#### Non-Functional Requirements: 32/32 covered
+Admin UX validation note: UX-DR41-UX-DR59 are supported by ADR-P4 for the three-interface admin architecture and ADR-P5 for observability deep links. Interaction-level details such as command palette, breadcrumbs, virtualized rendering, keyboard shortcuts, CLI profiles/REPL/completions, and MCP investigation session state remain story-level acceptance criteria in Epics 15, 17, 18, and 20.
 
-| Category    | NFRs        | Key Coverage                                                                                                           |
-| ----------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Performance | NFR1-NFR8   | Thin actor orchestrator, snapshot-based rehydration (≤102 reads), 5s sidecar timeout                                   |
-| Security    | NFR9-NFR15  | TLS via DAPR mTLS, JWT every request, no payload in logs (rule #5), triple-layer isolation, access control (D4)        |
-| Scalability | NFR16-NFR20 | Actor placement (consistent hashing), per-tenant rate limiting, dynamic config via DAPR config store                   |
+#### Non-Functional Requirements: 46/46 covered or intentionally delegated
+
+| Category | NFRs | Key Coverage |
+| --- | --- | --- |
+| Performance | NFR1-NFR8 | Thin actor orchestrator, snapshot-based rehydration (<=102 reads), sidecar timeout policy |
+| Security | NFR9-NFR15 | TLS via DAPR mTLS, JWT every request, no payload in logs (rule #5), triple-layer isolation, access control (D4) |
+| Scalability | NFR16-NFR20 | Actor placement (consistent hashing), per-tenant rate limiting, dynamic config via DAPR config store |
 | Reliability | NFR21-NFR26 | Checkpointed state machine (8 states, 4 terminal), write-once event keys (rule #11), advisory status writes (rule #12) |
-| Integration | NFR27-NFR32 | Backend-agnostic via DAPR abstractions (ETag hard requirement), OTLP telemetry, Aspire publishers, deploy/ configs     |
+| Integration & Deployment | NFR27-NFR32 | Backend-agnostic via DAPR abstractions, OTLP telemetry, Aspire publishers, deploy/ configs |
+| API Protection | NFR33-NFR34 | Rate limiting behavior mapped to existing RFC 7807 and Retry-After API patterns |
+| Query & Real-Time Performance | NFR35-NFR39 | ETag actor hot path, query actor cache, projection change notifications, SignalR backplane |
+| Administration Tooling | NFR40-NFR46 | Admin API/UI/CLI/MCP latency targets, DAPR-only admin access, concurrent admin usage, role-based operations |
 
 ### Implementation Readiness Checklist
 
