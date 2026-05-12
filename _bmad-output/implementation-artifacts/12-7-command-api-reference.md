@@ -185,6 +185,43 @@ So that I can build clients or test integrations.
     - [x] 10.8 Verify all relative links resolve (some may be dead until their respective stories ship)
     - [x] 10.9 Self-containment test: page should be understandable with only the quickstart as prerequisite
 
+### Review Findings (2026-05-12 — adversarial re-review)
+
+Independent re-review run via `bmad-code-review` after the original GPT-5.3-Codex senior review. Three parallel reviewer layers (Blind Hunter / Edge Case Hunter / Acceptance Auditor). Findings deduplicated and triaged.
+
+#### Decision-Needed (resolved 2026-05-12)
+
+- [x] [Review][Decision] **Replay drops original correlation ID from response, Location, and logs** — Resolution: **add `originalCorrelationId` to response** (option a). At HEAD `ReplayCommandResponse` already carries the field; patches add it to the structured log line and document it in the response field table.
+- [x] [Review][Decision] **Extension limits — docs vs sanitizer disagree** — Resolution: **docs reflect sanitizer defaults** (32 / 128 / 2048 / 4096 bytes), with a note that the validator allows wider limits but the sanitizer runs first.
+
+#### Patches (resolved 2026-05-12)
+
+- [x] [Review][Patch] **Docs claim tenant/domain `1-128 chars`; validator enforces 64** — fixed `docs/reference/command-api.md` request body table → 1-64.
+- [x] [Review][Patch] **`Guid.TryParse(correlationId)` violates R2-A7** — already addressed at HEAD; `ReplayController.Replay` uses `string.IsNullOrWhiteSpace` (`Hexalith.EventStore/Controllers/ReplayController.cs:77`). Docs path-parameter description now states "Accepts both GUID and ULID formats".
+- [x] [Review][Patch] **Status endpoint docs row claimed 400 on invalid GUID** — fixed docs row to "Correlation ID is empty or whitespace" matching `CommandStatusController.GetStatus`.
+- [x] [Review][Patch] **Replay structured log dropped original correlationId** — fixed `ReplayController.cs`: log line now emits both `CorrelationId` (new) and `OriginalCorrelationId` (path param).
+- [x] [Review][Patch] **ProblemDetails `errors` shape mismatch with docs** — fixed two doc examples (submit-endpoint 400, top-level Error Response Format) to show `Dictionary<string, string>` with camelCase keys joined by `"; "`, matching `ValidationProblemDetailsFactory.Create`.
+- [x] [Review][Patch] **Generic ProblemDetails example shows `tenantId` but Replay's 400 omits it** — fixed `ReplayController.CreateProblemDetails` and `CreateConflictProblemDetails` to include `tenantId` from `HttpContext.Items["RequestTenantId"]`.
+- [x] [Review][Patch] **Docs extension regex rendering inconsistency** — rewrote the extensions row to describe the alternation in prose ("javascript:, on*=, <script") and inline-quote the regex once, removing the `\|` ambiguity.
+- [x] [Review][Patch] **GUID validation error message echoes unsanitized user input** — already addressed at HEAD; message is the generic "Correlation ID must not be empty or whitespace."
+- [x] [Review][Patch] **`previousStatus` documented nullable but always populated on 202** — fixed docs response table column: `string` (not `string?`), with note "Always populated on a `202` response".
+- [x] [Review][Patch] **Auth section token curl missing `| jq -r '.access_token'`** — fixed; auth-section curl now matches Complete Flow Example.
+- [x] [Review][Patch] **DN1 — add `originalCorrelationId` to ReplayCommandResponse** — already a field on the record at HEAD; documented in the response field table and example response body.
+- [x] [Review][Patch] **DN2 — docs reflect sanitizer defaults** — request-body extensions row now shows 32 / 128 / 2048 / 4096 bytes with a note about the validator second gate and `EventStore:ExtensionMetadata` config knob.
+
+#### Deferred
+
+- [x] [Review][Defer] **Replay `Location` header uses `Request.Scheme://Request.Host` with no `UseForwardedHeaders`** [`src/Hexalith.EventStore/Controllers/ReplayController.cs:210`] — deferred, pre-existing pattern across all Location-emitting endpoints; not introduced by 12-7.
+- [x] [Review][Defer] **`[Consumes("application/json")]` on body-less Replay POST may 415 when tests `PostAsync(url, null)`** [`src/Hexalith.EventStore/Controllers/ReplayController.cs:21`] — deferred, requires test run to confirm whether ASP.NET Core rejects null-body POSTs with declared media type. If tests pass, dismiss.
+
+#### Dismissed
+
+- ValidateModelFilter emits both `errors` and `validationErrors` — superseded by later `ValidationProblemDetailsFactory` refactor (Edge Case Hunter verified HEAD emits only `errors`).
+- `Retry-After: 1` set on terminal status responses — superseded by later controller refactor that omits header on terminal states (Edge Case Hunter verified).
+- `[RequestSizeLimit(1_048_576)]` on body-less Replay — defensive, not a bug.
+- `Guid.TryParse` accepts B/P/X formats causing archive lookup mismatch — subsumed by the patch that removes `Guid.TryParse` entirely.
+- Docs error table 413/415 wording on GET status — not actually inconsistent (GET correctly omits, "All POST endpoints" qualifier is precise).
+
 ## Dev Notes
 
 ### Implementation Approach — New Reference Page (MUST follow)
@@ -518,3 +555,4 @@ GPT-5.3-Codex
 
 - 2026-03-01: Created Command API Reference page with all 10 tasks completed. All endpoint schemas, error responses, and examples verified against codebase source files.
 - 2026-03-01: Senior review fixes applied automatically (replay correlation ID semantics, replay input validation/content-type contract, status polling header, validation error payload shape, and reference-page consistency updates).
+- 2026-05-12: Adversarial re-review via `bmad-code-review` (Blind Hunter + Edge Case Hunter + Acceptance Auditor). 2 decision-needed and 10 patches resolved; 2 deferred to `deferred-work.md`; 5 dismissed. Patches applied: docs corrections (tenant/domain length 1-64, extension limits aligned to sanitizer defaults 32/128/2048/4096, ProblemDetails `errors` shape `Dictionary<string,string>` with camelCase keys, status endpoint 400 row, `originalCorrelationId` documented, `previousStatus` non-nullable on 202, jq token piping) and code patches (Replay log line emits both correlation IDs, Replay's ProblemDetails extensions include `tenantId`). Build green; markdownlint clean; 295/295 Contracts tests pass.

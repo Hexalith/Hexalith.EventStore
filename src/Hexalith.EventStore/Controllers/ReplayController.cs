@@ -198,8 +198,9 @@ public class ReplayController(
             }
 
             logger.LogInformation(
-                "Replay initiated: CorrelationId={CorrelationId}, TenantId={TenantId}, PreviousStatus={PreviousStatus}, IsReplay={IsReplay}",
+                "Replay initiated: CorrelationId={CorrelationId}, OriginalCorrelationId={OriginalCorrelationId}, TenantId={TenantId}, PreviousStatus={PreviousStatus}, IsReplay={IsReplay}",
                 replayCorrelationId,
+                correlationId,
                 foundTenant,
                 previousStatus,
                 true);
@@ -231,6 +232,7 @@ public class ReplayController(
             Extensions =
             {
                 ["correlationId"] = correlationId,
+                ["tenantId"] = HttpContext?.Items["RequestTenantId"]?.ToString(),
             },
         };
 
@@ -251,6 +253,7 @@ public class ReplayController(
             Extensions =
             {
                 ["correlationId"] = requestCorrelationId,
+                ["tenantId"] = HttpContext?.Items["RequestTenantId"]?.ToString(),
                 ["currentStatus"] = currentStatus,
             },
         };

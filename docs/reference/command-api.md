@@ -26,11 +26,11 @@ Authorization: Bearer {token}
 Acquire a token from the Keycloak development instance:
 
 ```bash
-$ curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-connect/token \
+$ TOKEN=$(curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-connect/token \
   -d "grant_type=password" \
   -d "client_id=hexalith-eventstore" \
   -d "username=admin-user" \
-  -d "password=admin-pass"
+  -d "password=admin-pass" | jq -r '.access_token')
 ```
 
 > **Tip:** On Windows PowerShell 5.x, use:
@@ -81,12 +81,12 @@ Submit a command for asynchronous processing.
 
 | Field       | Type   | Required | Constraints                                                                                                                                                                                                                                     |
 | ----------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| tenant      | string | Yes      | 1-128 chars, lowercase alphanumeric + hyphens, regex `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`. Identifies the tenant context.                                                                                                                          |
-| domain      | string | Yes      | 1-128 chars, same regex as tenant. Identifies which aggregate type handles the command (e.g., `counter`, `inventory`). See [Identity Scheme](../concepts/identity-scheme.md).                                                                   |
+| tenant      | string | Yes      | 1-64 chars, lowercase alphanumeric + hyphens, regex `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`. Identifies the tenant context.                                                                                                                           |
+| domain      | string | Yes      | 1-64 chars, same regex as tenant. Identifies which aggregate type handles the command (e.g., `counter`, `inventory`). See [Identity Scheme](../concepts/identity-scheme.md).                                                                    |
 | aggregateId | string | Yes      | 1-256 chars, alphanumeric + dots/hyphens/underscores, regex `^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$`. Identifies the specific entity instance (e.g., `counter-1`, `order-42`). See [Identity Scheme](../concepts/identity-scheme.md).       |
 | commandType | string | Yes      | 1-256 chars, no `<`, `>`, `&`, `'`, `"` characters.                                                                                                                                                                                             |
 | payload     | object | Yes      | JSON object matching the command's constructor parameters.                                                                                                                                                                                      |
-| extensions  | object | No       | Max 50 entries, keys max 100 chars, values max 1000 chars, total max 64 KB. No `<`, `>`, `&`, `'`, `"` characters. Blocked injection regex: `(?i)(javascript\s*:\|on\w+\s*=\|<\s*script)` (alternation separators escaped for table rendering). |
+| extensions  | object | No       | Sanitizer defaults: max **32** entries, keys max **128** chars, values max **2048** chars, total max **4096 bytes**. Validator allows up to 50 / 100 / 1000 / 64 KB respectively — the sanitizer applies first. No `<`, `>`, `&`, `'`, `"` characters. Blocked injection regex (alternation pipes escaped for table rendering): `` (?i)(javascript\s*:\|on\w+\s*=\|<\s*script) ``. |
 
 ### Examples
 
@@ -171,20 +171,25 @@ Content-Type: application/json
 ```json
 {
     "type": "https://tools.ietf.org/html/rfc9457#section-3",
-    "title": "Validation Failed",
+    "title": "Command Validation Failed",
     "status": 400,
     "detail": "One or more validation errors occurred.",
     "instance": "/api/v1/commands",
     "errors": {
-        "Tenant": ["'Tenant' must not be empty."]
+        "tenant": "Tenant cannot be empty"
     },
-    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "tenantId": null
 }
 ```
 
+> **Note:** `errors` is a `Dictionary<string, string>` with camelCase keys — see [Error Response Format](#error-response-format) for the canonical shape.
+
 ### Extensions
 
-The `extensions` field carries optional metadata with the command. Extension values are sanitized for injection patterns at the API gateway layer. Values matching the regex `(?i)(javascript\s*:|on\w+\s*=|<\s*script)` are rejected with a `400` error — if you receive an unexpected validation error on extensions, check for these patterns in your values.
+The `extensions` field carries optional metadata with the command. Extension values are sanitized for injection patterns at the API gateway layer. Values matching the injection regex (case-insensitive, alternation: `javascript:`, `on*=`, `<script`) are rejected with a `400` error — if you receive an unexpected validation error on extensions, check for these patterns in your values.
+
+Defaults can be tuned via `EventStore:ExtensionMetadata` configuration (`MaxExtensionCount`, `MaxKeyLength`, `MaxValueLength`, `MaxTotalSizeBytes`). The sanitizer runs before the validator, so the sanitizer's defaults are the effective contract.
 
 ## POST /api/v1/commands/validate
 
@@ -248,7 +253,7 @@ Query the processing status of a previously submitted command.
 
 ### Path Parameter
 
-`correlationId` — GUID string returned in the submit response.
+`correlationId` — identifier string returned in the submit response. Accepts both GUID (`a1b2c3d4-...`) and ULID (`01HKQXYZ...`) formats — the validator regex `^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$` matches both.
 
 ### Example
 
@@ -320,13 +325,13 @@ Terminal states: Completed, Rejected, PublishFailed, TimedOut. See [Command Life
 
 ### Error Responses
 
-| Status                | Condition                                  | Body                                              |
-| --------------------- | ------------------------------------------ | ------------------------------------------------- |
-| 400 Bad Request       | Invalid GUID format for correlationId      | RFC 7807 ProblemDetails                           |
-| 401 Unauthorized      | Missing or invalid JWT token               | —                                                 |
-| 403 Forbidden         | No `eventstore:tenant` claims found in JWT | RFC 7807 ProblemDetails                           |
-| 404 Not Found         | Command not found in authorized tenants    | RFC 7807 ProblemDetails                           |
-| 429 Too Many Requests | Per-tenant rate limit exceeded             | RFC 7807 ProblemDetails with `Retry-After` header |
+| Status                | Condition                                                       | Body                                              |
+| --------------------- | --------------------------------------------------------------- | ------------------------------------------------- |
+| 400 Bad Request       | Correlation ID is empty or whitespace                           | RFC 7807 ProblemDetails                           |
+| 401 Unauthorized      | Missing or invalid JWT token                                    | —                                                 |
+| 403 Forbidden         | No `eventstore:tenant` claims found in JWT                      | RFC 7807 ProblemDetails                           |
+| 404 Not Found         | Command not found in authorized tenants                         | RFC 7807 ProblemDetails                           |
+| 429 Too Many Requests | Per-tenant rate limit exceeded                                  | RFC 7807 ProblemDetails with `Retry-After` header |
 
 > **Note:** A `404` response means the command was not found among your authorized tenants. This is intentional — the API does not distinguish between "command does not exist" and "you are not authorized for that tenant" to prevent tenant enumeration.
 
@@ -336,7 +341,7 @@ Replay a previously failed command. Only commands in terminal failure states (Re
 
 ### Path Parameter
 
-`correlationId` — GUID string of a previously failed command.
+`correlationId` — identifier string of a previously failed command. Accepts both GUID and ULID formats (validator regex `^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$`).
 
 ### Example
 
@@ -348,15 +353,16 @@ $ curl -X POST https://localhost:5001/api/v1/commands/replay/a1b2c3d4-e5f6-7890-
 
 ### Response — 202 Accepted
 
-`202 Accepted` means the replayed command was received and queued for asynchronous processing. It does NOT mean the replay succeeded — poll the status endpoint using the new correlation ID to check the result.
+`202 Accepted` means the replayed command was received and queued for asynchronous processing. It does NOT mean the replay succeeded — poll the status endpoint using the **new** correlation ID to check the result.
 
 The response includes a `Location` header pointing to the status endpoint for the new correlation ID, and a `Retry-After: 1` header.
 
-| Field          | Type    | Description                                                            |
-| -------------- | ------- | ---------------------------------------------------------------------- |
-| correlationId  | string  | New correlation ID for the replayed command.                           |
-| isReplay       | boolean | Always `true`.                                                         |
-| previousStatus | string? | Status before replay (Rejected, PublishFailed, or TimedOut). Nullable. |
+| Field                  | Type    | Description                                                                                                                |
+| ---------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| correlationId          | string  | **New** correlation ID generated for the replayed command. Use this ID for status polling.                                 |
+| isReplay               | boolean | Always `true`.                                                                                                             |
+| previousStatus         | string  | Status before replay (Rejected, PublishFailed, or TimedOut). Always populated on a `202` response.                         |
+| originalCorrelationId  | string  | The correlation ID of the failed command that was replayed (matches the path parameter). Use to reconstruct the chain.     |
 
 **Example response:**
 
@@ -364,7 +370,8 @@ The response includes a `Location` header pointing to the status endpoint for th
 {
     "correlationId": "c3d4e5f6-a7b8-9012-cdef-123456789012",
     "isReplay": true,
-    "previousStatus": "Rejected"
+    "previousStatus": "Rejected",
+    "originalCorrelationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }
 ```
 
@@ -372,7 +379,7 @@ The response includes a `Location` header pointing to the status endpoint for th
 
 | Status                     | Condition                                                                         | Body                                              |
 | -------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------- |
-| 400 Bad Request            | Invalid GUID format for correlationId                                             | RFC 7807 ProblemDetails                           |
+| 400 Bad Request            | Correlation ID is empty or whitespace                                             | RFC 7807 ProblemDetails                           |
 | 401 Unauthorized           | Missing or invalid JWT token                                                      | —                                                 |
 | 403 Forbidden              | No `eventstore:tenant` claims or tenant mismatch                                  | RFC 7807 ProblemDetails                           |
 | 404 Not Found              | Command not found or archive expired                                              | RFC 7807 ProblemDetails                           |
@@ -433,24 +440,27 @@ All error responses use the [RFC 7807 ProblemDetails](https://tools.ietf.org/htm
 }
 ```
 
-**Validation errors** (400) include an `errors` field — a dictionary mapping field names to arrays of error messages:
+**Validation errors** (400) include an `errors` field — a dictionary mapping **camelCase** field names to a single human-readable message per field. When a field has multiple errors, the messages are joined with `"; "`:
 
 ```json
 {
     "type": "https://tools.ietf.org/html/rfc9457#section-3",
-    "title": "Validation Failed",
+    "title": "Command Validation Failed",
     "status": 400,
     "detail": "One or more validation errors occurred.",
     "instance": "/api/v1/commands",
     "errors": {
-        "Tenant": ["'Tenant' must not be empty."],
-        "Domain": ["'Domain' does not match the required pattern."]
+        "tenant": "Tenant cannot be empty",
+        "domain": "Domain must contain only lowercase alphanumeric characters and hyphens; Domain cannot exceed 64 characters"
     },
-    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "tenantId": null
 }
 ```
 
-> **Note:** `413 Payload Too Large` and `415 Unsupported Media Type` are returned by the ASP.NET Core framework before the application runs — these are raw HTTP responses, not RFC 7807 ProblemDetails.
+> **Note on shape:** `errors` is a `Dictionary<string, string>` (single message per field, not an array). Field keys are camelCase, matching the request body property casing. Deserialize as `Dictionary<string, string>` — not `Dictionary<string, string[]>`.
+>
+> **Note on 413/415:** `413 Payload Too Large` and `415 Unsupported Media Type` are returned by the ASP.NET Core framework before the application runs — these are raw HTTP responses, not RFC 7807 ProblemDetails.
 
 ## Complete Flow Example
 
