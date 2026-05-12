@@ -5,6 +5,7 @@ using FluentValidation;
 using FluentValidation.Results;
 
 using Hexalith.EventStore.ErrorHandling;
+using Hexalith.EventStore.Middleware;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -36,7 +37,7 @@ public class ValidateModelFilter(IServiceProvider serviceProvider) : IAsyncActio
             ValidationResult validationResult = await validator.ValidateAsync(validationContext, context.HttpContext.RequestAborted).ConfigureAwait(false);
 
             if (!validationResult.IsValid) {
-                string correlationId = context.HttpContext.Items["CorrelationId"]?.ToString() ?? "unknown";
+                string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
                 string? tenantId = ExtractTenantId(argument);
                 int errorCount = validationResult.Errors.Count;
 

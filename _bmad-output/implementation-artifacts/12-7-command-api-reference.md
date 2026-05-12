@@ -243,7 +243,7 @@ Second independent re-review run via `bmad-code-review` after the first 2026-05-
 - [ ] [Review][Patch] **`ReplayController.cs:177` generates new correlation ID via `Guid.NewGuid().ToString()` — violates R2-A7.** Replace with `Ulid.NewUlid().ToString()` (or the project's standard ULID helper). System identifiers are ULIDs per CLAUDE.md; the replay path emits GUIDs into the same correlation chain.
 - [ ] [Review][Patch] **`CommandsController.cs:58` fallback correlationId also uses `Guid.NewGuid().ToString()`.** Same R2-A7 violation when `HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]` is absent. Replace with `Ulid.NewUlid().ToString()`.
 - [ ] [Review][Patch] **`ValidateModelFilter.cs:39` hardcodes the literal `"CorrelationId"` instead of `CorrelationIdMiddleware.HttpContextKey`.** Both happen to equal `"CorrelationId"` today; the literal silently drifts to `"unknown"` if the constant is ever renamed. Replace with the constant.
-- [ ] [Review][Patch] **Spec file references `src/Hexalith.EventStore.CommandApi/` paths but the code lives in `src/Hexalith.EventStore/`.** Story 12-7 spec's "Content Source" and "References" sections (lines 239-261, 497-507) all point at the renamed-away project. Update to the actual current paths so future re-reviews can find the implementation by following the spec.
+- [ ] [Review][Patch] **Spec file references `src/Hexalith.EventStore/` paths but the code lives in `src/Hexalith.EventStore/`.** Story 12-7 spec's "Content Source" and "References" sections (lines 239-261, 497-507) all point at the renamed-away project. Update to the actual current paths so future re-reviews can find the implementation by following the spec.
 - [ ] [Review][Patch] **(Resolution of Decision-Needed item 1)** Apply the chosen Correlation-ID identity fix.
 - [ ] [Review][Patch] **(Resolution of Decision-Needed item 2)** Apply the chosen `timeoutDuration` fix.
 
@@ -292,21 +292,21 @@ All endpoint details, schemas, and validation rules come from the actual source 
 
 **Controllers (3 endpoints):**
 
-- `src/Hexalith.EventStore.CommandApi/Controllers/CommandsController.cs` — POST /api/v1/commands
-- `src/Hexalith.EventStore.CommandApi/Controllers/CommandStatusController.cs` — GET /api/v1/commands/status/{correlationId}
-- `src/Hexalith.EventStore.CommandApi/Controllers/ReplayController.cs` — POST /api/v1/commands/replay/{correlationId}
+- `src/Hexalith.EventStore/Controllers/CommandsController.cs` — POST /api/v1/commands
+- `src/Hexalith.EventStore/Controllers/CommandStatusController.cs` — GET /api/v1/commands/status/{correlationId}
+- `src/Hexalith.EventStore/Controllers/ReplayController.cs` — POST /api/v1/commands/replay/{correlationId}
 
 **Request/Response Models:**
 
-- `src/Hexalith.EventStore.CommandApi/Models/SubmitCommandRequest.cs`
-- `src/Hexalith.EventStore.CommandApi/Models/SubmitCommandResponse.cs`
-- `src/Hexalith.EventStore.CommandApi/Models/CommandStatusResponse.cs`
-- `src/Hexalith.EventStore.CommandApi/Models/ReplayCommandResponse.cs`
+- `src/Hexalith.EventStore/Models/SubmitCommandRequest.cs`
+- `src/Hexalith.EventStore/Models/SubmitCommandResponse.cs`
+- `src/Hexalith.EventStore/Models/CommandStatusResponse.cs`
+- `src/Hexalith.EventStore/Models/ReplayCommandResponse.cs`
 
 **Validation:**
 
-- `src/Hexalith.EventStore.CommandApi/Validation/SubmitCommandRequestValidator.cs` — FluentValidation rules for request fields
-- `src/Hexalith.EventStore.CommandApi/Validation/SubmitCommandValidator.cs` — MediatR-level defense-in-depth validation
+- `src/Hexalith.EventStore/Validation/SubmitCommandRequestValidator.cs` — FluentValidation rules for request fields
+- `src/Hexalith.EventStore/Validation/SubmitCommandValidator.cs` — MediatR-level defense-in-depth validation
 
 **Command Status Enum:**
 
@@ -314,8 +314,8 @@ All endpoint details, schemas, and validation rules come from the actual source 
 
 **Authentication:**
 
-- `src/Hexalith.EventStore.CommandApi/Authentication/ConfigureJwtBearerOptions.cs`
-- `src/Hexalith.EventStore.CommandApi/Authentication/EventStoreClaimsTransformation.cs` — extracts `eventstore:tenant` claims
+- `src/Hexalith.EventStore/Authentication/ConfigureJwtBearerOptions.cs`
+- `src/Hexalith.EventStore/Authentication/EventStoreClaimsTransformation.cs` — extracts `eventstore:tenant` claims
 
 ### Complete API Surface (from codebase analysis)
 
@@ -550,16 +550,16 @@ Recent commits:
 
 - [Source: _bmad-output/planning-artifacts/epics.md, Story 5.7 — Command API Reference]
 - [Source: _bmad-output/planning-artifacts/prd-documentation.md, FR17-FR21 — API & Technical Reference]
-- [Source: src/Hexalith.EventStore.CommandApi/Controllers/CommandsController.cs — POST /api/v1/commands]
-- [Source: src/Hexalith.EventStore.CommandApi/Controllers/CommandStatusController.cs — GET /api/v1/commands/status/{correlationId}]
-- [Source: src/Hexalith.EventStore.CommandApi/Controllers/ReplayController.cs — POST /api/v1/commands/replay/{correlationId}]
-- [Source: src/Hexalith.EventStore.CommandApi/Models/SubmitCommandRequest.cs — request schema]
-- [Source: src/Hexalith.EventStore.CommandApi/Models/SubmitCommandResponse.cs — 202 response]
-- [Source: src/Hexalith.EventStore.CommandApi/Models/CommandStatusResponse.cs — status response]
-- [Source: src/Hexalith.EventStore.CommandApi/Models/ReplayCommandResponse.cs — replay response]
-- [Source: src/Hexalith.EventStore.CommandApi/Validation/SubmitCommandRequestValidator.cs — validation rules and regex]
+- [Source: src/Hexalith.EventStore/Controllers/CommandsController.cs — POST /api/v1/commands]
+- [Source: src/Hexalith.EventStore/Controllers/CommandStatusController.cs — GET /api/v1/commands/status/{correlationId}]
+- [Source: src/Hexalith.EventStore/Controllers/ReplayController.cs — POST /api/v1/commands/replay/{correlationId}]
+- [Source: src/Hexalith.EventStore/Models/SubmitCommandRequest.cs — request schema]
+- [Source: src/Hexalith.EventStore/Models/SubmitCommandResponse.cs — 202 response]
+- [Source: src/Hexalith.EventStore/Models/CommandStatusResponse.cs — status response]
+- [Source: src/Hexalith.EventStore/Models/ReplayCommandResponse.cs — replay response]
+- [Source: src/Hexalith.EventStore/Validation/SubmitCommandRequestValidator.cs — validation rules and regex]
 - [Source: src/Hexalith.EventStore.Contracts/Commands/CommandStatus.cs — 8 status values]
-- [Source: src/Hexalith.EventStore.CommandApi/Authentication/EventStoreClaimsTransformation.cs — tenant claims]
+- [Source: src/Hexalith.EventStore/Authentication/EventStoreClaimsTransformation.cs — tenant claims]
 - [Source: docs/page-template.md — page structure rules]
 - [Source: docs/getting-started/quickstart.md — curl patterns and tone reference]
 - [Source: _bmad-output/implementation-artifacts/12-6-first-domain-service-tutorial.md — previous story context]
@@ -574,7 +574,7 @@ GPT-5.3-Codex
 
 - Markdownlint initially flagged 1 error (MD040 — fenced code block without language tag on HTTP response example). Fixed by adding `http` language tag.
 - All relative links verified: `../../README.md`, `../getting-started/quickstart.md`, `../concepts/command-lifecycle.md`, `../concepts/event-envelope.md`, `../concepts/identity-scheme.md`, `../concepts/architecture-overview.md` all resolve. `nuget-packages.md` is pending Story 12-8 (expected).
-- Command API project build verification after review fixes: `dotnet build src/Hexalith.EventStore.CommandApi/Hexalith.EventStore.CommandApi.csproj -v minimal` (succeeded).
+- Command API project build verification after review fixes: `dotnet build src/Hexalith.EventStore/Hexalith.EventStore.CommandApi.csproj -v minimal` (succeeded).
 
 ### Completion Notes List
 
@@ -600,11 +600,16 @@ GPT-5.3-Codex
 
 ### File List
 
-- `docs/reference/command-api.md` (new; updated after senior review)
-- `src/Hexalith.EventStore.CommandApi/Controllers/ReplayController.cs` (updated replay contract and correlation behavior)
-- `src/Hexalith.EventStore.CommandApi/Controllers/CommandStatusController.cs` (added polling header)
-- `src/Hexalith.EventStore.CommandApi/Filters/ValidateModelFilter.cs` (added `errors` dictionary to ProblemDetails)
-- `_bmad-output/implementation-artifacts/12-7-command-api-reference.md` (status and review record updates)
+- `docs/reference/command-api.md` (new; updated after senior review and twice 2026-05-12 — second-pass added `messageId` row + examples, `correlationId` body row, Submit 404/422/503 rows, "validator runs first" correction, `timeoutDuration` ISO 8601)
+- `src/Hexalith.EventStore/Controllers/CommandsController.cs` (second-pass: `Guid.NewGuid` → `UniqueIdHelper.GenerateSortableUniqueStringId` for fallback correlationId)
+- `src/Hexalith.EventStore/Controllers/ReplayController.cs` (updated replay contract and correlation behavior; second-pass: path-param regex validation, replay correlationId now ULID)
+- `src/Hexalith.EventStore/Controllers/CommandStatusController.cs` (added polling header; second-pass: path-param regex validation)
+- `src/Hexalith.EventStore/Filters/ValidateModelFilter.cs` (added `errors` dictionary to ProblemDetails; second-pass: literal → `CorrelationIdMiddleware.HttpContextKey`)
+- `src/Hexalith.EventStore/Middleware/CorrelationIdMiddleware.cs` (second-pass: `Guid.TryParse` → identifier regex+length match; ULID fallback; public `IsValidIdentifier` helper)
+- `src/Hexalith.EventStore/Validation/SubmitCommandRequestValidator.cs` (second-pass: Payload rule tightened to `ValueKind == Object`)
+- `src/Hexalith.EventStore/Models/ReplayCommandResponse.cs` (second-pass: `PreviousStatus`/`OriginalCorrelationId` non-nullable)
+- `_bmad-output/implementation-artifacts/12-7-command-api-reference.md` (status and review record updates; second-pass review subsection + Content Source path correction)
+- `_bmad-output/implementation-artifacts/deferred-work.md` (second-pass: 7 new OPEN entries under "story-12-7-command-api-reference second pass" heading)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (story status sync)
 
 ## Change Log
@@ -612,3 +617,4 @@ GPT-5.3-Codex
 - 2026-03-01: Created Command API Reference page with all 10 tasks completed. All endpoint schemas, error responses, and examples verified against codebase source files.
 - 2026-03-01: Senior review fixes applied automatically (replay correlation ID semantics, replay input validation/content-type contract, status polling header, validation error payload shape, and reference-page consistency updates).
 - 2026-05-12: Adversarial re-review via `bmad-code-review` (Blind Hunter + Edge Case Hunter + Acceptance Auditor). 2 decision-needed and 10 patches resolved; 2 deferred to `deferred-work.md`; 5 dismissed. Patches applied: docs corrections (tenant/domain length 1-64, extension limits aligned to sanitizer defaults 32/128/2048/4096, ProblemDetails `errors` shape `Dictionary<string,string>` with camelCase keys, status endpoint 400 row, `originalCorrelationId` documented, `previousStatus` non-nullable on 202, jq token piping) and code patches (Replay log line emits both correlation IDs, Replay's ProblemDetails extensions include `tenantId`). Build green; markdownlint clean; 295/295 Contracts tests pass.
+- 2026-05-12: **Second** adversarial re-review via `bmad-code-review` (independent run, Opus 4.7 1M). Two HIGH bugs surfaced that the first pass missed: required `messageId` field entirely absent from docs and every curl example, and `CorrelationIdMiddleware.Guid.TryParse` violating R2-A7. 2 decision-needed and 13 patches resolved; 7 deferred to `deferred-work.md`; 16 dismissed. Patches applied: docs (add `messageId` row + 4 example bodies; add `correlationId` body row; add 404/422/503 to Submit error table; correct "sanitizer runs first" claim; `timeoutDuration` to ISO 8601 `PT30S`) and code (`Payload` rule tightened to `ValueKind == Object`; path-parameter `correlationId` regex+length validated in Status + Replay; `ReplayCommandResponse.PreviousStatus`/`OriginalCorrelationId` non-nullable; `CommandsController` and `ReplayController` `Guid.NewGuid()` → `UniqueIdHelper.GenerateSortableUniqueStringId()`; `ValidateModelFilter` literal `"CorrelationId"` → `CorrelationIdMiddleware.HttpContextKey`; `CorrelationIdMiddleware.Guid.TryParse` → `IsValidIdentifier` regex+length check; spec source paths corrected from `src/Hexalith.EventStore.CommandApi/` to `src/Hexalith.EventStore/`). Build green (0/0); markdownlint clean; Contracts.Tests 295/295; Client.Tests 370/370.

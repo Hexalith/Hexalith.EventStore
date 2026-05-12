@@ -1,6 +1,7 @@
 
 using System.Diagnostics;
 
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
@@ -74,13 +75,13 @@ public class ReplayController(
             ?? correlationId;
 
         try {
-            if (string.IsNullOrWhiteSpace(correlationId)) {
+            if (!CorrelationIdMiddleware.IsValidIdentifier(correlationId)) {
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "InvalidCorrelationId"));
                 return CreateProblemDetails(
                     StatusCodes.Status400BadRequest,
                     ProblemTypeUris.BadRequest,
                     "Bad Request",
-                    "Correlation ID must not be empty or whitespace.",
+                    $"Correlation ID must be 1-{CorrelationIdMiddleware.MaxIdentifierLength} characters of alphanumerics and hyphens (with alphanumeric anchors).",
                     requestCorrelationId);
             }
 
@@ -173,8 +174,8 @@ public class ReplayController(
 
             string previousStatus = statusRecord.Status.ToString();
 
-            // Generate a new correlation ID for replay tracking
-            string replayCorrelationId = Guid.NewGuid().ToString();
+            // Generate a new correlation ID for replay tracking (R2-A7: ULID, not GUID)
+            string replayCorrelationId = UniqueIdHelper.GenerateSortableUniqueStringId();
 
             // AC #1, #2: Create SubmitCommand from archived data and send through full MediatR pipeline
             SubmitCommand command;

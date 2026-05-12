@@ -74,8 +74,8 @@ public partial class SubmitCommandRequestValidator : AbstractValidator<SubmitCom
             .When(x => !string.IsNullOrWhiteSpace(x.CorrelationId));
 
         _ = RuleFor(x => x.Payload)
-            .Must(p => p.ValueKind != System.Text.Json.JsonValueKind.Undefined)
-            .WithMessage("Payload is required");
+            .Must(p => p.ValueKind == System.Text.Json.JsonValueKind.Object)
+            .WithMessage("Payload must be a JSON object");
 
         _ = RuleFor(x => x.Extensions)
             .Must(ext => ext == null || ext.Count <= MaxExtensionEntries)

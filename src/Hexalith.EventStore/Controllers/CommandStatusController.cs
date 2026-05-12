@@ -71,13 +71,13 @@ public class CommandStatusController(
             ?? correlationId;
 
         try {
-            if (string.IsNullOrWhiteSpace(correlationId)) {
+            if (!CorrelationIdMiddleware.IsValidIdentifier(correlationId)) {
                 _ = (activity?.SetStatus(ActivityStatusCode.Error, "InvalidCorrelationId"));
                 return CreateProblemDetails(
                     StatusCodes.Status400BadRequest,
                     ProblemTypeUris.BadRequest,
                     "Bad Request",
-                    "Correlation ID is required.",
+                    $"Correlation ID must be 1-{CorrelationIdMiddleware.MaxIdentifierLength} characters of alphanumerics and hyphens (with alphanumeric anchors).",
                     requestCorrelationId);
             }
 

@@ -79,16 +79,20 @@ Submit a command for asynchronous processing.
 
 ### Request Body
 
-| Field       | Type   | Required | Constraints                                                                                                                                                                                                                                     |
-| ----------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| tenant      | string | Yes      | 1-64 chars, lowercase alphanumeric + hyphens, regex `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`. Identifies the tenant context.                                                                                                                           |
-| domain      | string | Yes      | 1-64 chars, same regex as tenant. Identifies which aggregate type handles the command (e.g., `counter`, `inventory`). See [Identity Scheme](../concepts/identity-scheme.md).                                                                    |
-| aggregateId | string | Yes      | 1-256 chars, alphanumeric + dots/hyphens/underscores, regex `^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$`. Identifies the specific entity instance (e.g., `counter-1`, `order-42`). See [Identity Scheme](../concepts/identity-scheme.md).       |
-| commandType | string | Yes      | 1-256 chars, no `<`, `>`, `&`, `'`, `"` characters.                                                                                                                                                                                             |
-| payload     | object | Yes      | JSON object matching the command's constructor parameters.                                                                                                                                                                                      |
-| extensions  | object | No       | Sanitizer defaults: max **32** entries, keys max **128** chars, values max **2048** chars, total max **4096 bytes**. Validator allows up to 50 / 100 / 1000 / 64 KB respectively — the sanitizer applies first. No `<`, `>`, `&`, `'`, `"` characters. Blocked injection regex (alternation pipes escaped for table rendering): `` (?i)(javascript\s*:\|on\w+\s*=\|<\s*script) ``. |
+| Field         | Type   | Required | Constraints                                                                                                                                                                                                                                     |
+| ------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| messageId     | string | Yes      | 1-128 chars, alphanumeric + hyphens, regex `^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$`. Unique command identifier (ULID recommended). Client owns generation; used as the idempotency key.                                                       |
+| tenant        | string | Yes      | 1-64 chars, lowercase alphanumeric + hyphens, regex `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`. Identifies the tenant context.                                                                                                                           |
+| domain        | string | Yes      | 1-64 chars, same regex as tenant. Identifies which aggregate type handles the command (e.g., `counter`, `inventory`). See [Identity Scheme](../concepts/identity-scheme.md).                                                                    |
+| aggregateId   | string | Yes      | 1-256 chars, alphanumeric + dots/hyphens/underscores, regex `^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$`. Identifies the specific entity instance (e.g., `counter-1`, `order-42`). See [Identity Scheme](../concepts/identity-scheme.md).       |
+| commandType   | string | Yes      | 1-256 chars, no `<`, `>`, `&`, `'`, `"` characters.                                                                                                                                                                                             |
+| payload       | object | Yes      | JSON object matching the command's constructor parameters. Non-object payloads (`null`, strings, numbers, arrays, booleans) are rejected with `400`.                                                                                            |
+| correlationId | string | No       | 1-128 chars, same regex as `messageId`. Optional cross-system tracing identifier. **Defaults to `messageId` when omitted.**                                                                                                                     |
+| extensions    | object | No       | Validator first gate: max **50** entries, keys max **100** chars, values max **1000** chars, total max **64 KB**. Sanitizer second gate (stricter): max **32** entries, keys max **128** chars, values max **2048** chars, total max **4096 bytes**. No `<`, `>`, `&`, `'`, `"` characters. Blocked injection regex (alternation pipes escaped for table rendering): `` (?i)(javascript\s*:\|on\w+\s*=\|<\s*script) ``. |
 
 ### Examples
+
+Each example uses a fresh `messageId` (any value matching the identifier regex; ULIDs are recommended). To generate one in your shell, use any ULID tool (e.g., `ulid` CLI) or substitute a GUID — both formats pass validation.
 
 **IncrementCounter:**
 
@@ -97,6 +101,7 @@ $ curl -X POST https://localhost:5001/api/v1/commands \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
+    "messageId": "01HKQXYZ0000000000000000A1",
     "tenant": "tenant-a",
     "domain": "counter",
     "aggregateId": "counter-1",
@@ -112,6 +117,7 @@ $ curl -X POST https://localhost:5001/api/v1/commands \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
+    "messageId": "01HKQXYZ0000000000000000B2",
     "tenant": "tenant-a",
     "domain": "counter",
     "aggregateId": "counter-1",
@@ -127,6 +133,7 @@ $ curl -X POST https://localhost:5001/api/v1/commands \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
+    "messageId": "01HKQXYZ0000000000000000C3",
     "tenant": "tenant-a",
     "domain": "counter",
     "aggregateId": "counter-1",
@@ -155,16 +162,19 @@ Content-Type: application/json
 
 > **See also:** [Error Reference](./problems/index.md) for detailed documentation on each error type, including example requests/responses and resolution steps.
 
-| Status                     | Condition                                                               | Body                                              |
-| -------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------- |
-| 400 Bad Request            | Validation failure (missing fields, regex mismatch, injection patterns) | RFC 7807 ProblemDetails with `errors` dictionary  |
-| 401 Unauthorized           | Missing or invalid JWT token                                            | —                                                 |
-| 403 Forbidden              | User lacks `eventstore:tenant` claim for requested tenant               | RFC 7807 ProblemDetails                           |
-| 409 Conflict               | Optimistic concurrency violation (concurrent writes to same aggregate)  | RFC 7807 ProblemDetails                           |
-| 413 Payload Too Large      | Request body exceeds 1 MB limit                                         | —                                                 |
-| 415 Unsupported Media Type | Missing or incorrect `Content-Type` header (must be `application/json`) | —                                                 |
-| 429 Too Many Requests      | Per-tenant rate limit exceeded                                          | RFC 7807 ProblemDetails with `Retry-After` header |
-| 500 Internal Server Error  | Unhandled server exception (rare)                                       | RFC 7807 ProblemDetails                           |
+| Status                     | Condition                                                                                                | Body                                              |
+| -------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| 400 Bad Request            | Validation failure (missing fields, regex mismatch, injection patterns)                                  | RFC 7807 ProblemDetails with `errors` dictionary  |
+| 401 Unauthorized           | Missing or invalid JWT token                                                                             | —                                                 |
+| 403 Forbidden              | User lacks `eventstore:tenant` claim for requested tenant                                                | RFC 7807 ProblemDetails                           |
+| 404 Not Found              | Routing rejected the request before reaching the controller (e.g., unknown sub-path or pipeline 404)     | RFC 7807 ProblemDetails                           |
+| 409 Conflict               | Optimistic concurrency violation (concurrent writes to same aggregate)                                   | RFC 7807 ProblemDetails                           |
+| 413 Payload Too Large      | Request body exceeds 1 MB limit                                                                          | —                                                 |
+| 415 Unsupported Media Type | Missing or incorrect `Content-Type` header (must be `application/json`)                                  | —                                                 |
+| 422 Unprocessable Entity   | Command was rejected by domain business rules at submit-time (synchronous rejection path)                | RFC 7807 ProblemDetails                           |
+| 429 Too Many Requests      | Per-tenant rate limit exceeded                                                                           | RFC 7807 ProblemDetails with `Retry-After` header |
+| 500 Internal Server Error  | Unhandled server exception (rare)                                                                        | RFC 7807 ProblemDetails                           |
+| 503 Service Unavailable    | Processing pipeline is temporarily unavailable (DAPR sidecar or downstream dependency down)              | RFC 7807 ProblemDetails                           |
 
 **Example 400 — validation error:**
 
@@ -189,7 +199,7 @@ Content-Type: application/json
 
 The `extensions` field carries optional metadata with the command. Extension values are sanitized for injection patterns at the API gateway layer. Values matching the injection regex (case-insensitive, alternation: `javascript:`, `on*=`, `<script`) are rejected with a `400` error — if you receive an unexpected validation error on extensions, check for these patterns in your values.
 
-Defaults can be tuned via `EventStore:ExtensionMetadata` configuration (`MaxExtensionCount`, `MaxKeyLength`, `MaxValueLength`, `MaxTotalSizeBytes`). The sanitizer runs before the validator, so the sanitizer's defaults are the effective contract.
+Defaults can be tuned via `EventStore:ExtensionMetadata` configuration (`MaxExtensionCount`, `MaxKeyLength`, `MaxValueLength`, `MaxTotalSizeBytes`). The validator runs first (as an ASP.NET action filter, before the action body) and is the broader first gate; the sanitizer runs second inside the action body and enforces the stricter defaults. Both gates must pass — a request that satisfies the validator's looser limits can still be rejected by the sanitizer.
 
 ## POST /api/v1/commands/validate
 
@@ -274,7 +284,7 @@ $ curl https://localhost:5001/api/v1/commands/status/a1b2c3d4-e5f6-7890-abcd-ef1
 | eventCount         | integer? | Number of events produced (Completed status only).                                                         |
 | rejectionEventType | string?  | Rejection event type name (Rejected status only).                                                          |
 | failureReason      | string?  | Error description (PublishFailed status only).                                                             |
-| timeoutDuration    | string?  | .NET TimeSpan format, e.g., `"00:00:30"` (TimedOut status only).                                           |
+| timeoutDuration    | string?  | ISO 8601 duration format, e.g., `"PT30S"` (TimedOut status only). Produced by `XmlConvert.ToString(TimeSpan)`. |
 
 **Example — completed command:**
 
@@ -482,7 +492,7 @@ $ TOKEN=$(curl -s -X POST http://localhost:8180/realms/hexalith/protocol/openid-
 $ curl -X POST https://localhost:5001/api/v1/commands \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"tenant":"tenant-a","domain":"counter","aggregateId":"counter-1","commandType":"IncrementCounter","payload":{}}'
+  -d '{"messageId":"01HKQXYZ0000000000000000A1","tenant":"tenant-a","domain":"counter","aggregateId":"counter-1","commandType":"IncrementCounter","payload":{}}'
 ```
 
 ```json

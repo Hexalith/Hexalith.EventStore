@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.ErrorHandling;
@@ -55,7 +56,7 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
         ArgumentNullException.ThrowIfNull(request);
 
         string correlationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
-            ?? Guid.NewGuid().ToString();
+            ?? UniqueIdHelper.GenerateSortableUniqueStringId();
 
         // Store tenant in HttpContext for error handlers and rate limiter OnRejected callback
         if (!string.IsNullOrEmpty(request.Tenant)) {
