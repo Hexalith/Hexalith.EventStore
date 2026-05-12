@@ -159,6 +159,30 @@ Three preliminary decisions emerging from the analysis. These are **provisional*
 - **Rationale:** Avoids maintaining a second-class copy of Zipkin/Grafana. Domain-aware views add value the generic tools can't (annotating traces with aggregate type, event count, snapshot status). Deep links provide seamless navigation without context loss.
 - **Configuration:** Observability tool URLs are configured via DAPR configuration store or environment variables (`ADMIN_TRACE_URL`, `ADMIN_METRICS_URL`, `ADMIN_LOGS_URL`). Missing URLs disable the corresponding deep-link buttons gracefully.
 
+#### ADR-P6: Public Gateway Contracts Live in Contracts, Client, and Testing Packages
+
+- **Decision:** API-facing HTTP wire DTOs live in `Hexalith.EventStore.Contracts`. High-level HTTP convenience APIs live in `Hexalith.EventStore.Client`. Deterministic fakes/builders for public gateway behavior live in `Hexalith.EventStore.Testing`. Runtime service and server assemblies may keep compatibility wrappers, but downstream bounded contexts must not reference them.
+- **Rationale:** Parties and future Hexalith modules need stable gateway contracts without duplicating DTOs or binding to EventStore service/server implementation details.
+- **Implication:** ProblemDetails extension names, reason codes, ETag/304 behavior, correlation ID behavior, and query result metadata are part of the public contract surface. Public package changes are SemVer-relevant.
+
+#### ADR-P7: Projection Query Adapter Is a Public Domain Integration Contract
+
+- **Decision:** EventStore must provide a stable public projection adapter model for generic query serving, or explicitly document the generic DAPR actor contract that domain services implement. Domain services should not reference `Hexalith.EventStore.Server` to serve `POST /api/v1/queries`.
+- **Rationale:** Parties must serve GetParty, ListParties, and SearchParties through EventStore without exposing domain actor types or importing server internals.
+- **Implication:** `QueryEnvelope`, `QueryResult`, actor naming, serialization attributes, projection type metadata, malformed-response taxonomy, and test expectations must be public or documented as a stable integration boundary.
+
+#### ADR-P8: EventStore Owns Gateway Tenant/RBAC Enforcement
+
+- **Decision:** EventStore validates tenant existence, lifecycle state, user membership, role, and permission before invoking domain services or projection adapters. Hexalith.Tenants remains the tenant lifecycle authority; EventStore integrates through `ITenantValidator` and `IRbacValidator` adapter boundaries.
+- **Rationale:** Parties request paths should remain domain-focused and should not duplicate platform authorization behavior.
+- **Implication:** Authorization fails closed when tenant/RBAC data is missing, stale, unavailable, or ambiguous. 401/403 ProblemDetails type URIs and reason codes are stable API behavior.
+
+#### ADR-P9: Downstream Query, Publishing, Replay, and Payload-Protection Policies Are Platform Contracts
+
+- **Decision:** Paging, blank search, filters, freshness/cache metadata, malformed query responses, pub/sub ordering/dead-letter settings, stream replay checkpoints, and payload/snapshot protection behavior are explicit platform contracts.
+- **Rationale:** Downstream modules need predictable behavior for APIs and rebuild operations; operators need backend-specific deployment requirements and safe failure modes.
+- **Implication:** Documentation and tests must cover query policy, backend pub/sub guarantee matrices, public stream read/replay APIs, crypto-shredding/key invalidation semantics, restored-backup safety, and protected-data redaction.
+
 ### Technical Constraints & Dependencies
 
 **Runtime Dependencies:**
@@ -195,12 +219,12 @@ Three preliminary decisions emerging from the analysis. These are **provisional*
 
 | Package                                  | Purpose                                                                                                                                             | Consumers                 |
 | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| `Hexalith.EventStore.Contracts`          | Event envelope, command/event types, identity scheme                                                                                                | Domain service developers |
-| `Hexalith.EventStore.Client`             | Domain service SDK with convention-based fluent API (`AddEventStore`/`UseEventStore`), auto-discovery, and explicit `IDomainProcessor` registration | Domain service developers |
+| `Hexalith.EventStore.Contracts`          | Event envelope, command/event types, identity scheme, API-facing gateway DTOs, query/replay contracts, and public metadata/problem contract names    | Domain service developers |
+| `Hexalith.EventStore.Client`             | Domain service SDK plus high-level command/query gateway client APIs with correlation, ETag/304, and ProblemDetails mapping                          | Domain service developers |
 | `Hexalith.EventStore.Server`             | Core EventStore server with actor processing pipeline                                                                                               | Platform operators        |
 | `Hexalith.EventStore.SignalR`            | SignalR client helper for real-time projection change notifications                                                                                 | UI/integration clients    |
 | `Hexalith.EventStore.Aspire`             | Aspire AppHost integration and service defaults                                                                                                     | Both                      |
-| `Hexalith.EventStore.Testing`            | Test helpers, in-memory DAPR mocks, assertion utilities                                                                                             | Domain service developers |
+| `Hexalith.EventStore.Testing`            | Test helpers, in-memory DAPR mocks, assertion utilities, and deterministic gateway/projection fakes                                                 | Domain service developers |
 | `Hexalith.EventStore.Admin.Abstractions` | Admin service interfaces and DTOs — shared contract for Web UI, CLI, and MCP                                                                        | Admin tool builders       |
 
 **Non-packaged admin components (executables, not NuGet libraries):**
@@ -987,6 +1011,44 @@ Testing ───► Contracts      (test helpers depend on contracts only)
 ```
 
 **Rule:** Dependencies flow inward. `Contracts` has zero dependencies on other Hexalith packages. `Server` depends only on `Contracts`. `EventStore` depends on `Server` + `Contracts`. No circular dependencies.
+
+### Downstream Public Gateway Boundary
+
+Downstream bounded contexts such as Parties integrate with EventStore through public packages and HTTP APIs:
+
+- `Hexalith.EventStore.Contracts` owns command/query/status/replay wire contracts and stable ProblemDetails extension names.
+- `Hexalith.EventStore.Client` owns high-level HTTP methods such as `SubmitCommandAsync` and `SubmitQueryAsync`, including correlation ID propagation, ETag/304 handling, and ProblemDetails mapping.
+- `Hexalith.EventStore.Testing` owns deterministic fakes/builders for gateway, projection, tenant/RBAC, replay, cache, stale/degraded, and unavailable paths.
+- EventStore service/server assemblies own runtime internals only. Downstream services must not depend on `Hexalith.EventStore` or `Hexalith.EventStore.Server` for gateway DTOs or projection query contracts.
+
+### Projection Query Adapter Contract
+
+EventStore query routing is a platform integration boundary. Domain services that serve queries through `POST /api/v1/queries` must implement either a public projection adapter contract or the documented generic DAPR actor contract. The contract must define:
+
+- Actor type naming and actor ID routing.
+- `QueryEnvelope` fields, serialization attributes, and payload handling.
+- `QueryResult` fields, projection metadata, ETag/freshness metadata, and malformed-response taxonomy.
+- Entity, list, and search query expectations for Get/List/Search style use cases.
+
+### Downstream Authorization Boundary
+
+EventStore owns tenant and RBAC enforcement for command and query gateway paths. Before invoking a domain service or projection adapter, EventStore validates tenant existence, lifecycle state, authenticated user membership, role, and permission through Hexalith.Tenants-backed `ITenantValidator` and `IRbacValidator` adapters. If the validator cannot answer authoritatively, EventStore fails closed with stable 401/403 ProblemDetails type URIs and reason codes.
+
+### Pub/Sub and Replay Guarantee Matrix
+
+EventStore must document guarantees per supported backend:
+
+- Durable publish-after-persist behavior.
+- At-least-once delivery and duplicate delivery expectations.
+- Per-aggregate causal ordering support and backend limitations.
+- Ordering/session key metadata and partition selection.
+- Retry policy, outbox/drain behavior, and dead-letter routing.
+- Required DAPR component metadata.
+- Stream read/replay APIs, sequence checkpoints, continuation tokens, progress tracking, and operator-safe failure recovery for projection rebuild.
+
+### Payload and Snapshot Protection
+
+Payload and snapshot protection are security contracts. EventStore extension points must support protection metadata, key deletion/invalidation, unreadable protected payload behavior, restored-backup safety checks, and redaction across logs, ProblemDetails, admin APIs, Web UI, CLI, MCP, replay, rebuild, and backup validation.
 
 ### Requirements to Structure Mapping
 

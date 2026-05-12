@@ -643,6 +643,13 @@ Upgrade all Blazor UI projects from Fluent UI Blazor v4.14.0 to v5.0.0. Covers b
 **Sprint Change Proposals:** sprint-change-proposal-2026-04-13-fluent-ui-v5-migration.md, sprint-change-proposal-2026-04-16-epic-21-post-boot-fixes.md
 **Stories (14):** 21-0 bUnit baseline, 21-1 packages/csproj, 21-2 layout+navigation, 21-3 ButtonAppearance, 21-4 BadgeAppearance+LinkAppearance, 21-5 component renames, 21-6 dialog restructure, 21-7 toast API, 21-8 CSS tokens, 21-9 DataGrid/remaining, 21-10 Sample alignment, 21-11 NavMenu v5 fix, 21-12 FluentDesignTheme integration, 21-13 UI bug fixes batch
 
+### Epic 22: Public Gateway and Downstream Integration Contracts
+EventStore becomes the stable gateway contract for downstream bounded contexts such as Parties. Domain services no longer duplicate EventStore gateway DTOs, depend on EventStore service/server assemblies, perform request-path tenant authorization, or infer query/replay/publishing behavior from implementation details.
+**FRs covered:** FR83-FR104
+**Dependencies:** Epics 3, 4, 5, 8, 9, 11, 13, 16, 20
+**Sprint Change Proposals:** sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md
+**Stories (7):** 22-1 gateway command/query contract closure and package docs, 22-2 projection adapter contract and generic query actor model, 22-3 gateway-owned tenant and RBAC enforcement, 22-4 query behavior policy and error taxonomy, 22-5 event publishing guarantees and backend deployment matrix, 22-6 stream replay/read APIs and projection rebuild checkpoints, 22-7 payload protection, snapshot encryption, and crypto-shredding safety
+
 ## Epic 1: Domain Contract Foundation
 
 A domain service developer can define commands, events, identity types, and aggregate state using EventStore's shared type system — ULID-based IDs, MessageType value objects, 14-field event envelope, EventStoreAggregate base class, and IRejectionEvent marker interface.
@@ -1765,3 +1772,152 @@ So that docs, planning artifacts, and code tell the same story.
 **Given** planning artifacts (PRD, architecture),
 **When** selectively corrected,
 **Then** factual statements about shipped behavior match the current repository state (SCP-Docs).
+
+## Epic 22: Public Gateway and Downstream Integration Contracts
+
+EventStore becomes the stable gateway contract for downstream bounded contexts such as Parties. Domain services no longer duplicate EventStore gateway DTOs, depend on EventStore service/server assemblies, perform request-path tenant authorization, or infer query/replay/publishing behavior from implementation details.
+
+### Story 22.1: Gateway Command/Query Contract Closure and Package Docs
+
+As a downstream service developer,
+I want API-facing command/query DTOs and high-level client methods from EventStore packages,
+So that Parties can call EventStore without duplicating gateway wire contracts.
+
+**Acceptance Criteria:**
+
+**Given** an API-facing command or query gateway DTO,
+**When** a downstream service references EventStore packages,
+**Then** the stable wire contract is available from `Hexalith.EventStore.Contracts`
+**And** service-assembly DTO wrappers are documented as compatibility-only.
+
+**Given** a downstream client submits commands or queries,
+**When** it uses `Hexalith.EventStore.Client`,
+**Then** `SubmitCommandAsync` and `SubmitQueryAsync` handle correlation IDs, ETags, 304 responses, ProblemDetails mapping, and typed cancellation.
+
+**Given** a downstream service test suite,
+**When** command/query gateway behavior is exercised,
+**Then** `Hexalith.EventStore.Testing` provides fakes/builders for success, validation, auth, conflict, not-modified, stale/degraded, and unavailable paths.
+
+**Given** generated API docs and package guidance,
+**When** refreshed,
+**Then** they show Contracts, Client, and Testing ownership consistently.
+
+### Story 22.2: Projection Adapter Contract and Generic Query Actor Model
+
+As a domain service developer,
+I want a stable projection query adapter contract,
+So that Parties can serve GetParty, ListParties, and SearchParties through EventStore queries.
+
+**Acceptance Criteria:**
+
+**Given** EventStore query routing,
+**When** a domain service implements the generic projection adapter,
+**Then** `QueryEnvelope`, `QueryResult`, actor naming, serialization attributes, projection type metadata, and malformed response categories are public contracts or explicitly documented generic actor requirements.
+
+**Given** a query caller invokes `POST /api/v1/queries`,
+**When** the query maps to Get/List/Search behavior,
+**Then** EventStore routes through the projection adapter without the caller knowing domain actor types.
+
+**Given** Parties implements domain-specific projection actors,
+**When** those actors wrap the generic contract,
+**Then** EventStore contract tests prove entity, list, and search query routing.
+
+### Story 22.3: Gateway-Owned Tenant and RBAC Enforcement
+
+As a platform owner,
+I want EventStore to validate tenant lifecycle, membership, role, and permission before invoking domain services,
+So that Parties request paths do not perform tenant authorization.
+
+**Acceptance Criteria:**
+
+**Given** a command or query request enters EventStore,
+**When** tenant/RBAC validation is required,
+**Then** EventStore integrates with Hexalith.Tenants through `ITenantValidator` and `IRbacValidator` adapter boundaries.
+
+**Given** tenant or RBAC data is missing, stale, unavailable, ambiguous, disabled, suspended, or denies membership/role/permission,
+**When** the gateway evaluates the request,
+**Then** it fails closed before invoking Parties or any other domain service.
+
+**Given** authentication or authorization fails,
+**When** the HTTP response is returned,
+**Then** 401/403 ProblemDetails type URIs and reason codes are stable and documented.
+
+### Story 22.4: Query Behavior Policy and Error Taxonomy
+
+As an API consumer,
+I want query behavior frozen across paging, filters, cache, and degraded reads,
+So that Parties API behavior is predictable when routed through EventStore.
+
+**Acceptance Criteria:**
+
+**Given** a query request includes paging, search, or filters,
+**When** EventStore validates it,
+**Then** default page size, maximum page size, cursor/offset semantics, blank search behavior, filter validation, and deterministic ordering rules are enforced.
+
+**Given** a query response is returned,
+**When** the client inspects it,
+**Then** cache and freshness metadata can include `etag`, `isNotModified`, `isStale`, `isDegraded`, `projectionVersion`, `servedAt`, paging metadata, and warning codes.
+
+**Given** a projection response is malformed, missing, stale beyond policy, degraded, timed out, or unauthorized,
+**When** EventStore maps the failure,
+**Then** it returns a stable ProblemDetails type and reason code.
+
+### Story 22.5: Event Publishing Guarantees and Backend Deployment Matrix
+
+As a downstream projection owner,
+I want EventStore-published events to be durable, at-least-once, and causally ordered per aggregate where supported,
+So that Parties projections can rely on EventStore publication guarantees.
+
+**Acceptance Criteria:**
+
+**Given** an event is persisted,
+**When** publication succeeds, fails, retries, drains, or dead-letters,
+**Then** durability, at-least-once delivery, duplicate tolerance, ordering/session metadata, retry/outbox/drain behavior, and dead-letter policy are documented.
+
+**Given** a supported pub/sub backend is selected,
+**When** operators configure DAPR components,
+**Then** the backend matrix defines required settings for ordering, sessions, dead-lettering, retries, and known limitations.
+
+**Given** integration tests run against supported backends,
+**When** publish-after-persist recovery and ordering behavior are exercised,
+**Then** backend-specific guarantees are proven or explicitly marked unsupported.
+
+### Story 22.6: Stream Replay/Read APIs and Projection Rebuild Checkpoints
+
+As a projection owner,
+I want per-tenant resumable stream replay APIs,
+So that Parties projections can rebuild from EventStore streams safely.
+
+**Acceptance Criteria:**
+
+**Given** a domain projection rebuild begins,
+**When** it reads from EventStore,
+**Then** it uses public stream read/replay APIs scoped by tenant, domain, aggregate, sequence range, checkpoint, and continuation token.
+
+**Given** a rebuild is running,
+**When** it advances, fails, pauses, resumes, cancels, or retries,
+**Then** progress is persisted with idempotent checkpoint advancement and operator-visible status/failure reasons.
+
+**Given** a domain service rebuilds projections,
+**When** it needs historical events,
+**Then** documentation shows the public API path and forbids reading state-store keys directly.
+
+### Story 22.7: Payload Protection, Snapshot Encryption, and Crypto-Shredding Safety
+
+As a platform owner handling PII,
+I want event and snapshot payload protection to support crypto-shredding,
+So that GDPR deletion workflows remain safe across live data, backups, logs, replay, rebuild, and admin surfaces.
+
+**Acceptance Criteria:**
+
+**Given** payload or snapshot protection hooks are configured,
+**When** EventStore persists, publishes, rehydrates, replays, or rebuilds data,
+**Then** metadata identifies protection state without exposing protected data.
+
+**Given** a key is deleted, invalidated, missing, or restored from backup inconsistently,
+**When** EventStore reads protected payloads or snapshots,
+**Then** behavior is explicit, safe, and documented for live reads, replay, projection rebuild, backup restore, and admin inspection.
+
+**Given** logs, ProblemDetails, admin UI, CLI, MCP, or test artifacts are produced,
+**When** protected content is involved,
+**Then** protected payload and snapshot content is never exposed.

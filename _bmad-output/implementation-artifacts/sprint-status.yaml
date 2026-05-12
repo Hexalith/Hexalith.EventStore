@@ -28,7 +28,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-11T21:13:18+02:00' # admin-ui-consistency-and-tenant-clarity-polish review patches applied; story moved to done. Validation: Admin.UI review focus 7/7; Aspire evidence recapture blocked by missing DAPR CLI and recorded under story artifacts.
+last_updated: '2026-05-12T10:06:53+02:00' # Epic 22 public gateway/downstream integration contract backlog added from sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md.
+# Previous last_updated detail preserved: 2026-05-11T21:13:18+02:00 - admin-ui-consistency-and-tenant-clarity-polish review patches applied; story moved to done. Validation: Admin.UI review focus 7/7; Aspire evidence recapture blocked by missing DAPR CLI and recorded under story artifacts.
 # Previous last_updated detail preserved: 2026-05-11T19:20:00+02:00 - admin-storage-snapshot-compaction-backup-operations review patches applied; story moved to done. Validation: Admin.Server focused slice 54/54, Admin.UI focused slice 85/85.
 # Previous last_updated detail preserved: 2026-05-11T18:52:08+02:00 - admin-operational-index-populators review patches applied; story moved to done. Validation: operational-index client focus 11/11, Admin.Server projection/storage/consistency focus 46/46, Admin.UI storage focus 19/19, Sample metadata 1/1, Admin.Abstractions storage 5/5.
 # Previous last_updated detail preserved: 2026-05-11T08:29:41+02:00 - admin-ui-actor-diagnostics-honesty-fix review decision resolved and 3 review patches applied; story moved to done. Validation: Admin.UI actor/client filter 19/19, Admin.Abstractions DaprActor filter 34/34, Admin.Server actor/controller filter 32/32.
@@ -278,6 +279,17 @@ development_status:
   21-12-fluentdesigntheme-integration: done
   21-13-ui-bug-fixes-batch: done
   epic-21-retrospective: done
+
+  # Epic 22: Public Gateway and Downstream Integration Contracts
+  # Added by sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md.
+  epic-22: backlog
+  22-1-gateway-command-query-contract-closure-and-package-docs: backlog
+  22-2-projection-adapter-contract-and-generic-query-actor-model: backlog
+  22-3-gateway-owned-tenant-and-rbac-enforcement: backlog
+  22-4-query-behavior-policy-and-error-taxonomy: backlog
+  22-5-event-publishing-guarantees-and-backend-deployment-matrix: backlog
+  22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints: backlog
+  22-7-payload-protection-snapshot-encryption-and-crypto-shredding-safety: backlog
 
   # Post-Epic Deferred Work Cleanup (sprint-change-proposal-2026-05-04-deferred-work-triage.md)
   # Grouped cleanup package for deferred-work.md. Create story files only when a bucket is selected for execution.
