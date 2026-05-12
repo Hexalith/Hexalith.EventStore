@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-12T22:03:52+02:00' # Story 22.4 created by pre-dev hardening automation; 22-4 moved to ready-for-dev for query behavior policy and error taxonomy.
+last_updated: '2026-05-12T23:04:13+02:00' # Story 22.5 created by pre-dev hardening automation; 22-5 moved to ready-for-dev for event publishing guarantees and backend deployment matrix.
+# Previous last_updated detail preserved: 2026-05-12T22:03:52+02:00 - Story 22.4 created by pre-dev hardening automation; 22-4 moved to ready-for-dev for query behavior policy and error taxonomy.
 # Previous last_updated detail preserved: 2026-05-12T21:44:06+02:00 - Story 22.3 created by pre-dev hardening automation; 22-3 moved to ready-for-dev for gateway-owned Hexalith.Tenants/RBAC enforcement.
 # Previous last_updated detail preserved: 2026-05-12T23:35:00+02:00 - Story 12-7 (Command API Reference) **second** adversarial re-review applied via bmad-code-review (independent Opus 4.7 1M run); 2 decision-needed + 13 patches resolved, 7 deferred (see _bmad-output/implementation-artifacts/12-7-command-api-reference.md and deferred-work.md "story-12-7-command-api-reference second pass" heading). Two HIGH bugs surfaced that the first pass missed: docs omitted required `messageId` field on every curl example, and `CorrelationIdMiddleware.Guid.TryParse` violated CLAUDE.md R2-A7. Build green; markdownlint clean; Contracts.Tests 295/295; Client.Tests 370/370. Story not tracked individually in development_status (docs story under Epic 13 numbering).
 # Previous last_updated detail preserved: 2026-05-12T21:05:26+02:00 - Story 22.1 created by pre-dev hardening automation; Epic 22 moved to in-progress and 22-1 moved to ready-for-dev.
@@ -301,7 +302,7 @@ development_status:
   22-2-projection-adapter-contract-and-generic-query-actor-model: ready-for-dev
   22-3-gateway-owned-tenant-and-rbac-enforcement: ready-for-dev
   22-4-query-behavior-policy-and-error-taxonomy: ready-for-dev
-  22-5-event-publishing-guarantees-and-backend-deployment-matrix: backlog
+  22-5-event-publishing-guarantees-and-backend-deployment-matrix: ready-for-dev
   22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints: backlog
   22-7a-payload-and-snapshot-protection-hooks: backlog
   22-7b-unreadable-protected-data-behavior: backlog
