@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-12T19:11:30+02:00' # Sprint planning refresh: added Epic 22 retrospective tracking, normalized legal status values, and preserved existing advanced statuses.
+last_updated: '2026-05-12T21:05:26+02:00' # Story 22.1 created by pre-dev hardening automation; Epic 22 moved to in-progress and 22-1 moved to ready-for-dev.
+# Previous last_updated detail preserved: 2026-05-12T19:11:30+02:00 - Sprint planning refresh: added Epic 22 retrospective tracking, normalized legal status values, and preserved existing advanced statuses.
 # Previous last_updated detail preserved: 2026-05-12T13:45:00+02:00 - Story 12-7 (Command API Reference) adversarial re-review applied via bmad-code-review; 10 patches resolved + 2 deferred (see _bmad-output/implementation-artifacts/12-7-command-api-reference.md). Story not tracked individually in development_status (docs story under Epic 13 numbering).
 # Previous last_updated detail preserved: 2026-05-12T10:06:53+02:00 - Epic 22 public gateway/downstream integration contract backlog added from sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md.
 # Previous last_updated detail preserved: 2026-05-11T21:13:18+02:00 - admin-ui-consistency-and-tenant-clarity-polish review patches applied; story moved to done. Validation: Admin.UI review focus 7/7; Aspire evidence recapture blocked by missing DAPR CLI and recorded under story artifacts.
@@ -292,8 +293,8 @@ development_status:
   # Epic 22: Public Gateway and Downstream Integration Contracts
   # Added by sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md.
   # Story 22.7 split by sprint-change-proposal-2026-05-12.md after implementation readiness approval.
-  epic-22: backlog
-  22-1-gateway-command-query-contract-closure-and-package-docs: backlog
+  epic-22: in-progress
+  22-1-gateway-command-query-contract-closure-and-package-docs: ready-for-dev
   22-2-projection-adapter-contract-and-generic-query-actor-model: backlog
   22-3-gateway-owned-tenant-and-rbac-enforcement: backlog
   22-4-query-behavior-policy-and-error-taxonomy: backlog
