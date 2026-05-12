@@ -2,6 +2,7 @@
 using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Client.Conventions;
 using Hexalith.EventStore.Client.Discovery;
+using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
@@ -9,6 +10,8 @@ using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 
 using Microsoft.Extensions.DependencyInjection;
+
+using Shouldly;
 
 namespace Hexalith.EventStore.Client.Tests.Registration;
 
@@ -89,6 +92,18 @@ public class ServiceCollectionExtensionsTests : IDisposable {
         IServiceCollection services = null!;
 
         _ = Assert.Throws<ArgumentNullException>(services.AddEventStoreClient<TestProcessor>);
+    }
+
+    [Fact]
+    public void AddEventStoreGatewayClient_RegistersTypedGatewayClient() {
+        var services = new ServiceCollection();
+
+        _ = services.AddEventStoreGatewayClient(options => options.BaseAddress = new Uri("https://eventstore.local/"));
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IEventStoreGatewayClient client = provider.GetRequiredService<IEventStoreGatewayClient>();
+
+        client.ShouldBeOfType<EventStoreGatewayClient>();
     }
 
     [Fact]

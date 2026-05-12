@@ -3,8 +3,7 @@ using System.Text.Json;
 
 namespace Hexalith.EventStore.Models;
 /// <summary>
-/// API-facing request DTO for submitting commands.
-/// Separate from <see cref="Contracts.Commands.CommandEnvelope"/> which is the internal domain type.
+/// Compatibility wrapper for the public command gateway request contract.
 /// </summary>
 /// <param name="MessageId">The unique command identity and idempotency key (ULID string). Required — client owns generation (FR49).</param>
 /// <param name="Tenant">The tenant identifier.</param>
@@ -22,4 +21,13 @@ public record SubmitCommandRequest(
     string CommandType,
     JsonElement Payload,
     string? CorrelationId = null,
-    Dictionary<string, string>? Extensions = null);
+    Dictionary<string, string>? Extensions = null)
+    : Hexalith.EventStore.Contracts.Commands.SubmitCommandRequest(
+        MessageId,
+        Tenant,
+        Domain,
+        AggregateId,
+        CommandType,
+        Payload,
+        CorrelationId,
+        Extensions);

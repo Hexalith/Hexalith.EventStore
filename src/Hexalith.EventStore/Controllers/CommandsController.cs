@@ -2,9 +2,9 @@ using System.Security.Claims;
 using System.Text.Json;
 
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
-using Hexalith.EventStore.Models;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Validation;
 

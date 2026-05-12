@@ -1,6 +1,7 @@
 namespace Hexalith.EventStore.Models;
 
 /// <summary>
-/// API response DTO containing the correlation ID for command tracking.
+/// Compatibility wrapper for the public command gateway response contract.
 /// </summary>
-public record SubmitCommandResponse(string CorrelationId);
+public record SubmitCommandResponse(string CorrelationId)
+    : Hexalith.EventStore.Contracts.Commands.SubmitCommandResponse(CorrelationId);

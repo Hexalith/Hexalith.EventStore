@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Discovery;
+using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Client.Projections;
 
@@ -18,6 +19,29 @@ namespace Hexalith.EventStore.Client.Registration;
 /// Extension methods for registering Event Store client services in the dependency injection container.
 /// </summary>
 public static class EventStoreServiceCollectionExtensions {
+    /// <summary>
+    /// Registers the typed HTTP EventStore gateway client.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configureOptions">Optional client options.</param>
+    /// <returns>The HTTP client builder for additional configuration.</returns>
+    public static IHttpClientBuilder AddEventStoreGatewayClient(
+        this IServiceCollection services,
+        Action<EventStoreGatewayClientOptions>? configureOptions = null) {
+        ArgumentNullException.ThrowIfNull(services);
+
+        if (configureOptions is not null) {
+            _ = services.Configure(configureOptions);
+        }
+
+        return services.AddHttpClient<IEventStoreGatewayClient, EventStoreGatewayClient>((serviceProvider, httpClient) => {
+            EventStoreGatewayClientOptions options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<EventStoreGatewayClientOptions>>().Value;
+            if (options.BaseAddress is not null) {
+                httpClient.BaseAddress = options.BaseAddress;
+            }
+        });
+    }
+
     /// <summary>
     /// Registers a domain processor implementation in the dependency injection container with scoped lifetime.
     /// </summary>
