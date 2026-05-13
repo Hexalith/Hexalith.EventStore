@@ -293,6 +293,25 @@ public class EventStoreGatewayClientTests {
     }
 
     [Fact]
+    public async Task SubmitCommandAsync_WithNonJsonResponseAndRetryAfterHeader_ThrowsGatewayExceptionWithRetryAfter() {
+        using HttpClient httpClient = CreateClient(_ => {
+            var response = new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) {
+                ReasonPhrase = "Service Unavailable",
+                Content = new StringContent("back off", Encoding.UTF8, "text/plain"),
+            };
+            response.Headers.Add("Retry-After", "120");
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreGatewayException ex = await Assert.ThrowsAsync<EventStoreGatewayException>(
+            () => client.SubmitCommandAsync(CreateCommandRequest()));
+
+        ex.StatusCode.ShouldBe(503);
+        ex.RetryAfter.ShouldBe("120");
+    }
+
+    [Fact]
     public async Task SubmitQueryAsync_WithCanceledToken_ThrowsOperationCanceledException() {
         using var cancellationSource = new CancellationTokenSource();
         await cancellationSource.CancelAsync();

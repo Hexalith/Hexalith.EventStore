@@ -1,6 +1,6 @@
 # Story 22.1: Gateway Command/Query Contract Closure and Package Docs
 
-Status: review
+Status: done
 
 Context created: 2026-05-12
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
@@ -372,6 +372,29 @@ GPT-5 Codex
 | 2026-05-13 | 0.3 | Started implementation, completed ST0 decision record and gap inventory, and moved sprint tracking to in-progress. | GPT-5 Codex |
 | 2026-05-13 | 1.0 | Implemented gateway contract closure across Contracts, Client, Testing, docs, generated API docs, and validation evidence; moved story to review. | GPT-5 Codex |
 | 2026-05-12 | 0.1 | Created ready-for-dev story for public gateway command/query contract closure and package documentation. | Codex automation |
+
+### Review Findings
+
+- [x] [Review][Decision] success:false exception drops response ETag — Resolved: drop intentionally. The decision record contract is StatusCode=200/Title="Query semantic failure"/Detail/CorrelationId only. ETag on a failed semantic response has no defined meaning and is omitted. No code change required.
+- [x] [Review][Decision] Stale builder uses 409 — Resolved: changed to 503. Stale projection is a service-level degradation, distinct from write-conflict Conflict (409). `EventStoreGatewayExceptionBuilder.Stale` now returns status 503. Test updated accordingly.
+- [x] [Review][Patch] GetExtensions leaks stable extension keys into Extensions dict [HIGH] — Fixed: renamed to IsKnownProblemDetailsProperty and added all 5 stable extension names to the exclusion filter. [`EventStoreGatewayClient.cs`]
+- [x] [Review][Patch] GetETag called before IsSuccessStatusCode check — weak ETag on error response throws wrong exception [HIGH] — Fixed: restructured SubmitQueryAsync to check 304/non-success before calling GetETag. [`EventStoreGatewayClient.cs`]
+- [x] [Review][Patch] Empty JSON retryAfter clobbers valid HTTP Retry-After header [MEDIUM] — Fixed: replaced `?? retryAfter` with explicit `!string.IsNullOrWhiteSpace()` guard. [`EventStoreGatewayClient.cs`]
+- [x] [Review][Patch] EmptyErrors/EmptyExtensions shared mutable singleton [MEDIUM] — Fixed: replaced with FrozenDictionary<,>.Empty; added innerException constructor parameter; removed stale private statics. [`EventStoreGatewayException.cs`]
+- [x] [Review][Patch] GetErrors silently drops error key when array contains only non-string items [MEDIUM] — Fixed: added JoinStringArrayOrRaw helper that falls back to GetRawText() when no string items exist. [`EventStoreGatewayClient.cs`]
+- [x] [Review][Patch] FakeEventStoreGatewayClient.SubmitQueryAsync<T> throws raw JsonException instead of wrapping in EventStoreGatewayException [MEDIUM] — Fixed: Deserialize<T> call is now wrapped in try/catch(JsonException) → EventStoreGatewayException. [`FakeEventStoreGatewayClient.cs`]
+- [x] [Review][Patch] Builder Validation factory lacks null guard on errors parameter [LOW] — Fixed: added ArgumentNullException.ThrowIfNull(errors) in block-body Validation factory. [`EventStoreGatewayExceptionBuilder.cs`]
+- [x] [Review][Patch] No test for HTTP-header-only Retry-After fallback path [LOW] — Fixed: added SubmitCommandAsync_WithNonJsonResponseAndRetryAfterHeader_ThrowsGatewayExceptionWithRetryAfter test. [`EventStoreGatewayClientTests.cs`]
+- [x] [Review][Patch] NormalizeIfNoneMatch rejects wildcard * with misleading error message [LOW] — Fixed: wildcard now has distinct message "Wildcard If-None-Match is not supported; provide a strong ETag token." [`EventStoreGatewayClient.cs`]
+- [x] [Review][Patch] Unknown ProblemDetails extension preservation policy not documented [LOW] — Fixed: query-api.md updated with explicit statement that unknown extensions are preserved in EventStoreGatewayException.Extensions. [`docs/reference/query-api.md`]
+- [x] [Review][Patch] JsonException catch blocks do not chain inner exception [LOW] — Fixed: all JsonException catches now chain via innerException constructor parameter. [`EventStoreGatewayClient.cs`, `EventStoreGatewayException.cs`]
+- [x] [Review][Patch] Builder _statusCode/_title fields not readonly [LOW] — Fixed: both fields marked readonly. [`EventStoreGatewayExceptionBuilder.cs`]
+- [x] [Review][Defer] GatewayProblemDetailsExtensions class name suggests extension methods — rename to GatewayProblemDetailsPropertyNames would clarify but is a public Contracts API breaking change; defer to next major — deferred, pre-existing design
+- [x] [Review][Defer] Extensions property exposes JsonElement (STJ hard dependency) — architectural decision per decision record; breaking change to alter — deferred, pre-existing design
+- [x] [Review][Defer] Errors dict copied with StringComparer.Ordinal — only affects external callers with non-Ordinal dicts; no internal path produces that — deferred, pre-existing design
+- [x] [Review][Defer] SubmitQueryAsync<T> throws on legitimate null payload — null payload with success:true is a server bug; acceptable sentinel — deferred, pre-existing design
+- [x] [Review][Defer] retryAfter format contract unspecified (HTTP delta-seconds vs ISO 8601 from JSON) — document in query-api.md when adding retryAfter test — deferred, pre-existing design
+- [x] [Review][Defer] No per-category fake test for auth-401/authz-403/conflict-409/rate-limit-429 — builder tests cover each status code; fake mechanism proven by existing tests; combined coverage is sufficient — deferred, pre-existing design
 
 ## Party-Mode Review
 

@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Text.Json;
 
 namespace Hexalith.EventStore.Client.Gateway;
@@ -6,9 +7,6 @@ namespace Hexalith.EventStore.Client.Gateway;
 /// Exception thrown when the EventStore gateway returns a non-successful response.
 /// </summary>
 public sealed class EventStoreGatewayException : Exception {
-    private static readonly IReadOnlyDictionary<string, string> EmptyErrors = new Dictionary<string, string>();
-    private static readonly IReadOnlyDictionary<string, JsonElement> EmptyExtensions = new Dictionary<string, JsonElement>();
-
     /// <summary>
     /// Initializes a new instance of the <see cref="EventStoreGatewayException"/> class.
     /// </summary>
@@ -22,18 +20,19 @@ public sealed class EventStoreGatewayException : Exception {
         IReadOnlyDictionary<string, string>? errors = null,
         string? reason = null,
         string? retryAfter = null,
-        IReadOnlyDictionary<string, JsonElement>? extensions = null)
-        : base(detail ?? title) {
+        IReadOnlyDictionary<string, JsonElement>? extensions = null,
+        Exception? innerException = null)
+        : base(detail ?? title, innerException) {
         StatusCode = statusCode;
         Title = title;
         Type = type;
         Detail = detail;
         CorrelationId = correlationId;
         TenantId = tenantId;
-        Errors = errors is null ? EmptyErrors : new Dictionary<string, string>(errors, StringComparer.Ordinal);
+        Errors = errors is null ? FrozenDictionary<string, string>.Empty : new Dictionary<string, string>(errors, StringComparer.Ordinal);
         Reason = reason;
         RetryAfter = retryAfter;
-        Extensions = extensions is null ? EmptyExtensions : new Dictionary<string, JsonElement>(extensions, StringComparer.Ordinal);
+        Extensions = extensions is null ? FrozenDictionary<string, JsonElement>.Empty : new Dictionary<string, JsonElement>(extensions, StringComparer.Ordinal);
     }
 
     /// <summary>

@@ -125,7 +125,7 @@ If the projection changed, the API returns `200 OK` with a new response body and
 | 429 Too Many Requests   | Per-tenant rate limit exceeded                      | RFC 7807 ProblemDetails with `Retry-After` header |
 | 503 Service Unavailable | Query dependencies unavailable                      | RFC 7807 ProblemDetails                           |
 
-Stable gateway ProblemDetails extension names are `correlationId`, `tenantId`, `errors`, `reason`, and `retryAfter`. The .NET gateway client exposes these through `EventStoreGatewayException` and preserves unknown extensions for diagnostics.
+Stable gateway ProblemDetails extension names are `correlationId`, `tenantId`, `errors`, `reason`, and `retryAfter`. The .NET gateway client exposes these through named properties on `EventStoreGatewayException`. Any non-standard extensions returned by the gateway (for example `traceCode` or custom diagnostic fields) are preserved verbatim in `EventStoreGatewayException.Extensions` as `IReadOnlyDictionary<string, JsonElement>` and are excluded from the named properties to avoid duplication.
 
 ## POST /api/v1/queries/validate
 

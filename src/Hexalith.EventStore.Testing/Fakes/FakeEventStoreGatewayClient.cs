@@ -158,9 +158,20 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
             return new EventStoreQueryResult<T>(result.CorrelationId, default, IsNotModified: true, result.ETag);
         }
 
-        T? payload = result.Payload.HasValue
-            ? result.Payload.Value.Deserialize<T>(JsonOptions)
-            : default;
+        T? payload;
+        try {
+            payload = result.Payload.HasValue
+                ? result.Payload.Value.Deserialize<T>(JsonOptions)
+                : default;
+        }
+        catch (JsonException ex) {
+            throw new EventStoreGatewayException(
+                200,
+                "OK",
+                detail: "Query response payload could not be deserialized.",
+                innerException: ex);
+        }
+
         return new EventStoreQueryResult<T>(result.CorrelationId, payload, IsNotModified: false, result.ETag);
     }
 }

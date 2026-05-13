@@ -8,8 +8,8 @@ namespace Hexalith.EventStore.Testing.Builders;
 /// Fluent builder for deterministic EventStore gateway exceptions in downstream tests.
 /// </summary>
 public sealed class EventStoreGatewayExceptionBuilder {
-    private int _statusCode;
-    private string _title;
+    private readonly int _statusCode;
+    private readonly string _title;
     private string? _type;
     private string? _detail;
     private string? _correlationId;
@@ -30,13 +30,15 @@ public sealed class EventStoreGatewayExceptionBuilder {
     public static EventStoreGatewayExceptionBuilder Validation(
         string correlationId,
         string tenantId,
-        IReadOnlyDictionary<string, string> errors)
-        => new(400, "Validation Failed") {
+        IReadOnlyDictionary<string, string> errors) {
+        ArgumentNullException.ThrowIfNull(errors);
+        return new(400, "Validation Failed") {
             _correlationId = correlationId,
             _tenantId = tenantId,
             _errors = new Dictionary<string, string>(errors, StringComparer.Ordinal),
             _reason = "validation-failed",
         };
+    }
 
     /// <summary>
     /// Creates an authentication failure builder.
@@ -71,7 +73,7 @@ public sealed class EventStoreGatewayExceptionBuilder {
     /// Creates a stale/degraded query failure builder.
     /// </summary>
     public static EventStoreGatewayExceptionBuilder Stale(string correlationId, string tenantId)
-        => new(409, "Stale projection") {
+        => new(503, "Stale projection") {
             _correlationId = correlationId,
             _tenantId = tenantId,
             _reason = "stale",

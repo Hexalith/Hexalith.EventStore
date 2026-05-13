@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -52,12 +53,12 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 .ReadFromJsonAsync<SubmitCommandResponse>(JsonOptions, cancellationToken)
                 .ConfigureAwait(false);
         }
-        catch (JsonException) {
+        catch (JsonException ex) {
             throw new EventStoreGatewayException(
                 (int)response.StatusCode,
                 response.ReasonPhrase ?? "Accepted",
                 detail: "Command response body could not be parsed.",
-                extensions: new Dictionary<string, JsonElement>());
+                innerException: ex);
         }
 
         if (result is null || string.IsNullOrWhiteSpace(result.CorrelationId)) {
@@ -90,14 +91,17 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             .SendAsync(httpRequest, cancellationToken)
             .ConfigureAwait(false);
 
-        string? eTag = GetETag(response);
+        // P2: check 304 and non-success BEFORE extracting ETag so a weak ETag on an error
+        // response does not shadow the real ProblemDetails exception.
         if (response.StatusCode == HttpStatusCode.NotModified) {
-            return new EventStoreQueryResult(null, null, IsNotModified: true, eTag);
+            return new EventStoreQueryResult(null, null, IsNotModified: true, GetETag(response));
         }
 
         if (!response.IsSuccessStatusCode) {
             await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
         }
+
+        string? eTag = GetETag(response);
 
         SubmitQueryResponse? result = await ReadQueryResponseAsync(response, cancellationToken)
             .ConfigureAwait(false);
@@ -143,11 +147,12 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         try {
             payload = result.Payload.Value.Deserialize<T>(JsonOptions);
         }
-        catch (JsonException) {
+        catch (JsonException ex) {
             throw new EventStoreGatewayException(
                 StatusCodes.Ok,
                 "OK",
-                detail: "Query response payload could not be deserialized.");
+                detail: "Query response payload could not be deserialized.",
+                innerException: ex);
         }
 
         if (payload is null) {
@@ -187,7 +192,13 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         }
 
         string value = ifNoneMatch.Trim();
-        if (value == "*" || value.StartsWith("W/", StringComparison.OrdinalIgnoreCase)) {
+
+        // P9: wildcard is not a weak ETag — give a distinct error message.
+        if (value == "*") {
+            throw new ArgumentException("Wildcard If-None-Match is not supported; provide a strong ETag token.", nameof(ifNoneMatch));
+        }
+
+        if (value.StartsWith("W/", StringComparison.OrdinalIgnoreCase)) {
             throw new ArgumentException("If-None-Match must be a strong ETag token.", nameof(ifNoneMatch));
         }
 
@@ -217,11 +228,12 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 .ReadFromJsonAsync<SubmitQueryResponse>(JsonOptions, cancellationToken)
                 .ConfigureAwait(false);
         }
-        catch (JsonException) {
+        catch (JsonException ex) {
             throw new EventStoreGatewayException(
                 (int)response.StatusCode,
                 response.ReasonPhrase ?? "OK",
-                detail: "Query response body could not be parsed.");
+                detail: "Query response body could not be parsed.",
+                innerException: ex);
         }
     }
 
@@ -255,7 +267,13 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 correlationId = GetString(root, GatewayProblemDetailsExtensions.CorrelationId);
                 tenantId = GetString(root, GatewayProblemDetailsExtensions.TenantId);
                 reason = GetString(root, GatewayProblemDetailsExtensions.Reason);
-                retryAfter = GetString(root, GatewayProblemDetailsExtensions.RetryAfter) ?? retryAfter;
+
+                // P3: only override the HTTP header value when the JSON field is non-empty.
+                string? jsonRetryAfter = GetString(root, GatewayProblemDetailsExtensions.RetryAfter);
+                if (!string.IsNullOrWhiteSpace(jsonRetryAfter)) {
+                    retryAfter = jsonRetryAfter;
+                }
+
                 errors = GetErrors(root);
                 extensions = GetExtensions(root);
             }
@@ -292,19 +310,15 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     private static IReadOnlyDictionary<string, string> GetErrors(JsonElement root) {
         if (!root.TryGetProperty(GatewayProblemDetailsExtensions.Errors, out JsonElement errorsElement)
             || errorsElement.ValueKind != JsonValueKind.Object) {
-            return new Dictionary<string, string>();
+            return FrozenDictionary<string, string>.Empty;
         }
 
         var errors = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (JsonProperty property in errorsElement.EnumerateObject()) {
+            // P5: fall back to raw JSON when array contains only non-string items so the key is not silently dropped.
             string? value = property.Value.ValueKind switch {
                 JsonValueKind.String => property.Value.GetString(),
-                JsonValueKind.Array => string.Join(
-                    "; ",
-                    property.Value.EnumerateArray()
-                        .Where(static item => item.ValueKind == JsonValueKind.String)
-                        .Select(static item => item.GetString())
-                        .Where(static item => !string.IsNullOrWhiteSpace(item))),
+                JsonValueKind.Array => JoinStringArrayOrRaw(property.Value),
                 _ => property.Value.GetRawText(),
             };
 
@@ -316,10 +330,20 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         return errors;
     }
 
+    private static string JoinStringArrayOrRaw(JsonElement arrayElement) {
+        string joined = string.Join(
+            "; ",
+            arrayElement.EnumerateArray()
+                .Where(static item => item.ValueKind == JsonValueKind.String)
+                .Select(static item => item.GetString())
+                .Where(static item => !string.IsNullOrWhiteSpace(item)));
+        return string.IsNullOrEmpty(joined) ? arrayElement.GetRawText() : joined;
+    }
+
     private static IReadOnlyDictionary<string, JsonElement> GetExtensions(JsonElement root) {
         var extensions = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
         foreach (JsonProperty property in root.EnumerateObject()) {
-            if (IsProblemDetailsStandardProperty(property.Name)) {
+            if (IsKnownProblemDetailsProperty(property.Name)) {
                 continue;
             }
 
@@ -329,8 +353,15 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         return extensions;
     }
 
-    private static bool IsProblemDetailsStandardProperty(string propertyName)
-        => propertyName is "type" or "title" or "status" or "detail" or "instance";
+    // P1: exclude both RFC 7807 standard fields AND the stable extension names so they
+    // do not appear twice (once as typed properties, once in Extensions).
+    private static bool IsKnownProblemDetailsProperty(string propertyName)
+        => propertyName is "type" or "title" or "status" or "detail" or "instance"
+            || propertyName == GatewayProblemDetailsExtensions.CorrelationId
+            || propertyName == GatewayProblemDetailsExtensions.TenantId
+            || propertyName == GatewayProblemDetailsExtensions.Errors
+            || propertyName == GatewayProblemDetailsExtensions.Reason
+            || propertyName == GatewayProblemDetailsExtensions.RetryAfter;
 
     private static class StatusCodes {
         public const int Ok = 200;

@@ -301,7 +301,7 @@ development_status:
   # Added by sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md.
   # Story 22.7 split by sprint-change-proposal-2026-05-12.md after implementation readiness approval.
   epic-22: in-progress
-  22-1-gateway-command-query-contract-closure-and-package-docs: review
+  22-1-gateway-command-query-contract-closure-and-package-docs: done
   22-2-projection-adapter-contract-and-generic-query-actor-model: ready-for-dev
   22-3-gateway-owned-tenant-and-rbac-enforcement: ready-for-dev
   22-4-query-behavior-policy-and-error-taxonomy: ready-for-dev
