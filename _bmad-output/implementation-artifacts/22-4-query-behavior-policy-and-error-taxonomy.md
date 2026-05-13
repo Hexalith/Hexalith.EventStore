@@ -24,6 +24,8 @@ so that Parties API behavior is predictable when routed through EventStore.
 - Query policy validation is a public contract layer for `POST /api/v1/queries`. New paging, search, filter, order, or freshness fields must be additive, optional/defaulted for existing callers, documented, and validated with stable RFC 7807 errors.
 - Runtime request order is part of the contract: authenticate and authorize through Story 22.3 behavior first, then apply query shape/policy validation, then perform cache/ETag optimization, then route to the projection adapter or query execution path.
 - ETag pre-check remains fail-open and cache-only. Failure to compute, decode, or compare an ETag must continue through normal authorized query execution and must not change tenant/RBAC, projection routing, or correctness semantics.
+- Cache and ETag decisions must be scoped to the authorized tenant, domain, projection type, query type, entity identity, and normalized query policy inputs. Requests with different filters, search terms, ordering, paging windows, or freshness requirements must not share a cache decision or query result identity unless the implementation records an explicit equivalence rule.
+- Query policy canonicalization is part of the public behavior. Equivalent request shapes may normalize to one stable representation, but contradictory inputs, duplicate aliases, unsupported operators, unknown policy fields, and ambiguous cursor/offset combinations must return stable validation ProblemDetails instead of silently choosing a winner.
 
 ## Current Implementation Intelligence
 
@@ -51,12 +53,14 @@ so that Parties API behavior is predictable when routed through EventStore.
    - And unsupported or malformed policy inputs return stable ProblemDetails types and reason codes rather than free-text-only failures.
    - And unsupported policy fields, unsupported operators, malformed filter/search/order syntax, and ambiguous paging inputs are rejected deterministically rather than silently ignored.
    - And newly introduced request fields remain additive, nullable/defaulted, and source/wire compatible for existing callers unless a SemVer-relevant breaking decision is recorded before implementation.
+   - And normalized policy inputs are recorded in tests so later implementations cannot accidentally change the public query identity, cache key, or validation result for equivalent requests.
 
 2. **Paging and ordering semantics are deterministic.**
    - Given a list/search query returns multiple items
    - When paging metadata is present
    - Then the contract defines page size defaults, max page size, next cursor or offset semantics, total count expectations if available, and deterministic ordering requirements.
    - And repeated calls with the same projection version and equivalent query parameters return stable item order.
+   - And deterministic ordering includes a documented tie-breaker that is stable, non-sensitive, and does not expose tenant internals, actor IDs, state-store keys, or protected payload values.
 
 3. **Cache and freshness metadata are public contract surface.**
    - Given a query returns `200 OK` or `304 Not Modified`
@@ -65,6 +69,7 @@ so that Parties API behavior is predictable when routed through EventStore.
    - And missing ETag data from cold start or ETag actor failure is documented as a fail-open cache optimization loss, not a failed query.
    - And cache metadata locations are fixed consistently across response headers, response body, `EventStoreQueryResult`, and testing fakes, without requiring callers to infer freshness from free-text messages.
    - And `304 Not Modified` remains an empty-body response unless a documented SemVer decision changes both server and client behavior.
+   - And cache/ETag tests prove different authorized query policy inputs cannot receive a false `304 Not Modified` from a previous filter/search/order/page request.
 
 4. **Query error taxonomy is stable and machine-readable.**
    - Given EventStore encounters malformed request, unsupported filter, invalid page, projection missing, projection stale beyond policy, degraded search, malformed projection response, projection timeout, authorization failure, actor-not-found infrastructure failure, or not-implemented query behavior
@@ -73,6 +78,7 @@ so that Parties API behavior is predictable when routed through EventStore.
    - And the story records a taxonomy table for each non-auth query failure with HTTP status, ProblemDetails `type`, stable machine code, retryability guidance, caller-action category, and client/fake behavior.
    - And internal actor type names, DAPR addresses, state-store keys, aggregate/projection state, query payload bytes, membership details, tokens, and protected data are not exposed.
    - And validation, query execution, ProblemDetails handlers, client exceptions, logs, and test artifacts do not expose query payload values, protected fields, tenant-sensitive filter values, raw adapter errors, checksums that reveal payload meaning, or projection result payloads.
+   - And status code, ProblemDetails `type`, reason code, retryability, and caller-action category are treated as the machine contract; localized or revised `title`/`detail` text must not be required for client branching.
 
 5. **Projection adapter and authorization handoffs remain intact.**
    - Given Story 22.2 defines projection adapter routing and Story 22.3 defines gateway tenant/RBAC enforcement
@@ -100,6 +106,7 @@ so that Parties API behavior is predictable when routed through EventStore.
     - [ ] Record a decision table for each policy dimension: paging, cursor/offset, search, filters, ordering, freshness, stale/degraded, malformed projection response, timeout, not-found, not-implemented, and authorization handoff.
     - [ ] Record the runtime validation order: Story 22.3 authentication/authorization, query shape/policy validation, ETag/cache pre-check, and projection routing/execution.
     - [ ] Record a compatibility table for every added or changed public query request/response field, including default value, omission behavior, JSON shape, and SemVer impact.
+    - [ ] Record a cache/query-identity table covering tenant, domain, projection type, query type, entity identity, normalized payload identity where applicable, filters, search, ordering, paging, and freshness inputs.
     - [ ] Explicitly mark any policy not implemented in this story as unsupported/deferred with public error behavior; do not leave it implicit.
 
 - [ ] **ST1 - Define public query policy contracts.** (AC: 1, 2, 3)
@@ -115,6 +122,8 @@ so that Parties API behavior is predictable when routed through EventStore.
     - [ ] Preserve existing tenant/domain/aggregate/query/projection/entity validation and colon separator rules.
     - [ ] Ensure query shape/policy validation runs only after successful authentication/authorization, so validation failures do not reveal protected tenant or resource existence.
     - [ ] Ensure query payload handling does not log or echo payload bytes when invalid filters/search values are rejected.
+    - [ ] Normalize query policy inputs before cache/ETag comparison and projection routing; reject contradictory aliases, duplicate unsupported fields, and cursor/offset combinations that cannot be represented safely.
+    - [ ] Ensure query policy validation failures use machine-readable field/path identifiers that help callers fix requests without echoing tenant-sensitive filter values or payload data.
     - [ ] Add focused validator/controller tests for default page size, max page size, invalid page/cursor/offset, blank search, unsupported filter/search/order, deterministic order defaults, validation-order behavior, and payload-size boundaries where applicable.
 
 - [ ] **ST3 - Freeze query response metadata behavior.** (AC: 3, 6)
@@ -131,12 +140,14 @@ so that Parties API behavior is predictable when routed through EventStore.
     - [ ] Record a taxonomy table with category, HTTP status, ProblemDetails `type`, stable reason code, retryability, caller action, server handler, client behavior, fake behavior, and log/no-leak expectations.
     - [ ] Update `QueryNotFoundExceptionHandler`, `QueryExecutionFailedExceptionHandler`, validation ProblemDetails output, and any global handler path needed for malformed projection JSON or timeout categories.
     - [ ] Replace free-text-only `SubmitQueryHandler` classification where possible with typed categories. If adapter contracts still return free text from Story 22.2, isolate that compatibility mapping and cover it with tests.
+    - [ ] Preserve a deterministic fallback for unexpected query execution failures: sanitized 500 response, stable internal-error reason code, no retry guidance that promises success, and structured logs containing correlation without payload or protected details.
     - [ ] Add table-driven ProblemDetails tests for invalid paging, unsupported filter/search/order, malformed query body, projection missing, malformed projection payload, timeout, stale/degraded categories, not-implemented behavior, and unexpected query execution failures.
     - [ ] Add sanitization tests proving actor/DAPR/state-store/query payload/filter/protected-data details, raw adapter errors, checksums that reveal payload meaning, tenant secrets, stack traces, and projection payloads do not leak.
 
 - [ ] **ST5 - Align Client and Testing support.** (AC: 3, 4, 6)
     - [ ] Extend `EventStoreGatewayException` parsing if ProblemDetails reason codes, warning codes, or additional extensions become public client behavior.
     - [ ] Preserve current `SubmitQueryAsync` 304 behavior: typed query results return default payload with `IsNotModified=true` and ETag when present.
+    - [ ] Ensure client and fake behavior branch on stable status/type/reason/warning metadata, not localized `title`, `detail`, exception message text, or server log wording.
     - [ ] Add client tests for query ProblemDetails categories and metadata extraction.
     - [ ] Add testing fake/builders for success metadata, 304/not-modified, stale/degraded warnings, invalid page, unsupported filter/search/order, projection missing, malformed projection response, timeout, not-implemented, auth failures, and correlation propagation.
     - [ ] Keep fake scenarios aligned with client-visible behavior and public contracts rather than server implementation internals.
@@ -169,6 +180,7 @@ Architecture and product guardrails:
 - Existing ETag behavior is intentionally fail-open for cache optimization failures. Do not convert ETag actor unavailability into query failure unless a product/architecture decision explicitly changes that policy.
 - Existing 304 behavior has an empty body. Keep it unless docs, client behavior, and tests intentionally approve a SemVer-relevant change.
 - Query policy validation must not become an information disclosure oracle. Authenticate and authorize first, then validate query policy for requests the caller is allowed to make.
+- Query cache identity must include normalized policy inputs. A stale ETag match for the same projection but a different filter/search/order/page shape is a correctness bug, not an acceptable optimization edge case.
 - New public query policy fields must be additive and default to current behavior for existing callers unless a breaking SemVer decision is recorded and approved.
 
 Implementation traps to avoid:
@@ -180,6 +192,7 @@ Implementation traps to avoid:
 - Do not change query actor ID derivation from Story 22.2 unless that story's contract has already been updated.
 - Do not alter tenant/RBAC reason-code ownership from Story 22.3. Query taxonomy should include authorization failures by reference/alignment, not by creating a conflicting taxonomy.
 - Do not make cache freshness or ETag availability a correctness dependency. ETag failures remain cache misses/fail-open unless architecture explicitly changes that policy.
+- Do not let client or fake tests branch on English ProblemDetails `detail` text. The stable contract is status, type URI, reason code, warning code, correlation, retryability, and documented metadata.
 - Do not satisfy this story with generic ProblemDetails handlers that lack stable query reason codes and client/fake parity tests.
 - Do not run broad solution-level tests first. Use focused slices because `Hexalith.EventStore.Server.Tests` has a known CA2007 warning-as-error risk in this workspace.
 
@@ -309,13 +322,14 @@ GPT-5 Codex
 - 2026-05-12T20:02:08Z - Pre-dev hardening preflight passed via `_bmad-output/process-notes/predev-preflight-latest.json`.
 - 2026-05-12T22:03:52+02:00 - Story creation context gathered from Epic 22, PRD FR93-FR95, architecture ADR-P6/P7/P8/P9, Stories 22.1-22.3, current query controller/handler/router/contracts/client/fake/docs/test surfaces, recent commits, project context, and lessons ledger.
 - 2026-05-13T07:41:02+02:00 - Party-mode review completed with John, Winston, Amelia, and Murat; applied low-risk story hardening for validation order, additive public field compatibility, fail-open ETag semantics, non-auth query taxonomy evidence, no-leak assertions, and client/fake parity.
+- 2026-05-13T13:06:00+02:00 - Advanced elicitation completed in two batches; applied bounded story hardening for query policy canonicalization, cache identity isolation, deterministic taxonomy contracts, sanitized fallback behavior, and client/fake branching guardrails.
 
 ### Completion Notes List
 
 - Story created and marked ready-for-dev by the BMAD pre-dev hardening automation.
 - Story creation did not modify product code, tests, DAPR/Aspire configuration, generated API docs, or submodules.
 - Party-mode review completed on 2026-05-13 and applied story hardening for public query policy validation, cache semantics, query ProblemDetails taxonomy, client/fake parity, and focused evidence obligations.
-- Advanced elicitation has NOT yet been run for this story.
+- Advanced elicitation completed on 2026-05-13 and applied story-text hardening only; product code, tests, DAPR/Aspire configuration, generated API docs, sprint status, and submodules were not changed.
 
 ### File List
 
@@ -334,12 +348,14 @@ GPT-5 Codex
 - Party-mode review completed on 2026-05-13 and is recorded below.
 - Party-mode findings were applied only as story-text clarifications; product code, tests, DAPR/Aspire configuration, generated API docs, submodules, and sprint status were not changed.
 - Party-mode story hardening passed `git diff --check` and `npx markdownlint-cli2` on 2026-05-13.
-- Advanced elicitation has NOT yet been run for this story.
+- Advanced elicitation completed on 2026-05-13 and is recorded below.
+- Advanced elicitation findings were applied only as story-text clarifications; product code, tests, DAPR/Aspire configuration, generated API docs, submodules, and sprint status were not changed.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-13 | 0.3 | Applied advanced elicitation hardening for query policy canonicalization, cache identity isolation, stable machine taxonomy, sanitized fallbacks, and client/fake branching guardrails. | Codex automation |
 | 2026-05-13 | 0.2 | Applied party-mode review hardening for query validation order, compatibility, cache semantics, taxonomy, no-leak testing, and client/fake parity. | Codex automation |
 | 2026-05-12 | 0.1 | Created ready-for-dev story for query behavior policy and error taxonomy. | Codex automation |
 
@@ -368,4 +384,42 @@ GPT-5 Codex
     - Final ProblemDetails URI namespace and canonical reason-code strings remain implementation decisions to record in the taxonomy table.
     - Whether freshness metadata is header-only, body-only, or duplicated across both remains a contract decision to record before client/fake behavior changes.
     - Projection adapter contract changes remain deferred to Story 22.2; tenant/RBAC taxonomy remains Story 22.3; publishing, replay, and payload protection remain Stories 22.5 through 22.7.
+- Final recommendation: ready-for-dev after applied story updates.
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-13T13:06:00+02:00
+- Selected story key: `22-4-query-behavior-policy-and-error-taxonomy`
+- Command/skill invocation used:
+    `/bmad-advanced-elicitation 22-4-query-behavior-policy-and-error-taxonomy`
+- Batch 1 method names:
+    - Self-Consistency Validation
+    - Red Team vs Blue Team
+    - Security Audit Personas
+    - Failure Mode Analysis
+    - Comparative Analysis Matrix
+- Reshuffled Batch 2 method names:
+    - Chaos Monkey Scenarios
+    - First Principles Analysis
+    - Occam's Razor Application
+    - 5 Whys Deep Dive
+    - Lessons Learned Extraction
+- Findings summary:
+    - Query policy needed a clearer canonicalization requirement so equivalent requests normalize consistently while ambiguous or contradictory inputs fail deterministically.
+    - Cache and ETag semantics needed an explicit query-identity guard to prevent false `304 Not Modified` responses across different filters, search terms, ordering, paging windows, or freshness policies.
+    - ProblemDetails taxonomy needed sharper client-contract wording: machines must branch on status/type/reason/warning metadata rather than mutable `title`, `detail`, or exception text.
+    - Unexpected query execution failures needed a sanitized deterministic fallback path with correlation-safe observability and no payload/protected-data leakage.
+    - Client and Testing fake parity needed explicit proof that downstream tests simulate public metadata and reason codes rather than server-internal wording.
+- Changes applied:
+    - Added Query Behavior Contract bullets for cache/query identity scoping and policy canonicalization.
+    - Tightened AC1-AC4 with normalized policy identity, non-sensitive ordering tie-breakers, false-304 prevention, and stable machine-contract taxonomy wording.
+    - Expanded ST0, ST2, ST4, and ST5 with cache identity tables, normalization/rejection requirements, sanitized unexpected-failure fallback, and client/fake branching guardrails.
+    - Added Developer Notes and traps for query cache identity and ProblemDetails machine-contract behavior.
+    - Updated Dev Agent Record, Completion Notes, Verification Status, and Change Log with this dated advanced elicitation trace.
+- Findings deferred:
+    - Exact supported filter/search/order grammar, alias list, and canonical normalized representation remain implementation decisions to record during ST0.
+    - The concrete cache/query identity key format remains an implementation decision, provided tests prove tenant and policy isolation.
+    - Final query reason-code strings, warning-code strings, retryability vocabulary, and caller-action labels remain implementation decisions to record in the taxonomy table.
+    - Whether freshness metadata is header-only, body-only, or duplicated remains a contract decision to record before client/fake behavior changes.
+    - Any projection adapter contract changes remain owned by Story 22.2; tenant/RBAC taxonomy remains owned by Story 22.3.
 - Final recommendation: ready-for-dev after applied story updates.
