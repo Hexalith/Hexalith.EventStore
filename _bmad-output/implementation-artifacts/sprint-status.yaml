@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-13T08:04:55+02:00' # Story 22.6 created by pre-dev hardening automation; 22-6 moved to ready-for-dev for stream replay/read APIs and projection rebuild checkpoints.
+last_updated: '2026-05-13T15:05:39+02:00' # Story 22.7a created by pre-dev hardening automation; 22-7a moved to ready-for-dev for payload and snapshot protection hooks.
+# Previous last_updated detail preserved: 2026-05-13T08:04:55+02:00 - Story 22.6 created by pre-dev hardening automation; 22-6 moved to ready-for-dev for stream replay/read APIs and projection rebuild checkpoints.
 # Previous last_updated detail preserved: 2026-05-13T07:51:55+02:00 - Story 22.1 moved to review after gateway command/query contract closure implementation.
 # Previous last_updated detail preserved: 2026-05-13T07:36:16+02:00 - Story 22.1 moved to in-progress for gateway command/query contract closure implementation.
 # Previous last_updated detail preserved: 2026-05-12T23:04:13+02:00 - Story 22.5 created by pre-dev hardening automation; 22-5 moved to ready-for-dev for event publishing guarantees and backend deployment matrix.
@@ -307,7 +308,7 @@ development_status:
   22-4-query-behavior-policy-and-error-taxonomy: ready-for-dev
   22-5-event-publishing-guarantees-and-backend-deployment-matrix: ready-for-dev
   22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints: ready-for-dev
-  22-7a-payload-and-snapshot-protection-hooks: backlog
+  22-7a-payload-and-snapshot-protection-hooks: ready-for-dev
   22-7b-unreadable-protected-data-behavior: backlog
   22-7c-crypto-shredding-workflow-and-restored-backup-safety: backlog
   22-7d-protected-data-redaction-across-operational-surfaces: backlog
