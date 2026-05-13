@@ -83,6 +83,8 @@ public partial class SubmitQueryRequestValidator : AbstractValidator<SubmitQuery
             .Must(pat => pat == null || !pat.Contains(':'))
             .WithMessage("ProjectionActorType cannot contain colons (reserved as actor ID separator)")
             .MaximumLength(MaxTenantDomainLength).WithMessage($"ProjectionActorType cannot exceed {MaxTenantDomainLength} characters")
+            .Must(pat => pat == null || (!ContainsDangerousCharacters(pat) && !_injectionPattern.IsMatch(pat)))
+            .WithMessage("ProjectionActorType cannot contain dangerous characters or script injection patterns")
             .When(x => x.ProjectionActorType is not null, ApplyConditionTo.CurrentValidator);
 
         _ = RuleFor(x => x.Payload)

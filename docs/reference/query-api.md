@@ -55,7 +55,7 @@ Execute a query against the current projection/read model.
 | projectionType      | string | No       | Projection/read-model selector used for actor ID routing and ETag/cache metadata. If omitted, routing uses `queryType`.                           |
 | payload             | object | No       | Optional JSON payload for the query. Non-empty payloads route through the payload-checksum mode when `entityId` is absent.                         |
 | entityId            | string | No       | Optional entity identifier for query handlers that target a nested entity or alternate projection identity.                                        |
-| projectionActorType | string | No       | Optional DAPR actor type selector. Defaults to `ProjectionActor`. This is a routing selector only, not an authorization or tenant-selection field. |
+| projectionActorType | string | No       | Optional DAPR actor type selector. Defaults to `ProjectionActor`. This is a routing selector only, not an authorization or tenant-selection field. Must not contain colons (`:`) or dangerous characters. Maximum 64 characters. |
 
 ### Example
 
@@ -171,7 +171,7 @@ EventStore uses three deterministic actor ID modes. Routing segments must not co
 | List parties      | `projectionType = "party-list"`, empty payload, no entity  | `{projectionType}:{tenant}`        | `party-list:tenant-a`                    |
 | Search parties    | `projectionType = "party-search"`, non-empty JSON payload  | `{projectionType}:{tenant}:{hash}` | `party-search:tenant-a:A5BYxvLAy0k`      |
 
-If `projectionType` is omitted, EventStore uses `queryType` as the first actor ID segment for compatibility. If `projectionActorType` is omitted, EventStore uses DAPR actor type `ProjectionActor`; otherwise it uses the supplied actor type selector. `projectionActorType` does not bypass authentication, authorization, tenant validation, or future Story 22.3 policy.
+If `projectionType` is omitted, EventStore uses `queryType` as the first actor ID segment for compatibility. If `projectionActorType` is omitted, EventStore uses DAPR actor type `ProjectionActor`; otherwise it uses the supplied actor type selector. `projectionActorType` does not bypass authentication, authorization, tenant validation, or future Story 22.3 policy. The field must not contain colons (`:`, reserved as the actor ID segment separator) or dangerous characters; it is limited to 64 characters. These constraints are enforced at the gateway validator before the value reaches the actor proxy factory.
 
 The `/project` projection update/rebuild contract is separate from `POST /api/v1/queries` query serving. Projection update endpoints change read-model state and ETags; query actors serve current read-model data.
 

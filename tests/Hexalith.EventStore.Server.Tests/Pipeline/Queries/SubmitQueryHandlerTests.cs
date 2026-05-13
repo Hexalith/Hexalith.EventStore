@@ -138,6 +138,57 @@ public class SubmitQueryHandlerTests {
         ex.Detail.ShouldBe(failureReason);
     }
 
+    [Theory]
+    [InlineData(QueryAdapterFailureReason.UnsupportedQueryType)]
+    [InlineData(QueryAdapterFailureReason.UnknownQueryType)]
+    public async Task Handle_NotImplementedFailureReason_ThrowsQueryExecutionFailedExceptionWith501(string failureReason) {
+        // Arrange
+        IQueryRouter router = Substitute.For<IQueryRouter>();
+        _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: failureReason));
+
+        var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
+
+        // Act & Assert
+        QueryExecutionFailedException ex = await Should.ThrowAsync<QueryExecutionFailedException>(
+            () => handler.Handle(CreateTestQuery(), CancellationToken.None));
+
+        ex.StatusCode.ShouldBe(501);
+        ex.Detail.ShouldBe(failureReason);
+    }
+
+    [Fact]
+    public async Task Handle_ForbiddenFailureReason_ThrowsQueryExecutionFailedExceptionWith403() {
+        // Arrange
+        IQueryRouter router = Substitute.For<IQueryRouter>();
+        _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.Forbidden));
+
+        var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
+
+        // Act & Assert
+        QueryExecutionFailedException ex = await Should.ThrowAsync<QueryExecutionFailedException>(
+            () => handler.Handle(CreateTestQuery(), CancellationToken.None));
+
+        ex.StatusCode.ShouldBe(403);
+        ex.Detail.ShouldBe(QueryAdapterFailureReason.Forbidden);
+    }
+
+    [Fact]
+    public async Task Handle_CancellationRequested_PropagatesOperationCanceledException() {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        IQueryRouter router = Substitute.For<IQueryRouter>();
+        _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new OperationCanceledException());
+
+        var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
+
+        // Act & Assert
+        await Should.ThrowAsync<OperationCanceledException>(
+            () => handler.Handle(CreateTestQuery(), CancellationToken.None));
+    }
+
     [Fact]
     public async Task Handle_MissingProjectionState_ThrowsQueryNotFoundException() {
         // Arrange

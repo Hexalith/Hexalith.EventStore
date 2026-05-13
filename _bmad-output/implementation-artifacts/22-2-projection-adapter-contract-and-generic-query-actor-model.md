@@ -1,6 +1,6 @@
 # Story 22.2: Projection Adapter Contract and Generic Query Actor Model
 
-Status: review
+Status: done
 
 Context created: 2026-05-12
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
@@ -422,10 +422,30 @@ GPT-5 Codex
 - [x] `[Review][Defer]` CachingProjectionActor tier-3 empty-payload cache collision with pagination cursors [`src/Hexalith.EventStore.Server/Actors/CachingProjectionActor.cs`] — deferred, paging/freshness behavior belongs to Story 22.4
 - [x] `[Review][Defer]` KebabConverter regex unexpected splits for multi-capital sequences [`src/Hexalith.EventStore.Contracts/Messages/KebabConverter.cs`] — deferred, pre-existing; not changed in this story
 
+### Review Findings — Round 2 (2026-05-13, Claude Sonnet 4.6 bmad-code-review)
+
+- [x] `[Review][Patch]` No `QueryAdapterFailureReason.Forbidden` constant — Forbidden check is a bare `OrdinalIgnoreCase` string literal at `SubmitQueryHandler.cs:48`; no 403 handler test exists; if the sentinel changes, Forbidden silently becomes 500 with no test regression. Add `Forbidden` constant to `QueryAdapterFailureReason` and a handler-level 403 test. [`src/Hexalith.EventStore.Server/Pipeline/SubmitQueryHandler.cs:48`, `src/Hexalith.EventStore.Contracts/Queries/QueryAdapterFailureReason.cs`]
+- [x] `[Review][Patch]` `ActorNotFoundInfrastructure` branch in `IsNotFound` is dead code — `QueryRouter` always sets `NotFound: true` for actor-not-found (never sets `ErrorMessage`), so the `Ordinal` constant check in `IsNotFound` can never be triggered via normal flow. Remove the dead branch or add a comment documenting the unreachable path. [`src/Hexalith.EventStore.Server/Pipeline/SubmitQueryHandler.cs`, `src/Hexalith.EventStore.Server/Queries/QueryRouter.cs:91–95`]
+- [x] `[Review][Patch]` Missing handler-level tests for `UnsupportedQueryType`/`UnknownQueryType` → `IsNotImplemented` → HTTP 501 — the existing theory covers only four 500-producing constants; the two constants that produce 501 are untested at the handler level. Add theory `InlineData` cases for both constants. [`tests/Hexalith.EventStore.Server.Tests/Pipeline/Queries/SubmitQueryHandlerTests.cs`]
+- [x] `[Review][Patch]` Missing handler-level test for `OperationCanceledException` propagation — `QueryRouter` re-throws cancellation but no `SubmitQueryHandlerTests` case confirms it propagates rather than being swallowed. Add a test. [`tests/Hexalith.EventStore.Server.Tests/Pipeline/Queries/SubmitQueryHandlerTests.cs`]
+- [x] `[Review][Patch]` `ProjectionActorType` missing injection-pattern / dangerous-character guard — `QueryType` and `ProjectionType` receive an `_injectionPattern` / `ContainsDangerousCharacters` check; `ProjectionActorType` receives only the colon and max-length rules, leaving `<script>` and similar patterns unchecked before the value reaches `actorProxyFactory`. Follow the existing pattern for the other routing fields. [`src/Hexalith.EventStore/Validation/SubmitQueryRequestValidator.cs:79–86`]
+- [x] `[Review][Patch]` `docs/reference/query-api.md` missing colon-forbidden and max-length-64 constraints for `projectionActorType` — AC2 requires routing docs to define override constraints and invalid character rules; the constraint is validated and tested but invisible in published docs. [`docs/reference/query-api.md`]
+- [x] `[Review][Patch]` `nuget-packages.md` Testing section prose missing "runtime-test utility" qualifier — already present in the doc at line 284; no change required. [`docs/reference/nuget-packages.md`]
+- [x] `[Review][Patch]` Reflection proof `PublicProjectionFakeApi_UsesContractsTypesOnly` is positive-only — it proves the public API uses Contracts types but does not prove ABSENCE of a `Hexalith.EventStore.Server.Actors` type reference; AC5/ST4 explicitly require a negative proof. Strengthen with an `Assembly.GetReferencedAssemblies()` / `GetTypes()` check or a separate negative assertion. [`tests/Hexalith.EventStore.Testing.Tests/Fakes/FakeProjectionActorTests.cs`]
+- [x] `[Review][Defer]` All actor exceptions map to opaque `ActorException` / HTTP 500, losing inner-exception details — intentional per AC4 fail-closed requirement; 503/502 transient-vs-infrastructure distinction is a future story concern. deferred, design-intentional per AC4
+- [x] `[Review][Defer]` `IsNotFound` mixes `Ordinal` exact-equals for constant with `OrdinalIgnoreCase`+Contains free-text fallback — intentional backward-compat during migration period; deferred, pre-existing migration pattern
+- [x] `[Review][Defer]` `QueryResult.Failure("")` now throws `ArgumentException` — could break deployed actors that call `Failure("")` or `Failure(whitespace)`; no migration note in docs. deferred, guide-level migration note gap only
+- [x] `[Review][Defer]` `JsonValueKind.Null` permitted in `FromPayload` but downstream callers may dereference properties on it causing `InvalidOperationException` — deferred, pre-existing edge case not introduced by this change
+- [x] `[Review][Defer]` Empty-string `EntityId` bypasses tier-1 routing and silently falls to tier-2 payload-checksum actor — deferred, pre-existing issue not caused by this change
+- [x] `[Review][Defer]` Version-skew/serializer-mismatch category not mapped to a stable constant and no explicit defer note in code/comments — deferred to Story 22.4 per existing AC4 notes; `SerializationFailure` covers the wire layer
+- [x] `[Review][Defer]` DataContract round-trip tests do not exercise the parameterless-activation path used by `DataContractSerializer` for records — deferred, esoteric testing gap
+- [x] `[Review][Defer]` Hardcoded checksum `A5BYxvLAy0k` in routing test has no derivation comment — deferred, documentation style gap only
+
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-13 | 1.2 | Round-2 code review surfaced 8 patch findings and 7 defers; story moved back to in-progress. | Claude Sonnet 4.6 |
 | 2026-05-13 | 1.1 | Addressed all 14 code-review patch findings and returned the story to review with refreshed verification evidence. | GPT-5 Codex |
 | 2026-05-13 | 1.0 | Implemented public projection adapter contract in Contracts, hardened query routing and adapter-edge categories, decoupled projection fake usage, refreshed docs/API docs, and moved story to review. | GPT-5 Codex |
 | 2026-05-13 | 0.3 | Applied advanced-elicitation hardening for public adapter boundary decisions, selector safety, failure modes, package proof, and evidence consistency. | Codex automation |

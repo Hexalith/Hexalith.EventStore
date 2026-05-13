@@ -45,7 +45,7 @@ public partial class SubmitQueryHandler(
     private static Exception CreateQueryFailureException(SubmitQuery request, string? errorMessage) {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (string.Equals(errorMessage, "Forbidden", StringComparison.OrdinalIgnoreCase)) {
+        if (string.Equals(errorMessage, QueryAdapterFailureReason.Forbidden, StringComparison.OrdinalIgnoreCase)) {
             return new QueryExecutionFailedException(
                 request.CorrelationId,
                 request.Tenant,
@@ -82,10 +82,9 @@ public partial class SubmitQueryHandler(
     }
 
     private static bool IsNotFound(string? errorMessage)
-        => string.Equals(errorMessage, QueryAdapterFailureReason.ActorNotFoundInfrastructure, StringComparison.Ordinal)
-            || (!string.IsNullOrWhiteSpace(errorMessage)
-                && (errorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase)
-                    || errorMessage.Contains("no projection state available", StringComparison.OrdinalIgnoreCase)));
+        => !string.IsNullOrWhiteSpace(errorMessage)
+            && (errorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase)
+                || errorMessage.Contains("no projection state available", StringComparison.OrdinalIgnoreCase));
 
     private static bool IsNotImplemented(string? errorMessage)
         => string.Equals(errorMessage, QueryAdapterFailureReason.UnsupportedQueryType, StringComparison.Ordinal)

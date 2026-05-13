@@ -48,4 +48,9 @@ public static class QueryAdapterFailureReason {
     /// The actor runtime reported missing actor registration or address information.
     /// </summary>
     public const string ActorNotFoundInfrastructure = "actor-not-found-infrastructure";
+
+    /// <summary>
+    /// The actor returned a 403 Forbidden response; the caller is not permitted to execute this query.
+    /// </summary>
+    public const string Forbidden = "Forbidden";
 }

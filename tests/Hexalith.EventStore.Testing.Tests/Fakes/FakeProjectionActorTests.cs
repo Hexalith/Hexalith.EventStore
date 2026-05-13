@@ -131,4 +131,34 @@ public class FakeProjectionActorTests {
             .Single()
             .ShouldBe(typeof(QueryResult));
     }
+
+    [Fact]
+    public void PublicProjectionFakeAssembly_DoesNotReferenceServerActorsAssembly() {
+        System.Reflection.Assembly testingAssembly = typeof(FakeProjectionActor).Assembly;
+        string serverActorsNamespace = "Hexalith.EventStore.Server";
+
+        IEnumerable<string> referencedNames = testingAssembly
+            .GetReferencedAssemblies()
+            .Select(a => a.Name ?? string.Empty);
+
+        // The Testing assembly may reference Server for runtime-test utilities, but
+        // no type from Hexalith.EventStore.Server.Actors should appear in the
+        // FakeProjectionActor's public API surface types.
+        IEnumerable<System.Reflection.Assembly> referencedAssemblies = AppDomain.CurrentDomain
+            .GetAssemblies()
+            .Where(a => referencedNames.Contains(a.GetName().Name));
+
+        Type fakeType = typeof(FakeProjectionActor);
+        IEnumerable<Type> apiTypes = new[] { fakeType }
+            .Concat(fakeType.GetInterfaces())
+            .Concat(fakeType.GetProperties().Select(p => p.PropertyType))
+            .Concat(fakeType.GetMethods().SelectMany(m =>
+                m.GetParameters().Select(p => p.ParameterType).Append(m.ReturnType)))
+            .SelectMany(t => t.IsGenericType ? t.GetGenericArguments().Append(t) : [t]);
+
+        foreach (Type apiType in apiTypes.Where(t => t.Assembly != typeof(object).Assembly)) {
+            bool fromServerActors = apiType.Namespace?.StartsWith(serverActorsNamespace + ".Actors", StringComparison.Ordinal) ?? false;
+            fromServerActors.ShouldBeFalse($"Public API type '{apiType.FullName}' must not come from {serverActorsNamespace}.Actors");
+        }
+    }
 }
