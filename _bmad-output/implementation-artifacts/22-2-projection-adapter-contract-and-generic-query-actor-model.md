@@ -1,6 +1,6 @@
 # Story 22.2: Projection Adapter Contract and Generic Query Actor Model
 
-Status: review
+Status: in-progress
 
 Context created: 2026-05-12
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
@@ -391,6 +391,26 @@ GPT-5 Codex
 - `npx markdownlint-cli2 docs/reference/query-api.md docs/reference/nuget-packages.md _bmad-output/implementation-artifacts/22-2-projection-adapter-contract-and-generic-query-actor-model.md` passed with 0 errors.
 - Generated API docs refreshed for `Hexalith.EventStore.Contracts` using global `dotnet defaultdocumentation` 1.2.3. Initial member-page generation hit the known Windows long/signature filename issue; rerun with namespace/type pages succeeded and generated the new public adapter type pages.
 - `git diff --check` passed with line-ending warnings only.
+
+### Review Findings
+
+- [ ] [Review][Patch] DataContract namespace not pinned — `QueryEnvelope` and `QueryResult` moved to `Contracts.Queries` without `[DataContract(Namespace=...)]`; wire compat breaks on rolling deploy. Add namespace attribute to both types + cross-namespace guard test per ST1. [`src/Hexalith.EventStore.Contracts/Queries/QueryEnvelope.cs`, `QueryResult.cs`]
+- [ ] [Review][Patch] Log.QueryRouted fires before GetPayload() — spurious "Query routed" success log emitted even when `JsonException` follows; move log line after successful deserialization. [`src/Hexalith.EventStore.Server/Queries/QueryRouter.cs`]
+- [ ] [Review][Patch] IProjectionActor XML doc actor ID format wrong — doc shows `{QueryType}:{TenantId}` unconditionally; router uses `projectionType` as first segment when supplied. Update XML remarks to reflect `projectionType`-first routing. [`src/Hexalith.EventStore.Contracts/Queries/IProjectionActor.cs`]
+- [ ] [Review][Patch] ProjectionActorType not validated for colon injection — `projectionActorType` passes through `SubmitQueryRequestValidator` without colon-check or length guard; all other routing fields are validated. Add guard following existing `QueryType`/`EntityId` pattern. [`src/Hexalith.EventStore/Validation/SubmitQueryRequestValidator.cs`]
+- [ ] [Review][Patch] SubmitQueryHandler disconnected from QueryAdapterFailureReason constants — free-text `Contains("not found")` substring matching; new adapter-edge categories (`"missing-payload"`, `"serialization-failure"`, `"actor-response-mismatch"`) fall through to `InvalidOperationException`. Wire handler to use `QueryAdapterFailureReason` constants. [`src/Hexalith.EventStore.Server/Pipeline/SubmitQueryHandler.cs`]
+- [ ] [Review][Patch] Stale `using Hexalith.EventStore.Server.Actors` in QueryRouterTests.cs contradicts package-boundary intent; with `TreatWarningsAsErrors = true` may cause CS8019 build error. [`tests/Hexalith.EventStore.Server.Tests/Queries/QueryRouterTests.cs:7`]
+- [ ] [Review][Patch] Missing cancellation/actor-exception tests and QueryRouter re-throws instead of mapping to ActorException — ST3 requires table-driven tests for `OperationCanceledException` and non-`ActorMethodInvocationException` paths; `QueryRouter` re-throws these instead of returning `QueryAdapterFailureReason.ActorException`, violating AC4 fail-closed requirement. [`src/Hexalith.EventStore.Server/Queries/QueryRouter.cs`, `tests/Hexalith.EventStore.Server.Tests/Queries/QueryRouterTests.cs`]
+- [ ] [Review][Patch] QueryResult.FromPayload accepts default(JsonElement) — `JsonValueKind.Undefined` input produces corrupt success result or internal `JsonException`; add guard. [`src/Hexalith.EventStore.Contracts/Queries/QueryResult.cs`]
+- [ ] [Review][Patch] Namespace proof test reads source files at runtime — `FindRepoRoot()` traversal fails in Docker CI containers without source tree; replace with `Assembly.GetReferencedAssemblies()` reflection check. [`tests/Hexalith.EventStore.Testing.Tests/Fakes/FakeProjectionActorTests.cs`]
+- [ ] [Review][Patch] DataContractRoundTrip missing EntityId=null case — only tests non-null EntityId; add tier-3 (tenant-wide) case where `EntityId` is null. [`tests/Hexalith.EventStore.Contracts.Tests/Queries/ProjectionAdapterContractTests.cs`]
+- [ ] [Review][Patch] GetPayload() returns undefined JsonElement with no warning — doc says "returns default" but doesn't warn that calling `.GetProperty()` throws; improve doc or throw explicitly for empty/null payload. [`src/Hexalith.EventStore.Contracts/Queries/QueryResult.cs`]
+- [ ] [Review][Patch] Testing.csproj Server reference unlabeled — `<ProjectReference>` to Server has no comment clarifying it is a runtime-test utility dependency per AC5. [`src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj`]
+- [ ] [Review][Patch] QueryResult.Failure missing null/empty guard on errorMessage — `ArgumentException.ThrowIfNullOrWhiteSpace` missing; empty/null error message propagates with no diagnostic value. [`src/Hexalith.EventStore.Contracts/Queries/QueryResult.cs`]
+- [ ] [Review][Patch] nuget-packages.md hardcodes Dapr.Actors version 1.17.7 — will drift on version bump; replace with pointer to `Directory.Packages.props`. [`docs/reference/nuget-packages.md`]
+- [x] [Review][Defer] UnsupportedQueryType / UnknownQueryType unused in production [`src/Hexalith.EventStore.Contracts/Queries/QueryAdapterFailureReason.cs`] — deferred, final error taxonomy wiring belongs to Story 22.4
+- [x] [Review][Defer] CachingProjectionActor tier-3 empty-payload cache collision with pagination cursors [`src/Hexalith.EventStore.Server/Actors/CachingProjectionActor.cs`] — deferred, paging/freshness behavior belongs to Story 22.4
+- [x] [Review][Defer] KebabConverter regex unexpected splits for multi-capital sequences [`src/Hexalith.EventStore.Contracts/Messages/KebabConverter.cs`] — deferred, pre-existing; not changed in this story
 
 ## Change Log
 

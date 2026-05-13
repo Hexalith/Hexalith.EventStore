@@ -1,4 +1,5 @@
 using System.Runtime.Serialization;
+using System.Text;
 using System.Text.Json;
 
 using Dapr.Actors;
@@ -101,6 +102,54 @@ public class ProjectionAdapterContractTests {
         typeof(IProjectionActor)
             .GetMethod(nameof(IProjectionActor.QueryAsync), [typeof(QueryEnvelope)])
             .ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void QueryEnvelope_DataContractRoundTrip_NullEntityId_PreservesNullOnRestore() {
+        QueryEnvelope original = CreateEnvelope([1, 2, 3], entityId: null);
+        var serializer = new DataContractSerializer(typeof(QueryEnvelope));
+
+        using var stream = new MemoryStream();
+        serializer.WriteObject(stream, original);
+        stream.Position = 0;
+
+        var restored = (QueryEnvelope?)serializer.ReadObject(stream);
+
+        _ = restored.ShouldNotBeNull();
+        restored.EntityId.ShouldBeNull();
+        restored.AggregateIdentity.TenantId.ShouldBe(original.TenantId);
+    }
+
+    [Fact]
+    public void QueryEnvelope_DataContractNamespace_PinnedToServerActorsNamespace() {
+        var serializer = new DataContractSerializer(typeof(QueryEnvelope));
+        using var stream = new MemoryStream();
+        serializer.WriteObject(stream, CreateEnvelope());
+        string xml = Encoding.UTF8.GetString(stream.ToArray());
+
+        xml.ShouldContain("http://schemas.datacontract.org/2004/07/Hexalith.EventStore.Server.Actors");
+    }
+
+    [Fact]
+    public void QueryResult_DataContractNamespace_PinnedToServerActorsNamespace() {
+        var serializer = new DataContractSerializer(typeof(QueryResult));
+        using var stream = new MemoryStream();
+        serializer.WriteObject(stream, QueryResult.Failure("test-error"));
+        string xml = Encoding.UTF8.GetString(stream.ToArray());
+
+        xml.ShouldContain("http://schemas.datacontract.org/2004/07/Hexalith.EventStore.Server.Actors");
+    }
+
+    [Fact]
+    public void QueryResult_FromPayload_ThrowsForUndefinedJsonElement() {
+        Should.Throw<ArgumentException>(() => QueryResult.FromPayload(default));
+    }
+
+    [Fact]
+    public void QueryResult_Failure_ThrowsForNullOrWhitespaceMessage() {
+        Should.Throw<ArgumentException>(() => QueryResult.Failure(null!));
+        Should.Throw<ArgumentException>(() => QueryResult.Failure(""));
+        Should.Throw<ArgumentException>(() => QueryResult.Failure("   "));
     }
 
     [Fact]

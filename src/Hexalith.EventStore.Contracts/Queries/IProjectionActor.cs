@@ -7,10 +7,11 @@ namespace Hexalith.EventStore.Contracts.Queries;
 /// </summary>
 /// <remarks>
 /// EventStore routes <c>POST /api/v1/queries</c> to actors implementing this
-/// contract. The actor ID follows the documented three-tier model:
-/// <c>{QueryType}:{TenantId}:{EntityId}</c> for entity-scoped queries,
-/// <c>{QueryType}:{TenantId}:{Checksum}</c> for payload-scoped searches, and
-/// <c>{QueryType}:{TenantId}</c> for tenant-wide lists.
+/// contract. The actor ID uses a three-tier model where the first segment is
+/// <c>projectionType</c> when supplied by the caller, otherwise <c>queryType</c>:
+/// <c>{first}:{TenantId}:{EntityId}</c> for entity-scoped queries,
+/// <c>{first}:{TenantId}:{Checksum}</c> for payload-scoped searches, and
+/// <c>{first}:{TenantId}</c> for tenant-wide lists.
 /// </remarks>
 public interface IProjectionActor : IActor {
     /// <summary>

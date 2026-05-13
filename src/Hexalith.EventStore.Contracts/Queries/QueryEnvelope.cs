@@ -12,7 +12,9 @@ namespace Hexalith.EventStore.Contracts.Queries;
 /// parameters. The data contract attributes are part of the public projection
 /// adapter wire contract and must stay additive/backward-compatible.
 /// </remarks>
-[DataContract]
+// Namespace pinned to the original Server.Actors CLR namespace so DataContractSerializer
+// wire documents remain compatible when callers and callees redeploy independently.
+[DataContract(Namespace = "http://schemas.datacontract.org/2004/07/Hexalith.EventStore.Server.Actors")]
 public record QueryEnvelope {
     /// <summary>
     /// Initializes a new instance of the <see cref="QueryEnvelope"/> record.

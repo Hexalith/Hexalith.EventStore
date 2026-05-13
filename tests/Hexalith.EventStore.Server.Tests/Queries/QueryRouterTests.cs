@@ -5,7 +5,6 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Contracts.Queries;
-using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
 
@@ -465,5 +464,61 @@ public class QueryRouterTests {
         result.NotFound.ShouldBeFalse();
         result.Payload.ShouldBeNull();
         result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorResponseMismatch);
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_ActorMethodInvocationException_ReturnsActorExceptionCategory() {
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>())
+            .Throws(new ActorMethodInvocationException("actor invocation failed", new InvalidOperationException("inner"), false));
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Payload.ShouldBeNull();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_GenericException_ReturnsActorExceptionCategory() {
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>())
+            .Throws(new InvalidOperationException("unexpected failure"));
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Payload.ShouldBeNull();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_CancellationRequested_ThrowsOperationCanceledException() {
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>())
+            .Throws(new OperationCanceledException());
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+
+        await Should.ThrowAsync<OperationCanceledException>(
+            () => router.RouteQueryAsync(CreateTestQuery()));
     }
 }

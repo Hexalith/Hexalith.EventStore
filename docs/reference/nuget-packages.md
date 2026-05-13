@@ -183,8 +183,8 @@ Pure domain types plus stable public gateway wire contracts. This package contai
 
 | Package                    | Version |
 | -------------------------- | ------- |
-| Dapr.Actors                | 1.17.7  |
-| Hexalith.Commons.UniqueIds | 2.13.0  |
+| Dapr.Actors                | see `Directory.Packages.props` |
+| Hexalith.Commons.UniqueIds | see `Directory.Packages.props` |
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Contracts

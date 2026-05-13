@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
 
@@ -70,21 +71,31 @@ public partial class SubmitQueryHandler(
                 errorMessage!);
         }
 
-        return new InvalidOperationException("Projection query execution failed.");
+        return new QueryExecutionFailedException(
+            request.CorrelationId,
+            request.Tenant,
+            request.Domain,
+            request.AggregateId,
+            request.QueryType,
+            500,
+            errorMessage ?? "Projection query execution failed.");
     }
 
     private static bool IsForbidden(string? errorMessage)
         => string.Equals(errorMessage, "Forbidden", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsNotFound(string? errorMessage)
-        => !string.IsNullOrWhiteSpace(errorMessage)
-            && (errorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase)
-                || errorMessage.Contains("no projection state available", StringComparison.OrdinalIgnoreCase));
+        => string.Equals(errorMessage, QueryAdapterFailureReason.ActorNotFoundInfrastructure, StringComparison.Ordinal)
+            || (!string.IsNullOrWhiteSpace(errorMessage)
+                && (errorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase)
+                    || errorMessage.Contains("no projection state available", StringComparison.OrdinalIgnoreCase)));
 
     private static bool IsNotImplemented(string? errorMessage)
-        => !string.IsNullOrWhiteSpace(errorMessage)
-            && (errorMessage.Contains("not implemented", StringComparison.OrdinalIgnoreCase)
-                || errorMessage.Contains("not yet implemented", StringComparison.OrdinalIgnoreCase));
+        => string.Equals(errorMessage, QueryAdapterFailureReason.UnsupportedQueryType, StringComparison.Ordinal)
+            || string.Equals(errorMessage, QueryAdapterFailureReason.UnknownQueryType, StringComparison.Ordinal)
+            || (!string.IsNullOrWhiteSpace(errorMessage)
+                && (errorMessage.Contains("not implemented", StringComparison.OrdinalIgnoreCase)
+                    || errorMessage.Contains("not yet implemented", StringComparison.OrdinalIgnoreCase)));
 
     private static partial class Log {
 

@@ -76,10 +76,10 @@ public partial class QueryRouter(
                 return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.MissingPayload);
             }
 
-            Log.QueryRouted(logger, query.CorrelationId, actorId);
-
             try {
-                return new QueryRouterResult(Success: true, Payload: result.GetPayload(), NotFound: false, ProjectionType: result.ProjectionType);
+                JsonElement payload = result.GetPayload();
+                Log.QueryRouted(logger, query.CorrelationId, actorId);
+                return new QueryRouterResult(Success: true, Payload: payload, NotFound: false, ProjectionType: result.ProjectionType);
             }
             catch (JsonException) {
                 Log.QueryExecutionFailed(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.SerializationFailure);
@@ -94,13 +94,16 @@ public partial class QueryRouter(
             Log.ProjectionActorNotFound(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, actorId);
             return new QueryRouterResult(Success: false, Payload: null, NotFound: true);
         }
+        catch (OperationCanceledException) {
+            throw;
+        }
         catch (ActorMethodInvocationException ex) {
             Log.ActorInvocationFailed(logger, ex, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId);
-            throw;
+            return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.ActorException);
         }
         catch (Exception ex) {
             Log.ActorInvocationFailed(logger, ex, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId);
-            throw;
+            return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.ActorException);
         }
     }
 

@@ -76,6 +76,15 @@ public partial class SubmitQueryRequestValidator : AbstractValidator<SubmitQuery
             .Matches(_aggregateIdRegex).WithMessage("EntityId must contain only alphanumeric characters, dots, hyphens, and underscores")
             .When(x => x.EntityId is not null, ApplyConditionTo.CurrentValidator);
 
+        _ = RuleFor(x => x.ProjectionActorType)
+            .Cascade(CascadeMode.Stop)
+            .Must(pat => pat is null || !string.IsNullOrWhiteSpace(pat))
+            .WithMessage("ProjectionActorType cannot be empty or whitespace when provided")
+            .Must(pat => pat == null || !pat.Contains(':'))
+            .WithMessage("ProjectionActorType cannot contain colons (reserved as actor ID separator)")
+            .MaximumLength(MaxTenantDomainLength).WithMessage($"ProjectionActorType cannot exceed {MaxTenantDomainLength} characters")
+            .When(x => x.ProjectionActorType is not null, ApplyConditionTo.CurrentValidator);
+
         _ = RuleFor(x => x.Payload)
             .Must(p => p == null || p.Value.ValueKind != System.Text.Json.JsonValueKind.Undefined)
             .WithMessage("Payload must be a valid JSON element when provided");

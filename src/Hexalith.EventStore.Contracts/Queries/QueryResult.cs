@@ -16,7 +16,9 @@ namespace Hexalith.EventStore.Contracts.Queries;
 /// actor remoting. Future members must be additive to preserve actor wire
 /// compatibility.
 /// </remarks>
-[DataContract]
+// Namespace pinned to the original Server.Actors CLR namespace so DataContractSerializer
+// wire documents remain compatible when callers and callees redeploy independently.
+[DataContract(Namespace = "http://schemas.datacontract.org/2004/07/Hexalith.EventStore.Server.Actors")]
 public record QueryResult(
     [property: DataMember] bool Success,
     [property: DataMember] byte[]? PayloadBytes = null,
@@ -25,7 +27,11 @@ public record QueryResult(
     /// <summary>
     /// Deserializes <see cref="PayloadBytes"/> to a <see cref="JsonElement"/>.
     /// </summary>
-    /// <returns>The JSON payload, or default when no payload bytes are present.</returns>
+    /// <returns>
+    /// The JSON payload, or <c>default</c> (<see cref="JsonValueKind.Undefined"/>) when
+    /// <see cref="PayloadBytes"/> is null or empty. Callers must check
+    /// <c>result.ValueKind != JsonValueKind.Undefined</c> before accessing properties.
+    /// </returns>
     public JsonElement GetPayload()
         => PayloadBytes is { Length: > 0 }
             ? JsonSerializer.Deserialize<JsonElement>(PayloadBytes)
@@ -34,17 +40,28 @@ public record QueryResult(
     /// <summary>
     /// Creates a successful query result from a JSON payload.
     /// </summary>
-    /// <param name="payload">The JSON payload to serialize as UTF-8 bytes.</param>
+    /// <param name="payload">The JSON payload to serialize as UTF-8 bytes. Must not be <see cref="JsonValueKind.Undefined"/>.</param>
     /// <param name="projectionType">Optional projection type metadata.</param>
     /// <returns>A successful query result.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="payload"/> has <see cref="JsonValueKind.Undefined"/>.</exception>
     public static QueryResult FromPayload(JsonElement payload, string? projectionType = null)
-        => new(true, JsonSerializer.SerializeToUtf8Bytes(payload), ProjectionType: projectionType);
+    {
+        if (payload.ValueKind == JsonValueKind.Undefined)
+        {
+            throw new ArgumentException("Payload element must not be Undefined.", nameof(payload));
+        }
+
+        return new(true, JsonSerializer.SerializeToUtf8Bytes(payload), ProjectionType: projectionType);
+    }
 
     /// <summary>
     /// Creates an unsuccessful query result with a coarse adapter-edge error.
     /// </summary>
-    /// <param name="errorMessage">The failure message or category.</param>
+    /// <param name="errorMessage">The failure message or <see cref="QueryAdapterFailureReason"/> category. Must not be null or whitespace.</param>
     /// <returns>An unsuccessful query result.</returns>
     public static QueryResult Failure(string errorMessage)
-        => new(false, ErrorMessage: errorMessage);
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(errorMessage);
+        return new(false, ErrorMessage: errorMessage);
+    }
 }

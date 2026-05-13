@@ -11,6 +11,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.Contracts\Hexalith.EventStore.Contracts.csproj" />
+    <!-- Runtime-test utility dependency: aggregate actors, state stores, pub/sub helpers.
+         Not required for the public projection adapter fake API (FakeProjectionActor uses Contracts only). -->
     <ProjectReference Include="..\Hexalith.EventStore.Server\Hexalith.EventStore.Server.csproj" />
   </ItemGroup>
 
