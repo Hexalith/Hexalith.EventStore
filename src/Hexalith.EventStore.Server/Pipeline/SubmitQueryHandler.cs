@@ -45,7 +45,7 @@ public partial class SubmitQueryHandler(
     private static Exception CreateQueryFailureException(SubmitQuery request, string? errorMessage) {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (IsForbidden(errorMessage)) {
+        if (string.Equals(errorMessage, "Forbidden", StringComparison.OrdinalIgnoreCase)) {
             return new QueryExecutionFailedException(
                 request.CorrelationId,
                 request.Tenant,
@@ -80,9 +80,6 @@ public partial class SubmitQueryHandler(
             500,
             errorMessage ?? "Projection query execution failed.");
     }
-
-    private static bool IsForbidden(string? errorMessage)
-        => string.Equals(errorMessage, "Forbidden", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsNotFound(string? errorMessage)
         => string.Equals(errorMessage, QueryAdapterFailureReason.ActorNotFoundInfrastructure, StringComparison.Ordinal)
@@ -125,7 +122,7 @@ public partial class SubmitQueryHandler(
             string? errorMessage);
 
         [LoggerMessage(
-                            EventId = 1210,
+            EventId = 1210,
             Level = LogLevel.Information,
             Message = "Query received: CorrelationId={CorrelationId}, QueryType={QueryType}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=QueryReceived")]
         public static partial void QueryReceived(

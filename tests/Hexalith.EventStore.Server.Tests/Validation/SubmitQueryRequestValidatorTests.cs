@@ -301,6 +301,36 @@ public class SubmitQueryRequestValidatorTests {
     }
 
     [Fact]
+    public void SubmitQueryRequestValidator_ProjectionActorTypeWithColon_FailsValidation() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState",
+            ProjectionActorType: "Projection:Actor");
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "ProjectionActorType" && e.ErrorMessage.Contains("colon"));
+    }
+
+    [Fact]
+    public void SubmitQueryRequestValidator_ProjectionActorTypeExceedsMaxLength_FailsValidation() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState",
+            ProjectionActorType: new string('a', 65));
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "ProjectionActorType" && e.ErrorMessage.Contains("64"));
+    }
+
+    [Fact]
     public void SubmitQueryRequestValidator_InvalidAggregateIdCharacters_FailsValidation() {
         var request = new SubmitQueryRequest(
             Tenant: "test-tenant",

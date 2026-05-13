@@ -4,6 +4,8 @@ using System.Text.Json;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Testing.Fakes;
 
+using Shouldly;
+
 namespace Hexalith.EventStore.Testing.Tests.Fakes;
 
 public class FakeProjectionActorTests {
@@ -107,23 +109,26 @@ public class FakeProjectionActorTests {
     }
 
     [Fact]
-    public void PublicProjectionFakeAssembly_DoesNotReferenceServerActorsAssembly() {
-        // Verify FakeProjectionActor's assembly does not pull in Hexalith.EventStore.Server.Actors
-        // as a referenced assembly, proving the public fake API is Server-free.
-        string serverAssemblyName = "Hexalith.EventStore.Server";
-        System.Reflection.AssemblyName[] referenced = typeof(FakeProjectionActor).Assembly
-            .GetReferencedAssemblies();
-        bool referencesServer = referenced.Any(a =>
-            string.Equals(a.Name, serverAssemblyName, StringComparison.Ordinal));
-        // Testing still references Server for runtime test utilities (aggregate actors, state stores).
-        // This test verifies that if you only import Testing for FakeProjectionActor, the IProjectionActor
-        // and QueryEnvelope/QueryResult types come from Contracts, not from Server.Actors.
-        Assert.NotNull(typeof(FakeProjectionActor).Assembly
-            .GetType("Hexalith.EventStore.Testing.Fakes.FakeProjectionActor"));
-        Assert.True(
-            typeof(FakeProjectionActor).GetInterfaces()
-                .Any(i => i.FullName == "Hexalith.EventStore.Contracts.Queries.IProjectionActor"),
-            "FakeProjectionActor must implement IProjectionActor from Contracts, not Server.Actors");
-        _ = referencesServer; // Testing may reference Server for other utilities — that is expected and documented.
+    public void PublicProjectionFakeApi_UsesContractsTypesOnly() {
+        Type fakeType = typeof(FakeProjectionActor);
+        Type projectionActorInterface = typeof(IProjectionActor);
+
+        fakeType.GetInterfaces().ShouldContain(projectionActorInterface);
+
+        fakeType.GetProperty(nameof(FakeProjectionActor.ConfiguredResult))!
+            .PropertyType
+            .ShouldBe(typeof(QueryResult));
+
+        fakeType.GetProperty(nameof(FakeProjectionActor.ReceivedEnvelopes))!
+            .PropertyType
+            .GetGenericArguments()
+            .Single()
+            .ShouldBe(typeof(QueryEnvelope));
+
+        fakeType.GetMethod(nameof(FakeProjectionActor.QueryAsync), [typeof(QueryEnvelope)])!
+            .ReturnType
+            .GetGenericArguments()
+            .Single()
+            .ShouldBe(typeof(QueryResult));
     }
 }

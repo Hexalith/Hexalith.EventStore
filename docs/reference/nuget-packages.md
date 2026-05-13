@@ -214,7 +214,7 @@ DI registration, domain processor abstractions, the fluent `AddEventStore` exten
 
 | Package                                   | Version |
 | ----------------------------------------- | ------- |
-| Dapr.Client                               | 1.17.7  |
+| Dapr.Client                               | see `Directory.Packages.props` |
 | Microsoft.Extensions.Configuration.Binder | 10.0.0  |
 | Microsoft.Extensions.Hosting.Abstractions | 10.0.0  |
 
@@ -238,9 +238,9 @@ Aggregate actors, command routing, event persistence, state rehydration, and DAP
 
 | Package                | Version |
 | ---------------------- | ------- |
-| Dapr.Client            | 1.17.7  |
-| Dapr.Actors            | 1.17.7  |
-| Dapr.Actors.AspNetCore | 1.17.7  |
+| Dapr.Client            | see `Directory.Packages.props` |
+| Dapr.Actors            | see `Directory.Packages.props` |
+| Dapr.Actors.AspNetCore | see `Directory.Packages.props` |
 | MediatR                | 14.0.0  |
 
 ```bash

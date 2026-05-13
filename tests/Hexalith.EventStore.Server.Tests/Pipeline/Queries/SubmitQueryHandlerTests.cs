@@ -1,6 +1,7 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
@@ -100,7 +101,7 @@ public class SubmitQueryHandlerTests {
     }
 
     [Fact]
-    public async Task Handle_RouterReturnsFailure_ThrowsInvalidOperationException() {
+    public async Task Handle_RouterReturnsFailure_ThrowsQueryExecutionFailedException() {
         // Arrange
         IQueryRouter router = Substitute.For<IQueryRouter>();
         _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
@@ -109,10 +110,32 @@ public class SubmitQueryHandlerTests {
         var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
 
         // Act & Assert
-        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(
+        QueryExecutionFailedException ex = await Should.ThrowAsync<QueryExecutionFailedException>(
             () => handler.Handle(CreateTestQuery(), CancellationToken.None));
 
-        ex.Message.ShouldBe("Projection query execution failed.");
+        ex.StatusCode.ShouldBe(500);
+        ex.Detail.ShouldBe("projection unavailable");
+    }
+
+    [Theory]
+    [InlineData(QueryAdapterFailureReason.MissingPayload)]
+    [InlineData(QueryAdapterFailureReason.SerializationFailure)]
+    [InlineData(QueryAdapterFailureReason.ActorResponseMismatch)]
+    [InlineData(QueryAdapterFailureReason.ActorException)]
+    public async Task Handle_AdapterEdgeFailureReason_ThrowsQueryExecutionFailedException(string failureReason) {
+        // Arrange
+        IQueryRouter router = Substitute.For<IQueryRouter>();
+        _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: failureReason));
+
+        var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
+
+        // Act & Assert
+        QueryExecutionFailedException ex = await Should.ThrowAsync<QueryExecutionFailedException>(
+            () => handler.Handle(CreateTestQuery(), CancellationToken.None));
+
+        ex.StatusCode.ShouldBe(500);
+        ex.Detail.ShouldBe(failureReason);
     }
 
     [Fact]

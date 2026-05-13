@@ -131,7 +131,7 @@ public class QueryRouterTests {
     }
 
     [Fact]
-    public async Task RouteQueryAsync_ActorMethodInvocationExceptionWithoutNotFoundPattern_Propagates() {
+    public async Task RouteQueryAsync_ActorMethodInvocationExceptionWithoutNotFoundPattern_ReturnsActorExceptionCategory() {
         // Arrange
         IProjectionActor actor = Substitute.For<IProjectionActor>();
         _ = actor.QueryAsync(Arg.Any<QueryEnvelope>())
@@ -143,9 +143,12 @@ public class QueryRouterTests {
 
         var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
 
-        // Act & Assert
-        _ = await Should.ThrowAsync<ActorMethodInvocationException>(
-            () => router.RouteQueryAsync(CreateTestQuery()));
+        // Act
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        // Assert — fail-closed: exceptions map to ActorException category, never propagate
+        result.Success.ShouldBeFalse();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
     }
 
     [Fact]
@@ -172,7 +175,7 @@ public class QueryRouterTests {
     }
 
     [Fact]
-    public async Task RouteQueryAsync_GenericNotRegisteredMessage_Propagates() {
+    public async Task RouteQueryAsync_GenericNotRegisteredMessage_ReturnsActorExceptionCategory() {
         // Arrange
         IProjectionActor actor = Substitute.For<IProjectionActor>();
         _ = actor.QueryAsync(Arg.Any<QueryEnvelope>())
@@ -184,9 +187,12 @@ public class QueryRouterTests {
 
         var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
 
-        // Act & Assert
-        _ = await Should.ThrowAsync<ActorMethodInvocationException>(
-            () => router.RouteQueryAsync(CreateTestQuery()));
+        // Act
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        // Assert — fail-closed: all non-cancellation exceptions map to ActorException category
+        result.Success.ShouldBeFalse();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
     }
 
     [Fact]
