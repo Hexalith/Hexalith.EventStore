@@ -175,3 +175,4 @@
 2026-05-13T13:06:12+02:00	advanced-elicitation	22-4-query-behavior-policy-and-error-taxonomy	ok	advanced elicitation applied query policy taxonomy hardening
 2026-05-13T14:02:29+02:00	advanced-elicitation	22-5-event-publishing-guarantees-and-backend-deployment-matrix	ok	advanced elicitation applied event publishing guarantee hardening
 2026-05-13T15:05:39+02:00	create-story	22-7a-payload-and-snapshot-protection-hooks	ok	created payload and snapshot protection hooks story
+2026-05-13T16:22:13+02:00	party-mode-review	22-7a-payload-and-snapshot-protection-hooks	ok	party-mode review applied protection metadata contract hardening
