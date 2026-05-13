@@ -164,3 +164,4 @@
 2026-05-12T22:23:43+02:00	create-story	22-4-query-behavior-policy-and-error-taxonomy	ok	created ready-for-dev story for query behavior policy/error taxonomy after clean preflight 2026-05-12T20:02:08Z
 2026-05-12T23:04:13+02:00	create-story	22-5-event-publishing-guarantees-and-backend-deployment-matrix	ok	created ready-for-dev story for event publishing guarantees and backend deployment matrix
 2026-05-13T00:09:15+02:00	party-mode-review	22-1-gateway-command-query-contract-closure-and-package-docs	ok	party-mode review applied gateway contract decision hardening
+2026-05-13T07:18:00+02:00	party-mode-review	22-2-projection-adapter-contract-and-generic-query-actor-model	ok	party-mode review applied projection adapter contract hardening
