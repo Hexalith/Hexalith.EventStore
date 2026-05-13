@@ -167,3 +167,4 @@
 2026-05-13T07:18:00+02:00	party-mode-review	22-2-projection-adapter-contract-and-generic-query-actor-model	ok	party-mode review applied projection adapter contract hardening
 2026-05-13T07:19:42+02:00	party-mode-review	22-3-gateway-owned-tenant-and-rbac-enforcement	ok	party-mode review applied gateway authorization contract hardening
 2026-05-13T07:41:02+02:00	party-mode-review	22-4-query-behavior-policy-and-error-taxonomy	ok	party-mode review applied query policy taxonomy hardening
+2026-05-13T08:04:55+02:00	create-story	22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints	ok	created ready-for-dev story for stream replay/read APIs and projection rebuild checkpoints
