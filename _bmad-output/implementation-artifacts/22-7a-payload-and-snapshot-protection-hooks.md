@@ -23,6 +23,8 @@ so that protected state can be persisted, published, rehydrated, replayed, and r
 - Protection metadata must flow through the same public surfaces that carry protected data: storage envelopes, DAPR publication envelopes, command-time rehydration, stream replay/read APIs from Story 22.6, projection rebuild DTOs, Testing builders/fakes, package docs, and API docs.
 - This story must not implement key deletion/invalidation policy, missing-key behavior, restored-backup validation, or full redaction coverage. It must leave those as explicit follow-up contracts for 22.7b, 22.7c, and 22.7d.
 - Provider-neutral metadata is the contract. EventStore-owned metadata may describe state, version, provider/scheme family, safe key alias, serialization/content hint, and compatibility flags, but must not embed provider-private crypto blobs or make promises about unreadable data, key lifecycle, backup restore safety, or operational redaction that belong to 22.7b-22.7d.
+- ST0 must define metadata interpretation as a state machine, not a best-effort dictionary read. Missing legacy metadata may map to the approved legacy compatibility state, but malformed metadata, unknown required fields, unknown versions, or contradictory metadata/content pairings must fail closed or become `provider-opaque` according to the ST0 table; they must never be inferred as safe `unprotected` data.
+- Protection metadata and transformed content must stay coupled. EventStore must not publish, replay, rebuild, store, or expose protected bytes with `unprotected` metadata, nor plaintext/unprotected bytes with `protected` metadata, unless ST0 records an explicit compatibility transition and focused tests prove the transition is intentional.
 
 ## Current Implementation Intelligence
 
@@ -48,6 +50,7 @@ so that protected state can be persisted, published, rehydrated, replayed, and r
    - And unprotected/no-op payloads have a stable default state that downstream consumers can distinguish from missing metadata.
    - And ST0 freezes the serialized metadata contract before implementation: field names, required versus optional fields, valid protection states, default values, allowed unknown-field behavior, and client dependency expectations.
    - And old event envelopes with missing or null protection metadata remain readable and map to the ST0-approved legacy compatibility state instead of failing or being treated as protected by inference.
+   - And malformed metadata, unknown required metadata versions, missing required fields, and contradictory payload/metadata states are never downgraded to `unprotected`; they either fail closed through the existing infrastructure path or map to an explicit provider-opaque state chosen in ST0.
 
 2. **Snapshot protection metadata has parity with event payload metadata.**
    - Given snapshot protection hooks are configured
@@ -66,6 +69,7 @@ so that protected state can be persisted, published, rehydrated, replayed, and r
    - And hook cancellation is honored, `OperationCanceledException` is not swallowed, and non-cancellation failures map to the existing infrastructure failure behavior without payload disclosure.
    - And the ST0 decision table explicitly states the publish-time policy for protected, unprotected, and provider-opaque payloads. If 22.7a preserves today's unprotect-before-DAPR-publish behavior for domain-service compatibility, the story must document that as protected-at-rest-only behavior and test that metadata exposure is intentional and safe.
    - And hook boundaries are documented at the persistence/read boundary: after conversion to the persisted representation and before state write, and after state read and before domain dispatch/publish, unless ST0 records a narrower compatible alternative.
+   - And EventStore never emits a payload whose bytes and metadata state disagree; provider returns, legacy compatibility reads, publish transformations, replay DTO projection, and snapshot load paths must all assert the same invariant.
 
 4. **Public contracts do not leak key material or protected content.**
    - Given protection metadata is serialized through Contracts, Client, Testing, Server envelopes, DAPR publication, replay/read APIs, docs, and tests
@@ -74,6 +78,7 @@ so that protected state can be persisted, published, rehydrated, replayed, and r
    - And raw keys, plaintext, IVs/nonces, authentication tags, secret material, provider-specific internal blobs, state-store keys, and connection strings are excluded.
    - And `ToString()`, ProblemDetails, log messages, docs examples, and test evidence continue to use payload redaction.
    - And tests use explicit sentinel values such as `PLAINTEXT_SECRET_MARKER`, `KEY_ALIAS_SECRET_MARKER`, and provider-opaque marker content to prove public envelopes, published events, logs, exception messages, assertion output, and docs examples do not leak protected material or provider-private values.
+   - And any key alias or provider identifier is treated as sensitive-by-default until ST0 marks the exact field as safe for the exact public surface; unsupported aliases must be redacted or omitted rather than copied into logs, ProblemDetails, assertion messages, or docs examples.
 
 5. **Default no-op behavior and package boundaries remain stable.**
    - Given no custom protection service is registered
@@ -101,6 +106,8 @@ so that protected state can be persisted, published, rehydrated, replayed, and r
     - [ ] Reserve a stable metadata namespace or carrier key, such as an EventStore-owned protection extension key if `Extensions` remains the event storage carrier, and document how unknown future metadata fields are preserved or rejected.
     - [ ] Define the exact meanings of `unprotected`/`no-op`, `protected`, and `provider-opaque`, including whether each state can be published, replayed, rebuilt, or exposed through EventStore-owned read DTOs.
     - [ ] Define legacy behavior for persisted events with `Extensions: null` and snapshots with no metadata; missing metadata must map to an explicit compatibility state, not an implementation accident.
+    - [ ] Define fail-closed behavior for malformed metadata, unknown required metadata versions, missing required fields, unsafe key aliases, and bytes/metadata state mismatches.
+    - [ ] Define the invariant that transformed content and metadata state travel together across persist, publish, read/replay, rebuild, and snapshot paths, including the exact tests that prove mismatches cannot be emitted.
     - [ ] Record explicit out-of-scope items for 22.7b-22.7d: missing-key behavior, key invalidation, backup restore safety, and full operational redaction.
 
 - [ ] **ST1 - Add contract-layer protection metadata types.** (AC: 1, 2, 4, 5)
@@ -109,6 +116,7 @@ so that protected state can be persisted, published, rehydrated, replayed, and r
     - [ ] Add or adapt snapshot protection result semantics so snapshot state and snapshot metadata travel together without using ambiguous raw `object` return values for new code.
     - [ ] Add validation that metadata fields are non-secret, bounded, serialization-safe, and stable across JSON round trips.
     - [ ] Reject or sanitize metadata values that use forbidden secret-shaped field names or values, including raw keys, plaintext, IVs/nonces, authentication tags, provider-private blobs, state-store keys, and connection strings.
+    - [ ] Centralize metadata parsing/validation so all callers get identical legacy, malformed, unknown-version, and provider-opaque behavior instead of duplicating dictionary/string checks.
     - [ ] Keep provider-specific implementations out of Contracts; Contracts owns shape and semantics only.
 
 - [ ] **ST2 - Persist and convert event protection metadata.** (AC: 1, 3, 4, 5)
@@ -117,6 +125,7 @@ so that protected state can be persisted, published, rehydrated, replayed, and r
     - [ ] Update `EventPublisher` to follow the ST0 publish-time policy and preserve or transform metadata consistently.
     - [ ] Add checked legacy event fixtures or equivalent serialized test data proving pre-22.7a records with missing metadata still deserialize, convert, and replay/read through the compatibility path.
     - [ ] Ensure failures from protection hooks route through existing infrastructure failure/dead-letter behavior and do not log payload bytes or secret metadata.
+    - [ ] Add negative tests for persisted/published event records where metadata claims `unprotected` while bytes came from a protected provider, metadata claims `protected` while bytes are the no-op/plain payload, metadata version is unknown, or provider-opaque state is exposed through read/replay DTOs.
     - [ ] Add focused tests proving protected metadata is present after persistence, publication, conversion to contract envelope, and no-op flows.
 
 - [ ] **ST3 - Persist and load snapshot protection metadata.** (AC: 2, 3, 4, 5)
@@ -125,6 +134,7 @@ so that protected state can be persisted, published, rehydrated, replayed, and r
     - [ ] Update `SnapshotManager.LoadSnapshotAsync` to pass metadata back to the protection service or use the ST0-approved compatibility path.
     - [ ] Add checked legacy snapshot fixtures or equivalent serialized test data covering old raw snapshots, new no-op snapshots, new protected snapshots, missing metadata, unknown metadata version, and provider-opaque metadata.
     - [ ] Keep snapshot creation advisory and load fallback behavior consistent with current semantics; do not implement missing-key failure policy beyond metadata needed by 22.7b.
+    - [ ] Add mismatch tests for snapshots where state content and metadata state disagree, and require the same fail-closed/provider-opaque handling chosen for events unless ST0 records a snapshot-specific reason.
     - [ ] Add tests for no-op snapshot compatibility, protected snapshot metadata persistence, old snapshot load compatibility, and payload/state redaction in failure logs.
 
 - [ ] **ST4 - Update public Testing and documentation surfaces.** (AC: 1, 2, 4, 5, 6)
@@ -151,6 +161,7 @@ so that protected state can be persisted, published, rehydrated, replayed, and r
 - Source/log redaction tests prove new metadata does not introduce payload or secret leakage through logs, `ToString()`, ProblemDetails text, docs examples, or test artifacts.
 - Testing package tests prove builders/fakes can create protected/unprotected fixtures without requiring a live protection provider.
 - Legacy event and snapshot fixtures prove missing metadata remains readable and maps to the ST0-approved compatibility state.
+- Metadata mismatch fixtures prove EventStore does not emit protected bytes as unprotected, plaintext/no-op bytes as protected, unknown versions as unprotected, or provider-opaque records without the ST0-approved policy.
 - ATDD-style no-leak scenarios prove sentinel plaintext, key-alias, and provider-opaque markers never appear in public envelopes, published events, logs, exception messages, assertion output, or docs examples.
 - Malformed or unsafe metadata fails closed according to the ST0 contract and is never treated as unprotected data by default.
 
@@ -167,6 +178,8 @@ so that protected state can be persisted, published, rehydrated, replayed, and r
 - Do not expose protection metadata through domain service contracts. EventStore-owned read/admin/replay DTOs may expose the safe metadata selected in ST0; domain services continue to receive payload events only.
 - Prefer one reusable provider-neutral metadata contract for events and snapshots. If event storage must use `Extensions`, wrap the well-known EventStore key behind typed helpers rather than scattering string keys.
 - A key alias is safe only if it is deliberately non-secret. Treat aliases as sensitive-by-default in tests unless ST0 explicitly marks the field as safe to expose.
+- Treat `provider-opaque` as a compatibility boundary, not a license to guess. EventStore may carry opaque metadata when ST0 permits it, but must not decrypt, serialize-inspect, publish as plaintext, or silently rebuild from it outside the registered protection service.
+- If compatibility pressure conflicts with no-leak guarantees, preserve the no-leak guarantee and record the compatibility exception as a deferred decision for 22.7b-22.7d rather than weakening the metadata contract in 22.7a.
 - If Story 22.6 has not yet added public replay/read DTOs when this story starts, document the required metadata compatibility in the story record and add tests to the first available public event DTO surface.
 - `Hexalith.EventStore.Server.Tests` has known pre-existing CA2007 build failures in this workspace; run focused slices and record exact commands/results rather than claiming a clean full project run unless verified.
 
@@ -244,6 +257,30 @@ so that protected state can be persisted, published, rehydrated, replayed, and r
   - Whether EventStore should ever publish protected payloads internally remains a future compatibility decision unless ST0 records a 22.7a-safe policy before implementation.
 - Final recommendation: `ready-for-dev`
 
+## Advanced Elicitation
+
+### 2026-05-13T18:03:48+02:00
+
+- Selected story key: `22-7a-payload-and-snapshot-protection-hooks`
+- Command/skill invocation used: `/bmad-advanced-elicitation 22-7a-payload-and-snapshot-protection-hooks`
+- Batch 1 methods: Self-Consistency Validation; Red Team vs Blue Team; Architecture Decision Records; Failure Mode Analysis; Comparative Analysis Matrix
+- Batch 2 methods: Chaos Monkey Scenarios; First Principles Analysis; Occam's Razor Application; 5 Whys Deep Dive; Lessons Learned Extraction
+- Findings summary:
+  - The story had strong schema and no-leak language, but still allowed implementers to treat metadata as a loose dictionary instead of a deterministic state machine.
+  - The highest-risk hidden failure was a mismatch between transformed content and metadata state, especially around legacy reads, no-op providers, provider-opaque data, and publish-time transformations.
+  - Key aliases and provider identifiers needed a default sensitivity stance because "safe alias" can become an accidental secret if copied into logs or public diagnostics without an ST0 decision.
+  - Provider-opaque records needed clearer boundaries so 22.7a can carry metadata safely without guessing at crypto semantics reserved for 22.7b-22.7d.
+- Changes applied:
+  - Added state-machine interpretation requirements for missing, malformed, unknown-version, and contradictory metadata.
+  - Added acceptance criteria and tasks proving EventStore never emits protected bytes as unprotected or plaintext/no-op bytes as protected.
+  - Added centralized parsing/validation guidance so callers do not duplicate metadata dictionary checks.
+  - Added event and snapshot mismatch fixture requirements and tightened key-alias sensitivity guidance.
+  - Added developer notes preserving no-leak guarantees over compatibility pressure and treating provider-opaque as a carry-only boundary.
+- Findings deferred:
+  - Concrete crypto provider behavior, missing-key runtime behavior, key invalidation, restored-backup safety, operational redaction, and provider-specific opaque metadata interpretation remain deferred to Stories 22.7b-22.7d.
+  - The exact publish-time policy still belongs in ST0 before implementation; this pass only tightened the invariants that policy must satisfy.
+- Final recommendation: `ready-for-dev`
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -273,3 +310,4 @@ TBD by dev agent.
 | --- | --- |
 | 2026-05-13 | Story created from Epic 22.7a with hook/metadata-only scope, explicit 22.7b-22.7d deferrals, current implementation inventory, and focused test evidence requirements. |
 | 2026-05-13 | Party-mode review applied metadata schema, legacy compatibility, publish-policy, snapshot parity, no-leak, and ATDD evidence clarifications. |
+| 2026-05-13 | Advanced elicitation applied metadata state-machine, bytes/metadata invariant, provider-opaque, and key-alias sensitivity hardening. |
