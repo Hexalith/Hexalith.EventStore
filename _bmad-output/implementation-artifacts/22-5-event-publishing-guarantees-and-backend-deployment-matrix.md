@@ -19,6 +19,8 @@ so that Parties projections can rely on EventStore publication guarantees.
 - The durable guarantee is persist-first: once events are written to the aggregate stream, a publication failure must not lose them. Recovery is through `UnpublishedEventsRecord` plus actor reminders and drain retry.
 - Delivery is at-least-once, not exactly-once. Downstream projection owners must treat duplicate CloudEvents as normal and use tenant/domain/aggregate/sequence/correlation metadata for idempotency.
 - Per-aggregate causal order is guaranteed by persisted aggregate sequence numbers. Pub/sub delivery order is backend-dependent and must be documented per supported DAPR component.
+- DAPR publish acceptance is not subscriber success. EventStore may prove that a persisted event was accepted by DAPR or retained for retry, but subscriber processing, subscriber dead-letter routing, and projection convergence require separate proof and separate evidence labels.
+- Partial-batch publication must be conservative: if any event in a persisted batch has an ambiguous or failed publish outcome, the recovery path must assume previously accepted events can be duplicated and later persisted events must not be skipped or reordered.
 - Backend support must be explicit for local Redis, RabbitMQ, Kafka, and Azure Service Bus deployment files. Unsupported ordering/session/dead-letter features must be called out rather than implied.
 - Dead-letter behavior has two distinct meanings: EventStore infrastructure dead-letter messages for command processing failures, and DAPR subscriber dead-letter handling after delivery retry exhaustion. Keep both documented and tested separately.
 - This story may add metadata or docs for ordering/session keys, but must not reopen payload-protection semantics owned by Stories 22.7a-22.7d or replay/read APIs owned by Story 22.6.
@@ -29,6 +31,7 @@ so that Parties projections can rely on EventStore publication guarantees.
 - At-least-once means persisted unpublished events are retried until DAPR accepts publication, a bounded drain record remains, or EventStore records an explicit infrastructure failure/dead-letter state. It does not mean exactly-once delivery or successful subscriber processing.
 - Per-aggregate ordering means EventStore publishes and drains events in persisted aggregate sequence order, and sets or documents backend-specific routing/session/partition metadata where supported. Transport delivery and subscriber processing order remain backend-dependent.
 - Backend claims must be labeled as proven, configured, unsupported, or documented-only. Do not use "supported" for Redis, RabbitMQ, Kafka, or Azure Service Bus behavior without a matching proof level.
+- A backend row is not implementation-complete until it identifies the exact EventStore guarantee boundary, the DAPR/backend guarantee boundary, the subscriber responsibility boundary, and the evidence that supports each boundary.
 - Operator-visible diagnostics must use metadata only: tenant, domain, aggregate, stream/version or sequence range, event type, topic, correlation/causation/message IDs, retry state, backend, timestamp, and failure reason. Never include event payload bytes, protected data, connection strings, or subscriber credentials.
 
 ## Current Implementation Intelligence
@@ -59,12 +62,14 @@ so that Parties projections can rely on EventStore publication guarantees.
    - And a persisted event must either be published, remain represented by a bounded recovery/drain record, or be surfaced through a stable operational failure path.
    - And durable means EventStore commit durability plus unpublished-event recovery state, not durable broker storage in every backend.
    - And a crash between publish success and recovery-state cleanup may cause duplicate publication, not event loss.
+   - And an ambiguous DAPR publish result must be treated as retryable or operationally failed until EventStore can prove accepted publication or retained recovery state.
 
 2. **Duplicate tolerance and consumer idempotency are public guidance.**
    - Given a downstream projection receives the same persisted event more than once
    - When it processes published CloudEvents
    - Then docs and tests show the stable idempotency fields consumers should use: tenant, domain, aggregate, sequence number, correlation ID, causation ID, message ID, event type, and topic.
    - And EventStore does not promise subscriber-side exactly-once processing or hide backend duplicate delivery realities.
+   - And guidance must state that consumers should deduplicate by EventStore identity/sequence metadata, not by broker delivery IDs, subscriber retry counts, or transport-specific receipt handles.
 
 3. **Ordering, partition, and session metadata are defined per backend.**
    - Given EventStore publishes events for one aggregate
@@ -82,6 +87,7 @@ so that Parties projections can rely on EventStore publication guarantees.
    - And failed publish creates or preserves `UnpublishedEventsRecord`; successful drain cleans up only after confirmed publish success.
    - And repeated drain, actor restart, reminder overlap, process shutdown, and partial-batch publish failures are idempotent and duplicate-tolerant.
    - And operator diagnostics expose retry/failure metadata without payloads, secrets, protected data, or backend connection strings.
+   - And non-retryable drain failure, event-count mismatch, missing persisted event, or corrupted stream evidence must preserve enough metadata for manual repair while avoiding payload disclosure.
 
 5. **DAPR component deployment matrix is actionable.**
    - Given an operator deploys EventStore with Redis, RabbitMQ, Kafka, or Azure Service Bus pub/sub
@@ -96,6 +102,7 @@ so that Parties projections can rely on EventStore publication guarantees.
    - And tests prove publish-after-persist recovery, duplicate delivery tolerance, per-aggregate causal ordering where supported, and dead-letter handling for each backend that this story claims as verified.
    - And backend proof is recorded as unit, component/config inspection, Docker/Aspire integration, manual/environment-gated proof, documented limitation, or not proven.
    - And DAPR subscriber dead-letter proof is not treated as proof of EventStore infrastructure dead-letter behavior, or vice versa.
+   - And any backend row that lacks live proof must be labeled `configured` or `documented-only`, not `proven`, even when the DAPR component file appears syntactically correct.
 
 7. **Documentation and evidence are recorded before review.**
    - Reference docs, deployment docs, configuration docs, and operations docs describe the guarantee matrix and operational recovery path.
@@ -110,6 +117,7 @@ so that Parties projections can rely on EventStore publication guarantees.
     - [ ] Inventory local and deployment pub/sub components: `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml`, `deploy/dapr/pubsub-rabbitmq.yaml`, `deploy/dapr/pubsub-kafka.yaml`, and `deploy/dapr/pubsub-servicebus.yaml`.
     - [ ] Inventory existing docs and tests for command lifecycle, event envelope, configuration, DAPR component reference, drain failure reason codes, PubSubDeliveryProofTests, DeadLetterTests, and publisher/drain unit tests.
     - [ ] Record a decision table for durability, at-least-once, duplicate tolerance, ordering/session metadata, partial publish handling, drain retry, dead-letter routing, and backend proof status.
+    - [ ] In the decision table, separate four proof boundaries: EventStore persisted-event guarantee, DAPR publish-acceptance guarantee, broker delivery behavior, and subscriber processing/dead-letter behavior.
 
 - [ ] **ST1 - Freeze publish contract metadata.** (AC: 1, 2, 3)
     - [ ] Define the public fields downstream consumers use for idempotency and ordering. Prefer existing envelope fields unless a backend-specific DAPR metadata field is required.
@@ -117,6 +125,7 @@ so that Parties projections can rely on EventStore publication guarantees.
     - [ ] Preserve current CloudEvents 1.0 behavior and `cloudevent.id` compatibility unless a SemVer-relevant change is explicitly approved.
     - [ ] Add focused tests that pin CloudEvent metadata and event data fields without requiring a live sidecar where unit-level fakes can prove it.
     - [ ] Ensure logs and activity tags continue to avoid event payload, protected payload, secrets, subscriber credentials, and backend connection strings.
+    - [ ] Record whether ordering/session/partition metadata is emitted as DAPR metadata, CloudEvent extension metadata, event payload metadata, documentation-only guidance, or a deferred backend-specific decision.
 
 - [ ] **ST2 - Harden publish failure and drain recovery semantics.** (AC: 1, 4)
     - [ ] Verify partial publish behavior: if some events publish before failure, the drain path remains at-least-once and duplicate-tolerant without losing unpublished persisted events.
@@ -127,12 +136,14 @@ so that Parties projections can rely on EventStore publication guarantees.
     - [ ] Record the unpublished-record lifecycle decision before code completion: pending/publishing remains retryable on retryable failure; published/removed only after confirmed DAPR publish success; failed/dead-lettered only after configured retry exhaustion or stable non-retryable failure.
     - [ ] Prove partial publish behavior: if events 1..N publish and event N+1 fails, the next drain resumes without skipping, losing, or publishing later aggregate events out of persisted sequence.
     - [ ] Prove crash/restart and reminder-overlap behavior: repeated drain may duplicate stable event IDs/metadata, but cannot delete recovery state before confirmed success.
+    - [ ] Prove ambiguous publish outcomes are handled fail-safe: no successful command completion may depend solely on a partially observed broker/DAPR response when persisted events still need recovery tracking.
 
 - [ ] **ST3 - Clarify dead-letter policy boundaries.** (AC: 4, 5)
     - [ ] Document the difference between EventStore command infrastructure dead letters from `DeadLetterPublisher` and DAPR subscriber dead-letter topics after delivery retry exhaustion.
     - [ ] Confirm dead-letter topic naming: `{DeadLetterTopicPrefix}.{tenant}.{domain}.events` for EventStore dead letters and backend component `deadLetterTopic` for DAPR subscriber routing.
     - [ ] Add or update tests for dead-letter message metadata, trace correlation, sanitized error fields, and topic naming.
     - [ ] Record manual recovery expectations for drain records that cannot be retried automatically due to missing persisted events or event-count mismatch.
+    - [ ] Ensure docs and tests name which failures go to EventStore infrastructure dead-letter records and which failures are only DAPR subscriber delivery outcomes.
 
 - [ ] **ST4 - Build the backend deployment matrix.** (AC: 3, 5, 6)
     - [ ] Update docs with a matrix for Redis, RabbitMQ, Kafka, and Azure Service Bus covering durability, duplicate delivery, ordering/session/partition support, topic creation, dead-letter support, retry/resiliency knobs, scoping requirements, and known limitations.
@@ -141,6 +152,7 @@ so that Parties projections can rely on EventStore publication guarantees.
     - [ ] Verify production component examples do not imply wildcard scoping, default-open subscriber permissions, dev-only test subscribers, or hardcoded secrets.
     - [ ] Add deployment notes for Azure Service Bus topic pre-creation and session support if session ordering is claimed.
     - [ ] Add deployment notes for Kafka partition key behavior if per-aggregate ordering is claimed.
+    - [ ] Add a "claim status" column with values equivalent to `proven`, `configured`, `documented-only`, `unsupported`, and `not proven`; do not infer live proof from component YAML alone.
 
 - [ ] **ST5 - Expand backend-specific tests and evidence.** (AC: 1, 3, 4, 6)
     - [ ] Preserve existing Redis local `PubSubDeliveryProofTests` evidence and extend it only when the local Aspire topology supports the required proof.
@@ -150,6 +162,7 @@ so that Parties projections can rely on EventStore publication guarantees.
     - [ ] Prove per-aggregate causal ordering where the backend supports it; explicitly mark unsupported or unverified backends in docs and Verification Status.
     - [ ] Separate proof boundaries: unit tests for persistence/publish/drain state, component/config inspection for backend settings, Docker/Aspire integration only when infrastructure is available, and manual evidence only for environment-gated backends.
     - [ ] Include explicit negative assertions for no exactly-once claims, no payload/secret logging, no ad hoc application retry loops replacing DAPR resiliency config, and no changes to payload protection, query contracts, or replay APIs.
+    - [ ] Include a deterministic proof that subscriber success is not required for EventStore to clear publish recovery state unless the implementation explicitly waits for subscriber acknowledgements, which current DAPR pub/sub publishing does not provide.
 
 - [ ] **ST6 - Align public docs and generated references.** (AC: 2, 5, 7)
     - [ ] Update `docs/concepts/command-lifecycle.md` with at-least-once, duplicate tolerance, partial publish, and drain semantics.
@@ -189,6 +202,8 @@ Implementation traps to avoid:
 - Do not let the backend matrix become marketing language. Every claim needs a proof level or an explicit caveat.
 - Do not treat successful DAPR publish as proof of subscriber processing success.
 - Do not remove or compact unpublished-event recovery state before the publish outcome and cleanup path are explicitly proven.
+- Do not mark RabbitMQ, Kafka, or Azure Service Bus rows as `proven` without live backend evidence or an explicitly attached manual proof artifact.
+- Do not use broker-specific receipt IDs, offsets, partitions, lock tokens, sessions, or delivery counts as the primary cross-backend idempotency contract for downstream consumers.
 
 File-level guardrails:
 
@@ -314,7 +329,7 @@ GPT-5 Codex
 - Story created and marked ready-for-dev by the BMAD pre-dev hardening automation.
 - Story creation did not modify product code, tests, DAPR/Aspire configuration, generated API docs, or submodules.
 - Party-mode review completed on 2026-05-13 and applied story hardening for guarantee boundaries, backend proof levels, unpublished-record lifecycle, drain idempotency, dead-letter separation, operator metadata, and file-level guardrails.
-- Advanced elicitation has NOT yet been run for this story.
+- Advanced elicitation completed on 2026-05-13 and applied bounded story hardening for DAPR publish-acceptance boundaries, partial-batch ambiguity, backend proof labels, consumer idempotency fields, and subscriber-dead-letter separation.
 
 ### File List
 
@@ -331,12 +346,13 @@ GPT-5 Codex
 - `git diff --check` passed for the story artifact, sprint status, and run log with line-ending conversion warnings only.
 - `npx markdownlint-cli2 _bmad-output/implementation-artifacts/22-5-event-publishing-guarantees-and-backend-deployment-matrix.md` passed with 0 errors.
 - Party-mode review completed on 2026-05-13 and is recorded below.
-- Advanced elicitation has NOT yet been run for this story.
+- Advanced elicitation completed on 2026-05-13 and is recorded below.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-13 | 0.3 | Applied advanced-elicitation hardening for publish acceptance boundaries, partial-batch ambiguity, proof labels, idempotency guidance, and dead-letter separation. | Codex automation |
 | 2026-05-13 | 0.2 | Applied party-mode review hardening for guarantee boundaries, backend proof levels, unpublished-record lifecycle, drain idempotency, and dead-letter separation. | Codex automation |
 | 2026-05-12 | 0.1 | Created ready-for-dev story for event publishing guarantees and backend deployment matrix. | Codex automation |
 
@@ -364,4 +380,42 @@ GPT-5 Codex
     - Whether all four backends must run in CI remains deferred to infrastructure availability; documentation-backed or manual proof must be labeled honestly.
     - Whether Azure Service Bus sessions become a required production recommendation and whether Kafka repartitioning constraints need a hard policy remain architecture decisions.
     - Payload protection, query contract, replay/read API, and broad UI/Admin behavior remain owned by their separate Epic 22 stories.
+- Final recommendation: ready-for-dev after applied story updates.
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-13T14:02:29+02:00
+- Selected story key: `22-5-event-publishing-guarantees-and-backend-deployment-matrix`
+- Command/skill invocation used:
+  `/bmad-advanced-elicitation 22-5-event-publishing-guarantees-and-backend-deployment-matrix`
+- Batch 1 method names:
+    - Self-Consistency Validation
+    - Red Team vs Blue Team
+    - Architecture Decision Records
+    - Failure Mode Analysis
+    - Comparative Analysis Matrix
+- Reshuffled Batch 2 method names:
+    - Chaos Monkey Scenarios
+    - First Principles Analysis
+    - Occam's Razor Application
+    - 5 Whys Deep Dive
+    - Lessons Learned Extraction
+- Findings summary:
+    - The story was directionally sound but still let readers confuse EventStore persistence, DAPR publish acceptance, broker delivery, and subscriber processing as one guarantee.
+    - Partial-batch and ambiguous publish outcomes needed fail-safe language so implementers do not skip later persisted events or delete recovery state after incomplete evidence.
+    - Backend proof labels needed stricter semantics; component YAML inspection is not live proof for RabbitMQ, Kafka, or Azure Service Bus behavior.
+    - Consumer idempotency guidance needed to prefer EventStore identity and sequence metadata over broker-specific delivery identifiers.
+    - Dead-letter evidence needed sharper separation between EventStore infrastructure dead letters and DAPR subscriber delivery dead letters.
+- Changes applied:
+    - Added DAPR publish-acceptance versus subscriber-success language to the Event Publishing Contract.
+    - Added conservative partial-batch publication and ambiguous-publish handling requirements to AC1, ST2, and implementation traps.
+    - Tightened backend matrix requirements with explicit guarantee boundaries and a claim-status column.
+    - Clarified downstream idempotency guidance to avoid broker-specific receipt handles as the cross-backend contract.
+    - Added manual repair/no-payload-disclosure guidance for non-retryable drain failures and event-count mismatch cases.
+    - Updated Dev Agent Record, Completion Notes, Verification Status, and Change Log with this dated advanced elicitation trace.
+- Findings deferred:
+    - Manual requeue/repair command shape remains a product/operations decision unless existing drain tooling satisfies it.
+    - Required live proof for RabbitMQ, Kafka, and Azure Service Bus remains infrastructure-dependent and must be labeled honestly during implementation.
+    - Exact Azure Service Bus session and Kafka partition-key policy remains an architecture decision to record before claiming ordered backend delivery.
+    - Payload-protection policy, replay/read APIs, and query/gateway contract changes remain owned by sibling Epic 22 stories.
 - Final recommendation: ready-for-dev after applied story updates.

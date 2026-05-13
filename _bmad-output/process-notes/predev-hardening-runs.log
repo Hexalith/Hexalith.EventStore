@@ -173,3 +173,4 @@
 2026-05-13T11:06:40+02:00	advanced-elicitation	22-2-projection-adapter-contract-and-generic-query-actor-model	ok	advanced elicitation applied projection adapter contract hardening
 2026-05-13T12:03:15+02:00	advanced-elicitation	22-3-gateway-owned-tenant-and-rbac-enforcement	ok	advanced elicitation applied gateway tenant rbac hardening
 2026-05-13T13:06:12+02:00	advanced-elicitation	22-4-query-behavior-policy-and-error-taxonomy	ok	advanced elicitation applied query policy taxonomy hardening
+2026-05-13T14:02:29+02:00	advanced-elicitation	22-5-event-publishing-guarantees-and-backend-deployment-matrix	ok	advanced elicitation applied event publishing guarantee hardening
