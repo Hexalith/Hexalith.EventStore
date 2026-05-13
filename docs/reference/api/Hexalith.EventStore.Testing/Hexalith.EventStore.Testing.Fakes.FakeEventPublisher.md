@@ -63,8 +63,18 @@ The topic that should have zero events\.
 
 #### Exceptions
 
-[System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')  
+[System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')
 Thrown when events were found on the specified topic\.
+
+<a name='Hexalith.EventStore.Testing.Fakes.FakeEventPublisher.ClearFailure()'></a>
+
+## FakeEventPublisher\.ClearFailure\(\) Method
+
+Resets the fake to success mode, clearing any configured failure\.
+
+```csharp
+public void ClearFailure();
+```
 
 <a name='Hexalith.EventStore.Testing.Fakes.FakeEventPublisher.GetEventsForTopic(string)'></a>
 
@@ -84,7 +94,7 @@ public System.Collections.Generic.IReadOnlyList<Hexalith.EventStore.Server.Event
 The topic name to query\.
 
 #### Returns
-[System\.Collections\.Generic\.IReadOnlyList&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')[Hexalith\.EventStore\.Server\.Events\.EventEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.eventenvelope 'Hexalith\.EventStore\.Server\.Events\.EventEnvelope')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')  
+[System\.Collections\.Generic\.IReadOnlyList&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')[Hexalith\.EventStore\.Server\.Events\.EventEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.eventenvelope 'Hexalith\.EventStore\.Server\.Events\.EventEnvelope')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')
 The events published to the specified topic, or an empty list if none\.
 
 <a name='Hexalith.EventStore.Testing.Fakes.FakeEventPublisher.GetPublishedTopics()'></a>
@@ -98,51 +108,8 @@ public System.Collections.Generic.IReadOnlyList<string> GetPublishedTopics();
 ```
 
 #### Returns
-[System\.Collections\.Generic\.IReadOnlyList&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')  
+[System\.Collections\.Generic\.IReadOnlyList&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')
 A collection of distinct topic names\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeEventPublisher.PublishEventsAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,System.Collections.Generic.IReadOnlyList_Hexalith.EventStore.Server.Events.EventEnvelope_,string,System.Threading.CancellationToken)'></a>
-
-## FakeEventPublisher\.PublishEventsAsync\(AggregateIdentity, IReadOnlyList\<EventEnvelope\>, string, CancellationToken\) Method
-
-Publishes persisted events to the pub/sub topic derived from the aggregate identity\.
-Each event is wrapped in a CloudEvents 1\.0 envelope via DAPR's native wrapping\.
-Does NOT throw on publication failure \-\- returns a failure result instead\.
-
-```csharp
-public System.Threading.Tasks.Task<Hexalith.EventStore.Server.Events.EventPublishResult> PublishEventsAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity identity, System.Collections.Generic.IReadOnlyList<Hexalith.EventStore.Server.Events.EventEnvelope> events, string correlationId, System.Threading.CancellationToken cancellationToken=default(System.Threading.CancellationToken));
-```
-#### Parameters
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeEventPublisher.PublishEventsAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,System.Collections.Generic.IReadOnlyList_Hexalith.EventStore.Server.Events.EventEnvelope_,string,System.Threading.CancellationToken).identity'></a>
-
-`identity` [Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.identity.aggregateidentity 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity')
-
-The aggregate identity providing topic derivation\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeEventPublisher.PublishEventsAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,System.Collections.Generic.IReadOnlyList_Hexalith.EventStore.Server.Events.EventEnvelope_,string,System.Threading.CancellationToken).events'></a>
-
-`events` [System\.Collections\.Generic\.IReadOnlyList&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')[Hexalith\.EventStore\.Server\.Events\.EventEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.eventenvelope 'Hexalith\.EventStore\.Server\.Events\.EventEnvelope')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')
-
-The persisted event envelopes to publish\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeEventPublisher.PublishEventsAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,System.Collections.Generic.IReadOnlyList_Hexalith.EventStore.Server.Events.EventEnvelope_,string,System.Threading.CancellationToken).correlationId'></a>
-
-`correlationId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
-
-The correlation ID for tracing \(rule \#9\)\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeEventPublisher.PublishEventsAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,System.Collections.Generic.IReadOnlyList_Hexalith.EventStore.Server.Events.EventEnvelope_,string,System.Threading.CancellationToken).cancellationToken'></a>
-
-`cancellationToken` [System\.Threading\.CancellationToken](https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtoken 'System\.Threading\.CancellationToken')
-
-Cancellation token\.
-
-Implements [PublishEventsAsync\(AggregateIdentity, IReadOnlyList&lt;EventEnvelope&gt;, string, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.ieventpublisher.publisheventsasync#hexalith-eventstore-server-events-ieventpublisher-publisheventsasync(hexalith-eventstore-contracts-identity-aggregateidentity-system-collections-generic-ireadonlylist{hexalith-eventstore-server-events-eventenvelope}-system-string-system-threading-cancellationtoken) 'Hexalith\.EventStore\.Server\.Events\.IEventPublisher\.PublishEventsAsync\(Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity,System\.Collections\.Generic\.IReadOnlyList\{Hexalith\.EventStore\.Server\.Events\.EventEnvelope\},System\.String,System\.Threading\.CancellationToken\)')
-
-#### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[Hexalith\.EventStore\.Server\.Events\.EventPublishResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.eventpublishresult 'Hexalith\.EventStore\.Server\.Events\.EventPublishResult')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
-The publication result indicating success/failure and count of published events\.
 
 <a name='Hexalith.EventStore.Testing.Fakes.FakeEventPublisher.SetupFailure(string)'></a>
 

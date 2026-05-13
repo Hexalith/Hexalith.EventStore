@@ -11,4 +11,7 @@ for programmatic identification of domain rejection events\. Has no additional m
 public interface IRejectionEvent : Hexalith.EventStore.Contracts.Events.IEventPayload
 ```
 
+Derived
+&#8627; [AggregateTerminated](Hexalith.EventStore.Contracts.Events.AggregateTerminated.md 'Hexalith\.EventStore\.Contracts\.Events\.AggregateTerminated')
+
 Implements [IEventPayload](Hexalith.EventStore.Contracts.Events.IEventPayload.md 'Hexalith\.EventStore\.Contracts\.Events\.IEventPayload')

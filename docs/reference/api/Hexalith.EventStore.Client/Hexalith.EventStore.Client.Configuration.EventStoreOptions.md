@@ -88,8 +88,8 @@ A delegate that configures [EventStoreDomainOptions](Hexalith.EventStore.Client.
 
 #### Exceptions
 
-[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')  
+[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')
 Thrown when [domainName](Hexalith.EventStore.Client.Configuration.EventStoreOptions.md#Hexalith.EventStore.Client.Configuration.EventStoreOptions.ConfigureDomain(string,System.Action_Hexalith.EventStore.Client.Configuration.EventStoreDomainOptions_).domainName 'Hexalith\.EventStore\.Client\.Configuration\.EventStoreOptions\.ConfigureDomain\(string, System\.Action\<Hexalith\.EventStore\.Client\.Configuration\.EventStoreDomainOptions\>\)\.domainName') is null, empty, or whitespace\.
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 Thrown when [configure](Hexalith.EventStore.Client.Configuration.EventStoreOptions.md#Hexalith.EventStore.Client.Configuration.EventStoreOptions.ConfigureDomain(string,System.Action_Hexalith.EventStore.Client.Configuration.EventStoreDomainOptions_).configure 'Hexalith\.EventStore\.Client\.Configuration\.EventStoreOptions\.ConfigureDomain\(string, System\.Action\<Hexalith\.EventStore\.Client\.Configuration\.EventStoreDomainOptions\>\)\.configure') is null\.

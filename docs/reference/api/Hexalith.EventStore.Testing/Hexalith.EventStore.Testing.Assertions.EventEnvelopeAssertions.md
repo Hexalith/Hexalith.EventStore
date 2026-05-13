@@ -17,7 +17,7 @@ Inheritance [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system
 
 ## EventEnvelopeAssertions\.ShouldHaveValidMetadata\(EventEnvelope\) Method
 
-Verifies all 11 metadata fields are populated and the payload is non\-null\.
+Verifies all 15 metadata fields are populated and the payload is non\-null\.
 
 ```csharp
 public static void ShouldHaveValidMetadata(Hexalith.EventStore.Contracts.Events.EventEnvelope envelope);

@@ -5,8 +5,7 @@
 
 | Classes | |
 | :--- | :--- |
-| [AssemblyScanner](Hexalith.EventStore.Client.Discovery.AssemblyScanner.md 'Hexalith\.EventStore\.Client\.Discovery\.AssemblyScanner') | Scans assemblies for types inheriting from [EventStoreAggregate&lt;TState&gt;](Hexalith.EventStore.Client.Aggregates.EventStoreAggregate_TState_.md 'Hexalith\.EventStore\.Client\.Aggregates\.EventStoreAggregate\<TState\>') or [EventStoreProjection&lt;TReadModel&gt;](Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.md 'Hexalith\.EventStore\.Client\.Aggregates\.EventStoreProjection\<TReadModel\>') and resolves their domain names via [NamingConventionEngine](Hexalith.EventStore.Client.Conventions.NamingConventionEngine.md 'Hexalith\.EventStore\.Client\.Conventions\.NamingConventionEngine')\. |
-| [DiscoveredDomain](Hexalith.EventStore.Client.Discovery.DiscoveredDomain.md 'Hexalith\.EventStore\.Client\.Discovery\.DiscoveredDomain') | Represents a single domain type discovered by the [AssemblyScanner](Hexalith.EventStore.Client.Discovery.AssemblyScanner.md 'Hexalith\.EventStore\.Client\.Discovery\.AssemblyScanner')\. |
+| [DiscoveredDomain](Hexalith.EventStore.Client.Discovery.DiscoveredDomain.md 'Hexalith\.EventStore\.Client\.Discovery\.DiscoveredDomain') | Represents a single domain type discovered by the [Hexalith\.EventStore\.Client\.Discovery\.AssemblyScanner](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.client.discovery.assemblyscanner 'Hexalith\.EventStore\.Client\.Discovery\.AssemblyScanner')\. |
 | [DiscoveryResult](Hexalith.EventStore.Client.Discovery.DiscoveryResult.md 'Hexalith\.EventStore\.Client\.Discovery\.DiscoveryResult') | Contains the results of an assembly scan for domain types\. |
 
 | Enums | |

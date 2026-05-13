@@ -24,7 +24,7 @@ public Hexalith.EventStore.Contracts.Events.EventEnvelope Build();
 ```
 
 #### Returns
-[Hexalith\.EventStore\.Contracts\.Events\.EventEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.events.eventenvelope 'Hexalith\.EventStore\.Contracts\.Events\.EventEnvelope')  
+[Hexalith\.EventStore\.Contracts\.Events\.EventEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.events.eventenvelope 'Hexalith\.EventStore\.Contracts\.Events\.EventEnvelope')
 A new [Hexalith\.EventStore\.Contracts\.Events\.EventEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.events.eventenvelope 'Hexalith\.EventStore\.Contracts\.Events\.EventEnvelope') with the configured values\.
 
 <a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithAggregateIdPart(string)'></a>
@@ -45,7 +45,28 @@ public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithAggregateId
 The aggregate identifier part\.
 
 #### Returns
-[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')  
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
+This builder instance\.
+
+<a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithAggregateType(string)'></a>
+
+## EventEnvelopeBuilder\.WithAggregateType\(string\) Method
+
+Sets the aggregate type name\.
+
+```csharp
+public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithAggregateType(string aggregateType);
+```
+#### Parameters
+
+<a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithAggregateType(string).aggregateType'></a>
+
+`aggregateType` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The aggregate type name\.
+
+#### Returns
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithCausationId(string)'></a>
@@ -66,7 +87,7 @@ public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithCausationId
 The causation identifier\.
 
 #### Returns
-[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')  
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithCorrelationId(string)'></a>
@@ -87,7 +108,7 @@ public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithCorrelation
 The correlation identifier\.
 
 #### Returns
-[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')  
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithDomain(string)'></a>
@@ -108,7 +129,7 @@ public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithDomain(stri
 The domain name\.
 
 #### Returns
-[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')  
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithDomainServiceVersion(string)'></a>
@@ -129,7 +150,7 @@ public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithDomainServi
 The version string\.
 
 #### Returns
-[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')  
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithEventTypeName(string)'></a>
@@ -150,7 +171,7 @@ public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithEventTypeNa
 The event type name\.
 
 #### Returns
-[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')  
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithExtensions(System.Collections.Generic.IReadOnlyDictionary_string,string_)'></a>
@@ -171,7 +192,70 @@ public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithExtensions(
 The extension metadata\.
 
 #### Returns
-[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')  
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
+This builder instance\.
+
+<a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithGlobalPosition(long)'></a>
+
+## EventEnvelopeBuilder\.WithGlobalPosition\(long\) Method
+
+Sets the global position\.
+
+```csharp
+public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithGlobalPosition(long globalPosition);
+```
+#### Parameters
+
+<a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithGlobalPosition(long).globalPosition'></a>
+
+`globalPosition` [System\.Int64](https://learn.microsoft.com/en-us/dotnet/api/system.int64 'System\.Int64')
+
+The global position \(must be \>= 0\)\.
+
+#### Returns
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
+This builder instance\.
+
+<a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithMessageId(string)'></a>
+
+## EventEnvelopeBuilder\.WithMessageId\(string\) Method
+
+Sets the event message identifier\.
+
+```csharp
+public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithMessageId(string messageId);
+```
+#### Parameters
+
+<a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithMessageId(string).messageId'></a>
+
+`messageId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The message identifier\.
+
+#### Returns
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
+This builder instance\.
+
+<a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithMetadataVersion(int)'></a>
+
+## EventEnvelopeBuilder\.WithMetadataVersion\(int\) Method
+
+Sets the metadata version\.
+
+```csharp
+public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithMetadataVersion(int metadataVersion);
+```
+#### Parameters
+
+<a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithMetadataVersion(int).metadataVersion'></a>
+
+`metadataVersion` [System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')
+
+The metadata version \(must be \>= 1\)\.
+
+#### Returns
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithPayload(byte[])'></a>
@@ -192,7 +276,7 @@ public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithPayload(byt
 The payload bytes\.
 
 #### Returns
-[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')  
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithSequenceNumber(long)'></a>
@@ -213,7 +297,7 @@ public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithSequenceNum
 The sequence number \(must be \>= 1\)\.
 
 #### Returns
-[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')  
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithSerializationFormat(string)'></a>
@@ -234,7 +318,7 @@ public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithSerializati
 The serialization format\.
 
 #### Returns
-[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')  
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithTenantId(string)'></a>
@@ -255,7 +339,7 @@ public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithTenantId(st
 The tenant identifier\.
 
 #### Returns
-[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')  
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithTimestamp(System.DateTimeOffset)'></a>
@@ -276,7 +360,7 @@ public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithTimestamp(S
 The timestamp\.
 
 #### Returns
-[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')  
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.WithUserId(string)'></a>
@@ -297,5 +381,5 @@ public Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder WithUserId(stri
 The user identifier\.
 
 #### Returns
-[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')  
+[EventEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.EventEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.EventEnvelopeBuilder')
 This builder instance\.

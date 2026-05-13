@@ -11,6 +11,7 @@ implement this interface\.
 public interface IEventPayload
 ```
 
-Derived  
-&#8627; [IRejectionEvent](Hexalith.EventStore.Contracts.Events.IRejectionEvent.md 'Hexalith\.EventStore\.Contracts\.Events\.IRejectionEvent')  
+Derived
+&#8627; [AggregateTerminated](Hexalith.EventStore.Contracts.Events.AggregateTerminated.md 'Hexalith\.EventStore\.Contracts\.Events\.AggregateTerminated')
+&#8627; [IRejectionEvent](Hexalith.EventStore.Contracts.Events.IRejectionEvent.md 'Hexalith\.EventStore\.Contracts\.Events\.IRejectionEvent')
 &#8627; [ISerializedEventPayload](Hexalith.EventStore.Contracts.Events.ISerializedEventPayload.md 'Hexalith\.EventStore\.Contracts\.Events\.ISerializedEventPayload')

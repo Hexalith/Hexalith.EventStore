@@ -45,7 +45,9 @@ Terminal — all events stored and published\.
 
 `Rejected` 5
 
-Terminal — domain rejection event persisted\.
+Terminal — command rejected before completion\.
+Domain rejections set [RejectionEventType](Hexalith.EventStore.Contracts.Commands.CommandStatusRecord.md#Hexalith.EventStore.Contracts.Commands.CommandStatusRecord.RejectionEventType 'Hexalith\.EventStore\.Contracts\.Commands\.CommandStatusRecord\.RejectionEventType');
+infrastructure rejections set [FailureReason](Hexalith.EventStore.Contracts.Commands.CommandStatusRecord.md#Hexalith.EventStore.Contracts.Commands.CommandStatusRecord.FailureReason 'Hexalith\.EventStore\.Contracts\.Commands\.CommandStatusRecord\.FailureReason')\.
 
 <a name='Hexalith.EventStore.Contracts.Commands.CommandStatus.PublishFailed'></a>
 

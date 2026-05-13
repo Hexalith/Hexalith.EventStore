@@ -34,10 +34,10 @@ The explicit domain name to use\. Must be non\-empty and non\-whitespace\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 Thrown when [domainName](Hexalith.EventStore.Client.Attributes.EventStoreDomainAttribute.md#Hexalith.EventStore.Client.Attributes.EventStoreDomainAttribute.EventStoreDomainAttribute(string).domainName 'Hexalith\.EventStore\.Client\.Attributes\.EventStoreDomainAttribute\.EventStoreDomainAttribute\(string\)\.domainName') is null\.
 
-[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')  
+[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')
 Thrown when [domainName](Hexalith.EventStore.Client.Attributes.EventStoreDomainAttribute.md#Hexalith.EventStore.Client.Attributes.EventStoreDomainAttribute.EventStoreDomainAttribute(string).domainName 'Hexalith\.EventStore\.Client\.Attributes\.EventStoreDomainAttribute\.EventStoreDomainAttribute\(string\)\.domainName') is empty or whitespace\.
 ### Properties
 

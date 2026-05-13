@@ -30,7 +30,7 @@ public void AssertNoDeadLetters();
 
 #### Exceptions
 
-[System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')  
+[System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')
 Thrown when dead\-letter messages were found\.
 
 <a name='Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher.GetDeadLetterMessageByCorrelationId(string)'></a>
@@ -51,7 +51,7 @@ public System.Nullable<(Hexalith.EventStore.Contracts.Identity.AggregateIdentity
 The correlation ID to search for\.
 
 #### Returns
-[System\.Nullable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.nullable-1 'System\.Nullable\`1')[&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.identity.aggregateidentity 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity')[,](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[Hexalith\.EventStore\.Server\.Events\.DeadLetterMessage](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.deadlettermessage 'Hexalith\.EventStore\.Server\.Events\.DeadLetterMessage')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.nullable-1 'System\.Nullable\`1')  
+[System\.Nullable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.nullable-1 'System\.Nullable\`1')[&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.identity.aggregateidentity 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity')[,](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[Hexalith\.EventStore\.Server\.Events\.DeadLetterMessage](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.deadlettermessage 'Hexalith\.EventStore\.Server\.Events\.DeadLetterMessage')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.nullable-1 'System\.Nullable\`1')
 The matching message tuple, or null if not found\.
 
 <a name='Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher.GetDeadLetterMessages()'></a>
@@ -86,46 +86,6 @@ The tenant ID to filter by\.
 
 #### Returns
 [System\.Collections\.Generic\.IReadOnlyList&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')[&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.identity.aggregateidentity 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity')[,](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[Hexalith\.EventStore\.Server\.Events\.DeadLetterMessage](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.deadlettermessage 'Hexalith\.EventStore\.Server\.Events\.DeadLetterMessage')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher.PublishDeadLetterAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Hexalith.EventStore.Server.Events.DeadLetterMessage,System.Threading.CancellationToken)'></a>
-
-## FakeDeadLetterPublisher\.PublishDeadLetterAsync\(AggregateIdentity, DeadLetterMessage, CancellationToken\) Method
-
-Publishes a dead\-letter message for a failed command\.
-
-```csharp
-public System.Threading.Tasks.Task<bool> PublishDeadLetterAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity identity, Hexalith.EventStore.Server.Events.DeadLetterMessage message, System.Threading.CancellationToken cancellationToken=default(System.Threading.CancellationToken));
-```
-#### Parameters
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher.PublishDeadLetterAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Hexalith.EventStore.Server.Events.DeadLetterMessage,System.Threading.CancellationToken).identity'></a>
-
-`identity` [Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.identity.aggregateidentity 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity')
-
-The aggregate identity for topic derivation\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher.PublishDeadLetterAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Hexalith.EventStore.Server.Events.DeadLetterMessage,System.Threading.CancellationToken).message'></a>
-
-`message` [Hexalith\.EventStore\.Server\.Events\.DeadLetterMessage](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.deadlettermessage 'Hexalith\.EventStore\.Server\.Events\.DeadLetterMessage')
-
-The dead\-letter message containing full command context\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher.PublishDeadLetterAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Hexalith.EventStore.Server.Events.DeadLetterMessage,System.Threading.CancellationToken).cancellationToken'></a>
-
-`cancellationToken` [System\.Threading\.CancellationToken](https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtoken 'System\.Threading\.CancellationToken')
-
-Optional cancellation token\.
-
-Implements [PublishDeadLetterAsync\(AggregateIdentity, DeadLetterMessage, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.ideadletterpublisher.publishdeadletterasync#hexalith-eventstore-server-events-ideadletterpublisher-publishdeadletterasync(hexalith-eventstore-contracts-identity-aggregateidentity-hexalith-eventstore-server-events-deadlettermessage-system-threading-cancellationtoken) 'Hexalith\.EventStore\.Server\.Events\.IDeadLetterPublisher\.PublishDeadLetterAsync\(Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity,Hexalith\.EventStore\.Server\.Events\.DeadLetterMessage,System\.Threading\.CancellationToken\)')
-
-#### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
-True if published successfully; false if publication failed\.
-
-#### Exceptions
-
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
-Thrown when [cancellationToken](Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher.md#Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher.PublishDeadLetterAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Hexalith.EventStore.Server.Events.DeadLetterMessage,System.Threading.CancellationToken).cancellationToken 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDeadLetterPublisher\.PublishDeadLetterAsync\(Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity, Hexalith\.EventStore\.Server\.Events\.DeadLetterMessage, System\.Threading\.CancellationToken\)\.cancellationToken') is canceled\.
 
 <a name='Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher.Reset()'></a>
 

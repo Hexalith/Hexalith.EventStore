@@ -86,5 +86,5 @@ public static Hexalith.EventStore.Contracts.Results.DomainServiceWireResult From
 The domain result to convert\.
 
 #### Returns
-[DomainServiceWireResult](Hexalith.EventStore.Contracts.Results.DomainServiceWireResult.md 'Hexalith\.EventStore\.Contracts\.Results\.DomainServiceWireResult')  
+[DomainServiceWireResult](Hexalith.EventStore.Contracts.Results.DomainServiceWireResult.md 'Hexalith\.EventStore\.Contracts\.Results\.DomainServiceWireResult')
 A wire\-safe response containing explicit event metadata and payload bytes\.

@@ -33,7 +33,7 @@ public static string GetCommandEndpoint(string domain);
 The validated domain name\.
 
 #### Returns
-[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')  
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 The command endpoint name in the format "\{domain\}\-commands"\.
 
 <a name='Hexalith.EventStore.Client.Conventions.NamingConventionEngine.GetDomainName(System.Type)'></a>
@@ -56,15 +56,15 @@ public static string GetDomainName(System.Type type);
 The type to derive a domain name from\.
 
 #### Returns
-[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')  
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 A validated kebab\-case domain name\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 Thrown when [type](Hexalith.EventStore.Client.Conventions.NamingConventionEngine.md#Hexalith.EventStore.Client.Conventions.NamingConventionEngine.GetDomainName(System.Type).type 'Hexalith\.EventStore\.Client\.Conventions\.NamingConventionEngine\.GetDomainName\(System\.Type\)\.type') is null\.
 
-[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')  
+[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')
 Thrown when the derived or attribute\-supplied name is invalid\.
 
 <a name='Hexalith.EventStore.Client.Conventions.NamingConventionEngine.GetDomainName_T_()'></a>
@@ -85,8 +85,35 @@ public static string GetDomainName<T>();
 The type to derive a domain name from\.
 
 #### Returns
-[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')  
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 A validated kebab\-case domain name\.
+
+<a name='Hexalith.EventStore.Client.Conventions.NamingConventionEngine.GetProjectionChangedTopic(string,string)'></a>
+
+## NamingConventionEngine\.GetProjectionChangedTopic\(string, string\) Method
+
+Gets the DAPR pub/sub topic for projection change notifications\.
+
+```csharp
+public static string GetProjectionChangedTopic(string projectionType, string tenantId);
+```
+#### Parameters
+
+<a name='Hexalith.EventStore.Client.Conventions.NamingConventionEngine.GetProjectionChangedTopic(string,string).projectionType'></a>
+
+`projectionType` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The projection type name \(kebab\-case\)\.
+
+<a name='Hexalith.EventStore.Client.Conventions.NamingConventionEngine.GetProjectionChangedTopic(string,string).tenantId'></a>
+
+`tenantId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The tenant identifier \(kebab\-case\)\.
+
+#### Returns
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+The pub/sub topic in the format "\{tenantId\}\.\{projectionType\}\.projection\-changed"\.
 
 <a name='Hexalith.EventStore.Client.Conventions.NamingConventionEngine.GetPubSubTopic(string,string)'></a>
 
@@ -112,8 +139,60 @@ The tenant identifier\.
 The validated domain name\.
 
 #### Returns
-[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')  
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 The pub/sub topic in the format "\{tenantId\}\.\{domain\}\.events"\.
+
+<a name='Hexalith.EventStore.Client.Conventions.NamingConventionEngine.GetQueryTypeName(System.Type)'></a>
+
+## NamingConventionEngine\.GetQueryTypeName\(Type\) Method
+
+Gets the query type name for the specified type\. Returns the attribute value if
+[Hexalith\.EventStore\.Contracts\.Queries\.EventStoreQueryTypeAttribute](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.queries.eventstorequerytypeattribute 'Hexalith\.EventStore\.Contracts\.Queries\.EventStoreQueryTypeAttribute') is present, otherwise derives the name
+from the type name by stripping "Query" suffix and converting PascalCase to kebab\-case\.
+
+```csharp
+public static string GetQueryTypeName(System.Type type);
+```
+#### Parameters
+
+<a name='Hexalith.EventStore.Client.Conventions.NamingConventionEngine.GetQueryTypeName(System.Type).type'></a>
+
+`type` [System\.Type](https://learn.microsoft.com/en-us/dotnet/api/system.type 'System\.Type')
+
+The type to derive a query type name from\.
+
+#### Returns
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+A validated kebab\-case query type name\.
+
+#### Exceptions
+
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
+Thrown when [type](Hexalith.EventStore.Client.Conventions.NamingConventionEngine.md#Hexalith.EventStore.Client.Conventions.NamingConventionEngine.GetQueryTypeName(System.Type).type 'Hexalith\.EventStore\.Client\.Conventions\.NamingConventionEngine\.GetQueryTypeName\(System\.Type\)\.type') is null\.
+
+[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')
+Thrown when the derived or attribute\-supplied name is invalid\.
+
+<a name='Hexalith.EventStore.Client.Conventions.NamingConventionEngine.GetQueryTypeName_T_()'></a>
+
+## NamingConventionEngine\.GetQueryTypeName\<T\>\(\) Method
+
+Gets the query type name for the specified type parameter\.
+
+```csharp
+public static string GetQueryTypeName<T>();
+```
+#### Type parameters
+
+<a name='Hexalith.EventStore.Client.Conventions.NamingConventionEngine.GetQueryTypeName_T_().T'></a>
+
+`T`
+
+The type to derive a query type name from\.
+
+#### Returns
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+A validated kebab\-case query type name\.
 
 <a name='Hexalith.EventStore.Client.Conventions.NamingConventionEngine.GetStateStoreName(string)'></a>
 
@@ -133,5 +212,37 @@ public static string GetStateStoreName(string domain);
 The validated domain name\.
 
 #### Returns
-[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')  
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 The state store name in the format "\{domain\}\-eventstore"\.
+
+<a name='Hexalith.EventStore.Client.Conventions.NamingConventionEngine.ValidateKebabCase(string,string)'></a>
+
+## NamingConventionEngine\.ValidateKebabCase\(string, string\) Method
+
+Validates that a value is a valid kebab\-case string \(lowercase alphanumeric \+ hyphens,
+no leading/trailing hyphens, max 64 characters\)\.
+
+```csharp
+public static void ValidateKebabCase(string value, string parameterName);
+```
+#### Parameters
+
+<a name='Hexalith.EventStore.Client.Conventions.NamingConventionEngine.ValidateKebabCase(string,string).value'></a>
+
+`value` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The value to validate\.
+
+<a name='Hexalith.EventStore.Client.Conventions.NamingConventionEngine.ValidateKebabCase(string,string).parameterName'></a>
+
+`parameterName` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The parameter name for error messages\.
+
+#### Exceptions
+
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
+Thrown when [value](Hexalith.EventStore.Client.Conventions.NamingConventionEngine.md#Hexalith.EventStore.Client.Conventions.NamingConventionEngine.ValidateKebabCase(string,string).value 'Hexalith\.EventStore\.Client\.Conventions\.NamingConventionEngine\.ValidateKebabCase\(string, string\)\.value') is null\.
+
+[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')
+Thrown when [value](Hexalith.EventStore.Client.Conventions.NamingConventionEngine.md#Hexalith.EventStore.Client.Conventions.NamingConventionEngine.ValidateKebabCase(string,string).value 'Hexalith\.EventStore\.Client\.Conventions\.NamingConventionEngine\.ValidateKebabCase\(string, string\)\.value') is invalid\.

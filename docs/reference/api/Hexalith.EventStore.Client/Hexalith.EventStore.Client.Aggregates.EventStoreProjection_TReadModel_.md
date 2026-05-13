@@ -22,6 +22,48 @@ public abstract class EventStoreProjection<TReadModel>
 The read model type that this projection builds\.
 
 Inheritance [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system.object 'System\.Object') &#129106; EventStoreProjection\<TReadModel\>
+### Properties
+
+<a name='Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.Logger'></a>
+
+## EventStoreProjection\<TReadModel\>\.Logger Property
+
+Gets or sets the logger\. Set post\-construction by DI registration\.
+
+```csharp
+public Microsoft.Extensions.Logging.ILogger? Logger { get; set; }
+```
+
+#### Property Value
+[Microsoft\.Extensions\.Logging\.ILogger](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.logging.ilogger 'Microsoft\.Extensions\.Logging\.ILogger')
+
+<a name='Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.Notifier'></a>
+
+## EventStoreProjection\<TReadModel\>\.Notifier Property
+
+Gets or sets the projection change notifier\. Set post\-construction by DI registration\.
+When set, [Project\(IEnumerable\)](Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.md#Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.Project(System.Collections.IEnumerable) 'Hexalith\.EventStore\.Client\.Aggregates\.EventStoreProjection\<TReadModel\>\.Project\(System\.Collections\.IEnumerable\)') auto\-calls [NotifyProjectionChangedAsync\(string, string, string, CancellationToken\)](Hexalith.EventStore.Client.Projections.IProjectionChangeNotifier.md#Hexalith.EventStore.Client.Projections.IProjectionChangeNotifier.NotifyProjectionChangedAsync(string,string,string,System.Threading.CancellationToken) 'Hexalith\.EventStore\.Client\.Projections\.IProjectionChangeNotifier\.NotifyProjectionChangedAsync\(string, string, string, System\.Threading\.CancellationToken\)')
+after successful projection\. When null, a warning is logged \(FM\-5\)\.
+
+```csharp
+public Hexalith.EventStore.Client.Projections.IProjectionChangeNotifier? Notifier { get; set; }
+```
+
+#### Property Value
+[IProjectionChangeNotifier](Hexalith.EventStore.Client.Projections.IProjectionChangeNotifier.md 'Hexalith\.EventStore\.Client\.Projections\.IProjectionChangeNotifier')
+
+<a name='Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.TenantId'></a>
+
+## EventStoreProjection\<TReadModel\>\.TenantId Property
+
+Gets or sets the tenant identifier for auto\-notify\. Set by the caller before projection\.
+
+```csharp
+public string? TenantId { get; set; }
+```
+
+#### Property Value
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 ### Methods
 
 <a name='Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.Project(System.Collections.IEnumerable)'></a>
@@ -42,7 +84,7 @@ public TReadModel Project(System.Collections.IEnumerable events);
 The events to project, as an enumerable of typed event objects\.
 
 #### Returns
-[TReadModel](Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.md#Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.TReadModel 'Hexalith\.EventStore\.Client\.Aggregates\.EventStoreProjection\<TReadModel\>\.TReadModel')  
+[TReadModel](Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.md#Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.TReadModel 'Hexalith\.EventStore\.Client\.Aggregates\.EventStoreProjection\<TReadModel\>\.TReadModel')
 The projected read model with all events applied\.
 
 <a name='Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.ProjectFromJson(System.Text.Json.JsonElement)'></a>
@@ -63,5 +105,5 @@ public TReadModel ProjectFromJson(System.Text.Json.JsonElement jsonArray);
 A JSON element containing an array of event objects\.
 
 #### Returns
-[TReadModel](Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.md#Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.TReadModel 'Hexalith\.EventStore\.Client\.Aggregates\.EventStoreProjection\<TReadModel\>\.TReadModel')  
+[TReadModel](Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.md#Hexalith.EventStore.Client.Aggregates.EventStoreProjection_TReadModel_.TReadModel 'Hexalith\.EventStore\.Client\.Aggregates\.EventStoreProjection\<TReadModel\>\.TReadModel')
 The projected read model with all events applied\.

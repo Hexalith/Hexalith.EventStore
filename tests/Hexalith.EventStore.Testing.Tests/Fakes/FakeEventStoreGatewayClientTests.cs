@@ -3,6 +3,7 @@ using System.Text.Json;
 using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Testing.Builders;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Shouldly;
@@ -54,6 +55,110 @@ public class FakeEventStoreGatewayClientTests {
         response.IsNotModified.ShouldBeTrue();
         response.Payload.ShouldBeNull();
         response.ETag.ShouldBe("etag-1");
+    }
+
+    [Fact]
+    public async Task ConfigureCommandAccepted_ConfiguresTypedAcceptedResponse() {
+        var fake = new FakeEventStoreGatewayClient()
+            .ConfigureCommandAccepted("corr-accepted");
+
+        SubmitCommandResponse response = await fake.SubmitCommandAsync(CreateCommandRequest());
+
+        response.CorrelationId.ShouldBe("corr-accepted");
+    }
+
+    [Fact]
+    public async Task ConfigureCommandFailure_ThrowsConfiguredProblemDetailsException() {
+        EventStoreGatewayException exception = EventStoreGatewayExceptionBuilder
+            .Validation("corr-validation", "tenant-a", new Dictionary<string, string> { ["tenant"] = "Tenant is required." })
+            .Build();
+        var fake = new FakeEventStoreGatewayClient()
+            .ConfigureCommandFailure(exception);
+
+        EventStoreGatewayException thrown = await Assert.ThrowsAsync<EventStoreGatewayException>(
+            () => fake.SubmitCommandAsync(CreateCommandRequest()));
+
+        thrown.StatusCode.ShouldBe(400);
+        thrown.Errors["tenant"].ShouldBe("Tenant is required.");
+    }
+
+    [Fact]
+    public async Task ConfigureQuerySuccess_ConfiguresPayloadAndNormalizedETag() {
+        JsonElement payload = JsonSerializer.SerializeToElement(new CounterDto(11));
+        var fake = new FakeEventStoreGatewayClient()
+            .ConfigureQuerySuccess(payload, "corr-query", "etag-query");
+
+        EventStoreQueryResult<CounterDto> response = await fake.SubmitQueryAsync<CounterDto>(CreateQueryRequest());
+
+        response.CorrelationId.ShouldBe("corr-query");
+        response.Payload.ShouldNotBeNull();
+        response.Payload.Count.ShouldBe(11);
+        response.ETag.ShouldBe("etag-query");
+    }
+
+    [Fact]
+    public async Task ConfigureQuerySemanticFailure_ThrowsGatewayExceptionWithCorrelationId() {
+        var fake = new FakeEventStoreGatewayClient()
+            .ConfigureQuerySemanticFailure("corr-semantic", "Projection denied.");
+
+        EventStoreGatewayException thrown = await Assert.ThrowsAsync<EventStoreGatewayException>(
+            () => fake.SubmitQueryAsync(CreateQueryRequest()));
+
+        thrown.StatusCode.ShouldBe(200);
+        thrown.Title.ShouldBe("Query semantic failure");
+        thrown.Detail.ShouldBe("Projection denied.");
+        thrown.CorrelationId.ShouldBe("corr-semantic");
+    }
+
+    [Fact]
+    public async Task ConfigureQueryFailure_ThrowsConfiguredUnavailableException() {
+        EventStoreGatewayException exception = EventStoreGatewayExceptionBuilder
+            .Unavailable("corr-down", "tenant-a", "PT30S")
+            .Build();
+        var fake = new FakeEventStoreGatewayClient()
+            .ConfigureQueryFailure(exception);
+
+        EventStoreGatewayException thrown = await Assert.ThrowsAsync<EventStoreGatewayException>(
+            () => fake.SubmitQueryAsync(CreateQueryRequest()));
+
+        thrown.StatusCode.ShouldBe(503);
+        thrown.RetryAfter.ShouldBe("PT30S");
+    }
+
+    [Fact]
+    public async Task ConfigureQueryNotModified_ConfiguresCacheResult() {
+        var fake = new FakeEventStoreGatewayClient()
+            .ConfigureQueryNotModified("etag-cache");
+
+        EventStoreQueryResult response = await fake.SubmitQueryAsync(CreateQueryRequest());
+
+        response.IsNotModified.ShouldBeTrue();
+        response.Payload.ShouldBeNull();
+        response.ETag.ShouldBe("etag-cache");
+    }
+
+    [Fact]
+    public async Task SubmitCommandAsync_WithCanceledToken_DoesNotRecordRequest() {
+        using var cancellationSource = new CancellationTokenSource();
+        await cancellationSource.CancelAsync();
+        var fake = new FakeEventStoreGatewayClient();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => fake.SubmitCommandAsync(CreateCommandRequest(), cancellationSource.Token));
+
+        fake.SubmittedCommands.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsync_WithCanceledToken_DoesNotRecordRequest() {
+        using var cancellationSource = new CancellationTokenSource();
+        await cancellationSource.CancelAsync();
+        var fake = new FakeEventStoreGatewayClient();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => fake.SubmitQueryAsync(CreateQueryRequest(), cancellationToken: cancellationSource.Token));
+
+        fake.SubmittedQueries.ShouldBeEmpty();
     }
 
     private static SubmitCommandRequest CreateCommandRequest() {

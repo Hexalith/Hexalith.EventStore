@@ -33,7 +33,7 @@ public System.Collections.Generic.IReadOnlyList<(Hexalith.EventStore.Contracts.I
 
 ## FakeSnapshotManager\.DefaultInterval Property
 
-Gets or sets the default interval used by [ShouldCreateSnapshotAsync\(string, long, long\)](Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.md#Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.ShouldCreateSnapshotAsync(string,long,long) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeSnapshotManager\.ShouldCreateSnapshotAsync\(string, long, long\)')\.
+Gets or sets the default interval used by [Hexalith\.EventStore\.Testing\.Fakes\.FakeSnapshotManager\.ShouldCreateSnapshotAsync\(System\.String,System\.String,System\.Int64,System\.Int64\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.testing.fakes.fakesnapshotmanager.shouldcreatesnapshotasync#hexalith-eventstore-testing-fakes-fakesnapshotmanager-shouldcreatesnapshotasync(system-string-system-string-system-int64-system-int64) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeSnapshotManager\.ShouldCreateSnapshotAsync\(System\.String,System\.String,System\.Int64,System\.Int64\)')\.
 Default: 100\.
 
 ```csharp
@@ -47,7 +47,7 @@ public int DefaultInterval { get; set; }
 
 ## FakeSnapshotManager\.DomainIntervals Property
 
-Gets or sets per\-domain interval overrides for [ShouldCreateSnapshotAsync\(string, long, long\)](Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.md#Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.ShouldCreateSnapshotAsync(string,long,long) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeSnapshotManager\.ShouldCreateSnapshotAsync\(string, long, long\)')\.
+Gets or sets per\-domain interval overrides for [Hexalith\.EventStore\.Testing\.Fakes\.FakeSnapshotManager\.ShouldCreateSnapshotAsync\(System\.String,System\.String,System\.Int64,System\.Int64\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.testing.fakes.fakesnapshotmanager.shouldcreatesnapshotasync#hexalith-eventstore-testing-fakes-fakesnapshotmanager-shouldcreatesnapshotasync(system-string-system-string-system-int64-system-int64) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeSnapshotManager\.ShouldCreateSnapshotAsync\(System\.String,System\.String,System\.Int64,System\.Int64\)')\.
 
 ```csharp
 public System.Collections.Generic.Dictionary<string,int> DomainIntervals { get; set; }
@@ -76,11 +76,11 @@ public System.Collections.Generic.IReadOnlyList<Hexalith.EventStore.Contracts.Id
 Gets the recorded ShouldCreateSnapshotAsync calls\.
 
 ```csharp
-public System.Collections.Generic.IReadOnlyList<(string Domain,long CurrentSequence,long LastSnapshotSequence)> ShouldCreateCalls { get; }
+public System.Collections.Generic.IReadOnlyList<(string TenantId,string Domain,long CurrentSequence,long LastSnapshotSequence)> ShouldCreateCalls { get; }
 ```
 
 #### Property Value
-[System\.Collections\.Generic\.IReadOnlyList&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')[&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[System\.Int64](https://learn.microsoft.com/en-us/dotnet/api/system.int64 'System\.Int64')[,](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[System\.Int64](https://learn.microsoft.com/en-us/dotnet/api/system.int64 'System\.Int64')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')
+[System\.Collections\.Generic\.IReadOnlyList&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')[&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[System\.Int64](https://learn.microsoft.com/en-us/dotnet/api/system.int64 'System\.Int64')[,](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[System\.Int64](https://learn.microsoft.com/en-us/dotnet/api/system.int64 'System\.Int64')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')
 
 <a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.Snapshots'></a>
 
@@ -94,125 +94,17 @@ public System.Collections.Generic.IReadOnlyDictionary<string,Hexalith.EventStore
 
 #### Property Value
 [System\.Collections\.Generic\.IReadOnlyDictionary&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlydictionary-2 'System\.Collections\.Generic\.IReadOnlyDictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlydictionary-2 'System\.Collections\.Generic\.IReadOnlyDictionary\`2')[Hexalith\.EventStore\.Server\.Events\.SnapshotRecord](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.snapshotrecord 'Hexalith\.EventStore\.Server\.Events\.SnapshotRecord')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlydictionary-2 'System\.Collections\.Generic\.IReadOnlyDictionary\`2')
-### Methods
 
-<a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.CreateSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,long,object,Dapr.Actors.Runtime.IActorStateManager,string)'></a>
+<a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.TenantDomainIntervals'></a>
 
-## FakeSnapshotManager\.CreateSnapshotAsync\(AggregateIdentity, long, object, IActorStateManager, string\) Method
+## FakeSnapshotManager\.TenantDomainIntervals Property
 
-Creates a snapshot by staging it via IActorStateManager\.SetStateAsync\.
-Does NOT call SaveStateAsync \-\- the caller commits atomically \(D1\)\.
-On failure, logs a warning and returns without throwing \(advisory per rule \#12\)\.
+Gets or sets per\-tenant\-domain interval overrides for [Hexalith\.EventStore\.Testing\.Fakes\.FakeSnapshotManager\.ShouldCreateSnapshotAsync\(System\.String,System\.String,System\.Int64,System\.Int64\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.testing.fakes.fakesnapshotmanager.shouldcreatesnapshotasync#hexalith-eventstore-testing-fakes-fakesnapshotmanager-shouldcreatesnapshotasync(system-string-system-string-system-int64-system-int64) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeSnapshotManager\.ShouldCreateSnapshotAsync\(System\.String,System\.String,System\.Int64,System\.Int64\)')\.
+Key: "tenantId:domain" \(lowercase, colon\-separated\)\. Resolution order: tenant\-domain \> domain \> default\.
 
 ```csharp
-public System.Threading.Tasks.Task CreateSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity identity, long sequenceNumber, object state, Dapr.Actors.Runtime.IActorStateManager stateManager, string? correlationId=null);
+public System.Collections.Generic.Dictionary<string,int> TenantDomainIntervals { get; set; }
 ```
-#### Parameters
 
-<a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.CreateSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,long,object,Dapr.Actors.Runtime.IActorStateManager,string).identity'></a>
-
-`identity` [Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.identity.aggregateidentity 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity')
-
-The aggregate identity providing key derivation\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.CreateSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,long,object,Dapr.Actors.Runtime.IActorStateManager,string).sequenceNumber'></a>
-
-`sequenceNumber` [System\.Int64](https://learn.microsoft.com/en-us/dotnet/api/system.int64 'System\.Int64')
-
-The event sequence number this snapshot represents\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.CreateSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,long,object,Dapr.Actors.Runtime.IActorStateManager,string).state'></a>
-
-`state` [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system.object 'System\.Object')
-
-The aggregate state to snapshot \(domain\-specific, opaque to EventStore\)\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.CreateSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,long,object,Dapr.Actors.Runtime.IActorStateManager,string).stateManager'></a>
-
-`stateManager` [Dapr\.Actors\.Runtime\.IActorStateManager](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager 'Dapr\.Actors\.Runtime\.IActorStateManager')
-
-The actor state manager for staging the snapshot write\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.CreateSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,long,object,Dapr.Actors.Runtime.IActorStateManager,string).correlationId'></a>
-
-`correlationId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
-
-The correlation ID for structured logging \(rule \#9\)\. Optional\.
-
-Implements [CreateSnapshotAsync\(AggregateIdentity, long, object, IActorStateManager, string\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.isnapshotmanager.createsnapshotasync#hexalith-eventstore-server-events-isnapshotmanager-createsnapshotasync(hexalith-eventstore-contracts-identity-aggregateidentity-system-int64-system-object-dapr-actors-runtime-iactorstatemanager-system-string) 'Hexalith\.EventStore\.Server\.Events\.ISnapshotManager\.CreateSnapshotAsync\(Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity,System\.Int64,System\.Object,Dapr\.Actors\.Runtime\.IActorStateManager,System\.String\)')
-
-#### Returns
-[System\.Threading\.Tasks\.Task](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task 'System\.Threading\.Tasks\.Task')  
-A task representing the asynchronous operation\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.LoadSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Dapr.Actors.Runtime.IActorStateManager,string)'></a>
-
-## FakeSnapshotManager\.LoadSnapshotAsync\(AggregateIdentity, IActorStateManager, string\) Method
-
-Loads an existing snapshot for an aggregate\.
-Returns null if no snapshot exists or if deserialization fails \(graceful degradation\)\.
-On deserialization failure, deletes the corrupt snapshot and logs a warning\.
-
-```csharp
-public System.Threading.Tasks.Task<Hexalith.EventStore.Server.Events.SnapshotRecord?> LoadSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity identity, Dapr.Actors.Runtime.IActorStateManager stateManager, string? correlationId=null);
-```
-#### Parameters
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.LoadSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Dapr.Actors.Runtime.IActorStateManager,string).identity'></a>
-
-`identity` [Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.identity.aggregateidentity 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity')
-
-The aggregate identity providing key derivation\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.LoadSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Dapr.Actors.Runtime.IActorStateManager,string).stateManager'></a>
-
-`stateManager` [Dapr\.Actors\.Runtime\.IActorStateManager](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager 'Dapr\.Actors\.Runtime\.IActorStateManager')
-
-The actor state manager for reading the snapshot\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.LoadSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Dapr.Actors.Runtime.IActorStateManager,string).correlationId'></a>
-
-`correlationId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
-
-The correlation ID for structured logging \(rule \#9\)\. Optional\.
-
-Implements [LoadSnapshotAsync\(AggregateIdentity, IActorStateManager, string\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.isnapshotmanager.loadsnapshotasync#hexalith-eventstore-server-events-isnapshotmanager-loadsnapshotasync(hexalith-eventstore-contracts-identity-aggregateidentity-dapr-actors-runtime-iactorstatemanager-system-string) 'Hexalith\.EventStore\.Server\.Events\.ISnapshotManager\.LoadSnapshotAsync\(Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity,Dapr\.Actors\.Runtime\.IActorStateManager,System\.String\)')
-
-#### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[Hexalith\.EventStore\.Server\.Events\.SnapshotRecord](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.snapshotrecord 'Hexalith\.EventStore\.Server\.Events\.SnapshotRecord')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
-The snapshot record, or null if no valid snapshot exists\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.ShouldCreateSnapshotAsync(string,long,long)'></a>
-
-## FakeSnapshotManager\.ShouldCreateSnapshotAsync\(string, long, long\) Method
-
-Determines whether a snapshot should be created based on the configured interval\.
-
-```csharp
-public System.Threading.Tasks.Task<bool> ShouldCreateSnapshotAsync(string domain, long currentSequence, long lastSnapshotSequence);
-```
-#### Parameters
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.ShouldCreateSnapshotAsync(string,long,long).domain'></a>
-
-`domain` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
-
-The domain name \(used to resolve per\-domain interval overrides\)\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.ShouldCreateSnapshotAsync(string,long,long).currentSequence'></a>
-
-`currentSequence` [System\.Int64](https://learn.microsoft.com/en-us/dotnet/api/system.int64 'System\.Int64')
-
-The current event sequence number after persistence\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager.ShouldCreateSnapshotAsync(string,long,long).lastSnapshotSequence'></a>
-
-`lastSnapshotSequence` [System\.Int64](https://learn.microsoft.com/en-us/dotnet/api/system.int64 'System\.Int64')
-
-The sequence number of the last snapshot \(0 if none\)\.
-
-Implements [ShouldCreateSnapshotAsync\(string, long, long\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.isnapshotmanager.shouldcreatesnapshotasync#hexalith-eventstore-server-events-isnapshotmanager-shouldcreatesnapshotasync(system-string-system-int64-system-int64) 'Hexalith\.EventStore\.Server\.Events\.ISnapshotManager\.ShouldCreateSnapshotAsync\(System\.String,System\.Int64,System\.Int64\)')
-
-#### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
-`true` if a snapshot should be created; otherwise `false`\.
+#### Property Value
+[System\.Collections\.Generic\.Dictionary&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')

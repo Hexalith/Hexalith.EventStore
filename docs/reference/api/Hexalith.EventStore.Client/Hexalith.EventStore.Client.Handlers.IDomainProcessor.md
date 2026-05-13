@@ -11,8 +11,8 @@ Receives a command and optional current state, returns domain events \(success, 
 public interface IDomainProcessor
 ```
 
-Derived  
-&#8627; [EventStoreAggregate&lt;TState&gt;](Hexalith.EventStore.Client.Aggregates.EventStoreAggregate_TState_.md 'Hexalith\.EventStore\.Client\.Aggregates\.EventStoreAggregate\<TState\>')  
+Derived
+&#8627; [EventStoreAggregate&lt;TState&gt;](Hexalith.EventStore.Client.Aggregates.EventStoreAggregate_TState_.md 'Hexalith\.EventStore\.Client\.Aggregates\.EventStoreAggregate\<TState\>')
 &#8627; [DomainProcessorBase&lt;TState&gt;](Hexalith.EventStore.Client.Handlers.DomainProcessorBase_TState_.md 'Hexalith\.EventStore\.Client\.Handlers\.DomainProcessorBase\<TState\>')
 ### Methods
 
@@ -40,5 +40,5 @@ The command envelope to process\.
 The current aggregate state, or null for new aggregates\.
 
 #### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
 A [Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult') containing the resulting domain events\.

@@ -1,9 +1,11 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Contracts.Queries;
 
 using Microsoft.Extensions.Options;
@@ -44,9 +46,19 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
         }
 
-        SubmitCommandResponse? result = await response.Content
-            .ReadFromJsonAsync<SubmitCommandResponse>(JsonOptions, cancellationToken)
-            .ConfigureAwait(false);
+        SubmitCommandResponse? result;
+        try {
+            result = await response.Content
+                .ReadFromJsonAsync<SubmitCommandResponse>(JsonOptions, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (JsonException) {
+            throw new EventStoreGatewayException(
+                (int)response.StatusCode,
+                response.ReasonPhrase ?? "Accepted",
+                detail: "Command response body could not be parsed.",
+                extensions: new Dictionary<string, JsonElement>());
+        }
 
         if (result is null || string.IsNullOrWhiteSpace(result.CorrelationId)) {
             throw new EventStoreGatewayException(
@@ -69,8 +81,9 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             Content = JsonContent.Create(request, options: JsonOptions),
         };
 
-        if (!string.IsNullOrWhiteSpace(ifNoneMatch)) {
-            httpRequest.Headers.TryAddWithoutValidation("If-None-Match", ifNoneMatch);
+        string? normalizedIfNoneMatch = NormalizeIfNoneMatch(ifNoneMatch);
+        if (normalizedIfNoneMatch is not null) {
+            httpRequest.Headers.IfNoneMatch.ParseAdd(normalizedIfNoneMatch);
         }
 
         using HttpResponseMessage response = await _httpClient
@@ -86,8 +99,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
         }
 
-        SubmitQueryResponse? result = await response.Content
-            .ReadFromJsonAsync<SubmitQueryResponse>(JsonOptions, cancellationToken)
+        SubmitQueryResponse? result = await ReadQueryResponseAsync(response, cancellationToken)
             .ConfigureAwait(false);
 
         if (result is null || string.IsNullOrWhiteSpace(result.CorrelationId)) {
@@ -95,6 +107,14 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 (int)response.StatusCode,
                 response.ReasonPhrase ?? "OK",
                 detail: "Query response did not contain a valid correlationId.");
+        }
+
+        if (!result.Success) {
+            throw new EventStoreGatewayException(
+                StatusCodes.Ok,
+                "Query semantic failure",
+                detail: result.ErrorMessage,
+                correlationId: result.CorrelationId);
         }
 
         return new EventStoreQueryResult(result.CorrelationId, result.Payload, IsNotModified: false, eTag);
@@ -119,7 +139,17 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 detail: "Query response did not contain a payload.");
         }
 
-        T? payload = result.Payload.Value.Deserialize<T>(JsonOptions);
+        T? payload;
+        try {
+            payload = result.Payload.Value.Deserialize<T>(JsonOptions);
+        }
+        catch (JsonException) {
+            throw new EventStoreGatewayException(
+                StatusCodes.Ok,
+                "OK",
+                detail: "Query response payload could not be deserialized.");
+        }
+
         if (payload is null) {
             throw new EventStoreGatewayException(
                 StatusCodes.Ok,
@@ -135,14 +165,76 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         return new Uri(path.TrimStart('/'), UriKind.Relative);
     }
 
-    private static string? GetETag(HttpResponseMessage response)
-        => response.Headers.ETag?.Tag.Trim('"');
+    private static string? GetETag(HttpResponseMessage response) {
+        EntityTagHeaderValue? eTag = response.Headers.ETag;
+        if (eTag is null) {
+            return null;
+        }
+
+        if (eTag.IsWeak) {
+            throw new EventStoreGatewayException(
+                (int)response.StatusCode,
+                response.ReasonPhrase ?? "OK",
+                detail: "Query response contained an unsupported weak ETag.");
+        }
+
+        return eTag.Tag.Trim('"');
+    }
+
+    private static string? NormalizeIfNoneMatch(string? ifNoneMatch) {
+        if (string.IsNullOrWhiteSpace(ifNoneMatch)) {
+            return null;
+        }
+
+        string value = ifNoneMatch.Trim();
+        if (value == "*" || value.StartsWith("W/", StringComparison.OrdinalIgnoreCase)) {
+            throw new ArgumentException("If-None-Match must be a strong ETag token.", nameof(ifNoneMatch));
+        }
+
+        if (value.StartsWith('"')) {
+            if (!EntityTagHeaderValue.TryParse(value, out EntityTagHeaderValue? parsed)
+                || parsed is null
+                || parsed.IsWeak
+                || parsed.Tag == "*") {
+                throw new ArgumentException("If-None-Match must be a strong ETag token.", nameof(ifNoneMatch));
+            }
+
+            return parsed.Tag;
+        }
+
+        if (value.Any(static c => char.IsWhiteSpace(c) || char.IsControl(c) || c is '"' or ',')) {
+            throw new ArgumentException("If-None-Match must be a strong ETag token.", nameof(ifNoneMatch));
+        }
+
+        return $"\"{value}\"";
+    }
+
+    private static async Task<SubmitQueryResponse?> ReadQueryResponseAsync(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken) {
+        try {
+            return await response.Content
+                .ReadFromJsonAsync<SubmitQueryResponse>(JsonOptions, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (JsonException) {
+            throw new EventStoreGatewayException(
+                (int)response.StatusCode,
+                response.ReasonPhrase ?? "OK",
+                detail: "Query response body could not be parsed.");
+        }
+    }
 
     private static async Task ThrowGatewayExceptionAsync(HttpResponseMessage response, CancellationToken cancellationToken) {
         string? type = null;
         string? title = null;
         string? detail = null;
         string? correlationId = null;
+        string? tenantId = null;
+        string? reason = null;
+        string? retryAfter = response.Headers.RetryAfter?.ToString();
+        IReadOnlyDictionary<string, string>? errors = null;
+        IReadOnlyDictionary<string, JsonElement>? extensions = null;
         int statusCode = (int)response.StatusCode;
 
         if (IsJsonResponse(response)) {
@@ -160,7 +252,12 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 type = GetString(root, "type");
                 title = GetString(root, "title");
                 detail = GetString(root, "detail");
-                correlationId = GetString(root, "correlationId");
+                correlationId = GetString(root, GatewayProblemDetailsExtensions.CorrelationId);
+                tenantId = GetString(root, GatewayProblemDetailsExtensions.TenantId);
+                reason = GetString(root, GatewayProblemDetailsExtensions.Reason);
+                retryAfter = GetString(root, GatewayProblemDetailsExtensions.RetryAfter) ?? retryAfter;
+                errors = GetErrors(root);
+                extensions = GetExtensions(root);
             }
             catch (JsonException) {
                 // Fall back to HTTP status metadata below.
@@ -172,7 +269,12 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             title ?? response.ReasonPhrase ?? "EventStore gateway error",
             type,
             detail,
-            correlationId);
+            correlationId,
+            tenantId,
+            errors,
+            reason,
+            retryAfter,
+            extensions);
     }
 
     private static bool IsJsonResponse(HttpResponseMessage response) {
@@ -186,6 +288,49 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         => root.TryGetProperty(propertyName, out JsonElement property) && property.ValueKind == JsonValueKind.String
             ? property.GetString()
             : null;
+
+    private static IReadOnlyDictionary<string, string> GetErrors(JsonElement root) {
+        if (!root.TryGetProperty(GatewayProblemDetailsExtensions.Errors, out JsonElement errorsElement)
+            || errorsElement.ValueKind != JsonValueKind.Object) {
+            return new Dictionary<string, string>();
+        }
+
+        var errors = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (JsonProperty property in errorsElement.EnumerateObject()) {
+            string? value = property.Value.ValueKind switch {
+                JsonValueKind.String => property.Value.GetString(),
+                JsonValueKind.Array => string.Join(
+                    "; ",
+                    property.Value.EnumerateArray()
+                        .Where(static item => item.ValueKind == JsonValueKind.String)
+                        .Select(static item => item.GetString())
+                        .Where(static item => !string.IsNullOrWhiteSpace(item))),
+                _ => property.Value.GetRawText(),
+            };
+
+            if (!string.IsNullOrWhiteSpace(value)) {
+                errors[property.Name] = value;
+            }
+        }
+
+        return errors;
+    }
+
+    private static IReadOnlyDictionary<string, JsonElement> GetExtensions(JsonElement root) {
+        var extensions = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        foreach (JsonProperty property in root.EnumerateObject()) {
+            if (IsProblemDetailsStandardProperty(property.Name)) {
+                continue;
+            }
+
+            extensions[property.Name] = property.Value.Clone();
+        }
+
+        return extensions;
+    }
+
+    private static bool IsProblemDetailsStandardProperty(string propertyName)
+        => propertyName is "type" or "title" or "status" or "detail" or "instance";
 
     private static class StatusCodes {
         public const int Ok = 200;

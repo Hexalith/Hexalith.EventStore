@@ -36,6 +36,8 @@
 
 generated: 2026-03-15
 last_updated: '2026-05-13T08:04:55+02:00' # Story 22.6 created by pre-dev hardening automation; 22-6 moved to ready-for-dev for stream replay/read APIs and projection rebuild checkpoints.
+# Previous last_updated detail preserved: 2026-05-13T07:51:55+02:00 - Story 22.1 moved to review after gateway command/query contract closure implementation.
+# Previous last_updated detail preserved: 2026-05-13T07:36:16+02:00 - Story 22.1 moved to in-progress for gateway command/query contract closure implementation.
 # Previous last_updated detail preserved: 2026-05-12T23:04:13+02:00 - Story 22.5 created by pre-dev hardening automation; 22-5 moved to ready-for-dev for event publishing guarantees and backend deployment matrix.
 # Previous last_updated detail preserved: 2026-05-12T22:03:52+02:00 - Story 22.4 created by pre-dev hardening automation; 22-4 moved to ready-for-dev for query behavior policy and error taxonomy.
 # Previous last_updated detail preserved: 2026-05-12T21:44:06+02:00 - Story 22.3 created by pre-dev hardening automation; 22-3 moved to ready-for-dev for gateway-owned Hexalith.Tenants/RBAC enforcement.
@@ -299,7 +301,7 @@ development_status:
   # Added by sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md.
   # Story 22.7 split by sprint-change-proposal-2026-05-12.md after implementation readiness approval.
   epic-22: in-progress
-  22-1-gateway-command-query-contract-closure-and-package-docs: ready-for-dev
+  22-1-gateway-command-query-contract-closure-and-package-docs: review
   22-2-projection-adapter-contract-and-generic-query-actor-model: ready-for-dev
   22-3-gateway-owned-tenant-and-rbac-enforcement: ready-for-dev
   22-4-query-behavior-policy-and-error-taxonomy: ready-for-dev

@@ -33,7 +33,7 @@ public System.Collections.Generic.IReadOnlyList<(Hexalith.EventStore.Contracts.I
 
 ## FakeEventStreamReader\.ResultToReturn Property
 
-Gets or sets the result to return from [RehydrateAsync\(AggregateIdentity, SnapshotRecord\)](Hexalith.EventStore.Testing.Fakes.FakeEventStreamReader.md#Hexalith.EventStore.Testing.Fakes.FakeEventStreamReader.RehydrateAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Hexalith.EventStore.Server.Events.SnapshotRecord) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeEventStreamReader\.RehydrateAsync\(Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity, Hexalith\.EventStore\.Server\.Events\.SnapshotRecord\)')\.
+Gets or sets the result to return from [Hexalith\.EventStore\.Testing\.Fakes\.FakeEventStreamReader\.RehydrateAsync\(Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity,Hexalith\.EventStore\.Server\.Events\.SnapshotRecord\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.testing.fakes.fakeeventstreamreader.rehydrateasync#hexalith-eventstore-testing-fakes-fakeeventstreamreader-rehydrateasync(hexalith-eventstore-contracts-identity-aggregateidentity-hexalith-eventstore-server-events-snapshotrecord) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeEventStreamReader\.RehydrateAsync\(Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity,Hexalith\.EventStore\.Server\.Events\.SnapshotRecord\)')\.
 Set to null to simulate a new aggregate\.
 
 ```csharp
@@ -42,36 +42,3 @@ public Hexalith.EventStore.Server.Events.RehydrationResult? ResultToReturn { get
 
 #### Property Value
 [Hexalith\.EventStore\.Server\.Events\.RehydrationResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.rehydrationresult 'Hexalith\.EventStore\.Server\.Events\.RehydrationResult')
-### Methods
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeEventStreamReader.RehydrateAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Hexalith.EventStore.Server.Events.SnapshotRecord)'></a>
-
-## FakeEventStreamReader\.RehydrateAsync\(AggregateIdentity, SnapshotRecord\) Method
-
-Rehydrates aggregate state by loading events from the event stream\.
-When a snapshot is provided, loads only tail events after the snapshot sequence\.
-When no snapshot is provided, performs a full replay from sequence 1\.
-
-```csharp
-public System.Threading.Tasks.Task<Hexalith.EventStore.Server.Events.RehydrationResult?> RehydrateAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity identity, Hexalith.EventStore.Server.Events.SnapshotRecord? snapshot=null);
-```
-#### Parameters
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeEventStreamReader.RehydrateAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Hexalith.EventStore.Server.Events.SnapshotRecord).identity'></a>
-
-`identity` [Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.identity.aggregateidentity 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity')
-
-The aggregate identity providing key derivation\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeEventStreamReader.RehydrateAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Hexalith.EventStore.Server.Events.SnapshotRecord).snapshot'></a>
-
-`snapshot` [Hexalith\.EventStore\.Server\.Events\.SnapshotRecord](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.snapshotrecord 'Hexalith\.EventStore\.Server\.Events\.SnapshotRecord')
-
-Optional snapshot to use as the rehydration starting point\.
-
-Implements [RehydrateAsync\(AggregateIdentity, SnapshotRecord\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.ieventstreamreader.rehydrateasync#hexalith-eventstore-server-events-ieventstreamreader-rehydrateasync(hexalith-eventstore-contracts-identity-aggregateidentity-hexalith-eventstore-server-events-snapshotrecord) 'Hexalith\.EventStore\.Server\.Events\.IEventStreamReader\.RehydrateAsync\(Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity,Hexalith\.EventStore\.Server\.Events\.SnapshotRecord\)')
-
-#### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[Hexalith\.EventStore\.Server\.Events\.RehydrationResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.rehydrationresult 'Hexalith\.EventStore\.Server\.Events\.RehydrationResult')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
-A [Hexalith\.EventStore\.Server\.Events\.RehydrationResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.rehydrationresult 'Hexalith\.EventStore\.Server\.Events\.RehydrationResult') containing snapshot state and/or events,
-or null for new aggregates with no events and no snapshot\.

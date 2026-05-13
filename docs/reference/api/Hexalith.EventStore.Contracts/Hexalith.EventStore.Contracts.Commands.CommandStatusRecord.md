@@ -56,13 +56,13 @@ Number of events produced \(Completed status only\)\.
 
 `RejectionEventType` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
-Fully qualified rejection event type name \(Rejected status only\)\.
+Fully qualified rejection event type name for domain rejections\.
 
 <a name='Hexalith.EventStore.Contracts.Commands.CommandStatusRecord.CommandStatusRecord(Hexalith.EventStore.Contracts.Commands.CommandStatus,System.DateTimeOffset,string,System.Nullable_int_,string,string,System.Nullable_System.TimeSpan_).FailureReason'></a>
 
 `FailureReason` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
-Description of publish failure \(PublishFailed status only\)\.
+Description of an infrastructure or publication failure when available\.
 
 <a name='Hexalith.EventStore.Contracts.Commands.CommandStatusRecord.CommandStatusRecord(Hexalith.EventStore.Contracts.Commands.CommandStatus,System.DateTimeOffset,string,System.Nullable_int_,string,string,System.Nullable_System.TimeSpan_).TimeoutDuration'></a>
 
@@ -101,7 +101,7 @@ public System.Nullable<int> EventCount { get; init; }
 
 ## CommandStatusRecord\.FailureReason Property
 
-Description of publish failure \(PublishFailed status only\)\.
+Description of an infrastructure or publication failure when available\.
 
 ```csharp
 public string? FailureReason { get; init; }
@@ -114,7 +114,7 @@ public string? FailureReason { get; init; }
 
 ## CommandStatusRecord\.RejectionEventType Property
 
-Fully qualified rejection event type name \(Rejected status only\)\.
+Fully qualified rejection event type name for domain rejections\.
 
 ```csharp
 public string? RejectionEventType { get; init; }

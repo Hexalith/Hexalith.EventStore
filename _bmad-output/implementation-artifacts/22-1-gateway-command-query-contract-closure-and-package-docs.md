@@ -1,6 +1,6 @@
 # Story 22.1: Gateway Command/Query Contract Closure and Package Docs
 
-Status: ready-for-dev
+Status: review
 
 Context created: 2026-05-12
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
@@ -115,51 +115,51 @@ consumer impact, documentation wording, and the later story that will own it.
 
 ## Tasks / Subtasks
 
-- [ ] **ST0 - Baseline public gateway surface and classify gaps.** (AC: 1, 2, 3, 4, 5)
-    - [ ] Read this story, Epic 22, ADR-P6, FR83-FR86, and `_bmad-output/implementation-artifacts/12-7-command-api-reference.md`.
-    - [ ] Record the Gateway Contract Decision Gate table before production code edits, covering query `success:false`, ETag normalization, ProblemDetails extensions, compatibility wrappers, fake parity, and package boundary evidence.
-    - [ ] Treat undecided query failure behavior, ETag normalization, or ProblemDetails extension ownership as a story blocker rather than implementing a private convention.
-    - [ ] Inventory public DTOs in `src/Hexalith.EventStore.Contracts/Commands`, `src/Hexalith.EventStore.Contracts/Queries`, and compatibility wrappers in `src/Hexalith.EventStore/Models`.
-    - [ ] Inventory client behavior in `src/Hexalith.EventStore.Client/Gateway`.
-    - [ ] Inventory existing gateway fakes/builders and tests in `src/Hexalith.EventStore.Testing` and `tests/Hexalith.EventStore.Testing.Tests`.
-    - [ ] Record a gap table covering Contracts, Client, Testing, docs, generated API docs, and compatibility wrappers before code edits.
-    - [ ] Record dependency-boundary evidence showing Contracts stays free of EventStore runtime dependencies and Client gateway public methods consume Contracts-owned DTOs.
+- [x] **ST0 - Baseline public gateway surface and classify gaps.** (AC: 1, 2, 3, 4, 5)
+    - [x] Read this story, Epic 22, ADR-P6, FR83-FR86, and `_bmad-output/implementation-artifacts/12-7-command-api-reference.md`.
+    - [x] Record the Gateway Contract Decision Gate table before production code edits, covering query `success:false`, ETag normalization, ProblemDetails extensions, compatibility wrappers, fake parity, and package boundary evidence.
+    - [x] Treat undecided query failure behavior, ETag normalization, or ProblemDetails extension ownership as a story blocker rather than implementing a private convention.
+    - [x] Inventory public DTOs in `src/Hexalith.EventStore.Contracts/Commands`, `src/Hexalith.EventStore.Contracts/Queries`, and compatibility wrappers in `src/Hexalith.EventStore/Models`.
+    - [x] Inventory client behavior in `src/Hexalith.EventStore.Client/Gateway`.
+    - [x] Inventory existing gateway fakes/builders and tests in `src/Hexalith.EventStore.Testing` and `tests/Hexalith.EventStore.Testing.Tests`.
+    - [x] Record a gap table covering Contracts, Client, Testing, docs, generated API docs, and compatibility wrappers before code edits.
+    - [x] Record dependency-boundary evidence showing Contracts stays free of EventStore runtime dependencies and Client gateway public methods consume Contracts-owned DTOs.
 
-- [ ] **ST1 - Close or document Contracts package gaps.** (AC: 1, 3)
-    - [ ] Ensure command/query request and response DTOs required for Story 22.1 live in Contracts and serialize with stable camelCase names.
-    - [ ] Add or harden Contracts tests for query DTO JSON shape, optional fields, `success`/`errorMessage`, and any public ProblemDetails extension helper added by this story.
-    - [ ] Avoid moving projection adapter contracts in this story; Story 22.2 owns `QueryEnvelope`, `QueryResult`, generic projection actor contract, and malformed projection taxonomy.
-    - [ ] Avoid adding replay/read DTO scope unless it is already present and only needs package ownership documentation; Story 22.6 owns new stream read/replay APIs.
+- [x] **ST1 - Close or document Contracts package gaps.** (AC: 1, 3)
+    - [x] Ensure command/query request and response DTOs required for Story 22.1 live in Contracts and serialize with stable camelCase names.
+    - [x] Add or harden Contracts tests for query DTO JSON shape, optional fields, `success`/`errorMessage`, and any public ProblemDetails extension helper added by this story.
+    - [x] Avoid moving projection adapter contracts in this story; Story 22.2 owns `QueryEnvelope`, `QueryResult`, generic projection actor contract, and malformed projection taxonomy.
+    - [x] Avoid adding replay/read DTO scope unless it is already present and only needs package ownership documentation; Story 22.6 owns new stream read/replay APIs.
 
-- [ ] **ST2 - Harden EventStore gateway client behavior.** (AC: 2, 3)
-    - [ ] Pin ETag quote normalization policy in tests and docs.
-    - [ ] Cover quoted, unquoted, weak, missing, empty, and malformed ETag inputs or record unsupported cases in the decision table.
-    - [ ] Verify cancellation token propagation for command and query methods.
-    - [ ] Verify ProblemDetails parsing for stable extensions required by downstream callers.
-    - [ ] Decide and implement/document behavior for `SubmitQueryResponse.Success == false`.
-    - [ ] Cover HTTP 2xx `success:false`, HTTP non-success ProblemDetails, malformed body, empty payload, and typed query deserialization failure paths.
-    - [ ] Ensure non-JSON, 413, and 415 responses fail predictably without fake ProblemDetails assumptions.
+- [x] **ST2 - Harden EventStore gateway client behavior.** (AC: 2, 3)
+    - [x] Pin ETag quote normalization policy in tests and docs.
+    - [x] Cover quoted, unquoted, weak, missing, empty, and malformed ETag inputs or record unsupported cases in the decision table.
+    - [x] Verify cancellation token propagation for command and query methods.
+    - [x] Verify ProblemDetails parsing for stable extensions required by downstream callers.
+    - [x] Decide and implement/document behavior for `SubmitQueryResponse.Success == false`.
+    - [x] Cover HTTP 2xx `success:false`, HTTP non-success ProblemDetails, malformed body, empty payload, and typed query deserialization failure paths.
+    - [x] Ensure non-JSON, 413, and 415 responses fail predictably without fake ProblemDetails assumptions.
 
-- [ ] **ST3 - Expand deterministic Testing support.** (AC: 4)
-    - [ ] Add gateway result/exception builders if direct property mutation on `FakeEventStoreGatewayClient` is too weak for downstream tests.
-    - [ ] Provide easy configuration for success, validation, auth, conflict, not-modified, stale/degraded, unavailable, and unexpected paths.
-    - [ ] Provide explicit scenarios for command accepted, command ProblemDetails failure, query success, query `success:false`, query ProblemDetails failure, ETag present/absent/normalized, cancellation, and deterministic request capture.
-    - [ ] Preserve existing fake request recording behavior.
-    - [ ] Add focused tests for every new fake/builder path.
+- [x] **ST3 - Expand deterministic Testing support.** (AC: 4)
+    - [x] Add gateway result/exception builders if direct property mutation on `FakeEventStoreGatewayClient` is too weak for downstream tests.
+    - [x] Provide easy configuration for success, validation, auth, conflict, not-modified, stale/degraded, unavailable, and unexpected paths.
+    - [x] Provide explicit scenarios for command accepted, command ProblemDetails failure, query success, query `success:false`, query ProblemDetails failure, ETag present/absent/normalized, cancellation, and deterministic request capture.
+    - [x] Preserve existing fake request recording behavior.
+    - [x] Add focused tests for every new fake/builder path.
 
-- [ ] **ST4 - Align package and endpoint docs.** (AC: 5)
-    - [ ] Update `docs/reference/nuget-packages.md` with gateway consumer package guidance.
-    - [ ] Update `docs/reference/command-api.md` with Contracts/Client/Testing ownership and compatibility-wrapper notes.
-    - [ ] Update `docs/reference/query-api.md` with gateway client, ETag, not-modified, query failure-envelope, and package ownership guidance.
-    - [ ] Update generated API docs if the public API generator is part of the repository workflow for changed public types.
+- [x] **ST4 - Align package and endpoint docs.** (AC: 5)
+    - [x] Update `docs/reference/nuget-packages.md` with gateway consumer package guidance.
+    - [x] Update `docs/reference/command-api.md` with Contracts/Client/Testing ownership and compatibility-wrapper notes.
+    - [x] Update `docs/reference/query-api.md` with gateway client, ETag, not-modified, query failure-envelope, and package ownership guidance.
+    - [x] Update generated API docs if the public API generator is part of the repository workflow for changed public types.
 
-- [ ] **ST5 - Validate and record evidence.** (AC: 6)
-    - [ ] Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests`.
-    - [ ] Run `dotnet test tests/Hexalith.EventStore.Client.Tests`.
-    - [ ] Run `dotnet test tests/Hexalith.EventStore.Testing.Tests`.
-    - [ ] Record the dependency-boundary check proving downstream-facing gateway tests compile against Contracts, Client, and Testing without Server/runtime model references.
-    - [ ] Run markdown or docs validation where available.
-    - [ ] Update Dev Agent Record, File List, Verification Status, and Change Log.
+- [x] **ST5 - Validate and record evidence.** (AC: 6)
+    - [x] Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests`.
+    - [x] Run `dotnet test tests/Hexalith.EventStore.Client.Tests`.
+    - [x] Run `dotnet test tests/Hexalith.EventStore.Testing.Tests`.
+    - [x] Record the dependency-boundary check proving downstream-facing gateway tests compile against Contracts, Client, and Testing without Server/runtime model references.
+    - [x] Run markdown or docs validation where available.
+    - [x] Update Dev Agent Record, File List, Verification Status, and Change Log.
 
 ## Developer Notes
 
@@ -274,6 +274,37 @@ GPT-5 Codex
 
 - 2026-05-12T19:02:52Z - Pre-dev hardening preflight passed via `_bmad-output/process-notes/predev-preflight-latest.json`.
 - 2026-05-12T21:05:26+02:00 - Story creation context gathered from Epic 22, PRD FR83-FR86, architecture ADR-P6/P7/P8/P9, downstream public gateway boundary, current Contracts/Client/Testing gateway files, docs, recent commits, and lessons ledger.
+- 2026-05-13T07:35:34+02:00 - Baseline Aspire attempt: AppHost build succeeded with 0 warnings/errors, but runtime start failed before resource registration because DAPR CLI was not found on PATH. No running AppHost resources were available for inspection.
+- 2026-05-13T08:18:00+02:00 - API docs refresh notes: `dotnet build --configuration Release -p:ApiReferenceBuild=true` is blocked by pre-existing XML documentation errors in `Admin.Mcp` and `Server`; `dotnet tool restore` is blocked by missing `hexalith.eventstore.admin.cli` version `1.0.0`. Used globally available `dotnet defaultdocumentation` 1.2.3 and generated Contracts/Client/Testing API docs from built assemblies; Testing required `-p:NoWarn=CS1574` for an existing unresolved cref in `FakeDomainServiceInvoker`.
+
+### Gateway Contract Decision Record
+
+| Area | Decision | Evidence / implementation target |
+| --- | --- | --- |
+| Query semantic failure | HTTP `2xx` with `SubmitQueryResponse.Success == false` is a semantic gateway failure. Both typed and untyped `SubmitQueryAsync` throw `EventStoreGatewayException` with `StatusCode = 200`, `Title = "Query semantic failure"`, `Detail = ErrorMessage`, and `CorrelationId` from the envelope. | Current `SubmitQueryResponse` already models `success` and `errorMessage`; client tests will cover HTTP `2xx success:false`, malformed body, empty body, non-success ProblemDetails, and typed deserialization failure. |
+| ETag normalization | Client-facing ETags are normalized strong tokens without surrounding quotes. `If-None-Match` accepts an unquoted token or a quoted strong ETag and sends a quoted HTTP header value. Missing/empty values omit the header. Weak or malformed ETags are unsupported and rejected before sending. | Current client strips response quotes but passes request values through. Client tests will pin quoted, unquoted, weak, missing, empty, and malformed request inputs plus response exposure. |
+| ProblemDetails extensions | Stable extension names are `correlationId`, `tenantId`, `errors`, `reason`, and `retryAfter`. `EventStoreGatewayException` exposes typed properties for those values and preserves non-standard/unknown extensions as JSON values for downstream diagnostics. Missing/null stable extensions surface as null or empty dictionaries. | Current exception only exposes `correlationId`; Story 12.7 confirms `errors` is `Dictionary<string, string>` and raw 413/415 responses are not ProblemDetails. |
+| Compatibility wrappers | `src/Hexalith.EventStore/Models` command wrappers remain compatibility-only delegates to Contracts DTOs. They are not marked obsolete in this story to avoid adding warning noise, but package docs must steer downstream code to Contracts. | Current wrappers inherit from `Hexalith.EventStore.Contracts.Commands` request/response records. Docs currently present packages mainly as domain/runtime packages and need gateway boundary wording. |
+| Fake parity | Add deterministic gateway fake configuration helpers/builders for accepted command, command ProblemDetails failure, query success, query semantic failure, query ProblemDetails failure, not-modified, stale/degraded, unavailable, auth, conflict, ETag, cancellation, and request capture. | Current `FakeEventStoreGatewayClient` supports raw configured result/exception and records requests, but only has tests for happy command, typed query, and not-modified. |
+| Package boundary | Contracts must remain free of `Hexalith.EventStore` and `Hexalith.EventStore.Server` references. Client gateway public methods must consume Contracts request/response DTOs. Testing gateway fake APIs must reuse Contracts and Client types, even though the broader Testing package still has Server references for non-gateway fakes. | `Contracts.csproj` has no EventStore runtime project reference; `IEventStoreGatewayClient` uses Contracts DTOs; `FakeEventStoreGatewayClient` uses Contracts DTOs and Client result/exception types. Existing Client/Testing test projects have broader runtime references outside the gateway slice. |
+
+### ST0 Gap Inventory
+
+| Surface | Current state | Gap / action |
+| --- | --- | --- |
+| Contracts DTOs | Command and query gateway request/response DTOs exist in Contracts. Command request/response camelCase tests exist; query request lacks a camelCase JSON test for all public optional fields. | Add/harden query DTO JSON shape tests and keep Story 22.2 projection adapter scope out of this story. |
+| Client gateway | `SubmitCommandAsync`, `SubmitQueryAsync`, typed query, 304 mapping, basic ProblemDetails parsing, and response ETag quote stripping exist. | Add tests and implementation for semantic query failure, request ETag normalization/rejection, cancellation evidence, stable ProblemDetails extensions, malformed/empty body behavior, non-JSON 413/415 behavior, and typed deserialization failures. |
+| Testing gateway fake | Fake records commands/queries and supports configured result/exception. | Add deterministic scenario helpers/builders and tests for required gateway paths while preserving request capture. |
+| Docs | Command and query endpoint docs exist; NuGet guide still frames Contracts/Client/Testing mostly around domain/runtime use. | Update package guide and endpoint refs with gateway ownership, ETag policy, query `success:false`, ProblemDetails extension policy, and compatibility-wrapper guidance. |
+| Generated API docs | API docs workflow runs on release tags via DefaultDocumentation. Current checked-in generated docs do not include the new gateway DTO pages. | No local generated docs refresh in this story unless public API doc generation is explicitly run; record workflow evidence and changed generated files if refreshed. |
+| Compatibility wrappers | Runtime command wrappers inherit from Contracts command DTOs. No query compatibility wrappers found under `src/Hexalith.EventStore/Models`. | Document wrappers as compatibility-only and keep downstream examples on Contracts DTOs. |
+| Dependency boundary | Contracts has no EventStore runtime project reference; Client references Contracts; Testing references Client/Contracts/Server for broad fake coverage. | Record that the gateway fake and gateway client tests use Contracts/Client types; do not claim the whole Testing package is runtime-free. |
+
+### Implementation Plan
+
+- Add failing focused tests first for each ST1-ST3 behavior before production edits.
+- Keep public decisions backward compatible: optional exception properties, normalized ETag helper behavior, and fake helper methods without removing existing property configuration.
+- Limit documentation changes to package ownership, endpoint guidance, and policy decisions made above.
 
 ### Completion Notes List
 
@@ -283,12 +314,34 @@ GPT-5 Codex
 - Party-mode review has NOT yet been run for this story.
 - Advanced elicitation has NOT yet been run for this story.
 - 2026-05-13 party-mode review applied story hardening for the gateway contract decision gate, query semantic failure behavior, ETag normalization, ProblemDetails extensions, fake parity, compatibility wrapper policy, package-boundary evidence, and focused validation obligations.
+- 2026-05-13 ST0 completed: recorded public contract decisions, baseline gap inventory, dependency-boundary evidence, and Aspire baseline status before production code edits.
+- 2026-05-13 ST1 completed: added public gateway ProblemDetails extension-name constants in Contracts, hardened query request JSON shape coverage, and verified `Hexalith.EventStore.Contracts.Tests` 297/297.
+- 2026-05-13 ST2 completed: hardened gateway client semantic query failures, strong ETag normalization/rejection, ProblemDetails extension exposure, raw 413 handling, malformed body handling, typed deserialization failures, and cancellation behavior; verified `Hexalith.EventStore.Client.Tests` 384/384.
+- 2026-05-13 ST3 completed: added deterministic gateway exception builder and fluent fake configuration for command accepted/failure, query success/semantic failure/failure/not-modified, ETag capture, and cancellation behavior; verified `Hexalith.EventStore.Testing.Tests` 91/91.
+- 2026-05-13 ST4 completed: updated package and endpoint reference docs for gateway ownership, compatibility wrappers, query semantic failure, ETag policy, ProblemDetails extensions, and deterministic gateway testing support; refreshed generated API docs for Contracts, Client, and Testing changed public surface.
+- 2026-05-13 ST5 completed: Contracts 297/297, Client 384/384, Testing 91/91, and Sample 74/74 test projects passed; markdownlint passed for touched reference docs; dependency-boundary grep found no Server/runtime model references in the gateway-slice source/tests; `git diff --check` passed with line-ending warnings only.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/22-1-gateway-command-query-contract-closure-and-package-docs.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `_bmad-output/process-notes/predev-hardening-runs.log`
+- `src/Hexalith.EventStore.Contracts/Problems/GatewayProblemDetailsExtensions.cs`
+- `src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClient.cs`
+- `src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayException.cs`
+- `src/Hexalith.EventStore.Testing/Builders/EventStoreGatewayExceptionBuilder.cs`
+- `src/Hexalith.EventStore.Testing/Fakes/FakeEventStoreGatewayClient.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Problems/GatewayProblemDetailsExtensionsTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Queries/SubmitQueryRequestTests.cs`
+- `tests/Hexalith.EventStore.Client.Tests/Gateway/EventStoreGatewayClientTests.cs`
+- `tests/Hexalith.EventStore.Testing.Tests/Builders/EventStoreGatewayExceptionBuilderTests.cs`
+- `tests/Hexalith.EventStore.Testing.Tests/Fakes/FakeEventStoreGatewayClientTests.cs`
+- `docs/reference/nuget-packages.md`
+- `docs/reference/command-api.md`
+- `docs/reference/query-api.md`
+- `docs/reference/api/Hexalith.EventStore.Contracts/**`
+- `docs/reference/api/Hexalith.EventStore.Client/**`
+- `docs/reference/api/Hexalith.EventStore.Testing/**`
 
 ## Verification Status
 
@@ -301,12 +354,23 @@ GPT-5 Codex
 - Party-mode review completed on 2026-05-13 and is recorded below.
 - Party-mode story hardening passed `git diff --check` and `npx markdownlint-cli2` on 2026-05-13.
 - Advanced elicitation has NOT yet been run for this story.
+- Aspire baseline: AppHost build succeeded, but runtime start failed before resource registration because DAPR CLI was not found on PATH; no Aspire resources were available for inspection.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj` passed: 297/297.
+- `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj` passed: 384/384.
+- `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj` passed: 91/91.
+- `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj` passed: 74/74.
+- `npx markdownlint-cli2 docs/reference/nuget-packages.md docs/reference/command-api.md docs/reference/query-api.md` passed with 0 errors.
+- Dependency-boundary grep across gateway-slice source/tests found no `Hexalith.EventStore.Server`, `Hexalith.EventStore.Models`, or root runtime-model namespace references.
+- Generated API docs refreshed for `Hexalith.EventStore.Contracts`, `Hexalith.EventStore.Client`, and `Hexalith.EventStore.Testing` using global `dotnet defaultdocumentation` 1.2.3. Full release API-doc build remains blocked by pre-existing XML-doc errors in `Admin.Mcp` and `Server`; local `dotnet tool restore` remains blocked by missing `hexalith.eventstore.admin.cli` version `1.0.0`.
+- `git diff --check` passed with line-ending warnings only.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
 | 2026-05-13 | 0.2 | Applied party-mode review hardening for public contract decisions, query failure semantics, ETag policy, ProblemDetails extensions, fake parity, and package-boundary validation. | Codex automation |
+| 2026-05-13 | 0.3 | Started implementation, completed ST0 decision record and gap inventory, and moved sprint tracking to in-progress. | GPT-5 Codex |
+| 2026-05-13 | 1.0 | Implemented gateway contract closure across Contracts, Client, Testing, docs, generated API docs, and validation evidence; moved story to review. | GPT-5 Codex |
 | 2026-05-12 | 0.1 | Created ready-for-dev story for public gateway command/query contract closure and package documentation. | Codex automation |
 
 ## Party-Mode Review

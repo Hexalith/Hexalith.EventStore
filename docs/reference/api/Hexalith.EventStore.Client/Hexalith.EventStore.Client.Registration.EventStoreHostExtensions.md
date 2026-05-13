@@ -36,13 +36,13 @@ public static Microsoft.Extensions.Hosting.IHost UseEventStore(this Microsoft.Ex
 The host instance\. `WebApplication` implements `IHost`, so this works for web apps too\.
 
 #### Returns
-[Microsoft\.Extensions\.Hosting\.IHost](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.hosting.ihost 'Microsoft\.Extensions\.Hosting\.IHost')  
+[Microsoft\.Extensions\.Hosting\.IHost](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.hosting.ihost 'Microsoft\.Extensions\.Hosting\.IHost')
 The host for method chaining\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 Thrown when [host](Hexalith.EventStore.Client.Registration.EventStoreHostExtensions.md#Hexalith.EventStore.Client.Registration.EventStoreHostExtensions.UseEventStore(thisMicrosoft.Extensions.Hosting.IHost).host 'Hexalith\.EventStore\.Client\.Registration\.EventStoreHostExtensions\.UseEventStore\(this Microsoft\.Extensions\.Hosting\.IHost\)\.host') is `null`\.
 
-[System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')  
+[System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')
 Thrown when `AddEventStore()` was not called during service registration\.

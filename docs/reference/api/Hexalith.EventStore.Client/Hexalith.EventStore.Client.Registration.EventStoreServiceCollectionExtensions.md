@@ -32,7 +32,7 @@ public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddEve
 The service collection\.
 
 #### Returns
-[Microsoft\.Extensions\.DependencyInjection\.IServiceCollection](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection 'Microsoft\.Extensions\.DependencyInjection\.IServiceCollection')  
+[Microsoft\.Extensions\.DependencyInjection\.IServiceCollection](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection 'Microsoft\.Extensions\.DependencyInjection\.IServiceCollection')
 The service collection for chaining\.
 
 <a name='Hexalith.EventStore.Client.Registration.EventStoreServiceCollectionExtensions.AddEventStore(thisMicrosoft.Extensions.DependencyInjection.IServiceCollection,System.Action_Hexalith.EventStore.Client.Configuration.EventStoreOptions_)'></a>
@@ -60,7 +60,7 @@ The service collection\.
 A delegate to configure [EventStoreOptions](Hexalith.EventStore.Client.Configuration.EventStoreOptions.md 'Hexalith\.EventStore\.Client\.Configuration\.EventStoreOptions')\.
 
 #### Returns
-[Microsoft\.Extensions\.DependencyInjection\.IServiceCollection](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection 'Microsoft\.Extensions\.DependencyInjection\.IServiceCollection')  
+[Microsoft\.Extensions\.DependencyInjection\.IServiceCollection](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection 'Microsoft\.Extensions\.DependencyInjection\.IServiceCollection')
 The service collection for chaining\.
 
 <a name='Hexalith.EventStore.Client.Registration.EventStoreServiceCollectionExtensions.AddEventStore(thisMicrosoft.Extensions.DependencyInjection.IServiceCollection,System.Action_Hexalith.EventStore.Client.Configuration.EventStoreOptions_,System.Reflection.Assembly[])'></a>
@@ -93,7 +93,7 @@ A delegate to configure [EventStoreOptions](Hexalith.EventStore.Client.Configura
 The assemblies to scan for domain types\.
 
 #### Returns
-[Microsoft\.Extensions\.DependencyInjection\.IServiceCollection](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection 'Microsoft\.Extensions\.DependencyInjection\.IServiceCollection')  
+[Microsoft\.Extensions\.DependencyInjection\.IServiceCollection](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection 'Microsoft\.Extensions\.DependencyInjection\.IServiceCollection')
 The service collection for chaining\.
 
 <a name='Hexalith.EventStore.Client.Registration.EventStoreServiceCollectionExtensions.AddEventStore(thisMicrosoft.Extensions.DependencyInjection.IServiceCollection,System.Reflection.Assembly[])'></a>
@@ -120,7 +120,7 @@ The service collection\.
 The assemblies to scan for domain types\.
 
 #### Returns
-[Microsoft\.Extensions\.DependencyInjection\.IServiceCollection](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection 'Microsoft\.Extensions\.DependencyInjection\.IServiceCollection')  
+[Microsoft\.Extensions\.DependencyInjection\.IServiceCollection](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection 'Microsoft\.Extensions\.DependencyInjection\.IServiceCollection')
 The service collection for chaining\.
 
 <a name='Hexalith.EventStore.Client.Registration.EventStoreServiceCollectionExtensions.AddEventStoreClient_TProcessor_(thisMicrosoft.Extensions.DependencyInjection.IServiceCollection)'></a>
@@ -149,5 +149,32 @@ The domain processor implementation type\.
 The service collection\.
 
 #### Returns
-[Microsoft\.Extensions\.DependencyInjection\.IServiceCollection](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection 'Microsoft\.Extensions\.DependencyInjection\.IServiceCollection')  
+[Microsoft\.Extensions\.DependencyInjection\.IServiceCollection](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection 'Microsoft\.Extensions\.DependencyInjection\.IServiceCollection')
 The service collection for chaining\.
+
+<a name='Hexalith.EventStore.Client.Registration.EventStoreServiceCollectionExtensions.AddEventStoreGatewayClient(thisMicrosoft.Extensions.DependencyInjection.IServiceCollection,System.Action_Hexalith.EventStore.Client.Gateway.EventStoreGatewayClientOptions_)'></a>
+
+## EventStoreServiceCollectionExtensions\.AddEventStoreGatewayClient\(this IServiceCollection, Action\<EventStoreGatewayClientOptions\>\) Method
+
+Registers the typed HTTP EventStore gateway client\.
+
+```csharp
+public static Microsoft.Extensions.DependencyInjection.IHttpClientBuilder AddEventStoreGatewayClient(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, System.Action<Hexalith.EventStore.Client.Gateway.EventStoreGatewayClientOptions>? configureOptions=null);
+```
+#### Parameters
+
+<a name='Hexalith.EventStore.Client.Registration.EventStoreServiceCollectionExtensions.AddEventStoreGatewayClient(thisMicrosoft.Extensions.DependencyInjection.IServiceCollection,System.Action_Hexalith.EventStore.Client.Gateway.EventStoreGatewayClientOptions_).services'></a>
+
+`services` [Microsoft\.Extensions\.DependencyInjection\.IServiceCollection](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection 'Microsoft\.Extensions\.DependencyInjection\.IServiceCollection')
+
+The service collection\.
+
+<a name='Hexalith.EventStore.Client.Registration.EventStoreServiceCollectionExtensions.AddEventStoreGatewayClient(thisMicrosoft.Extensions.DependencyInjection.IServiceCollection,System.Action_Hexalith.EventStore.Client.Gateway.EventStoreGatewayClientOptions_).configureOptions'></a>
+
+`configureOptions` [System\.Action&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.action-1 'System\.Action\`1')[EventStoreGatewayClientOptions](Hexalith.EventStore.Client.Gateway.EventStoreGatewayClientOptions.md 'Hexalith\.EventStore\.Client\.Gateway\.EventStoreGatewayClientOptions')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.action-1 'System\.Action\`1')
+
+Optional client options\.
+
+#### Returns
+[Microsoft\.Extensions\.DependencyInjection\.IHttpClientBuilder](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.dependencyinjection.ihttpclientbuilder 'Microsoft\.Extensions\.DependencyInjection\.IHttpClientBuilder')
+The HTTP client builder for additional configuration\.

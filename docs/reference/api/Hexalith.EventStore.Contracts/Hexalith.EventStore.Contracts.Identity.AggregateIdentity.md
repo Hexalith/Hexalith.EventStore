@@ -49,10 +49,10 @@ Aggregate identifier\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 Thrown when any component is null\.
 
-[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')  
+[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')
 Thrown when any component is empty, whitespace, exceeds length, or fails regex validation\.
 ### Properties
 
@@ -212,5 +212,5 @@ public override string ToString();
 ```
 
 #### Returns
-[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')  
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 A string in the format "tenantId:domain:aggregateId"\.

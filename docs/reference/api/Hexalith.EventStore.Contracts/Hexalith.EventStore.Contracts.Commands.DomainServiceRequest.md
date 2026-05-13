@@ -38,7 +38,9 @@ The command envelope to process\.
 
 `CurrentState` [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system.object 'System\.Object')
 
-The current aggregate state, or null for new aggregates\.
+The current aggregate state payload, or null for new aggregates\.
+This may be a typed state instance, a JSON\-serialized state object, or a [DomainServiceCurrentState](Hexalith.EventStore.Contracts.Commands.DomainServiceCurrentState.md 'Hexalith\.EventStore\.Contracts\.Commands\.DomainServiceCurrentState')
+that carries snapshot state plus tail events for snapshot\-aware rehydration\.
 ### Properties
 
 <a name='Hexalith.EventStore.Contracts.Commands.DomainServiceRequest.Command'></a>
@@ -58,7 +60,9 @@ public Hexalith.EventStore.Contracts.Commands.CommandEnvelope Command { get; ini
 
 ## DomainServiceRequest\.CurrentState Property
 
-The current aggregate state, or null for new aggregates\.
+The current aggregate state payload, or null for new aggregates\.
+This may be a typed state instance, a JSON\-serialized state object, or a [DomainServiceCurrentState](Hexalith.EventStore.Contracts.Commands.DomainServiceCurrentState.md 'Hexalith\.EventStore\.Contracts\.Commands\.DomainServiceCurrentState')
+that carries snapshot state plus tail events for snapshot\-aware rehydration\.
 
 ```csharp
 public object? CurrentState { get; init; }

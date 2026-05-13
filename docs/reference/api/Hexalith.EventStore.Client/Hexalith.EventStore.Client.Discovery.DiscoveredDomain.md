@@ -4,7 +4,7 @@
 
 ## DiscoveredDomain Class
 
-Represents a single domain type discovered by the [AssemblyScanner](Hexalith.EventStore.Client.Discovery.AssemblyScanner.md 'Hexalith\.EventStore\.Client\.Discovery\.AssemblyScanner')\.
+Represents a single domain type discovered by the [Hexalith\.EventStore\.Client\.Discovery\.AssemblyScanner](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.client.discovery.assemblyscanner 'Hexalith\.EventStore\.Client\.Discovery\.AssemblyScanner')\.
 
 ```csharp
 public sealed record DiscoveredDomain : System.IEquatable<Hexalith.EventStore.Client.Discovery.DiscoveredDomain>
@@ -19,7 +19,7 @@ Implements [System\.IEquatable&lt;](https://learn.microsoft.com/en-us/dotnet/api
 
 ## DiscoveredDomain\(Type, string, Type, DomainKind\) Constructor
 
-Represents a single domain type discovered by the [AssemblyScanner](Hexalith.EventStore.Client.Discovery.AssemblyScanner.md 'Hexalith\.EventStore\.Client\.Discovery\.AssemblyScanner')\.
+Represents a single domain type discovered by the [Hexalith\.EventStore\.Client\.Discovery\.AssemblyScanner](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.client.discovery.assemblyscanner 'Hexalith\.EventStore\.Client\.Discovery\.AssemblyScanner')\.
 
 ```csharp
 public DiscoveredDomain(System.Type Type, string DomainName, System.Type StateType, Hexalith.EventStore.Client.Discovery.DomainKind Kind);

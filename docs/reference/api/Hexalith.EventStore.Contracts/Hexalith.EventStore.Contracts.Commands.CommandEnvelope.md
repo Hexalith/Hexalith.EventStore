@@ -16,67 +16,73 @@ Inheritance [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system
 Implements [System\.IEquatable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.iequatable-1 'System\.IEquatable\`1')[CommandEnvelope](Hexalith.EventStore.Contracts.Commands.CommandEnvelope.md 'Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.iequatable-1 'System\.IEquatable\`1')
 ### Constructors
 
-<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_)'></a>
+<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_)'></a>
 
-## CommandEnvelope\(string, string, string, string, byte\[\], string, string, string, Dictionary\<string,string\>\) Constructor
+## CommandEnvelope\(string, string, string, string, string, byte\[\], string, string, string, Dictionary\<string,string\>\) Constructor
 
 Command payload envelope containing all command fields and a computed aggregate identity\.
 Validates required fields eagerly at construction time\.
 
 ```csharp
-public CommandEnvelope(string TenantId, string Domain, string AggregateId, string CommandType, byte[] Payload, string CorrelationId, string? CausationId, string UserId, System.Collections.Generic.Dictionary<string,string>? Extensions);
+public CommandEnvelope(string MessageId, string TenantId, string Domain, string AggregateId, string CommandType, byte[] Payload, string CorrelationId, string? CausationId, string UserId, System.Collections.Generic.Dictionary<string,string>? Extensions);
 ```
 #### Parameters
 
-<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).TenantId'></a>
+<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).MessageId'></a>
+
+`MessageId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The unique command identity and idempotency key \(ULID string\)\.
+
+<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).TenantId'></a>
 
 `TenantId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
 The tenant identifier\.
 
-<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).Domain'></a>
+<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).Domain'></a>
 
 `Domain` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
 The domain name\.
 
-<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).AggregateId'></a>
+<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).AggregateId'></a>
 
 `AggregateId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
 The aggregate identifier\.
 
-<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).CommandType'></a>
+<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).CommandType'></a>
 
 `CommandType` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
 The fully qualified command type name\.
 
-<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).Payload'></a>
+<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).Payload'></a>
 
 `Payload` [System\.Byte](https://learn.microsoft.com/en-us/dotnet/api/system.byte 'System\.Byte')[\[\]](https://learn.microsoft.com/en-us/dotnet/api/system.array 'System\.Array')
 
 The serialized command payload as raw bytes\.
 
-<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).CorrelationId'></a>
+<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).CorrelationId'></a>
 
 `CorrelationId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
 The correlation identifier for request tracing\.
 
-<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).CausationId'></a>
+<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).CausationId'></a>
 
 `CausationId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
 The optional causation identifier\.
 
-<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).UserId'></a>
+<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).UserId'></a>
 
 `UserId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
 The user who initiated the command\.
 
-<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).Extensions'></a>
+<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.CommandEnvelope(string,string,string,string,string,byte[],string,string,string,System.Collections.Generic.Dictionary_string,string_).Extensions'></a>
 
 `Extensions` [System\.Collections\.Generic\.Dictionary&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')
 
@@ -173,6 +179,19 @@ public System.Collections.Generic.Dictionary<string,string>? Extensions { get; i
 
 #### Property Value
 [System\.Collections\.Generic\.Dictionary&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[,](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2 'System\.Collections\.Generic\.Dictionary\`2')
+
+<a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.MessageId'></a>
+
+## CommandEnvelope\.MessageId Property
+
+Gets the unique command identity and idempotency key \(ULID string\)\.
+
+```csharp
+public string MessageId { get; init; }
+```
+
+#### Property Value
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
 <a name='Hexalith.EventStore.Contracts.Commands.CommandEnvelope.Payload'></a>
 

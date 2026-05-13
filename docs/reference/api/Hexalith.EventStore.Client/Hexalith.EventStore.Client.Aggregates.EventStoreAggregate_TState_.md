@@ -8,7 +8,7 @@ Abstract base class for event\-sourced aggregates\. Provides reflection\-based c
 and state rehydration so that concrete aggregates only declare typed Handle and Apply methods\.
 
 ```csharp
-public abstract class EventStoreAggregate<TState> : Hexalith.EventStore.Client.Handlers.IDomainProcessor
+public abstract class EventStoreAggregate<TState> : Hexalith.EventStore.Client.Handlers.IDomainProcessor, Hexalith.EventStore.Client.Aggregates.IAggregateReplay
     where TState : class, new()
 ```
 #### Type parameters
@@ -21,8 +21,31 @@ The aggregate state type\. Must be a reference type with a parameterless constru
 
 Inheritance [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system.object 'System\.Object') &#129106; EventStoreAggregate\<TState\>
 
-Implements [IDomainProcessor](Hexalith.EventStore.Client.Handlers.IDomainProcessor.md 'Hexalith\.EventStore\.Client\.Handlers\.IDomainProcessor')
+Implements [IDomainProcessor](Hexalith.EventStore.Client.Handlers.IDomainProcessor.md 'Hexalith\.EventStore\.Client\.Handlers\.IDomainProcessor'), [IAggregateReplay](Hexalith.EventStore.Client.Aggregates.IAggregateReplay.md 'Hexalith\.EventStore\.Client\.Aggregates\.IAggregateReplay')
 ### Methods
+
+<a name='Hexalith.EventStore.Client.Aggregates.EventStoreAggregate_TState_.CanReplayAggregateType(string)'></a>
+
+## EventStoreAggregate\<TState\>\.CanReplayAggregateType\(string\) Method
+
+Returns whether this replay handler owns the requested aggregate type hint\.
+
+```csharp
+public bool CanReplayAggregateType(string aggregateType);
+```
+#### Parameters
+
+<a name='Hexalith.EventStore.Client.Aggregates.EventStoreAggregate_TState_.CanReplayAggregateType(string).aggregateType'></a>
+
+`aggregateType` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The persisted aggregate type hint\.
+
+Implements [CanReplayAggregateType\(string\)](Hexalith.EventStore.Client.Aggregates.IAggregateReplay.md#Hexalith.EventStore.Client.Aggregates.IAggregateReplay.CanReplayAggregateType(string) 'Hexalith\.EventStore\.Client\.Aggregates\.IAggregateReplay\.CanReplayAggregateType\(string\)')
+
+#### Returns
+[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')
+True when this replay handler can safely replay the aggregate type\.
 
 <a name='Hexalith.EventStore.Client.Aggregates.EventStoreAggregate_TState_.ProcessAsync(Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object)'></a>
 
@@ -50,5 +73,31 @@ The current aggregate state, or null for new aggregates\.
 Implements [ProcessAsync\(CommandEnvelope, object\)](Hexalith.EventStore.Client.Handlers.IDomainProcessor.md#Hexalith.EventStore.Client.Handlers.IDomainProcessor.ProcessAsync(Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object) 'Hexalith\.EventStore\.Client\.Handlers\.IDomainProcessor\.ProcessAsync\(Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope, object\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
 A [Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult') containing the resulting domain events\.
+
+<a name='Hexalith.EventStore.Client.Aggregates.EventStoreAggregate_TState_.Replay(Hexalith.EventStore.Contracts.Replay.AggregateReconstructionRequest)'></a>
+
+## EventStoreAggregate\<TState\>\.Replay\(AggregateReconstructionRequest\) Method
+
+Replays the supplied events through the owning state's Apply convention up to
+[Hexalith\.EventStore\.Contracts\.Replay\.AggregateReconstructionRequest\.UpToSequence](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.replay.aggregatereconstructionrequest.uptosequence 'Hexalith\.EventStore\.Contracts\.Replay\.AggregateReconstructionRequest\.UpToSequence')\. The implementation must
+not write aggregate state, projections, outbox messages, Dapr state, or any other
+runtime side effect\.
+
+```csharp
+public Hexalith.EventStore.Contracts.Replay.AggregateReconstructionResult Replay(Hexalith.EventStore.Contracts.Replay.AggregateReconstructionRequest request);
+```
+#### Parameters
+
+<a name='Hexalith.EventStore.Client.Aggregates.EventStoreAggregate_TState_.Replay(Hexalith.EventStore.Contracts.Replay.AggregateReconstructionRequest).request'></a>
+
+`request` [Hexalith\.EventStore\.Contracts\.Replay\.AggregateReconstructionRequest](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.replay.aggregatereconstructionrequest 'Hexalith\.EventStore\.Contracts\.Replay\.AggregateReconstructionRequest')
+
+The reconstruction request\.
+
+Implements [Replay\(AggregateReconstructionRequest\)](Hexalith.EventStore.Client.Aggregates.IAggregateReplay.md#Hexalith.EventStore.Client.Aggregates.IAggregateReplay.Replay(Hexalith.EventStore.Contracts.Replay.AggregateReconstructionRequest) 'Hexalith\.EventStore\.Client\.Aggregates\.IAggregateReplay\.Replay\(Hexalith\.EventStore\.Contracts\.Replay\.AggregateReconstructionRequest\)')
+
+#### Returns
+[Hexalith\.EventStore\.Contracts\.Replay\.AggregateReconstructionResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.replay.aggregatereconstructionresult 'Hexalith\.EventStore\.Contracts\.Replay\.AggregateReconstructionResult')
+The reconstruction result, including state JSON, status, and diagnostics\.

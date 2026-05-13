@@ -5,8 +5,9 @@
 
 | Classes | |
 | :--- | :--- |
+| [AggregateTerminated](Hexalith.EventStore.Contracts.Events.AggregateTerminated.md 'Hexalith\.EventStore\.Contracts\.Events\.AggregateTerminated') | Framework\-level rejection event persisted when a command targets a tombstoned aggregate \(FR66\)\. Implements [IRejectionEvent](Hexalith.EventStore.Contracts.Events.IRejectionEvent.md 'Hexalith\.EventStore\.Contracts\.Events\.IRejectionEvent') so the existing rejection path handles it automatically\. |
 | [EventEnvelope](Hexalith.EventStore.Contracts.Events.EventEnvelope.md 'Hexalith\.EventStore\.Contracts\.Events\.EventEnvelope') | The complete serializable event unit combining metadata, payload, and extensions\. Record equality uses reference equality for [Payload](Hexalith.EventStore.Contracts.Events.EventEnvelope.md#Hexalith.EventStore.Contracts.Events.EventEnvelope.Payload 'Hexalith\.EventStore\.Contracts\.Events\.EventEnvelope\.Payload') \(byte\[\]\)\. Use [System\.Linq\.Enumerable\.SequenceEqual&lt;&gt;\.Collections\.Generic\.IEnumerable\{&lt;&gt;\.Collections\.Generic\.IEnumerable\{&lt;&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.sequenceequal--1#system-linq-enumerable-sequenceequal--1(system-collections-generic-ienumerable{--0}-system-collections-generic-ienumerable{--0}) 'System\.Linq\.Enumerable\.SequenceEqual\`\`1\(System\.Collections\.Generic\.IEnumerable\{\`\`0\},System\.Collections\.Generic\.IEnumerable\{\`\`0\}\)') for byte\-level payload comparison in tests\. |
-| [EventMetadata](Hexalith.EventStore.Contracts.Events.EventMetadata.md 'Hexalith\.EventStore\.Contracts\.Events\.EventMetadata') | Contains the 11 typed metadata fields for an event\. Enables structured access to metadata without touching the payload \(efficient for logging, indexing, routing\)\. |
+| [EventMetadata](Hexalith.EventStore.Contracts.Events.EventMetadata.md 'Hexalith\.EventStore\.Contracts\.Events\.EventMetadata') | Contains the 15 typed metadata fields for an event \(FR11\)\. Enables structured access to metadata without touching the payload \(efficient for logging, indexing, routing\)\. |
 
 | Interfaces | |
 | :--- | :--- |

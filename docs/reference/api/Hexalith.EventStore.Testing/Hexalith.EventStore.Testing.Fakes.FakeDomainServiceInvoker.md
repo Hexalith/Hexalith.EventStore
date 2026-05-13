@@ -21,7 +21,7 @@ Implements [Hexalith\.EventStore\.Server\.DomainServices\.IDomainServiceInvoker]
 
 ## FakeDomainServiceInvoker\.Invocations Property
 
-Gets the list of all commands that were passed to [InvokeAsync\(CommandEnvelope, object, CancellationToken\)](Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.md#Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.InvokeAsync(Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object,System.Threading.CancellationToken) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.InvokeAsync\(Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope, object, System\.Threading\.CancellationToken\)')\.
+Gets the list of all commands that were passed to [Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.InvokeAsync\(Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope,System\.Object,System\.Threading\.CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.testing.fakes.fakedomainserviceinvoker.invokeasync#hexalith-eventstore-testing-fakes-fakedomainserviceinvoker-invokeasync(hexalith-eventstore-contracts-commands-commandenvelope-system-object-system-threading-cancellationtoken) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.InvokeAsync\(Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope,System\.Object,System\.Threading\.CancellationToken\)')\.
 
 ```csharp
 public System.Collections.Generic.IReadOnlyList<Hexalith.EventStore.Contracts.Commands.CommandEnvelope> Invocations { get; }
@@ -29,42 +29,38 @@ public System.Collections.Generic.IReadOnlyList<Hexalith.EventStore.Contracts.Co
 
 #### Property Value
 [System\.Collections\.Generic\.IReadOnlyList&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')[Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.commands.commandenvelope 'Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')
-### Methods
 
-<a name='Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.InvokeAsync(Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object,System.Threading.CancellationToken)'></a>
+<a name='Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.InvocationsWithState'></a>
 
-## FakeDomainServiceInvoker\.InvokeAsync\(CommandEnvelope, object, CancellationToken\) Method
+## FakeDomainServiceInvoker\.InvocationsWithState Property
 
-Invokes a domain service to process the specified command against the current aggregate state\.
+Gets the list of all \(command, currentState\) pairs passed to [Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.InvokeAsync\(Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope,System\.Object,System\.Threading\.CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.testing.fakes.fakedomainserviceinvoker.invokeasync#hexalith-eventstore-testing-fakes-fakedomainserviceinvoker-invokeasync(hexalith-eventstore-contracts-commands-commandenvelope-system-object-system-threading-cancellationtoken) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.InvokeAsync\(Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope,System\.Object,System\.Threading\.CancellationToken\)')\.
+            Use this to inspect the exact state the AggregateActor passes to the domain service\.
 
 ```csharp
-public System.Threading.Tasks.Task<Hexalith.EventStore.Contracts.Results.DomainResult> InvokeAsync(Hexalith.EventStore.Contracts.Commands.CommandEnvelope command, object? currentState, System.Threading.CancellationToken cancellationToken=default(System.Threading.CancellationToken));
+public System.Collections.Generic.IReadOnlyList<(Hexalith.EventStore.Contracts.Commands.CommandEnvelope Command,object? CurrentState)> InvocationsWithState { get; }
 ```
-#### Parameters
 
-<a name='Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.InvokeAsync(Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object,System.Threading.CancellationToken).command'></a>
+#### Property Value
+[System\.Collections\.Generic\.IReadOnlyList&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')[&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.commands.commandenvelope 'Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope')[,](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system.object 'System\.Object')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')
+### Methods
 
-`command` [Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.commands.commandenvelope 'Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope')
+<a name='Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.ClearAll()'></a>
 
-The command envelope to process\.
+## FakeDomainServiceInvoker\.ClearAll\(\) Method
 
-<a name='Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.InvokeAsync(Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object,System.Threading.CancellationToken).currentState'></a>
+Resets every registry to its initial empty state: per\-command\-type responses, per\-command\-type
+handlers, per\-tenant\+domain responses, the default response, AND the captured invocations queue\.
 
-`currentState` [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system.object 'System\.Object')
+```csharp
+public void ClearAll();
+```
 
-The current aggregate state, or null for new aggregates\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.InvokeAsync(Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object,System.Threading.CancellationToken).cancellationToken'></a>
-
-`cancellationToken` [System\.Threading\.CancellationToken](https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtoken 'System\.Threading\.CancellationToken')
-
-A token to cancel the operation\.
-
-Implements [InvokeAsync\(CommandEnvelope, object, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.domainservices.idomainserviceinvoker.invokeasync#hexalith-eventstore-server-domainservices-idomainserviceinvoker-invokeasync(hexalith-eventstore-contracts-commands-commandenvelope-system-object-system-threading-cancellationtoken) 'Hexalith\.EventStore\.Server\.DomainServices\.IDomainServiceInvoker\.InvokeAsync\(Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope,System\.Object,System\.Threading\.CancellationToken\)')
-
-#### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
-A [Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult') containing the resulting domain events\.
+### Remarks
+Required by ADR R1A7\-01 because [DaprTestContainerFixture](https://learn.microsoft.com/en-us/dotnet/api/daprtestcontainerfixture 'DaprTestContainerFixture') shares one
+[FakeDomainServiceInvoker](Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.md 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker') instance across the entire `[Collection("DaprTestContainer")]`
+suite\. Test classes that register handlers must call [ClearAll\(\)](Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.md#Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.ClearAll() 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.ClearAll\(\)') in their constructor
+AND on disposal so sibling test classes see a clean fixture\.
 
 <a name='Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.SetupDefaultResponse(Hexalith.EventStore.Contracts.Results.DomainResult)'></a>
 
@@ -82,6 +78,46 @@ public void SetupDefaultResponse(Hexalith.EventStore.Contracts.Results.DomainRes
 `result` [Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')
 
 The default result to return\.
+
+<a name='Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.SetupHandler(string,System.Func_Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object,System.Threading.Tasks.Task_Hexalith.EventStore.Contracts.Results.DomainResult__)'></a>
+
+## FakeDomainServiceInvoker\.SetupHandler\(string, Func\<CommandEnvelope,object,Task\<DomainResult\>\>\) Method
+
+Configures a delegating handler for a specific command type\. Unlike [SetupResponse\(string, DomainResult\)](Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.md#Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.SetupResponse(string,Hexalith.EventStore.Contracts.Results.DomainResult) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.SetupResponse\(string, Hexalith\.EventStore\.Contracts\.Results\.DomainResult\)'),
+the handler computes its [Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult') from the live `(command, currentState)` pair —
+enabling tests to drive the actor pipeline with a real aggregate \(e\.g\.
+`(cmd, state) => new CounterAggregate().ProcessAsync(cmd, state)`\)\.
+
+```csharp
+public void SetupHandler(string commandType, System.Func<Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object?,System.Threading.Tasks.Task<Hexalith.EventStore.Contracts.Results.DomainResult>> handler);
+```
+#### Parameters
+
+<a name='Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.SetupHandler(string,System.Func_Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object,System.Threading.Tasks.Task_Hexalith.EventStore.Contracts.Results.DomainResult__).commandType'></a>
+
+`commandType` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The command type to match\.
+
+<a name='Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.SetupHandler(string,System.Func_Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object,System.Threading.Tasks.Task_Hexalith.EventStore.Contracts.Results.DomainResult__).handler'></a>
+
+`handler` [System\.Func&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.func-3 'System\.Func\`3')[Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.commands.commandenvelope 'Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope')[,](https://learn.microsoft.com/en-us/dotnet/api/system.func-3 'System\.Func\`3')[System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system.object 'System\.Object')[,](https://learn.microsoft.com/en-us/dotnet/api/system.func-3 'System\.Func\`3')[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.func-3 'System\.Func\`3')
+
+The asynchronous handler invoked with the command and the current state passed to [Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.InvokeAsync\(Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope,System\.Object,System\.Threading\.CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.testing.fakes.fakedomainserviceinvoker.invokeasync#hexalith-eventstore-testing-fakes-fakedomainserviceinvoker-invokeasync(hexalith-eventstore-contracts-commands-commandenvelope-system-object-system-threading-cancellationtoken) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.InvokeAsync\(Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope,System\.Object,System\.Threading\.CancellationToken\)')\.
+
+#### Exceptions
+
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
+Either argument is [null](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/null 'https://docs\.microsoft\.com/en\-us/dotnet/csharp/language\-reference/keywords/null')\.
+
+[System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')
+A static response is already registered for [commandType](Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.md#Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.SetupHandler(string,System.Func_Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object,System.Threading.Tasks.Task_Hexalith.EventStore.Contracts.Results.DomainResult__).commandType 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.SetupHandler\(string, System\.Func\<Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope,object,System\.Threading\.Tasks\.Task\<Hexalith\.EventStore\.Contracts\.Results\.DomainResult\>\>\)\.commandType') via [SetupResponse\(string, DomainResult\)](Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.md#Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.SetupResponse(string,Hexalith.EventStore.Contracts.Results.DomainResult) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.SetupResponse\(string, Hexalith\.EventStore\.Contracts\.Results\.DomainResult\)')\.
+
+### Remarks
+Per ADR R1A7\-01, this surface and [SetupResponse\(string, DomainResult\)](Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.md#Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.SetupResponse(string,Hexalith.EventStore.Contracts.Results.DomainResult) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.SetupResponse\(string, Hexalith\.EventStore\.Contracts\.Results\.DomainResult\)') are mutually
+exclusive per [commandType](Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.md#Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.SetupHandler(string,System.Func_Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object,System.Threading.Tasks.Task_Hexalith.EventStore.Contracts.Results.DomainResult__).commandType 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.SetupHandler\(string, System\.Func\<Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope,object,System\.Threading\.Tasks\.Task\<Hexalith\.EventStore\.Contracts\.Results\.DomainResult\>\>\)\.commandType')\. Registering a handler for a command type that already
+has a static response — or vice versa — throws [System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')\. Use
+[ClearAll\(\)](Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.md#Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.ClearAll() 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.ClearAll\(\)') to reset both surfaces between test classes\.
 
 <a name='Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.SetupResponse(string,Hexalith.EventStore.Contracts.Results.DomainResult)'></a>
 
@@ -105,6 +141,19 @@ The command type to match\.
 `result` [Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')
 
 The result to return\.
+
+#### Exceptions
+
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
+Either argument is [null](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/null 'https://docs\.microsoft\.com/en\-us/dotnet/csharp/language\-reference/keywords/null')\.
+
+[System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')
+A handler is already registered for [commandType](Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.md#Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.SetupResponse(string,Hexalith.EventStore.Contracts.Results.DomainResult).commandType 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.SetupResponse\(string, Hexalith\.EventStore\.Contracts\.Results\.DomainResult\)\.commandType') via [SetupHandler\(string, Func&lt;CommandEnvelope,object,Task&lt;DomainResult&gt;&gt;\)](Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.md#Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.SetupHandler(string,System.Func_Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object,System.Threading.Tasks.Task_Hexalith.EventStore.Contracts.Results.DomainResult__) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.SetupHandler\(string, System\.Func\<Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope,object,System\.Threading\.Tasks\.Task\<Hexalith\.EventStore\.Contracts\.Results\.DomainResult\>\>\)')\.
+
+### Remarks
+Per ADR R1A7\-01, this surface and [SetupHandler\(string, Func&lt;CommandEnvelope,object,Task&lt;DomainResult&gt;&gt;\)](Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.md#Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.SetupHandler(string,System.Func_Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object,System.Threading.Tasks.Task_Hexalith.EventStore.Contracts.Results.DomainResult__) 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.SetupHandler\(string, System\.Func\<Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope,object,System\.Threading\.Tasks\.Task\<Hexalith\.EventStore\.Contracts\.Results\.DomainResult\>\>\)') are mutually exclusive per
+[commandType](Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.md#Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.SetupResponse(string,Hexalith.EventStore.Contracts.Results.DomainResult).commandType 'Hexalith\.EventStore\.Testing\.Fakes\.FakeDomainServiceInvoker\.SetupResponse\(string, Hexalith\.EventStore\.Contracts\.Results\.DomainResult\)\.commandType'): registering a static response for a command type that already
+has a handler — or vice versa — throws [System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')\.
 
 <a name='Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker.SetupResponse(string,string,Hexalith.EventStore.Contracts.Results.DomainResult)'></a>
 

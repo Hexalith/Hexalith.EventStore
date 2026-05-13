@@ -24,7 +24,7 @@ public Hexalith.EventStore.Contracts.Identity.AggregateIdentity Build();
 ```
 
 #### Returns
-[Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.identity.aggregateidentity 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity')  
+[Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.identity.aggregateidentity 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity')
 A new [Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.identity.aggregateidentity 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity') with the configured values\.
 
 <a name='Hexalith.EventStore.Testing.Builders.AggregateIdentityBuilder.WithAggregateId(string)'></a>
@@ -45,7 +45,7 @@ public Hexalith.EventStore.Testing.Builders.AggregateIdentityBuilder WithAggrega
 The aggregate identifier\.
 
 #### Returns
-[AggregateIdentityBuilder](Hexalith.EventStore.Testing.Builders.AggregateIdentityBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.AggregateIdentityBuilder')  
+[AggregateIdentityBuilder](Hexalith.EventStore.Testing.Builders.AggregateIdentityBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.AggregateIdentityBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.AggregateIdentityBuilder.WithDomain(string)'></a>
@@ -66,7 +66,7 @@ public Hexalith.EventStore.Testing.Builders.AggregateIdentityBuilder WithDomain(
 The domain name\.
 
 #### Returns
-[AggregateIdentityBuilder](Hexalith.EventStore.Testing.Builders.AggregateIdentityBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.AggregateIdentityBuilder')  
+[AggregateIdentityBuilder](Hexalith.EventStore.Testing.Builders.AggregateIdentityBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.AggregateIdentityBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.AggregateIdentityBuilder.WithTenantId(string)'></a>
@@ -87,5 +87,5 @@ public Hexalith.EventStore.Testing.Builders.AggregateIdentityBuilder WithTenantI
 The tenant identifier\.
 
 #### Returns
-[AggregateIdentityBuilder](Hexalith.EventStore.Testing.Builders.AggregateIdentityBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.AggregateIdentityBuilder')  
+[AggregateIdentityBuilder](Hexalith.EventStore.Testing.Builders.AggregateIdentityBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.AggregateIdentityBuilder')
 This builder instance\.

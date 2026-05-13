@@ -16,6 +16,19 @@ Inheritance [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system
 Implements [Hexalith\.EventStore\.Server\.Actors\.IAggregateActor](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.actors.iaggregateactor 'Hexalith\.EventStore\.Server\.Actors\.IAggregateActor'), [Dapr\.Actors\.IActor](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.iactor 'Dapr\.Actors\.IActor')
 ### Properties
 
+<a name='Hexalith.EventStore.Testing.Fakes.FakeAggregateActor.ConfiguredEvents'></a>
+
+## FakeAggregateActor\.ConfiguredEvents Property
+
+Gets or sets the configurable events for GetEventsAsync\.
+
+```csharp
+public Hexalith.EventStore.Server.Events.EventEnvelope[] ConfiguredEvents { get; set; }
+```
+
+#### Property Value
+[Hexalith\.EventStore\.Server\.Events\.EventEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.eventenvelope 'Hexalith\.EventStore\.Server\.Events\.EventEnvelope')[\[\]](https://learn.microsoft.com/en-us/dotnet/api/system.array 'System\.Array')
+
 <a name='Hexalith.EventStore.Testing.Fakes.FakeAggregateActor.ConfiguredException'></a>
 
 ## FakeAggregateActor\.ConfiguredException Property
@@ -80,27 +93,3 @@ public bool SimulateIdempotency { get; set; }
 
 #### Property Value
 [System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')
-### Methods
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeAggregateActor.ProcessCommandAsync(Hexalith.EventStore.Contracts.Commands.CommandEnvelope)'></a>
-
-## FakeAggregateActor\.ProcessCommandAsync\(CommandEnvelope\) Method
-
-Processes a command envelope within the aggregate actor context\.
-
-```csharp
-public System.Threading.Tasks.Task<Hexalith.EventStore.Server.Actors.CommandProcessingResult> ProcessCommandAsync(Hexalith.EventStore.Contracts.Commands.CommandEnvelope command);
-```
-#### Parameters
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeAggregateActor.ProcessCommandAsync(Hexalith.EventStore.Contracts.Commands.CommandEnvelope).command'></a>
-
-`command` [Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.commands.commandenvelope 'Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope')
-
-The command envelope to process\.
-
-Implements [ProcessCommandAsync\(CommandEnvelope\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.actors.iaggregateactor.processcommandasync#hexalith-eventstore-server-actors-iaggregateactor-processcommandasync(hexalith-eventstore-contracts-commands-commandenvelope) 'Hexalith\.EventStore\.Server\.Actors\.IAggregateActor\.ProcessCommandAsync\(Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope\)')
-
-#### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[Hexalith\.EventStore\.Server\.Actors\.CommandProcessingResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.actors.commandprocessingresult 'Hexalith\.EventStore\.Server\.Actors\.CommandProcessingResult')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
-The result of processing the command\.

@@ -24,7 +24,7 @@ public Hexalith.EventStore.Contracts.Commands.CommandEnvelope Build();
 ```
 
 #### Returns
-[Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.commands.commandenvelope 'Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope')  
+[Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.commands.commandenvelope 'Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope')
 A new [Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.commands.commandenvelope 'Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope') with the configured values\.
 
 <a name='Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.WithAggregateId(string)'></a>
@@ -45,7 +45,7 @@ public Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder WithAggregate
 The aggregate identifier\.
 
 #### Returns
-[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')  
+[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.WithCausationId(string)'></a>
@@ -66,7 +66,7 @@ public Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder WithCausation
 The causation identifier\.
 
 #### Returns
-[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')  
+[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.WithCommandType(string)'></a>
@@ -87,7 +87,7 @@ public Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder WithCommandTy
 The command type name\.
 
 #### Returns
-[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')  
+[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.WithCorrelationId(string)'></a>
@@ -108,7 +108,7 @@ public Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder WithCorrelati
 The correlation identifier\.
 
 #### Returns
-[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')  
+[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.WithDomain(string)'></a>
@@ -129,7 +129,7 @@ public Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder WithDomain(st
 The domain name\.
 
 #### Returns
-[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')  
+[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.WithExtensions(System.Collections.Generic.Dictionary_string,string_)'></a>
@@ -150,7 +150,28 @@ public Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder WithExtension
 The extension metadata\.
 
 #### Returns
-[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')  
+[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')
+This builder instance\.
+
+<a name='Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.WithMessageId(string)'></a>
+
+## CommandEnvelopeBuilder\.WithMessageId\(string\) Method
+
+Sets the message identifier \(unique command identity / idempotency key\)\.
+
+```csharp
+public Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder WithMessageId(string messageId);
+```
+#### Parameters
+
+<a name='Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.WithMessageId(string).messageId'></a>
+
+`messageId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The message identifier\.
+
+#### Returns
+[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.WithPayload(byte[])'></a>
@@ -171,7 +192,7 @@ public Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder WithPayload(b
 The payload bytes\.
 
 #### Returns
-[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')  
+[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.WithTenantId(string)'></a>
@@ -192,7 +213,7 @@ public Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder WithTenantId(
 The tenant identifier\.
 
 #### Returns
-[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')  
+[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')
 This builder instance\.
 
 <a name='Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.WithUserId(string)'></a>
@@ -213,5 +234,5 @@ public Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder WithUserId(st
 The user identifier\.
 
 #### Returns
-[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')  
+[CommandEnvelopeBuilder](Hexalith.EventStore.Testing.Builders.CommandEnvelopeBuilder.md 'Hexalith\.EventStore\.Testing\.Builders\.CommandEnvelopeBuilder')
 This builder instance\.

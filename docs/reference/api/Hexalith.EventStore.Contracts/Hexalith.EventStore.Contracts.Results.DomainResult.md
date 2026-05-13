@@ -36,10 +36,10 @@ The event payloads produced by the domain service\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 Thrown when events is null\.
 
-[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')  
+[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')
 Thrown when events contain both IRejectionEvent and non\-IRejectionEvent instances\.
 ### Properties
 
@@ -120,7 +120,7 @@ public static Hexalith.EventStore.Contracts.Results.DomainResult NoOp();
 ```
 
 #### Returns
-[DomainResult](Hexalith.EventStore.Contracts.Results.DomainResult.md 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')  
+[DomainResult](Hexalith.EventStore.Contracts.Results.DomainResult.md 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')
 A [DomainResult](Hexalith.EventStore.Contracts.Results.DomainResult.md 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult') with IsNoOp = true\.
 
 <a name='Hexalith.EventStore.Contracts.Results.DomainResult.Rejection(System.Collections.Generic.IReadOnlyList_Hexalith.EventStore.Contracts.Events.IRejectionEvent_)'></a>
@@ -141,12 +141,12 @@ public static Hexalith.EventStore.Contracts.Results.DomainResult Rejection(Syste
 One or more rejection events\.
 
 #### Returns
-[DomainResult](Hexalith.EventStore.Contracts.Results.DomainResult.md 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')  
+[DomainResult](Hexalith.EventStore.Contracts.Results.DomainResult.md 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')
 A [DomainResult](Hexalith.EventStore.Contracts.Results.DomainResult.md 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult') with IsRejection = true\.
 
 #### Exceptions
 
-[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')  
+[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')
 Thrown when rejectionEvents is empty\.
 
 <a name='Hexalith.EventStore.Contracts.Results.DomainResult.Success(System.Collections.Generic.IReadOnlyList_Hexalith.EventStore.Contracts.Events.IEventPayload_)'></a>
@@ -167,10 +167,10 @@ public static Hexalith.EventStore.Contracts.Results.DomainResult Success(System.
 One or more regular event payloads\.
 
 #### Returns
-[DomainResult](Hexalith.EventStore.Contracts.Results.DomainResult.md 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')  
+[DomainResult](Hexalith.EventStore.Contracts.Results.DomainResult.md 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')
 A [DomainResult](Hexalith.EventStore.Contracts.Results.DomainResult.md 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult') with IsSuccess = true\.
 
 #### Exceptions
 
-[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')  
+[System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')
 Thrown when events is empty\.

@@ -88,7 +88,14 @@ public class EventStoreGatewayClientTests {
               "title": "Insufficient Permissions",
               "status": 403,
               "detail": "Missing role.",
-              "correlationId": "corr-denied"
+              "correlationId": "corr-denied",
+              "tenantId": "tenant-a",
+              "reason": "missing-role",
+              "retryAfter": "PT30S",
+              "errors": {
+                "permissions": "commands:* is required"
+              },
+              "traceCode": "trace-123"
             }
             """;
         using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.Forbidden, ProblemJson, "application/problem+json")));
@@ -102,6 +109,199 @@ public class EventStoreGatewayClientTests {
         ex.Type.ShouldBe("https://hexalith.io/problems/insufficient-permissions");
         ex.Detail.ShouldBe("Missing role.");
         ex.CorrelationId.ShouldBe("corr-denied");
+        ex.TenantId.ShouldBe("tenant-a");
+        ex.Reason.ShouldBe("missing-role");
+        ex.RetryAfter.ShouldBe("PT30S");
+        ex.Errors.ShouldContainKey("permissions");
+        ex.Errors["permissions"].ShouldBe("commands:* is required");
+        ex.Extensions.ShouldContainKey("traceCode");
+        ex.Extensions["traceCode"].GetString().ShouldBe("trace-123");
+    }
+
+    [Fact]
+    public async Task SubmitCommandAsync_WithRawPayloadTooLargeResponse_ThrowsStatusOnlyGatewayException() {
+        using HttpClient httpClient = CreateClient(
+            _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.RequestEntityTooLarge) {
+                ReasonPhrase = "Payload Too Large",
+                Content = new StringContent("too large", Encoding.UTF8, "text/plain"),
+            }));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreGatewayException ex = await Assert.ThrowsAsync<EventStoreGatewayException>(
+            () => client.SubmitCommandAsync(CreateCommandRequest()));
+
+        ex.StatusCode.ShouldBe(413);
+        ex.Title.ShouldBe("Payload Too Large");
+        ex.CorrelationId.ShouldBeNull();
+        ex.Extensions.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task SubmitCommandAsync_WithCanceledToken_ThrowsOperationCanceledException() {
+        using var cancellationSource = new CancellationTokenSource();
+        await cancellationSource.CancelAsync();
+        using HttpClient httpClient = CreateClient(_ =>
+            Task.FromResult(Json(HttpStatusCode.Accepted, "{\"correlationId\":\"corr-1\"}")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => client.SubmitCommandAsync(CreateCommandRequest(), cancellationSource.Token));
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsync_WithSuccessFalse_ThrowsSemanticGatewayException() {
+        const string QueryJson = """
+            {
+              "correlationId": "corr-semantic",
+              "success": false,
+              "errorMessage": "Projection denied.",
+              "payload": {
+                "reason": "forbidden"
+              }
+            }
+            """;
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.OK, QueryJson)));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreGatewayException ex = await Assert.ThrowsAsync<EventStoreGatewayException>(
+            () => client.SubmitQueryAsync(CreateQueryRequest()));
+
+        ex.StatusCode.ShouldBe(200);
+        ex.Title.ShouldBe("Query semantic failure");
+        ex.Detail.ShouldBe("Projection denied.");
+        ex.CorrelationId.ShouldBe("corr-semantic");
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsyncTyped_WithSuccessFalse_ThrowsSemanticGatewayException() {
+        const string QueryJson = """
+            {
+              "correlationId": "corr-semantic",
+              "success": false,
+              "errorMessage": "Projection denied.",
+              "payload": {
+                "reason": "forbidden"
+              }
+            }
+            """;
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.OK, QueryJson)));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreGatewayException ex = await Assert.ThrowsAsync<EventStoreGatewayException>(
+            () => client.SubmitQueryAsync<CounterDto>(CreateQueryRequest()));
+
+        ex.StatusCode.ShouldBe(200);
+        ex.Title.ShouldBe("Query semantic failure");
+        ex.Detail.ShouldBe("Projection denied.");
+        ex.CorrelationId.ShouldBe("corr-semantic");
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsync_WithUnquotedIfNoneMatch_SendsQuotedHeader() {
+        HttpRequestMessage? observedRequest = null;
+        using HttpClient httpClient = CreateClient(request => {
+            observedRequest = request;
+            return Task.FromResult(Json(HttpStatusCode.OK, "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3}}"));
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        _ = await client.SubmitQueryAsync(CreateQueryRequest(), "etag-1");
+
+        observedRequest.ShouldNotBeNull();
+        observedRequest.Headers.TryGetValues("If-None-Match", out IEnumerable<string>? values).ShouldBeTrue();
+        values.ShouldNotBeNull();
+        values.Single().ShouldBe("\"etag-1\"");
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsync_WithEmptyIfNoneMatch_OmitsHeader() {
+        HttpRequestMessage? observedRequest = null;
+        using HttpClient httpClient = CreateClient(request => {
+            observedRequest = request;
+            return Task.FromResult(Json(HttpStatusCode.OK, "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3}}"));
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        _ = await client.SubmitQueryAsync(CreateQueryRequest(), " ");
+
+        observedRequest.ShouldNotBeNull();
+        observedRequest.Headers.Contains("If-None-Match").ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("W/\"etag-1\"")]
+    [InlineData("\"unterminated")]
+    [InlineData("*")]
+    public async Task SubmitQueryAsync_WithUnsupportedIfNoneMatch_ThrowsArgumentException(string ifNoneMatch) {
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.OK, "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3}}")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => client.SubmitQueryAsync(CreateQueryRequest(), ifNoneMatch));
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsync_WithWeakResponseETag_ThrowsGatewayException() {
+        using HttpClient httpClient = CreateClient(_ => {
+            var response = Json(HttpStatusCode.OK, "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3}}");
+            response.Headers.ETag = new EntityTagHeaderValue("\"etag-2\"", isWeak: true);
+            return Task.FromResult(response);
+        });
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreGatewayException ex = await Assert.ThrowsAsync<EventStoreGatewayException>(
+            () => client.SubmitQueryAsync(CreateQueryRequest()));
+
+        ex.StatusCode.ShouldBe(200);
+        ex.Detail.ShouldBe("Query response contained an unsupported weak ETag.");
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsync_WithMalformedBody_ThrowsGatewayException() {
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.OK, "{")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreGatewayException ex = await Assert.ThrowsAsync<EventStoreGatewayException>(
+            () => client.SubmitQueryAsync(CreateQueryRequest()));
+
+        ex.StatusCode.ShouldBe(200);
+        ex.Detail.ShouldBe("Query response body could not be parsed.");
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsync_WithEmptyBody_ThrowsGatewayException() {
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.OK, string.Empty)));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreGatewayException ex = await Assert.ThrowsAsync<EventStoreGatewayException>(
+            () => client.SubmitQueryAsync(CreateQueryRequest()));
+
+        ex.StatusCode.ShouldBe(200);
+        ex.Detail.ShouldBe("Query response body could not be parsed.");
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsyncTyped_WithInvalidPayloadShape_ThrowsGatewayException() {
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.OK, "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":\"invalid\"}}")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreGatewayException ex = await Assert.ThrowsAsync<EventStoreGatewayException>(
+            () => client.SubmitQueryAsync<CounterDto>(CreateQueryRequest()));
+
+        ex.StatusCode.ShouldBe(200);
+        ex.Detail.ShouldBe("Query response payload could not be deserialized.");
+    }
+
+    [Fact]
+    public async Task SubmitQueryAsync_WithCanceledToken_ThrowsOperationCanceledException() {
+        using var cancellationSource = new CancellationTokenSource();
+        await cancellationSource.CancelAsync();
+        using HttpClient httpClient = CreateClient(_ =>
+            Task.FromResult(Json(HttpStatusCode.OK, "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3}}")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => client.SubmitQueryAsync(CreateQueryRequest(), cancellationToken: cancellationSource.Token));
     }
 
     private static SubmitCommandRequest CreateCommandRequest() {
@@ -125,6 +325,9 @@ public class EventStoreGatewayClientTests {
             EntityId: "party-1");
 
     private static HttpClient CreateClient(Func<HttpRequestMessage, Task<HttpResponseMessage>> handler)
+        => CreateClient((request, _) => handler(request));
+
+    private static HttpClient CreateClient(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler)
         => new(new RecordingHandler(handler)) { BaseAddress = new Uri("https://eventstore.local/") };
 
     private static HttpResponseMessage Json(HttpStatusCode statusCode, string json, string contentType = "application/json")
@@ -134,8 +337,8 @@ public class EventStoreGatewayClientTests {
 
     private sealed record CounterDto(int Count);
 
-    private sealed class RecordingHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> handler) : HttpMessageHandler {
+    private sealed class RecordingHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler) : HttpMessageHandler {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => handler(request);
+            => handler(request, cancellationToken);
     }
 }

@@ -32,12 +32,12 @@ public static Hexalith.EventStore.Contracts.Identity.AggregateIdentity Parse(str
 The canonical string in format "tenantId:domain:aggregateId"\.
 
 #### Returns
-[AggregateIdentity](Hexalith.EventStore.Contracts.Identity.AggregateIdentity.md 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity')  
+[AggregateIdentity](Hexalith.EventStore.Contracts.Identity.AggregateIdentity.md 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity')
 An [AggregateIdentity](Hexalith.EventStore.Contracts.Identity.AggregateIdentity.md 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity') parsed from the canonical string\.
 
 #### Exceptions
 
-[System\.FormatException](https://learn.microsoft.com/en-us/dotnet/api/system.formatexception 'System\.FormatException')  
+[System\.FormatException](https://learn.microsoft.com/en-us/dotnet/api/system.formatexception 'System\.FormatException')
 Thrown when the input is null, empty, or does not contain exactly 3 colon\-separated segments\.
 
 <a name='Hexalith.EventStore.Contracts.Identity.IdentityParser.ParseStateStoreKey(string)'></a>
@@ -58,12 +58,12 @@ public static (Hexalith.EventStore.Contracts.Identity.AggregateIdentity Identity
 A state store key such as "acme:payments:order\-123:events:5"\.
 
 #### Returns
-[&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[AggregateIdentity](Hexalith.EventStore.Contracts.Identity.AggregateIdentity.md 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity')[,](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')  
+[&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[AggregateIdentity](Hexalith.EventStore.Contracts.Identity.AggregateIdentity.md 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity')[,](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.valuetuple 'System\.ValueTuple')
 A tuple of the parsed [AggregateIdentity](Hexalith.EventStore.Contracts.Identity.AggregateIdentity.md 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity') and the suffix string after the identity portion\.
 
 #### Exceptions
 
-[System\.FormatException](https://learn.microsoft.com/en-us/dotnet/api/system.formatexception 'System\.FormatException')  
+[System\.FormatException](https://learn.microsoft.com/en-us/dotnet/api/system.formatexception 'System\.FormatException')
 Thrown when the key does not contain at least 4 colon\-separated segments\.
 
 <a name='Hexalith.EventStore.Contracts.Identity.IdentityParser.TryParse(string,Hexalith.EventStore.Contracts.Identity.AggregateIdentity)'></a>
@@ -90,5 +90,5 @@ The canonical string in format "tenantId:domain:aggregateId"\.
 When this method returns true, contains the parsed identity; otherwise, null\.
 
 #### Returns
-[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')  
+[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')
 true if parsing succeeded; otherwise, false\.

@@ -73,6 +73,12 @@ The API is versioned via URL path (`/api/v1/`). Version lifecycle and deprecatio
 
 Command payloads are redacted in all server logs (the framework returns `[REDACTED]` for payload content). Place sensitive business data in the `payload` field, not in `extensions` metadata.
 
+## .NET Package Boundary
+
+Downstream .NET callers should build command gateway requests with `Hexalith.EventStore.Contracts.Commands.SubmitCommandRequest` and read accepted responses as `Hexalith.EventStore.Contracts.Commands.SubmitCommandResponse`. Use `Hexalith.EventStore.Client.Gateway.IEventStoreGatewayClient` when you want the package to post the request and map ProblemDetails into `EventStoreGatewayException`.
+
+Do not reference `Hexalith.EventStore` or `Hexalith.EventStore.Server` just to access gateway DTOs. The command DTO wrappers under `Hexalith.EventStore.Models` are compatibility-only delegates to the Contracts DTOs. New downstream integrations should use the Contracts package directly. See [NuGet Packages Guide](nuget-packages.md#calling-the-public-http-gateway).
+
 ## POST /api/v1/commands
 
 Submit a command for asynchronous processing.
@@ -469,6 +475,8 @@ All error responses use the [RFC 7807 ProblemDetails](https://tools.ietf.org/htm
 ```
 
 > **Note on shape:** `errors` is a `Dictionary<string, string>` (single message per field, not an array). Field keys are camelCase, matching the request body property casing. Deserialize as `Dictionary<string, string>` — not `Dictionary<string, string[]>`.
+>
+> Stable gateway ProblemDetails extension names are `correlationId`, `tenantId`, `errors`, `reason`, and `retryAfter`. The .NET gateway client exposes these through `EventStoreGatewayException` and preserves unknown extensions for diagnostics.
 >
 > **Note on 413/415:** `413 Payload Too Large` and `415 Unsupported Media Type` are returned by the ASP.NET Core framework before the application runs — these are raw HTTP responses, not RFC 7807 ProblemDetails.
 

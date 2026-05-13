@@ -13,7 +13,7 @@ to [TState](Hexalith.EventStore.Client.Handlers.DomainProcessorBase_TState_.md#H
 
 ```csharp
 public abstract class DomainProcessorBase<TState> : Hexalith.EventStore.Client.Handlers.IDomainProcessor
-    where TState : class
+    where TState : class, new()
 ```
 #### Type parameters
 
@@ -54,5 +54,5 @@ The current aggregate state, or null for new aggregates\.
 Implements [ProcessAsync\(CommandEnvelope, object\)](Hexalith.EventStore.Client.Handlers.IDomainProcessor.md#Hexalith.EventStore.Client.Handlers.IDomainProcessor.ProcessAsync(Hexalith.EventStore.Contracts.Commands.CommandEnvelope,object) 'Hexalith\.EventStore\.Client\.Handlers\.IDomainProcessor\.ProcessAsync\(Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope, object\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
 A [Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult') containing the resulting domain events\.

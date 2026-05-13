@@ -30,7 +30,7 @@ public System.Collections.Generic.IReadOnlyList<Hexalith.EventStore.Client.Regis
 
 #### Exceptions
 
-[System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')  
+[System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')
 Thrown if `UseEventStore()` has not been called\.
 
 <a name='Hexalith.EventStore.Client.Registration.EventStoreActivationContext.IsActivated'></a>

@@ -77,16 +77,16 @@ The token to monitor for cancellation requests\.
 Implements [AddOrUpdateStateAsync&lt;T&gt;\(string, T, Func&lt;string,T,T&gt;, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.addorupdatestateasync--1#dapr-actors-runtime-iactorstatemanager-addorupdatestateasync--1(system-string---0-system-func{system-string---0---0}-system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.AddOrUpdateStateAsync\`\`1\(System\.String,\`\`0,System\.Func\{System\.String,\`\`0,\`\`0\},System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[T](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.AddOrUpdateStateAsync_T_(string,T,System.Func_string,T,T_,System.Threading.CancellationToken).T 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.AddOrUpdateStateAsync\<T\>\(string, T, System\.Func\<string,T,T\>, System\.Threading\.CancellationToken\)\.T')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[T](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.AddOrUpdateStateAsync_T_(string,T,System.Func_string,T,T_,System.Threading.CancellationToken).T 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.AddOrUpdateStateAsync\<T\>\(string, T, System\.Func\<string,T,T\>, System\.Threading\.CancellationToken\)\.T')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
 A task that represents the asynchronous add/update operation\. The value of TResult
 parameter contains value of actor state that was added/updated\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 The specified state name is null\.
 
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
+[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')
 The operation was canceled\.
 
 ### Remarks
@@ -145,16 +145,16 @@ The token to monitor for cancellation requests\.
 Implements [AddOrUpdateStateAsync&lt;T&gt;\(string, T, Func&lt;string,T,T&gt;, TimeSpan, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.addorupdatestateasync--1#dapr-actors-runtime-iactorstatemanager-addorupdatestateasync--1(system-string---0-system-func{system-string---0---0}-system-timespan-system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.AddOrUpdateStateAsync\`\`1\(System\.String,\`\`0,System\.Func\{System\.String,\`\`0,\`\`0\},System\.TimeSpan,System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[T](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.AddOrUpdateStateAsync_T_(string,T,System.Func_string,T,T_,System.TimeSpan,System.Threading.CancellationToken).T 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.AddOrUpdateStateAsync\<T\>\(string, T, System\.Func\<string,T,T\>, System\.TimeSpan, System\.Threading\.CancellationToken\)\.T')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[T](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.AddOrUpdateStateAsync_T_(string,T,System.Func_string,T,T_,System.TimeSpan,System.Threading.CancellationToken).T 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.AddOrUpdateStateAsync\<T\>\(string, T, System\.Func\<string,T,T\>, System\.TimeSpan, System\.Threading\.CancellationToken\)\.T')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
 A task that represents the asynchronous add/update operation\. The value of TResult
 parameter contains value of actor state that was added/updated\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 The specified state name is null\.
 
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
+[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')
 The operation was canceled\.
 
 ### Remarks
@@ -200,18 +200,18 @@ The token to monitor for cancellation requests\.
 Implements [AddStateAsync&lt;T&gt;\(string, T, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.addstateasync--1#dapr-actors-runtime-iactorstatemanager-addstateasync--1(system-string---0-system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.AddStateAsync\`\`1\(System\.String,\`\`0,System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task 'System\.Threading\.Tasks\.Task')  
+[System\.Threading\.Tasks\.Task](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task 'System\.Threading\.Tasks\.Task')
 A task that represents the asynchronous add operation\.
 
 #### Exceptions
 
-[System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')  
+[System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')
 An actor state with given state name already exists\.
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 The specified state name is null\.
 
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
+[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')
 The operation was canceled\.
 
 ### Remarks
@@ -263,18 +263,18 @@ The token to monitor for cancellation requests\.
 Implements [AddStateAsync&lt;T&gt;\(string, T, TimeSpan, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.addstateasync--1#dapr-actors-runtime-iactorstatemanager-addstateasync--1(system-string---0-system-timespan-system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.AddStateAsync\`\`1\(System\.String,\`\`0,System\.TimeSpan,System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task 'System\.Threading\.Tasks\.Task')  
+[System\.Threading\.Tasks\.Task](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task 'System\.Threading\.Tasks\.Task')
 A task that represents the asynchronous add operation\.
 
 #### Exceptions
 
-[System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')  
+[System\.InvalidOperationException](https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception 'System\.InvalidOperationException')
 An actor state with given state name already exists\.
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 The specified state name is null\.
 
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
+[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')
 The operation was canceled\.
 
 ### Remarks
@@ -302,7 +302,7 @@ The token to monitor for cancellation requests\.
 Implements [ClearCacheAsync\(CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.clearcacheasync#dapr-actors-runtime-iactorstatemanager-clearcacheasync(system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.ClearCacheAsync\(System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task 'System\.Threading\.Tasks\.Task')  
+[System\.Threading\.Tasks\.Task](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task 'System\.Threading\.Tasks\.Task')
 A task that represents the asynchronous clear cache operation\.
 
 ### Remarks
@@ -335,16 +335,16 @@ The token to monitor for cancellation requests\.
 Implements [ContainsStateAsync\(string, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.containsstateasync#dapr-actors-runtime-iactorstatemanager-containsstateasync(system-string-system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.ContainsStateAsync\(System\.String,System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
 A task that represents the asynchronous check operation\. The value of TResult
 parameter is `true` if state with specified name exists otherwise `false`\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 The specified state name is null\.
 
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
+[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')
 The operation was canceled\.
 
 <a name='Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.GetOrAddStateAsync_T_(string,T,System.Threading.CancellationToken)'></a>
@@ -387,17 +387,17 @@ The token to monitor for cancellation requests\.
 Implements [GetOrAddStateAsync&lt;T&gt;\(string, T, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.getoraddstateasync--1#dapr-actors-runtime-iactorstatemanager-getoraddstateasync--1(system-string---0-system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.GetOrAddStateAsync\`\`1\(System\.String,\`\`0,System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[T](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.GetOrAddStateAsync_T_(string,T,System.Threading.CancellationToken).T 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.GetOrAddStateAsync\<T\>\(string, T, System\.Threading\.CancellationToken\)\.T')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[T](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.GetOrAddStateAsync_T_(string,T,System.Threading.CancellationToken).T 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.GetOrAddStateAsync\<T\>\(string, T, System\.Threading\.CancellationToken\)\.T')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
 A task that represents the asynchronous get or add operation\. The value of TResult
 parameter contains value of actor state with given state name\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 The specified state name is null\.
            Provide a valid state name string\.
 
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
+[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')
 The request was canceled using the specified
             [cancellationToken](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.GetOrAddStateAsync_T_(string,T,System.Threading.CancellationToken).cancellationToken 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.GetOrAddStateAsync\<T\>\(string, T, System\.Threading\.CancellationToken\)\.cancellationToken')\.
 
@@ -451,17 +451,17 @@ The token to monitor for cancellation requests\.
 Implements [GetOrAddStateAsync&lt;T&gt;\(string, T, TimeSpan, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.getoraddstateasync--1#dapr-actors-runtime-iactorstatemanager-getoraddstateasync--1(system-string---0-system-timespan-system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.GetOrAddStateAsync\`\`1\(System\.String,\`\`0,System\.TimeSpan,System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[T](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.GetOrAddStateAsync_T_(string,T,System.TimeSpan,System.Threading.CancellationToken).T 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.GetOrAddStateAsync\<T\>\(string, T, System\.TimeSpan, System\.Threading\.CancellationToken\)\.T')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[T](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.GetOrAddStateAsync_T_(string,T,System.TimeSpan,System.Threading.CancellationToken).T 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.GetOrAddStateAsync\<T\>\(string, T, System\.TimeSpan, System\.Threading\.CancellationToken\)\.T')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
 A task that represents the asynchronous get or add operation\. The value of TResult
 parameter contains value of actor state with given state name\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 The specified state name is null\.
            Provide a valid state name string\.
 
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
+[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')
 The request was canceled using the specified
             [cancellationToken](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.GetOrAddStateAsync_T_(string,T,System.TimeSpan,System.Threading.CancellationToken).cancellationToken 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.GetOrAddStateAsync\<T\>\(string, T, System\.TimeSpan, System\.Threading\.CancellationToken\)\.cancellationToken')\.
 
@@ -502,19 +502,19 @@ The token to monitor for cancellation requests\.
 Implements [GetStateAsync&lt;T&gt;\(string, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.getstateasync--1#dapr-actors-runtime-iactorstatemanager-getstateasync--1(system-string-system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.GetStateAsync\`\`1\(System\.String,System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[T](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.GetStateAsync_T_(string,System.Threading.CancellationToken).T 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.GetStateAsync\<T\>\(string, System\.Threading\.CancellationToken\)\.T')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[T](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.GetStateAsync_T_(string,System.Threading.CancellationToken).T 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.GetStateAsync\<T\>\(string, System\.Threading\.CancellationToken\)\.T')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
 A task that represents the asynchronous get operation\. The value of TResult
 parameter contains value of actor state with given state name\.
 
 #### Exceptions
 
-[System\.Collections\.Generic\.KeyNotFoundException](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.keynotfoundexception 'System\.Collections\.Generic\.KeyNotFoundException')  
+[System\.Collections\.Generic\.KeyNotFoundException](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.keynotfoundexception 'System\.Collections\.Generic\.KeyNotFoundException')
 An actor state with given state name does not exist\.
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 The specified state name is null\.
 
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
+[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')
 The operation was canceled\.
 
 ### Remarks
@@ -547,18 +547,18 @@ The token to monitor for cancellation requests\.
 Implements [RemoveStateAsync\(string, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.removestateasync#dapr-actors-runtime-iactorstatemanager-removestateasync(system-string-system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.RemoveStateAsync\(System\.String,System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task 'System\.Threading\.Tasks\.Task')  
+[System\.Threading\.Tasks\.Task](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task 'System\.Threading\.Tasks\.Task')
 A task that represents the asynchronous remove operation\.
 
 #### Exceptions
 
-[System\.Collections\.Generic\.KeyNotFoundException](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.keynotfoundexception 'System\.Collections\.Generic\.KeyNotFoundException')  
+[System\.Collections\.Generic\.KeyNotFoundException](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.keynotfoundexception 'System\.Collections\.Generic\.KeyNotFoundException')
 An actor state with given state name does not exist\.
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 The specified state name is null\.
 
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
+[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')
 The operation was canceled\.
 
 <a name='Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.SaveStateAsync(System.Threading.CancellationToken)'></a>
@@ -582,7 +582,7 @@ The token to monitor for cancellation requests\.
 Implements [SaveStateAsync\(CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.savestateasync#dapr-actors-runtime-iactorstatemanager-savestateasync(system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.SaveStateAsync\(System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task 'System\.Threading\.Tasks\.Task')  
+[System\.Threading\.Tasks\.Task](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task 'System\.Threading\.Tasks\.Task')
 A task that represents the asynchronous save operation\.
 
 <a name='Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.SetStateAsync_T_(string,T,System.Threading.CancellationToken)'></a>
@@ -625,15 +625,15 @@ The token to monitor for cancellation requests\.
 Implements [SetStateAsync&lt;T&gt;\(string, T, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.setstateasync--1#dapr-actors-runtime-iactorstatemanager-setstateasync--1(system-string---0-system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.SetStateAsync\`\`1\(System\.String,\`\`0,System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task 'System\.Threading\.Tasks\.Task')  
+[System\.Threading\.Tasks\.Task](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task 'System\.Threading\.Tasks\.Task')
 A task that represents the asynchronous set operation\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 The specified state name is null\.
 
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
+[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')
 The operation was canceled\.
 
 ### Remarks
@@ -686,15 +686,15 @@ The token to monitor for cancellation requests\.
 Implements [SetStateAsync&lt;T&gt;\(string, T, TimeSpan, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.setstateasync--1#dapr-actors-runtime-iactorstatemanager-setstateasync--1(system-string---0-system-timespan-system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.SetStateAsync\`\`1\(System\.String,\`\`0,System\.TimeSpan,System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task 'System\.Threading\.Tasks\.Task')  
+[System\.Threading\.Tasks\.Task](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task 'System\.Threading\.Tasks\.Task')
 A task that represents the asynchronous set operation\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 The specified state name is null\.
 
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
+[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')
 The operation was canceled\.
 
 ### Remarks
@@ -742,17 +742,17 @@ The token to monitor for cancellation requests\.
 Implements [TryAddStateAsync&lt;T&gt;\(string, T, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.tryaddstateasync--1#dapr-actors-runtime-iactorstatemanager-tryaddstateasync--1(system-string---0-system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.TryAddStateAsync\`\`1\(System\.String,\`\`0,System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
 A boolean task that represents the asynchronous add operation\. Returns true if the
 value was successfully added and false if an actor state with the same name already exists\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 The specified state name is null\.
             Provide a valid state name string\.
 
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
+[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')
 The request was canceled using the specified
             [cancellationToken](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.TryAddStateAsync_T_(string,T,System.Threading.CancellationToken).cancellationToken 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.TryAddStateAsync\<T\>\(string, T, System\.Threading\.CancellationToken\)\.cancellationToken')\.
 
@@ -807,17 +807,17 @@ The token to monitor for cancellation requests\.
 Implements [TryAddStateAsync&lt;T&gt;\(string, T, TimeSpan, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.tryaddstateasync--1#dapr-actors-runtime-iactorstatemanager-tryaddstateasync--1(system-string---0-system-timespan-system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.TryAddStateAsync\`\`1\(System\.String,\`\`0,System\.TimeSpan,System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
 A boolean task that represents the asynchronous add operation\. Returns true if the
 value was successfully added and false if an actor state with the same name already exists\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 The specified state name is null\.
             Provide a valid state name string\.
 
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
+[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')
 The request was canceled using the specified
             [cancellationToken](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.TryAddStateAsync_T_(string,T,System.TimeSpan,System.Threading.CancellationToken).cancellationToken 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.TryAddStateAsync\<T\>\(string, T, System\.TimeSpan, System\.Threading\.CancellationToken\)\.cancellationToken')\.
 
@@ -858,17 +858,17 @@ The token to monitor for cancellation requests\.
 Implements [TryGetStateAsync&lt;T&gt;\(string, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.trygetstateasync--1#dapr-actors-runtime-iactorstatemanager-trygetstateasync--1(system-string-system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.TryGetStateAsync\`\`1\(System\.String,System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[Dapr\.Actors\.Runtime\.ConditionalValue&lt;](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.conditionalvalue-1 'Dapr\.Actors\.Runtime\.ConditionalValue\`1')[T](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.TryGetStateAsync_T_(string,System.Threading.CancellationToken).T 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.TryGetStateAsync\<T\>\(string, System\.Threading\.CancellationToken\)\.T')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.conditionalvalue-1 'Dapr\.Actors\.Runtime\.ConditionalValue\`1')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[Dapr\.Actors\.Runtime\.ConditionalValue&lt;](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.conditionalvalue-1 'Dapr\.Actors\.Runtime\.ConditionalValue\`1')[T](Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.md#Hexalith.EventStore.Testing.Fakes.InMemoryStateManager.TryGetStateAsync_T_(string,System.Threading.CancellationToken).T 'Hexalith\.EventStore\.Testing\.Fakes\.InMemoryStateManager\.TryGetStateAsync\<T\>\(string, System\.Threading\.CancellationToken\)\.T')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.conditionalvalue-1 'Dapr\.Actors\.Runtime\.ConditionalValue\`1')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
 A task that represents the asynchronous get operation\. The value of TResult
 parameter contains [Dapr\.Actors\.Runtime\.ConditionalValue&lt;&gt;](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.conditionalvalue-1 'Dapr\.Actors\.Runtime\.ConditionalValue\`1')
 indicating whether the actor state is present and the value of actor state if it is present\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 The specified state name is null\.
 
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
+[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')
 The operation was canceled\.
 
 ### Remarks
@@ -901,14 +901,14 @@ The token to monitor for cancellation requests\.
 Implements [TryRemoveStateAsync\(string, CancellationToken\)](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.runtime.iactorstatemanager.tryremovestateasync#dapr-actors-runtime-iactorstatemanager-tryremovestateasync(system-string-system-threading-cancellationtoken) 'Dapr\.Actors\.Runtime\.IActorStateManager\.TryRemoveStateAsync\(System\.String,System\.Threading\.CancellationToken\)')
 
 #### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
 A task that represents the asynchronous remove operation\. The value of TResult
 parameter indicates if the state was successfully removed\.
 
 #### Exceptions
 
-[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')  
+[System\.ArgumentNullException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentnullexception 'System\.ArgumentNullException')
 The specified state name is null\.
 
-[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')  
+[System\.OperationCanceledException](https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception 'System\.OperationCanceledException')
 The operation was canceled\.

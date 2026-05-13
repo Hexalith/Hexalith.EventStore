@@ -34,6 +34,12 @@ $ Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/pro
 
 > **Note:** Query endpoints enforce the same 1 MB request-body limit as the command endpoints.
 
+## .NET Package Boundary
+
+Downstream .NET callers should build query gateway requests with `Hexalith.EventStore.Contracts.Queries.SubmitQueryRequest` and read envelopes as `Hexalith.EventStore.Contracts.Queries.SubmitQueryResponse`. Use `Hexalith.EventStore.Client.Gateway.IEventStoreGatewayClient` when you want the package to post the request, normalize ETags, map `304 Not Modified`, deserialize typed payloads, and expose ProblemDetails as `EventStoreGatewayException`.
+
+Do not reference `Hexalith.EventStore` or `Hexalith.EventStore.Server` for gateway DTOs or client behavior. Public gateway contracts live in Contracts, the HTTP convenience client lives in Client, and deterministic gateway doubles live in Testing. See [NuGet Packages Guide](nuget-packages.md#calling-the-public-http-gateway).
+
 ## POST /api/v1/queries
 
 Execute a query against the current projection/read model.
@@ -77,9 +83,13 @@ $ curl -X POST https://localhost:5001/api/v1/queries \
 
 The exact shape of `payload` depends on the query handler and projection type.
 
+If the query pipeline returns a `200 OK` envelope with `"success": false`, the .NET gateway client treats it as a semantic gateway failure and throws `EventStoreGatewayException` with status code `200`, title `Query semantic failure`, the envelope `correlationId`, and the envelope `errorMessage` as detail. Callers should not deserialize `payload` from a failed semantic envelope.
+
 ### Conditional Requests with ETag
 
 `POST /api/v1/queries` supports the `If-None-Match` header. When the supplied validator already matches the current projection version, the API returns `304 Not Modified` instead of recomputing the full payload.
+
+HTTP examples show quoted ETags because HTTP headers require quoted entity tags. The .NET gateway client exposes response ETags as normalized unquoted strong tokens. When calling `SubmitQueryAsync`, pass either the normalized token (`etag-value-from-previous-response`) or the quoted header form (`"etag-value-from-previous-response"`); the client sends the quoted HTTP header. Empty values omit the header. Weak or malformed ETags are unsupported and rejected before the request is sent.
 
 ```bash
 $ curl -X POST https://localhost:5001/api/v1/queries \
@@ -114,6 +124,8 @@ If the projection changed, the API returns `200 OK` with a new response body and
 | 404 Not Found           | Projection/query target not found                   | RFC 7807 ProblemDetails                           |
 | 429 Too Many Requests   | Per-tenant rate limit exceeded                      | RFC 7807 ProblemDetails with `Retry-After` header |
 | 503 Service Unavailable | Query dependencies unavailable                      | RFC 7807 ProblemDetails                           |
+
+Stable gateway ProblemDetails extension names are `correlationId`, `tenantId`, `errors`, `reason`, and `retryAfter`. The .NET gateway client exposes these through `EventStoreGatewayException` and preserves unknown extensions for diagnostics.
 
 ## POST /api/v1/queries/validate
 

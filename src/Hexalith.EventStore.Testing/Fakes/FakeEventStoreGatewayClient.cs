@@ -51,6 +51,70 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
     /// </summary>
     public EventStoreGatewayException? QueryException { get; set; }
 
+    /// <summary>
+    /// Configures the fake to return a command accepted response.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureCommandAccepted(string correlationId) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
+        CommandException = null;
+        CommandResponse = new SubmitCommandResponse(correlationId);
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the fake to throw a command gateway failure.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureCommandFailure(EventStoreGatewayException exception) {
+        ArgumentNullException.ThrowIfNull(exception);
+        CommandException = exception;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the fake to return a successful query result.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureQuerySuccess(
+        JsonElement payload,
+        string correlationId,
+        string? eTag = null) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
+        QueryException = null;
+        QueryResult = new EventStoreQueryResult(correlationId, payload, IsNotModified: false, eTag);
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the fake to throw the public semantic query failure used by the HTTP client.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureQuerySemanticFailure(string correlationId, string errorMessage) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(errorMessage);
+        QueryException = new EventStoreGatewayException(
+            200,
+            "Query semantic failure",
+            detail: errorMessage,
+            correlationId: correlationId);
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the fake to throw a query gateway failure.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureQueryFailure(EventStoreGatewayException exception) {
+        ArgumentNullException.ThrowIfNull(exception);
+        QueryException = exception;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the fake to return a not-modified query result.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureQueryNotModified(string? eTag = null) {
+        QueryException = null;
+        QueryResult = new EventStoreQueryResult(null, null, IsNotModified: true, eTag);
+        return this;
+    }
+
     /// <inheritdoc />
     public Task<SubmitCommandResponse> SubmitCommandAsync(
         SubmitCommandRequest request,

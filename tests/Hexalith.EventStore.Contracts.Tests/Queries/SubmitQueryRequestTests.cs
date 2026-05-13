@@ -53,4 +53,33 @@ public class SubmitQueryRequestTests {
 
         request2.ShouldNotBe(request1);
     }
+
+    [Fact]
+    public void JsonRoundTrip_UsesCamelCaseGatewayContract_ForAllPublicFields() {
+        JsonSerializerOptions options = new(JsonSerializerDefaults.Web);
+        JsonElement payload = JsonSerializer.SerializeToElement(new { page = 1 }, options);
+        var request = new SubmitQueryRequest(
+            Tenant: "tenant-a",
+            Domain: "party",
+            AggregateId: "party-1",
+            QueryType: "GetParty",
+            ProjectionType: "party-summary",
+            Payload: payload,
+            EntityId: "party-entity-1",
+            ProjectionActorType: "PartyProjectionActor");
+
+        string json = JsonSerializer.Serialize(request, options);
+        SubmitQueryRequest? roundTripped = JsonSerializer.Deserialize<SubmitQueryRequest>(json, options);
+
+        json.ShouldContain("\"tenant\":\"tenant-a\"");
+        json.ShouldContain("\"aggregateId\":\"party-1\"");
+        json.ShouldContain("\"queryType\":\"GetParty\"");
+        json.ShouldContain("\"projectionType\":\"party-summary\"");
+        json.ShouldContain("\"entityId\":\"party-entity-1\"");
+        json.ShouldContain("\"projectionActorType\":\"PartyProjectionActor\"");
+        roundTripped.ShouldNotBeNull();
+        roundTripped.Payload.ShouldNotBeNull();
+        roundTripped.Payload.Value.GetProperty("page").GetInt32().ShouldBe(1);
+        roundTripped.ProjectionActorType.ShouldBe("PartyProjectionActor");
+    }
 }

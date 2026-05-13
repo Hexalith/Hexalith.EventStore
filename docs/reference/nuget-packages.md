@@ -10,11 +10,11 @@ Guide to the 6 published Hexalith.EventStore NuGet packages — their purposes, 
 
 | Package                       | Description                                                                     | Primary Use Case                                                              | When to Install                                                   |
 | ----------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Hexalith.EventStore.Contracts | Domain types: commands, events, results, identities                             | Define shared command/event contracts and aggregate identity primitives       | Always required — foundational types for any Hexalith integration |
-| Hexalith.EventStore.Client    | Client abstractions, domain processor contract, and DI registration             | Register and activate domain processors with fluent `AddEventStore` setup     | In your domain service project to register domain processors      |
+| Hexalith.EventStore.Contracts | Domain types plus public gateway wire DTOs and ProblemDetails extension names   | Define shared command/event contracts and build HTTP gateway request bodies   | Always required — foundational types for any Hexalith integration |
+| Hexalith.EventStore.Client    | Client abstractions, domain processor registration, and HTTP gateway client     | Register domain processors or call the public command/query HTTP gateway      | In domain services and downstream gateway caller projects         |
 | Hexalith.EventStore.Server    | Server-side domain processors, aggregate actors, DAPR state/pub-sub integration | Host command processing, state rehydration, persistence, and event publishing | In the hosting project that runs the event store server           |
 | Hexalith.EventStore.SignalR   | SignalR client helper for projection change notifications                       | React to read-model invalidation signals in web or desktop clients            | In UI or integration clients that need live projection refresh    |
-| Hexalith.EventStore.Testing   | In-memory fakes, builders, and test helpers for unit/integration testing        | Build deterministic tests for command/event flows without real infrastructure | In your test projects                                             |
+| Hexalith.EventStore.Testing   | In-memory fakes, gateway doubles, builders, and test helpers                    | Build deterministic tests for command/event and public gateway flows          | In your test projects                                             |
 | Hexalith.EventStore.Aspire    | .NET Aspire hosting extensions for DAPR topology orchestration                  | Compose the local distributed topology in an Aspire AppHost                   | In your AppHost project for local development orchestration       |
 
 ## Dependency Graph
@@ -32,6 +32,7 @@ graph TD
     Server --> Client
     Server --> Contracts
     SignalR --> Contracts
+    Testing --> Client
     Testing --> Contracts
     Testing --> Server
 ```
@@ -43,7 +44,7 @@ graph TD
 - **Client** depends on Contracts.
 - **Server** depends on both Client and Contracts.
 - **SignalR** depends on Contracts and adds a lightweight helper over `Microsoft.AspNetCore.SignalR.Client`.
-- **Testing** depends on both Contracts and Server (it provides fake implementations of server-side components for integration testing).
+- **Testing** depends on Client, Contracts, and Server (it provides gateway doubles plus fake implementations of server-side components for integration testing).
 - **Aspire** is fully independent — it has no dependency on any other Hexalith.EventStore package. It only depends on Aspire hosting libraries.
 
 </details>
@@ -74,11 +75,24 @@ $ dotnet add package Hexalith.EventStore.Contracts
 $ dotnet add package Hexalith.EventStore.Server
 ```
 
-### Testing your domain service
+### Calling the public HTTP gateway
 
-Install **Testing** (transitively pulls Contracts + Server).
+Install **Contracts** + **Client**.
 
-Testing provides in-memory implementations, fake state stores, and test builders so you can unit-test and integration-test your domain logic without running DAPR.
+Contracts gives you the gateway request and response DTOs for `POST /api/v1/commands` and `POST /api/v1/queries`. Client gives you `IEventStoreGatewayClient`, which handles HTTP posting, `If-None-Match`, `304 Not Modified`, ProblemDetails mapping, typed query payloads, and cancellation.
+
+```bash
+$ dotnet add package Hexalith.EventStore.Contracts
+$ dotnet add package Hexalith.EventStore.Client
+```
+
+Do not reference `Hexalith.EventStore` or `Hexalith.EventStore.Server` just to call the gateway. Those assemblies are runtime/internal boundaries for hosting EventStore. The command wrappers under `Hexalith.EventStore.Models` are compatibility-only delegates to the Contracts DTOs and are not the preferred downstream integration surface.
+
+### Testing your domain service or gateway caller
+
+Install **Testing** (transitively pulls Client, Contracts, and Server).
+
+Testing provides in-memory implementations, fake state stores, deterministic gateway doubles, and test builders so you can unit-test and integration-test your domain logic or gateway caller behavior without running DAPR, Aspire, or a live HTTP gateway.
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Testing
@@ -134,13 +148,15 @@ Install packages across your projects based on their role:
 
 ### Hexalith.EventStore.Contracts
 
-Pure domain types — `CommandEnvelope`, `EventEnvelope`, `DomainResult`, identity types. This package has no dependency on any other Hexalith.EventStore package and has a single external dependency for ULID generation.
+Pure domain types plus stable public gateway wire contracts. This package contains `CommandEnvelope`, `EventEnvelope`, `DomainResult`, identity types, command/query gateway DTOs, validation DTOs, and stable ProblemDetails extension-name constants. It has no dependency on any other Hexalith.EventStore package and has a single external dependency for ULID generation.
 
 **Key namespaces and types:**
 
-- `Hexalith.EventStore.Contracts.Commands` — `CommandEnvelope`, `CommandStatus`, `ArchivedCommand`
+- `Hexalith.EventStore.Contracts.Commands` — `SubmitCommandRequest`, `SubmitCommandResponse`, `CommandEnvelope`, `CommandStatus`, `ArchivedCommand`
 - `Hexalith.EventStore.Contracts.Events` — `EventEnvelope`, `EventMetadata`, `IEventPayload`, `IRejectionEvent`
 - `Hexalith.EventStore.Contracts.Identity` — `AggregateIdentity`, `IdentityParser`
+- `Hexalith.EventStore.Contracts.Problems` — `GatewayProblemDetailsExtensions`
+- `Hexalith.EventStore.Contracts.Queries` — `SubmitQueryRequest`, `SubmitQueryResponse`, query contract markers
 - `Hexalith.EventStore.Contracts.Results` — `DomainResult`, `DomainServiceWireResult`
 
 **External dependencies:**
@@ -155,15 +171,23 @@ $ dotnet add package Hexalith.EventStore.Contracts
 
 ### Hexalith.EventStore.Client
 
-DI registration, domain processor abstractions, and the fluent `AddEventStore` extension method with assembly scanning and cascading configuration.
+DI registration, domain processor abstractions, the fluent `AddEventStore` extension method, and the high-level public gateway HTTP client.
 
 **Key namespaces and types:**
 
 - `Hexalith.EventStore.Client.Registration` — `EventStoreServiceCollectionExtensions`, `EventStoreHostExtensions`
+- `Hexalith.EventStore.Client.Gateway` — `IEventStoreGatewayClient`, `EventStoreGatewayClient`, `EventStoreGatewayException`, `EventStoreQueryResult`
 - `Hexalith.EventStore.Client.Handlers` — `IDomainProcessor`, `DomainProcessorBase`
 - `Hexalith.EventStore.Client.Discovery` — `AssemblyScanner`, `DiscoveredDomain`
 - `Hexalith.EventStore.Client.Conventions` — `NamingConventionEngine`
 - `Hexalith.EventStore.Client.Configuration` — `EventStoreOptions`, `EventStoreDomainOptions`
+
+**Gateway behavior:**
+
+- `SubmitCommandAsync` posts Contracts `SubmitCommandRequest` to `/api/v1/commands` and returns typed `SubmitCommandResponse`.
+- `SubmitQueryAsync` posts Contracts `SubmitQueryRequest` to `/api/v1/queries`, sends `If-None-Match` when supplied, maps `304` to `IsNotModified`, and returns normalized unquoted ETag tokens.
+- A query response envelope with `success: false` is treated as semantic gateway failure and throws `EventStoreGatewayException`.
+- `EventStoreGatewayException` exposes `statusCode`, `title`, `type`, `detail`, `correlationId`, `tenantId`, `errors`, `reason`, `retryAfter`, and preserved ProblemDetails extensions.
 
 **External dependencies:**
 
@@ -226,13 +250,15 @@ $ dotnet add package Hexalith.EventStore.SignalR
 
 ### Hexalith.EventStore.Testing
 
-Test helpers, in-memory fakes, and builders for unit and integration testing. Depends on Server (not just Contracts) because it provides fake implementations of server-side components like state stores and test builders.
+Test helpers, in-memory fakes, deterministic gateway doubles, and builders for unit and integration testing. Depends on Server (not just Contracts) because it also provides fake implementations of server-side components like state stores and test builders. The public gateway fake APIs themselves reuse Contracts DTOs and Client result/exception types.
 
 **Key namespaces and types:**
 
-- `Hexalith.EventStore.Testing.Builders` — `CommandEnvelopeBuilder`, `EventEnvelopeBuilder`, `AggregateIdentityBuilder`
-- `Hexalith.EventStore.Testing.Fakes` — `InMemoryStateManager`, `FakeDomainServiceInvoker`, `FakeEventPublisher`
+- `Hexalith.EventStore.Testing.Builders` — `CommandEnvelopeBuilder`, `EventEnvelopeBuilder`, `AggregateIdentityBuilder`, `EventStoreGatewayExceptionBuilder`
+- `Hexalith.EventStore.Testing.Fakes` — `FakeEventStoreGatewayClient`, `InMemoryStateManager`, `FakeDomainServiceInvoker`, `FakeEventPublisher`
 - `Hexalith.EventStore.Testing.Assertions` — `DomainResultAssertions`, `EventEnvelopeAssertions`, `StorageKeyIsolationAssertions`
+
+`FakeEventStoreGatewayClient` records submitted command/query requests and supplied `If-None-Match` values. It can be configured for command accepted, command ProblemDetails failure, query success, query semantic failure, query ProblemDetails failure, not-modified, unavailable, stale/degraded, and deterministic cancellation paths.
 
 **External dependencies:**
 

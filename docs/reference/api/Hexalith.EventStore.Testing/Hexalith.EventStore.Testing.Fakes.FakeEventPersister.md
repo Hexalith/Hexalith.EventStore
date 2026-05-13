@@ -30,49 +30,6 @@ public System.Collections.Generic.IReadOnlyList<Hexalith.EventStore.Server.Event
 [System\.Collections\.Generic\.IReadOnlyList&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')[Hexalith\.EventStore\.Server\.Events\.EventEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.eventenvelope 'Hexalith\.EventStore\.Server\.Events\.EventEnvelope')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1 'System\.Collections\.Generic\.IReadOnlyList\`1')
 ### Methods
 
-<a name='Hexalith.EventStore.Testing.Fakes.FakeEventPersister.PersistEventsAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Hexalith.EventStore.Contracts.Commands.CommandEnvelope,Hexalith.EventStore.Contracts.Results.DomainResult,string)'></a>
-
-## FakeEventPersister\.PersistEventsAsync\(AggregateIdentity, CommandEnvelope, DomainResult, string\) Method
-
-Persists events from a domain result to the actor state store\.
-Assigns gapless sequence numbers and populates all 11 envelope metadata fields \(SEC\-1\)\.
-Does NOT call SaveStateAsync \-\- the caller commits atomically \(D1\)\.
-
-```csharp
-public System.Threading.Tasks.Task<Hexalith.EventStore.Server.Events.EventPersistResult> PersistEventsAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity identity, Hexalith.EventStore.Contracts.Commands.CommandEnvelope command, Hexalith.EventStore.Contracts.Results.DomainResult domainResult, string domainServiceVersion);
-```
-#### Parameters
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeEventPersister.PersistEventsAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Hexalith.EventStore.Contracts.Commands.CommandEnvelope,Hexalith.EventStore.Contracts.Results.DomainResult,string).identity'></a>
-
-`identity` [Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.identity.aggregateidentity 'Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity')
-
-The aggregate identity providing key derivation\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeEventPersister.PersistEventsAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Hexalith.EventStore.Contracts.Commands.CommandEnvelope,Hexalith.EventStore.Contracts.Results.DomainResult,string).command'></a>
-
-`command` [Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.commands.commandenvelope 'Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope')
-
-The original command envelope for metadata extraction\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeEventPersister.PersistEventsAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Hexalith.EventStore.Contracts.Commands.CommandEnvelope,Hexalith.EventStore.Contracts.Results.DomainResult,string).domainResult'></a>
-
-`domainResult` [Hexalith\.EventStore\.Contracts\.Results\.DomainResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.results.domainresult 'Hexalith\.EventStore\.Contracts\.Results\.DomainResult')
-
-The domain result containing event payloads\.
-
-<a name='Hexalith.EventStore.Testing.Fakes.FakeEventPersister.PersistEventsAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,Hexalith.EventStore.Contracts.Commands.CommandEnvelope,Hexalith.EventStore.Contracts.Results.DomainResult,string).domainServiceVersion'></a>
-
-`domainServiceVersion` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
-
-The version of the domain service that produced the events\.
-
-Implements [PersistEventsAsync\(AggregateIdentity, CommandEnvelope, DomainResult, string\)](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.ieventpersister.persisteventsasync#hexalith-eventstore-server-events-ieventpersister-persisteventsasync(hexalith-eventstore-contracts-identity-aggregateidentity-hexalith-eventstore-contracts-commands-commandenvelope-hexalith-eventstore-contracts-results-domainresult-system-string) 'Hexalith\.EventStore\.Server\.Events\.IEventPersister\.PersistEventsAsync\(Hexalith\.EventStore\.Contracts\.Identity\.AggregateIdentity,Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope,Hexalith\.EventStore\.Contracts\.Results\.DomainResult,System\.String\)')
-
-#### Returns
-[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[Hexalith\.EventStore\.Server\.Events\.EventPersistResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.events.eventpersistresult 'Hexalith\.EventStore\.Server\.Events\.EventPersistResult')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')  
-The persist result containing the new sequence number and persisted envelopes\.
-
 <a name='Hexalith.EventStore.Testing.Fakes.FakeEventPersister.SetupFailure(System.Exception)'></a>
 
 ## FakeEventPersister\.SetupFailure\(Exception\) Method

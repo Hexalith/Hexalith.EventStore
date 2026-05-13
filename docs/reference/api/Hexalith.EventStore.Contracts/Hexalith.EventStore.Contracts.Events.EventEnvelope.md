@@ -36,7 +36,7 @@ public EventEnvelope(Hexalith.EventStore.Contracts.Events.EventMetadata Metadata
 
 `Metadata` [EventMetadata](Hexalith.EventStore.Contracts.Events.EventMetadata.md 'Hexalith\.EventStore\.Contracts\.Events\.EventMetadata')
 
-The 11\-field event metadata\.
+The 15\-field event metadata \(FR11\)\.
 
 <a name='Hexalith.EventStore.Contracts.Events.EventEnvelope.EventEnvelope(Hexalith.EventStore.Contracts.Events.EventMetadata,byte[],System.Collections.Generic.IReadOnlyDictionary_string,string_).Payload'></a>
 
@@ -68,7 +68,7 @@ public System.Collections.Generic.IReadOnlyDictionary<string,string> Extensions 
 
 ## EventEnvelope\.Metadata Property
 
-Gets the 11\-field event metadata\.
+Gets the 15\-field event metadata \(FR11\)\.
 
 ```csharp
 public Hexalith.EventStore.Contracts.Events.EventMetadata Metadata { get; }

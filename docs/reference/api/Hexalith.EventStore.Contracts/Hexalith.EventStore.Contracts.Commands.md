@@ -7,8 +7,12 @@
 | :--- | :--- |
 | [ArchivedCommand](Hexalith.EventStore.Contracts.Commands.ArchivedCommand.md 'Hexalith\.EventStore\.Contracts\.Commands\.ArchivedCommand') | Record for storing original command data for replay\. |
 | [CommandEnvelope](Hexalith.EventStore.Contracts.Commands.CommandEnvelope.md 'Hexalith\.EventStore\.Contracts\.Commands\.CommandEnvelope') | Command payload envelope containing all command fields and a computed aggregate identity\. Validates required fields eagerly at construction time\. |
+| [CommandStatusExtensions](Hexalith.EventStore.Contracts.Commands.CommandStatusExtensions.md 'Hexalith\.EventStore\.Contracts\.Commands\.CommandStatusExtensions') | Extension methods for [CommandStatus](Hexalith.EventStore.Contracts.Commands.CommandStatus.md 'Hexalith\.EventStore\.Contracts\.Commands\.CommandStatus')\. |
 | [CommandStatusRecord](Hexalith.EventStore.Contracts.Commands.CommandStatusRecord.md 'Hexalith\.EventStore\.Contracts\.Commands\.CommandStatusRecord') | Records the status of a command with terminal\-state\-specific fields\. Non\-terminal states have null values for terminal\-specific fields\. |
+| [DomainServiceCurrentState](Hexalith.EventStore.Contracts.Commands.DomainServiceCurrentState.md 'Hexalith\.EventStore\.Contracts\.Commands\.DomainServiceCurrentState') | Snapshot\-aware aggregate state payload passed to domain services\. Carries an optional snapshot state plus the tail events needed to reach the current sequence\. |
 | [DomainServiceRequest](Hexalith.EventStore.Contracts.Commands.DomainServiceRequest.md 'Hexalith\.EventStore\.Contracts\.Commands\.DomainServiceRequest') | DTO payload sent to the domain service via DAPR service invocation\. Lives in Contracts so both the invoker \(Server\) and the domain service \(Client/Sample\) share the same wire format\. |
+| [SubmitCommandRequest](Hexalith.EventStore.Contracts.Commands.SubmitCommandRequest.md 'Hexalith\.EventStore\.Contracts\.Commands\.SubmitCommandRequest') | API\-facing request DTO for submitting commands through the EventStore gateway\. |
+| [SubmitCommandResponse](Hexalith.EventStore.Contracts.Commands.SubmitCommandResponse.md 'Hexalith\.EventStore\.Contracts\.Commands\.SubmitCommandResponse') | API\-facing response DTO returned when a command is accepted by the EventStore gateway\. |
 
 | Enums | |
 | :--- | :--- |

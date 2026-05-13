@@ -4,7 +4,7 @@
 
 ## EventMetadata Class
 
-Contains the 11 typed metadata fields for an event\. Enables structured access to metadata
+Contains the 15 typed metadata fields for an event \(FR11\)\. Enables structured access to metadata
 without touching the payload \(efficient for logging, indexing, routing\)\.
 
 ```csharp
@@ -16,79 +16,103 @@ Inheritance [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system
 Implements [System\.IEquatable&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.iequatable-1 'System\.IEquatable\`1')[EventMetadata](Hexalith.EventStore.Contracts.Events.EventMetadata.md 'Hexalith\.EventStore\.Contracts\.Events\.EventMetadata')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.iequatable-1 'System\.IEquatable\`1')
 ### Constructors
 
-<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,long,System.DateTimeOffset,string,string,string,string,string,string)'></a>
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string)'></a>
 
-## EventMetadata\(string, string, string, long, DateTimeOffset, string, string, string, string, string, string\) Constructor
+## EventMetadata\(string, string, string, string, string, long, long, DateTimeOffset, string, string, string, string, string, int, string\) Constructor
 
-Contains the 11 typed metadata fields for an event\. Enables structured access to metadata
+Contains the 15 typed metadata fields for an event \(FR11\)\. Enables structured access to metadata
 without touching the payload \(efficient for logging, indexing, routing\)\.
 
 ```csharp
-public EventMetadata(string AggregateId, string TenantId, string Domain, long SequenceNumber, System.DateTimeOffset Timestamp, string CorrelationId, string CausationId, string UserId, string DomainServiceVersion, string EventTypeName, string SerializationFormat);
+public EventMetadata(string MessageId, string AggregateId, string AggregateType, string TenantId, string Domain, long SequenceNumber, long GlobalPosition, System.DateTimeOffset Timestamp, string CorrelationId, string CausationId, string UserId, string DomainServiceVersion, string EventTypeName, int MetadataVersion, string SerializationFormat);
 ```
 #### Parameters
 
-<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,long,System.DateTimeOffset,string,string,string,string,string,string).AggregateId'></a>
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string).MessageId'></a>
+
+`MessageId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The unique event message identifier \(ULID\)\.
+
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string).AggregateId'></a>
 
 `AggregateId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
-The aggregate identifier\.
+The aggregate identifier \(ULID\)\.
 
-<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,long,System.DateTimeOffset,string,string,string,string,string,string).TenantId'></a>
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string).AggregateType'></a>
+
+`AggregateType` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+The aggregate type name \(e\.g\., "counter"\)\.
+
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string).TenantId'></a>
 
 `TenantId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
 The tenant identifier\.
 
-<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,long,System.DateTimeOffset,string,string,string,string,string,string).Domain'></a>
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string).Domain'></a>
 
 `Domain` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
-The domain name\.
+The domain name \(bounded context\)\.
 
-<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,long,System.DateTimeOffset,string,string,string,string,string,string).SequenceNumber'></a>
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string).SequenceNumber'></a>
 
 `SequenceNumber` [System\.Int64](https://learn.microsoft.com/en-us/dotnet/api/system.int64 'System\.Int64')
 
 The event sequence number \(starts at 1 per FR12\)\.
 
-<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,long,System.DateTimeOffset,string,string,string,string,string,string).Timestamp'></a>
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string).GlobalPosition'></a>
+
+`GlobalPosition` [System\.Int64](https://learn.microsoft.com/en-us/dotnet/api/system.int64 'System\.Int64')
+
+The cross\-aggregate monotonic position \(\>= 0\)\.
+
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string).Timestamp'></a>
 
 `Timestamp` [System\.DateTimeOffset](https://learn.microsoft.com/en-us/dotnet/api/system.datetimeoffset 'System\.DateTimeOffset')
 
 The event timestamp \(DateTimeOffset for timezone awareness\)\.
 
-<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,long,System.DateTimeOffset,string,string,string,string,string,string).CorrelationId'></a>
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string).CorrelationId'></a>
 
 `CorrelationId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
-The correlation identifier for request tracing\.
+The correlation identifier for request tracing \(ULID\)\.
 
-<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,long,System.DateTimeOffset,string,string,string,string,string,string).CausationId'></a>
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string).CausationId'></a>
 
 `CausationId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
-The causation identifier linking to the originating command\.
+The causation identifier linking to the originating command \(ULID\)\.
 
-<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,long,System.DateTimeOffset,string,string,string,string,string,string).UserId'></a>
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string).UserId'></a>
 
 `UserId` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
 The user who initiated the command\.
 
-<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,long,System.DateTimeOffset,string,string,string,string,string,string).DomainServiceVersion'></a>
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string).DomainServiceVersion'></a>
 
 `DomainServiceVersion` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
 The version of the domain service that produced this event\.
 
-<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,long,System.DateTimeOffset,string,string,string,string,string,string).EventTypeName'></a>
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string).EventTypeName'></a>
 
 `EventTypeName` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
 The fully qualified event type name\.
 
-<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,long,System.DateTimeOffset,string,string,string,string,string,string).SerializationFormat'></a>
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string).MetadataVersion'></a>
+
+`MetadataVersion` [System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')
+
+The metadata envelope schema version \(\>= 1 per FR65\)\.
+
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.EventMetadata(string,string,string,string,string,long,long,System.DateTimeOffset,string,string,string,string,string,int,string).SerializationFormat'></a>
 
 `SerializationFormat` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
@@ -99,10 +123,23 @@ The payload serialization format \(e\.g\., "json"\)\.
 
 ## EventMetadata\.AggregateId Property
 
-The aggregate identifier\.
+The aggregate identifier \(ULID\)\.
 
 ```csharp
 public string AggregateId { get; init; }
+```
+
+#### Property Value
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.AggregateType'></a>
+
+## EventMetadata\.AggregateType Property
+
+Gets the aggregate type name \(non\-empty\)\.
+
+```csharp
+public string AggregateType { get; }
 ```
 
 #### Property Value
@@ -112,7 +149,7 @@ public string AggregateId { get; init; }
 
 ## EventMetadata\.CausationId Property
 
-The causation identifier linking to the originating command\.
+The causation identifier linking to the originating command \(ULID\)\.
 
 ```csharp
 public string CausationId { get; init; }
@@ -125,7 +162,7 @@ public string CausationId { get; init; }
 
 ## EventMetadata\.CorrelationId Property
 
-The correlation identifier for request tracing\.
+The correlation identifier for request tracing \(ULID\)\.
 
 ```csharp
 public string CorrelationId { get; init; }
@@ -138,7 +175,7 @@ public string CorrelationId { get; init; }
 
 ## EventMetadata\.Domain Property
 
-The domain name\.
+The domain name \(bounded context\)\.
 
 ```csharp
 public string Domain { get; init; }
@@ -172,6 +209,45 @@ public string EventTypeName { get; init; }
 
 #### Property Value
 [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.GlobalPosition'></a>
+
+## EventMetadata\.GlobalPosition Property
+
+Gets the cross\-aggregate monotonic position \(must be \>= 0\)\.
+
+```csharp
+public long GlobalPosition { get; }
+```
+
+#### Property Value
+[System\.Int64](https://learn.microsoft.com/en-us/dotnet/api/system.int64 'System\.Int64')
+
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.MessageId'></a>
+
+## EventMetadata\.MessageId Property
+
+Gets the unique event message identifier \(ULID, non\-empty\)\.
+
+```csharp
+public string MessageId { get; }
+```
+
+#### Property Value
+[System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+<a name='Hexalith.EventStore.Contracts.Events.EventMetadata.MetadataVersion'></a>
+
+## EventMetadata\.MetadataVersion Property
+
+Gets the metadata envelope schema version \(must be \>= 1 per FR65\)\.
+
+```csharp
+public int MetadataVersion { get; }
+```
+
+#### Property Value
+[System\.Int32](https://learn.microsoft.com/en-us/dotnet/api/system.int32 'System\.Int32')
 
 <a name='Hexalith.EventStore.Contracts.Events.EventMetadata.SequenceNumber'></a>
 
