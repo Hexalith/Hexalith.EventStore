@@ -169,3 +169,4 @@
 2026-05-13T07:41:02+02:00	party-mode-review	22-4-query-behavior-policy-and-error-taxonomy	ok	party-mode review applied query policy taxonomy hardening
 2026-05-13T08:04:55+02:00	create-story	22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints	ok	created ready-for-dev story for stream replay/read APIs and projection rebuild checkpoints
 2026-05-13T09:06:14+02:00	party-mode-review	22-5-event-publishing-guarantees-and-backend-deployment-matrix	ok	party-mode review applied publishing guarantee matrix hardening
+2026-05-13T10:07:35+02:00	party-mode-review	22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints	ok	party-mode review applied stream replay and rebuild checkpoint hardening

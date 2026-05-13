@@ -23,6 +23,17 @@ so that Parties projections can rebuild from EventStore streams safely.
 - Replay APIs must not expose raw state-store keys, protected payload material, connection strings, DAPR addresses, or untrusted user display names in logs, ProblemDetails, docs examples, or tests.
 - Story 22.7a-22.7d own payload/snapshot protection and unreadable protected data policy. This story may define replay metadata and safe failure placeholders, but protection policy changes must be deferred unless required to keep replay safe.
 
+## Public API and Lifecycle Guardrails
+
+- Public stream read/replay APIs and DTOs are downstream-facing. They belong in `Hexalith.EventStore.Contracts`, `Hexalith.EventStore.Client`, and `Hexalith.EventStore.Testing`; runtime adapters may wrap `IAggregateActor`, `EventStreamReader`, and `ProjectionCheckpointTracker` behind that public boundary.
+- Admin stream debugging routes, admin projection controls, DAPR actor IDs, and state-store keys are not the downstream replay contract. Operator rebuild lifecycle APIs may adapt existing admin services, but public docs and examples must use Contracts/Client APIs only.
+- Candidate public contract names are `StreamReadRequest`, `StreamReplayRequest`, `StreamReplayPage`, `ReplayContinuationToken`, `ProjectionRebuildOperation`, and `ProjectionRebuildCheckpoint`. Final names may differ, but ST0 must record the chosen equivalents before production code edits.
+- Continuation tokens must be opaque, tenant-bound, scope-bound, tamper-safe or fail-closed, non-key-bearing, and safe to log only as redacted identifiers. They must not expose DAPR actor IDs, state-store keys, raw JSON state, sequence payload offsets, protected metadata, or user-controlled display values.
+- Tenant/domain/aggregate authorization and replay scope validation must complete before continuation-token decoding can resolve actor identity, checkpoint identity, or actor state access. Tests must prove denied or cross-tenant requests do not call `IAggregateActor.GetEventsAsync`, projection services, checkpoint stores, or DAPR state APIs.
+- Checkpoint ownership is scoped by tenant, domain, projection name, optional aggregate scope, and rebuild operation ID. Checkpoint writes must use optimistic concurrency or equivalent ETag/compare-and-set semantics, never blind last-write-wins.
+- Checkpoint advancement is monotonic: duplicate page application is idempotent, stale or out-of-order advancement cannot lower progress, and retry after checkpoint-store failure must not falsely report rebuild success.
+- Operator rebuild lifecycle states are bounded to `not-started`, `running`, `pausing`, `paused`, `resuming`, `canceling`, `canceled`, `retrying`, `succeeded`, and `failed`, or a documented equivalent set. Legal transitions, idempotent retry behavior, terminal states, and safe failure reason exposure must be recorded before review.
+
 ## Current Implementation Intelligence
 
 - `IAggregateActor.GetEventsAsync(long fromSequence)` already returns persisted server `EventEnvelope[]` ordered after the exclusive lower bound and throws on missing or corrupt event state.
@@ -47,30 +58,35 @@ so that Parties projections can rebuild from EventStore streams safely.
    - Then `Hexalith.EventStore.Contracts` exposes stable request/response DTOs for stream reads and replay pages with tenant, domain, optional aggregate, sequence range, checkpoint, continuation token, page size, and metadata fields.
    - And `Hexalith.EventStore.Client` exposes typed stream read/replay methods that map HTTP success, continuation, cancellation, and ProblemDetails failures.
    - And `Hexalith.EventStore.Testing` exposes deterministic fakes/builders for success, empty stream, continuation, invalid range, unauthorized tenant, missing stream, checkpoint conflict, paused rebuild, cancelled rebuild, and unavailable EventStore paths.
+   - And ST0 records the selected DTO/client method names and route shapes, including any intentionally deferred naming or version-prefix decision.
 
 2. **Stream reads are tenant/domain/aggregate isolated before state access.**
    - Given a caller requests stream events
    - When tenant, domain, aggregate, sequence range, checkpoint, or continuation token input is malformed, unauthorized, stale, or cross-tenant
    - Then EventStore rejects with stable ProblemDetails before reading actor state.
    - And every actor proxy or state access path is derived from a validated `AggregateIdentity`, never from raw state-store keys or caller-supplied actor IDs.
+   - And invalid, unauthorized, cross-tenant, or forbidden-scope requests are proven not to decode continuation tokens into actor identities, create actor proxies, access checkpoints, or call `IAggregateActor.GetEventsAsync`.
 
 3. **Read paging and continuation semantics are explicit.**
    - Given a stream contains more events than one response can safely return
    - When the caller reads by sequence range or checkpoint
    - Then EventStore returns a deterministic page ordered by sequence number, a bounded `nextContinuationToken` when more data exists, and metadata for `fromSequence`, `toSequence`, `lastSequenceReturned`, `latestSequence`, `eventCount`, and truncation status.
    - And continuation tokens are opaque, tenant/domain scoped, tamper-resistant or validated fail-closed, and never reveal state-store key material.
+   - And invalid, tampered, expired, stale, wrong-tenant, wrong-domain, wrong-aggregate, and changed-query-shape continuation tokens map to stable ProblemDetails reason codes.
 
 4. **Projection rebuild checkpoint advancement is monotonic and idempotent.**
    - Given a projection rebuild advances after applying a page
    - When the same page is retried, applied out of order, paused, resumed, cancelled, or races with another worker
    - Then checkpoint state never regresses, duplicate delivery is safe, and conflicts return stable reason codes instead of corrupting progress.
    - And checkpoint records include tenant, domain, projection name or aggregate scope, last applied sequence, status, updated timestamp, optional operation ID, and sanitized failure reason.
+   - And stale checkpoint writes, concurrent rebuild workers, duplicate page retries, pause/resume/cancel races, and checkpoint-store unavailability are covered by focused tests.
 
 5. **Operator rebuild lifecycle is observable and controllable.**
    - Given an operator starts a projection rebuild
    - When it progresses, pauses, resumes, cancels, retries, completes, or fails
    - Then admin APIs, CLI/MCP service layers, and docs expose consistent status, progress, and failure reason behavior.
    - And pause/resume/cancel transitions are idempotent, safe under retries, and do not require domain services to read EventStore state-store internals.
+   - And the story must not claim a full production rebuild control plane unless the public/operator lifecycle states, transition rules, and evidence are implemented or explicitly deferred.
 
 6. **Domain-service rebuild documentation uses only public APIs.**
    - Given a domain service rebuilds projections
@@ -82,11 +98,13 @@ so that Parties projections can rebuild from EventStore streams safely.
    - Given stream read or rebuild fails
    - When the cause is malformed range, invalid continuation token, tenant/RBAC denial, missing stream, missing event, corrupt event, unknown event type, protected payload unreadable, checkpoint conflict, checkpoint store unavailable, domain projection failure, timeout, pause, cancel, or service unavailable
    - Then API, client, docs, logs, and tests use stable ProblemDetails type URIs/reason codes without payload disclosure.
+   - And the taxonomy includes unauthorized tenant, forbidden replay scope, invalid range, invalid continuation, expired continuation, missing stream, missing event, corrupt event, protected payload unavailable, checkpoint conflict, stale checkpoint, rebuild operation not found, rebuild canceled, retryable transient failure, and service unavailable.
 
 8. **Replay and rebuild proof is covered by focused tests and docs.**
    - Unit tests pin DTO serialization, client mapping, continuation validation, ProblemDetails mapping, checkpoint monotonicity, and operator lifecycle transitions.
    - Server/controller tests prove state access is blocked on invalid or unauthorized input before actor calls.
    - Integration or documented manual proof covers paged stream reads and rebuild progress through the Aspire/DAPR topology.
+   - Test evidence names the Contracts, Client, Testing, and Server/controller/checkpoint scenarios that prove auth-before-state, no-leak behavior, continuation handling, checkpoint races, operator lifecycle, and client/fake parity.
    - Dev Agent Record, File List, Verification Status, and Change Log are updated before moving the story to review.
 
 ## Tasks / Subtasks
@@ -96,9 +114,12 @@ so that Parties projections can rebuild from EventStore streams safely.
     - [ ] Inventory `IAggregateActor.GetEventsAsync`, `AggregateActor.GetEventsAsync`, `ReadEventsRangeAsync`, `EventStreamReader`, `ProjectionUpdateOrchestrator`, `ProjectionCheckpointTracker`, `ProjectionPollerService`, `AdminStreamQueryController`, `DaprStreamQueryService`, `AdminProjectionsController`, and `DaprProjectionCommandService`.
     - [ ] Inventory public package surfaces: `Hexalith.EventStore.Contracts.Replay`, command/query DTOs, `IEventStoreGatewayClient`, `EventStoreGatewayClient`, and Testing fakes/builders.
     - [ ] Record a decision table for public stream API shape, admin/debug endpoint boundaries, checkpoint key ownership, continuation token format, operator status model, and failure reason codes.
+    - [ ] Record selected names or equivalents for `StreamReadRequest`, `StreamReplayRequest`, `StreamReplayPage`, `ReplayContinuationToken`, `ProjectionRebuildOperation`, and `ProjectionRebuildCheckpoint`.
+    - [ ] Record which exact route(s) are public downstream replay routes versus operator/admin rebuild routes, and which existing admin/debug endpoints remain out of the downstream contract.
 
 - [ ] **ST1 - Add public stream read/replay DTOs and client methods.** (AC: 1, 3, 6, 7)
     - [ ] Add Contracts DTOs for stream page requests/responses, event page items, checkpoint/progress metadata, and stable reason-code constants.
+    - [ ] Define continuation tokens as opaque, tenant-bound, scope-bound, tamper-safe or fail-closed, non-key-bearing values; document unsupported or deferred token-expiry behavior explicitly.
     - [ ] Keep existing aggregate reconstruction DTOs intact; do not rename or repurpose `AggregateReconstructionRequest`, `AggregateReconstructionResult`, or `ReplayEventEnvelope` unless compatibility is explicitly handled.
     - [ ] Add `IEventStoreGatewayClient` and `EventStoreGatewayClient` methods for stream reads/replay pages using the same JSON options, ProblemDetails mapping, typed cancellation, and strong validation style as command/query methods.
     - [ ] Add Testing builders/fakes so downstream modules can test continuation, empty pages, authorization failures, and checkpoint conflicts without a live EventStore.
@@ -107,6 +128,7 @@ so that Parties projections can rebuild from EventStore streams safely.
     - [ ] Add public non-admin route(s) for stream reads; keep admin stream debugging routes under `api/v1/admin/streams`.
     - [ ] Validate tenant/domain/aggregate/range/page-size/continuation inputs before creating actor proxies.
     - [ ] Enforce gateway-owned tenant/RBAC checks consistent with Story 22.3 before state access.
+    - [ ] Prove denied, cross-tenant, invalid-continuation, invalid-range, and forbidden-scope requests do not call actor proxies, projection services, checkpoint stores, or direct DAPR state APIs.
     - [ ] Use `AggregateIdentity` and `IAggregateActor.GetEventsAsync` for aggregate-specific reads; do not use direct `DaprClient.GetStateAsync` against actor event keys.
     - [ ] Return deterministic sequence ordering, bounded pages, continuation metadata, and safe empty-stream behavior.
     - [ ] Map missing/corrupt events and unavailable actors to stable ProblemDetails without leaking payload bytes or state keys.
@@ -116,18 +138,21 @@ so that Parties projections can rebuild from EventStore streams safely.
     - [ ] Store checkpoint records under a validated tenant/domain/projection scope with operation ID, status, last applied sequence, updated timestamp, and sanitized failure reason.
     - [ ] Use ETag-based optimistic concurrency for checkpoint writes; never perform blind last-write-wins updates for checkpoint advancement.
     - [ ] Ensure duplicate or stale checkpoint advancement is idempotent and cannot lower progress.
+    - [ ] Add race tests for duplicate progress, out-of-order checkpoint writes, stale ETags, concurrent workers, pause/resume/cancel interaction, retry after failure, and checkpoint-store unavailable behavior.
     - [ ] Add reason codes for checkpoint conflict, checkpoint drift, checkpoint unavailable, paused, cancelled, domain failure, and corrupt stream.
 
 - [ ] **ST4 - Wire operator rebuild lifecycle APIs.** (AC: 5, 7)
     - [ ] Make EventStore-side endpoints behind admin projection pause/resume/reset/replay return meaningful `AdminOperationResult` values and stable HTTP semantics.
     - [ ] Ensure `DaprProjectionCommandService` forwards JWT context and maps failures without hiding operator-relevant reason codes.
     - [ ] Define status responses for queued/running/paused/cancelled/completed/failed rebuild operations.
+    - [ ] Record legal lifecycle transitions and idempotent behavior for start, progress, pause, resume, cancel, retry, success, failure, and repeated terminal-state calls.
     - [ ] Keep normal projection polling and operator-triggered rebuild from racing silently; document and test the conflict behavior.
 
 - [ ] **ST5 - Document downstream rebuild usage.** (AC: 6, 8)
     - [ ] Add or update `docs/reference/stream-replay-api.md` with route shapes, DTO fields, continuation behavior, checkpoint semantics, examples, and ProblemDetails reason codes.
     - [ ] Update projection/domain-service guidance to show rebuilds using EventStore public client APIs rather than DAPR state-store reads.
     - [ ] Update configuration/admin docs for rebuild lifecycle commands, progress inspection, pause/resume/cancel, and failure recovery.
+    - [ ] Add explicit "do not use" guidance for Server/admin/debug types, DAPR actor IDs, DAPR state keys, raw checkpoint keys, and protected payload material in downstream projection rebuilds.
     - [ ] Cross-link docs from package ownership guidance created by Story 22.1 and publishing guarantees from Story 22.5.
 
 - [ ] **ST6 - Add focused test coverage.** (AC: 1, 2, 3, 4, 5, 7, 8)
@@ -136,6 +161,8 @@ so that Parties projections can rebuild from EventStore streams safely.
     - [ ] Add Testing tests for new fake/builder behavior.
     - [ ] Add Server controller/service tests proving invalid requests never call `IAggregateActor.GetEventsAsync`.
     - [ ] Add checkpoint service tests for monotonic advancement, retry idempotency, stale write conflict, pause/resume/cancel, and store-unavailable behavior.
+    - [ ] Add no-leak tests for DTO serialization, ProblemDetails, logs/activity tags, continuation tokens, docs examples, and test artifacts so state-store keys, actor IDs, payload bytes, protected data, DAPR addresses, tokens, stack traces, and user-controlled display names are absent.
+    - [ ] Add client/fake parity tests for success page, empty page, continuation, malformed continuation, expired/stale continuation, invalid range, unauthorized tenant, forbidden scope, missing stream, checkpoint conflict, canceled rebuild, paused rebuild, and transient unavailable paths.
     - [ ] Add integration/manual proof for paged replay and rebuild progress only when Docker and Aspire/DAPR resources are running.
 
 - [ ] **ST7 - Validate and record evidence.** (AC: 8)
@@ -145,7 +172,18 @@ so that Parties projections can rebuild from EventStore streams safely.
     - [ ] Run focused Server tests with filters around stream/replay/projection/checkpoint behavior; avoid broad Server.Tests first because this repo has known CA2007 warning-as-error risk.
     - [ ] Run integration tests only with Docker and a running Aspire/DAPR environment.
     - [ ] Run generated API docs and markdown validation if public XML docs or reference docs change.
+    - [ ] Record exact test names proving auth-before-state, continuation token safety, checkpoint monotonicity/concurrency, operator lifecycle transitions, no-leak assertions, and Contracts/Client/Testing parity.
     - [ ] Update Dev Agent Record, File List, Verification Status, and Change Log.
+
+## Test Evidence Required
+
+- Contracts: DTO serialization, omitted/default values, reason-code constants, continuation metadata shape, checkpoint/progress metadata shape, and wire compatibility for existing replay DTOs.
+- Client: stream read success, empty page, continuation page, cancellation, invalid continuation ProblemDetails, invalid range ProblemDetails, missing stream, unauthorized/forbidden, unavailable, and typed exception/result mapping.
+- Testing: fakes/builders for the same adopter-visible scenarios as Client, including request capture and deterministic checkpoint/rebuild lifecycle states.
+- Server/controller: authorization and scope validation before actor/checkpoint/projection access, invalid continuation/range handling, bounded page ordering, continuation generation, missing/corrupt event mapping, and safe ProblemDetails.
+- Checkpoint/rebuild: ETag or equivalent optimistic concurrency, monotonic advancement, stale write rejection, duplicate retry idempotency, pause/resume/cancel idempotency, concurrent worker conflict, terminal-state behavior, and checkpoint-store unavailable handling.
+- No-leak: DTOs, ProblemDetails, logs/activity tags, continuation tokens, docs examples, and test artifacts must not expose DAPR actor IDs, state-store keys, raw payload bytes, protected data, connection strings, DAPR addresses, stack traces, tokens, or user-controlled display names.
+- Integration/manual proof: use Docker/Aspire/DAPR only when available; record exact prerequisites and commands. Do not use broad `Hexalith.EventStore.Server.Tests` as the first proof because the repo has a known unrelated CA2007 warning-as-error risk.
 
 ## Developer Notes
 
@@ -166,12 +204,14 @@ Implementation traps to avoid:
 - Do not expose admin stream debugging endpoints as the public downstream replay API.
 - Do not derive actor IDs from unvalidated caller strings or continuation tokens.
 - Do not read aggregate event state before tenant/domain/aggregate authorization succeeds.
-- Do not let continuation tokens expose state keys, actor IDs, raw JSON state, or untrusted user data.
+- Do not decode a continuation token into actor/checkpoint access before tenant, domain, aggregate, and replay scope are authorized.
+- Do not let continuation tokens expose state keys, actor IDs, raw JSON state, payload offsets, protected metadata, or untrusted user data.
 - Do not claim exactly-once projection rebuild. Duplicate pages and retries are normal; checkpoint advancement must be idempotent.
 - Do not update checkpoint progress without ETag/optimistic concurrency semantics.
 - Do not let checkpoint save failure falsely report rebuild success.
 - Do not conflate command replay (`ReplayController`) with event stream replay/projection rebuild.
 - Do not broaden payload-protection behavior in this story; defer Story 22.7 policy decisions.
+- Do not turn operator rebuild lifecycle into a hidden or partial control plane. Either implement and test the public/operator state transitions, or label the gap as deferred with safe current behavior.
 - Do not run solution-level tests first. Use focused Contracts, Client, Testing, and Server slices.
 
 Current file intelligence:
@@ -295,7 +335,7 @@ GPT-5 Codex
 
 - Story created and marked ready-for-dev by the BMAD pre-dev hardening automation.
 - Story creation did not modify product code, tests, DAPR/Aspire configuration, generated API docs, or submodules.
-- Party-mode review has NOT yet been run for this story.
+- Party-mode review completed on 2026-05-13 and applied story hardening for public API/admin boundaries, continuation-token invariants, checkpoint ownership/concurrency, operator lifecycle states, safe failure taxonomy, and explicit test evidence.
 - Advanced elicitation has NOT yet been run for this story.
 
 ### File List
@@ -312,11 +352,39 @@ GPT-5 Codex
 - YAML validation passed for `_bmad-output/implementation-artifacts/sprint-status.yaml`.
 - `git diff --check` passed for the story artifact, sprint status, and run log with line-ending conversion warnings only.
 - `npx markdownlint-cli2 _bmad-output/implementation-artifacts/22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints.md` passed with 0 errors.
-- Party-mode review has NOT yet been run for this story.
+- Party-mode review completed on 2026-05-13 and is recorded below.
+- Party-mode findings were applied only as story-text clarifications; product code, tests, DAPR/Aspire configuration, generated API docs, submodules, and sprint status were not changed.
 - Advanced elicitation has NOT yet been run for this story.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-13 | 0.2 | Applied party-mode review hardening for replay API boundaries, continuation tokens, checkpoint concurrency, operator lifecycle, failure taxonomy, and test evidence. | Codex automation |
 | 2026-05-13 | 0.1 | Created ready-for-dev story for stream replay/read APIs and projection rebuild checkpoints. | Codex automation |
+
+## Party-Mode Review
+
+- Date/time: 2026-05-13T10:07:35+02:00
+- Selected story key: `22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints`
+- Command/skill invocation used:
+  `/bmad-party-mode 22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints; review;`
+- Participating BMAD agents: John (Product Manager), Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor)
+- Findings summary:
+    - All reviewers recommended `needs-story-update` before development because the story implied too much public replay, operator lifecycle, continuation-token, and checkpoint behavior without enough pre-dev contract detail.
+    - Product review emphasized public API non-goals, replay ordering/page-size/continuation guarantees, observable operator states, tenant isolation before state access, and evidence using only Contracts/Client/Testing APIs.
+    - Architecture review emphasized opaque tenant/scope-bound continuation tokens, checkpoint ownership and optimistic concurrency, public stream APIs versus operator/admin rebuild APIs, and stable failure categories.
+    - Engineering review emphasized code ownership around Contracts, Client, Testing, adapters over `IAggregateActor`, `EventStreamReader`, and `ProjectionCheckpointTracker`, plus no Server/admin/state-store shortcuts.
+    - Test architecture review emphasized named tests for auth-before-state, invalid continuation/range, no-leak behavior, checkpoint races, lifecycle idempotency, and client/fake parity.
+- Changes applied:
+    - Added `Public API and Lifecycle Guardrails` covering package ownership, public versus admin boundaries, candidate DTO names, continuation-token invariants, auth-before-state sequencing, checkpoint scope/concurrency, monotonic advancement, and operator lifecycle states.
+    - Tightened AC1-AC5, AC7, and AC8 with selected route/DTO decisions, no state access before authorization, continuation failure categories, checkpoint race coverage, lifecycle scope honesty, and explicit evidence expectations.
+    - Expanded ST0-ST7 with route/boundary decisions, continuation token rules, no-state-access proof, checkpoint race tests, lifecycle transition recording, docs "do not use" guidance, no-leak tests, client/fake parity tests, and exact evidence recording.
+    - Added `Test Evidence Required` to map Contracts, Client, Testing, Server/controller, checkpoint/rebuild, no-leak, and integration/manual proof obligations.
+    - Updated Developer Notes and implementation traps to forbid continuation-driven actor/checkpoint access before authorization and to require explicit operator lifecycle implementation or deferred safe behavior.
+- Findings deferred:
+    - Payload/snapshot protection and unreadable protected data policy remain deferred to Stories 22.7a through 22.7d.
+    - Exact route names, version prefix, and final DTO names remain implementation decisions to record during ST0 before production code edits.
+    - Exact continuation-token protection implementation remains implementation-owned, provided the public contract is opaque, tenant/scope-bound, tamper-safe or fail-closed, and non-key-bearing.
+    - Operator UI/dashboard shape, projection-specific rebuild algorithms, performance tuning, and storage layout remain deferred unless needed to satisfy the public/operator lifecycle contract.
+- Final recommendation: ready-for-dev after applied story updates.
