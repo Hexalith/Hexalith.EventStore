@@ -171,3 +171,4 @@
 2026-05-13T09:06:14+02:00	party-mode-review	22-5-event-publishing-guarantees-and-backend-deployment-matrix	ok	party-mode review applied publishing guarantee matrix hardening
 2026-05-13T10:07:35+02:00	party-mode-review	22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints	ok	party-mode review applied stream replay and rebuild checkpoint hardening
 2026-05-13T11:06:40+02:00	advanced-elicitation	22-2-projection-adapter-contract-and-generic-query-actor-model	ok	advanced elicitation applied projection adapter contract hardening
+2026-05-13T12:03:15+02:00	advanced-elicitation	22-3-gateway-owned-tenant-and-rbac-enforcement	ok	advanced elicitation applied gateway tenant rbac hardening

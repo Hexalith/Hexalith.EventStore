@@ -20,6 +20,9 @@ so that Parties request paths do not perform EventStore gateway tenant authoriza
 - Authorization is fail-closed. Missing, stale, unavailable, ambiguous, disabled, suspended, not-found, non-member, insufficient-role, and insufficient-permission states must block invocation.
 - EventStore must prefer Hexalith.Tenants public client/query contracts when they are available for the required validation operation. A documented DAPR actor adapter is allowed only when a suitable public Tenants client/query contract is unavailable, and it must still live behind the EventStore validator interfaces.
 - Claims-based validators may remain only as explicitly configured local/dev/test fallback. In Tenants-backed runtime mode, stale, unavailable, ambiguous, malformed, or failed Tenants validation must fail closed and must not fall back to claims.
+- The authorization context is immutable once resolved for a request: tenant ID, authenticated subject, message category, message type, aggregate ID, projection/query identity, correlation ID, and cancellation token must flow unchanged from gateway validation through downstream invocation.
+- Tenant mismatch states, including missing tenant, conflicting tenant sources, route/body/header/client DTO disagreement, or aggregate/projection tenant disagreement, must be blocked before validator adapter calls when the mismatch is locally detectable and must never be normalized into an allowed request.
+- Authorization must run before cache, ETag, not-modified, projection-state, aggregate-state, replay, or adapter lookup paths that could disclose tenant existence, resource existence, stream metadata, or projection freshness.
 - 401/403 ProblemDetails type URIs, reason-code extension names, and client/fake behavior are public gateway contract surface. Treat changes as SemVer-relevant.
 - Story 22.3 may add or harden public tenant/RBAC fake paths in `Hexalith.EventStore.Testing`, but must not reopen Story 22.1's broader gateway fake/builders unless needed for auth coverage.
 - Story 22.3 owns only authn/authz tenant/RBAC outcomes on command, query, and validation paths. Non-auth query validation, missing projections, malformed filters, projection consistency, and business/query taxonomy remain Story 22.4 scope.
@@ -56,12 +59,15 @@ so that Parties request paths do not perform EventStore gateway tenant authoriza
    - Given tenant data is missing, stale, unavailable, ambiguous, not found, disabled, suspended, or the user is not a member
    - When EventStore evaluates a command or query request
    - Then it blocks the request before `SubmitCommandHandler`, `CommandRouter`, `SubmitQueryHandler`, `QueryRouter`, DAPR domain invocation, or projection actor invocation.
+   - And it blocks before aggregate actor state access, projection adapter resolution, ETag comparison, cache lookup, replay/read model lookup, or any resource-existence side channel.
+   - And locally detectable tenant-source conflicts return a stable tenant mismatch/missing reason without invoking Tenants, domain services, or projection adapters.
    - And tests prove the downstream domain service/projection adapter is not called for each blocked category.
 
 3. **Role and permission failures fail closed before invocation.**
    - Given the authenticated user lacks the required tenant role, domain access, message-category permission, or specific command/query permission
    - When EventStore evaluates a command or query request
    - Then it returns a stable authorization failure and never invokes downstream processing.
+   - And unknown roles, unknown permissions, malformed permission values, missing `sub`, or ambiguous role hierarchy data default to deny or unavailable according to the decision table.
    - And command and query paths are both covered, including `command` vs `query` message-category behavior.
 
 4. **ProblemDetails and reason codes are stable.**
@@ -72,12 +78,14 @@ so that Parties request paths do not perform EventStore gateway tenant authoriza
    - And unavailable validator infrastructure maps to a fail-closed 503 or explicitly approved 403/503 policy, with stable reason code and `Retry-After` behavior documented.
    - And responses do not leak actor type names, DAPR details, state-store keys, tenant membership lists, tokens, payload data, or protected data.
    - And docs list the ProblemDetails type URI strings, the `reasonCode` extension key, canonical reason-code values, retryability, caller-action category, and whether each public field is safe for end-user display.
+   - And logs/telemetry may record stable reason codes and correlation metadata but must not log user display names, membership lists, payloads, tokens, protected data, or raw Tenants internals.
 
 5. **Preflight validation and client/testing contracts align.**
    - Given downstream services call command/query validation endpoints or use gateway fakes
    - When tenant/RBAC denial is simulated
    - Then validation responses, client exceptions/results, and testing fakes expose deterministic reason codes without requiring downstream code to parse free-text details.
    - And preflight validation endpoints continue returning `200 OK` with `isAuthorized=false` and a stable reason code for authorization denials; any deviation requires updated API docs and client tests in this story.
+   - And fake/client defaults must not accidentally allow a request when tenant, subject, role, permission, or denial reason configuration is omitted.
    - And runtime command/query endpoints still return RFC 7807 401/403 or the documented authorization-service-unavailable response.
    - And Story 22.1 public package ownership remains intact: DTOs in Contracts, HTTP convenience behavior in Client, deterministic fakes/builders in Testing.
 
@@ -88,6 +96,7 @@ so that Parties request paths do not perform EventStore gateway tenant authoriza
    - And tests cover active, disabled/suspended-equivalent, missing/not-found, non-member, insufficient role, insufficient permission, stale/unavailable, and ambiguous responses.
    - And no implementation reads Hexalith.Tenants state-store keys, projection actor state, or internal server aggregates directly from EventStore.
    - And public reason codes and client exception/result types stay in stable public Contracts/Client surfaces, Tenants runtime integration stays in server/infrastructure wiring, and Testing fakes do not depend on Tenants runtime packages.
+   - And any caching, snapshot, or projection freshness used by the Tenants-backed adapter has explicit staleness semantics, tenant scoping, cancellation/timeout behavior, and fail-closed mapping.
 
 7. **Regression and evidence are recorded before review.**
    - EventStore Server authorization/controller/error-handling focused tests pass.
@@ -108,16 +117,19 @@ so that Parties request paths do not perform EventStore gateway tenant authoriza
   - [ ] Record a validator contract decision table covering `tenantId`, `subjectId` from `sub`, requested operation, required role/permission, correlation/cancellation flow, typed allow/deny/unavailable result, denial reason mapping, retryability for stale/unavailable cases, and public response exposure.
   - [ ] Record a request-path interception table for every public command, query, validation endpoint, and affected client operation with tenant source, identity source, required role, required permission, validator call, failure reason, HTTP/preflight behavior, caller-action category, and downstream call that must not occur.
   - [ ] Record the authorization pipeline order as authenticate request, resolve tenant from the gateway contract, validate tenant lifecycle, validate membership, validate role/permission, then invoke command handler, domain service, query router, or projection adapter.
+  - [ ] Record the immutable authorization-context fields and prove downstream handlers, adapters, fakes, and client helpers cannot mutate or recompute tenant/subject/message authorization inputs after validation.
+  - [ ] Record all tenant-source conflict cases, including missing tenant, conflicting route/body/header/client DTO values, aggregate/projection tenant mismatch, and malformed subject/tenant claims.
   - [ ] Record a decision table for claims fallback, actor adapter, Tenants client/query adapter, reason-code taxonomy, package ownership, and deferred items.
 
 - [ ] **ST1 - Define typed tenant/RBAC authorization outcomes.** (AC: 1, 4, 5)
   - [ ] Add or extend result models so validator outcomes have stable machine-readable reason codes separate from human-readable detail.
   - [ ] Include categories for allowed, authentication-required, tenant-not-found, tenant-disabled, tenant-suspended or equivalent inactive state, user-not-member, insufficient-role, insufficient-permission, stale, ambiguous, and unavailable.
   - [ ] Define a single typed authorization failure reason enum/value object or equivalent stable model shared by command, query, validation endpoint, client, and Testing fake paths.
-  - [ ] Use canonical reason-code strings such as `tenant_missing`, `tenant_not_found`, `tenant_disabled`, `tenant_suspended`, `tenant_stale`, `tenant_unavailable`, `tenant_ambiguous`, `principal_not_member`, `insufficient_role`, and `insufficient_permission`, unless the decision table documents a compatible alternative.
+  - [ ] Use canonical reason-code strings such as `authentication_required`, `subject_missing`, `tenant_missing`, `tenant_mismatch`, `tenant_not_found`, `tenant_disabled`, `tenant_suspended`, `tenant_stale`, `tenant_unavailable`, `tenant_ambiguous`, `principal_not_member`, `insufficient_role`, and `insufficient_permission`, unless the decision table documents a compatible alternative.
   - [ ] Define exact mapping from typed validator outcome to HTTP status, ProblemDetails type URI, title/detail safety rules, `extensions.reasonCode`, preflight validation response fields, retryability, and caller-action category.
   - [ ] Preserve existing `IsAuthorized` behavior where public or test code depends on it; add compatibility constructors/helpers if needed.
   - [ ] Add focused tests that prove free-text `Reason` is not the only way to identify failures.
+  - [ ] Add focused tests that unknown enum values, malformed reason strings, missing reason codes, and legacy actor responses fail closed instead of silently mapping to generic allow.
 
 - [ ] **ST2 - Implement Hexalith.Tenants-backed validation path or document the approved adapter shape.** (AC: 1, 2, 3, 6)
   - [ ] Prefer an EventStore-side adapter that consumes public Hexalith.Tenants contracts/client/query behavior for tenant lifecycle, membership, and role checks.
@@ -127,12 +139,16 @@ so that Parties request paths do not perform EventStore gateway tenant authoriza
   - [ ] Ensure claims-based validators are activated only through explicit local/dev/test configuration and are not used as fallback when Tenants-backed runtime validation is configured.
   - [ ] Ensure cancellation tokens flow through external validation calls.
   - [ ] Ensure validator unavailability, null responses, malformed responses, and ambiguous results throw or return unavailable/ambiguous outcomes that fail closed.
+  - [ ] Ensure adapter timeouts, cancellation, stale data, and transient Tenants errors are classified deterministically without ad hoc retry loops or claims fallback.
+  - [ ] Ensure any Tenants projection/cache use is tenant-scoped and cannot reuse membership, role, permission, or lifecycle state across tenants or subjects.
 
 - [ ] **ST3 - Enforce command and query pre-invocation blocking.** (AC: 2, 3)
   - [ ] Add focused tests proving denied command authorization stops before `SubmitCommandHandler`, `CommandRouter`, domain service invocation, aggregate actor state access, or command processing side effects.
   - [ ] Add focused tests proving denied query authorization stops before `SubmitQueryHandler`, `QueryRouter`, projection actor invocation, and ETag/projection state access where relevant.
   - [ ] For each deny outcome, assert the validator was called, downstream command/query/projection/domain-service collaborators were not called, and the HTTP/client/preflight result carries the stable reason code.
   - [ ] Verify the `HttpContext`-absent internal MediatR bypass is still intentional and cannot be used by external HTTP requests.
+  - [ ] Verify authorization runs before `If-None-Match`/ETag shortcuts, query cache hits, projection freshness checks, stream/replay reads, and not-found/missing-projection responses that could leak cross-tenant resource existence.
+  - [ ] Verify the same resolved tenant/subject/message authorization context is passed to validators and downstream dispatch; no handler may re-read mutable HTTP claims, headers, route values, or body fields to change authorization scope.
   - [ ] Verify command and query validation endpoints either keep `200 OK` preflight semantics with typed reason codes or move only with explicit docs/tests approval.
   - [ ] Keep query-path assertions limited to tenant/RBAC authorization outcomes; non-auth query validation, not-found, malformed-query, projection, and adapter taxonomy remains Story 22.4.
 
@@ -142,6 +158,7 @@ so that Parties request paths do not perform EventStore gateway tenant authoriza
   - [ ] Preserve sanitization of internal terms and add tests that internal actor/DAPR/state-store details do not leak.
   - [ ] Add contract tests for each auth failure category that assert status, ProblemDetails `type`, safe field presence, reason-code extension, correlation/trace identifier behavior where existing conventions allow, and absence of actor, DAPR, state-store, membership-list, token, payload, or protected-data details.
   - [ ] Avoid coupling tests to exact English `title` or `detail` text except for required presence and leak checks; reason codes and type URIs are the stable contract.
+  - [ ] Add log/telemetry tests or review evidence proving reason codes and correlation IDs are observable while sensitive authorization inputs and Tenants internals are not emitted.
   - [ ] Update `docs/reference/command-api.md`, `docs/reference/query-api.md`, `docs/reference/problems/forbidden.md`, and `docs/guides/security-model.md`.
   - [ ] Add new or updated problem reference docs for tenant lifecycle and permission reason codes if the docs taxonomy requires separate pages.
 
@@ -153,11 +170,13 @@ so that Parties request paths do not perform EventStore gateway tenant authoriza
   - [ ] Add client and Testing fake parity tests proving every typed deny outcome can round-trip without parsing free-text details.
   - [ ] Preserve existing fake command/query request recording and not-modified behavior from Story 22.1.
   - [ ] Add tests for client/fake behavior covering 401, 403 reason-code variants, and authorization service unavailable.
+  - [ ] Add fake default-behavior tests proving omitted tenant, subject, role, permission, or reason-code setup denies deterministically instead of implicitly allowing.
 
 - [ ] **ST6 - Validate Hexalith.Tenants integration and runtime wiring.** (AC: 6, 7)
   - [ ] Add focused unit tests using Hexalith.Tenants contracts/test helpers for active tenant, disabled/inactive tenant, missing tenant, user membership, and role hierarchy.
   - [ ] Add service registration/startup validation tests for selected authorization mode, options, and missing configuration.
   - [ ] Verify public reason codes/client contract types do not require Tenants runtime packages, Tenants runtime integration is server/infrastructure-only, and Testing fakes avoid Tenants runtime package dependencies.
+  - [ ] Verify service registration cannot configure mutually exclusive claims fallback and Tenants-backed runtime validation in a way that silently downgrades production enforcement.
   - [ ] If AppHost or DAPR access control changes are required, update only the root-level submodule/apphost wiring needed and record Aspire restart evidence.
   - [ ] If no AppHost changes are needed, explicitly record why current topology is sufficient.
 
@@ -169,6 +188,7 @@ so that Parties request paths do not perform EventStore gateway tenant authoriza
   - [ ] Run Hexalith.Tenants focused contract/client/testing tests if the submodule is changed or referenced through new integration code.
   - [ ] Run docs/markdown validation where available.
   - [ ] Record the decision table location, selected integration-path note, downstream non-invocation proof, client/fake parity proof, Story 22.4 exclusions, and individually run test commands/results in the Dev Agent Record.
+  - [ ] Record authorization-before-cache/ETag/projection lookup proof, tenant-source conflict proof, immutable authorization-context proof, and safe-observability proof.
   - [ ] Update Dev Agent Record, File List, Verification Status, and Change Log.
 
 ## Developer Notes
@@ -190,6 +210,8 @@ Implementation traps to avoid:
 - Do not collapse tenant-not-found, disabled, non-member, insufficient-role, and insufficient-permission into one free-text `Forbidden` without a stable machine-readable reason code.
 - Do not leak internal actor, DAPR, state-store, aggregate, membership-list, token, command payload, query payload, or protected-data details in client-facing ProblemDetails.
 - Do not let `ProjectionActorType` or generic query adapter routing bypass the same gateway authorization rules as commands.
+- Do not compute `NotModified`, query cache hits, projection freshness, stream existence, aggregate existence, or replay availability before tenant/RBAC authorization completes.
+- Do not mutate or recompute tenant ID, subject ID, message category, message type, aggregate ID, projection/query identity, correlation ID, or cancellation token after gateway authorization.
 - Do not make validators retry in ad hoc loops. If retry/resiliency is needed, use existing DAPR/Aspire/resilience patterns or record a deferred infrastructure decision.
 - Do not change validation endpoint HTTP semantics from `200 OK` with `isAuthorized=false` to hard 403 without updating docs, client behavior, and tests.
 - Do not run broad solution-level tests first. Use focused slices because Server.Tests has a known CA2007 warning-as-error risk in this workspace.
@@ -330,13 +352,14 @@ GPT-5 Codex
 - 2026-05-12T19:36:49Z - Pre-dev hardening preflight passed via `_bmad-output/process-notes/predev-preflight-latest.json`.
 - 2026-05-12T21:44:06+02:00 - Story creation context gathered from Epic 22, PRD FR90-FR92, architecture ADR-P8 and downstream authorization boundary, Stories 22.1 and 22.2, EventStore authorization adapters, MediatR authorization behavior, command/query controllers, ProblemDetails handlers, Hexalith.Tenants public lifecycle/role surfaces, recent commits, project context, and lessons ledger.
 - 2026-05-13T07:19:42+02:00 - Party-mode review completed with John, Winston, Amelia, and Murat; applied bounded story hardening for validator contracts, authorization ordering, typed reason-code taxonomy, Tenants integration precedence, claims fallback fencing, validation endpoint compatibility, client/testing parity, package dependency guardrails, and evidence requirements.
+- 2026-05-13T12:03:15+02:00 - Advanced elicitation completed in two batches; applied bounded hardening for immutable authorization context, tenant-source conflict handling, auth-before-cache/ETag/projection lookup ordering, adapter staleness and timeout semantics, safe observability, and fake/client fail-closed parity.
 
 ### Completion Notes List
 
 - Story created and marked ready-for-dev by the BMAD pre-dev hardening automation.
 - Story creation did not modify product code, tests, DAPR/Aspire configuration, generated API docs, or submodules.
 - Party-mode review completed on 2026-05-13 and applied story hardening for the gateway authorization contract, reason-code taxonomy, Tenants integration boundary, validation endpoint behavior, client/testing parity, and focused evidence obligations.
-- Advanced elicitation has NOT yet been run for this story.
+- Advanced elicitation completed on 2026-05-13 and applied story-text hardening only; product code, tests, DAPR/Aspire configuration, generated API docs, sprint status, and submodules were not changed.
 
 ### File List
 
@@ -352,7 +375,8 @@ GPT-5 Codex
 - YAML validation and whitespace validation passed in this run; repository markdownlint scope passed with `_bmad-output/**` ignored by project configuration.
 - Party-mode review completed on 2026-05-13 and is recorded below.
 - Party-mode findings were applied only as story-text clarifications; product scope, architecture policy, sprint status, source code, tests, DAPR/Aspire configuration, generated API docs, and submodules were not changed.
-- Advanced elicitation has NOT yet been run for this story.
+- Advanced elicitation completed on 2026-05-13 and is recorded below.
+- Advanced elicitation findings were applied only as story-text clarifications; product scope, architecture policy, sprint status, source code, tests, DAPR/Aspire configuration, generated API docs, and submodules were not changed.
 
 ## Change Log
 
@@ -360,6 +384,7 @@ GPT-5 Codex
 | --- | ---: | --- | --- |
 | 2026-05-12 | 0.1 | Created ready-for-dev story for gateway-owned tenant and RBAC enforcement. | Codex automation |
 | 2026-05-13 | 0.2 | Applied party-mode review hardening for validator contracts, authorization ordering, reason-code taxonomy, Tenants integration precedence, claims fallback fencing, validation endpoint compatibility, client/testing parity, and evidence requirements. | Codex automation |
+| 2026-05-13 | 0.3 | Applied advanced elicitation hardening for immutable authorization context, tenant conflicts, auth-before-cache ordering, adapter failure semantics, safe observability, and fake/client fail-closed parity. | Codex automation |
 
 ## Party-Mode Review
 
@@ -386,3 +411,39 @@ GPT-5 Codex
   - Non-auth query validation, missing projection, malformed query/filter, projection consistency, and business/query taxonomy decisions for Story 22.4.
   - Concrete Tenants transport implementation choice if public client/query availability must be confirmed during development; this story now requires the integration-path note and fallback rules before coding completes.
 - Final recommendation: ready-for-dev after applied story updates.
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-13T12:03:15+02:00
+- Selected story key: `22-3-gateway-owned-tenant-and-rbac-enforcement`
+- Command/skill invocation used:
+  `/bmad-advanced-elicitation 22-3-gateway-owned-tenant-and-rbac-enforcement`
+- Batch 1 method names:
+  - Red Team vs Blue Team
+  - Security Audit Personas
+  - Failure Mode Analysis
+  - Self-Consistency Validation
+  - Architecture Decision Records
+- Reshuffled Batch 2 method names:
+  - Pre-mortem Analysis
+  - First Principles Analysis
+  - Challenge from Critical Perspective
+  - Comparative Analysis Matrix
+  - Stakeholder Round Table
+- Findings summary:
+  - The story had the right tenant/RBAC boundary, but implementation could still accidentally authorize after query cache/ETag/projection lookup paths, leak resource existence, or allow mutable tenant/subject/message context after validation.
+  - Tenant-source disagreement and malformed or missing subject/tenant inputs needed explicit fail-closed handling rather than relying on later validator or downstream behavior.
+  - Tenants-backed adapters needed clearer timeout, cancellation, stale/cache, ambiguous, unavailable, and no-ad-hoc-retry semantics to avoid claims fallback or cross-tenant state reuse.
+  - ProblemDetails, logs, telemetry, client exceptions, validation responses, and testing fakes needed the same deterministic reason-code contract, with fake defaults denying rather than implicitly allowing incomplete setup.
+  - Evidence requirements needed to force proof that authorization runs before not-modified/cache/projection/stream existence decisions and that observability remains useful without exposing sensitive authorization inputs.
+- Changes applied:
+  - Added Gateway Authorization Boundary Contract bullets for immutable authorization context, tenant-source mismatch handling, and authorization-before-cache/ETag/projection-state ordering.
+  - Hardened AC2-AC6 with pre-resource-lookup blocking, tenant mismatch reasons, unknown role/permission deny behavior, safe logs/telemetry, fake default deny behavior, and adapter staleness/cache semantics.
+  - Expanded ST0-ST7 with immutable-context tables, tenant-source conflict inventory, canonical `authentication_required`, `subject_missing`, and `tenant_mismatch` reason codes, legacy/malformed response fail-closed tests, adapter timeout/staleness rules, auth-before-ETag/cache/projection evidence, safe observability evidence, and mutually exclusive registration checks.
+  - Added implementation traps against pre-auth not-modified/cache/projection/resource existence decisions and post-auth mutation/recomputation of tenant, subject, message, aggregate, projection/query, correlation, or cancellation context.
+- Findings deferred:
+  - Exact Tenants transport implementation and cache/staleness policy remain a development-time decision, bounded by the required integration-path note and fail-closed adapter semantics.
+  - Full localization/end-user wording remains deferred; reason codes, type URIs, retryability, caller-action category, and safe display metadata are the stable contract.
+  - Non-auth query validation, projection consistency, missing projection, malformed query/filter, and business/query taxonomy remain Story 22.4 scope.
+  - Broad runtime Aspire/e2e security proof remains optional unless AppHost, DAPR access control, or selected Tenants transport wiring changes.
+- Final recommendation: ready-for-dev
