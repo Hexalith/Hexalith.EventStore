@@ -4,3 +4,6 @@
 [submodule "Hexalith.AI.Tools"]
 	path = Hexalith.AI.Tools
 	url = https://github.com/Hexalith/Hexalith.AI.Tools.git
+[submodule "Hexalith.Commons"]
+	path = Hexalith.Commons
+	url = https://github.com/Hexalith/Hexalith.Commons.git
