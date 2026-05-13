@@ -4,7 +4,7 @@ using System.Text.Json;
 using System.Xml.Linq;
 
 using Hexalith.EventStore.Contracts.Identity;
-using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Contracts.Queries;
 
 using Shouldly;
 

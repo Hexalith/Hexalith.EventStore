@@ -4,6 +4,7 @@ using System.Text.Json;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
@@ -18,16 +19,25 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Queries;
 
 public class QueryRouterTests {
-    private static SubmitQuery CreateTestQuery(string? entityId = null, byte[]? payload = null) =>
+    private static SubmitQuery CreateTestQuery(
+        string queryType = "GetOrderStatus",
+        string domain = "orders",
+        string aggregateId = "order-1",
+        string? entityId = null,
+        byte[]? payload = null,
+        string? projectionType = null,
+        string? projectionActorType = null) =>
         new(
             Tenant: "test-tenant",
-            Domain: "orders",
-            AggregateId: "order-1",
-            QueryType: "GetOrderStatus",
+            Domain: domain,
+            AggregateId: aggregateId,
+            QueryType: queryType,
             Payload: payload ?? [],
             CorrelationId: "corr-1",
             UserId: "user-1",
-            EntityId: entityId);
+            EntityId: entityId,
+            ProjectionType: projectionType,
+            ProjectionActorType: projectionActorType);
 
     [Fact]
     public async Task RouteQueryAsync_SuccessfulQuery_ReturnsResultWithPayload() {
@@ -318,5 +328,142 @@ public class QueryRouterTests {
             e.CorrelationId == "corr-1" &&
             e.UserId == "user-1" &&
             e.EntityId == null));
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_GetParty_UsesEntityScopedPublicAdapterRoute() {
+        JsonElement resultPayload = JsonDocument.Parse("{\"id\":\"party-42\"}").RootElement;
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(QueryResult.FromPayload(resultPayload, "party"));
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+
+        _ = await router.RouteQueryAsync(CreateTestQuery(
+            queryType: "get-party",
+            domain: "parties",
+            aggregateId: "party",
+            entityId: "party-42",
+            projectionType: "party"));
+
+        _ = factory.Received(1).CreateActorProxy<IProjectionActor>(
+            Arg.Is<ActorId>(id => id.ToString() == "party:test-tenant:party-42"),
+            QueryRouter.ProjectionActorTypeName);
+        _ = await actor.Received(1).QueryAsync(Arg.Is<QueryEnvelope>(e =>
+            e.QueryType == "get-party" &&
+            e.Domain == "parties" &&
+            e.EntityId == "party-42"));
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_ListParties_UsesTenantWideRouteAndActorTypeOverride() {
+        JsonElement resultPayload = JsonDocument.Parse("{\"items\":[]}").RootElement;
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(QueryResult.FromPayload(resultPayload, "party-list"));
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+
+        _ = await router.RouteQueryAsync(CreateTestQuery(
+            queryType: "list-parties",
+            domain: "parties",
+            aggregateId: "party",
+            projectionType: "party-list",
+            projectionActorType: "PartiesProjectionActor"));
+
+        _ = factory.Received(1).CreateActorProxy<IProjectionActor>(
+            Arg.Is<ActorId>(id => id.ToString() == "party-list:test-tenant"),
+            "PartiesProjectionActor");
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_SearchParties_UsesPayloadChecksumRouteWithoutPayloadData() {
+        JsonElement resultPayload = JsonDocument.Parse("{\"items\":[]}").RootElement;
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(QueryResult.FromPayload(resultPayload, "party-search"));
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+        byte[] payload = [1, 2, 3];
+
+        _ = await router.RouteQueryAsync(CreateTestQuery(
+            queryType: "search-parties",
+            domain: "parties",
+            aggregateId: "party",
+            payload: payload,
+            projectionType: "party-search"));
+
+        _ = factory.Received(1).CreateActorProxy<IProjectionActor>(
+            Arg.Is<ActorId>(id => id.ToString() == "party-search:test-tenant:A5BYxvLAy0k"),
+            QueryRouter.ProjectionActorTypeName);
+        _ = await actor.Received(1).QueryAsync(Arg.Is<QueryEnvelope>(e =>
+            e.QueryType == "search-parties" &&
+            e.Payload.SequenceEqual(payload)));
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_SuccessWithoutPayload_ReturnsMissingPayloadCategory() {
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(new QueryResult(true));
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Payload.ShouldBeNull();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.MissingPayload);
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_InvalidPayloadBytes_ReturnsSerializationFailureCategory() {
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns(new QueryResult(true, [0xFF]));
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Payload.ShouldBeNull();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.SerializationFailure);
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_NullActorResult_ReturnsActorResponseMismatchCategory() {
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>()).Returns((QueryResult)null!);
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Payload.ShouldBeNull();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorResponseMismatch);
     }
 }

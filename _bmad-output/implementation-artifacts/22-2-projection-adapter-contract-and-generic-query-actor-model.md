@@ -1,6 +1,6 @@
 # Story 22.2: Projection Adapter Contract and Generic Query Actor Model
 
-Status: ready-for-dev
+Status: review
 
 Context created: 2026-05-12
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
@@ -105,67 +105,67 @@ so that Parties can serve GetParty, ListParties, and SearchParties through Event
 
 ## Tasks / Subtasks
 
-- [ ] **ST0 - Baseline current projection query boundary and classify ownership.** (AC: 1, 2, 5, 6)
-    - [ ] Read Story 22.1, Epic 22, PRD FR87-FR89, architecture ADR-P7, and this story before code edits.
-    - [ ] Inventory server-bound query actor types in `src/Hexalith.EventStore.Server/Actors` and routing types in `src/Hexalith.EventStore.Server/Queries`.
-    - [ ] Inventory existing public query metadata contracts in `src/Hexalith.EventStore.Contracts/Queries` and client resolver behavior in `src/Hexalith.EventStore.Client/Queries`.
-    - [ ] Inventory `Hexalith.EventStore.Testing` server dependency and `FakeProjectionActor` usage.
-    - [ ] Record a blocking ownership decision table covering Contracts-owned DTOs/metadata, DAPR-specific Server adapter surface, compatibility shim/type-forwarding strategy, and defer-to-22.4 categories.
-    - [ ] Include rejected options in the table: keep all types in Server, move DAPR `IActor` interface directly to Contracts, publish DTO-only contracts, and introduce a new versioned adapter surface.
-    - [ ] Include the public package graph expected for downstream adopters and the package graph expected only for EventStore runtime tests.
-    - [ ] Do not proceed with production code edits if the table leaves downstream query serving dependent on `Hexalith.EventStore.Server` without a Product/Architecture exception.
+- [x] **ST0 - Baseline current projection query boundary and classify ownership.** (AC: 1, 2, 5, 6)
+    - [x] Read Story 22.1, Epic 22, PRD FR87-FR89, architecture ADR-P7, and this story before code edits.
+    - [x] Inventory server-bound query actor types in `src/Hexalith.EventStore.Server/Actors` and routing types in `src/Hexalith.EventStore.Server/Queries`.
+    - [x] Inventory existing public query metadata contracts in `src/Hexalith.EventStore.Contracts/Queries` and client resolver behavior in `src/Hexalith.EventStore.Client/Queries`.
+    - [x] Inventory `Hexalith.EventStore.Testing` server dependency and `FakeProjectionActor` usage.
+    - [x] Record a blocking ownership decision table covering Contracts-owned DTOs/metadata, DAPR-specific Server adapter surface, compatibility shim/type-forwarding strategy, and defer-to-22.4 categories.
+    - [x] Include rejected options in the table: keep all types in Server, move DAPR `IActor` interface directly to Contracts, publish DTO-only contracts, and introduce a new versioned adapter surface.
+    - [x] Include the public package graph expected for downstream adopters and the package graph expected only for EventStore runtime tests.
+    - [x] Do not proceed with production code edits if the table leaves downstream query serving dependent on `Hexalith.EventStore.Server` without a Product/Architecture exception.
 
-- [ ] **ST1 - Publish or document the adapter contract without breaking runtime behavior.** (AC: 1, 4, 5)
-    - [ ] Prefer moving stable `QueryEnvelope`, `QueryResult`, and the minimal projection adapter interface to `Hexalith.EventStore.Contracts` if dependency shape permits.
-    - [ ] If DAPR `IActor` inheritance prevents a clean Contracts move, define a public implementation-neutral contract plus a server adapter interface and document the DAPR actor method signature.
-    - [ ] Preserve `[DataContract]` / `[DataMember]` behavior for actor remoting; add serialization compatibility tests before changing namespaces or constructors.
-    - [ ] Preserve existing member names/order and make future changes additive unless a versioned contract is introduced.
-    - [ ] Add Server shims, type-forwarding, or a precise namespace migration note so existing runtime behavior and downstream source migration are explicit.
-    - [ ] Add explicit guard tests for version-skew or namespace-shim behavior when public DTOs move.
-    - [ ] Preserve payload redaction in `ToString()` and logging. Never log payload bytes.
-    - [ ] Add or update XML docs for public types so generated API docs identify downstream implementation requirements.
+- [x] **ST1 - Publish or document the adapter contract without breaking runtime behavior.** (AC: 1, 4, 5)
+    - [x] Prefer moving stable `QueryEnvelope`, `QueryResult`, and the minimal projection adapter interface to `Hexalith.EventStore.Contracts` if dependency shape permits.
+    - [x] If DAPR `IActor` inheritance prevents a clean Contracts move, define a public implementation-neutral contract plus a server adapter interface and document the DAPR actor method signature.
+    - [x] Preserve `[DataContract]` / `[DataMember]` behavior for actor remoting; add serialization compatibility tests before changing namespaces or constructors.
+    - [x] Preserve existing member names/order and make future changes additive unless a versioned contract is introduced.
+    - [x] Add Server shims, type-forwarding, or a precise namespace migration note so existing runtime behavior and downstream source migration are explicit.
+    - [x] Add explicit guard tests for version-skew or namespace-shim behavior when public DTOs move.
+    - [x] Preserve payload redaction in `ToString()` and logging. Never log payload bytes.
+    - [x] Add or update XML docs for public types so generated API docs identify downstream implementation requirements.
 
-- [ ] **ST2 - Harden routing semantics for Get/List/Search patterns.** (AC: 2, 3)
-    - [ ] Add focused tests proving entity-scoped Get routing uses `EntityId`.
-    - [ ] Add focused tests proving tenant-wide List routing uses an empty payload and no `EntityId`.
-    - [ ] Add focused tests proving Search routing uses the payload checksum and does not leak search payload data into actor IDs or logs.
-    - [ ] Verify `ProjectionType` drives routing/ETag semantics where intended and does not conflict with `QueryType`.
-    - [ ] Verify `ProjectionActorType` remains explicit and documented; do not let arbitrary caller input bypass future Story 22.3 authorization decisions.
-    - [ ] Assert route metadata logs include sanitized selector values only and never query payload bytes.
-    - [ ] Add golden tests for default `ProjectionActor`, `ProjectionActorType` override behavior, entity-scoped route, tenant-wide route, payload-checksum route, colon rejection, and deterministic 11-character base64url checksum output.
-    - [ ] Document checksum collision expectations as deterministic routing rather than uniqueness, authorization, or security proof.
+- [x] **ST2 - Harden routing semantics for Get/List/Search patterns.** (AC: 2, 3)
+    - [x] Add focused tests proving entity-scoped Get routing uses `EntityId`.
+    - [x] Add focused tests proving tenant-wide List routing uses an empty payload and no `EntityId`.
+    - [x] Add focused tests proving Search routing uses the payload checksum and does not leak search payload data into actor IDs or logs.
+    - [x] Verify `ProjectionType` drives routing/ETag semantics where intended and does not conflict with `QueryType`.
+    - [x] Verify `ProjectionActorType` remains explicit and documented; do not let arbitrary caller input bypass future Story 22.3 authorization decisions.
+    - [x] Assert route metadata logs include sanitized selector values only and never query payload bytes.
+    - [x] Add golden tests for default `ProjectionActor`, `ProjectionActorType` override behavior, entity-scoped route, tenant-wide route, payload-checksum route, colon rejection, and deterministic 11-character base64url checksum output.
+    - [x] Document checksum collision expectations as deterministic routing rather than uniqueness, authorization, or security proof.
 
-- [ ] **ST3 - Define malformed response classification at the adapter edge.** (AC: 4)
-    - [ ] Classify `QueryResult.Success == false` values currently mapped by `SubmitQueryHandler`: forbidden, not found/no projection state, not implemented, and unknown failure.
-    - [ ] Add explicit table-driven tests for null actor response, missing payload on success, invalid result envelope, missing required metadata, unsupported result shape, invalid payload bytes, serialization failure, serializer version mismatch, actor exception, timeout/cancellation, unknown query type, actor-not-found infrastructure patterns, and domain-level not-found results.
-    - [ ] Record deferred items for Story 22.4 if full ProblemDetails type URI/reason-code taxonomy cannot be frozen here.
-    - [ ] Ensure unsupported or malformed projection behavior fails predictably and never returns a fake success envelope.
-    - [ ] Assert ProblemDetails mapping and diagnostics avoid actor exception detail leakage, query payload bytes, and protected data.
+- [x] **ST3 - Define malformed response classification at the adapter edge.** (AC: 4)
+    - [x] Classify `QueryResult.Success == false` values currently mapped by `SubmitQueryHandler`: forbidden, not found/no projection state, not implemented, and unknown failure.
+    - [x] Add explicit table-driven tests for null actor response, missing payload on success, invalid result envelope, missing required metadata, unsupported result shape, invalid payload bytes, serialization failure, serializer version mismatch, actor exception, timeout/cancellation, unknown query type, actor-not-found infrastructure patterns, and domain-level not-found results.
+    - [x] Record deferred items for Story 22.4 if full ProblemDetails type URI/reason-code taxonomy cannot be frozen here.
+    - [x] Ensure unsupported or malformed projection behavior fails predictably and never returns a fake success envelope.
+    - [x] Assert ProblemDetails mapping and diagnostics avoid actor exception detail leakage, query payload bytes, and protected data.
 
-- [ ] **ST4 - Decouple or label Testing package projection fakes.** (AC: 5)
-    - [ ] Update `FakeProjectionActor` and related tests to use public adapter types if they move to Contracts.
-    - [ ] If Testing must still reference Server for runtime actor test helpers, add public query-adapter fakes/builders that do not require downstream code to import Server-only types.
-    - [ ] Add a dependency proof or focused test that public projection fake scenarios compile using Contracts plus Testing without `Hexalith.EventStore.Server`.
-    - [ ] Add a negative proof or analyzer-style assertion that the public fake sample does not import `Hexalith.EventStore.Server.Actors`.
-    - [ ] Add tests for fake success, failure, malformed payload, entity/list/search envelopes, and recorded invocations.
+- [x] **ST4 - Decouple or label Testing package projection fakes.** (AC: 5)
+    - [x] Update `FakeProjectionActor` and related tests to use public adapter types if they move to Contracts.
+    - [x] If Testing must still reference Server for runtime actor test helpers, add public query-adapter fakes/builders that do not require downstream code to import Server-only types.
+    - [x] Add a dependency proof or focused test that public projection fake scenarios compile using Contracts plus Testing without `Hexalith.EventStore.Server`.
+    - [x] Add a negative proof or analyzer-style assertion that the public fake sample does not import `Hexalith.EventStore.Server.Actors`.
+    - [x] Add tests for fake success, failure, malformed payload, entity/list/search envelopes, and recorded invocations.
 
-- [ ] **ST5 - Align docs and generated API references.** (AC: 6)
-    - [ ] Update `docs/reference/query-api.md` with adapter package ownership, actor type/ID derivation, `QueryEnvelope` and `QueryResult` fields, payload encoding, and malformed-response behavior.
-    - [ ] Update `docs/reference/nuget-packages.md` with projection adapter guidance for Contracts, Client, Testing, and Server internals.
-    - [ ] Include GetParty, ListParties, and SearchParties examples that reference only public packages and identify runtime actors as EventStore internals unless explicitly implemented by downstream services.
-    - [ ] Update generated API docs for any new or moved public Contracts/Testing types.
-    - [ ] Add a short note that `/project` projection updates and `POST /api/v1/queries` query serving are separate contracts.
-    - [ ] Cross-check docs, XML comments, and tests against the same routing decision table before recording completion.
+- [x] **ST5 - Align docs and generated API references.** (AC: 6)
+    - [x] Update `docs/reference/query-api.md` with adapter package ownership, actor type/ID derivation, `QueryEnvelope` and `QueryResult` fields, payload encoding, and malformed-response behavior.
+    - [x] Update `docs/reference/nuget-packages.md` with projection adapter guidance for Contracts, Client, Testing, and Server internals.
+    - [x] Include GetParty, ListParties, and SearchParties examples that reference only public packages and identify runtime actors as EventStore internals unless explicitly implemented by downstream services.
+    - [x] Update generated API docs for any new or moved public Contracts/Testing types.
+    - [x] Add a short note that `/project` projection updates and `POST /api/v1/queries` query serving are separate contracts.
+    - [x] Cross-check docs, XML comments, and tests against the same routing decision table before recording completion.
 
-- [ ] **ST6 - Validate and record evidence.** (AC: 7)
-    - [ ] Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests`.
-    - [ ] Run `dotnet test tests/Hexalith.EventStore.Client.Tests`.
-    - [ ] Run `dotnet test tests/Hexalith.EventStore.Testing.Tests`.
-    - [ ] Run focused Server query tests if server routing or actor shims changed. If `Hexalith.EventStore.Server.Tests` hits the known CA2007 blocker outside the focused slice, record it without broadening scope.
-    - [ ] Run `dotnet test tests/Hexalith.EventStore.Sample.Tests` if sample query/projection contracts changed.
-    - [ ] Record exact serialization compatibility tests, routing golden tests, package dependency proof, and downstream Get/List/Search sample evidence.
-    - [ ] Run markdown or docs validation where available.
-    - [ ] Update Dev Agent Record, File List, Verification Status, and Change Log.
+- [x] **ST6 - Validate and record evidence.** (AC: 7)
+    - [x] Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests`.
+    - [x] Run `dotnet test tests/Hexalith.EventStore.Client.Tests`.
+    - [x] Run `dotnet test tests/Hexalith.EventStore.Testing.Tests`.
+    - [x] Run focused Server query tests if server routing or actor shims changed. If `Hexalith.EventStore.Server.Tests` hits the known CA2007 blocker outside the focused slice, record it without broadening scope.
+    - [x] Run `dotnet test tests/Hexalith.EventStore.Sample.Tests` if sample query/projection contracts changed.
+    - [x] Record exact serialization compatibility tests, routing golden tests, package dependency proof, and downstream Get/List/Search sample evidence.
+    - [x] Run markdown or docs validation where available.
+    - [x] Update Dev Agent Record, File List, Verification Status, and Change Log.
 
 ## Developer Notes
 
@@ -307,6 +307,24 @@ GPT-5 Codex
 
 - 2026-05-12T19:20:28Z - Pre-dev hardening preflight returned a soft working-tree warning via `_bmad-output/process-notes/predev-preflight-latest.json`; dirty paths were ordinary docs/src development files outside BMAD-owned story-operation paths.
 - 2026-05-12T21:23:39+02:00 - Story creation context gathered from Epic 22, PRD FR87-FR89, architecture ADR-P7, Story 22.1, current Server query actor/routing implementation, Contracts query metadata, Testing projection fake, sample counter query/projection code, recent commits, project context, and lessons ledger.
+- 2026-05-13T15:03:01+02:00 - Development started. Aspire baseline attempted with `EnableKeycloak=false aspire start --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive`; AppHost build succeeded with 0 warnings/errors, then startup halted because the local DAPR CLI prerequisite is not installed. Aspire MCP showed no running AppHost resources.
+- 2026-05-13T15:03:01+02:00 - ST0 completed before production edits: read Story 22.1, Epic 22, PRD FR87-FR89, ADR-P7, architecture projection adapter section, this story, Server actor/routing code, Contracts query metadata, Client query resolver, Testing project dependency, and FakeProjectionActor usage.
+
+### ST0 Projection Adapter Ownership Decision
+
+| Area | Decision | Evidence / implication |
+| --- | --- | --- |
+| Primary public adapter path | Move `QueryEnvelope`, `QueryResult`, and `IProjectionActor` to `Hexalith.EventStore.Contracts.Queries`. Add a `Dapr.Actors` package reference to Contracts so real downstream DAPR actors can implement the exact interface used by `QueryRouter` without referencing Server. | ADR-P7 says downstream actors must not reference `Hexalith.EventStore.Server`. A DTO-only move would still leave real DAPR actor implementations Server-bound because `QueryRouter` creates an `IProjectionActor` proxy. |
+| Contracts-owned DTOs and metadata | Contracts owns `QueryEnvelope`, `QueryResult`, `IProjectionActor`, `IQueryContract`, `QueryContractMetadata`, `SubmitQueryRequest`, and `SubmitQueryResponse`. Public XML docs define payload bytes as UTF-8 JSON, `ProjectionType` as response metadata, redacted `ToString()`, and DAPR actor serialization attributes. | Current `IQueryContract`/`QueryContractMetadata` are already public; current envelope/result DataContract shapes are stable runtime wire contracts that need to become public. |
+| Server runtime surface | Server keeps `CachingProjectionActor`, `EventReplayProjectionActor`, `QueryRouter`, `QueryActorIdHelper`, and query pipeline behavior. Server updates imports to use Contracts-owned adapter types. | Runtime actors are EventStore internals or optional base classes; they do not move to Contracts. |
+| Compatibility strategy | Do not keep Server namespace shims for `QueryEnvelope`, `QueryResult`, or `IProjectionActor`; the canonical source namespace is now `Hexalith.EventStore.Contracts.Queries`. Document the source migration explicitly while preserving DataContract member names/order and runtime behavior. | This is a source namespace migration with stable wire shape. Docs identify the migration path and steer new adopters to Contracts. |
+| Rejected: keep all types in Server | Rejected. It directly violates the public downstream package path and keeps Parties-style query actors coupled to Server internals. | No Product/Architecture exception is approved. |
+| Rejected: DTO-only Contracts move | Rejected as insufficient. It removes wire DTO coupling but leaves the DAPR actor interface in Server, so a real DAPR actor still needs Server to compile. | This would satisfy docs superficially but fail AC1 and AC5 package-boundary proof. |
+| Rejected: new versioned adapter surface | Rejected for this story. It adds migration complexity without a current incompatible wire change. | Existing DataContract shape can be made public additively. |
+| Rejected: implementation-neutral-only interface | Rejected as the primary path. It can be useful later for non-DAPR adapters, but it would not be the interface used by actor remoting today. | Story scope is the current generic DAPR query actor model. |
+| Public adopter package graph | Downstream query actor implementation: `Hexalith.EventStore.Contracts` plus DAPR actor runtime packages already needed by the domain service. Downstream caller tests: `Hexalith.EventStore.Contracts`, `Hexalith.EventStore.Client`, and `Hexalith.EventStore.Testing`; no `Hexalith.EventStore.Server` import for public projection fake scenarios. | Contracts remains free of EventStore runtime project references. It gains only the centralized `Dapr.Actors` package dependency for the public actor interface. |
+| Runtime-test package graph | `Hexalith.EventStore.Testing` may still reference Server for aggregate/state/pubsub runtime helpers, but public projection adapter fake APIs must use Contracts-owned query adapter types. | Existing Server reference is labeled runtime-test utility dependency, not public adapter requirement. |
+| Story 22.4 defers | Final ProblemDetails type URIs/reason codes, paging/filter/freshness policy, and detailed query taxonomy remain Story 22.4. This story freezes coarse adapter-edge categories and fail-closed behavior only. | `SubmitQueryHandler` currently maps free text for forbidden/not found/not implemented; this story can document/guard coarse categories without claiming final taxonomy. |
 
 ### Completion Notes List
 
@@ -315,12 +333,40 @@ GPT-5 Codex
 - Preflight soft warning was left untouched: `docs/reference/command-api.md`, `src/Hexalith.EventStore/Controllers/CommandsController.cs`, `src/Hexalith.EventStore/Filters/ValidateModelFilter.cs`, `src/Hexalith.EventStore/Middleware/CorrelationIdMiddleware.cs`, `src/Hexalith.EventStore/Models/ReplayCommandResponse.cs`, and `src/Hexalith.EventStore/Validation/SubmitCommandRequestValidator.cs`.
 - Party-mode review completed on 2026-05-13 and applied story hardening for the public contract decision gate, Server-free adapter boundary, DAPR compatibility, routing semantics, malformed response gates, Testing decoupling, logging safety, and evidence requirements.
 - Advanced elicitation completed on 2026-05-13 and applied bounded story hardening for public wire/dependency boundary framing, documented-exception discipline, route selector security, adapter-edge failure modes, package dependency proof, and evidence cross-checks.
+- 2026-05-13 ST1 completed: moved `QueryEnvelope`, `QueryResult`, and `IProjectionActor` to `Hexalith.EventStore.Contracts.Queries`, added public `QueryAdapterFailureReason`, preserved DataContract wire members, updated runtime imports, and refreshed public XML/API docs.
+- 2026-05-13 ST2 completed: added GetParty/ListParties/SearchParties routing tests covering entity, tenant-wide, payload-checksum, projection type, actor type override, default actor type, colon rejection, and deterministic checksum evidence.
+- 2026-05-13 ST3 completed: froze coarse adapter-edge categories for missing payload, serialization failure, null actor result, actor-not-found infrastructure, unsupported/unknown query, and documented Story 22.4 defers for final ProblemDetails taxonomy.
+- 2026-05-13 ST4 completed: updated `FakeProjectionActor` to use public Contracts adapter types, added fake success/failure/malformed/entity/list/search/recorded-invocation coverage, and added a source proof that the public fake slice does not import `Hexalith.EventStore.Server.Actors`.
+- 2026-05-13 ST5 completed: updated query API and NuGet package guidance with package ownership, actor type/ID derivation, payload encoding, malformed response behavior, `/project` separation, and source migration guidance.
+- 2026-05-13 ST6 completed: Contracts 304/304, Client 385/385, Testing 96/96, Sample 74/74, Server query/runtime actor slice 103/103, markdownlint 0 errors, dependency grep clean for public adapter/fake slice, and `git diff --check` passed with line-ending warnings only.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/22-2-projection-adapter-contract-and-generic-query-actor-model.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
-- `_bmad-output/process-notes/predev-hardening-runs.log`
+- `src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj`
+- `src/Hexalith.EventStore.Contracts/Queries/IProjectionActor.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QueryAdapterFailureReason.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QueryEnvelope.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QueryResult.cs`
+- `src/Hexalith.EventStore.Server/Actors/IProjectionActor.cs` (deleted)
+- `src/Hexalith.EventStore.Server/Actors/QueryEnvelope.cs` (deleted)
+- `src/Hexalith.EventStore.Server/Actors/QueryResult.cs` (deleted)
+- `src/Hexalith.EventStore.Server/Actors/CachingProjectionActor.cs`
+- `src/Hexalith.EventStore.Server/Actors/EventReplayProjectionActor.cs`
+- `src/Hexalith.EventStore.Server/Queries/QueryRouter.cs`
+- `src/Hexalith.EventStore.Testing/Fakes/FakeProjectionActor.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Queries/ProjectionAdapterContractTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Actors/CachingProjectionActorTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Actors/EventReplayProjectionActorTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Actors/QueryEnvelopeTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Actors/QueryResultTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Queries/QueryRouterTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Security/SecurityAuditLoggingTests.cs`
+- `tests/Hexalith.EventStore.Testing.Tests/Fakes/FakeProjectionActorTests.cs`
+- `docs/reference/query-api.md`
+- `docs/reference/nuget-packages.md`
+- `docs/reference/api/Hexalith.EventStore.Contracts/**`
 
 ## Verification Status
 
@@ -333,11 +379,24 @@ GPT-5 Codex
 - Party-mode review completed on 2026-05-13 and is recorded below.
 - Party-mode story hardening passed `git diff --check` and markdown validation on 2026-05-13.
 - Advanced elicitation completed on 2026-05-13 and is recorded below.
+- Aspire baseline attempted on 2026-05-13: AppHost build succeeded with 0 warnings/errors, but runtime start halted because the local DAPR CLI prerequisite is not installed; no Aspire resources were available for MCP inspection.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-restore` passed: 304/304.
+- `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --no-restore` passed: 385/385.
+- `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj --no-restore` passed: 96/96.
+- `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj --no-restore` passed: 74/74.
+- `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --no-restore --filter "FullyQualifiedName~QueryEnvelopeTests|FullyQualifiedName~QueryResultTests|FullyQualifiedName~QueryRouterTests|FullyQualifiedName~SubmitQueryHandlerTests|FullyQualifiedName~CachingProjectionActorTests|FullyQualifiedName~EventReplayProjectionActorTests"` passed: 103/103.
+- Serialization compatibility tests: `ProjectionAdapterContractTests.QueryEnvelope_DataContractRoundTrip_PreservesWireMembers`, `ProjectionAdapterContractTests.QueryResult_DataContractRoundTrip_PreservesFailureShape`, `QueryEnvelopeTests.DataContractSerializer_OldFormatWithoutEntityId_DeserializesWithNullEntityId`, `QueryResultTests.DataContractSerializer_RoundTrip_PreservesPayload`, and `QueryResultTests.DataContractSerializer_RoundTrip_Failure_PreservesErrorMessage`.
+- Routing golden tests: `RouteQueryAsync_GetParty_UsesEntityScopedPublicAdapterRoute`, `RouteQueryAsync_ListParties_UsesTenantWideRouteAndActorTypeOverride`, `RouteQueryAsync_SearchParties_UsesPayloadChecksumRouteWithoutPayloadData`, existing default actor type/entity/list/payload/colon rejection coverage, and deterministic checksum `A5BYxvLAy0k`.
+- Package dependency proof: source grep over Contracts query types, `FakeProjectionActor`, and public fake tests found no `Hexalith.EventStore.Server.Actors` imports; `FakeProjectionActorTests.PublicProjectionFakeSource_DoesNotImportServerActorNamespace` passed.
+- `npx markdownlint-cli2 docs/reference/query-api.md docs/reference/nuget-packages.md _bmad-output/implementation-artifacts/22-2-projection-adapter-contract-and-generic-query-actor-model.md` passed with 0 errors.
+- Generated API docs refreshed for `Hexalith.EventStore.Contracts` using global `dotnet defaultdocumentation` 1.2.3. Initial member-page generation hit the known Windows long/signature filename issue; rerun with namespace/type pages succeeded and generated the new public adapter type pages.
+- `git diff --check` passed with line-ending warnings only.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-13 | 1.0 | Implemented public projection adapter contract in Contracts, hardened query routing and adapter-edge categories, decoupled projection fake usage, refreshed docs/API docs, and moved story to review. | GPT-5 Codex |
 | 2026-05-13 | 0.3 | Applied advanced-elicitation hardening for public adapter boundary decisions, selector safety, failure modes, package proof, and evidence consistency. | Codex automation |
 | 2026-05-13 | 0.2 | Applied party-mode review hardening for public adapter ownership, DAPR compatibility, routing contracts, malformed response gates, and Testing decoupling. | Codex automation |
 | 2026-05-12 | 0.1 | Created ready-for-dev story for projection adapter contract and generic query actor model. | Codex automation |

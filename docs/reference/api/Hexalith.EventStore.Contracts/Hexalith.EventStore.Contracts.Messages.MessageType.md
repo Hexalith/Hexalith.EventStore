@@ -113,6 +113,60 @@ Thrown when [domain](Hexalith.EventStore.Contracts.Messages.MessageType.md#Hexal
 [System\.ArgumentException](https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception 'System\.ArgumentException')
 Thrown when arguments are invalid\.
 
+<a name='Hexalith.EventStore.Contracts.Messages.MessageType.DomainRegex()'></a>
+
+## MessageType\.DomainRegex\(\) Method
+
+```csharp
+private static System.Text.RegularExpressions.Regex DomainRegex();
+```
+
+#### Returns
+[System\.Text\.RegularExpressions\.Regex](https://learn.microsoft.com/en-us/dotnet/api/system.text.regularexpressions.regex 'System\.Text\.RegularExpressions\.Regex')
+
+### Remarks
+Pattern:<br/>
+
+```csharp
+^[a-z0-9]+$
+```<br/>
+Explanation:<br/>
+
+```csharp
+○ Match if at the beginning of the string.<br/>
+○ Match a character in the set [0-9a-z] atomically at least once.<br/>
+○ Match if at the end of the string or if before an ending newline.<br/>
+```
+
+<a name='Hexalith.EventStore.Contracts.Messages.MessageType.NameRegex()'></a>
+
+## MessageType\.NameRegex\(\) Method
+
+```csharp
+private static System.Text.RegularExpressions.Regex NameRegex();
+```
+
+#### Returns
+[System\.Text\.RegularExpressions\.Regex](https://learn.microsoft.com/en-us/dotnet/api/system.text.regularexpressions.regex 'System\.Text\.RegularExpressions\.Regex')
+
+### Remarks
+Pattern:<br/>
+
+```csharp
+^[a-z0-9]([a-z0-9-]*[a-z0-9])?$
+```<br/>
+Explanation:<br/>
+
+```csharp
+○ Match if at the beginning of the string.<br/>
+○ Match a character in the set [0-9a-z].<br/>
+○ Optional (greedy).<br/>
+    ○ 1st capture group.<br/>
+        ○ Match a character in the set [\-0-9a-z] greedily any number of times.<br/>
+        ○ Match a character in the set [0-9a-z].<br/>
+○ Match if at the end of the string or if before an ending newline.<br/>
+```
+
 <a name='Hexalith.EventStore.Contracts.Messages.MessageType.Parse(string)'></a>
 
 ## MessageType\.Parse\(string\) Method
@@ -181,3 +235,29 @@ The parsed [MessageType](Hexalith.EventStore.Contracts.Messages.MessageType.md '
 #### Returns
 [System\.Boolean](https://learn.microsoft.com/en-us/dotnet/api/system.boolean 'System\.Boolean')
 True if parsing succeeded; false otherwise\.
+
+<a name='Hexalith.EventStore.Contracts.Messages.MessageType.VersionSuffixRegex()'></a>
+
+## MessageType\.VersionSuffixRegex\(\) Method
+
+```csharp
+private static System.Text.RegularExpressions.Regex VersionSuffixRegex();
+```
+
+#### Returns
+[System\.Text\.RegularExpressions\.Regex](https://learn.microsoft.com/en-us/dotnet/api/system.text.regularexpressions.regex 'System\.Text\.RegularExpressions\.Regex')
+
+### Remarks
+Pattern:<br/>
+
+```csharp
+-v(\\d+)$
+```<br/>
+Explanation:<br/>
+
+```csharp
+○ Match the string "-v".<br/>
+○ 1st capture group.<br/>
+    ○ Match a Unicode digit atomically at least once.<br/>
+○ Match if at the end of the string or if before an ending newline.<br/>
+```

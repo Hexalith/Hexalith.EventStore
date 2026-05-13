@@ -6,11 +6,15 @@
 | Classes | |
 | :--- | :--- |
 | [EventStoreQueryTypeAttribute](Hexalith.EventStore.Contracts.Queries.EventStoreQueryTypeAttribute.md 'Hexalith\.EventStore\.Contracts\.Queries\.EventStoreQueryTypeAttribute') | Overrides the convention\-derived query type name for a query class\. When applied, NamingConventionEngine\.GetQueryTypeName returns this attribute's value instead of deriving from the type name\. |
+| [QueryAdapterFailureReason](Hexalith.EventStore.Contracts.Queries.QueryAdapterFailureReason.md 'Hexalith\.EventStore\.Contracts\.Queries\.QueryAdapterFailureReason') | Coarse projection adapter failure categories shared by EventStore and downstream query actors\. |
 | [QueryContractMetadata](Hexalith.EventStore.Contracts.Queries.QueryContractMetadata.md 'Hexalith\.EventStore\.Contracts\.Queries\.QueryContractMetadata') | Immutable container for resolved query contract metadata\. Produced by QueryContractResolver from IQueryContract implementations\. |
+| [QueryEnvelope](Hexalith.EventStore.Contracts.Queries.QueryEnvelope.md 'Hexalith\.EventStore\.Contracts\.Queries\.QueryEnvelope') | Immutable envelope carrying a query request to a projection actor\. |
+| [QueryResult](Hexalith.EventStore.Contracts.Queries.QueryResult.md 'Hexalith\.EventStore\.Contracts\.Queries\.QueryResult') | Result returned by a projection actor's query method\. |
 | [SubmitQueryRequest](Hexalith.EventStore.Contracts.Queries.SubmitQueryRequest.md 'Hexalith\.EventStore\.Contracts\.Queries\.SubmitQueryRequest') | Represents a request to submit a query to the event store\. |
 | [SubmitQueryResponse](Hexalith.EventStore.Contracts.Queries.SubmitQueryResponse.md 'Hexalith\.EventStore\.Contracts\.Queries\.SubmitQueryResponse') | Represents the response from a submitted query\. |
 
 | Interfaces | |
 | :--- | :--- |
+| [IProjectionActor](Hexalith.EventStore.Contracts.Queries.IProjectionActor.md 'Hexalith\.EventStore\.Contracts\.Queries\.IProjectionActor') | Public DAPR actor interface for generic projection query serving\. |
 | [IQueryContract](Hexalith.EventStore.Contracts.Queries.IQueryContract.md 'Hexalith\.EventStore\.Contracts\.Queries\.IQueryContract') | Defines mandatory query metadata as typed static members\. Implement this interface on query contract classes to get compile\-time safety for query routing metadata \(FR57\)\. |
 | [IQueryResponse&lt;T&gt;](Hexalith.EventStore.Contracts.Queries.IQueryResponse_T_.md 'Hexalith\.EventStore\.Contracts\.Queries\.IQueryResponse\<T\>') | Defines the response contract for query projections with mandatory projection type metadata\. Implement this interface on query response types to enforce compile\-time safety for projection type identification \(FR62\)\. |

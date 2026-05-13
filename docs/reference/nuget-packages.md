@@ -40,7 +40,7 @@ graph TD
 <details>
 <summary>Text description of the dependency graph</summary>
 
-- **Contracts** is the root Hexalith package. It has no dependency on any other Hexalith.EventStore package, but it does depend on `Hexalith.Commons.UniqueIds` for ULID generation.
+- **Contracts** is the root Hexalith package. It has no dependency on any other Hexalith.EventStore package, but it does depend on `Hexalith.Commons.UniqueIds` for ULID generation and `Dapr.Actors` for the public projection actor interface.
 - **Client** depends on Contracts.
 - **Server** depends on both Client and Contracts.
 - **SignalR** depends on Contracts and adds a lightweight helper over `Microsoft.AspNetCore.SignalR.Client`.
@@ -87,6 +87,25 @@ $ dotnet add package Hexalith.EventStore.Client
 ```
 
 Do not reference `Hexalith.EventStore` or `Hexalith.EventStore.Server` just to call the gateway. Those assemblies are runtime/internal boundaries for hosting EventStore. The command wrappers under `Hexalith.EventStore.Models` are compatibility-only delegates to the Contracts DTOs and are not the preferred downstream integration surface.
+
+### Serving projection queries
+
+Install **Contracts** in the project that hosts a downstream projection query actor.
+
+Contracts contains the public generic query actor boundary:
+
+- `IProjectionActor` - the DAPR actor interface EventStore routes to.
+- `QueryEnvelope` - the actor wire envelope with tenant, domain, aggregate, query type, payload bytes, correlation, user, and optional entity ID.
+- `QueryResult` - the actor response with success flag, UTF-8 JSON payload bytes, error message, and optional projection type metadata.
+- `QueryAdapterFailureReason` - coarse adapter-edge categories such as `missing-payload`, `serialization-failure`, and `actor-response-mismatch`.
+
+```bash
+$ dotnet add package Hexalith.EventStore.Contracts
+```
+
+Do not reference `Hexalith.EventStore.Server` just to implement query serving. Server contains runtime implementations such as `CachingProjectionActor`, `EventReplayProjectionActor`, `QueryRouter`, and `QueryActorIdHelper`; those are EventStore internals or optional host-side helpers, not the downstream public adapter requirement.
+
+Existing source that imported `QueryEnvelope`, `QueryResult`, or `IProjectionActor` from `Hexalith.EventStore.Server.Actors` should migrate to `Hexalith.EventStore.Contracts.Queries`. The data contract member names and order are preserved; the namespace move makes the public package boundary explicit.
 
 ### Testing your domain service or gateway caller
 
@@ -136,13 +155,14 @@ $ dotnet add package Hexalith.EventStore.Aspire
 
 Install packages across your projects based on their role:
 
-| Project                  | Packages          |
-| ------------------------ | ----------------- |
-| Domain service library   | Contracts, Client |
-| Event store host         | Contracts, Server |
-| UI or integration client | SignalR           |
-| Test project             | Testing           |
-| Aspire AppHost           | Aspire            |
+| Project                        | Packages          |
+| ------------------------------ | ----------------- |
+| Domain service library         | Contracts, Client |
+| Downstream projection actor    | Contracts         |
+| Event store host               | Contracts, Server |
+| UI or integration client       | SignalR           |
+| Test project                   | Testing           |
+| Aspire AppHost                 | Aspire            |
 
 ## Package Details
 
@@ -156,13 +176,14 @@ Pure domain types plus stable public gateway wire contracts. This package contai
 - `Hexalith.EventStore.Contracts.Events` — `EventEnvelope`, `EventMetadata`, `IEventPayload`, `IRejectionEvent`
 - `Hexalith.EventStore.Contracts.Identity` — `AggregateIdentity`, `IdentityParser`
 - `Hexalith.EventStore.Contracts.Problems` — `GatewayProblemDetailsExtensions`
-- `Hexalith.EventStore.Contracts.Queries` — `SubmitQueryRequest`, `SubmitQueryResponse`, query contract markers
+- `Hexalith.EventStore.Contracts.Queries` — `SubmitQueryRequest`, `SubmitQueryResponse`, `IQueryContract`, `QueryContractMetadata`, `IProjectionActor`, `QueryEnvelope`, `QueryResult`, `QueryAdapterFailureReason`
 - `Hexalith.EventStore.Contracts.Results` — `DomainResult`, `DomainServiceWireResult`
 
 **External dependencies:**
 
 | Package                    | Version |
 | -------------------------- | ------- |
+| Dapr.Actors                | 1.17.7  |
 | Hexalith.Commons.UniqueIds | 2.13.0  |
 
 ```bash
@@ -259,6 +280,8 @@ Test helpers, in-memory fakes, deterministic gateway doubles, and builders for u
 - `Hexalith.EventStore.Testing.Assertions` — `DomainResultAssertions`, `EventEnvelopeAssertions`, `StorageKeyIsolationAssertions`
 
 `FakeEventStoreGatewayClient` records submitted command/query requests and supplied `If-None-Match` values. It can be configured for command accepted, command ProblemDetails failure, query success, query semantic failure, query ProblemDetails failure, not-modified, unavailable, stale/degraded, and deterministic cancellation paths.
+
+`FakeProjectionActor` records public `QueryEnvelope` invocations and returns configurable public `QueryResult` values. Use it for downstream-style projection adapter tests without importing `Hexalith.EventStore.Server.Actors`. The broader Testing package still references Server for runtime test utilities such as aggregate actors, state stores, and pub/sub helpers; that dependency is not required by the public projection fake API surface.
 
 **External dependencies:**
 

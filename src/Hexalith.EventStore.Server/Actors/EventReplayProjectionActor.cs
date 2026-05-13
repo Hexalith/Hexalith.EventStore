@@ -2,6 +2,7 @@
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Queries;
 
 using Microsoft.Extensions.Logging;

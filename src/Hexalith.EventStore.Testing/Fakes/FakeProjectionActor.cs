@@ -2,7 +2,7 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 
-using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Contracts.Queries;
 
 namespace Hexalith.EventStore.Testing.Fakes;
 

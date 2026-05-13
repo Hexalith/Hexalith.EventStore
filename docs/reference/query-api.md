@@ -38,7 +38,7 @@ $ Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/pro
 
 Downstream .NET callers should build query gateway requests with `Hexalith.EventStore.Contracts.Queries.SubmitQueryRequest` and read envelopes as `Hexalith.EventStore.Contracts.Queries.SubmitQueryResponse`. Use `Hexalith.EventStore.Client.Gateway.IEventStoreGatewayClient` when you want the package to post the request, normalize ETags, map `304 Not Modified`, deserialize typed payloads, and expose ProblemDetails as `EventStoreGatewayException`.
 
-Do not reference `Hexalith.EventStore` or `Hexalith.EventStore.Server` for gateway DTOs or client behavior. Public gateway contracts live in Contracts, the HTTP convenience client lives in Client, and deterministic gateway doubles live in Testing. See [NuGet Packages Guide](nuget-packages.md#calling-the-public-http-gateway).
+Projection query actors should implement `Hexalith.EventStore.Contracts.Queries.IProjectionActor` and exchange `QueryEnvelope` and `QueryResult` from Contracts. Do not reference `Hexalith.EventStore` or `Hexalith.EventStore.Server` for gateway DTOs, query adapter DTOs, or the public projection actor interface. Public gateway and projection adapter contracts live in Contracts, the HTTP convenience client lives in Client, and deterministic public adapter doubles live in Testing. See [NuGet Packages Guide](nuget-packages.md#serving-projection-queries).
 
 ## POST /api/v1/queries
 
@@ -46,14 +46,16 @@ Execute a query against the current projection/read model.
 
 ### Request Body
 
-| Field       | Type   | Required | Description                                                                                                 |
-| ----------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------- |
-| tenant      | string | Yes      | Tenant identifier, for example `tenant-a`.                                                                  |
-| domain      | string | Yes      | Domain name, for example `counter` or `inventory`.                                                          |
-| aggregateId | string | Yes      | Aggregate identifier whose projection should be queried.                                                    |
-| queryType   | string | Yes      | Query type name, for example `GetCounter` or another domain-specific projection query.                      |
-| payload     | object | No       | Optional JSON payload for the query.                                                                        |
-| entityId    | string | No       | Optional entity identifier for query handlers that target a nested entity or alternate projection identity. |
+| Field               | Type   | Required | Description                                                                                                                                       |
+| ------------------- | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| tenant              | string | Yes      | Tenant identifier, for example `tenant-a`.                                                                                                        |
+| domain              | string | Yes      | Domain name, for example `counter` or `inventory`.                                                                                                |
+| aggregateId         | string | Yes      | Aggregate identifier whose projection should be queried.                                                                                          |
+| queryType           | string | Yes      | Query type name, for example `get-party`, `list-parties`, or `search-parties`.                                                                    |
+| projectionType      | string | No       | Projection/read-model selector used for actor ID routing and ETag/cache metadata. If omitted, routing uses `queryType`.                           |
+| payload             | object | No       | Optional JSON payload for the query. Non-empty payloads route through the payload-checksum mode when `entityId` is absent.                         |
+| entityId            | string | No       | Optional entity identifier for query handlers that target a nested entity or alternate projection identity.                                        |
+| projectionActorType | string | No       | Optional DAPR actor type selector. Defaults to `ProjectionActor`. This is a routing selector only, not an authorization or tenant-selection field. |
 
 ### Example
 
@@ -126,6 +128,52 @@ If the projection changed, the API returns `200 OK` with a new response body and
 | 503 Service Unavailable | Query dependencies unavailable                      | RFC 7807 ProblemDetails                           |
 
 Stable gateway ProblemDetails extension names are `correlationId`, `tenantId`, `errors`, `reason`, and `retryAfter`. The .NET gateway client exposes these through named properties on `EventStoreGatewayException`. Any non-standard extensions returned by the gateway (for example `traceCode` or custom diagnostic fields) are preserved verbatim in `EventStoreGatewayException.Extensions` as `IReadOnlyDictionary<string, JsonElement>` and are excluded from the named properties to avoid duplication.
+
+## Projection Query Actor Contract
+
+Domain services that serve EventStore queries implement `Hexalith.EventStore.Contracts.Queries.IProjectionActor`:
+
+```csharp
+public sealed class PartyProjectionActor : Actor, IProjectionActor
+{
+    public Task<QueryResult> QueryAsync(QueryEnvelope envelope)
+    {
+        // Read envelope.QueryType, envelope.EntityId, and envelope.Payload.
+        // Return QueryResult.FromPayload(json, projectionType: "party").
+    }
+}
+```
+
+`QueryEnvelope` is the DAPR actor wire envelope. Its fields are `TenantId`, `Domain`, `AggregateId`, `QueryType`, UTF-8 JSON `Payload` bytes, `CorrelationId`, `UserId`, and optional `EntityId`. `ToString()` redacts payload bytes and should be used instead of logging raw query payloads.
+
+`QueryResult` is the actor response. Successful results carry UTF-8 JSON `PayloadBytes` and optional `ProjectionType`; failures set `Success = false` and a coarse adapter-edge `ErrorMessage`. Use the public `QueryAdapterFailureReason` constants for stable adapter-edge categories:
+
+| Category                         | Meaning                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------ |
+| `missing-payload`                | Actor returned success without payload bytes.                            |
+| `invalid-envelope`               | Query envelope was malformed or incompatible.                            |
+| `actor-response-mismatch`        | Actor returned null or an incompatible response shape.                   |
+| `unsupported-query-type`         | Actor does not support the query type.                                   |
+| `serialization-failure`          | Payload bytes could not be serialized/deserialized as the public shape.  |
+| `actor-exception`                | Actor invocation failed before a valid adapter response was returned.    |
+| `unknown-query-type`             | Query type is unknown to the projection adapter.                         |
+| `actor-not-found-infrastructure` | DAPR actor runtime reported missing actor registration or actor address. |
+
+Story 22.4 owns final HTTP ProblemDetails type URIs, reason codes, paging/filter/freshness policy, and detailed query taxonomy. Story 22.3 owns tenant/RBAC enforcement before query actor invocation.
+
+### Actor Type and ID Routing
+
+EventStore uses three deterministic actor ID modes. Routing segments must not contain `:`. The 11-character checksum is a deterministic routing key, not a uniqueness, authorization, or security proof.
+
+| Query shape       | Request fields                                             | Actor ID format                    | Example                                  |
+| ----------------- | ---------------------------------------------------------- | ---------------------------------- | ---------------------------------------- |
+| Entity `GetParty` | `projectionType = "party"`, `entityId = "party-42"`        | `{projectionType}:{tenant}:{id}`   | `party:tenant-a:party-42`                |
+| List parties      | `projectionType = "party-list"`, empty payload, no entity  | `{projectionType}:{tenant}`        | `party-list:tenant-a`                    |
+| Search parties    | `projectionType = "party-search"`, non-empty JSON payload  | `{projectionType}:{tenant}:{hash}` | `party-search:tenant-a:A5BYxvLAy0k`      |
+
+If `projectionType` is omitted, EventStore uses `queryType` as the first actor ID segment for compatibility. If `projectionActorType` is omitted, EventStore uses DAPR actor type `ProjectionActor`; otherwise it uses the supplied actor type selector. `projectionActorType` does not bypass authentication, authorization, tenant validation, or future Story 22.3 policy.
+
+The `/project` projection update/rebuild contract is separate from `POST /api/v1/queries` query serving. Projection update endpoints change read-model state and ETags; query actors serve current read-model data.
 
 ## POST /api/v1/queries/validate
 

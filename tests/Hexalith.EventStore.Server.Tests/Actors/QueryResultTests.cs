@@ -2,7 +2,7 @@
 using System.Runtime.Serialization;
 using System.Text.Json;
 
-using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Contracts.Queries;
 
 using Shouldly;
 

@@ -1,8 +1,10 @@
 
+using System.Text.Json;
+
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
-using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 
 using Microsoft.Extensions.Logging;
@@ -57,16 +59,32 @@ public partial class QueryRouter(
                 new ActorId(actorId),
                 actorTypeName);
 
-            QueryResult result = await proxy.QueryAsync(envelope).ConfigureAwait(false);
+            QueryResult? result = await proxy.QueryAsync(envelope).ConfigureAwait(false);
+
+            if (result is null) {
+                Log.QueryExecutionFailed(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.ActorResponseMismatch);
+                return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.ActorResponseMismatch);
+            }
 
             if (!result.Success) {
                 Log.QueryExecutionFailed(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, result.ErrorMessage);
                 return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: result.ErrorMessage);
             }
 
+            if (result.PayloadBytes is not { Length: > 0 }) {
+                Log.QueryExecutionFailed(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.MissingPayload);
+                return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.MissingPayload);
+            }
+
             Log.QueryRouted(logger, query.CorrelationId, actorId);
 
-            return new QueryRouterResult(Success: true, Payload: result.GetPayload(), NotFound: false, ProjectionType: result.ProjectionType);
+            try {
+                return new QueryRouterResult(Success: true, Payload: result.GetPayload(), NotFound: false, ProjectionType: result.ProjectionType);
+            }
+            catch (JsonException) {
+                Log.QueryExecutionFailed(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.SerializationFailure);
+                return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.SerializationFailure);
+            }
         }
         catch (ActorMethodInvocationException ex) when (IsProjectionActorNotFound(ex)) {
             Log.ProjectionActorNotFound(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, actorId);

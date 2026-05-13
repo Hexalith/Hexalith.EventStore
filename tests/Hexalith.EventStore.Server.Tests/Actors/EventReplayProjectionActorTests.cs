@@ -6,6 +6,7 @@ using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Queries;
 
