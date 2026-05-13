@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-13T21:30:00+02:00' # Story 22.2 moved to done after round-2 code review (Claude Sonnet 4.6): 8 patches applied (Forbidden constant, dead IsNotFound branch removed, 501/403/cancellation handler tests, ProjectionActorType injection guard, query-api.md constraints, negative fake proof test). All Contracts/Testing/Server focused tests pass.
+last_updated: '2026-05-13T21:04:30+02:00' # Story 22.7b created by pre-dev hardening automation; 22-7b moved to ready-for-dev for unreadable protected data behavior.
+# Previous last_updated detail preserved: 2026-05-13T21:30:00+02:00 - Story 22.2 moved to done after round-2 code review (Claude Sonnet 4.6): 8 patches applied (Forbidden constant, dead IsNotFound branch removed, 501/403/cancellation handler tests, ProjectionActorType injection guard, query-api.md constraints, negative fake proof test). All Contracts/Testing/Server focused tests pass.
 # Previous last_updated detail preserved: 2026-05-13T18:30:00+02:00 - Story 22.2 moved back to in-progress after code review: 14 patch findings recorded (DataContract namespace, SubmitQueryHandler adapter-edge wiring, missing cancellation/actor-exception tests, ProjectionActorType validation, stale import, and others).
 # Previous last_updated detail preserved: 2026-05-13T15:05:39+02:00 - Story 22.7a created by pre-dev hardening automation; 22-7a moved to ready-for-dev for payload and snapshot protection hooks.
 # Previous last_updated detail preserved: 2026-05-13T15:03:01+02:00 - Story 22.2 moved to in-progress for projection adapter contract and generic query actor model implementation.
@@ -312,7 +313,7 @@ development_status:
   22-5-event-publishing-guarantees-and-backend-deployment-matrix: ready-for-dev
   22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints: ready-for-dev
   22-7a-payload-and-snapshot-protection-hooks: ready-for-dev
-  22-7b-unreadable-protected-data-behavior: backlog
+  22-7b-unreadable-protected-data-behavior: ready-for-dev
   22-7c-crypto-shredding-workflow-and-restored-backup-safety: backlog
   22-7d-protected-data-redaction-across-operational-surfaces: backlog
   epic-22-retrospective: optional
