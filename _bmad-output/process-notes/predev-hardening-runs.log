@@ -183,3 +183,4 @@
 2026-05-13T22:44:00+02:00	party-mode-review	22-7b-unreadable-protected-data-behavior	ok	party-mode review blocked story pending 22.7a metadata/result parity and applied guardrails
 2026-05-13T23:05:48+02:00	create-story	22-7c-crypto-shredding-workflow-and-restored-backup-safety	ok	created crypto-shredding workflow and restored-backup safety story
 2026-05-14T10:29:00+02:00	party-mode-review	22-7c-crypto-shredding-workflow-and-restored-backup-safety	ok	party-mode review blocked story pending 22.7a metadata/result parity and applied restore-safety guardrails
+2026-05-14T11:03:30.0332273+02:00	failed	-	failed	hard preflight failure; json=_bmad-output/process-notes/predev-preflight-latest.json; timestamp=2026-05-14T09:03:08Z; fail name=working tree cleanliness; details=2 dirty path(s); stdout=" M _bmad-output/implementation-artifacts/sprint-status.yaml\n?? _bmad-output/implementation-artifacts/22-7d-protected-data-redaction-across-operational-surfaces.md\n"
