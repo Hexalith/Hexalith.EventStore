@@ -78,6 +78,11 @@ public partial class ActorTenantValidator(
         AuthorizationFailureReason reasonCode = AuthorizationFailureReasonExtensions.FromReasonCode(
             response.ReasonCode,
             AuthorizationFailureReason.TenantUnavailable);
+        if (response.ReasonCode is not null && reasonCode == AuthorizationFailureReason.TenantUnavailable
+            && !string.Equals(response.ReasonCode, AuthorizationFailureReason.TenantUnavailable.ToReasonCode(), StringComparison.Ordinal)) {
+            Log.ActorTenantUnrecognizedReasonCode(logger, response.ReasonCode, userId, tenantId);
+        }
+
         return TenantValidationResult.Denied(response.Reason ?? "Tenant access denied by actor.", reasonCode);
     }
 
@@ -109,5 +114,12 @@ public partial class ActorTenantValidator(
             Message = "Actor tenant validation failed: UserId={UserId}, TenantId={TenantId}, ActorType={ActorType}, InnerExceptionType={InnerExceptionType}, Stage=ActorTenantValidationFailed")]
         public static partial void ActorTenantValidationFailed(
             ILogger logger, Exception? ex, string userId, string tenantId, string actorType, string innerExceptionType);
+
+        [LoggerMessage(
+            EventId = 1204,
+            Level = LogLevel.Warning,
+            Message = "Actor tenant validation returned unrecognized reason code: ReasonCode={ReasonCode}, UserId={UserId}, TenantId={TenantId}, Stage=ActorTenantUnrecognizedReasonCode")]
+        public static partial void ActorTenantUnrecognizedReasonCode(
+            ILogger logger, string reasonCode, string userId, string tenantId);
     }
 }

@@ -37,6 +37,6 @@ public class FakeRbacValidatorActor : IRbacValidatorActor {
             throw ConfiguredException;
         }
 
-        return Task.FromResult(ConfiguredResult ?? new ActorValidationResponse(true));
+        return Task.FromResult(ConfiguredResult ?? new ActorValidationResponse(false, "Test fake: no result configured. Authorization denied by default."));
     }
 }

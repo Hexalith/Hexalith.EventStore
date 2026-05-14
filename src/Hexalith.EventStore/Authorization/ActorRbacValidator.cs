@@ -82,6 +82,11 @@ public partial class ActorRbacValidator(
         AuthorizationFailureReason reasonCode = AuthorizationFailureReasonExtensions.FromReasonCode(
             response.ReasonCode,
             AuthorizationFailureReason.InsufficientPermission);
+        if (response.ReasonCode is not null && reasonCode == AuthorizationFailureReason.InsufficientPermission
+            && !string.Equals(response.ReasonCode, AuthorizationFailureReason.InsufficientPermission.ToReasonCode(), StringComparison.Ordinal)) {
+            Log.ActorRbacUnrecognizedReasonCode(logger, response.ReasonCode, userId, tenantId, domain, messageType);
+        }
+
         return RbacValidationResult.Denied(response.Reason ?? "RBAC access denied by actor.", reasonCode);
     }
 
@@ -113,5 +118,12 @@ public partial class ActorRbacValidator(
             Message = "Actor RBAC validation failed: UserId={UserId}, TenantId={TenantId}, ActorType={ActorType}, InnerExceptionType={InnerExceptionType}, Stage=ActorRbacValidationFailed")]
         public static partial void ActorRbacValidationFailed(
             ILogger logger, Exception? ex, string userId, string tenantId, string actorType, string innerExceptionType);
+
+        [LoggerMessage(
+            EventId = 1214,
+            Level = LogLevel.Warning,
+            Message = "Actor RBAC validation returned unrecognized reason code: ReasonCode={ReasonCode}, UserId={UserId}, TenantId={TenantId}, Domain={Domain}, MessageType={MessageType}, Stage=ActorRbacUnrecognizedReasonCode")]
+        public static partial void ActorRbacUnrecognizedReasonCode(
+            ILogger logger, string reasonCode, string userId, string tenantId, string domain, string messageType);
     }
 }

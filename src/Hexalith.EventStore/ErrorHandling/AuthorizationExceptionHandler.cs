@@ -24,12 +24,12 @@ public partial class AuthorizationExceptionHandler(ILogger<AuthorizationExceptio
         string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
 
         logger.LogWarning(
-            "Security event: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, CommandType={CommandType}, Reason={Reason}",
+            "Security event: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, MessageType={MessageType}, Reason={Reason}",
             "AuthorizationDenied",
             correlationId,
             authException.TenantId,
             authException.Domain,
-            authException.CommandType,
+            authException.MessageType,
             authException.Reason);
 
         string detail = CreateClientDetail(authException);

@@ -1,6 +1,6 @@
 # Story 22.3: Gateway-Owned Tenant and RBAC Enforcement
 
-Status: review
+Status: done
 
 Context created: 2026-05-12
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
@@ -440,6 +440,33 @@ GPT-5 Codex
 - Tenants contract evidence: `TenantsAuthorizationContractMappingTests` references `Hexalith.Tenants.Contracts` in tests only and maps active/disabled tenant status plus known roles without adding Tenants runtime dependencies to Contracts, Client, Testing, or EventStore production packages.
 - Story 22.4 exclusions preserved: non-auth query validation, missing projection, malformed query/filter, projection consistency, and business/query taxonomy remain out of scope.
 
+### Review Findings
+
+Code review run: 2026-05-14 — Claude Sonnet 4.6 (3-layer: Blind Hunter, Edge Case Hunter, Acceptance Auditor)
+
+**Decision-Needed:**
+- [x] [Review][Decision] GlobalAdmin with empty tenantId — resolved as regression; GlobalAdmin bypass moved before empty-tenantId guard. [`src/Hexalith.EventStore/Authorization/ClaimsTenantValidator.cs`]
+
+**Patches:**
+- [x] [Review][Patch] Renamed `CommandType` → `MessageType` in `CommandAuthorizationException` and updated log in `AuthorizationExceptionHandler`. Tests updated. [`src/Hexalith.EventStore/ErrorHandling/CommandAuthorizationException.cs`, `AuthorizationExceptionHandler.cs`]
+- [x] [Review][Patch] `TenantValidationResult.Denied` default changed from `TenantUnavailable` to `PrincipalNotMember`. [`src/Hexalith.EventStore/Authorization/TenantValidationResult.cs`]
+- [x] [Review][Patch] `FakeTenantValidatorActor` / `FakeRbacValidatorActor` default changed from allow to deny. [`src/Hexalith.EventStore.Testing/Fakes/FakeTenantValidatorActor.cs`, `FakeRbacValidatorActor.cs`]
+- [x] [Review][Patch] Added gateway-level `FakeTenantValidator`/`FakeRbacValidator` with default-deny in `tests/Hexalith.EventStore.Server.Tests/Fakes/`. (Note: placed in server tests project, not in Testing library, as gateway interfaces live in the API project not accessible from the Testing NuGet package.)
+- [x] [Review][Patch] Added `AuthorizationBehavior_TenantDenied_HandlerDelegateNotInvoked` test proving handler not called when auth fails. [`tests/Hexalith.EventStore.Server.Tests/Pipeline/AuthorizationBehaviorTests.cs`]
+- [x] [Review][Patch] Added 4 actor reason-code test cases (`tenant_not_found`, `tenant_suspended`, `tenant_stale`, `tenant_ambiguous`) to `ActorTenantValidatorTests`. [`tests/Hexalith.EventStore.Server.Tests/Authorization/ActorTenantValidatorTests.cs`]
+- [x] [Review][Patch] Added `correlationId` to `AuthorizationServiceUnavailableHandler` 503 ProblemDetails; removed misleading UX-DR2 comment. Updated test. [`src/Hexalith.EventStore/ErrorHandling/AuthorizationServiceUnavailableHandler.cs`]
+- [x] [Review][Patch] Added warning log for unrecognized actor reason codes in `ActorTenantValidator` and `ActorRbacValidator`. [`src/Hexalith.EventStore/Authorization/ActorTenantValidator.cs`, `ActorRbacValidator.cs`]
+- [x] [Review][Patch] Added `private const string StartupValidatorTypeName` in `EventStoreAuthorizationRegistrationTests` and replaced all 3 hardcoded string usages. [`tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreAuthorizationRegistrationTests.cs`]
+- [x] [Review][Patch] Added `Submit_UnauthorizedRbac_ThrowsWithCorrectReasonCode` test for RBAC-denied query path. [`tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs`]
+
+**Deferred:**
+- [x] [Review][Defer] Non-HTTP context bypass in `AuthorizationBehavior` allows full auth skip for internal MediatR calls — pre-existing architectural trust boundary, intentional design [`src/Hexalith.EventStore/Pipeline/AuthorizationBehavior.cs:40`] — deferred, pre-existing
+- [x] [Review][Defer] New `TenantStatus` values added to Hexalith.Tenants submodule will silently map to `TenantAmbiguous` via `_` default arm — submodule only has Active/Disabled today; revisit when new statuses are added [`tests/.../TenantsAuthorizationContractMappingTests.cs`] — deferred, pre-existing
+- [x] [Review][Defer] `AuthorizationServiceUnavailableHandler` emits `Retry-After` in both HTTP header and ProblemDetails extension — intentional belt-and-suspenders for RFC compliance, ordering invariant undocumented — deferred, pre-existing
+- [x] [Review][Defer] `AuthorizationExceptionHandler.SanitizeForbiddenTerms` regex ordering is load-bearing but undocumented — pre-existing [`src/Hexalith.EventStore/ErrorHandling/AuthorizationExceptionHandler.cs`] — deferred, pre-existing
+- [x] [Review][Defer] `CommandApiAuthorizationStartupValidator` validates DI wiring but does not enforce actor-backed mode in production — a misconfigured deployment silently falls back to claims-only — deferred, pre-existing architectural gap
+- [x] [Review][Defer] All 401 responses emit `authentication_required` regardless of expired vs missing token — `AuthorizationFailureReason` enum has no `TokenExpired` member; extends beyond story 22.3 scope — deferred, out of scope
+
 ## Change Log
 
 | Date | Version | Description | Author |
@@ -448,6 +475,8 @@ GPT-5 Codex
 | 2026-05-13 | 0.2 | Applied party-mode review hardening for validator contracts, authorization ordering, reason-code taxonomy, Tenants integration precedence, claims fallback fencing, validation endpoint compatibility, client/testing parity, and evidence requirements. | Codex automation |
 | 2026-05-13 | 0.3 | Applied advanced elicitation hardening for immutable authorization context, tenant conflicts, auth-before-cache ordering, adapter failure semantics, safe observability, and fake/client fail-closed parity. | Codex automation |
 | 2026-05-13 | 1.0 | Implemented gateway-owned tenant/RBAC reason-code contract, query auth-before-ETag enforcement, actor adapter mapping, client/testing support, docs, and focused validation evidence. | GPT-5 Codex |
+| 2026-05-14 | 1.1 | Code review by Claude Sonnet 4.6: 1 decision-needed, 10 patches, 6 deferred identified. Story moved to in-progress. | Claude Sonnet 4.6 |
+| 2026-05-14 | 1.2 | All review patches applied: DN-1 regression fixed, P1–P10 all patched. 1879 tests pass (4 pre-existing failures unrelated to story scope). Story moved to done. | Claude Sonnet 4.6 |
 
 ## Party-Mode Review
 

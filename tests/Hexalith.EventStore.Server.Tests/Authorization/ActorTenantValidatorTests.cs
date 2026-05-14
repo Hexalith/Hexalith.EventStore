@@ -272,4 +272,52 @@ public class ActorTenantValidatorTests {
         result.IsAuthorized.ShouldBeFalse();
         result.ReasonCode.ShouldBe(AuthorizationFailureReason.TenantDisabled);
     }
+
+    [Fact]
+    public async Task ValidateAsync_ActorDeniesWithTenantNotFound_MapsTypedReasonCode() {
+        (ActorTenantValidator validator, IActorProxyFactory factory) = CreateValidator();
+        SetupActorProxy(factory, new ActorValidationResponse(false, "Tenant not found.", "tenant_not_found"));
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        TenantValidationResult result = await validator.ValidateAsync(user, TenantId, CancellationToken.None);
+
+        result.IsAuthorized.ShouldBeFalse();
+        result.ReasonCode.ShouldBe(AuthorizationFailureReason.TenantNotFound);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ActorDeniesWithTenantSuspended_MapsTypedReasonCode() {
+        (ActorTenantValidator validator, IActorProxyFactory factory) = CreateValidator();
+        SetupActorProxy(factory, new ActorValidationResponse(false, "Tenant suspended.", "tenant_suspended"));
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        TenantValidationResult result = await validator.ValidateAsync(user, TenantId, CancellationToken.None);
+
+        result.IsAuthorized.ShouldBeFalse();
+        result.ReasonCode.ShouldBe(AuthorizationFailureReason.TenantSuspended);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ActorDeniesWithTenantStale_MapsTypedReasonCode() {
+        (ActorTenantValidator validator, IActorProxyFactory factory) = CreateValidator();
+        SetupActorProxy(factory, new ActorValidationResponse(false, "Tenant data is stale.", "tenant_stale"));
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        TenantValidationResult result = await validator.ValidateAsync(user, TenantId, CancellationToken.None);
+
+        result.IsAuthorized.ShouldBeFalse();
+        result.ReasonCode.ShouldBe(AuthorizationFailureReason.TenantStale);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ActorDeniesWithTenantAmbiguous_MapsTypedReasonCode() {
+        (ActorTenantValidator validator, IActorProxyFactory factory) = CreateValidator();
+        SetupActorProxy(factory, new ActorValidationResponse(false, "Tenant is ambiguous.", "tenant_ambiguous"));
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        TenantValidationResult result = await validator.ValidateAsync(user, TenantId, CancellationToken.None);
+
+        result.IsAuthorized.ShouldBeFalse();
+        result.ReasonCode.ShouldBe(AuthorizationFailureReason.TenantAmbiguous);
+    }
 }

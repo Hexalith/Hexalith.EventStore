@@ -317,6 +317,31 @@ public class QueriesControllerTests {
     }
 
     [Fact]
+    public async Task Submit_UnauthorizedRbac_ThrowsWithCorrectReasonCode() {
+        IMediator mediator = Substitute.For<IMediator>();
+        IETagService eTagService = Substitute.For<IETagService>();
+        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+            .Returns(TenantValidationResult.Allowed);
+        IRbacValidator rbacValidator = Substitute.For<IRbacValidator>();
+        _ = rbacValidator.ValidateAsync(
+            Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+            .Returns(RbacValidationResult.Denied("Insufficient permission.", AuthorizationFailureReason.InsufficientPermission));
+
+        QueriesController controller = CreateController(
+            mediator, eTagService,
+            tenantValidator: tenantValidator,
+            rbacValidator: rbacValidator);
+
+        CommandAuthorizationException ex = await Should.ThrowAsync<CommandAuthorizationException>(
+            () => controller.Submit(CreateTestRequest(), null, CancellationToken.None));
+
+        ex.ReasonCode.ShouldBe(AuthorizationFailureReason.InsufficientPermission);
+        _ = await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Submit_IfNoneMatchDoesNotMatch_Returns200WithETagHeader() {
         // Arrange — client sends old self-routing ETag, server has newer one
         string clientETag = GenerateTestETag();

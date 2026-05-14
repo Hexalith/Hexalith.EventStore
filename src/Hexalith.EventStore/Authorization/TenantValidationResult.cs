@@ -25,6 +25,6 @@ public record TenantValidationResult(
     /// <returns>A denied <see cref="TenantValidationResult"/>.</returns>
     public static TenantValidationResult Denied(
         string reason,
-        AuthorizationFailureReason reasonCode = AuthorizationFailureReason.TenantUnavailable)
+        AuthorizationFailureReason reasonCode = AuthorizationFailureReason.PrincipalNotMember)
         => new(false, reason, reasonCode);
 }

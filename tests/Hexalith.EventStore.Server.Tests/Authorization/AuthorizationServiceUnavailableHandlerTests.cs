@@ -111,20 +111,18 @@ public class AuthorizationServiceUnavailableHandlerTests {
     }
 
     [Fact]
-    public async Task TryHandleAsync_DoesNotIncludeCorrelationId() {
-        // Arrange (UX-DR2: No correlationId on 503 — pre-pipeline rejection)
+    public async Task TryHandleAsync_IncludesCorrelationId() {
         AuthorizationServiceUnavailableHandler handler = CreateHandler();
         HttpContext context = CreateHttpContext("my-correlation-123");
         var exception = new AuthorizationServiceUnavailableException(
             "Actor", "id", "reason", new Exception());
 
-        // Act
         _ = await handler.TryHandleAsync(context, exception, CancellationToken.None);
 
-        // Assert
         ProblemDetails? problem = await ReadProblemDetails(context);
         _ = problem.ShouldNotBeNull();
-        problem.Extensions.ShouldNotContainKey("correlationId");
+        problem.Extensions.ShouldContainKey("correlationId");
+        problem.Extensions["correlationId"]?.ToString().ShouldBe("my-correlation-123");
     }
 
     [Fact]

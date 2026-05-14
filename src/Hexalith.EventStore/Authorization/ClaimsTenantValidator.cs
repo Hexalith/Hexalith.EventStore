@@ -19,15 +19,15 @@ public class ClaimsTenantValidator : ITenantValidator {
         string? aggregateId = null) {
         ArgumentNullException.ThrowIfNull(user);
 
+        // Global administrators may access any tenant (including "system"), even with empty tenantId
+        if (GlobalAdministratorHelper.IsGlobalAdministrator(user)) {
+            return Task.FromResult(TenantValidationResult.Allowed);
+        }
+
         if (string.IsNullOrWhiteSpace(tenantId)) {
             return Task.FromResult(TenantValidationResult.Denied(
                 "Tenant is required.",
                 AuthorizationFailureReason.TenantMissing));
-        }
-
-        // Global administrators may access any tenant (including "system")
-        if (GlobalAdministratorHelper.IsGlobalAdministrator(user)) {
-            return Task.FromResult(TenantValidationResult.Allowed);
         }
 
         var tenantClaims = user.FindAll("eventstore:tenant")

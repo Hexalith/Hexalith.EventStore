@@ -26,6 +26,8 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Configuration;
 
 public class EventStoreAuthorizationRegistrationTests {
+    private const string StartupValidatorTypeName = "EventStoreAuthorizationStartupValidator";
+
     private static ServiceProvider BuildProvider(
         Dictionary<string, string?>? configValues = null,
         Action<IServiceCollection>? configureServices = null) {
@@ -45,7 +47,7 @@ public class EventStoreAuthorizationRegistrationTests {
         _ = services.AddEventStore();
         foreach (ServiceDescriptor descriptor in services
             .Where(static service => service.ServiceType == typeof(IHostedService)
-                && service.ImplementationType?.Name != "EventStoreAuthorizationStartupValidator")
+                && service.ImplementationType?.Name != StartupValidatorTypeName)
             .ToList()) {
             _ = services.Remove(descriptor);
         }
@@ -110,7 +112,7 @@ public class EventStoreAuthorizationRegistrationTests {
 
         IHostedService startupValidator = provider
             .GetServices<IHostedService>()
-            .Single(service => service.GetType().Name == "EventStoreAuthorizationStartupValidator");
+            .Single(service => service.GetType().Name == StartupValidatorTypeName);
 
         // Should NOT throw — actor-based implementation is now registered
         await startupValidator.StartAsync(CancellationToken.None);
@@ -125,7 +127,7 @@ public class EventStoreAuthorizationRegistrationTests {
 
         IHostedService startupValidator = provider
             .GetServices<IHostedService>()
-            .Single(service => service.GetType().Name == "EventStoreAuthorizationStartupValidator");
+            .Single(service => service.GetType().Name == StartupValidatorTypeName);
 
         // Should NOT throw — actor-based implementation is now registered
         await startupValidator.StartAsync(CancellationToken.None);

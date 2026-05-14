@@ -6,13 +6,13 @@ public class CommandAuthorizationException : Exception {
     public CommandAuthorizationException(
         string tenantId,
         string? domain,
-        string? commandType,
+        string? messageType,
         string reason,
         AuthorizationFailureReason reasonCode = AuthorizationFailureReason.InsufficientPermission)
         : base($"Authorization failed for tenant '{tenantId}': {reason}") {
         TenantId = tenantId;
         Domain = domain;
-        CommandType = commandType;
+        MessageType = messageType;
         Reason = reason;
         ReasonCode = reasonCode;
     }
@@ -42,7 +42,7 @@ public class CommandAuthorizationException : Exception {
 
     public string? Domain { get; }
 
-    public string? CommandType { get; }
+    public string? MessageType { get; }
 
     public string Reason { get; }
 

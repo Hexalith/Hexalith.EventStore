@@ -44,7 +44,6 @@ public class AuthorizationServiceUnavailableHandler(
 
         // SECURITY: Generic message only — no actor type, actor ID, or internal details
         // UX-DR11: "command processing pipeline" — never name internal components
-        // UX-DR2: No correlationId on 503 (pre-pipeline rejection)
         var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status503ServiceUnavailable,
             Title = "Service Unavailable",
@@ -53,6 +52,7 @@ public class AuthorizationServiceUnavailableHandler(
             Instance = httpContext.Request.Path,
             Extensions =
             {
+                [GatewayProblemDetailsExtensions.CorrelationId] = correlationId,
                 [GatewayProblemDetailsExtensions.ReasonCode] = AuthorizationFailureReason.AuthorizationServiceUnavailable.ToReasonCode(),
                 [GatewayProblemDetailsExtensions.RetryAfter] = "30",
             },

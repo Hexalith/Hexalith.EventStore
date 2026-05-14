@@ -346,7 +346,7 @@ public class AuthorizationBehaviorTests {
         CommandAuthorizationException ex = await Should.ThrowAsync<CommandAuthorizationException>(
             () => behavior.Handle(command, CreateSuccessDelegate(), CancellationToken.None));
 
-        ex.CommandType.ShouldBe("CreateOrder");
+        ex.MessageType.ShouldBe("CreateOrder");
         ex.Reason.ShouldContain("tenant 'test-tenant'");
         ex.Reason.ShouldContain("command type");
     }
@@ -657,6 +657,26 @@ public class AuthorizationBehaviorTests {
             "test-tenant",
             Arg.Any<CancellationToken>(),
             "agg-001");
+    }
+
+    [Fact]
+    public async Task AuthorizationBehavior_TenantDenied_HandlerDelegateNotInvoked() {
+        // Arrange — tenant mismatch must short-circuit before calling the handler
+        bool handlerInvoked = false;
+        ClaimsPrincipal principal = CreatePrincipal(tenants: ["other-tenant"]);
+        AuthorizationBehavior<SubmitCommand, SubmitCommandResult> behavior = CreateBehavior(principal);
+        SubmitCommand command = CreateTestCommand(tenant: "test-tenant");
+        var next = new RequestHandlerDelegate<SubmitCommandResult>((_) => {
+            handlerInvoked = true;
+            return Task.FromResult(new SubmitCommandResult("test-correlation-id"));
+        });
+
+        // Act
+        _ = await Should.ThrowAsync<CommandAuthorizationException>(
+            () => behavior.Handle(command, next, CancellationToken.None));
+
+        // Assert — handler must not be invoked when authorization fails
+        handlerInvoked.ShouldBeFalse();
     }
 
     // Helper types for non-SubmitCommand test

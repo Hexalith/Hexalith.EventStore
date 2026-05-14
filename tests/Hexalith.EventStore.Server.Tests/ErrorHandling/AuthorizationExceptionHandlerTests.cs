@@ -218,7 +218,7 @@ public class AuthorizationExceptionHandlerTests {
         // Assert
         ex.TenantId.ShouldBe("acme-corp");
         ex.Domain.ShouldBe("orders");
-        ex.CommandType.ShouldBe("PlaceOrder");
+        ex.MessageType.ShouldBe("PlaceOrder");
         ex.Reason.ShouldBe("Not authorized for domain 'orders'.");
     }
 
@@ -234,13 +234,13 @@ public class AuthorizationExceptionHandlerTests {
         exEmpty.TenantId.ShouldBe(string.Empty);
         exEmpty.Reason.ShouldBe(string.Empty);
         exEmpty.Domain.ShouldBeNull();
-        exEmpty.CommandType.ShouldBeNull();
+        exEmpty.MessageType.ShouldBeNull();
 
         exMessage.Message.ShouldBe("test message");
         exMessage.TenantId.ShouldBe(string.Empty);
         exMessage.Reason.ShouldBe("test message");
         exMessage.Domain.ShouldBeNull();
-        exMessage.CommandType.ShouldBeNull();
+        exMessage.MessageType.ShouldBeNull();
 
         exInner.Message.ShouldBe("test message");
         _ = exInner.InnerException.ShouldNotBeNull();
