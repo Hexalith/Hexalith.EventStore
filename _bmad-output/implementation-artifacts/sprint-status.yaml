@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-14T14:00:00+02:00' # Story 22.3 moved to done: all 11 review patches applied (DN-1 GlobalAdmin regression + P1-P10). 1875 tests pass; 4 pre-existing unrelated failures. Changelog v1.2 added.
+last_updated: '2026-05-14T16:10:00+02:00' # Story 22.7d created and marked blocked until 22.7a provider-neutral protection metadata/result parity and dependent unreadable/restore-safety contracts exist.
+# Previous last_updated detail preserved: 2026-05-14T14:00:00+02:00 - Story 22.3 moved to done: all 11 review patches applied (DN-1 GlobalAdmin regression + P1-P10). 1875 tests pass; 4 pre-existing unrelated failures. Changelog v1.2 added.
 # Previous last_updated detail preserved: 2026-05-14T10:29:00+02:00 - Story 22.7c blocked by party-mode review until Story 22.7a provider-neutral protection metadata/result parity is implemented and merged.
 # Previous last_updated detail preserved: 2026-05-13T23:02:05+02:00 - Story 22.7c created by pre-dev hardening automation; 22-7c moved to ready-for-dev for crypto-shredding workflow and restored-backup safety.
 # Previous last_updated detail preserved: 2026-05-13T22:44:00+02:00 - Story 22.7b blocked by party-mode review until Story 22.7a metadata/result parity is implemented.
@@ -320,7 +321,7 @@ development_status:
   22-7a-payload-and-snapshot-protection-hooks: ready-for-dev
   22-7b-unreadable-protected-data-behavior: blocked
   22-7c-crypto-shredding-workflow-and-restored-backup-safety: blocked
-  22-7d-protected-data-redaction-across-operational-surfaces: backlog
+  22-7d-protected-data-redaction-across-operational-surfaces: blocked
   epic-22-retrospective: optional
 
   # Post-Epic Deferred Work Cleanup (sprint-change-proposal-2026-05-04-deferred-work-triage.md)
