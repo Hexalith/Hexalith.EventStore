@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
@@ -54,7 +55,7 @@ public partial class SubmitQueryHandler(
                 request.QueryType,
                 403,
                 errorMessage!,
-                QueryProblemReasonCodes.InternalError);
+                AuthorizationFailureReasonExtensions.InsufficientPermission);
         }
 
         if (IsNotFound(errorMessage)) {

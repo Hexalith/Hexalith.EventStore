@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using FluentValidation.Results;
 
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.ErrorHandling;
@@ -73,6 +74,53 @@ public class QueryProblemDetailsTests {
         problem.Status.ShouldBe(StatusCodes.Status501NotImplemented);
         GetExtensionString(problem, GatewayProblemDetailsExtensions.ReasonCode)
             .ShouldBe(QueryProblemReasonCodes.NotImplemented);
+    }
+
+    [Fact]
+    public async Task QueryExecutionFailedExceptionHandler_Forbidden_IncludesInsufficientPermissionReasonCode() {
+        var handler = new QueryExecutionFailedExceptionHandler(NullLogger<QueryExecutionFailedExceptionHandler>.Instance);
+        DefaultHttpContext httpContext = CreateHttpContext();
+        var exception = new QueryExecutionFailedException(
+            "corr-1",
+            "tenant-a",
+            "party",
+            "party-1",
+            "GetParty",
+            StatusCodes.Status403Forbidden,
+            "Forbidden",
+            AuthorizationFailureReasonExtensions.InsufficientPermission);
+
+        _ = await handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        ProblemDetails problem = await ReadProblemDetailsAsync(httpContext);
+
+        problem.Type.ShouldBe(ProblemTypeUris.Forbidden);
+        problem.Status.ShouldBe(StatusCodes.Status403Forbidden);
+        GetExtensionString(problem, GatewayProblemDetailsExtensions.ReasonCode)
+            .ShouldBe(AuthorizationFailureReasonExtensions.InsufficientPermission);
+    }
+
+    [Fact]
+    public async Task QueryExecutionFailedExceptionHandler_ForbiddenWithoutExplicitReasonCode_FallsBackToInsufficientPermission() {
+        var handler = new QueryExecutionFailedExceptionHandler(NullLogger<QueryExecutionFailedExceptionHandler>.Instance);
+        DefaultHttpContext httpContext = CreateHttpContext();
+        var exception = new QueryExecutionFailedException(
+            "corr-1",
+            "tenant-a",
+            "party",
+            "party-1",
+            "GetParty",
+            StatusCodes.Status403Forbidden,
+            "Forbidden");
+
+        _ = await handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        ProblemDetails problem = await ReadProblemDetailsAsync(httpContext);
+
+        problem.Type.ShouldBe(ProblemTypeUris.Forbidden);
+        problem.Status.ShouldBe(StatusCodes.Status403Forbidden);
+        GetExtensionString(problem, GatewayProblemDetailsExtensions.ReasonCode)
+            .ShouldBe(AuthorizationFailureReasonExtensions.InsufficientPermission);
     }
 
     private static DefaultHttpContext CreateHttpContext() {

@@ -1,6 +1,6 @@
 # Story 22.4: Query Behavior Policy and Error Taxonomy
 
-Status: review
+Status: done
 
 Context created: 2026-05-12
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
@@ -466,6 +466,30 @@ GPT-5 Codex
 | 2026-05-13 | 0.3 | Applied advanced elicitation hardening for query policy canonicalization, cache identity isolation, stable machine taxonomy, sanitized fallbacks, and client/fake branching guardrails. | Codex automation |
 | 2026-05-13 | 0.2 | Applied party-mode review hardening for query validation order, compatibility, cache semantics, taxonomy, no-leak testing, and client/fake parity. | Codex automation |
 | 2026-05-12 | 0.1 | Created ready-for-dev story for query behavior policy and error taxonomy. | Codex automation |
+
+### Review Findings
+
+> Review date: 2026-05-14 — Reviewer: bmad-code-review (Claude Sonnet 4.6, 3-layer parallel: Blind Hunter + Edge Case Hunter + Acceptance Auditor)
+> Dismissed: 16 findings (by-design, false-positives, or already implemented correctly)
+
+#### Decision-Needed
+
+- [x] [Review][Decision] **DN1 — 403 branch uses `InternalError` instead of Story 22.3 auth reason code** — Resolved: use `AuthorizationFailureReasonExtensions.InsufficientPermission` in `SubmitQueryHandler` and `GetReasonCode`; 2 new tests added. — `SubmitQueryHandler.cs` line ~56 passes `QueryProblemReasonCodes.InternalError` for the 403 path; `GetReasonCode` fallback also maps 403 → `InternalError`. Story spec says "Authorization failures reuse Story 22.3's 401/403 taxonomy." Determine the correct Story 22.3 reason code (or a new `query_forbidden` constant) and apply it here and in `GetReasonCode`. (Sources: blind+edge+auditor)
+
+#### Patches
+
+- [x] [Review][Patch] **P1 — `HasExplicitPolicyInputs` skips ETag for any non-null `Paging` object, even when empty** [`src/Hexalith.EventStore/Controllers/QueriesController.cs`] — `request.Paging is not null` is `true` for `new QueryPagingOptions()` (all nulls). A client upgrading to new SDK that receives a default-constructed Paging loses the 304 fast path silently. Fix: check that `Paging` has at least one meaningful field set (e.g., `PageSize.HasValue || Offset.HasValue || !string.IsNullOrWhiteSpace(Cursor)`). Same issue applies to `Freshness is not null` with an all-null `QueryFreshnessPolicy`. (Sources: blind+edge+auditor)
+- [x] [Review][Patch] **P2 — `Offset` coalesced to `0` in response metadata when client omitted offset** [`src/Hexalith.EventStore/Controllers/QueriesController.cs`] — `request.Paging.Offset ?? 0` unconditionally writes `0` into `QueryPagingMetadata.Offset`. Since `Offset` is `int?`, a client cannot distinguish "confirmed offset 0" from "no offset was requested." Use `request.Paging.Offset` directly (pass it as-is, leaving null when absent). (Sources: blind+edge)
+- [x] [Review][Patch] **P3 — Missing test: different policy inputs must not produce a false `304 Not Modified`** [`tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs`] — AC3 requires a test that issues two requests with different policy inputs (e.g., different page sizes) and asserts that a valid ETag from the first cannot cause a `304` for the second. The added pre-check-skip test verifies the skip happens, but not that a second distinct query bypasses a stale cached ETag. (Sources: auditor)
+- [x] [Review][Patch] **P4 — Missing test: null `PageSize` produces default `50` in response metadata** [`tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs`] — AC1/AC2 require normalized policy inputs recorded in tests so later implementations cannot accidentally change public query identity. No test confirms that a request with `Paging = { }` (null `PageSize`) receives `Metadata.Paging.PageSize = 50` in the response. (Sources: auditor)
+- [x] [Review][Patch] **P5 — Missing client test: error-path assertion on `ReasonCode`** [`tests/Hexalith.EventStore.Client.Tests/Gateway/EventStoreGatewayClientTests.cs`] — AC6 requires client/fake tests to branch on stable `status`, `type`, and `reason` metadata rather than localized text. The added tests assert on metadata for success/304 paths. No test confirms that a ProblemDetails error response with a `reasonCode` extension is parsed and surfaced via `EventStoreGatewayException.ReasonCode` (or equivalent). (Sources: auditor)
+
+#### Deferred
+
+- [x] [Review][Defer] **W1 — `errorMessage` potentially leaked into `QueryExecutionFailedException` for 403/500 branches** [`src/Hexalith.EventStore.Server/Pipeline/SubmitQueryHandler.cs`] — deferred, pre-existing: raw adapter `errorMessage` has been forwarded since the original implementation; sanitization belongs in a separate hardening story.
+- [x] [Review][Defer] **W2 — `QueryFilter.Value` (`JsonElement`) accepted without length or depth validation** [`src/Hexalith.EventStore/Validation/SubmitQueryRequestValidator.cs`] — deferred, pre-existing: filter validation is reserved and always rejects the list; the value is never echoed; depth/length concern is bounded by the existing 1 MB body limit on `QueriesController`.
+- [x] [Review][Defer] **W3 — `FakeEventStoreGatewayClient.QueryResult` assignment is not thread-safe** [`src/Hexalith.EventStore.Testing/Fakes/FakeEventStoreGatewayClient.cs`] — deferred, pre-existing: the non-atomic `QueryResult` field predates this story; concurrent fake usage is out of scope here.
+- [x] [Review][Defer] **W4 — `FakeEventStoreGatewayClient` duplicates `IsNotModified` in constructor and `Metadata`** [`src/Hexalith.EventStore.Testing/Fakes/FakeEventStoreGatewayClient.cs`] — deferred, pre-existing: minor redundancy; a future refactor can derive one from the other.
 
 ## Party-Mode Review
 

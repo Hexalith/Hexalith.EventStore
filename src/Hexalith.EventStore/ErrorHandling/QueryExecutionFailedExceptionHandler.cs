@@ -1,6 +1,7 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Middleware;
@@ -77,6 +78,7 @@ public class QueryExecutionFailedExceptionHandler(ILogger<QueryExecutionFailedEx
 
     private static string GetReasonCode(int statusCode)
         => statusCode switch {
+            StatusCodes.Status403Forbidden => AuthorizationFailureReasonExtensions.InsufficientPermission,
             StatusCodes.Status501NotImplemented => QueryProblemReasonCodes.NotImplemented,
             _ => QueryProblemReasonCodes.InternalError,
         };

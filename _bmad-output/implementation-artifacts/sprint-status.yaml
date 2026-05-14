@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-14T11:52:00+02:00' # Story 22.4 moved to review after query policy contracts, metadata, taxonomy, docs, and focused validation passed.
+last_updated: '2026-05-14T17:30:00+02:00' # Story 22.4 moved to done after code review: 1 decision (403→insufficient_permission) + 5 patches applied; 6 new tests added; Server 75/75, Client 386/386.
 # Previous last_updated detail preserved: 2026-05-14T11:11:57+02:00 - Story 22.4 moved to in-progress for query behavior policy and error taxonomy implementation.
 # Previous last_updated detail preserved: 2026-05-14T16:10:00+02:00 - Story 22.7d created and marked blocked until 22.7a provider-neutral protection metadata/result parity and dependent unreadable/restore-safety contracts exist.
 # Previous last_updated detail preserved: 2026-05-14T14:00:00+02:00 - Story 22.3 moved to done: all 11 review patches applied (DN-1 GlobalAdmin regression + P1-P10). 1875 tests pass; 4 pre-existing unrelated failures. Changelog v1.2 added.
@@ -317,7 +317,7 @@ development_status:
   22-1-gateway-command-query-contract-closure-and-package-docs: done
   22-2-projection-adapter-contract-and-generic-query-actor-model: done
   22-3-gateway-owned-tenant-and-rbac-enforcement: done
-  22-4-query-behavior-policy-and-error-taxonomy: review
+  22-4-query-behavior-policy-and-error-taxonomy: done
   22-5-event-publishing-guarantees-and-backend-deployment-matrix: ready-for-dev
   22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints: ready-for-dev
   22-7a-payload-and-snapshot-protection-hooks: ready-for-dev

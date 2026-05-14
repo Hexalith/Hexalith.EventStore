@@ -174,7 +174,7 @@ public partial class QueriesController(
                 ? null
                 : new QueryPagingMetadata(
                     request.Paging.PageSize ?? QueryPolicyLimits.DefaultPageSize,
-                    request.Paging.Offset ?? 0));
+                    request.Paging.Offset));
 
         return Ok(new SubmitQueryResponse(result.CorrelationId, result.Payload, Metadata: metadata));
     }
@@ -304,11 +304,19 @@ public partial class QueriesController(
     }
 
     private static bool HasExplicitPolicyInputs(SubmitQueryRequest request)
-        => request.Paging is not null
+        => HasMeaningfulPaging(request.Paging)
             || !string.IsNullOrWhiteSpace(request.Search)
             || request.Filters is { Count: > 0 }
             || request.OrderBy is { Count: > 0 }
-            || request.Freshness is not null;
+            || HasMeaningfulFreshness(request.Freshness);
+
+    private static bool HasMeaningfulPaging(QueryPagingOptions? paging)
+        => paging is not null
+            && (paging.PageSize.HasValue || paging.Offset.HasValue || !string.IsNullOrWhiteSpace(paging.Cursor));
+
+    private static bool HasMeaningfulFreshness(QueryFreshnessPolicy? freshness)
+        => freshness is not null
+            && (freshness.RequireFresh is true || freshness.MaxStaleness.HasValue);
 
     private static bool HasNonEmptyPayload(JsonElement? payload) {
         if (payload is null) {

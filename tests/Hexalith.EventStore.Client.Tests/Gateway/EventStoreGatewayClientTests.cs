@@ -348,6 +348,30 @@ public class EventStoreGatewayClientTests {
             "message-1");
     }
 
+    [Fact]
+    public async Task SubmitQueryAsync_WithProblemDetailsReasonCode_ExposesReasonCodeOnException() {
+        const string problemJson = """
+            {
+                "type": "https://eventstore.hexalith.com/problems/not-found",
+                "title": "Not Found",
+                "status": 404,
+                "detail": "The requested resource was not found.",
+                "correlationId": "corr-404",
+                "reasonCode": "query_projection_missing"
+            }
+            """;
+        using HttpClient httpClient = CreateClient(_ =>
+            Task.FromResult(Json(HttpStatusCode.NotFound, problemJson, "application/problem+json")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreGatewayException ex = await Should.ThrowAsync<EventStoreGatewayException>(
+            () => client.SubmitQueryAsync(CreateQueryRequest()));
+
+        ex.StatusCode.ShouldBe((int)HttpStatusCode.NotFound);
+        ex.ReasonCode.ShouldBe("query_projection_missing");
+        ex.CorrelationId.ShouldBe("corr-404");
+    }
+
     private static SubmitQueryRequest CreateQueryRequest()
         => new(
             Tenant: "tenant-a",

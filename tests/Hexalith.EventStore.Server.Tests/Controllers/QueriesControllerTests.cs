@@ -856,6 +856,71 @@ public class QueriesControllerTests {
         _ = await eTagService.Received(1).GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Submit_NullPageSize_ResponseMetadataUsesDefaultPageSize() {
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
+        QueriesController controller = CreateController(mediator);
+        SubmitQueryRequest request = CreateTestRequest() with {
+            Paging = new QueryPagingOptions(),
+        };
+
+        IActionResult actionResult = await controller.Submit(request, null, CancellationToken.None);
+
+        OkObjectResult okResult = actionResult.ShouldBeOfType<OkObjectResult>();
+        SubmitQueryResponse response = okResult.Value.ShouldBeOfType<SubmitQueryResponse>();
+        response.Metadata.ShouldNotBeNull();
+        response.Metadata.Paging.ShouldNotBeNull();
+        response.Metadata.Paging.PageSize.ShouldBe(QueryPolicyLimits.DefaultPageSize);
+        response.Metadata.Paging.Offset.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Submit_DifferentPagingInputs_ETagFromFirstRequestDoesNotProduce304ForSecond() {
+        string firstETag = GenerateTestETag();
+        JsonElement resultPayload = JsonDocument.Parse("{\"data\":1}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(firstETag);
+        QueriesController controller = CreateController(mediator, eTagService);
+
+        // Second request carries same ETag but has explicit paging — must not get a 304
+        SubmitQueryRequest secondRequest = CreateTestRequest() with {
+            Paging = new QueryPagingOptions(PageSize: 10, Offset: 20),
+        };
+
+        IActionResult actionResult = await controller.Submit(secondRequest, $"\"{firstETag}\"", CancellationToken.None);
+
+        // ETag pre-check must be skipped for explicit policy inputs — full 200 response expected
+        _ = actionResult.ShouldBeOfType<OkObjectResult>();
+        _ = await mediator.Received(1).Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Submit_EmptyPagingObject_DoesNotSkipETagPreCheck() {
+        string testETag = GenerateTestETag();
+        IMediator mediator = Substitute.For<IMediator>();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("orders", "test-tenant", Arg.Any<CancellationToken>())
+            .Returns(testETag);
+        QueriesController controller = CreateController(mediator, eTagService);
+        // Paging object with all-null fields (no meaningful policy) must not skip the ETag pre-check
+        SubmitQueryRequest request = CreateTestRequest() with {
+            Paging = new QueryPagingOptions(),
+        };
+
+        IActionResult actionResult = await controller.Submit(request, $"\"{testETag}\"", CancellationToken.None);
+
+        // ETag matches → pre-check must fire and return 304, not skip and invoke mediator
+        actionResult.ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(304);
+        _ = await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+    }
+
     private sealed class ConstantETagService(string etag) : IETagService {
         public Task<string?> GetCurrentETagAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default) =>
             Task.FromResult<string?>(etag);
