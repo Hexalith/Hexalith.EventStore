@@ -2,6 +2,7 @@
 using System.Security.Claims;
 
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Validation;
 using Hexalith.EventStore.Middleware;
 
@@ -86,7 +87,9 @@ public partial class QueryValidationController(
                 tenantResult.Reason ?? "Tenant access denied.", "tenant");
 
             return Ok(new PreflightValidationResult(
-                false, tenantResult.Reason ?? "Tenant access denied."));
+                false,
+                tenantResult.Reason ?? "Tenant access denied.",
+                tenantResult.ReasonCode.ToReasonCode()));
         }
 
         // RBAC validation
@@ -103,7 +106,9 @@ public partial class QueryValidationController(
                 rbacResult.Reason ?? "RBAC check failed.", "rbac");
 
             return Ok(new PreflightValidationResult(
-                false, rbacResult.Reason ?? "RBAC check failed."));
+                false,
+                rbacResult.Reason ?? "RBAC check failed.",
+                rbacResult.ReasonCode.ToReasonCode()));
         }
 
         Log.PreflightQueryPassed(logger, correlationId, request.Tenant,

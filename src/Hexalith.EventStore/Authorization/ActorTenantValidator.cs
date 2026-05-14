@@ -5,6 +5,7 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Configuration;
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Actors.Authorization;
 
@@ -74,7 +75,10 @@ public partial class ActorTenantValidator(
         }
 
         Log.ActorTenantValidationDenied(logger, "TenantAccessDenied", userId, tenantId, response.Reason);
-        return TenantValidationResult.Denied(response.Reason ?? "Tenant access denied by actor.");
+        AuthorizationFailureReason reasonCode = AuthorizationFailureReasonExtensions.FromReasonCode(
+            response.ReasonCode,
+            AuthorizationFailureReason.TenantUnavailable);
+        return TenantValidationResult.Denied(response.Reason ?? "Tenant access denied by actor.", reasonCode);
     }
 
     private static partial class Log {

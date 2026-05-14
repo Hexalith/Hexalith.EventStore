@@ -9,6 +9,7 @@ public class GatewayProblemDetailsExtensionsTests {
         GatewayProblemDetailsExtensions.TenantId.ShouldBe("tenantId");
         GatewayProblemDetailsExtensions.Errors.ShouldBe("errors");
         GatewayProblemDetailsExtensions.Reason.ShouldBe("reason");
+        GatewayProblemDetailsExtensions.ReasonCode.ShouldBe("reasonCode");
         GatewayProblemDetailsExtensions.RetryAfter.ShouldBe("retryAfter");
     }
 }

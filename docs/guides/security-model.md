@@ -204,27 +204,58 @@ Response codes:
 - **401 Unauthorized:** Missing token, expired token, invalid signature, or unrecognized issuer/audience. Returns RFC 9457 ProblemDetails.
 - **403 Forbidden:** Token is valid but the user lacks required claims (enforced in Layer 4).
 
-## Layer 4: MediatR Pipeline Authorization
+## Layer 4: Gateway Tenant and RBAC Authorization
 
-The `AuthorizationBehavior` runs as a MediatR pipeline behavior for every `SubmitCommand`. It performs three sequential authorization checks:
+EventStore owns command and query gateway tenant/RBAC enforcement before any domain service, projection actor, ETag, cache, replay, or read-model lookup can disclose resource existence. The request path resolves an immutable authorization context from the gateway contract and authenticated principal:
 
-1. **Authentication check:** Verifies `user.Identity.IsAuthenticated == true`. Rejects with `CommandAuthorizationException` if not authenticated.
+| Field | Source | Notes |
+| --- | --- | --- |
+| `tenantId` | Command/query DTO `tenant` | Missing or conflicting tenant sources fail closed before downstream invocation. |
+| `subjectId` | JWT `sub` claim | `name` and other display claims are never identity authority. |
+| `messageCategory` | Gateway path | `command` for command submit/validate, `query` for query submit/validate. |
+| `messageType` | DTO `commandType` or `queryType` | Used for specific permission checks. |
+| `aggregateId` | DTO `aggregateId` | Forwarded unchanged when present. |
+| `correlationId` | Correlation middleware/request | Logged for diagnostics; payloads and tokens are not logged. |
 
-2. **Domain authorization:** If the user has `eventstore:domain` claims, the command's domain must match at least one claim (case-insensitive). If the user has no domain claims, all domains are allowed — domain scoping is opt-in.
+The pipeline order is:
 
-3. **Permission authorization:** If the user has `eventstore:permission` claims, the command must match one of these patterns (case-insensitive):
-    - `*` — wildcard, allows all operations
-    - `submit` — allows all command submissions
-    - Specific command type (e.g., `IncrementCounter`) — allows only that command type
+1. Authenticate the HTTP request.
+2. Resolve tenant, subject, domain, message category, message type, aggregate/projection identity, correlation ID, and cancellation token.
+3. Validate tenant lifecycle and membership through `ITenantValidator`.
+4. Validate role/domain/permission through `IRbacValidator`.
+5. Invoke the command handler, domain service, query router, projection actor, ETag/cache lookup, replay, or read-model path.
 
-    If the user has no permission claims, all commands are allowed — permission scoping is opt-in.
+`ClaimsTenantValidator` and `ClaimsRbacValidator` are local/dev/test fallback implementations. They can prove claim membership, domain, and permission strings, but they cannot prove tenant lifecycle, stale data, ambiguous authority, or Tenants role hierarchy. Runtime deployments that need Hexalith.Tenants authority configure actor-backed validators through `EventStore:Authorization:TenantValidatorActorName` and `EventStore:Authorization:RbacValidatorActorName`; when those validators are configured, stale, unavailable, malformed, ambiguous, or null responses fail closed and never fall back to claims.
+
+### Authorization Reason Codes
+
+Authorization failures return stable machine-readable `reasonCode` values separate from human-readable `reason`/`detail` text:
+
+| Reason code | HTTP/preflight behavior | Retry | Caller action |
+| --- | --- | --- | --- |
+| `authentication_required` | 401 ProblemDetails | No | Provide a valid token. |
+| `subject_missing` | 401 or 403 depending on path | No | Fix token subject claim. |
+| `tenant_missing` | 403 ProblemDetails or preflight denied | No | Provide tenant ID. |
+| `tenant_mismatch` | 403 ProblemDetails or preflight denied | No | Align route/body/client tenant values. |
+| `tenant_not_found` | 403 ProblemDetails or preflight denied | No | Verify tenant exists. |
+| `tenant_disabled` | 403 ProblemDetails or preflight denied | No | Reactivate or choose another tenant. |
+| `tenant_suspended` | 403 ProblemDetails or preflight denied | No | Resolve tenant suspension. |
+| `tenant_stale` | 403 ProblemDetails or preflight denied | Yes | Retry after freshness recovers. |
+| `tenant_unavailable` | 403 ProblemDetails or preflight denied | Yes | Retry or check Tenants authority. |
+| `tenant_ambiguous` | 403 ProblemDetails or preflight denied | No | Fix duplicate/conflicting authority data. |
+| `principal_not_member` | 403 ProblemDetails or preflight denied | No | Grant tenant membership. |
+| `insufficient_role` | 403 ProblemDetails or preflight denied | No | Grant required role. |
+| `insufficient_permission` | 403 ProblemDetails or preflight denied | No | Grant required permission. |
+| `authorization_service_unavailable` | 503 ProblemDetails with `Retry-After: 30` | Yes | Retry after the specified interval. |
+
+The approved Tenants-backed integration shape for this story is the existing DAPR actor adapter boundary. EventStore calls `ITenantValidatorActor.ValidateTenantAccessAsync(TenantValidationRequest)` and `IRbacValidatorActor.ValidatePermissionAsync(RbacValidationRequest)` through configured actor type names and tenant-scoped actor IDs. The adapter forwards subject, tenant, domain, message type/category, aggregate ID, and cancellation state without reading Hexalith.Tenants state-store keys, projection actor state, or internal aggregates. Actor responses must return `IsAuthorized`, optional safe `Reason`, and optional stable `ReasonCode`; legacy or malformed denied responses remain denied and map to fail-closed fallback reason codes.
 
 ### Audit Logging
 
 Every authorization decision is logged with structured fields:
 
 - **Success:** `Debug` level with `CorrelationId`, `CausationId`, `Tenant`, `Domain`, `CommandType`
-- **Failure:** `Warning` level with `SecurityEvent=AuthorizationDenied`, `CorrelationId`, `CausationId`, `TenantClaims`, `Tenant`, `Domain`, `CommandType`, `Reason`, `SourceIp`, `FailureLayer=MediatR.AuthorizationBehavior`
+- **Failure:** `Warning` level with `SecurityEvent=AuthorizationDenied`, `CorrelationId`, `CausationId`, `TenantClaims`, `Tenant`, `Domain`, `CommandType`, stable reason code/detail, `SourceIp`, `FailureLayer=MediatR.AuthorizationBehavior`
 
 These structured log fields integrate with OpenTelemetry for security monitoring and alerting.
 

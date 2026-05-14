@@ -1,6 +1,8 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Authorization;
+using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Middleware;
 
 using Microsoft.AspNetCore.Diagnostics;
@@ -49,6 +51,11 @@ public class AuthorizationServiceUnavailableHandler(
             Type = ProblemTypeUris.ServiceUnavailable,
             Detail = "The command processing pipeline is temporarily unavailable. Please retry after the specified interval.",
             Instance = httpContext.Request.Path,
+            Extensions =
+            {
+                [GatewayProblemDetailsExtensions.ReasonCode] = AuthorizationFailureReason.AuthorizationServiceUnavailable.ToReasonCode(),
+                [GatewayProblemDetailsExtensions.RetryAfter] = "30",
+            },
         };
 
         // Use CancellationToken.None to ensure the full ProblemDetails response is always written

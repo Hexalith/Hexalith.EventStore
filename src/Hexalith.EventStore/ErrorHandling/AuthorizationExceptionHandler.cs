@@ -2,6 +2,8 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
+using Hexalith.EventStore.Contracts.Authorization;
+using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Middleware;
 
 using Microsoft.AspNetCore.Diagnostics;
@@ -40,8 +42,10 @@ public partial class AuthorizationExceptionHandler(ILogger<AuthorizationExceptio
             Instance = httpContext.Request.Path,
             Extensions =
             {
-                ["correlationId"] = correlationId,
-                ["tenantId"] = authException.TenantId,
+                [GatewayProblemDetailsExtensions.CorrelationId] = correlationId,
+                [GatewayProblemDetailsExtensions.TenantId] = authException.TenantId,
+                [GatewayProblemDetailsExtensions.Reason] = detail,
+                [GatewayProblemDetailsExtensions.ReasonCode] = authException.ReasonCode.ToReasonCode(),
             },
         };
 

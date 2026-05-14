@@ -159,7 +159,7 @@ public sealed class PartyProjectionActor : Actor, IProjectionActor
 | `unknown-query-type`             | Query type is unknown to the projection adapter.                         |
 | `actor-not-found-infrastructure` | DAPR actor runtime reported missing actor registration or actor address. |
 
-Story 22.4 owns final HTTP ProblemDetails type URIs, reason codes, paging/filter/freshness policy, and detailed query taxonomy. Story 22.3 owns tenant/RBAC enforcement before query actor invocation.
+Story 22.4 owns non-auth query taxonomy, paging/filter/freshness policy, and detailed query behavior. Story 22.3 owns tenant/RBAC enforcement before query actor invocation, ETag comparison, cache lookup, projection freshness checks, or any not-found/missing-projection response.
 
 ### Actor Type and ID Routing
 
@@ -207,11 +207,12 @@ $ curl -X POST https://localhost:5001/api/v1/queries/validate \
 ```json
 {
     "isAuthorized": true,
-    "reason": null
+    "reason": null,
+    "reasonCode": null
 }
 ```
 
-If authorization fails, the endpoint still returns `200 OK`, but `isAuthorized` is `false` and `reason` explains why.
+If authorization fails, the endpoint still returns `200 OK`, but `isAuthorized` is `false`; `reason` is safe human-readable detail and `reasonCode` is the stable machine-readable denial category. Runtime query submission returns RFC 7807 401/403/503 responses for authentication, authorization, and validator-infrastructure failures.
 
 ## POST /projections/changed
 

@@ -4,8 +4,11 @@ using System.Reflection;
 using System.Security.Claims;
 using System.Text.Json;
 
+using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Controllers;
+using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
 
@@ -40,9 +43,22 @@ public class QueriesControllerTests {
     private static QueriesController CreateController(
         IMediator mediator,
         IETagService? eTagService = null,
-        ClaimsPrincipal? principal = null) {
+        ClaimsPrincipal? principal = null,
+        ITenantValidator? tenantValidator = null,
+        IRbacValidator? rbacValidator = null) {
         eTagService ??= Substitute.For<IETagService>();
-        var controller = new QueriesController(mediator, eTagService, NullLogger<QueriesController>.Instance);
+        if (tenantValidator is null) {
+            tenantValidator = Substitute.For<ITenantValidator>();
+            _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+                .Returns(TenantValidationResult.Allowed);
+        }
+
+        if (rbacValidator is null) {
+            rbacValidator = Substitute.For<IRbacValidator>();
+            _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
+                .Returns(RbacValidationResult.Allowed);
+        }
+        var controller = new QueriesController(mediator, eTagService, tenantValidator, rbacValidator, NullLogger<QueriesController>.Instance);
         var httpContext = new DefaultHttpContext {
             User = principal ?? new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim("sub", "test-user")], "test")),
@@ -268,6 +284,36 @@ public class QueriesControllerTests {
         statusResult.StatusCode.ShouldBe(304);
         controller.Response.Headers.ETag.ToString().ShouldBe($"\"{testETag}\"");
         _ = await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Submit_UnauthorizedTenant_DoesNotReadETagOrInvokeMediator() {
+        IMediator mediator = Substitute.For<IMediator>();
+        IETagService eTagService = Substitute.For<IETagService>();
+        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
+        _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), "test-tenant", Arg.Any<CancellationToken>(), Arg.Any<string?>())
+            .Returns(TenantValidationResult.Denied("Tenant disabled.", AuthorizationFailureReason.TenantDisabled));
+        IRbacValidator rbacValidator = Substitute.For<IRbacValidator>();
+        QueriesController controller = CreateController(
+            mediator,
+            eTagService,
+            tenantValidator: tenantValidator,
+            rbacValidator: rbacValidator);
+
+        CommandAuthorizationException ex = await Should.ThrowAsync<CommandAuthorizationException>(
+            () => controller.Submit(CreateTestRequest(), $"\"{GenerateTestETag()}\"", CancellationToken.None));
+
+        ex.ReasonCode.ShouldBe(AuthorizationFailureReason.TenantDisabled);
+        _ = await eTagService.DidNotReceive().GetCurrentETagAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _ = await mediator.DidNotReceive().Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>());
+        _ = await rbacValidator.DidNotReceive().ValidateAsync(
+            Arg.Any<ClaimsPrincipal>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
     }
 
     [Fact]

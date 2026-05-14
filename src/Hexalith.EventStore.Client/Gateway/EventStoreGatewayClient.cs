@@ -244,6 +244,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         string? correlationId = null;
         string? tenantId = null;
         string? reason = null;
+        string? reasonCode = null;
         string? retryAfter = response.Headers.RetryAfter?.ToString();
         IReadOnlyDictionary<string, string>? errors = null;
         IReadOnlyDictionary<string, JsonElement>? extensions = null;
@@ -267,6 +268,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 correlationId = GetString(root, GatewayProblemDetailsExtensions.CorrelationId);
                 tenantId = GetString(root, GatewayProblemDetailsExtensions.TenantId);
                 reason = GetString(root, GatewayProblemDetailsExtensions.Reason);
+                reasonCode = GetString(root, GatewayProblemDetailsExtensions.ReasonCode);
 
                 // P3: only override the HTTP header value when the JSON field is non-empty.
                 string? jsonRetryAfter = GetString(root, GatewayProblemDetailsExtensions.RetryAfter);
@@ -292,7 +294,8 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             errors,
             reason,
             retryAfter,
-            extensions);
+            extensions,
+            reasonCode);
     }
 
     private static bool IsJsonResponse(HttpResponseMessage response) {
@@ -361,6 +364,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             || propertyName == GatewayProblemDetailsExtensions.TenantId
             || propertyName == GatewayProblemDetailsExtensions.Errors
             || propertyName == GatewayProblemDetailsExtensions.Reason
+            || propertyName == GatewayProblemDetailsExtensions.ReasonCode
             || propertyName == GatewayProblemDetailsExtensions.RetryAfter;
 
     private static class StatusCodes {

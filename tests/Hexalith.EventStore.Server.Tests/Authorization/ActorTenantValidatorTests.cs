@@ -6,6 +6,7 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Configuration;
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Actors.Authorization;
 
@@ -258,5 +259,17 @@ public class ActorTenantValidatorTests {
         // Assert
         result.IsAuthorized.ShouldBeFalse();
         result.Reason.ShouldBe("Tenant access denied by actor.");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ActorDeniesWithReasonCode_MapsTypedReasonCode() {
+        (ActorTenantValidator validator, IActorProxyFactory factory) = CreateValidator();
+        SetupActorProxy(factory, new ActorValidationResponse(false, "Tenant disabled.", "tenant_disabled"));
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        TenantValidationResult result = await validator.ValidateAsync(user, TenantId, CancellationToken.None);
+
+        result.IsAuthorized.ShouldBeFalse();
+        result.ReasonCode.ShouldBe(AuthorizationFailureReason.TenantDisabled);
     }
 }

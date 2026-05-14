@@ -2,6 +2,8 @@
 using System.Text;
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Authorization;
+using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 
@@ -135,6 +137,10 @@ public class ConfigureJwtBearerOptions(
                     Type = typeUri,
                     Detail = detail,
                     Instance = context.Request.Path,
+                    Extensions =
+                    {
+                        [GatewayProblemDetailsExtensions.ReasonCode] = AuthorizationFailureReason.AuthenticationRequired.ToReasonCode(),
+                    },
                 };
 
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;

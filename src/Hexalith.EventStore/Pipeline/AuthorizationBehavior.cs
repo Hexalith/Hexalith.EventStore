@@ -1,5 +1,6 @@
 
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Server.Pipeline.Commands;
@@ -16,6 +17,8 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
     ILogger<AuthorizationBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull {
+    internal const string PrevalidatedAuthorizationContextKey = "__EventStorePrevalidatedAuthorizationContext";
+
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(next);
@@ -45,13 +48,34 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
                 tenant,
                 null,
                 null,
-                "User is not authenticated.");
+                "User is not authenticated.",
+                AuthorizationFailureReason.AuthenticationRequired);
         }
 
         string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? "unknown";
         string causationId = correlationId; // For original submissions, CausationId = CorrelationId
         string? sourceIp = httpContext.Connection.RemoteIpAddress?.ToString();
+        string? subjectId = user.FindFirst("sub")?.Value;
+
+        if (httpContext.Items.TryGetValue(PrevalidatedAuthorizationContextKey, out object? prevalidated)
+            && prevalidated is GatewayAuthorizationContext context
+            && string.Equals(context.Tenant, tenant, StringComparison.Ordinal)
+            && string.Equals(context.Domain, domain, StringComparison.Ordinal)
+            && string.Equals(context.MessageType, messageType, StringComparison.Ordinal)
+            && string.Equals(context.MessageCategory, messageCategory, StringComparison.Ordinal)
+            && string.Equals(context.AggregateId, aggregateId, StringComparison.Ordinal)
+            && string.Equals(context.SubjectId, subjectId, StringComparison.Ordinal)) {
+            Log.AuthorizationPassed(
+                logger,
+                correlationId,
+                causationId,
+                tenant,
+                domain,
+                messageType);
+
+            return await next().ConfigureAwait(false);
+        }
 
         // Tenant validation (moved from controller — Layer 4 consolidation)
         TenantValidationResult tenantResult = await tenantValidator
@@ -67,7 +91,8 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
                 tenantReason, sourceIp);
             throw new CommandAuthorizationException(
                 tenant, domain, messageType,
-                tenantReason);
+                tenantReason,
+                tenantResult.ReasonCode);
         }
 
         // RBAC validation (was inline domain + permission checks)
@@ -91,7 +116,8 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
                 rbacReason, sourceIp);
             throw new CommandAuthorizationException(
                 tenant, domain, messageType,
-                rbacReason);
+                rbacReason,
+                rbacResult.ReasonCode);
         }
 
         Log.AuthorizationPassed(

@@ -81,6 +81,10 @@ public class AuthorizationServiceUnavailableHandlerTests {
         problem.Title.ShouldBe("Service Unavailable");
         problem.Type.ShouldBe(ProblemTypeUris.ServiceUnavailable);
         problem.Detail.ShouldBe("The command processing pipeline is temporarily unavailable. Please retry after the specified interval.");
+        problem.Extensions.TryGetValue("reasonCode", out object? reasonCode).ShouldBeTrue();
+        reasonCode.ShouldNotBeNull().ToString().ShouldBe("authorization_service_unavailable");
+        problem.Extensions.TryGetValue("retryAfter", out object? retryAfter).ShouldBeTrue();
+        retryAfter.ShouldNotBeNull().ToString().ShouldBe("30");
 
         // Verify no actor details leaked
         string body = await ReadResponseBody(context);

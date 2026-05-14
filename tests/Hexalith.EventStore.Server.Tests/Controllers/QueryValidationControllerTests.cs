@@ -2,6 +2,7 @@
 using System.Security.Claims;
 
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Validation;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.ErrorHandling;
@@ -70,7 +71,9 @@ public class QueryValidationControllerTests {
         // Arrange
         (QueryValidationController controller, ITenantValidator tenantValidator, _, _) = CreateController();
         _ = tenantValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), "acme", Arg.Any<CancellationToken>(), Arg.Any<string?>())
-            .Returns(TenantValidationResult.Denied("Not authorized for tenant 'acme'."));
+            .Returns(TenantValidationResult.Denied(
+                "Not authorized for tenant 'acme'.",
+                AuthorizationFailureReason.PrincipalNotMember));
         ValidateQueryRequest request = CreateRequest();
 
         // Act
@@ -81,6 +84,7 @@ public class QueryValidationControllerTests {
         PreflightValidationResult validationResult = okResult.Value.ShouldBeOfType<PreflightValidationResult>();
         validationResult.IsAuthorized.ShouldBeFalse();
         validationResult.Reason.ShouldBe("Not authorized for tenant 'acme'.");
+        validationResult.ReasonCode.ShouldBe("principal_not_member");
     }
 
     [Fact]
@@ -90,7 +94,9 @@ public class QueryValidationControllerTests {
         _ = rbacValidator.ValidateAsync(
             Arg.Any<ClaimsPrincipal>(), "acme", "orders", "GetOrderDetails", "query",
             Arg.Any<CancellationToken>(), Arg.Any<string?>())
-            .Returns(RbacValidationResult.Denied("Not authorized for query type 'GetOrderDetails' in domain 'orders'."));
+            .Returns(RbacValidationResult.Denied(
+                "Not authorized for query type 'GetOrderDetails' in domain 'orders'.",
+                AuthorizationFailureReason.InsufficientPermission));
         ValidateQueryRequest request = CreateRequest();
 
         // Act
@@ -101,6 +107,7 @@ public class QueryValidationControllerTests {
         PreflightValidationResult validationResult = okResult.Value.ShouldBeOfType<PreflightValidationResult>();
         validationResult.IsAuthorized.ShouldBeFalse();
         validationResult.Reason.ShouldBe("Not authorized for query type 'GetOrderDetails' in domain 'orders'.");
+        validationResult.ReasonCode.ShouldBe("insufficient_permission");
     }
 
     [Fact]

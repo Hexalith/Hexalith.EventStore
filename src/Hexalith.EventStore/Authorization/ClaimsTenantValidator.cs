@@ -1,6 +1,8 @@
 
 using System.Security.Claims;
 
+using Hexalith.EventStore.Contracts.Authorization;
+
 namespace Hexalith.EventStore.Authorization;
 
 /// <summary>
@@ -17,6 +19,12 @@ public class ClaimsTenantValidator : ITenantValidator {
         string? aggregateId = null) {
         ArgumentNullException.ThrowIfNull(user);
 
+        if (string.IsNullOrWhiteSpace(tenantId)) {
+            return Task.FromResult(TenantValidationResult.Denied(
+                "Tenant is required.",
+                AuthorizationFailureReason.TenantMissing));
+        }
+
         // Global administrators may access any tenant (including "system")
         if (GlobalAdministratorHelper.IsGlobalAdministrator(user)) {
             return Task.FromResult(TenantValidationResult.Allowed);
@@ -28,12 +36,16 @@ public class ClaimsTenantValidator : ITenantValidator {
             .ToList();
 
         if (tenantClaims.Count == 0) {
-            return Task.FromResult(TenantValidationResult.Denied("No tenant authorization claims found. Access denied."));
+            return Task.FromResult(TenantValidationResult.Denied(
+                "No tenant authorization claims found. Access denied.",
+                AuthorizationFailureReason.PrincipalNotMember));
         }
 
         // Case-SENSITIVE comparison (StringComparison.Ordinal) — tenant IDs are system-assigned
         if (!tenantClaims.Any(t => string.Equals(t, tenantId, StringComparison.Ordinal))) {
-            return Task.FromResult(TenantValidationResult.Denied($"Not authorized for tenant '{tenantId}'."));
+            return Task.FromResult(TenantValidationResult.Denied(
+                $"Not authorized for tenant '{tenantId}'.",
+                AuthorizationFailureReason.TenantMismatch));
         }
 
         return Task.FromResult(TenantValidationResult.Allowed);

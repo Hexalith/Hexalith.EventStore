@@ -43,6 +43,13 @@ public class EventStoreAuthorizationRegistrationTests {
         _ = services.AddSingleton(Substitute.For<IActorProxyFactory>());
 
         _ = services.AddEventStore();
+        foreach (ServiceDescriptor descriptor in services
+            .Where(static service => service.ServiceType == typeof(IHostedService)
+                && service.ImplementationType?.Name != "EventStoreAuthorizationStartupValidator")
+            .ToList()) {
+            _ = services.Remove(descriptor);
+        }
+
         configureServices?.Invoke(services);
 
         return services.BuildServiceProvider();

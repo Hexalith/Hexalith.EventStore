@@ -1,6 +1,6 @@
 # Story 22.3: Gateway-Owned Tenant and RBAC Enforcement
 
-Status: ready-for-dev
+Status: review
 
 Context created: 2026-05-12
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
@@ -108,88 +108,88 @@ so that Parties request paths do not perform EventStore gateway tenant authoriza
 
 ## Tasks / Subtasks
 
-- [ ] **ST0 - Baseline current authorization boundary and classify gaps.** (AC: 1, 2, 3, 4, 5, 6)
-  - [ ] Read this story, Epic 22, PRD FR90-FR92, architecture ADR-P8, Story 22.1, Story 22.2, and `docs/guides/security-model.md` before code edits.
-  - [ ] Inventory current API validator boundaries in `src/Hexalith.EventStore/Authorization`.
-  - [ ] Inventory current MediatR and controller entry points: `AuthorizationBehavior`, `CommandsController`, `QueriesController`, `CommandValidationController`, and `QueryValidationController`.
-  - [ ] Inventory current ProblemDetails handlers and type URI constants.
-  - [ ] Inventory Hexalith.Tenants public contracts/client/projection surfaces needed for lifecycle, membership, and role checks.
-  - [ ] Record a validator contract decision table covering `tenantId`, `subjectId` from `sub`, requested operation, required role/permission, correlation/cancellation flow, typed allow/deny/unavailable result, denial reason mapping, retryability for stale/unavailable cases, and public response exposure.
-  - [ ] Record a request-path interception table for every public command, query, validation endpoint, and affected client operation with tenant source, identity source, required role, required permission, validator call, failure reason, HTTP/preflight behavior, caller-action category, and downstream call that must not occur.
-  - [ ] Record the authorization pipeline order as authenticate request, resolve tenant from the gateway contract, validate tenant lifecycle, validate membership, validate role/permission, then invoke command handler, domain service, query router, or projection adapter.
-  - [ ] Record the immutable authorization-context fields and prove downstream handlers, adapters, fakes, and client helpers cannot mutate or recompute tenant/subject/message authorization inputs after validation.
-  - [ ] Record all tenant-source conflict cases, including missing tenant, conflicting route/body/header/client DTO values, aggregate/projection tenant mismatch, and malformed subject/tenant claims.
-  - [ ] Record a decision table for claims fallback, actor adapter, Tenants client/query adapter, reason-code taxonomy, package ownership, and deferred items.
+- [x] **ST0 - Baseline current authorization boundary and classify gaps.** (AC: 1, 2, 3, 4, 5, 6)
+  - [x] Read this story, Epic 22, PRD FR90-FR92, architecture ADR-P8, Story 22.1, Story 22.2, and `docs/guides/security-model.md` before code edits.
+  - [x] Inventory current API validator boundaries in `src/Hexalith.EventStore/Authorization`.
+  - [x] Inventory current MediatR and controller entry points: `AuthorizationBehavior`, `CommandsController`, `QueriesController`, `CommandValidationController`, and `QueryValidationController`.
+  - [x] Inventory current ProblemDetails handlers and type URI constants.
+  - [x] Inventory Hexalith.Tenants public contracts/client/projection surfaces needed for lifecycle, membership, and role checks.
+  - [x] Record a validator contract decision table covering `tenantId`, `subjectId` from `sub`, requested operation, required role/permission, correlation/cancellation flow, typed allow/deny/unavailable result, denial reason mapping, retryability for stale/unavailable cases, and public response exposure.
+  - [x] Record a request-path interception table for every public command, query, validation endpoint, and affected client operation with tenant source, identity source, required role, required permission, validator call, failure reason, HTTP/preflight behavior, caller-action category, and downstream call that must not occur.
+  - [x] Record the authorization pipeline order as authenticate request, resolve tenant from the gateway contract, validate tenant lifecycle, validate membership, validate role/permission, then invoke command handler, domain service, query router, or projection adapter.
+  - [x] Record the immutable authorization-context fields and prove downstream handlers, adapters, fakes, and client helpers cannot mutate or recompute tenant/subject/message authorization inputs after validation.
+  - [x] Record all tenant-source conflict cases, including missing tenant, conflicting route/body/header/client DTO values, aggregate/projection tenant mismatch, and malformed subject/tenant claims.
+  - [x] Record a decision table for claims fallback, actor adapter, Tenants client/query adapter, reason-code taxonomy, package ownership, and deferred items.
 
-- [ ] **ST1 - Define typed tenant/RBAC authorization outcomes.** (AC: 1, 4, 5)
-  - [ ] Add or extend result models so validator outcomes have stable machine-readable reason codes separate from human-readable detail.
-  - [ ] Include categories for allowed, authentication-required, tenant-not-found, tenant-disabled, tenant-suspended or equivalent inactive state, user-not-member, insufficient-role, insufficient-permission, stale, ambiguous, and unavailable.
-  - [ ] Define a single typed authorization failure reason enum/value object or equivalent stable model shared by command, query, validation endpoint, client, and Testing fake paths.
-  - [ ] Use canonical reason-code strings such as `authentication_required`, `subject_missing`, `tenant_missing`, `tenant_mismatch`, `tenant_not_found`, `tenant_disabled`, `tenant_suspended`, `tenant_stale`, `tenant_unavailable`, `tenant_ambiguous`, `principal_not_member`, `insufficient_role`, and `insufficient_permission`, unless the decision table documents a compatible alternative.
-  - [ ] Define exact mapping from typed validator outcome to HTTP status, ProblemDetails type URI, title/detail safety rules, `extensions.reasonCode`, preflight validation response fields, retryability, and caller-action category.
-  - [ ] Preserve existing `IsAuthorized` behavior where public or test code depends on it; add compatibility constructors/helpers if needed.
-  - [ ] Add focused tests that prove free-text `Reason` is not the only way to identify failures.
-  - [ ] Add focused tests that unknown enum values, malformed reason strings, missing reason codes, and legacy actor responses fail closed instead of silently mapping to generic allow.
+- [x] **ST1 - Define typed tenant/RBAC authorization outcomes.** (AC: 1, 4, 5)
+  - [x] Add or extend result models so validator outcomes have stable machine-readable reason codes separate from human-readable detail.
+  - [x] Include categories for allowed, authentication-required, tenant-not-found, tenant-disabled, tenant-suspended or equivalent inactive state, user-not-member, insufficient-role, insufficient-permission, stale, ambiguous, and unavailable.
+  - [x] Define a single typed authorization failure reason enum/value object or equivalent stable model shared by command, query, validation endpoint, client, and Testing fake paths.
+  - [x] Use canonical reason-code strings such as `authentication_required`, `subject_missing`, `tenant_missing`, `tenant_mismatch`, `tenant_not_found`, `tenant_disabled`, `tenant_suspended`, `tenant_stale`, `tenant_unavailable`, `tenant_ambiguous`, `principal_not_member`, `insufficient_role`, and `insufficient_permission`, unless the decision table documents a compatible alternative.
+  - [x] Define exact mapping from typed validator outcome to HTTP status, ProblemDetails type URI, title/detail safety rules, `extensions.reasonCode`, preflight validation response fields, retryability, and caller-action category.
+  - [x] Preserve existing `IsAuthorized` behavior where public or test code depends on it; add compatibility constructors/helpers if needed.
+  - [x] Add focused tests that prove free-text `Reason` is not the only way to identify failures.
+  - [x] Add focused tests that unknown enum values, malformed reason strings, missing reason codes, and legacy actor responses fail closed instead of silently mapping to generic allow.
 
-- [ ] **ST2 - Implement Hexalith.Tenants-backed validation path or document the approved adapter shape.** (AC: 1, 2, 3, 6)
-  - [ ] Prefer an EventStore-side adapter that consumes public Hexalith.Tenants contracts/client/query behavior for tenant lifecycle, membership, and role checks.
-  - [ ] Record a short ADR-style integration note with selected path, package/project references, DTO/query/actor contracts used, timeout/error behavior, and why the path does not depend on Tenants internals or state-store keys.
-  - [ ] If the approved integration path is DAPR actor validation, freeze the actor type names, actor IDs, request/response shapes, timeout/unavailable semantics, mapping to Tenants state, and public-contract fallback condition in docs and tests.
-  - [ ] Keep claims-based validators as local/dev fallback and explicitly label the gap they cannot close: lifecycle state, stale/ambiguous authority, and role hierarchy from Tenants.
-  - [ ] Ensure claims-based validators are activated only through explicit local/dev/test configuration and are not used as fallback when Tenants-backed runtime validation is configured.
-  - [ ] Ensure cancellation tokens flow through external validation calls.
-  - [ ] Ensure validator unavailability, null responses, malformed responses, and ambiguous results throw or return unavailable/ambiguous outcomes that fail closed.
-  - [ ] Ensure adapter timeouts, cancellation, stale data, and transient Tenants errors are classified deterministically without ad hoc retry loops or claims fallback.
-  - [ ] Ensure any Tenants projection/cache use is tenant-scoped and cannot reuse membership, role, permission, or lifecycle state across tenants or subjects.
+- [x] **ST2 - Implement Hexalith.Tenants-backed validation path or document the approved adapter shape.** (AC: 1, 2, 3, 6)
+  - [x] Prefer an EventStore-side adapter that consumes public Hexalith.Tenants contracts/client/query behavior for tenant lifecycle, membership, and role checks.
+  - [x] Record a short ADR-style integration note with selected path, package/project references, DTO/query/actor contracts used, timeout/error behavior, and why the path does not depend on Tenants internals or state-store keys.
+  - [x] If the approved integration path is DAPR actor validation, freeze the actor type names, actor IDs, request/response shapes, timeout/unavailable semantics, mapping to Tenants state, and public-contract fallback condition in docs and tests.
+  - [x] Keep claims-based validators as local/dev fallback and explicitly label the gap they cannot close: lifecycle state, stale/ambiguous authority, and role hierarchy from Tenants.
+  - [x] Ensure claims-based validators are activated only through explicit local/dev/test configuration and are not used as fallback when Tenants-backed runtime validation is configured.
+  - [x] Ensure cancellation tokens flow through external validation calls.
+  - [x] Ensure validator unavailability, null responses, malformed responses, and ambiguous results throw or return unavailable/ambiguous outcomes that fail closed.
+  - [x] Ensure adapter timeouts, cancellation, stale data, and transient Tenants errors are classified deterministically without ad hoc retry loops or claims fallback.
+  - [x] Ensure any Tenants projection/cache use is tenant-scoped and cannot reuse membership, role, permission, or lifecycle state across tenants or subjects.
 
-- [ ] **ST3 - Enforce command and query pre-invocation blocking.** (AC: 2, 3)
-  - [ ] Add focused tests proving denied command authorization stops before `SubmitCommandHandler`, `CommandRouter`, domain service invocation, aggregate actor state access, or command processing side effects.
-  - [ ] Add focused tests proving denied query authorization stops before `SubmitQueryHandler`, `QueryRouter`, projection actor invocation, and ETag/projection state access where relevant.
-  - [ ] For each deny outcome, assert the validator was called, downstream command/query/projection/domain-service collaborators were not called, and the HTTP/client/preflight result carries the stable reason code.
-  - [ ] Verify the `HttpContext`-absent internal MediatR bypass is still intentional and cannot be used by external HTTP requests.
-  - [ ] Verify authorization runs before `If-None-Match`/ETag shortcuts, query cache hits, projection freshness checks, stream/replay reads, and not-found/missing-projection responses that could leak cross-tenant resource existence.
-  - [ ] Verify the same resolved tenant/subject/message authorization context is passed to validators and downstream dispatch; no handler may re-read mutable HTTP claims, headers, route values, or body fields to change authorization scope.
-  - [ ] Verify command and query validation endpoints either keep `200 OK` preflight semantics with typed reason codes or move only with explicit docs/tests approval.
-  - [ ] Keep query-path assertions limited to tenant/RBAC authorization outcomes; non-auth query validation, not-found, malformed-query, projection, and adapter taxonomy remains Story 22.4.
+- [x] **ST3 - Enforce command and query pre-invocation blocking.** (AC: 2, 3)
+  - [x] Add focused tests proving denied command authorization stops before `SubmitCommandHandler`, `CommandRouter`, domain service invocation, aggregate actor state access, or command processing side effects.
+  - [x] Add focused tests proving denied query authorization stops before `SubmitQueryHandler`, `QueryRouter`, projection actor invocation, and ETag/projection state access where relevant.
+  - [x] For each deny outcome, assert the validator was called, downstream command/query/projection/domain-service collaborators were not called, and the HTTP/client/preflight result carries the stable reason code.
+  - [x] Verify the `HttpContext`-absent internal MediatR bypass is still intentional and cannot be used by external HTTP requests.
+  - [x] Verify authorization runs before `If-None-Match`/ETag shortcuts, query cache hits, projection freshness checks, stream/replay reads, and not-found/missing-projection responses that could leak cross-tenant resource existence.
+  - [x] Verify the same resolved tenant/subject/message authorization context is passed to validators and downstream dispatch; no handler may re-read mutable HTTP claims, headers, route values, or body fields to change authorization scope.
+  - [x] Verify command and query validation endpoints either keep `200 OK` preflight semantics with typed reason codes or move only with explicit docs/tests approval.
+  - [x] Keep query-path assertions limited to tenant/RBAC authorization outcomes; non-auth query validation, not-found, malformed-query, projection, and adapter taxonomy remains Story 22.4.
 
-- [ ] **ST4 - Freeze auth ProblemDetails taxonomy and docs.** (AC: 4, 5)
-  - [ ] Add or update `ProblemTypeUris` and/or documented `reasonCode` extension constants for authentication and authorization failures.
-  - [ ] Update `AuthorizationExceptionHandler`, `AuthorizationServiceUnavailableHandler`, and any authentication failure hook needed to emit stable ProblemDetails metadata.
-  - [ ] Preserve sanitization of internal terms and add tests that internal actor/DAPR/state-store details do not leak.
-  - [ ] Add contract tests for each auth failure category that assert status, ProblemDetails `type`, safe field presence, reason-code extension, correlation/trace identifier behavior where existing conventions allow, and absence of actor, DAPR, state-store, membership-list, token, payload, or protected-data details.
-  - [ ] Avoid coupling tests to exact English `title` or `detail` text except for required presence and leak checks; reason codes and type URIs are the stable contract.
-  - [ ] Add log/telemetry tests or review evidence proving reason codes and correlation IDs are observable while sensitive authorization inputs and Tenants internals are not emitted.
-  - [ ] Update `docs/reference/command-api.md`, `docs/reference/query-api.md`, `docs/reference/problems/forbidden.md`, and `docs/guides/security-model.md`.
-  - [ ] Add new or updated problem reference docs for tenant lifecycle and permission reason codes if the docs taxonomy requires separate pages.
+- [x] **ST4 - Freeze auth ProblemDetails taxonomy and docs.** (AC: 4, 5)
+  - [x] Add or update `ProblemTypeUris` and/or documented `reasonCode` extension constants for authentication and authorization failures.
+  - [x] Update `AuthorizationExceptionHandler`, `AuthorizationServiceUnavailableHandler`, and any authentication failure hook needed to emit stable ProblemDetails metadata.
+  - [x] Preserve sanitization of internal terms and add tests that internal actor/DAPR/state-store details do not leak.
+  - [x] Add contract tests for each auth failure category that assert status, ProblemDetails `type`, safe field presence, reason-code extension, correlation/trace identifier behavior where existing conventions allow, and absence of actor, DAPR, state-store, membership-list, token, payload, or protected-data details.
+  - [x] Avoid coupling tests to exact English `title` or `detail` text except for required presence and leak checks; reason codes and type URIs are the stable contract.
+  - [x] Add log/telemetry tests or review evidence proving reason codes and correlation IDs are observable while sensitive authorization inputs and Tenants internals are not emitted.
+  - [x] Update `docs/reference/command-api.md`, `docs/reference/query-api.md`, `docs/reference/problems/forbidden.md`, and `docs/guides/security-model.md`.
+  - [x] Add new or updated problem reference docs for tenant lifecycle and permission reason codes if the docs taxonomy requires separate pages.
 
-- [ ] **ST5 - Align Client and Testing support for tenant/RBAC paths.** (AC: 5)
-  - [ ] Update `EventStoreGatewayException` parsing or public client result models if reason-code extensions are added.
-  - [ ] Add deterministic fake/builder support in `Hexalith.EventStore.Testing` for tenant/RBAC denial and unavailable paths.
-  - [ ] Preserve `reasonCode`, ProblemDetails `type`, HTTP status, and safe tenant/correlation context in client exceptions/results.
-  - [ ] Add validation endpoint tests proving authorization denials return `200 OK`, `isAuthorized=false`, stable reason code, and safe fields, while true transport/authentication failures follow the documented HTTP error path.
-  - [ ] Add client and Testing fake parity tests proving every typed deny outcome can round-trip without parsing free-text details.
-  - [ ] Preserve existing fake command/query request recording and not-modified behavior from Story 22.1.
-  - [ ] Add tests for client/fake behavior covering 401, 403 reason-code variants, and authorization service unavailable.
-  - [ ] Add fake default-behavior tests proving omitted tenant, subject, role, permission, or reason-code setup denies deterministically instead of implicitly allowing.
+- [x] **ST5 - Align Client and Testing support for tenant/RBAC paths.** (AC: 5)
+  - [x] Update `EventStoreGatewayException` parsing or public client result models if reason-code extensions are added.
+  - [x] Add deterministic fake/builder support in `Hexalith.EventStore.Testing` for tenant/RBAC denial and unavailable paths.
+  - [x] Preserve `reasonCode`, ProblemDetails `type`, HTTP status, and safe tenant/correlation context in client exceptions/results.
+  - [x] Add validation endpoint tests proving authorization denials return `200 OK`, `isAuthorized=false`, stable reason code, and safe fields, while true transport/authentication failures follow the documented HTTP error path.
+  - [x] Add client and Testing fake parity tests proving every typed deny outcome can round-trip without parsing free-text details.
+  - [x] Preserve existing fake command/query request recording and not-modified behavior from Story 22.1.
+  - [x] Add tests for client/fake behavior covering 401, 403 reason-code variants, and authorization service unavailable.
+  - [x] Add fake default-behavior tests proving omitted tenant, subject, role, permission, or reason-code setup denies deterministically instead of implicitly allowing.
 
-- [ ] **ST6 - Validate Hexalith.Tenants integration and runtime wiring.** (AC: 6, 7)
-  - [ ] Add focused unit tests using Hexalith.Tenants contracts/test helpers for active tenant, disabled/inactive tenant, missing tenant, user membership, and role hierarchy.
-  - [ ] Add service registration/startup validation tests for selected authorization mode, options, and missing configuration.
-  - [ ] Verify public reason codes/client contract types do not require Tenants runtime packages, Tenants runtime integration is server/infrastructure-only, and Testing fakes avoid Tenants runtime package dependencies.
-  - [ ] Verify service registration cannot configure mutually exclusive claims fallback and Tenants-backed runtime validation in a way that silently downgrades production enforcement.
-  - [ ] If AppHost or DAPR access control changes are required, update only the root-level submodule/apphost wiring needed and record Aspire restart evidence.
-  - [ ] If no AppHost changes are needed, explicitly record why current topology is sufficient.
+- [x] **ST6 - Validate Hexalith.Tenants integration and runtime wiring.** (AC: 6, 7)
+  - [x] Add focused unit tests using Hexalith.Tenants contracts/test helpers for active tenant, disabled/inactive tenant, missing tenant, user membership, and role hierarchy.
+  - [x] Add service registration/startup validation tests for selected authorization mode, options, and missing configuration.
+  - [x] Verify public reason codes/client contract types do not require Tenants runtime packages, Tenants runtime integration is server/infrastructure-only, and Testing fakes avoid Tenants runtime package dependencies.
+  - [x] Verify service registration cannot configure mutually exclusive claims fallback and Tenants-backed runtime validation in a way that silently downgrades production enforcement.
+  - [x] If AppHost or DAPR access control changes are required, update only the root-level submodule/apphost wiring needed and record Aspire restart evidence.
+  - [x] If no AppHost changes are needed, explicitly record why current topology is sufficient.
 
-- [ ] **ST7 - Validate and record evidence.** (AC: 7)
-  - [ ] Run focused authorization/server tests, starting with `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "Authorization|CommandsControllerTenant|AuthorizationServiceUnavailable|QueryValidation|CommandValidation"`.
-  - [ ] Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests` if Contracts reason-code DTOs/constants change.
-  - [ ] Run `dotnet test tests/Hexalith.EventStore.Client.Tests` if gateway client ProblemDetails parsing changes.
-  - [ ] Run `dotnet test tests/Hexalith.EventStore.Testing.Tests` if fake/builders change.
-  - [ ] Run Hexalith.Tenants focused contract/client/testing tests if the submodule is changed or referenced through new integration code.
-  - [ ] Run docs/markdown validation where available.
-  - [ ] Record the decision table location, selected integration-path note, downstream non-invocation proof, client/fake parity proof, Story 22.4 exclusions, and individually run test commands/results in the Dev Agent Record.
-  - [ ] Record authorization-before-cache/ETag/projection lookup proof, tenant-source conflict proof, immutable authorization-context proof, and safe-observability proof.
-  - [ ] Update Dev Agent Record, File List, Verification Status, and Change Log.
+- [x] **ST7 - Validate and record evidence.** (AC: 7)
+  - [x] Run focused authorization/server tests, starting with `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "Authorization|CommandsControllerTenant|AuthorizationServiceUnavailable|QueryValidation|CommandValidation"`.
+  - [x] Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests` if Contracts reason-code DTOs/constants change.
+  - [x] Run `dotnet test tests/Hexalith.EventStore.Client.Tests` if gateway client ProblemDetails parsing changes.
+  - [x] Run `dotnet test tests/Hexalith.EventStore.Testing.Tests` if fake/builders change.
+  - [x] Run Hexalith.Tenants focused contract/client/testing tests if the submodule is changed or referenced through new integration code.
+  - [x] Run docs/markdown validation where available.
+  - [x] Record the decision table location, selected integration-path note, downstream non-invocation proof, client/fake parity proof, Story 22.4 exclusions, and individually run test commands/results in the Dev Agent Record.
+  - [x] Record authorization-before-cache/ETag/projection lookup proof, tenant-source conflict proof, immutable authorization-context proof, and safe-observability proof.
+  - [x] Update Dev Agent Record, File List, Verification Status, and Change Log.
 
 ## Developer Notes
 
@@ -353,6 +353,9 @@ GPT-5 Codex
 - 2026-05-12T21:44:06+02:00 - Story creation context gathered from Epic 22, PRD FR90-FR92, architecture ADR-P8 and downstream authorization boundary, Stories 22.1 and 22.2, EventStore authorization adapters, MediatR authorization behavior, command/query controllers, ProblemDetails handlers, Hexalith.Tenants public lifecycle/role surfaces, recent commits, project context, and lessons ledger.
 - 2026-05-13T07:19:42+02:00 - Party-mode review completed with John, Winston, Amelia, and Murat; applied bounded story hardening for validator contracts, authorization ordering, typed reason-code taxonomy, Tenants integration precedence, claims fallback fencing, validation endpoint compatibility, client/testing parity, package dependency guardrails, and evidence requirements.
 - 2026-05-13T12:03:15+02:00 - Advanced elicitation completed in two batches; applied bounded hardening for immutable authorization context, tenant-source conflict handling, auth-before-cache/ETag/projection lookup ordering, adapter staleness and timeout semantics, safe observability, and fake/client fail-closed parity.
+- 2026-05-13T20:43:39+02:00 - Development started. Aspire baseline run succeeded with `EnableKeycloak=false`; resources were healthy for EventStore, Tenants, Admin, sample, DAPR sidecars, `statestore`, and `pubsub`. AppHost was stopped before test builds to release locked assemblies.
+- 2026-05-13T22:05:00+02:00 - Implemented typed authorization reason codes, ProblemDetails/preflight/client propagation, query authorization-before-ETag lookup, and DAPR actor adapter reason-code mapping.
+- 2026-05-13T22:20:00+02:00 - Final focused validation passed: Server authorization/query/controller slice 233/233, Contracts reason-code slice 22/22, Client gateway slice 20/20, Testing fake/builder slice 14/14, and markdownlint 0 errors.
 
 ### Completion Notes List
 
@@ -360,12 +363,60 @@ GPT-5 Codex
 - Story creation did not modify product code, tests, DAPR/Aspire configuration, generated API docs, or submodules.
 - Party-mode review completed on 2026-05-13 and applied story hardening for the gateway authorization contract, reason-code taxonomy, Tenants integration boundary, validation endpoint behavior, client/testing parity, and focused evidence obligations.
 - Advanced elicitation completed on 2026-05-13 and applied story-text hardening only; product code, tests, DAPR/Aspire configuration, generated API docs, sprint status, and submodules were not changed.
+- Added `AuthorizationFailureReason` and stable canonical `reasonCode` mapping in Contracts; tenant/RBAC validator results now preserve machine-readable reason codes separately from safe human-readable text.
+- Runtime 401/403/503 ProblemDetails now emit stable `reasonCode` metadata, while preserving existing sanitization of actor/DAPR/state-store/aggregate terms and safe `reason` text for backward-compatible clients.
+- Command/query preflight validation endpoints continue returning `200 OK` with `isAuthorized=false`; denied responses now include `reasonCode`.
+- Query submission now authorizes tenant/RBAC before any `If-None-Match`/ETag lookup or mediator/query-router/projection invocation; the prevalidated immutable context is reused by the MediatR authorization behavior to avoid double validation.
+- Selected integration path: documented DAPR actor validator adapter as the approved Tenants-backed runtime boundary. Actor responses carry optional stable reason codes; missing/malformed legacy deny responses stay denied and map to fail-closed fallback codes.
+- No AppHost, DAPR access-control, or Hexalith.Tenants runtime code changes were required. The existing Aspire topology already starts the Tenants service and DAPR sidecar; story scope only needed EventStore adapter contracts, docs, and tests.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/22-3-gateway-owned-tenant-and-rbac-enforcement.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
-- `_bmad-output/process-notes/predev-hardening-runs.log`
+- `docs/guides/security-model.md`
+- `docs/reference/command-api.md`
+- `docs/reference/query-api.md`
+- `docs/reference/problems/forbidden.md`
+- `src/Hexalith.EventStore.Contracts/Authorization/AuthorizationFailureReason.cs`
+- `src/Hexalith.EventStore.Contracts/Authorization/AuthorizationFailureReasonExtensions.cs`
+- `src/Hexalith.EventStore.Contracts/Problems/GatewayProblemDetailsExtensions.cs`
+- `src/Hexalith.EventStore.Contracts/Validation/PreflightValidationResult.cs`
+- `src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClient.cs`
+- `src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayException.cs`
+- `src/Hexalith.EventStore.Server/Actors/Authorization/ActorValidationResponse.cs`
+- `src/Hexalith.EventStore.Testing/Builders/EventStoreGatewayExceptionBuilder.cs`
+- `src/Hexalith.EventStore/Authentication/ConfigureJwtBearerOptions.cs`
+- `src/Hexalith.EventStore/Authorization/ActorRbacValidator.cs`
+- `src/Hexalith.EventStore/Authorization/ActorTenantValidator.cs`
+- `src/Hexalith.EventStore/Authorization/ClaimsRbacValidator.cs`
+- `src/Hexalith.EventStore/Authorization/ClaimsTenantValidator.cs`
+- `src/Hexalith.EventStore/Authorization/RbacValidationResult.cs`
+- `src/Hexalith.EventStore/Authorization/TenantValidationResult.cs`
+- `src/Hexalith.EventStore/Controllers/CommandValidationController.cs`
+- `src/Hexalith.EventStore/Controllers/QueriesController.cs`
+- `src/Hexalith.EventStore/Controllers/QueryValidationController.cs`
+- `src/Hexalith.EventStore/ErrorHandling/AuthorizationExceptionHandler.cs`
+- `src/Hexalith.EventStore/ErrorHandling/AuthorizationServiceUnavailableHandler.cs`
+- `src/Hexalith.EventStore/ErrorHandling/CommandAuthorizationException.cs`
+- `src/Hexalith.EventStore/Pipeline/AuthorizationBehavior.cs`
+- `src/Hexalith.EventStore/Pipeline/GatewayAuthorizationContext.cs`
+- `tests/Hexalith.EventStore.Client.Tests/Gateway/EventStoreGatewayClientTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Authorization/AuthorizationFailureReasonTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Problems/GatewayProblemDetailsExtensionsTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Validation/PreflightValidationResultTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Authorization/ActorRbacValidatorTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Authorization/ActorTenantValidatorTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Authorization/AuthorizationResultReasonCodeTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Authorization/AuthorizationServiceUnavailableHandlerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Authorization/TenantsAuthorizationContractMappingTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreAuthorizationRegistrationTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Controllers/CommandValidationControllerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Controllers/QueryValidationControllerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/ErrorHandling/AuthorizationExceptionHandlerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj`
+- `tests/Hexalith.EventStore.Testing.Tests/Builders/EventStoreGatewayExceptionBuilderTests.cs`
 
 ## Verification Status
 
@@ -377,6 +428,17 @@ GPT-5 Codex
 - Party-mode findings were applied only as story-text clarifications; product scope, architecture policy, sprint status, source code, tests, DAPR/Aspire configuration, generated API docs, and submodules were not changed.
 - Advanced elicitation completed on 2026-05-13 and is recorded below.
 - Advanced elicitation findings were applied only as story-text clarifications; product scope, architecture policy, sprint status, source code, tests, DAPR/Aspire configuration, generated API docs, and submodules were not changed.
+- Aspire baseline: `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`; `aspire describe --format Json` showed healthy EventStore, Tenants, Admin, sample, DAPR sidecars, `statestore`, and `pubsub`. AppHost was stopped before final test builds.
+- `dotnet test tests\Hexalith.EventStore.Server.Tests --filter "Authorization|CommandValidation|QueryValidation|QueriesController"`: Passed 233/233.
+- `dotnet test tests\Hexalith.EventStore.Contracts.Tests --filter "AuthorizationFailureReason|PreflightValidationResult|GatewayProblemDetailsExtensions"`: Passed 22/22.
+- `dotnet test tests\Hexalith.EventStore.Client.Tests --filter "EventStoreGatewayClient"`: Passed 20/20.
+- `dotnet test tests\Hexalith.EventStore.Testing.Tests --filter "EventStoreGatewayExceptionBuilder|FakeEventStoreGatewayClient"`: Passed 14/14.
+- `npx markdownlint-cli2 docs/guides/security-model.md docs/reference/command-api.md docs/reference/query-api.md docs/reference/problems/forbidden.md`: 0 errors.
+- Decision table and integration-path note location: `docs/guides/security-model.md` and `docs/reference/problems/forbidden.md`.
+- Downstream non-invocation proof: `QueriesControllerTests.Submit_UnauthorizedTenant_DoesNotReadETagOrInvokeMediator` proves tenant denial blocks ETag and mediator/query dispatch; existing authorization behavior/controller tests cover command, query, and preflight denial flow.
+- Immutable context proof: `GatewayAuthorizationContext` stores tenant/domain/message/category/aggregate/subject after controller-level query authorization; `AuthorizationBehavior` reuses it only when all fields match the MediatR request.
+- Tenants contract evidence: `TenantsAuthorizationContractMappingTests` references `Hexalith.Tenants.Contracts` in tests only and maps active/disabled tenant status plus known roles without adding Tenants runtime dependencies to Contracts, Client, Testing, or EventStore production packages.
+- Story 22.4 exclusions preserved: non-auth query validation, missing projection, malformed query/filter, projection consistency, and business/query taxonomy remain out of scope.
 
 ## Change Log
 
@@ -385,6 +447,7 @@ GPT-5 Codex
 | 2026-05-12 | 0.1 | Created ready-for-dev story for gateway-owned tenant and RBAC enforcement. | Codex automation |
 | 2026-05-13 | 0.2 | Applied party-mode review hardening for validator contracts, authorization ordering, reason-code taxonomy, Tenants integration precedence, claims fallback fencing, validation endpoint compatibility, client/testing parity, and evidence requirements. | Codex automation |
 | 2026-05-13 | 0.3 | Applied advanced elicitation hardening for immutable authorization context, tenant conflicts, auth-before-cache ordering, adapter failure semantics, safe observability, and fake/client fail-closed parity. | Codex automation |
+| 2026-05-13 | 1.0 | Implemented gateway-owned tenant/RBAC reason-code contract, query auth-before-ETag enforcement, actor adapter mapping, client/testing support, docs, and focused validation evidence. | GPT-5 Codex |
 
 ## Party-Mode Review
 

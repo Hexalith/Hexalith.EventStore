@@ -1,6 +1,7 @@
 
 using System.Security.Claims;
 
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Pipeline;
 
 namespace Hexalith.EventStore.Authorization;
@@ -43,7 +44,9 @@ public class ClaimsRbacValidator : IRbacValidator {
             .ToList();
 
         if (domainClaims.Count > 0 && !domainClaims.Any(d => string.Equals(d, domain, StringComparison.OrdinalIgnoreCase))) {
-            return Task.FromResult(RbacValidationResult.Denied($"Not authorized for domain '{domain}'."));
+            return Task.FromResult(RbacValidationResult.Denied(
+                $"Not authorized for domain '{domain}'.",
+                AuthorizationFailureReason.InsufficientRole));
         }
 
         // Permission authorization: only enforce if user has permission claims
@@ -72,7 +75,9 @@ public class ClaimsRbacValidator : IRbacValidator {
             string typeLabel = isQuery ? "query type" : "command type";
 
             if (!hasWildcard && !hasCategoryPermission && !hasSpecific) {
-                return Task.FromResult(RbacValidationResult.Denied($"Not authorized for {typeLabel} '{messageType}'."));
+                return Task.FromResult(RbacValidationResult.Denied(
+                    $"Not authorized for {typeLabel} '{messageType}'.",
+                    AuthorizationFailureReason.InsufficientPermission));
             }
         }
 

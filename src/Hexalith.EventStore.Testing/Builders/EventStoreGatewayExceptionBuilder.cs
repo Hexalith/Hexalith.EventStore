@@ -16,6 +16,7 @@ public sealed class EventStoreGatewayExceptionBuilder {
     private string? _tenantId;
     private Dictionary<string, string>? _errors;
     private string? _reason;
+    private string? _reasonCode;
     private string? _retryAfter;
     private Dictionary<string, JsonElement>? _extensions;
 
@@ -118,6 +119,11 @@ public sealed class EventStoreGatewayExceptionBuilder {
     public EventStoreGatewayExceptionBuilder WithReason(string? reason) { _reason = reason; return this; }
 
     /// <summary>
+    /// Sets the stable reason-code extension.
+    /// </summary>
+    public EventStoreGatewayExceptionBuilder WithReasonCode(string? reasonCode) { _reasonCode = reasonCode; return this; }
+
+    /// <summary>
     /// Sets the retry-after extension.
     /// </summary>
     public EventStoreGatewayExceptionBuilder WithRetryAfter(string? retryAfter) { _retryAfter = retryAfter; return this; }
@@ -146,5 +152,6 @@ public sealed class EventStoreGatewayExceptionBuilder {
             _errors,
             _reason,
             _retryAfter,
-            _extensions);
+            _extensions,
+            _reasonCode);
 }

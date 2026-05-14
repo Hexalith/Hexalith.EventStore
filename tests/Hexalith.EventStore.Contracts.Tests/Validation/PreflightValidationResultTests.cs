@@ -20,6 +20,19 @@ public class PreflightValidationResultTests {
 
         result.IsAuthorized.ShouldBeFalse();
         result.Reason.ShouldBe("Not authorized for tenant 'acme'.");
+        result.ReasonCode.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Constructor_Unauthorized_WithReasonCode() {
+        var result = new PreflightValidationResult(
+            IsAuthorized: false,
+            Reason: "Not authorized for tenant 'acme'.",
+            ReasonCode: "principal_not_member");
+
+        result.IsAuthorized.ShouldBeFalse();
+        result.Reason.ShouldBe("Not authorized for tenant 'acme'.");
+        result.ReasonCode.ShouldBe("principal_not_member");
     }
 
     [Fact]

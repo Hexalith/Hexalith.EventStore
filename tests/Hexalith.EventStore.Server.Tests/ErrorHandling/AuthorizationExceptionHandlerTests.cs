@@ -1,6 +1,7 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 
@@ -35,7 +36,12 @@ public class AuthorizationExceptionHandlerTests {
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
         httpContext.Request.Path = "/api/v1/commands";
-        var exception = new CommandAuthorizationException("test-tenant", "test-domain", "CreateOrder", "Not authorized for domain 'test-domain'.");
+        var exception = new CommandAuthorizationException(
+            "test-tenant",
+            "test-domain",
+            "CreateOrder",
+            "Not authorized for domain 'test-domain'.",
+            AuthorizationFailureReason.InsufficientRole);
 
         // Act
         bool handled = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
@@ -54,6 +60,10 @@ public class AuthorizationExceptionHandlerTests {
         problemDetails.Instance.ShouldBe("/api/v1/commands");
         problemDetails.Extensions.ShouldContainKey("correlationId");
         problemDetails.Extensions.ShouldContainKey("tenantId");
+        problemDetails.Extensions.TryGetValue("reasonCode", out object? reasonCode).ShouldBeTrue();
+        reasonCode.ShouldNotBeNull().ToString().ShouldBe("insufficient_role");
+        problemDetails.Extensions.TryGetValue("reason", out object? reason).ShouldBeTrue();
+        reason.ShouldNotBeNull().ToString().ShouldBe("Not authorized for tenant 'test-tenant'. Not authorized for domain 'test-domain'.");
     }
 
     [Fact]

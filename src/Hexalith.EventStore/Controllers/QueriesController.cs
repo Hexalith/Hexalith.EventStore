@@ -1,8 +1,12 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
+using Hexalith.EventStore.Pipeline;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
 
@@ -18,7 +22,12 @@ namespace Hexalith.EventStore.Controllers;
 [Route("api/v1/queries")]
 [Consumes("application/json")]
 [Tags("Queries")]
-public partial class QueriesController(IMediator mediator, IETagService eTagService, ILogger<QueriesController> logger) : ControllerBase {
+public partial class QueriesController(
+    IMediator mediator,
+    IETagService eTagService,
+    ITenantValidator tenantValidator,
+    IRbacValidator rbacValidator,
+    ILogger<QueriesController> logger) : ControllerBase {
     private const int MaxIfNoneMatchValues = 10;
 
     private readonly record struct HeaderProjectionTypeAnalysis(string? ProjectionType, bool HasMixedProjectionTypes);
@@ -56,6 +65,9 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
 
             return Unauthorized();
         }
+
+        await ValidateAuthorizationBeforeLookupAsync(request, userId, correlationId, cancellationToken)
+            .ConfigureAwait(false);
 
         // Gate 1: ETag pre-check — decode projection type from self-routing ETag
         string? currentETag = null;
@@ -150,6 +162,53 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
         }
 
         return Ok(new SubmitQueryResponse(result.CorrelationId, result.Payload));
+    }
+
+    private async Task ValidateAuthorizationBeforeLookupAsync(
+        SubmitQueryRequest request,
+        string subjectId,
+        string correlationId,
+        CancellationToken cancellationToken) {
+        TenantValidationResult tenantResult = await tenantValidator
+            .ValidateAsync(User, request.Tenant, cancellationToken, request.AggregateId)
+            .ConfigureAwait(false)
+            ?? throw new InvalidOperationException(
+                "ITenantValidator.ValidateAsync returned null. This is a server bug, not a user authorization failure.");
+
+        if (!tenantResult.IsAuthorized) {
+            Log.QueryAuthorizationDenied(logger, correlationId, request.Tenant, request.Domain, request.QueryType, tenantResult.Reason ?? "Tenant access denied.");
+            throw new CommandAuthorizationException(
+                request.Tenant,
+                request.Domain,
+                request.QueryType,
+                tenantResult.Reason ?? "Tenant access denied.",
+                tenantResult.ReasonCode);
+        }
+
+        RbacValidationResult rbacResult = await rbacValidator
+            .ValidateAsync(User, request.Tenant, request.Domain, request.QueryType, "query", cancellationToken, request.AggregateId)
+            .ConfigureAwait(false)
+            ?? throw new InvalidOperationException(
+                "IRbacValidator.ValidateAsync returned null. This is a server bug, not a user authorization failure.");
+
+        if (!rbacResult.IsAuthorized) {
+            Log.QueryAuthorizationDenied(logger, correlationId, request.Tenant, request.Domain, request.QueryType, rbacResult.Reason ?? "RBAC check failed.");
+            throw new CommandAuthorizationException(
+                request.Tenant,
+                request.Domain,
+                request.QueryType,
+                rbacResult.Reason ?? "RBAC check failed.",
+                rbacResult.ReasonCode);
+        }
+
+        HttpContext.Items[AuthorizationBehavior<SubmitQuery, SubmitQueryResult>.PrevalidatedAuthorizationContextKey]
+            = new GatewayAuthorizationContext(
+                request.Tenant,
+                request.Domain,
+                request.QueryType,
+                "query",
+                request.AggregateId,
+                subjectId);
     }
 
     /// <summary>
@@ -265,5 +324,18 @@ public partial class QueriesController(IMediator mediator, IETagService eTagServ
             Level = LogLevel.Debug,
             Message = "Gate 1 skipped because If-None-Match contains decodable ETags for multiple projection types. CorrelationId={CorrelationId}.")]
         public static partial void MixedProjectionTypesSkipped(ILogger logger, string correlationId);
+
+        [LoggerMessage(
+            EventId = 1068,
+            Level = LogLevel.Warning,
+            Message = "Query authorization denied before lookup: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, Tenant={Tenant}, Domain={Domain}, QueryType={QueryType}, Reason={Reason}, Stage=QueryAuthorizationBeforeLookup")]
+        public static partial void QueryAuthorizationDenied(
+            ILogger logger,
+            string correlationId,
+            string tenant,
+            string domain,
+            string queryType,
+            string reason,
+            string securityEvent = "QueryAuthorizationDenied");
     }
 }

@@ -21,6 +21,7 @@ public sealed class EventStoreGatewayException : Exception {
         string? reason = null,
         string? retryAfter = null,
         IReadOnlyDictionary<string, JsonElement>? extensions = null,
+        string? reasonCode = null,
         Exception? innerException = null)
         : base(detail ?? title, innerException) {
         StatusCode = statusCode;
@@ -31,6 +32,7 @@ public sealed class EventStoreGatewayException : Exception {
         TenantId = tenantId;
         Errors = errors is null ? FrozenDictionary<string, string>.Empty : new Dictionary<string, string>(errors, StringComparer.Ordinal);
         Reason = reason;
+        ReasonCode = reasonCode;
         RetryAfter = retryAfter;
         Extensions = extensions is null ? FrozenDictionary<string, JsonElement>.Empty : new Dictionary<string, JsonElement>(extensions, StringComparer.Ordinal);
     }
@@ -74,6 +76,11 @@ public sealed class EventStoreGatewayException : Exception {
     /// Gets the reason code or reason text returned by the gateway when provided.
     /// </summary>
     public string? Reason { get; }
+
+    /// <summary>
+    /// Gets the stable machine-readable reason code returned by the gateway when provided.
+    /// </summary>
+    public string? ReasonCode { get; }
 
     /// <summary>
     /// Gets retry guidance returned by the gateway when provided.

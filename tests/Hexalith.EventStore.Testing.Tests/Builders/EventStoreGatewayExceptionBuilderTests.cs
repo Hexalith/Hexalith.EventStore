@@ -28,4 +28,14 @@ public class EventStoreGatewayExceptionBuilderTests {
         EventStoreGatewayExceptionBuilder.Unavailable("corr-down", "tenant-a", retryAfter: "PT30S").Build().StatusCode.ShouldBe(503);
         EventStoreGatewayExceptionBuilder.Unexpected("corr-oops").Build().StatusCode.ShouldBe(500);
     }
+
+    [Fact]
+    public void WithReasonCode_SetsStableReasonCode() {
+        EventStoreGatewayException exception = EventStoreGatewayExceptionBuilder
+            .AuthorizationDenied("corr-denied", "tenant-a")
+            .WithReasonCode("insufficient_permission")
+            .Build();
+
+        exception.ReasonCode.ShouldBe("insufficient_permission");
+    }
 }

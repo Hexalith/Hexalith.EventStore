@@ -91,6 +91,7 @@ public class EventStoreGatewayClientTests {
               "correlationId": "corr-denied",
               "tenantId": "tenant-a",
               "reason": "missing-role",
+              "reasonCode": "insufficient_role",
               "retryAfter": "PT30S",
               "errors": {
                 "permissions": "commands:* is required"
@@ -111,6 +112,7 @@ public class EventStoreGatewayClientTests {
         ex.CorrelationId.ShouldBe("corr-denied");
         ex.TenantId.ShouldBe("tenant-a");
         ex.Reason.ShouldBe("missing-role");
+        ex.ReasonCode.ShouldBe("insufficient_role");
         ex.RetryAfter.ShouldBe("PT30S");
         ex.Errors.ShouldContainKey("permissions");
         ex.Errors["permissions"].ShouldBe("commands:* is required");

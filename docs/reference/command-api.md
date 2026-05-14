@@ -241,16 +241,18 @@ The endpoint always returns `200 OK` for an authenticated request, with the auth
 ```json
 {
     "isAuthorized": true,
-    "reason": null
+    "reason": null,
+    "reasonCode": null
 }
 ```
 
-If authorization fails, `isAuthorized` is `false` and `reason` explains why:
+If authorization fails, `isAuthorized` is `false`; `reason` is safe human-readable detail and `reasonCode` is the stable machine-readable contract:
 
 ```json
 {
     "isAuthorized": false,
-    "reason": "RBAC check failed."
+    "reason": "RBAC check failed.",
+    "reasonCode": "insufficient_permission"
 }
 ```
 
@@ -259,9 +261,12 @@ If authorization fails, `isAuthorized` is `false` and `reason` explains why:
 | Status                  | Condition                               | Body                                              |
 | ----------------------- | --------------------------------------- | ------------------------------------------------- |
 | 400 Bad Request         | Validation failure for the request body | RFC 7807 ProblemDetails with `errors` dictionary  |
-| 401 Unauthorized        | Missing or invalid JWT token            | —                                                 |
+| 401 Unauthorized        | Missing or invalid JWT token            | RFC 7807 ProblemDetails with `reasonCode`         |
+| 403 Forbidden           | Tenant/RBAC authorization denied        | RFC 7807 ProblemDetails with `reasonCode`         |
 | 429 Too Many Requests   | Per-tenant rate limit exceeded          | RFC 7807 ProblemDetails with `Retry-After` header |
-| 503 Service Unavailable | Authorization dependencies unavailable  | RFC 7807 ProblemDetails                           |
+| 503 Service Unavailable | Authorization dependencies unavailable  | RFC 7807 ProblemDetails with `reasonCode` and `Retry-After` |
+
+Stable authorization reason codes are documented in [Forbidden](./problems/forbidden.md) and the [security model](../guides/security-model.md). Claims-based validators are local/dev/test fallback only; Tenants-backed runtime validation uses the configured tenant/RBAC validator adapters and fails closed when unavailable, stale, ambiguous, or malformed.
 
 ## GET /api/v1/commands/status/{correlationId}
 

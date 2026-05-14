@@ -6,6 +6,7 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Configuration;
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Actors.Authorization;
 
@@ -288,5 +289,17 @@ public class ActorRbacValidatorTests {
         _ = factory.Received(1).CreateActorProxy<IRbacValidatorActor>(
             Arg.Is<ActorId>(id => id.GetId() == "my-tenant"),
             Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ActorDeniesWithReasonCode_MapsTypedReasonCode() {
+        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
+        SetupActorProxy(factory, new ActorValidationResponse(false, "Permission denied.", "insufficient_permission"));
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        RbacValidationResult result = await validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, CancellationToken.None);
+
+        result.IsAuthorized.ShouldBeFalse();
+        result.ReasonCode.ShouldBe(AuthorizationFailureReason.InsufficientPermission);
     }
 }

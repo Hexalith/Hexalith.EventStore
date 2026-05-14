@@ -25,6 +25,11 @@ public static class GatewayProblemDetailsExtensions {
     public const string Reason = "reason";
 
     /// <summary>
+    /// Extension name carrying a stable machine-readable authorization reason code.
+    /// </summary>
+    public const string ReasonCode = "reasonCode";
+
+    /// <summary>
     /// Extension name carrying retry guidance when the caller may try again later.
     /// </summary>
     public const string RetryAfter = "retryAfter";

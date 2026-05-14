@@ -5,6 +5,7 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Configuration;
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Actors.Authorization;
 
@@ -78,7 +79,10 @@ public partial class ActorRbacValidator(
         }
 
         Log.ActorRbacValidationDenied(logger, "RbacAccessDenied", userId, tenantId, domain, messageType, messageCategory, response.Reason);
-        return RbacValidationResult.Denied(response.Reason ?? "RBAC access denied by actor.");
+        AuthorizationFailureReason reasonCode = AuthorizationFailureReasonExtensions.FromReasonCode(
+            response.ReasonCode,
+            AuthorizationFailureReason.InsufficientPermission);
+        return RbacValidationResult.Denied(response.Reason ?? "RBAC access denied by actor.", reasonCode);
     }
 
     private static partial class Log {
