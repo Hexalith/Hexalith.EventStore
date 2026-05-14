@@ -79,7 +79,7 @@ $ dotnet add package Hexalith.EventStore.Server
 
 Install **Contracts** + **Client**.
 
-Contracts gives you the gateway request and response DTOs for `POST /api/v1/commands` and `POST /api/v1/queries`. Client gives you `IEventStoreGatewayClient`, which handles HTTP posting, `If-None-Match`, `304 Not Modified`, ProblemDetails mapping, typed query payloads, and cancellation.
+Contracts gives you the gateway request and response DTOs for `POST /api/v1/commands` and `POST /api/v1/queries`, including public query policy and response metadata types. Client gives you `IEventStoreGatewayClient`, which handles HTTP posting, `If-None-Match`, `304 Not Modified`, ProblemDetails mapping, typed query payloads, metadata propagation, and cancellation.
 
 ```bash
 $ dotnet add package Hexalith.EventStore.Contracts
@@ -176,7 +176,7 @@ Pure domain types plus stable public gateway wire contracts. This package contai
 - `Hexalith.EventStore.Contracts.Events` — `EventEnvelope`, `EventMetadata`, `IEventPayload`, `IRejectionEvent`
 - `Hexalith.EventStore.Contracts.Identity` — `AggregateIdentity`, `IdentityParser`
 - `Hexalith.EventStore.Contracts.Problems` — `GatewayProblemDetailsExtensions`
-- `Hexalith.EventStore.Contracts.Queries` — `SubmitQueryRequest`, `SubmitQueryResponse`, `IQueryContract`, `QueryContractMetadata`, `IProjectionActor`, `QueryEnvelope`, `QueryResult`, `QueryAdapterFailureReason`
+- `Hexalith.EventStore.Contracts.Queries` — `SubmitQueryRequest`, `SubmitQueryResponse`, `QueryPagingOptions`, `QueryFilter`, `QuerySort`, `QueryFreshnessPolicy`, `QueryResponseMetadata`, `QueryPagingMetadata`, `QueryProblemReasonCodes`, `QueryWarningCodes`, `IQueryContract`, `QueryContractMetadata`, `IProjectionActor`, `QueryEnvelope`, `QueryResult`, `QueryAdapterFailureReason`
 - `Hexalith.EventStore.Contracts.Results` — `DomainResult`, `DomainServiceWireResult`
 
 **External dependencies:**
@@ -206,7 +206,7 @@ DI registration, domain processor abstractions, the fluent `AddEventStore` exten
 **Gateway behavior:**
 
 - `SubmitCommandAsync` posts Contracts `SubmitCommandRequest` to `/api/v1/commands` and returns typed `SubmitCommandResponse`.
-- `SubmitQueryAsync` posts Contracts `SubmitQueryRequest` to `/api/v1/queries`, sends `If-None-Match` when supplied, maps `304` to `IsNotModified`, and returns normalized unquoted ETag tokens.
+- `SubmitQueryAsync` posts Contracts `SubmitQueryRequest` to `/api/v1/queries`, sends `If-None-Match` when supplied, maps `304` to `IsNotModified`, returns normalized unquoted ETag tokens, and exposes `QueryResponseMetadata` on typed and untyped query results.
 - A query response envelope with `success: false` is treated as semantic gateway failure and throws `EventStoreGatewayException`.
 - `EventStoreGatewayException` exposes `statusCode`, `title`, `type`, `detail`, `correlationId`, `tenantId`, `errors`, `reason`, `retryAfter`, and preserved ProblemDetails extensions.
 
@@ -279,7 +279,7 @@ Test helpers, in-memory fakes, deterministic gateway doubles, and builders for u
 - `Hexalith.EventStore.Testing.Fakes` — `FakeEventStoreGatewayClient`, `InMemoryStateManager`, `FakeDomainServiceInvoker`, `FakeEventPublisher`
 - `Hexalith.EventStore.Testing.Assertions` — `DomainResultAssertions`, `EventEnvelopeAssertions`, `StorageKeyIsolationAssertions`
 
-`FakeEventStoreGatewayClient` records submitted command/query requests and supplied `If-None-Match` values. It can be configured for command accepted, command ProblemDetails failure, query success, query semantic failure, query ProblemDetails failure, not-modified, unavailable, stale/degraded, and deterministic cancellation paths.
+`FakeEventStoreGatewayClient` records submitted command/query requests and supplied `If-None-Match` values. It can be configured for command accepted, command ProblemDetails failure, query success with metadata, query semantic failure, query ProblemDetails failure, not-modified with metadata, unavailable, stale/degraded, and deterministic cancellation paths.
 
 `FakeProjectionActor` records public `QueryEnvelope` invocations and returns configurable public `QueryResult` values. Use it for downstream-style projection adapter tests without importing `Hexalith.EventStore.Server.Actors`. The broader Testing package still references Server for runtime test utilities such as aggregate actors, state stores, and pub/sub helpers; that dependency is not required by the public projection fake API surface.
 

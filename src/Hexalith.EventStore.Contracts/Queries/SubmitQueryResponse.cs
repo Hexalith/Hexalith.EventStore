@@ -21,16 +21,19 @@ public record SubmitQueryResponse {
     /// Optional semantic failure message when <paramref name="Success"/> is <c>false</c>
     /// (e.g. <c>"Forbidden"</c>, <c>"Tenant not found"</c>). Distinct from transport/HTTP-level failures.
     /// </param>
+    /// <param name="Metadata">Optional public cache, freshness, paging, and warning metadata.</param>
     [JsonConstructor]
     public SubmitQueryResponse(
         string CorrelationId,
         JsonElement Payload,
         bool Success = true,
-        string? ErrorMessage = null) {
+        string? ErrorMessage = null,
+        QueryResponseMetadata? Metadata = null) {
         this.CorrelationId = CorrelationId;
         this.Payload = Payload;
         this.Success = Success;
         this.ErrorMessage = ErrorMessage;
+        this.Metadata = Metadata;
     }
 
     /// <summary>
@@ -60,6 +63,11 @@ public record SubmitQueryResponse {
     /// Gets the optional semantic failure message when <see cref="Success"/> is <c>false</c>.
     /// </summary>
     public string? ErrorMessage { get; init; }
+
+    /// <summary>
+    /// Gets optional public cache, freshness, paging, and warning metadata.
+    /// </summary>
+    public QueryResponseMetadata? Metadata { get; init; }
 
     /// <summary>
     /// Supports source compatibility for callers deconstructing the original two-field contract.

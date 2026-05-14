@@ -20,6 +20,7 @@ Some responses include Hexalith-specific extension fields:
 | `tenantId`      | string | The tenant context of the request                        |
 | `consumerId`    | string | Consumer identity used by rate-limiting responses        |
 | `errors`        | object | Property-level validation error messages                 |
+| `reasonCode`    | string | Stable machine-readable reason code for policy and authorization decisions |
 
 ## 4xx Client Errors
 
@@ -43,5 +44,24 @@ Some responses include Hexalith-specific extension fields:
 | 500    | [internal-server-error](./internal-server-error.md) | Unexpected server failure |
 | 501    | [not-implemented](./not-implemented.md) | Query endpoint not available |
 | 503    | [service-unavailable](./service-unavailable.md) | Processing pipeline temporarily down |
+
+## Query Reason Codes
+
+Query submission uses the standard error types above plus stable `reasonCode` extensions for non-auth query policy and projection failures.
+
+| Reason code                           | Status | Description |
+| ------------------------------------- | ------ | ----------- |
+| `query_malformed_request`             | 400    | Unknown or malformed query policy input. |
+| `query_invalid_page`                  | 400    | Invalid paging policy. |
+| `query_unsupported_filter`            | 400    | Filter policy supplied before support is enabled. |
+| `query_unsupported_search`            | 400    | Non-blank search policy supplied before support is enabled. |
+| `query_unsupported_order`             | 400    | Ordering policy supplied before support is enabled. |
+| `query_projection_missing`            | 404    | Requested projection/query target not found. |
+| `query_projection_stale`              | 400/503 | Freshness policy could not be satisfied. |
+| `query_degraded_search`               | 200 metadata | Search served through a degraded path. |
+| `query_malformed_projection_response` | 500    | Projection returned a malformed response. |
+| `query_projection_timeout`            | 503    | Projection response timed out. |
+| `query_not_implemented`               | 501    | Query type or projection behavior not implemented. |
+| `query_internal_error`                | 500    | Internal query execution failure. |
 
 > **Note:** Domain services may define additional error types beyond the 13 listed here. If you receive an error `type` URI not listed on this page, consult the documentation for the specific domain service.

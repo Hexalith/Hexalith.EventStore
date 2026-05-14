@@ -47,4 +47,40 @@ public class SubmitQueryResponseTests {
         roundTripped.ErrorMessage.ShouldBe("Forbidden");
         roundTripped.Payload.GetProperty("reason").GetString().ShouldBe("denied");
     }
+
+    [Fact]
+    public void JsonRoundTrip_WithMetadata_PreservesCacheFreshnessAndPagingFields() {
+        JsonSerializerOptions options = new(JsonSerializerDefaults.Web);
+        JsonElement payload = JsonDocument.Parse("{\"items\":[]}").RootElement;
+        var servedAt = new DateTimeOffset(2026, 5, 14, 9, 30, 0, TimeSpan.Zero);
+        var response = new SubmitQueryResponse(
+            "corr-200",
+            payload,
+            Metadata: new QueryResponseMetadata(
+                ETag: "etag-1",
+                IsNotModified: false,
+                IsStale: null,
+                IsDegraded: true,
+                ProjectionVersion: "projection-v1",
+                ServedAt: servedAt,
+                Paging: new QueryPagingMetadata(PageSize: 25, Offset: 50, NextCursor: null, TotalCount: null),
+                WarningCodes: [QueryWarningCodes.DegradedSearch]));
+
+        string json = JsonSerializer.Serialize(response, options);
+        SubmitQueryResponse? roundTripped = JsonSerializer.Deserialize<SubmitQueryResponse>(json, options);
+
+        json.ShouldContain("\"metadata\"");
+        json.ShouldContain("\"etag\":\"etag-1\"");
+        json.ShouldContain("\"isDegraded\":true");
+        json.ShouldContain("\"pageSize\":25");
+        roundTripped.ShouldNotBeNull();
+        roundTripped.Metadata.ShouldNotBeNull();
+        roundTripped.Metadata.ETag.ShouldBe("etag-1");
+        roundTripped.Metadata.IsDegraded.ShouldBe(true);
+        roundTripped.Metadata.ServedAt.ShouldBe(servedAt);
+        roundTripped.Metadata.Paging.ShouldNotBeNull();
+        roundTripped.Metadata.Paging.Offset.ShouldBe(50);
+        roundTripped.Metadata.WarningCodes.ShouldNotBeNull();
+        roundTripped.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);
+    }
 }

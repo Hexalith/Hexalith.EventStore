@@ -26,6 +26,120 @@ public class SubmitQueryRequestValidatorTests {
     }
 
     [Fact]
+    public void SubmitQueryRequestValidator_ValidPageSizeAndOffset_Passes() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState") {
+            Paging = new QueryPagingOptions(PageSize: QueryPolicyLimits.DefaultPageSize, Offset: 0),
+        };
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void SubmitQueryRequestValidator_PageSizeAboveMaximum_FailsWithInvalidPageReason() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState") {
+            Paging = new QueryPagingOptions(PageSize: QueryPolicyLimits.MaxPageSize + 1),
+        };
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "Paging.PageSize" && e.ErrorCode == QueryProblemReasonCodes.InvalidPage);
+    }
+
+    [Fact]
+    public void SubmitQueryRequestValidator_CursorAndOffsetTogether_FailsWithInvalidPageReason() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState") {
+            Paging = new QueryPagingOptions(Cursor: "cursor-1", Offset: 0),
+        };
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "Paging" && e.ErrorCode == QueryProblemReasonCodes.InvalidPage);
+    }
+
+    [Fact]
+    public void SubmitQueryRequestValidator_BlankSearch_NormalizesAsOmittedAndPasses() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState") {
+            Search = "   ",
+        };
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void SubmitQueryRequestValidator_NonBlankSearch_FailsWithUnsupportedSearchReason() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState") {
+            Search = "sensitive-value",
+        };
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "Search" && e.ErrorCode == QueryProblemReasonCodes.UnsupportedSearch);
+    }
+
+    [Fact]
+    public void SubmitQueryRequestValidator_ExplicitFilter_FailsWithUnsupportedFilterReasonWithoutEchoingValue() {
+        JsonElement value = JsonSerializer.SerializeToElement("secret-filter-value");
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState") {
+            Filters = [new QueryFilter("status", "eq", value)],
+        };
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "Filters" && e.ErrorCode == QueryProblemReasonCodes.UnsupportedFilter);
+        result.Errors.Select(e => e.ErrorMessage).ShouldAllBe(message => !message.Contains("secret-filter-value"));
+    }
+
+    [Fact]
+    public void SubmitQueryRequestValidator_UnknownTopLevelPolicyField_FailsWithMalformedRequestReason() {
+        var request = new SubmitQueryRequest(
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            QueryType: "GetCurrentState") {
+            AdditionalProperties = new Dictionary<string, JsonElement> {
+                ["where"] = JsonSerializer.SerializeToElement(new { status = "active" }),
+            },
+        };
+
+        FluentValidation.Results.ValidationResult result = _validator.Validate(request);
+
+        result.IsValid.ShouldBeFalse();
+        result.Errors.ShouldContain(e => e.PropertyName == "AdditionalProperties" && e.ErrorCode == QueryProblemReasonCodes.MalformedRequest);
+    }
+
+    [Fact]
     public void SubmitQueryRequestValidator_NullPayload_Passes() {
         var request = new SubmitQueryRequest(
             Tenant: "test-tenant",

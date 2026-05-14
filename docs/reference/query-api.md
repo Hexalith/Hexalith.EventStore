@@ -56,6 +56,24 @@ Execute a query against the current projection/read model.
 | payload             | object | No       | Optional JSON payload for the query. Non-empty payloads route through the payload-checksum mode when `entityId` is absent.                         |
 | entityId            | string | No       | Optional entity identifier for query handlers that target a nested entity or alternate projection identity.                                        |
 | projectionActorType | string | No       | Optional DAPR actor type selector. Defaults to `ProjectionActor`. This is a routing selector only, not an authorization or tenant-selection field. Must not contain colons (`:`) or dangerous characters. Maximum 64 characters. |
+| paging              | object | No       | Public paging policy. `pageSize` defaults to `50`, cannot exceed `200`, and `offset` must be zero or greater. Cursor paging is reserved and currently rejected. |
+| search              | string | No       | Public search policy. Blank or whitespace search is treated as omitted. Non-blank search is reserved and currently rejected with a stable reason code. |
+| filters             | array  | No       | Public filter policy. Reserved for future query engines and currently rejected without echoing filter values.                                      |
+| orderBy             | array  | No       | Public ordering policy. Reserved for future query engines and currently rejected.                                                                  |
+| freshness           | object | No       | Public freshness policy. Freshness enforcement is reserved until projection freshness metadata is available.                                       |
+
+### Query Policy
+
+`POST /api/v1/queries` accepts additive query policy fields so clients can adopt a stable public contract before every projection supports every behavior.
+
+| Policy     | Current behavior |
+| ---------- | ---------------- |
+| Paging     | `pageSize` defaults to `50`; maximum is `200`; `offset` must be `>= 0`; `cursor` is reserved and rejected. |
+| Search     | Blank search is normalized as omitted. Non-blank search is rejected as `query_unsupported_search`. |
+| Filters    | Any filter expression is rejected as `query_unsupported_filter`. Filter values are not echoed in validation errors or ProblemDetails. |
+| Ordering   | Any order expression is rejected as `query_unsupported_order`. Legacy projection ordering remains projection-defined. |
+| Freshness  | `requireFresh = true` or `maxStaleness` is rejected as `query_projection_stale` until freshness metadata is available. |
+| Unknown top-level fields | Rejected as `query_malformed_request` through `JsonExtensionData` capture. |
 
 ### Example
 
@@ -79,11 +97,20 @@ $ curl -X POST https://localhost:5001/api/v1/queries \
     "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "payload": {
         "count": 1
+    },
+    "metadata": {
+        "eTag": "etag-value-from-response-header",
+        "isNotModified": false,
+        "servedAt": "2026-05-14T09:20:00Z",
+        "paging": {
+            "pageSize": 50,
+            "offset": 0
+        }
     }
 }
 ```
 
-The exact shape of `payload` depends on the query handler and projection type.
+The exact shape of `payload` depends on the query handler and projection type. `metadata` is additive. The gateway includes normalized cache metadata when available and includes paging metadata when the request supplied `paging`.
 
 If the query pipeline returns a `200 OK` envelope with `"success": false`, the .NET gateway client treats it as a semantic gateway failure and throws `EventStoreGatewayException` with status code `200`, title `Query semantic failure`, the envelope `correlationId`, and the envelope `errorMessage` as detail. Callers should not deserialize `payload` from a failed semantic envelope.
 
@@ -113,7 +140,7 @@ HTTP/1.1 304 Not Modified
 ETag: "etag-value-from-previous-response"
 ```
 
-If the projection changed, the API returns `200 OK` with a new response body and an updated `ETag` header.
+If the projection changed, the API returns `200 OK` with a new response body and an updated `ETag` header. Conditional pre-checks are skipped for requests that carry explicit query policy inputs or a non-empty `payload`, so a cached validator for one query shape cannot produce a false `304` for a different filter/search/order/page/freshness or payload identity. ETag lookup failures fail open and the query still executes.
 
 ### Error Responses
 
@@ -127,7 +154,24 @@ If the projection changed, the API returns `200 OK` with a new response body and
 | 429 Too Many Requests   | Per-tenant rate limit exceeded                      | RFC 7807 ProblemDetails with `Retry-After` header |
 | 503 Service Unavailable | Query dependencies unavailable                      | RFC 7807 ProblemDetails                           |
 
-Stable gateway ProblemDetails extension names are `correlationId`, `tenantId`, `errors`, `reason`, and `retryAfter`. The .NET gateway client exposes these through named properties on `EventStoreGatewayException`. Any non-standard extensions returned by the gateway (for example `traceCode` or custom diagnostic fields) are preserved verbatim in `EventStoreGatewayException.Extensions` as `IReadOnlyDictionary<string, JsonElement>` and are excluded from the named properties to avoid duplication.
+Stable gateway ProblemDetails extension names are `correlationId`, `tenantId`, `errors`, `reason`, `reasonCode`, and `retryAfter`. The .NET gateway client exposes these through named properties on `EventStoreGatewayException`. Any non-standard extensions returned by the gateway (for example `traceCode` or custom diagnostic fields) are preserved verbatim in `EventStoreGatewayException.Extensions` as `IReadOnlyDictionary<string, JsonElement>` and are excluded from the named properties to avoid duplication.
+
+Non-auth query ProblemDetails use these stable `reasonCode` values:
+
+| Reason code                           | Typical status | Meaning |
+| ------------------------------------- | -------------- | ------- |
+| `query_malformed_request`             | 400            | Unknown or malformed query policy input. |
+| `query_invalid_page`                  | 400            | Invalid page size, offset, or cursor/offset combination. |
+| `query_unsupported_filter`            | 400            | Public filter policy was supplied before filter support is enabled. |
+| `query_unsupported_search`            | 400            | Non-blank public search policy was supplied before search support is enabled. |
+| `query_unsupported_order`             | 400            | Public ordering policy was supplied before order support is enabled. |
+| `query_projection_missing`            | 404            | The requested projection/query target was not found. |
+| `query_projection_stale`              | 400 or 503     | The request required freshness the gateway cannot currently satisfy. |
+| `query_degraded_search`               | 200 metadata   | Search was served through a degraded path. |
+| `query_malformed_projection_response` | 500            | A projection returned a malformed response. |
+| `query_projection_timeout`            | 503            | A projection did not respond before the timeout. |
+| `query_not_implemented`               | 501            | The query type or projection behavior is not implemented. |
+| `query_internal_error`                | 500            | The query failed with an internal server error. |
 
 ## Projection Query Actor Contract
 

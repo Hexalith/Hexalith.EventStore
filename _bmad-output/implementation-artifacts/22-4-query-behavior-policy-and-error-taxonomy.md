@@ -1,6 +1,6 @@
 # Story 22.4: Query Behavior Policy and Error Taxonomy
 
-Status: ready-for-dev
+Status: review
 
 Context created: 2026-05-12
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
@@ -100,74 +100,74 @@ so that Parties API behavior is predictable when routed through EventStore.
 
 ## Tasks / Subtasks
 
-- [ ] **ST0 - Baseline current query policy and classify contract gaps.** (AC: 1, 2, 3, 4, 5, 6)
-    - [ ] Read this story, Epic 22, PRD FR93-FR95, architecture ADR-P6/P7/P8/P9, Stories 22.1-22.3, and `docs/reference/query-api.md` before code edits.
-    - [ ] Inventory `SubmitQueryRequest`, `SubmitQueryResponse`, `QueriesController`, `SubmitQueryHandler`, `QueryRouter`, `QueryActorIdHelper`, `QueryResult`, `ProblemTypeUris`, query exception handlers, gateway client, and testing fakes.
-    - [ ] Record a decision table for each policy dimension: paging, cursor/offset, search, filters, ordering, freshness, stale/degraded, malformed projection response, timeout, not-found, not-implemented, and authorization handoff.
-    - [ ] Record the runtime validation order: Story 22.3 authentication/authorization, query shape/policy validation, ETag/cache pre-check, and projection routing/execution.
-    - [ ] Record a compatibility table for every added or changed public query request/response field, including default value, omission behavior, JSON shape, and SemVer impact.
-    - [ ] Record a cache/query-identity table covering tenant, domain, projection type, query type, entity identity, normalized payload identity where applicable, filters, search, ordering, paging, and freshness inputs.
-    - [ ] Explicitly mark any policy not implemented in this story as unsupported/deferred with public error behavior; do not leave it implicit.
+- [x] **ST0 - Baseline current query policy and classify contract gaps.** (AC: 1, 2, 3, 4, 5, 6)
+    - [x] Read this story, Epic 22, PRD FR93-FR95, architecture ADR-P6/P7/P8/P9, Stories 22.1-22.3, and `docs/reference/query-api.md` before code edits.
+    - [x] Inventory `SubmitQueryRequest`, `SubmitQueryResponse`, `QueriesController`, `SubmitQueryHandler`, `QueryRouter`, `QueryActorIdHelper`, `QueryResult`, `ProblemTypeUris`, query exception handlers, gateway client, and testing fakes.
+    - [x] Record a decision table for each policy dimension: paging, cursor/offset, search, filters, ordering, freshness, stale/degraded, malformed projection response, timeout, not-found, not-implemented, and authorization handoff.
+    - [x] Record the runtime validation order: Story 22.3 authentication/authorization, query shape/policy validation, ETag/cache pre-check, and projection routing/execution.
+    - [x] Record a compatibility table for every added or changed public query request/response field, including default value, omission behavior, JSON shape, and SemVer impact.
+    - [x] Record a cache/query-identity table covering tenant, domain, projection type, query type, entity identity, normalized payload identity where applicable, filters, search, ordering, paging, and freshness inputs.
+    - [x] Explicitly mark any policy not implemented in this story as unsupported/deferred with public error behavior; do not leave it implicit.
 
-- [ ] **ST1 - Define public query policy contracts.** (AC: 1, 2, 3)
-    - [ ] Add or extend public Contracts types/constants for query paging, freshness metadata, warning codes, and query reason-code extension names where needed.
-    - [ ] Preserve source and wire compatibility for existing `SubmitQueryRequest` and `SubmitQueryResponse` callers unless an explicit SemVer-relevant contract decision is recorded.
-    - [ ] Define defaults and bounds for page size and maximum page size; avoid magic values buried only in validators.
-    - [ ] Define cursor/offset behavior. If both cannot be supported safely, choose one public mode and return a stable unsupported/invalid ProblemDetails category for the other.
-    - [ ] Define blank search behavior and filter validation behavior for Get/List/Search style queries without making Parties-specific field names the platform contract.
-    - [ ] Define whether search/filter/order fields are strongly typed DTOs, constrained strings, or explicitly unsupported for this endpoint shape; unsupported syntax must return stable ProblemDetails rather than being ignored.
+- [x] **ST1 - Define public query policy contracts.** (AC: 1, 2, 3)
+    - [x] Add or extend public Contracts types/constants for query paging, freshness metadata, warning codes, and query reason-code extension names where needed.
+    - [x] Preserve source and wire compatibility for existing `SubmitQueryRequest` and `SubmitQueryResponse` callers unless an explicit SemVer-relevant contract decision is recorded.
+    - [x] Define defaults and bounds for page size and maximum page size; avoid magic values buried only in validators.
+    - [x] Define cursor/offset behavior. If both cannot be supported safely, choose one public mode and return a stable unsupported/invalid ProblemDetails category for the other.
+    - [x] Define blank search behavior and filter validation behavior for Get/List/Search style queries without making Parties-specific field names the platform contract.
+    - [x] Define whether search/filter/order fields are strongly typed DTOs, constrained strings, or explicitly unsupported for this endpoint shape; unsupported syntax must return stable ProblemDetails rather than being ignored.
 
-- [ ] **ST2 - Enforce validation and deterministic routing inputs.** (AC: 1, 2, 5)
-    - [ ] Update `SubmitQueryRequestValidator` or equivalent model validation so paging/filter/search/order policy failures become deterministic validation output.
-    - [ ] Preserve existing tenant/domain/aggregate/query/projection/entity validation and colon separator rules.
-    - [ ] Ensure query shape/policy validation runs only after successful authentication/authorization, so validation failures do not reveal protected tenant or resource existence.
-    - [ ] Ensure query payload handling does not log or echo payload bytes when invalid filters/search values are rejected.
-    - [ ] Normalize query policy inputs before cache/ETag comparison and projection routing; reject contradictory aliases, duplicate unsupported fields, and cursor/offset combinations that cannot be represented safely.
-    - [ ] Ensure query policy validation failures use machine-readable field/path identifiers that help callers fix requests without echoing tenant-sensitive filter values or payload data.
-    - [ ] Add focused validator/controller tests for default page size, max page size, invalid page/cursor/offset, blank search, unsupported filter/search/order, deterministic order defaults, validation-order behavior, and payload-size boundaries where applicable.
+- [x] **ST2 - Enforce validation and deterministic routing inputs.** (AC: 1, 2, 5)
+    - [x] Update `SubmitQueryRequestValidator` or equivalent model validation so paging/filter/search/order policy failures become deterministic validation output.
+    - [x] Preserve existing tenant/domain/aggregate/query/projection/entity validation and colon separator rules.
+    - [x] Ensure query shape/policy validation runs only after successful authentication/authorization, so validation failures do not reveal protected tenant or resource existence.
+    - [x] Ensure query payload handling does not log or echo payload bytes when invalid filters/search values are rejected.
+    - [x] Normalize query policy inputs before cache/ETag comparison and projection routing; reject contradictory aliases, duplicate unsupported fields, and cursor/offset combinations that cannot be represented safely.
+    - [x] Ensure query policy validation failures use machine-readable field/path identifiers that help callers fix requests without echoing tenant-sensitive filter values or payload data.
+    - [x] Add focused validator/controller tests for default page size, max page size, invalid page/cursor/offset, blank search, unsupported filter/search/order, deterministic order defaults, validation-order behavior, and payload-size boundaries where applicable.
 
-- [ ] **ST3 - Freeze query response metadata behavior.** (AC: 3, 6)
-    - [ ] Decide whether metadata lives in `SubmitQueryResponse`, `EventStoreQueryResult`, headers, or a nested metadata object, then document it consistently.
-    - [ ] Add `etag`/`isNotModified` behavior without breaking existing 304 empty-body semantics.
-    - [ ] Add tests for strong/weak/malformed/multiple `If-None-Match` values, `304` empty-body behavior, `200 OK` metadata behavior, missing ETag data, and fail-open behavior when `IETagService` fails.
-    - [ ] Add or map `isStale`, `isDegraded`, `projectionVersion`, `servedAt`, paging metadata, and warning codes where the server can answer them authoritatively.
-    - [ ] If the current runtime cannot know a metadata value yet, document it as omitted/null and add a reasoned deferred decision instead of fabricating it.
-    - [ ] Extend `FakeEventStoreGatewayClient` and tests so downstream test code can simulate metadata and not-modified behavior deterministically.
+- [x] **ST3 - Freeze query response metadata behavior.** (AC: 3, 6)
+    - [x] Decide whether metadata lives in `SubmitQueryResponse`, `EventStoreQueryResult`, headers, or a nested metadata object, then document it consistently.
+    - [x] Add `etag`/`isNotModified` behavior without breaking existing 304 empty-body semantics.
+    - [x] Add tests for strong/weak/malformed/multiple `If-None-Match` values, `304` empty-body behavior, `200 OK` metadata behavior, missing ETag data, and fail-open behavior when `IETagService` fails.
+    - [x] Add or map `isStale`, `isDegraded`, `projectionVersion`, `servedAt`, paging metadata, and warning codes where the server can answer them authoritatively.
+    - [x] If the current runtime cannot know a metadata value yet, document it as omitted/null and add a reasoned deferred decision instead of fabricating it.
+    - [x] Extend `FakeEventStoreGatewayClient` and tests so downstream test code can simulate metadata and not-modified behavior deterministically.
 
-- [ ] **ST4 - Implement stable query ProblemDetails taxonomy.** (AC: 4, 5, 6)
-    - [ ] Add query-specific `ProblemTypeUris` constants and problem reference docs for malformed request/invalid page, unsupported filter, projection missing, projection stale beyond policy, degraded search, malformed projection response, projection timeout, and not-implemented query behavior as needed.
-    - [ ] Add a stable reason-code extension name and concrete reason codes; keep naming aligned with Story 22.1 and Story 22.3 gateway ProblemDetails conventions.
-    - [ ] Record a taxonomy table with category, HTTP status, ProblemDetails `type`, stable reason code, retryability, caller action, server handler, client behavior, fake behavior, and log/no-leak expectations.
-    - [ ] Update `QueryNotFoundExceptionHandler`, `QueryExecutionFailedExceptionHandler`, validation ProblemDetails output, and any global handler path needed for malformed projection JSON or timeout categories.
-    - [ ] Replace free-text-only `SubmitQueryHandler` classification where possible with typed categories. If adapter contracts still return free text from Story 22.2, isolate that compatibility mapping and cover it with tests.
-    - [ ] Preserve a deterministic fallback for unexpected query execution failures: sanitized 500 response, stable internal-error reason code, no retry guidance that promises success, and structured logs containing correlation without payload or protected details.
-    - [ ] Add table-driven ProblemDetails tests for invalid paging, unsupported filter/search/order, malformed query body, projection missing, malformed projection payload, timeout, stale/degraded categories, not-implemented behavior, and unexpected query execution failures.
-    - [ ] Add sanitization tests proving actor/DAPR/state-store/query payload/filter/protected-data details, raw adapter errors, checksums that reveal payload meaning, tenant secrets, stack traces, and projection payloads do not leak.
+- [x] **ST4 - Implement stable query ProblemDetails taxonomy.** (AC: 4, 5, 6)
+    - [x] Add query-specific `ProblemTypeUris` constants and problem reference docs for malformed request/invalid page, unsupported filter, projection missing, projection stale beyond policy, degraded search, malformed projection response, projection timeout, and not-implemented query behavior as needed.
+    - [x] Add a stable reason-code extension name and concrete reason codes; keep naming aligned with Story 22.1 and Story 22.3 gateway ProblemDetails conventions.
+    - [x] Record a taxonomy table with category, HTTP status, ProblemDetails `type`, stable reason code, retryability, caller action, server handler, client behavior, fake behavior, and log/no-leak expectations.
+    - [x] Update `QueryNotFoundExceptionHandler`, `QueryExecutionFailedExceptionHandler`, validation ProblemDetails output, and any global handler path needed for malformed projection JSON or timeout categories.
+    - [x] Replace free-text-only `SubmitQueryHandler` classification where possible with typed categories. If adapter contracts still return free text from Story 22.2, isolate that compatibility mapping and cover it with tests.
+    - [x] Preserve a deterministic fallback for unexpected query execution failures: sanitized 500 response, stable internal-error reason code, no retry guidance that promises success, and structured logs containing correlation without payload or protected details.
+    - [x] Add table-driven ProblemDetails tests for invalid paging, unsupported filter/search/order, malformed query body, projection missing, malformed projection payload, timeout, stale/degraded categories, not-implemented behavior, and unexpected query execution failures.
+    - [x] Add sanitization tests proving actor/DAPR/state-store/query payload/filter/protected-data details, raw adapter errors, checksums that reveal payload meaning, tenant secrets, stack traces, and projection payloads do not leak.
 
-- [ ] **ST5 - Align Client and Testing support.** (AC: 3, 4, 6)
-    - [ ] Extend `EventStoreGatewayException` parsing if ProblemDetails reason codes, warning codes, or additional extensions become public client behavior.
-    - [ ] Preserve current `SubmitQueryAsync` 304 behavior: typed query results return default payload with `IsNotModified=true` and ETag when present.
-    - [ ] Ensure client and fake behavior branch on stable status/type/reason/warning metadata, not localized `title`, `detail`, exception message text, or server log wording.
-    - [ ] Add client tests for query ProblemDetails categories and metadata extraction.
-    - [ ] Add testing fake/builders for success metadata, 304/not-modified, stale/degraded warnings, invalid page, unsupported filter/search/order, projection missing, malformed projection response, timeout, not-implemented, auth failures, and correlation propagation.
-    - [ ] Keep fake scenarios aligned with client-visible behavior and public contracts rather than server implementation internals.
+- [x] **ST5 - Align Client and Testing support.** (AC: 3, 4, 6)
+    - [x] Extend `EventStoreGatewayException` parsing if ProblemDetails reason codes, warning codes, or additional extensions become public client behavior.
+    - [x] Preserve current `SubmitQueryAsync` 304 behavior: typed query results return default payload with `IsNotModified=true` and ETag when present.
+    - [x] Ensure client and fake behavior branch on stable status/type/reason/warning metadata, not localized `title`, `detail`, exception message text, or server log wording.
+    - [x] Add client tests for query ProblemDetails categories and metadata extraction.
+    - [x] Add testing fake/builders for success metadata, 304/not-modified, stale/degraded warnings, invalid page, unsupported filter/search/order, projection missing, malformed projection response, timeout, not-implemented, auth failures, and correlation propagation.
+    - [x] Keep fake scenarios aligned with client-visible behavior and public contracts rather than server implementation internals.
 
-- [ ] **ST6 - Update docs and generated API references.** (AC: 1, 2, 3, 4, 7)
-    - [ ] Update `docs/reference/query-api.md` with query policy, request/response metadata, ETag/304 behavior, stale/degraded semantics, and error taxonomy.
-    - [ ] Update `docs/reference/nuget-packages.md` to clarify Contracts/Client/Testing ownership for query policy and fakes.
-    - [ ] Add or update `docs/reference/problems/*` pages and `docs/reference/problems/index.md` for new query problem types.
-    - [ ] Refresh generated API docs for any public Contracts, Client, or Testing API changes.
-    - [ ] Keep docs platform-level; use Parties/GetParty/ListParties/SearchParties as examples only, not as required EventStore type names.
+- [x] **ST6 - Update docs and generated API references.** (AC: 1, 2, 3, 4, 7)
+    - [x] Update `docs/reference/query-api.md` with query policy, request/response metadata, ETag/304 behavior, stale/degraded semantics, and error taxonomy.
+    - [x] Update `docs/reference/nuget-packages.md` to clarify Contracts/Client/Testing ownership for query policy and fakes.
+    - [x] Add or update `docs/reference/problems/*` pages and `docs/reference/problems/index.md` for new query problem types.
+    - [x] Refresh generated API docs for any public Contracts, Client, or Testing API changes.
+    - [x] Keep docs platform-level; use Parties/GetParty/ListParties/SearchParties as examples only, not as required EventStore type names.
 
-- [ ] **ST7 - Validate and record evidence.** (AC: 7)
-    - [ ] Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests` if Contracts query types/constants change.
-    - [ ] Run `dotnet test tests/Hexalith.EventStore.Client.Tests` if gateway client result/exception behavior changes.
-    - [ ] Run `dotnet test tests/Hexalith.EventStore.Testing.Tests` if fake/builders change.
-    - [ ] Run focused Server query/controller/error tests, starting with `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "QueriesController|SubmitQuery|QueryRouter|QueryNotFound|QueryExecutionFailed|SubmitQueryRequestValidator"`.
-    - [ ] Run `dotnet test tests/Hexalith.EventStore.Sample.Tests` if sample query contracts or examples change.
-    - [ ] Run docs/markdown validation where available.
-    - [ ] Record exact test project, class/scenario names, command output summaries, and any intentionally deferred Docker/Aspire integration proof. Core verification should remain unit/contract focused unless a runtime behavior cannot be proven otherwise.
-    - [ ] Update Dev Agent Record, File List, Verification Status, and Change Log.
+- [x] **ST7 - Validate and record evidence.** (AC: 7)
+    - [x] Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests` if Contracts query types/constants change.
+    - [x] Run `dotnet test tests/Hexalith.EventStore.Client.Tests` if gateway client result/exception behavior changes.
+    - [x] Run `dotnet test tests/Hexalith.EventStore.Testing.Tests` if fake/builders change.
+    - [x] Run focused Server query/controller/error tests, starting with `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "QueriesController|SubmitQuery|QueryRouter|QueryNotFound|QueryExecutionFailed|SubmitQueryRequestValidator"`.
+    - [x] Run `dotnet test tests/Hexalith.EventStore.Sample.Tests` if sample query contracts or examples change.
+    - [x] Run docs/markdown validation where available.
+    - [x] Record exact test project, class/scenario names, command output summaries, and any intentionally deferred Docker/Aspire integration proof. Core verification should remain unit/contract focused unless a runtime behavior cannot be proven otherwise.
+    - [x] Update Dev Agent Record, File List, Verification Status, and Change Log.
 
 ## Developer Notes
 
@@ -319,6 +319,10 @@ GPT-5 Codex
 
 ### Debug Log References
 
+- 2026-05-14T11:07:00+02:00 - Baseline check: active Aspire AppHost inspected with `aspire ps` and `aspire describe`; main application resources were running/healthy before code edits, while some DAPR CLI child resources were already finished with exit code 1.
+- 2026-05-14T11:23:00+02:00 - Red/green slice established for public query policy DTOs, validation, controller ETag pre-check behavior, metadata propagation, ProblemDetails reason codes, and fake/client parity.
+- 2026-05-14T11:34:00+02:00 - Stopped the running Aspire AppHost with `aspire stop --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` to release locked runtime assemblies before server/client validation.
+- 2026-05-14T11:43:00+02:00 - Generated API docs attempt: Contracts and Client release builds with `-p:ApiReferenceBuild=true` succeeded; Testing API-doc build remains blocked by pre-existing Server XML documentation warnings-as-errors. DefaultDocumentation rewrote unrelated generated pages, so generated API churn was reverted and the blocker is recorded here.
 - 2026-05-12T20:02:08Z - Pre-dev hardening preflight passed via `_bmad-output/process-notes/predev-preflight-latest.json`.
 - 2026-05-12T22:03:52+02:00 - Story creation context gathered from Epic 22, PRD FR93-FR95, architecture ADR-P6/P7/P8/P9, Stories 22.1-22.3, current query controller/handler/router/contracts/client/fake/docs/test surfaces, recent commits, project context, and lessons ledger.
 - 2026-05-13T07:41:02+02:00 - Party-mode review completed with John, Winston, Amelia, and Murat; applied low-risk story hardening for validation order, additive public field compatibility, fail-open ETag semantics, non-auth query taxonomy evidence, no-leak assertions, and client/fake parity.
@@ -326,19 +330,122 @@ GPT-5 Codex
 
 ### Completion Notes List
 
+- Implemented additive public query policy contracts in Contracts: paging, filters, sorting, freshness, response metadata, paging metadata, warning codes, reason codes, and policy limits.
+- Preserved existing `SubmitQueryRequest` constructor shape by adding policy fields as init-only properties; preserved existing `SubmitQueryResponse` constructor calls by adding optional metadata.
+- Runtime order remains authentication/authorization first in `QueriesController`, followed by policy validation/model binding, conditional ETag/cache pre-check, and projection routing/execution.
+- Query policy decisions: offset paging supported with `pageSize` default `50` and max `200`; cursor paging, non-blank search, filters, ordering, and explicit freshness requirements are reserved and return stable query reason codes rather than being ignored.
+- Cache identity decision: conditional ETag pre-check remains enabled for legacy simple query shapes; it is skipped for explicit query policy inputs or non-empty payloads to avoid false `304 Not Modified` across payload/filter/search/order/page/freshness identity.
+- Metadata decision: `SubmitQueryResponse.Metadata` and `EventStoreQueryResult.Metadata` carry normalized ETag, `isNotModified`, `servedAt`, paging metadata, and optional future stale/degraded/version/warning fields. Unknown runtime values are omitted/null rather than fabricated.
+- ProblemDetails decision: existing type URIs remain the stable `type` surface; query-specific stability is provided through `reasonCode` values aligned with `GatewayProblemDetailsExtensions.ReasonCode`. New query `ProblemTypeUris` were not added because existing validation/not-found/not-implemented/internal categories are sufficient for this story's HTTP type taxonomy.
+- Client/testing support now propagates query metadata on typed and untyped results. The fake can configure success/not-modified metadata deterministically and falls back to metadata derived from ETag/not-modified state for manually assigned results.
+- Docs updated for Query API behavior, package ownership, and the problems index query reason-code taxonomy. Generated API docs were attempted, but full refresh is blocked by pre-existing Server XML documentation failures in the Testing dependency chain; unrelated generated churn was not kept.
 - Story created and marked ready-for-dev by the BMAD pre-dev hardening automation.
 - Story creation did not modify product code, tests, DAPR/Aspire configuration, generated API docs, or submodules.
 - Party-mode review completed on 2026-05-13 and applied story hardening for public query policy validation, cache semantics, query ProblemDetails taxonomy, client/fake parity, and focused evidence obligations.
 - Advanced elicitation completed on 2026-05-13 and applied story-text hardening only; product code, tests, DAPR/Aspire configuration, generated API docs, sprint status, and submodules were not changed.
 
+#### Policy Decision Table
+
+| Dimension | Decision | Public behavior |
+| --- | --- | --- |
+| Page size | Offset paging supported | Default `50`, maximum `200`; invalid values return `query_invalid_page`. |
+| Cursor/offset | Cursor reserved | Cursor alone or cursor with offset returns `query_invalid_page`. |
+| Search | Blank normalized as omitted | Non-blank search returns `query_unsupported_search`. |
+| Filters | Reserved | Any supplied filter returns `query_unsupported_filter`; values are not echoed. |
+| Ordering | Reserved | Any supplied order returns `query_unsupported_order`. |
+| Freshness | Reserved until runtime metadata exists | `requireFresh` or `maxStaleness` returns `query_projection_stale`. |
+| Stale/degraded | Metadata fields and warning codes are public | Runtime omits/nulls values it cannot know authoritatively. |
+| Malformed projection response | Stable reason code defined | Existing serialization-failure compatibility maps through query execution failure paths. |
+| Timeout | Stable reason code defined | No timeout-specific runtime signal was introduced; future adapters can map to `query_projection_timeout`. |
+| Not found | Stable reason code emitted | `QueryNotFoundExceptionHandler` returns 404 with `query_projection_missing`. |
+| Not implemented | Stable reason code emitted | `SubmitQueryHandler` maps unsupported/unknown/not-implemented adapter failures to 501 with `query_not_implemented`. |
+| Authorization handoff | Story 22.3 remains owner | Auth/RBAC runs before policy validation, cache, ETag, and projection routing. |
+
+#### Compatibility Table
+
+| Field/type | JSON shape | Omission/default | SemVer impact |
+| --- | --- | --- | --- |
+| `SubmitQueryRequest.paging` | Object with `pageSize`, `offset`, `cursor` | Omitted preserves legacy shape | Additive, source-compatible init property. |
+| `SubmitQueryRequest.search` | String | Null/blank treated as omitted | Additive, non-blank currently rejected deterministically. |
+| `SubmitQueryRequest.filters` | Array of `{ field, operator, value }` | Null/empty omitted | Additive, supplied values rejected without echo. |
+| `SubmitQueryRequest.orderBy` | Array of `{ field, direction }` | Null/empty omitted | Additive, supplied values rejected deterministically. |
+| `SubmitQueryRequest.freshness` | Object with `requireFresh`, `maxStaleness` | Null omitted | Additive, explicit requirements currently rejected. |
+| `SubmitQueryResponse.metadata` | Object | Null for legacy callers | Optional constructor parameter keeps existing calls source-compatible. |
+| `EventStoreQueryResult.Metadata` | Client result property | Null or normalized from response/header | Additive init property. |
+
+#### Cache Identity Table
+
+| Input | Current handling |
+| --- | --- |
+| Tenant/domain/projection/query/entity | Still used by auth, routing, and ETag lookup. |
+| Payload identity | Non-empty payload skips conditional ETag pre-check to avoid false 304. |
+| Paging/search/filter/order/freshness | Explicit policy input skips conditional ETag pre-check. |
+| ETag service failure | Fail-open cache miss; query executes and response may omit ETag. |
+| Authorization | Performed before policy validation and cache/ETag/projection lookup. |
+
+#### Query Taxonomy Table
+
+| Category | Status/type | Reason code | Retry/caller action | Handler/client/fake behavior |
+| --- | --- | --- | --- | --- |
+| Malformed request | 400 validation-error | `query_malformed_request` | Fix request shape | Validation ProblemDetails includes `reasonCode`; client parses it. |
+| Invalid page | 400 validation-error | `query_invalid_page` | Fix paging | Validator emits stable code. |
+| Unsupported filter/search/order | 400 validation-error | `query_unsupported_filter`, `query_unsupported_search`, `query_unsupported_order` | Remove reserved policy | Validator avoids echoing filter/payload values. |
+| Projection missing | 404 not-found | `query_projection_missing` | Verify query target | QueryNotFound handler emits sanitized body. |
+| Projection stale | 400/503 existing type | `query_projection_stale` | Relax freshness or retry later | Public code reserved; current explicit freshness rejected. |
+| Degraded search | 200 metadata | `query_degraded_search` | Show warning/refresh later | Warning code public; runtime omits until known. |
+| Malformed projection response | 500 internal-server-error | `query_malformed_projection_response` | Contact operator with correlation | Reason code public; adapter compatibility remains isolated. |
+| Projection timeout | 503 service-unavailable | `query_projection_timeout` | Retry later | Reason code public for future adapter timeout mapping. |
+| Not implemented | 501 not-implemented | `query_not_implemented` | Use supported query | SubmitQueryHandler maps unsupported/unknown/not-implemented. |
+| Unexpected query failure | 500 internal-server-error | `query_internal_error` | Contact operator with correlation | Sanitized fallback, no payload/protected details. |
+
 ### File List
 
 - `_bmad-output/implementation-artifacts/22-4-query-behavior-policy-and-error-taxonomy.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
-- `_bmad-output/process-notes/predev-hardening-runs.log`
+- `docs/reference/nuget-packages.md`
+- `docs/reference/problems/index.md`
+- `docs/reference/query-api.md`
+- `src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClient.cs`
+- `src/Hexalith.EventStore.Client/Gateway/EventStoreQueryResult.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QueryFilter.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QueryFreshnessPolicy.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QueryPagingMetadata.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QueryPagingOptions.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QueryPolicyLimits.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QueryProblemReasonCodes.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QueryResponseMetadata.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QuerySort.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/QueryWarningCodes.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/SubmitQueryRequest.cs`
+- `src/Hexalith.EventStore.Contracts/Queries/SubmitQueryResponse.cs`
+- `src/Hexalith.EventStore.Server/Pipeline/SubmitQueryHandler.cs`
+- `src/Hexalith.EventStore.Server/Queries/QueryExecutionFailedException.cs`
+- `src/Hexalith.EventStore.Testing/Fakes/FakeEventStoreGatewayClient.cs`
+- `src/Hexalith.EventStore/Controllers/QueriesController.cs`
+- `src/Hexalith.EventStore/ErrorHandling/QueryExecutionFailedExceptionHandler.cs`
+- `src/Hexalith.EventStore/ErrorHandling/QueryNotFoundExceptionHandler.cs`
+- `src/Hexalith.EventStore/ErrorHandling/ValidationProblemDetailsFactory.cs`
+- `src/Hexalith.EventStore/Validation/SubmitQueryRequestValidator.cs`
+- `tests/Hexalith.EventStore.Client.Tests/Gateway/EventStoreGatewayClientTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Queries/SubmitQueryRequestTests.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Queries/SubmitQueryResponseTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/ErrorHandling/QueryProblemDetailsTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Validation/SubmitQueryRequestValidatorTests.cs`
+- `tests/Hexalith.EventStore.Testing.Tests/Fakes/FakeEventStoreGatewayClientTests.cs`
 
 ## Verification Status
 
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj` passed: 328 tests.
+- `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj` passed: 385 tests.
+- `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj` passed: 98 tests.
+- `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj` passed: 74 tests.
+- `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --filter "SubmitQueryRequestValidatorTests|QueriesControllerTests|QueryProblemDetailsTests"` passed: 70 focused server tests.
+- `npx markdownlint-cli2 docs/reference/query-api.md docs/reference/nuget-packages.md docs/reference/problems/index.md _bmad-output/implementation-artifacts/22-4-query-behavior-policy-and-error-taxonomy.md` passed with 0 errors.
+- `dotnet build src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj --configuration Release -p:ApiReferenceBuild=true` passed with 0 warnings/errors.
+- `dotnet build src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj --configuration Release -p:ApiReferenceBuild=true` passed with 0 warnings/errors.
+- Generated API docs for Testing were not refreshed: `dotnet build src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj --configuration Release -p:GenerateDocumentationFile=true -p:NoWarn=CS1574` is blocked by pre-existing Server XML documentation warnings-as-errors; partial DefaultDocumentation churn was reverted.
+- Aspire baseline was inspected before edits. The running AppHost was stopped before tests to release locked Windows assemblies; no AppHost topology changes were made.
 - Story artifact created and sprint-status row moved from `backlog` to `ready-for-dev`.
 - Preflight passed before story creation.
 - Story creation did not modify product code, tests, DAPR/Aspire configuration, generated API docs, or submodules.
@@ -355,6 +462,7 @@ GPT-5 Codex
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-14 | 1.0 | Implemented additive query policy contracts, validation, metadata, ETag pre-check safety, query reason-code taxonomy, client/fake parity, docs, and validation evidence; moved story to review. | GPT-5 Codex |
 | 2026-05-13 | 0.3 | Applied advanced elicitation hardening for query policy canonicalization, cache identity isolation, stable machine taxonomy, sanitized fallbacks, and client/fake branching guardrails. | Codex automation |
 | 2026-05-13 | 0.2 | Applied party-mode review hardening for query validation order, compatibility, cache semantics, taxonomy, no-leak testing, and client/fake parity. | Codex automation |
 | 2026-05-12 | 0.1 | Created ready-for-dev story for query behavior policy and error taxonomy. | Codex automation |

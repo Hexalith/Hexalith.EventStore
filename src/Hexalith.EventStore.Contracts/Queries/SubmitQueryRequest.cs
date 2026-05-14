@@ -1,5 +1,6 @@
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Hexalith.EventStore.Contracts.Queries;
 
@@ -22,4 +23,35 @@ public record SubmitQueryRequest(
     string? ProjectionType = null,
     JsonElement? Payload = null,
     string? EntityId = null,
-    string? ProjectionActorType = null);
+    string? ProjectionActorType = null) {
+    /// <summary>
+    /// Gets the optional public paging policy. Omission preserves the legacy unpaged query shape.
+    /// </summary>
+    public QueryPagingOptions? Paging { get; init; }
+
+    /// <summary>
+    /// Gets the optional public search text. Blank search text is normalized as omitted.
+    /// </summary>
+    public string? Search { get; init; }
+
+    /// <summary>
+    /// Gets optional public filter expressions.
+    /// </summary>
+    public IReadOnlyList<QueryFilter>? Filters { get; init; }
+
+    /// <summary>
+    /// Gets optional public ordering expressions.
+    /// </summary>
+    public IReadOnlyList<QuerySort>? OrderBy { get; init; }
+
+    /// <summary>
+    /// Gets the optional public freshness policy.
+    /// </summary>
+    public QueryFreshnessPolicy? Freshness { get; init; }
+
+    /// <summary>
+    /// Gets unknown top-level JSON properties captured during deserialization for deterministic validation.
+    /// </summary>
+    [JsonExtensionData]
+    public IDictionary<string, JsonElement>? AdditionalProperties { get; init; }
+}

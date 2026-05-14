@@ -3,6 +3,8 @@ using System.Text.Json;
 
 using FluentValidation.Results;
 
+using Hexalith.EventStore.Contracts.Problems;
+
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hexalith.EventStore.ErrorHandling;
@@ -44,7 +46,11 @@ public static class ValidationProblemDetailsFactory {
                 g => g.Key,
                 g => string.Join("; ", g.Select(e => e.ErrorMessage)));
 
-        return CreateCore(detail, errors, correlationId, tenantId);
+        string? reasonCode = failures
+            .Select(f => f.ErrorCode)
+            .FirstOrDefault(static errorCode => errorCode.StartsWith("query_", StringComparison.Ordinal));
+
+        return CreateCore(detail, errors, correlationId, tenantId, reasonCode);
     }
 
     /// <summary>
@@ -61,22 +67,31 @@ public static class ValidationProblemDetailsFactory {
         string detail,
         Dictionary<string, string> errors,
         string? correlationId,
-        string? tenantId) => CreateCore(detail, errors, correlationId, tenantId);
+        string? tenantId) => CreateCore(detail, errors, correlationId, tenantId, reasonCode: null);
 
     private static ProblemDetails CreateCore(
         string detail,
         Dictionary<string, string> errors,
         string? correlationId,
-        string? tenantId) => new() {
+        string? tenantId,
+        string? reasonCode) {
+        var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status400BadRequest,
             Title = Title,
             Type = TypeUri,
             Detail = detail,
             Extensions =
             {
-                ["correlationId"] = correlationId,
-                ["tenantId"] = tenantId,
-                ["errors"] = errors,
+                [GatewayProblemDetailsExtensions.CorrelationId] = correlationId,
+                [GatewayProblemDetailsExtensions.TenantId] = tenantId,
+                [GatewayProblemDetailsExtensions.Errors] = errors,
             },
         };
+
+        if (!string.IsNullOrWhiteSpace(reasonCode)) {
+            problemDetails.Extensions[GatewayProblemDetailsExtensions.ReasonCode] = reasonCode;
+        }
+
+        return problemDetails;
+    }
 }

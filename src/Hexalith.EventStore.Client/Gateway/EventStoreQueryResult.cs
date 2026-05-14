@@ -1,5 +1,7 @@
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Queries;
+
 namespace Hexalith.EventStore.Client.Gateway;
 
 /// <summary>
@@ -13,7 +15,12 @@ public sealed record EventStoreQueryResult(
     string? CorrelationId,
     JsonElement? Payload,
     bool IsNotModified,
-    string? ETag);
+    string? ETag) {
+    /// <summary>
+    /// Gets response metadata supplied by the query gateway.
+    /// </summary>
+    public QueryResponseMetadata? Metadata { get; init; }
+}
 
 /// <summary>
 /// Typed result returned by the EventStore query gateway client.
@@ -27,4 +34,9 @@ public sealed record EventStoreQueryResult<T>(
     string? CorrelationId,
     T? Payload,
     bool IsNotModified,
-    string? ETag);
+    string? ETag) {
+    /// <summary>
+    /// Gets response metadata supplied by the query gateway.
+    /// </summary>
+    public QueryResponseMetadata? Metadata { get; init; }
+}

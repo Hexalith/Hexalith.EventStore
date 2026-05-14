@@ -72,8 +72,13 @@ public partial class QueriesController(
         // Gate 1: ETag pre-check — decode projection type from self-routing ETag
         string? currentETag = null;
         bool gate1Skipped = false;
+        bool skipConditionalPreCheck = HasExplicitPolicyInputs(request) || HasNonEmptyPayload(request.Payload);
 
-        if (!string.IsNullOrWhiteSpace(ifNoneMatch) && ifNoneMatch.AsSpan().Trim().SequenceEqual("*".AsSpan())) {
+        if (skipConditionalPreCheck && !string.IsNullOrWhiteSpace(ifNoneMatch)) {
+            gate1Skipped = true;
+            Log.ETagPreCheckSkippedForPolicyInputs(logger, correlationId);
+        }
+        else if (!string.IsNullOrWhiteSpace(ifNoneMatch) && ifNoneMatch.AsSpan().Trim().SequenceEqual("*".AsSpan())) {
             // Wildcard If-None-Match: skip Gate 1 entirely (no projection type to decode)
             gate1Skipped = true;
             Log.ETagPreCheckMiss(logger, correlationId, false, true);
@@ -161,7 +166,17 @@ public partial class QueriesController(
             Response.Headers.ETag = $"\"{currentETag}\"";
         }
 
-        return Ok(new SubmitQueryResponse(result.CorrelationId, result.Payload));
+        var metadata = new QueryResponseMetadata(
+            ETag: currentETag,
+            IsNotModified: false,
+            ServedAt: DateTimeOffset.UtcNow,
+            Paging: request.Paging is null
+                ? null
+                : new QueryPagingMetadata(
+                    request.Paging.PageSize ?? QueryPolicyLimits.DefaultPageSize,
+                    request.Paging.Offset ?? 0));
+
+        return Ok(new SubmitQueryResponse(result.CorrelationId, result.Payload, Metadata: metadata));
     }
 
     private async Task ValidateAuthorizationBeforeLookupAsync(
@@ -288,6 +303,27 @@ public partial class QueriesController(
         return false;
     }
 
+    private static bool HasExplicitPolicyInputs(SubmitQueryRequest request)
+        => request.Paging is not null
+            || !string.IsNullOrWhiteSpace(request.Search)
+            || request.Filters is { Count: > 0 }
+            || request.OrderBy is { Count: > 0 }
+            || request.Freshness is not null;
+
+    private static bool HasNonEmptyPayload(JsonElement? payload) {
+        if (payload is null) {
+            return false;
+        }
+
+        JsonElement value = payload.Value;
+        return value.ValueKind switch {
+            JsonValueKind.Undefined or JsonValueKind.Null => false,
+            JsonValueKind.Object => value.EnumerateObject().Any(),
+            JsonValueKind.Array => value.GetArrayLength() > 0,
+            _ => true,
+        };
+    }
+
     private static partial class Log {
         [LoggerMessage(
             EventId = 1062,
@@ -327,6 +363,12 @@ public partial class QueriesController(
 
         [LoggerMessage(
             EventId = 1068,
+            Level = LogLevel.Debug,
+            Message = "ETag pre-check skipped because request carries explicit query policy inputs or non-empty payload. CorrelationId={CorrelationId}.")]
+        public static partial void ETagPreCheckSkippedForPolicyInputs(ILogger logger, string correlationId);
+
+        [LoggerMessage(
+            EventId = 1069,
             Level = LogLevel.Warning,
             Message = "Query authorization denied before lookup: SecurityEvent={SecurityEvent}, CorrelationId={CorrelationId}, Tenant={Tenant}, Domain={Domain}, QueryType={QueryType}, Reason={Reason}, Stage=QueryAuthorizationBeforeLookup")]
         public static partial void QueryAuthorizationDenied(

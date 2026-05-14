@@ -90,6 +90,58 @@ public partial class SubmitQueryRequestValidator : AbstractValidator<SubmitQuery
         _ = RuleFor(x => x.Payload)
             .Must(p => p == null || p.Value.ValueKind != System.Text.Json.JsonValueKind.Undefined)
             .WithMessage("Payload must be a valid JSON element when provided");
+
+        _ = RuleFor(x => x.Paging)
+            .Must(p => p is null || string.IsNullOrWhiteSpace(p.Cursor) || p.Offset is null)
+            .WithMessage("Cursor and offset paging cannot be used together.")
+            .WithErrorCode(QueryProblemReasonCodes.InvalidPage);
+
+        _ = RuleFor(x => x.Paging!.PageSize)
+            .GreaterThan(0)
+            .WithMessage("PageSize must be greater than zero.")
+            .WithErrorCode(QueryProblemReasonCodes.InvalidPage)
+            .LessThanOrEqualTo(QueryPolicyLimits.MaxPageSize)
+            .WithMessage($"PageSize cannot exceed {QueryPolicyLimits.MaxPageSize}.")
+            .WithErrorCode(QueryProblemReasonCodes.InvalidPage)
+            .When(x => x.Paging?.PageSize is not null);
+
+        _ = RuleFor(x => x.Paging!.Offset)
+            .GreaterThanOrEqualTo(0)
+            .WithMessage("Offset must be greater than or equal to zero.")
+            .WithErrorCode(QueryProblemReasonCodes.InvalidPage)
+            .When(x => x.Paging?.Offset is not null);
+
+        _ = RuleFor(x => x.Paging!.Cursor)
+            .Must(cursor => string.IsNullOrWhiteSpace(cursor))
+            .WithMessage("Cursor paging is reserved and is not supported by this endpoint yet.")
+            .WithErrorCode(QueryProblemReasonCodes.InvalidPage)
+            .When(x => x.Paging?.Cursor is not null);
+
+        _ = RuleFor(x => x.Search)
+            .Must(string.IsNullOrWhiteSpace)
+            .WithMessage("Search policy fields are reserved; use the query payload for domain-specific search parameters.")
+            .WithErrorCode(QueryProblemReasonCodes.UnsupportedSearch)
+            .When(x => x.Search is not null);
+
+        _ = RuleFor(x => x.Filters)
+            .Must(filters => filters is null || filters.Count == 0)
+            .WithMessage("Filter policy fields are reserved and are not supported by this endpoint yet.")
+            .WithErrorCode(QueryProblemReasonCodes.UnsupportedFilter);
+
+        _ = RuleFor(x => x.OrderBy)
+            .Must(orderBy => orderBy is null || orderBy.Count == 0)
+            .WithMessage("Order policy fields are reserved and are not supported by this endpoint yet.")
+            .WithErrorCode(QueryProblemReasonCodes.UnsupportedOrder);
+
+        _ = RuleFor(x => x.Freshness)
+            .Must(f => f is null || (f.RequireFresh is not true && f.MaxStaleness is null))
+            .WithMessage("Freshness policy fields are reserved and are not supported by this endpoint yet.")
+            .WithErrorCode(QueryProblemReasonCodes.ProjectionStale);
+
+        _ = RuleFor(x => x.AdditionalProperties)
+            .Must(properties => properties is null || properties.Count == 0)
+            .WithMessage("Unknown query policy fields are not supported.")
+            .WithErrorCode(QueryProblemReasonCodes.MalformedRequest);
     }
 
     private static readonly char[] _dangerousChars = ['<', '>', '&', '\'', '"'];

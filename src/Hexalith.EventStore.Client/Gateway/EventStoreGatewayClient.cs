@@ -94,7 +94,10 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         // P2: check 304 and non-success BEFORE extracting ETag so a weak ETag on an error
         // response does not shadow the real ProblemDetails exception.
         if (response.StatusCode == HttpStatusCode.NotModified) {
-            return new EventStoreQueryResult(null, null, IsNotModified: true, GetETag(response));
+            string? notModifiedETag = GetETag(response);
+            return new EventStoreQueryResult(null, null, IsNotModified: true, notModifiedETag) {
+                Metadata = new QueryResponseMetadata(ETag: notModifiedETag, IsNotModified: true),
+            };
         }
 
         if (!response.IsSuccessStatusCode) {
@@ -121,7 +124,9 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 correlationId: result.CorrelationId);
         }
 
-        return new EventStoreQueryResult(result.CorrelationId, result.Payload, IsNotModified: false, eTag);
+        return new EventStoreQueryResult(result.CorrelationId, result.Payload, IsNotModified: false, eTag) {
+            Metadata = NormalizeMetadata(result.Metadata, eTag, isNotModified: false),
+        };
     }
 
     /// <inheritdoc />
@@ -133,7 +138,9 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             .ConfigureAwait(false);
 
         if (result.IsNotModified) {
-            return new EventStoreQueryResult<T>(result.CorrelationId, default, IsNotModified: true, result.ETag);
+            return new EventStoreQueryResult<T>(result.CorrelationId, default, IsNotModified: true, result.ETag) {
+                Metadata = result.Metadata,
+            };
         }
 
         if (result.Payload is null) {
@@ -162,8 +169,21 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 detail: "Query response payload could not be deserialized.");
         }
 
-        return new EventStoreQueryResult<T>(result.CorrelationId, payload, IsNotModified: false, result.ETag);
+        return new EventStoreQueryResult<T>(result.CorrelationId, payload, IsNotModified: false, result.ETag) {
+            Metadata = result.Metadata,
+        };
     }
+
+    private static QueryResponseMetadata NormalizeMetadata(
+        QueryResponseMetadata? metadata,
+        string? eTag,
+        bool isNotModified)
+        => metadata is null
+            ? new QueryResponseMetadata(ETag: eTag, IsNotModified: isNotModified)
+            : metadata with {
+                ETag = metadata.ETag ?? eTag,
+                IsNotModified = metadata.IsNotModified ?? isNotModified,
+            };
 
     private static Uri CreateRelativeUri(string path) {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);

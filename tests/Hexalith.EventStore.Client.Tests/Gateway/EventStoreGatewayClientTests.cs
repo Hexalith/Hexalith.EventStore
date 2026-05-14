@@ -55,6 +55,9 @@ public class EventStoreGatewayClientTests {
         result.IsNotModified.ShouldBeTrue();
         result.Payload.ShouldBeNull();
         result.ETag.ShouldBe("etag-1");
+        result.Metadata.ShouldNotBeNull();
+        result.Metadata.ETag.ShouldBe("etag-1");
+        result.Metadata.IsNotModified.ShouldBe(true);
         observedRequest.ShouldNotBeNull();
         observedRequest.Headers.TryGetValues("If-None-Match", out IEnumerable<string>? values).ShouldBeTrue();
         values.ShouldNotBeNull();
@@ -64,7 +67,9 @@ public class EventStoreGatewayClientTests {
     [Fact]
     public async Task SubmitQueryAsync_WithPayload_ReturnsTypedPayloadAndETag() {
         using HttpClient httpClient = CreateClient(_ => {
-            var response = Json(HttpStatusCode.OK, "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3}}");
+            var response = Json(
+                HttpStatusCode.OK,
+                "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3},\"metadata\":{\"isStale\":false,\"paging\":{\"pageSize\":25,\"offset\":50}}}");
             response.Headers.ETag = new EntityTagHeaderValue("\"etag-2\"");
             return Task.FromResult(response);
         });
@@ -78,6 +83,12 @@ public class EventStoreGatewayClientTests {
         result.ETag.ShouldBe("etag-2");
         result.Payload.ShouldNotBeNull();
         result.Payload.Count.ShouldBe(3);
+        result.Metadata.ShouldNotBeNull();
+        result.Metadata.ETag.ShouldBe("etag-2");
+        result.Metadata.IsNotModified.ShouldBe(false);
+        result.Metadata.Paging.ShouldNotBeNull();
+        result.Metadata.Paging.PageSize.ShouldBe(25);
+        result.Metadata.Paging.Offset.ShouldBe(50);
     }
 
     [Fact]

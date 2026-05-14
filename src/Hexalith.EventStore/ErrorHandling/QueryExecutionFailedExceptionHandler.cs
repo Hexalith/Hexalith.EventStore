@@ -1,6 +1,8 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Problems;
+using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Server.Queries;
 
@@ -44,12 +46,14 @@ public class QueryExecutionFailedExceptionHandler(ILogger<QueryExecutionFailedEx
             Instance = httpContext.Request.Path,
             Extensions =
             {
-                ["correlationId"] = correlationId,
+                [GatewayProblemDetailsExtensions.CorrelationId] = correlationId,
+                [GatewayProblemDetailsExtensions.ReasonCode] = queryFailure.ReasonCode
+                    ?? GetReasonCode(queryFailure.StatusCode),
             },
         };
 
         if (queryFailure.StatusCode == StatusCodes.Status403Forbidden) {
-            problemDetails.Extensions["tenantId"] = queryFailure.Tenant;
+            problemDetails.Extensions[GatewayProblemDetailsExtensions.TenantId] = queryFailure.Tenant;
         }
 
         httpContext.Response.StatusCode = queryFailure.StatusCode;
@@ -69,5 +73,11 @@ public class QueryExecutionFailedExceptionHandler(ILogger<QueryExecutionFailedEx
             StatusCodes.Status403Forbidden => ProblemTypeUris.Forbidden,
             StatusCodes.Status501NotImplemented => ProblemTypeUris.NotImplemented,
             _ => ProblemTypeUris.InternalServerError,
+        };
+
+    private static string GetReasonCode(int statusCode)
+        => statusCode switch {
+            StatusCodes.Status501NotImplemented => QueryProblemReasonCodes.NotImplemented,
+            _ => QueryProblemReasonCodes.InternalError,
         };
 }

@@ -53,7 +53,8 @@ public partial class SubmitQueryHandler(
                 request.AggregateId,
                 request.QueryType,
                 403,
-                errorMessage!);
+                errorMessage!,
+                QueryProblemReasonCodes.InternalError);
         }
 
         if (IsNotFound(errorMessage)) {
@@ -68,7 +69,8 @@ public partial class SubmitQueryHandler(
                 request.AggregateId,
                 request.QueryType,
                 501,
-                errorMessage!);
+                errorMessage!,
+                QueryProblemReasonCodes.NotImplemented);
         }
 
         return new QueryExecutionFailedException(
@@ -78,7 +80,8 @@ public partial class SubmitQueryHandler(
             request.AggregateId,
             request.QueryType,
             500,
-            errorMessage ?? "Projection query execution failed.");
+            errorMessage ?? "Projection query execution failed.",
+            QueryProblemReasonCodes.InternalError);
     }
 
     private static bool IsNotFound(string? errorMessage)

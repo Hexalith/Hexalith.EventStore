@@ -55,6 +55,9 @@ public class FakeEventStoreGatewayClientTests {
         response.IsNotModified.ShouldBeTrue();
         response.Payload.ShouldBeNull();
         response.ETag.ShouldBe("etag-1");
+        response.Metadata.ShouldNotBeNull();
+        response.Metadata.ETag.ShouldBe("etag-1");
+        response.Metadata.IsNotModified.ShouldBe(true);
     }
 
     [Fact]
@@ -85,8 +88,12 @@ public class FakeEventStoreGatewayClientTests {
     [Fact]
     public async Task ConfigureQuerySuccess_ConfiguresPayloadAndNormalizedETag() {
         JsonElement payload = JsonSerializer.SerializeToElement(new CounterDto(11));
+        var metadata = new QueryResponseMetadata(
+            ETag: "etag-query",
+            IsNotModified: false,
+            Paging: new QueryPagingMetadata(25, Offset: 50));
         var fake = new FakeEventStoreGatewayClient()
-            .ConfigureQuerySuccess(payload, "corr-query", "etag-query");
+            .ConfigureQuerySuccess(payload, "corr-query", "etag-query", metadata);
 
         EventStoreQueryResult<CounterDto> response = await fake.SubmitQueryAsync<CounterDto>(CreateQueryRequest());
 
@@ -94,6 +101,7 @@ public class FakeEventStoreGatewayClientTests {
         response.Payload.ShouldNotBeNull();
         response.Payload.Count.ShouldBe(11);
         response.ETag.ShouldBe("etag-query");
+        response.Metadata.ShouldBe(metadata);
     }
 
     [Fact]
@@ -135,6 +143,9 @@ public class FakeEventStoreGatewayClientTests {
         response.IsNotModified.ShouldBeTrue();
         response.Payload.ShouldBeNull();
         response.ETag.ShouldBe("etag-cache");
+        response.Metadata.ShouldNotBeNull();
+        response.Metadata.ETag.ShouldBe("etag-cache");
+        response.Metadata.IsNotModified.ShouldBe(true);
     }
 
     [Fact]

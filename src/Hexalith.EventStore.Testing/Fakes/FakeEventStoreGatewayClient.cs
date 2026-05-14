@@ -76,10 +76,13 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
     public FakeEventStoreGatewayClient ConfigureQuerySuccess(
         JsonElement payload,
         string correlationId,
-        string? eTag = null) {
+        string? eTag = null,
+        QueryResponseMetadata? metadata = null) {
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
         QueryException = null;
-        QueryResult = new EventStoreQueryResult(correlationId, payload, IsNotModified: false, eTag);
+        QueryResult = new EventStoreQueryResult(correlationId, payload, IsNotModified: false, eTag) {
+            Metadata = metadata ?? new QueryResponseMetadata(ETag: eTag, IsNotModified: false),
+        };
         return this;
     }
 
@@ -111,7 +114,9 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
     /// </summary>
     public FakeEventStoreGatewayClient ConfigureQueryNotModified(string? eTag = null) {
         QueryException = null;
-        QueryResult = new EventStoreQueryResult(null, null, IsNotModified: true, eTag);
+        QueryResult = new EventStoreQueryResult(null, null, IsNotModified: true, eTag) {
+            Metadata = new QueryResponseMetadata(ETag: eTag, IsNotModified: true),
+        };
         return this;
     }
 
@@ -155,7 +160,9 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
             .ConfigureAwait(false);
 
         if (result.IsNotModified) {
-            return new EventStoreQueryResult<T>(result.CorrelationId, default, IsNotModified: true, result.ETag);
+            return new EventStoreQueryResult<T>(result.CorrelationId, default, IsNotModified: true, result.ETag) {
+                Metadata = result.Metadata ?? new QueryResponseMetadata(ETag: result.ETag, IsNotModified: true),
+            };
         }
 
         T? payload;
@@ -172,7 +179,9 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
                 innerException: ex);
         }
 
-        return new EventStoreQueryResult<T>(result.CorrelationId, payload, IsNotModified: false, result.ETag);
+        return new EventStoreQueryResult<T>(result.CorrelationId, payload, IsNotModified: false, result.ETag) {
+            Metadata = result.Metadata ?? new QueryResponseMetadata(ETag: result.ETag, IsNotModified: false),
+        };
     }
 }
 

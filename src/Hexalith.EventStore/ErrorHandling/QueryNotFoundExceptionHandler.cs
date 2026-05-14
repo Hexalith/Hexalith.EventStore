@@ -1,6 +1,8 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Problems;
+using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Server.Queries;
 
@@ -32,7 +34,11 @@ public class QueryNotFoundExceptionHandler(ILogger<QueryNotFoundExceptionHandler
             Type = ProblemTypeUris.NotFound,
             Detail = "The requested resource was not found.",
             Instance = httpContext.Request.Path,
-            Extensions = { ["correlationId"] = correlationId },
+            Extensions =
+            {
+                [GatewayProblemDetailsExtensions.CorrelationId] = correlationId,
+                [GatewayProblemDetailsExtensions.ReasonCode] = QueryProblemReasonCodes.ProjectionMissing,
+            },
         };
 
         httpContext.Response.StatusCode = StatusCodes.Status404NotFound;
