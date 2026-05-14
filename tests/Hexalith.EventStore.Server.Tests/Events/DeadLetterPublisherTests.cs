@@ -98,10 +98,14 @@ public class DeadLetterPublisherTests {
 
         // Assert
         _ = capturedMetadata.ShouldNotBeNull();
+        capturedMetadata.Keys.ShouldBe(
+            ["cloudevent.type", "cloudevent.source", "cloudevent.id", "cloudevent.datacontenttype"],
+            ignoreOrder: true);
         capturedMetadata["cloudevent.type"].ShouldBe("deadletter.command.failed");
         capturedMetadata["cloudevent.source"].ShouldBe("eventstore/test-tenant/test-domain");
         capturedMetadata["cloudevent.id"].ShouldBe(message.CorrelationId);
         capturedMetadata["cloudevent.datacontenttype"].ShouldBe("application/json");
+        capturedMetadata.Keys.ShouldNotContain(x => string.Equals(x, "deadLetterTopic", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

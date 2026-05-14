@@ -75,6 +75,8 @@ Configuration section: `EventStore:Publisher`
 | `PubSubName` | string | `"pubsub"` | DAPR pub/sub component name to publish events to |
 | `DeadLetterTopicPrefix` | string | `"deadletter"` | Prefix for dead-letter topics. Format: `{prefix}.{tenant}.{domain}.events` |
 
+`DeadLetterTopicPrefix` applies to EventStore command infrastructure dead letters published by `DeadLetterPublisher`. DAPR subscriber dead-letter topics are configured separately in DAPR component/subscription YAML through metadata such as `deadLetterTopic` and subscription `deadLetterTopic`; they represent subscriber delivery retry exhaustion, not EventStore command processing failure.
+
 ```json
 {
   "EventStore": {
@@ -380,6 +382,8 @@ Hexalith.EventStore uses five DAPR building blocks to abstract infrastructure co
 | Azure cloud | Cosmos DB | Azure Service Bus | Redis |
 
 To swap backends, you change the DAPR component YAML files and (optionally) set environment variables for connection strings. No application code changes are needed. See the [Deployment Progression Guide](deployment-progression.md) for a detailed walkthrough.
+
+The pub/sub backend matrix in [DAPR Component Configuration Reference](dapr-component-reference.md#pubsub-backends) labels each Redis, RabbitMQ, Kafka, and Azure Service Bus claim as proven, configured, documented-only, unsupported, or not proven. Do not infer live ordering, session, partition, or subscriber dead-letter proof from the presence of YAML alone.
 
 ## Environment Variables
 

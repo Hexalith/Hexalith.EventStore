@@ -258,6 +258,27 @@ The CloudEvents standard ensures that Hexalith events integrate naturally into h
 
 The three metadata attributes above are the only Hexalith-specific additions — everything else follows the CloudEvents specification exactly as DAPR implements it. DAPR adds its own standard CloudEvents attributes (such as `specversion`, `datacontenttype`, and `time`), and the Hexalith attributes supplement those with event-sourcing-specific context.
 
+### Subscriber Idempotency and Ordering
+
+EventStore publication is at-least-once. A subscriber can receive the same persisted event more than once when DAPR or the broker retries delivery, or when EventStore drains a previously failed publish after part of the original batch was already accepted. Treat duplicates as normal.
+
+For cross-backend idempotency, use EventStore-owned metadata:
+
+- `tenantId`
+- `domain`
+- `aggregateId`
+- `sequenceNumber`
+- `correlationId`
+- `causationId`
+- `messageId`
+- `eventTypeName`
+- topic name
+- `cloudevent.id`
+
+Do not use broker-specific receipt IDs, Kafka offsets, Service Bus lock tokens, delivery counts, subscriber retry counts, or transport-specific handles as the primary idempotency key. Those values are useful for broker operations, but they are not portable across DAPR pub/sub backends.
+
+Ordering has the same boundary. EventStore persists events with a gapless `sequenceNumber` per aggregate and publishes/drains each persisted range in sequence order. Broker delivery order and subscriber processing order remain backend- and topology-dependent. Kafka partition ordering requires a stable partition key and proof; Azure Service Bus ordered processing requires session-enabled topics/subscriptions and a stable session ID. EventStore does not currently emit backend-specific `partitionKey`, `__key`, `SessionId`, or `PartitionKey` publish metadata, so those backend ordering claims must be treated as configured or documented-only until explicit proof is captured.
+
 ## Security Considerations
 
 Both EventEnvelope types implement `ToString()` to redact the payload with `[REDACTED]`. This prevents accidental payload logging in structured logs or exception messages — a key safeguard when event payloads contain sensitive business data. Without this protection, a simple `logger.LogInformation("Processing event: {Event}", envelope)` call could leak customer PII, financial data, or other sensitive information into your log aggregation system.

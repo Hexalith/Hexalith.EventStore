@@ -180,6 +180,10 @@ This step runs in three sub-phases. First, the `EventPersister` wraps each event
 
 **Events are always persisted before they are published.** If publication fails, the events are safe in the state store and a background drain process retries delivery. You never lose an event. The full structure of an EventEnvelope is covered in [Event Envelope & Metadata](event-envelope.md).
 
+Publication recovery is EventStore-owned and stops at DAPR publish acceptance. A failed or ambiguous publish leaves a drain record that contains only operational metadata such as the correlation ID, sequence range, command type, retry count, and last failure reason. Drain retry may publish the same persisted event more than once, so subscribers must deduplicate with EventStore metadata such as tenant, domain, aggregate ID, sequence number, correlation ID, causation ID, message ID, event type, and topic.
+
+There are two separate dead-letter concepts. EventStore command infrastructure dead letters are published by `DeadLetterPublisher` to `{DeadLetterTopicPrefix}.{tenant}.{domain}.events` when command processing fails before a durable publish recovery path exists. DAPR subscriber dead letters are configured on pub/sub subscriptions and are used after subscriber delivery retry exhaustion. A DAPR subscriber dead letter does not mean EventStore lost or failed a persisted event, and an EventStore infrastructure dead letter does not prove subscriber delivery failed.
+
 ## Phase 5: Terminal States
 
 After the actor pipeline completes, the command reaches one of four terminal states:

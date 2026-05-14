@@ -107,6 +107,44 @@ public class EventPublisherTests {
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task PublishEventsAsync_SingleEvent_PublishesStableIdempotencyAndOrderingFields() {
+        // Arrange
+        (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
+        EventEnvelope envelope = CreateTestEnvelope(sequenceNumber: 7, eventTypeName: "OrderConfirmed");
+        EventEnvelope? publishedEnvelope = null;
+        Dictionary<string, string>? publishedMetadata = null;
+        await daprClient.PublishEventAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Do<EventEnvelope>(x => publishedEnvelope = x),
+            Arg.Do<Dictionary<string, string>>(x => publishedMetadata = x),
+            Arg.Any<CancellationToken>());
+
+        // Act
+        EventPublishResult result = await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-001");
+
+        // Assert
+        result.Success.ShouldBeTrue();
+        _ = publishedEnvelope.ShouldNotBeNull();
+        publishedEnvelope.TenantId.ShouldBe("test-tenant");
+        publishedEnvelope.Domain.ShouldBe("test-domain");
+        publishedEnvelope.AggregateId.ShouldBe("agg-001");
+        publishedEnvelope.SequenceNumber.ShouldBe(7);
+        publishedEnvelope.CorrelationId.ShouldBe("corr-001");
+        publishedEnvelope.CausationId.ShouldBe("cause-001");
+        publishedEnvelope.MessageId.ShouldBe("msg-7");
+        publishedEnvelope.EventTypeName.ShouldBe("OrderConfirmed");
+
+        _ = publishedMetadata.ShouldNotBeNull();
+        publishedMetadata.Keys.ShouldBe(["cloudevent.type", "cloudevent.source", "cloudevent.id"], ignoreOrder: true);
+        publishedMetadata["cloudevent.id"].ShouldBe("corr-001:7");
+        publishedMetadata.Keys.ShouldNotContain(x => string.Equals(x, "rawPayload", StringComparison.OrdinalIgnoreCase));
+        publishedMetadata.Keys.ShouldNotContain(x => string.Equals(x, "partitionKey", StringComparison.OrdinalIgnoreCase));
+        publishedMetadata.Keys.ShouldNotContain(x => string.Equals(x, "__key", StringComparison.OrdinalIgnoreCase));
+        publishedMetadata.Keys.ShouldNotContain(x => string.Equals(x, "SessionId", StringComparison.OrdinalIgnoreCase));
+    }
+
     // --- Task 6.2: Multiple events in sequence ---
 
     [Fact]

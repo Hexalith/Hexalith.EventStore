@@ -1,6 +1,6 @@
 # Story 22.5: Event Publishing Guarantees and Backend Deployment Matrix
 
-Status: ready-for-dev
+Status: review
 
 Context created: 2026-05-12
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
@@ -111,72 +111,72 @@ so that Parties projections can rely on EventStore publication guarantees.
 
 ## Tasks / Subtasks
 
-- [ ] **ST0 - Baseline current publishing guarantees and classify gaps.** (AC: 1, 2, 3, 4, 5, 6)
-    - [ ] Read this story, Epic 22, PRD FR96-FR98, architecture publishing/replay/protection contract notes, Stories 22.1-22.4, and `docs/concepts/command-lifecycle.md` before code edits.
-    - [ ] Inventory `EventPublisher`, `EventPublishResult`, `AggregateActor` publish/drain paths, `UnpublishedEventsRecord`, drain exceptions, `DrainReasonCodes`, `DeadLetterPublisher`, `EventPublisherOptions`, and `EventDrainOptions`.
-    - [ ] Inventory local and deployment pub/sub components: `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml`, `deploy/dapr/pubsub-rabbitmq.yaml`, `deploy/dapr/pubsub-kafka.yaml`, and `deploy/dapr/pubsub-servicebus.yaml`.
-    - [ ] Inventory existing docs and tests for command lifecycle, event envelope, configuration, DAPR component reference, drain failure reason codes, PubSubDeliveryProofTests, DeadLetterTests, and publisher/drain unit tests.
-    - [ ] Record a decision table for durability, at-least-once, duplicate tolerance, ordering/session metadata, partial publish handling, drain retry, dead-letter routing, and backend proof status.
-    - [ ] In the decision table, separate four proof boundaries: EventStore persisted-event guarantee, DAPR publish-acceptance guarantee, broker delivery behavior, and subscriber processing/dead-letter behavior.
+- [x] **ST0 - Baseline current publishing guarantees and classify gaps.** (AC: 1, 2, 3, 4, 5, 6)
+    - [x] Read this story, Epic 22, PRD FR96-FR98, architecture publishing/replay/protection contract notes, Stories 22.1-22.4, and `docs/concepts/command-lifecycle.md` before code edits.
+    - [x] Inventory `EventPublisher`, `EventPublishResult`, `AggregateActor` publish/drain paths, `UnpublishedEventsRecord`, drain exceptions, `DrainReasonCodes`, `DeadLetterPublisher`, `EventPublisherOptions`, and `EventDrainOptions`.
+    - [x] Inventory local and deployment pub/sub components: `src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml`, `deploy/dapr/pubsub-rabbitmq.yaml`, `deploy/dapr/pubsub-kafka.yaml`, and `deploy/dapr/pubsub-servicebus.yaml`.
+    - [x] Inventory existing docs and tests for command lifecycle, event envelope, configuration, DAPR component reference, drain failure reason codes, PubSubDeliveryProofTests, DeadLetterTests, and publisher/drain unit tests.
+    - [x] Record a decision table for durability, at-least-once, duplicate tolerance, ordering/session metadata, partial publish handling, drain retry, dead-letter routing, and backend proof status.
+    - [x] In the decision table, separate four proof boundaries: EventStore persisted-event guarantee, DAPR publish-acceptance guarantee, broker delivery behavior, and subscriber processing/dead-letter behavior.
 
-- [ ] **ST1 - Freeze publish contract metadata.** (AC: 1, 2, 3)
-    - [ ] Define the public fields downstream consumers use for idempotency and ordering. Prefer existing envelope fields unless a backend-specific DAPR metadata field is required.
-    - [ ] Decide whether EventStore should set explicit DAPR metadata for ordering/session/partition keys, such as aggregate identity or tenant/domain/aggregate composite, and document why for each backend.
-    - [ ] Preserve current CloudEvents 1.0 behavior and `cloudevent.id` compatibility unless a SemVer-relevant change is explicitly approved.
-    - [ ] Add focused tests that pin CloudEvent metadata and event data fields without requiring a live sidecar where unit-level fakes can prove it.
-    - [ ] Ensure logs and activity tags continue to avoid event payload, protected payload, secrets, subscriber credentials, and backend connection strings.
-    - [ ] Record whether ordering/session/partition metadata is emitted as DAPR metadata, CloudEvent extension metadata, event payload metadata, documentation-only guidance, or a deferred backend-specific decision.
+- [x] **ST1 - Freeze publish contract metadata.** (AC: 1, 2, 3)
+    - [x] Define the public fields downstream consumers use for idempotency and ordering. Prefer existing envelope fields unless a backend-specific DAPR metadata field is required.
+    - [x] Decide whether EventStore should set explicit DAPR metadata for ordering/session/partition keys, such as aggregate identity or tenant/domain/aggregate composite, and document why for each backend.
+    - [x] Preserve current CloudEvents 1.0 behavior and `cloudevent.id` compatibility unless a SemVer-relevant change is explicitly approved.
+    - [x] Add focused tests that pin CloudEvent metadata and event data fields without requiring a live sidecar where unit-level fakes can prove it.
+    - [x] Ensure logs and activity tags continue to avoid event payload, protected payload, secrets, subscriber credentials, and backend connection strings.
+    - [x] Record whether ordering/session/partition metadata is emitted as DAPR metadata, CloudEvent extension metadata, event payload metadata, documentation-only guidance, or a deferred backend-specific decision.
 
-- [ ] **ST2 - Harden publish failure and drain recovery semantics.** (AC: 1, 4)
-    - [ ] Verify partial publish behavior: if some events publish before failure, the drain path remains at-least-once and duplicate-tolerant without losing unpublished persisted events.
-    - [ ] Verify `UnpublishedEventsRecord.EventCount` matches the persisted sequence range and mismatch handling keeps a stable failure reason instead of silently deleting recovery state.
-    - [ ] Verify missing event, state-store failure, DAPR unavailable, publish failed, and unknown drain errors map to documented `DrainReasonCodes`.
-    - [ ] Verify drain success removes the record only after successful publish and unregisters reminders without hiding unregister failures.
-    - [ ] Verify `pending_command_count` is not decremented prematurely on publish failure and remains bounded/clean after terminal or drain-success paths according to existing backpressure semantics.
-    - [ ] Record the unpublished-record lifecycle decision before code completion: pending/publishing remains retryable on retryable failure; published/removed only after confirmed DAPR publish success; failed/dead-lettered only after configured retry exhaustion or stable non-retryable failure.
-    - [ ] Prove partial publish behavior: if events 1..N publish and event N+1 fails, the next drain resumes without skipping, losing, or publishing later aggregate events out of persisted sequence.
-    - [ ] Prove crash/restart and reminder-overlap behavior: repeated drain may duplicate stable event IDs/metadata, but cannot delete recovery state before confirmed success.
-    - [ ] Prove ambiguous publish outcomes are handled fail-safe: no successful command completion may depend solely on a partially observed broker/DAPR response when persisted events still need recovery tracking.
+- [x] **ST2 - Harden publish failure and drain recovery semantics.** (AC: 1, 4)
+    - [x] Verify partial publish behavior: if some events publish before failure, the drain path remains at-least-once and duplicate-tolerant without losing unpublished persisted events.
+    - [x] Verify `UnpublishedEventsRecord.EventCount` matches the persisted sequence range and mismatch handling keeps a stable failure reason instead of silently deleting recovery state.
+    - [x] Verify missing event, state-store failure, DAPR unavailable, publish failed, and unknown drain errors map to documented `DrainReasonCodes`.
+    - [x] Verify drain success removes the record only after successful publish and unregisters reminders without hiding unregister failures.
+    - [x] Verify `pending_command_count` is not decremented prematurely on publish failure and remains bounded/clean after terminal or drain-success paths according to existing backpressure semantics.
+    - [x] Record the unpublished-record lifecycle decision before code completion: pending/publishing remains retryable on retryable failure; published/removed only after confirmed DAPR publish success; failed/dead-lettered only after configured retry exhaustion or stable non-retryable failure.
+    - [x] Prove partial publish behavior: if events 1..N publish and event N+1 fails, the next drain resumes without skipping, losing, or publishing later aggregate events out of persisted sequence.
+    - [x] Prove crash/restart and reminder-overlap behavior: repeated drain may duplicate stable event IDs/metadata, but cannot delete recovery state before confirmed success.
+    - [x] Prove ambiguous publish outcomes are handled fail-safe: no successful command completion may depend solely on a partially observed broker/DAPR response when persisted events still need recovery tracking.
 
-- [ ] **ST3 - Clarify dead-letter policy boundaries.** (AC: 4, 5)
-    - [ ] Document the difference between EventStore command infrastructure dead letters from `DeadLetterPublisher` and DAPR subscriber dead-letter topics after delivery retry exhaustion.
-    - [ ] Confirm dead-letter topic naming: `{DeadLetterTopicPrefix}.{tenant}.{domain}.events` for EventStore dead letters and backend component `deadLetterTopic` for DAPR subscriber routing.
-    - [ ] Add or update tests for dead-letter message metadata, trace correlation, sanitized error fields, and topic naming.
-    - [ ] Record manual recovery expectations for drain records that cannot be retried automatically due to missing persisted events or event-count mismatch.
-    - [ ] Ensure docs and tests name which failures go to EventStore infrastructure dead-letter records and which failures are only DAPR subscriber delivery outcomes.
+- [x] **ST3 - Clarify dead-letter policy boundaries.** (AC: 4, 5)
+    - [x] Document the difference between EventStore command infrastructure dead letters from `DeadLetterPublisher` and DAPR subscriber dead-letter topics after delivery retry exhaustion.
+    - [x] Confirm dead-letter topic naming: `{DeadLetterTopicPrefix}.{tenant}.{domain}.events` for EventStore dead letters and backend component `deadLetterTopic` for DAPR subscriber routing.
+    - [x] Add or update tests for dead-letter message metadata, trace correlation, sanitized error fields, and topic naming.
+    - [x] Record manual recovery expectations for drain records that cannot be retried automatically due to missing persisted events or event-count mismatch.
+    - [x] Ensure docs and tests name which failures go to EventStore infrastructure dead-letter records and which failures are only DAPR subscriber delivery outcomes.
 
-- [ ] **ST4 - Build the backend deployment matrix.** (AC: 3, 5, 6)
-    - [ ] Update docs with a matrix for Redis, RabbitMQ, Kafka, and Azure Service Bus covering durability, duplicate delivery, ordering/session/partition support, topic creation, dead-letter support, retry/resiliency knobs, scoping requirements, and known limitations.
-    - [ ] Make the matrix explicit about what DAPR guarantees, what the backend guarantees, and what EventStore guarantees above DAPR.
-    - [ ] Use matrix columns equivalent to `Backend`, `Required DAPR settings`, `Ordering boundary`, `Routing/session/partition mechanism`, `At-least-once mechanism`, `Dead-letter capability`, `Resiliency config location`, `Proof level`, and `Known caveats`.
-    - [ ] Verify production component examples do not imply wildcard scoping, default-open subscriber permissions, dev-only test subscribers, or hardcoded secrets.
-    - [ ] Add deployment notes for Azure Service Bus topic pre-creation and session support if session ordering is claimed.
-    - [ ] Add deployment notes for Kafka partition key behavior if per-aggregate ordering is claimed.
-    - [ ] Add a "claim status" column with values equivalent to `proven`, `configured`, `documented-only`, `unsupported`, and `not proven`; do not infer live proof from component YAML alone.
+- [x] **ST4 - Build the backend deployment matrix.** (AC: 3, 5, 6)
+    - [x] Update docs with a matrix for Redis, RabbitMQ, Kafka, and Azure Service Bus covering durability, duplicate delivery, ordering/session/partition support, topic creation, dead-letter support, retry/resiliency knobs, scoping requirements, and known limitations.
+    - [x] Make the matrix explicit about what DAPR guarantees, what the backend guarantees, and what EventStore guarantees above DAPR.
+    - [x] Use matrix columns equivalent to `Backend`, `Required DAPR settings`, `Ordering boundary`, `Routing/session/partition mechanism`, `At-least-once mechanism`, `Dead-letter capability`, `Resiliency config location`, `Proof level`, and `Known caveats`.
+    - [x] Verify production component examples do not imply wildcard scoping, default-open subscriber permissions, dev-only test subscribers, or hardcoded secrets.
+    - [x] Add deployment notes for Azure Service Bus topic pre-creation and session support if session ordering is claimed.
+    - [x] Add deployment notes for Kafka partition key behavior if per-aggregate ordering is claimed.
+    - [x] Add a "claim status" column with values equivalent to `proven`, `configured`, `documented-only`, `unsupported`, and `not proven`; do not infer live proof from component YAML alone.
 
-- [ ] **ST5 - Expand backend-specific tests and evidence.** (AC: 1, 3, 4, 6)
-    - [ ] Preserve existing Redis local `PubSubDeliveryProofTests` evidence and extend it only when the local Aspire topology supports the required proof.
-    - [ ] Add focused integration or documented manual proof paths for RabbitMQ, Kafka, and Azure Service Bus. If CI cannot run them, record exact commands, environment prerequisites, and deferred automation status.
-    - [ ] Prove publish-after-persist recovery with a deterministic failure trigger and drain recovery for every backend claimed as supported.
-    - [ ] Prove duplicate tolerance by replaying/draining a previously published event or otherwise forcing an at-least-once duplicate path.
-    - [ ] Prove per-aggregate causal ordering where the backend supports it; explicitly mark unsupported or unverified backends in docs and Verification Status.
-    - [ ] Separate proof boundaries: unit tests for persistence/publish/drain state, component/config inspection for backend settings, Docker/Aspire integration only when infrastructure is available, and manual evidence only for environment-gated backends.
-    - [ ] Include explicit negative assertions for no exactly-once claims, no payload/secret logging, no ad hoc application retry loops replacing DAPR resiliency config, and no changes to payload protection, query contracts, or replay APIs.
-    - [ ] Include a deterministic proof that subscriber success is not required for EventStore to clear publish recovery state unless the implementation explicitly waits for subscriber acknowledgements, which current DAPR pub/sub publishing does not provide.
+- [x] **ST5 - Expand backend-specific tests and evidence.** (AC: 1, 3, 4, 6)
+    - [x] Preserve existing Redis local `PubSubDeliveryProofTests` evidence and extend it only when the local Aspire topology supports the required proof.
+    - [x] Add focused integration or documented manual proof paths for RabbitMQ, Kafka, and Azure Service Bus. If CI cannot run them, record exact commands, environment prerequisites, and deferred automation status.
+    - [x] Prove publish-after-persist recovery with a deterministic failure trigger and drain recovery for every backend claimed as supported.
+    - [x] Prove duplicate tolerance by replaying/draining a previously published event or otherwise forcing an at-least-once duplicate path.
+    - [x] Prove per-aggregate causal ordering where the backend supports it; explicitly mark unsupported or unverified backends in docs and Verification Status.
+    - [x] Separate proof boundaries: unit tests for persistence/publish/drain state, component/config inspection for backend settings, Docker/Aspire integration only when infrastructure is available, and manual evidence only for environment-gated backends.
+    - [x] Include explicit negative assertions for no exactly-once claims, no payload/secret logging, no ad hoc application retry loops replacing DAPR resiliency config, and no changes to payload protection, query contracts, or replay APIs.
+    - [x] Include a deterministic proof that subscriber success is not required for EventStore to clear publish recovery state unless the implementation explicitly waits for subscriber acknowledgements, which current DAPR pub/sub publishing does not provide.
 
-- [ ] **ST6 - Align public docs and generated references.** (AC: 2, 5, 7)
-    - [ ] Update `docs/concepts/command-lifecycle.md` with at-least-once, duplicate tolerance, partial publish, and drain semantics.
-    - [ ] Update `docs/concepts/event-envelope.md` with consumer idempotency and ordering guidance for pub/sub subscribers.
-    - [ ] Update `docs/guides/configuration-reference.md` and DAPR component reference docs with backend matrix and settings.
-    - [ ] Update `docs/operations/drain-failure-reason-codes.md` if any reason code or operator action changes.
-    - [ ] Update generated API docs for `EventPublisherOptions`, `EventDrainOptions`, `EventPublishResult`, `UnpublishedEventsRecord`, or public Testing fakes if public XML docs change.
+- [x] **ST6 - Align public docs and generated references.** (AC: 2, 5, 7)
+    - [x] Update `docs/concepts/command-lifecycle.md` with at-least-once, duplicate tolerance, partial publish, and drain semantics.
+    - [x] Update `docs/concepts/event-envelope.md` with consumer idempotency and ordering guidance for pub/sub subscribers.
+    - [x] Update `docs/guides/configuration-reference.md` and DAPR component reference docs with backend matrix and settings.
+    - [x] Update `docs/operations/drain-failure-reason-codes.md` if any reason code or operator action changes.
+    - [x] Update generated API docs for `EventPublisherOptions`, `EventDrainOptions`, `EventPublishResult`, `UnpublishedEventsRecord`, or public Testing fakes if public XML docs change.
 
-- [ ] **ST7 - Validate and record evidence.** (AC: 7)
-    - [ ] Run focused Server tests for publisher/drain/dead-letter behavior, starting with `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "EventPublisher|EventDrain|PersistThenPublish|DeadLetter|UnpublishedEvents|DrainReason"`.
-    - [ ] Run `dotnet test tests/Hexalith.EventStore.IntegrationTests --filter "PubSubDeliveryProof|DeadLetter"` only with Docker and a running Aspire/DAPR environment.
-    - [ ] Run `dotnet test tests/Hexalith.EventStore.Testing.Tests` if Testing fakes/builders change.
-    - [ ] Run docs/markdown validation where available.
-    - [ ] Update Dev Agent Record, File List, Verification Status, and Change Log.
+- [x] **ST7 - Validate and record evidence.** (AC: 7)
+    - [x] Run focused Server tests for publisher/drain/dead-letter behavior, starting with `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "EventPublisher|EventDrain|PersistThenPublish|DeadLetter|UnpublishedEvents|DrainReason"`.
+    - [x] Run `dotnet test tests/Hexalith.EventStore.IntegrationTests --filter "PubSubDeliveryProof|DeadLetter"` only with Docker and a running Aspire/DAPR environment.
+    - [x] Run `dotnet test tests/Hexalith.EventStore.Testing.Tests` if Testing fakes/builders change.
+    - [x] Run docs/markdown validation where available.
+    - [x] Update Dev Agent Record, File List, Verification Status, and Change Log.
 
 ## Developer Notes
 
@@ -323,6 +323,65 @@ GPT-5 Codex
 
 - 2026-05-12T21:02:38Z - Pre-dev hardening preflight passed via `_bmad-output/process-notes/predev-preflight-latest.json`.
 - 2026-05-12T23:04:13+02:00 - Story creation context gathered from Epic 22, PRD FR96-FR98, architecture publishing/replay/protection notes, Stories 22.1-22.4, current publisher/drain/dead-letter implementation, local and production DAPR pub/sub component files, focused tests, project context, recent commits, and lessons ledger.
+- 2026-05-14T12:03:49+02:00 - ST0 implementation start: story and sprint status moved to in-progress, controlling Epic 22/FR96-FR98/ADR-P9 context loaded, and publisher/drain/dead-letter/config/docs/test inventory completed before product code edits.
+
+### Implementation Plan
+
+- Work story tasks in order. ST0 records the baseline and proof boundaries; ST1 will pin public event metadata and decide whether backend-neutral routing metadata should be emitted or documented only; ST2 will harden partial publish and drain semantics with focused tests before runtime changes; ST3-ST6 will align dead-letter boundaries, backend matrices, evidence paths, and public docs; ST7 will run focused validation and record evidence.
+
+### ST0 Publishing Guarantees Decision Table
+
+| Concern | EventStore persisted-event guarantee | DAPR publish-acceptance guarantee | Broker delivery behavior | Subscriber processing/dead-letter behavior | Baseline decision / gap |
+| --- | --- | --- | --- | --- | --- |
+| Durability | `AggregateActor` persists events before `EventPublisher` runs; `PublishFailed` stores `UnpublishedEventsRecord` after failed publish. | `DaprClient.PublishEventAsync` success means DAPR accepted the publish call only. | Backend durability varies: Redis depends on Redis persistence, RabbitMQ durable queues, Kafka retention, Service Bus native durability. | Subscriber success is not observed by EventStore. | Document durable as EventStore commit plus drain state, not uniform broker durability. |
+| At-least-once | Drain reads persisted sequence range and republishes until success or stable failure state remains. | Ambiguous/failed publish returns `EventPublishResult(false, PublishedCount, reason)` or propagates cancellation. | Delivery may duplicate depending on backend/retry. | Consumers must deduplicate using EventStore metadata. | Keep full-range drain retry; do not claim exactly-once. |
+| Duplicate tolerance | Partial publish followed by drain can duplicate already accepted events with same stable CloudEvent IDs and envelope metadata. | `PublishedCount` records observed success count but does not prove subscriber receipt. | Broker redelivery is normal. | Consumers own idempotent projection handling. | Docs/tests need explicit duplicate guidance by tenant/domain/aggregate/sequence/correlation/causation/message/event type/topic. |
+| Ordering/session metadata | Persisted `sequenceNumber` is gapless per aggregate and drain loads ranges ordered by sequence. | Current publish metadata sets `cloudevent.type`, `cloudevent.source`, and `cloudevent.id`; no DAPR partition/session key is emitted. | Redis/RabbitMQ/Kafka/Service Bus ordering claims require backend-specific configuration and proof. | Subscriber processing order is not guaranteed by EventStore. | ST1/ST4 must decide and document routing/session/partition metadata per backend. |
+| Partial publish handling | Failed batch records the whole persisted sequence range, so retry is conservative and duplicate-tolerant. | `PublishedCount` exposes partial acceptance evidence only. | Broker may have accepted events before the failure. | Subscriber may see duplicates after drain. | ST2 needs focused proof that later events are not skipped and recovery state is retained. |
+| Drain retry | `UnpublishedEventsRecord` tracks correlation, sequence range, count, command type, rejection flag, retry count, and last failure. | Failed drain publish updates retry state; successful publish removes record after save. | DAPR resiliency handles sidecar/broker retries; app has no custom retry loop in publisher. | Subscriber retry/dead-letter is separate from EventStore drain. | Existing reason codes are stable; docs need operator-safe manual repair language. |
+| Dead-letter routing | `DeadLetterPublisher` handles command infrastructure failures with `{prefix}.{tenant}.{domain}.events`. | DAPR component `deadLetterTopic` covers subscriber delivery exhaustion. | Backend DLQ/DLX/topic capabilities differ. | Subscriber dead-letter outcome is not EventStore command dead-letter outcome. | ST3 must keep both concepts separate in docs/tests. |
+| Backend proof status | Unit tests prove publisher/drain decisions without live sidecar. | Redis local integration proof exists through `PubSubDeliveryProofTests`. | RabbitMQ/Kafka/Service Bus component YAML exists but is config evidence only. | `DeadLetterTests` and subscriber tests are environment-gated. | Matrix rows must use `proven`, `configured`, `documented-only`, `unsupported`, or `not proven`; no live proof inferred from YAML. |
+
+### ST1 Publish Metadata Decision
+
+| Contract surface | Decision | Consumer guidance / backend impact | Evidence |
+| --- | --- | --- | --- |
+| Public idempotency fields | Use the flat event envelope fields: `tenantId`, `domain`, `aggregateId`, `sequenceNumber`, `correlationId`, `causationId`, `messageId`, `eventTypeName`, and topic. | Consumers deduplicate by EventStore identity and sequence metadata, not broker receipt IDs, retry counts, offsets, lock tokens, or delivery counts. | `PublishEventsAsync_SingleEvent_PublishesStableIdempotencyAndOrderingFields`. |
+| CloudEvents metadata | Preserve existing CloudEvents keys only: `cloudevent.type`, `cloudevent.source`, and `cloudevent.id` with `{correlationId}:{sequenceNumber}`. | Maintains current CloudEvents 1.0 compatibility and subscriber behavior. | Existing `EventPublisherTests` plus new ST1 test. |
+| DAPR raw payload | Do not emit `rawPayload`; keep DAPR CloudEvents wrapping enabled for tracing and message identity behavior. | Subscribers continue receiving CloudEvents with the flat envelope as data. | ST1 test asserts no `rawPayload` metadata. |
+| Kafka partition metadata | Do not emit `partitionKey` or `__key` yet. | Kafka per-aggregate partition guidance is documentation/configuration evidence until a live backend proof validates the policy. | DAPR docs confirm Kafka supports per-call `partitionKey`/`__key`; ST1 defers emission. |
+| Azure Service Bus session/partition metadata | Do not emit `SessionId` or `PartitionKey` yet. | Service Bus session ordering can be documented as configured/manual proof only until topics/subscriptions are session-enabled and tested. | DAPR docs confirm Service Bus supports per-call `SessionId`/`PartitionKey`; ST1 defers emission. |
+| RabbitMQ/Redis ordering metadata | No backend-neutral ordering metadata emitted. | EventStore sequence order is guaranteed at persist/publish call order; broker/subscriber delivery order remains backend-dependent. | ST1 test pins absence of backend-specific DAPR metadata. |
+
+### ST2 Unpublished Record Lifecycle Decision
+
+| State | Decision | Recovery / cleanup rule | Evidence |
+| --- | --- | --- | --- |
+| Initial publish failed before or during batch | Store an `UnpublishedEventsRecord` for the full persisted sequence range, even when `EventPublishResult.PublishedCount` proves some earlier events were accepted. | The next drain republishes the complete range in persisted sequence order. Duplicate publication is allowed; skipping later persisted events is not. | `ProcessCommand_PartialPublishFailed_RecordContainsFullPersistedSequenceRange`; `ReceiveReminder_PartialPublishRecovery_RePublishesCompleteRecordedRangeInOrder`. |
+| Drain retry failed | Increment retry count and preserve the record with a bounded failure reason. | Reminder remains registered; no pending-count decrement or record deletion happens on failed drain. | Existing drain failure tests and reason-code tests. |
+| Drain integrity failure | Preserve the record and classify with a stable `DrainReasonCodes` value. | Missing events and event-count mismatch require manual repair; automatic retry alone is not expected to fix corrupted evidence. | `ReceiveReminder_DrainRangeMissingPersistedEvent_PreservesRecordAndDoesNotPublish`; `ReceiveReminder_DrainRecordEventCountMismatch_PreservesRecordAndDoesNotPublish`; `Dw8DrainReasonClassifierTests`. |
+| Drain publish success | Remove the record only after publish succeeds and state is saved; unregister reminder afterward and log unregister failure without rolling back success. | Command status moves to `Completed` or `Rejected` based on the original record. | Existing drain success/reminder/status tests. |
+| Crash/restart or reminder overlap | Retry remains duplicate-tolerant because the record holds the persisted sequence range and the publisher emits stable envelope and CloudEvent IDs. | Repeated drain may duplicate but cannot delete recovery state before confirmed publish success. | Existing multiple-drain and recorded-range tests plus ST1 metadata test. |
+
+### ST3 Dead-Letter Boundary Decision
+
+| Surface | Owner | Topic / metadata | What it proves | What it does not prove |
+| --- | --- | --- | --- | --- |
+| EventStore command infrastructure dead letter | EventStore application via `DeadLetterPublisher` | `{DeadLetterTopicPrefix}.{tenant}.{domain}.events`; CloudEvent type `deadletter.command.failed` | Command processing hit an infrastructure failure before a durable publish/drain path existed. | Subscriber delivery failed, broker exhausted subscriber retries, or a persisted event was lost. |
+| DAPR subscriber dead letter | DAPR pub/sub runtime plus subscription/component config | Component `deadLetterTopic` and subscription `deadLetterTopic` values, usually `deadletter...` topics | Subscriber processing failed after delivery retry exhaustion. | EventStore command processing failed or EventStore should retain a drain record after DAPR accepted publication. |
+| Drain record manual repair | EventStore actor state | `UnpublishedEventsRecord` metadata: correlation ID, sequence range, event count, command type, retry count, last failure reason | Persisted events still need confirmed publish acceptance or operator repair. | Payload visibility, subscriber credentials, or subscriber delivery outcome. |
+
+### ST5 Evidence Classification
+
+| Proof boundary | Automated evidence in this workspace | Environment-gated / manual evidence | Status |
+| --- | --- | --- | --- |
+| EventStore persist-first and drain recovery | `PersistThenPublishResilienceTests`, `EventDrainRecoveryTests`, `Dw8DrainReasonClassifierTests` | N/A | `unit` proven. |
+| CloudEvent and envelope idempotency fields | `EventPublisherTests` | N/A | `unit` proven. |
+| Local Redis publish/drain recovery | Existing `tests/Hexalith.EventStore.IntegrationTests/ContractTests/PubSubDeliveryProofTests.cs` requires Docker/Aspire/DAPR. | Run only with the Aspire environment active. | `Docker/Aspire integration` proof exists but was not run in this unit-test-only pass. |
+| RabbitMQ backend behavior | `ProductionDaprComponentValidationTests` and `PubSubTopicIsolationEnforcementTests` inspect YAML/scoping/dead-letter config. | Manual proof path documented in `docs/guides/dapr-component-reference.md`. | `configured`, live behavior not proven. |
+| Kafka backend behavior | YAML/scoping/dead-letter config inspection only. | Manual partition-key/order proof path documented; EventStore does not emit `partitionKey`/`__key` yet. | `configured`; partition ordering `not proven`. |
+| Azure Service Bus backend behavior | YAML/scoping/dead-letter config inspection only. | Manual session/DLQ proof path documented; EventStore does not emit `SessionId` yet. | `configured`; session ordering `not proven`. |
+| Negative claims | Docs/tests assert no exactly-once claim from backend table, no payload/secret logging, no custom publisher retry loops, and no subscriber-success dependency for publish recovery cleanup. | N/A | Guarded by focused tests and documentation language. |
 
 ### Completion Notes List
 
@@ -330,12 +389,32 @@ GPT-5 Codex
 - Story creation did not modify product code, tests, DAPR/Aspire configuration, generated API docs, or submodules.
 - Party-mode review completed on 2026-05-13 and applied story hardening for guarantee boundaries, backend proof levels, unpublished-record lifecycle, drain idempotency, dead-letter separation, operator metadata, and file-level guardrails.
 - Advanced elicitation completed on 2026-05-13 and applied bounded story hardening for DAPR publish-acceptance boundaries, partial-batch ambiguity, backend proof labels, consumer idempotency fields, and subscriber-dead-letter separation.
+- 2026-05-14 ST0 completed: baseline inventory confirmed persist-first plus drain recovery as the EventStore durability boundary, current CloudEvent metadata compatibility, no emitted backend-neutral partition/session metadata, conservative full-range drain after partial publish, separated EventStore infrastructure dead letters from DAPR subscriber dead-letter routing, and classified RabbitMQ/Kafka/Service Bus evidence as configured/documented rather than proven.
+- 2026-05-14 ST1 completed: pinned the cross-backend publish contract to the existing flat envelope fields plus stable CloudEvents metadata, deliberately avoided new DAPR `rawPayload`, Kafka partition, and Service Bus session/partition metadata until backend-specific proof exists, and added focused unit coverage for the public idempotency/ordering surface.
+- 2026-05-14 ST2 completed: proved partial publish fail-safe behavior stores and drains the complete persisted sequence range, confirmed drain failure records remain retryable and bounded by stable reason codes, and recorded the unpublished-record lifecycle decision.
+- 2026-05-14 ST3 completed: documented EventStore infrastructure dead letters versus DAPR subscriber dead letters, tightened dead-letter CloudEvent metadata coverage, and added manual-repair guidance for non-auto-retryable drain records without exposing payloads or secrets.
+- 2026-05-14 ST4 completed: added the backend deployment matrix with explicit EventStore/DAPR/broker/subscriber boundaries, claim statuses, Kafka partition-key and Service Bus session caveats, and extended component inspection coverage to Azure Service Bus.
+- 2026-05-14 ST5 completed: recorded proof boundaries, preserved Redis integration evidence as environment-gated, added RabbitMQ/Kafka/Service Bus manual proof paths, and added doc tests that keep configured backends from being mislabeled as proven.
+- 2026-05-14 ST6 completed: aligned command lifecycle, event envelope, configuration, DAPR component, drain reason, and deploy docs with at-least-once, duplicate tolerance, backend matrix, and dead-letter boundary language. Generated API docs were not refreshed because no public XML/API surface changed.
+- 2026-05-14 ST7 completed: focused story validation, markdown validation, and listed unit regression projects passed. Aspire MCP reported no running AppHost in this workspace, so integration pub/sub proof remains environment-gated. Full Server.Tests was attempted and failed in unrelated command status/error handling/replay/actor integration areas outside the touched files; focused Story 22.5 slices passed.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/22-5-event-publishing-guarantees-and-backend-deployment-matrix.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `_bmad-output/process-notes/predev-hardening-runs.log`
+- `tests/Hexalith.EventStore.Server.Tests/Events/EventPublisherTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Events/PersistThenPublishResilienceTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Actors/EventDrainRecoveryTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Events/DeadLetterPublisherTests.cs`
+- `docs/concepts/command-lifecycle.md`
+- `docs/concepts/event-envelope.md`
+- `docs/guides/configuration-reference.md`
+- `docs/guides/dapr-component-reference.md`
+- `docs/operations/drain-failure-reason-codes.md`
+- `deploy/README.md`
+- `tests/Hexalith.EventStore.Server.Tests/Security/PubSubTopicIsolationEnforcementTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/DaprComponents/ProductionDaprComponentValidationTests.cs`
 
 ## Verification Status
 
@@ -347,11 +426,31 @@ GPT-5 Codex
 - `npx markdownlint-cli2 _bmad-output/implementation-artifacts/22-5-event-publishing-guarantees-and-backend-deployment-matrix.md` passed with 0 errors.
 - Party-mode review completed on 2026-05-13 and is recorded below.
 - Advanced elicitation completed on 2026-05-13 and is recorded below.
+- 2026-05-14 ST0 validation: context/code/config/docs/tests inventory completed and recorded in the ST0 decision table. No product code changed and no runtime tests were required for this baseline documentation task.
+- 2026-05-14 ST1 validation: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~EventPublisherTests" --no-restore` passed 23/23.
+- 2026-05-14 ST2 validation: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~PersistThenPublishResilienceTests|FullyQualifiedName~EventDrainRecoveryTests|FullyQualifiedName~Dw8DrainReasonClassifierTests" --no-restore` passed 47/47.
+- 2026-05-14 ST3 validation: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~DeadLetterPublisherTests|FullyQualifiedName~DeadLetterMessageTests|FullyQualifiedName~DeadLetterRoutingTests" --no-restore` passed 36/36.
+- 2026-05-14 ST4 validation: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~PubSubTopicIsolationEnforcementTests" --no-restore` passed 9/9.
+- 2026-05-14 ST5 validation: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --filter "FullyQualifiedName~ProductionDaprComponentValidationTests|FullyQualifiedName~PubSubDeliveryProofTests" --no-restore` passed 21/21 in Server.Tests; integration `PubSubDeliveryProofTests` are in `tests/Hexalith.EventStore.IntegrationTests` and remain environment-gated.
+- 2026-05-14 ST6 validation: `npx markdownlint-cli2 docs/concepts/command-lifecycle.md docs/concepts/event-envelope.md docs/guides/configuration-reference.md docs/guides/dapr-component-reference.md docs/operations/drain-failure-reason-codes.md deploy/README.md _bmad-output/implementation-artifacts/22-5-event-publishing-guarantees-and-backend-deployment-matrix.md` passed with 0 errors.
+- 2026-05-14 ST7 focused validation: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --filter "EventPublisher|EventDrain|PersistThenPublish|DeadLetter|UnpublishedEvents|DrainReason" --no-restore` passed 180/180.
+- 2026-05-14 ST7 listed unit regressions: Client.Tests passed 386/386; Contracts.Tests passed 328/328; Sample.Tests passed 74/74; Testing.Tests passed 98/98.
+- 2026-05-14 ST7 Aspire/integration check: `mcp__aspire__.list_apphosts` returned no AppHosts within `D:\Hexalith.EventStore`; integration `PubSubDeliveryProof|DeadLetter` tests were not run because the required Aspire/DAPR topology was not available.
+- 2026-05-14 ST7 full Server.Tests attempt: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --no-restore` failed 24, passed 1875, skipped 25. Failures were outside Story 22.5 touched files: command status whitespace detail, validation ProblemDetails null handling, query not-found internal-detail assertion, replay controller expectations, and actor integration/persistence/tombstoning acceptance paths.
+- 2026-05-14 ST7 diff validation: `git diff --check` passed with line-ending conversion warnings only.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-14 | 1.1 | Completed ST7 validation record and moved story to review. | Codex |
+| 2026-05-14 | 1.0 | Completed ST6 public documentation alignment and markdown validation. | Codex |
+| 2026-05-14 | 0.9 | Completed ST5 proof classification, manual backend proof paths, and honest-proof doc guard. | Codex |
+| 2026-05-14 | 0.8 | Completed ST4 backend deployment matrix and Service Bus config inspection coverage. | Codex |
+| 2026-05-14 | 0.7 | Completed ST3 dead-letter boundary docs and focused metadata coverage. | Codex |
+| 2026-05-14 | 0.6 | Completed ST2 partial publish and drain lifecycle hardening evidence. | Codex |
+| 2026-05-14 | 0.5 | Completed ST1 publish metadata contract and focused EventPublisher coverage. | Codex |
+| 2026-05-14 | 0.4 | Completed ST0 baseline inventory and recorded publishing guarantees decision table. | Codex |
 | 2026-05-13 | 0.3 | Applied advanced-elicitation hardening for publish acceptance boundaries, partial-batch ambiguity, proof labels, idempotency guidance, and dead-letter separation. | Codex automation |
 | 2026-05-13 | 0.2 | Applied party-mode review hardening for guarantee boundaries, backend proof levels, unpublished-record lifecycle, drain idempotency, and dead-letter separation. | Codex automation |
 | 2026-05-12 | 0.1 | Created ready-for-dev story for event publishing guarantees and backend deployment matrix. | Codex automation |

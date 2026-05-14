@@ -26,6 +26,10 @@ public class PubSubTopicIsolationEnforcementTests {
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
             "deploy", "dapr", "pubsub-kafka.yaml"));
 
+    private static readonly string ProductionServiceBusPath = Path.GetFullPath(
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
+            "deploy", "dapr", "pubsub-servicebus.yaml"));
+
     // --- Task 3.2: AC #1, #2, #9 ---
 
     [Fact]
@@ -148,6 +152,7 @@ public class PubSubTopicIsolationEnforcementTests {
         Dictionary<string, object> localDoc = LoadYaml(LocalPubSubPath);
         Dictionary<string, object> rabbitDoc = LoadYaml(ProductionRabbitMqPath);
         Dictionary<string, object> kafkaDoc = LoadYaml(ProductionKafkaPath);
+        Dictionary<string, object> serviceBusDoc = LoadYaml(ProductionServiceBusPath);
 
         // All configs must have subscriptionScopes metadata
         _ = GetComponentMetadataValue(localDoc, "subscriptionScopes").ShouldNotBeNull(
@@ -156,6 +161,8 @@ public class PubSubTopicIsolationEnforcementTests {
             "Production RabbitMQ pub/sub must have subscriptionScopes");
         _ = GetComponentMetadataValue(kafkaDoc, "subscriptionScopes").ShouldNotBeNull(
             "Production Kafka pub/sub must have subscriptionScopes");
+        _ = GetComponentMetadataValue(serviceBusDoc, "subscriptionScopes").ShouldNotBeNull(
+            "Production Azure Service Bus pub/sub must have subscriptionScopes");
 
         // All configs must have publishingScopes metadata
         _ = GetComponentMetadataValue(localDoc, "publishingScopes").ShouldNotBeNull(
@@ -164,11 +171,14 @@ public class PubSubTopicIsolationEnforcementTests {
             "Production RabbitMQ pub/sub must have publishingScopes");
         _ = GetComponentMetadataValue(kafkaDoc, "publishingScopes").ShouldNotBeNull(
             "Production Kafka pub/sub must have publishingScopes");
+        _ = GetComponentMetadataValue(serviceBusDoc, "publishingScopes").ShouldNotBeNull(
+            "Production Azure Service Bus pub/sub must have publishingScopes");
 
         // All configs must have component-level scopes restricting to eventstore
         VerifyScopesContainEventStore(localDoc, "local pub/sub");
         VerifyScopesContainEventStore(rabbitDoc, "production RabbitMQ pub/sub");
         VerifyScopesContainEventStore(kafkaDoc, "production Kafka pub/sub");
+        VerifyScopesContainEventStore(serviceBusDoc, "production Azure Service Bus pub/sub");
 
         // eventstore must NOT be listed in any scoping metadata (unrestricted access)
         foreach ((Dictionary<string, object> doc, string name) in new[]
@@ -176,6 +186,7 @@ public class PubSubTopicIsolationEnforcementTests {
             (localDoc, "local"),
             (rabbitDoc, "production RabbitMQ"),
             (kafkaDoc, "production Kafka"),
+            (serviceBusDoc, "production Azure Service Bus"),
         }) {
             string pubScopes = GetComponentMetadataValue(doc, "publishingScopes") ?? string.Empty;
             string subScopes = GetComponentMetadataValue(doc, "subscriptionScopes") ?? string.Empty;
@@ -193,6 +204,8 @@ public class PubSubTopicIsolationEnforcementTests {
             "Production RabbitMQ pub/sub must have dead-letter enabled");
         GetComponentMetadataValue(kafkaDoc, "enableDeadLetter").ShouldBe("true",
             "Production Kafka pub/sub must have dead-letter enabled");
+        GetComponentMetadataValue(serviceBusDoc, "enableDeadLetter").ShouldBe("true",
+            "Production Azure Service Bus pub/sub must have dead-letter enabled");
     }
 
     // --- Task 3.8: AC #10 (NFR20) ---
@@ -207,6 +220,7 @@ public class PubSubTopicIsolationEnforcementTests {
             (LocalPubSubPath, "local pub/sub"),
             (ProductionRabbitMqPath, "production RabbitMQ pub/sub"),
             (ProductionKafkaPath, "production Kafka pub/sub"),
+            (ProductionServiceBusPath, "production Azure Service Bus pub/sub"),
         }) {
             Dictionary<string, object> doc = LoadYaml(path);
 
@@ -256,6 +270,9 @@ public class PubSubTopicIsolationEnforcementTests {
 
         Dictionary<string, object> kafkaDoc = LoadYaml(ProductionKafkaPath);
         VerifySampleExcludedFromScopes(kafkaDoc, "production Kafka pub/sub");
+
+        Dictionary<string, object> serviceBusDoc = LoadYaml(ProductionServiceBusPath);
+        VerifySampleExcludedFromScopes(serviceBusDoc, "production Azure Service Bus pub/sub");
     }
 
     [Fact]
@@ -265,6 +282,7 @@ public class PubSubTopicIsolationEnforcementTests {
             (LocalPubSubPath, "local pub/sub"),
             (ProductionRabbitMqPath, "production RabbitMQ pub/sub"),
             (ProductionKafkaPath, "production Kafka pub/sub"),
+            (ProductionServiceBusPath, "production Azure Service Bus pub/sub"),
         }) {
             string content = File.ReadAllText(path);
 

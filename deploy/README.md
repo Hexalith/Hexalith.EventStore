@@ -34,14 +34,16 @@ All state store backends support: ETag optimistic concurrency, actor state store
 
 ### Pub/Sub Backends
 
-| Backend           | DAPR Component Type              | Config File              | Key Features                      |
-| ----------------- | -------------------------------- | ------------------------ | --------------------------------- |
-| Redis Streams     | `pubsub.redis`                   | (local only)             | Simple setup, development         |
-| RabbitMQ          | `pubsub.rabbitmq`                | `pubsub-rabbitmq.yaml`   | Mature, flexible routing          |
-| Kafka             | `pubsub.kafka`                   | `pubsub-kafka.yaml`      | High throughput, log-based        |
-| Azure Service Bus | `pubsub.azure.servicebus.topics` | `pubsub-servicebus.yaml` | Native Azure, enterprise features |
+All pub/sub rows use CloudEvents 1.0 and per-tenant-per-domain topics. EventStore's durable guarantee is persist-first plus unpublished-event drain recovery. Backend delivery, ordering, and subscriber dead-letter behavior depend on the selected component and must be proven separately.
 
-All pub/sub backends support: CloudEvents 1.0, at-least-once delivery, dead-letter routing, per-tenant-per-domain topic isolation.
+| Backend | DAPR Component Type | Config File | Required settings | Ordering boundary | Dead-letter capability | Claim status |
+| --- | --- | --- | --- | --- | --- | --- |
+| Redis Streams | `pubsub.redis` | Local AppHost only | `enableDeadLetter=true`, scoped publish/subscribe grants | EventStore sequence order is proven; broker/subscriber order is local Redis proof only | DAPR-managed subscriber dead-letter topic | `proven` for local Redis publish and drain recovery |
+| RabbitMQ | `pubsub.rabbitmq` | `pubsub-rabbitmq.yaml` | `durable=true`, `deletedWhenUnused=false`, `enableDeadLetter=true`, production subscriber scopes | EventStore sequence order persists; RabbitMQ delivery order depends on topology and consumers | Native DLX through DAPR | `configured`, live proof required |
+| Kafka | `pubsub.kafka` | `pubsub-kafka.yaml` | `brokers`, `authType`, `enableDeadLetter=true`, production subscriber scopes | Per-partition order requires a stable partition key; EventStore does not emit `partitionKey`/`__key` yet | Separate dead-letter topic | `configured`; partition ordering `not proven` |
+| Azure Service Bus | `pubsub.azure.servicebus.topics` | `pubsub-servicebus.yaml` | connection string or Azure identity, `enableDeadLetter=true`, production subscriber scopes, pre-created topics | Ordered delivery requires session-enabled topology and stable `SessionId`; EventStore does not emit `SessionId` yet | Native DLQ through DAPR/Service Bus | `configured`; session ordering `not proven` |
+
+Do not use this table to claim exactly-once delivery or subscriber processing success. Consumers must deduplicate with EventStore metadata such as tenant, domain, aggregate ID, sequence number, correlation ID, causation ID, message ID, event type, and topic.
 
 ## Per-Backend Configuration
 
@@ -428,4 +430,3 @@ The NFR29 portability guarantee means any DAPR-compatible backend works — not 
 5. Add `scopes` list: `["eventstore", "{env:SUBSCRIBER_APP_ID}", "{env:OPS_MONITOR_APP_ID}"]` — must include `eventstore` (publisher) plus any authorized subscriber app-ids
 6. Verify the backend supports CloudEvents 1.0 and at-least-once delivery
  <!-- End of deployment README -->
-

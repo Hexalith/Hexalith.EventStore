@@ -241,4 +241,30 @@ public class ProductionDaprComponentValidationTests {
         content.Length.ShouldBeGreaterThan(500, "deploy/README.md must be non-trivial (comprehensive deployment guide)");
     }
 
+    [Fact]
+    public void PubSubBackendDocs_RecordHonestProofLevels() {
+        string docsPath = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
+                "docs", "guides", "dapr-component-reference.md"));
+        string deployReadmePath = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
+                "deploy", "README.md"));
+
+        string docs = File.ReadAllText(docsPath);
+        string deployReadme = File.ReadAllText(deployReadmePath);
+
+        docs.ShouldContain("`proven` for local Redis publish and drain recovery");
+        docs.ShouldContain("`configured` for component scoping/dead-letter");
+        docs.ShouldContain("Kafka ordering key proof is `not proven`");
+        docs.ShouldContain("session ordering proof is `not proven`");
+        docs.ShouldContain("manual/environment-gated proof");
+        docs.ShouldContain("documented limitation");
+
+        deployReadme.ShouldContain("`proven` for local Redis publish and drain recovery");
+        deployReadme.ShouldContain("`configured`, live proof required");
+        deployReadme.ShouldContain("partition ordering `not proven`");
+        deployReadme.ShouldContain("session ordering `not proven`");
+        deployReadme.ShouldContain("Do not use this table to claim exactly-once delivery");
+    }
+
 }

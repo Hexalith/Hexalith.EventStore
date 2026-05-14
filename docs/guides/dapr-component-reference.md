@@ -182,7 +182,9 @@ Persistence guarantees: Cosmos DB provides multi-region replication with configu
 
 ## Pub/Sub Configuration
 
-The pub/sub component handles event distribution using CloudEvents 1.0 format. Events are published to per-tenant-per-domain topics following the `{tenant}.{domain}.events` naming pattern (D6). Failed messages route to dead-letter topics: `deadletter.{tenant}.{domain}.events`.
+The pub/sub component handles event distribution using CloudEvents 1.0 format. Events are published to per-tenant-per-domain topics following the `{tenant}.{domain}.events` naming pattern (D6). Subscription delivery failures can route to DAPR dead-letter topics such as `deadletter.{tenant}.{domain}.events` when the subscription config sets a dead-letter topic.
+
+Do not confuse DAPR subscriber dead-letter routing with EventStore command infrastructure dead letters. EventStore infrastructure dead letters are produced by the application through `DeadLetterPublisher` when command processing fails before a durable publish/drain path exists. DAPR subscriber dead letters are produced by the DAPR pub/sub runtime after a subscriber repeatedly fails to process a message. Both use operational topics, but they prove different failures and must be monitored separately.
 
 All pub/sub backends use the same three-layer scoping architecture:
 
@@ -924,7 +926,7 @@ scopes:
     - sample
 ```
 
-The subscription pattern: a topic routes events to an HTTP endpoint on the subscriber application. If the subscriber fails to process the event after retry exhaustion, the message moves to the dead-letter topic. Dead-letter topic subscription is separate — only operational/monitoring tools should subscribe to dead-letter topics.
+The subscription pattern: a topic routes events to an HTTP endpoint on the subscriber application. If the subscriber fails to process the event after retry exhaustion, the message moves to the DAPR subscriber dead-letter topic. Dead-letter topic subscription is separate - only operational/monitoring tools should subscribe to dead-letter topics. This subscriber delivery outcome is not the same as EventStore's command infrastructure dead-letter path and is not required for EventStore to clear publish recovery state after DAPR accepts publication.
 
 ## Persistence Guarantees by Backend
 
@@ -938,12 +940,30 @@ The subscription pattern: a topic routes events to an HTTP endpoint on the subsc
 
 ### Pub/Sub Backends
 
-| Backend           | Durability                          | Delivery Guarantee | Dead-Letter Support | Consumer Isolation        | Auto-Create Topics       |
-| ----------------- | ----------------------------------- | ------------------ | ------------------- | ------------------------- | ------------------------ |
-| Redis Streams     | In-memory (AOF/RDB optional)        | At-least-once      | DAPR-managed        | Consumer groups           | Yes                      |
-| RabbitMQ          | Durable queues (configurable)       | At-least-once      | Native DLX          | Queue-per-consumer        | Yes                      |
-| Kafka             | Commit log (configurable retention) | At-least-once      | Separate topic      | Consumer group offset     | Yes                      |
-| Azure Service Bus | Guaranteed delivery                 | At-least-once      | Native DLQ          | Subscription-per-consumer | No (pre-create required) |
+This matrix separates EventStore guarantees, DAPR/component behavior, and live proof status. A row marked `configured` means the checked-in component file expresses the settings, but the backend behavior has not been proven in the local automated suite. A row marked `documented-only` means operators must supply the setting and capture environment-specific proof before claiming it as verified.
+
+| Backend | Required DAPR settings | Ordering boundary | Routing/session/partition mechanism | At-least-once mechanism | Dead-letter capability | Resiliency config location | Claim status | Known caveats |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Redis Streams | `pubsub.redis`, `enableDeadLetter=true`, scoped `publishingScopes`/`subscriptionScopes` | EventStore publishes persisted events in sequence order; Redis/DAPR subscriber delivery order is not a cross-backend contract. | No EventStore-emitted partition/session metadata; topic is `{tenant}.{domain}.events`; event envelope carries aggregate and sequence. | Persist-first plus `UnpublishedEventsRecord` drain; DAPR Redis consumer group delivery is at-least-once. | DAPR-managed dead-letter topic after subscriber retry exhaustion. | `deploy/dapr/resiliency.yaml`; local AppHost component for Redis. | `proven` for local Redis publish and drain recovery; ordering beyond EventStore sequence is `documented-only`. | Redis durability depends on AOF/RDB/server configuration; local dev grants include `eventstore-test-subscriber` and are not production defaults. |
+| RabbitMQ | `pubsub.rabbitmq`, `durable=true`, `deletedWhenUnused=false`, `enableDeadLetter=true`, production subscriber app IDs and scopes | EventStore sequence order is persisted and publish calls are ordered; RabbitMQ delivery/consumer order depends on queues, consumers, acknowledgements, and topology. | No EventStore-emitted routing key/partition metadata; DAPR component maps topics to RabbitMQ exchange/queue behavior. | Persist-first plus drain; RabbitMQ durable queues and acknowledgements provide broker at-least-once when configured. | Native DLX through DAPR `enableDeadLetter`. | `deploy/dapr/resiliency.yaml`; `deploy/dapr/pubsub-rabbitmq.yaml`. | `configured`; live RabbitMQ publish/order/dead-letter proof is not in the local automated suite. | RabbitMQ ACLs are separate from DAPR scoping; multiple competing consumers can affect observed ordering. |
+| Kafka | `pubsub.kafka`, `brokers`, `authType`, `enableDeadLetter=true`, production subscriber app IDs and scopes | EventStore sequence order is persisted; Kafka per-partition order requires a stable partition key and single ordered consumer path. | DAPR supports per-call `partitionKey`/`__key`, but EventStore does not emit it yet; per-aggregate partition policy is `documented-only` until proven. | Persist-first plus drain; Kafka commit log retention and consumer group offsets provide backend at-least-once behavior when configured. | Separate dead-letter topic via DAPR. | `deploy/dapr/resiliency.yaml`; `deploy/dapr/pubsub-kafka.yaml`. | `configured` for component scoping/dead-letter; Kafka ordering key proof is `not proven`. | Topic auto-creation may be disabled by brokers; repartitioning or missing partition keys can break per-aggregate broker ordering claims. |
+| Azure Service Bus | `pubsub.azure.servicebus.topics`, `connectionString` or Azure identity metadata, `enableDeadLetter=true`, production subscriber app IDs and scopes | EventStore sequence order is persisted; Service Bus ordered delivery requires session-enabled topics/subscriptions and a stable `SessionId`. | DAPR supports per-call `SessionId`/`PartitionKey`, but EventStore does not emit it yet; session policy is `documented-only` until proven. | Persist-first plus drain; Service Bus broker delivery is at-least-once with native settlement semantics. | Native DLQ through Service Bus/DAPR subscriber dead-letter handling. | `deploy/dapr/resiliency.yaml`; `deploy/dapr/pubsub-servicebus.yaml`; ACA translation if using managed DAPR. | `configured` for component scoping/dead-letter; session ordering proof is `not proven`. | Topics/subscriptions must be pre-created; session-enabled topology must be explicitly provisioned before claiming ordered broker delivery. |
+
+#### Backend Proof Paths
+
+Use these labels when recording evidence:
+
+- `unit`: focused Server tests for EventStore publish/drain/dead-letter decisions without a live sidecar.
+- `component/config inspection`: YAML tests that prove required component metadata, scopes, and resiliency targets exist.
+- `Docker/Aspire integration`: live local proof with Docker, DAPR, Aspire, and the Redis test subscriber.
+- `manual/environment-gated proof`: operator-run proof for RabbitMQ, Kafka, or Azure Service Bus where CI infrastructure is not available.
+- `documented limitation`: explicitly unsupported or unverified backend behavior.
+
+RabbitMQ manual proof should start EventStore with `deploy/dapr/pubsub-rabbitmq.yaml`, a real RabbitMQ broker, `SUBSCRIBER_APP_ID`, `OPS_MONITOR_APP_ID`, and `deploy/dapr/resiliency.yaml`; submit a multi-event command; force a publish failure if the environment supports the Development-only fault file; remove the fault; verify the subscriber receives duplicates safely and the drain record is removed only after publish acceptance.
+
+Kafka manual proof should use `deploy/dapr/pubsub-kafka.yaml` with a real broker and topic policy. If per-aggregate broker ordering is claimed, capture the configured partition-key policy, the exact EventStore/DAPR metadata used, topic partition count, consumer group, command sequence, observed offsets, and subscriber order. Without that evidence, Kafka ordering remains `not proven`.
+
+Azure Service Bus manual proof should use `deploy/dapr/pubsub-servicebus.yaml` or the Azure Container Apps equivalent with pre-created topics/subscriptions. If session ordering is claimed, capture the session-enabled topic/subscription configuration, the exact `SessionId` policy, command sequence, observed message sequence, and DLQ behavior. Without that evidence, Service Bus session ordering remains `not proven`.
 
 ## Backend Swap Procedure
 

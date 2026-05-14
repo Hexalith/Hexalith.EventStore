@@ -700,6 +700,46 @@ public class EventDrainRecoveryTests {
         publishedSequences["corr-2"].ShouldBe([3L, 4L]);
     }
 
+    [Fact]
+    public async Task ReceiveReminder_PartialPublishRecovery_RePublishesCompleteRecordedRangeInOrder() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+        var record = new UnpublishedEventsRecord(
+            CorrelationId: "corr-partial",
+            StartSequence: 1,
+            EndSequence: 3,
+            EventCount: 3,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: 1,
+            LastFailureReason: "Connection reset after event 2");
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-partial", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, eventCount: 3, correlationId: "corr-partial", startSequence: 1);
+
+        IReadOnlyList<long>? publishedSequences = null;
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Do<IReadOnlyList<EventEnvelope>>(events =>
+                publishedSequences = events.Select(e => e.SequenceNumber).ToArray()),
+            "corr-partial",
+            Arg.Any<CancellationToken>())
+            .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-partial", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert
+        _ = publishedSequences.ShouldNotBeNull();
+        publishedSequences.ShouldBe([1L, 2L, 3L]);
+        await stateManager.Received(1).RemoveStateAsync(
+            "drain:corr-partial", Arg.Any<CancellationToken>());
+    }
+
     // --- Task 7.10: Rejection events drained with correct status ---
 
     [Fact]

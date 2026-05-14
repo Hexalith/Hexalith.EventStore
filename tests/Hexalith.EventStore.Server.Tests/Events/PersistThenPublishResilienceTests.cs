@@ -51,7 +51,7 @@ public class PersistThenPublishResilienceTests {
     }
 
     private static (AggregateActor Actor, IActorStateManager StateManager, IEventPublisher EventPublisher, ActorTimerManager TimerManager)
-        CreateActorWithTimerManager(EventDrainOptions? drainOptions = null) {
+        CreateActorWithTimerManager(EventDrainOptions? drainOptions = null, int domainEventCount = 1) {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
@@ -78,9 +78,12 @@ public class PersistThenPublishResilienceTests {
         _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
 
-        // Default: domain returns success with event
+        // Default: domain returns success with event(s)
+        TestEvent[] events = Enumerable.Range(0, domainEventCount)
+            .Select(_ => new TestEvent())
+            .ToArray();
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
-            .Returns(DomainResult.Success([new TestEvent()]));
+            .Returns(DomainResult.Success(events));
 
         return (actor, stateManager, eventPublisher, timerManager);
     }
@@ -139,6 +142,37 @@ public class PersistThenPublishResilienceTests {
             Arg.Is<UnpublishedEventsRecord>(r =>
                 r.StartSequence == 1 &&
                 r.EndSequence == 1),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommand_PartialPublishFailed_RecordContainsFullPersistedSequenceRange() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, IEventPublisher eventPublisher, _) =
+            CreateActorWithTimerManager(domainEventCount: 3);
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new EventPublishResult(false, 2, "Connection reset after event 2"));
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        result.Accepted.ShouldBeTrue();
+        await stateManager.Received().SetStateAsync(
+            Arg.Is<string>(s => s.StartsWith("drain:")),
+            Arg.Is<UnpublishedEventsRecord>(r =>
+                r.CorrelationId == envelope.CorrelationId
+                && r.EventCount == 3
+                && r.StartSequence == 1
+                && r.EndSequence == 3
+                && r.RetryCount == 0
+                && r.LastFailureReason == "Connection reset after event 2"),
             Arg.Any<CancellationToken>());
     }
 
