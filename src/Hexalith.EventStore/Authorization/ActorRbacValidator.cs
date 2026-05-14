@@ -78,7 +78,10 @@ public partial class ActorRbacValidator(
         }
 
         Log.ActorRbacValidationDenied(logger, "RbacAccessDenied", userId, tenantId, domain, messageType, messageCategory, response.Reason);
-        return RbacValidationResult.Denied(response.Reason ?? "RBAC access denied by actor.");
+        string reason = response.Reason ?? "RBAC access denied by actor.";
+        return RbacValidationResult.Denied(
+            reason,
+            response.ReasonCode ?? AuthorizationReasonCodeMapper.RbacFromText(reason));
     }
 
     private static partial class Log {

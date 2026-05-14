@@ -210,7 +210,7 @@ public class SecurityAuditLoggingTests {
         };
 
         using var payloadDocument = JsonDocument.Parse("{\"amount\":42}");
-        var request = new SubmitCommandRequest(
+        var request = new Hexalith.EventStore.Contracts.Commands.SubmitCommandRequest(
             MessageId: "msg-audit-2",
             Tenant: "tenant-a",
             Domain: "billing",
@@ -249,7 +249,7 @@ public class SecurityAuditLoggingTests {
         const string maliciousExtension = "<script>alert('xss')</script>";
 
         using var payloadDocument = JsonDocument.Parse("{\"amount\":42}");
-        var request = new SubmitCommandRequest(
+        var request = new Hexalith.EventStore.Contracts.Commands.SubmitCommandRequest(
             MessageId: "msg-audit-3",
             Tenant: "tenant-a",
             Domain: "billing",

@@ -1,6 +1,7 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.ErrorHandling;
 
 using Microsoft.AspNetCore.Http;
@@ -81,6 +82,8 @@ public class AuthorizationServiceUnavailableHandlerTests {
         problem.Title.ShouldBe("Service Unavailable");
         problem.Type.ShouldBe(ProblemTypeUris.ServiceUnavailable);
         problem.Detail.ShouldBe("The command processing pipeline is temporarily unavailable. Please retry after the specified interval.");
+        problem.Extensions[AuthorizationProblemDetailsExtensions.ReasonCode]!.ToString().ShouldBe(AuthorizationReasonCodes.AuthorizationServiceUnavailable);
+        problem.Extensions["retryAfter"]!.ToString().ShouldBe("30");
 
         // Verify no actor details leaked
         string body = await ReadResponseBody(context);

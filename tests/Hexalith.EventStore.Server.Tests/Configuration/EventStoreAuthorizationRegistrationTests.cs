@@ -41,6 +41,7 @@ public class EventStoreAuthorizationRegistrationTests {
 
         // Actor-based validators require IActorProxyFactory in the container
         _ = services.AddSingleton(Substitute.For<IActorProxyFactory>());
+        _ = services.AddSingleton(Substitute.For<Dapr.Client.DaprClient>());
 
         _ = services.AddEventStore();
         configureServices?.Invoke(services);

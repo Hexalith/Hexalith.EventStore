@@ -1,5 +1,6 @@
 
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Server.Pipeline.Commands;
@@ -45,7 +46,8 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
                 tenant,
                 null,
                 null,
-                "User is not authenticated.");
+                "User is not authenticated.",
+                AuthorizationReasonCodes.AuthenticationRequired);
         }
 
         string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
@@ -67,7 +69,8 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
                 tenantReason, sourceIp);
             throw new CommandAuthorizationException(
                 tenant, domain, messageType,
-                tenantReason);
+                tenantReason,
+                tenantResult.ReasonCode ?? AuthorizationReasonCodeMapper.TenantFromText(tenantReason));
         }
 
         // RBAC validation (was inline domain + permission checks)
@@ -91,7 +94,8 @@ public partial class AuthorizationBehavior<TRequest, TResponse>(
                 rbacReason, sourceIp);
             throw new CommandAuthorizationException(
                 tenant, domain, messageType,
-                rbacReason);
+                rbacReason,
+                rbacResult.ReasonCode ?? AuthorizationReasonCodeMapper.RbacFromText(rbacReason));
         }
 
         Log.AuthorizationPassed(

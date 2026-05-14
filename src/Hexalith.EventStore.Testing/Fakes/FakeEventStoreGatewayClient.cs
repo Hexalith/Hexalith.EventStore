@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using Hexalith.EventStore.Client.Gateway;
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Queries;
 
@@ -51,6 +52,39 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
     /// </summary>
     public EventStoreGatewayException? QueryException { get; set; }
 
+    /// <summary>
+    /// Configures the fake command path to throw a deterministic authorization failure.
+    /// </summary>
+    /// <param name="reasonCode">The stable authorization reason code.</param>
+    /// <param name="tenantId">The tenant identifier safe to expose to test code.</param>
+    /// <param name="detail">The safe ProblemDetails detail.</param>
+    public void DenyCommands(string reasonCode, string tenantId, string detail = "Authorization failed.") =>
+        CommandException = CreateAuthorizationException(reasonCode, tenantId, detail);
+
+    /// <summary>
+    /// Configures the fake query path to throw a deterministic authorization failure.
+    /// </summary>
+    /// <param name="reasonCode">The stable authorization reason code.</param>
+    /// <param name="tenantId">The tenant identifier safe to expose to test code.</param>
+    /// <param name="detail">The safe ProblemDetails detail.</param>
+    public void DenyQueries(string reasonCode, string tenantId, string detail = "Authorization failed.") =>
+        QueryException = CreateAuthorizationException(reasonCode, tenantId, detail);
+
+    /// <summary>
+    /// Configures both command and query paths to throw an authorization-service unavailable failure.
+    /// </summary>
+    public void SetAuthorizationUnavailable() {
+        var exception = new EventStoreGatewayException(
+            503,
+            "Service Unavailable",
+            "https://hexalith.io/problems/service-unavailable",
+            "The command processing pipeline is temporarily unavailable. Please retry after the specified interval.",
+            reasonCode: AuthorizationReasonCodes.AuthorizationServiceUnavailable,
+            retryAfterSeconds: 30);
+        CommandException = exception;
+        QueryException = exception;
+    }
+
     /// <inheritdoc />
     public Task<SubmitCommandResponse> SubmitCommandAsync(
         SubmitCommandRequest request,
@@ -98,6 +132,20 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
             ? result.Payload.Value.Deserialize<T>(JsonOptions)
             : default;
         return new EventStoreQueryResult<T>(result.CorrelationId, payload, IsNotModified: false, result.ETag);
+    }
+
+    private static EventStoreGatewayException CreateAuthorizationException(string reasonCode, string tenantId, string detail) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reasonCode);
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(detail);
+
+        return new EventStoreGatewayException(
+            403,
+            "Forbidden",
+            "https://hexalith.io/problems/forbidden",
+            detail,
+            reasonCode: reasonCode,
+            tenantId: tenantId);
     }
 }
 

@@ -6,7 +6,8 @@ namespace Hexalith.EventStore.Authorization;
 /// </summary>
 /// <param name="IsAuthorized">Whether the tenant access is authorized.</param>
 /// <param name="Reason">The reason for denial, or null if authorized.</param>
-public record TenantValidationResult(bool IsAuthorized, string? Reason = null) {
+/// <param name="ReasonCode">Stable machine-readable reason code for denial, or null if authorized.</param>
+public record TenantValidationResult(bool IsAuthorized, string? Reason = null, string? ReasonCode = null) {
     /// <summary>
     /// Gets an authorized result.
     /// </summary>
@@ -17,5 +18,6 @@ public record TenantValidationResult(bool IsAuthorized, string? Reason = null) {
     /// </summary>
     /// <param name="reason">The reason for denial.</param>
     /// <returns>A denied <see cref="TenantValidationResult"/>.</returns>
-    public static TenantValidationResult Denied(string reason) => new(false, reason);
+    /// <param name="reasonCode">The stable reason code for denial.</param>
+    public static TenantValidationResult Denied(string reason, string? reasonCode = null) => new(false, reason, reasonCode);
 }

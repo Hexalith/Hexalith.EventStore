@@ -86,7 +86,9 @@ public partial class CommandValidationController(
                 tenantResult.Reason ?? "Tenant access denied.", "tenant");
 
             return Ok(new PreflightValidationResult(
-                false, tenantResult.Reason ?? "Tenant access denied."));
+                false,
+                tenantResult.Reason ?? "Tenant access denied.",
+                tenantResult.ReasonCode ?? AuthorizationReasonCodeMapper.TenantFromText(tenantResult.Reason)));
         }
 
         // RBAC validation
@@ -103,7 +105,9 @@ public partial class CommandValidationController(
                 rbacResult.Reason ?? "RBAC check failed.", "rbac");
 
             return Ok(new PreflightValidationResult(
-                false, rbacResult.Reason ?? "RBAC check failed."));
+                false,
+                rbacResult.Reason ?? "RBAC check failed.",
+                rbacResult.ReasonCode ?? AuthorizationReasonCodeMapper.RbacFromText(rbacResult.Reason)));
         }
 
         Log.PreflightPassed(logger, correlationId, request.Tenant,

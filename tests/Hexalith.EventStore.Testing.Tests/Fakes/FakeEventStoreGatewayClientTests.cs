@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Gateway;
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Testing.Fakes;
@@ -54,6 +55,51 @@ public class FakeEventStoreGatewayClientTests {
         response.IsNotModified.ShouldBeTrue();
         response.Payload.ShouldBeNull();
         response.ETag.ShouldBe("etag-1");
+    }
+
+    [Fact]
+    public async Task DenyCommands_ConfiguresReasonCodeAndTenantId() {
+        var fake = new FakeEventStoreGatewayClient();
+        fake.DenyCommands(AuthorizationReasonCodes.TenantDisabled, "tenant-a", "Tenant is disabled.");
+
+        EventStoreGatewayException ex = await Should.ThrowAsync<EventStoreGatewayException>(
+            () => fake.SubmitCommandAsync(CreateCommandRequest()));
+
+        ex.StatusCode.ShouldBe(403);
+        ex.ReasonCode.ShouldBe(AuthorizationReasonCodes.TenantDisabled);
+        ex.TenantId.ShouldBe("tenant-a");
+        ex.Detail.ShouldBe("Tenant is disabled.");
+    }
+
+    [Fact]
+    public async Task DenyQueries_ConfiguresReasonCodeAndTenantId() {
+        var fake = new FakeEventStoreGatewayClient();
+        fake.DenyQueries(AuthorizationReasonCodes.InsufficientPermission, "tenant-a");
+
+        EventStoreGatewayException ex = await Should.ThrowAsync<EventStoreGatewayException>(
+            () => fake.SubmitQueryAsync(CreateQueryRequest()));
+
+        ex.StatusCode.ShouldBe(403);
+        ex.ReasonCode.ShouldBe(AuthorizationReasonCodes.InsufficientPermission);
+        ex.TenantId.ShouldBe("tenant-a");
+    }
+
+    [Fact]
+    public async Task SetAuthorizationUnavailable_ConfiguresRetryableFailureForBothPaths() {
+        var fake = new FakeEventStoreGatewayClient();
+        fake.SetAuthorizationUnavailable();
+
+        EventStoreGatewayException command = await Should.ThrowAsync<EventStoreGatewayException>(
+            () => fake.SubmitCommandAsync(CreateCommandRequest()));
+        EventStoreGatewayException query = await Should.ThrowAsync<EventStoreGatewayException>(
+            () => fake.SubmitQueryAsync(CreateQueryRequest()));
+
+        command.StatusCode.ShouldBe(503);
+        command.ReasonCode.ShouldBe(AuthorizationReasonCodes.AuthorizationServiceUnavailable);
+        command.RetryAfterSeconds.ShouldBe(30);
+        query.StatusCode.ShouldBe(503);
+        query.ReasonCode.ShouldBe(AuthorizationReasonCodes.AuthorizationServiceUnavailable);
+        query.RetryAfterSeconds.ShouldBe(30);
     }
 
     private static SubmitCommandRequest CreateCommandRequest() {

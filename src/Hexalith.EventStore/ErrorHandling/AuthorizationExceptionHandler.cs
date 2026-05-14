@@ -2,6 +2,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Middleware;
 
 using Microsoft.AspNetCore.Diagnostics;
@@ -35,13 +36,14 @@ public partial class AuthorizationExceptionHandler(ILogger<AuthorizationExceptio
         var problemDetails = new ProblemDetails {
             Status = StatusCodes.Status403Forbidden,
             Title = "Forbidden",
-            Type = ProblemTypeUris.Forbidden,
+            Type = ProblemTypeUris.FromAuthorizationReasonCode(authException.ReasonCode),
             Detail = detail,
             Instance = httpContext.Request.Path,
             Extensions =
             {
                 ["correlationId"] = correlationId,
                 ["tenantId"] = authException.TenantId,
+                [AuthorizationProblemDetailsExtensions.ReasonCode] = authException.ReasonCode,
             },
         };
 

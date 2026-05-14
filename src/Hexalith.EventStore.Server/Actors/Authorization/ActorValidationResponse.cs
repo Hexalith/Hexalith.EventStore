@@ -7,4 +7,5 @@ namespace Hexalith.EventStore.Server.Actors.Authorization;
 /// </summary>
 /// <param name="IsAuthorized">Whether the authorization check passed.</param>
 /// <param name="Reason">The reason for denial, or null if authorized.</param>
-public record ActorValidationResponse(bool IsAuthorized, string? Reason = null);
+/// <param name="ReasonCode">The stable reason code for denial, or null if authorized.</param>
+public record ActorValidationResponse(bool IsAuthorized, string? Reason = null, string? ReasonCode = null);

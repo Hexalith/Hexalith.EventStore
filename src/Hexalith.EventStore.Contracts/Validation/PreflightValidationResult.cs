@@ -6,6 +6,8 @@ namespace Hexalith.EventStore.Contracts.Validation;
 /// </summary>
 /// <param name="IsAuthorized">Whether the request is authorized to proceed.</param>
 /// <param name="Reason">Optional reason when authorization is denied.</param>
+/// <param name="ReasonCode">Optional stable machine-readable reason code when authorization is denied.</param>
 public record PreflightValidationResult(
     bool IsAuthorized,
-    string? Reason = null);
+    string? Reason = null,
+    string? ReasonCode = null);

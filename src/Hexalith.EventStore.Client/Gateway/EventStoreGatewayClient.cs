@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Queries;
 
@@ -143,6 +144,9 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         string? title = null;
         string? detail = null;
         string? correlationId = null;
+        string? reasonCode = null;
+        string? tenantId = null;
+        int? retryAfterSeconds = null;
         int statusCode = (int)response.StatusCode;
 
         if (IsJsonResponse(response)) {
@@ -161,6 +165,9 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 title = GetString(root, "title");
                 detail = GetString(root, "detail");
                 correlationId = GetString(root, "correlationId");
+                reasonCode = GetString(root, AuthorizationProblemDetailsExtensions.ReasonCode);
+                tenantId = GetString(root, "tenantId");
+                retryAfterSeconds = GetInt32(root, "retryAfter");
             }
             catch (JsonException) {
                 // Fall back to HTTP status metadata below.
@@ -172,7 +179,10 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             title ?? response.ReasonPhrase ?? "EventStore gateway error",
             type,
             detail,
-            correlationId);
+            correlationId,
+            reasonCode,
+            tenantId,
+            retryAfterSeconds);
     }
 
     private static bool IsJsonResponse(HttpResponseMessage response) {
@@ -185,6 +195,11 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     private static string? GetString(JsonElement root, string propertyName)
         => root.TryGetProperty(propertyName, out JsonElement property) && property.ValueKind == JsonValueKind.String
             ? property.GetString()
+            : null;
+
+    private static int? GetInt32(JsonElement root, string propertyName)
+        => root.TryGetProperty(propertyName, out JsonElement property) && property.TryGetInt32(out int value)
+            ? value
             : null;
 
     private static class StatusCodes {

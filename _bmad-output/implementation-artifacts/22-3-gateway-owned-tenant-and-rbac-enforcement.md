@@ -1,6 +1,6 @@
 # Story 22.3: Gateway-Owned Tenant and RBAC Enforcement
 
-Status: ready-for-dev
+Status: in-progress
 
 Context created: 2026-05-12
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`

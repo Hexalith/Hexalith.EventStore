@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Gateway;
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Queries;
 
@@ -88,7 +89,9 @@ public class EventStoreGatewayClientTests {
               "title": "Insufficient Permissions",
               "status": 403,
               "detail": "Missing role.",
-              "correlationId": "corr-denied"
+              "correlationId": "corr-denied",
+              "tenantId": "tenant-a",
+              "reasonCode": "insufficient_role"
             }
             """;
         using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.Forbidden, ProblemJson, "application/problem+json")));
@@ -102,6 +105,31 @@ public class EventStoreGatewayClientTests {
         ex.Type.ShouldBe("https://hexalith.io/problems/insufficient-permissions");
         ex.Detail.ShouldBe("Missing role.");
         ex.CorrelationId.ShouldBe("corr-denied");
+        ex.TenantId.ShouldBe("tenant-a");
+        ex.ReasonCode.ShouldBe(AuthorizationReasonCodes.InsufficientRole);
+    }
+
+    [Fact]
+    public async Task SubmitCommandAsync_WithRetryAfterProblemDetails_ParsesReasonCodeAndRetryAfter() {
+        const string ProblemJson = """
+            {
+              "type": "https://hexalith.io/problems/service-unavailable",
+              "title": "Service Unavailable",
+              "status": 503,
+              "detail": "Authorization is unavailable.",
+              "reasonCode": "authorization_service_unavailable",
+              "retryAfter": 30
+            }
+            """;
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.ServiceUnavailable, ProblemJson, "application/problem+json")));
+        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
+
+        EventStoreGatewayException ex = await Assert.ThrowsAsync<EventStoreGatewayException>(
+            () => client.SubmitCommandAsync(CreateCommandRequest()));
+
+        ex.StatusCode.ShouldBe(503);
+        ex.ReasonCode.ShouldBe(AuthorizationReasonCodes.AuthorizationServiceUnavailable);
+        ex.RetryAfterSeconds.ShouldBe(30);
     }
 
     private static SubmitCommandRequest CreateCommandRequest() {

@@ -2,6 +2,7 @@
 using System.Security.Claims;
 
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Validation;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.ErrorHandling;
@@ -81,6 +82,7 @@ public class CommandValidationControllerTests {
         PreflightValidationResult validationResult = okResult.Value.ShouldBeOfType<PreflightValidationResult>();
         validationResult.IsAuthorized.ShouldBeFalse();
         validationResult.Reason.ShouldBe("Not authorized for tenant 'acme'.");
+        validationResult.ReasonCode.ShouldBe(AuthorizationReasonCodes.PrincipalNotMember);
     }
 
     [Fact]
@@ -101,6 +103,7 @@ public class CommandValidationControllerTests {
         PreflightValidationResult validationResult = okResult.Value.ShouldBeOfType<PreflightValidationResult>();
         validationResult.IsAuthorized.ShouldBeFalse();
         validationResult.Reason.ShouldBe("Not authorized for command type 'CreateOrder' in domain 'orders'.");
+        validationResult.ReasonCode.ShouldBe(AuthorizationReasonCodes.InsufficientPermission);
     }
 
     [Fact]

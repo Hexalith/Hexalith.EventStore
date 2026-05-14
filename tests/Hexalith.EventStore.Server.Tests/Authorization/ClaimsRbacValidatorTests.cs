@@ -2,6 +2,7 @@
 using System.Security.Claims;
 
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Authorization;
 
 using Shouldly;
 
@@ -31,6 +32,38 @@ public class ClaimsRbacValidatorTests {
         }
 
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+    }
+
+    [Fact]
+    public async Task ValidateAsync_WrongDomain_ReturnsInsufficientPermissionReasonCode() {
+        ClaimsPrincipal principal = CreatePrincipal(domains: ["billing"]);
+
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal,
+            "acme",
+            "orders",
+            "CreateOrder",
+            "command",
+            CancellationToken.None);
+
+        result.IsAuthorized.ShouldBeFalse();
+        result.ReasonCode.ShouldBe(AuthorizationReasonCodes.InsufficientPermission);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_WrongPermission_ReturnsInsufficientPermissionReasonCode() {
+        ClaimsPrincipal principal = CreatePrincipal(permissions: ["OtherCommand"]);
+
+        RbacValidationResult result = await _validator.ValidateAsync(
+            principal,
+            "acme",
+            "orders",
+            "CreateOrder",
+            "command",
+            CancellationToken.None);
+
+        result.IsAuthorized.ShouldBeFalse();
+        result.ReasonCode.ShouldBe(AuthorizationReasonCodes.InsufficientPermission);
     }
 
     // --- Domain authorization tests ---

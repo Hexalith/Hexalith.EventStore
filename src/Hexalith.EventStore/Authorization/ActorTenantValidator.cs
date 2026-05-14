@@ -74,7 +74,10 @@ public partial class ActorTenantValidator(
         }
 
         Log.ActorTenantValidationDenied(logger, "TenantAccessDenied", userId, tenantId, response.Reason);
-        return TenantValidationResult.Denied(response.Reason ?? "Tenant access denied by actor.");
+        string reason = response.Reason ?? "Tenant access denied by actor.";
+        return TenantValidationResult.Denied(
+            reason,
+            response.ReasonCode ?? AuthorizationReasonCodeMapper.TenantFromText(reason));
     }
 
     private static partial class Log {

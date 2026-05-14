@@ -2,6 +2,7 @@
 using System.Security.Claims;
 
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Authorization;
 
 using Shouldly;
 
@@ -21,6 +22,30 @@ public class ClaimsTenantValidatorTests {
         }
 
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+    }
+
+    [Fact]
+    public async Task ValidateAsync_NoTenantClaims_ReturnsTenantMissingReasonCode() {
+        var validator = new ClaimsTenantValidator();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([], "Bearer"));
+
+        TenantValidationResult result = await validator.ValidateAsync(principal, "acme", CancellationToken.None);
+
+        result.IsAuthorized.ShouldBeFalse();
+        result.ReasonCode.ShouldBe(AuthorizationReasonCodes.TenantMissing);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_WrongTenant_ReturnsPrincipalNotMemberReasonCode() {
+        var validator = new ClaimsTenantValidator();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("eventstore:tenant", "other")],
+            "Bearer"));
+
+        TenantValidationResult result = await validator.ValidateAsync(principal, "acme", CancellationToken.None);
+
+        result.IsAuthorized.ShouldBeFalse();
+        result.ReasonCode.ShouldBe(AuthorizationReasonCodes.PrincipalNotMember);
     }
 
     [Fact]

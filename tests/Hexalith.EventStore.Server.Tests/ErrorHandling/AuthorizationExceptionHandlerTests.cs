@@ -1,6 +1,7 @@
 
 using System.Text.Json;
 
+using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 
@@ -35,7 +36,12 @@ public class AuthorizationExceptionHandlerTests {
         DefaultHttpContext httpContext = CreateHttpContextWithBody();
         httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
         httpContext.Request.Path = "/api/v1/commands";
-        var exception = new CommandAuthorizationException("test-tenant", "test-domain", "CreateOrder", "Not authorized for domain 'test-domain'.");
+        var exception = new CommandAuthorizationException(
+            "test-tenant",
+            "test-domain",
+            "CreateOrder",
+            "Not authorized for domain 'test-domain'.",
+            AuthorizationReasonCodes.InsufficientPermission);
 
         // Act
         bool handled = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
@@ -49,11 +55,35 @@ public class AuthorizationExceptionHandlerTests {
         _ = problemDetails.ShouldNotBeNull();
         problemDetails.Status.ShouldBe(403);
         problemDetails.Title.ShouldBe("Forbidden");
-        problemDetails.Type.ShouldBe(ProblemTypeUris.Forbidden);
+        problemDetails.Type.ShouldBe(ProblemTypeUris.InsufficientPermission);
         problemDetails.Detail.ShouldBe("Not authorized for tenant 'test-tenant'. Not authorized for domain 'test-domain'.");
         problemDetails.Instance.ShouldBe("/api/v1/commands");
         problemDetails.Extensions.ShouldContainKey("correlationId");
         problemDetails.Extensions.ShouldContainKey("tenantId");
+        problemDetails.Extensions.ShouldContainKey(AuthorizationProblemDetailsExtensions.ReasonCode);
+        problemDetails.Extensions[AuthorizationProblemDetailsExtensions.ReasonCode]!.ToString().ShouldBe(AuthorizationReasonCodes.InsufficientPermission);
+    }
+
+    [Fact]
+    public async Task AuthorizationExceptionHandler_TenantDisabledReason_UsesStableTypeUriAndReasonCode() {
+        DefaultHttpContext httpContext = CreateHttpContextWithBody();
+        httpContext.Items[CorrelationIdMiddleware.HttpContextKey] = "test-correlation-id";
+        httpContext.Request.Path = "/api/v1/queries";
+        var exception = new CommandAuthorizationException(
+            "test-tenant",
+            "orders",
+            "GetOrder",
+            "Tenant is disabled.",
+            AuthorizationReasonCodes.TenantDisabled);
+
+        bool handled = await _handler.TryHandleAsync(httpContext, exception, CancellationToken.None);
+
+        handled.ShouldBeTrue();
+        _ = httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
+        ProblemDetails? problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(httpContext.Response.Body);
+        _ = problemDetails.ShouldNotBeNull();
+        problemDetails.Type.ShouldBe(ProblemTypeUris.TenantDisabled);
+        problemDetails.Extensions[AuthorizationProblemDetailsExtensions.ReasonCode]!.ToString().ShouldBe(AuthorizationReasonCodes.TenantDisabled);
     }
 
     [Fact]
@@ -210,6 +240,7 @@ public class AuthorizationExceptionHandlerTests {
         ex.Domain.ShouldBe("orders");
         ex.CommandType.ShouldBe("PlaceOrder");
         ex.Reason.ShouldBe("Not authorized for domain 'orders'.");
+        ex.ReasonCode.ShouldBe(AuthorizationReasonCodes.InsufficientPermission);
     }
 
     [Fact]
