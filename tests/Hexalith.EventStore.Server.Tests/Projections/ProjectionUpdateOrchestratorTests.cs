@@ -965,7 +965,7 @@ public class ProjectionUpdateOrchestratorTests {
     // --- Test 10: AC 2 - ProjectionEventDto mapping verified via construction ---
 
     [Fact]
-    public void ProjectionEventDto_MapsOnlyPublicFields_FromEventEnvelope() {
+    public void ProjectionEventDto_MapsProjectionFields_FromEventEnvelope() {
         // This test verifies the mapping logic at the DTO level.
         // The actual mapping in the orchestrator follows this exact pattern.
         DateTimeOffset testTimestamp = new(2026, 3, 20, 12, 0, 0, TimeSpan.Zero);
@@ -995,15 +995,19 @@ public class ProjectionUpdateOrchestratorTests {
             envelope.SerializationFormat,
             envelope.SequenceNumber,
             envelope.Timestamp,
-            envelope.CorrelationId);
+            envelope.CorrelationId,
+            envelope.MessageId,
+            envelope.UserId);
 
-        // Assert - Only the 6 public fields are mapped
+        // Assert
         mapped.EventTypeName.ShouldBe("CounterIncremented");
         mapped.Payload.ShouldBe(new byte[] { 10, 20, 30 });
         mapped.SerializationFormat.ShouldBe("json");
         mapped.SequenceNumber.ShouldBe(5);
         mapped.Timestamp.ShouldBe(testTimestamp);
         mapped.CorrelationId.ShouldBe("corr-map-test");
+        mapped.MessageId.ShouldBe("msg-1");
+        mapped.UserId.ShouldBe("user-secret");
     }
 
     // --- Test 11: AC 2 - QueryActorIdHelper derives correct projection actor ID ---
@@ -1091,6 +1095,8 @@ public class ProjectionUpdateOrchestratorTests {
         body.AggregateId.ShouldBe("agg-001");
         body.Events.Length.ShouldBe(events.Length);
         body.Events.Select(e => e.SequenceNumber).ShouldBe(new long[] { 2, 7, 11 });
+        body.Events.Select(e => e.MessageId).ShouldBe(new string?[] { "msg-2", "msg-7", "msg-11" });
+        body.Events.Select(e => e.UserId).ShouldBe(new string?[] { "user-1", "user-1", "user-1" });
     }
 
     [Fact]

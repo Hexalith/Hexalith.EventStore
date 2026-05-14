@@ -145,7 +145,9 @@ public partial class ProjectionUpdateOrchestrator(
                     e.SerializationFormat,
                     e.SequenceNumber,
                     e.Timestamp,
-                    e.CorrelationId);
+                    e.CorrelationId,
+                    e.MessageId,
+                    e.UserId);
             }
 
             // Step 4: Invoke domain service /project endpoint via DAPR
