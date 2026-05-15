@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Contracts.Streams;
 
 namespace Hexalith.EventStore.Testing.Fakes;
 
@@ -19,6 +20,7 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
 
     private readonly ConcurrentQueue<SubmitCommandRequest> _submittedCommands = new();
     private readonly ConcurrentQueue<SubmittedQuery> _submittedQueries = new();
+    private readonly ConcurrentQueue<StreamReadRequest> _submittedStreamReads = new();
 
     /// <summary>
     /// Gets the command requests submitted to the fake.
@@ -29,6 +31,11 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
     /// Gets the query requests submitted to the fake.
     /// </summary>
     public IReadOnlyCollection<SubmittedQuery> SubmittedQueries => [.. _submittedQueries];
+
+    /// <summary>
+    /// Gets the stream read requests submitted to the fake.
+    /// </summary>
+    public IReadOnlyCollection<StreamReadRequest> SubmittedStreamReads => [.. _submittedStreamReads];
 
     /// <summary>
     /// Gets or sets the command response returned by the fake.
@@ -42,6 +49,12 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
         = new("test-correlation-id", JsonSerializer.SerializeToElement(new { }, JsonOptions), IsNotModified: false, ETag: null);
 
     /// <summary>
+    /// Gets or sets the stream read page returned by the fake.
+    /// </summary>
+    public StreamReadPage StreamReadPage { get; set; }
+        = new("test-tenant", "test-domain", null, [], new StreamReadMetadata(0, null, 0, 0, 0, false, null));
+
+    /// <summary>
     /// Gets or sets the exception thrown for command submissions.
     /// </summary>
     public EventStoreGatewayException? CommandException { get; set; }
@@ -50,6 +63,11 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
     /// Gets or sets the exception thrown for query submissions.
     /// </summary>
     public EventStoreGatewayException? QueryException { get; set; }
+
+    /// <summary>
+    /// Gets or sets the exception thrown for stream reads.
+    /// </summary>
+    public EventStoreGatewayException? StreamReadException { get; set; }
 
     /// <summary>
     /// Configures the fake to return a command accepted response.
@@ -120,6 +138,103 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
         return this;
     }
 
+    /// <summary>
+    /// Configures the fake to return a stream read page.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureStreamReadSuccess(StreamReadPage page) {
+        ArgumentNullException.ThrowIfNull(page);
+        StreamReadException = null;
+        StreamReadPage = page;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the fake to throw a stream read gateway failure.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureStreamReadFailure(EventStoreGatewayException exception) {
+        ArgumentNullException.ThrowIfNull(exception);
+        StreamReadException = exception;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the fake to return an empty stream page.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureStreamReadEmpty(string tenant, string domain, string? aggregateId = null) {
+        StreamReadException = null;
+        StreamReadPage = new StreamReadPage(
+            tenant,
+            domain,
+            aggregateId,
+            [],
+            new StreamReadMetadata(0, null, 0, 0, 0, false, null));
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the fake to return a page with a next-continuation token.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureStreamReadContinuation(StreamReadPage page, string nextContinuationToken) {
+        ArgumentNullException.ThrowIfNull(page);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nextContinuationToken);
+        StreamReadException = null;
+        StreamReadPage = page with {
+            Metadata = page.Metadata with {
+                IsTruncated = true,
+                NextContinuationToken = new ReplayContinuationToken(nextContinuationToken),
+            },
+        };
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the fake to throw an invalid range failure.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureStreamReadInvalidRange(string tenant)
+        => ConfigureStreamReadFailure(CreateStreamFailure(400, "Bad Request", tenant, StreamReplayReasonCodes.InvalidRange));
+
+    /// <summary>
+    /// Configures the fake to throw an invalid continuation failure.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureStreamReadInvalidContinuation(string tenant)
+        => ConfigureStreamReadFailure(CreateStreamFailure(400, "Bad Request", tenant, StreamReplayReasonCodes.InvalidContinuation));
+
+    /// <summary>
+    /// Configures the fake to throw an unauthorized tenant failure.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureStreamReadUnauthorizedTenant(string tenant)
+        => ConfigureStreamReadFailure(CreateStreamFailure(403, "Forbidden", tenant, StreamReplayReasonCodes.UnauthorizedTenant));
+
+    /// <summary>
+    /// Configures the fake to throw a missing stream failure.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureStreamReadMissingStream(string tenant)
+        => ConfigureStreamReadFailure(CreateStreamFailure(404, "Not Found", tenant, StreamReplayReasonCodes.MissingStream));
+
+    /// <summary>
+    /// Configures the fake to throw a checkpoint conflict failure.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureStreamReadCheckpointConflict(string tenant)
+        => ConfigureStreamReadFailure(CreateStreamFailure(409, "Conflict", tenant, StreamReplayReasonCodes.CheckpointConflict));
+
+    /// <summary>
+    /// Configures the fake to throw a paused rebuild failure.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureStreamReadPausedRebuild(string tenant)
+        => ConfigureStreamReadFailure(CreateStreamFailure(409, "Conflict", tenant, StreamReplayReasonCodes.RebuildPaused));
+
+    /// <summary>
+    /// Configures the fake to throw a canceled rebuild failure.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureStreamReadCanceledRebuild(string tenant)
+        => ConfigureStreamReadFailure(CreateStreamFailure(409, "Conflict", tenant, StreamReplayReasonCodes.RebuildCanceled));
+
+    /// <summary>
+    /// Configures the fake to throw a service-unavailable failure.
+    /// </summary>
+    public FakeEventStoreGatewayClient ConfigureStreamReadUnavailable(string tenant)
+        => ConfigureStreamReadFailure(CreateStreamFailure(503, "Service Unavailable", tenant, StreamReplayReasonCodes.ServiceUnavailable));
+
     /// <inheritdoc />
     public Task<SubmitCommandResponse> SubmitCommandAsync(
         SubmitCommandRequest request,
@@ -183,6 +298,34 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
             Metadata = result.Metadata ?? new QueryResponseMetadata(ETag: result.ETag, IsNotModified: false),
         };
     }
+
+    /// <inheritdoc />
+    public Task<StreamReadPage> ReadStreamAsync(
+        StreamReadRequest request,
+        CancellationToken cancellationToken = default) {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(request);
+        _submittedStreamReads.Enqueue(request);
+
+        if (StreamReadException is not null) {
+            throw StreamReadException;
+        }
+
+        return Task.FromResult(StreamReadPage);
+    }
+
+    private static EventStoreGatewayException CreateStreamFailure(
+        int statusCode,
+        string title,
+        string tenant,
+        string reasonCode)
+        => new(
+            statusCode,
+            title,
+            type: $"https://hexalith.io/problems/stream-replay/{reasonCode}",
+            detail: $"Stream replay failed with reason '{reasonCode}'.",
+            tenantId: tenant,
+            reasonCode: reasonCode);
 }
 
 /// <summary>

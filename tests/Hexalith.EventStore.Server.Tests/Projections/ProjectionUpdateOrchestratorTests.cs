@@ -9,6 +9,7 @@ using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
@@ -61,7 +62,8 @@ public class ProjectionUpdateOrchestratorTests {
         IProjectionCheckpointTracker? checkpointTracker = null,
         DaprClient? daprClient = null,
         IHttpClientFactory? httpClientFactory = null,
-        ILogger<ProjectionUpdateOrchestrator>? logger = null) {
+        ILogger<ProjectionUpdateOrchestrator>? logger = null,
+        IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         daprClient ??= Substitute.For<DaprClient>();
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
@@ -71,7 +73,7 @@ public class ProjectionUpdateOrchestratorTests {
                 .Returns(0);
         }
         IOptions<ProjectionOptions> projectionOptions = Options.Create(new ProjectionOptions());
-        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, httpClientFactory ?? Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, logger ?? NullLogger<ProjectionUpdateOrchestrator>.Instance);
+        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, httpClientFactory ?? Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, logger ?? NullLogger<ProjectionUpdateOrchestrator>.Instance, rebuildCheckpointStore);
         return (sut, actorProxyFactory, daprClient, resolver, checkpointTracker);
     }
 
@@ -87,6 +89,36 @@ public class ProjectionUpdateOrchestratorTests {
     }
 
     // --- Test 1: AC 3 - No domain service registered ---
+
+    [Fact]
+    public async Task DeliverProjectionAsync_WithActiveOperatorRebuild_SkipsNormalDeliveryBeforeActorProxy() {
+        IProjectionRebuildCheckpointStore rebuildCheckpointStore = Substitute.For<IProjectionRebuildCheckpointStore>();
+        _ = rebuildCheckpointStore.ReadAsync(
+                Arg.Any<ProjectionRebuildCheckpointScope>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new ProjectionRebuildCheckpoint(
+                TestIdentity.TenantId,
+                TestIdentity.Domain,
+                TestIdentity.Domain,
+                null,
+                $"{TestIdentity.Domain}-rebuild",
+                5,
+                ProjectionRebuildStatus.Running,
+                DateTimeOffset.UtcNow,
+                null));
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(rebuildCheckpointStore: rebuildCheckpointStore);
+
+        await sut.DeliverProjectionAsync(TestIdentity);
+
+        _ = await rebuildCheckpointStore.Received(1).ReadAsync(
+            Arg.Is<ProjectionRebuildCheckpointScope>(scope =>
+                scope.Tenant == TestIdentity.TenantId
+                && scope.Domain == TestIdentity.Domain
+                && scope.ProjectionName == TestIdentity.Domain),
+            Arg.Any<CancellationToken>());
+        _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!);
+        _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
+    }
 
     [Fact]
     public async Task UpdateProjectionAsync_NoDomainServiceRegistered_ReturnsWithoutError() {

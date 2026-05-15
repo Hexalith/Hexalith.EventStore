@@ -93,6 +93,7 @@ Queries/
  SubmitQueryResponseTests.cs
 Replay/AggregateReconstructionRoundTripTests.cs
 Results/DomainResultTests.cs
+Streams/StreamReadContractTests.cs
 Validation/
  PreflightValidationResultTests.cs
  ValidateCommandRequestTests.cs

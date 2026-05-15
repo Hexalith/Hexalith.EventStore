@@ -466,8 +466,8 @@ Serialization/CommandEnvelopeSerializationTests.cs
  aspire.hosting.azure.operationalinsights/13.3.2/lib/net8.0/Aspire.Hosting.Azure.OperationalInsights.dll
  aspire.hosting.azure/13.3.2/lib/net8.0/Aspire.Hosting.Azure.dll
  aspire.hosting.docker/13.3.2/lib/net8.0/Aspire.Hosting.Docker.dll
- aspire.hosting.keycloak/13.2.2-preview.1.26207.2/lib/net8.0/Aspire.Hosting.Keycloak.dll
- aspire.hosting.kubernetes/13.2.2-preview.1.26207.2/lib/net8.0/Aspire.Hosting.Kubernetes.dll
+ aspire.hosting.keycloak/13.3.2-preview.1.26263.11/lib/net8.0/Aspire.Hosting.Keycloak.dll
+ aspire.hosting.kubernetes/13.3.2-preview.1.26263.11/lib/net8.0/Aspire.Hosting.Kubernetes.dll
  aspire.hosting.redis/13.3.2/lib/net8.0/Aspire.Hosting.Redis.dll
  aspire.hosting.testing/13.3.2/lib/net10.0/Aspire.Hosting.Testing.dll
  aspire.hosting/13.3.2/lib/net8.0/Aspire.Hosting.dll

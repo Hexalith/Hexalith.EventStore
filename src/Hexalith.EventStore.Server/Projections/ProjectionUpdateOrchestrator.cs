@@ -8,6 +8,7 @@ using Dapr.Actors.Client;
 using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
@@ -36,7 +37,8 @@ public partial class ProjectionUpdateOrchestrator(
     IDomainServiceResolver resolver,
     IProjectionCheckpointTracker checkpointTracker,
     IOptions<ProjectionOptions> projectionOptions,
-    ILogger<ProjectionUpdateOrchestrator> logger) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway {
+    ILogger<ProjectionUpdateOrchestrator> logger,
+    IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway {
     // Per-aggregate serialization across orchestrator instances. Entries are evicted and the
     // underlying SemaphoreSlim disposed when the last holder releases, so a multi-tenant server
     // with many short-lived aggregates does not accumulate kernel handles indefinitely.
@@ -69,6 +71,11 @@ public partial class ProjectionUpdateOrchestrator(
         using IDisposable projectionLock = await ProjectionLocks.AcquireAsync(identity.ActorId, cancellationToken).ConfigureAwait(false);
         try {
             Log.UpdateStarted(logger, identity.TenantId, identity.Domain, identity.AggregateId);
+
+            if (await HasActiveOperatorRebuildAsync(identity, cancellationToken).ConfigureAwait(false)) {
+                Log.PollerRebuildConflict(logger, identity.TenantId, identity.Domain, identity.AggregateId, StreamReplayReasonCodes.PollerRebuildConflict);
+                return;
+            }
 
             // Step 1: Resolve domain service registration
             DomainServiceRegistration? registration = await resolver
@@ -376,6 +383,41 @@ public partial class ProjectionUpdateOrchestrator(
                 ? ProjectionReasonCodes.ProjectUpstream5xx
                 : ProjectionReasonCodes.ProjectUnexpectedStatus;
 
+    private async Task<bool> HasActiveOperatorRebuildAsync(
+        AggregateIdentity identity,
+        CancellationToken cancellationToken) {
+        if (rebuildCheckpointStore is null) {
+            return false;
+        }
+
+        try {
+            ProjectionRebuildCheckpoint? checkpoint = await rebuildCheckpointStore
+                .ReadAsync(
+                    new ProjectionRebuildCheckpointScope(
+                        identity.TenantId,
+                        identity.Domain,
+                        identity.Domain,
+                        AggregateId: null,
+                        OperationId: $"{identity.Domain}-rebuild"),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            return checkpoint?.Status is
+                ProjectionRebuildStatus.Running
+                or ProjectionRebuildStatus.Pausing
+                or ProjectionRebuildStatus.Paused
+                or ProjectionRebuildStatus.Resuming
+                or ProjectionRebuildStatus.Retrying
+                or ProjectionRebuildStatus.Canceling;
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            Log.RebuildCheckpointReadFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
+            return false;
+        }
+    }
+
     private static partial class Log {
         [LoggerMessage(
             EventId = 1110,
@@ -466,5 +508,17 @@ public partial class ProjectionUpdateOrchestrator(
             Level = LogLevel.Warning,
             Message = "Projection checkpoint drift detected: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ReasonCode={ReasonCode}, LastDeliveredSequence={LastDeliveredSequence}, HighestEventSequence={HighestEventSequence}, Stage=ProjectionCheckpointDrift")]
         public static partial void CheckpointDriftDetected(ILogger logger, string tenantId, string domain, string aggregateId, string reasonCode, long lastDeliveredSequence, long highestEventSequence);
+
+        [LoggerMessage(
+            EventId = 1145,
+            Level = LogLevel.Information,
+            Message = "Projection delivery skipped because an operator rebuild is active: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ReasonCode={ReasonCode}, Stage=ProjectionPollerRebuildConflict")]
+        public static partial void PollerRebuildConflict(ILogger logger, string tenantId, string domain, string aggregateId, string reasonCode);
+
+        [LoggerMessage(
+            EventId = 1146,
+            Level = LogLevel.Warning,
+            Message = "Projection rebuild checkpoint read failed while checking poller/rebuild conflict: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ExceptionType={ExceptionType}, Stage=ProjectionRebuildConflictCheckFailed")]
+        public static partial void RebuildCheckpointReadFailed(ILogger logger, Exception exception, string tenantId, string domain, string aggregateId, string exceptionType);
     }
 }

@@ -49,6 +49,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<IProjectionChangeNotifier, DaprProjectionChangeNotifier>();
         services.TryAddSingleton<IProjectionChangedBroadcaster, NoOpProjectionChangedBroadcaster>();
         services.TryAddSingleton<IProjectionCheckpointTracker, ProjectionCheckpointTracker>();
+        services.TryAddSingleton<IProjectionRebuildCheckpointStore, ProjectionRebuildCheckpointStore>();
         services.TryAddSingleton<IProjectionPollerTickSource, PeriodicProjectionPollerTickSource>();
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IValidateOptions<ProjectionChangeNotifierOptions>, ValidateProjectionChangeNotifierOptions>();

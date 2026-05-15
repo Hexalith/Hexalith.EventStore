@@ -126,6 +126,16 @@ Results/
 Security/
  IEventPayloadProtectionService.cs
  PayloadProtectionResult.cs
+Streams/
+ ProjectionRebuildCheckpoint.cs
+ ProjectionRebuildOperation.cs
+ ProjectionRebuildStatus.cs
+ ReplayContinuationToken.cs
+ StreamReadEvent.cs
+ StreamReadMetadata.cs
+ StreamReadPage.cs
+ StreamReadRequest.cs
+ StreamReplayReasonCodes.cs
 Validation/
  PreflightValidationResult.cs
  ValidateCommandRequest.cs

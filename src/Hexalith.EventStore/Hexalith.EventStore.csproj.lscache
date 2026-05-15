@@ -85,6 +85,7 @@ Configuration/
  RateLimitingOptions.cs
 Controllers/
  AdminCommandsQueryController.cs
+ AdminProjectionRebuildController.cs
  AdminStreamQueryController.cs
  AdminTraceQueryController.cs
  CommandsController.cs
@@ -94,6 +95,7 @@ Controllers/
  QueriesController.cs
  QueryValidationController.cs
  ReplayController.cs
+ StreamsController.cs
 ErrorHandling/
  AuthorizationExceptionHandler.cs
  AuthorizationServiceUnavailableException.cs

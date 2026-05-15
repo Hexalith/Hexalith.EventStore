@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-15T00:00:00+02:00' # Story 22.5 moved to done after code review: 8 patches applied (NSubstitute Arg.Do fix, ShouldNotBeNull discard fix, cloudevent.id docs, dev-subscriber YAML guard, non-Redis proven guard, reminder-overlap test, Service Bus dedicated test).
+last_updated: '2026-05-15T07:22:36+02:00' # Story 22.6 moved to in-progress for stream replay/read APIs and projection rebuild checkpoints.
+# Previous last_updated detail preserved: 2026-05-15T00:00:00+02:00 - Story 22.5 moved to done after code review: 8 patches applied (NSubstitute Arg.Do fix, ShouldNotBeNull discard fix, cloudevent.id docs, dev-subscriber YAML guard, non-Redis proven guard, reminder-overlap test, Service Bus dedicated test).
 # Previous last_updated detail preserved: 2026-05-14T12:20:54+02:00 - Story 22.5 moved to review after publishing guarantee docs, focused tests, backend matrix, and evidence validation.
 # Previous last_updated detail preserved: 2026-05-14T12:03:49+02:00 - Story 22.5 moved to in-progress for event publishing guarantees and backend deployment matrix implementation.
 # Previous last_updated detail preserved: 2026-05-14T17:30:00+02:00 - Story 22.4 moved to done after code review: 1 decision (403→insufficient_permission) + 5 patches applied; 6 new tests added; Server 75/75, Client 386/386.
@@ -322,7 +323,7 @@ development_status:
   22-3-gateway-owned-tenant-and-rbac-enforcement: done
   22-4-query-behavior-policy-and-error-taxonomy: done
   22-5-event-publishing-guarantees-and-backend-deployment-matrix: done
-  22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints: ready-for-dev
+  22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints: review
   22-7a-payload-and-snapshot-protection-hooks: ready-for-dev
   22-7b-unreadable-protected-data-behavior: blocked
   22-7c-crypto-shredding-workflow-and-restored-backup-safety: blocked

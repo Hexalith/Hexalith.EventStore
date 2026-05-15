@@ -1,5 +1,6 @@
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Contracts.Streams;
 
 namespace Hexalith.EventStore.Client.Gateway;
 
@@ -28,5 +29,12 @@ public interface IEventStoreGatewayClient {
     Task<EventStoreQueryResult<T>> SubmitQueryAsync<T>(
         SubmitQueryRequest request,
         string? ifNoneMatch = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads a public stream/replay page through <c>POST /api/v1/streams/read</c>.
+    /// </summary>
+    Task<StreamReadPage> ReadStreamAsync(
+        StreamReadRequest request,
         CancellationToken cancellationToken = default);
 }

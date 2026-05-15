@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Contracts.Streams;
 
 using Microsoft.Extensions.Options;
 
@@ -172,6 +173,39 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         return new EventStoreQueryResult<T>(result.CorrelationId, payload, IsNotModified: false, result.ETag) {
             Metadata = result.Metadata,
         };
+    }
+
+    /// <inheritdoc />
+    public async Task<StreamReadPage> ReadStreamAsync(
+        StreamReadRequest request,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(request);
+
+        using HttpResponseMessage response = await _httpClient
+            .PostAsJsonAsync(CreateRelativeUri(_options.StreamReadPath), request, JsonOptions, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!response.IsSuccessStatusCode) {
+            await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
+        }
+
+        try {
+            StreamReadPage? result = await response.Content
+                .ReadFromJsonAsync<StreamReadPage>(JsonOptions, cancellationToken)
+                .ConfigureAwait(false);
+
+            return result ?? throw new EventStoreGatewayException(
+                (int)response.StatusCode,
+                response.ReasonPhrase ?? "OK",
+                detail: "Stream read response body was empty.");
+        }
+        catch (JsonException ex) {
+            throw new EventStoreGatewayException(
+                (int)response.StatusCode,
+                response.ReasonPhrase ?? "OK",
+                detail: "Stream read response body could not be parsed.",
+                innerException: ex);
+        }
     }
 
     private static QueryResponseMetadata NormalizeMetadata(

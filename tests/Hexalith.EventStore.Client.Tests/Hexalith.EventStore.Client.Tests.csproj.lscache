@@ -69,7 +69,9 @@ Conventions/NamingConventionEngineTests.cs
 Discovery/
  AssemblyScannerSmokeStubs.cs
  AssemblyScannerTests.cs
-Gateway/EventStoreGatewayClientTests.cs
+Gateway/
+ EventStoreGatewayClientStreamTests.cs
+ EventStoreGatewayClientTests.cs
 Handlers/DomainProcessorTests.cs
 Indexes/AdminOperationalIndexHostedServiceTests.cs
 obj/Debug/net10.0/

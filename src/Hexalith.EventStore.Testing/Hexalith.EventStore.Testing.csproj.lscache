@@ -64,6 +64,7 @@ Builders/
  CommandEnvelopeBuilder.cs
  EventEnvelopeBuilder.cs
  EventStoreGatewayExceptionBuilder.cs
+ StreamReadPageBuilder.cs
 Compliance/TerminatableComplianceAssertions.cs
 Fakes/
  FakeActorStateMachine.cs

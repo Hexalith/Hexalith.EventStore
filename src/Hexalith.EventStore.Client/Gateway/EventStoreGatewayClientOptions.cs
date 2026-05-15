@@ -18,4 +18,9 @@ public sealed class EventStoreGatewayClientOptions {
     /// Gets or sets the relative query endpoint path.
     /// </summary>
     public string QueryPath { get; set; } = "api/v1/queries";
+
+    /// <summary>
+    /// Gets or sets the relative public stream read endpoint path.
+    /// </summary>
+    public string StreamReadPath { get; set; } = "api/v1/streams/read";
 }

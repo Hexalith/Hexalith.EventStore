@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 using Dapr.Client;
 
@@ -114,7 +115,10 @@ public sealed class DaprProjectionCommandService : IProjectionCommandService {
 
             HttpClient httpClient = _httpClientFactory.CreateClient();
             using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cts.Token).ConfigureAwait(false);
-            _ = httpResponse.EnsureSuccessStatusCode();
+            if (!httpResponse.IsSuccessStatusCode) {
+                return await MapFailureResponseAsync(httpResponse, cts.Token).ConfigureAwait(false);
+            }
+
             AdminOperationResult? result = await httpResponse.Content.ReadFromJsonAsync<AdminOperationResult>(cts.Token).ConfigureAwait(false);
 
             return result ?? new AdminOperationResult(false, ErrorNoOperation, "Null response from EventStore", "NULL_RESPONSE");
@@ -151,6 +155,45 @@ public sealed class DaprProjectionCommandService : IProjectionCommandService {
             current = current.InnerException;
         }
     }
+
+    private static async Task<AdminOperationResult> MapFailureResponseAsync(
+        HttpResponseMessage httpResponse,
+        CancellationToken cancellationToken) {
+        string statusCode = ((int)httpResponse.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (IsJsonResponse(httpResponse)) {
+            try {
+                using JsonDocument document = await JsonDocument.ParseAsync(
+                    await httpResponse.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false),
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
+                JsonElement root = document.RootElement;
+                string? detail = GetString(root, "detail");
+                string? reasonCode = GetString(root, "reasonCode");
+                string? title = GetString(root, "title");
+                return new AdminOperationResult(
+                    false,
+                    ErrorNoOperation,
+                    detail ?? title ?? httpResponse.ReasonPhrase,
+                    string.IsNullOrWhiteSpace(reasonCode) ? statusCode : reasonCode);
+            }
+            catch (JsonException) {
+                // Fall back to status metadata below.
+            }
+        }
+
+        return new AdminOperationResult(false, ErrorNoOperation, httpResponse.ReasonPhrase, statusCode);
+    }
+
+    private static bool IsJsonResponse(HttpResponseMessage response) {
+        string? mediaType = response.Content.Headers.ContentType?.MediaType;
+        return mediaType is not null
+            && (mediaType.Contains("json", StringComparison.OrdinalIgnoreCase)
+                || mediaType.Contains("problem+json", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string? GetString(JsonElement root, string propertyName)
+        => root.TryGetProperty(propertyName, out JsonElement value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
 
     private static HttpRequestMessage CreateFallbackRequest<TRequest>(string endpoint, TRequest request)
         => new(HttpMethod.Post, endpoint) {

@@ -125,6 +125,7 @@ Configuration/
  ResiliencyConfigurationTests.cs
  SubscriptionConfigurationTests.cs
 Controllers/
+ AdminProjectionRebuildControllerTests.cs
  AdminStreamQueryControllerEventDetailTests.cs
  AdminStreamQueryControllerReplayDelegationTests.cs
  AdminStreamQueryControllerStateDiffCausationTests.cs
@@ -139,6 +140,7 @@ Controllers/
  Dw3TraceMapScanCapAtddTests.cs
  QueriesControllerTests.cs
  QueryValidationControllerTests.cs
+ StreamsControllerTests.cs
 DaprComponents/
  DaprComponentValidationTests.cs
  DaprYamlTestHelper.cs
@@ -240,6 +242,7 @@ Projections/
  ProjectionCheckpointTrackerTests.cs
  ProjectionDiscoveryHostedServiceTests.cs
  ProjectionPollerServiceTests.cs
+ ProjectionRebuildCheckpointStoreTests.cs
  ProjectionUpdateOrchestratorRefreshIntervalTests.cs
  ProjectionUpdateOrchestratorTests.cs
 Queries/

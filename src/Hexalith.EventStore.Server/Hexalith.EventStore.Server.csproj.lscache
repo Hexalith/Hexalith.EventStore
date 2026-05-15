@@ -158,6 +158,7 @@ Pipeline/
 Projections/
  DaprProjectionChangeNotifier.cs
  IProjectionCheckpointTracker.cs
+ IProjectionRebuildCheckpointStore.cs
  IProjectionUpdateOrchestrator.cs
  KeyedSemaphore.cs
  NoOpProjectionChangedBroadcaster.cs
@@ -167,6 +168,9 @@ Projections/
  ProjectionDiscoveryHostedService.cs
  ProjectionPollerService.cs
  ProjectionReasonCodes.cs
+ ProjectionRebuildCheckpointSaveResult.cs
+ ProjectionRebuildCheckpointScope.cs
+ ProjectionRebuildCheckpointStore.cs
  ProjectionUpdateOrchestrator.cs
  TrackerReasonCodes.cs
 Queries/

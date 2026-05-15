@@ -119,4 +119,29 @@ public class DaprProjectionCommandServiceTests {
         result.Success.ShouldBeFalse();
         result.ErrorCode.ShouldBe("409");
     }
+
+    [Fact]
+    public async Task PauseProjectionAsync_WithProblemDetails_PreservesReasonCode() {
+        (DaprProjectionCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupResponse(new HttpResponseMessage(HttpStatusCode.Conflict) {
+            Content = new StringContent(
+                """
+                {
+                  "type": "https://hexalith.io/problems/concurrency-conflict",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "Projection rebuild checkpoint update conflicted with another worker.",
+                  "reasonCode": "checkpoint-conflict"
+                }
+                """,
+                System.Text.Encoding.UTF8,
+                "application/problem+json"),
+        });
+
+        AdminOperationResult result = await service.PauseProjectionAsync("tenant1", "OrderSummary");
+
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("checkpoint-conflict");
+        result.Message.ShouldBe("Projection rebuild checkpoint update conflicted with another worker.");
+    }
 }

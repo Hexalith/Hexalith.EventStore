@@ -452,10 +452,10 @@ Services/
 <NUGET>/
  byteaether.ulid/1.3.5/lib/net10.0/ByteAether.Ulid.dll
  castle.core/5.1.1/lib/net6.0/Castle.Core.dll
- dapr.actors/1.17.7/lib/net10.0/Dapr.Actors.dll
- dapr.client/1.17.7/lib/net10.0/Dapr.Client.dll
- dapr.common/1.17.7/lib/net10.0/Dapr.Common.dll
- dapr.protos/1.17.7/lib/net10.0/Dapr.Protos.dll
+ dapr.actors/1.17.9/lib/net10.0/Dapr.Actors.dll
+ dapr.client/1.17.9/lib/net10.0/Dapr.Client.dll
+ dapr.common/1.17.9/lib/net10.0/Dapr.Common.dll
+ dapr.protos/1.17.9/lib/net10.0/Dapr.Protos.dll
  diffengine/11.3.0/lib/net7.0/DiffEngine.dll
  emptyfiles/4.4.0/lib/net7.0/EmptyFiles.dll
  google.api.commonprotos/2.17.0/lib/netstandard2.0/Google.Api.CommonProtos.dll
@@ -466,7 +466,7 @@ Services/
  hexalith.commons.uniqueids/2.13.0/lib/net10.0/Hexalith.Commons.UniqueIds.dll
  microsoft.applicationinsights/2.23.0/lib/netstandard2.0/Microsoft.ApplicationInsights.dll
  microsoft.aspnetcore.mvc.testing/10.0.8/lib/net10.0/Microsoft.AspNetCore.Mvc.Testing.dll
- microsoft.aspnetcore.openapi/10.0.5/lib/net10.0/Microsoft.AspNetCore.OpenApi.dll
+ microsoft.aspnetcore.openapi/10.0.8/lib/net10.0/Microsoft.AspNetCore.OpenApi.dll
  microsoft.aspnetcore.testhost/10.0.8/lib/net10.0/Microsoft.AspNetCore.TestHost.dll
  microsoft.bcl.asyncinterfaces/6.0.0/lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll
  microsoft.codecoverage/18.5.1/lib/net8.0/Microsoft.VisualStudio.CodeCoverage.Shim.dll
@@ -498,7 +498,7 @@ Services/
  xunit.v3.extensibility.core/3.2.2/lib/netstandard2.0/xunit.v3.core.dll
  xunit.v3.runner.common/3.2.2/lib/netstandard2.0/xunit.v3.runner.common.dll
  xunit.v3.runner.inproc.console/3.2.2/lib/net8.0/xunit.v3.runner.inproc.console.dll
- yamldotnet/16.3.0/lib/net8.0/YamlDotNet.dll
+ yamldotnet/17.1.0/lib/net10.0/YamlDotNet.dll
 
 [analyzerReferences]
 <DOTNET>/packs/Microsoft.AspNetCore.App.Ref/10.0.8/analyzers/dotnet/cs/
@@ -520,7 +520,7 @@ Services/
  Microsoft.CodeAnalysis.CSharp.NetAnalyzers.dll
  Microsoft.CodeAnalysis.NetAnalyzers.dll
 <NUGET>/
- microsoft.aspnetcore.openapi/10.0.5/analyzers/dotnet/cs/Microsoft.AspNetCore.OpenApi.SourceGenerators.dll
+ microsoft.aspnetcore.openapi/10.0.8/analyzers/dotnet/cs/Microsoft.AspNetCore.OpenApi.SourceGenerators.dll
  xunit.analyzers/1.27.0/analyzers/dotnet/cs/
   xunit.analyzers.dll
   xunit.analyzers.fixes.dll

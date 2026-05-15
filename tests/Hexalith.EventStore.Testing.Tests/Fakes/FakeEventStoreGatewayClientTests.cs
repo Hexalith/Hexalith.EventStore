@@ -3,6 +3,7 @@ using System.Text.Json;
 using Hexalith.EventStore.Client.Gateway;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.Testing.Builders;
 using Hexalith.EventStore.Testing.Fakes;
 
@@ -146,6 +147,77 @@ public class FakeEventStoreGatewayClientTests {
         response.Metadata.ShouldNotBeNull();
         response.Metadata.ETag.ShouldBe("etag-cache");
         response.Metadata.IsNotModified.ShouldBe(true);
+    }
+
+    [Fact]
+    public async Task ReadStreamAsyncRecordsRequestAndReturnsConfiguredPage() {
+        var page = new StreamReadPage(
+            Tenant: "tenant-a",
+            Domain: "party",
+            AggregateId: "party-1",
+            Events: [],
+            Metadata: new StreamReadMetadata(0, null, 0, 0, 0, false, null));
+        var fake = new FakeEventStoreGatewayClient()
+            .ConfigureStreamReadSuccess(page);
+        var request = new StreamReadRequest("tenant-a", "party", "party-1", PageSize: 25);
+
+        StreamReadPage response = await fake.ReadStreamAsync(request);
+
+        response.ShouldBe(page);
+        fake.SubmittedStreamReads.Single().ShouldBe(request);
+    }
+
+    [Fact]
+    public async Task ConfigureStreamReadFailureThrowsConfiguredGatewayException() {
+        EventStoreGatewayException exception = EventStoreGatewayExceptionBuilder
+            .Conflict("corr-conflict", "tenant-a")
+            .WithReasonCode(StreamReplayReasonCodes.CheckpointConflict)
+            .Build();
+        var fake = new FakeEventStoreGatewayClient()
+            .ConfigureStreamReadFailure(exception);
+
+        EventStoreGatewayException thrown = await Should.ThrowAsync<EventStoreGatewayException>(
+            () => fake.ReadStreamAsync(new StreamReadRequest("tenant-a", "party", "party-1")));
+
+        thrown.ReasonCode.ShouldBe(StreamReplayReasonCodes.CheckpointConflict);
+    }
+
+    [Fact]
+    public void StreamReadPageBuilderBuildsContinuationPage() {
+        StreamReadPage page = StreamReadPageBuilder
+            .Create()
+            .ForStream("tenant-a", "party", "party-1")
+            .WithRange(10, 20)
+            .AddEvent(11, "PartyRenamed", [1])
+            .WithNextContinuation("next-token")
+            .Build();
+
+        page.Events.Single().SequenceNumber.ShouldBe(11);
+        page.Metadata.IsTruncated.ShouldBeTrue();
+        page.Metadata.NextContinuationToken.ShouldNotBeNull();
+        page.Metadata.NextContinuationToken.Value.ShouldBe("next-token");
+    }
+
+    [Theory]
+    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadInvalidRange), StreamReplayReasonCodes.InvalidRange, 400)]
+    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadInvalidContinuation), StreamReplayReasonCodes.InvalidContinuation, 400)]
+    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadUnauthorizedTenant), StreamReplayReasonCodes.UnauthorizedTenant, 403)]
+    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadMissingStream), StreamReplayReasonCodes.MissingStream, 404)]
+    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadCheckpointConflict), StreamReplayReasonCodes.CheckpointConflict, 409)]
+    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadPausedRebuild), StreamReplayReasonCodes.RebuildPaused, 409)]
+    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadCanceledRebuild), StreamReplayReasonCodes.RebuildCanceled, 409)]
+    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadUnavailable), StreamReplayReasonCodes.ServiceUnavailable, 503)]
+    public async Task StreamReadFailureHelpersExposeStableReasonCodes(string methodName, string reasonCode, int statusCode) {
+        var fake = new FakeEventStoreGatewayClient();
+        _ = typeof(FakeEventStoreGatewayClient)
+            .GetMethod(methodName, [typeof(string)])!
+            .Invoke(fake, ["tenant-a"]);
+
+        EventStoreGatewayException thrown = await Should.ThrowAsync<EventStoreGatewayException>(
+            () => fake.ReadStreamAsync(new StreamReadRequest("tenant-a", "party", "party-1")));
+
+        thrown.StatusCode.ShouldBe(statusCode);
+        thrown.ReasonCode.ShouldBe(reasonCode);
     }
 
     [Fact]
