@@ -734,10 +734,53 @@ public class EventDrainRecoveryTests {
         await actor.ReceiveReminderAsync("drain-unpublished-corr-partial", [], TimeSpan.Zero, TimeSpan.Zero);
 
         // Assert
-        _ = publishedSequences.ShouldNotBeNull();
+        publishedSequences.ShouldNotBeNull();
         publishedSequences.ShouldBe([1L, 2L, 3L]);
         await stateManager.Received(1).RemoveStateAsync(
             "drain:corr-partial", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_ReminderOverlap_SecondCallIsDuplicateTolerant() {
+        // Simulates actor restart / reminder overlap: drain record is still present for both calls
+        // because cleanup from the first run did not commit before deactivation.
+        // Expected: duplicate publish is allowed; cleanup is attempted on both runs.
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+        var record = new UnpublishedEventsRecord(
+            CorrelationId: "corr-overlap",
+            StartSequence: 1,
+            EndSequence: 2,
+            EventCount: 2,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: 0,
+            LastFailureReason: "initial failure");
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-overlap", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, eventCount: 2, correlationId: "corr-overlap", startSequence: 1);
+
+        int publishCallCount = 0;
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            "corr-overlap",
+            Arg.Any<CancellationToken>())
+            .Returns(callInfo => {
+                publishCallCount++;
+                return new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null);
+            });
+
+        // Act — reminder fires twice (overlap or actor restart before cleanup committed)
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-overlap", [], TimeSpan.Zero, TimeSpan.Zero);
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-overlap", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert — duplicate publication is expected and allowed; cleanup must be attempted both times
+        publishCallCount.ShouldBe(2);
+        await stateManager.Received(2).RemoveStateAsync("drain:corr-overlap", Arg.Any<CancellationToken>());
     }
 
     // --- Task 7.10: Rejection events drained with correct status ---

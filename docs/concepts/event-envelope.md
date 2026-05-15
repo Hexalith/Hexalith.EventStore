@@ -273,7 +273,7 @@ For cross-backend idempotency, use EventStore-owned metadata:
 - `messageId`
 - `eventTypeName`
 - topic name
-- `cloudevent.id`
+- `cloudevent.id` (composite: `{correlationId}:{sequenceNumber}`)
 
 Do not use broker-specific receipt IDs, Kafka offsets, Service Bus lock tokens, delivery counts, subscriber retry counts, or transport-specific handles as the primary idempotency key. Those values are useful for broker operations, but they are not portable across DAPR pub/sub backends.
 

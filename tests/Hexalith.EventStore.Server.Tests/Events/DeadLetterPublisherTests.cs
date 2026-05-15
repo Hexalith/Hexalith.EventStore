@@ -86,12 +86,13 @@ public class DeadLetterPublisherTests {
         DeadLetterMessage message = CreateTestDeadLetterMessage(command);
 
         Dictionary<string, string>? capturedMetadata = null;
-        await daprClient.PublishEventAsync(
+        daprClient.PublishEventAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<DeadLetterMessage>(),
             Arg.Do<Dictionary<string, string>>(m => capturedMetadata = m),
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
 
         // Act
         _ = await publisher.PublishDeadLetterAsync(identity, message);

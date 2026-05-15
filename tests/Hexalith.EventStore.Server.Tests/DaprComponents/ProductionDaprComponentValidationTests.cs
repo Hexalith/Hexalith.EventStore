@@ -265,6 +265,14 @@ public class ProductionDaprComponentValidationTests {
         deployReadme.ShouldContain("partition ordering `not proven`");
         deployReadme.ShouldContain("session ordering `not proven`");
         deployReadme.ShouldContain("Do not use this table to claim exactly-once delivery");
+
+        // Non-Redis backends must not be promoted to 'proven' without live evidence
+        docs.ShouldNotContain("`proven` for local RabbitMQ");
+        docs.ShouldNotContain("`proven` for local Kafka");
+        docs.ShouldNotContain("`proven` for local Azure Service Bus");
+        deployReadme.ShouldNotContain("RabbitMQ | `proven`");
+        deployReadme.ShouldNotContain("Kafka | `proven`");
+        deployReadme.ShouldNotContain("Azure Service Bus | `proven`");
     }
 
 }

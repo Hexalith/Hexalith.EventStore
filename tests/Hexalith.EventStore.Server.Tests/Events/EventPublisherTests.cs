@@ -114,19 +114,20 @@ public class EventPublisherTests {
         EventEnvelope envelope = CreateTestEnvelope(sequenceNumber: 7, eventTypeName: "OrderConfirmed");
         EventEnvelope? publishedEnvelope = null;
         Dictionary<string, string>? publishedMetadata = null;
-        await daprClient.PublishEventAsync(
+        daprClient.PublishEventAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Do<EventEnvelope>(x => publishedEnvelope = x),
             Arg.Do<Dictionary<string, string>>(x => publishedMetadata = x),
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
 
         // Act
         EventPublishResult result = await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-001");
 
         // Assert
         result.Success.ShouldBeTrue();
-        _ = publishedEnvelope.ShouldNotBeNull();
+        publishedEnvelope.ShouldNotBeNull();
         publishedEnvelope.TenantId.ShouldBe("test-tenant");
         publishedEnvelope.Domain.ShouldBe("test-domain");
         publishedEnvelope.AggregateId.ShouldBe("agg-001");
@@ -136,7 +137,7 @@ public class EventPublisherTests {
         publishedEnvelope.MessageId.ShouldBe("msg-7");
         publishedEnvelope.EventTypeName.ShouldBe("OrderConfirmed");
 
-        _ = publishedMetadata.ShouldNotBeNull();
+        publishedMetadata.ShouldNotBeNull();
         publishedMetadata.Keys.ShouldBe(["cloudevent.type", "cloudevent.source", "cloudevent.id"], ignoreOrder: true);
         publishedMetadata["cloudevent.id"].ShouldBe("corr-001:7");
         publishedMetadata.Keys.ShouldNotContain(x => string.Equals(x, "rawPayload", StringComparison.OrdinalIgnoreCase));

@@ -43,7 +43,7 @@ All pub/sub rows use CloudEvents 1.0 and per-tenant-per-domain topics. EventStor
 | Kafka | `pubsub.kafka` | `pubsub-kafka.yaml` | `brokers`, `authType`, `enableDeadLetter=true`, production subscriber scopes | Per-partition order requires a stable partition key; EventStore does not emit `partitionKey`/`__key` yet | Separate dead-letter topic | `configured`; partition ordering `not proven` |
 | Azure Service Bus | `pubsub.azure.servicebus.topics` | `pubsub-servicebus.yaml` | connection string or Azure identity, `enableDeadLetter=true`, production subscriber scopes, pre-created topics | Ordered delivery requires session-enabled topology and stable `SessionId`; EventStore does not emit `SessionId` yet | Native DLQ through DAPR/Service Bus | `configured`; session ordering `not proven` |
 
-Do not use this table to claim exactly-once delivery or subscriber processing success. Consumers must deduplicate with EventStore metadata such as tenant, domain, aggregate ID, sequence number, correlation ID, causation ID, message ID, event type, and topic.
+Do not use this table to claim exactly-once delivery or subscriber processing success. Consumers must deduplicate with EventStore metadata such as tenant, domain, aggregate ID, sequence number, correlation ID, causation ID, message ID, event type, topic, and `cloudevent.id` (format: `{correlationId}:{sequenceNumber}`).
 
 ## Per-Backend Configuration
 

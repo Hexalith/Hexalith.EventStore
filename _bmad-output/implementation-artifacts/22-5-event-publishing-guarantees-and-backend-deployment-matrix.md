@@ -1,6 +1,6 @@
 # Story 22.5: Event Publishing Guarantees and Backend Deployment Matrix
 
-Status: review
+Status: done
 
 Context created: 2026-05-12
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
@@ -438,6 +438,35 @@ GPT-5 Codex
 - 2026-05-14 ST7 Aspire/integration check: `mcp__aspire__.list_apphosts` returned no AppHosts within `D:\Hexalith.EventStore`; integration `PubSubDeliveryProof|DeadLetter` tests were not run because the required Aspire/DAPR topology was not available.
 - 2026-05-14 ST7 full Server.Tests attempt: `dotnet test tests\Hexalith.EventStore.Server.Tests\Hexalith.EventStore.Server.Tests.csproj --no-restore` failed 24, passed 1875, skipped 25. Failures were outside Story 22.5 touched files: command status whitespace detail, validation ProblemDetails null handling, query not-found internal-detail assertion, replay controller expectations, and actor integration/persistence/tombstoning acceptance paths.
 - 2026-05-14 ST7 diff validation: `git diff --check` passed with line-ending conversion warnings only.
+
+### Review Findings
+
+<!-- Code review: 2026-05-14 — Claude Sonnet 4.6 — Blind Hunter + Edge Case Hunter + Acceptance Auditor -->
+
+#### Decision-Needed
+
+- [x] [Review][Decision] D1 — AC4: No test for actor restart / reminder overlap during drain — resolved: added `ReceiveReminder_ReminderOverlap_SecondCallIsDuplicateTolerant` to EventDrainRecoveryTests.cs.
+- [x] [Review][Decision] D2 — AC5: Azure Service Bus lacks a dedicated per-backend scoping test — resolved: added `ProductionServiceBusYaml_HasSubscriptionScoping_RestrictsSubscribers` to PubSubTopicIsolationEnforcementTests.cs.
+
+#### Patches
+
+- [x] [Review][Patch] P1 — NSubstitute `Arg.Do` setup called with `await` — premature mock invocation [tests/Hexalith.EventStore.Server.Tests/Events/EventPublisherTests.cs, tests/Hexalith.EventStore.Server.Tests/Events/DeadLetterPublisherTests.cs]
+- [x] [Review][Patch] P2 — Discarded `_ =` on `ShouldNotBeNull()` silently drops assertion [tests/Hexalith.EventStore.Server.Tests/Actors/EventDrainRecoveryTests.cs]
+- [x] [Review][Patch] P3 — `cloudevent.id` composite format `{correlationId}:{sequenceNumber}` not documented in event-envelope.md [docs/concepts/event-envelope.md]
+- [x] [Review][Patch] P4 — `deploy/README.md` consumer dedup note omits `cloudevent.id` from the field list [deploy/README.md]
+- [x] [Review][Patch] P5 — Production YAML files not checked for presence of dev-only `eventstore-test-subscriber` grant [tests/Hexalith.EventStore.Server.Tests/Security/PubSubTopicIsolationEnforcementTests.cs]
+- [x] [Review][Patch] P6 — `PubSubBackendDocs_RecordHonestProofLevels` has no negative assertion that RabbitMQ, Kafka, and Service Bus rows do not use the word `proven` [tests/Hexalith.EventStore.Server.Tests/DaprComponents/ProductionDaprComponentValidationTests.cs]
+
+#### Deferred
+
+- [x] [Review][Defer] W1 — `pending_command_count` semantics not attested in this story's tests — pre-existing coverage in BackpressureTests/Dw1DrainHardeningAtddTests; story didn't change backpressure behavior
+- [x] [Review][Defer] W2 — Drain record removal before `SaveStateAsync` confirms — pre-existing implementation behavior; not changed by this story
+- [x] [Review][Defer] W3 — `PubSubBackendDocs_RecordHonestProofLevels` brittle path traversal and verbatim string matching — pre-existing pattern across entire ProductionDaprComponentValidationTests class
+- [x] [Review][Defer] W4 — Ambiguous DAPR publish result handling untested at unit level — pre-existing behavior; story didn't change publish error handling logic
+- [x] [Review][Defer] W5 — `ConfigureEventsInState` multiple stub overwrites on shared mock — pre-existing test helper design
+- [x] [Review][Defer] W6 — `ProductionPubSubs_HaveDeadLetterEnabled` conflates EventStore vs DAPR dead-letter concepts — pre-existing test name and design
+- [x] [Review][Defer] W7 — No test for drain record deletion when `SaveStateAsync` fails after successful publish — pre-existing gap
+- [x] [Review][Defer] W8 — Azure Service Bus test conflates DAPR sidecar and Azure RBAC authorization layers — pre-existing test design
 
 ## Change Log
 

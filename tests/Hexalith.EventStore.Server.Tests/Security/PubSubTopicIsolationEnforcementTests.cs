@@ -145,6 +145,27 @@ public class PubSubTopicIsolationEnforcementTests {
             "Production Kafka: eventstore must NOT be listed in publishingScopes (NFR20)");
     }
 
+    [Fact]
+    public void ProductionServiceBusYaml_HasSubscriptionScoping_RestrictsSubscribers() {
+        Dictionary<string, object> doc = LoadYaml(ProductionServiceBusPath);
+
+        string? subscriptionScopes = GetComponentMetadataValue(doc, "subscriptionScopes");
+        _ = subscriptionScopes.ShouldNotBeNull(
+            "Production Azure Service Bus pub/sub must have subscriptionScopes metadata (FR29)");
+        subscriptionScopes.ShouldNotBeEmpty(
+            "Production Azure Service Bus pub/sub subscriptionScopes must be non-empty to enforce subscriber isolation");
+
+        ShouldNotContainAppId(subscriptionScopes!, "eventstore",
+            "Production Azure Service Bus: eventstore must NOT be listed in subscriptionScopes -- " +
+            "unlisted means unrestricted access. DAPR does not support wildcards.");
+
+        string? publishingScopes = GetComponentMetadataValue(doc, "publishingScopes");
+        _ = publishingScopes.ShouldNotBeNull(
+            "Production Azure Service Bus pub/sub must have publishingScopes metadata");
+        ShouldNotContainAppId(publishingScopes!, "eventstore",
+            "Production Azure Service Bus: eventstore must NOT be listed in publishingScopes (NFR20)");
+    }
+
     // --- Task 3.7: AC #8, #9 ---
 
     [Fact]
@@ -273,6 +294,22 @@ public class PubSubTopicIsolationEnforcementTests {
 
         Dictionary<string, object> serviceBusDoc = LoadYaml(ProductionServiceBusPath);
         VerifySampleExcludedFromScopes(serviceBusDoc, "production Azure Service Bus pub/sub");
+    }
+
+    [Fact]
+    public void ProductionPubSubYamls_DoNotContainDevOnlyTestSubscriber() {
+        // The dev-only 'eventstore-test-subscriber' grant must not appear in production YAMLs.
+        // It is a local AppHost-only grant; including it in production would open unauthorized topic access.
+        foreach ((string path, string name) in new[]
+        {
+            (ProductionRabbitMqPath, "production RabbitMQ pub/sub"),
+            (ProductionKafkaPath, "production Kafka pub/sub"),
+            (ProductionServiceBusPath, "production Azure Service Bus pub/sub"),
+        }) {
+            string content = File.ReadAllText(path);
+            content.Contains("eventstore-test-subscriber").ShouldBeFalse(
+                $"{name} must not contain the dev-only 'eventstore-test-subscriber' grant");
+        }
     }
 
     [Fact]

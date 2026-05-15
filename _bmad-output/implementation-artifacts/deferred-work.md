@@ -2,6 +2,17 @@
 
 <!-- markdownlint-disable MD038 -->
 
+## Deferred from: code review of 22-5-event-publishing-guarantees-and-backend-deployment-matrix (2026-05-14)
+
+- **[OPEN] pending_command_count semantics not attested in story 22.5 tests** - owner: dev; next-review-date: 2026-06-15; grouping: 22-5-event-publishing-guarantees-and-backend-deployment-matrix; rationale: Pre-existing coverage in BackpressureTests/Dw1DrainHardeningAtddTests; story didn't change backpressure behavior; evidence: tests/Hexalith.EventStore.Server.Tests/Actors/BackpressureTests.cs.
+- **[OPEN] Drain record removal before SaveStateAsync confirms** - owner: dev; next-review-date: 2026-06-15; grouping: post-epic-bucket; rationale: Pre-existing implementation behavior not changed by story 22.5; the failure scenario (SaveStateAsync throws after RemoveStateAsync) could leave drain in ambiguous state; evidence: src/Hexalith.EventStore.Server/Actors/AggregateActor.cs drain cleanup path.
+- **[OPEN] PubSubBackendDocs brittle path traversal and string matching** - owner: dev; next-review-date: 2026-06-15; grouping: post-epic-bucket; rationale: Pre-existing pattern in ProductionDaprComponentValidationTests; all tests use same 5-level relative path; evidence: tests/Hexalith.EventStore.Server.Tests/DaprComponents/ProductionDaprComponentValidationTests.cs.
+- **[OPEN] Ambiguous DAPR publish result handling untested** - owner: dev; next-review-date: 2026-06-15; grouping: post-epic-bucket; rationale: Pre-existing behavior; story 22.5 did not change publish error handling for ambiguous outcomes (e.g., HTTP 202 without confirmed delivery); evidence: src/Hexalith.EventStore.Server/Events/EventPublisher.cs.
+- **[OPEN] ConfigureEventsInState multiple stub overwrites on shared mock** - owner: dev; next-review-date: 2026-06-15; grouping: post-epic-bucket; rationale: Pre-existing test helper design; latent risk if DrainUnpublishedEventsAsync ever reads AggregateMetadata; evidence: tests/Hexalith.EventStore.Server.Tests/Actors/EventDrainRecoveryTests.cs ConfigureEventsInState helper.
+- **[OPEN] ProductionPubSubs_HaveDeadLetterEnabled conflates dead-letter concepts** - owner: dev; next-review-date: 2026-06-15; grouping: post-epic-bucket; rationale: Pre-existing test name conflates EventStore infrastructure dead-letter with DAPR subscriber dead-letter; not introduced by story 22.5; evidence: tests/Hexalith.EventStore.Server.Tests/DaprComponents/ProductionDaprComponentValidationTests.cs.
+- **[OPEN] No test for drain record deletion when SaveStateAsync fails after publish success** - owner: dev; next-review-date: 2026-06-15; grouping: post-epic-bucket; rationale: Pre-existing gap; the drain cleanup path removes the record then saves state; if save fails the record is lost; evidence: AggregateActor.DrainUnpublishedEventsAsync.
+- **[OPEN] Azure Service Bus test conflates DAPR sidecar and Azure RBAC authorization layers** - owner: dev; next-review-date: 2026-06-15; grouping: post-epic-bucket; rationale: Pre-existing test design; unauthorized-subscription observability test checks DAPR-level scoping but not Azure RBAC enforcement; evidence: tests/Hexalith.EventStore.Server.Tests/Security/PubSubTopicIsolationEnforcementTests.cs.
+
 ## Deferred-Work Governance
 
 DW6 adds a small parseable convention while preserving the historical review text below. New entries SHOULD use a canonical marker at the start of the bullet, immediately after the Markdown dash and before the finding title:
