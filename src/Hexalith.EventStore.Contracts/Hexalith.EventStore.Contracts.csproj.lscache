@@ -130,6 +130,8 @@ Streams/
  ProjectionRebuildCheckpoint.cs
  ProjectionRebuildOperation.cs
  ProjectionRebuildStatus.cs
+ ProjectionReplayRequest.cs
+ ProjectionResetRequest.cs
  ReplayContinuationToken.cs
  StreamReadEvent.cs
  StreamReadMetadata.cs

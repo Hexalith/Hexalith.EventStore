@@ -89,8 +89,8 @@ public sealed class StreamReadPageBuilder {
     /// Builds the stream read page.
     /// </summary>
     public StreamReadPage Build() {
-        long lastSequenceReturned = _events.Count == 0 ? _fromSequence : _events.Max(e => e.SequenceNumber);
-        long latestSequence = Math.Max(_latestSequence, lastSequenceReturned);
+        long? lastSequenceReturned = _events.Count == 0 ? null : _events.Max(e => e.SequenceNumber);
+        long latestSequence = Math.Max(_latestSequence, lastSequenceReturned ?? _fromSequence);
         return new StreamReadPage(
             _tenant,
             _domain,

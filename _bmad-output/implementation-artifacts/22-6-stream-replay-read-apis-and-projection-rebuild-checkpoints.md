@@ -218,82 +218,82 @@ The following CRITICAL/HIGH patches were applied during the review session. Buil
 
 These patches require coordinated changes across multiple files (Contracts DTO changes, new store API methods, orchestrator wiring) that exceed the safe scope of a single review-cycle patch pass:
 
-- [ ] [Review][Patch] **P3 — Add ResetAsync that bypasses monotonicity** — deferred. Requires new method on `IProjectionRebuildCheckpointStore` and `ProjectionRebuildCheckpointStore`, plus controller wiring on `ResetProjection`. Current ResetProjection only flips the status to `NotStarted` without rewinding `LastAppliedSequence`; this is now explicitly documented in the controller XML doc.
+- [x] [Review][Patch] **P3 — Add ResetAsync that bypasses monotonicity** — Added `ResetAsync` to `IProjectionRebuildCheckpointStore` / `ProjectionRebuildCheckpointStore`, wired `ResetProjection` and `ReplayProjection` through explicit rewind semantics, and regression-pinned reset persistence with fresh operation metadata.
 - [ ] [Review][Patch] **P4 / P-D2 — Apply-driven checkpoint advancement** — deferred. New feature: requires `ProjectionUpdateOrchestrator` (or a new `IProjectionRebuildOrchestrator`) to write `ProjectionRebuildCheckpoint` updates after each accepted projection apply, plus tests for accept-advances / reject-does-not-advance. Story AC4 not yet satisfied.
-- [ ] [Review][Patch] **P-D5 — Fresh ULID OperationId per Replay/Reset** — deferred. Requires changing scope keying so each operation has a fresh `OperationId`, plus a way for `Pause/Resume/Cancel/Retry` to look up the active operation. Today `OperationId` is hardcoded to `$"{projectionName}-rebuild"`.
-- [ ] [Review][Patch] **P-D6 — Persist `ProjectionReplayRequest.ToPosition`** — deferred. Requires adding `ToPosition` field to `ProjectionRebuildCheckpoint` DTO and enforcement in the apply-driven advancement loop (couples with P-D2).
-- [ ] [Review][Patch] **P-D4 — Document 1:1 projectionName==domain constraint** — pending. Need to add a section to `docs/reference/stream-replay-api.md` and a test where `projectionName != domain` proving the conflict detection limitation.
-- [ ] [Review][Patch] **P-D7 — Verify Dapr remoting exception preservation** — pending investigation. Whether `MissingEventException` / `EventDeserializationException` types survive the actor proxy in production needs confirmation; if wrapped, add an exception filter.
+- [x] [Review][Patch] **P-D5 — Fresh ULID OperationId per Replay/Reset** — Replay/reset now generate fresh `UniqueIdHelper.GenerateSortableUniqueStringId()` operation IDs while lifecycle commands read the active checkpoint scope.
+- [x] [Review][Patch] **P-D6 — Persist `ProjectionReplayRequest.ToPosition`** — Added optional `ToPosition` to `ProjectionRebuildCheckpoint` and persist replay upper-bound intent without treating it as applied progress.
+- [x] [Review][Patch] **P-D4 — Document 1:1 projectionName==domain constraint** — Added docs section and a regression test proving the current conflict probe uses `identity.Domain` as the projection name.
+- [x] [Review][Patch] **P-D7 — Verify Dapr remoting exception preservation** — Added `ActorMethodInvocationException` unwrapping for `MissingEventException` and `EventDeserializationException` before the generic actor-unavailable path.
 
 #### Patches deferred to follow-up — focused HIGH/MEDIUM/LOW
 
-- [ ] [Review][Patch] **P7 — StreamsController pulls full event suffix into memory** — needs `IAggregateActor` range-aware method or alternative.
-- [ ] [Review][Patch] **P8 — AggregateIdentity ArgumentException mapped to invalid-range** — move identity-shape validation up front with a dedicated reason code.
-- [ ] [Review][Patch] **P9 — Missing aggregateId returns 403 forbidden-replay-scope** — change to 400 with appropriate reason.
-- [ ] [Review][Patch] **P10 — StreamsController does not null-guard validator results** — mirror QueriesController InvalidOperationException pattern.
-- [ ] [Review][Patch] **P11 — FromSequence upper bound** — add `FromSequence <= int.MaxValue - 1` validation.
-- [ ] [Review][Patch] **P12 — StreamsController catch-all 500 + service-unavailable mismatch** — split into 503 (genuine infra) vs 500 (internal-error).
-- [ ] [Review][Patch] **P13 — SaveAsync swallows all non-cancel exceptions as checkpoint-unavailable** — discriminate exception types.
-- [ ] [Review][Patch] **P15 — StreamReadEvent.Payload `byte[]` equality footgun** — use `ReadOnlyMemory<byte>` or document.
-- [ ] [Review][Patch] **P16 — DaprProjectionCommandService unbounded JSON parsing** — add size cap.
-- [ ] [Review][Patch] **P17 — Tenant validator called with raw (non-normalized) request.Tenant** — reject non-canonical case up front.
-- [ ] [Review][Patch] **P18 — ResetProjection accepts null body** — currently rejects null via `ArgumentNullException.ThrowIfNull`; arguably the [FromBody] makes null an HTTP-400 by ASP.NET — verify and document.
-- [ ] [Review][Patch] **P19 — ProjectionResetRequest/ProjectionReplayRequest declared in controller file** — move to `Hexalith.EventStore.Contracts.Streams`.
-- [ ] [Review][Patch] **P21 — Lifecycle controller tests skip persisted-state inspection** — add end-state tests against `ProjectionRebuildCheckpointStore` with a state-backed fake.
-- [ ] [Review][Patch] **P22 — `StaleCheckpoint` reason advertised but never produced** — remove from public taxonomy/docs OR produce it.
-- [ ] [Review][Patch] **P23 — `StartedAt = UnixEpoch` for not-started operations** — make `ProjectionRebuildOperation.StartedAt` nullable.
-- [ ] [Review][Patch] **P24 — Redundant `sub` claim check returns bare `Unauthorized()`** — remove or return ProblemDetails.
-- [ ] [Review][Patch] **P25 — `ValidateRequest` uses `invalid-range` for missing tenant/domain** — wrong reason code.
-- [ ] [Review][Patch] **P27 — `lastSequenceReturned` reports `FromSequence` for empty pages** — make nullable.
-- [ ] [Review][Patch] **P28 — `NormalizePageSize` is dead code** — remove or document.
-- [ ] [Review][Patch] **P29 — `ReasonPhrase` nullable fallback** — use stable default.
-- [ ] [Review][Patch] **P30 — `reasonCode` JSON property capitalization not pinned by wire test** — add serialization test.
-- [ ] [Review][Patch] **P31 — `FakeEventStoreGatewayClient.ConfigureStreamReadContinuation` mutates only two fields** — make consistent.
-- [ ] [Review][Patch] **P32 — No-leak ProblemDetails assertions only check literal "state store"** — parameterize over the full forbidden-substring list.
+- [x] [Review][Patch] **P7 — StreamsController pulls full event suffix into memory** — Added bounded `IAggregateActor.ReadEventsRangeAsync` and switched the public controller to request a bounded range/page directly.
+- [x] [Review][Patch] **P8 — AggregateIdentity ArgumentException mapped to invalid-range** — Added up-front identity-shape validation and dedicated `invalid-aggregate-identity` reason code.
+- [x] [Review][Patch] **P9 — Missing aggregateId returns 403 forbidden-replay-scope** — Missing aggregate IDs now return 400 `missing-required-field` for the current aggregate-scoped route.
+- [x] [Review][Patch] **P10 — StreamsController does not null-guard validator results** — Tenant/RBAC null returns now throw explicit server-bug `InvalidOperationException` values.
+- [x] [Review][Patch] **P11 — FromSequence upper bound** — Added `FromSequence <= int.MaxValue - 1` validation before actor access.
+- [x] [Review][Patch] **P12 — StreamsController catch-all 500 + service-unavailable mismatch** — Split DAPR/HTTP/actor availability failures to 503 `service-unavailable` and unexpected failures to 500 `internal-error`.
+- [x] [Review][Patch] **P13 — SaveAsync swallows all non-cancel exceptions as checkpoint-unavailable** — Restricted checkpoint-unavailable classification to DAPR/HTTP/IO/timeout-style state-store failures; programmer errors now propagate.
+- [x] [Review][Patch] **P15 — StreamReadEvent.Payload `byte[]` equality footgun** — Documented payload array reference-equality explicitly on the public DTO.
+- [x] [Review][Patch] **P16 — DaprProjectionCommandService unbounded JSON parsing** — Added a 64 KiB ProblemDetails parse cap with stable status fallback.
+- [x] [Review][Patch] **P17 — Tenant validator called with raw (non-normalized) request.Tenant** — Rejects non-canonical tenant/domain casing before tenant/RBAC validation.
+- [x] [Review][Patch] **P18 — ResetProjection accepts null body** — Null reset/replay request bodies now return 400 `missing-required-field`.
+- [x] [Review][Patch] **P19 — ProjectionResetRequest/ProjectionReplayRequest declared in controller file** — Moved DTOs into `Hexalith.EventStore.Contracts.Streams`.
+- [x] [Review][Patch] **P21 — Lifecycle controller tests skip persisted-state inspection** — Added checkpoint-store-backed reset/rewind and failure-classification tests.
+- [x] [Review][Patch] **P22 — `StaleCheckpoint` reason advertised but never produced** — Removed the unused public reason from code/docs taxonomy.
+- [x] [Review][Patch] **P23 — `StartedAt = UnixEpoch` for not-started operations** — Made `ProjectionRebuildOperation.StartedAt` nullable and returns null for never-started operations.
+- [x] [Review][Patch] **P24 — Redundant `sub` claim check returns bare `Unauthorized()`** — Removed the manual `sub` check; `[Authorize]` remains the authentication gate.
+- [x] [Review][Patch] **P25 — `ValidateRequest` uses `invalid-range` for missing tenant/domain** — Missing tenant/domain now return `missing-required-field`.
+- [x] [Review][Patch] **P27 — `lastSequenceReturned` reports `FromSequence` for empty pages** — Made `StreamReadMetadata.LastSequenceReturned` nullable and return null for empty pages.
+- [x] [Review][Patch] **P28 — `NormalizePageSize` is dead code** — Removed the dead helper and uses validated page size directly.
+- [x] [Review][Patch] **P29 — `ReasonPhrase` nullable fallback** — Added stable status-message fallback for non-success Admin.Server lifecycle mapping.
+- [x] [Review][Patch] **P30 — `reasonCode` JSON property capitalization not pinned by wire test** — Added a JSON serialization assertion for lowercase `reasonCode`.
+- [x] [Review][Patch] **P31 — `FakeEventStoreGatewayClient.ConfigureStreamReadContinuation` mutates only two fields** — Normalizes continuation metadata from the configured page events.
+- [x] [Review][Patch] **P32 — No-leak ProblemDetails assertions only check literal "state store"** — Expanded no-leak assertions across state-store, DAPR address, token, stack trace, payload/protected-data, and user-display substrings.
 
 CRITICAL:
 
-- [ ] [Review][Patch] **P1 — Cross-tenant operator hijack** [src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:14-32, all action methods] — Inject `ITenantValidator` + `IRbacValidator` (matching `StreamsController`). Validate `User` claims against the URL `tenantId` BEFORE `CreateScope`/state-store access on every action. Any authenticated user from tenant-A currently can pause/cancel/reset tenant-B's rebuild. Violates CLAUDE.md gateway-owned tenant/RBAC rule (Story 22.3). Add tenant-mismatch denial tests.
-- [ ] [Review][Patch] **P2 — `SaveAsync` early-return silently drops status transitions** [src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs:68-70] — Second guard returns `Success(existing)` when `existing.LastAppliedSequence >= 0 && IsProgressStatus(status)`. With any non-zero existing sequence, Resume (Running)/Retry (Retrying) silently no-op while existing status (Paused/Failed) remains persisted. Resume/Retry must persist the new status; remove or scope this short-circuit to "same status AND same sequence AND same reason" only.
-- [ ] [Review][Patch] **P3 — Reset/Replay cannot rewind `LastAppliedSequence`** [src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs:73] — `monotonicSequence = Math.Max(existing, lastAppliedSequence)` is unconditional. `POST /reset` (FromPosition=0) on an existing sequence=200 checkpoint leaves it at 200. Add a `ResetAsync(scope, ct)` / `RewindAsync(scope, newSequence, ct)` API that explicitly bypasses monotonicity (ETag-protected) and route the controller `ResetProjection` and `ReplayProjection` (when intent is to rewind) through it.
-- [ ] [Review][Patch] **P4 — `POST /replay` writes `lastAppliedSequence` from caller-supplied `FromPosition`** [src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:109-116] — Conflates "rebuild start cursor" with "last applied sequence" — violates AC4 ("checkpoint advancement occurs only after the projection apply path accepts the page"). Either write `lastAppliedSequence = max(existing, FromPosition - 1)` as start cursor (after D2 decision) or stop writing the caller value entirely. Add a test that fixes the semantics chosen.
-- [ ] [Review][Patch] **P5 — `Pause`/`Cancel`/`Resume`/`Retry` on non-existent rebuild create phantom checkpoints** [src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:40-69, 124-153] — First-time Pause writes a Paused checkpoint with sequence 0 instead of returning `rebuild-operation-not-found`. Read existing first; if `null`, return 404 + `StreamReplayReasonCodes.RebuildOperationNotFound`. Same for Cancel/Resume/Retry. `Replay`/`Reset` legitimately may create a new operation.
-- [ ] [Review][Patch] **P6 — `HasActiveOperatorRebuildAsync` fails open on store error** [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:HasActiveOperatorRebuildAsync] — `catch (Exception) { return false; }` lets the poller race the rebuild when the checkpoint store is unavailable. Change to fail-closed (`return true`) and log; this is the documented "reject-on-active-rebuild" policy.
+- [x] [Review][Patch] **P1 — Cross-tenant operator hijack** [src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:14-32, all action methods] — Resolved by the prior GlobalAdministrator gate before scope/store access.
+- [x] [Review][Patch] **P2 — `SaveAsync` early-return silently drops status transitions** [src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs:68-70] — Resolved by equality-only idempotency across sequence/status/failure/toPosition.
+- [x] [Review][Patch] **P3 — Reset/Replay cannot rewind `LastAppliedSequence`** [src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs:73] — Added explicit ETag-protected `ResetAsync` and routed reset/replay rewind intent through it.
+- [x] [Review][Patch] **P4 — `POST /replay` writes `lastAppliedSequence` from caller-supplied `FromPosition`** [src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:109-116] — Replay now writes start cursor `max(0, FromPosition - 1)` and persists `ToPosition` as intent, not progress.
+- [x] [Review][Patch] **P5 — `Pause`/`Cancel`/`Resume`/`Retry` on non-existent rebuild create phantom checkpoints** [src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:40-69, 124-153] — Resolved by read-first 404 behavior.
+- [x] [Review][Patch] **P6 — `HasActiveOperatorRebuildAsync` fails open on store error** [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:HasActiveOperatorRebuildAsync] — Resolved by fail-closed conflict detection.
 
 HIGH:
 
-- [ ] [Review][Patch] **P7 — `StreamsController` pulls full event suffix into memory** [src/Hexalith.EventStore/Controllers/StreamsController.cs:100-109] — `actor.GetEventsAsync(FromSequence)` returns ALL events ≥ FromSequence; controller then filters by `ToSequence` and `.Take(pageSize)` in memory. Long aggregates → O(N) memory per request → DOS vector. Use `IAggregateActor.ReadEventsRangeAsync` (if available) or add a range-aware actor method that pushes down `ToSequence`/`pageSize`.
-- [ ] [Review][Patch] **P8 — `AggregateIdentity` `ArgumentException` mapped to `invalid-range`** [src/Hexalith.EventStore/Controllers/StreamsController.cs:135-141] — Identity-shape failure (regex) is not a range failure, and the caught exception message leaks the regex pattern. Validate tenant/domain/aggregateId shape in `ValidateRequest` up front with a dedicated reason code (e.g., `invalid-aggregate-identity` or split `invalid-tenant`/`invalid-domain`/`invalid-aggregate-id`). Also runs after tenant/RBAC auth today — move it before.
-- [ ] [Review][Patch] **P9 — Missing `aggregateId` returns 403 `forbidden-replay-scope`** [src/Hexalith.EventStore/Controllers/StreamsController.cs:183-190] — Missing required field is a 400 request-shape failure, not an authorization failure. Use 400 with `invalid-range` (or dedicated `missing-aggregate-id`).
-- [ ] [Review][Patch] **P10 — `StreamsController` does not null-guard validator results** [src/Hexalith.EventStore/Controllers/StreamsController.cs:63-66, 75-85] — A misconfigured `ITenantValidator`/`IRbacValidator` returning `null` will NRE-fall into the generic `catch (Exception)` and produce 500 `service-unavailable`. Mirror `QueriesController`: throw `InvalidOperationException("ITenantValidator.ValidateAsync returned null. Server bug.")`.
-- [ ] [Review][Patch] **P11 — `FromSequence` overflow in `AggregateActor.GetEventsAsync`** [src/Hexalith.EventStore/Controllers/StreamsController.cs:192-200; src/Hexalith.EventStore.Server/Actors/AggregateActor.cs] — `FromSequence = long.MaxValue` overflows `checked((int)(fromSequence + 1))` in the actor and surfaces as 500 `service-unavailable`. Validate `FromSequence <= int.MaxValue - 1` (or appropriate ceiling) in `ValidateRequest`.
-- [ ] [Review][Patch] **P12 — `StreamsController` catch-all returns 500 with `service-unavailable` reason** [src/Hexalith.EventStore/Controllers/StreamsController.cs:161-169] — 500 + `service-unavailable` is contradictory (clients see "retry transient infra" on what may be a code bug). Either use 503 with `service-unavailable` for genuine infra outage and a distinct `internal-error` reason for unmapped exceptions on 500, or stop using `service-unavailable` as a catch-all.
+- [x] [Review][Patch] **P7 — `StreamsController` pulls full event suffix into memory** [src/Hexalith.EventStore/Controllers/StreamsController.cs:100-109] — Resolved with `IAggregateActor.ReadEventsRangeAsync`.
+- [x] [Review][Patch] **P8 — `AggregateIdentity` `ArgumentException` mapped to `invalid-range`** [src/Hexalith.EventStore/Controllers/StreamsController.cs:135-141] — Resolved with pre-auth identity validation and `invalid-aggregate-identity`.
+- [x] [Review][Patch] **P9 — Missing `aggregateId` returns 403 `forbidden-replay-scope`** [src/Hexalith.EventStore/Controllers/StreamsController.cs:183-190] — Resolved with 400 `missing-required-field`.
+- [x] [Review][Patch] **P10 — `StreamsController` does not null-guard validator results** [src/Hexalith.EventStore/Controllers/StreamsController.cs:63-66, 75-85] — Resolved with explicit null guard exceptions.
+- [x] [Review][Patch] **P11 — `FromSequence` overflow in `AggregateActor.GetEventsAsync`** [src/Hexalith.EventStore/Controllers/StreamsController.cs:192-200; src/Hexalith.EventStore.Server/Actors/AggregateActor.cs] — Resolved with upper-bound validation and bounded actor read.
+- [x] [Review][Patch] **P12 — `StreamsController` catch-all returns 500 with `service-unavailable` reason** [src/Hexalith.EventStore/Controllers/StreamsController.cs:161-169] — Resolved with 503/500 taxonomy split.
 
 MEDIUM:
 
-- [ ] [Review][Patch] **P13 — `SaveAsync` swallows all non-cancel exceptions as `checkpoint-unavailable`** [src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs:102-105] — Serializer errors and code defects are reported as "store unavailable", misleading operators. Catch the specific Dapr/HTTP exception types that mean transient unavailability; let other exceptions surface as 500 with a distinct reason.
-- [ ] [Review][Patch] **P14 — `SaveAsync` idempotency ignores `failureReasonCode` change for non-progress statuses** [src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs:60-71] — A `Failed → Paused` transition that clears `failureReasonCode` may hit the wrong short-circuit. Always include `failureReasonCode` in the equality check on the first branch, and either explicitly clear-on-transition or refuse the no-op when reason changes.
-- [ ] [Review][Patch] **P15 — `StreamReadEvent.Payload` is `byte[]` on a record** [src/Hexalith.EventStore.Contracts/Streams/StreamReadEvent.cs:11-29] — `record` equality on `byte[]` uses reference equality (silent test/serialization footgun). Use `ReadOnlyMemory<byte>` (or `ImmutableArray<byte>`) with custom equality, or document explicitly that record equality is by reference for `Payload`.
-- [ ] [Review][Patch] **P16 — `DaprProjectionCommandService.MapFailureResponseAsync` reads the full response body unbounded** [src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionCommandService.cs:463-487] — `JsonDocument.ParseAsync(await Content.ReadAsStreamAsync())` has no size cap. A misbehaving EventStore producing a huge error body buffers it fully. Use `HttpClient.MaxResponseContentBufferSize` or read with a bounded reader.
-- [ ] [Review][Patch] **P17 — Tenant validator called with raw (non-normalized) `request.Tenant`** [src/Hexalith.EventStore/Controllers/StreamsController.cs:63-95] — `ClaimsTenantValidator` compares Ordinal (case-sensitive) on caller-supplied string; `AggregateIdentity` lowercases. Mixed-case input passing auth then failing identity validation produces inconsistent error mapping. Reject non-canonical case in `ValidateRequest` up front (or normalize before the validator and use the normalized value for subsequent code paths).
-- [ ] [Review][Patch] **P18 — `ResetProjection` accepts null body, silently treats as `FromPosition=0`** [src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:76-88] — Reject null body with 400 (consistent with `ReplayProjection` `ArgumentNullException.ThrowIfNull(request)`) OR document the no-body default and pair with the actual rewind fix from P3.
-- [ ] [Review][Patch] **P19 — `ProjectionResetRequest`/`ProjectionReplayRequest` declared in controller file** [src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:250-261] — Public DTOs sit outside `Hexalith.EventStore.Contracts.Streams`. Move them next to `ProjectionRebuildOperation` so Admin.Server (and any external client) shares serialization options and compile-time contract.
-- [ ] [Review][Patch] **P20 — `ProjectionRebuildCheckpointStore.SaveAsync` `ArgumentException` propagates to caller as 500** [src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs:143-149] — URL-decoded `:` or other reserved char in `tenantId`/`projectionName` (admin controller route) → `ValidateKeyPart` throws `ArgumentException`. Catch in `AdminProjectionRebuildController.SaveLifecycleAsync` and return 400 with `invalid-range` (or a dedicated `invalid-identifier`).
-- [ ] [Review][Patch] **P21 — Lifecycle controller tests skip persisted-state inspection** [tests/Hexalith.EventStore.Server.Tests/Controllers/AdminProjectionRebuildControllerTests.cs] — All four tests mock `IProjectionRebuildCheckpointStore` and assert only the controller's call arguments. Never observe what would be persisted, so P2/P3/P5 are invisible. Add tests using the real `ProjectionRebuildCheckpointStore` against `Substitute.For<DaprClient>()` with a state-backed fake (or against `MemoryDaprClient`), exercising Pause → Resume, Reset of existing checkpoint, Pause-without-prior-rebuild, and verifying the persisted `ProjectionRebuildCheckpoint` end-state.
+- [x] [Review][Patch] **P13 — `SaveAsync` swallows all non-cancel exceptions as `checkpoint-unavailable`** [src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs:102-105] — Resolved with exception discrimination and propagation test.
+- [x] [Review][Patch] **P14 — `SaveAsync` idempotency ignores `failureReasonCode` change for non-progress statuses** [src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs:60-71] — Resolved by equality-only idempotency including failure reason and `toPosition`.
+- [x] [Review][Patch] **P15 — `StreamReadEvent.Payload` is `byte[]` on a record** [src/Hexalith.EventStore.Contracts/Streams/StreamReadEvent.cs:11-29] — Documented array reference-equality semantics.
+- [x] [Review][Patch] **P16 — `DaprProjectionCommandService.MapFailureResponseAsync` reads the full response body unbounded** [src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionCommandService.cs:463-487] — Resolved with bounded JSON read.
+- [x] [Review][Patch] **P17 — Tenant validator called with raw (non-normalized) `request.Tenant`** [src/Hexalith.EventStore/Controllers/StreamsController.cs:63-95] — Resolved by rejecting non-canonical identity before validation.
+- [x] [Review][Patch] **P18 — `ResetProjection` accepts null body, silently treats as `FromPosition=0`** [src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:76-88] — Resolved by 400 null-body handling.
+- [x] [Review][Patch] **P19 — `ProjectionResetRequest`/`ProjectionReplayRequest` declared in controller file** [src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:250-261] — Resolved by moving DTOs to Contracts.
+- [x] [Review][Patch] **P20 — `ProjectionRebuildCheckpointStore.SaveAsync` `ArgumentException` propagates to caller as 500** [src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs:143-149] — Resolved by prior controller 400 mapping.
+- [x] [Review][Patch] **P21 — Lifecycle controller tests skip persisted-state inspection** [tests/Hexalith.EventStore.Server.Tests/Controllers/AdminProjectionRebuildControllerTests.cs] — Resolved with checkpoint-store behavior tests for reset/rewind and programmer-error propagation.
 
 LOW:
 
-- [ ] [Review][Patch] **P22 — `StaleCheckpoint` reason advertised but never produced** [src/Hexalith.EventStore.Contracts/Streams/StreamReplayReasonCodes.cs; docs/reference/stream-replay-api.md] — Either remove from the public taxonomy and docs, or produce when a stale write is detected (e.g., when `existing.LastAppliedSequence > requested` AND status is a regression).
-- [ ] [Review][Patch] **P23 — `GetRebuildStatus` returns `StartedAt=UnixEpoch` for not-started operations** [src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:223-236] — Make `ProjectionRebuildOperation.StartedAt` nullable (or `UpdatedAt` nullable) so consumers can distinguish "never started" from "started at epoch".
-- [ ] [Review][Patch] **P24 — Redundant `sub` claim check returns bare `Unauthorized()`** [src/Hexalith.EventStore/Controllers/StreamsController.cs:58-61] — `[Authorize]` already gates anonymous; manual `sub` check bypasses the controller's ProblemDetails contract for one failure mode. Remove the check, or return a ProblemDetails with `Unauthorized` reason.
-- [ ] [Review][Patch] **P25 — `ValidateRequest` uses `invalid-range` for missing tenant/domain** [src/Hexalith.EventStore/Controllers/StreamsController.cs:173-181] — Wrong reason code (taxonomy claims sequence-range problem). Add `missing-required-field` (or reuse an appropriate identity reason).
-- [ ] [Review][Patch] **P26 — `Pause`/`Cancel` persist sentinel values in `FailureReasonCode`** [src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:43-51, 124-135] — Pause and Cancel are not failures; storing `RebuildPaused`/`RebuildCanceled` in `FailureReasonCode` confuses consumers parsing the field. Set `failureReasonCode=null` for these transitions; status field already encodes the lifecycle state.
-- [ ] [Review][Patch] **P27 — `lastSequenceReturned` reports `request.FromSequence` for empty pages** [src/Hexalith.EventStore/Controllers/StreamsController.cs:113-115] — Misleading: no sequence was returned. Make `StreamReadMetadata.LastSequenceReturned` nullable and emit `null` (or `-1`) for empty pages.
-- [ ] [Review][Patch] **P28 — `NormalizePageSize` is dead code after `ValidateRequest`** [src/Hexalith.EventStore/Controllers/StreamsController.cs:108, 241] — `ValidateRequest` already rejects out-of-range page sizes. Remove `NormalizePageSize` or document why both exist (defense-in-depth claim must be intentional and tested).
-- [ ] [Review][Patch] **P29 — `DaprProjectionCommandService` uses nullable `ReasonPhrase` as fallback message** [src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionCommandService.cs:478, 486] — HTTP/2 returns null `ReasonPhrase`. Use a stable default (e.g., status-code-name) so `AdminOperationResult.Message` is never null.
-- [ ] [Review][Patch] **P30 — `reasonCode` JSON property capitalization not pinned by a wire test** [src/Hexalith.EventStore/Controllers/StreamsController.cs:234-235; src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionCommandService.cs:GetString(root, "reasonCode")] — Producer/consumer agree by convention only. Add an end-to-end test that serializes a controller `ProblemDetails` through the host's JSON options and asserts the JSON property is lowercase `reasonCode`.
-- [ ] [Review][Patch] **P31 — `FakeEventStoreGatewayClient.ConfigureStreamReadContinuation` mutates only two fields** [src/Hexalith.EventStore.Testing/Fakes/FakeEventStoreGatewayClient.cs:1504-1515] — Sets `IsTruncated=true` and `NextContinuationToken` but leaves `EventCount`, `LastSequenceReturned` from caller-built page. Easy footgun for adopters. Either compute consistent values or document the helper as low-level.
-- [ ] [Review][Patch] **P32 — No-leak ProblemDetails assertions only check literal "state store"** [tests/Hexalith.EventStore.Server.Tests/Controllers/StreamsControllerTests.cs] — Spec's no-leak list is broader (DAPR addresses, stack traces, tokens, payload bytes, user display names). Add a parameterized assertion covering each forbidden substring on every failure-path ProblemDetails.
+- [x] [Review][Patch] **P22 — `StaleCheckpoint` reason advertised but never produced** [src/Hexalith.EventStore.Contracts/Streams/StreamReplayReasonCodes.cs; docs/reference/stream-replay-api.md] — Removed unused reason code from taxonomy/docs.
+- [x] [Review][Patch] **P23 — `GetRebuildStatus` returns `StartedAt=UnixEpoch` for not-started operations** [src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:223-236] — Resolved with nullable `StartedAt`.
+- [x] [Review][Patch] **P24 — Redundant `sub` claim check returns bare `Unauthorized()`** [src/Hexalith.EventStore/Controllers/StreamsController.cs:58-61] — Removed manual check.
+- [x] [Review][Patch] **P25 — `ValidateRequest` uses `invalid-range` for missing tenant/domain** [src/Hexalith.EventStore/Controllers/StreamsController.cs:173-181] — Resolved with `missing-required-field`.
+- [x] [Review][Patch] **P26 — `Pause`/`Cancel` persist sentinel values in `FailureReasonCode`** [src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:43-51, 124-135] — Resolved by prior null failure-reason patch.
+- [x] [Review][Patch] **P27 — `lastSequenceReturned` reports `request.FromSequence` for empty pages** [src/Hexalith.EventStore/Controllers/StreamsController.cs:113-115] — Resolved with nullable metadata.
+- [x] [Review][Patch] **P28 — `NormalizePageSize` is dead code after `ValidateRequest`** [src/Hexalith.EventStore/Controllers/StreamsController.cs:108, 241] — Removed helper.
+- [x] [Review][Patch] **P29 — `DaprProjectionCommandService` uses nullable `ReasonPhrase` as fallback message** [src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionCommandService.cs:478, 486] — Added stable fallback.
+- [x] [Review][Patch] **P30 — `reasonCode` JSON property capitalization not pinned by a wire test** [src/Hexalith.EventStore/Controllers/StreamsController.cs:234-235; src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionCommandService.cs:GetString(root, "reasonCode")] — Added lowercase serialization assertion.
+- [x] [Review][Patch] **P31 — `FakeEventStoreGatewayClient.ConfigureStreamReadContinuation` mutates only two fields** [src/Hexalith.EventStore.Testing/Fakes/FakeEventStoreGatewayClient.cs:1504-1515] — Normalizes continuation metadata.
+- [x] [Review][Patch] **P32 — No-leak ProblemDetails assertions only check literal "state store"** [tests/Hexalith.EventStore.Server.Tests/Controllers/StreamsControllerTests.cs] — Expanded forbidden-substring coverage.
 
 #### Defer (1)
 
@@ -466,6 +466,7 @@ GPT-5 Codex
 
 ### Debug Log References
 
+- 2026-05-15T12:05:00+02:00 - Review-continuation pass applied 31 of 32 remaining review patches: range-aware actor reads, stream request validation/error taxonomy, explicit checkpoint reset/rewind, fresh replay/reset operation IDs, persisted `ToPosition`, nullable empty-page metadata, bounded Admin.Server ProblemDetails parsing, fake/client parity fixes, docs update, and focused tests. One design-level item remains: P4/P-D2 full apply-driven rebuild advancement worker.
 - 2026-05-15T07:47:52+02:00 - ST6/ST7 validation completed: focused stream/rebuild tests passed, full Contracts/Client/Testing/Sample test projects passed, docs markdown lint passed, and Aspire integration proof remained blocked by the local Aspire CLI/AppHost package version mismatch.
 - 2026-05-15T07:52:00+02:00 - Broad `Hexalith.EventStore.Admin.Server.Tests` was attempted as an extra check and failed outside the story-focused tests: OpenAPI/resiliency suites could not load `Microsoft.AspNetCore.OpenApi` 10.0.8 and `YamlDotNet` 17.0.0 after MSB3277 version-conflict warnings.
 - 2026-05-15T08:28:00+02:00 - ST5 completed: added `docs/reference/stream-replay-api.md`; `npx markdownlint-cli2 docs/reference/stream-replay-api.md` passed with 0 errors.
@@ -481,6 +482,11 @@ GPT-5 Codex
 
 ### Completion Notes List
 
+- Review-continuation patch set resolved all remaining concrete review findings except P4/P-D2 full apply-driven rebuild advancement. The replay endpoint no longer treats `FromPosition` as applied progress, but a dedicated rebuild worker/apply loop is still needed to advance rebuild checkpoints after accepted projection page application.
+- Added bounded stream actor reads through `IAggregateActor.ReadEventsRangeAsync`, avoiding public replay controller full-suffix reads.
+- Hardened stream validation/error taxonomy: missing required fields, invalid aggregate identity, upper-bound sequence validation, canonical tenant/domain enforcement, validator null guards, 503 vs 500 split, actor exception unwrapping, and broader no-leak ProblemDetails assertions.
+- Added explicit checkpoint reset/rewind semantics, fresh ULID operation IDs for replay/reset, persisted `ToPosition` intent, nullable not-started operation `StartedAt`, and nullable empty-page `lastSequenceReturned`.
+- Moved projection replay/reset request DTOs to Contracts and updated docs/fakes/tests for public contract parity.
 - Completed focused and broader unit validation for the stream replay/rebuild surfaces. Integration/manual Aspire proof was not run because the installed Aspire CLI requires `Aspire.Hosting.AppHost` >= 13.3.2 while this repo is pinned to 13.2.2.
 - Added public stream replay API documentation covering route/DTO shape, client usage, checkpoint semantics, operator lifecycle, stable reason codes, and explicit forbidden downstream paths.
 - Added EventStore-side admin projection rebuild lifecycle endpoints for status, pause, resume, reset, replay, cancel, and retry, backed by rebuild checkpoints and stable `AdminOperationResult` / ProblemDetails responses.
@@ -515,6 +521,8 @@ GPT-5 Codex
 - `src/Hexalith.EventStore.Contracts/Streams/ProjectionRebuildCheckpoint.cs`
 - `src/Hexalith.EventStore.Contracts/Streams/ProjectionRebuildOperation.cs`
 - `src/Hexalith.EventStore.Contracts/Streams/ProjectionRebuildStatus.cs`
+- `src/Hexalith.EventStore.Contracts/Streams/ProjectionReplayRequest.cs`
+- `src/Hexalith.EventStore.Contracts/Streams/ProjectionResetRequest.cs`
 - `src/Hexalith.EventStore.Contracts/Streams/ReplayContinuationToken.cs`
 - `src/Hexalith.EventStore.Contracts/Streams/StreamReadEvent.cs`
 - `src/Hexalith.EventStore.Contracts/Streams/StreamReadMetadata.cs`
@@ -522,6 +530,8 @@ GPT-5 Codex
 - `src/Hexalith.EventStore.Contracts/Streams/StreamReadRequest.cs`
 - `src/Hexalith.EventStore.Contracts/Streams/StreamReplayReasonCodes.cs`
 - `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs`
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs`
+- `src/Hexalith.EventStore.Server/Actors/IAggregateActor.cs`
 - `src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj.lscache`
 - `src/Hexalith.EventStore.Server/Projections/IProjectionRebuildCheckpointStore.cs`
 - `src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointSaveResult.cs`
@@ -529,6 +539,7 @@ GPT-5 Codex
 - `src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs`
 - `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs`
 - `src/Hexalith.EventStore.Testing/Builders/StreamReadPageBuilder.cs`
+- `src/Hexalith.EventStore.Testing/Fakes/FakeAggregateActor.cs`
 - `src/Hexalith.EventStore.Testing/Fakes/FakeEventStoreGatewayClient.cs`
 - `src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj.lscache`
 - `src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs`
@@ -559,13 +570,21 @@ GPT-5 Codex
 - Advanced elicitation completed on 2026-05-13 and is recorded below.
 - Advanced-elicitation findings were applied only as story-text clarifications; product code, tests, DAPR/Aspire configuration, generated API docs, submodules, and sprint status were not changed.
 - `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-restore` passed: 331/331.
+- Review-continuation rerun `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-restore` passed: 333/333.
 - `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --no-restore` passed: 388/388.
+- Review-continuation rerun `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --no-restore` passed: 388/388.
 - `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj --no-restore` passed: 109/109.
+- Review-continuation rerun `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj --no-restore` passed: 110/110.
 - `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj --no-restore` passed: 74/74.
+- Review-continuation rerun `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj --no-restore` passed: 74/74.
 - Focused `Hexalith.EventStore.Server.Tests` stream/rebuild filter passed: 16/16.
+- Review-continuation rerun focused `Hexalith.EventStore.Server.Tests` stream/rebuild/checkpoint/orchestrator filter passed: 69/69.
 - Focused `Hexalith.EventStore.Admin.Server.Tests` DAPR failure mapping filter passed: 2/2, with existing MSB3277 package conflict warnings for `Microsoft.AspNetCore.OpenApi` and `YamlDotNet`.
+- Review-continuation rerun focused `Hexalith.EventStore.Admin.Server.Tests` DAPR projection command service filter passed: 10/10.
 - Extra broad `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/Hexalith.EventStore.Admin.Server.Tests.csproj --no-restore` failed outside the story-focused coverage: 40 failed, 564 passed, 18 skipped, due missing `Microsoft.AspNetCore.OpenApi` 10.0.8 and `YamlDotNet` 17.0.0 assemblies after package conflict warnings.
 - `npx markdownlint-cli2 docs/reference/stream-replay-api.md` passed with 0 errors.
+- Review-continuation rerun `npx markdownlint-cli2 docs/reference/stream-replay-api.md` passed with 0 errors.
+- Review-continuation combined story/docs markdownlint failed on pre-existing `[Review][Patch]` / `[Review][Defer]` label syntax in the story artifact (MD052). Docs-only markdownlint passed.
 - `npx markdownlint-cli2 _bmad-output/implementation-artifacts/22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints.md` passed with 0 errors.
 - `git diff --check` passed with line-ending conversion warnings only.
 - Aspire integration/manual proof not run: `aspire start --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` was blocked because the installed Aspire CLI requires `Aspire.Hosting.AppHost` >= 13.3.2 while this repo is pinned to 13.2.2.
@@ -575,6 +594,7 @@ GPT-5 Codex
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-15 | 1.2 | Review-continuation patch set resolved 31 of 32 remaining review findings: range-aware actor reads, safer stream validation/taxonomy, explicit reset/replay rewind semantics, fresh operation IDs, persisted `ToPosition`, nullable empty-page/start metadata, bounded Admin.Server ProblemDetails parsing, docs/fake parity, and focused validation. P4/P-D2 full apply-driven rebuild advancement remains open. | GPT-5 Codex |
 | 2026-05-15 | 1.1 | Code review (Opus 4.7) applied 7 CRITICAL/HIGH patches (P-D1 GlobalAdministrator gate, P2 SaveAsync lifecycle fix, P5 read-first 404, P-D3 continuation tokens off, P6 poller fail-closed, P20 ArgumentException → 400, P26 FailureReasonCode null for pause/cancel). 32 remaining patches (including design-level P3/P-D2/P-D5/P-D6/P-D7) listed in Review Findings as action items. Story moved back to in-progress. Focused Server tests 70/70 pass. | Claude Opus 4.7 |
 | 2026-05-15 | 1.0 | Implemented public stream read contracts/client/testing support, EventStore stream read endpoint, projection rebuild checkpoint store, operator rebuild lifecycle endpoints, poller/rebuild conflict policy, docs, and validation evidence; moved story to review. | GPT-5 Codex |
 | 2026-05-15 | 0.4 | Started dev workflow and moved story to in-progress. | GPT-5 Codex |

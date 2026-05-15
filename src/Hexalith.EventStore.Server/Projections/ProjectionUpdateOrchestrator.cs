@@ -398,7 +398,7 @@ public partial class ProjectionUpdateOrchestrator(
                         identity.Domain,
                         identity.Domain,
                         AggregateId: null,
-                        OperationId: $"{identity.Domain}-rebuild"),
+                        OperationId: null),
                     cancellationToken)
                 .ConfigureAwait(false);
             return checkpoint?.Status is

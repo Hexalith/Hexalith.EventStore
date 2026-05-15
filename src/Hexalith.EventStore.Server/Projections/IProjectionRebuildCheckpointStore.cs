@@ -21,5 +21,17 @@ public interface IProjectionRebuildCheckpointStore {
         long lastAppliedSequence,
         ProjectionRebuildStatus status,
         string? failureReasonCode = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        long? toPosition = null);
+
+    /// <summary>
+    /// Explicitly rewinds projection rebuild progress with optimistic concurrency.
+    /// </summary>
+    Task<ProjectionRebuildCheckpointSaveResult> ResetAsync(
+        ProjectionRebuildCheckpointScope scope,
+        long lastAppliedSequence,
+        ProjectionRebuildStatus status,
+        string? failureReasonCode = null,
+        CancellationToken cancellationToken = default,
+        long? toPosition = null);
 }

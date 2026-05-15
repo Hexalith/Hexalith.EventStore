@@ -5,7 +5,7 @@ namespace Hexalith.EventStore.Contracts.Streams;
 /// </summary>
 /// <param name="SequenceNumber">The stream sequence number.</param>
 /// <param name="EventTypeName">The persisted event type name.</param>
-/// <param name="Payload">The serialized event payload bytes.</param>
+/// <param name="Payload">The serialized event payload bytes. Record equality compares this array by reference; compare contents explicitly when needed.</param>
 /// <param name="SerializationFormat">The payload serialization format.</param>
 /// <param name="MetadataVersion">The event metadata schema version.</param>
 /// <param name="MessageId">The persisted event message identifier.</param>

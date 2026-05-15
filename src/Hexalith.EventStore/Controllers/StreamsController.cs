@@ -1,3 +1,4 @@
+using Dapr;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
@@ -55,14 +56,13 @@ public sealed partial class StreamsController(
             return validationFailure;
         }
 
-        string? subjectId = User.FindFirst("sub")?.Value;
-        if (string.IsNullOrWhiteSpace(subjectId)) {
-            return Unauthorized();
-        }
-
         TenantValidationResult tenantResult = await tenantValidator
             .ValidateAsync(User, request.Tenant, cancellationToken, request.AggregateId)
             .ConfigureAwait(false);
+        if (tenantResult is null) {
+            throw new InvalidOperationException("ITenantValidator.ValidateAsync returned null. Server bug.");
+        }
+
         if (!tenantResult.IsAuthorized) {
             return ProblemWithReason(
                 StatusCodes.Status403Forbidden,
@@ -82,6 +82,10 @@ public sealed partial class StreamsController(
                 cancellationToken,
                 request.AggregateId)
             .ConfigureAwait(false);
+        if (rbacResult is null) {
+            throw new InvalidOperationException("IRbacValidator.ValidateAsync returned null. Server bug.");
+        }
+
         if (!rbacResult.IsAuthorized) {
             return ProblemWithReason(
                 StatusCodes.Status403Forbidden,
@@ -97,23 +101,19 @@ public sealed partial class StreamsController(
                 new ActorId(identity.ActorId),
                 "AggregateActor");
 
-            ServerEventEnvelope[] events = await actor
-                .GetEventsAsync(request.FromSequence)
+            ServerEventEnvelope[] pageEvents = await actor
+                .ReadEventsRangeAsync(request.FromSequence, request.ToSequence, request.PageSize + 1)
                 .ConfigureAwait(false);
 
-            IReadOnlyList<ServerEventEnvelope> orderedEvents = [.. events
-                .Where(e => !request.ToSequence.HasValue || e.SequenceNumber <= request.ToSequence.Value)
-                .OrderBy(e => e.SequenceNumber)];
-
-            int pageSize = NormalizePageSize(request.PageSize);
-            IReadOnlyList<ServerEventEnvelope> pageEvents = [.. orderedEvents.Take(pageSize)];
-            long latestSequence = orderedEvents.Count == 0
+            IReadOnlyList<ServerEventEnvelope> readEvents = [.. pageEvents.OrderBy(e => e.SequenceNumber)];
+            IReadOnlyList<ServerEventEnvelope> orderedEvents = [.. readEvents.Take(request.PageSize)];
+            long latestSequence = readEvents.Count == 0
                 ? request.FromSequence
+                : readEvents[^1].SequenceNumber;
+            long? lastReturned = orderedEvents.Count == 0
+                ? null
                 : orderedEvents[^1].SequenceNumber;
-            long lastReturned = pageEvents.Count == 0
-                ? request.FromSequence
-                : pageEvents[^1].SequenceNumber;
-            bool truncated = orderedEvents.Count > pageEvents.Count;
+            bool truncated = pageEvents.Length > request.PageSize;
 
             // P-D3: Continuation tokens are not yet implemented (token request-binding deferred).
             // The validator at ValidateRequest line ~211 unconditionally rejects non-null tokens.
@@ -123,26 +123,44 @@ public sealed partial class StreamsController(
                 identity.TenantId,
                 identity.Domain,
                 identity.AggregateId,
-                [.. pageEvents.Select(ToStreamReadEvent)],
+                [.. orderedEvents.Select(ToStreamReadEvent)],
                 new StreamReadMetadata(
                     request.FromSequence,
                     request.ToSequence,
                     lastReturned,
                     latestSequence,
-                    pageEvents.Count,
+                    orderedEvents.Count,
                     truncated,
                     NextContinuationToken: null)));
         }
         catch (OperationCanceledException) {
             throw;
         }
-        catch (ArgumentException ex) {
+        catch (ArgumentException) {
             return ProblemWithReason(
                 StatusCodes.Status400BadRequest,
                 ProblemTypeUris.BadRequest,
                 "Bad Request",
-                ex.Message,
-                StreamReplayReasonCodes.InvalidRange);
+                "Stream identity is invalid.",
+                StreamReplayReasonCodes.InvalidAggregateIdentity);
+        }
+        catch (ActorMethodInvocationException ex) when (TryGetException<MissingEventException>(ex, out MissingEventException? missing)) {
+            Log.StreamReadFailed(logger, ex, request.Tenant, request.Domain, request.AggregateId ?? string.Empty, StreamReplayReasonCodes.MissingEvent);
+            return ProblemWithReason(
+                StatusCodes.Status404NotFound,
+                ProblemTypeUris.NotFound,
+                "Not Found",
+                $"Event stream is missing event sequence {missing!.SequenceNumber}.",
+                StreamReplayReasonCodes.MissingEvent);
+        }
+        catch (ActorMethodInvocationException ex) when (TryGetException<EventDeserializationException>(ex, out _)) {
+            Log.StreamReadFailed(logger, ex, request.Tenant, request.Domain, request.AggregateId ?? string.Empty, StreamReplayReasonCodes.CorruptEvent);
+            return ProblemWithReason(
+                StatusCodes.Status500InternalServerError,
+                ProblemTypeUris.InternalServerError,
+                "Internal Server Error",
+                "Event stream contains unreadable event data.",
+                StreamReplayReasonCodes.CorruptEvent);
         }
         catch (MissingEventException ex) {
             Log.StreamReadFailed(logger, ex, request.Tenant, request.Domain, request.AggregateId ?? string.Empty, StreamReplayReasonCodes.MissingEvent);
@@ -162,18 +180,25 @@ public sealed partial class StreamsController(
                 "Event stream contains unreadable event data.",
                 StreamReplayReasonCodes.CorruptEvent);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
             Log.StreamReadFailed(logger, ex, request.Tenant, request.Domain, request.AggregateId ?? string.Empty, StreamReplayReasonCodes.ServiceUnavailable);
+            return ProblemWithReason(
+                StatusCodes.Status503ServiceUnavailable,
+                ProblemTypeUris.ServiceUnavailable,
+                "Service Unavailable",
+                "Stream replay service is unavailable.",
+                StreamReplayReasonCodes.ServiceUnavailable);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            Log.StreamReadFailed(logger, ex, request.Tenant, request.Domain, request.AggregateId ?? string.Empty, StreamReplayReasonCodes.InternalError);
             return ProblemWithReason(
                 StatusCodes.Status500InternalServerError,
                 ProblemTypeUris.InternalServerError,
                 "Internal Server Error",
                 "Stream replay failed.",
-                StreamReplayReasonCodes.ServiceUnavailable);
+                StreamReplayReasonCodes.InternalError);
         }
     }
-
-    private static int NormalizePageSize(int pageSize) => Math.Clamp(pageSize, 1, _maxPageSize);
 
     private static StreamReadEvent ToStreamReadEvent(ServerEventEnvelope envelope)
         => new(
@@ -214,19 +239,29 @@ public sealed partial class StreamsController(
                 ProblemTypeUris.BadRequest,
                 "Bad Request",
                 "Tenant and domain are required.",
-                StreamReplayReasonCodes.InvalidRange);
+                StreamReplayReasonCodes.MissingRequiredField);
         }
 
         if (string.IsNullOrWhiteSpace(request.AggregateId)) {
             return ProblemWithReason(
-                StatusCodes.Status403Forbidden,
-                ProblemTypeUris.Forbidden,
-                "Forbidden",
-                "Domain-wide stream reads require an explicit projection rebuild scope.",
-                StreamReplayReasonCodes.ForbiddenReplayScope);
+                StatusCodes.Status400BadRequest,
+                ProblemTypeUris.BadRequest,
+                "Bad Request",
+                "Aggregate identifier is required for the current stream read route.",
+                StreamReplayReasonCodes.MissingRequiredField);
+        }
+
+        if (!IsCanonicalTenantOrDomain(request.Tenant) || !IsCanonicalTenantOrDomain(request.Domain) || !IsValidAggregateId(request.AggregateId)) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                ProblemTypeUris.BadRequest,
+                "Bad Request",
+                "Stream identity is invalid.",
+                StreamReplayReasonCodes.InvalidAggregateIdentity);
         }
 
         if (request.FromSequence < 0
+            || request.FromSequence > int.MaxValue - 1L
             || (request.ToSequence.HasValue && request.ToSequence.Value <= request.FromSequence)) {
             return ProblemWithReason(
                 StatusCodes.Status400BadRequest,
@@ -255,6 +290,53 @@ public sealed partial class StreamsController(
         }
 
         return null;
+    }
+
+    private static bool IsCanonicalTenantOrDomain(string value) {
+        if (value.Length > 64 || value.Any(c => c is < (char)0x20 or >= (char)0x7F)) {
+            return false;
+        }
+
+        if (!char.IsAsciiLetterOrDigit(value[0]) || !char.IsAsciiLetterOrDigit(value[^1])) {
+            return false;
+        }
+
+        return value.All(c => c is >= 'a' and <= 'z' || c is >= '0' and <= '9' || c == '-');
+    }
+
+    private static bool IsValidAggregateId(string value) {
+        if (value.Length > 256 || value.Any(c => c is < (char)0x20 or >= (char)0x7F)) {
+            return false;
+        }
+
+        if (!char.IsAsciiLetterOrDigit(value[0]) || !char.IsAsciiLetterOrDigit(value[^1])) {
+            return false;
+        }
+
+        return value.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '_' or '-');
+    }
+
+    private static bool IsServiceUnavailable(Exception exception)
+        => exception is DaprException
+            or HttpRequestException
+            or TimeoutException
+            or ActorMethodInvocationException
+            || (exception.InnerException is not null && IsServiceUnavailable(exception.InnerException));
+
+    private static bool TryGetException<TException>(Exception exception, out TException? result)
+        where TException : Exception {
+        Exception? current = exception;
+        while (current is not null) {
+            if (current is TException matched) {
+                result = matched;
+                return true;
+            }
+
+            current = current.InnerException;
+        }
+
+        result = null;
+        return false;
     }
 
     private static partial class Log {

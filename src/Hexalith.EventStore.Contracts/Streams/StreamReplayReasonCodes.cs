@@ -7,6 +7,12 @@ public static class StreamReplayReasonCodes {
     /// <summary>Requested sequence range is malformed.</summary>
     public const string InvalidRange = "invalid-range";
 
+    /// <summary>A required stream replay field is missing.</summary>
+    public const string MissingRequiredField = "missing-required-field";
+
+    /// <summary>The supplied tenant, domain, or aggregate identity shape is invalid.</summary>
+    public const string InvalidAggregateIdentity = "invalid-aggregate-identity";
+
     /// <summary>Continuation token is malformed or cannot be validated.</summary>
     public const string InvalidContinuation = "invalid-continuation";
 
@@ -37,9 +43,6 @@ public static class StreamReplayReasonCodes {
     /// <summary>A checkpoint write conflicted with a concurrent writer.</summary>
     public const string CheckpointConflict = "checkpoint-conflict";
 
-    /// <summary>A checkpoint write was stale.</summary>
-    public const string StaleCheckpoint = "stale-checkpoint";
-
     /// <summary>A checkpoint read observed drift from available stream progress.</summary>
     public const string CheckpointDrift = "checkpoint-drift";
 
@@ -66,4 +69,7 @@ public static class StreamReplayReasonCodes {
 
     /// <summary>The EventStore service is unavailable.</summary>
     public const string ServiceUnavailable = "service-unavailable";
+
+    /// <summary>An unexpected internal stream replay failure occurred.</summary>
+    public const string InternalError = "internal-error";
 }

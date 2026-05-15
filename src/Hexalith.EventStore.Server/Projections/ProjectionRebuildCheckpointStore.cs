@@ -1,3 +1,4 @@
+using Dapr;
 using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Streams;
@@ -42,7 +43,8 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         long lastAppliedSequence,
         ProjectionRebuildStatus status,
         string? failureReasonCode = null,
-        CancellationToken cancellationToken = default) {
+        CancellationToken cancellationToken = default,
+        long? toPosition = null) {
         ValidateScope(scope);
         ArgumentOutOfRangeException.ThrowIfNegative(lastAppliedSequence);
 
@@ -65,22 +67,27 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     // returned Success without writing, leaving the status as Paused).
                     if (existing.LastAppliedSequence >= lastAppliedSequence
                         && existing.Status == status
-                        && string.Equals(existing.FailureReasonCode, failureReasonCode, StringComparison.Ordinal)) {
+                        && string.Equals(existing.FailureReasonCode, failureReasonCode, StringComparison.Ordinal)
+                        && existing.ToPosition == toPosition) {
                         return ProjectionRebuildCheckpointSaveResult.Success(existing);
                     }
                 }
 
                 long monotonicSequence = Math.Max(existing?.LastAppliedSequence ?? 0, lastAppliedSequence);
+                string? operationId = string.IsNullOrWhiteSpace(scope.OperationId)
+                    ? existing?.OperationId
+                    : scope.OperationId;
                 var checkpoint = new ProjectionRebuildCheckpoint(
                     scope.Tenant,
                     scope.Domain,
                     scope.ProjectionName,
                     scope.AggregateId,
-                    scope.OperationId,
+                    operationId,
                     monotonicSequence,
                     status,
                     DateTimeOffset.UtcNow,
-                    failureReasonCode);
+                    failureReasonCode,
+                    toPosition);
 
                 bool saved = await daprClient
                     .TrySaveStateAsync(
@@ -99,7 +106,71 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             catch (OperationCanceledException) {
                 throw;
             }
-            catch (Exception ex) {
+            catch (Exception ex) when (IsStateStoreUnavailable(ex)) {
+                Log.CheckpointUnavailable(logger, ex, scope.Tenant, scope.Domain, scope.ProjectionName, ex.GetType().Name);
+                return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointUnavailable);
+            }
+        }
+
+        return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointConflict);
+    }
+
+    /// <inheritdoc/>
+    public async Task<ProjectionRebuildCheckpointSaveResult> ResetAsync(
+        ProjectionRebuildCheckpointScope scope,
+        long lastAppliedSequence,
+        ProjectionRebuildStatus status,
+        string? failureReasonCode = null,
+        CancellationToken cancellationToken = default,
+        long? toPosition = null) {
+        ValidateScope(scope);
+        ArgumentOutOfRangeException.ThrowIfNegative(lastAppliedSequence);
+
+        string key = GetStateKey(scope);
+        string stateStoreName = options.Value.CheckpointStateStoreName;
+        for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+            try {
+                (ProjectionRebuildCheckpoint? existing, string etag) = await daprClient
+                    .GetStateAndETagAsync<ProjectionRebuildCheckpoint>(
+                        stateStoreName,
+                        key,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (existing is not null) {
+                    ValidateCheckpointScope(scope, existing);
+                }
+
+                var checkpoint = new ProjectionRebuildCheckpoint(
+                    scope.Tenant,
+                    scope.Domain,
+                    scope.ProjectionName,
+                    scope.AggregateId,
+                    string.IsNullOrWhiteSpace(scope.OperationId) ? existing?.OperationId : scope.OperationId,
+                    lastAppliedSequence,
+                    status,
+                    DateTimeOffset.UtcNow,
+                    failureReasonCode,
+                    toPosition);
+
+                bool saved = await daprClient
+                    .TrySaveStateAsync(
+                        stateStoreName,
+                        key,
+                        checkpoint,
+                        etag,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                if (saved) {
+                    return ProjectionRebuildCheckpointSaveResult.Success(checkpoint);
+                }
+
+                Log.CheckpointConflict(logger, scope.Tenant, scope.Domain, scope.ProjectionName, scope.AggregateId ?? string.Empty, scope.OperationId ?? string.Empty, attempt + 1);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) when (IsStateStoreUnavailable(ex)) {
                 Log.CheckpointUnavailable(logger, ex, scope.Tenant, scope.Domain, scope.ProjectionName, ex.GetType().Name);
                 return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointUnavailable);
             }
@@ -118,13 +189,8 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             ":",
             scope.ProjectionName,
             ":",
-            string.IsNullOrWhiteSpace(scope.AggregateId) ? "*" : scope.AggregateId,
-            ":",
-            string.IsNullOrWhiteSpace(scope.OperationId) ? "*" : scope.OperationId);
+            string.IsNullOrWhiteSpace(scope.AggregateId) ? "*" : scope.AggregateId);
     }
-
-    private static bool IsProgressStatus(ProjectionRebuildStatus status)
-        => status is ProjectionRebuildStatus.Running or ProjectionRebuildStatus.Pausing or ProjectionRebuildStatus.Resuming or ProjectionRebuildStatus.Retrying;
 
     private static void ValidateScope(ProjectionRebuildCheckpointScope scope) {
         ArgumentNullException.ThrowIfNull(scope);
@@ -155,11 +221,17 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         if (!string.Equals(checkpoint.Tenant, scope.Tenant, StringComparison.Ordinal)
             || !string.Equals(checkpoint.Domain, scope.Domain, StringComparison.Ordinal)
             || !string.Equals(checkpoint.ProjectionName, scope.ProjectionName, StringComparison.Ordinal)
-            || !string.Equals(checkpoint.AggregateId, scope.AggregateId, StringComparison.Ordinal)
-            || !string.Equals(checkpoint.OperationId, scope.OperationId, StringComparison.Ordinal)) {
+            || !string.Equals(checkpoint.AggregateId, scope.AggregateId, StringComparison.Ordinal)) {
             throw new InvalidOperationException("Projection rebuild checkpoint scope does not match the requested scope.");
         }
     }
+
+    private static bool IsStateStoreUnavailable(Exception exception)
+        => exception is DaprException
+            or HttpRequestException
+            or IOException
+            or TimeoutException
+            || (exception.InnerException is not null && IsStateStoreUnavailable(exception.InnerException));
 
     private static partial class Log {
         [LoggerMessage(

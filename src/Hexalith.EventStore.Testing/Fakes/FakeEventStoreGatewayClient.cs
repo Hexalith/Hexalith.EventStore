@@ -52,7 +52,7 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
     /// Gets or sets the stream read page returned by the fake.
     /// </summary>
     public StreamReadPage StreamReadPage { get; set; }
-        = new("test-tenant", "test-domain", null, [], new StreamReadMetadata(0, null, 0, 0, 0, false, null));
+        = new("test-tenant", "test-domain", null, [], new StreamReadMetadata(0, null, null, 0, 0, false, null));
 
     /// <summary>
     /// Gets or sets the exception thrown for command submissions.
@@ -167,7 +167,7 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
             domain,
             aggregateId,
             [],
-            new StreamReadMetadata(0, null, 0, 0, 0, false, null));
+            new StreamReadMetadata(0, null, null, 0, 0, false, null));
         return this;
     }
 
@@ -178,8 +178,15 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
         ArgumentNullException.ThrowIfNull(page);
         ArgumentException.ThrowIfNullOrWhiteSpace(nextContinuationToken);
         StreamReadException = null;
+        long? lastSequenceReturned = page.Events.Count == 0
+            ? null
+            : page.Events.Max(e => e.SequenceNumber);
+        long latestSequence = Math.Max(page.Metadata.LatestSequence, lastSequenceReturned ?? page.Metadata.FromSequence);
         StreamReadPage = page with {
             Metadata = page.Metadata with {
+                LastSequenceReturned = lastSequenceReturned,
+                LatestSequence = latestSequence,
+                EventCount = page.Events.Count,
                 IsTruncated = true,
                 NextContinuationToken = new ReplayContinuationToken(nextContinuationToken),
             },

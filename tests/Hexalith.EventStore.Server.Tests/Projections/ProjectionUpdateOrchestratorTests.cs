@@ -114,10 +114,29 @@ public class ProjectionUpdateOrchestratorTests {
             Arg.Is<ProjectionRebuildCheckpointScope>(scope =>
                 scope.Tenant == TestIdentity.TenantId
                 && scope.Domain == TestIdentity.Domain
-                && scope.ProjectionName == TestIdentity.Domain),
+                && scope.ProjectionName == TestIdentity.Domain
+                && scope.OperationId == null),
             Arg.Any<CancellationToken>());
         _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!);
         _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
+    }
+
+    [Fact]
+    public async Task DeliverProjectionAsync_ConflictProbeUsesDomainAsProjectionNameDocumentingCurrentConstraint() {
+        IProjectionRebuildCheckpointStore rebuildCheckpointStore = Substitute.For<IProjectionRebuildCheckpointStore>();
+        _ = rebuildCheckpointStore.ReadAsync(Arg.Any<ProjectionRebuildCheckpointScope>(), Arg.Any<CancellationToken>())
+            .Returns((ProjectionRebuildCheckpoint?)null);
+        (ProjectionUpdateOrchestrator sut, _, _, IDomainServiceResolver resolver, _) = CreateSut(rebuildCheckpointStore: rebuildCheckpointStore);
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((DomainServiceRegistration?)null);
+
+        await sut.DeliverProjectionAsync(TestIdentity);
+
+        _ = await rebuildCheckpointStore.Received(1).ReadAsync(
+            Arg.Is<ProjectionRebuildCheckpointScope>(scope =>
+                scope.ProjectionName == TestIdentity.Domain
+                && scope.ProjectionName != "party-summary"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

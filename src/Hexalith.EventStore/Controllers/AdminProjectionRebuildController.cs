@@ -3,6 +3,7 @@ using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Projections;
+using Hexalith.Commons.UniqueIds;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -90,12 +91,19 @@ public sealed partial class AdminProjectionRebuildController(
     public async Task<IActionResult> ResetProjection(
         string tenantId,
         string projectionName,
-        [FromBody] ProjectionResetRequest request,
+        [FromBody] ProjectionResetRequest? request,
         CancellationToken ct = default) {
-        ArgumentNullException.ThrowIfNull(request);
         IActionResult? authFailure = EnsureGlobalAdministrator();
         if (authFailure is not null) {
             return authFailure;
+        }
+
+        if (request is null) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                "Reset request body is required.",
+                StreamReplayReasonCodes.MissingRequiredField);
         }
 
         long fromPosition = request.FromPosition ?? 0;
@@ -114,6 +122,8 @@ public sealed partial class AdminProjectionRebuildController(
             ProjectionRebuildStatus.NotStarted,
             failureReasonCode: null,
             accepted: true,
+            allowRewind: true,
+            toPosition: null,
             ct).ConfigureAwait(false);
     }
 
@@ -127,12 +137,19 @@ public sealed partial class AdminProjectionRebuildController(
     public async Task<IActionResult> ReplayProjection(
         string tenantId,
         string projectionName,
-        [FromBody] ProjectionReplayRequest request,
+        [FromBody] ProjectionReplayRequest? request,
         CancellationToken ct = default) {
-        ArgumentNullException.ThrowIfNull(request);
         IActionResult? authFailure = EnsureGlobalAdministrator();
         if (authFailure is not null) {
             return authFailure;
+        }
+
+        if (request is null) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                "Replay request body is required.",
+                StreamReplayReasonCodes.MissingRequiredField);
         }
 
         if (request.FromPosition < 0 || request.ToPosition < request.FromPosition) {
@@ -146,10 +163,12 @@ public sealed partial class AdminProjectionRebuildController(
         return await SaveLifecycleAsync(
             tenantId,
             projectionName,
-            request.FromPosition,
+            Math.Max(0, request.FromPosition - 1),
             ProjectionRebuildStatus.Running,
             failureReasonCode: null,
             accepted: true,
+            allowRewind: true,
+            toPosition: request.ToPosition,
             ct).ConfigureAwait(false);
     }
 
@@ -227,7 +246,7 @@ public sealed partial class AdminProjectionRebuildController(
 
             var result = new AdminOperationResult(
                 true,
-                scope.OperationId ?? string.Empty,
+                existing.OperationId ?? scope.OperationId ?? string.Empty,
                 $"Projection rebuild status is {status}.",
                 null);
             return accepted ? Accepted(result) : Ok(result);
@@ -252,12 +271,18 @@ public sealed partial class AdminProjectionRebuildController(
         ProjectionRebuildStatus status,
         string? failureReasonCode,
         bool accepted,
+        bool allowRewind,
+        long? toPosition,
         CancellationToken ct) {
         try {
-            ProjectionRebuildCheckpointScope scope = CreateScope(tenantId, projectionName);
-            ProjectionRebuildCheckpointSaveResult save = await checkpointStore
-                .SaveAsync(scope, lastAppliedSequence, status, failureReasonCode, ct)
-                .ConfigureAwait(false);
+            ProjectionRebuildCheckpointScope scope = CreateScope(tenantId, projectionName, UniqueIdHelper.GenerateSortableUniqueStringId());
+            ProjectionRebuildCheckpointSaveResult save = allowRewind
+                ? await checkpointStore
+                    .ResetAsync(scope, lastAppliedSequence, status, failureReasonCode, ct, toPosition)
+                    .ConfigureAwait(false)
+                : await checkpointStore
+                    .SaveAsync(scope, lastAppliedSequence, status, failureReasonCode, ct, toPosition)
+                    .ConfigureAwait(false);
             if (!save.Succeeded) {
                 return MapSaveFailure(save.ReasonCode);
             }
@@ -332,13 +357,13 @@ public sealed partial class AdminProjectionRebuildController(
             StreamReplayReasonCodes.UnauthorizedTenant);
     }
 
-    private static ProjectionRebuildCheckpointScope CreateScope(string tenantId, string projectionName)
+    private static ProjectionRebuildCheckpointScope CreateScope(string tenantId, string projectionName, string? operationId = null)
         => new(
             tenantId,
             projectionName,
             projectionName,
             AggregateId: null,
-            OperationId: $"{projectionName}-rebuild");
+            OperationId: operationId);
 
     private static ProjectionRebuildOperation ToOperation(
         ProjectionRebuildCheckpointScope scope,
@@ -346,14 +371,14 @@ public sealed partial class AdminProjectionRebuildController(
         // P23: when no checkpoint exists, surface UpdatedAt as null rather than UnixEpoch.
         // Caller of ProjectionRebuildOperation must treat StartedAt as a nullable hint.
         => new(
-            scope.OperationId!,
+            checkpoint?.OperationId ?? scope.OperationId ?? string.Empty,
             scope.Tenant,
             scope.Domain,
             scope.ProjectionName,
             scope.AggregateId,
             checkpoint?.Status ?? ProjectionRebuildStatus.NotStarted,
             checkpoint,
-            checkpoint?.UpdatedAt ?? DateTimeOffset.UnixEpoch,
+            checkpoint?.UpdatedAt,
             IsTerminal(checkpoint?.Status) ? checkpoint?.UpdatedAt : null,
             checkpoint?.FailureReasonCode);
 
@@ -368,16 +393,3 @@ public sealed partial class AdminProjectionRebuildController(
         public static partial void LifecycleRejected(ILogger logger, string reasonCode);
     }
 }
-
-/// <summary>
-/// EventStore-side projection reset request.
-/// </summary>
-/// <param name="FromPosition">Optional position to reset from (currently a status flip only; rewind deferred per P3).</param>
-public sealed record ProjectionResetRequest(long? FromPosition);
-
-/// <summary>
-/// EventStore-side projection replay request.
-/// </summary>
-/// <param name="FromPosition">The starting stream position.</param>
-/// <param name="ToPosition">The ending stream position (validated but currently not persisted per P-D6 deferral).</param>
-public sealed record ProjectionReplayRequest(long FromPosition, long ToPosition);

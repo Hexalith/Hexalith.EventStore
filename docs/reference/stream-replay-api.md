@@ -21,7 +21,7 @@ Request body: `StreamReadRequest`
 Response body: `StreamReadPage`
 
 - `events`: ordered `StreamReadEvent` records with sequence, type name, payload bytes, serialization format, metadata version, message id, correlation id, causation id, timestamp, and user id.
-- `metadata`: `fromSequence`, `toSequence`, `lastSequenceReturned`, `latestSequence`, `eventCount`, `isTruncated`, and optional opaque `nextContinuationToken`.
+- `metadata`: `fromSequence`, `toSequence`, `lastSequenceReturned` (`null` for empty pages), `latestSequence`, `eventCount`, `isTruncated`, and optional opaque `nextContinuationToken`.
 
 ## Client Usage
 
@@ -51,6 +51,11 @@ Reading a page does not advance rebuild progress. Advance a checkpoint only afte
 - Checkpoint store conflicts return `checkpoint-conflict`.
 - Checkpoint store unavailability returns `checkpoint-unavailable`.
 - Failure statuses keep a sanitized `failureReasonCode` and must not expose payload bytes, state-store keys, actor ids, connection strings, or continuation-token internals.
+- Bounded replay operations persist `toPosition` as operator intent; it is not treated as applied progress.
+
+## Projection Name Constraint
+
+The current poller/rebuild conflict check assumes `projectionName == domain` for domain projection rebuilds. If an operator uses a projection name that differs from the EventStore domain, the conflict guard may not identify the same checkpoint scope. Use the domain name as the projection name for this story's rebuild endpoints until a later contract introduces an explicit domain-to-projection mapping.
 
 ## Operator Lifecycle
 
@@ -73,6 +78,8 @@ Normal polling and operator rebuilds use a reject policy: when an active rebuild
 Stable stream replay and rebuild reason codes include:
 
 - `invalid-range`
+- `missing-required-field`
+- `invalid-aggregate-identity`
 - `invalid-continuation`
 - `token-request-mismatch`
 - `unauthorized-tenant`
@@ -83,7 +90,6 @@ Stable stream replay and rebuild reason codes include:
 - `protected-payload-unavailable`
 - `projection-apply-rejected`
 - `checkpoint-conflict`
-- `stale-checkpoint`
 - `checkpoint-drift`
 - `checkpoint-unavailable`
 - `poller-rebuild-conflict`
@@ -93,6 +99,7 @@ Stable stream replay and rebuild reason codes include:
 - `domain-failure`
 - `retryable-transient-failure`
 - `service-unavailable`
+- `internal-error`
 
 ## Forbidden Paths
 

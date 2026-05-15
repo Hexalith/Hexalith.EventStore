@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-15T09:45:00+02:00' # Story 22.6 review applied 7 CRITICAL/HIGH patches (auth gate, SaveAsync lifecycle, read-first 404, continuation off, poller fail-closed, ArgumentException 400, pause/cancel reason); 32 remaining patches recorded as action items in Review Findings; story moved from review back to in-progress.
+last_updated: '2026-05-15T12:05:00+02:00' # Story 22.6 review-continuation applied 31/32 remaining review patches; P4/P-D2 full apply-driven rebuild advancement remains open, so story stays in-progress.
+# Previous last_updated detail preserved: 2026-05-15T09:45:00+02:00 - Story 22.6 review applied 7 CRITICAL/HIGH patches (auth gate, SaveAsync lifecycle, read-first 404, continuation off, poller fail-closed, ArgumentException 400, pause/cancel reason); 32 remaining patches recorded as action items in Review Findings; story moved from review back to in-progress.
 # Previous last_updated detail preserved: 2026-05-15T07:22:36+02:00 - Story 22.6 moved to in-progress for stream replay/read APIs and projection rebuild checkpoints.
 # Previous last_updated detail preserved: 2026-05-15T00:00:00+02:00 - Story 22.5 moved to done after code review: 8 patches applied (NSubstitute Arg.Do fix, ShouldNotBeNull discard fix, cloudevent.id docs, dev-subscriber YAML guard, non-Redis proven guard, reminder-overlap test, Service Bus dedicated test).
 # Previous last_updated detail preserved: 2026-05-14T12:20:54+02:00 - Story 22.5 moved to review after publishing guarantee docs, focused tests, backend matrix, and evidence validation.

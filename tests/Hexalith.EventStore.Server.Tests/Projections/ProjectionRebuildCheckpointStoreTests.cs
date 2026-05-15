@@ -1,3 +1,4 @@
+using Dapr;
 using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Streams;
@@ -165,7 +166,7 @@ public class ProjectionRebuildCheckpointStoreTests {
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<(ProjectionRebuildCheckpoint, string)>(new InvalidOperationException("state down")));
+            .Returns(Task.FromException<(ProjectionRebuildCheckpoint, string)>(new DaprException("state down")));
         var store = CreateStore(daprClient);
 
         ProjectionRebuildCheckpointSaveResult result = await store.SaveAsync(
@@ -184,6 +185,56 @@ public class ProjectionRebuildCheckpointStoreTests {
             stateOptions: default,
             metadata: default,
             cancellationToken: default);
+    }
+
+    [Fact]
+    public async Task ResetAsyncCanRewindExistingCheckpointWithFreshOperationMetadata() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        ProjectionRebuildCheckpoint existing = CreateCheckpoint(50, ProjectionRebuildStatus.Running);
+        SetupGetStateAndEtag(daprClient, existing, "etag-1");
+        SetupTrySave(daprClient, true);
+        var store = CreateStore(daprClient);
+        var freshScope = Scope with { OperationId = "operation-2" };
+
+        ProjectionRebuildCheckpointSaveResult result = await store.ResetAsync(
+            freshScope,
+            lastAppliedSequence: 0,
+            ProjectionRebuildStatus.NotStarted);
+
+        result.Succeeded.ShouldBeTrue();
+        result.Checkpoint.ShouldNotBeNull();
+        result.Checkpoint.LastAppliedSequence.ShouldBe(0);
+        result.Checkpoint.OperationId.ShouldBe("operation-2");
+        _ = await daprClient.Received(1).TrySaveStateAsync(
+            "statestore",
+            ProjectionRebuildCheckpointStore.GetStateKey(freshScope),
+            Arg.Is<ProjectionRebuildCheckpoint>(checkpoint =>
+                checkpoint.LastAppliedSequence == 0
+                && checkpoint.OperationId == "operation-2"
+                && checkpoint.Status == ProjectionRebuildStatus.NotStarted),
+            "etag-1",
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SaveAsyncPropagatesProgrammerErrorsInsteadOfClassifyingUnavailable() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetStateAndETagAsync<ProjectionRebuildCheckpoint>(
+                "statestore",
+                ProjectionRebuildCheckpointStore.GetStateKey(Scope),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<(ProjectionRebuildCheckpoint, string)>(new InvalidOperationException("serializer defect")));
+        var store = CreateStore(daprClient);
+
+        await Should.ThrowAsync<InvalidOperationException>(() => store.SaveAsync(
+            Scope,
+            lastAppliedSequence: 11,
+            ProjectionRebuildStatus.Failed,
+            StreamReplayReasonCodes.ProjectionApplyRejected));
     }
 
     private static ProjectionRebuildCheckpointStore CreateStore(DaprClient daprClient)

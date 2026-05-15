@@ -625,6 +625,47 @@ public partial class AggregateActor(
     }
 
     /// <inheritdoc/>
+    public async Task<EventEnvelope[]> ReadEventsRangeAsync(long fromSequence, long? toSequence, int maxCount) {
+        fromSequence = Math.Max(0, fromSequence);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxCount);
+        if (toSequence.HasValue && toSequence.Value <= fromSequence) {
+            return [];
+        }
+
+        AggregateIdentity identity = GetAggregateIdentityFromActorId();
+
+        ConditionalValue<AggregateMetadata> metadataResult;
+        try {
+            metadataResult = await StateManager
+                .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            throw new EventDeserializationException(-1, identity.ActorId, ex);
+        }
+
+        if (!metadataResult.HasValue) {
+            return [];
+        }
+
+        long currentSequence = metadataResult.Value.CurrentSequence;
+        if (currentSequence <= 0) {
+            throw new InvalidOperationException(
+                $"Invalid aggregate metadata: CurrentSequence={currentSequence} for {identity.ActorId}");
+        }
+
+        if (currentSequence <= fromSequence) {
+            return [];
+        }
+
+        long upperBound = Math.Min(toSequence ?? currentSequence, currentSequence);
+        long availableCount = upperBound - fromSequence;
+        int count = checked((int)Math.Min(availableCount, maxCount));
+        int startSequence = checked((int)(fromSequence + 1));
+        return await ReadEventsRangeAsync(identity, startSequence, count).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
     public async Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period) {
         ArgumentNullException.ThrowIfNull(reminderName);
 

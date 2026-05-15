@@ -23,13 +23,14 @@ public class AdminProjectionRebuildControllerTests {
     [Fact]
     public async Task ReplayProjectionStartsRunningOperationAndReturnsAcceptedResult() {
         IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
-        _ = store.SaveAsync(
+        _ = store.ResetAsync(
                 Arg.Any<ProjectionRebuildCheckpointScope>(),
-                10,
+                9,
                 ProjectionRebuildStatus.Running,
                 null,
-                Arg.Any<CancellationToken>())
-            .Returns(ProjectionRebuildCheckpointSaveResult.Success(CreateCheckpoint(10, ProjectionRebuildStatus.Running)));
+                Arg.Any<CancellationToken>(),
+                20)
+            .Returns(ProjectionRebuildCheckpointSaveResult.Success(CreateCheckpoint(9, ProjectionRebuildStatus.Running, "01HX0000000000000000000000", 20)));
         AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true);
 
         IActionResult result = await controller.ReplayProjection(
@@ -41,17 +42,18 @@ public class AdminProjectionRebuildControllerTests {
         accepted.StatusCode.ShouldBe(StatusCodes.Status202Accepted);
         AdminOperationResult operation = accepted.Value.ShouldBeOfType<AdminOperationResult>();
         operation.Success.ShouldBeTrue();
-        operation.OperationId.ShouldBe("party-summary-rebuild");
-        _ = await store.Received(1).SaveAsync(
+        operation.OperationId.Length.ShouldBe(26);
+        _ = await store.Received(1).ResetAsync(
             Arg.Is<ProjectionRebuildCheckpointScope>(scope =>
                 scope.Tenant == Tenant
                 && scope.Domain == Projection
                 && scope.ProjectionName == Projection
-                && scope.OperationId == "party-summary-rebuild"),
-            10,
+                && !string.IsNullOrWhiteSpace(scope.OperationId)),
+            9,
             ProjectionRebuildStatus.Running,
             null,
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            20);
     }
 
     [Fact]
@@ -107,12 +109,13 @@ public class AdminProjectionRebuildControllerTests {
     [Fact]
     public async Task ReplayProjectionCheckpointConflictReturnsProblemWithReasonCode() {
         IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
-        _ = store.SaveAsync(
+        _ = store.ResetAsync(
                 Arg.Any<ProjectionRebuildCheckpointScope>(),
                 Arg.Any<long>(),
                 Arg.Any<ProjectionRebuildStatus>(),
                 Arg.Any<string?>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(),
+                Arg.Any<long?>())
             .Returns(ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointConflict));
         AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true);
 
@@ -137,7 +140,8 @@ public class AdminProjectionRebuildControllerTests {
         OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
         ProjectionRebuildOperation operation = ok.Value.ShouldBeOfType<ProjectionRebuildOperation>();
         operation.Status.ShouldBe(ProjectionRebuildStatus.NotStarted);
-        operation.OperationId.ShouldBe("party-summary-rebuild");
+        operation.OperationId.ShouldBeEmpty();
+        operation.StartedAt.ShouldBeNull();
     }
 
     [Fact]
@@ -156,6 +160,33 @@ public class AdminProjectionRebuildControllerTests {
         problem.Type.ShouldBe(ProblemTypeUris.Forbidden);
         _ = await store.DidNotReceiveWithAnyArgs().SaveAsync(default!, default, default, default, default);
         _ = await store.DidNotReceiveWithAnyArgs().ReadAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task ResetProjectionUsesExplicitRewindAndFreshOperationId() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        _ = store.ResetAsync(
+                Arg.Any<ProjectionRebuildCheckpointScope>(),
+                0,
+                ProjectionRebuildStatus.NotStarted,
+                null,
+                Arg.Any<CancellationToken>(),
+                null)
+            .Returns(ProjectionRebuildCheckpointSaveResult.Success(CreateCheckpoint(0, ProjectionRebuildStatus.NotStarted, "01HX0000000000000000000001")));
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true);
+
+        IActionResult result = await controller.ResetProjection(Tenant, Projection, new ProjectionResetRequest(0));
+
+        AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
+        AdminOperationResult operation = accepted.Value.ShouldBeOfType<AdminOperationResult>();
+        operation.OperationId.Length.ShouldBe(26);
+        _ = await store.Received(1).ResetAsync(
+            Arg.Is<ProjectionRebuildCheckpointScope>(scope => !string.IsNullOrWhiteSpace(scope.OperationId)),
+            0,
+            ProjectionRebuildStatus.NotStarted,
+            null,
+            Arg.Any<CancellationToken>(),
+            null);
     }
 
     [Fact]
@@ -190,15 +221,20 @@ public class AdminProjectionRebuildControllerTests {
         return new ClaimsPrincipal(identity);
     }
 
-    private static ProjectionRebuildCheckpoint CreateCheckpoint(long sequence, ProjectionRebuildStatus status)
+    private static ProjectionRebuildCheckpoint CreateCheckpoint(
+        long sequence,
+        ProjectionRebuildStatus status,
+        string operationId = "party-summary-rebuild",
+        long? toPosition = null)
         => new(
             Tenant,
             Projection,
             Projection,
             null,
-            "party-summary-rebuild",
+            operationId,
             sequence,
             status,
             DateTimeOffset.UtcNow,
-            status == ProjectionRebuildStatus.Paused ? StreamReplayReasonCodes.RebuildPaused : null);
+            null,
+            toPosition);
 }

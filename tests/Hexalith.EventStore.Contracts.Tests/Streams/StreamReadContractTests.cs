@@ -79,6 +79,8 @@ public class StreamReadContractTests {
     [Fact]
     public void StreamReplayReasonCodesExposeStablePublicTaxonomy() {
         StreamReplayReasonCodes.InvalidRange.ShouldBe("invalid-range");
+        StreamReplayReasonCodes.MissingRequiredField.ShouldBe("missing-required-field");
+        StreamReplayReasonCodes.InvalidAggregateIdentity.ShouldBe("invalid-aggregate-identity");
         StreamReplayReasonCodes.InvalidContinuation.ShouldBe("invalid-continuation");
         StreamReplayReasonCodes.TokenRequestMismatch.ShouldBe("token-request-mismatch");
         StreamReplayReasonCodes.CheckpointConflict.ShouldBe("checkpoint-conflict");
@@ -86,5 +88,38 @@ public class StreamReadContractTests {
         StreamReplayReasonCodes.RebuildPaused.ShouldBe("rebuild-paused");
         StreamReplayReasonCodes.DomainFailure.ShouldBe("domain-failure");
         StreamReplayReasonCodes.PollerRebuildConflict.ShouldBe("poller-rebuild-conflict");
+        StreamReplayReasonCodes.InternalError.ShouldBe("internal-error");
+    }
+
+    [Fact]
+    public void EmptyStreamReadPageSerializesNullLastSequenceReturned() {
+        JsonSerializerOptions options = new(JsonSerializerDefaults.Web);
+        var page = new StreamReadPage(
+            "tenant-a",
+            "party",
+            "party-1",
+            [],
+            new StreamReadMetadata(0, null, null, 0, 0, false, null));
+
+        string json = JsonSerializer.Serialize(page, options);
+
+        json.ShouldContain("\"lastSequenceReturned\":null");
+    }
+
+    [Fact]
+    public void NotStartedProjectionRebuildOperationCanRepresentMissingStartTime() {
+        var operation = new ProjectionRebuildOperation(
+            "operation-1",
+            "tenant-a",
+            "party",
+            "party",
+            null,
+            ProjectionRebuildStatus.NotStarted,
+            Checkpoint: null,
+            StartedAt: null,
+            CompletedAt: null,
+            FailureReasonCode: null);
+
+        operation.StartedAt.ShouldBeNull();
     }
 }

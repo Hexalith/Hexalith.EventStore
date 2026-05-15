@@ -12,6 +12,7 @@ namespace Hexalith.EventStore.Contracts.Streams;
 /// <param name="Status">The rebuild lifecycle status.</param>
 /// <param name="UpdatedAt">The last checkpoint update timestamp.</param>
 /// <param name="FailureReasonCode">Optional stable failure reason code.</param>
+/// <param name="ToPosition">Optional inclusive target position for bounded rebuild operations.</param>
 public sealed record ProjectionRebuildCheckpoint(
     string Tenant,
     string Domain,
@@ -21,4 +22,5 @@ public sealed record ProjectionRebuildCheckpoint(
     long LastAppliedSequence,
     ProjectionRebuildStatus Status,
     DateTimeOffset UpdatedAt,
-    string? FailureReasonCode);
+    string? FailureReasonCode,
+    long? ToPosition = null);

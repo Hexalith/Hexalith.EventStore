@@ -144,4 +144,41 @@ public class DaprProjectionCommandServiceTests {
         result.ErrorCode.ShouldBe("checkpoint-conflict");
         result.Message.ShouldBe("Projection rebuild checkpoint update conflicted with another worker.");
     }
+
+    [Fact]
+    public async Task PauseProjectionAsync_WithOversizedProblemDetails_UsesStableStatusMessage() {
+        (DaprProjectionCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupResponse(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) {
+            ReasonPhrase = null,
+            Content = new StringContent(
+                $$"""
+                {
+                  "title": "{{new string('x', 70_000)}}"
+                }
+                """,
+                System.Text.Encoding.UTF8,
+                "application/problem+json"),
+        });
+
+        AdminOperationResult result = await service.PauseProjectionAsync("tenant1", "OrderSummary");
+
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("503");
+        result.Message.ShouldBe("Service Unavailable");
+    }
+
+    [Fact]
+    public async Task PauseProjectionAsync_WithNullReasonPhrase_UsesStatusCodeNameFallback() {
+        (DaprProjectionCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupResponse(new HttpResponseMessage(HttpStatusCode.BadGateway) {
+            ReasonPhrase = null,
+            Content = new StringContent(string.Empty),
+        });
+
+        AdminOperationResult result = await service.PauseProjectionAsync("tenant1", "OrderSummary");
+
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("502");
+        result.Message.ShouldBe("Bad Gateway");
+    }
 }

@@ -27,7 +27,7 @@ public class EventStoreGatewayClientStreamTests {
                   "metadata": {
                     "fromSequence": 0,
                     "toSequence": null,
-                    "lastSequenceReturned": 0,
+                    "lastSequenceReturned": null,
                     "latestSequence": 0,
                     "eventCount": 0,
                     "isTruncated": false,

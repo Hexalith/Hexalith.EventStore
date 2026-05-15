@@ -10,7 +10,7 @@ namespace Hexalith.EventStore.Contracts.Streams;
 /// <param name="AggregateId">Optional aggregate scope.</param>
 /// <param name="Status">The current lifecycle status.</param>
 /// <param name="Checkpoint">The latest checkpoint/progress snapshot.</param>
-/// <param name="StartedAt">The operation start timestamp.</param>
+/// <param name="StartedAt">The operation start timestamp, or <see langword="null"/> when the operation has never started.</param>
 /// <param name="CompletedAt">Optional terminal timestamp.</param>
 /// <param name="FailureReasonCode">Optional stable failure reason code.</param>
 public sealed record ProjectionRebuildOperation(
@@ -21,6 +21,6 @@ public sealed record ProjectionRebuildOperation(
     string? AggregateId,
     ProjectionRebuildStatus Status,
     ProjectionRebuildCheckpoint? Checkpoint,
-    DateTimeOffset StartedAt,
+    DateTimeOffset? StartedAt,
     DateTimeOffset? CompletedAt,
     string? FailureReasonCode);

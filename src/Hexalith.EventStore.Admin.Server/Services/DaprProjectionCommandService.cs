@@ -19,6 +19,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// All write methods delegate to EventStore via DAPR service invocation — never writes directly.
 /// </summary>
 public sealed class DaprProjectionCommandService : IProjectionCommandService {
+    private const int MaxProblemDetailsBytes = 65_536;
     private const string ErrorNoOperation = "error-no-operation";
 
     private readonly IAdminAuthContext _authContext;
@@ -160,11 +161,14 @@ public sealed class DaprProjectionCommandService : IProjectionCommandService {
         HttpResponseMessage httpResponse,
         CancellationToken cancellationToken) {
         string statusCode = ((int)httpResponse.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string statusMessage = GetStatusMessage(httpResponse);
         if (IsJsonResponse(httpResponse)) {
             try {
-                using JsonDocument document = await JsonDocument.ParseAsync(
-                    await httpResponse.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false),
-                    cancellationToken: cancellationToken).ConfigureAwait(false);
+                using JsonDocument? document = await TryReadBoundedJsonAsync(httpResponse, cancellationToken).ConfigureAwait(false);
+                if (document is null) {
+                    return new AdminOperationResult(false, ErrorNoOperation, statusMessage, statusCode);
+                }
+
                 JsonElement root = document.RootElement;
                 string? detail = GetString(root, "detail");
                 string? reasonCode = GetString(root, "reasonCode");
@@ -172,7 +176,7 @@ public sealed class DaprProjectionCommandService : IProjectionCommandService {
                 return new AdminOperationResult(
                     false,
                     ErrorNoOperation,
-                    detail ?? title ?? httpResponse.ReasonPhrase,
+                    detail ?? title ?? statusMessage,
                     string.IsNullOrWhiteSpace(reasonCode) ? statusCode : reasonCode);
             }
             catch (JsonException) {
@@ -180,8 +184,42 @@ public sealed class DaprProjectionCommandService : IProjectionCommandService {
             }
         }
 
-        return new AdminOperationResult(false, ErrorNoOperation, httpResponse.ReasonPhrase, statusCode);
+        return new AdminOperationResult(false, ErrorNoOperation, statusMessage, statusCode);
     }
+
+    private static async Task<JsonDocument?> TryReadBoundedJsonAsync(
+        HttpResponseMessage httpResponse,
+        CancellationToken cancellationToken) {
+        if (httpResponse.Content.Headers.ContentLength > MaxProblemDetailsBytes) {
+            return null;
+        }
+
+        using Stream stream = await httpResponse.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        using var buffer = new MemoryStream(capacity: Math.Min(MaxProblemDetailsBytes, (int)(httpResponse.Content.Headers.ContentLength ?? MaxProblemDetailsBytes)));
+        var chunk = new byte[8192];
+        int totalRead = 0;
+        while (true) {
+            int read = await stream.ReadAsync(chunk, cancellationToken).ConfigureAwait(false);
+            if (read == 0) {
+                break;
+            }
+
+            totalRead += read;
+            if (totalRead > MaxProblemDetailsBytes) {
+                return null;
+            }
+
+            buffer.Write(chunk, 0, read);
+        }
+
+        buffer.Position = 0;
+        return await JsonDocument.ParseAsync(buffer, cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string GetStatusMessage(HttpResponseMessage httpResponse)
+        => string.IsNullOrWhiteSpace(httpResponse.ReasonPhrase)
+            ? httpResponse.StatusCode.ToString()
+            : httpResponse.ReasonPhrase;
 
     private static bool IsJsonResponse(HttpResponseMessage response) {
         string? mediaType = response.Content.Headers.ContentType?.MediaType;

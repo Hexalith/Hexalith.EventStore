@@ -40,6 +40,14 @@ public class FakeAggregateActor : IAggregateActor {
             .ToArray());
 
     /// <inheritdoc/>
+    public Task<EventEnvelope[]> ReadEventsRangeAsync(long fromSequence, long? toSequence, int maxCount)
+        => Task.FromResult(ConfiguredEvents
+            .Where(e => e.SequenceNumber > fromSequence && (!toSequence.HasValue || e.SequenceNumber <= toSequence.Value))
+            .OrderBy(e => e.SequenceNumber)
+            .Take(maxCount)
+            .ToArray());
+
+    /// <inheritdoc/>
     public Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command) {
         ArgumentNullException.ThrowIfNull(command);
         _receivedCommands.Enqueue(command);

@@ -156,7 +156,7 @@ public class FakeEventStoreGatewayClientTests {
             Domain: "party",
             AggregateId: "party-1",
             Events: [],
-            Metadata: new StreamReadMetadata(0, null, 0, 0, 0, false, null));
+            Metadata: new StreamReadMetadata(0, null, null, 0, 0, false, null));
         var fake = new FakeEventStoreGatewayClient()
             .ConfigureStreamReadSuccess(page);
         var request = new StreamReadRequest("tenant-a", "party", "party-1", PageSize: 25);
@@ -196,6 +196,28 @@ public class FakeEventStoreGatewayClientTests {
         page.Metadata.IsTruncated.ShouldBeTrue();
         page.Metadata.NextContinuationToken.ShouldNotBeNull();
         page.Metadata.NextContinuationToken.Value.ShouldBe("next-token");
+    }
+
+    [Fact]
+    public async Task ConfigureStreamReadContinuationNormalizesMetadataFromEvents() {
+        StreamReadPage inconsistent = new(
+            "tenant-a",
+            "party",
+            "party-1",
+            [
+                new StreamReadEvent(12, "PartyRenamed", [], "json", 1, "msg-12", null, null, DateTimeOffset.UnixEpoch, null),
+                new StreamReadEvent(13, "PartyRenamed", [], "json", 1, "msg-13", null, null, DateTimeOffset.UnixEpoch, null),
+            ],
+            new StreamReadMetadata(10, null, 99, 99, 99, false, null));
+        var fake = new FakeEventStoreGatewayClient()
+            .ConfigureStreamReadContinuation(inconsistent, "next-token");
+
+        StreamReadPage page = await fake.ReadStreamAsync(new StreamReadRequest("tenant-a", "party", "party-1"));
+
+        page.Metadata.EventCount.ShouldBe(2);
+        page.Metadata.LastSequenceReturned.ShouldBe(13);
+        page.Metadata.LatestSequence.ShouldBe(99);
+        page.Metadata.IsTruncated.ShouldBeTrue();
     }
 
     [Theory]
