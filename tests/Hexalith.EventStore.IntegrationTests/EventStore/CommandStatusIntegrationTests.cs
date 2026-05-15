@@ -5,20 +5,20 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using eventstore::Hexalith.EventStore.Models;
-
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.IntegrationTests.Helpers;
 using Hexalith.EventStore.Server.Commands;
 
 using Shouldly;
 
+using CommandStatusResponse = eventstore::Hexalith.EventStore.Models.CommandStatusResponse;
+
 namespace Hexalith.EventStore.IntegrationTests.EventStore;
 
 public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory factory)
     : IClassFixture<JwtAuthenticatedWebApplicationFactory> {
     [Fact]
-    public async Task PostCommands_ThenGetStatus_Returns200WithReceivedStatus() {
+    public async Task PostCommands_ThenGetStatus_Returns200WithReceivedStatusAsync() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
 
@@ -51,7 +51,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
     }
 
     [Fact]
-    public async Task GetStatus_NonExistentCorrelationId_Returns404ProblemDetails() {
+    public async Task GetStatus_NonExistentCorrelationId_Returns404ProblemDetailsAsync() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         string nonExistentId = Guid.NewGuid().ToString();
@@ -70,7 +70,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
     }
 
     [Fact]
-    public async Task GetStatus_WrongTenant_Returns404ProblemDetails() {
+    public async Task GetStatus_WrongTenant_Returns404ProblemDetailsAsync() {
         // Arrange - submit command as tenant-a
         HttpClient tenantAClient = CreateAuthenticatedClient("tenant-a");
         var request = new {
@@ -97,7 +97,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
     }
 
     [Fact]
-    public async Task GetStatus_NoAuthentication_Returns401() {
+    public async Task GetStatus_NoAuthentication_Returns401Async() {
         // Arrange - no auth header
         HttpClient client = factory.CreateClient();
         string correlationId = Guid.NewGuid().ToString();
@@ -111,7 +111,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
     }
 
     [Fact]
-    public async Task GetStatus_ValidTenant_Returns200() {
+    public async Task GetStatus_ValidTenant_Returns200Async() {
         // Arrange
         string tenantId = "valid-tenant-200";
         HttpClient client = CreateAuthenticatedClient(tenantId);
@@ -137,7 +137,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
     }
 
     [Fact]
-    public async Task GetStatus_NoTenantClaims_Returns403() {
+    public async Task GetStatus_NoTenantClaims_Returns403Async() {
         // Arrange - JWT with NO tenant claims
         string token = TestJwtTokenGenerator.GenerateToken(subject: "no-tenant-user");
         HttpClient client = factory.CreateClient();
@@ -158,7 +158,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
     }
 
     [Fact]
-    public async Task PostCommands_StatusWriteIncludesAggregateId() {
+    public async Task PostCommands_StatusWriteIncludesAggregateIdAsync() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         var request = new {
@@ -185,7 +185,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
     }
 
     [Fact]
-    public async Task GetStatus_ResponseIncludesCorrelationIdInProblemDetails() {
+    public async Task GetStatus_ResponseIncludesCorrelationIdInProblemDetailsAsync() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         string correlationId = Guid.NewGuid().ToString();
@@ -202,7 +202,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
     }
 
     [Fact]
-    public async Task GetStatus_ExpiredCorrelationId_Returns404() {
+    public async Task GetStatus_ExpiredCorrelationId_Returns404Async() {
         // Arrange - write status with very short TTL
         string tenantId = "ttl-tenant";
         HttpClient client = CreateAuthenticatedClient(tenantId);
@@ -223,7 +223,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
     }
 
     [Fact]
-    public async Task PostCommands_StatusLocationHeader_MatchesGetEndpoint() {
+    public async Task PostCommands_StatusLocationHeader_MatchesGetEndpointAsync() {
         // Arrange
         HttpClient client = CreateAuthenticatedClient("test-tenant");
         var request = new {

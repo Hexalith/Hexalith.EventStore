@@ -5,12 +5,13 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using eventstore::Hexalith.EventStore.Models;
-
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.IntegrationTests.Helpers;
 
 using Shouldly;
+
+using CommandStatusResponse = eventstore::Hexalith.EventStore.Models.CommandStatusResponse;
+using ReplayCommandResponse = eventstore::Hexalith.EventStore.Models.ReplayCommandResponse;
 
 namespace Hexalith.EventStore.IntegrationTests.EventStore;
 
