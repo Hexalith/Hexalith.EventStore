@@ -21,7 +21,7 @@ ProjectAssetsFile=<PATH>obj/project.assets.json
 RootNamespace=Hexalith.EventStore.Admin.Server.Host
 RunAnalyzers=
 RunAnalyzersDuringLiveAnalysis=
-SolutionPath=<PATH>../../Hexalith.EventStore.slnx
+SolutionPath=<PATH>../../../Hexalith.Tenants.slnx
 TargetFrameworkIdentifier=.NETCoreApp
 TargetPath=<PATH>bin/Debug/net10.0/Hexalith.EventStore.Admin.Server.Host.dll
 TargetRefPath=<PATH>obj/Debug/net10.0/ref/Hexalith.EventStore.Admin.Server.Host.dll
@@ -67,7 +67,7 @@ Program.cs
 
 [metadataReferences]
 ../
- ../Hexalith.Tenants/src/Hexalith.Tenants.Contracts/obj/Debug/net10.0/ref/Hexalith.Tenants.Contracts.dll
+ ../../src/Hexalith.Tenants.Contracts/obj/Debug/net10.0/ref/Hexalith.Tenants.Contracts.dll
  Hexalith.EventStore.Admin.Abstractions/obj/Debug/net10.0/ref/Hexalith.EventStore.Admin.Abstractions.dll
  Hexalith.EventStore.Admin.Server/obj/Debug/net10.0/ref/Hexalith.EventStore.Admin.Server.dll
  Hexalith.EventStore.Contracts/obj/Debug/net10.0/ref/Hexalith.EventStore.Contracts.dll
@@ -461,6 +461,8 @@ Program.cs
   Microsoft.Gen.Metrics.dll
 
 [analyzerConfigFiles]
-../../.editorconfig
+../../
+ ../.editorconfig
+ .editorconfig
 <DOTNET>/sdk/10.0.108/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_10_default.globalconfig
 obj/Debug/net10.0/Hexalith.EventStore.Admin.Server.Host.GeneratedMSBuildEditorConfig.editorconfig
