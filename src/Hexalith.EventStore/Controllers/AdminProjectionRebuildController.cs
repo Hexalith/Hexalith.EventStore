@@ -20,7 +20,8 @@ namespace Hexalith.EventStore.Controllers;
 [Tags("Admin - Projection Rebuild")]
 public sealed partial class AdminProjectionRebuildController(
     IProjectionRebuildCheckpointStore checkpointStore,
-    ILogger<AdminProjectionRebuildController> logger) : ControllerBase {
+    ILogger<AdminProjectionRebuildController> logger,
+    IProjectionRebuildOrchestrator? rebuildOrchestrator = null) : ControllerBase {
     /// <summary>
     /// Gets the current rebuild status for a projection.
     /// </summary>
@@ -124,6 +125,7 @@ public sealed partial class AdminProjectionRebuildController(
             accepted: true,
             allowRewind: true,
             toPosition: null,
+            runRebuild: false,
             ct).ConfigureAwait(false);
     }
 
@@ -169,6 +171,7 @@ public sealed partial class AdminProjectionRebuildController(
             accepted: true,
             allowRewind: true,
             toPosition: request.ToPosition,
+            runRebuild: true,
             ct).ConfigureAwait(false);
     }
 
@@ -273,6 +276,7 @@ public sealed partial class AdminProjectionRebuildController(
         bool accepted,
         bool allowRewind,
         long? toPosition,
+        bool runRebuild,
         CancellationToken ct) {
         try {
             ProjectionRebuildCheckpointScope scope = CreateScope(tenantId, projectionName, UniqueIdHelper.GenerateSortableUniqueStringId());
@@ -292,6 +296,10 @@ public sealed partial class AdminProjectionRebuildController(
                 scope.OperationId ?? string.Empty,
                 $"Projection rebuild status is {status}.",
                 null);
+            if (runRebuild && rebuildOrchestrator is not null) {
+                await rebuildOrchestrator.RebuildProjectionAsync(scope, ct).ConfigureAwait(false);
+            }
+
             return accepted ? Accepted(result) : Ok(result);
         }
         catch (ArgumentException ex) {

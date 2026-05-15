@@ -159,6 +159,7 @@ Projections/
  DaprProjectionChangeNotifier.cs
  IProjectionCheckpointTracker.cs
  IProjectionRebuildCheckpointStore.cs
+ IProjectionRebuildOrchestrator.cs
  IProjectionUpdateOrchestrator.cs
  KeyedSemaphore.cs
  NoOpProjectionChangedBroadcaster.cs

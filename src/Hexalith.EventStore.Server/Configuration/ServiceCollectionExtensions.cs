@@ -44,6 +44,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<ITopicNameValidator, TopicNameValidator>();
         services.TryAddTransient<IProjectionUpdateOrchestrator, ProjectionUpdateOrchestrator>();
         services.TryAddTransient<IProjectionPollerDeliveryGateway, ProjectionUpdateOrchestrator>();
+        services.TryAddTransient<IProjectionRebuildOrchestrator, ProjectionUpdateOrchestrator>();
         services.TryAddTransient<IEventPublisher, EventPublisher>();
         services.TryAddTransient<IDeadLetterPublisher, DeadLetterPublisher>();
         services.TryAddSingleton<IProjectionChangeNotifier, DaprProjectionChangeNotifier>();

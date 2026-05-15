@@ -57,6 +57,34 @@ public class AdminProjectionRebuildControllerTests {
     }
 
     [Fact]
+    public async Task ReplayProjectionInvokesRebuildOrchestratorAfterCheckpointStart() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        _ = store.ResetAsync(
+                Arg.Any<ProjectionRebuildCheckpointScope>(),
+                9,
+                ProjectionRebuildStatus.Running,
+                null,
+                Arg.Any<CancellationToken>(),
+                20)
+            .Returns(ProjectionRebuildCheckpointSaveResult.Success(CreateCheckpoint(9, ProjectionRebuildStatus.Running, "01HX0000000000000000000000", 20)));
+        IProjectionRebuildOrchestrator rebuildOrchestrator = Substitute.For<IProjectionRebuildOrchestrator>();
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true, rebuildOrchestrator);
+
+        _ = await controller.ReplayProjection(
+            Tenant,
+            Projection,
+            new ProjectionReplayRequest(10, 20));
+
+        await rebuildOrchestrator.Received(1).RebuildProjectionAsync(
+            Arg.Is<ProjectionRebuildCheckpointScope>(scope =>
+                scope.Tenant == Tenant
+                && scope.Domain == Projection
+                && scope.ProjectionName == Projection
+                && !string.IsNullOrWhiteSpace(scope.OperationId)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task PauseProjectionTransitionsExistingRebuildAndReturnsOkResult() {
         IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
         ProjectionRebuildCheckpoint existing = CreateCheckpoint(50, ProjectionRebuildStatus.Running);
@@ -202,8 +230,11 @@ public class AdminProjectionRebuildControllerTests {
         _ = await store.DidNotReceiveWithAnyArgs().SaveAsync(default!, default, default, default, default);
     }
 
-    private static AdminProjectionRebuildController CreateController(IProjectionRebuildCheckpointStore store, bool asGlobalAdmin)
-        => new(store, NullLogger<AdminProjectionRebuildController>.Instance) {
+    private static AdminProjectionRebuildController CreateController(
+        IProjectionRebuildCheckpointStore store,
+        bool asGlobalAdmin,
+        IProjectionRebuildOrchestrator? rebuildOrchestrator = null)
+        => new(store, NullLogger<AdminProjectionRebuildController>.Instance, rebuildOrchestrator) {
             ControllerContext = new ControllerContext {
                 HttpContext = new DefaultHttpContext {
                     User = CreatePrincipal(asGlobalAdmin),

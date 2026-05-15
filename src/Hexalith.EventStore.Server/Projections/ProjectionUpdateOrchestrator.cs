@@ -38,7 +38,7 @@ public partial class ProjectionUpdateOrchestrator(
     IProjectionCheckpointTracker checkpointTracker,
     IOptions<ProjectionOptions> projectionOptions,
     ILogger<ProjectionUpdateOrchestrator> logger,
-    IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway {
+    IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
     // Per-aggregate serialization across orchestrator instances. Entries are evicted and the
     // underlying SemaphoreSlim disposed when the last holder releases, so a multi-tenant server
     // with many short-lived aggregates does not accumulate kernel handles indefinitely.
@@ -246,6 +246,238 @@ public partial class ProjectionUpdateOrchestrator(
             Log.ProjectionUpdateFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId);
         }
     }
+
+    /// <inheritdoc/>
+    public async Task RebuildProjectionAsync(
+        ProjectionRebuildCheckpointScope scope,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(scope);
+        if (rebuildCheckpointStore is null) {
+            return;
+        }
+
+        ProjectionRebuildCheckpoint? initial = await rebuildCheckpointStore
+            .ReadAsync(scope, cancellationToken)
+            .ConfigureAwait(false);
+        if (!CanRunRebuild(initial)) {
+            return;
+        }
+
+        ProjectionRebuildCheckpoint? lastSaved = null;
+        ProjectionRebuildCheckpointScope? lastScope = null;
+        await foreach (AggregateIdentity identity in checkpointTracker.EnumerateTrackedIdentitiesAsync(cancellationToken).ConfigureAwait(false)) {
+            if (!MatchesRebuildScope(scope, identity)) {
+                continue;
+            }
+
+            ProjectionRebuildCheckpointScope checkpointScope = ScopeForCheckpoint(scope, initial!);
+            ProjectionRebuildCheckpoint? current = await rebuildCheckpointStore
+                .ReadAsync(checkpointScope, cancellationToken)
+                .ConfigureAwait(false);
+            if (!CanRunRebuild(current)) {
+                return;
+            }
+
+            if (current!.ToPosition is long toPosition && current.LastAppliedSequence >= toPosition) {
+                return;
+            }
+
+            ProjectionRebuildCheckpoint? saved = await DeliverProjectionForRebuildAsync(identity, checkpointScope, current, cancellationToken).ConfigureAwait(false);
+            if (saved is not null) {
+                lastSaved = saved;
+                lastScope = checkpointScope;
+            }
+        }
+
+        if (lastSaved is not null && lastScope is not null) {
+            ProjectionRebuildCheckpoint? current = await rebuildCheckpointStore
+                .ReadAsync(lastScope, cancellationToken)
+                .ConfigureAwait(false);
+            if (CanRunRebuild(current)) {
+                _ = await rebuildCheckpointStore
+                    .SaveAsync(
+                        lastScope,
+                        current!.LastAppliedSequence,
+                        ProjectionRebuildStatus.Succeeded,
+                        failureReasonCode: null,
+                        cancellationToken,
+                        current.ToPosition)
+                    .ConfigureAwait(false);
+            }
+        }
+    }
+
+    private async Task<ProjectionRebuildCheckpoint?> DeliverProjectionForRebuildAsync(
+        AggregateIdentity identity,
+        ProjectionRebuildCheckpointScope scope,
+        ProjectionRebuildCheckpoint checkpoint,
+        CancellationToken cancellationToken) {
+        using IDisposable projectionLock = await ProjectionLocks.AcquireAsync(identity.ActorId, cancellationToken).ConfigureAwait(false);
+        try {
+            Log.UpdateStarted(logger, identity.TenantId, identity.Domain, identity.AggregateId);
+
+            DomainServiceRegistration? registration = await resolver
+                .ResolveAsync(identity.TenantId, identity.Domain, "v1", cancellationToken)
+                .ConfigureAwait(false);
+
+            if (registration is null) {
+                Log.NoDomainServiceRegistered(logger, identity.TenantId, identity.Domain);
+                return null;
+            }
+
+            IAggregateActor aggregateProxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+                new ActorId(identity.ActorId),
+                "AggregateActor");
+
+            EventEnvelope[] events = await aggregateProxy
+                .GetEventsAsync(0)
+                .ConfigureAwait(false);
+
+            if (checkpoint.ToPosition is long toPosition) {
+                events = events
+                    .Where(e => e.SequenceNumber <= toPosition)
+                    .ToArray();
+            }
+
+            if (events.Length == 0) {
+                Log.NoEventsFound(logger, identity.TenantId, identity.Domain, identity.AggregateId);
+                return null;
+            }
+
+            var projectionEvents = new ProjectionEventDto[events.Length];
+            for (int i = 0; i < events.Length; i++) {
+                EventEnvelope e = events[i];
+                projectionEvents[i] = new ProjectionEventDto(
+                    e.EventTypeName,
+                    e.Payload,
+                    e.SerializationFormat,
+                    e.SequenceNumber,
+                    e.Timestamp,
+                    e.CorrelationId,
+                    e.MessageId,
+                    e.UserId);
+            }
+
+            var request = new ProjectionRequest(identity.TenantId, identity.Domain, identity.AggregateId, projectionEvents);
+            using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
+                registration.AppId,
+                "project",
+                request);
+            HttpClient httpClient = httpClientFactory.CreateClient();
+            HttpResponseMessage? httpResponse = await SendProjectRequestAsync(
+                    httpClient,
+                    httpRequest,
+                    registration.AppId,
+                    identity,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (httpResponse is null) {
+                return null;
+            }
+
+            using HttpResponseMessage responseHandle = httpResponse;
+            if (!responseHandle.IsSuccessStatusCode) {
+                Log.ProjectInvocationRejected(
+                    logger,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    registration.AppId,
+                    GetUpstreamReasonCode(responseHandle.StatusCode),
+                    ((int)responseHandle.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    GetContentTypeForLog(responseHandle.Content));
+                return null;
+            }
+
+            ProjectionResponse? response = await ReadProjectResponseAsync(
+                    responseHandle,
+                    registration.AppId,
+                    identity,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (response is null) {
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(response.ProjectionType)) {
+                Log.InvalidProjectionResponse(logger, identity.TenantId, identity.Domain, identity.AggregateId, ProjectionReasonCodes.ProjectInvalidProjectionType);
+                return null;
+            }
+
+            if (response.State.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+                || (response.State.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(response.State.GetString()))) {
+                Log.InvalidProjectionResponse(logger, identity.TenantId, identity.Domain, identity.AggregateId, ProjectionReasonCodes.ProjectInvalidState);
+                return null;
+            }
+
+            Log.DomainServiceInvocationSucceeded(logger, identity.TenantId, identity.Domain, identity.AggregateId, registration.AppId);
+
+            string projectionActorId = QueryActorIdHelper.DeriveActorId(
+                response.ProjectionType,
+                identity.TenantId,
+                identity.AggregateId,
+                []);
+
+            IProjectionWriteActor writeProxy = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(
+                new ActorId(projectionActorId),
+                QueryRouter.ProjectionActorTypeName);
+
+            await writeProxy
+                .UpdateProjectionAsync(ProjectionState.FromJsonElement(response.ProjectionType, identity.TenantId, response.State))
+                .ConfigureAwait(false);
+
+            long highestAppliedSequence = events.Max(e => e.SequenceNumber);
+            ProjectionRebuildCheckpointSaveResult save = await rebuildCheckpointStore!
+                .SaveAsync(
+                    scope,
+                    highestAppliedSequence,
+                    ProjectionRebuildStatus.Running,
+                    failureReasonCode: null,
+                    cancellationToken,
+                    checkpoint.ToPosition)
+                .ConfigureAwait(false);
+            if (!save.Succeeded) {
+                Log.CheckpointSaveExhausted(logger, identity.TenantId, identity.Domain, identity.AggregateId, highestAppliedSequence);
+                return null;
+            }
+
+            try {
+                bool checkpointSaved = await checkpointTracker
+                    .SaveDeliveredSequenceAsync(identity, highestAppliedSequence, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!checkpointSaved) {
+                    Log.CheckpointSaveExhausted(logger, identity.TenantId, identity.Domain, identity.AggregateId, highestAppliedSequence);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) {
+                Log.CheckpointSaveFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
+            }
+
+            Log.ProjectionStateUpdated(logger, identity.TenantId, identity.Domain, identity.AggregateId, response.ProjectionType, projectionActorId);
+            return save.Checkpoint;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            Log.ProjectionUpdateFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId);
+            return null;
+        }
+    }
+
+    private static bool MatchesRebuildScope(ProjectionRebuildCheckpointScope scope, AggregateIdentity identity)
+        => string.Equals(scope.Tenant, identity.TenantId, StringComparison.Ordinal)
+            && string.Equals(scope.Domain, identity.Domain, StringComparison.Ordinal)
+            && (string.IsNullOrWhiteSpace(scope.AggregateId)
+                || string.Equals(scope.AggregateId, identity.AggregateId, StringComparison.Ordinal));
+
+    private static bool CanRunRebuild(ProjectionRebuildCheckpoint? checkpoint)
+        => checkpoint?.Status is ProjectionRebuildStatus.Running or ProjectionRebuildStatus.Resuming or ProjectionRebuildStatus.Retrying;
+
+    private static ProjectionRebuildCheckpointScope ScopeForCheckpoint(
+        ProjectionRebuildCheckpointScope scope,
+        ProjectionRebuildCheckpoint checkpoint)
+        => scope with {
+            AggregateId = checkpoint.AggregateId,
+            OperationId = checkpoint.OperationId,
+        };
 
     private async Task<HttpResponseMessage?> SendProjectRequestAsync(
         HttpClient httpClient,

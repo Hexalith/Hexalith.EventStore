@@ -1,6 +1,6 @@
 # Story 22.6: Stream Replay/Read APIs and Projection Rebuild Checkpoints
 
-Status: in-progress
+Status: review
 
 Context created: 2026-05-13
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
@@ -219,7 +219,7 @@ The following CRITICAL/HIGH patches were applied during the review session. Buil
 These patches require coordinated changes across multiple files (Contracts DTO changes, new store API methods, orchestrator wiring) that exceed the safe scope of a single review-cycle patch pass:
 
 - [x] [Review][Patch] **P3 — Add ResetAsync that bypasses monotonicity** — Added `ResetAsync` to `IProjectionRebuildCheckpointStore` / `ProjectionRebuildCheckpointStore`, wired `ResetProjection` and `ReplayProjection` through explicit rewind semantics, and regression-pinned reset persistence with fresh operation metadata.
-- [ ] [Review][Patch] **P4 / P-D2 — Apply-driven checkpoint advancement** — deferred. New feature: requires `ProjectionUpdateOrchestrator` (or a new `IProjectionRebuildOrchestrator`) to write `ProjectionRebuildCheckpoint` updates after each accepted projection apply, plus tests for accept-advances / reject-does-not-advance. Story AC4 not yet satisfied.
+- [x] [Review][Patch] **P4 / P-D2 — Apply-driven checkpoint advancement** — Added `IProjectionRebuildOrchestrator` on `ProjectionUpdateOrchestrator`, wired admin replay start through the rebuild orchestrator, and save `ProjectionRebuildCheckpoint` progress only after the domain `/project` path accepts and the projection write actor stores state. Per-apply progress remains `Running`; terminal success is written only after the tracked rebuild scope finishes and the operation is still runnable. Added accept-advances, reject-does-not-advance, and canceled-does-not-advance tests.
 - [x] [Review][Patch] **P-D5 — Fresh ULID OperationId per Replay/Reset** — Replay/reset now generate fresh `UniqueIdHelper.GenerateSortableUniqueStringId()` operation IDs while lifecycle commands read the active checkpoint scope.
 - [x] [Review][Patch] **P-D6 — Persist `ProjectionReplayRequest.ToPosition`** — Added optional `ToPosition` to `ProjectionRebuildCheckpoint` and persist replay upper-bound intent without treating it as applied progress.
 - [x] [Review][Patch] **P-D4 — Document 1:1 projectionName==domain constraint** — Added docs section and a regression test proving the current conflict probe uses `identity.Domain` as the projection name.
@@ -482,7 +482,7 @@ GPT-5 Codex
 
 ### Completion Notes List
 
-- Review-continuation patch set resolved all remaining concrete review findings except P4/P-D2 full apply-driven rebuild advancement. The replay endpoint no longer treats `FromPosition` as applied progress, but a dedicated rebuild worker/apply loop is still needed to advance rebuild checkpoints after accepted projection page application.
+- Final review-continuation patch resolved P4/P-D2 full apply-driven rebuild advancement. Admin replay now invokes `IProjectionRebuildOrchestrator`; `ProjectionUpdateOrchestrator` advances `ProjectionRebuildCheckpoint` only after the domain `/project` apply path is accepted and projection state is written, while rejected and canceled rebuild paths do not advance progress. Per-apply saves stay `Running`; terminal `Succeeded` is written after the tracked rebuild scope completes and the operation is still runnable.
 - Added bounded stream actor reads through `IAggregateActor.ReadEventsRangeAsync`, avoiding public replay controller full-suffix reads.
 - Hardened stream validation/error taxonomy: missing required fields, invalid aggregate identity, upper-bound sequence validation, canonical tenant/domain enforcement, validator null guards, 503 vs 500 split, actor exception unwrapping, and broader no-leak ProblemDetails assertions.
 - Added explicit checkpoint reset/rewind semantics, fresh ULID operation IDs for replay/reset, persisted `ToPosition` intent, nullable not-started operation `StartedAt`, and nullable empty-page `lastSequenceReturned`.
@@ -534,6 +534,7 @@ GPT-5 Codex
 - `src/Hexalith.EventStore.Server/Actors/IAggregateActor.cs`
 - `src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj.lscache`
 - `src/Hexalith.EventStore.Server/Projections/IProjectionRebuildCheckpointStore.cs`
+- `src/Hexalith.EventStore.Server/Projections/IProjectionRebuildOrchestrator.cs`
 - `src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointSaveResult.cs`
 - `src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointScope.cs`
 - `src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs`
@@ -581,6 +582,16 @@ GPT-5 Codex
 - Review-continuation rerun focused `Hexalith.EventStore.Server.Tests` stream/rebuild/checkpoint/orchestrator filter passed: 69/69.
 - Focused `Hexalith.EventStore.Admin.Server.Tests` DAPR failure mapping filter passed: 2/2, with existing MSB3277 package conflict warnings for `Microsoft.AspNetCore.OpenApi` and `YamlDotNet`.
 - Review-continuation rerun focused `Hexalith.EventStore.Admin.Server.Tests` DAPR projection command service filter passed: 10/10.
+- Final review-continuation rerun `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-restore` passed: 333/333.
+- Final review-continuation rerun `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --no-restore` passed: 388/388.
+- Final review-continuation rerun `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj --no-restore` passed: 110/110.
+- Final review-continuation rerun `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj --no-restore` passed: 74/74.
+- Final review-continuation focused `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --no-restore --filter "FullyQualifiedName~ProjectionUpdateOrchestratorTests|FullyQualifiedName~AdminProjectionRebuildControllerTests"` passed: 52/52.
+- Final review-continuation expanded Server stream/rebuild/checkpoint/orchestrator filter passed: 216/216, 4 pre-existing skips.
+- Final review-continuation focused `Hexalith.EventStore.Admin.Server.Tests` DAPR projection command service filter passed: 10/10.
+- Final review-continuation `npx markdownlint-cli2 docs/reference/stream-replay-api.md` passed with 0 errors.
+- Final review-continuation story artifact markdownlint failed on pre-existing `[Review][Patch]` / `[Review][Defer]` label syntax in the review action-item section (MD052).
+- Final review-continuation `git diff --check` passed with line-ending conversion warnings only.
 - Extra broad `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/Hexalith.EventStore.Admin.Server.Tests.csproj --no-restore` failed outside the story-focused coverage: 40 failed, 564 passed, 18 skipped, due missing `Microsoft.AspNetCore.OpenApi` 10.0.8 and `YamlDotNet` 17.0.0 assemblies after package conflict warnings.
 - `npx markdownlint-cli2 docs/reference/stream-replay-api.md` passed with 0 errors.
 - Review-continuation rerun `npx markdownlint-cli2 docs/reference/stream-replay-api.md` passed with 0 errors.
@@ -588,12 +599,13 @@ GPT-5 Codex
 - `npx markdownlint-cli2 _bmad-output/implementation-artifacts/22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints.md` passed with 0 errors.
 - `git diff --check` passed with line-ending conversion warnings only.
 - Aspire integration/manual proof not run: `aspire start --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` was blocked because the installed Aspire CLI requires `Aspire.Hosting.AppHost` >= 13.3.2 while this repo is pinned to 13.2.2.
-- Exact evidence tests added or extended: `StreamReadRequestJsonRoundTripUsesCamelCasePublicShape`, `StreamReadPageCarriesOrderedPageMetadataAndNoStateKeys`, `StreamReplayReasonCodesExposeStablePublicTaxonomy`, `ReadStreamAsyncPostsPublicStreamReadRouteAndReturnsPage`, `ReadStreamAsyncWithProblemDetailsThrowsGatewayExceptionWithReasonCode`, `ReadStreamAsyncWithInvalidRangeRejectsBeforeActorProxy`, `ReadStreamAsyncWithContinuationRejectsBeforeActorProxyUntilTokenSupportExists`, `ReadStreamAsyncWithDeniedTenantRejectsBeforeRbacAndActorProxy`, `ReadStreamAsyncWithDeniedReplayScopeRejectsBeforeActorProxy`, `ReadStreamAsyncReturnsOrderedBoundedAggregatePage`, `ReadStreamAsyncMapsMissingEventToSafeProblem`, `SaveAsyncExistingHigherCheckpointDoesNotRegressOrWrite`, `SaveAsyncDuplicatePageIsIdempotent`, `SaveAsyncRetriesEtagConflictsAndReturnsCheckpointConflictWhenExhausted`, `SaveAsyncStorageUnavailableReturnsStableReasonWithoutBlindSave`, `ReplayProjectionStartsRunningOperationAndReturnsAcceptedResult`, `PauseProjectionIsIdempotentAndReturnsOkResult`, `ReplayProjectionCheckpointConflictReturnsProblemWithReasonCode`, `GetRebuildStatusWithoutCheckpointReturnsNotStartedOperation`, `DeliverProjectionAsync_WithActiveOperatorRebuild_SkipsNormalDeliveryBeforeActorProxy`, `PauseProjectionAsync_MapsHttpStatusCode_WhenRequestFails`, `PauseProjectionAsync_WithProblemDetails_PreservesReasonCode`, `ReadStreamAsyncRecordsRequestAndReturnsConfiguredPage`, `ConfigureStreamReadFailureThrowsConfiguredGatewayException`, `StreamReadPageBuilderBuildsContinuationPage`, and `StreamReadFailureHelpersExposeStableReasonCodes`.
+- Exact evidence tests added or extended: `StreamReadRequestJsonRoundTripUsesCamelCasePublicShape`, `StreamReadPageCarriesOrderedPageMetadataAndNoStateKeys`, `StreamReplayReasonCodesExposeStablePublicTaxonomy`, `ReadStreamAsyncPostsPublicStreamReadRouteAndReturnsPage`, `ReadStreamAsyncWithProblemDetailsThrowsGatewayExceptionWithReasonCode`, `ReadStreamAsyncWithInvalidRangeRejectsBeforeActorProxy`, `ReadStreamAsyncWithContinuationRejectsBeforeActorProxyUntilTokenSupportExists`, `ReadStreamAsyncWithDeniedTenantRejectsBeforeRbacAndActorProxy`, `ReadStreamAsyncWithDeniedReplayScopeRejectsBeforeActorProxy`, `ReadStreamAsyncReturnsOrderedBoundedAggregatePage`, `ReadStreamAsyncMapsMissingEventToSafeProblem`, `SaveAsyncExistingHigherCheckpointDoesNotRegressOrWrite`, `SaveAsyncDuplicatePageIsIdempotent`, `SaveAsyncRetriesEtagConflictsAndReturnsCheckpointConflictWhenExhausted`, `SaveAsyncStorageUnavailableReturnsStableReasonWithoutBlindSave`, `ReplayProjectionStartsRunningOperationAndReturnsAcceptedResult`, `ReplayProjectionInvokesRebuildOrchestratorAfterCheckpointStart`, `PauseProjectionIsIdempotentAndReturnsOkResult`, `ReplayProjectionCheckpointConflictReturnsProblemWithReasonCode`, `GetRebuildStatusWithoutCheckpointReturnsNotStartedOperation`, `DeliverProjectionAsync_WithActiveOperatorRebuild_SkipsNormalDeliveryBeforeActorProxy`, `RebuildProjectionAsync_AcceptedApplyAdvancesRebuildCheckpoint`, `RebuildProjectionAsync_ProjectRejectionDoesNotAdvanceRebuildCheckpoint`, `RebuildProjectionAsync_CanceledOperationDoesNotAdvanceRebuildCheckpoint`, `PauseProjectionAsync_MapsHttpStatusCode_WhenRequestFails`, `PauseProjectionAsync_WithProblemDetails_PreservesReasonCode`, `ReadStreamAsyncRecordsRequestAndReturnsConfiguredPage`, `ConfigureStreamReadFailureThrowsConfiguredGatewayException`, `StreamReadPageBuilderBuildsContinuationPage`, and `StreamReadFailureHelpersExposeStableReasonCodes`.
 
 ## Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-15 | 1.3 | Completed P4/P-D2 apply-driven rebuild advancement: admin replay now invokes a rebuild orchestrator, accepted projection applies advance `ProjectionRebuildCheckpoint`, rejection/canceled paths do not advance, and final focused validation passed. | GPT-5 Codex |
 | 2026-05-15 | 1.2 | Review-continuation patch set resolved 31 of 32 remaining review findings: range-aware actor reads, safer stream validation/taxonomy, explicit reset/replay rewind semantics, fresh operation IDs, persisted `ToPosition`, nullable empty-page/start metadata, bounded Admin.Server ProblemDetails parsing, docs/fake parity, and focused validation. P4/P-D2 full apply-driven rebuild advancement remains open. | GPT-5 Codex |
 | 2026-05-15 | 1.1 | Code review (Opus 4.7) applied 7 CRITICAL/HIGH patches (P-D1 GlobalAdministrator gate, P2 SaveAsync lifecycle fix, P5 read-first 404, P-D3 continuation tokens off, P6 poller fail-closed, P20 ArgumentException → 400, P26 FailureReasonCode null for pause/cancel). 32 remaining patches (including design-level P3/P-D2/P-D5/P-D6/P-D7) listed in Review Findings as action items. Story moved back to in-progress. Focused Server tests 70/70 pass. | Claude Opus 4.7 |
 | 2026-05-15 | 1.0 | Implemented public stream read contracts/client/testing support, EventStore stream read endpoint, projection rebuild checkpoint store, operator rebuild lifecycle endpoints, poller/rebuild conflict policy, docs, and validation evidence; moved story to review. | GPT-5 Codex |
