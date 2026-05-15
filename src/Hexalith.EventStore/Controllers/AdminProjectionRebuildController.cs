@@ -1,4 +1,5 @@
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Projections;
@@ -10,6 +11,7 @@ namespace Hexalith.EventStore.Controllers;
 
 /// <summary>
 /// EventStore-side operator projection rebuild lifecycle endpoints.
+/// Requires the authenticated principal to hold the GlobalAdministrator role (P-D1).
 /// </summary>
 [ApiController]
 [Authorize]
@@ -23,81 +25,116 @@ public sealed partial class AdminProjectionRebuildController(
     /// </summary>
     [HttpGet("{tenantId}/{projectionName}/rebuild-status")]
     [ProducesResponseType(typeof(ProjectionRebuildOperation), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
     public async Task<IActionResult> GetRebuildStatus(
         string tenantId,
         string projectionName,
         CancellationToken ct = default) {
+        IActionResult? authFailure = EnsureGlobalAdministrator();
+        if (authFailure is not null) {
+            return authFailure;
+        }
+
         ProjectionRebuildCheckpointScope scope = CreateScope(tenantId, projectionName);
         ProjectionRebuildCheckpoint? checkpoint = await checkpointStore.ReadAsync(scope, ct).ConfigureAwait(false);
         return Ok(ToOperation(scope, checkpoint));
     }
 
     /// <summary>
-    /// Pauses an operator-triggered rebuild.
+    /// Pauses an operator-triggered rebuild. Returns 404 if no rebuild is active (P5).
     /// </summary>
     [HttpPost("{tenantId}/{projectionName}/pause")]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
     public async Task<IActionResult> PauseProjection(
         string tenantId,
         string projectionName,
         CancellationToken ct = default)
-        => await SaveLifecycleAsync(
+        => await TransitionExistingAsync(
             tenantId,
             projectionName,
-            lastAppliedSequence: 0,
             ProjectionRebuildStatus.Paused,
-            StreamReplayReasonCodes.RebuildPaused,
+            // P26: pause is not a failure; do not stuff a sentinel into FailureReasonCode.
+            failureReasonCode: null,
             accepted: false,
             ct).ConfigureAwait(false);
 
     /// <summary>
-    /// Resumes a paused operator-triggered rebuild.
+    /// Resumes a paused operator-triggered rebuild. Returns 404 if no rebuild is active (P5).
     /// </summary>
     [HttpPost("{tenantId}/{projectionName}/resume")]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
     public async Task<IActionResult> ResumeProjection(
         string tenantId,
         string projectionName,
         CancellationToken ct = default)
-        => await SaveLifecycleAsync(
+        => await TransitionExistingAsync(
             tenantId,
             projectionName,
-            lastAppliedSequence: 0,
             ProjectionRebuildStatus.Running,
             failureReasonCode: null,
             accepted: false,
             ct).ConfigureAwait(false);
 
     /// <summary>
-    /// Resets a projection rebuild checkpoint.
+    /// Resets a projection rebuild checkpoint. NOTE: monotonic clamp on the store currently prevents
+    /// LastAppliedSequence regression; this endpoint flips the status only. True rewind is deferred (P3).
     /// </summary>
     [HttpPost("{tenantId}/{projectionName}/reset")]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
     public async Task<IActionResult> ResetProjection(
         string tenantId,
         string projectionName,
-        [FromBody] ProjectionResetRequest? request,
-        CancellationToken ct = default)
-        => await SaveLifecycleAsync(
+        [FromBody] ProjectionResetRequest request,
+        CancellationToken ct = default) {
+        ArgumentNullException.ThrowIfNull(request);
+        IActionResult? authFailure = EnsureGlobalAdministrator();
+        if (authFailure is not null) {
+            return authFailure;
+        }
+
+        long fromPosition = request.FromPosition ?? 0;
+        if (fromPosition < 0) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                "'fromPosition' must be >= 0.",
+                StreamReplayReasonCodes.InvalidRange);
+        }
+
+        return await SaveLifecycleAsync(
             tenantId,
             projectionName,
-            request?.FromPosition ?? 0,
+            fromPosition,
             ProjectionRebuildStatus.NotStarted,
             failureReasonCode: null,
             accepted: true,
             ct).ConfigureAwait(false);
+    }
 
     /// <summary>
     /// Starts a projection replay/rebuild operation.
     /// </summary>
     [HttpPost("{tenantId}/{projectionName}/replay")]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
     public async Task<IActionResult> ReplayProjection(
         string tenantId,
         string projectionName,
         [FromBody] ProjectionReplayRequest request,
         CancellationToken ct = default) {
         ArgumentNullException.ThrowIfNull(request);
+        IActionResult? authFailure = EnsureGlobalAdministrator();
+        if (authFailure is not null) {
+            return authFailure;
+        }
+
         if (request.FromPosition < 0 || request.ToPosition < request.FromPosition) {
             return ProblemWithReason(
                 StatusCodes.Status400BadRequest,
@@ -117,41 +154,97 @@ public sealed partial class AdminProjectionRebuildController(
     }
 
     /// <summary>
-    /// Cancels a projection rebuild operation.
+    /// Cancels a projection rebuild operation. Returns 404 if no rebuild is active (P5).
     /// </summary>
     [HttpPost("{tenantId}/{projectionName}/cancel")]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
     public async Task<IActionResult> CancelProjection(
         string tenantId,
         string projectionName,
         CancellationToken ct = default)
-        => await SaveLifecycleAsync(
+        => await TransitionExistingAsync(
             tenantId,
             projectionName,
-            lastAppliedSequence: 0,
             ProjectionRebuildStatus.Canceled,
-            StreamReplayReasonCodes.RebuildCanceled,
+            // P26: cancel is not a failure; status field carries the lifecycle state.
+            failureReasonCode: null,
             accepted: false,
             ct).ConfigureAwait(false);
 
     /// <summary>
-    /// Retries a failed or canceled projection rebuild operation.
+    /// Retries a failed or canceled projection rebuild operation. Returns 404 if no rebuild is active (P5).
     /// </summary>
     [HttpPost("{tenantId}/{projectionName}/retry")]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
     public async Task<IActionResult> RetryProjection(
         string tenantId,
         string projectionName,
         CancellationToken ct = default)
-        => await SaveLifecycleAsync(
+        => await TransitionExistingAsync(
             tenantId,
             projectionName,
-            lastAppliedSequence: 0,
             ProjectionRebuildStatus.Retrying,
             failureReasonCode: null,
             accepted: true,
             ct).ConfigureAwait(false);
 
+    /// <summary>
+    /// Transitions an existing rebuild operation to a new status. Returns 404 when no rebuild exists (P5).
+    /// </summary>
+    private async Task<IActionResult> TransitionExistingAsync(
+        string tenantId,
+        string projectionName,
+        ProjectionRebuildStatus status,
+        string? failureReasonCode,
+        bool accepted,
+        CancellationToken ct) {
+        IActionResult? authFailure = EnsureGlobalAdministrator();
+        if (authFailure is not null) {
+            return authFailure;
+        }
+
+        try {
+            ProjectionRebuildCheckpointScope scope = CreateScope(tenantId, projectionName);
+            ProjectionRebuildCheckpoint? existing = await checkpointStore.ReadAsync(scope, ct).ConfigureAwait(false);
+            if (existing is null) {
+                return ProblemWithReason(
+                    StatusCodes.Status404NotFound,
+                    "Not Found",
+                    "No projection rebuild operation found for this projection.",
+                    StreamReplayReasonCodes.RebuildOperationNotFound);
+            }
+
+            ProjectionRebuildCheckpointSaveResult save = await checkpointStore
+                .SaveAsync(scope, existing.LastAppliedSequence, status, failureReasonCode, ct)
+                .ConfigureAwait(false);
+            if (!save.Succeeded) {
+                return MapSaveFailure(save.ReasonCode);
+            }
+
+            var result = new AdminOperationResult(
+                true,
+                scope.OperationId ?? string.Empty,
+                $"Projection rebuild status is {status}.",
+                null);
+            return accepted ? Accepted(result) : Ok(result);
+        }
+        catch (ArgumentException ex) {
+            // P20: surface key-shape errors as 400 instead of letting them become 500.
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                ex.Message,
+                StreamReplayReasonCodes.InvalidRange);
+        }
+    }
+
+    /// <summary>
+    /// Writes the lifecycle checkpoint for Replay/Reset. Used when an existing rebuild may or may not exist.
+    /// </summary>
     private async Task<IActionResult> SaveLifecycleAsync(
         string tenantId,
         string projectionName,
@@ -160,20 +253,29 @@ public sealed partial class AdminProjectionRebuildController(
         string? failureReasonCode,
         bool accepted,
         CancellationToken ct) {
-        ProjectionRebuildCheckpointScope scope = CreateScope(tenantId, projectionName);
-        ProjectionRebuildCheckpointSaveResult save = await checkpointStore
-            .SaveAsync(scope, lastAppliedSequence, status, failureReasonCode, ct)
-            .ConfigureAwait(false);
-        if (!save.Succeeded) {
-            return MapSaveFailure(save.ReasonCode);
-        }
+        try {
+            ProjectionRebuildCheckpointScope scope = CreateScope(tenantId, projectionName);
+            ProjectionRebuildCheckpointSaveResult save = await checkpointStore
+                .SaveAsync(scope, lastAppliedSequence, status, failureReasonCode, ct)
+                .ConfigureAwait(false);
+            if (!save.Succeeded) {
+                return MapSaveFailure(save.ReasonCode);
+            }
 
-        var result = new AdminOperationResult(
-            true,
-            scope.OperationId!,
-            $"Projection rebuild status is {status}.",
-            null);
-        return accepted ? Accepted(result) : Ok(result);
+            var result = new AdminOperationResult(
+                true,
+                scope.OperationId ?? string.Empty,
+                $"Projection rebuild status is {status}.",
+                null);
+            return accepted ? Accepted(result) : Ok(result);
+        }
+        catch (ArgumentException ex) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                ex.Message,
+                StreamReplayReasonCodes.InvalidRange);
+        }
     }
 
     private IActionResult MapSaveFailure(string? reasonCode)
@@ -203,6 +305,8 @@ public sealed partial class AdminProjectionRebuildController(
             Detail = detail,
             Type = statusCode switch {
                 StatusCodes.Status400BadRequest => ProblemTypeUris.BadRequest,
+                StatusCodes.Status403Forbidden => ProblemTypeUris.Forbidden,
+                StatusCodes.Status404NotFound => ProblemTypeUris.NotFound,
                 StatusCodes.Status409Conflict => ProblemTypeUris.ConcurrencyConflict,
                 StatusCodes.Status503ServiceUnavailable => ProblemTypeUris.ServiceUnavailable,
                 _ => ProblemTypeUris.InternalServerError,
@@ -210,6 +314,22 @@ public sealed partial class AdminProjectionRebuildController(
         };
         problem.Extensions["reasonCode"] = reasonCode;
         return new ObjectResult(problem) { StatusCode = statusCode };
+    }
+
+    /// <summary>
+    /// Enforces that the caller holds the GlobalAdministrator role. Returns 403 ProblemDetails when not (P-D1).
+    /// Closes the cross-tenant operator hijack: any non-admin authenticated user is denied before scope construction.
+    /// </summary>
+    private IActionResult? EnsureGlobalAdministrator() {
+        if (GlobalAdministratorHelper.IsGlobalAdministrator(User)) {
+            return null;
+        }
+
+        return ProblemWithReason(
+            StatusCodes.Status403Forbidden,
+            "Forbidden",
+            "Projection rebuild lifecycle endpoints require the GlobalAdministrator role.",
+            StreamReplayReasonCodes.UnauthorizedTenant);
     }
 
     private static ProjectionRebuildCheckpointScope CreateScope(string tenantId, string projectionName)
@@ -223,6 +343,8 @@ public sealed partial class AdminProjectionRebuildController(
     private static ProjectionRebuildOperation ToOperation(
         ProjectionRebuildCheckpointScope scope,
         ProjectionRebuildCheckpoint? checkpoint)
+        // P23: when no checkpoint exists, surface UpdatedAt as null rather than UnixEpoch.
+        // Caller of ProjectionRebuildOperation must treat StartedAt as a nullable hint.
         => new(
             scope.OperationId!,
             scope.Tenant,
@@ -250,12 +372,12 @@ public sealed partial class AdminProjectionRebuildController(
 /// <summary>
 /// EventStore-side projection reset request.
 /// </summary>
-/// <param name="FromPosition">Optional position to reset from.</param>
+/// <param name="FromPosition">Optional position to reset from (currently a status flip only; rewind deferred per P3).</param>
 public sealed record ProjectionResetRequest(long? FromPosition);
 
 /// <summary>
 /// EventStore-side projection replay request.
 /// </summary>
 /// <param name="FromPosition">The starting stream position.</param>
-/// <param name="ToPosition">The ending stream position.</param>
+/// <param name="ToPosition">The ending stream position (validated but currently not persisted per P-D6 deferral).</param>
 public sealed record ProjectionReplayRequest(long FromPosition, long ToPosition);

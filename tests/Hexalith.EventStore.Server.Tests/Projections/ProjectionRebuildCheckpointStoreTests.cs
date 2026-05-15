@@ -124,6 +124,39 @@ public class ProjectionRebuildCheckpointStoreTests {
     }
 
     [Fact]
+    public async Task SaveAsyncStatusOnlyTransitionPersistsNewStatusWithoutLoweringSequence() {
+        // P2 regression test: with an existing checkpoint at sequence=50 Status=Running,
+        // a Pause transition passing lastAppliedSequence=existing must persist Paused.
+        // Previously the early-return guard silently dropped the write because Running
+        // is a progress status and 50 >= 50.
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        ProjectionRebuildCheckpoint existing = CreateCheckpoint(50, ProjectionRebuildStatus.Running);
+        SetupGetStateAndEtag(daprClient, existing, "etag-1");
+        SetupTrySave(daprClient, true);
+        var store = CreateStore(daprClient);
+
+        ProjectionRebuildCheckpointSaveResult result = await store.SaveAsync(
+            Scope,
+            lastAppliedSequence: 50,
+            ProjectionRebuildStatus.Paused);
+
+        result.Succeeded.ShouldBeTrue();
+        result.Checkpoint.ShouldNotBeNull();
+        result.Checkpoint.Status.ShouldBe(ProjectionRebuildStatus.Paused);
+        result.Checkpoint.LastAppliedSequence.ShouldBe(50);
+        _ = await daprClient.Received(1).TrySaveStateAsync(
+            "statestore",
+            ProjectionRebuildCheckpointStore.GetStateKey(Scope),
+            Arg.Is<ProjectionRebuildCheckpoint>(checkpoint =>
+                checkpoint.Status == ProjectionRebuildStatus.Paused
+                && checkpoint.LastAppliedSequence == 50),
+            "etag-1",
+            stateOptions: Arg.Any<StateOptions?>(),
+            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task SaveAsyncStorageUnavailableReturnsStableReasonWithoutBlindSave() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetStateAndETagAsync<ProjectionRebuildCheckpoint>(

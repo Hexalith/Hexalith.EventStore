@@ -413,8 +413,11 @@ public partial class ProjectionUpdateOrchestrator(
             throw;
         }
         catch (Exception ex) {
+            // P6: Fail closed. When the checkpoint store cannot answer, we must assume an
+            // operator rebuild MAY be active and skip the poller delivery to avoid racing
+            // it. Returning false here would let the poller proceed and corrupt the rebuild.
             Log.RebuildCheckpointReadFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
-            return false;
+            return true;
         }
     }
 

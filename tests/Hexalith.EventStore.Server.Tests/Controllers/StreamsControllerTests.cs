@@ -110,9 +110,9 @@ public class StreamsControllerTests {
         page.Metadata.LastSequenceReturned.ShouldBe(3);
         page.Metadata.LatestSequence.ShouldBe(4);
         page.Metadata.IsTruncated.ShouldBeTrue();
-        page.Metadata.NextContinuationToken.ShouldNotBeNull();
-        page.Metadata.NextContinuationToken.Value.ShouldNotContain($"{Tenant}:{Domain}:{AggregateId}");
-        page.Metadata.NextContinuationToken.Value.ShouldNotContain(":events:");
+        // P-D3: continuation tokens are deferred until request-binding is implemented.
+        // Server returns null and callers paginate via FromSequence = lastSequenceReturned + 1.
+        page.Metadata.NextContinuationToken.ShouldBeNull();
         _ = await actor.Received(1).GetEventsAsync(1);
     }
 

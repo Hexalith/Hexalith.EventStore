@@ -59,13 +59,13 @@ public sealed partial class ProjectionRebuildCheckpointStore(
 
                 if (existing is not null) {
                     ValidateCheckpointScope(scope, existing);
+                    // P2/P14: Idempotent no-op ONLY when every observable field matches.
+                    // The previous "progress-status short-circuit" silently dropped real
+                    // lifecycle transitions (e.g., Paused -> Running with lastAppliedSequence=0
+                    // returned Success without writing, leaving the status as Paused).
                     if (existing.LastAppliedSequence >= lastAppliedSequence
                         && existing.Status == status
                         && string.Equals(existing.FailureReasonCode, failureReasonCode, StringComparison.Ordinal)) {
-                        return ProjectionRebuildCheckpointSaveResult.Success(existing);
-                    }
-
-                    if (existing.LastAppliedSequence >= lastAppliedSequence && IsProgressStatus(status)) {
                         return ProjectionRebuildCheckpointSaveResult.Success(existing);
                     }
                 }

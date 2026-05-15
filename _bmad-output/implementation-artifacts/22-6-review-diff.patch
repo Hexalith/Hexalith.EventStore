@@ -1,0 +1,3195 @@
+diff --git a/Directory.Packages.props b/Directory.Packages.props
+index 5014af0a..e1686e50 100644
+--- a/Directory.Packages.props
++++ b/Directory.Packages.props
+@@ -12,8 +12,8 @@
+     <PackageVersion Include="Aspire.Hosting" Version="13.3.2" />
+     <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.3.2" />
+     <PackageVersion Include="Aspire.Hosting.Docker" Version="13.3.2" />
+-    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.2.2-preview.1.26207.2" />
+-    <PackageVersion Include="Aspire.Hosting.Kubernetes" Version="13.2.2-preview.1.26207.2" />
++    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.3.2-preview.1.26263.11" />
++    <PackageVersion Include="Aspire.Hosting.Kubernetes" Version="13.3.2-preview.1.26263.11" />
+     <PackageVersion Include="Aspire.Hosting.Redis" Version="13.3.2" />
+     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.3.2" />
+     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Dapr" Version="13.0.0" />
+diff --git a/_bmad-output/implementation-artifacts/22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints.md b/_bmad-output/implementation-artifacts/22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints.md
+index e10f0000..530f6faa 100644
+--- a/_bmad-output/implementation-artifacts/22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints.md
++++ b/_bmad-output/implementation-artifacts/22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints.md
+@@ -1,6 +1,6 @@
+ # Story 22.6: Stream Replay/Read APIs and Projection Rebuild Checkpoints
+ 
+-Status: ready-for-dev
++Status: review
+ 
+ Context created: 2026-05-13
+ Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
+@@ -115,78 +115,78 @@ so that Parties projections can rebuild from EventStore streams safely.
+ 
+ ## Tasks / Subtasks
+ 
+-- [ ] **ST0 - Baseline current replay/read and checkpoint behavior.** (AC: 1, 2, 3, 4, 5, 6, 7)
+-    - [ ] Read this story, Epic 22, PRD FR99-FR101, ADR-P9, Stories 22.1-22.5, and `_bmad-output/project-context.md` before code edits.
+-    - [ ] Inventory `IAggregateActor.GetEventsAsync`, `AggregateActor.GetEventsAsync`, `ReadEventsRangeAsync`, `EventStreamReader`, `ProjectionUpdateOrchestrator`, `ProjectionCheckpointTracker`, `ProjectionPollerService`, `AdminStreamQueryController`, `DaprStreamQueryService`, `AdminProjectionsController`, and `DaprProjectionCommandService`.
+-    - [ ] Inventory public package surfaces: `Hexalith.EventStore.Contracts.Replay`, command/query DTOs, `IEventStoreGatewayClient`, `EventStoreGatewayClient`, and Testing fakes/builders.
+-    - [ ] Record a decision table for public stream API shape, admin/debug endpoint boundaries, checkpoint key ownership, continuation token format, operator status model, and failure reason codes.
+-    - [ ] Record selected names or equivalents for `StreamReadRequest`, `StreamReplayRequest`, `StreamReplayPage`, `ReplayContinuationToken`, `ProjectionRebuildOperation`, and `ProjectionRebuildCheckpoint`.
+-    - [ ] Record which exact route(s) are public downstream replay routes versus operator/admin rebuild routes, and which existing admin/debug endpoints remain out of the downstream contract.
+-    - [ ] Record whether checkpoint advancement is client-driven, operator-service-driven, or projection-apply-driven, and name the exact acceptance point after which progress may be persisted.
+-    - [ ] Record the normal-poller versus operator-rebuild coordination policy before implementing checkpoint writes.
+-
+-- [ ] **ST1 - Add public stream read/replay DTOs and client methods.** (AC: 1, 3, 6, 7)
+-    - [ ] Add Contracts DTOs for stream page requests/responses, event page items, checkpoint/progress metadata, and stable reason-code constants.
+-    - [ ] Define continuation tokens as opaque, tenant-bound, scope-bound, tamper-safe or fail-closed, non-key-bearing values; document unsupported or deferred token-expiry behavior explicitly.
+-    - [ ] Include a stable token/request mismatch reason for tokens bound to a different tenant, domain, aggregate, projection scope, route/API version, page-size constraint, or original query shape.
+-    - [ ] Keep existing aggregate reconstruction DTOs intact; do not rename or repurpose `AggregateReconstructionRequest`, `AggregateReconstructionResult`, or `ReplayEventEnvelope` unless compatibility is explicitly handled.
+-    - [ ] Add `IEventStoreGatewayClient` and `EventStoreGatewayClient` methods for stream reads/replay pages using the same JSON options, ProblemDetails mapping, typed cancellation, and strong validation style as command/query methods.
+-    - [ ] Add Testing builders/fakes so downstream modules can test continuation, empty pages, authorization failures, and checkpoint conflicts without a live EventStore.
+-
+-- [ ] **ST2 - Implement EventStore HTTP endpoints for stream reads.** (AC: 2, 3, 7)
+-    - [ ] Add public non-admin route(s) for stream reads; keep admin stream debugging routes under `api/v1/admin/streams`.
+-    - [ ] Validate tenant/domain/aggregate/range/page-size/continuation inputs before creating actor proxies.
+-    - [ ] Enforce gateway-owned tenant/RBAC checks consistent with Story 22.3 before state access.
+-    - [ ] Prove denied, cross-tenant, invalid-continuation, invalid-range, and forbidden-scope requests do not call actor proxies, projection services, checkpoint stores, or direct DAPR state APIs.
+-    - [ ] Verify continuation token metadata without resolving actor IDs, checkpoint keys, or projection identities until tenant/domain/scope authorization succeeds.
+-    - [ ] Use `AggregateIdentity` and `IAggregateActor.GetEventsAsync` for aggregate-specific reads; do not use direct `DaprClient.GetStateAsync` against actor event keys.
+-    - [ ] Return deterministic sequence ordering, bounded pages, continuation metadata, and safe empty-stream behavior.
+-    - [ ] Map missing/corrupt events and unavailable actors to stable ProblemDetails without leaking payload bytes or state keys.
+-
+-- [ ] **ST3 - Define and implement checkpoint/progress storage.** (AC: 4, 5, 7)
+-    - [ ] Decide whether to extend `ProjectionCheckpointTracker` or add a small rebuild-specific checkpoint service that reuses its ETag/max-sequence pattern.
+-    - [ ] Store checkpoint records under a validated tenant/domain/projection scope with operation ID, status, last applied sequence, updated timestamp, and sanitized failure reason.
+-    - [ ] Use ETag-based optimistic concurrency for checkpoint writes; never perform blind last-write-wins updates for checkpoint advancement.
+-    - [ ] Ensure duplicate or stale checkpoint advancement is idempotent and cannot lower progress.
+-    - [ ] Advance checkpoints only after the projection apply path returns an accepted/success outcome for the page; record failure status without advancement for partial page failure, projection rejection, timeout, cancellation, corrupt stream, or protected payload unreadability.
+-    - [ ] Add race tests for duplicate progress, out-of-order checkpoint writes, stale ETags, concurrent workers, pause/resume/cancel interaction, retry after failure, and checkpoint-store unavailable behavior.
+-    - [ ] Add reason codes for checkpoint conflict, checkpoint drift, checkpoint unavailable, paused, cancelled, domain failure, and corrupt stream.
+-
+-- [ ] **ST4 - Wire operator rebuild lifecycle APIs.** (AC: 5, 7)
+-    - [ ] Make EventStore-side endpoints behind admin projection pause/resume/reset/replay return meaningful `AdminOperationResult` values and stable HTTP semantics.
+-    - [ ] Ensure `DaprProjectionCommandService` forwards JWT context and maps failures without hiding operator-relevant reason codes.
+-    - [ ] Define status responses for queued/running/paused/cancelled/completed/failed rebuild operations.
+-    - [ ] Record legal lifecycle transitions and idempotent behavior for start, progress, pause, resume, cancel, retry, success, failure, and repeated terminal-state calls.
+-    - [ ] Keep normal projection polling and operator-triggered rebuild from racing silently; document and test the conflict behavior.
+-    - [ ] Implement or explicitly defer a single-writer/lease/pause/reject rule for rebuild operations that target a projection already being updated by normal polling.
+-
+-- [ ] **ST5 - Document downstream rebuild usage.** (AC: 6, 8)
+-    - [ ] Add or update `docs/reference/stream-replay-api.md` with route shapes, DTO fields, continuation behavior, checkpoint semantics, examples, and ProblemDetails reason codes.
+-    - [ ] Update projection/domain-service guidance to show rebuilds using EventStore public client APIs rather than DAPR state-store reads.
+-    - [ ] Update configuration/admin docs for rebuild lifecycle commands, progress inspection, pause/resume/cancel, and failure recovery.
+-    - [ ] Add explicit "do not use" guidance for Server/admin/debug types, DAPR actor IDs, DAPR state keys, raw checkpoint keys, and protected payload material in downstream projection rebuilds.
+-    - [ ] Cross-link docs from package ownership guidance created by Story 22.1 and publishing guarantees from Story 22.5.
+-
+-- [ ] **ST6 - Add focused test coverage.** (AC: 1, 2, 3, 4, 5, 7, 8)
+-    - [ ] Add Contracts tests for DTO serialization, validation assumptions, and reason-code constants.
+-    - [ ] Add Client tests for success, continuation, not found, malformed continuation, unauthorized, unavailable, typed cancellation, and ProblemDetails mapping.
+-    - [ ] Add Testing tests for new fake/builder behavior.
+-    - [ ] Add Server controller/service tests proving invalid requests never call `IAggregateActor.GetEventsAsync`.
+-    - [ ] Add checkpoint service tests for monotonic advancement, retry idempotency, stale write conflict, pause/resume/cancel, and store-unavailable behavior.
+-    - [ ] Add negative advancement tests proving projection apply rejection, partial page failure, cancel, timeout, corrupt event, protected payload unavailable, and checkpoint-store failure do not advance beyond the last safely applied sequence.
+-    - [ ] Add no-leak tests for DTO serialization, ProblemDetails, logs/activity tags, continuation tokens, docs examples, and test artifacts so state-store keys, actor IDs, payload bytes, protected data, DAPR addresses, tokens, stack traces, and user-controlled display names are absent.
+-    - [ ] Add client/fake parity tests for success page, empty page, continuation, malformed continuation, expired/stale continuation, invalid range, unauthorized tenant, forbidden scope, missing stream, checkpoint conflict, canceled rebuild, paused rebuild, and transient unavailable paths.
+-    - [ ] Add integration/manual proof for paged replay and rebuild progress only when Docker and Aspire/DAPR resources are running.
+-
+-- [ ] **ST7 - Validate and record evidence.** (AC: 8)
+-    - [ ] Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests`.
+-    - [ ] Run `dotnet test tests/Hexalith.EventStore.Client.Tests`.
+-    - [ ] Run `dotnet test tests/Hexalith.EventStore.Testing.Tests` if Testing fakes/builders change.
+-    - [ ] Run focused Server tests with filters around stream/replay/projection/checkpoint behavior; avoid broad Server.Tests first because this repo has known CA2007 warning-as-error risk.
+-    - [ ] Run integration tests only with Docker and a running Aspire/DAPR environment.
+-    - [ ] Run generated API docs and markdown validation if public XML docs or reference docs change.
+-    - [ ] Record exact test names proving auth-before-state, continuation token safety, checkpoint monotonicity/concurrency, operator lifecycle transitions, no-leak assertions, and Contracts/Client/Testing parity.
+-    - [ ] Update Dev Agent Record, File List, Verification Status, and Change Log.
++- [x] **ST0 - Baseline current replay/read and checkpoint behavior.** (AC: 1, 2, 3, 4, 5, 6, 7)
++    - [x] Read this story, Epic 22, PRD FR99-FR101, ADR-P9, Stories 22.1-22.5, and `_bmad-output/project-context.md` before code edits.
++    - [x] Inventory `IAggregateActor.GetEventsAsync`, `AggregateActor.GetEventsAsync`, `ReadEventsRangeAsync`, `EventStreamReader`, `ProjectionUpdateOrchestrator`, `ProjectionCheckpointTracker`, `ProjectionPollerService`, `AdminStreamQueryController`, `DaprStreamQueryService`, `AdminProjectionsController`, and `DaprProjectionCommandService`.
++    - [x] Inventory public package surfaces: `Hexalith.EventStore.Contracts.Replay`, command/query DTOs, `IEventStoreGatewayClient`, `EventStoreGatewayClient`, and Testing fakes/builders.
++    - [x] Record a decision table for public stream API shape, admin/debug endpoint boundaries, checkpoint key ownership, continuation token format, operator status model, and failure reason codes.
++    - [x] Record selected names or equivalents for `StreamReadRequest`, `StreamReplayRequest`, `StreamReplayPage`, `ReplayContinuationToken`, `ProjectionRebuildOperation`, and `ProjectionRebuildCheckpoint`.
++    - [x] Record which exact route(s) are public downstream replay routes versus operator/admin rebuild routes, and which existing admin/debug endpoints remain out of the downstream contract.
++    - [x] Record whether checkpoint advancement is client-driven, operator-service-driven, or projection-apply-driven, and name the exact acceptance point after which progress may be persisted.
++    - [x] Record the normal-poller versus operator-rebuild coordination policy before implementing checkpoint writes.
++
++- [x] **ST1 - Add public stream read/replay DTOs and client methods.** (AC: 1, 3, 6, 7)
++    - [x] Add Contracts DTOs for stream page requests/responses, event page items, checkpoint/progress metadata, and stable reason-code constants.
++    - [x] Define continuation tokens as opaque, tenant-bound, scope-bound, tamper-safe or fail-closed, non-key-bearing values; document unsupported or deferred token-expiry behavior explicitly.
++    - [x] Include a stable token/request mismatch reason for tokens bound to a different tenant, domain, aggregate, projection scope, route/API version, page-size constraint, or original query shape.
++    - [x] Keep existing aggregate reconstruction DTOs intact; do not rename or repurpose `AggregateReconstructionRequest`, `AggregateReconstructionResult`, or `ReplayEventEnvelope` unless compatibility is explicitly handled.
++    - [x] Add `IEventStoreGatewayClient` and `EventStoreGatewayClient` methods for stream reads/replay pages using the same JSON options, ProblemDetails mapping, typed cancellation, and strong validation style as command/query methods.
++    - [x] Add Testing builders/fakes so downstream modules can test continuation, empty pages, authorization failures, and checkpoint conflicts without a live EventStore.
++
++- [x] **ST2 - Implement EventStore HTTP endpoints for stream reads.** (AC: 2, 3, 7)
++    - [x] Add public non-admin route(s) for stream reads; keep admin stream debugging routes under `api/v1/admin/streams`.
++    - [x] Validate tenant/domain/aggregate/range/page-size/continuation inputs before creating actor proxies.
++    - [x] Enforce gateway-owned tenant/RBAC checks consistent with Story 22.3 before state access.
++    - [x] Prove denied, cross-tenant, invalid-continuation, invalid-range, and forbidden-scope requests do not call actor proxies, projection services, checkpoint stores, or direct DAPR state APIs.
++    - [x] Verify continuation token metadata without resolving actor IDs, checkpoint keys, or projection identities until tenant/domain/scope authorization succeeds.
++    - [x] Use `AggregateIdentity` and `IAggregateActor.GetEventsAsync` for aggregate-specific reads; do not use direct `DaprClient.GetStateAsync` against actor event keys.
++    - [x] Return deterministic sequence ordering, bounded pages, continuation metadata, and safe empty-stream behavior.
++    - [x] Map missing/corrupt events and unavailable actors to stable ProblemDetails without leaking payload bytes or state keys.
++
++- [x] **ST3 - Define and implement checkpoint/progress storage.** (AC: 4, 5, 7)
++    - [x] Decide whether to extend `ProjectionCheckpointTracker` or add a small rebuild-specific checkpoint service that reuses its ETag/max-sequence pattern.
++    - [x] Store checkpoint records under a validated tenant/domain/projection scope with operation ID, status, last applied sequence, updated timestamp, and sanitized failure reason.
++    - [x] Use ETag-based optimistic concurrency for checkpoint writes; never perform blind last-write-wins updates for checkpoint advancement.
++    - [x] Ensure duplicate or stale checkpoint advancement is idempotent and cannot lower progress.
++    - [x] Advance checkpoints only after the projection apply path returns an accepted/success outcome for the page; record failure status without advancement for partial page failure, projection rejection, timeout, cancellation, corrupt stream, or protected payload unreadability.
++    - [x] Add race tests for duplicate progress, out-of-order checkpoint writes, stale ETags, concurrent workers, pause/resume/cancel interaction, retry after failure, and checkpoint-store unavailable behavior.
++    - [x] Add reason codes for checkpoint conflict, checkpoint drift, checkpoint unavailable, paused, cancelled, domain failure, and corrupt stream.
++
++- [x] **ST4 - Wire operator rebuild lifecycle APIs.** (AC: 5, 7)
++    - [x] Make EventStore-side endpoints behind admin projection pause/resume/reset/replay return meaningful `AdminOperationResult` values and stable HTTP semantics.
++    - [x] Ensure `DaprProjectionCommandService` forwards JWT context and maps failures without hiding operator-relevant reason codes.
++    - [x] Define status responses for queued/running/paused/cancelled/completed/failed rebuild operations.
++    - [x] Record legal lifecycle transitions and idempotent behavior for start, progress, pause, resume, cancel, retry, success, failure, and repeated terminal-state calls.
++    - [x] Keep normal projection polling and operator-triggered rebuild from racing silently; document and test the conflict behavior.
++    - [x] Implement or explicitly defer a single-writer/lease/pause/reject rule for rebuild operations that target a projection already being updated by normal polling.
++
++- [x] **ST5 - Document downstream rebuild usage.** (AC: 6, 8)
++    - [x] Add or update `docs/reference/stream-replay-api.md` with route shapes, DTO fields, continuation behavior, checkpoint semantics, examples, and ProblemDetails reason codes.
++    - [x] Update projection/domain-service guidance to show rebuilds using EventStore public client APIs rather than DAPR state-store reads.
++    - [x] Update configuration/admin docs for rebuild lifecycle commands, progress inspection, pause/resume/cancel, and failure recovery.
++    - [x] Add explicit "do not use" guidance for Server/admin/debug types, DAPR actor IDs, DAPR state keys, raw checkpoint keys, and protected payload material in downstream projection rebuilds.
++    - [x] Cross-link docs from package ownership guidance created by Story 22.1 and publishing guarantees from Story 22.5.
++
++- [x] **ST6 - Add focused test coverage.** (AC: 1, 2, 3, 4, 5, 7, 8)
++    - [x] Add Contracts tests for DTO serialization, validation assumptions, and reason-code constants.
++    - [x] Add Client tests for success, continuation, not found, malformed continuation, unauthorized, unavailable, typed cancellation, and ProblemDetails mapping.
++    - [x] Add Testing tests for new fake/builder behavior.
++    - [x] Add Server controller/service tests proving invalid requests never call `IAggregateActor.GetEventsAsync`.
++    - [x] Add checkpoint service tests for monotonic advancement, retry idempotency, stale write conflict, pause/resume/cancel, and store-unavailable behavior.
++    - [x] Add negative advancement tests proving projection apply rejection, partial page failure, cancel, timeout, corrupt event, protected payload unavailable, and checkpoint-store failure do not advance beyond the last safely applied sequence.
++    - [x] Add no-leak tests for DTO serialization, ProblemDetails, logs/activity tags, continuation tokens, docs examples, and test artifacts so state-store keys, actor IDs, payload bytes, protected data, DAPR addresses, tokens, stack traces, and user-controlled display names are absent.
++    - [x] Add client/fake parity tests for success page, empty page, continuation, malformed continuation, expired/stale continuation, invalid range, unauthorized tenant, forbidden scope, missing stream, checkpoint conflict, canceled rebuild, paused rebuild, and transient unavailable paths.
++    - [x] Add integration/manual proof for paged replay and rebuild progress only when Docker and Aspire/DAPR resources are running; runtime proof was recorded as blocked by the local Aspire CLI/AppHost version mismatch.
++
++- [x] **ST7 - Validate and record evidence.** (AC: 8)
++    - [x] Run `dotnet test tests/Hexalith.EventStore.Contracts.Tests`.
++    - [x] Run `dotnet test tests/Hexalith.EventStore.Client.Tests`.
++    - [x] Run `dotnet test tests/Hexalith.EventStore.Testing.Tests` if Testing fakes/builders change.
++    - [x] Run focused Server tests with filters around stream/replay/projection/checkpoint behavior; avoid broad Server.Tests first because this repo has known CA2007 warning-as-error risk.
++    - [x] Run integration tests only with Docker and a running Aspire/DAPR environment; not run because the apphost could not start with the installed Aspire CLI.
++    - [x] Run generated API docs and markdown validation if public XML docs or reference docs change.
++    - [x] Record exact test names proving auth-before-state, continuation token safety, checkpoint monotonicity/concurrency, operator lifecycle transitions, no-leak assertions, and Contracts/Client/Testing parity.
++    - [x] Update Dev Agent Record, File List, Verification Status, and Change Log.
+ 
+ ## Test Evidence Required
+ 
+@@ -343,12 +343,37 @@ GPT-5 Codex
+ 
+ ### Debug Log References
+ 
++- 2026-05-15T07:47:52+02:00 - ST6/ST7 validation completed: focused stream/rebuild tests passed, full Contracts/Client/Testing/Sample test projects passed, docs markdown lint passed, and Aspire integration proof remained blocked by the local Aspire CLI/AppHost package version mismatch.
++- 2026-05-15T07:52:00+02:00 - Broad `Hexalith.EventStore.Admin.Server.Tests` was attempted as an extra check and failed outside the story-focused tests: OpenAPI/resiliency suites could not load `Microsoft.AspNetCore.OpenApi` 10.0.8 and `YamlDotNet` 17.0.0 after MSB3277 version-conflict warnings.
++- 2026-05-15T08:28:00+02:00 - ST5 completed: added `docs/reference/stream-replay-api.md`; `npx markdownlint-cli2 docs/reference/stream-replay-api.md` passed with 0 errors.
++- 2026-05-15T08:23:00+02:00 - ST4 red-green completed: EventStore admin rebuild lifecycle endpoint tests passed (4/4), Admin.Server DAPR failure mapping tests passed (2/2, with existing package conflict warnings), and projection poller/rebuild conflict test passed (1/1).
++- 2026-05-15T08:07:00+02:00 - ST3 red-green completed: rebuild checkpoint store tests passed (5/5), reason-code contract tests passed (3/3), and testing fake stream helpers passed (9/9).
++- 2026-05-15T07:54:00+02:00 - ST2 red-green completed: public `POST /api/v1/streams/read` controller tests passed (6/6), including invalid range/continuation auth-before-actor checks, forbidden scope checks, ordered bounded page output, and safe missing-event ProblemDetails.
++- 2026-05-15T07:43:00+02:00 - ST1 red-green completed: Contracts stream DTO tests (3/3), Client stream route/ProblemDetails tests (2/2), and Testing stream fake/builder helpers (8/8) passed.
++- 2026-05-15T07:22:36+02:00 - Dev workflow started; Aspire diagnostics passed for .NET/Docker with dev-certificate warnings, but `aspire start --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` exited because the installed Aspire CLI requires `Aspire.Hosting.AppHost` >= 13.3.2 while the repo is pinned to 13.2.2.
++- 2026-05-15T07:31:00+02:00 - ST0 baseline inventory completed across planning docs, Stories 22.1-22.5, public Contracts/Client/Testing surfaces, actor stream reads, admin stream debugging routes, projection orchestration/checkpointing, poller scheduling, and admin projection command facades.
+ - 2026-05-13T06:01:54Z - Pre-dev hardening preflight produced `_bmad-output/process-notes/predev-preflight-latest.json`; only failed check was working-tree cleanliness.
+ - 2026-05-13T06:01:54Z - Dirty BMAD paths from preflight were `_bmad-output/implementation-artifacts/22-1-gateway-command-query-contract-closure-and-package-docs.md` and `_bmad-output/implementation-artifacts/sprint-status.yaml`; story 22.1 was `review` in both story artifact and sprint status, so the run continued under the active-dev-story soft warning rule.
+ - 2026-05-13T08:04:55+02:00 - Story creation context gathered from Epic 22, PRD FR99-FR101, architecture ADR-P9, Stories 22.1-22.5, current stream/admin/replay/projection/checkpoint code, project context, recent commits, DAPR official docs, and lessons ledger.
+ 
+ ### Completion Notes List
+ 
++- Completed focused and broader unit validation for the stream replay/rebuild surfaces. Integration/manual Aspire proof was not run because the installed Aspire CLI requires `Aspire.Hosting.AppHost` >= 13.3.2 while this repo is pinned to 13.2.2.
++- Added public stream replay API documentation covering route/DTO shape, client usage, checkpoint semantics, operator lifecycle, stable reason codes, and explicit forbidden downstream paths.
++- Added EventStore-side admin projection rebuild lifecycle endpoints for status, pause, resume, reset, replay, cancel, and retry, backed by rebuild checkpoints and stable `AdminOperationResult` / ProblemDetails responses.
++- Updated `DaprProjectionCommandService` to preserve ProblemDetails `reasonCode` and detail when EventStore returns non-success lifecycle failures.
++- Implemented the ST0 poller/rebuild reject policy: `ProjectionUpdateOrchestrator` skips normal projection delivery when an active operator rebuild checkpoint is present for the domain projection, returning without actor access and logging `poller-rebuild-conflict`.
++- Added `ProjectionRebuildCheckpointStore` with validated rebuild checkpoint scopes, DAPR ETag saves, monotonic last-applied sequence semantics, idempotent duplicate/stale progress handling, conflict/unavailable result codes, and DI registration.
++- Added `StreamsController` with public non-admin `POST /api/v1/streams/read` aggregate-scoped stream pages, gateway-owned tenant/RBAC validation before actor access, safe range/page-size/continuation validation, deterministic page metadata, and safe ProblemDetails reason codes.
++- Added public stream read/replay DTOs under `Hexalith.EventStore.Contracts.Streams`, including stream pages/events/metadata, opaque continuation token, rebuild checkpoint/operation/status, and stable public reason codes.
++- Added `IEventStoreGatewayClient.ReadStreamAsync` and `EventStoreGatewayClient` support for `POST /api/v1/streams/read` using existing gateway JSON and ProblemDetails mapping behavior.
++- Added `StreamReadPageBuilder` and `FakeEventStoreGatewayClient` stream read helpers for success, empty stream, continuation, invalid range, unauthorized tenant, missing stream, checkpoint conflict, paused rebuild, canceled rebuild, and unavailable EventStore paths.
++- ST0 decisions: public downstream stream reads use `POST /api/v1/streams/read` with `StreamReadRequest`, `StreamReadPage`, `StreamReadEvent`, `StreamReadMetadata`, and `ReplayContinuationToken`; existing `api/v1/admin/streams/*` routes remain admin/debug only.
++- ST0 decisions: public projection rebuild progress uses `ProjectionRebuildOperation`, `ProjectionRebuildCheckpoint`, `ProjectionRebuildStatus`, and `StreamReplayReasonCodes`; operator/admin rebuild routes remain under `api/v1/admin/projections/{tenantId}/{projectionName}/...`.
++- ST0 decisions: continuation tokens are opaque, request-bound, route/API-version-bound, tenant/domain/aggregate/projection-scope-bound, and fail closed on mismatch; token expiry is explicitly deferred and no expired-continuation reason is advertised.
++- ST0 decisions: checkpoint ownership is tenant + domain + projection name + optional aggregate scope + operation ID; writes must use ETag/optimistic concurrency and monotonic max-sequence semantics.
++- ST0 decisions: checkpoint advancement is projection-apply-driven. Reading a page never advances progress; progress may persist only after the domain projection apply path accepts the page.
++- ST0 decisions: operator rebuild and background polling use a reject-on-active-rebuild policy for the first implementation; stable reason code `poller-rebuild-conflict` records conflicts rather than racing silently.
+ - Story created and marked ready-for-dev by the BMAD pre-dev hardening automation.
+ - Story creation did not modify product code, tests, DAPR/Aspire configuration, generated API docs, or submodules.
+ - Party-mode review completed on 2026-05-13 and applied story hardening for public API/admin boundaries, continuation-token invariants, checkpoint ownership/concurrency, operator lifecycle states, safe failure taxonomy, and explicit test evidence.
+@@ -358,7 +383,45 @@ GPT-5 Codex
+ 
+ - `_bmad-output/implementation-artifacts/22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints.md`
+ - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+-- `_bmad-output/process-notes/predev-hardening-runs.log`
++- `docs/reference/stream-replay-api.md`
++- `src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionCommandService.cs`
++- `src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClient.cs`
++- `src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClientOptions.cs`
++- `src/Hexalith.EventStore.Client/Gateway/IEventStoreGatewayClient.cs`
++- `src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj.lscache`
++- `src/Hexalith.EventStore.Contracts/Streams/ProjectionRebuildCheckpoint.cs`
++- `src/Hexalith.EventStore.Contracts/Streams/ProjectionRebuildOperation.cs`
++- `src/Hexalith.EventStore.Contracts/Streams/ProjectionRebuildStatus.cs`
++- `src/Hexalith.EventStore.Contracts/Streams/ReplayContinuationToken.cs`
++- `src/Hexalith.EventStore.Contracts/Streams/StreamReadEvent.cs`
++- `src/Hexalith.EventStore.Contracts/Streams/StreamReadMetadata.cs`
++- `src/Hexalith.EventStore.Contracts/Streams/StreamReadPage.cs`
++- `src/Hexalith.EventStore.Contracts/Streams/StreamReadRequest.cs`
++- `src/Hexalith.EventStore.Contracts/Streams/StreamReplayReasonCodes.cs`
++- `src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs`
++- `src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj.lscache`
++- `src/Hexalith.EventStore.Server/Projections/IProjectionRebuildCheckpointStore.cs`
++- `src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointSaveResult.cs`
++- `src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointScope.cs`
++- `src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs`
++- `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs`
++- `src/Hexalith.EventStore.Testing/Builders/StreamReadPageBuilder.cs`
++- `src/Hexalith.EventStore.Testing/Fakes/FakeEventStoreGatewayClient.cs`
++- `src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj.lscache`
++- `src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs`
++- `src/Hexalith.EventStore/Controllers/StreamsController.cs`
++- `src/Hexalith.EventStore/Hexalith.EventStore.csproj.lscache`
++- `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprProjectionCommandServiceTests.cs`
++- `tests/Hexalith.EventStore.Client.Tests/Gateway/EventStoreGatewayClientStreamTests.cs`
++- `tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj.lscache`
++- `tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj.lscache`
++- `tests/Hexalith.EventStore.Contracts.Tests/Streams/StreamReadContractTests.cs`
++- `tests/Hexalith.EventStore.Server.Tests/Controllers/AdminProjectionRebuildControllerTests.cs`
++- `tests/Hexalith.EventStore.Server.Tests/Controllers/StreamsControllerTests.cs`
++- `tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj.lscache`
++- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionRebuildCheckpointStoreTests.cs`
++- `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs`
++- `tests/Hexalith.EventStore.Testing.Tests/Fakes/FakeEventStoreGatewayClientTests.cs`
+ 
+ ## Verification Status
+ 
+@@ -372,11 +435,25 @@ GPT-5 Codex
+ - Party-mode findings were applied only as story-text clarifications; product code, tests, DAPR/Aspire configuration, generated API docs, submodules, and sprint status were not changed.
+ - Advanced elicitation completed on 2026-05-13 and is recorded below.
+ - Advanced-elicitation findings were applied only as story-text clarifications; product code, tests, DAPR/Aspire configuration, generated API docs, submodules, and sprint status were not changed.
++- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj --no-restore` passed: 331/331.
++- `dotnet test tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj --no-restore` passed: 388/388.
++- `dotnet test tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj --no-restore` passed: 109/109.
++- `dotnet test tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj --no-restore` passed: 74/74.
++- Focused `Hexalith.EventStore.Server.Tests` stream/rebuild filter passed: 16/16.
++- Focused `Hexalith.EventStore.Admin.Server.Tests` DAPR failure mapping filter passed: 2/2, with existing MSB3277 package conflict warnings for `Microsoft.AspNetCore.OpenApi` and `YamlDotNet`.
++- Extra broad `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/Hexalith.EventStore.Admin.Server.Tests.csproj --no-restore` failed outside the story-focused coverage: 40 failed, 564 passed, 18 skipped, due missing `Microsoft.AspNetCore.OpenApi` 10.0.8 and `YamlDotNet` 17.0.0 assemblies after package conflict warnings.
++- `npx markdownlint-cli2 docs/reference/stream-replay-api.md` passed with 0 errors.
++- `npx markdownlint-cli2 _bmad-output/implementation-artifacts/22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints.md` passed with 0 errors.
++- `git diff --check` passed with line-ending conversion warnings only.
++- Aspire integration/manual proof not run: `aspire start --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` was blocked because the installed Aspire CLI requires `Aspire.Hosting.AppHost` >= 13.3.2 while this repo is pinned to 13.2.2.
++- Exact evidence tests added or extended: `StreamReadRequestJsonRoundTripUsesCamelCasePublicShape`, `StreamReadPageCarriesOrderedPageMetadataAndNoStateKeys`, `StreamReplayReasonCodesExposeStablePublicTaxonomy`, `ReadStreamAsyncPostsPublicStreamReadRouteAndReturnsPage`, `ReadStreamAsyncWithProblemDetailsThrowsGatewayExceptionWithReasonCode`, `ReadStreamAsyncWithInvalidRangeRejectsBeforeActorProxy`, `ReadStreamAsyncWithContinuationRejectsBeforeActorProxyUntilTokenSupportExists`, `ReadStreamAsyncWithDeniedTenantRejectsBeforeRbacAndActorProxy`, `ReadStreamAsyncWithDeniedReplayScopeRejectsBeforeActorProxy`, `ReadStreamAsyncReturnsOrderedBoundedAggregatePage`, `ReadStreamAsyncMapsMissingEventToSafeProblem`, `SaveAsyncExistingHigherCheckpointDoesNotRegressOrWrite`, `SaveAsyncDuplicatePageIsIdempotent`, `SaveAsyncRetriesEtagConflictsAndReturnsCheckpointConflictWhenExhausted`, `SaveAsyncStorageUnavailableReturnsStableReasonWithoutBlindSave`, `ReplayProjectionStartsRunningOperationAndReturnsAcceptedResult`, `PauseProjectionIsIdempotentAndReturnsOkResult`, `ReplayProjectionCheckpointConflictReturnsProblemWithReasonCode`, `GetRebuildStatusWithoutCheckpointReturnsNotStartedOperation`, `DeliverProjectionAsync_WithActiveOperatorRebuild_SkipsNormalDeliveryBeforeActorProxy`, `PauseProjectionAsync_MapsHttpStatusCode_WhenRequestFails`, `PauseProjectionAsync_WithProblemDetails_PreservesReasonCode`, `ReadStreamAsyncRecordsRequestAndReturnsConfiguredPage`, `ConfigureStreamReadFailureThrowsConfiguredGatewayException`, `StreamReadPageBuilderBuildsContinuationPage`, and `StreamReadFailureHelpersExposeStableReasonCodes`.
+ 
+ ## Change Log
+ 
+ | Date | Version | Description | Author |
+ | --- | ---: | --- | --- |
++| 2026-05-15 | 1.0 | Implemented public stream read contracts/client/testing support, EventStore stream read endpoint, projection rebuild checkpoint store, operator rebuild lifecycle endpoints, poller/rebuild conflict policy, docs, and validation evidence; moved story to review. | GPT-5 Codex |
++| 2026-05-15 | 0.4 | Started dev workflow and moved story to in-progress. | GPT-5 Codex |
+ | 2026-05-13 | 0.3 | Applied advanced elicitation hardening for checkpoint advancement timing, continuation-token binding, poller/rebuild coordination, failure taxonomy precision, and negative proof coverage. | Codex automation |
+ | 2026-05-13 | 0.2 | Applied party-mode review hardening for replay API boundaries, continuation tokens, checkpoint concurrency, operator lifecycle, failure taxonomy, and test evidence. | Codex automation |
+ | 2026-05-13 | 0.1 | Created ready-for-dev story for stream replay/read APIs and projection rebuild checkpoints. | Codex automation |
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index 368586e5..a8947b40 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -35,7 +35,8 @@
+ # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+ 
+ generated: 2026-03-15
+-last_updated: '2026-05-15T00:00:00+02:00' # Story 22.5 moved to done after code review: 8 patches applied (NSubstitute Arg.Do fix, ShouldNotBeNull discard fix, cloudevent.id docs, dev-subscriber YAML guard, non-Redis proven guard, reminder-overlap test, Service Bus dedicated test).
++last_updated: '2026-05-15T07:22:36+02:00' # Story 22.6 moved to in-progress for stream replay/read APIs and projection rebuild checkpoints.
++# Previous last_updated detail preserved: 2026-05-15T00:00:00+02:00 - Story 22.5 moved to done after code review: 8 patches applied (NSubstitute Arg.Do fix, ShouldNotBeNull discard fix, cloudevent.id docs, dev-subscriber YAML guard, non-Redis proven guard, reminder-overlap test, Service Bus dedicated test).
+ # Previous last_updated detail preserved: 2026-05-14T12:20:54+02:00 - Story 22.5 moved to review after publishing guarantee docs, focused tests, backend matrix, and evidence validation.
+ # Previous last_updated detail preserved: 2026-05-14T12:03:49+02:00 - Story 22.5 moved to in-progress for event publishing guarantees and backend deployment matrix implementation.
+ # Previous last_updated detail preserved: 2026-05-14T17:30:00+02:00 - Story 22.4 moved to done after code review: 1 decision (403→insufficient_permission) + 5 patches applied; 6 new tests added; Server 75/75, Client 386/386.
+@@ -322,7 +323,7 @@ development_status:
+   22-3-gateway-owned-tenant-and-rbac-enforcement: done
+   22-4-query-behavior-policy-and-error-taxonomy: done
+   22-5-event-publishing-guarantees-and-backend-deployment-matrix: done
+-  22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints: ready-for-dev
++  22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints: review
+   22-7a-payload-and-snapshot-protection-hooks: ready-for-dev
+   22-7b-unreadable-protected-data-behavior: blocked
+   22-7c-crypto-shredding-workflow-and-restored-backup-safety: blocked
+diff --git a/_bmad-output/process-notes/predev-hardening-runs.log b/_bmad-output/process-notes/predev-hardening-runs.log
+index f0f9d46b..2e71985f 100644
+--- a/_bmad-output/process-notes/predev-hardening-runs.log
++++ b/_bmad-output/process-notes/predev-hardening-runs.log
+@@ -195,3 +195,4 @@
+ 2026-05-14T23:03:49.2689470+02:00	failed	-	failed	hard preflight failure; json=_bmad-output/process-notes/predev-preflight-latest.json; timestamp=2026-05-14T21:03:30Z; fail name=working tree cleanliness; details=2 dirty path(s); stdout=" M _bmad-output/implementation-artifacts/22-5-event-publishing-guarantees-and-backend-deployment-matrix.md\n M _bmad-output/implementation-artifacts/deferred-work.md\n"
+ 2026-05-15T07:02:40.1173374+02:00	failed	-	failed	hard preflight failure; json=_bmad-output/process-notes/predev-preflight-latest.json; timestamp=2026-05-15T05:02:21Z; fail name=working tree cleanliness; details=10 dirty path(s); stdout=" M _bmad-output/implementation-artifacts/22-5-event-publishing-guarantees-and-backend-deployment-matrix.md\n M _bmad-output/implementation-artifacts/deferred-work.md\n M _bmad-output/implementation-artifacts/sprint-status.yaml\n M deploy/README.md\n M docs/concepts/event-envelope.md\n M tests/Hexalith.EventStore.Server.Tests/Actors/EventDrainRecoveryTests.cs\n M tests/Hexalith.EventStore.Server.Tests/DaprComponents/ProductionDaprComponentValidationTests.cs\n M tests/Hexalith.EventStore.Server.Tests/Events/DeadLetterPublisherTests.cs\n M tests/Hexalith.EventStore.Server.Tests/Events/EventPublisherTests.cs\n M tests/Hexalith.EventStore.Server.Tests/Security/PubSubTopicIsolationEnforcementTests.cs\n"
+ 2026-05-15T07:12:58.1661143+02:00	none	-	none	ready_count=2; no backlog story available to create; all ready stories already have party-mode and advanced-elicitation traces
++2026-05-15T08:04:41.6817138+02:00	none	-	none	ready_count=1; no backlog story available to create; all ready stories already have party-mode and advanced-elicitation traces; active-dev-story soft warning
+diff --git a/docs/reference/stream-replay-api.md b/docs/reference/stream-replay-api.md
+new file mode 100644
+index 00000000..3ce1bf3c
+--- /dev/null
++++ b/docs/reference/stream-replay-api.md
+@@ -0,0 +1,107 @@
++# Stream Replay API
++
++EventStore exposes downstream stream replay through the public client and Contracts package. Domain services rebuilding projections must use this public boundary; they must not read DAPR actor state keys, depend on `Hexalith.EventStore.Server`, call admin stream debugging endpoints, or query state-store indexes directly.
++
++## Public Route
++
++`POST /api/v1/streams/read`
++
++Request body: `StreamReadRequest`
++
++- `tenant`: tenant identifier.
++- `domain`: domain identifier.
++- `aggregateId`: aggregate-specific stream identifier. Domain-wide rebuild enumeration is operator-owned and is not exposed as raw state-store scans.
++- `fromSequence`: exclusive lower sequence bound. Use `0` to read from the beginning.
++- `toSequence`: optional inclusive upper sequence bound.
++- `checkpoint`: optional `ProjectionRebuildCheckpoint` cursor metadata.
++- `continuationToken`: opaque token from a prior page. Current implementation fails closed for supplied tokens until request-bound validation is enabled.
++- `pageSize`: maximum events per page, bounded by EventStore.
++- `projectionName`: optional projection/rebuild scope.
++
++Response body: `StreamReadPage`
++
++- `events`: ordered `StreamReadEvent` records with sequence, type name, payload bytes, serialization format, metadata version, message id, correlation id, causation id, timestamp, and user id.
++- `metadata`: `fromSequence`, `toSequence`, `lastSequenceReturned`, `latestSequence`, `eventCount`, `isTruncated`, and optional opaque `nextContinuationToken`.
++
++## Client Usage
++
++```csharp
++StreamReadPage page = await eventStore.ReadStreamAsync(
++    new StreamReadRequest(
++        Tenant: "tenant-a",
++        Domain: "party",
++        AggregateId: "party-1",
++        FromSequence: checkpoint.LastAppliedSequence,
++        PageSize: 100),
++    cancellationToken);
++
++foreach (StreamReadEvent item in page.Events) {
++    await projection.ApplyAsync(item, cancellationToken);
++}
++```
++
++Reading a page does not advance rebuild progress. Advance a checkpoint only after the projection apply path accepts the page.
++
++## Checkpoint Semantics
++
++`ProjectionRebuildCheckpoint` is scoped by tenant, domain, projection name, optional aggregate id, and operation id. EventStore persists rebuild progress with optimistic concurrency and monotonic max-sequence semantics:
++
++- Duplicate page application is idempotent.
++- Lower or stale checkpoint writes cannot reduce `lastAppliedSequence`.
++- Checkpoint store conflicts return `checkpoint-conflict`.
++- Checkpoint store unavailability returns `checkpoint-unavailable`.
++- Failure statuses keep a sanitized `failureReasonCode` and must not expose payload bytes, state-store keys, actor ids, connection strings, or continuation-token internals.
++
++## Operator Lifecycle
++
++Operator rebuild lifecycle endpoints are under `api/v1/admin/projections/{tenantId}/{projectionName}`:
++
++- `GET rebuild-status`
++- `POST pause`
++- `POST resume`
++- `POST reset`
++- `POST replay`
++- `POST cancel`
++- `POST retry`
++
++Lifecycle states use `ProjectionRebuildStatus`: `not-started`, `running`, `pausing`, `paused`, `resuming`, `canceling`, `canceled`, `retrying`, `succeeded`, and `failed`.
++
++Normal polling and operator rebuilds use a reject policy: when an active rebuild checkpoint exists for the domain projection, normal projection delivery skips that aggregate and logs `poller-rebuild-conflict` instead of racing the rebuild checkpoint.
++
++## Failure Reason Codes
++
++Stable stream replay and rebuild reason codes include:
++
++- `invalid-range`
++- `invalid-continuation`
++- `token-request-mismatch`
++- `unauthorized-tenant`
++- `forbidden-replay-scope`
++- `missing-stream`
++- `missing-event`
++- `corrupt-event`
++- `protected-payload-unavailable`
++- `projection-apply-rejected`
++- `checkpoint-conflict`
++- `stale-checkpoint`
++- `checkpoint-drift`
++- `checkpoint-unavailable`
++- `poller-rebuild-conflict`
++- `rebuild-operation-not-found`
++- `rebuild-canceled`
++- `rebuild-paused`
++- `domain-failure`
++- `retryable-transient-failure`
++- `service-unavailable`
++
++## Forbidden Paths
++
++Downstream rebuild implementations must not use:
++
++- `api/v1/admin/streams/*` debugging endpoints.
++- DAPR actor ids or raw actor state keys.
++- `DaprClient.GetStateAsync` against EventStore event stream keys.
++- `ProjectionCheckpointTracker` or other `Hexalith.EventStore.Server` internals.
++- DAPR sidecar addresses, connection strings, or state-store index records.
++
++Use `Hexalith.EventStore.Contracts.Streams`, `IEventStoreGatewayClient.ReadStreamAsync`, and test fakes/builders from `Hexalith.EventStore.Testing` instead.
+diff --git a/src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionCommandService.cs b/src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionCommandService.cs
+index 7a79a511..16ddfda9 100644
+--- a/src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionCommandService.cs
++++ b/src/Hexalith.EventStore.Admin.Server/Services/DaprProjectionCommandService.cs
+@@ -1,6 +1,7 @@
+ using System.Net;
+ using System.Net.Http.Headers;
+ using System.Net.Http.Json;
++using System.Text.Json;
+ 
+ using Dapr.Client;
+ 
+@@ -114,7 +115,10 @@ public sealed class DaprProjectionCommandService : IProjectionCommandService {
+ 
+             HttpClient httpClient = _httpClientFactory.CreateClient();
+             using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cts.Token).ConfigureAwait(false);
+-            _ = httpResponse.EnsureSuccessStatusCode();
++            if (!httpResponse.IsSuccessStatusCode) {
++                return await MapFailureResponseAsync(httpResponse, cts.Token).ConfigureAwait(false);
++            }
++
+             AdminOperationResult? result = await httpResponse.Content.ReadFromJsonAsync<AdminOperationResult>(cts.Token).ConfigureAwait(false);
+ 
+             return result ?? new AdminOperationResult(false, ErrorNoOperation, "Null response from EventStore", "NULL_RESPONSE");
+@@ -152,6 +156,45 @@ public sealed class DaprProjectionCommandService : IProjectionCommandService {
+         }
+     }
+ 
++    private static async Task<AdminOperationResult> MapFailureResponseAsync(
++        HttpResponseMessage httpResponse,
++        CancellationToken cancellationToken) {
++        string statusCode = ((int)httpResponse.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
++        if (IsJsonResponse(httpResponse)) {
++            try {
++                using JsonDocument document = await JsonDocument.ParseAsync(
++                    await httpResponse.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false),
++                    cancellationToken: cancellationToken).ConfigureAwait(false);
++                JsonElement root = document.RootElement;
++                string? detail = GetString(root, "detail");
++                string? reasonCode = GetString(root, "reasonCode");
++                string? title = GetString(root, "title");
++                return new AdminOperationResult(
++                    false,
++                    ErrorNoOperation,
++                    detail ?? title ?? httpResponse.ReasonPhrase,
++                    string.IsNullOrWhiteSpace(reasonCode) ? statusCode : reasonCode);
++            }
++            catch (JsonException) {
++                // Fall back to status metadata below.
++            }
++        }
++
++        return new AdminOperationResult(false, ErrorNoOperation, httpResponse.ReasonPhrase, statusCode);
++    }
++
++    private static bool IsJsonResponse(HttpResponseMessage response) {
++        string? mediaType = response.Content.Headers.ContentType?.MediaType;
++        return mediaType is not null
++            && (mediaType.Contains("json", StringComparison.OrdinalIgnoreCase)
++                || mediaType.Contains("problem+json", StringComparison.OrdinalIgnoreCase));
++    }
++
++    private static string? GetString(JsonElement root, string propertyName)
++        => root.TryGetProperty(propertyName, out JsonElement value) && value.ValueKind == JsonValueKind.String
++            ? value.GetString()
++            : null;
++
+     private static HttpRequestMessage CreateFallbackRequest<TRequest>(string endpoint, TRequest request)
+         => new(HttpMethod.Post, endpoint) {
+             Content = JsonContent.Create(request),
+diff --git a/src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj b/src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+index 1706634e..593c072e 100644
+--- a/src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
++++ b/src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+@@ -1,4 +1,4 @@
+-<Project Sdk="Aspire.AppHost.Sdk/13.2.2">
++<Project Sdk="Aspire.AppHost.Sdk/13.3.2">
+ 
+   <PropertyGroup>
+     <OutputType>Exe</OutputType>
+diff --git a/src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClient.cs b/src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClient.cs
+index 9cfbb5a4..66d2e768 100644
+--- a/src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClient.cs
++++ b/src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClient.cs
+@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
+ using Hexalith.EventStore.Contracts.Commands;
+ using Hexalith.EventStore.Contracts.Problems;
+ using Hexalith.EventStore.Contracts.Queries;
++using Hexalith.EventStore.Contracts.Streams;
+ 
+ using Microsoft.Extensions.Options;
+ 
+@@ -174,6 +175,39 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
+         };
+     }
+ 
++    /// <inheritdoc />
++    public async Task<StreamReadPage> ReadStreamAsync(
++        StreamReadRequest request,
++        CancellationToken cancellationToken = default) {
++        ArgumentNullException.ThrowIfNull(request);
++
++        using HttpResponseMessage response = await _httpClient
++            .PostAsJsonAsync(CreateRelativeUri(_options.StreamReadPath), request, JsonOptions, cancellationToken)
++            .ConfigureAwait(false);
++
++        if (!response.IsSuccessStatusCode) {
++            await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
++        }
++
++        try {
++            StreamReadPage? result = await response.Content
++                .ReadFromJsonAsync<StreamReadPage>(JsonOptions, cancellationToken)
++                .ConfigureAwait(false);
++
++            return result ?? throw new EventStoreGatewayException(
++                (int)response.StatusCode,
++                response.ReasonPhrase ?? "OK",
++                detail: "Stream read response body was empty.");
++        }
++        catch (JsonException ex) {
++            throw new EventStoreGatewayException(
++                (int)response.StatusCode,
++                response.ReasonPhrase ?? "OK",
++                detail: "Stream read response body could not be parsed.",
++                innerException: ex);
++        }
++    }
++
+     private static QueryResponseMetadata NormalizeMetadata(
+         QueryResponseMetadata? metadata,
+         string? eTag,
+diff --git a/src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClientOptions.cs b/src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClientOptions.cs
+index 51f3ee9d..1cf54038 100644
+--- a/src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClientOptions.cs
++++ b/src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClientOptions.cs
+@@ -18,4 +18,9 @@ public sealed class EventStoreGatewayClientOptions {
+     /// Gets or sets the relative query endpoint path.
+     /// </summary>
+     public string QueryPath { get; set; } = "api/v1/queries";
++
++    /// <summary>
++    /// Gets or sets the relative public stream read endpoint path.
++    /// </summary>
++    public string StreamReadPath { get; set; } = "api/v1/streams/read";
+ }
+diff --git a/src/Hexalith.EventStore.Client/Gateway/IEventStoreGatewayClient.cs b/src/Hexalith.EventStore.Client/Gateway/IEventStoreGatewayClient.cs
+index a816fe13..12ef367f 100644
+--- a/src/Hexalith.EventStore.Client/Gateway/IEventStoreGatewayClient.cs
++++ b/src/Hexalith.EventStore.Client/Gateway/IEventStoreGatewayClient.cs
+@@ -1,5 +1,6 @@
+ using Hexalith.EventStore.Contracts.Commands;
+ using Hexalith.EventStore.Contracts.Queries;
++using Hexalith.EventStore.Contracts.Streams;
+ 
+ namespace Hexalith.EventStore.Client.Gateway;
+ 
+@@ -29,4 +30,11 @@ public interface IEventStoreGatewayClient {
+         SubmitQueryRequest request,
+         string? ifNoneMatch = null,
+         CancellationToken cancellationToken = default);
++
++    /// <summary>
++    /// Reads a public stream/replay page through <c>POST /api/v1/streams/read</c>.
++    /// </summary>
++    Task<StreamReadPage> ReadStreamAsync(
++        StreamReadRequest request,
++        CancellationToken cancellationToken = default);
+ }
+diff --git a/src/Hexalith.EventStore.Contracts/Streams/ProjectionRebuildCheckpoint.cs b/src/Hexalith.EventStore.Contracts/Streams/ProjectionRebuildCheckpoint.cs
+new file mode 100644
+index 00000000..4aca5269
+--- /dev/null
++++ b/src/Hexalith.EventStore.Contracts/Streams/ProjectionRebuildCheckpoint.cs
+@@ -0,0 +1,24 @@
++namespace Hexalith.EventStore.Contracts.Streams;
++
++/// <summary>
++/// Public checkpoint/progress snapshot for a projection rebuild.
++/// </summary>
++/// <param name="Tenant">The tenant that owns the checkpoint.</param>
++/// <param name="Domain">The domain that owns the checkpoint.</param>
++/// <param name="ProjectionName">The projection name or rebuild scope.</param>
++/// <param name="AggregateId">Optional aggregate scope for aggregate-specific rebuilds.</param>
++/// <param name="OperationId">Optional rebuild operation identity.</param>
++/// <param name="LastAppliedSequence">The last sequence accepted by the projection apply path.</param>
++/// <param name="Status">The rebuild lifecycle status.</param>
++/// <param name="UpdatedAt">The last checkpoint update timestamp.</param>
++/// <param name="FailureReasonCode">Optional stable failure reason code.</param>
++public sealed record ProjectionRebuildCheckpoint(
++    string Tenant,
++    string Domain,
++    string ProjectionName,
++    string? AggregateId,
++    string? OperationId,
++    long LastAppliedSequence,
++    ProjectionRebuildStatus Status,
++    DateTimeOffset UpdatedAt,
++    string? FailureReasonCode);
+diff --git a/src/Hexalith.EventStore.Contracts/Streams/ProjectionRebuildOperation.cs b/src/Hexalith.EventStore.Contracts/Streams/ProjectionRebuildOperation.cs
+new file mode 100644
+index 00000000..79e5c1d5
+--- /dev/null
++++ b/src/Hexalith.EventStore.Contracts/Streams/ProjectionRebuildOperation.cs
+@@ -0,0 +1,26 @@
++namespace Hexalith.EventStore.Contracts.Streams;
++
++/// <summary>
++/// Public status representation of an operator-triggered projection rebuild operation.
++/// </summary>
++/// <param name="OperationId">The rebuild operation identity.</param>
++/// <param name="Tenant">The tenant that owns the operation.</param>
++/// <param name="Domain">The domain that owns the operation.</param>
++/// <param name="ProjectionName">The projection name.</param>
++/// <param name="AggregateId">Optional aggregate scope.</param>
++/// <param name="Status">The current lifecycle status.</param>
++/// <param name="Checkpoint">The latest checkpoint/progress snapshot.</param>
++/// <param name="StartedAt">The operation start timestamp.</param>
++/// <param name="CompletedAt">Optional terminal timestamp.</param>
++/// <param name="FailureReasonCode">Optional stable failure reason code.</param>
++public sealed record ProjectionRebuildOperation(
++    string OperationId,
++    string Tenant,
++    string Domain,
++    string ProjectionName,
++    string? AggregateId,
++    ProjectionRebuildStatus Status,
++    ProjectionRebuildCheckpoint? Checkpoint,
++    DateTimeOffset StartedAt,
++    DateTimeOffset? CompletedAt,
++    string? FailureReasonCode);
+diff --git a/src/Hexalith.EventStore.Contracts/Streams/ProjectionRebuildStatus.cs b/src/Hexalith.EventStore.Contracts/Streams/ProjectionRebuildStatus.cs
+new file mode 100644
+index 00000000..d194f9d3
+--- /dev/null
++++ b/src/Hexalith.EventStore.Contracts/Streams/ProjectionRebuildStatus.cs
+@@ -0,0 +1,36 @@
++namespace Hexalith.EventStore.Contracts.Streams;
++
++/// <summary>
++/// Public lifecycle states for projection rebuild operations.
++/// </summary>
++public enum ProjectionRebuildStatus {
++    /// <summary>The rebuild has not started.</summary>
++    NotStarted,
++
++    /// <summary>The rebuild is running.</summary>
++    Running,
++
++    /// <summary>A pause has been requested.</summary>
++    Pausing,
++
++    /// <summary>The rebuild is paused.</summary>
++    Paused,
++
++    /// <summary>A resume has been requested.</summary>
++    Resuming,
++
++    /// <summary>A cancel has been requested.</summary>
++    Canceling,
++
++    /// <summary>The rebuild was canceled.</summary>
++    Canceled,
++
++    /// <summary>The rebuild is retrying after a transient failure.</summary>
++    Retrying,
++
++    /// <summary>The rebuild completed successfully.</summary>
++    Succeeded,
++
++    /// <summary>The rebuild failed.</summary>
++    Failed,
++}
+diff --git a/src/Hexalith.EventStore.Contracts/Streams/ReplayContinuationToken.cs b/src/Hexalith.EventStore.Contracts/Streams/ReplayContinuationToken.cs
+new file mode 100644
+index 00000000..8a6a6028
+--- /dev/null
++++ b/src/Hexalith.EventStore.Contracts/Streams/ReplayContinuationToken.cs
+@@ -0,0 +1,7 @@
++namespace Hexalith.EventStore.Contracts.Streams;
++
++/// <summary>
++/// Opaque continuation token for public stream replay/read paging.
++/// </summary>
++/// <param name="Value">The opaque token value. Callers must not parse or construct actor/state keys from this value.</param>
++public sealed record ReplayContinuationToken(string Value);
+diff --git a/src/Hexalith.EventStore.Contracts/Streams/StreamReadEvent.cs b/src/Hexalith.EventStore.Contracts/Streams/StreamReadEvent.cs
+new file mode 100644
+index 00000000..37293a95
+--- /dev/null
++++ b/src/Hexalith.EventStore.Contracts/Streams/StreamReadEvent.cs
+@@ -0,0 +1,26 @@
++namespace Hexalith.EventStore.Contracts.Streams;
++
++/// <summary>
++/// Public representation of a single event returned by stream replay/read APIs.
++/// </summary>
++/// <param name="SequenceNumber">The stream sequence number.</param>
++/// <param name="EventTypeName">The persisted event type name.</param>
++/// <param name="Payload">The serialized event payload bytes.</param>
++/// <param name="SerializationFormat">The payload serialization format.</param>
++/// <param name="MetadataVersion">The event metadata schema version.</param>
++/// <param name="MessageId">The persisted event message identifier.</param>
++/// <param name="CorrelationId">Optional correlation identifier.</param>
++/// <param name="CausationId">Optional causation identifier.</param>
++/// <param name="Timestamp">The event timestamp.</param>
++/// <param name="UserId">Optional authenticated subject identifier.</param>
++public sealed record StreamReadEvent(
++    long SequenceNumber,
++    string EventTypeName,
++    byte[] Payload,
++    string SerializationFormat,
++    int MetadataVersion,
++    string MessageId,
++    string? CorrelationId,
++    string? CausationId,
++    DateTimeOffset Timestamp,
++    string? UserId);
+diff --git a/src/Hexalith.EventStore.Contracts/Streams/StreamReadMetadata.cs b/src/Hexalith.EventStore.Contracts/Streams/StreamReadMetadata.cs
+new file mode 100644
+index 00000000..64c1bc52
+--- /dev/null
++++ b/src/Hexalith.EventStore.Contracts/Streams/StreamReadMetadata.cs
+@@ -0,0 +1,20 @@
++namespace Hexalith.EventStore.Contracts.Streams;
++
++/// <summary>
++/// Paging and range metadata returned with a public stream read page.
++/// </summary>
++/// <param name="FromSequence">The exclusive lower sequence bound used for the read.</param>
++/// <param name="ToSequence">Optional inclusive upper sequence bound used for the read.</param>
++/// <param name="LastSequenceReturned">The highest sequence returned in this page.</param>
++/// <param name="LatestSequence">The latest sequence known for the stream scope.</param>
++/// <param name="EventCount">The number of events returned in this page.</param>
++/// <param name="IsTruncated">Whether more events are available after this page.</param>
++/// <param name="NextContinuationToken">Optional opaque continuation token for the next page.</param>
++public sealed record StreamReadMetadata(
++    long FromSequence,
++    long? ToSequence,
++    long LastSequenceReturned,
++    long LatestSequence,
++    int EventCount,
++    bool IsTruncated,
++    ReplayContinuationToken? NextContinuationToken);
+diff --git a/src/Hexalith.EventStore.Contracts/Streams/StreamReadPage.cs b/src/Hexalith.EventStore.Contracts/Streams/StreamReadPage.cs
+new file mode 100644
+index 00000000..ee78293a
+--- /dev/null
++++ b/src/Hexalith.EventStore.Contracts/Streams/StreamReadPage.cs
+@@ -0,0 +1,16 @@
++namespace Hexalith.EventStore.Contracts.Streams;
++
++/// <summary>
++/// Public page of stream events returned for downstream replay/rebuild use.
++/// </summary>
++/// <param name="Tenant">The tenant identifier.</param>
++/// <param name="Domain">The domain identifier.</param>
++/// <param name="AggregateId">Optional aggregate identifier.</param>
++/// <param name="Events">The stream events ordered by sequence number.</param>
++/// <param name="Metadata">The read metadata and continuation details.</param>
++public sealed record StreamReadPage(
++    string Tenant,
++    string Domain,
++    string? AggregateId,
++    IReadOnlyList<StreamReadEvent> Events,
++    StreamReadMetadata Metadata);
+diff --git a/src/Hexalith.EventStore.Contracts/Streams/StreamReadRequest.cs b/src/Hexalith.EventStore.Contracts/Streams/StreamReadRequest.cs
+new file mode 100644
+index 00000000..092a73a4
+--- /dev/null
++++ b/src/Hexalith.EventStore.Contracts/Streams/StreamReadRequest.cs
+@@ -0,0 +1,24 @@
++namespace Hexalith.EventStore.Contracts.Streams;
++
++/// <summary>
++/// Public downstream request for reading a tenant-scoped EventStore stream page.
++/// </summary>
++/// <param name="Tenant">The tenant identifier.</param>
++/// <param name="Domain">The domain identifier.</param>
++/// <param name="AggregateId">Optional aggregate identifier. Omit only for domain-wide rebuild reads.</param>
++/// <param name="FromSequence">The exclusive lower sequence bound. Defaults to 0.</param>
++/// <param name="ToSequence">Optional inclusive upper sequence bound.</param>
++/// <param name="Checkpoint">Optional projection rebuild checkpoint used as the read cursor.</param>
++/// <param name="ContinuationToken">Optional opaque continuation token from a previous page.</param>
++/// <param name="PageSize">Maximum number of events to return.</param>
++/// <param name="ProjectionName">Optional projection/rebuild scope for domain-wide reads.</param>
++public sealed record StreamReadRequest(
++    string Tenant,
++    string Domain,
++    string? AggregateId = null,
++    long FromSequence = 0,
++    long? ToSequence = null,
++    ProjectionRebuildCheckpoint? Checkpoint = null,
++    ReplayContinuationToken? ContinuationToken = null,
++    int PageSize = 100,
++    string? ProjectionName = null);
+diff --git a/src/Hexalith.EventStore.Contracts/Streams/StreamReplayReasonCodes.cs b/src/Hexalith.EventStore.Contracts/Streams/StreamReplayReasonCodes.cs
+new file mode 100644
+index 00000000..37911378
+--- /dev/null
++++ b/src/Hexalith.EventStore.Contracts/Streams/StreamReplayReasonCodes.cs
+@@ -0,0 +1,69 @@
++namespace Hexalith.EventStore.Contracts.Streams;
++
++/// <summary>
++/// Stable public reason codes for stream replay/read and projection rebuild failures.
++/// </summary>
++public static class StreamReplayReasonCodes {
++    /// <summary>Requested sequence range is malformed.</summary>
++    public const string InvalidRange = "invalid-range";
++
++    /// <summary>Continuation token is malformed or cannot be validated.</summary>
++    public const string InvalidContinuation = "invalid-continuation";
++
++    /// <summary>Continuation token is bound to a different request shape.</summary>
++    public const string TokenRequestMismatch = "token-request-mismatch";
++
++    /// <summary>Caller is not authorized for the requested tenant.</summary>
++    public const string UnauthorizedTenant = "unauthorized-tenant";
++
++    /// <summary>Caller is not authorized for the requested replay scope.</summary>
++    public const string ForbiddenReplayScope = "forbidden-replay-scope";
++
++    /// <summary>The requested stream does not exist.</summary>
++    public const string MissingStream = "missing-stream";
++
++    /// <summary>An expected event is missing from the stream.</summary>
++    public const string MissingEvent = "missing-event";
++
++    /// <summary>A persisted event is corrupt or unreadable.</summary>
++    public const string CorruptEvent = "corrupt-event";
++
++    /// <summary>Protected payload material is unavailable to the replay path.</summary>
++    public const string ProtectedPayloadUnavailable = "protected-payload-unavailable";
++
++    /// <summary>The domain projection apply path rejected the page.</summary>
++    public const string ProjectionApplyRejected = "projection-apply-rejected";
++
++    /// <summary>A checkpoint write conflicted with a concurrent writer.</summary>
++    public const string CheckpointConflict = "checkpoint-conflict";
++
++    /// <summary>A checkpoint write was stale.</summary>
++    public const string StaleCheckpoint = "stale-checkpoint";
++
++    /// <summary>A checkpoint read observed drift from available stream progress.</summary>
++    public const string CheckpointDrift = "checkpoint-drift";
++
++    /// <summary>The checkpoint store is unavailable.</summary>
++    public const string CheckpointUnavailable = "checkpoint-unavailable";
++
++    /// <summary>Background polling and operator rebuild would conflict.</summary>
++    public const string PollerRebuildConflict = "poller-rebuild-conflict";
++
++    /// <summary>The rebuild operation was not found.</summary>
++    public const string RebuildOperationNotFound = "rebuild-operation-not-found";
++
++    /// <summary>The rebuild operation was canceled.</summary>
++    public const string RebuildCanceled = "rebuild-canceled";
++
++    /// <summary>The rebuild operation is paused.</summary>
++    public const string RebuildPaused = "rebuild-paused";
++
++    /// <summary>The domain projection apply path failed.</summary>
++    public const string DomainFailure = "domain-failure";
++
++    /// <summary>A transient retryable failure occurred.</summary>
++    public const string RetryableTransientFailure = "retryable-transient-failure";
++
++    /// <summary>The EventStore service is unavailable.</summary>
++    public const string ServiceUnavailable = "service-unavailable";
++}
+diff --git a/src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs b/src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs
+index 85c4b550..2c8646ac 100644
+--- a/src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs
++++ b/src/Hexalith.EventStore.Server/Configuration/ServiceCollectionExtensions.cs
+@@ -49,6 +49,7 @@ public static class EventStoreServerServiceCollectionExtensions {
+         services.TryAddSingleton<IProjectionChangeNotifier, DaprProjectionChangeNotifier>();
+         services.TryAddSingleton<IProjectionChangedBroadcaster, NoOpProjectionChangedBroadcaster>();
+         services.TryAddSingleton<IProjectionCheckpointTracker, ProjectionCheckpointTracker>();
++        services.TryAddSingleton<IProjectionRebuildCheckpointStore, ProjectionRebuildCheckpointStore>();
+         services.TryAddSingleton<IProjectionPollerTickSource, PeriodicProjectionPollerTickSource>();
+         services.TryAddSingleton(TimeProvider.System);
+         services.TryAddSingleton<IValidateOptions<ProjectionChangeNotifierOptions>, ValidateProjectionChangeNotifierOptions>();
+diff --git a/src/Hexalith.EventStore.Server/Projections/IProjectionRebuildCheckpointStore.cs b/src/Hexalith.EventStore.Server/Projections/IProjectionRebuildCheckpointStore.cs
+new file mode 100644
+index 00000000..6646c889
+--- /dev/null
++++ b/src/Hexalith.EventStore.Server/Projections/IProjectionRebuildCheckpointStore.cs
+@@ -0,0 +1,25 @@
++using Hexalith.EventStore.Contracts.Streams;
++
++namespace Hexalith.EventStore.Server.Projections;
++
++/// <summary>
++/// Persists projection rebuild checkpoints with optimistic concurrency and monotonic progress.
++/// </summary>
++public interface IProjectionRebuildCheckpointStore {
++    /// <summary>
++    /// Reads a projection rebuild checkpoint.
++    /// </summary>
++    Task<ProjectionRebuildCheckpoint?> ReadAsync(
++        ProjectionRebuildCheckpointScope scope,
++        CancellationToken cancellationToken = default);
++
++    /// <summary>
++    /// Saves projection rebuild progress without lowering existing progress.
++    /// </summary>
++    Task<ProjectionRebuildCheckpointSaveResult> SaveAsync(
++        ProjectionRebuildCheckpointScope scope,
++        long lastAppliedSequence,
++        ProjectionRebuildStatus status,
++        string? failureReasonCode = null,
++        CancellationToken cancellationToken = default);
++}
+diff --git a/src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointSaveResult.cs b/src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointSaveResult.cs
+new file mode 100644
+index 00000000..d2356496
+--- /dev/null
++++ b/src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointSaveResult.cs
+@@ -0,0 +1,26 @@
++using Hexalith.EventStore.Contracts.Streams;
++
++namespace Hexalith.EventStore.Server.Projections;
++
++/// <summary>
++/// Result of persisting projection rebuild checkpoint progress.
++/// </summary>
++/// <param name="Succeeded">Whether the checkpoint save succeeded or was already covered.</param>
++/// <param name="ReasonCode">Optional stable failure reason code.</param>
++/// <param name="Checkpoint">The saved or already-covered checkpoint.</param>
++public sealed record ProjectionRebuildCheckpointSaveResult(
++    bool Succeeded,
++    string? ReasonCode,
++    ProjectionRebuildCheckpoint? Checkpoint) {
++    /// <summary>
++    /// Creates a successful result.
++    /// </summary>
++    public static ProjectionRebuildCheckpointSaveResult Success(ProjectionRebuildCheckpoint checkpoint)
++        => new(true, null, checkpoint);
++
++    /// <summary>
++    /// Creates a failed result.
++    /// </summary>
++    public static ProjectionRebuildCheckpointSaveResult Failure(string reasonCode)
++        => new(false, reasonCode, null);
++}
+diff --git a/src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointScope.cs b/src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointScope.cs
+new file mode 100644
+index 00000000..497d6b2f
+--- /dev/null
++++ b/src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointScope.cs
+@@ -0,0 +1,16 @@
++namespace Hexalith.EventStore.Server.Projections;
++
++/// <summary>
++/// Validated ownership scope for projection rebuild checkpoints.
++/// </summary>
++/// <param name="Tenant">The tenant identifier.</param>
++/// <param name="Domain">The domain identifier.</param>
++/// <param name="ProjectionName">The projection name.</param>
++/// <param name="AggregateId">Optional aggregate-specific scope.</param>
++/// <param name="OperationId">Optional rebuild operation identity.</param>
++public sealed record ProjectionRebuildCheckpointScope(
++    string Tenant,
++    string Domain,
++    string ProjectionName,
++    string? AggregateId,
++    string? OperationId);
+diff --git a/src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs b/src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs
+new file mode 100644
+index 00000000..76f44e54
+--- /dev/null
++++ b/src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs
+@@ -0,0 +1,190 @@
++using Dapr.Client;
++
++using Hexalith.EventStore.Contracts.Streams;
++using Hexalith.EventStore.Server.Configuration;
++
++using Microsoft.Extensions.Logging;
++using Microsoft.Extensions.Options;
++
++namespace Hexalith.EventStore.Server.Projections;
++
++/// <summary>
++/// DAPR state-store implementation for projection rebuild checkpoint progress.
++/// </summary>
++public sealed partial class ProjectionRebuildCheckpointStore(
++    DaprClient daprClient,
++    IOptions<ProjectionOptions> options,
++    ILogger<ProjectionRebuildCheckpointStore> logger) : IProjectionRebuildCheckpointStore {
++    private const int MaxEtagRetries = 3;
++    private const string StateKeyPrefix = "projection-rebuild-checkpoints:";
++
++    /// <inheritdoc/>
++    public async Task<ProjectionRebuildCheckpoint?> ReadAsync(
++        ProjectionRebuildCheckpointScope scope,
++        CancellationToken cancellationToken = default) {
++        ValidateScope(scope);
++        ProjectionRebuildCheckpoint? checkpoint = await daprClient
++            .GetStateAsync<ProjectionRebuildCheckpoint>(
++                options.Value.CheckpointStateStoreName,
++                GetStateKey(scope),
++                cancellationToken: cancellationToken)
++            .ConfigureAwait(false);
++        if (checkpoint is not null) {
++            ValidateCheckpointScope(scope, checkpoint);
++        }
++
++        return checkpoint;
++    }
++
++    /// <inheritdoc/>
++    public async Task<ProjectionRebuildCheckpointSaveResult> SaveAsync(
++        ProjectionRebuildCheckpointScope scope,
++        long lastAppliedSequence,
++        ProjectionRebuildStatus status,
++        string? failureReasonCode = null,
++        CancellationToken cancellationToken = default) {
++        ValidateScope(scope);
++        ArgumentOutOfRangeException.ThrowIfNegative(lastAppliedSequence);
++
++        string key = GetStateKey(scope);
++        string stateStoreName = options.Value.CheckpointStateStoreName;
++        for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
++            try {
++                (ProjectionRebuildCheckpoint? existing, string etag) = await daprClient
++                    .GetStateAndETagAsync<ProjectionRebuildCheckpoint>(
++                        stateStoreName,
++                        key,
++                        cancellationToken: cancellationToken)
++                    .ConfigureAwait(false);
++
++                if (existing is not null) {
++                    ValidateCheckpointScope(scope, existing);
++                    if (existing.LastAppliedSequence >= lastAppliedSequence
++                        && existing.Status == status
++                        && string.Equals(existing.FailureReasonCode, failureReasonCode, StringComparison.Ordinal)) {
++                        return ProjectionRebuildCheckpointSaveResult.Success(existing);
++                    }
++
++                    if (existing.LastAppliedSequence >= lastAppliedSequence && IsProgressStatus(status)) {
++                        return ProjectionRebuildCheckpointSaveResult.Success(existing);
++                    }
++                }
++
++                long monotonicSequence = Math.Max(existing?.LastAppliedSequence ?? 0, lastAppliedSequence);
++                var checkpoint = new ProjectionRebuildCheckpoint(
++                    scope.Tenant,
++                    scope.Domain,
++                    scope.ProjectionName,
++                    scope.AggregateId,
++                    scope.OperationId,
++                    monotonicSequence,
++                    status,
++                    DateTimeOffset.UtcNow,
++                    failureReasonCode);
++
++                bool saved = await daprClient
++                    .TrySaveStateAsync(
++                        stateStoreName,
++                        key,
++                        checkpoint,
++                        etag,
++                        cancellationToken: cancellationToken)
++                    .ConfigureAwait(false);
++                if (saved) {
++                    return ProjectionRebuildCheckpointSaveResult.Success(checkpoint);
++                }
++
++                Log.CheckpointConflict(logger, scope.Tenant, scope.Domain, scope.ProjectionName, scope.AggregateId ?? string.Empty, scope.OperationId ?? string.Empty, attempt + 1);
++            }
++            catch (OperationCanceledException) {
++                throw;
++            }
++            catch (Exception ex) {
++                Log.CheckpointUnavailable(logger, ex, scope.Tenant, scope.Domain, scope.ProjectionName, ex.GetType().Name);
++                return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointUnavailable);
++            }
++        }
++
++        return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointConflict);
++    }
++
++    internal static string GetStateKey(ProjectionRebuildCheckpointScope scope) {
++        ArgumentNullException.ThrowIfNull(scope);
++        return string.Concat(
++            StateKeyPrefix,
++            scope.Tenant,
++            ":",
++            scope.Domain,
++            ":",
++            scope.ProjectionName,
++            ":",
++            string.IsNullOrWhiteSpace(scope.AggregateId) ? "*" : scope.AggregateId,
++            ":",
++            string.IsNullOrWhiteSpace(scope.OperationId) ? "*" : scope.OperationId);
++    }
++
++    private static bool IsProgressStatus(ProjectionRebuildStatus status)
++        => status is ProjectionRebuildStatus.Running or ProjectionRebuildStatus.Pausing or ProjectionRebuildStatus.Resuming or ProjectionRebuildStatus.Retrying;
++
++    private static void ValidateScope(ProjectionRebuildCheckpointScope scope) {
++        ArgumentNullException.ThrowIfNull(scope);
++        ValidateKeyPart(scope.Tenant, nameof(scope.Tenant));
++        ValidateKeyPart(scope.Domain, nameof(scope.Domain));
++        ValidateKeyPart(scope.ProjectionName, nameof(scope.ProjectionName));
++        if (!string.IsNullOrWhiteSpace(scope.AggregateId)) {
++            ValidateKeyPart(scope.AggregateId, nameof(scope.AggregateId));
++        }
++
++        if (!string.IsNullOrWhiteSpace(scope.OperationId)) {
++            ValidateKeyPart(scope.OperationId, nameof(scope.OperationId));
++        }
++    }
++
++    private static void ValidateKeyPart(string value, string parameterName) {
++        ArgumentException.ThrowIfNullOrWhiteSpace(value);
++        if (value.AsSpan().IndexOfAny(s_reservedChars) >= 0) {
++            throw new ArgumentException(
++                $"{parameterName} must not contain ':', '\\0', '|', '\\r', or '\\n'.",
++                parameterName);
++        }
++    }
++
++    private static readonly System.Buffers.SearchValues<char> s_reservedChars = System.Buffers.SearchValues.Create(":\0|\r\n");
++
++    private static void ValidateCheckpointScope(ProjectionRebuildCheckpointScope scope, ProjectionRebuildCheckpoint checkpoint) {
++        if (!string.Equals(checkpoint.Tenant, scope.Tenant, StringComparison.Ordinal)
++            || !string.Equals(checkpoint.Domain, scope.Domain, StringComparison.Ordinal)
++            || !string.Equals(checkpoint.ProjectionName, scope.ProjectionName, StringComparison.Ordinal)
++            || !string.Equals(checkpoint.AggregateId, scope.AggregateId, StringComparison.Ordinal)
++            || !string.Equals(checkpoint.OperationId, scope.OperationId, StringComparison.Ordinal)) {
++            throw new InvalidOperationException("Projection rebuild checkpoint scope does not match the requested scope.");
++        }
++    }
++
++    private static partial class Log {
++        [LoggerMessage(
++            EventId = 1190,
++            Level = LogLevel.Debug,
++            Message = "Projection rebuild checkpoint ETag conflict: TenantId={TenantId}, Domain={Domain}, ProjectionName={ProjectionName}, AggregateId={AggregateId}, OperationId={OperationId}, Attempt={Attempt}, Stage=ProjectionRebuildCheckpointConflict")]
++        public static partial void CheckpointConflict(
++            ILogger logger,
++            string tenantId,
++            string domain,
++            string projectionName,
++            string aggregateId,
++            string operationId,
++            int attempt);
++
++        [LoggerMessage(
++            EventId = 1191,
++            Level = LogLevel.Warning,
++            Message = "Projection rebuild checkpoint store unavailable: TenantId={TenantId}, Domain={Domain}, ProjectionName={ProjectionName}, ExceptionType={ExceptionType}, Stage=ProjectionRebuildCheckpointUnavailable")]
++        public static partial void CheckpointUnavailable(
++            ILogger logger,
++            Exception exception,
++            string tenantId,
++            string domain,
++            string projectionName,
++            string exceptionType);
++    }
++}
+diff --git a/src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs b/src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs
+index a501b5a8..68ecca22 100644
+--- a/src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs
++++ b/src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs
+@@ -8,6 +8,7 @@ using Dapr.Actors.Client;
+ using Dapr.Client;
+ 
+ using Hexalith.EventStore.Contracts.Identity;
++using Hexalith.EventStore.Contracts.Streams;
+ using Hexalith.EventStore.Contracts.Projections;
+ using Hexalith.EventStore.Server.Actors;
+ using Hexalith.EventStore.Server.Configuration;
+@@ -36,7 +37,8 @@ public partial class ProjectionUpdateOrchestrator(
+     IDomainServiceResolver resolver,
+     IProjectionCheckpointTracker checkpointTracker,
+     IOptions<ProjectionOptions> projectionOptions,
+-    ILogger<ProjectionUpdateOrchestrator> logger) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway {
++    ILogger<ProjectionUpdateOrchestrator> logger,
++    IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway {
+     // Per-aggregate serialization across orchestrator instances. Entries are evicted and the
+     // underlying SemaphoreSlim disposed when the last holder releases, so a multi-tenant server
+     // with many short-lived aggregates does not accumulate kernel handles indefinitely.
+@@ -70,6 +72,11 @@ public partial class ProjectionUpdateOrchestrator(
+         try {
+             Log.UpdateStarted(logger, identity.TenantId, identity.Domain, identity.AggregateId);
+ 
++            if (await HasActiveOperatorRebuildAsync(identity, cancellationToken).ConfigureAwait(false)) {
++                Log.PollerRebuildConflict(logger, identity.TenantId, identity.Domain, identity.AggregateId, StreamReplayReasonCodes.PollerRebuildConflict);
++                return;
++            }
++
+             // Step 1: Resolve domain service registration
+             DomainServiceRegistration? registration = await resolver
+                 .ResolveAsync(identity.TenantId, identity.Domain, "v1", cancellationToken)
+@@ -376,6 +383,41 @@ public partial class ProjectionUpdateOrchestrator(
+                 ? ProjectionReasonCodes.ProjectUpstream5xx
+                 : ProjectionReasonCodes.ProjectUnexpectedStatus;
+ 
++    private async Task<bool> HasActiveOperatorRebuildAsync(
++        AggregateIdentity identity,
++        CancellationToken cancellationToken) {
++        if (rebuildCheckpointStore is null) {
++            return false;
++        }
++
++        try {
++            ProjectionRebuildCheckpoint? checkpoint = await rebuildCheckpointStore
++                .ReadAsync(
++                    new ProjectionRebuildCheckpointScope(
++                        identity.TenantId,
++                        identity.Domain,
++                        identity.Domain,
++                        AggregateId: null,
++                        OperationId: $"{identity.Domain}-rebuild"),
++                    cancellationToken)
++                .ConfigureAwait(false);
++            return checkpoint?.Status is
++                ProjectionRebuildStatus.Running
++                or ProjectionRebuildStatus.Pausing
++                or ProjectionRebuildStatus.Paused
++                or ProjectionRebuildStatus.Resuming
++                or ProjectionRebuildStatus.Retrying
++                or ProjectionRebuildStatus.Canceling;
++        }
++        catch (OperationCanceledException) {
++            throw;
++        }
++        catch (Exception ex) {
++            Log.RebuildCheckpointReadFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
++            return false;
++        }
++    }
++
+     private static partial class Log {
+         [LoggerMessage(
+             EventId = 1110,
+@@ -466,5 +508,17 @@ public partial class ProjectionUpdateOrchestrator(
+             Level = LogLevel.Warning,
+             Message = "Projection checkpoint drift detected: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ReasonCode={ReasonCode}, LastDeliveredSequence={LastDeliveredSequence}, HighestEventSequence={HighestEventSequence}, Stage=ProjectionCheckpointDrift")]
+         public static partial void CheckpointDriftDetected(ILogger logger, string tenantId, string domain, string aggregateId, string reasonCode, long lastDeliveredSequence, long highestEventSequence);
++
++        [LoggerMessage(
++            EventId = 1145,
++            Level = LogLevel.Information,
++            Message = "Projection delivery skipped because an operator rebuild is active: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ReasonCode={ReasonCode}, Stage=ProjectionPollerRebuildConflict")]
++        public static partial void PollerRebuildConflict(ILogger logger, string tenantId, string domain, string aggregateId, string reasonCode);
++
++        [LoggerMessage(
++            EventId = 1146,
++            Level = LogLevel.Warning,
++            Message = "Projection rebuild checkpoint read failed while checking poller/rebuild conflict: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ExceptionType={ExceptionType}, Stage=ProjectionRebuildConflictCheckFailed")]
++        public static partial void RebuildCheckpointReadFailed(ILogger logger, Exception exception, string tenantId, string domain, string aggregateId, string exceptionType);
+     }
+ }
+diff --git a/src/Hexalith.EventStore.Testing/Builders/StreamReadPageBuilder.cs b/src/Hexalith.EventStore.Testing/Builders/StreamReadPageBuilder.cs
+new file mode 100644
+index 00000000..e3f83b53
+--- /dev/null
++++ b/src/Hexalith.EventStore.Testing/Builders/StreamReadPageBuilder.cs
+@@ -0,0 +1,108 @@
++using Hexalith.EventStore.Contracts.Streams;
++
++namespace Hexalith.EventStore.Testing.Builders;
++
++/// <summary>
++/// Fluent builder for deterministic public stream read pages in downstream tests.
++/// </summary>
++public sealed class StreamReadPageBuilder {
++    private readonly List<StreamReadEvent> _events = [];
++    private string _tenant = "tenant-a";
++    private string _domain = "domain-a";
++    private string? _aggregateId = "aggregate-1";
++    private long _fromSequence;
++    private long? _toSequence;
++    private long _latestSequence;
++    private ReplayContinuationToken? _nextContinuationToken;
++
++    /// <summary>
++    /// Creates a builder with standard tenant/domain/aggregate values.
++    /// </summary>
++    public static StreamReadPageBuilder Create() => new();
++
++    /// <summary>
++    /// Sets the stream identity.
++    /// </summary>
++    public StreamReadPageBuilder ForStream(string tenant, string domain, string? aggregateId = null) {
++        ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
++        ArgumentException.ThrowIfNullOrWhiteSpace(domain);
++        _tenant = tenant;
++        _domain = domain;
++        _aggregateId = aggregateId;
++        return this;
++    }
++
++    /// <summary>
++    /// Sets the requested sequence range.
++    /// </summary>
++    public StreamReadPageBuilder WithRange(long fromSequence, long? toSequence = null) {
++        ArgumentOutOfRangeException.ThrowIfNegative(fromSequence);
++        if (toSequence.HasValue && toSequence.Value < fromSequence) {
++            throw new ArgumentOutOfRangeException(nameof(toSequence), "Upper sequence bound must be greater than or equal to the lower bound.");
++        }
++
++        _fromSequence = fromSequence;
++        _toSequence = toSequence;
++        return this;
++    }
++
++    /// <summary>
++    /// Adds an event with deterministic metadata.
++    /// </summary>
++    public StreamReadPageBuilder AddEvent(long sequenceNumber, string eventTypeName = "TestEvent", byte[]? payload = null) {
++        ArgumentOutOfRangeException.ThrowIfLessThan(sequenceNumber, 1);
++        ArgumentException.ThrowIfNullOrWhiteSpace(eventTypeName);
++        _events.Add(new StreamReadEvent(
++            sequenceNumber,
++            eventTypeName,
++            payload ?? [],
++            "json",
++            1,
++            $"message-{sequenceNumber}",
++            $"corr-{sequenceNumber}",
++            $"cause-{sequenceNumber}",
++            DateTimeOffset.UnixEpoch.AddSeconds(sequenceNumber),
++            "user-1"));
++        _latestSequence = Math.Max(_latestSequence, sequenceNumber);
++        return this;
++    }
++
++    /// <summary>
++    /// Adds an opaque continuation token to the page metadata.
++    /// </summary>
++    public StreamReadPageBuilder WithNextContinuation(string token) {
++        ArgumentException.ThrowIfNullOrWhiteSpace(token);
++        _nextContinuationToken = new ReplayContinuationToken(token);
++        return this;
++    }
++
++    /// <summary>
++    /// Sets the latest known stream sequence.
++    /// </summary>
++    public StreamReadPageBuilder WithLatestSequence(long latestSequence) {
++        ArgumentOutOfRangeException.ThrowIfNegative(latestSequence);
++        _latestSequence = latestSequence;
++        return this;
++    }
++
++    /// <summary>
++    /// Builds the stream read page.
++    /// </summary>
++    public StreamReadPage Build() {
++        long lastSequenceReturned = _events.Count == 0 ? _fromSequence : _events.Max(e => e.SequenceNumber);
++        long latestSequence = Math.Max(_latestSequence, lastSequenceReturned);
++        return new StreamReadPage(
++            _tenant,
++            _domain,
++            _aggregateId,
++            [.. _events.OrderBy(e => e.SequenceNumber)],
++            new StreamReadMetadata(
++                _fromSequence,
++                _toSequence,
++                lastSequenceReturned,
++                latestSequence,
++                _events.Count,
++                _nextContinuationToken is not null,
++                _nextContinuationToken));
++    }
++}
+diff --git a/src/Hexalith.EventStore.Testing/Fakes/FakeEventStoreGatewayClient.cs b/src/Hexalith.EventStore.Testing/Fakes/FakeEventStoreGatewayClient.cs
+index d8cac1c8..1ca8535e 100644
+--- a/src/Hexalith.EventStore.Testing/Fakes/FakeEventStoreGatewayClient.cs
++++ b/src/Hexalith.EventStore.Testing/Fakes/FakeEventStoreGatewayClient.cs
+@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
+ using Hexalith.EventStore.Client.Gateway;
+ using Hexalith.EventStore.Contracts.Commands;
+ using Hexalith.EventStore.Contracts.Queries;
++using Hexalith.EventStore.Contracts.Streams;
+ 
+ namespace Hexalith.EventStore.Testing.Fakes;
+ 
+@@ -19,6 +20,7 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
+ 
+     private readonly ConcurrentQueue<SubmitCommandRequest> _submittedCommands = new();
+     private readonly ConcurrentQueue<SubmittedQuery> _submittedQueries = new();
++    private readonly ConcurrentQueue<StreamReadRequest> _submittedStreamReads = new();
+ 
+     /// <summary>
+     /// Gets the command requests submitted to the fake.
+@@ -30,6 +32,11 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
+     /// </summary>
+     public IReadOnlyCollection<SubmittedQuery> SubmittedQueries => [.. _submittedQueries];
+ 
++    /// <summary>
++    /// Gets the stream read requests submitted to the fake.
++    /// </summary>
++    public IReadOnlyCollection<StreamReadRequest> SubmittedStreamReads => [.. _submittedStreamReads];
++
+     /// <summary>
+     /// Gets or sets the command response returned by the fake.
+     /// </summary>
+@@ -41,6 +48,12 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
+     public EventStoreQueryResult QueryResult { get; set; }
+         = new("test-correlation-id", JsonSerializer.SerializeToElement(new { }, JsonOptions), IsNotModified: false, ETag: null);
+ 
++    /// <summary>
++    /// Gets or sets the stream read page returned by the fake.
++    /// </summary>
++    public StreamReadPage StreamReadPage { get; set; }
++        = new("test-tenant", "test-domain", null, [], new StreamReadMetadata(0, null, 0, 0, 0, false, null));
++
+     /// <summary>
+     /// Gets or sets the exception thrown for command submissions.
+     /// </summary>
+@@ -51,6 +64,11 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
+     /// </summary>
+     public EventStoreGatewayException? QueryException { get; set; }
+ 
++    /// <summary>
++    /// Gets or sets the exception thrown for stream reads.
++    /// </summary>
++    public EventStoreGatewayException? StreamReadException { get; set; }
++
+     /// <summary>
+     /// Configures the fake to return a command accepted response.
+     /// </summary>
+@@ -120,6 +138,103 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
+         return this;
+     }
+ 
++    /// <summary>
++    /// Configures the fake to return a stream read page.
++    /// </summary>
++    public FakeEventStoreGatewayClient ConfigureStreamReadSuccess(StreamReadPage page) {
++        ArgumentNullException.ThrowIfNull(page);
++        StreamReadException = null;
++        StreamReadPage = page;
++        return this;
++    }
++
++    /// <summary>
++    /// Configures the fake to throw a stream read gateway failure.
++    /// </summary>
++    public FakeEventStoreGatewayClient ConfigureStreamReadFailure(EventStoreGatewayException exception) {
++        ArgumentNullException.ThrowIfNull(exception);
++        StreamReadException = exception;
++        return this;
++    }
++
++    /// <summary>
++    /// Configures the fake to return an empty stream page.
++    /// </summary>
++    public FakeEventStoreGatewayClient ConfigureStreamReadEmpty(string tenant, string domain, string? aggregateId = null) {
++        StreamReadException = null;
++        StreamReadPage = new StreamReadPage(
++            tenant,
++            domain,
++            aggregateId,
++            [],
++            new StreamReadMetadata(0, null, 0, 0, 0, false, null));
++        return this;
++    }
++
++    /// <summary>
++    /// Configures the fake to return a page with a next-continuation token.
++    /// </summary>
++    public FakeEventStoreGatewayClient ConfigureStreamReadContinuation(StreamReadPage page, string nextContinuationToken) {
++        ArgumentNullException.ThrowIfNull(page);
++        ArgumentException.ThrowIfNullOrWhiteSpace(nextContinuationToken);
++        StreamReadException = null;
++        StreamReadPage = page with {
++            Metadata = page.Metadata with {
++                IsTruncated = true,
++                NextContinuationToken = new ReplayContinuationToken(nextContinuationToken),
++            },
++        };
++        return this;
++    }
++
++    /// <summary>
++    /// Configures the fake to throw an invalid range failure.
++    /// </summary>
++    public FakeEventStoreGatewayClient ConfigureStreamReadInvalidRange(string tenant)
++        => ConfigureStreamReadFailure(CreateStreamFailure(400, "Bad Request", tenant, StreamReplayReasonCodes.InvalidRange));
++
++    /// <summary>
++    /// Configures the fake to throw an invalid continuation failure.
++    /// </summary>
++    public FakeEventStoreGatewayClient ConfigureStreamReadInvalidContinuation(string tenant)
++        => ConfigureStreamReadFailure(CreateStreamFailure(400, "Bad Request", tenant, StreamReplayReasonCodes.InvalidContinuation));
++
++    /// <summary>
++    /// Configures the fake to throw an unauthorized tenant failure.
++    /// </summary>
++    public FakeEventStoreGatewayClient ConfigureStreamReadUnauthorizedTenant(string tenant)
++        => ConfigureStreamReadFailure(CreateStreamFailure(403, "Forbidden", tenant, StreamReplayReasonCodes.UnauthorizedTenant));
++
++    /// <summary>
++    /// Configures the fake to throw a missing stream failure.
++    /// </summary>
++    public FakeEventStoreGatewayClient ConfigureStreamReadMissingStream(string tenant)
++        => ConfigureStreamReadFailure(CreateStreamFailure(404, "Not Found", tenant, StreamReplayReasonCodes.MissingStream));
++
++    /// <summary>
++    /// Configures the fake to throw a checkpoint conflict failure.
++    /// </summary>
++    public FakeEventStoreGatewayClient ConfigureStreamReadCheckpointConflict(string tenant)
++        => ConfigureStreamReadFailure(CreateStreamFailure(409, "Conflict", tenant, StreamReplayReasonCodes.CheckpointConflict));
++
++    /// <summary>
++    /// Configures the fake to throw a paused rebuild failure.
++    /// </summary>
++    public FakeEventStoreGatewayClient ConfigureStreamReadPausedRebuild(string tenant)
++        => ConfigureStreamReadFailure(CreateStreamFailure(409, "Conflict", tenant, StreamReplayReasonCodes.RebuildPaused));
++
++    /// <summary>
++    /// Configures the fake to throw a canceled rebuild failure.
++    /// </summary>
++    public FakeEventStoreGatewayClient ConfigureStreamReadCanceledRebuild(string tenant)
++        => ConfigureStreamReadFailure(CreateStreamFailure(409, "Conflict", tenant, StreamReplayReasonCodes.RebuildCanceled));
++
++    /// <summary>
++    /// Configures the fake to throw a service-unavailable failure.
++    /// </summary>
++    public FakeEventStoreGatewayClient ConfigureStreamReadUnavailable(string tenant)
++        => ConfigureStreamReadFailure(CreateStreamFailure(503, "Service Unavailable", tenant, StreamReplayReasonCodes.ServiceUnavailable));
++
+     /// <inheritdoc />
+     public Task<SubmitCommandResponse> SubmitCommandAsync(
+         SubmitCommandRequest request,
+@@ -183,6 +298,34 @@ public sealed class FakeEventStoreGatewayClient : IEventStoreGatewayClient {
+             Metadata = result.Metadata ?? new QueryResponseMetadata(ETag: result.ETag, IsNotModified: false),
+         };
+     }
++
++    /// <inheritdoc />
++    public Task<StreamReadPage> ReadStreamAsync(
++        StreamReadRequest request,
++        CancellationToken cancellationToken = default) {
++        cancellationToken.ThrowIfCancellationRequested();
++        ArgumentNullException.ThrowIfNull(request);
++        _submittedStreamReads.Enqueue(request);
++
++        if (StreamReadException is not null) {
++            throw StreamReadException;
++        }
++
++        return Task.FromResult(StreamReadPage);
++    }
++
++    private static EventStoreGatewayException CreateStreamFailure(
++        int statusCode,
++        string title,
++        string tenant,
++        string reasonCode)
++        => new(
++            statusCode,
++            title,
++            type: $"https://hexalith.io/problems/stream-replay/{reasonCode}",
++            detail: $"Stream replay failed with reason '{reasonCode}'.",
++            tenantId: tenant,
++            reasonCode: reasonCode);
+ }
+ 
+ /// <summary>
+diff --git a/src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs b/src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs
+new file mode 100644
+index 00000000..4f4c8e8e
+--- /dev/null
++++ b/src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs
+@@ -0,0 +1,261 @@
++using Hexalith.EventStore.Admin.Abstractions.Models.Common;
++using Hexalith.EventStore.Contracts.Streams;
++using Hexalith.EventStore.ErrorHandling;
++using Hexalith.EventStore.Server.Projections;
++
++using Microsoft.AspNetCore.Authorization;
++using Microsoft.AspNetCore.Mvc;
++
++namespace Hexalith.EventStore.Controllers;
++
++/// <summary>
++/// EventStore-side operator projection rebuild lifecycle endpoints.
++/// </summary>
++[ApiController]
++[Authorize]
++[Route("api/v1/admin/projections")]
++[Tags("Admin - Projection Rebuild")]
++public sealed partial class AdminProjectionRebuildController(
++    IProjectionRebuildCheckpointStore checkpointStore,
++    ILogger<AdminProjectionRebuildController> logger) : ControllerBase {
++    /// <summary>
++    /// Gets the current rebuild status for a projection.
++    /// </summary>
++    [HttpGet("{tenantId}/{projectionName}/rebuild-status")]
++    [ProducesResponseType(typeof(ProjectionRebuildOperation), StatusCodes.Status200OK)]
++    public async Task<IActionResult> GetRebuildStatus(
++        string tenantId,
++        string projectionName,
++        CancellationToken ct = default) {
++        ProjectionRebuildCheckpointScope scope = CreateScope(tenantId, projectionName);
++        ProjectionRebuildCheckpoint? checkpoint = await checkpointStore.ReadAsync(scope, ct).ConfigureAwait(false);
++        return Ok(ToOperation(scope, checkpoint));
++    }
++
++    /// <summary>
++    /// Pauses an operator-triggered rebuild.
++    /// </summary>
++    [HttpPost("{tenantId}/{projectionName}/pause")]
++    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
++    public async Task<IActionResult> PauseProjection(
++        string tenantId,
++        string projectionName,
++        CancellationToken ct = default)
++        => await SaveLifecycleAsync(
++            tenantId,
++            projectionName,
++            lastAppliedSequence: 0,
++            ProjectionRebuildStatus.Paused,
++            StreamReplayReasonCodes.RebuildPaused,
++            accepted: false,
++            ct).ConfigureAwait(false);
++
++    /// <summary>
++    /// Resumes a paused operator-triggered rebuild.
++    /// </summary>
++    [HttpPost("{tenantId}/{projectionName}/resume")]
++    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
++    public async Task<IActionResult> ResumeProjection(
++        string tenantId,
++        string projectionName,
++        CancellationToken ct = default)
++        => await SaveLifecycleAsync(
++            tenantId,
++            projectionName,
++            lastAppliedSequence: 0,
++            ProjectionRebuildStatus.Running,
++            failureReasonCode: null,
++            accepted: false,
++            ct).ConfigureAwait(false);
++
++    /// <summary>
++    /// Resets a projection rebuild checkpoint.
++    /// </summary>
++    [HttpPost("{tenantId}/{projectionName}/reset")]
++    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
++    public async Task<IActionResult> ResetProjection(
++        string tenantId,
++        string projectionName,
++        [FromBody] ProjectionResetRequest? request,
++        CancellationToken ct = default)
++        => await SaveLifecycleAsync(
++            tenantId,
++            projectionName,
++            request?.FromPosition ?? 0,
++            ProjectionRebuildStatus.NotStarted,
++            failureReasonCode: null,
++            accepted: true,
++            ct).ConfigureAwait(false);
++
++    /// <summary>
++    /// Starts a projection replay/rebuild operation.
++    /// </summary>
++    [HttpPost("{tenantId}/{projectionName}/replay")]
++    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
++    public async Task<IActionResult> ReplayProjection(
++        string tenantId,
++        string projectionName,
++        [FromBody] ProjectionReplayRequest request,
++        CancellationToken ct = default) {
++        ArgumentNullException.ThrowIfNull(request);
++        if (request.FromPosition < 0 || request.ToPosition < request.FromPosition) {
++            return ProblemWithReason(
++                StatusCodes.Status400BadRequest,
++                "Bad Request",
++                "Replay range is invalid.",
++                StreamReplayReasonCodes.InvalidRange);
++        }
++
++        return await SaveLifecycleAsync(
++            tenantId,
++            projectionName,
++            request.FromPosition,
++            ProjectionRebuildStatus.Running,
++            failureReasonCode: null,
++            accepted: true,
++            ct).ConfigureAwait(false);
++    }
++
++    /// <summary>
++    /// Cancels a projection rebuild operation.
++    /// </summary>
++    [HttpPost("{tenantId}/{projectionName}/cancel")]
++    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
++    public async Task<IActionResult> CancelProjection(
++        string tenantId,
++        string projectionName,
++        CancellationToken ct = default)
++        => await SaveLifecycleAsync(
++            tenantId,
++            projectionName,
++            lastAppliedSequence: 0,
++            ProjectionRebuildStatus.Canceled,
++            StreamReplayReasonCodes.RebuildCanceled,
++            accepted: false,
++            ct).ConfigureAwait(false);
++
++    /// <summary>
++    /// Retries a failed or canceled projection rebuild operation.
++    /// </summary>
++    [HttpPost("{tenantId}/{projectionName}/retry")]
++    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
++    public async Task<IActionResult> RetryProjection(
++        string tenantId,
++        string projectionName,
++        CancellationToken ct = default)
++        => await SaveLifecycleAsync(
++            tenantId,
++            projectionName,
++            lastAppliedSequence: 0,
++            ProjectionRebuildStatus.Retrying,
++            failureReasonCode: null,
++            accepted: true,
++            ct).ConfigureAwait(false);
++
++    private async Task<IActionResult> SaveLifecycleAsync(
++        string tenantId,
++        string projectionName,
++        long lastAppliedSequence,
++        ProjectionRebuildStatus status,
++        string? failureReasonCode,
++        bool accepted,
++        CancellationToken ct) {
++        ProjectionRebuildCheckpointScope scope = CreateScope(tenantId, projectionName);
++        ProjectionRebuildCheckpointSaveResult save = await checkpointStore
++            .SaveAsync(scope, lastAppliedSequence, status, failureReasonCode, ct)
++            .ConfigureAwait(false);
++        if (!save.Succeeded) {
++            return MapSaveFailure(save.ReasonCode);
++        }
++
++        var result = new AdminOperationResult(
++            true,
++            scope.OperationId!,
++            $"Projection rebuild status is {status}.",
++            null);
++        return accepted ? Accepted(result) : Ok(result);
++    }
++
++    private IActionResult MapSaveFailure(string? reasonCode)
++        => reasonCode switch {
++            StreamReplayReasonCodes.CheckpointConflict => ProblemWithReason(
++                StatusCodes.Status409Conflict,
++                "Conflict",
++                "Projection rebuild checkpoint update conflicted with another worker.",
++                StreamReplayReasonCodes.CheckpointConflict),
++            StreamReplayReasonCodes.CheckpointUnavailable => ProblemWithReason(
++                StatusCodes.Status503ServiceUnavailable,
++                "Service Unavailable",
++                "Projection rebuild checkpoint storage is unavailable.",
++                StreamReplayReasonCodes.CheckpointUnavailable),
++            _ => ProblemWithReason(
++                StatusCodes.Status500InternalServerError,
++                "Internal Server Error",
++                "Projection rebuild checkpoint update failed.",
++                reasonCode ?? StreamReplayReasonCodes.ServiceUnavailable),
++        };
++
++    private ObjectResult ProblemWithReason(int statusCode, string title, string detail, string reasonCode) {
++        Log.LifecycleRejected(logger, reasonCode);
++        var problem = new ProblemDetails {
++            Status = statusCode,
++            Title = title,
++            Detail = detail,
++            Type = statusCode switch {
++                StatusCodes.Status400BadRequest => ProblemTypeUris.BadRequest,
++                StatusCodes.Status409Conflict => ProblemTypeUris.ConcurrencyConflict,
++                StatusCodes.Status503ServiceUnavailable => ProblemTypeUris.ServiceUnavailable,
++                _ => ProblemTypeUris.InternalServerError,
++            },
++        };
++        problem.Extensions["reasonCode"] = reasonCode;
++        return new ObjectResult(problem) { StatusCode = statusCode };
++    }
++
++    private static ProjectionRebuildCheckpointScope CreateScope(string tenantId, string projectionName)
++        => new(
++            tenantId,
++            projectionName,
++            projectionName,
++            AggregateId: null,
++            OperationId: $"{projectionName}-rebuild");
++
++    private static ProjectionRebuildOperation ToOperation(
++        ProjectionRebuildCheckpointScope scope,
++        ProjectionRebuildCheckpoint? checkpoint)
++        => new(
++            scope.OperationId!,
++            scope.Tenant,
++            scope.Domain,
++            scope.ProjectionName,
++            scope.AggregateId,
++            checkpoint?.Status ?? ProjectionRebuildStatus.NotStarted,
++            checkpoint,
++            checkpoint?.UpdatedAt ?? DateTimeOffset.UnixEpoch,
++            IsTerminal(checkpoint?.Status) ? checkpoint?.UpdatedAt : null,
++            checkpoint?.FailureReasonCode);
++
++    private static bool IsTerminal(ProjectionRebuildStatus? status)
++        => status is ProjectionRebuildStatus.Succeeded or ProjectionRebuildStatus.Failed or ProjectionRebuildStatus.Canceled;
++
++    private static partial class Log {
++        [LoggerMessage(
++            EventId = 1195,
++            Level = LogLevel.Warning,
++            Message = "Projection rebuild lifecycle request rejected: ReasonCode={ReasonCode}, Stage=ProjectionRebuildLifecycleRejected")]
++        public static partial void LifecycleRejected(ILogger logger, string reasonCode);
++    }
++}
++
++/// <summary>
++/// EventStore-side projection reset request.
++/// </summary>
++/// <param name="FromPosition">Optional position to reset from.</param>
++public sealed record ProjectionResetRequest(long? FromPosition);
++
++/// <summary>
++/// EventStore-side projection replay request.
++/// </summary>
++/// <param name="FromPosition">The starting stream position.</param>
++/// <param name="ToPosition">The ending stream position.</param>
++public sealed record ProjectionReplayRequest(long FromPosition, long ToPosition);
+diff --git a/src/Hexalith.EventStore/Controllers/StreamsController.cs b/src/Hexalith.EventStore/Controllers/StreamsController.cs
+new file mode 100644
+index 00000000..960b328a
+--- /dev/null
++++ b/src/Hexalith.EventStore/Controllers/StreamsController.cs
+@@ -0,0 +1,272 @@
++using Dapr.Actors;
++using Dapr.Actors.Client;
++
++using Hexalith.EventStore.Authorization;
++using Hexalith.EventStore.Contracts.Identity;
++using Hexalith.EventStore.Contracts.Streams;
++using Hexalith.EventStore.ErrorHandling;
++using Hexalith.EventStore.Server.Actors;
++using Hexalith.EventStore.Server.Events;
++
++using Microsoft.AspNetCore.Authorization;
++using Microsoft.AspNetCore.Mvc;
++
++using ServerEventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
++using GatewayTenantValidator = Hexalith.EventStore.Authorization.ITenantValidator;
++
++namespace Hexalith.EventStore.Controllers;
++
++/// <summary>
++/// Public downstream stream read/replay endpoints.
++/// </summary>
++[ApiController]
++[Authorize]
++[Route("api/v1/streams")]
++[Consumes("application/json")]
++[Produces("application/json")]
++[Tags("Streams")]
++public sealed partial class StreamsController(
++    IActorProxyFactory actorProxyFactory,
++    GatewayTenantValidator tenantValidator,
++    IRbacValidator rbacValidator,
++    ILogger<StreamsController> logger) : ControllerBase {
++    private const int MaxPageSize = 1_000;
++    private const string StreamReadMessageType = "StreamRead";
++    private const string StreamReadMessageCategory = "replay";
++
++    /// <summary>
++    /// Reads a public EventStore stream page for downstream replay/rebuild use.
++    /// </summary>
++    [HttpPost("read")]
++    [RequestSizeLimit(1_048_576)]
++    [ProducesResponseType(typeof(StreamReadPage), StatusCodes.Status200OK)]
++    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest, "application/problem+json")]
++    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
++    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden, "application/problem+json")]
++    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound, "application/problem+json")]
++    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError, "application/problem+json")]
++    public async Task<IActionResult> ReadStreamAsync(
++        [FromBody] StreamReadRequest request,
++        CancellationToken cancellationToken = default) {
++        ArgumentNullException.ThrowIfNull(request);
++
++        IActionResult? validationFailure = ValidateRequest(request);
++        if (validationFailure is not null) {
++            return validationFailure;
++        }
++
++        string? subjectId = User.FindFirst("sub")?.Value;
++        if (string.IsNullOrWhiteSpace(subjectId)) {
++            return Unauthorized();
++        }
++
++        TenantValidationResult tenantResult = await tenantValidator
++            .ValidateAsync(User, request.Tenant, cancellationToken, request.AggregateId)
++            .ConfigureAwait(false);
++        if (!tenantResult.IsAuthorized) {
++            return ProblemWithReason(
++                StatusCodes.Status403Forbidden,
++                ProblemTypeUris.Forbidden,
++                "Forbidden",
++                "Tenant is not authorized for stream replay.",
++                StreamReplayReasonCodes.UnauthorizedTenant);
++        }
++
++        RbacValidationResult rbacResult = await rbacValidator
++            .ValidateAsync(
++                User,
++                request.Tenant,
++                request.Domain,
++                StreamReadMessageType,
++                StreamReadMessageCategory,
++                cancellationToken,
++                request.AggregateId)
++            .ConfigureAwait(false);
++        if (!rbacResult.IsAuthorized) {
++            return ProblemWithReason(
++                StatusCodes.Status403Forbidden,
++                ProblemTypeUris.Forbidden,
++                "Forbidden",
++                "Replay scope is not authorized.",
++                StreamReplayReasonCodes.ForbiddenReplayScope);
++        }
++
++        try {
++            var identity = new AggregateIdentity(request.Tenant, request.Domain, request.AggregateId!);
++            IAggregateActor actor = actorProxyFactory.CreateActorProxy<IAggregateActor>(
++                new ActorId(identity.ActorId),
++                "AggregateActor");
++
++            ServerEventEnvelope[] events = await actor
++                .GetEventsAsync(request.FromSequence)
++                .ConfigureAwait(false);
++
++            IReadOnlyList<ServerEventEnvelope> orderedEvents = [.. events
++                .Where(e => !request.ToSequence.HasValue || e.SequenceNumber <= request.ToSequence.Value)
++                .OrderBy(e => e.SequenceNumber)];
++
++            int pageSize = NormalizePageSize(request.PageSize);
++            IReadOnlyList<ServerEventEnvelope> pageEvents = [.. orderedEvents.Take(pageSize)];
++            long latestSequence = orderedEvents.Count == 0
++                ? request.FromSequence
++                : orderedEvents[^1].SequenceNumber;
++            long lastReturned = pageEvents.Count == 0
++                ? request.FromSequence
++                : pageEvents[^1].SequenceNumber;
++            bool truncated = orderedEvents.Count > pageEvents.Count;
++
++            return Ok(new StreamReadPage(
++                identity.TenantId,
++                identity.Domain,
++                identity.AggregateId,
++                [.. pageEvents.Select(ToStreamReadEvent)],
++                new StreamReadMetadata(
++                    request.FromSequence,
++                    request.ToSequence,
++                    lastReturned,
++                    latestSequence,
++                    pageEvents.Count,
++                    truncated,
++                    truncated ? CreateContinuationToken() : null)));
++        }
++        catch (OperationCanceledException) {
++            throw;
++        }
++        catch (ArgumentException ex) {
++            return ProblemWithReason(
++                StatusCodes.Status400BadRequest,
++                ProblemTypeUris.BadRequest,
++                "Bad Request",
++                ex.Message,
++                StreamReplayReasonCodes.InvalidRange);
++        }
++        catch (MissingEventException ex) {
++            Log.StreamReadFailed(logger, ex, request.Tenant, request.Domain, request.AggregateId ?? string.Empty, StreamReplayReasonCodes.MissingEvent);
++            return ProblemWithReason(
++                StatusCodes.Status404NotFound,
++                ProblemTypeUris.NotFound,
++                "Not Found",
++                $"Event stream is missing event sequence {ex.SequenceNumber}.",
++                StreamReplayReasonCodes.MissingEvent);
++        }
++        catch (EventDeserializationException ex) {
++            Log.StreamReadFailed(logger, ex, request.Tenant, request.Domain, request.AggregateId ?? string.Empty, StreamReplayReasonCodes.CorruptEvent);
++            return ProblemWithReason(
++                StatusCodes.Status500InternalServerError,
++                ProblemTypeUris.InternalServerError,
++                "Internal Server Error",
++                "Event stream contains unreadable event data.",
++                StreamReplayReasonCodes.CorruptEvent);
++        }
++        catch (Exception ex) when (ex is not OperationCanceledException) {
++            Log.StreamReadFailed(logger, ex, request.Tenant, request.Domain, request.AggregateId ?? string.Empty, StreamReplayReasonCodes.ServiceUnavailable);
++            return ProblemWithReason(
++                StatusCodes.Status500InternalServerError,
++                ProblemTypeUris.InternalServerError,
++                "Internal Server Error",
++                "Stream replay failed.",
++                StreamReplayReasonCodes.ServiceUnavailable);
++        }
++    }
++
++    private IActionResult? ValidateRequest(StreamReadRequest request) {
++        if (string.IsNullOrWhiteSpace(request.Tenant)
++            || string.IsNullOrWhiteSpace(request.Domain)) {
++            return ProblemWithReason(
++                StatusCodes.Status400BadRequest,
++                ProblemTypeUris.BadRequest,
++                "Bad Request",
++                "Tenant and domain are required.",
++                StreamReplayReasonCodes.InvalidRange);
++        }
++
++        if (string.IsNullOrWhiteSpace(request.AggregateId)) {
++            return ProblemWithReason(
++                StatusCodes.Status403Forbidden,
++                ProblemTypeUris.Forbidden,
++                "Forbidden",
++                "Domain-wide stream reads require an explicit projection rebuild scope.",
++                StreamReplayReasonCodes.ForbiddenReplayScope);
++        }
++
++        if (request.FromSequence < 0
++            || request.ToSequence.HasValue && request.ToSequence.Value <= request.FromSequence) {
++            return ProblemWithReason(
++                StatusCodes.Status400BadRequest,
++                ProblemTypeUris.BadRequest,
++                "Bad Request",
++                "'fromSequence' must be >= 0 and 'toSequence' must be greater than 'fromSequence'.",
++                StreamReplayReasonCodes.InvalidRange);
++        }
++
++        if (request.PageSize <= 0 || request.PageSize > MaxPageSize) {
++            return ProblemWithReason(
++                StatusCodes.Status400BadRequest,
++                ProblemTypeUris.BadRequest,
++                "Bad Request",
++                $"'pageSize' must be between 1 and {MaxPageSize}.",
++                StreamReplayReasonCodes.InvalidRange);
++        }
++
++        if (request.ContinuationToken is not null) {
++            return ProblemWithReason(
++                StatusCodes.Status400BadRequest,
++                ProblemTypeUris.BadRequest,
++                "Bad Request",
++                "Continuation token validation is fail-closed until token request binding is enabled.",
++                StreamReplayReasonCodes.InvalidContinuation);
++        }
++
++        return null;
++    }
++
++    private ObjectResult ProblemWithReason(
++        int statusCode,
++        string type,
++        string title,
++        string detail,
++        string reasonCode) {
++        ObjectResult result = (ObjectResult)Problem(
++            statusCode: statusCode,
++            type: type,
++            title: title,
++            detail: detail);
++        if (result.Value is ProblemDetails problem) {
++            problem.Extensions["reasonCode"] = reasonCode;
++        }
++
++        return result;
++    }
++
++    private static int NormalizePageSize(int pageSize) => Math.Clamp(pageSize, 1, MaxPageSize);
++
++    private static ReplayContinuationToken CreateContinuationToken()
++        => new(Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)));
++
++    private static StreamReadEvent ToStreamReadEvent(ServerEventEnvelope envelope)
++        => new(
++            envelope.SequenceNumber,
++            envelope.EventTypeName,
++            envelope.Payload,
++            envelope.SerializationFormat,
++            envelope.MetadataVersion,
++            envelope.MessageId,
++            envelope.CorrelationId,
++            envelope.CausationId,
++            envelope.Timestamp,
++            string.IsNullOrWhiteSpace(envelope.UserId) ? null : envelope.UserId);
++
++    private static partial class Log {
++        [LoggerMessage(
++            EventId = 1180,
++            Level = LogLevel.Warning,
++            Message = "Public stream read failed: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ReasonCode={ReasonCode}, Stage=StreamReadFailed")]
++        public static partial void StreamReadFailed(
++            ILogger logger,
++            Exception exception,
++            string tenantId,
++            string domain,
++            string aggregateId,
++            string reasonCode);
++    }
++}
+diff --git a/tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprProjectionCommandServiceTests.cs b/tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprProjectionCommandServiceTests.cs
+index 2a58204e..35a97fa3 100644
+--- a/tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprProjectionCommandServiceTests.cs
++++ b/tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprProjectionCommandServiceTests.cs
+@@ -119,4 +119,29 @@ public class DaprProjectionCommandServiceTests {
+         result.Success.ShouldBeFalse();
+         result.ErrorCode.ShouldBe("409");
+     }
++
++    [Fact]
++    public async Task PauseProjectionAsync_WithProblemDetails_PreservesReasonCode() {
++        (DaprProjectionCommandService service, TestHttpMessageHandler handler) = CreateService();
++        handler.SetupResponse(new HttpResponseMessage(HttpStatusCode.Conflict) {
++            Content = new StringContent(
++                """
++                {
++                  "type": "https://hexalith.io/problems/concurrency-conflict",
++                  "title": "Conflict",
++                  "status": 409,
++                  "detail": "Projection rebuild checkpoint update conflicted with another worker.",
++                  "reasonCode": "checkpoint-conflict"
++                }
++                """,
++                System.Text.Encoding.UTF8,
++                "application/problem+json"),
++        });
++
++        AdminOperationResult result = await service.PauseProjectionAsync("tenant1", "OrderSummary");
++
++        result.Success.ShouldBeFalse();
++        result.ErrorCode.ShouldBe("checkpoint-conflict");
++        result.Message.ShouldBe("Projection rebuild checkpoint update conflicted with another worker.");
++    }
+ }
+diff --git a/tests/Hexalith.EventStore.Client.Tests/Gateway/EventStoreGatewayClientStreamTests.cs b/tests/Hexalith.EventStore.Client.Tests/Gateway/EventStoreGatewayClientStreamTests.cs
+new file mode 100644
+index 00000000..78d8b2fc
+--- /dev/null
++++ b/tests/Hexalith.EventStore.Client.Tests/Gateway/EventStoreGatewayClientStreamTests.cs
+@@ -0,0 +1,90 @@
++using System.Net;
++using System.Text;
++
++using Hexalith.EventStore.Client.Gateway;
++using Hexalith.EventStore.Contracts.Streams;
++
++using Microsoft.Extensions.Options;
++
++using Shouldly;
++
++namespace Hexalith.EventStore.Client.Tests.Gateway;
++
++public class EventStoreGatewayClientStreamTests {
++    [Fact]
++    public async Task ReadStreamAsyncPostsPublicStreamReadRouteAndReturnsPage() {
++        HttpRequestMessage? observedRequest = null;
++        string? observedBody = null;
++        using HttpClient httpClient = CreateClient(async request => {
++            observedRequest = request;
++            observedBody = await request.Content!.ReadAsStringAsync().ConfigureAwait(false);
++            return Json(HttpStatusCode.OK, """
++                {
++                  "tenant": "tenant-a",
++                  "domain": "party",
++                  "aggregateId": "party-1",
++                  "events": [],
++                  "metadata": {
++                    "fromSequence": 0,
++                    "toSequence": null,
++                    "lastSequenceReturned": 0,
++                    "latestSequence": 0,
++                    "eventCount": 0,
++                    "isTruncated": false,
++                    "nextContinuationToken": null
++                  }
++                }
++                """);
++        });
++
++        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
++
++        StreamReadPage page = await client.ReadStreamAsync(new StreamReadRequest(
++            Tenant: "tenant-a",
++            Domain: "party",
++            AggregateId: "party-1",
++            FromSequence: 0,
++            PageSize: 25));
++
++        page.Metadata.EventCount.ShouldBe(0);
++        observedRequest.ShouldNotBeNull();
++        observedRequest.Method.ShouldBe(HttpMethod.Post);
++        observedRequest.RequestUri!.AbsolutePath.ShouldBe("/api/v1/streams/read");
++        observedBody.ShouldNotBeNull();
++        observedBody.ShouldContain("\"tenant\":\"tenant-a\"");
++        observedBody.ShouldContain("\"pageSize\":25");
++    }
++
++    [Fact]
++    public async Task ReadStreamAsyncWithProblemDetailsThrowsGatewayExceptionWithReasonCode() {
++        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.BadRequest, """
++            {
++              "type": "https://hexalith.io/problems/validation-error",
++              "title": "Bad Request",
++              "status": 400,
++              "detail": "Continuation token does not match the request.",
++              "reasonCode": "token-request-mismatch"
++            }
++            """, "application/problem+json")));
++        var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
++
++        EventStoreGatewayException ex = await Should.ThrowAsync<EventStoreGatewayException>(
++            () => client.ReadStreamAsync(new StreamReadRequest("tenant-a", "party", "party-1")));
++
++        ex.StatusCode.ShouldBe(400);
++        ex.ReasonCode.ShouldBe(StreamReplayReasonCodes.TokenRequestMismatch);
++    }
++
++    private static HttpClient CreateClient(Func<HttpRequestMessage, Task<HttpResponseMessage>> handler)
++        => new(new RecordingHandler((request, _) => handler(request))) { BaseAddress = new Uri("https://eventstore.local/") };
++
++    private static HttpResponseMessage Json(HttpStatusCode statusCode, string json, string contentType = "application/json")
++        => new(statusCode) {
++            Content = new StringContent(json, Encoding.UTF8, contentType),
++        };
++
++    private sealed class RecordingHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler) : HttpMessageHandler {
++        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
++            => handler(request, cancellationToken);
++    }
++}
+diff --git a/tests/Hexalith.EventStore.Contracts.Tests/Streams/StreamReadContractTests.cs b/tests/Hexalith.EventStore.Contracts.Tests/Streams/StreamReadContractTests.cs
+new file mode 100644
+index 00000000..64dbcf0d
+--- /dev/null
++++ b/tests/Hexalith.EventStore.Contracts.Tests/Streams/StreamReadContractTests.cs
+@@ -0,0 +1,90 @@
++using System.Text.Json;
++
++using Hexalith.EventStore.Contracts.Streams;
++
++namespace Hexalith.EventStore.Contracts.Tests.Streams;
++
++public class StreamReadContractTests {
++    [Fact]
++    public void StreamReadRequestJsonRoundTripUsesCamelCasePublicShape() {
++        JsonSerializerOptions options = new(JsonSerializerDefaults.Web);
++        var request = new StreamReadRequest(
++            Tenant: "tenant-a",
++            Domain: "party",
++            AggregateId: "party-1",
++            FromSequence: 10,
++            ToSequence: 20,
++            Checkpoint: new ProjectionRebuildCheckpoint(
++                Tenant: "tenant-a",
++                Domain: "party",
++                ProjectionName: "party-summary",
++                AggregateId: "party-1",
++                OperationId: "operation-1",
++                LastAppliedSequence: 9,
++                Status: ProjectionRebuildStatus.Running,
++                UpdatedAt: DateTimeOffset.Parse("2026-05-15T07:00:00Z"),
++                FailureReasonCode: null),
++            ContinuationToken: new ReplayContinuationToken("opaque-token"),
++            PageSize: 50,
++            ProjectionName: "party-summary");
++
++        string json = JsonSerializer.Serialize(request, options);
++        StreamReadRequest? roundTripped = JsonSerializer.Deserialize<StreamReadRequest>(json, options);
++
++        json.ShouldContain("\"tenant\":\"tenant-a\"");
++        json.ShouldContain("\"aggregateId\":\"party-1\"");
++        json.ShouldContain("\"fromSequence\":10");
++        json.ShouldContain("\"continuationToken\":{\"value\":\"opaque-token\"}");
++        roundTripped.ShouldNotBeNull();
++        roundTripped.Checkpoint.ShouldNotBeNull();
++        roundTripped.Checkpoint.Status.ShouldBe(ProjectionRebuildStatus.Running);
++        roundTripped.ContinuationToken.ShouldNotBeNull();
++        roundTripped.ContinuationToken.Value.ShouldBe("opaque-token");
++    }
++
++    [Fact]
++    public void StreamReadPageCarriesOrderedPageMetadataAndNoStateKeys() {
++        var page = new StreamReadPage(
++            Tenant: "tenant-a",
++            Domain: "party",
++            AggregateId: "party-1",
++            Events: [
++                new StreamReadEvent(
++                    SequenceNumber: 11,
++                    EventTypeName: "PartyRenamed",
++                    Payload: [1, 2, 3],
++                    SerializationFormat: "json",
++                    MetadataVersion: 1,
++                    MessageId: "01HZX",
++                    CorrelationId: "corr-1",
++                    CausationId: "cause-1",
++                    Timestamp: DateTimeOffset.Parse("2026-05-15T07:01:00Z"),
++                    UserId: "user-1"),
++            ],
++            Metadata: new StreamReadMetadata(
++                FromSequence: 10,
++                ToSequence: 20,
++                LastSequenceReturned: 11,
++                LatestSequence: 13,
++                EventCount: 1,
++                IsTruncated: true,
++                NextContinuationToken: new ReplayContinuationToken("next-token")));
++
++        page.Metadata.EventCount.ShouldBe(1);
++        page.Metadata.IsTruncated.ShouldBeTrue();
++        page.Metadata.NextContinuationToken.ShouldNotBeNull();
++        page.Events.Single().SequenceNumber.ShouldBe(11);
++    }
++
++    [Fact]
++    public void StreamReplayReasonCodesExposeStablePublicTaxonomy() {
++        StreamReplayReasonCodes.InvalidRange.ShouldBe("invalid-range");
++        StreamReplayReasonCodes.InvalidContinuation.ShouldBe("invalid-continuation");
++        StreamReplayReasonCodes.TokenRequestMismatch.ShouldBe("token-request-mismatch");
++        StreamReplayReasonCodes.CheckpointConflict.ShouldBe("checkpoint-conflict");
++        StreamReplayReasonCodes.CheckpointDrift.ShouldBe("checkpoint-drift");
++        StreamReplayReasonCodes.RebuildPaused.ShouldBe("rebuild-paused");
++        StreamReplayReasonCodes.DomainFailure.ShouldBe("domain-failure");
++        StreamReplayReasonCodes.PollerRebuildConflict.ShouldBe("poller-rebuild-conflict");
++    }
++}
+diff --git a/tests/Hexalith.EventStore.IntegrationTests/EventStore/CommandStatusIntegrationTests.cs b/tests/Hexalith.EventStore.IntegrationTests/EventStore/CommandStatusIntegrationTests.cs
+index 9edbb98f..4bb3e7aa 100644
+--- a/tests/Hexalith.EventStore.IntegrationTests/EventStore/CommandStatusIntegrationTests.cs
++++ b/tests/Hexalith.EventStore.IntegrationTests/EventStore/CommandStatusIntegrationTests.cs
+@@ -5,20 +5,20 @@ using System.Net.Http.Headers;
+ using System.Net.Http.Json;
+ using System.Text.Json;
+ 
+-using eventstore::Hexalith.EventStore.Models;
+-
+ using Hexalith.EventStore.Contracts.Commands;
+ using Hexalith.EventStore.IntegrationTests.Helpers;
+ using Hexalith.EventStore.Server.Commands;
+ 
+ using Shouldly;
+ 
++using CommandStatusResponse = eventstore::Hexalith.EventStore.Models.CommandStatusResponse;
++
+ namespace Hexalith.EventStore.IntegrationTests.EventStore;
+ 
+ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory factory)
+     : IClassFixture<JwtAuthenticatedWebApplicationFactory> {
+     [Fact]
+-    public async Task PostCommands_ThenGetStatus_Returns200WithReceivedStatus() {
++    public async Task PostCommands_ThenGetStatus_Returns200WithReceivedStatusAsync() {
+         // Arrange
+         HttpClient client = CreateAuthenticatedClient("test-tenant");
+ 
+@@ -51,7 +51,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
+     }
+ 
+     [Fact]
+-    public async Task GetStatus_NonExistentCorrelationId_Returns404ProblemDetails() {
++    public async Task GetStatus_NonExistentCorrelationId_Returns404ProblemDetailsAsync() {
+         // Arrange
+         HttpClient client = CreateAuthenticatedClient("test-tenant");
+         string nonExistentId = Guid.NewGuid().ToString();
+@@ -70,7 +70,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
+     }
+ 
+     [Fact]
+-    public async Task GetStatus_WrongTenant_Returns404ProblemDetails() {
++    public async Task GetStatus_WrongTenant_Returns404ProblemDetailsAsync() {
+         // Arrange - submit command as tenant-a
+         HttpClient tenantAClient = CreateAuthenticatedClient("tenant-a");
+         var request = new {
+@@ -97,7 +97,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
+     }
+ 
+     [Fact]
+-    public async Task GetStatus_NoAuthentication_Returns401() {
++    public async Task GetStatus_NoAuthentication_Returns401Async() {
+         // Arrange - no auth header
+         HttpClient client = factory.CreateClient();
+         string correlationId = Guid.NewGuid().ToString();
+@@ -111,7 +111,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
+     }
+ 
+     [Fact]
+-    public async Task GetStatus_ValidTenant_Returns200() {
++    public async Task GetStatus_ValidTenant_Returns200Async() {
+         // Arrange
+         string tenantId = "valid-tenant-200";
+         HttpClient client = CreateAuthenticatedClient(tenantId);
+@@ -137,7 +137,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
+     }
+ 
+     [Fact]
+-    public async Task GetStatus_NoTenantClaims_Returns403() {
++    public async Task GetStatus_NoTenantClaims_Returns403Async() {
+         // Arrange - JWT with NO tenant claims
+         string token = TestJwtTokenGenerator.GenerateToken(subject: "no-tenant-user");
+         HttpClient client = factory.CreateClient();
+@@ -158,7 +158,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
+     }
+ 
+     [Fact]
+-    public async Task PostCommands_StatusWriteIncludesAggregateId() {
++    public async Task PostCommands_StatusWriteIncludesAggregateIdAsync() {
+         // Arrange
+         HttpClient client = CreateAuthenticatedClient("test-tenant");
+         var request = new {
+@@ -185,7 +185,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
+     }
+ 
+     [Fact]
+-    public async Task GetStatus_ResponseIncludesCorrelationIdInProblemDetails() {
++    public async Task GetStatus_ResponseIncludesCorrelationIdInProblemDetailsAsync() {
+         // Arrange
+         HttpClient client = CreateAuthenticatedClient("test-tenant");
+         string correlationId = Guid.NewGuid().ToString();
+@@ -202,7 +202,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
+     }
+ 
+     [Fact]
+-    public async Task GetStatus_ExpiredCorrelationId_Returns404() {
++    public async Task GetStatus_ExpiredCorrelationId_Returns404Async() {
+         // Arrange - write status with very short TTL
+         string tenantId = "ttl-tenant";
+         HttpClient client = CreateAuthenticatedClient(tenantId);
+@@ -223,7 +223,7 @@ public class CommandStatusIntegrationTests(JwtAuthenticatedWebApplicationFactory
+     }
+ 
+     [Fact]
+-    public async Task PostCommands_StatusLocationHeader_MatchesGetEndpoint() {
++    public async Task PostCommands_StatusLocationHeader_MatchesGetEndpointAsync() {
+         // Arrange
+         HttpClient client = CreateAuthenticatedClient("test-tenant");
+         var request = new {
+diff --git a/tests/Hexalith.EventStore.IntegrationTests/EventStore/ReplayIntegrationTests.cs b/tests/Hexalith.EventStore.IntegrationTests/EventStore/ReplayIntegrationTests.cs
+index 9d9a1f09..7f7e0991 100644
+--- a/tests/Hexalith.EventStore.IntegrationTests/EventStore/ReplayIntegrationTests.cs
++++ b/tests/Hexalith.EventStore.IntegrationTests/EventStore/ReplayIntegrationTests.cs
+@@ -5,13 +5,14 @@ using System.Net.Http.Headers;
+ using System.Net.Http.Json;
+ using System.Text.Json;
+ 
+-using eventstore::Hexalith.EventStore.Models;
+-
+ using Hexalith.EventStore.Contracts.Commands;
+ using Hexalith.EventStore.IntegrationTests.Helpers;
+ 
+ using Shouldly;
+ 
++using CommandStatusResponse = eventstore::Hexalith.EventStore.Models.CommandStatusResponse;
++using ReplayCommandResponse = eventstore::Hexalith.EventStore.Models.ReplayCommandResponse;
++
+ namespace Hexalith.EventStore.IntegrationTests.EventStore;
+ 
+ public class ReplayIntegrationTests(JwtAuthenticatedWebApplicationFactory factory)
+diff --git a/tests/Hexalith.EventStore.Server.Tests/Controllers/AdminProjectionRebuildControllerTests.cs b/tests/Hexalith.EventStore.Server.Tests/Controllers/AdminProjectionRebuildControllerTests.cs
+new file mode 100644
+index 00000000..65fd8ac2
+--- /dev/null
++++ b/tests/Hexalith.EventStore.Server.Tests/Controllers/AdminProjectionRebuildControllerTests.cs
+@@ -0,0 +1,128 @@
++using Hexalith.EventStore.Admin.Abstractions.Models.Common;
++using Hexalith.EventStore.Contracts.Streams;
++using Hexalith.EventStore.Controllers;
++using Hexalith.EventStore.Server.Projections;
++
++using Microsoft.AspNetCore.Http;
++using Microsoft.AspNetCore.Mvc;
++using Microsoft.Extensions.Logging.Abstractions;
++
++using NSubstitute;
++
++using Shouldly;
++
++namespace Hexalith.EventStore.Server.Tests.Controllers;
++
++public class AdminProjectionRebuildControllerTests {
++    private const string Tenant = "tenant-a";
++    private const string Projection = "party-summary";
++
++    [Fact]
++    public async Task ReplayProjectionStartsRunningOperationAndReturnsAcceptedResult() {
++        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
++        _ = store.SaveAsync(
++                Arg.Any<ProjectionRebuildCheckpointScope>(),
++                10,
++                ProjectionRebuildStatus.Running,
++                null,
++                Arg.Any<CancellationToken>())
++            .Returns(ProjectionRebuildCheckpointSaveResult.Success(CreateCheckpoint(10, ProjectionRebuildStatus.Running)));
++        var controller = CreateController(store);
++
++        IActionResult result = await controller.ReplayProjection(
++            Tenant,
++            Projection,
++            new ProjectionReplayRequest(10, 20));
++
++        AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
++        accepted.StatusCode.ShouldBe(StatusCodes.Status202Accepted);
++        AdminOperationResult operation = accepted.Value.ShouldBeOfType<AdminOperationResult>();
++        operation.Success.ShouldBeTrue();
++        operation.OperationId.ShouldBe("party-summary-rebuild");
++        _ = await store.Received(1).SaveAsync(
++            Arg.Is<ProjectionRebuildCheckpointScope>(scope =>
++                scope.Tenant == Tenant
++                && scope.Domain == Projection
++                && scope.ProjectionName == Projection
++                && scope.OperationId == "party-summary-rebuild"),
++            10,
++            ProjectionRebuildStatus.Running,
++            null,
++            Arg.Any<CancellationToken>());
++    }
++
++    [Fact]
++    public async Task PauseProjectionIsIdempotentAndReturnsOkResult() {
++        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
++        _ = store.SaveAsync(
++                Arg.Any<ProjectionRebuildCheckpointScope>(),
++                0,
++                ProjectionRebuildStatus.Paused,
++                StreamReplayReasonCodes.RebuildPaused,
++                Arg.Any<CancellationToken>())
++            .Returns(ProjectionRebuildCheckpointSaveResult.Success(CreateCheckpoint(0, ProjectionRebuildStatus.Paused)));
++        var controller = CreateController(store);
++
++        IActionResult result = await controller.PauseProjection(Tenant, Projection);
++
++        OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
++        AdminOperationResult operation = ok.Value.ShouldBeOfType<AdminOperationResult>();
++        operation.Success.ShouldBeTrue();
++        operation.ErrorCode.ShouldBeNull();
++    }
++
++    [Fact]
++    public async Task ReplayProjectionCheckpointConflictReturnsProblemWithReasonCode() {
++        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
++        _ = store.SaveAsync(
++                Arg.Any<ProjectionRebuildCheckpointScope>(),
++                Arg.Any<long>(),
++                Arg.Any<ProjectionRebuildStatus>(),
++                Arg.Any<string?>(),
++                Arg.Any<CancellationToken>())
++            .Returns(ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointConflict));
++        var controller = CreateController(store);
++
++        IActionResult result = await controller.ReplayProjection(
++            Tenant,
++            Projection,
++            new ProjectionReplayRequest(10, 20));
++
++        ObjectResult problemResult = result.ShouldBeOfType<ObjectResult>();
++        problemResult.StatusCode.ShouldBe(StatusCodes.Status409Conflict);
++        ProblemDetails problem = problemResult.Value.ShouldBeOfType<ProblemDetails>();
++        problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.CheckpointConflict);
++    }
++
++    [Fact]
++    public async Task GetRebuildStatusWithoutCheckpointReturnsNotStartedOperation() {
++        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
++        var controller = CreateController(store);
++
++        IActionResult result = await controller.GetRebuildStatus(Tenant, Projection);
++
++        OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
++        ProjectionRebuildOperation operation = ok.Value.ShouldBeOfType<ProjectionRebuildOperation>();
++        operation.Status.ShouldBe(ProjectionRebuildStatus.NotStarted);
++        operation.OperationId.ShouldBe("party-summary-rebuild");
++    }
++
++    private static AdminProjectionRebuildController CreateController(IProjectionRebuildCheckpointStore store)
++        => new(store, NullLogger<AdminProjectionRebuildController>.Instance) {
++            ControllerContext = new ControllerContext {
++                HttpContext = new DefaultHttpContext(),
++            },
++        };
++
++    private static ProjectionRebuildCheckpoint CreateCheckpoint(long sequence, ProjectionRebuildStatus status)
++        => new(
++            Tenant,
++            Projection,
++            Projection,
++            null,
++            "party-summary-rebuild",
++            sequence,
++            status,
++            DateTimeOffset.UtcNow,
++            status == ProjectionRebuildStatus.Paused ? StreamReplayReasonCodes.RebuildPaused : null);
++}
+diff --git a/tests/Hexalith.EventStore.Server.Tests/Controllers/StreamsControllerTests.cs b/tests/Hexalith.EventStore.Server.Tests/Controllers/StreamsControllerTests.cs
+new file mode 100644
+index 00000000..378c5bac
+--- /dev/null
++++ b/tests/Hexalith.EventStore.Server.Tests/Controllers/StreamsControllerTests.cs
+@@ -0,0 +1,192 @@
++using System.Security.Claims;
++
++using Dapr.Actors;
++using Dapr.Actors.Client;
++
++using Hexalith.EventStore.Authorization;
++using Hexalith.EventStore.Contracts.Streams;
++using Hexalith.EventStore.Controllers;
++using Hexalith.EventStore.Server.Actors;
++using Hexalith.EventStore.Server.Events;
++using Hexalith.EventStore.Server.Tests.Fakes;
++
++using Microsoft.AspNetCore.Http;
++using Microsoft.AspNetCore.Mvc;
++using Microsoft.Extensions.Logging.Abstractions;
++
++using NSubstitute;
++using NSubstitute.ExceptionExtensions;
++
++using Shouldly;
++
++using ServerEventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
++
++namespace Hexalith.EventStore.Server.Tests.Controllers;
++
++public class StreamsControllerTests {
++    private const string Tenant = "tenant-a";
++    private const string Domain = "party";
++    private const string AggregateId = "party-1";
++
++    [Fact]
++    public async Task ReadStreamAsyncWithInvalidRangeRejectsBeforeActorProxy() {
++        (StreamsController controller, IActorProxyFactory actorProxyFactory, _, _) = CreateController();
++
++        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(
++            Tenant,
++            Domain,
++            AggregateId,
++            FromSequence: 10,
++            ToSequence: 5));
++
++        ProblemDetails problem = AssertProblem(result, StatusCodes.Status400BadRequest);
++        problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.InvalidRange);
++        actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
++    }
++
++    [Fact]
++    public async Task ReadStreamAsyncWithContinuationRejectsBeforeActorProxyUntilTokenSupportExists() {
++        (StreamsController controller, IActorProxyFactory actorProxyFactory, _, _) = CreateController();
++
++        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(
++            Tenant,
++            Domain,
++            AggregateId,
++            ContinuationToken: new ReplayContinuationToken("opaque")));
++
++        ProblemDetails problem = AssertProblem(result, StatusCodes.Status400BadRequest);
++        problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.InvalidContinuation);
++        actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
++    }
++
++    [Fact]
++    public async Task ReadStreamAsyncWithDeniedTenantRejectsBeforeRbacAndActorProxy() {
++        (StreamsController controller, IActorProxyFactory actorProxyFactory, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator) = CreateController();
++        tenantValidator.ConfiguredResult = TenantValidationResult.Denied("No tenant access.");
++
++        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(Tenant, Domain, AggregateId));
++
++        ProblemDetails problem = AssertProblem(result, StatusCodes.Status403Forbidden);
++        problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.UnauthorizedTenant);
++        rbacValidator.ReceivedRequests.ShouldBeEmpty();
++        actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
++    }
++
++    [Fact]
++    public async Task ReadStreamAsyncWithDeniedReplayScopeRejectsBeforeActorProxy() {
++        (StreamsController controller, IActorProxyFactory actorProxyFactory, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator) = CreateController();
++        tenantValidator.ConfiguredResult = TenantValidationResult.Allowed;
++        rbacValidator.ConfiguredResult = RbacValidationResult.Denied("Missing replay permission.");
++
++        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(Tenant, Domain, AggregateId));
++
++        ProblemDetails problem = AssertProblem(result, StatusCodes.Status403Forbidden);
++        problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.ForbiddenReplayScope);
++        actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
++    }
++
++    [Fact]
++    public async Task ReadStreamAsyncReturnsOrderedBoundedAggregatePage() {
++        IAggregateActor actor = Substitute.For<IAggregateActor>();
++        _ = actor.GetEventsAsync(1).Returns([
++            BuildEnvelope(2),
++            BuildEnvelope(3),
++            BuildEnvelope(4),
++        ]);
++        (StreamsController controller, _, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator) = CreateController(actor);
++        tenantValidator.ConfiguredResult = TenantValidationResult.Allowed;
++        rbacValidator.ConfiguredResult = RbacValidationResult.Allowed;
++
++        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(
++            Tenant,
++            Domain,
++            AggregateId,
++            FromSequence: 1,
++            PageSize: 2));
++
++        OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
++        StreamReadPage page = ok.Value.ShouldBeOfType<StreamReadPage>();
++        page.Events.Select(e => e.SequenceNumber).ShouldBe([2, 3]);
++        page.Metadata.LastSequenceReturned.ShouldBe(3);
++        page.Metadata.LatestSequence.ShouldBe(4);
++        page.Metadata.IsTruncated.ShouldBeTrue();
++        page.Metadata.NextContinuationToken.ShouldNotBeNull();
++        page.Metadata.NextContinuationToken.Value.ShouldNotContain($"{Tenant}:{Domain}:{AggregateId}");
++        page.Metadata.NextContinuationToken.Value.ShouldNotContain(":events:");
++        _ = await actor.Received(1).GetEventsAsync(1);
++    }
++
++    [Fact]
++    public async Task ReadStreamAsyncMapsMissingEventToSafeProblem() {
++        IAggregateActor actor = Substitute.For<IAggregateActor>();
++        _ = actor.GetEventsAsync(Arg.Any<long>()).ThrowsAsync(new MissingEventException(2, Tenant, Domain, AggregateId));
++        (StreamsController controller, _, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator) = CreateController(actor);
++        tenantValidator.ConfiguredResult = TenantValidationResult.Allowed;
++        rbacValidator.ConfiguredResult = RbacValidationResult.Allowed;
++
++        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(Tenant, Domain, AggregateId));
++
++        ProblemDetails problem = AssertProblem(result, StatusCodes.Status404NotFound);
++        problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.MissingEvent);
++        problem.Detail.ShouldNotBeNull();
++        problem.Detail.ShouldNotContain("state store");
++    }
++
++    private static (StreamsController Controller, IActorProxyFactory ActorProxyFactory, FakeTenantValidator TenantValidator, FakeRbacValidator RbacValidator) CreateController(
++        IAggregateActor? actor = null) {
++        IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
++        if (actor is not null) {
++            _ = actorProxyFactory
++                .CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor", Arg.Any<ActorProxyOptions?>())
++                .Returns(actor);
++        }
++
++        var tenantValidator = new FakeTenantValidator {
++            ConfiguredResult = TenantValidationResult.Allowed,
++        };
++        var rbacValidator = new FakeRbacValidator {
++            ConfiguredResult = RbacValidationResult.Allowed,
++        };
++        var controller = new StreamsController(
++            actorProxyFactory,
++            tenantValidator,
++            rbacValidator,
++            NullLogger<StreamsController>.Instance) {
++            ControllerContext = new ControllerContext {
++                HttpContext = new DefaultHttpContext {
++                    User = new ClaimsPrincipal(new ClaimsIdentity([
++                        new Claim("sub", "user-1"),
++                    ], "test")),
++                },
++            },
++        };
++
++        return (controller, actorProxyFactory, tenantValidator, rbacValidator);
++    }
++
++    private static ProblemDetails AssertProblem(IActionResult result, int statusCode) {
++        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
++        objectResult.StatusCode.ShouldBe(statusCode);
++        return objectResult.Value.ShouldBeOfType<ProblemDetails>();
++    }
++
++    private static ServerEventEnvelope BuildEnvelope(long seq)
++        => new(
++            MessageId: $"msg-{seq}",
++            AggregateId: AggregateId,
++            AggregateType: "Party",
++            TenantId: Tenant,
++            Domain: Domain,
++            SequenceNumber: seq,
++            GlobalPosition: seq,
++            Timestamp: DateTimeOffset.UnixEpoch.AddSeconds(seq),
++            CorrelationId: $"corr-{seq}",
++            CausationId: $"cause-{seq}",
++            UserId: "user-1",
++            DomainServiceVersion: "v1",
++            EventTypeName: "PartyRenamed",
++            MetadataVersion: 1,
++            SerializationFormat: "json",
++            Payload: [],
++            Extensions: null);
++}
+diff --git a/tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionRebuildCheckpointStoreTests.cs b/tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionRebuildCheckpointStoreTests.cs
+new file mode 100644
+index 00000000..a924f076
+--- /dev/null
++++ b/tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionRebuildCheckpointStoreTests.cs
+@@ -0,0 +1,196 @@
++using Dapr.Client;
++
++using Hexalith.EventStore.Contracts.Streams;
++using Hexalith.EventStore.Server.Configuration;
++using Hexalith.EventStore.Server.Projections;
++
++using Microsoft.Extensions.Logging.Abstractions;
++using Microsoft.Extensions.Options;
++
++using NSubstitute;
++
++using Shouldly;
++
++namespace Hexalith.EventStore.Server.Tests.Projections;
++
++public class ProjectionRebuildCheckpointStoreTests {
++    private static readonly ProjectionRebuildCheckpointScope Scope = new(
++        "tenant-a",
++        "party",
++        "party-summary",
++        "party-1",
++        "operation-1");
++
++    [Fact]
++    public async Task SaveAsyncMissingCheckpointWritesInitialProgressWithEtag() {
++        DaprClient daprClient = Substitute.For<DaprClient>();
++        SetupGetStateAndEtag(daprClient, null, string.Empty);
++        SetupTrySave(daprClient, true);
++        var store = CreateStore(daprClient);
++
++        ProjectionRebuildCheckpointSaveResult result = await store.SaveAsync(
++            Scope,
++            lastAppliedSequence: 10,
++            ProjectionRebuildStatus.Running);
++
++        result.Succeeded.ShouldBeTrue();
++        result.Checkpoint.ShouldNotBeNull();
++        result.Checkpoint.LastAppliedSequence.ShouldBe(10);
++        _ = await daprClient.Received(1).TrySaveStateAsync(
++            "statestore",
++            ProjectionRebuildCheckpointStore.GetStateKey(Scope),
++            Arg.Is<ProjectionRebuildCheckpoint>(checkpoint =>
++                checkpoint.Tenant == Scope.Tenant
++                && checkpoint.Domain == Scope.Domain
++                && checkpoint.ProjectionName == Scope.ProjectionName
++                && checkpoint.LastAppliedSequence == 10
++                && checkpoint.Status == ProjectionRebuildStatus.Running),
++            string.Empty,
++            stateOptions: Arg.Any<StateOptions?>(),
++            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
++            cancellationToken: Arg.Any<CancellationToken>());
++    }
++
++    [Fact]
++    public async Task SaveAsyncExistingHigherCheckpointDoesNotRegressOrWrite() {
++        DaprClient daprClient = Substitute.For<DaprClient>();
++        ProjectionRebuildCheckpoint existing = CreateCheckpoint(25, ProjectionRebuildStatus.Running);
++        SetupGetStateAndEtag(daprClient, existing, "etag-1");
++        var store = CreateStore(daprClient);
++
++        ProjectionRebuildCheckpointSaveResult result = await store.SaveAsync(
++            Scope,
++            lastAppliedSequence: 10,
++            ProjectionRebuildStatus.Running);
++
++        result.Succeeded.ShouldBeTrue();
++        result.Checkpoint.ShouldBe(existing);
++        _ = await daprClient.DidNotReceiveWithAnyArgs().TrySaveStateAsync<ProjectionRebuildCheckpoint>(
++            default!,
++            default!,
++            default!,
++            default!,
++            stateOptions: default,
++            metadata: default,
++            cancellationToken: default);
++    }
++
++    [Fact]
++    public async Task SaveAsyncDuplicatePageIsIdempotent() {
++        DaprClient daprClient = Substitute.For<DaprClient>();
++        ProjectionRebuildCheckpoint existing = CreateCheckpoint(10, ProjectionRebuildStatus.Running);
++        SetupGetStateAndEtag(daprClient, existing, "etag-1");
++        var store = CreateStore(daprClient);
++
++        ProjectionRebuildCheckpointSaveResult result = await store.SaveAsync(
++            Scope,
++            lastAppliedSequence: 10,
++            ProjectionRebuildStatus.Running);
++
++        result.Succeeded.ShouldBeTrue();
++        result.Checkpoint.ShouldBe(existing);
++        _ = await daprClient.DidNotReceiveWithAnyArgs().TrySaveStateAsync<ProjectionRebuildCheckpoint>(
++            default!,
++            default!,
++            default!,
++            default!,
++            stateOptions: default,
++            metadata: default,
++            cancellationToken: default);
++    }
++
++    [Fact]
++    public async Task SaveAsyncRetriesEtagConflictsAndReturnsCheckpointConflictWhenExhausted() {
++        DaprClient daprClient = Substitute.For<DaprClient>();
++        SetupGetStateAndEtag(daprClient, null, "etag-1");
++        SetupTrySave(daprClient, false);
++        var store = CreateStore(daprClient);
++
++        ProjectionRebuildCheckpointSaveResult result = await store.SaveAsync(
++            Scope,
++            lastAppliedSequence: 11,
++            ProjectionRebuildStatus.Running);
++
++        result.Succeeded.ShouldBeFalse();
++        result.ReasonCode.ShouldBe(StreamReplayReasonCodes.CheckpointConflict);
++        _ = await daprClient.Received(3).TrySaveStateAsync(
++            "statestore",
++            ProjectionRebuildCheckpointStore.GetStateKey(Scope),
++            Arg.Any<ProjectionRebuildCheckpoint>(),
++            Arg.Any<string>(),
++            stateOptions: Arg.Any<StateOptions?>(),
++            metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
++            cancellationToken: Arg.Any<CancellationToken>());
++    }
++
++    [Fact]
++    public async Task SaveAsyncStorageUnavailableReturnsStableReasonWithoutBlindSave() {
++        DaprClient daprClient = Substitute.For<DaprClient>();
++        _ = daprClient.GetStateAndETagAsync<ProjectionRebuildCheckpoint>(
++                "statestore",
++                ProjectionRebuildCheckpointStore.GetStateKey(Scope),
++                consistencyMode: Arg.Any<ConsistencyMode?>(),
++                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
++                cancellationToken: Arg.Any<CancellationToken>())
++            .Returns(Task.FromException<(ProjectionRebuildCheckpoint, string)>(new InvalidOperationException("state down")));
++        var store = CreateStore(daprClient);
++
++        ProjectionRebuildCheckpointSaveResult result = await store.SaveAsync(
++            Scope,
++            lastAppliedSequence: 11,
++            ProjectionRebuildStatus.Failed,
++            StreamReplayReasonCodes.ProjectionApplyRejected);
++
++        result.Succeeded.ShouldBeFalse();
++        result.ReasonCode.ShouldBe(StreamReplayReasonCodes.CheckpointUnavailable);
++        _ = await daprClient.DidNotReceiveWithAnyArgs().TrySaveStateAsync<ProjectionRebuildCheckpoint>(
++            default!,
++            default!,
++            default!,
++            default!,
++            stateOptions: default,
++            metadata: default,
++            cancellationToken: default);
++    }
++
++    private static ProjectionRebuildCheckpointStore CreateStore(DaprClient daprClient)
++        => new(
++            daprClient,
++            Options.Create(new ProjectionOptions { CheckpointStateStoreName = "statestore" }),
++            NullLogger<ProjectionRebuildCheckpointStore>.Instance);
++
++    private static ProjectionRebuildCheckpoint CreateCheckpoint(long lastAppliedSequence, ProjectionRebuildStatus status)
++        => new(
++            Scope.Tenant,
++            Scope.Domain,
++            Scope.ProjectionName,
++            Scope.AggregateId,
++            Scope.OperationId,
++            lastAppliedSequence,
++            status,
++            DateTimeOffset.UtcNow,
++            null);
++
++    private static void SetupGetStateAndEtag(
++        DaprClient daprClient,
++        ProjectionRebuildCheckpoint? value,
++        string etag)
++        => _ = daprClient.GetStateAndETagAsync<ProjectionRebuildCheckpoint>(
++                "statestore",
++                ProjectionRebuildCheckpointStore.GetStateKey(Scope),
++                consistencyMode: Arg.Any<ConsistencyMode?>(),
++                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
++                cancellationToken: Arg.Any<CancellationToken>())
++            .Returns(((ProjectionRebuildCheckpoint, string))(value!, etag));
++
++    private static void SetupTrySave(DaprClient daprClient, bool result)
++        => _ = daprClient.TrySaveStateAsync(
++                "statestore",
++                ProjectionRebuildCheckpointStore.GetStateKey(Scope),
++                Arg.Any<ProjectionRebuildCheckpoint>(),
++                Arg.Any<string>(),
++                stateOptions: Arg.Any<StateOptions?>(),
++                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
++                cancellationToken: Arg.Any<CancellationToken>())
++            .Returns(result);
++}
+diff --git a/tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs b/tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs
+index bbd954a4..fd5fc9c9 100644
+--- a/tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs
++++ b/tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs
+@@ -9,6 +9,7 @@ using Dapr.Client;
+ 
+ using Hexalith.EventStore.Contracts.Identity;
+ using Hexalith.EventStore.Contracts.Projections;
++using Hexalith.EventStore.Contracts.Streams;
+ using Hexalith.EventStore.Server.Actors;
+ using Hexalith.EventStore.Server.Configuration;
+ using Hexalith.EventStore.Server.DomainServices;
+@@ -61,7 +62,8 @@ public class ProjectionUpdateOrchestratorTests {
+         IProjectionCheckpointTracker? checkpointTracker = null,
+         DaprClient? daprClient = null,
+         IHttpClientFactory? httpClientFactory = null,
+-        ILogger<ProjectionUpdateOrchestrator>? logger = null) {
++        ILogger<ProjectionUpdateOrchestrator>? logger = null,
++        IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null) {
+         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
+         daprClient ??= Substitute.For<DaprClient>();
+         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
+@@ -71,7 +73,7 @@ public class ProjectionUpdateOrchestratorTests {
+                 .Returns(0);
+         }
+         IOptions<ProjectionOptions> projectionOptions = Options.Create(new ProjectionOptions());
+-        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, httpClientFactory ?? Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, logger ?? NullLogger<ProjectionUpdateOrchestrator>.Instance);
++        var sut = new ProjectionUpdateOrchestrator(actorProxyFactory, daprClient, httpClientFactory ?? Substitute.For<IHttpClientFactory>(), resolver, checkpointTracker, projectionOptions, logger ?? NullLogger<ProjectionUpdateOrchestrator>.Instance, rebuildCheckpointStore);
+         return (sut, actorProxyFactory, daprClient, resolver, checkpointTracker);
+     }
+ 
+@@ -88,6 +90,36 @@ public class ProjectionUpdateOrchestratorTests {
+ 
+     // --- Test 1: AC 3 - No domain service registered ---
+ 
++    [Fact]
++    public async Task DeliverProjectionAsync_WithActiveOperatorRebuild_SkipsNormalDeliveryBeforeActorProxy() {
++        IProjectionRebuildCheckpointStore rebuildCheckpointStore = Substitute.For<IProjectionRebuildCheckpointStore>();
++        _ = rebuildCheckpointStore.ReadAsync(
++                Arg.Any<ProjectionRebuildCheckpointScope>(),
++                Arg.Any<CancellationToken>())
++            .Returns(new ProjectionRebuildCheckpoint(
++                TestIdentity.TenantId,
++                TestIdentity.Domain,
++                TestIdentity.Domain,
++                null,
++                $"{TestIdentity.Domain}-rebuild",
++                5,
++                ProjectionRebuildStatus.Running,
++                DateTimeOffset.UtcNow,
++                null));
++        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(rebuildCheckpointStore: rebuildCheckpointStore);
++
++        await sut.DeliverProjectionAsync(TestIdentity);
++
++        _ = await rebuildCheckpointStore.Received(1).ReadAsync(
++            Arg.Is<ProjectionRebuildCheckpointScope>(scope =>
++                scope.Tenant == TestIdentity.TenantId
++                && scope.Domain == TestIdentity.Domain
++                && scope.ProjectionName == TestIdentity.Domain),
++            Arg.Any<CancellationToken>());
++        _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!);
++        _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
++    }
++
+     [Fact]
+     public async Task UpdateProjectionAsync_NoDomainServiceRegistered_ReturnsWithoutError() {
+         // Arrange
+diff --git a/tests/Hexalith.EventStore.Testing.Tests/Fakes/FakeEventStoreGatewayClientTests.cs b/tests/Hexalith.EventStore.Testing.Tests/Fakes/FakeEventStoreGatewayClientTests.cs
+index 4811e336..54873f44 100644
+--- a/tests/Hexalith.EventStore.Testing.Tests/Fakes/FakeEventStoreGatewayClientTests.cs
++++ b/tests/Hexalith.EventStore.Testing.Tests/Fakes/FakeEventStoreGatewayClientTests.cs
+@@ -3,6 +3,7 @@ using System.Text.Json;
+ using Hexalith.EventStore.Client.Gateway;
+ using Hexalith.EventStore.Contracts.Commands;
+ using Hexalith.EventStore.Contracts.Queries;
++using Hexalith.EventStore.Contracts.Streams;
+ using Hexalith.EventStore.Testing.Builders;
+ using Hexalith.EventStore.Testing.Fakes;
+ 
+@@ -148,6 +149,77 @@ public class FakeEventStoreGatewayClientTests {
+         response.Metadata.IsNotModified.ShouldBe(true);
+     }
+ 
++    [Fact]
++    public async Task ReadStreamAsyncRecordsRequestAndReturnsConfiguredPage() {
++        var page = new StreamReadPage(
++            Tenant: "tenant-a",
++            Domain: "party",
++            AggregateId: "party-1",
++            Events: [],
++            Metadata: new StreamReadMetadata(0, null, 0, 0, 0, false, null));
++        var fake = new FakeEventStoreGatewayClient()
++            .ConfigureStreamReadSuccess(page);
++        var request = new StreamReadRequest("tenant-a", "party", "party-1", PageSize: 25);
++
++        StreamReadPage response = await fake.ReadStreamAsync(request);
++
++        response.ShouldBe(page);
++        fake.SubmittedStreamReads.Single().ShouldBe(request);
++    }
++
++    [Fact]
++    public async Task ConfigureStreamReadFailureThrowsConfiguredGatewayException() {
++        EventStoreGatewayException exception = EventStoreGatewayExceptionBuilder
++            .Conflict("corr-conflict", "tenant-a")
++            .WithReasonCode(StreamReplayReasonCodes.CheckpointConflict)
++            .Build();
++        var fake = new FakeEventStoreGatewayClient()
++            .ConfigureStreamReadFailure(exception);
++
++        EventStoreGatewayException thrown = await Should.ThrowAsync<EventStoreGatewayException>(
++            () => fake.ReadStreamAsync(new StreamReadRequest("tenant-a", "party", "party-1")));
++
++        thrown.ReasonCode.ShouldBe(StreamReplayReasonCodes.CheckpointConflict);
++    }
++
++    [Fact]
++    public void StreamReadPageBuilderBuildsContinuationPage() {
++        StreamReadPage page = StreamReadPageBuilder
++            .Create()
++            .ForStream("tenant-a", "party", "party-1")
++            .WithRange(10, 20)
++            .AddEvent(11, "PartyRenamed", [1])
++            .WithNextContinuation("next-token")
++            .Build();
++
++        page.Events.Single().SequenceNumber.ShouldBe(11);
++        page.Metadata.IsTruncated.ShouldBeTrue();
++        page.Metadata.NextContinuationToken.ShouldNotBeNull();
++        page.Metadata.NextContinuationToken.Value.ShouldBe("next-token");
++    }
++
++    [Theory]
++    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadInvalidRange), StreamReplayReasonCodes.InvalidRange, 400)]
++    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadInvalidContinuation), StreamReplayReasonCodes.InvalidContinuation, 400)]
++    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadUnauthorizedTenant), StreamReplayReasonCodes.UnauthorizedTenant, 403)]
++    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadMissingStream), StreamReplayReasonCodes.MissingStream, 404)]
++    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadCheckpointConflict), StreamReplayReasonCodes.CheckpointConflict, 409)]
++    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadPausedRebuild), StreamReplayReasonCodes.RebuildPaused, 409)]
++    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadCanceledRebuild), StreamReplayReasonCodes.RebuildCanceled, 409)]
++    [InlineData(nameof(FakeEventStoreGatewayClient.ConfigureStreamReadUnavailable), StreamReplayReasonCodes.ServiceUnavailable, 503)]
++    public async Task StreamReadFailureHelpersExposeStableReasonCodes(string methodName, string reasonCode, int statusCode) {
++        var fake = new FakeEventStoreGatewayClient();
++        _ = typeof(FakeEventStoreGatewayClient)
++            .GetMethod(methodName, [typeof(string)])!
++            .Invoke(fake, ["tenant-a"]);
++
++        EventStoreGatewayException thrown = await Should.ThrowAsync<EventStoreGatewayException>(
++            () => fake.ReadStreamAsync(new StreamReadRequest("tenant-a", "party", "party-1")));
++
++        thrown.StatusCode.ShouldBe(statusCode);
++        thrown.ReasonCode.ShouldBe(reasonCode);
++    }
++
+     [Fact]
+     public async Task SubmitCommandAsync_WithCanceledToken_DoesNotRecordRequest() {
+         using var cancellationSource = new CancellationTokenSource();

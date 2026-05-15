@@ -2,6 +2,10 @@
 
 <!-- markdownlint-disable MD038 -->
 
+## Deferred from: code review of 22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints (2026-05-15)
+
+- **[OPEN] Unrelated integration test renames in Story 22.6 commit `8348b93e`** - owner: dev; next-review-date: 2026-06-15; grouping: 22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints; rationale: `Async` suffix additions and `using` cleanups on `CommandStatusIntegrationTests.cs` and `ReplayIntegrationTests.cs` belong to Stories 22.1/22.4 surfaces, not 22.6; flagged as scope creep but not worth reverting now; evidence: tests/Hexalith.EventStore.IntegrationTests/EventStore/CommandStatusIntegrationTests.cs and tests/Hexalith.EventStore.IntegrationTests/EventStore/ReplayIntegrationTests.cs.
+
 ## Deferred from: code review of 22-5-event-publishing-guarantees-and-backend-deployment-matrix (2026-05-14)
 
 - **[OPEN] pending_command_count semantics not attested in story 22.5 tests** - owner: dev; next-review-date: 2026-06-15; grouping: 22-5-event-publishing-guarantees-and-backend-deployment-matrix; rationale: Pre-existing coverage in BackpressureTests/Dw1DrainHardeningAtddTests; story didn't change backpressure behavior; evidence: tests/Hexalith.EventStore.Server.Tests/Actors/BackpressureTests.cs.

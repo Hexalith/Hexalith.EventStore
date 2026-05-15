@@ -11,8 +11,8 @@ using Hexalith.EventStore.Server.Events;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-using ServerEventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 using GatewayTenantValidator = Hexalith.EventStore.Authorization.ITenantValidator;
+using ServerEventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 
 namespace Hexalith.EventStore.Controllers;
 
@@ -30,9 +30,9 @@ public sealed partial class StreamsController(
     GatewayTenantValidator tenantValidator,
     IRbacValidator rbacValidator,
     ILogger<StreamsController> logger) : ControllerBase {
-    private const int MaxPageSize = 1_000;
-    private const string StreamReadMessageType = "StreamRead";
-    private const string StreamReadMessageCategory = "replay";
+    private const int _maxPageSize = 1_000;
+    private const string _streamReadMessageCategory = "replay";
+    private const string _streamReadMessageType = "StreamRead";
 
     /// <summary>
     /// Reads a public EventStore stream page for downstream replay/rebuild use.
@@ -77,8 +77,8 @@ public sealed partial class StreamsController(
                 User,
                 request.Tenant,
                 request.Domain,
-                StreamReadMessageType,
-                StreamReadMessageCategory,
+                _streamReadMessageType,
+                _streamReadMessageCategory,
                 cancellationToken,
                 request.AggregateId)
             .ConfigureAwait(false);
@@ -115,6 +115,10 @@ public sealed partial class StreamsController(
                 : pageEvents[^1].SequenceNumber;
             bool truncated = orderedEvents.Count > pageEvents.Count;
 
+            // P-D3: Continuation tokens are not yet implemented (token request-binding deferred).
+            // The validator at ValidateRequest line ~211 unconditionally rejects non-null tokens.
+            // Emitting a random token would break paging, so we always return null and require
+            // callers to paginate by setting FromSequence = lastSequenceReturned + 1.
             return Ok(new StreamReadPage(
                 identity.TenantId,
                 identity.Domain,
@@ -127,7 +131,7 @@ public sealed partial class StreamsController(
                     latestSequence,
                     pageEvents.Count,
                     truncated,
-                    truncated ? CreateContinuationToken() : null)));
+                    NextContinuationToken: null)));
         }
         catch (OperationCanceledException) {
             throw;
@@ -169,6 +173,39 @@ public sealed partial class StreamsController(
         }
     }
 
+    private static int NormalizePageSize(int pageSize) => Math.Clamp(pageSize, 1, _maxPageSize);
+
+    private static StreamReadEvent ToStreamReadEvent(ServerEventEnvelope envelope)
+        => new(
+            envelope.SequenceNumber,
+            envelope.EventTypeName,
+            envelope.Payload,
+            envelope.SerializationFormat,
+            envelope.MetadataVersion,
+            envelope.MessageId,
+            envelope.CorrelationId,
+            envelope.CausationId,
+            envelope.Timestamp,
+            string.IsNullOrWhiteSpace(envelope.UserId) ? null : envelope.UserId);
+
+    private ObjectResult ProblemWithReason(
+        int statusCode,
+        string type,
+        string title,
+        string detail,
+        string reasonCode) {
+        ObjectResult result = Problem(
+            statusCode: statusCode,
+            type: type,
+            title: title,
+            detail: detail);
+        if (result.Value is ProblemDetails problem) {
+            problem.Extensions["reasonCode"] = reasonCode;
+        }
+
+        return result;
+    }
+
     private IActionResult? ValidateRequest(StreamReadRequest request) {
         if (string.IsNullOrWhiteSpace(request.Tenant)
             || string.IsNullOrWhiteSpace(request.Domain)) {
@@ -190,7 +227,7 @@ public sealed partial class StreamsController(
         }
 
         if (request.FromSequence < 0
-            || request.ToSequence.HasValue && request.ToSequence.Value <= request.FromSequence) {
+            || (request.ToSequence.HasValue && request.ToSequence.Value <= request.FromSequence)) {
             return ProblemWithReason(
                 StatusCodes.Status400BadRequest,
                 ProblemTypeUris.BadRequest,
@@ -199,12 +236,12 @@ public sealed partial class StreamsController(
                 StreamReplayReasonCodes.InvalidRange);
         }
 
-        if (request.PageSize <= 0 || request.PageSize > MaxPageSize) {
+        if (request.PageSize is <= 0 or > _maxPageSize) {
             return ProblemWithReason(
                 StatusCodes.Status400BadRequest,
                 ProblemTypeUris.BadRequest,
                 "Bad Request",
-                $"'pageSize' must be between 1 and {MaxPageSize}.",
+                $"'pageSize' must be between 1 and {_maxPageSize}.",
                 StreamReplayReasonCodes.InvalidRange);
         }
 
@@ -220,43 +257,8 @@ public sealed partial class StreamsController(
         return null;
     }
 
-    private ObjectResult ProblemWithReason(
-        int statusCode,
-        string type,
-        string title,
-        string detail,
-        string reasonCode) {
-        ObjectResult result = (ObjectResult)Problem(
-            statusCode: statusCode,
-            type: type,
-            title: title,
-            detail: detail);
-        if (result.Value is ProblemDetails problem) {
-            problem.Extensions["reasonCode"] = reasonCode;
-        }
-
-        return result;
-    }
-
-    private static int NormalizePageSize(int pageSize) => Math.Clamp(pageSize, 1, MaxPageSize);
-
-    private static ReplayContinuationToken CreateContinuationToken()
-        => new(Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)));
-
-    private static StreamReadEvent ToStreamReadEvent(ServerEventEnvelope envelope)
-        => new(
-            envelope.SequenceNumber,
-            envelope.EventTypeName,
-            envelope.Payload,
-            envelope.SerializationFormat,
-            envelope.MetadataVersion,
-            envelope.MessageId,
-            envelope.CorrelationId,
-            envelope.CausationId,
-            envelope.Timestamp,
-            string.IsNullOrWhiteSpace(envelope.UserId) ? null : envelope.UserId);
-
     private static partial class Log {
+
         [LoggerMessage(
             EventId = 1180,
             Level = LogLevel.Warning,

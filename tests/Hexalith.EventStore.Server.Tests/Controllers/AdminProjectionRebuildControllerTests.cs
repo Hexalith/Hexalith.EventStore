@@ -1,6 +1,9 @@
+using System.Security.Claims;
+
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.Controllers;
+using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Projections;
 
 using Microsoft.AspNetCore.Http;
@@ -27,7 +30,7 @@ public class AdminProjectionRebuildControllerTests {
                 null,
                 Arg.Any<CancellationToken>())
             .Returns(ProjectionRebuildCheckpointSaveResult.Success(CreateCheckpoint(10, ProjectionRebuildStatus.Running)));
-        var controller = CreateController(store);
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true);
 
         IActionResult result = await controller.ReplayProjection(
             Tenant,
@@ -52,16 +55,19 @@ public class AdminProjectionRebuildControllerTests {
     }
 
     [Fact]
-    public async Task PauseProjectionIsIdempotentAndReturnsOkResult() {
+    public async Task PauseProjectionTransitionsExistingRebuildAndReturnsOkResult() {
         IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        ProjectionRebuildCheckpoint existing = CreateCheckpoint(50, ProjectionRebuildStatus.Running);
+        _ = store.ReadAsync(Arg.Any<ProjectionRebuildCheckpointScope>(), Arg.Any<CancellationToken>())
+            .Returns(existing);
         _ = store.SaveAsync(
                 Arg.Any<ProjectionRebuildCheckpointScope>(),
-                0,
+                50,
                 ProjectionRebuildStatus.Paused,
-                StreamReplayReasonCodes.RebuildPaused,
+                null,
                 Arg.Any<CancellationToken>())
-            .Returns(ProjectionRebuildCheckpointSaveResult.Success(CreateCheckpoint(0, ProjectionRebuildStatus.Paused)));
-        var controller = CreateController(store);
+            .Returns(ProjectionRebuildCheckpointSaveResult.Success(CreateCheckpoint(50, ProjectionRebuildStatus.Paused)));
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true);
 
         IActionResult result = await controller.PauseProjection(Tenant, Projection);
 
@@ -69,6 +75,33 @@ public class AdminProjectionRebuildControllerTests {
         AdminOperationResult operation = ok.Value.ShouldBeOfType<AdminOperationResult>();
         operation.Success.ShouldBeTrue();
         operation.ErrorCode.ShouldBeNull();
+        _ = await store.Received(1).SaveAsync(
+            Arg.Any<ProjectionRebuildCheckpointScope>(),
+            50,
+            ProjectionRebuildStatus.Paused,
+            null,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PauseProjectionWithoutExistingRebuildReturnsRebuildNotFound() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        _ = store.ReadAsync(Arg.Any<ProjectionRebuildCheckpointScope>(), Arg.Any<CancellationToken>())
+            .Returns((ProjectionRebuildCheckpoint?)null);
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true);
+
+        IActionResult result = await controller.PauseProjection(Tenant, Projection);
+
+        ObjectResult problemResult = result.ShouldBeOfType<ObjectResult>();
+        problemResult.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
+        ProblemDetails problem = problemResult.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.RebuildOperationNotFound);
+        _ = await store.DidNotReceive().SaveAsync(
+            Arg.Any<ProjectionRebuildCheckpointScope>(),
+            Arg.Any<long>(),
+            Arg.Any<ProjectionRebuildStatus>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -81,7 +114,7 @@ public class AdminProjectionRebuildControllerTests {
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointConflict));
-        var controller = CreateController(store);
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true);
 
         IActionResult result = await controller.ReplayProjection(
             Tenant,
@@ -97,7 +130,7 @@ public class AdminProjectionRebuildControllerTests {
     [Fact]
     public async Task GetRebuildStatusWithoutCheckpointReturnsNotStartedOperation() {
         IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
-        var controller = CreateController(store);
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true);
 
         IActionResult result = await controller.GetRebuildStatus(Tenant, Projection);
 
@@ -107,12 +140,55 @@ public class AdminProjectionRebuildControllerTests {
         operation.OperationId.ShouldBe("party-summary-rebuild");
     }
 
-    private static AdminProjectionRebuildController CreateController(IProjectionRebuildCheckpointStore store)
+    [Fact]
+    public async Task ReplayProjectionWithoutGlobalAdministratorRoleReturnsForbidden() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: false);
+
+        IActionResult result = await controller.ReplayProjection(
+            Tenant,
+            Projection,
+            new ProjectionReplayRequest(10, 20));
+
+        ObjectResult problemResult = result.ShouldBeOfType<ObjectResult>();
+        problemResult.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        ProblemDetails problem = problemResult.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Type.ShouldBe(ProblemTypeUris.Forbidden);
+        _ = await store.DidNotReceiveWithAnyArgs().SaveAsync(default!, default, default, default, default);
+        _ = await store.DidNotReceiveWithAnyArgs().ReadAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task PauseProjectionWithoutGlobalAdministratorRoleReturnsForbiddenBeforeStoreAccess() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: false);
+
+        IActionResult result = await controller.PauseProjection(Tenant, Projection);
+
+        ObjectResult problemResult = result.ShouldBeOfType<ObjectResult>();
+        problemResult.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        _ = await store.DidNotReceiveWithAnyArgs().ReadAsync(default!, default);
+        _ = await store.DidNotReceiveWithAnyArgs().SaveAsync(default!, default, default, default, default);
+    }
+
+    private static AdminProjectionRebuildController CreateController(IProjectionRebuildCheckpointStore store, bool asGlobalAdmin)
         => new(store, NullLogger<AdminProjectionRebuildController>.Instance) {
             ControllerContext = new ControllerContext {
-                HttpContext = new DefaultHttpContext(),
+                HttpContext = new DefaultHttpContext {
+                    User = CreatePrincipal(asGlobalAdmin),
+                },
             },
         };
+
+    private static ClaimsPrincipal CreatePrincipal(bool asGlobalAdmin) {
+        List<Claim> claims = [new Claim("sub", "operator-1")];
+        if (asGlobalAdmin) {
+            claims.Add(new Claim(ClaimTypes.Role, "GlobalAdministrator"));
+        }
+
+        var identity = new ClaimsIdentity(claims, authenticationType: "test");
+        return new ClaimsPrincipal(identity);
+    }
 
     private static ProjectionRebuildCheckpoint CreateCheckpoint(long sequence, ProjectionRebuildStatus status)
         => new(
