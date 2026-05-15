@@ -21,7 +21,7 @@ ProjectAssetsFile=<PATH>obj/project.assets.json
 RootNamespace=Hexalith.EventStore.Admin.UI
 RunAnalyzers=
 RunAnalyzersDuringLiveAnalysis=
-SolutionPath=<PATH>../../../Hexalith.Tenants.slnx
+SolutionPath=<PATH>../../Hexalith.EventStore.slnx
 TargetFrameworkIdentifier=.NETCoreApp
 TargetPath=<PATH>bin/Debug/net10.0/Hexalith.EventStore.Admin.UI.dll
 TargetRefPath=<PATH>obj/Debug/net10.0/ref/Hexalith.EventStore.Admin.UI.dll
@@ -499,9 +499,7 @@ Services/
  Microsoft.Gen.Metrics.dll
 
 [analyzerConfigFiles]
-../../
- ../.editorconfig
- .editorconfig
+../../.editorconfig
 <DOTNET>/sdk/10.0.108/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_10_default.globalconfig
 obj/Debug/net10.0/Hexalith.EventStore.Admin.UI.GeneratedMSBuildEditorConfig.editorconfig
 
