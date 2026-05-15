@@ -263,14 +263,14 @@ public partial class ProjectionUpdateOrchestrator(
             return;
         }
 
-        ProjectionRebuildCheckpoint? lastSaved = null;
-        ProjectionRebuildCheckpointScope? lastScope = null;
+        ProjectionRebuildCheckpointScope checkpointScope = ScopeForCheckpoint(scope, initial!);
+        bool anyApplied = false;
         await foreach (AggregateIdentity identity in checkpointTracker.EnumerateTrackedIdentitiesAsync(cancellationToken).ConfigureAwait(false)) {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!MatchesRebuildScope(scope, identity)) {
                 continue;
             }
 
-            ProjectionRebuildCheckpointScope checkpointScope = ScopeForCheckpoint(scope, initial!);
             ProjectionRebuildCheckpoint? current = await rebuildCheckpointStore
                 .ReadAsync(checkpointScope, cancellationToken)
                 .ConfigureAwait(false);
@@ -278,32 +278,29 @@ public partial class ProjectionUpdateOrchestrator(
                 return;
             }
 
-            if (current!.ToPosition is long toPosition && current.LastAppliedSequence >= toPosition) {
-                return;
-            }
-
-            ProjectionRebuildCheckpoint? saved = await DeliverProjectionForRebuildAsync(identity, checkpointScope, current, cancellationToken).ConfigureAwait(false);
+            ProjectionRebuildCheckpoint? saved = await DeliverProjectionForRebuildAsync(identity, checkpointScope, current!, cancellationToken).ConfigureAwait(false);
             if (saved is not null) {
-                lastSaved = saved;
-                lastScope = checkpointScope;
+                anyApplied = true;
             }
         }
 
-        if (lastSaved is not null && lastScope is not null) {
-            ProjectionRebuildCheckpoint? current = await rebuildCheckpointStore
-                .ReadAsync(lastScope, cancellationToken)
+        if (!anyApplied) {
+            return;
+        }
+
+        ProjectionRebuildCheckpoint? finalSnapshot = await rebuildCheckpointStore
+            .ReadAsync(checkpointScope, cancellationToken)
+            .ConfigureAwait(false);
+        if (CanRunRebuild(finalSnapshot)) {
+            _ = await rebuildCheckpointStore
+                .SaveAsync(
+                    checkpointScope,
+                    finalSnapshot!.LastAppliedSequence,
+                    ProjectionRebuildStatus.Succeeded,
+                    failureReasonCode: null,
+                    cancellationToken,
+                    finalSnapshot.ToPosition)
                 .ConfigureAwait(false);
-            if (CanRunRebuild(current)) {
-                _ = await rebuildCheckpointStore
-                    .SaveAsync(
-                        lastScope,
-                        current!.LastAppliedSequence,
-                        ProjectionRebuildStatus.Succeeded,
-                        failureReasonCode: null,
-                        cancellationToken,
-                        current.ToPosition)
-                    .ConfigureAwait(false);
-            }
         }
     }
 
@@ -329,15 +326,19 @@ public partial class ProjectionUpdateOrchestrator(
                 new ActorId(identity.ActorId),
                 "AggregateActor");
 
-            EventEnvelope[] events = await aggregateProxy
-                .GetEventsAsync(0)
-                .ConfigureAwait(false);
-
-            if (checkpoint.ToPosition is long toPosition) {
-                events = events
-                    .Where(e => e.SequenceNumber <= toPosition)
-                    .ToArray();
+            long perAggregateProgress = 0;
+            try {
+                perAggregateProgress = await checkpointTracker
+                    .ReadLastDeliveredSequenceAsync(identity, cancellationToken)
+                    .ConfigureAwait(false);
             }
+            catch (Exception ex) when (ex is not OperationCanceledException) {
+                Log.CheckpointReadFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
+            }
+
+            EventEnvelope[] events = await aggregateProxy
+                .ReadEventsRangeAsync(perAggregateProgress, checkpoint.ToPosition, RebuildPageSize)
+                .ConfigureAwait(false);
 
             if (events.Length == 0) {
                 Log.NoEventsFound(logger, identity.TenantId, identity.Domain, identity.AggregateId);
@@ -426,6 +427,17 @@ public partial class ProjectionUpdateOrchestrator(
                 .UpdateProjectionAsync(ProjectionState.FromJsonElement(response.ProjectionType, identity.TenantId, response.State))
                 .ConfigureAwait(false);
 
+            // H14 groundwork: re-check lifecycle right before persisting progress so that operator
+            // pause/cancel that landed while this page was applying is honored. The store will also
+            // reject lifecycle regressions (C4), but failing fast here avoids a wasted ETag round.
+            cancellationToken.ThrowIfCancellationRequested();
+            ProjectionRebuildCheckpoint? preSave = await rebuildCheckpointStore!
+                .ReadAsync(scope, cancellationToken)
+                .ConfigureAwait(false);
+            if (!CanRunRebuild(preSave)) {
+                return null;
+            }
+
             long highestAppliedSequence = events.Max(e => e.SequenceNumber);
             ProjectionRebuildCheckpointSaveResult save = await rebuildCheckpointStore!
                 .SaveAsync(
@@ -471,11 +483,18 @@ public partial class ProjectionUpdateOrchestrator(
     private static bool CanRunRebuild(ProjectionRebuildCheckpoint? checkpoint)
         => checkpoint?.Status is ProjectionRebuildStatus.Running or ProjectionRebuildStatus.Resuming or ProjectionRebuildStatus.Retrying;
 
+    // Bounded page size for operator rebuild reads. Prevents O(N) full-stream replays per iteration
+    // and bounds the per-page apply work. Domain-wide rebuild enumerates aggregates separately;
+    // each aggregate reads from its own checkpointTracker progress.
+    private const int RebuildPageSize = 256;
+
     private static ProjectionRebuildCheckpointScope ScopeForCheckpoint(
         ProjectionRebuildCheckpointScope scope,
         ProjectionRebuildCheckpoint checkpoint)
         => scope with {
-            AggregateId = checkpoint.AggregateId,
+            // Preserve operator scope's AggregateId. Overwriting it from `checkpoint.AggregateId`
+            // caused scope/key drift for domain-wide rebuild where operator scope has AggregateId=null
+            // but a prior aggregate-specific run persisted a non-null value.
             OperationId = checkpoint.OperationId,
         };
 

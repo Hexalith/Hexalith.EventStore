@@ -176,7 +176,10 @@ public class ProjectionUpdateOrchestratorTests {
         _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(registration);
         IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
-        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(1), CreateTestEnvelope(2), CreateTestEnvelope(3)]);
+        // C1: orchestrator now reads from per-aggregate progress via ReadEventsRangeAsync.
+        // Actor honors toSequence (toPosition=2 ⇒ events at seq 1 and 2 only).
+        _ = aggregateActor.ReadEventsRangeAsync(0L, 2L, Arg.Any<int>())
+            .Returns([CreateTestEnvelope(1), CreateTestEnvelope(2)]);
         _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
             .Returns(aggregateActor);
         _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
@@ -228,7 +231,9 @@ public class ProjectionUpdateOrchestratorTests {
         _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(registration);
         IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
-        _ = aggregateActor.GetEventsAsync(0).Returns([CreateTestEnvelope(1)]);
+        // C1: orchestrator now reads from per-aggregate progress via ReadEventsRangeAsync.
+        _ = aggregateActor.ReadEventsRangeAsync(0L, Arg.Any<long?>(), Arg.Any<int>())
+            .Returns([CreateTestEnvelope(1)]);
         _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
             .Returns(aggregateActor);
         _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
@@ -236,6 +241,8 @@ public class ProjectionUpdateOrchestratorTests {
 
         await sut.RebuildProjectionAsync(CreateRebuildScope());
 
+        // C2: terminal Succeeded is now written against the operator scope after enumeration; rejection during apply
+        // leaves the checkpoint unchanged (no Running, no Succeeded).
         await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
         _ = await rebuildCheckpointStore.DidNotReceiveWithAnyArgs().SaveAsync(default!, default, default, default, default, default);
     }
