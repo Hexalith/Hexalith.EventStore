@@ -75,6 +75,17 @@ public class EventStoreGatewayClientStreamTests {
         ex.ReasonCode.ShouldBe(StreamReplayReasonCodes.TokenRequestMismatch);
     }
 
+    [Fact]
+    public void ConstructorAppliesConfiguredStreamReadResponseSizeCap() {
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.OK, "{}")));
+
+        _ = new EventStoreGatewayClient(
+            httpClient,
+            Options.Create(new EventStoreGatewayClientOptions { MaxStreamReadResponseBytes = 1024 }));
+
+        httpClient.MaxResponseContentBufferSize.ShouldBe(1024);
+    }
+
     private static HttpClient CreateClient(Func<HttpRequestMessage, Task<HttpResponseMessage>> handler)
         => new(new RecordingHandler((request, _) => handler(request))) { BaseAddress = new Uri("https://eventstore.local/") };
 

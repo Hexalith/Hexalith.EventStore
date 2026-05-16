@@ -92,50 +92,47 @@ public class ProjectionUpdateOrchestratorTests {
 
     [Fact]
     public async Task DeliverProjectionAsync_WithActiveOperatorRebuild_SkipsNormalDeliveryBeforeActorProxy() {
+        // D3-B: poller now consults HasActiveOperatorRebuildForDomainAsync (active-rebuilds index)
+        // instead of probing by (tenant, domain, domain, null, null) which assumed projectionName == domain.
         IProjectionRebuildCheckpointStore rebuildCheckpointStore = Substitute.For<IProjectionRebuildCheckpointStore>();
-        _ = rebuildCheckpointStore.ReadAsync(
-                Arg.Any<ProjectionRebuildCheckpointScope>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new ProjectionRebuildCheckpoint(
+        _ = rebuildCheckpointStore.HasActiveOperatorRebuildForDomainAsync(
                 TestIdentity.TenantId,
                 TestIdentity.Domain,
-                TestIdentity.Domain,
-                null,
-                $"{TestIdentity.Domain}-rebuild",
-                5,
-                ProjectionRebuildStatus.Running,
-                DateTimeOffset.UtcNow,
-                null));
+                Arg.Any<CancellationToken>())
+            .Returns(true);
         (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(rebuildCheckpointStore: rebuildCheckpointStore);
 
         await sut.DeliverProjectionAsync(TestIdentity);
 
-        _ = await rebuildCheckpointStore.Received(1).ReadAsync(
-            Arg.Is<ProjectionRebuildCheckpointScope>(scope =>
-                scope.Tenant == TestIdentity.TenantId
-                && scope.Domain == TestIdentity.Domain
-                && scope.ProjectionName == TestIdentity.Domain
-                && scope.OperationId == null),
+        _ = await rebuildCheckpointStore.Received(1).HasActiveOperatorRebuildForDomainAsync(
+            TestIdentity.TenantId,
+            TestIdentity.Domain,
             Arg.Any<CancellationToken>());
         _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!);
         _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
     }
 
     [Fact]
-    public async Task DeliverProjectionAsync_ConflictProbeUsesDomainAsProjectionNameDocumentingCurrentConstraint() {
+    public async Task DeliverProjectionAsync_PollerProceedsWhenNoActiveOperatorRebuildForDomain() {
+        // D3-B regression test: when no projection in (tenant, domain) has an active rebuild,
+        // the poller is allowed to proceed and call the resolver (which we stub to return null
+        // here just to short-circuit the rest).
         IProjectionRebuildCheckpointStore rebuildCheckpointStore = Substitute.For<IProjectionRebuildCheckpointStore>();
-        _ = rebuildCheckpointStore.ReadAsync(Arg.Any<ProjectionRebuildCheckpointScope>(), Arg.Any<CancellationToken>())
-            .Returns((ProjectionRebuildCheckpoint?)null);
+        _ = rebuildCheckpointStore.HasActiveOperatorRebuildForDomainAsync(
+                TestIdentity.TenantId,
+                TestIdentity.Domain,
+                Arg.Any<CancellationToken>())
+            .Returns(false);
         (ProjectionUpdateOrchestrator sut, _, _, IDomainServiceResolver resolver, _) = CreateSut(rebuildCheckpointStore: rebuildCheckpointStore);
         _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((DomainServiceRegistration?)null);
 
         await sut.DeliverProjectionAsync(TestIdentity);
 
-        _ = await rebuildCheckpointStore.Received(1).ReadAsync(
-            Arg.Is<ProjectionRebuildCheckpointScope>(scope =>
-                scope.ProjectionName == TestIdentity.Domain
-                && scope.ProjectionName != "party-summary"),
+        _ = await resolver.Received(1).ResolveAsync(
+            TestIdentity.TenantId,
+            TestIdentity.Domain,
+            Arg.Any<string>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -241,10 +238,15 @@ public class ProjectionUpdateOrchestratorTests {
 
         await sut.RebuildProjectionAsync(CreateRebuildScope());
 
-        // C2: terminal Succeeded is now written against the operator scope after enumeration; rejection during apply
-        // leaves the checkpoint unchanged (no Running, no Succeeded).
+        // Rejection records a safe Failed status without advancing beyond the last applied sequence.
         await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
-        _ = await rebuildCheckpointStore.DidNotReceiveWithAnyArgs().SaveAsync(default!, default, default, default, default, default);
+        _ = await rebuildCheckpointStore.Received(1).SaveAsync(
+            Arg.Is<ProjectionRebuildCheckpointScope>(scope => scope.OperationId == "operation-1"),
+            0,
+            ProjectionRebuildStatus.Failed,
+            StreamReplayReasonCodes.ProjectionApplyRejected,
+            Arg.Any<CancellationToken>(),
+            10);
     }
 
     [Fact]
@@ -264,6 +266,238 @@ public class ProjectionUpdateOrchestratorTests {
         await sut.RebuildProjectionAsync(CreateRebuildScope());
 
         _ = await resolver.DidNotReceiveWithAnyArgs().ResolveAsync(default!, default!, default!, default);
+        _ = await rebuildCheckpointStore.DidNotReceiveWithAnyArgs().SaveAsync(default!, default, default, default, default, default);
+    }
+
+    [Fact]
+    public async Task RebuildProjectionAsync_WithMoreEventsThanPageSizeDoesNotWriteSucceeded() {
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.EnumerateTrackedIdentitiesAsync(Arg.Any<CancellationToken>())
+            .Returns(EnumerateTracked(TestIdentity));
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(0);
+        _ = checkpointTracker.SaveDeliveredSequenceAsync(TestIdentity, Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        IProjectionRebuildCheckpointStore rebuildCheckpointStore = Substitute.For<IProjectionRebuildCheckpointStore>();
+        ProjectionRebuildCheckpoint currentCheckpoint = CreateRebuildCheckpoint(0, ProjectionRebuildStatus.Running, "operation-1", toPosition: 1000);
+        _ = rebuildCheckpointStore.ReadAsync(Arg.Any<ProjectionRebuildCheckpointScope>(), Arg.Any<CancellationToken>())
+            .Returns(_ => currentCheckpoint);
+        _ = rebuildCheckpointStore.SaveAsync(
+                Arg.Any<ProjectionRebuildCheckpointScope>(),
+                Arg.Any<long>(),
+                Arg.Any<ProjectionRebuildStatus>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>(),
+                Arg.Any<long?>())
+            .Returns(call => {
+                currentCheckpoint = CreateRebuildCheckpoint(call.ArgAt<long>(1), call.ArgAt<ProjectionRebuildStatus>(2), "operation-1", call.ArgAt<long?>(5));
+                return ProjectionRebuildCheckpointSaveResult.Success(currentCheckpoint);
+            });
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory("""{"projectionType":"counter-summary","state":{"value":1}}""");
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory,
+            rebuildCheckpointStore: rebuildCheckpointStore);
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DomainServiceRegistration("counter-service", "project", TestIdentity.TenantId, TestIdentity.Domain, "v1"));
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        EventEnvelope[] firstPage = Enumerable.Range(1, 256).Select(sequence => CreateTestEnvelope(sequence)).ToArray();
+        _ = aggregateActor.ReadEventsRangeAsync(0L, 1000L, Arg.Any<int>()).Returns(firstPage);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor").Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName).Returns(writeActor);
+
+        await sut.RebuildProjectionAsync(CreateRebuildScope());
+
+        _ = await rebuildCheckpointStore.Received(1).SaveAsync(
+            Arg.Any<ProjectionRebuildCheckpointScope>(),
+            256,
+            ProjectionRebuildStatus.Running,
+            null,
+            Arg.Any<CancellationToken>(),
+            1000);
+        _ = await rebuildCheckpointStore.DidNotReceive().SaveAsync(
+            Arg.Any<ProjectionRebuildCheckpointScope>(),
+            Arg.Any<long>(),
+            ProjectionRebuildStatus.Succeeded,
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<long?>());
+    }
+
+    [Fact]
+    public async Task RebuildProjectionAsync_LifecycleCanceledBeforeWriteDoesNotUpdateProjection() {
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.EnumerateTrackedIdentitiesAsync(Arg.Any<CancellationToken>())
+            .Returns(EnumerateTracked(TestIdentity));
+        _ = checkpointTracker.ReadLastDeliveredSequenceAsync(TestIdentity, Arg.Any<CancellationToken>())
+            .Returns(0);
+        IProjectionRebuildCheckpointStore rebuildCheckpointStore = Substitute.For<IProjectionRebuildCheckpointStore>();
+        _ = rebuildCheckpointStore.ReadAsync(Arg.Any<ProjectionRebuildCheckpointScope>(), Arg.Any<CancellationToken>())
+            .Returns(
+                CreateRebuildCheckpoint(0, ProjectionRebuildStatus.Running, "operation-1", toPosition: 10),
+                CreateRebuildCheckpoint(0, ProjectionRebuildStatus.Running, "operation-1", toPosition: 10),
+                CreateRebuildCheckpoint(0, ProjectionRebuildStatus.Canceled, "operation-1", toPosition: 10));
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory("""{"projectionType":"counter-summary","state":{"value":1}}""");
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory,
+            rebuildCheckpointStore: rebuildCheckpointStore);
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DomainServiceRegistration("counter-service", "project", TestIdentity.TenantId, TestIdentity.Domain, "v1"));
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        _ = aggregateActor.ReadEventsRangeAsync(0L, 10L, Arg.Any<int>()).Returns([CreateTestEnvelope(1)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor").Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName).Returns(writeActor);
+
+        await sut.RebuildProjectionAsync(CreateRebuildScope());
+
+        await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
+        _ = await rebuildCheckpointStore.DidNotReceiveWithAnyArgs().SaveAsync(default!, default, default, default, default, default);
+    }
+
+    [Fact]
+    public async Task RebuildProjectionAsync_PerAggregateCheckpointReadFailureDoesNotRestartAggregateFromZero() {
+        // D3-A/D3-E: orchestrator now reads per-aggregate progress from the rebuild checkpoint
+        // store (per-aggregate scope), not the poller checkpoint tracker. A failure on the
+        // per-aggregate ReadAsync must propagate as a thrown exception rather than silently
+        // restart the aggregate from sequence 0.
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.EnumerateTrackedIdentitiesAsync(Arg.Any<CancellationToken>())
+            .Returns(EnumerateTracked(TestIdentity));
+        IProjectionRebuildCheckpointStore rebuildCheckpointStore = Substitute.For<IProjectionRebuildCheckpointStore>();
+        // Operator scope read returns active checkpoint; per-aggregate scope read throws.
+        _ = rebuildCheckpointStore.ReadAsync(Arg.Is<ProjectionRebuildCheckpointScope>(s => s.AggregateId == null), Arg.Any<CancellationToken>())
+            .Returns(CreateRebuildCheckpoint(0, ProjectionRebuildStatus.Running, "operation-1", toPosition: 10));
+        _ = rebuildCheckpointStore.ReadAsync(Arg.Is<ProjectionRebuildCheckpointScope>(s => s.AggregateId == TestIdentity.AggregateId), Arg.Any<CancellationToken>())
+            .Returns<ProjectionRebuildCheckpoint?>(_ => throw new InvalidOperationException("rebuild checkpoint read failed"));
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            rebuildCheckpointStore: rebuildCheckpointStore);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor").Returns(aggregateActor);
+
+        await Should.ThrowAsync<InvalidOperationException>(() => sut.RebuildProjectionAsync(CreateRebuildScope()));
+
+        _ = await aggregateActor.DidNotReceiveWithAnyArgs().ReadEventsRangeAsync(default, default, default);
+    }
+
+    [Fact]
+    public async Task RebuildProjectionAsync_CancellationDuringEnumerationWritesCanceledCheckpoint() {
+        // DEC3-P: cancel-cleanup uses ResetAsync (not SaveAsync) to bypass IsLifecycleProtected
+        // guards. Operator-intentional terminal writes flow through the documented trust boundary.
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.EnumerateTrackedIdentitiesAsync(Arg.Any<CancellationToken>())
+            .Returns(ThrowCanceledBeforeFirstIdentity());
+        IProjectionRebuildCheckpointStore rebuildCheckpointStore = Substitute.For<IProjectionRebuildCheckpointStore>();
+        _ = rebuildCheckpointStore.ReadAsync(Arg.Any<ProjectionRebuildCheckpointScope>(), Arg.Any<CancellationToken>())
+            .Returns(CreateRebuildCheckpoint(7, ProjectionRebuildStatus.Running, "operation-1", toPosition: 10));
+        _ = rebuildCheckpointStore.ResetAsync(
+                Arg.Any<ProjectionRebuildCheckpointScope>(),
+                Arg.Any<long>(),
+                Arg.Any<ProjectionRebuildStatus>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>(),
+                Arg.Any<long?>())
+            .Returns(ProjectionRebuildCheckpointSaveResult.Success(CreateRebuildCheckpoint(7, ProjectionRebuildStatus.Canceled, "operation-1", toPosition: 10)));
+        (ProjectionUpdateOrchestrator sut, _, _, _, _) = CreateSut(checkpointTracker, rebuildCheckpointStore: rebuildCheckpointStore);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => sut.RebuildProjectionAsync(CreateRebuildScope()));
+
+        _ = await rebuildCheckpointStore.Received(1).ResetAsync(
+            Arg.Any<ProjectionRebuildCheckpointScope>(),
+            7,
+            ProjectionRebuildStatus.Canceled,
+            StreamReplayReasonCodes.RebuildCanceled,
+            Arg.Any<CancellationToken>(),
+            10);
+    }
+
+    [Fact]
+    public async Task RebuildProjectionAsync_PerAggregateProgressDrivesReadEventsRangeFromBoundary() {
+        // P24: pin inclusive/exclusive `fromSequence` semantic. Per-aggregate progress at 5L
+        // must drive ReadEventsRangeAsync(5L, ...) — a regression that flips the semantic would
+        // silently re-apply or skip the next event.
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.EnumerateTrackedIdentitiesAsync(Arg.Any<CancellationToken>())
+            .Returns(EnumerateTracked(TestIdentity));
+        _ = checkpointTracker.SaveDeliveredSequenceAsync(TestIdentity, Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        IProjectionRebuildCheckpointStore rebuildCheckpointStore = Substitute.For<IProjectionRebuildCheckpointStore>();
+        // Operator scope read returns the lifecycle checkpoint.
+        ProjectionRebuildCheckpoint operatorSnap = CreateRebuildCheckpoint(0, ProjectionRebuildStatus.Running, "operation-1", toPosition: 10);
+        _ = rebuildCheckpointStore.ReadAsync(Arg.Is<ProjectionRebuildCheckpointScope>(s => s.AggregateId == null), Arg.Any<CancellationToken>())
+            .Returns(operatorSnap);
+        // Per-aggregate scope read returns existing progress at 5L.
+        ProjectionRebuildCheckpoint perAggregateSnap = CreateRebuildCheckpoint(5, ProjectionRebuildStatus.Running, "operation-1", toPosition: 10);
+        _ = rebuildCheckpointStore.ReadAsync(Arg.Is<ProjectionRebuildCheckpointScope>(s => s.AggregateId == TestIdentity.AggregateId), Arg.Any<CancellationToken>())
+            .Returns(perAggregateSnap);
+        _ = rebuildCheckpointStore.SaveAsync(
+                Arg.Any<ProjectionRebuildCheckpointScope>(),
+                Arg.Any<long>(),
+                Arg.Any<ProjectionRebuildStatus>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>(),
+                Arg.Any<long?>())
+            .Returns(call => ProjectionRebuildCheckpointSaveResult.Success(
+                CreateRebuildCheckpoint(call.ArgAt<long>(1), call.ArgAt<ProjectionRebuildStatus>(2), "operation-1", call.ArgAt<long?>(5))));
+
+        IProjectionWriteActor writeActor = Substitute.For<IProjectionWriteActor>();
+        IHttpClientFactory httpClientFactory = CreateHttpClientFactory("""{"projectionType":"counter-summary","state":{"value":1}}""");
+        DaprClient daprClient = new DaprClientBuilder().Build();
+        (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
+            checkpointTracker,
+            daprClient,
+            httpClientFactory,
+            rebuildCheckpointStore: rebuildCheckpointStore);
+        _ = resolver.ResolveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DomainServiceRegistration("counter-service", "project", TestIdentity.TenantId, TestIdentity.Domain, "v1"));
+        IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
+        // The new event at sequence 6 is past the per-aggregate progress (5).
+        _ = aggregateActor.ReadEventsRangeAsync(5L, 10L, Arg.Any<int>())
+            .Returns([CreateTestEnvelope(6)]);
+        _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor")
+            .Returns(aggregateActor);
+        _ = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(Arg.Any<ActorId>(), QueryRouter.ProjectionActorTypeName)
+            .Returns(writeActor);
+
+        await sut.RebuildProjectionAsync(CreateRebuildScope());
+
+        // Critical assertion: ReadEventsRangeAsync was called with from=5, NOT from=0.
+        _ = await aggregateActor.Received(1).ReadEventsRangeAsync(5L, 10L, Arg.Any<int>());
+        _ = await aggregateActor.DidNotReceive().ReadEventsRangeAsync(0L, Arg.Any<long?>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task RebuildProjectionAsync_CancelCleanupNullSnapshotIsNoOpWithoutSave() {
+        // P26: when the post-cancel ReadAsync returns null (e.g., state-store transient
+        // unavailability), the cancel-cleanup path must not attempt a Save/ResetAsync that
+        // would NRE; it should silently no-op while still propagating the cancellation.
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        _ = checkpointTracker.EnumerateTrackedIdentitiesAsync(Arg.Any<CancellationToken>())
+            .Returns(ThrowCanceledBeforeFirstIdentity());
+        IProjectionRebuildCheckpointStore rebuildCheckpointStore = Substitute.For<IProjectionRebuildCheckpointStore>();
+        // First read (initial CanRunRebuild check) returns Running.
+        // Second read (post-cancel) returns null (state-store unavailable mid-cancel).
+        int readCount = 0;
+        _ = rebuildCheckpointStore.ReadAsync(Arg.Any<ProjectionRebuildCheckpointScope>(), Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                readCount++;
+                return readCount == 1
+                    ? CreateRebuildCheckpoint(7, ProjectionRebuildStatus.Running, "operation-1", toPosition: 10)
+                    : null;
+            });
+        (ProjectionUpdateOrchestrator sut, _, _, _, _) = CreateSut(checkpointTracker, rebuildCheckpointStore: rebuildCheckpointStore);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => sut.RebuildProjectionAsync(CreateRebuildScope()));
+
+        // Critical assertion: no ResetAsync was attempted on the null-snapshot path.
+        _ = await rebuildCheckpointStore.DidNotReceiveWithAnyArgs().ResetAsync(default!, default, default, default, default, default);
         _ = await rebuildCheckpointStore.DidNotReceiveWithAnyArgs().SaveAsync(default!, default, default, default, default, default);
     }
 
@@ -1333,6 +1567,14 @@ public class ProjectionUpdateOrchestratorTests {
         }
 
         await Task.CompletedTask.ConfigureAwait(false);
+    }
+
+    private static async IAsyncEnumerable<AggregateIdentity> ThrowCanceledBeforeFirstIdentity() {
+        await Task.CompletedTask.ConfigureAwait(false);
+        throw new OperationCanceledException("test cancellation");
+        #pragma warning disable CS0162
+        yield return TestIdentity;
+        #pragma warning restore CS0162
     }
 
     private sealed class JsonResponseHandler(string json) : HttpMessageHandler {

@@ -72,7 +72,12 @@ public partial class ProjectionUpdateOrchestrator(
         try {
             Log.UpdateStarted(logger, identity.TenantId, identity.Domain, identity.AggregateId);
 
-            if (await HasActiveOperatorRebuildAsync(identity, cancellationToken).ConfigureAwait(false)) {
+            // D3-B: route through the active-rebuilds index instead of probing by
+            // (tenant, domain, domain) which incorrectly assumed projectionName == domain.
+            if (rebuildCheckpointStore is not null
+                && await rebuildCheckpointStore
+                    .HasActiveOperatorRebuildForDomainAsync(identity.TenantId, identity.Domain, cancellationToken)
+                    .ConfigureAwait(false)) {
                 Log.PollerRebuildConflict(logger, identity.TenantId, identity.Domain, identity.AggregateId, StreamReplayReasonCodes.PollerRebuildConflict);
                 return;
             }
@@ -263,38 +268,102 @@ public partial class ProjectionUpdateOrchestrator(
             return;
         }
 
-        ProjectionRebuildCheckpointScope checkpointScope = ScopeForCheckpoint(scope, initial!);
-        bool anyApplied = false;
-        await foreach (AggregateIdentity identity in checkpointTracker.EnumerateTrackedIdentitiesAsync(cancellationToken).ConfigureAwait(false)) {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (!MatchesRebuildScope(scope, identity)) {
-                continue;
-            }
+        // D3-A: operator-scope row owns lifecycle status; per-aggregate rows own per-aggregate
+        // progress. ScopeForCheckpoint preserves operator scope's AggregateId and only overlays
+        // OperationId so the operator-scope key remains stable.
+        ProjectionRebuildCheckpointScope operatorScope = ScopeForCheckpoint(scope, initial!);
+        bool matchedAny = false;
+        bool allMatchedWorkComplete = true;
+        try {
+            await foreach (AggregateIdentity identity in checkpointTracker.EnumerateTrackedIdentitiesAsync(cancellationToken).ConfigureAwait(false)) {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!MatchesRebuildScope(scope, identity)) {
+                    continue;
+                }
 
-            ProjectionRebuildCheckpoint? current = await rebuildCheckpointStore
-                .ReadAsync(checkpointScope, cancellationToken)
-                .ConfigureAwait(false);
-            if (!CanRunRebuild(current)) {
-                return;
-            }
+                // Re-read OPERATOR scope to honor mid-iteration Pause/Cancel intent.
+                ProjectionRebuildCheckpoint? operatorSnap = await rebuildCheckpointStore
+                    .ReadAsync(operatorScope, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!CanRunRebuild(operatorSnap)) {
+                    return;
+                }
 
-            ProjectionRebuildCheckpoint? saved = await DeliverProjectionForRebuildAsync(identity, checkpointScope, current!, cancellationToken).ConfigureAwait(false);
-            if (saved is not null) {
-                anyApplied = true;
+                // D3-A/D3-E: read PER-AGGREGATE progress from the rebuild checkpoint store, not
+                // from the poller checkpoint tracker. First-run perAggregateRow is null → progress 0.
+                ProjectionRebuildCheckpointScope perAggregateScope = operatorScope with { AggregateId = identity.AggregateId };
+                ProjectionRebuildCheckpoint? perAggregateRow = await rebuildCheckpointStore
+                    .ReadAsync(perAggregateScope, cancellationToken)
+                    .ConfigureAwait(false);
+                long perAggregateProgress = perAggregateRow?.LastAppliedSequence ?? 0;
+                long? toPosition = operatorSnap!.ToPosition;
+
+                if (toPosition is long toPos && perAggregateProgress >= toPos) {
+                    matchedAny = true;
+                    continue;
+                }
+
+                matchedAny = true;
+                RebuildDeliveryResult delivery = await DeliverProjectionForRebuildAsync(
+                        identity,
+                        operatorScope,
+                        perAggregateScope,
+                        perAggregateProgress,
+                        toPosition,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                if (delivery.Interrupted) {
+                    return;
+                }
+
+                allMatchedWorkComplete &= delivery.PageComplete;
             }
         }
+        catch (OperationCanceledException) {
+            // DEC3-P/P14/P15: cancel-cleanup must reach a terminal lifecycle write even when the
+            // store's lifecycle guards (IsLifecycleProtected) would reject SaveAsync. Use ResetAsync,
+            // which is the documented trust boundary for operator-intentional terminal writes.
+            ProjectionRebuildCheckpoint? canceledSnapshot = await rebuildCheckpointStore
+                .ReadAsync(operatorScope, CancellationToken.None)
+                .ConfigureAwait(false);
+            if (canceledSnapshot is not null && !IsTerminalStatus(canceledSnapshot.Status)) {
+                ProjectionRebuildCheckpointSaveResult cancelSave = await rebuildCheckpointStore
+                    .ResetAsync(
+                        operatorScope,
+                        canceledSnapshot.LastAppliedSequence,
+                        ProjectionRebuildStatus.Canceled,
+                        StreamReplayReasonCodes.RebuildCanceled,
+                        CancellationToken.None,
+                        canceledSnapshot.ToPosition)
+                    .ConfigureAwait(false);
+                if (!cancelSave.Succeeded) {
+                    Log.RebuildCancelCleanupRejected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, cancelSave.ReasonCode ?? "unknown");
+                }
+            }
 
-        if (!anyApplied) {
+            throw;
+        }
+
+        // P7/P9: terminal-write logic.
+        // - matchedAny=false (no tracked aggregates for the scope) → nothing-to-do is success.
+        //   Without this the operator-scope row stays Running indefinitely → poller blocked.
+        // - matchedAny=true + all work complete + reached bound → Succeeded.
+        // - matchedAny=true + work incomplete → leave Running for next invocation (D2a scheduler
+        //   or operator re-invocation will pick up from per-aggregate progress).
+        ProjectionRebuildCheckpoint? finalSnapshot = await rebuildCheckpointStore
+            .ReadAsync(operatorScope, cancellationToken)
+            .ConfigureAwait(false);
+        if (!CanRunRebuild(finalSnapshot)) {
             return;
         }
 
-        ProjectionRebuildCheckpoint? finalSnapshot = await rebuildCheckpointStore
-            .ReadAsync(checkpointScope, cancellationToken)
-            .ConfigureAwait(false);
-        if (CanRunRebuild(finalSnapshot)) {
+        bool reachedBound = finalSnapshot?.ToPosition is not long finalToPosition
+            || finalSnapshot.LastAppliedSequence >= finalToPosition;
+
+        if (!matchedAny || (allMatchedWorkComplete && reachedBound)) {
             _ = await rebuildCheckpointStore
                 .SaveAsync(
-                    checkpointScope,
+                    operatorScope,
                     finalSnapshot!.LastAppliedSequence,
                     ProjectionRebuildStatus.Succeeded,
                     failureReasonCode: null,
@@ -304,45 +373,58 @@ public partial class ProjectionUpdateOrchestrator(
         }
     }
 
-    private async Task<ProjectionRebuildCheckpoint?> DeliverProjectionForRebuildAsync(
+    private async Task<RebuildDeliveryResult> DeliverProjectionForRebuildAsync(
         AggregateIdentity identity,
-        ProjectionRebuildCheckpointScope scope,
-        ProjectionRebuildCheckpoint checkpoint,
+        ProjectionRebuildCheckpointScope operatorScope,
+        ProjectionRebuildCheckpointScope perAggregateScope,
+        long perAggregateProgress,
+        long? toPosition,
         CancellationToken cancellationToken) {
         using IDisposable projectionLock = await ProjectionLocks.AcquireAsync(identity.ActorId, cancellationToken).ConfigureAwait(false);
         try {
-            Log.UpdateStarted(logger, identity.TenantId, identity.Domain, identity.AggregateId);
+            Log.RebuildDeliveryStarted(logger, identity.TenantId, identity.Domain, identity.AggregateId);
 
             DomainServiceRegistration? registration = await resolver
                 .ResolveAsync(identity.TenantId, identity.Domain, "v1", cancellationToken)
                 .ConfigureAwait(false);
 
             if (registration is null) {
+                // DEC2-P: NoDomainServiceRegistered is a permanent configuration error, not a
+                // transient interrupt. Write Failed terminal status to operator scope so the
+                // rebuild lifecycle stops and the active-rebuilds index is cleared. P10 +
+                // CancellationToken.None on the failure write so cancel-race does not lose the
+                // audit trail.
                 Log.NoDomainServiceRegistered(logger, identity.TenantId, identity.Domain);
-                return null;
+                _ = await rebuildCheckpointStore!
+                    .SaveAsync(
+                        operatorScope,
+                        lastAppliedSequence: 0,
+                        ProjectionRebuildStatus.Failed,
+                        StreamReplayReasonCodes.NoDomainService,
+                        CancellationToken.None,
+                        toPosition)
+                    .ConfigureAwait(false);
+                return RebuildDeliveryResult.Interrupt();
             }
 
             IAggregateActor aggregateProxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
                 new ActorId(identity.ActorId),
                 "AggregateActor");
 
-            long perAggregateProgress = 0;
-            try {
-                perAggregateProgress = await checkpointTracker
-                    .ReadLastDeliveredSequenceAsync(identity, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException) {
-                Log.CheckpointReadFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
-            }
-
+            // D3-E: perAggregateProgress is provided by the caller (read from per-aggregate rebuild
+            // checkpoint, NOT from the poller checkpoint tracker). Reset+Replay rewinds the
+            // per-aggregate row to 0, so the next page actually replays from the start.
             EventEnvelope[] events = await aggregateProxy
-                .ReadEventsRangeAsync(perAggregateProgress, checkpoint.ToPosition, RebuildPageSize)
+                .ReadEventsRangeAsync(perAggregateProgress, toPosition, RebuildPageSize)
                 .ConfigureAwait(false);
 
             if (events.Length == 0) {
+                // P8: empty-events path no longer masquerades as work-complete. PageComplete is
+                // explicit: we have reached the bound iff progress meets ToPosition (or there is
+                // no bound and the actor reports nothing more).
                 Log.NoEventsFound(logger, identity.TenantId, identity.Domain, identity.AggregateId);
-                return null;
+                bool reached = toPosition is null || perAggregateProgress >= toPosition.Value;
+                return RebuildDeliveryResult.Complete(perAggregateProgress, pageComplete: reached);
             }
 
             var projectionEvents = new ProjectionEventDto[events.Length];
@@ -373,7 +455,7 @@ public partial class ProjectionUpdateOrchestrator(
                     cancellationToken)
                 .ConfigureAwait(false);
             if (httpResponse is null) {
-                return null;
+                return RebuildDeliveryResult.Interrupt();
             }
 
             using HttpResponseMessage responseHandle = httpResponse;
@@ -387,7 +469,18 @@ public partial class ProjectionUpdateOrchestrator(
                     GetUpstreamReasonCode(responseHandle.StatusCode),
                     ((int)responseHandle.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture),
                     GetContentTypeForLog(responseHandle.Content));
-                return null;
+                // P10: durability of failure recording — use CancellationToken.None so a cancel
+                // race during the failure write does not silently drop the audit trail.
+                _ = await rebuildCheckpointStore!
+                    .SaveAsync(
+                        operatorScope,
+                        perAggregateProgress,
+                        ProjectionRebuildStatus.Failed,
+                        StreamReplayReasonCodes.ProjectionApplyRejected,
+                        CancellationToken.None,
+                        toPosition)
+                    .ConfigureAwait(false);
+                return RebuildDeliveryResult.Interrupt();
             }
 
             ProjectionResponse? response = await ReadProjectResponseAsync(
@@ -397,18 +490,18 @@ public partial class ProjectionUpdateOrchestrator(
                     cancellationToken)
                 .ConfigureAwait(false);
             if (response is null) {
-                return null;
+                return RebuildDeliveryResult.Interrupt();
             }
 
             if (string.IsNullOrWhiteSpace(response.ProjectionType)) {
                 Log.InvalidProjectionResponse(logger, identity.TenantId, identity.Domain, identity.AggregateId, ProjectionReasonCodes.ProjectInvalidProjectionType);
-                return null;
+                return RebuildDeliveryResult.Interrupt();
             }
 
             if (response.State.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
                 || (response.State.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(response.State.GetString()))) {
                 Log.InvalidProjectionResponse(logger, identity.TenantId, identity.Domain, identity.AggregateId, ProjectionReasonCodes.ProjectInvalidState);
-                return null;
+                return RebuildDeliveryResult.Interrupt();
             }
 
             Log.DomainServiceInvocationSucceeded(logger, identity.TenantId, identity.Domain, identity.AggregateId, registration.AppId);
@@ -423,36 +516,41 @@ public partial class ProjectionUpdateOrchestrator(
                 new ActorId(projectionActorId),
                 QueryRouter.ProjectionActorTypeName);
 
+            // P19: re-check operator-scope lifecycle AND verify the operator is still the same one
+            // (OperationId match) BEFORE writing the projection state. Without the OperationId
+            // check, a concurrent operator B that issued Reset+Replay between this iteration's
+            // initial read and this point would silently inherit our stale page application.
+            cancellationToken.ThrowIfCancellationRequested();
+            ProjectionRebuildCheckpoint? preSaveOperator = await rebuildCheckpointStore!
+                .ReadAsync(operatorScope, cancellationToken)
+                .ConfigureAwait(false);
+            if (!CanRunRebuild(preSaveOperator)
+                || !string.Equals(preSaveOperator!.OperationId, operatorScope.OperationId, StringComparison.Ordinal)) {
+                return RebuildDeliveryResult.Interrupt();
+            }
+
             await writeProxy
                 .UpdateProjectionAsync(ProjectionState.FromJsonElement(response.ProjectionType, identity.TenantId, response.State))
                 .ConfigureAwait(false);
 
-            // H14 groundwork: re-check lifecycle right before persisting progress so that operator
-            // pause/cancel that landed while this page was applying is honored. The store will also
-            // reject lifecycle regressions (C4), but failing fast here avoids a wasted ETag round.
-            cancellationToken.ThrowIfCancellationRequested();
-            ProjectionRebuildCheckpoint? preSave = await rebuildCheckpointStore!
-                .ReadAsync(scope, cancellationToken)
-                .ConfigureAwait(false);
-            if (!CanRunRebuild(preSave)) {
-                return null;
-            }
-
             long highestAppliedSequence = events.Max(e => e.SequenceNumber);
+            // D3-A: write per-aggregate progress to per-aggregate scope, NOT operator scope.
             ProjectionRebuildCheckpointSaveResult save = await rebuildCheckpointStore!
                 .SaveAsync(
-                    scope,
+                    perAggregateScope,
                     highestAppliedSequence,
                     ProjectionRebuildStatus.Running,
                     failureReasonCode: null,
                     cancellationToken,
-                    checkpoint.ToPosition)
+                    toPosition)
                 .ConfigureAwait(false);
             if (!save.Succeeded) {
                 Log.CheckpointSaveExhausted(logger, identity.TenantId, identity.Domain, identity.AggregateId, highestAppliedSequence);
-                return null;
+                return RebuildDeliveryResult.Interrupt();
             }
 
+            // Mirror per-aggregate progress to the poller checkpoint so that after rebuild
+            // completes, normal polling resumes from the right point.
             try {
                 bool checkpointSaved = await checkpointTracker
                     .SaveDeliveredSequenceAsync(identity, highestAppliedSequence, cancellationToken)
@@ -466,12 +564,30 @@ public partial class ProjectionUpdateOrchestrator(
             }
 
             Log.ProjectionStateUpdated(logger, identity.TenantId, identity.Domain, identity.AggregateId, response.ProjectionType, projectionActorId);
-            return save.Checkpoint;
+            // P9: pageComplete check covers the exact-RebuildPageSize boundary. A stream of
+            // exactly 256 events with ToPosition=null was previously stuck at pageComplete=false
+            // until a second invocation read 0 events. Now we additionally check that the highest
+            // applied sequence reaches ToPosition (when set); when ToPosition is null, EOS
+            // detection deferred to the next iteration's empty-events branch.
+            bool pageComplete = events.Length < RebuildPageSize
+                || (toPosition is long bound && highestAppliedSequence >= bound);
+            return RebuildDeliveryResult.Complete(highestAppliedSequence, pageComplete);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             Log.ProjectionUpdateFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId);
-            return null;
+            return RebuildDeliveryResult.Interrupt();
         }
+    }
+
+    private sealed record RebuildDeliveryResult(
+        long LastAppliedSequence,
+        bool PageComplete,
+        bool Interrupted) {
+        public static RebuildDeliveryResult Complete(long lastAppliedSequence, bool pageComplete = true)
+            => new(lastAppliedSequence, pageComplete, Interrupted: false);
+
+        public static RebuildDeliveryResult Interrupt()
+            => new(0, PageComplete: false, Interrupted: true);
     }
 
     private static bool MatchesRebuildScope(ProjectionRebuildCheckpointScope scope, AggregateIdentity identity)
@@ -480,8 +596,18 @@ public partial class ProjectionUpdateOrchestrator(
             && (string.IsNullOrWhiteSpace(scope.AggregateId)
                 || string.Equals(scope.AggregateId, identity.AggregateId, StringComparison.Ordinal));
 
+    // P14: include NotStarted so cancel-cleanup arriving before the first iteration still triggers
+    // the terminal write path. The store's lifecycle guards still prevent illegitimate transitions.
     private static bool CanRunRebuild(ProjectionRebuildCheckpoint? checkpoint)
-        => checkpoint?.Status is ProjectionRebuildStatus.Running or ProjectionRebuildStatus.Resuming or ProjectionRebuildStatus.Retrying;
+        => checkpoint?.Status is ProjectionRebuildStatus.Running
+            or ProjectionRebuildStatus.Resuming
+            or ProjectionRebuildStatus.Retrying
+            or ProjectionRebuildStatus.NotStarted;
+
+    private static bool IsTerminalStatus(ProjectionRebuildStatus status)
+        => status is ProjectionRebuildStatus.Succeeded
+            or ProjectionRebuildStatus.Failed
+            or ProjectionRebuildStatus.Canceled;
 
     // Bounded page size for operator rebuild reads. Prevents O(N) full-stream replays per iteration
     // and bounds the per-page apply work. Domain-wide rebuild enumerates aggregates separately;
@@ -634,50 +760,18 @@ public partial class ProjectionUpdateOrchestrator(
                 ? ProjectionReasonCodes.ProjectUpstream5xx
                 : ProjectionReasonCodes.ProjectUnexpectedStatus;
 
-    private async Task<bool> HasActiveOperatorRebuildAsync(
-        AggregateIdentity identity,
-        CancellationToken cancellationToken) {
-        if (rebuildCheckpointStore is null) {
-            return false;
-        }
-
-        try {
-            ProjectionRebuildCheckpoint? checkpoint = await rebuildCheckpointStore
-                .ReadAsync(
-                    new ProjectionRebuildCheckpointScope(
-                        identity.TenantId,
-                        identity.Domain,
-                        identity.Domain,
-                        AggregateId: null,
-                        OperationId: null),
-                    cancellationToken)
-                .ConfigureAwait(false);
-            return checkpoint?.Status is
-                ProjectionRebuildStatus.Running
-                or ProjectionRebuildStatus.Pausing
-                or ProjectionRebuildStatus.Paused
-                or ProjectionRebuildStatus.Resuming
-                or ProjectionRebuildStatus.Retrying
-                or ProjectionRebuildStatus.Canceling;
-        }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception ex) {
-            // P6: Fail closed. When the checkpoint store cannot answer, we must assume an
-            // operator rebuild MAY be active and skip the poller delivery to avoid racing
-            // it. Returning false here would let the poller proceed and corrupt the rebuild.
-            Log.RebuildCheckpointReadFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId, ex.GetType().Name);
-            return true;
-        }
-    }
-
     private static partial class Log {
         [LoggerMessage(
             EventId = 1110,
             Level = LogLevel.Debug,
             Message = "Projection update started: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=ProjectionUpdateStarted")]
         public static partial void UpdateStarted(ILogger logger, string tenantId, string domain, string aggregateId);
+
+        [LoggerMessage(
+            EventId = 11101,
+            Level = LogLevel.Debug,
+            Message = "Projection rebuild delivery started: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=ProjectionRebuildDeliveryStarted")]
+        public static partial void RebuildDeliveryStarted(ILogger logger, string tenantId, string domain, string aggregateId);
 
         [LoggerMessage(
             EventId = 1111,
@@ -770,9 +864,9 @@ public partial class ProjectionUpdateOrchestrator(
         public static partial void PollerRebuildConflict(ILogger logger, string tenantId, string domain, string aggregateId, string reasonCode);
 
         [LoggerMessage(
-            EventId = 1146,
+            EventId = 1147,
             Level = LogLevel.Warning,
-            Message = "Projection rebuild checkpoint read failed while checking poller/rebuild conflict: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ExceptionType={ExceptionType}, Stage=ProjectionRebuildConflictCheckFailed")]
-        public static partial void RebuildCheckpointReadFailed(ILogger logger, Exception exception, string tenantId, string domain, string aggregateId, string exceptionType);
+            Message = "Projection rebuild cancel-cleanup write rejected: TenantId={TenantId}, Domain={Domain}, ProjectionName={ProjectionName}, ReasonCode={ReasonCode}, Stage=ProjectionRebuildCancelCleanupRejected")]
+        public static partial void RebuildCancelCleanupRejected(ILogger logger, string tenantId, string domain, string projectionName, string reasonCode);
     }
 }

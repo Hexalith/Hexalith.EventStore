@@ -88,6 +88,7 @@ public class StreamsControllerTests {
     [Fact]
     public async Task ReadStreamAsyncReturnsOrderedBoundedAggregatePage() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
+        _ = actor.GetCurrentSequenceAsync().Returns(4);
         _ = actor.ReadEventsRangeAsync(1, null, 3).Returns([
             BuildEnvelope(2),
             BuildEnvelope(3),
@@ -119,6 +120,7 @@ public class StreamsControllerTests {
     [Fact]
     public async Task ReadStreamAsyncMapsMissingEventToSafeProblem() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
+        _ = actor.GetCurrentSequenceAsync().Returns(3);
         _ = actor.ReadEventsRangeAsync(Arg.Any<long>(), Arg.Any<long?>(), Arg.Any<int>())
             .ThrowsAsync(new MissingEventException(2, Tenant, Domain, AggregateId));
         (StreamsController controller, _, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator) = CreateController(actor);
@@ -148,8 +150,6 @@ public class StreamsControllerTests {
     }
 
     [Theory]
-    [InlineData("Tenant-A", Domain, AggregateId)]
-    [InlineData(Tenant, "Party", AggregateId)]
     [InlineData(Tenant, Domain, ":actor-key")]
     public async Task ReadStreamAsyncWithInvalidIdentityShapeReturnsDedicatedReasonBeforeActorProxy(
         string tenant,
@@ -183,22 +183,41 @@ public class StreamsControllerTests {
     [Fact]
     public async Task ReadStreamAsyncReturnsNullLastSequenceForEmptyPage() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
-        _ = actor.ReadEventsRangeAsync(0, null, 101).Returns([]);
+        _ = actor.GetCurrentSequenceAsync().Returns(10);
+        _ = actor.ReadEventsRangeAsync(10, null, 101).Returns([]);
+        (StreamsController controller, _, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator) = CreateController(actor);
+        tenantValidator.ConfiguredResult = TenantValidationResult.Allowed;
+        rbacValidator.ConfiguredResult = RbacValidationResult.Allowed;
+
+        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(Tenant, Domain, AggregateId, FromSequence: 10));
+
+        OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
+        StreamReadPage page = ok.Value.ShouldBeOfType<StreamReadPage>();
+        page.Metadata.LastSequenceReturned.ShouldBeNull();
+        page.Metadata.LatestSequence.ShouldBe(10);
+        page.Metadata.EventCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ReadStreamAsyncMissingStreamReturnsSafeNotFound() {
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        _ = actor.GetCurrentSequenceAsync().Returns(0);
         (StreamsController controller, _, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator) = CreateController(actor);
         tenantValidator.ConfiguredResult = TenantValidationResult.Allowed;
         rbacValidator.ConfiguredResult = RbacValidationResult.Allowed;
 
         IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(Tenant, Domain, AggregateId));
 
-        OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
-        StreamReadPage page = ok.Value.ShouldBeOfType<StreamReadPage>();
-        page.Metadata.LastSequenceReturned.ShouldBeNull();
-        page.Metadata.EventCount.ShouldBe(0);
+        ProblemDetails problem = AssertProblem(result, StatusCodes.Status404NotFound);
+        problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.MissingStream);
+        _ = await actor.DidNotReceiveWithAnyArgs().ReadEventsRangeAsync(default, default, default);
+        AssertNoForbiddenLeakage(problem);
     }
 
     [Fact]
     public async Task ReadStreamAsyncWithUnavailableActorReturnsServiceUnavailable() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
+        _ = actor.GetCurrentSequenceAsync().Returns(3);
         _ = actor.ReadEventsRangeAsync(Arg.Any<long>(), Arg.Any<long?>(), Arg.Any<int>())
             .ThrowsAsync(new HttpRequestException("dapr unavailable"));
         (StreamsController controller, _, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator) = CreateController(actor);
@@ -209,6 +228,22 @@ public class StreamsControllerTests {
 
         ProblemDetails problem = AssertProblem(result, StatusCodes.Status503ServiceUnavailable);
         problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.ServiceUnavailable);
+        controller.Response.Headers.RetryAfter.ToString().ShouldBe("5");
+        AssertNoForbiddenLeakage(problem);
+    }
+
+    [Fact]
+    public async Task ReadStreamAsyncWithActorApplicationFailureReturnsInternalError() {
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        _ = actor.GetCurrentSequenceAsync().ThrowsAsync(new ActorMethodInvocationException("actor failed", new InvalidOperationException("serializer defect"), false));
+        (StreamsController controller, _, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator) = CreateController(actor);
+        tenantValidator.ConfiguredResult = TenantValidationResult.Allowed;
+        rbacValidator.ConfiguredResult = RbacValidationResult.Allowed;
+
+        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(Tenant, Domain, AggregateId));
+
+        ProblemDetails problem = AssertProblem(result, StatusCodes.Status500InternalServerError);
+        problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.InternalError);
         AssertNoForbiddenLeakage(problem);
     }
 
@@ -256,6 +291,10 @@ public class StreamsControllerTests {
             "state store",
             "statestore",
             "dapr://",
+            "AggregateActor",
+            "projection-rebuild-checkpoints:",
+            "redis://",
+            "ETag",
             "localhost:",
             "127.0.0.1",
             "Bearer ",

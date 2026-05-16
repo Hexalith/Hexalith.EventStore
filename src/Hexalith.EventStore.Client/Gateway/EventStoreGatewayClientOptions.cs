@@ -23,4 +23,9 @@ public sealed class EventStoreGatewayClientOptions {
     /// Gets or sets the relative public stream read endpoint path.
     /// </summary>
     public string StreamReadPath { get; set; } = "api/v1/streams/read";
+
+    /// <summary>
+    /// Gets or sets the maximum buffered stream-read response size in bytes.
+    /// </summary>
+    public long MaxStreamReadResponseBytes { get; set; } = 16 * 1024 * 1024;
 }

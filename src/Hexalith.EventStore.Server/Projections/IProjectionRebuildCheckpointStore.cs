@@ -27,6 +27,11 @@ public interface IProjectionRebuildCheckpointStore {
     /// <summary>
     /// Explicitly rewinds projection rebuild progress with optimistic concurrency.
     /// </summary>
+    /// <remarks>
+    /// This method intentionally bypasses the monotonic progress and lifecycle protections used by
+    /// <see cref="SaveAsync"/>. Callers must enforce operator authorization and only use it for
+    /// explicit lifecycle commands such as reset, replay, or retry.
+    /// </remarks>
     Task<ProjectionRebuildCheckpointSaveResult> ResetAsync(
         ProjectionRebuildCheckpointScope scope,
         long lastAppliedSequence,
@@ -34,4 +39,17 @@ public interface IProjectionRebuildCheckpointStore {
         string? failureReasonCode = null,
         CancellationToken cancellationToken = default,
         long? toPosition = null);
+
+    /// <summary>
+    /// Returns true when any projection in the (tenant, domain) pair has an active operator rebuild.
+    /// </summary>
+    /// <remarks>
+    /// D3-B: backed by a per-(tenant, domain) active-rebuild index that is maintained by
+    /// <see cref="SaveAsync"/> and <see cref="ResetAsync"/>. The poller calls this method to
+    /// avoid racing an in-flight operator rebuild without assuming projectionName == domain.
+    /// </remarks>
+    Task<bool> HasActiveOperatorRebuildForDomainAsync(
+        string tenant,
+        string domain,
+        CancellationToken cancellationToken = default);
 }

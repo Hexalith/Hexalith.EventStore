@@ -25,6 +25,9 @@ public static class StreamReplayReasonCodes {
     /// <summary>Caller is not authorized for the requested replay scope.</summary>
     public const string ForbiddenReplayScope = "forbidden-replay-scope";
 
+    /// <summary>Caller does not hold the required operator role.</summary>
+    public const string ForbiddenRole = "forbidden-role";
+
     /// <summary>The requested stream does not exist.</summary>
     public const string MissingStream = "missing-stream";
 
@@ -42,6 +45,12 @@ public static class StreamReplayReasonCodes {
 
     /// <summary>A checkpoint write conflicted with a concurrent writer.</summary>
     public const string CheckpointConflict = "checkpoint-conflict";
+
+    /// <summary>A checkpoint write attempted to move progress behind the stored checkpoint.</summary>
+    public const string StaleCheckpoint = "stale-checkpoint";
+
+    /// <summary>Another rebuild operation is already active for the requested scope.</summary>
+    public const string OperationInFlight = "operation-in-flight";
 
     /// <summary>A checkpoint read observed drift from available stream progress.</summary>
     public const string CheckpointDrift = "checkpoint-drift";
@@ -72,4 +81,7 @@ public static class StreamReplayReasonCodes {
 
     /// <summary>An unexpected internal stream replay failure occurred.</summary>
     public const string InternalError = "internal-error";
+
+    /// <summary>No domain service is registered for the requested rebuild.</summary>
+    public const string NoDomainService = "no-domain-service";
 }

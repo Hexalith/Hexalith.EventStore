@@ -1,3 +1,4 @@
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Contracts.Streams;
 
 namespace Hexalith.EventStore.Testing.Builders;
@@ -14,6 +15,18 @@ public sealed class StreamReadPageBuilder {
     private long? _toSequence;
     private long _latestSequence;
     private ReplayContinuationToken? _nextContinuationToken;
+    // P20: optional deterministic-id factory so tests asserting exact MessageId/CorrelationId/
+    // CausationId values pin determinism. When null, the builder generates fresh ULIDs per build.
+    private Func<long, string>? _idFactory;
+
+    /// <summary>
+    /// Configures a deterministic id factory for MessageId/CorrelationId/CausationId.
+    /// </summary>
+    public StreamReadPageBuilder WithDeterministicIds(Func<long, string> idFactory) {
+        ArgumentNullException.ThrowIfNull(idFactory);
+        _idFactory = idFactory;
+        return this;
+    }
 
     /// <summary>
     /// Creates a builder with standard tenant/domain/aggregate values.
@@ -52,15 +65,18 @@ public sealed class StreamReadPageBuilder {
     public StreamReadPageBuilder AddEvent(long sequenceNumber, string eventTypeName = "TestEvent", byte[]? payload = null) {
         ArgumentOutOfRangeException.ThrowIfLessThan(sequenceNumber, 1);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventTypeName);
+        string messageId = _idFactory?.Invoke(sequenceNumber) ?? UniqueIdHelper.GenerateSortableUniqueStringId();
+        string correlationId = _idFactory?.Invoke(sequenceNumber) ?? UniqueIdHelper.GenerateSortableUniqueStringId();
+        string causationId = _idFactory?.Invoke(sequenceNumber) ?? UniqueIdHelper.GenerateSortableUniqueStringId();
         _events.Add(new StreamReadEvent(
             sequenceNumber,
             eventTypeName,
             payload ?? [],
             "json",
             1,
-            $"message-{sequenceNumber}",
-            $"corr-{sequenceNumber}",
-            $"cause-{sequenceNumber}",
+            messageId,
+            correlationId,
+            causationId,
             DateTimeOffset.UnixEpoch.AddSeconds(sequenceNumber),
             "user-1"));
         _latestSequence = Math.Max(_latestSequence, sequenceNumber);

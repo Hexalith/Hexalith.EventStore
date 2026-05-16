@@ -101,15 +101,27 @@ public sealed partial class StreamsController(
                 new ActorId(identity.ActorId),
                 "AggregateActor");
 
+            long currentSequence = await actor.GetCurrentSequenceAsync().ConfigureAwait(false);
+            // P1: 404 covers any FromSequence when the stream does not exist (currentSequence == 0).
+            // The prior `&& request.FromSequence == 0` guard let non-zero From requests slip through
+            // as 200 OK + empty events + LatestSequence=0 (incoherent — caller cannot distinguish
+            // "stream gone" from "no new events").
+            if (currentSequence == 0) {
+                return ProblemWithReason(
+                    StatusCodes.Status404NotFound,
+                    ProblemTypeUris.NotFound,
+                    "Not Found",
+                    "Event stream does not exist.",
+                    StreamReplayReasonCodes.MissingStream);
+            }
+
             ServerEventEnvelope[] pageEvents = await actor
                 .ReadEventsRangeAsync(request.FromSequence, request.ToSequence, request.PageSize + 1)
                 .ConfigureAwait(false);
 
             IReadOnlyList<ServerEventEnvelope> readEvents = [.. pageEvents.OrderBy(e => e.SequenceNumber)];
             IReadOnlyList<ServerEventEnvelope> orderedEvents = [.. readEvents.Take(request.PageSize)];
-            long latestSequence = readEvents.Count == 0
-                ? request.FromSequence
-                : readEvents[^1].SequenceNumber;
+            long latestSequence = currentSequence;
             long? lastReturned = orderedEvents.Count == 0
                 ? null
                 : orderedEvents[^1].SequenceNumber;
@@ -182,12 +194,14 @@ public sealed partial class StreamsController(
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             Log.StreamReadFailed(logger, ex, request.Tenant, request.Domain, request.AggregateId ?? string.Empty, StreamReplayReasonCodes.ServiceUnavailable);
-            return ProblemWithReason(
+            ObjectResult result = ProblemWithReason(
                 StatusCodes.Status503ServiceUnavailable,
                 ProblemTypeUris.ServiceUnavailable,
                 "Service Unavailable",
                 "Stream replay service is unavailable.",
                 StreamReplayReasonCodes.ServiceUnavailable);
+            Response.Headers.RetryAfter = "5";
+            return result;
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             Log.StreamReadFailed(logger, ex, request.Tenant, request.Domain, request.AggregateId ?? string.Empty, StreamReplayReasonCodes.InternalError);
@@ -261,13 +275,13 @@ public sealed partial class StreamsController(
         }
 
         if (request.FromSequence < 0
-            || request.FromSequence > int.MaxValue - 1L
-            || (request.ToSequence.HasValue && request.ToSequence.Value <= request.FromSequence)) {
+            || request.FromSequence > int.MaxValue - request.PageSize - 1L
+            || (request.ToSequence.HasValue && request.ToSequence.Value < request.FromSequence)) {
             return ProblemWithReason(
                 StatusCodes.Status400BadRequest,
                 ProblemTypeUris.BadRequest,
                 "Bad Request",
-                "'fromSequence' must be >= 0 and 'toSequence' must be greater than 'fromSequence'.",
+                "'fromSequence' must be >= 0 and 'toSequence' must not be less than 'fromSequence'.",
                 StreamReplayReasonCodes.InvalidRange);
         }
 
@@ -301,7 +315,7 @@ public sealed partial class StreamsController(
             return false;
         }
 
-        return value.All(c => c is >= 'a' and <= 'z' || c is >= '0' and <= '9' || c == '-');
+        return value.All(c => char.IsAsciiLetterOrDigit(c) || c == '-');
     }
 
     private static bool IsValidAggregateId(string value) {
@@ -317,11 +331,41 @@ public sealed partial class StreamsController(
     }
 
     private static bool IsServiceUnavailable(Exception exception)
-        => exception is DaprException
-            or HttpRequestException
-            or TimeoutException
-            or ActorMethodInvocationException
-            || (exception.InnerException is not null && IsServiceUnavailable(exception.InnerException));
+        => IsServiceUnavailable(exception, depth: 0);
+
+    // Bound is exclusive; depth==0..MaxExceptionFrames-1 are examined (== MaxExceptionFrames frames).
+    private const int MaxExceptionFrames = 8;
+
+    private static bool IsServiceUnavailable(Exception exception, int depth) {
+        if (depth >= MaxExceptionFrames) {
+            return false;
+        }
+
+        if (exception is ActorMethodInvocationException actorException) {
+            // DEC5: when the inner exception is null, treat as transport-level actor unreachability
+            // (canonical 503 case from Dapr SDK builds that surface "actor not callable" without
+            // an inner exception). Operator can retry with backoff.
+            if (actorException.InnerException is null) {
+                return true;
+            }
+
+            return IsServiceUnavailable(actorException.InnerException, depth + 1);
+        }
+
+        if (exception is DaprException or HttpRequestException or IOException or TaskCanceledException) {
+            return true;
+        }
+
+        // DEC4: TimeoutException is transient ONLY when wrapped (e.g., HTTP/2 socket timeout
+        // surfacing through Dapr SDK). Bare TimeoutException at the top level is treated as
+        // a programmer/data error so it surfaces as 500 InternalError.
+        if (exception is TimeoutException && depth > 0) {
+            return true;
+        }
+
+        return exception.InnerException is not null
+            && IsServiceUnavailable(exception.InnerException, depth + 1);
+    }
 
     private static bool TryGetException<TException>(Exception exception, out TException? result)
         where TException : Exception {

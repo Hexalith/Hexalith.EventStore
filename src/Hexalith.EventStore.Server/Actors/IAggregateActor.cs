@@ -35,4 +35,10 @@ public interface IAggregateActor : IActor {
     /// <exception cref="MissingEventException">Thrown when an expected event key is missing from the state store (data corruption).</exception>
     /// <exception cref="EventDeserializationException">Thrown when an event cannot be deserialized from the state store.</exception>
     Task<EventEnvelope[]> ReadEventsRangeAsync(long fromSequence, long? toSequence, int maxCount);
+
+    /// <summary>
+    /// Gets the aggregate stream's current highest sequence number.
+    /// </summary>
+    /// <returns>The current sequence number, or 0 when the stream does not exist.</returns>
+    Task<long> GetCurrentSequenceAsync();
 }

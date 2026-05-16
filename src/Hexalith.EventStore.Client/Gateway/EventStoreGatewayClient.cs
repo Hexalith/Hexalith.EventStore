@@ -29,9 +29,32 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     /// <summary>
     /// Initializes a new instance of the <see cref="EventStoreGatewayClient"/> class.
     /// </summary>
+    /// <remarks>
+    /// DEC6: this constructor mutates <see cref="HttpClient.MaxResponseContentBufferSize"/> on
+    /// the supplied <paramref name="httpClient"/>. Because <see cref="IHttpClientFactory"/>
+    /// instances are commonly shared across consumers, the buffer cap applies to ALL endpoints
+    /// invoked via the same client. Configure a typed client per gateway when other endpoints
+    /// (e.g., large query responses) need a higher cap.
+    /// </remarks>
     public EventStoreGatewayClient(HttpClient httpClient, IOptions<EventStoreGatewayClientOptions> options) {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        if (_options.MaxStreamReadResponseBytes <= 0) {
+            throw new ArgumentOutOfRangeException(nameof(options), "MaxStreamReadResponseBytes must be greater than zero.");
+        }
+
+        // P17/DEC6: HttpClient.MaxResponseContentBufferSize is an int. Validate the option
+        // value fits before assignment so misconfiguration surfaces as ArgumentOutOfRange at
+        // startup rather than as a runtime exception on the first stream read.
+        if (_options.MaxStreamReadResponseBytes > int.MaxValue) {
+            throw new ArgumentOutOfRangeException(
+                nameof(options),
+                $"MaxStreamReadResponseBytes must be <= {int.MaxValue} (HttpClient.MaxResponseContentBufferSize is int).");
+        }
+
+        if (_httpClient.MaxResponseContentBufferSize > _options.MaxStreamReadResponseBytes) {
+            _httpClient.MaxResponseContentBufferSize = _options.MaxStreamReadResponseBytes;
+        }
     }
 
     /// <inheritdoc />

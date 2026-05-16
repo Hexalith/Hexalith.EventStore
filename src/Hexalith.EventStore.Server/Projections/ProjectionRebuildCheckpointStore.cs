@@ -19,6 +19,21 @@ public sealed partial class ProjectionRebuildCheckpointStore(
     ILogger<ProjectionRebuildCheckpointStore> logger) : IProjectionRebuildCheckpointStore {
     private const int MaxEtagRetries = 3;
     private const string StateKeyPrefix = "projection-rebuild-checkpoints:";
+    private const string ActiveIndexKeyPrefix = "projection-rebuild-active-index:";
+
+    // Bounded retry delays paired one-to-one with retry attempts beyond the first.
+    // Static asserts in the loop guarantee s_retryDelays.Length == MaxEtagRetries - 1.
+    private static readonly TimeSpan[] s_retryDelays = [
+        TimeSpan.FromMilliseconds(50),
+        TimeSpan.FromMilliseconds(200),
+    ];
+
+    static ProjectionRebuildCheckpointStore() {
+        if (s_retryDelays.Length != MaxEtagRetries - 1) {
+            throw new InvalidOperationException(
+                $"Retry delay table length ({s_retryDelays.Length}) must equal MaxEtagRetries - 1 ({MaxEtagRetries - 1}).");
+        }
+    }
 
     /// <inheritdoc/>
     public async Task<ProjectionRebuildCheckpoint?> ReadAsync(
@@ -44,24 +59,26 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         return checkpoint;
     }
 
+    // P6: ULID validation per CLAUDE.md R2-A7. UniqueIdHelper.ToGuid uses a case-insensitive
+    // Crockford-base32 regex internally, so this accepts both lowercase and uppercase ULIDs
+    // that the rest of the system also accepts. The wasteful uppercase-clone allocation that
+    // the prior implementation used has been removed.
     private static bool IsValidOperationId(string? operationId) {
         if (operationId is null) {
             return true;
         }
 
-        // ULID shape per UniqueIdHelper.GenerateSortableUniqueStringId(): 26 chars Crockford base32.
         if (operationId.Length != 26) {
             return false;
         }
 
-        foreach (char c in operationId) {
-            bool isValid = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
-            if (!isValid) {
-                return false;
-            }
+        try {
+            _ = UniqueIdHelper.ToGuid(operationId);
+            return true;
         }
-
-        return true;
+        catch (Exception ex) when (ex is ArgumentException or FormatException) {
+            return false;
+        }
     }
 
     /// <inheritdoc/>
@@ -88,6 +105,16 @@ public sealed partial class ProjectionRebuildCheckpointStore(
 
                 if (existing is not null) {
                     ValidateCheckpointScope(scope, existing);
+                    // P16/DEC10: reject when the existing record carries an OperationId and the caller
+                    // either presents a different one or omits one entirely. Covers active operators
+                    // racing each other, poller-without-OpId clobbering an active operator, and
+                    // terminal-record OperationId overwrite from a different operator.
+                    if (IsDifferentOperation(scope, existing)
+                        && (IsLifecycleActive(existing.Status) || IsTerminal(existing.Status))) {
+                        Log.OperationConflict(logger, scope.Tenant, scope.Domain, scope.ProjectionName, existing.Status.ToString(), StreamReplayReasonCodes.OperationInFlight);
+                        return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.OperationInFlight);
+                    }
+
                     // P2/P14: Idempotent no-op ONLY when every observable field matches.
                     if (existing.LastAppliedSequence >= lastAppliedSequence
                         && existing.Status == status
@@ -113,6 +140,10 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                         };
                         Log.CheckpointLifecycleProtected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, existing.Status.ToString(), status.ToString(), protectReason);
                         return ProjectionRebuildCheckpointSaveResult.Failure(protectReason);
+                    }
+
+                    if (status == ProjectionRebuildStatus.Failed && lastAppliedSequence < existing.LastAppliedSequence) {
+                        return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.StaleCheckpoint);
                     }
                 }
 
@@ -141,6 +172,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                 if (saved) {
+                    await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
                     return ProjectionRebuildCheckpointSaveResult.Success(checkpoint);
                 }
 
@@ -151,7 +183,11 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             }
             catch (Exception ex) when (IsStateStoreUnavailable(ex)) {
                 Log.CheckpointUnavailable(logger, ex, scope.Tenant, scope.Domain, scope.ProjectionName, ex.GetType().Name);
-                return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointUnavailable);
+                if (attempt >= MaxEtagRetries - 1) {
+                    return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointUnavailable);
+                }
+
+                await Task.Delay(s_retryDelays[attempt], cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -182,6 +218,14 @@ public sealed partial class ProjectionRebuildCheckpointStore(
 
                 if (existing is not null) {
                     ValidateCheckpointScope(scope, existing);
+                    // DEC8: Reject when an active operation owned by a different operator is in
+                    // flight. Reset is the trust boundary for terminal records, so terminal-record
+                    // overwrites from a different OperationId remain allowed (sequential operator
+                    // history). The active-vs-active conflict is the one we must rebuff.
+                    if (IsLifecycleActive(existing.Status) && IsDifferentOperation(scope, existing)) {
+                        Log.OperationConflict(logger, scope.Tenant, scope.Domain, scope.ProjectionName, existing.Status.ToString(), StreamReplayReasonCodes.OperationInFlight);
+                        return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.OperationInFlight);
+                    }
                 }
 
                 var checkpoint = new ProjectionRebuildCheckpoint(
@@ -205,6 +249,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                 if (saved) {
+                    await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
                     return ProjectionRebuildCheckpointSaveResult.Success(checkpoint);
                 }
 
@@ -215,11 +260,109 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             }
             catch (Exception ex) when (IsStateStoreUnavailable(ex)) {
                 Log.CheckpointUnavailable(logger, ex, scope.Tenant, scope.Domain, scope.ProjectionName, ex.GetType().Name);
-                return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointUnavailable);
+                if (attempt >= MaxEtagRetries - 1) {
+                    return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointUnavailable);
+                }
+
+                await Task.Delay(s_retryDelays[attempt], cancellationToken).ConfigureAwait(false);
             }
         }
 
         return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointConflict);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> HasActiveOperatorRebuildForDomainAsync(
+        string tenant,
+        string domain,
+        CancellationToken cancellationToken = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
+        ArgumentException.ThrowIfNullOrWhiteSpace(domain);
+
+        try {
+            string[]? activeProjections = await daprClient
+                .GetStateAsync<string[]>(
+                    options.Value.CheckpointStateStoreName,
+                    GetActiveIndexKey(tenant, domain),
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            return activeProjections is { Length: > 0 };
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) when (IsStateStoreUnavailable(ex)) {
+            // Fail closed: when the index store cannot answer, assume an operator rebuild MAY
+            // be active so the poller skips delivery. The poller routinely re-checks; transient
+            // outages do not corrupt projection state, only delay polling.
+            Log.ActiveIndexReadFailed(logger, ex, tenant, domain, ex.GetType().Name);
+            return true;
+        }
+    }
+
+    // D3-B: SaveAsync/ResetAsync write a per-(tenant, domain) index of active projection names.
+    // The index is read by HasActiveOperatorRebuildForDomainAsync to determine whether any
+    // operator rebuild is in flight for the (tenant, domain) pair, replacing the prior probe
+    // that incorrectly assumed projectionName == domain.
+    private async Task UpdateActiveIndexForLifecycleAsync(
+        ProjectionRebuildCheckpointScope scope,
+        ProjectionRebuildStatus status,
+        CancellationToken cancellationToken) {
+        bool active = IsLifecycleActive(status);
+        bool terminal = IsTerminal(status);
+        if (!active && !terminal && status != ProjectionRebuildStatus.NotStarted) {
+            // No-op transitions (e.g., Paused-to-Paused via Save) do not change the index.
+            return;
+        }
+
+        string indexKey = GetActiveIndexKey(scope.Tenant, scope.Domain);
+        string stateStoreName = options.Value.CheckpointStateStoreName;
+        for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+            try {
+                (string[]? existing, string etag) = await daprClient
+                    .GetStateAndETagAsync<string[]>(
+                        stateStoreName,
+                        indexKey,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                var current = new HashSet<string>(existing ?? [], StringComparer.Ordinal);
+                bool changed;
+                if (active) {
+                    changed = current.Add(scope.ProjectionName);
+                }
+                else {
+                    changed = current.Remove(scope.ProjectionName);
+                }
+
+                if (!changed) {
+                    return;
+                }
+
+                string[] next = [.. current];
+                bool saved = await daprClient
+                    .TrySaveStateAsync(
+                        stateStoreName,
+                        indexKey,
+                        next,
+                        etag,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                if (saved) {
+                    return;
+                }
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) when (IsStateStoreUnavailable(ex)) {
+                Log.ActiveIndexWriteFailed(logger, ex, scope.Tenant, scope.Domain, scope.ProjectionName, ex.GetType().Name);
+                if (attempt >= MaxEtagRetries - 1) {
+                    return;
+                }
+
+                await Task.Delay(s_retryDelays[attempt], cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
     internal static string GetStateKey(ProjectionRebuildCheckpointScope scope) {
@@ -235,17 +378,24 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             string.IsNullOrWhiteSpace(scope.AggregateId) ? "*" : scope.AggregateId);
     }
 
+    internal static string GetActiveIndexKey(string tenant, string domain)
+        => string.Concat(ActiveIndexKeyPrefix, tenant, ":", domain);
+
     private static void ValidateScope(ProjectionRebuildCheckpointScope scope) {
         ArgumentNullException.ThrowIfNull(scope);
         ValidateKeyPart(scope.Tenant, nameof(scope.Tenant));
         ValidateKeyPart(scope.Domain, nameof(scope.Domain));
         ValidateKeyPart(scope.ProjectionName, nameof(scope.ProjectionName));
-        if (!string.IsNullOrWhiteSpace(scope.AggregateId)) {
+        if (scope.AggregateId is not null) {
+            ArgumentException.ThrowIfNullOrWhiteSpace(scope.AggregateId, nameof(scope.AggregateId));
             ValidateKeyPart(scope.AggregateId, nameof(scope.AggregateId));
         }
 
         if (!string.IsNullOrWhiteSpace(scope.OperationId)) {
             ValidateKeyPart(scope.OperationId, nameof(scope.OperationId));
+            if (!IsValidOperationId(scope.OperationId)) {
+                throw new ArgumentException("OperationId must be a valid ULID.", nameof(scope.OperationId));
+            }
         }
     }
 
@@ -273,7 +423,36 @@ public sealed partial class ProjectionRebuildCheckpointStore(
     private static bool IsNonTerminalAdvancement(ProjectionRebuildStatus status)
         => status is ProjectionRebuildStatus.Running
             or ProjectionRebuildStatus.Resuming
+            or ProjectionRebuildStatus.NotStarted
             or ProjectionRebuildStatus.Retrying;
+
+    private static bool IsLifecycleActive(ProjectionRebuildStatus status)
+        => status is ProjectionRebuildStatus.Running
+            or ProjectionRebuildStatus.Pausing
+            or ProjectionRebuildStatus.Paused
+            or ProjectionRebuildStatus.Resuming
+            or ProjectionRebuildStatus.Retrying
+            or ProjectionRebuildStatus.Canceling;
+
+    private static bool IsTerminal(ProjectionRebuildStatus status)
+        => status is ProjectionRebuildStatus.Succeeded
+            or ProjectionRebuildStatus.Failed
+            or ProjectionRebuildStatus.Canceled;
+
+    // P16/DEC10: a different operation is one where the existing record carries an OperationId
+    // and the caller's scope either omits one or supplies a different one. The asymmetric-null
+    // form covered the "both populated" case only; this form also catches poller (no OpId)
+    // racing operator (fresh OpId) and operator-vs-operator on terminal records.
+    private static bool IsDifferentOperation(
+        ProjectionRebuildCheckpointScope scope,
+        ProjectionRebuildCheckpoint existing) {
+        if (string.IsNullOrWhiteSpace(existing.OperationId)) {
+            return false;
+        }
+
+        return string.IsNullOrWhiteSpace(scope.OperationId)
+            || !string.Equals(existing.OperationId, scope.OperationId, StringComparison.Ordinal);
+    }
 
     private static void ValidateCheckpointScope(ProjectionRebuildCheckpointScope scope, ProjectionRebuildCheckpoint checkpoint) {
         if (!string.Equals(checkpoint.Tenant, scope.Tenant, StringComparison.Ordinal)
@@ -287,16 +466,24 @@ public sealed partial class ProjectionRebuildCheckpointStore(
     private static bool IsStateStoreUnavailable(Exception exception)
         => IsStateStoreUnavailable(exception, depth: 0);
 
-    // M5: depth-bounded recursion. Maliciously-constructed or circular exception chains
-    // would otherwise stack-overflow.
-    private const int MaxExceptionUnwindDepth = 8;
+    // P18: bound is exclusive; depth==0..MaxExceptionFrames-1 are examined (== MaxExceptionFrames frames).
+    // Renamed from MaxExceptionUnwindDepth to make the constant name reflect actual behavior.
+    private const int MaxExceptionFrames = 8;
 
     private static bool IsStateStoreUnavailable(Exception exception, int depth) {
-        if (depth >= MaxExceptionUnwindDepth) {
+        if (depth >= MaxExceptionFrames) {
             return false;
         }
 
-        if (exception is DaprException or HttpRequestException or IOException or TimeoutException) {
+        if (exception is DaprException or HttpRequestException or IOException or TaskCanceledException) {
+            return true;
+        }
+
+        // DEC4: TimeoutException is transient ONLY when wrapped under DaprException or
+        // HttpRequestException (e.g., HTTP/2 socket timeout surfacing through Dapr SDK).
+        // Bare TimeoutException at the top level is treated as a programmer/data error so it
+        // surfaces as 500 InternalError rather than masking application bugs as 503.
+        if (exception is TimeoutException && depth > 0) {
             return true;
         }
 
@@ -352,5 +539,40 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             string tenantId,
             string domain,
             string projectionName);
+
+        [LoggerMessage(
+            EventId = 1194,
+            Level = LogLevel.Warning,
+            Message = "Projection rebuild checkpoint operation conflict: TenantId={TenantId}, Domain={Domain}, ProjectionName={ProjectionName}, ExistingStatus={ExistingStatus}, ReasonCode={ReasonCode}, Stage=ProjectionRebuildOperationConflict")]
+        public static partial void OperationConflict(
+            ILogger logger,
+            string tenantId,
+            string domain,
+            string projectionName,
+            string existingStatus,
+            string reasonCode);
+
+        [LoggerMessage(
+            EventId = 1196,
+            Level = LogLevel.Warning,
+            Message = "Projection rebuild active-index read failed: TenantId={TenantId}, Domain={Domain}, ExceptionType={ExceptionType}, Stage=ProjectionRebuildActiveIndexReadFailed")]
+        public static partial void ActiveIndexReadFailed(
+            ILogger logger,
+            Exception exception,
+            string tenantId,
+            string domain,
+            string exceptionType);
+
+        [LoggerMessage(
+            EventId = 1197,
+            Level = LogLevel.Warning,
+            Message = "Projection rebuild active-index write failed: TenantId={TenantId}, Domain={Domain}, ProjectionName={ProjectionName}, ExceptionType={ExceptionType}, Stage=ProjectionRebuildActiveIndexWriteFailed")]
+        public static partial void ActiveIndexWriteFailed(
+            ILogger logger,
+            Exception exception,
+            string tenantId,
+            string domain,
+            string projectionName,
+            string exceptionType);
     }
 }

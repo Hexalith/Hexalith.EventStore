@@ -626,21 +626,34 @@ public partial class AggregateActor(
 
     /// <inheritdoc/>
     public async Task<EventEnvelope[]> ReadEventsRangeAsync(long fromSequence, long? toSequence, int maxCount) {
-        fromSequence = Math.Max(0, fromSequence);
+        // P3: explicit negative guard mirrors the fake's contract; the prior `Math.Max(0, ...)`
+        // silently coerced negatives, hiding caller bugs.
+        ArgumentOutOfRangeException.ThrowIfNegative(fromSequence);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxCount);
         if (toSequence.HasValue && toSequence.Value <= fromSequence) {
             return [];
         }
 
+        // P5: toSequence bounds check. Caller passing toSequence == long.MaxValue would have
+        // proceeded into downstream Math.Min arithmetic without guard.
+        if (toSequence is long ts && ts > int.MaxValue) {
+            throw new ArgumentOutOfRangeException(nameof(toSequence), "toSequence must be <= int.MaxValue.");
+        }
+
         AggregateIdentity identity = GetAggregateIdentityFromActorId();
 
+        // P4: read metadata BEFORE the overflow guard so the empty-stream contract
+        // (return []) is honored even when fromSequence is at extreme boundary values.
         ConditionalValue<AggregateMetadata> metadataResult;
         try {
             metadataResult = await StateManager
                 .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey)
                 .ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
+        catch (Exception ex) when (IsDeserializationFailure(ex)) {
+            // P2: narrow filter — only deserialization-related exceptions are reclassified
+            // as EventDeserializationException with the -1 sentinel. Programmer errors
+            // (NRE/OOM/InvalidOperation/KeyNotFound) propagate as 500 InternalError.
             throw new EventDeserializationException(-1, identity.ActorId, ex);
         }
 
@@ -658,12 +671,53 @@ public partial class AggregateActor(
             return [];
         }
 
+        if (fromSequence > int.MaxValue - (long)maxCount) {
+            throw new ArgumentOutOfRangeException(nameof(fromSequence), "Requested event range exceeds the supported sequence boundary.");
+        }
+
         long upperBound = Math.Min(toSequence ?? currentSequence, currentSequence);
         long availableCount = upperBound - fromSequence;
         int count = checked((int)Math.Min(availableCount, maxCount));
         int startSequence = checked((int)(fromSequence + 1));
         return await ReadEventsRangeAsync(identity, startSequence, count).ConfigureAwait(false);
     }
+
+    /// <inheritdoc/>
+    public async Task<long> GetCurrentSequenceAsync() {
+        AggregateIdentity identity = GetAggregateIdentityFromActorId();
+        ConditionalValue<AggregateMetadata> metadataResult;
+        try {
+            metadataResult = await StateManager
+                .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (IsDeserializationFailure(ex)) {
+            // P2: narrow filter — see ReadEventsRangeAsync for rationale.
+            throw new EventDeserializationException(-1, identity.ActorId, ex);
+        }
+
+        if (!metadataResult.HasValue) {
+            return 0;
+        }
+
+        long currentSequence = metadataResult.Value.CurrentSequence;
+        if (currentSequence < 0) {
+            throw new InvalidOperationException(
+                $"Invalid aggregate metadata: CurrentSequence={currentSequence} for {identity.ActorId}");
+        }
+
+        return currentSequence;
+    }
+
+    // P2: only treat JSON/serialization failures and DAPR state-store exceptions as data
+    // corruption. Application-layer programmer errors must propagate.
+    private static bool IsDeserializationFailure(Exception ex)
+        => ex is not OperationCanceledException
+            && (ex is System.Text.Json.JsonException
+                or System.IO.InvalidDataException
+                or EventDeserializationException
+                or Dapr.DaprException
+                || (ex.InnerException is not null && IsDeserializationFailure(ex.InnerException)));
 
     /// <inheritdoc/>
     public async Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period) {

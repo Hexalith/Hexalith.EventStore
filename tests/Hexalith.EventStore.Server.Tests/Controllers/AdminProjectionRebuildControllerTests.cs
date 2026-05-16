@@ -186,6 +186,7 @@ public class AdminProjectionRebuildControllerTests {
         problemResult.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
         ProblemDetails problem = problemResult.Value.ShouldBeOfType<ProblemDetails>();
         problem.Type.ShouldBe(ProblemTypeUris.Forbidden);
+        problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.ForbiddenRole);
         _ = await store.DidNotReceiveWithAnyArgs().SaveAsync(default!, default, default, default, default);
         _ = await store.DidNotReceiveWithAnyArgs().ReadAsync(default!, default);
     }
@@ -226,8 +227,60 @@ public class AdminProjectionRebuildControllerTests {
 
         ObjectResult problemResult = result.ShouldBeOfType<ObjectResult>();
         problemResult.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        ProblemDetails problem = problemResult.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.ForbiddenRole);
         _ = await store.DidNotReceiveWithAnyArgs().ReadAsync(default!, default);
         _ = await store.DidNotReceiveWithAnyArgs().SaveAsync(default!, default, default, default, default);
+    }
+
+    [Fact]
+    public async Task RetryProjectionUsesResetAsyncToPreserveFailedLifecycleBoundary() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        ProjectionRebuildCheckpoint existing = CreateCheckpoint(25, ProjectionRebuildStatus.Failed, toPosition: 50);
+        _ = store.ReadAsync(Arg.Any<ProjectionRebuildCheckpointScope>(), Arg.Any<CancellationToken>())
+            .Returns(existing);
+        _ = store.ResetAsync(
+                Arg.Any<ProjectionRebuildCheckpointScope>(),
+                25,
+                ProjectionRebuildStatus.Retrying,
+                null,
+                Arg.Any<CancellationToken>(),
+                50)
+            .Returns(ProjectionRebuildCheckpointSaveResult.Success(CreateCheckpoint(25, ProjectionRebuildStatus.Retrying, toPosition: 50)));
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true);
+
+        IActionResult result = await controller.RetryProjection(Tenant, Projection);
+
+        AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
+        accepted.StatusCode.ShouldBe(StatusCodes.Status202Accepted);
+        _ = await store.Received(1).ResetAsync(
+            Arg.Any<ProjectionRebuildCheckpointScope>(),
+            25,
+            ProjectionRebuildStatus.Retrying,
+            null,
+            Arg.Any<CancellationToken>(),
+            50);
+        _ = await store.DidNotReceiveWithAnyArgs().SaveAsync(default!, default, default, default, default);
+    }
+
+    [Fact]
+    public async Task ReplayProjectionCheckpointUnavailableAddsRetryAfterHeader() {
+        IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
+        _ = store.ResetAsync(
+                Arg.Any<ProjectionRebuildCheckpointScope>(),
+                Arg.Any<long>(),
+                Arg.Any<ProjectionRebuildStatus>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>(),
+                Arg.Any<long?>())
+            .Returns(ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointUnavailable));
+        AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true);
+
+        IActionResult result = await controller.ReplayProjection(Tenant, Projection, new ProjectionReplayRequest(10, 20));
+
+        ObjectResult problemResult = result.ShouldBeOfType<ObjectResult>();
+        problemResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+        controller.Response.Headers.RetryAfter.ToString().ShouldBe("5");
     }
 
     private static AdminProjectionRebuildController CreateController(
