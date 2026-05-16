@@ -256,7 +256,7 @@ public sealed partial class AdminProjectionRebuildController(
             }
             else {
                 save = await checkpointStore
-                    .SaveAsync(scope, existing.LastAppliedSequence, status, failureReasonCode, ct)
+                    .SaveAsync(scope, existing.LastAppliedSequence, status, failureReasonCode, ct, existing.ToPosition)
                     .ConfigureAwait(false);
                 operationIdForResponse = existing.OperationId ?? scope.OperationId ?? string.Empty;
             }

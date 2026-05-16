@@ -120,6 +120,11 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                         && existing.Status == status
                         && string.Equals(existing.FailureReasonCode, failureReasonCode, StringComparison.Ordinal)
                         && existing.ToPosition == toPosition) {
+                        string? noOpIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
+                        if (noOpIndexFailure is not null) {
+                            return ProjectionRebuildCheckpointSaveResult.Failure(noOpIndexFailure);
+                        }
+
                         // H11: surface the caller's OperationId (if any) instead of the existing
                         // operation's, so a no-op response does not leak a prior operator's id.
                         return ProjectionRebuildCheckpointSaveResult.Success(
@@ -163,6 +168,14 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     failureReasonCode,
                     toPosition);
 
+                bool activeStatus = IsLifecycleActive(status);
+                if (activeStatus) {
+                    string? activeIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
+                    if (activeIndexFailure is not null) {
+                        return ProjectionRebuildCheckpointSaveResult.Failure(activeIndexFailure);
+                    }
+                }
+
                 bool saved = await daprClient
                     .TrySaveStateAsync(
                         stateStoreName,
@@ -172,7 +185,13 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                 if (saved) {
-                    await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
+                    if (!activeStatus) {
+                        string? activeIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
+                        if (activeIndexFailure is not null) {
+                            return ProjectionRebuildCheckpointSaveResult.Failure(activeIndexFailure);
+                        }
+                    }
+
                     return ProjectionRebuildCheckpointSaveResult.Success(checkpoint);
                 }
 
@@ -240,6 +259,14 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     failureReasonCode,
                     toPosition);
 
+                bool activeStatus = IsLifecycleActive(status);
+                if (activeStatus) {
+                    string? activeIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
+                    if (activeIndexFailure is not null) {
+                        return ProjectionRebuildCheckpointSaveResult.Failure(activeIndexFailure);
+                    }
+                }
+
                 bool saved = await daprClient
                     .TrySaveStateAsync(
                         stateStoreName,
@@ -249,7 +276,13 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                 if (saved) {
-                    await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
+                    if (!activeStatus) {
+                        string? activeIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
+                        if (activeIndexFailure is not null) {
+                            return ProjectionRebuildCheckpointSaveResult.Failure(activeIndexFailure);
+                        }
+                    }
+
                     return ProjectionRebuildCheckpointSaveResult.Success(checkpoint);
                 }
 
@@ -304,7 +337,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
     // The index is read by HasActiveOperatorRebuildForDomainAsync to determine whether any
     // operator rebuild is in flight for the (tenant, domain) pair, replacing the prior probe
     // that incorrectly assumed projectionName == domain.
-    private async Task UpdateActiveIndexForLifecycleAsync(
+    private async Task<string?> UpdateActiveIndexForLifecycleAsync(
         ProjectionRebuildCheckpointScope scope,
         ProjectionRebuildStatus status,
         CancellationToken cancellationToken) {
@@ -312,7 +345,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         bool terminal = IsTerminal(status);
         if (!active && !terminal && status != ProjectionRebuildStatus.NotStarted) {
             // No-op transitions (e.g., Paused-to-Paused via Save) do not change the index.
-            return;
+            return null;
         }
 
         string indexKey = GetActiveIndexKey(scope.Tenant, scope.Domain);
@@ -335,7 +368,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                 }
 
                 if (!changed) {
-                    return;
+                    return null;
                 }
 
                 string[] next = [.. current];
@@ -348,7 +381,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                 if (saved) {
-                    return;
+                    return null;
                 }
             }
             catch (OperationCanceledException) {
@@ -357,12 +390,14 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             catch (Exception ex) when (IsStateStoreUnavailable(ex)) {
                 Log.ActiveIndexWriteFailed(logger, ex, scope.Tenant, scope.Domain, scope.ProjectionName, ex.GetType().Name);
                 if (attempt >= MaxEtagRetries - 1) {
-                    return;
+                    return StreamReplayReasonCodes.CheckpointUnavailable;
                 }
 
                 await Task.Delay(s_retryDelays[attempt], cancellationToken).ConfigureAwait(false);
             }
         }
+
+        return StreamReplayReasonCodes.CheckpointConflict;
     }
 
     internal static string GetStateKey(ProjectionRebuildCheckpointScope scope) {

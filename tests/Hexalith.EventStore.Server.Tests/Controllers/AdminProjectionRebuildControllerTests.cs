@@ -87,7 +87,7 @@ public class AdminProjectionRebuildControllerTests {
     [Fact]
     public async Task PauseProjectionTransitionsExistingRebuildAndReturnsOkResult() {
         IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();
-        ProjectionRebuildCheckpoint existing = CreateCheckpoint(50, ProjectionRebuildStatus.Running);
+        ProjectionRebuildCheckpoint existing = CreateCheckpoint(50, ProjectionRebuildStatus.Running, toPosition: 90);
         _ = store.ReadAsync(Arg.Any<ProjectionRebuildCheckpointScope>(), Arg.Any<CancellationToken>())
             .Returns(existing);
         _ = store.SaveAsync(
@@ -95,8 +95,9 @@ public class AdminProjectionRebuildControllerTests {
                 50,
                 ProjectionRebuildStatus.Paused,
                 null,
-                Arg.Any<CancellationToken>())
-            .Returns(ProjectionRebuildCheckpointSaveResult.Success(CreateCheckpoint(50, ProjectionRebuildStatus.Paused)));
+                Arg.Any<CancellationToken>(),
+                90)
+            .Returns(ProjectionRebuildCheckpointSaveResult.Success(CreateCheckpoint(50, ProjectionRebuildStatus.Paused, toPosition: 90)));
         AdminProjectionRebuildController controller = CreateController(store, asGlobalAdmin: true);
 
         IActionResult result = await controller.PauseProjection(Tenant, Projection);
@@ -110,7 +111,8 @@ public class AdminProjectionRebuildControllerTests {
             50,
             ProjectionRebuildStatus.Paused,
             null,
-            Arg.Any<CancellationToken>());
+            Arg.Any<CancellationToken>(),
+            90);
     }
 
     [Fact]

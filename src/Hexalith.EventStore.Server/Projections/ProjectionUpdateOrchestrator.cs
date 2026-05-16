@@ -274,6 +274,7 @@ public partial class ProjectionUpdateOrchestrator(
         ProjectionRebuildCheckpointScope operatorScope = ScopeForCheckpoint(scope, initial!);
         bool matchedAny = false;
         bool allMatchedWorkComplete = true;
+        long highestMatchedProgress = initial!.LastAppliedSequence;
         try {
             await foreach (AggregateIdentity identity in checkpointTracker.EnumerateTrackedIdentitiesAsync(cancellationToken).ConfigureAwait(false)) {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -300,6 +301,7 @@ public partial class ProjectionUpdateOrchestrator(
 
                 if (toPosition is long toPos && perAggregateProgress >= toPos) {
                     matchedAny = true;
+                    highestMatchedProgress = Math.Max(highestMatchedProgress, perAggregateProgress);
                     continue;
                 }
 
@@ -316,6 +318,7 @@ public partial class ProjectionUpdateOrchestrator(
                     return;
                 }
 
+                highestMatchedProgress = Math.Max(highestMatchedProgress, delivery.LastAppliedSequence);
                 allMatchedWorkComplete &= delivery.PageComplete;
             }
         }
@@ -358,13 +361,13 @@ public partial class ProjectionUpdateOrchestrator(
         }
 
         bool reachedBound = finalSnapshot?.ToPosition is not long finalToPosition
-            || finalSnapshot.LastAppliedSequence >= finalToPosition;
+            || highestMatchedProgress >= finalToPosition;
 
         if (!matchedAny || (allMatchedWorkComplete && reachedBound)) {
             _ = await rebuildCheckpointStore
                 .SaveAsync(
                     operatorScope,
-                    finalSnapshot!.LastAppliedSequence,
+                    Math.Max(finalSnapshot!.LastAppliedSequence, highestMatchedProgress),
                     ProjectionRebuildStatus.Succeeded,
                     failureReasonCode: null,
                     cancellationToken,

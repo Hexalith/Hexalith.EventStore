@@ -190,6 +190,14 @@ so that Parties projections can rebuild from EventStore streams safely.
 
 ### Review Findings
 
+#### Code review run on 2026-05-16 (Codex filtered implementation scope `beed5a8e..HEAD`, generated diff/cache files excluded)
+
+_Local three-lens review because separate subagents were not used in this session. Raw scope: 48 filtered files, +5602/-199. After triage: **0 decision-needed, 3 patch, 0 defer, 0 dismiss**._
+
+- [x] [Review][Patch] **Bounded rebuilds can remain `Running` forever after the per-aggregate checkpoint split** [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:360] — Applied: terminal success now uses the highest matched per-aggregate progress when evaluating and saving a bounded successful rebuild; added separate operator/per-aggregate checkpoint coverage.
+- [x] [Review][Patch] **Pause/resume/cancel transitions drop the bounded replay `ToPosition`** [src/Hexalith.EventStore/Controllers/AdminProjectionRebuildController.cs:259] — Applied: status-only transitions preserve `existing.ToPosition`; controller coverage now pins pause preserving the bound.
+- [x] [Review][Patch] **Active rebuild index writes are best-effort even though poller safety depends on them** [src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs:175] — Applied: active lifecycle saves require active-index persistence before publishing the active checkpoint, terminal/not-started saves fail if index cleanup cannot complete, and tests cover active-index failure.
+
 #### Code review run on 2026-05-16 (Opus 4.7 1M — third continuation pass against uncommitted working tree `fb36737c..WORKTREE`, 18 files, +726/-112 LOC)
 
 _Three adversarial layers: Blind Hunter (diff-only), Edge Case Hunter (diff + project), Acceptance Auditor (diff + spec + CLAUDE.md). Raw findings: 21 Blind + 26 Edge + 11 Auditor. After dedup and triage: **10 decision-needed, 27 patch, 10 defer, 4 dismiss**._
