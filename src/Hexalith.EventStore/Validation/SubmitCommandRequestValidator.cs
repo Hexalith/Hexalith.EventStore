@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 using FluentValidation;
 
-using Hexalith.EventStore.Models;
+using Hexalith.EventStore.Contracts.Commands;
 
 namespace Hexalith.EventStore.Validation;
 
