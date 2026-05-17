@@ -305,12 +305,19 @@ public partial class ProjectionUpdateOrchestrator(
         bool matchedAny = false;
         bool allMatchedWorkComplete = true;
         long highestMatchedProgress = initial!.LastAppliedSequence;
+        // P1-7P (pass-7): track which per-aggregate scopes were touched during iteration so the
+        // OCE cancel-cleanup can reset them to Canceled too. Without this, a domain-wide rebuild
+        // that has already advanced per-aggregate rows for aggregates A and B leaves those rows
+        // at Running with the old OperationId on cancel — blocking the next operator's resume.
+        var touchedAggregateIds = new HashSet<string>(StringComparer.Ordinal);
         try {
             await foreach (AggregateIdentity identity in checkpointTracker.EnumerateTrackedIdentitiesAsync(cancellationToken).ConfigureAwait(false)) {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!MatchesRebuildScope(scope, identity)) {
                     continue;
                 }
+
+                touchedAggregateIds.Add(identity.AggregateId);
 
                 // Re-read OPERATOR scope to honor mid-iteration Pause/Cancel intent.
                 ProjectionRebuildCheckpoint? operatorSnap = await rebuildCheckpointStore
@@ -359,6 +366,15 @@ public partial class ProjectionUpdateOrchestrator(
             // replace the OperationCanceledException on its way out of the method. Losing the OCE
             // would cause callers to see a transport exception instead of the original cancel and
             // the active-rebuilds index entry would persist indefinitely.
+            //
+            // P10-7P (pass-7) limitation: if the cleanup ResetAsync ITSELF throws transiently
+            // (state-store hiccup), the OCE is rethrown but the operator-scope row stays Running
+            // AND active-rebuilds index still holds the projection. HasActiveOperatorRebuildForDomainAsync
+            // returns true forever (modulo P11-7P TTL cache). Healing options today: (a) the next
+            // operator action (Retry/Replay) overwrites the row via ResetAsync, OR (b) the P11-7P
+            // process-local fail-closed TTL expires (5s) once the index store recovers. A timer-
+            // driven deferred cleanup or an admin "force-clear-active-index" endpoint is tracked
+            // as a follow-up (see deferred-work.md W4-7P-NOTE).
             try {
                 // DEC3-P/P14/P15: cancel-cleanup must reach a terminal lifecycle write even when the
                 // store's lifecycle guards (IsLifecycleProtected) would reject SaveAsync. Use ResetAsync,
@@ -367,10 +383,19 @@ public partial class ProjectionUpdateOrchestrator(
                     .ReadAsync(operatorScope, CancellationToken.None)
                     .ConfigureAwait(false);
                 if (canceledSnapshot is not null && !IsTerminalStatus(canceledSnapshot.Status)) {
+                    // P15-7P (pass-7): mirror the P14-7P / M7-5P carve-out — domain-wide rebuilds
+                    // do NOT inflate operator-scope LastAppliedSequence to the largest aggregate's
+                    // progress on cancel-cleanup. Per-aggregate rows already carry truthful progress.
+                    // For aggregate-scoped rebuilds the operator-scope IS the per-aggregate row,
+                    // so Math.Max is correct.
+                    long cancelLastApplied = operatorScope.AggregateId is null
+                        ? canceledSnapshot.LastAppliedSequence
+                        : Math.Max(canceledSnapshot.LastAppliedSequence, highestMatchedProgress);
+
                     ProjectionRebuildCheckpointSaveResult cancelSave = await rebuildCheckpointStore
                         .ResetAsync(
                             operatorScope,
-                            Math.Max(canceledSnapshot.LastAppliedSequence, highestMatchedProgress),
+                            cancelLastApplied,
                             ProjectionRebuildStatus.Canceled,
                             failureReasonCode: StreamReplayReasonCodes.RebuildCanceled,
                             cancellationToken: CancellationToken.None,
@@ -378,6 +403,33 @@ public partial class ProjectionUpdateOrchestrator(
                         .ConfigureAwait(false);
                     if (!cancelSave.Succeeded) {
                         Log.RebuildCancelCleanupRejected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, cancelSave.ReasonCode ?? "unknown");
+                    }
+
+                    // P1-7P (pass-7): cancel each touched per-aggregate row (domain-wide rebuilds
+                    // only — for aggregate-scoped the operator-scope row IS the per-aggregate row).
+                    // Without this, per-aggregate rows advanced during iteration remain at Running
+                    // with the old OperationId, blocking the next operator's resume against the
+                    // same scope.
+                    if (operatorScope.AggregateId is null) {
+                        foreach (string touchedAggregateId in touchedAggregateIds) {
+                            ProjectionRebuildCheckpointScope touchedScope = operatorScope with { AggregateId = touchedAggregateId };
+                            ProjectionRebuildCheckpoint? touchedSnap = await rebuildCheckpointStore
+                                .ReadAsync(touchedScope, CancellationToken.None)
+                                .ConfigureAwait(false);
+                            if (touchedSnap is null || IsTerminalStatus(touchedSnap.Status)) {
+                                continue;
+                            }
+
+                            _ = await rebuildCheckpointStore
+                                .ResetAsync(
+                                    touchedScope,
+                                    touchedSnap.LastAppliedSequence,
+                                    ProjectionRebuildStatus.Canceled,
+                                    failureReasonCode: StreamReplayReasonCodes.RebuildCanceled,
+                                    cancellationToken: CancellationToken.None,
+                                    toPosition: touchedSnap.ToPosition)
+                                .ConfigureAwait(false);
+                        }
                     }
                 }
             }
@@ -403,10 +455,19 @@ public partial class ProjectionUpdateOrchestrator(
             // LastAppliedSequence < some-per-aggregate-row.LastAppliedSequence — breaking the
             // invariant that operator-scope is the high-water mark.
             try {
+                // P14-7P (pass-7): mirror the M7-5P happy-path carve-out — domain-wide rebuilds
+                // do NOT inflate operator-scope LastAppliedSequence to the largest aggregate's
+                // progress on Failed-cleanup. Per-aggregate rows already carry truthful progress.
+                // For aggregate-scoped rebuilds the operator-scope IS the per-aggregate row, so
+                // Math.Max is correct.
+                long failLastApplied = operatorScope.AggregateId is null
+                    ? initial.LastAppliedSequence
+                    : Math.Max(initial.LastAppliedSequence, highestMatchedProgress);
+
                 ProjectionRebuildCheckpointSaveResult failSave = await rebuildCheckpointStore
                     .ResetAsync(
                         operatorScope,
-                        Math.Max(initial.LastAppliedSequence, highestMatchedProgress),
+                        failLastApplied,
                         ProjectionRebuildStatus.Failed,
                         failureReasonCode: ex.GetType().Name,
                         cancellationToken: CancellationToken.None,
@@ -429,8 +490,12 @@ public partial class ProjectionUpdateOrchestrator(
         // - matchedAny=true + all work complete + reached bound → Succeeded.
         // - matchedAny=true + work incomplete → leave Running for next invocation (D2a scheduler
         //   or operator re-invocation will pick up from per-aggregate progress).
+        // P2-7P (pass-7): finalSnapshot read uses CancellationToken.None to mirror the H3-5P
+        // Succeeded-write durability intent. Without this, a request CT cancellation between
+        // iteration completion and the final read dropped to cancel-cleanup which stamped
+        // Canceled despite all work being logically complete.
         ProjectionRebuildCheckpoint? finalSnapshot = await rebuildCheckpointStore
-            .ReadAsync(operatorScope, cancellationToken)
+            .ReadAsync(operatorScope, CancellationToken.None)
             .ConfigureAwait(false)
             ?? initial;
         if (!CanRunRebuild(finalSnapshot)) {
@@ -702,8 +767,16 @@ public partial class ProjectionUpdateOrchestrator(
             return RebuildDeliveryResult.Complete(highestAppliedSequence, pageComplete);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
+            // P5-7P (pass-7): rethrow so the outer H1-5P catch in RebuildProjectionAsync writes
+            // Failed via ResetAsync and clears the active-rebuilds index. The prior `return
+            // Interrupt()` made the outer foreach `return` early without an exception, leaving
+            // operator-scope row at Running and the active-index entry orphaned indefinitely
+            // (until P11-7P TTL expired or a future operator action healed it). The other
+            // Interrupt() returns in this method are PLANNED (NoDomainService, IsSuccessStatusCode
+            // false, invalid response) and write their own ResetAsync(Failed) audit row before
+            // returning — only the unhandled-exception path was silent.
             Log.ProjectionUpdateFailed(logger, ex, identity.TenantId, identity.Domain, identity.AggregateId);
-            return RebuildDeliveryResult.Interrupt();
+            throw;
         }
     }
 

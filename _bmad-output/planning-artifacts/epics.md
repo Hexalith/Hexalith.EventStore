@@ -433,11 +433,15 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 
 ## Epic List
 
-## Walking Skeleton Gate
+### Story WS-1: Clone-to-Command Flow Walking Skeleton
 
-This gate is mandatory for any new implementation pass over the foundation sequence, even though the historical implementation later deepens the topology in Epic 8.
+As a developer evaluating the foundation sequence,
+I want the thinnest EventStore command path proven end to end,
+So that foundation work remains anchored to observable user value.
 
-Before treating the foundation sequence as implementation-ready in a new execution pass, prove a thin clone-to-command-flow path:
+Readiness rule: WS-1 must be verified before any new implementation pass over Epics 1-8 foundation work, even though the historical implementation later deepens the topology in Epic 8.
+
+**Acceptance Criteria:**
 
 - AppHost starts EventStore and one sample domain service.
 - A single sample command is submitted through `POST /api/v1/commands`.
@@ -520,7 +524,9 @@ Connected clients receive push "changed" signals when projections update, with R
 **Outcome:** Projection owners can get queryable read models without owning pub/sub subscriptions.
 
 EventStore delivers persisted events to domain services' /project endpoints via DAPR service invocation, caches the returned projection state in ProjectionActor, and supports immediate (fire-and-forget) or polled delivery modes — making queries return real data without domain services managing pub/sub subscriptions.
-**FRs covered:** (new — from superpowers spec, SCP-Projection Stories 8.9-8.11)
+**Authority:** Approved projection change scope from SCP-Projection Stories 8.9-8.11.
+**FRs supported:** FR50, FR51, FR52, FR53, FR54, FR57, FR58, FR61, FR62, FR63.
+**Coverage note:** Epic 11 is supplemental implementation scope for the query/projection pipeline. It is not counted as additional numbered PRD coverage unless a future PRD update adds explicit server-managed projection-builder FRs.
 **Also:** ProjectionEventDto, ProjectionRequest/Response, AggregateActor.GetEventsAsync, convention-based discovery
 
 ### Epic 12: Blazor Sample UI & Refresh Patterns
@@ -1532,6 +1538,10 @@ So that real-time notifications resume after network interruptions without manua
 **Outcome:** Projection owners can get queryable read models without owning pub/sub subscriptions.
 
 EventStore delivers persisted events to domain services' /project endpoints via DAPR service invocation, caches the returned projection state in ProjectionActor, and supports immediate (fire-and-forget) or polled delivery modes — making queries return real data without domain services managing pub/sub subscriptions.
+
+**Authority:** Approved projection change scope from SCP-Projection Stories 8.9-8.11.
+**FRs supported:** FR50, FR51, FR52, FR53, FR54, FR57, FR58, FR61, FR62, FR63.
+**Coverage note:** Epic 11 is supplemental implementation scope for the query/projection pipeline. It is not counted as additional numbered PRD coverage unless a future PRD update adds explicit server-managed projection-builder FRs.
 
 ### Story 11.1: Projection Contract DTOs & AggregateActor Event Reading
 

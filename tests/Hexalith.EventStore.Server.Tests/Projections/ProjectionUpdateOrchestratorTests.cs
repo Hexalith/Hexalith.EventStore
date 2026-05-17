@@ -190,13 +190,16 @@ public class ProjectionUpdateOrchestratorTests {
         ProjectionRebuildCheckpoint currentCheckpoint = CreateRebuildCheckpoint(0, ProjectionRebuildStatus.Running, "operation-1", toPosition: 2);
         _ = rebuildCheckpointStore.ReadAsync(Arg.Any<ProjectionRebuildCheckpointScope>(), Arg.Any<CancellationToken>())
             .Returns(_ => currentCheckpoint);
+        // P5-7P/P-DEC6-5P: include `isPerAggregateProgress` (Arg.Any<bool>()) so the matcher
+        // covers both domain-wide (true) and aggregate-scoped (false) SaveAsync calls.
         _ = rebuildCheckpointStore.SaveAsync(
                 Arg.Any<ProjectionRebuildCheckpointScope>(),
                 Arg.Any<long>(),
                 Arg.Any<ProjectionRebuildStatus>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<long?>())
+                Arg.Any<long?>(),
+                Arg.Any<bool>())
             .Returns(call => {
                 currentCheckpoint = CreateRebuildCheckpoint(call.ArgAt<long>(1), call.ArgAt<ProjectionRebuildStatus>(2), "operation-1", call.ArgAt<long?>(5));
                 return ProjectionRebuildCheckpointSaveResult.Success(currentCheckpoint);
@@ -238,7 +241,11 @@ public class ProjectionUpdateOrchestratorTests {
             Arg.Any<CancellationToken>(),
             2,
             isPerAggregateProgress: true);
-        _ = await rebuildCheckpointStore.DidNotReceive().SaveAsync(
+        // P5-7P (pass-7): with toPosition=2 and events at seq 1,2, the rebuild reaches its bound
+        // (highestAppliedSequence=2 >= bound=2) so terminal Succeeded IS written. The prior
+        // DidNotReceive(Succeeded) assertion was masking the silent-failure bug fixed by P5-7P
+        // (DeliverProjectionForRebuildAsync catch returning Interrupt() instead of throwing).
+        _ = await rebuildCheckpointStore.Received(1).SaveAsync(
             Arg.Any<ProjectionRebuildCheckpointScope>(),
             Arg.Any<long>(),
             ProjectionRebuildStatus.Succeeded,
@@ -392,13 +399,16 @@ public class ProjectionUpdateOrchestratorTests {
         ProjectionRebuildCheckpoint currentCheckpoint = CreateRebuildCheckpoint(0, ProjectionRebuildStatus.Running, "operation-1", toPosition: 1000);
         _ = rebuildCheckpointStore.ReadAsync(Arg.Any<ProjectionRebuildCheckpointScope>(), Arg.Any<CancellationToken>())
             .Returns(_ => currentCheckpoint);
+        // P5-7P/P-DEC6-5P: include `isPerAggregateProgress` (Arg.Any<bool>()) so the matcher
+        // covers both domain-wide (true) and aggregate-scoped (false) SaveAsync calls.
         _ = rebuildCheckpointStore.SaveAsync(
                 Arg.Any<ProjectionRebuildCheckpointScope>(),
                 Arg.Any<long>(),
                 Arg.Any<ProjectionRebuildStatus>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<long?>())
+                Arg.Any<long?>(),
+                Arg.Any<bool>())
             .Returns(call => {
                 currentCheckpoint = CreateRebuildCheckpoint(call.ArgAt<long>(1), call.ArgAt<ProjectionRebuildStatus>(2), "operation-1", call.ArgAt<long?>(5));
                 return ProjectionRebuildCheckpointSaveResult.Success(currentCheckpoint);

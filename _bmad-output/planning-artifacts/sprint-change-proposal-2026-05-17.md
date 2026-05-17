@@ -3,9 +3,11 @@ workflow: bmad-correct-course
 project: Hexalith.EventStore
 date: 2026-05-17
 trigger: implementation-readiness-report-2026-05-17.md
-status: approved
+status: applied
 approvedAt: 2026-05-17
 approvedBy: Jerome
+appliedAt: 2026-05-17
+appliedBy: Codex
 scope: moderate
 recommendedPath: direct-planning-adjustment
 artifactsUpdated:
@@ -189,6 +191,6 @@ Success criteria:
 
 ## 7. Final Routing
 
-This proposal is approved. The next implementation pass can proceed against the split child stories and required review bundle instead of reopening requirements discovery.
+This proposal is approved and applied. The next implementation pass can proceed against the split child stories and required review bundle instead of reopening requirements discovery.
 
 Correct Course workflow complete, Jerome.

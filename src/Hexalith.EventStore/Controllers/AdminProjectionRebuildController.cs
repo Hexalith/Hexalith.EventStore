@@ -37,9 +37,19 @@ public sealed partial class AdminProjectionRebuildController(
             return authFailure;
         }
 
-        ProjectionRebuildCheckpointScope scope = CreateScope(tenantId, projectionName);
-        ProjectionRebuildCheckpoint? checkpoint = await checkpointStore.ReadAsync(scope, ct).ConfigureAwait(false);
-        return Ok(ToOperation(scope, checkpoint));
+        try {
+            ProjectionRebuildCheckpointScope scope = CreateScope(tenantId, projectionName);
+            ProjectionRebuildCheckpoint? checkpoint = await checkpointStore.ReadAsync(scope, ct).ConfigureAwait(false);
+            return Ok(ToOperation(scope, checkpoint));
+        }
+        catch (ArgumentException ex) {
+            // P9-7P (pass-7): non-canonical tenant/projection now throws from CreateScope.
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                "Bad Request",
+                ex.Message,
+                StreamReplayReasonCodes.InvalidAggregateIdentity);
+        }
     }
 
     /// <summary>
@@ -296,6 +306,16 @@ public sealed partial class AdminProjectionRebuildController(
                     ProjectionRebuildCheckpoint? terminalSnap = await checkpointStore
                         .ReadAsync(scopeForRebuild, CancellationToken.None)
                         .ConfigureAwait(false);
+                    // P4-7P (pass-7): If the rebuild wrote Failed with a permanent reasonCode
+                    // (ProjectionApplyRejected, ForbiddenRole, InvalidRange, etc.), route through
+                    // MapSaveFailure so the operator sees the correct 409/403 status instead of
+                    // a uniform 503 (which semantically suggests "transient — retry"). 503 stays
+                    // for the no-terminal-snapshot fallthrough where we genuinely don't know the
+                    // outcome.
+                    if (terminalSnap is { Status: ProjectionRebuildStatus.Failed, FailureReasonCode: { Length: > 0 } reasonCode }) {
+                        return MapSaveFailure(reasonCode);
+                    }
+
                     string reason = terminalSnap?.FailureReasonCode ?? StreamReplayReasonCodes.ServiceUnavailable;
                     return ProblemWithReason(
                         StatusCodes.Status503ServiceUnavailable,
@@ -398,6 +418,21 @@ public sealed partial class AdminProjectionRebuildController(
                         StreamReplayReasonCodes.OperationInFlight);
                     return Accepted(incomplete);
                 }
+
+                // P8-7P (pass-7): if the orchestrator (or a concurrent cancel) drove the row to
+                // a terminal non-Failed status (Succeeded or Canceled), surface the actual
+                // terminal status in the message instead of echoing the original requested
+                // status (e.g., Running). Before this fix, a Canceled rebuild returned
+                // 202 Accepted + "status is Running" which misled operators.
+                if (terminalSnap?.Status is ProjectionRebuildStatus.Canceled
+                    or ProjectionRebuildStatus.Succeeded) {
+                    var terminalResult = new AdminOperationResult(
+                        true,
+                        scope.OperationId ?? string.Empty,
+                        $"Projection rebuild status is {terminalSnap.Status}.",
+                        null);
+                    return accepted ? Accepted(terminalResult) : Ok(terminalResult);
+                }
             }
 
             var result = new AdminOperationResult(
@@ -451,6 +486,28 @@ public sealed partial class AdminProjectionRebuildController(
                 "Service Unavailable",
                 "No domain service is registered for the requested rebuild.",
                 StreamReplayReasonCodes.NoDomainService),
+            // P7-7P (pass-7): RebuildPaused/RebuildCanceled are emitted by the store's
+            // IsLifecycleProtected branch when an operator attempts to flip Pause/Resume against
+            // an already-Canceled/Paused record. They fell through to 500 InternalServerError;
+            // operators saw a meaningless body for a routine lifecycle conflict.
+            StreamReplayReasonCodes.RebuildPaused => ProblemWithReason(
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                "Projection rebuild is already paused.",
+                StreamReplayReasonCodes.RebuildPaused),
+            StreamReplayReasonCodes.RebuildCanceled => ProblemWithReason(
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                "Projection rebuild is canceled. Use replay to start a fresh rebuild.",
+                StreamReplayReasonCodes.RebuildCanceled),
+            // P4-7P (pass-7): ProjectionApplyRejected is a permanent rebuild failure surfaced via
+            // the Retry orchestrator-throw path. 409 with the reason code preserves the audit
+            // trail; operator must fix the domain service before retrying.
+            StreamReplayReasonCodes.ProjectionApplyRejected => ProblemWithReason(
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                "Projection apply rejected by the domain service.",
+                StreamReplayReasonCodes.ProjectionApplyRejected),
             _ => ProblemWithReason(
                 StatusCodes.Status500InternalServerError,
                 "Internal Server Error",
@@ -503,13 +560,51 @@ public sealed partial class AdminProjectionRebuildController(
             StreamReplayReasonCodes.ForbiddenRole);
     }
 
-    private static ProjectionRebuildCheckpointScope CreateScope(string tenantId, string projectionName, string? operationId = null)
-        => new(
+    private static ProjectionRebuildCheckpointScope CreateScope(string tenantId, string projectionName, string? operationId = null) {
+        // P9-7P (pass-7): canonicalization guard. Admin endpoints accepting non-canonical
+        // tenant/projection identifiers (e.g., "Tenant-A" instead of "tenant-a") created
+        // state-store rows the public poller could never address — the rebuild appeared
+        // active to the admin but invisible to the poller, breaking conflict isolation.
+        // Mirror StreamsController.IsCanonicalTenantOrDomain rules.
+        if (!IsCanonicalTenantOrProjection(tenantId)) {
+            throw new ArgumentException(
+                "tenantId must be lowercase ASCII alphanumeric (a-z, 0-9, '-'), max 64 chars, alphanumeric first and last.",
+                nameof(tenantId));
+        }
+
+        if (!IsCanonicalTenantOrProjection(projectionName)) {
+            throw new ArgumentException(
+                "projectionName must be lowercase ASCII alphanumeric (a-z, 0-9, '-'), max 64 chars, alphanumeric first and last.",
+                nameof(projectionName));
+        }
+
+        return new(
             tenantId,
             projectionName,
             projectionName,
             AggregateId: null,
             OperationId: operationId);
+    }
+
+    // P9-7P (pass-7): kept private here (and not factored to a shared helper) to avoid
+    // a cross-project dependency from Server into the gateway Controllers layer. Mirrors
+    // StreamsController.IsCanonicalTenantOrDomain rules so the public read path and admin
+    // rebuild path address the same canonical state-store keys.
+    private static bool IsCanonicalTenantOrProjection(string value) {
+        if (string.IsNullOrEmpty(value) || value.Length > 64
+            || value.Any(c => c is < (char)0x20 or >= (char)0x7F)) {
+            return false;
+        }
+
+        if (!IsLowerAsciiAlphanumeric(value[0]) || !IsLowerAsciiAlphanumeric(value[^1])) {
+            return false;
+        }
+
+        return value.All(c => IsLowerAsciiAlphanumeric(c) || c == '-');
+    }
+
+    private static bool IsLowerAsciiAlphanumeric(char c)
+        => c is >= 'a' and <= 'z' || char.IsAsciiDigit(c);
 
     private static ProjectionRebuildOperation ToOperation(
         ProjectionRebuildCheckpointScope scope,

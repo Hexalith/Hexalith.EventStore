@@ -118,7 +118,8 @@ public class ProjectionRebuildCheckpointStoreTests {
 
         result.Succeeded.ShouldBeFalse();
         result.ReasonCode.ShouldBe(StreamReplayReasonCodes.CheckpointConflict);
-        _ = await daprClient.Received(3).TrySaveStateAsync(
+        // P12-7P (pass-7): retry budget bumped from 3 to 5 in ProjectionRebuildCheckpointStore.
+        _ = await daprClient.Received(5).TrySaveStateAsync(
             "statestore",
             ProjectionRebuildCheckpointStore.GetStateKey(Scope),
             Arg.Any<ProjectionRebuildCheckpoint>(),
@@ -347,7 +348,8 @@ public class ProjectionRebuildCheckpointStoreTests {
 
         result.Succeeded.ShouldBeFalse();
         result.ReasonCode.ShouldBe(StreamReplayReasonCodes.CheckpointUnavailable);
-        _ = await daprClient.Received(3).GetStateAndETagAsync<ProjectionRebuildCheckpoint>(
+        // P12-7P (pass-7): retry budget bumped from 3 to 5 in ProjectionRebuildCheckpointStore.
+        _ = await daprClient.Received(5).GetStateAndETagAsync<ProjectionRebuildCheckpoint>(
             "statestore",
             ProjectionRebuildCheckpointStore.GetStateKey(Scope),
             consistencyMode: Arg.Any<ConsistencyMode?>(),

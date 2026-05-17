@@ -17,14 +17,27 @@ public sealed partial class ProjectionRebuildCheckpointStore(
     DaprClient daprClient,
     IOptions<ProjectionOptions> options,
     ILogger<ProjectionRebuildCheckpointStore> logger) : IProjectionRebuildCheckpointStore {
-    private const int MaxEtagRetries = 3;
+    // P12-7P (pass-7): bumped from 3 to 5 to reduce CheckpointConflict failures when N>3 concurrent
+    // operators/transitions hit the same active-index key. Bigger retry budget plus jitter
+    // mitigates the ETag-contention hotspot without sharding the index.
+    private const int MaxEtagRetries = 5;
     private const string StateKeyPrefix = "projection-rebuild-checkpoints:";
     private const string ActiveIndexKeyPrefix = "projection-rebuild-active-index:";
 
     private static readonly TimeSpan[] s_retryDelays = [
         TimeSpan.FromMilliseconds(50),
+        TimeSpan.FromMilliseconds(100),
         TimeSpan.FromMilliseconds(200),
+        TimeSpan.FromMilliseconds(500),
     ];
+
+    // P11-7P (pass-7): process-local TTL cache of fail-closed verdicts so multiple poller ticks
+    // within the TTL window short-circuit instead of each paying the full bounded-retry budget.
+    // During a brief store flap, this prevents every poller tick across every aggregate in the
+    // (tenant, domain) from thundering the failed index store.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, DateTimeOffset> s_failClosedCache
+        = new(StringComparer.Ordinal);
+    private static readonly TimeSpan s_failClosedTtl = TimeSpan.FromSeconds(5);
 
     static ProjectionRebuildCheckpointStore() {
         if (s_retryDelays.Length != MaxEtagRetries - 1) {
@@ -61,6 +74,9 @@ public sealed partial class ProjectionRebuildCheckpointStore(
     // Crockford-base32 regex internally, so this accepts both lowercase and uppercase ULIDs
     // that the rest of the system also accepts. The wasteful uppercase-clone allocation that
     // the prior implementation used has been removed.
+    // P3-7P (pass-7): narrow catch filter from "all but OCE/OOM" to expected ULID-parse exception
+    // types only. NullReferenceException or other programmer errors should propagate so they
+    // surface real bugs instead of being silently classified as "invalid ULID".
     private static bool IsValidOperationId(string? operationId) {
         if (operationId is null) {
             return true;
@@ -74,7 +90,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             _ = UniqueIdHelper.ToGuid(operationId);
             return true;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException and not OutOfMemoryException) {
+        catch (Exception ex) when (ex is FormatException or ArgumentException) {
             return false;
         }
     }
@@ -354,6 +370,16 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
 
+        // P11-7P (pass-7): TTL cache short-circuit. If a recent fail-closed verdict is still valid
+        // for this (tenant, domain), return true without re-querying the index store. Prevents
+        // every poller tick across every aggregate in the domain from thrashing during a brief
+        // store flap.
+        string cacheKey = string.Concat(tenant, ":", domain);
+        if (s_failClosedCache.TryGetValue(cacheKey, out DateTimeOffset failClosedUntil)
+            && failClosedUntil > DateTimeOffset.UtcNow) {
+            return true;
+        }
+
         for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
             // P17-6P: observe cancellation between retry iterations.
             cancellationToken.ThrowIfCancellationRequested();
@@ -364,6 +390,10 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                         GetActiveIndexKey(tenant, domain),
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
+
+                // P11-7P (pass-7): success — drop any stale fail-closed cache entry so the next
+                // poller tick uses live data.
+                _ = s_failClosedCache.TryRemove(cacheKey, out _);
                 return activeProjections is { Length: > 0 };
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
@@ -373,7 +403,10 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                 if (attempt >= MaxEtagRetries - 1) {
                     // Fail closed: when the index store cannot answer after bounded retries, assume
                     // an operator rebuild MAY be active so the poller skips delivery.
+                    // P11-7P (pass-7): cache the fail-closed verdict for s_failClosedTtl so the
+                    // next poller tick within the TTL short-circuits without re-querying.
                     Log.ActiveIndexReadFailed(logger, ex, tenant, domain, ex.GetType().Name);
+                    s_failClosedCache[cacheKey] = DateTimeOffset.UtcNow + s_failClosedTtl;
                     return true;
                 }
 
@@ -597,8 +630,15 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             && IsStateStoreUnavailable(exception.InnerException, depth + 1, currentIsTransport);
     }
 
-    private static TimeSpan BoundedRetryDelay(int attempt)
-        => s_retryDelays[Math.Min(attempt, s_retryDelays.Length - 1)];
+    // P12-7P / P32-7P (pass-7): add ±25% jitter to bounded retry delays so concurrent writers on
+    // the same hot key (active-index ETag conflict) do not thundering-herd in lockstep.
+    private static TimeSpan BoundedRetryDelay(int attempt) {
+        TimeSpan baseDelay = s_retryDelays[Math.Min(attempt, s_retryDelays.Length - 1)];
+        int totalMs = (int)baseDelay.TotalMilliseconds;
+        int jitterRangeMs = Math.Max(1, totalMs / 4);
+        int signedJitter = System.Random.Shared.Next(-jitterRangeMs, jitterRangeMs + 1);
+        return TimeSpan.FromMilliseconds(Math.Max(1, totalMs + signedJitter));
+    }
 
     private static partial class Log {
         [LoggerMessage(

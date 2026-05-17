@@ -35,7 +35,9 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-17T16:45:00+02:00' # Story 22.6 moved to review after sixth code-review pass (Opus 4.7 1M): 3 decision-needed resolved (D1 revert validator to lowercase, D2 keep ToSequence==FromSequence empty-page, D3 keep empty-domain Succeeded) + 20 patches applied across 8 files (5 false-positives dismissed with justification, 3 newly-deferred items appended to deferred-work.md). Build clean (0 warn/0 err). Tier-1 tests green: Contracts 333/333, Client 393/393 (+3 new P16 tests), Testing 110/110, Server focused 121/121. Server.Tests full suite has 13 pre-existing unrelated failures (verified at unpatched HEAD: ReplayController, ValidationExceptionHandler, QueryNotFoundExceptionHandler, EventStoreTrace) and 6 Tier-2 AggregateActorIntegrationTests skipped (require live DAPR sidecar).
+last_updated: '2026-05-17T22:00:00+02:00' # Story 22.6 stays in review after seventh code-review pass (Opus 4.7 1M, three adversarial layers — Blind Hunter, Edge Case Hunter, Acceptance Auditor, 71 raw findings → 4 decision-needed (all resolved per recommendation) + 47 patches (15 HIGH/CRITICAL, 13 MEDIUM, 19 LOW) + 3 defers + 7 dismissed). User selected narrow-scope apply (matches pass-5 precedent) = 15 HIGH/CRITICAL + 3 decision-derived doc/spec + 3 spec/docs = 21 patches applied across orchestrator, checkpoint store, controllers, docs, and spec. Headline: no new CRITICALs (pass-5/6 cleared the merge-blockers); HIGH-class themes addressed include operator-scope LastAppliedSequence cross-aggregate inflation carve-out (P14/P15-7P), MapSaveFailure RebuildPaused/RebuildCanceled/ProjectionApplyRejected mapping (P7-7P), Retry orchestrator-throw 409 vs 503 routing (P4-7P), admin canonical-tenant validation (P9-7P), per-aggregate cancel-cleanup (P1-7P), HasActiveOperatorRebuildForDomainAsync TTL cache (P11-7P), bumped MaxEtagRetries 3→5 with jitter (P12-7P/P32-7P), IsServiceUnavailable IOException narrowing (P13-7P), DeliverProjectionForRebuildAsync rethrow (P5-7P), and IProjectionRebuildOrchestrator XML <remarks> documenting controller-driven precondition + tenant-validation-once assumption (P-DEC4-7P/P46-7P). 32 MEDIUM/LOW patches recorded as action items for follow-up pass. Build clean (0 warn / 0 err). Tier-1 tests green: Contracts 333/333, Client 393/393, Testing 112/112. Server focused (StreamsController + AdminProjectionRebuildController + ProjectionRebuildCheckpointStore + ProjectionUpdateOrchestrator) 109/109 after updating 3 tests (mock setup add Arg.Any<bool>() for isPerAggregateProgress, retry-count assertions 3→5, removed obsolete DidNotReceive(Succeeded) that was masking the P5-7P silent-failure bug). Change Log v1.6 documents cumulative semantic-release version-impact of 3 non-Conventional commits since v1.4.
+# Previous last_updated detail preserved: 2026-05-17T16:50:00+02:00 - Approved readiness addendum applied: added WS-1 readiness prerequisite, clarified Epic 22 parent/container rows are not directly assignable, and added blocked child rows 22.7d-1 through 22.7d-4 for protected-data redaction split.
+# Previous last_updated detail preserved: 2026-05-17T16:45:00+02:00 - Story 22.6 moved to review after sixth code-review pass (Opus 4.7 1M): 3 decision-needed resolved (D1 revert validator to lowercase, D2 keep ToSequence==FromSequence empty-page, D3 keep empty-domain Succeeded) + 20 patches applied across 8 files (5 false-positives dismissed with justification, 3 newly-deferred items appended to deferred-work.md). Build clean (0 warn/0 err). Tier-1 tests green: Contracts 333/333, Client 393/393 (+3 new P16 tests), Testing 110/110, Server focused 121/121. Server.Tests full suite has 13 pre-existing unrelated failures (verified at unpatched HEAD: ReplayController, ValidationExceptionHandler, QueryNotFoundExceptionHandler, EventStoreTrace) and 6 Tier-2 AggregateActorIntegrationTests skipped (require live DAPR sidecar).
 # Previous last_updated detail preserved: 2026-05-17T00:00:00+02:00 - Story 22.6 moved to in-progress after pass-5 review (Opus 4.7 1M): pass-4 verified at HEAD only 2/30 items landed and 2 actively worsened by commit 7a077da2; pass-5 surfaced 10 decisions + 30 patches + 4 defers + 6 dismissals. User selected narrow-scope apply (CRITICAL + key HIGH = 10 patches); all 4 CRITICAL (C1-5P/C2-5P/C3-5P/C4-5P) + 4 HIGH (H1/H2/H3/H8-5P) + P-DEC3-5P + P-DEC6-5P landed. Build clean; Client.Tests 389/389 + Testing.Tests 110/110 pass at user-selected gate. Server.Tests not run at gate — known regression risk on existing NSubstitute mocks for SaveAsync->ResetAsync swap (C2-5P), new isPerAggregateProgress param (P-DEC6-5P), and lifecycleScope OperationId thread (C1-5P). 24 patches + 4 resolved-decision-derived patches still outstanding. H12-5P deferred (cannot retro-amend merged commit b802f4d5).
 # Previous last_updated detail preserved: 2026-05-16T18:30:00+02:00 - Story 22.6 moved to review after third continuation pass (Opus 4.7 1M) applied all 37 patches across 18 files.
 # Previous last_updated detail preserved: 2026-05-15T16:00:15+02:00 - Story 22.6 moved to review after P4/P-D2 apply-driven rebuild advancement, final focused validation, and story artifact update.
@@ -83,6 +85,11 @@ tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
+  # Walking Skeleton readiness prerequisite
+  # Added by sprint-change-proposal-2026-05-17-readiness-addendum.md.
+  # Verify before any new implementation pass over Epics 1-8 foundation work.
+  ws-1-clone-to-command-flow-walking-skeleton: backlog
+
   # Epic 1: Domain Contract Foundation
   epic-1: done
   1-1-core-identity-and-event-envelope: done
@@ -323,6 +330,7 @@ development_status:
   # Epic 22: Public Gateway and Downstream Integration Contracts
   # Added by sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md.
   # Story 22.7 split by sprint-change-proposal-2026-05-12.md after implementation readiness approval.
+  # Parent/container rows must not be assigned for new implementation. Create or move child rows when work starts.
   epic-22: in-progress
   22-1-gateway-command-query-contract-closure-and-package-docs: done
   22-2-projection-adapter-contract-and-generic-query-actor-model: done
@@ -333,7 +341,12 @@ development_status:
   22-7a-payload-and-snapshot-protection-hooks: ready-for-dev
   22-7b-unreadable-protected-data-behavior: blocked
   22-7c-crypto-shredding-workflow-and-restored-backup-safety: blocked
+  # Container only: do not assign. Use 22-7d-1 through 22-7d-4 for implementation and review.
   22-7d-protected-data-redaction-across-operational-surfaces: blocked
+  22-7d-1-protected-data-redaction-in-logs-and-problemdetails: blocked
+  22-7d-2-protected-data-redaction-in-admin-api-and-web-ui: blocked
+  22-7d-3-protected-data-redaction-in-cli-and-mcp: blocked
+  22-7d-4-protected-data-redaction-in-replay-rebuild-backup-validation-and-tests: blocked
   epic-22-retrospective: optional
 
   # Post-Epic Deferred Work Cleanup (sprint-change-proposal-2026-05-04-deferred-work-triage.md)

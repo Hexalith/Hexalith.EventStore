@@ -2,6 +2,12 @@
 
 <!-- markdownlint-disable MD038 -->
 
+## Deferred from: code review of 22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints — seventh pass (2026-05-17)
+
+- **[OPEN] W1-7P (BH-6+EH-10+AA-5 part1) — Bounded-rebuild wedge with exact `RebuildPageSize`-multiple events and `toPosition=null`** - owner: dev; next-review-date: 2026-06-15; grouping: 22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints; rationale: Carry-forward of W1-4P/W1-5P. When a stream has exactly N×256 events and `ToPosition=null`, the first rebuild invocation reads all 256 (pageComplete=false). Terminal Succeeded write is skipped. Operator must re-invoke once. Deferred to D2a `RebuildSchedulerActor` follow-up story per spec line 900. Evidence: `src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:700-702, 443-461`.
+- **[OPEN] W2-7P (AA-5 part2) — AC8 Aspire/DAPR Tier-3 manual integration proof not run** - owner: dev; next-review-date: 2026-06-15; grouping: 22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints; rationale: Blocked by local Aspire CLI / AppHost version mismatch; recorded under story artifacts. Recommend a CI-driven Tier-3 smoke that exercises the new public stream read + replay endpoints end-to-end through DAPR. Evidence: spec Verification Status line 1231.
+- **[OPEN] W3-7P (AA-6) — AC3 continuation-token request-binding positive-path tests** - owner: dev; next-review-date: 2026-06-15; grouping: 22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints; rationale: `EventStoreGatewayClient` does not emit continuation tokens (always null `NextContinuationToken`); fail-closed branch is exercised. Positive tests deferred until token-emission and request-binding are implemented (out of Story 22.6 scope per spec line 33). Evidence: `docs/reference/stream-replay-api.md:13`.
+
 ## Deferred from: code review of 22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints — fifth pass (2026-05-16)
 
 - **[OPEN] W1-4P / W2-4P / W3-4P / W4-4P all remain open at HEAD (W1-5P through W4-5P)** - owner: dev; next-review-date: 2026-06-15; grouping: 22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints; rationale: Pass-5 verification confirms the four pass-4 defers are still applicable at HEAD. No new content; carried forward without duplicating individual entries. See the four pass-4 entries below for full context. Evidence: `_bmad-output/implementation-artifacts/22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints.md` pass-5 Deferred section.

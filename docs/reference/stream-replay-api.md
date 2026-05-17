@@ -12,7 +12,7 @@ Request body: `StreamReadRequest`
 - `domain`: domain identifier.
 - `aggregateId`: aggregate-specific stream identifier. Domain-wide rebuild enumeration is operator-owned and is not exposed as raw state-store scans.
 - `fromSequence`: exclusive lower sequence bound. Use `0` to read from the beginning.
-- `toSequence`: optional inclusive upper sequence bound. When `toSequence` is set equal to `fromSequence` the request is valid and EventStore returns an empty page (`eventCount == 0`, `lastSequenceReturned == null`, `latestSequence == currentSequence`). Use this shape to probe stream existence without reading events.
+- `toSequence`: optional inclusive upper sequence bound. When `toSequence` is set equal to `fromSequence` the request is valid and EventStore returns an empty page (`eventCount == 0`, `lastSequenceReturned == null`, `latestSequence == currentSequence`). Use this shape to probe stream existence without reading events. Empty streams that have actor metadata (touched aggregates with no events persisted) return 200 with `eventCount == 0` and `latestSequence == 0`; only the absence of actor metadata returns 404 `missing-stream`.
 - `checkpoint`: optional `ProjectionRebuildCheckpoint` cursor metadata.
 - `continuationToken`: opaque token from a prior page. Current implementation fails closed for supplied tokens until request-bound validation is enabled.
 - `pageSize`: maximum events per page, bounded by EventStore.
@@ -78,6 +78,18 @@ Operator rebuild lifecycle endpoints are under `api/v1/admin/projections/{tenant
 - `POST retry`
 
 Lifecycle states use `ProjectionRebuildStatus`: `not-started`, `running`, `pausing`, `paused`, `resuming`, `canceling`, `canceled`, `retrying`, `succeeded`, and `failed`.
+
+### Lifecycle State-Machine Transitions
+
+- `not-started` → `running` (operator start via `replay`)
+- `not-started` → `canceled` (operator cancel against an unstarted scope; cancel-cleanup path)
+- `running` → `pausing` → `paused` (operator pause)
+- `paused` → `resuming` → `running` (operator resume)
+- `running` → `canceling` → `canceled` (operator cancel)
+- `running` → `succeeded` (page-complete with terminal advancement)
+- `running` → `failed` (transient store/projection failure with sanitized `failureReasonCode`)
+- `failed` → `retrying` → `running` (operator retry; orchestrator-driven)
+- terminal states (`succeeded`, `failed`, `canceled`): a new operator action against the same `(tenant, domain, projectionName, aggregateId?)` scope requires routing through `ResetAsync` (which is the documented trust boundary for terminal-record OperationId overwrite).
 
 Normal polling and operator rebuilds use a reject policy: when an active rebuild checkpoint exists for the domain projection, normal projection delivery skips that aggregate and logs `poller-rebuild-conflict` instead of racing the rebuild checkpoint.
 

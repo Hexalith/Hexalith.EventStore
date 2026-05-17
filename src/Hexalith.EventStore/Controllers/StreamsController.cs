@@ -31,6 +31,13 @@ public sealed partial class StreamsController(
     GatewayTenantValidator tenantValidator,
     IRbacValidator rbacValidator,
     ILogger<StreamsController> logger) : ControllerBase {
+    // P6-7P (pass-7): _maxPageSize is load-bearing for the FromSequence overflow guard at
+    // line ~295 which evaluates `int.MaxValue - request.PageSize - 1L`. If _maxPageSize were
+    // bumped to near-int.MaxValue, the expression would overflow to a negative long and the
+    // guard would reject all valid FromSequence values. Keep _maxPageSize ≤ 100_000.
+    //
+    // Documented as a static invariant (compile-time const) rather than a runtime check because
+    // the compiler constant-folds any pattern test against the const and emits CS8519.
     private const int _maxPageSize = 1_000;
     private const string _streamReadMessageCategory = "replay";
     private const string _streamReadMessageType = "StreamRead";
@@ -377,7 +384,11 @@ public sealed partial class StreamsController(
             return false;
         }
 
-        if (exception is DaprException or HttpRequestException or IOException) {
+        // P13-7P (pass-7): narrow from `IOException` (too broad — includes FileNotFoundException,
+        // UnauthorizedAccessException, PathTooLongException, DirectoryNotFoundException etc. which
+        // are application bugs not transport failures) to network-bound transport types. IOException
+        // remains transient only when wrapped inside a transport exception (depth > 0 below).
+        if (exception is DaprException or HttpRequestException or System.Net.Sockets.SocketException) {
             return true;
         }
 
@@ -385,6 +396,12 @@ public sealed partial class StreamsController(
         // surfacing through Dapr SDK). Bare TimeoutException at the top level is treated as
         // a programmer/data error so it surfaces as 500 InternalError.
         if (exception is TimeoutException && depth > 0) {
+            return true;
+        }
+
+        // P13-7P (pass-7): IOException at depth > 0 (wrapped under a transport exception)
+        // remains transient, but at depth 0 it surfaces as application failure.
+        if (exception is IOException && depth > 0) {
             return true;
         }
 
