@@ -39,11 +39,6 @@ excludedPatternMatches:
 **Sharded Documents:**
 - None found
 
-**Excluded Pattern Matches:**
-- `prd-documentation-validation-report.md` (7,255 bytes, modified 2026-02-24 14:16:01)
-- `prd-validation-report-2026-03-14.md` (36,464 bytes, modified 2026-03-14 11:57:41)
-- `prd-validation-report.md` (8,417 bytes, modified 2026-03-13 17:12:49)
-
 ### Architecture Files Found
 
 **Whole Documents:**
@@ -55,17 +50,17 @@ excludedPatternMatches:
 ### Epics & Stories Files Found
 
 **Whole Documents:**
-- `epics.md` (129,259 bytes, modified 2026-05-17 10:00:42)
+- `epics.md` (130,021 bytes, modified 2026-05-17 10:22:08)
+
+**Pattern Matches Excluded From Core Assessment:**
+- `sprint-change-proposal-2026-04-16-epic-21-post-boot-fixes.md`
+- `sprint-change-proposal-2026-04-26-epic-2-retro-cleanup.md`
+- `sprint-change-proposal-2026-04-26-epic-3-retro-cleanup.md`
+- `sprint-change-proposal-2026-04-26-epic-4-retro-cleanup.md`
+- `sprint-change-proposal-2026-05-01-epic-10-retro-cleanup.md`
 
 **Sharded Documents:**
 - None found
-
-**Excluded Pattern Matches:**
-- `sprint-change-proposal-2026-04-16-epic-21-post-boot-fixes.md` (26,879 bytes, modified 2026-04-16 18:27:05)
-- `sprint-change-proposal-2026-04-26-epic-2-retro-cleanup.md` (34,040 bytes, modified 2026-04-26 11:17:17)
-- `sprint-change-proposal-2026-04-26-epic-3-retro-cleanup.md` (14,697 bytes, modified 2026-04-26 12:14:47)
-- `sprint-change-proposal-2026-04-26-epic-4-retro-cleanup.md` (14,239 bytes, modified 2026-04-26 12:46:48)
-- `sprint-change-proposal-2026-05-01-epic-10-retro-cleanup.md` (14,343 bytes, modified 2026-05-01 13:17:03)
 
 ### UX Design Files Found
 
@@ -75,12 +70,20 @@ excludedPatternMatches:
 **Sharded Documents:**
 - None found
 
-### Discovery Issues
+### Issues Found
 
-- No whole-vs-sharded duplicate document formats found.
-- Primary assessment inputs confirmed: `prd.md`, `architecture.md`, `epics.md`, and `ux-design-specification.md`.
+- No duplicate whole-plus-sharded document formats found.
+- No required document type is missing.
+- Additional PRD validation/report files and epic-related change proposals were identified but excluded from the core assessment to avoid confusing prior validation outputs with source planning artifacts.
 
-## PRD Analysis
+### Confirmed Assessment Sources
+
+- PRD: `D:\Hexalith.EventStore\_bmad-output\planning-artifacts\prd.md`
+- Architecture: `D:\Hexalith.EventStore\_bmad-output\planning-artifacts\architecture.md`
+- Epics & Stories: `D:\Hexalith.EventStore\_bmad-output\planning-artifacts\epics.md`
+- UX: `D:\Hexalith.EventStore\_bmad-output\planning-artifacts\ux-design-specification.md`
+
+## Step 2: PRD Analysis
 
 ### Functional Requirements
 
@@ -155,14 +158,14 @@ excludedPatternMatches:
 - FR69: The admin tool can display a unified command/event/query timeline for any aggregate stream, with before/after state snapshots per event
 - FR70: The admin tool can show aggregate state at any historical event position or timestamp (point-in-time state exploration)
 - FR71: The admin tool can diff aggregate state between any two event positions, highlighting changed fields
-- FR72: The admin tool can trace the full causation chain for any event -- originating command, sender identity, correlation ID, and downstream projections affected
-- FR73: The admin tool can list all projections with status, lag, throughput, error count, and last processed position -- with controls to pause, resume, reset from position, or replay
+- FR72: The admin tool can trace the full causation chain for any event - originating command, sender identity, correlation ID, and downstream projections affected
+- FR73: The admin tool can list all projections with status, lag, throughput, error count, and last processed position - with controls to pause, resume, reset from position, or replay
 - FR74: The admin tool can browse all registered event types, command types, and aggregate types with their schemas, relationships, and version history
 - FR75: The admin tool can display an operational health dashboard with event count, throughput, error rate, DAPR component status, and deep links to configured observability tools (Zipkin/Jaeger, Prometheus/Grafana, Aspire Dashboard)
-- FR76: The admin tool can manage storage -- show growth trends, hot streams, and trigger compaction, snapshot creation, and backup operations
-- FR77: The admin tool can manage tenants -- quotas, onboarding, comparison, and isolation verification. Tenant lifecycle (create, enable/disable, users, roles, configuration) is managed by Hexalith.Tenants peer service; EventStore admin UI/CLI/MCP consume its API
-- FR78: The admin tool can manage dead-letter queues -- browse, search, retry, skip, archive failed events with bulk operations
-- FR79: All admin read and write operations are accessible through three interfaces: Blazor Web UI, CLI (`eventstore-admin`), and MCP server -- backed by a shared Admin API
+- FR76: The admin tool can manage storage - show growth trends, hot streams, and trigger compaction, snapshot creation, and backup operations
+- FR77: The admin tool can manage tenants - quotas, onboarding, comparison, and isolation verification. Tenant lifecycle (create, enable/disable, users, roles, configuration) is managed by Hexalith.Tenants peer service; EventStore admin UI/CLI/MCP consume its API
+- FR78: The admin tool can manage dead-letter queues - browse, search, retry, skip, archive failed events with bulk operations
+- FR79: All admin read and write operations are accessible through three interfaces: Blazor Web UI, CLI (`eventstore-admin`), and MCP server - backed by a shared Admin API
 - FR80: The admin CLI supports JSON, CSV, and table output formats with pipe-friendly streaming, exit codes (0 healthy, 1 degraded, 2 critical), and shell completion scripts
 - FR81: The admin MCP server exposes all read operations as structured tools returning machine-readable JSON, with approval-gated write operations (pause/reset/replay projections, trigger backups)
 - FR82: Every trace, metric, and log view in the admin Web UI deep-links to the corresponding detail in the configured external observability tool rather than replicating its UI
@@ -236,336 +239,297 @@ Total FRs: 104
 - NFR41: Admin Web UI must render the operational health dashboard within 2 seconds on initial load, with subsequent SignalR-pushed updates within 200ms
 - NFR42: Admin CLI must start and return results for simple queries (health check, stream info) within 3 seconds including .NET runtime startup
 - NFR43: Admin MCP server must respond to tool calls within 1 second at p99 for single-resource queries
-- NFR44: All admin data access must go through DAPR abstractions exclusively -- the admin tool must be state-store-backend-agnostic, inheriting DAPR's portability guarantee
+- NFR44: All admin data access must go through DAPR abstractions exclusively - the admin tool must be state-store-backend-agnostic, inheriting DAPR's portability guarantee
 - NFR45: Admin Web UI must support at least 10 concurrent users with independent views without performance degradation
-- NFR46: Admin API must enforce role-based access control -- read-only for developers, operator for DBAs (projection controls, snapshot/compaction), admin for infrastructure operations (tenant management, backup/restore)
+- NFR46: Admin API must enforce role-based access control - read-only for developers, operator for DBAs (projection controls, snapshot/compaction), admin for infrastructure operations (tenant management, backup/restore)
 
 Total NFRs: 46
 
 ### Additional Requirements
 
-- Event sourcing invariants: append-only immutability, strictly ordered gapless per-aggregate sequence numbers, deterministic event replay, and irreversible event envelope/message-type conventions.
-- Data integrity constraints: optimistic concurrency through ETags, atomic 0-or-N event writes, and snapshot consistency where snapshot plus tail events equals full replay.
-- Multi-tenant isolation constraints: tenant isolation must hold across data path, storage keys, and pub/sub topics.
-- Operational patterns: event streams are the audit log, temporal state is derived through replay, and dead letters plus structured logging form the v1 operational contract.
-- Runtime stack: .NET 10 LTS, C# 14, DAPR 1.16.1 sidecars, Aspire 13, and `net10.0` across projects.
-- DAPR building block dependencies: actors, state store, pub/sub, configuration, and resiliency are v1 requirements; workflows are deferred to v2.
-- Package architecture: Contracts, Client, Server, SignalR, Aspire, and Testing packages have distinct ownership and consumer boundaries.
-- Versioning constraints: envelope and domain service contract changes are major versions; all packages are versioned together.
-- API constraints: command payload remains ultra-thin with four required fields plus optional correlation ID; tenant, user, causation, and domain fields are server-derived.
-- Authorization model: six-layer defense in depth from JWT validation through DAPR policy enforcement.
-- Storage schema: two-document event storage, composite DAPR state keys, and per-tenant-per-domain event/dead-letter topics.
-- Implementation constraints: DAPR call overhead, actor activation costs, at-least-once subscriber idempotency, and backend transaction differences must be accounted for.
-- Testing requirements: unit, integration, and contract tiers are defined with DAPR dependency expectations and target execution speeds.
-- MVP gates: command-to-event pipeline, zero data loss, tenant isolation, Redis/PostgreSQL infrastructure swap, clone-to-running under 10 minutes, envelope validation through 3+ domain services, and at least one Hexalith DDD application on the backbone.
+- The platform must preserve event sourcing invariants: append-only persistence, single-writer-per-aggregate ordering, deterministic replay, immutable envelopes, at-least-once publication, idempotent consumers, and explicit command/event/snapshot versioning.
+- Data integrity constraints include 26-character ULID identifiers, UTC timestamps, tenant/domain/aggregate composite stream identity, a default snapshot interval of 100 events, CloudEvents 1.0 publication, RFC 7807 error responses, 14-field event envelopes, and split metadata/payload storage.
+- Multi-tenant isolation must be applied through identity, storage keys, pub/sub topics, DAPR access control, and JWT claims, with tenant validation before state access.
+- Operational patterns require dead-letter topics, structured correlation/causation logs, OpenTelemetry traces, manual replay, and health/readiness endpoints.
+- Technical architecture requires DAPR actors for aggregate single-writer processing, DAPR state store for event/snapshot persistence, DAPR pub/sub for event distribution, Aspire for local orchestration and publishing, and OpenTelemetry for diagnostics.
+- Public APIs include command submission, command status, command replay, query submission, stream reads, and validation endpoints with stable HTTP status semantics.
+- Authentication and authorization require JWT bearer validation, tenant/domain/command claims, actor-level tenant revalidation, and DAPR access-control policies for service-to-service calls.
+- Event and command schemas must follow the PRD's command payload, domain result, event envelope, storage key, pub/sub topic, and query contract shapes.
+- Phase scoping keeps v1 focused on the command/event pipeline, query/projection caching, contracts, clients, testing helpers, tenant/RBAC integration, pub/sub ordering, replay/rebuild, and protected payload hooks, while advanced admin tooling remains v2+ unless specifically scoped into current work.
 
 ### PRD Completeness Assessment
 
-The PRD is highly detailed and implementation-oriented, with complete numbered FR/NFR coverage across command processing, event persistence, distribution, domain integration, identity, authorization, observability, developer experience, query caching, administration tooling, gateway contracts, pub/sub semantics, replay/rebuild, and payload protection. It also contains domain invariants, technical constraints, schema details, API contracts, package boundaries, success metrics, and validation gates.
+The PRD is highly complete for requirement extraction: all FR1-FR104 and NFR1-NFR46 are explicitly labeled, numbered, and grouped by capability. The main readiness risk is not missing requirement text but scope pressure: current-release, v1.1, and v2 administration requirements coexist in one PRD and will need clear epic/story phase boundaries during coverage validation.
 
-Potential traceability risks for later steps: several requirements are phase-scoped (`current release`, v1, v1.1, v2), and the readiness assessment must verify that epics/stories preserve those phase boundaries. FR numbering is complete but appears in PRD order rather than strict numeric order, so coverage validation should key by requirement ID rather than document order.
+## Step 3: Epic Coverage Validation
 
-## Epic Coverage Validation
+### Epic FR Coverage Extracted
 
-### Coverage Matrix
+The epics document includes an explicit `FR Coverage Map` covering all 104 PRD functional requirements. Full PRD requirement text is recorded in Step 2; this matrix records the implementation path claimed by the epics document.
 
-| FR Number | Epic Coverage | Status |
-| --------- | ------------- | ------ |
-| FR1 | Epic 1 + Epic 3: Command types and REST endpoint | Covered |
-| FR2 | Epic 1: Command validation types and MessageType value object | Covered |
-| FR3 | Epic 2: Command routing to aggregate actor | Covered |
-| FR4 | Epic 3: Correlation ID on command submission | Covered |
-| FR5 | Epic 3: Command status query endpoint | Covered |
-| FR6 | Epic 3: Failed command replay | Covered |
-| FR7 | Epic 3: Optimistic concurrency rejection | Covered |
-| FR8 | Epic 3: Dead-letter routing | Covered |
-| FR9 | Epic 2: Append-only immutable event persistence | Covered |
-| FR10 | Epic 2: Gapless sequence numbers per aggregate | Covered |
-| FR11 | Epic 1: 14-field event metadata envelope | Covered |
-| FR12 | Epic 2: State reconstruction via event replay | Covered |
-| FR13 | Epic 7: Configurable snapshots | Covered |
-| FR14 | Epic 2: Snapshot + tail event reconstruction | Covered |
-| FR15 | Epic 2: Composite key strategy with tenant isolation | Covered |
-| FR16 | Epic 2: Atomic event writes | Covered |
-| FR17 | Epic 4: Pub/sub with CloudEvents 1.0 | Covered |
-| FR18 | Epic 4: At-least-once delivery | Covered |
-| FR19 | Epic 4: Per-tenant-per-domain topics | Covered |
-| FR20 | Epic 4: Resilient persistence during pub/sub outage | Covered |
-| FR21 | Epic 1: Pure function domain processor contract | Covered |
-| FR22 | Epic 8: Domain service registration via DAPR config | Covered |
-| FR23 | Epic 2: Domain service invocation during command processing | Covered |
-| FR24 | Epic 8: Multi-domain support | Covered |
-| FR25 | Epic 8: Multi-tenant domain support | Covered |
-| FR26 | Epic 1: Canonical identity tuple | Covered |
-| FR27 | Epic 5: Data path isolation | Covered |
-| FR28 | Epic 5: Storage key isolation | Covered |
-| FR29 | Epic 5: Pub/sub topic isolation | Covered |
-| FR30 | Epic 5: JWT authentication | Covered |
-| FR31 | Epic 5: JWT claims-based authorization | Covered |
-| FR32 | Epic 5: Pre-pipeline unauthorized rejection | Covered |
-| FR33 | Epic 5: Actor-level tenant validation | Covered |
-| FR34 | Epic 5: DAPR service-to-service access control | Covered |
-| FR35 | Epic 6: OpenTelemetry traces | Covered |
-| FR36 | Epic 6: Structured logs with correlation/causation IDs | Covered |
-| FR37 | Epic 6: Dead-letter-to-origin tracing | Covered |
-| FR38 | Epic 6: Health check endpoints | Covered |
-| FR39 | Epic 6: Readiness check endpoints | Covered |
-| FR40 | Epic 8: Single Aspire command startup | Covered |
-| FR41 | Epic 8: Sample domain service reference | Covered |
-| FR42 | Epic 8: NuGet packages with zero-config quickstart | Covered |
-| FR43 | Epic 8: Environment deployment via DAPR config only | Covered |
-| FR44 | Epic 8: Aspire publisher deployment manifests | Covered |
-| FR45 | Epic 8: Unit tests without DAPR | Covered |
-| FR46 | Epic 8: Integration tests with DAPR containers | Covered |
-| FR47 | Epic 8: E2E contract tests | Covered |
-| FR48 | Epic 1: EventStoreAggregate base class with conventions | Covered |
-| FR49 | Epic 2: Duplicate command detection via ULID tracking | Covered |
-| FR50 | Epic 9: 3-tier query routing model | Covered |
-| FR51 | Epic 9: ETag actor per projection+tenant | Covered |
-| FR52 | Epic 9: NotifyProjectionChanged helper | Covered |
-| FR53 | Epic 9: ETag pre-check returning HTTP 304 | Covered |
-| FR54 | Epic 9: Query actor in-memory page cache | Covered |
-| FR55 | Epic 10: SignalR changed broadcast | Covered |
-| FR56 | Epic 10: SignalR hub with Redis backplane | Covered |
-| FR57 | Epic 9: Query contract library with typed metadata | Covered |
-| FR58 | Epic 9: Coarse invalidation per projection+tenant | Covered |
-| FR59 | Epic 10: Automatic SignalR group rejoining | Covered |
-| FR60 | Epic 12: 3 reference Blazor refresh patterns | Covered |
-| FR61 | Epic 9: Self-routing ETag encode/decode | Covered |
-| FR62 | Epic 9: IQueryResponse compile-time enforcement | Covered |
-| FR63 | Epic 9: Runtime projection type discovery | Covered |
-| FR64 | Epic 13: Short projection type name guidance | Covered |
-| FR65 | Epic 1: metadataVersion field in envelope | Covered |
-| FR66 | Epic 1: Aggregate tombstoning via terminal event | Covered |
-| FR67 | Epic 4: Per-aggregate backpressure | Covered |
-| FR68 | Epic 15: Recently active streams listing | Covered |
-| FR69 | Epic 15: Unified command/event/query timeline | Covered |
-| FR70 | Epic 15 + Epic 20: Point-in-time state exploration | Covered |
-| FR71 | Epic 15 + Epic 20: Aggregate state diff | Covered |
-| FR72 | Epic 20: Full causation chain tracing | Covered |
-| FR73 | Epic 15: Projection management with controls | Covered |
-| FR74 | Epic 15: Event/command/aggregate type catalog | Covered |
-| FR75 | Epic 15 + Epic 19: Operational health and DAPR visibility | Covered |
-| FR76 | Epic 16: Storage management | Covered |
-| FR77 | Epic 16 via Hexalith.Tenants: Tenant management | Covered |
-| FR78 | Epic 16: Dead-letter queue management | Covered |
-| FR79 | Epic 14: Three-interface shared Admin API | Covered |
-| FR80 | Epic 17: CLI output formats, exit codes, completions | Covered |
-| FR81 | Epic 18: MCP structured tools with approval gates | Covered |
-| FR82 | Epic 15: Observability deep links | Covered |
-| FR83 | Story 22.1: API-facing command/query DTOs and ProblemDetails extensions | Covered |
-| FR84 | Story 22.1: High-level EventStore client methods | Covered |
-| FR85 | Story 22.1: Deterministic gateway fakes and builders | Covered |
-| FR86 | Story 22.1: Package ownership documentation | Covered |
-| FR87 | Story 22.2: Projection adapter or documented generic query actor contract | Covered |
-| FR88 | Story 22.2: Get/List/Search routing through POST /api/v1/queries | Covered |
-| FR89 | Story 22.2: Generic versus domain-specific projection actor guidance | Covered |
-| FR90 | Story 22.3: Gateway tenant lifecycle, membership, role, and permission validation | Covered |
-| FR91 | Story 22.3: Hexalith.Tenants validator adapters with fail-closed behavior | Covered |
-| FR92 | Story 22.3: Stable 401/403 ProblemDetails taxonomy | Covered |
-| FR93 | Story 22.4: Query paging, filtering, blank search, and deterministic ordering policy | Covered |
-| FR94 | Story 22.4: Query response metadata contract | Covered |
-| FR95 | Story 22.4: Query error taxonomy | Covered |
-| FR96 | Story 22.5: Durable at-least-once published event guarantees and ordering notes | Covered |
-| FR97 | Story 22.5: Pub/sub deployment matrix, metadata, retry, drain, and dead-letter policy | Covered |
-| FR98 | Story 22.5: Backend-specific publish/order/dead-letter tests | Covered |
-| FR99 | Story 22.6: Stream read/replay APIs for projection rebuild | Covered |
-| FR100 | Story 22.6: Operator-safe projection rebuild flows | Covered |
-| FR101 | Story 22.6: Projection rebuild documentation using public APIs | Covered |
-| FR102 | Story 22.7a: Payload and snapshot protection hooks | Covered |
-| FR103 | Story 22.7c: Crypto-shredding and restored-backup safety workflows | Covered |
-| FR104 | Story 22.7d: Protected-data redaction across operational surfaces | Covered |
+| FR Number | Epic Coverage | Coverage Notes | Status |
+| --------- | ------------- | -------------- | ------ |
+| FR1 | Epic 1 + Epic 3 | Command types (Epic 1), REST endpoint (Epic 3) | Covered |
+| FR2 | Epic 1 | Command validation types and MessageType value object | Covered |
+| FR3 | Epic 2 | Command routing to aggregate actor | Covered |
+| FR4 | Epic 3 | Correlation ID on command submission | Covered |
+| FR5 | Epic 3 | Command status query endpoint | Covered |
+| FR6 | Epic 3 | Failed command replay | Covered |
+| FR7 | Epic 3 | Optimistic concurrency rejection | Covered |
+| FR8 | Epic 3 | Dead-letter routing | Covered |
+| FR9 | Epic 2 | Append-only immutable event persistence | Covered |
+| FR10 | Epic 2 | Gapless sequence numbers per aggregate | Covered |
+| FR11 | Epic 1 | 14-field event metadata envelope | Covered |
+| FR12 | Epic 2 | State reconstruction via event replay | Covered |
+| FR13 | Epic 7 | Configurable snapshots | Covered |
+| FR14 | Epic 2 | Snapshot + tail event reconstruction | Covered |
+| FR15 | Epic 2 | Composite key strategy with tenant isolation | Covered |
+| FR16 | Epic 2 | Atomic event writes | Covered |
+| FR17 | Epic 4 | Pub/sub with CloudEvents 1.0 | Covered |
+| FR18 | Epic 4 | At-least-once delivery | Covered |
+| FR19 | Epic 4 | Per-tenant-per-domain topics | Covered |
+| FR20 | Epic 4 | Resilient persistence during pub/sub outage | Covered |
+| FR21 | Epic 1 | Pure function domain processor contract | Covered |
+| FR22 | Epic 8 | Domain service registration via DAPR config | Covered |
+| FR23 | Epic 2 | Domain service invocation during command processing | Covered |
+| FR24 | Epic 8 | Multi-domain support (2+ domains) | Covered |
+| FR25 | Epic 8 | Multi-tenant domain support (2+ tenants) | Covered |
+| FR26 | Epic 1 | Canonical identity tuple | Covered |
+| FR27 | Epic 5 | Data path isolation | Covered |
+| FR28 | Epic 5 | Storage key isolation | Covered |
+| FR29 | Epic 5 | Pub/sub topic isolation | Covered |
+| FR30 | Epic 5 | JWT authentication | Covered |
+| FR31 | Epic 5 | JWT claims-based authorization | Covered |
+| FR32 | Epic 5 | Pre-pipeline unauthorized rejection | Covered |
+| FR33 | Epic 5 | Actor-level tenant validation | Covered |
+| FR34 | Epic 5 | DAPR service-to-service access control | Covered |
+| FR35 | Epic 6 | OpenTelemetry traces | Covered |
+| FR36 | Epic 6 | Structured logs with correlation/causation IDs | Covered |
+| FR37 | Epic 6 | Dead-letter-to-origin tracing | Covered |
+| FR38 | Epic 6 | Health check endpoints | Covered |
+| FR39 | Epic 6 | Readiness check endpoints | Covered |
+| FR40 | Epic 8 | Single Aspire command startup | Covered |
+| FR41 | Epic 8 | Sample domain service reference | Covered |
+| FR42 | Epic 8 | NuGet packages with zero-config quickstart | Covered |
+| FR43 | Epic 8 | Environment deployment via DAPR config only | Covered |
+| FR44 | Epic 8 | Aspire publisher deployment manifests | Covered |
+| FR45 | Epic 8 | Unit tests without DAPR | Covered |
+| FR46 | Epic 8 | Integration tests with DAPR containers | Covered |
+| FR47 | Epic 8 | E2E contract tests | Covered |
+| FR48 | Epic 1 | EventStoreAggregate base class with conventions | Covered |
+| FR49 | Epic 2 | Duplicate command detection via ULID tracking | Covered |
+| FR50 | Epic 9 | 3-tier query routing model | Covered |
+| FR51 | Epic 9 | ETag actor per projection+tenant | Covered |
+| FR52 | Epic 9 | NotifyProjectionChanged helper | Covered |
+| FR53 | Epic 9 | ETag pre-check returning HTTP 304 | Covered |
+| FR54 | Epic 9 | Query actor in-memory page cache | Covered |
+| FR55 | Epic 10 | SignalR changed broadcast | Covered |
+| FR56 | Epic 10 | SignalR hub with Redis backplane | Covered |
+| FR57 | Epic 9 | Query contract library with typed metadata | Covered |
+| FR58 | Epic 9 | Coarse invalidation per projection+tenant | Covered |
+| FR59 | Epic 10 | Automatic SignalR group rejoining | Covered |
+| FR60 | Epic 12 | Three reference Blazor refresh patterns | Covered |
+| FR61 | Epic 9 | Self-routing ETag encode/decode | Covered |
+| FR62 | Epic 9 | IQueryResponse<T> compile-time enforcement | Covered |
+| FR63 | Epic 9 | Runtime projection type discovery | Covered |
+| FR64 | Epic 13 | Short projection type name guidance | Covered |
+| FR65 | Epic 1 | metadataVersion field in envelope | Covered |
+| FR66 | Epic 1 | Aggregate tombstoning via terminal event | Covered |
+| FR67 | Epic 4 | Per-aggregate backpressure (HTTP 429) | Covered |
+| FR68 | Epic 15 | Recently active streams listing | Covered |
+| FR69 | Epic 15 | Unified command/event/query timeline | Covered |
+| FR70 | Epic 15 + Epic 20 | Point-in-time state exploration | Covered |
+| FR71 | Epic 15 + Epic 20 | Aggregate state diff | Covered |
+| FR72 | Epic 20 | Full causation chain tracing | Covered |
+| FR73 | Epic 15 | Projection management with controls | Covered |
+| FR74 | Epic 15 | Event/command/aggregate type catalog | Covered |
+| FR75 | Epic 15 + Epic 19 | Operational health + DAPR visibility | Covered |
+| FR76 | Epic 16 | Storage management | Covered |
+| FR77 | Epic 16 via Hexalith.Tenants | Tenant management through Hexalith.Tenants peer service | Covered |
+| FR78 | Epic 16 | Dead-letter queue management | Covered |
+| FR79 | Epic 14 | Three-interface shared Admin API | Covered |
+| FR80 | Epic 17 | CLI output formats, exit codes, completions | Covered |
+| FR81 | Epic 18 | MCP structured tools with approval gates | Covered |
+| FR82 | Epic 15 | Observability deep links | Covered |
+| FR83 | Story 22.1 | API-facing command/query DTOs and stable ProblemDetails extension names | Covered |
+| FR84 | Story 22.1 | High-level EventStore client methods for command/query/status/replay/read paths | Covered |
+| FR85 | Story 22.1 | Deterministic gateway fakes and builders in EventStore.Testing | Covered |
+| FR86 | Story 22.1 | Package ownership documentation for Contracts, Client, Testing, and runtime internals | Covered |
+| FR87 | Story 22.2 | Projection adapter or documented generic query actor contract | Covered |
+| FR88 | Story 22.2 | Get/List/Search domain query routing through POST /api/v1/queries | Covered |
+| FR89 | Story 22.2 | Generic versus domain-specific projection actor guidance | Covered |
+| FR90 | Story 22.3 | Gateway tenant lifecycle, membership, role, and permission validation | Covered |
+| FR91 | Story 22.3 | Hexalith.Tenants tenant/RBAC validator adapters with fail-closed behavior | Covered |
+| FR92 | Story 22.3 | Stable 401/403 ProblemDetails taxonomy | Covered |
+| FR93 | Story 22.4 | Query paging, filtering, blank search, and deterministic ordering policy | Covered |
+| FR94 | Story 22.4 | Query response metadata contract | Covered |
+| FR95 | Story 22.4 | Query error taxonomy | Covered |
+| FR96 | Story 22.5 | Durable at-least-once published event guarantees and ordering notes | Covered |
+| FR97 | Story 22.5 | Pub/sub deployment matrix, metadata, retry, drain, and dead-letter policy | Covered |
+| FR98 | Story 22.5 | Backend-specific publish/order/dead-letter tests | Covered |
+| FR99 | Story 22.6 | Stream read/replay APIs for projection rebuild | Covered |
+| FR100 | Story 22.6 | Operator-safe projection rebuild flows | Covered |
+| FR101 | Story 22.6 | Projection rebuild documentation using public APIs | Covered |
+| FR102 | Story 22.7a | Payload and snapshot protection hooks | Covered |
+| FR103 | Story 22.7c | Crypto-shredding and restored-backup safety workflows | Covered |
+| FR104 | Story 22.7d | Protected-data redaction across logs, admin APIs, UI, CLI, MCP, ProblemDetails, replay, rebuild, and tests | Covered |
 
 ### Missing Requirements
 
-No missing PRD functional requirements were found in the epics document.
+No PRD functional requirements are missing from the epics FR Coverage Map.
 
-No extra FR IDs were found in the epics document that are absent from the PRD.
+### FRs In Epics But Not In PRD
+
+None found.
 
 ### Coverage Statistics
 
 - Total PRD FRs: 104
 - FRs covered in epics: 104
-- Missing FRs: 0
-- Extra FRs in epics: 0
 - Coverage percentage: 100%
 
-### Coverage Notes
+### Coverage Assessment
 
-- The epics document includes an explicit FR Coverage Map covering FR1-FR104.
-- The opening Requirements Inventory section lists FR1-FR67 but does not list FR68-FR104 there; however, the later FR Coverage Map and Epic 22 story section cover FR68-FR104.
-- FR77 is covered through Epic 16 with tenant lifecycle delegated to the Hexalith.Tenants peer service, matching the PRD language.
+FR coverage is complete at the mapping level. The main follow-up risk is qualitative: several completed historical admin epics summarize implementation artifacts rather than restating full story-level acceptance criteria in this file, so later story-quality review should confirm those artifacts preserve the same acceptance traceability.
 
-## UX Alignment Assessment
+## Step 4: UX Alignment Assessment
 
 ### UX Document Status
 
-Found: `ux-design-specification.md`.
+Found: `D:\Hexalith.EventStore\_bmad-output\planning-artifacts\ux-design-specification.md`
 
-The UX document covers the multi-modal product experience across Developer SDK, REST API consumer, CLI/Aspire operator experience, Blazor Admin Web UI, Admin CLI, and Admin MCP surfaces.
+The UX specification covers four interaction surfaces: Developer SDK, REST API consumer experience, CLI/Aspire operator experience, and Blazor dashboard experience. It also includes v1 API error journeys, v1 implementation checklist items, and v2 administration UX requirements UX-DR41 through UX-DR59.
 
 ### UX to PRD Alignment
 
-- Developer SDK experience aligns with PRD FR21, FR42, FR45, and the developer success criteria around first domain service and pure-function programming model.
-- REST API consumer experience aligns with PRD FR1-FR8, FR30-FR32, FR83-FR95, and the API-auth/status/error handling requirements.
-- CLI/Aspire onboarding aligns with PRD FR40, FR43, FR44, NFR31, NFR32, and clone-to-running success criteria.
-- Query and real-time UI refresh experience aligns with PRD FR50-FR64 and NFR35-NFR39.
-- Blazor Admin Web UI, Admin CLI, and Admin MCP requirements align with PRD FR68-FR82 and NFR40-NFR46.
-- UX v1 implementation checklist maps cleanly to PRD concerns for ProblemDetails, OpenAPI/Swagger, command status, retry headers, SDK surface area, Aspire onboarding, shared terminology, and documentation.
+- PRD user journeys align with the UX personas and surfaces: Marco/Jerome developer onboarding, Sanjay/API consumer command submission, Priya/DevOps deployment, Alex/operator diagnostics, Maria/DBA operations, and MCP-agent investigation.
+- PRD FR1-FR8, FR30-FR39, FR40-FR48, FR68-FR82, and FR83-FR104 cover the UX's major interaction surfaces: command submission/status/replay, RFC 7807 errors, Swagger/OpenAPI discoverability, Aspire startup, logs/traces, admin UI, CLI, MCP, and public gateway contracts.
+- Epics explicitly reference UX-DR1 through UX-DR40 for v1 API/developer/onboarding/admin-baseline behavior and UX-DR41 through UX-DR59 for v2 admin Web UI, CLI, and MCP behavior.
 
 ### UX to Architecture Alignment
 
-- Architecture supports the REST/API UX through ProblemDetails, command lifecycle status, correlation ID propagation, OpenAPI, six-layer auth, rate limiting, and command status storage.
-- Architecture supports SDK and developer UX through Contracts/Client/Testing package boundaries, pure function/domain service contracts, EventStoreAggregate conventions, and Aspire topology.
-- Architecture supports CLI/Aspire UX through AppHost orchestration, Aspire publishers, DAPR component portability, and OTLP observability.
-- Architecture supports query and SignalR UX through query actors, ETag actors, self-routing ETags, SignalR hub/backplane, and runtime projection type discovery.
-- Architecture explicitly states that UX-DR41 through UX-DR59 are supported by ADR-P4 and ADR-P5, with interaction details carried by Epics 15, 17, 18, and 20.
+- Architecture supports the REST API UX through D5 ProblemDetails, command status storage, Retry-After/rate-limiting behavior, stable ProblemDetails extension names, and public Contracts/Client/Testing package boundaries.
+- Architecture supports the CLI/MCP/admin UX through ADR-P4: a shared Admin API consumed by Web UI, CLI, and MCP, with DAPR access centralized in Admin.Server.
+- Architecture supports observability UX through OpenTelemetry activities, structured correlation/causation logging, health/readiness endpoints, and ADR-P5 observability deep links instead of embedded trace/metric/log UIs.
+- Architecture explicitly notes that UX-DR41 through UX-DR59 are supported at the architectural level by ADR-P4 and ADR-P5, while detailed interactions such as command palette, breadcrumbs, virtualized rendering, keyboard shortcuts, CLI profiles/completions, and MCP session state remain story-level acceptance criteria.
 
 ### Alignment Issues
 
-| Issue | Source | Impact | Recommendation |
-| ----- | ------ | ------ | -------------- |
-| Admin UX interaction requirements are architecture-supported at high level but story-owned | Architecture says command palette, breadcrumbs, virtualized rendering, keyboard shortcuts, CLI profiles/REPL/completions, and MCP session state remain story-level acceptance criteria | These details could be missed if implementation only follows architecture decisions | Preserve UX-DR41-UX-DR59 as acceptance criteria in Epics 15, 17, 18, and 20 validation |
+1. **Contract terminology drift:** The UX specification still describes the domain processor in several places as `(Command, CurrentState?) -> List<DomainEvent>`, while the PRD and epics use `(Command, CurrentState?) -> DomainResult` with EventStore-owned metadata enrichment. Architecture also contains some older `List<DomainEvent>` wording. Recommendation: normalize UX and architecture wording to `DomainResult` before using those docs as implementation authority.
+2. **Fluent UI version drift:** UX-DR34 names "Blazor Fluent UI V4", while project context and Epic 21 indicate the admin UI has migrated to Fluent UI Blazor v5. Recommendation: update UX-DR34 and related wording to Fluent UI v5 so future UI work does not accidentally follow obsolete component APIs.
+3. **Admin interaction detail is delegated:** Architecture supports the admin UI/CLI/MCP model, but detailed UX behaviors for command palette, breadcrumbs, virtualization, keyboard navigation, CLI REPL/profiles/completions, MCP tenant context, and investigation session state are not fully specified in architecture. This is acceptable if story artifacts remain the source of truth, but it must be checked during story-quality review.
 
 ### Warnings
 
-- UX documentation is present and substantial; no missing-UX warning is needed.
-- API route examples are aligned across PRD, UX, and architecture on the `/api/v1/commands` route family.
-- Blazor/Admin details are phase-scoped to v2 and beyond; readiness review should continue checking phase boundaries so v1 work is not blocked by deferred UI scope.
+- No missing UX document warning: a whole UX specification exists and is referenced by the epics.
+- No major UX-to-PRD coverage gap found.
+- The primary UX readiness risk is stale terminology/version references that could confuse implementers if they read the UX specification without cross-checking PRD, architecture amendments, and Epic 21.
 
-## Epic Quality Review
+## Step 5: Epic Quality Review
 
-### Review Summary
+### Review Scope
 
-Reviewed `epics.md` against create-epics-and-stories standards for user-value slicing, independence, story sizing, acceptance criteria quality, and dependency hygiene.
-
-Validation facts:
-
-- Epics found: 22
-- Explicit inline story sections found: 69
-- Inline stories with Given/When/Then acceptance criteria: 69/69
-- Linked implementation artifact story files referenced by completed/historical epics: 67
-- Linked artifact files found on disk: 67/67
-- Linked artifact files containing acceptance criteria: 67/67
-- PRD FR traceability: 104/104 covered
+- Epics reviewed: 22
+- Explicit story headings reviewed: 69
+- Acceptance criteria structure: all explicit story sections include Given/When/Then-style criteria.
+- Forward dependency scan: no direct "requires future epic/story" dependency was found in active story text. Listed epic dependencies point backward or to completed historical work.
 
 ### Critical Violations
 
-#### CRIT-1: Multiple Epics Are Technical Milestones Rather Than User-Value Slices
+1. **Oversized stories acknowledged by the plan itself**
+   - Examples: Story 22.1 includes a split map into 22.1a Contracts DTOs, 22.1b Client methods, 22.1c Testing fakes/builders, and 22.1d package docs; Story 22.5 includes a split map into durable publish semantics, backend matrix, drain/dead-letter behavior, and backend proof tests.
+   - Why this matters: A story that already requires a split map is not independently sized for implementation. It risks partial completion, unclear acceptance, and review fatigue.
+   - Recommendation: Treat the split maps as binding before additional implementation work. Replace each oversized story with independently deliverable child stories or mark the parent as an epic-level container only.
 
-The create-epics-and-stories standard explicitly says epics should be organized around user value, not technical layers. Several epics are named and structured as implementation layers or infrastructure milestones:
-
-- Epic 1: Domain Contract Foundation
-- Epic 2: Event Persistence & Aggregate Processing
-- Epic 4: Event Distribution & Pub/Sub
-- Epic 5: Security & Multi-Tenant Isolation
-- Epic 6: Observability & Operations
-- Epic 7: Snapshots, Rate Limiting & Performance
-- Epic 11: Server-Managed Projection Builder
-- Epic 14: Admin API Foundation & Abstractions
-- Epic 19: Admin - DAPR Infrastructure Visibility
-- Epic 21: Admin UI Fluent UI v5 Stability Migration
-
-Impact: These epics may still be technically necessary, but they make it harder to validate incremental user outcomes. Epic 1 and Epic 2 especially do not obviously deliver a complete user-facing outcome by themselves; the first clearly demonstrable external user experience appears later with Epic 3 and especially Epic 8.
-
-Recommendation: Reframe technical epics around user outcomes, for example "Domain developers can define and register commands/events safely", "API consumers can submit and track commands", "Operators can diagnose and recover failed commands", and "Developers can run and verify the system locally". Keep technical implementation notes under those value slices.
+2. **Completed admin epics are not fully reviewable from the epics file alone**
+   - Examples: Epics 14-21 mostly summarize completed story artifacts and point to `_bmad-output/implementation-artifacts/*.md` rather than including full Given/When/Then acceptance criteria in the main planning artifact.
+   - Why this matters: The current file preserves traceability, but not enough local detail to validate story quality, edge cases, and acceptance completeness without following many artifact links.
+   - Recommendation: For readiness, either inline the acceptance summaries for completed admin stories or explicitly declare the linked implementation artifacts as required review inputs for the final assessment.
 
 ### Major Issues
 
-#### MAJ-1: First-Run / Onboarding Value Arrives Too Late In The Epic Sequence
+1. **Several epics remain foundation/technical in title and shape**
+   - Examples: Epic 1 "Domain Contract Foundation", Epic 2 "Event Persistence & Aggregate Processing", Epic 9 "Query Pipeline & ETag Caching", Epic 14 "Admin API Foundation & Abstractions", Epic 21 "Admin UI Fluent UI v5 Stability Migration".
+   - Assessment: Most of these now include user-outcome statements, which softens the issue. Still, the titles and some story framing are implementation-component oriented rather than user-capability oriented.
+   - Recommendation: Preserve the outcome statements and, for future changes, name epics around user capabilities such as "Domain developers can model commands safely" or "Operators can inspect EventStore health through shared admin surfaces."
 
-PRD and UX both make clone-to-running, Aspire startup, sample domain service, and first command trace core adoption gates. In the epic sequence, Aspire orchestration, sample app, NuGet client package, and test pyramid are grouped in Epic 8 after seven technical foundation epics.
+2. **Epic 21 creates ordering ambiguity for future UI work**
+   - Evidence: Epic 21 says new UI stories should use Fluent UI v5 patterns established by Epic 21, but it is numbered after admin Web UI epics 15-20.
+   - Assessment: Since Epic 21 is completed historical migration work, this is not a current blocker. In a fresh implementation sequence, however, v5 migration patterns would need to precede new admin UI stories.
+   - Recommendation: Mark Epic 21 as a historical prerequisite for future UI work or move v5 baseline guidance into a shared admin UI standards section.
 
-Impact: If implemented strictly in epic order, the project delays the most important user proof: "I can run this and see a command flow." This weakens incremental validation and increases the risk that earlier technical work goes unproven in a full topology.
-
-Recommendation: Pull a thin walking skeleton into Epic 1 or Epic 2: minimal AppHost, sample domain service, one command, one persisted event, and one trace. Later epics can deepen persistence, auth, distribution, and operational behavior.
-
-#### MAJ-2: Completed Epics 14-21 Are Not Self-Contained In `epics.md`
-
-Epics 14 through 21 list completed story artifact links rather than inline story sections with user story text and acceptance criteria. All 67 linked artifact files exist and contain acceptance criteria, so the information is not missing from the repository, but the central epics document is not self-contained for those epics.
-
-Impact: A developer or reviewer using only `epics.md` cannot validate story quality, dependencies, or acceptance criteria for Epics 14-21 without following many external files.
-
-Recommendation: Add a compact inline summary for each completed story under Epics 14-21 with persona, outcome, and key acceptance criteria, while preserving the artifact links for detail.
-
-#### MAJ-3: Several Stories Are Compound And Likely Oversized
-
-Examples:
-
-- Story 3.5 combines 401, 403, 409, 503, retry headers, terminology redaction, correlation ID rules, and identifier serialization behavior.
-- Story 8.5 combines unit, integration, and E2E contract test architecture.
-- Story 22.1 combines Contracts DTOs, Client APIs, Testing fakes/builders, compatibility wrappers, and generated documentation.
-- Story 22.5 combines publishing guarantees, backend deployment matrix, retry/outbox/drain behavior, dead-letter policy, and backend-specific tests.
-- Story 22.7d has been split into 22.7d-1 through 22.7d-4, which resolves the largest protected-data redaction sizing concern.
-
-Impact: These stories are testable, and several now include split maps for follow-up work, but the remaining broad stories can still become mini-epics if implemented as a single change. That increases implementation risk and makes review/acceptance less crisp.
-
-Recommendation: Continue splitting compound stories by independently releasable surface or behavior when creating implementation stories. The split maps already added for Stories 8.5, 22.1, and 22.5 are useful patterns to keep.
+3. **Story 8.7 references replacement by Story 8.8, but Story 8.8 is not present as a heading**
+   - Evidence: "Story 8.7: CI/CD Pipeline (Historical - MinVer replaced by semantic-release in Story 8.8)" appears, but no `Story 8.8` section was found.
+   - Impact: Readers cannot follow the replacement path from the main epics file.
+   - Recommendation: Add Story 8.8 or update Story 8.7 to point to the correct implementation artifact/change proposal.
 
 ### Minor Concerns
 
-#### MIN-1: Historical/Migration Epics Need Clearer Outcome Framing
-
-Epic 21 is a historical migration and is marked completed, but as an epic title it is implementation-mechanical. Its outcome is stability, accessibility, and testability on Fluent UI v5.
-
-Impact: The title undersells the user value and can look like dependency churn rather than risk reduction.
-
-Recommendation: Rename or annotate historical migration epics with the operational/user outcome they protect.
-
-### Positive Findings
-
-- FR traceability is excellent: the explicit coverage map covers every PRD FR from FR1 through FR104.
-- Inline stories consistently use Given/When/Then acceptance criteria, and the criteria are generally specific and independently testable.
-- No explicit forward dependency language was found that requires a later story or later epic to make an earlier story work.
-- Linked implementation artifacts for completed epics all exist and contain acceptance criteria.
-- Route shape and query-pipeline phase labels are now aligned across the PRD, UX, architecture, and epics artifacts.
-- Database/table-upfront anti-pattern was not observed. The system mostly uses DAPR state-store keys and actor state rather than large upfront relational schema creation.
+- The `NonFunctional Requirements` heading in the epics document is missing a space; cosmetic only.
+- Some historical stories include "completed historical work" notes and split maps. This is useful, but future implementation agents need clear instructions on whether to implement parent stories or child split-map stories.
+- Epic dependencies are generally valid and backward-facing, but the admin sequence should keep dependency declarations visible near each epic because it spans Web UI, CLI, MCP, DAPR diagnostics, and migration work.
 
 ### Best Practices Compliance Checklist
 
 | Area | Result | Notes |
 | ---- | ------ | ----- |
-| Epics deliver user value | Fail | Several epics are technical layers or migrations rather than user-value slices |
-| Epic independence | Partial | No hard forward references found, but early epics do not independently demonstrate end-user value |
-| Stories appropriately sized | Partial | Most are testable; several compound stories should be split |
-| No forward dependencies | Pass | No explicit future-story dependency violations found |
-| Database/entities created when needed | Pass | No big upfront table/model creation pattern found |
-| Clear acceptance criteria | Pass | 69/69 inline stories and 67/67 linked artifacts contain acceptance criteria |
-| Traceability to FRs maintained | Pass | 104/104 PRD FRs covered |
+| Epic delivers user value | Partial | Most epics have outcome statements; some titles/story groupings remain technical. |
+| Epic independence | Pass with caveats | Dependencies point backward; historical v5 migration ordering needs clarification for future UI work. |
+| Story sizing | Partial | Most stories are sized, but Story 22.1 and 22.5 are explicitly too broad and already include split maps. |
+| No forward dependencies | Pass | No direct active forward dependency found. |
+| Database/entity creation timing | Not applicable | The architecture is DAPR state-store based; no upfront table-creation plan was found. |
+| Clear acceptance criteria | Partial | Explicit story sections use BDD criteria; completed admin epics rely on external artifacts. |
+| Traceability to FRs maintained | Pass | The FR Coverage Map covers FR1-FR104. |
+
+### Quality Assessment
+
+The epics are implementation-ready for traceability, but not uniformly implementation-ready for execution without additional scoping. The strongest path is to treat Epics 1-13 and 22 detailed stories as primary planning material, while treating Epics 14-21 as historical/completed artifact indexes unless their linked implementation artifacts are included in the review set. The largest unresolved planning risk is oversized gateway/publishing/protection follow-up stories in Epic 22.
 
 ## Summary and Recommendations
 
 ### Overall Readiness Status
 
-NEEDS WORK
+**NEEDS WORK**
 
-The implementation artifacts are not blocked by missing PRD coverage: required documents exist, the PRD is complete, 104/104 PRD functional requirements are mapped to epics, UX documentation is present, and story acceptance criteria coverage is strong. However, the planning set should not be treated as fully implementation-ready until the epic-structure defects are addressed or explicitly accepted.
+The planning set is strong on traceability: all required source documents exist, PRD requirements are explicitly numbered, and the epics FR Coverage Map covers FR1-FR104 with no missing or extra FR references. It is not cleanly ready for a new implementation pass without targeted cleanup because several stories are too broad, completed admin epics require external artifact review, and UX/architecture wording contains stale version/contract references.
 
 ### Critical Issues Requiring Immediate Action
 
-1. Technical epic structure violates create-epics-and-stories standards. Several epics are implementation-layer milestones rather than user-value slices, especially early foundation epics.
-2. The first-run/onboarding value path is sequenced too late. Aspire, sample app, and first running topology appear in Epic 8 even though they are core PRD/UX success gates.
-3. Several stories are compound and should be split before new implementation work uses them as execution units.
-4. Epics 14-21 are not self-contained in `epics.md`; they rely on linked implementation artifact files for story detail.
+1. **Split oversized Epic 22 stories before implementation.**
+   - Story 22.1 and Story 22.5 already include split maps, which is the document admitting those stories are not independently sized.
+   - Action: replace parent implementation work with child stories 22.1a-22.1d and 22.5a-22.5d or explicitly mark parent stories as containers only.
+
+2. **Make completed admin artifact review explicit.**
+   - Epics 14-21 summarize completed work via implementation-artifact links instead of keeping full acceptance criteria in the epics file.
+   - Action: either inline acceptance summaries or declare the linked implementation artifacts as required readiness-review inputs.
+
+3. **Normalize the domain processor contract across UX and architecture.**
+   - UX and architecture still contain older `(Command, CurrentState?) -> List<DomainEvent>` wording, while PRD and epics use `DomainResult`.
+   - Action: update stale references so implementers do not choose the wrong public contract.
+
+4. **Update UX Fluent UI version references.**
+   - UX-DR34 still says Fluent UI v4, while project context and Epic 21 establish Fluent UI Blazor v5.
+   - Action: revise UX-DR34 and related text to v5.
 
 ### Recommended Next Steps
 
-1. Reframe or annotate technical epics with explicit user outcomes. At minimum, add outcome statements that explain who can do what after each epic completes.
-2. Pull a thin walking skeleton into the earliest epic sequence: AppHost, sample domain service, one command, one persisted event, and one observable trace.
-3. Split oversized stories before assigning them for implementation, especially Story 3.5, Story 8.5, Story 22.1, and Story 22.5. Keep using the split-map pattern already present in the document.
-4. Add compact story summaries for Epics 14-21 directly in `epics.md`, while keeping links to the detailed implementation artifact files.
-5. Rename or annotate historical/migration epics, especially Epic 21, with the stability/accessibility/testability outcome they protect.
-6. Preserve UX-DR41 through UX-DR59 as acceptance criteria in Admin Web UI, CLI, MCP, and advanced debugging stories; architecture supports them only at a high level.
+1. Apply the documented split maps for Story 22.1 and Story 22.5 before assigning implementation work.
+2. Add or link a formal admin artifact review bundle for Epics 14-21, including the implementation artifacts listed under each completed admin epic.
+3. Patch UX and architecture docs to use `DomainResult` consistently and remove obsolete `List<DomainEvent>` contract wording where it describes the current design.
+4. Patch UX-DR34 from Fluent UI v4 to Fluent UI v5 and ensure future admin UI story templates reference v5 patterns.
+5. Add the missing Story 8.8 heading or correct Story 8.7's reference to the semantic-release replacement work.
+6. Preserve the current FR Coverage Map; it is complete and should be treated as the traceability baseline.
+
+### Issue Summary
+
+- Critical issues: 4
+- Major issues: 3
+- Minor concerns: 3
+- Categories affected: story sizing, artifact reviewability, documentation consistency, UX/architecture alignment
 
 ### Final Note
 
-This assessment identified 6 issues across 4 categories:
+This assessment found a well-covered planning set with cleanup work concentrated in execution readiness rather than requirements discovery. Address the critical issues before starting broad new implementation, especially if Epic 22 or new admin UI work is next. If implementation must proceed immediately, proceed only against already split child stories and include the linked admin implementation artifacts in review context.
 
-- 1 critical epic-structure violation
-- 3 major readiness issues
-- 1 minor historical/migration framing concern
-- 1 UX/admin acceptance-criteria preservation warning
-
-The artifacts are strong on requirements coverage and acceptance criteria mechanics. The main risk is not missing requirements; it is that implementers could follow technically organized epics into delayed user validation and larger-than-needed implementation batches. Address the critical and major issues before using the planning set as the primary implementation guide.
-
-Assessment completed on 2026-05-17 by Codex using `bmad-check-implementation-readiness`.
+**Assessment completed:** 2026-05-17  
+**Assessor:** Codex using `bmad-check-implementation-readiness`

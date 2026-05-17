@@ -12,7 +12,7 @@ Request body: `StreamReadRequest`
 - `domain`: domain identifier.
 - `aggregateId`: aggregate-specific stream identifier. Domain-wide rebuild enumeration is operator-owned and is not exposed as raw state-store scans.
 - `fromSequence`: exclusive lower sequence bound. Use `0` to read from the beginning.
-- `toSequence`: optional inclusive upper sequence bound.
+- `toSequence`: optional inclusive upper sequence bound. When `toSequence` is set equal to `fromSequence` the request is valid and EventStore returns an empty page (`eventCount == 0`, `lastSequenceReturned == null`, `latestSequence == currentSequence`). Use this shape to probe stream existence without reading events.
 - `checkpoint`: optional `ProjectionRebuildCheckpoint` cursor metadata.
 - `continuationToken`: opaque token from a prior page. Current implementation fails closed for supplied tokens until request-bound validation is enabled.
 - `pageSize`: maximum events per page, bounded by EventStore.
@@ -56,6 +56,10 @@ Domain services MUST implement `/project` as a strictly idempotent operation: ap
 - Checkpoint store unavailability returns `checkpoint-unavailable`.
 - Failure statuses keep a sanitized `failureReasonCode` and must not expose payload bytes, state-store keys, actor ids, connection strings, or continuation-token internals.
 - Bounded replay operations persist `toPosition` as operator intent; it is not treated as applied progress.
+
+## Tenant and Domain Canonicalization
+
+Tenant and domain identifiers are case-sensitive at the state-store layer. EventStore validates incoming `tenant` and `domain` as lowercase ASCII alphanumeric (`a-z`, `0-9`, and `-`), maximum 64 characters, alphanumeric first and last character. Callers MUST canonicalize identifiers to lowercase before issuing stream-read or rebuild lifecycle requests; uppercase or mixed-case identifiers are rejected with `invalid-aggregate-identity` to prevent cross-case row aliasing.
 
 ## Projection Name Constraint
 

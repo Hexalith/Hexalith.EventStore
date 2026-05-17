@@ -31,7 +31,7 @@ author: Jerome
 
 Hexalith.EventStore is a DAPR-native event sourcing server for .NET 10 that provides a complete command-to-event pipeline for Domain-Driven Design applications. From a UX perspective, this is a multi-modal infrastructure platform -- not a single-UI product -- with four distinct interaction surfaces that must deliver a unified experience:
 
-1. **Developer SDK Experience** (v1) -- NuGet packages with a pure function programming model `(Command, CurrentState?) -> List<DomainEvent>`, where infrastructure concerns are entirely invisible
+1. **Developer SDK Experience** (v1) -- NuGet packages with a pure function programming model `(Command, CurrentState?) -> DomainResult`, where infrastructure concerns are entirely invisible
 2. **REST API Consumer Experience** (v1) -- Clean command submission API with JWT auth, async `202 Accepted` model, correlation-based status tracking, and RFC 7807 error responses that never leak event sourcing internals
 3. **CLI/Operator Experience** (v1) -- Aspire-powered single-command startup (`dotnet aspire run`), OpenTelemetry traces for full pipeline visibility, structured logs with correlation/causation IDs, dead-letter topics for failure investigation
 4. **Blazor Dashboard Experience** (v2) -- Fluent UI operational control plane for system health monitoring, tenant/domain management, event stream time-travel exploration, and self-service incident resolution
@@ -84,7 +84,7 @@ The core experience of Hexalith.EventStore is **persona-specific** -- each user 
 | Alex (Operator, v2) | Resolves 200 failed commands via batch replay in dashboard | Empowerment -- "I handled this without a developer" |
 
 The fundamental interaction loop is:
-1. Developer writes a pure function: `(Command, CurrentState?) -> List<DomainEvent>`
+1. Developer writes a pure function: `(Command, CurrentState?) -> DomainResult`
 2. Developer registers the domain service via DAPR configuration
 3. Consumer sends a command via REST API, receives `202 Accepted` + correlation ID
 4. Platform handles everything: routing, concurrency, persistence, distribution, observability
@@ -348,22 +348,22 @@ Hexalith.EventStore requires a **multi-surface design system** approach -- four 
 | REST API (v1) | OpenAPI 3.1 + RFC 7807 Problem Details | v1 | Define in this document |
 | Developer SDK (v1) | .NET API Design Guidelines | v1 | Define in this document |
 | CLI/Aspire (v1) | Aspire Dashboard (existing) | 13.1 | Leverage as-is |
-| Blazor Dashboard (v2) | Blazor Fluent UI V4 | 4.13.2 | Pre-selected, design tokens defined here |
+| Blazor Dashboard (v2) | Blazor Fluent UI v5 | 5.0.0-rc.2-26098.1 | Current project baseline, design tokens defined here |
 
-**Primary UI Design System: Blazor Fluent UI V4** (v2 dashboard)
+**Primary UI Design System: Blazor Fluent UI v5** (v2 dashboard)
 
-Selected based on technical research validation. Blazor Fluent UI V4 provides 50+ production-ready components with an adaptive design system that automatically handles WCAG AA compliance via design tokens. It is native to Blazor Server (SignalR real-time), familiar to .NET developers through Microsoft Fluent Design language (Azure Portal, Microsoft 365), and actively maintained with V5 migration path available.
+Selected based on technical research validation and Epic 21 migration work. Blazor Fluent UI v5 provides production-ready components with an adaptive design system that supports WCAG AA compliance via design tokens. It is native to Blazor Server (SignalR real-time), familiar to .NET developers through Microsoft Fluent Design language (Azure Portal, Microsoft 365), and is the current Admin UI component baseline.
 
 ### Rationale for Selection
 
-**Blazor Fluent UI V4 for the v2 Dashboard:**
+**Blazor Fluent UI v5 for the v2 Dashboard:**
 
 1. **Technology alignment** -- Native Blazor component library, no JavaScript interop overhead. Matches the .NET 10 / Blazor Server architecture decision.
 2. **Enterprise familiarity** -- Fluent Design language is used across Azure Portal, Microsoft 365, and Visual Studio. Jerome, Priya, and Alex already know this visual language.
 3. **Component coverage** -- DataGrid (event stream explorer, command list), TreeView (tenant/domain/aggregate hierarchy), NavMenu (dashboard navigation), Dialog (confirmation modals), Toast (operation feedback), Badge (status indicators) -- all required components are production-ready.
 4. **Adaptive design tokens** -- Built-in design token system supports theming without custom CSS. Tokens handle color, spacing, typography, elevation, and motion consistently.
 5. **Accessibility by default** -- WCAG AA compliance is automatic through the design token system, not a manual audit step.
-6. **Support timeline** -- V4 supported until November 2026, aligning with Hexalith's v2 development timeline. V5 migration path documented.
+6. **Support timeline** -- v5 is the active project baseline established by Epic 21, so new admin UI work uses v5 APIs and migration artifacts as implementation guidance.
 
 **OpenAPI 3.1 + RFC 7807 for the v1 REST API:**
 
@@ -386,9 +386,9 @@ Selected based on technical research validation. Blazor Fluent UI V4 provides 50
 - **Shared lifecycle model**: The 8-state command lifecycle (Received -> Processing -> EventsStored -> EventsPublished -> Completed | Rejected | PublishFailed | TimedOut) is represented identically in API status responses, SDK enums, and structured log entries
 - **Shared error semantics**: RFC 7807 ProblemDetails at the API surface, typed exceptions in the SDK, structured log entries with the same field names -- all carrying correlationId and tenantId
 
-**v2 Design Foundation (Blazor Fluent UI V4):**
+**v2 Design Foundation (Blazor Fluent UI v5):**
 
-- **Design tokens**: Use Fluent UI V4's built-in token system for colors, spacing, typography. No custom CSS where tokens suffice.
+- **Design tokens**: Use Fluent UI v5's built-in token system for colors, spacing, typography. No custom CSS where tokens suffice.
 - **Component composition**: Build dashboard views from Fluent UI primitives (FluentDataGrid, FluentTreeView, FluentNavMenu, FluentCard, FluentBadge) rather than custom components.
 - **Layout pattern**: Use FluentNavMenu for primary navigation (sidebar), FluentHeader for tenant/context selector, FluentBodyContent for main views. Responsive breakpoints at 1280px (compact) and 1920px (full).
 - **Real-time updates**: Blazor Server SignalR for live data. FluentToast for operation feedback. FluentBadge for status indicators that update in real-time.
@@ -405,7 +405,7 @@ Selected based on technical research validation. Blazor Fluent UI V4 provides 50
   - Red: PublishFailed, TimedOut, Unhealthy
   - Gray: Unknown, Deactivated
 - **Command lifecycle visualization**: Custom component built from Fluent UI primitives -- horizontal pipeline stages inspired by GitHub Actions, using FluentBadge for status and FluentCard for expandable detail.
-- **Event stream timeline**: Custom component for the time-travel explorer -- vertical timeline with event cards, built from FluentTimeline (if available in V4) or FluentCard list with timestamp markers.
+- **Event stream timeline**: Custom component for the time-travel explorer -- vertical timeline with event cards, built from FluentTimeline (if available in v5) or FluentCard list with timestamp markers.
 
 **What NOT to customize (use Fluent UI defaults):**
 
@@ -435,7 +435,7 @@ This sequence captures the entire platform promise in three verbs. Each act targ
 
 | Act | Verb | What Happens | Who Experiences It | Emotional Payoff |
 |-----|------|-------------|-------------------|-----------------|
-| Act 1 | **Write** | Developer implements `(Command, CurrentState?) -> List<DomainEvent>` | Jerome, Marco | Clarity -- "This is just a pure function" |
+| Act 1 | **Write** | Developer implements `(Command, CurrentState?) -> DomainResult` | Jerome, Marco | Clarity -- "This is just a pure function" |
 | Act 2 | **Send** | Consumer submits a command via REST API, receives `202 Accepted` + correlation ID | Sanjay, Jerome | Familiarity -- "This is just a REST call" |
 | Act 3 | **Watch** | Operator/developer observes the full pipeline via OpenTelemetry trace | Marco, Jerome, Priya, Alex (v2) | Trust -- "I can see everything that happened" |
 
@@ -474,7 +474,7 @@ The key insight: Hexalith is **none of these**. It is a **platform** -- closer t
 
 | Pattern | Classification | Familiarity Source | Hexalith Implementation |
 |---------|---------------|-------------------|------------------------|
-| Pure function programming model | **Novel** (for event sourcing) | Serverless functions (AWS Lambda, Azure Functions) | `IDomainProcessor<TCommand, TState>` with `(Command, CurrentState?) -> List<DomainEvent>` |
+| Pure function programming model | **Novel** (for event sourcing) | Serverless functions (AWS Lambda, Azure Functions) | `IDomainProcessor<TCommand, TState>` with `(Command, CurrentState?) -> DomainResult` |
 | Async command submission (`202 Accepted`) | **Established** | REST API best practices, message queues | `POST /commands` returns `202` + `Location` header + `Retry-After` |
 | Correlation ID-based tracking | **Established** | Distributed tracing (OpenTelemetry, Zipkin) | `X-Correlation-ID` header, `/api/v1/commands/status/{correlationId}` endpoint |
 | DAPR sidecar runtime | **Established** (in cloud-native) | Service mesh, sidecar patterns | DAPR as the infrastructure abstraction layer |
@@ -501,7 +501,7 @@ The key insight: Hexalith is **none of these**. It is a **platform** -- closer t
 | 1 | Add NuGet package `Hexalith.EventStore.Client` | Package restores, IDE shows available types | SDK (NuGet) |
 | 2 | Create a record type for the command | IDE IntelliSense guides properties | SDK (IDE) |
 | 3 | Create record types for domain events | IDE IntelliSense guides properties | SDK (IDE) |
-| 4 | Implement `IDomainProcessor<TCommand, TState>` | IDE generates method stub: `Process(TCommand command, TState? state)` returning `List<DomainEvent>` | SDK (IDE) |
+| 4 | Implement `IDomainProcessor<TCommand, TState>` | IDE generates method stub: `Process(TCommand command, TState? state)` returning `DomainResult` | SDK (IDE) |
 | 5 | Write the pure function body | No infrastructure imports needed -- just domain logic | SDK (IDE) |
 | 6 | Register via DAPR configuration | Add service entry to `dapr/components` YAML | CLI/Config |
 
@@ -540,7 +540,7 @@ The key insight: Hexalith is **none of these**. It is a **platform** -- closer t
 
 **Theme Strategy: System Preference-First**
 
-Hexalith.EventStore respects the operating system's `prefers-color-scheme` setting as the default theme. The v2 Blazor Dashboard provides an explicit toggle to override. Both light and dark themes are fully supported via Fluent UI V4's adaptive design token system with no custom switching logic.
+Hexalith.EventStore respects the operating system's `prefers-color-scheme` setting as the default theme. The v2 Blazor Dashboard provides an explicit toggle to override. Both light and dark themes are fully supported via Fluent UI v5's adaptive design token system with no custom switching logic.
 
 Rationale: Infrastructure platforms serve diverse environments -- developers in dark-mode IDEs, operators on enterprise desktops with enforced light themes, support engineers on shared monitors. Respecting OS preference is the most inclusive default.
 
@@ -593,17 +593,17 @@ All machine-generated values render in monospace across every surface: correlati
 
 ### v2 Dashboard Visual System
 
-**Scope:** These design decisions apply specifically to the v2 Blazor Fluent UI V4 dashboard. Defined here to inform architecture; implemented during v2 development.
+**Scope:** These design decisions apply specifically to the v2 Blazor Fluent UI v5 dashboard. Defined here to inform architecture; implemented during v2 development.
 
 **Design Token Strategy:**
 
-Use Fluent UI V4's built-in token system for all visual properties. No custom CSS where tokens suffice. Hexalith-specific customization is limited to:
+Use Fluent UI v5's built-in token system for all visual properties. No custom CSS where tokens suffice. Hexalith-specific customization is limited to:
 
 - **Brand color tokens**: Hexalith blue mapped to `--accent-base-color`
 - **Status color tokens**: Semantic colors from the cross-surface vocabulary mapped to Fluent UI `--success`, `--warning`, `--error`, `--info` tokens
 - **Density tokens**: Task-appropriate density settings (see Layout section)
 
-Everything else -- typography scale, spacing grid, elevation, motion, form inputs, dialogs, toasts -- uses Fluent UI V4 defaults unchanged.
+Everything else -- typography scale, spacing grid, elevation, motion, form inputs, dialogs, toasts -- uses Fluent UI v5 defaults unchanged.
 
 **Icon System:**
 
@@ -632,7 +632,7 @@ Empty states are onboarding opportunities, not dead ends. Every empty view guide
 
 ### Typography System
 
-**Approach: Fluent UI V4 Defaults -- No Customization**
+**Approach: Fluent UI v5 Defaults -- No Customization**
 
 | Priority | Font | Usage |
 |----------|------|-------|
@@ -727,7 +727,7 @@ Chart colors follow the same semantic mapping as status colors where applicable 
 
 ### Directions Explored
 
-Six information architecture directions were prototyped as a Blazor Server application using Fluent UI V4 components (see `_bmad-output/planning-artifacts/design-directions-prototype/`). Each direction answers the question: "When Alex opens the dashboard Monday morning, what does she see first?"
+Six information architecture directions were prototyped as a Blazor Server application using Fluent UI components (see `_bmad-output/planning-artifacts/design-directions-prototype/`). Future implementation follows the Fluent UI v5 baseline established by Epic 21. Each direction answers the question: "When Alex opens the dashboard Monday morning, what does she see first?"
 
 | Direction | Philosophy | Primary Entry Point | Best For |
 |-----------|-----------|---------------------|----------|
@@ -758,7 +758,7 @@ Rather than selecting a single direction, the v2 Blazor dashboard incorporates a
 1. **Different personas need different entry points.** Alex starts at Health; Jerome starts at Commands; Priya navigates by Topology. A single direction forces all users through one lens.
 2. **Different system states need different presentations.** D6's adaptive landing ensures the Monday morning incident surfaces immediately, while a healthy Tuesday shows the overview dashboard.
 3. **Different tasks need different information density.** D4's four-panel console is optimal during incident triage but overwhelming for routine monitoring. Making it a toggle mode (rather than the default) serves both cases.
-4. **The Blazor prototype validated all six.** Each direction uses the same Fluent UI V4 component library and visual foundation. They differ in information architecture, not design system.
+4. **The Blazor prototype validated all six.** Each direction uses the same Fluent UI component library and visual foundation. They differ in information architecture, not design system; implementation now uses the v5 baseline.
 
 ### Page Hierarchy
 
@@ -1075,9 +1075,9 @@ Across all five journeys, these reusable interaction patterns emerge:
 
 ## Component Strategy
 
-### Design System Components (Fluent UI V4)
+### Design System Components (Fluent UI v5)
 
-Fluent UI V4 (`Microsoft.FluentUI.AspNetCore.Components` 4.13.2) provides the complete foundation layer. These components are used as-is with no customization beyond Fluent UI design token configuration:
+Fluent UI v5 (`Microsoft.FluentUI.AspNetCore.Components` 5.0.0-rc.2-26098.1) provides the complete foundation layer. These components are used as-is with no customization beyond Fluent UI design token configuration:
 
 **Layout & Navigation:**
 - `FluentLayout`, `FluentHeader`, `FluentBodyContent` — App shell structure
@@ -1109,7 +1109,7 @@ Fluent UI V4 (`Microsoft.FluentUI.AspNetCore.Components` 4.13.2) provides the co
 
 ### Custom Components
 
-Seven custom Blazor components fill the gaps between Fluent UI V4's generic library and Hexalith's domain-specific needs. All custom components are built exclusively from Fluent UI V4 primitives and design tokens — no raw HTML/CSS styling.
+Seven custom Blazor components fill the gaps between Fluent UI v5's generic library and Hexalith's domain-specific needs. All custom components are built exclusively from Fluent UI v5 primitives and design tokens — no raw HTML/CSS styling.
 
 #### StatusBadge
 
@@ -1284,7 +1284,7 @@ Seven custom Blazor components fill the gaps between Fluent UI V4's generic libr
 
 ### Component Implementation Strategy
 
-**Build principle:** Every custom component is a composition of Fluent UI V4 primitives. No raw HTML elements are styled directly — all spacing, colors, typography, and elevation come from Fluent UI design tokens. This ensures theme compatibility (light/dark/high-contrast) and accessibility compliance automatically.
+**Build principle:** Every custom component is a composition of Fluent UI v5 primitives. No raw HTML elements are styled directly — all spacing, colors, typography, and elevation come from Fluent UI design tokens. This ensures theme compatibility (light/dark/high-contrast) and accessibility compliance automatically.
 
 **Component location:** `Components/Shared/` directory in the Blazor project. Each component is a single `.razor` file with parameters, following Blazor component conventions.
 
@@ -1321,7 +1321,7 @@ Seven custom Blazor components fill the gaps between Fluent UI V4's generic libr
 
 ### Action Hierarchy
 
-All interactive actions across the dashboard follow a strict three-tier hierarchy using Fluent UI V4 button appearances:
+All interactive actions across the dashboard follow a strict three-tier hierarchy using Fluent UI v5 button appearances:
 
 | Tier | Appearance | Usage | Examples |
 |------|-----------|-------|----------|
@@ -2049,7 +2049,7 @@ Concrete deliverables extracted from this UX spec that apply to v1 (no Blazor da
 |---|-------------|-------------|---------------------|
 | S1 | `CommandStatus` enum with 8 states | Semantic Foundation, Command Lifecycle Status Rendering | `Received`, `Processing`, `EventsStored`, `EventsPublished`, `Completed`, `Rejected`, `PublishFailed`, `TimedOut` |
 | S2 | Registration via `AddEventStoreClient()` extension method | .NET API Design Guidelines, SDK experience | Single extension method on `IServiceCollection` |
-| S3 | `IDomainProcessor<TCommand, TState>` interface | Act 1 mechanics, Core Experience | Pure function contract: `Process(TCommand, TState?) -> List<DomainEvent>` |
+| S3 | `IDomainProcessor<TCommand, TState>` interface | Act 1 mechanics, Core Experience | Pure function contract: `Process(TCommand, TState?) -> DomainResult` |
 | S4 | XML documentation on all public types | SDK Design System, IDE discoverability | IntelliSense shows meaningful descriptions for all public members |
 | S5 | Minimal public surface area | SDK implementation approach | Only domain service developer-facing types are public. Internal pipeline types are `internal` |
 

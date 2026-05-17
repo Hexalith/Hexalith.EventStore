@@ -136,6 +136,47 @@ public class ProjectionUpdateOrchestratorTests {
             Arg.Any<CancellationToken>());
     }
 
+    // P23-6P: an operator rebuild of a domain that has zero tracked aggregates is vacuously
+    // successful when a ToPosition bound is set. The operator-scope row transitions to
+    // Succeeded immediately (no aggregate-scoped work executes). Pins the D3-6P decision.
+    [Fact]
+    public async Task RebuildProjectionAsync_EmptyDomainWithReachedBoundWritesSucceeded() {
+        IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
+        // No tracked aggregates → enumeration yields nothing.
+        _ = checkpointTracker.EnumerateTrackedIdentitiesAsync(Arg.Any<CancellationToken>())
+            .Returns(EnumerateTracked());
+
+        IProjectionRebuildCheckpointStore rebuildCheckpointStore = Substitute.For<IProjectionRebuildCheckpointStore>();
+        ProjectionRebuildCheckpoint operatorCheckpoint = CreateRebuildCheckpoint(0, ProjectionRebuildStatus.Running, "operation-1", toPosition: 0);
+        _ = rebuildCheckpointStore.ReadAsync(Arg.Any<ProjectionRebuildCheckpointScope>(), Arg.Any<CancellationToken>())
+            .Returns(operatorCheckpoint);
+        _ = rebuildCheckpointStore.SaveAsync(
+                Arg.Any<ProjectionRebuildCheckpointScope>(),
+                Arg.Any<long>(),
+                Arg.Any<ProjectionRebuildStatus>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>(),
+                Arg.Any<long?>(),
+                Arg.Any<bool>())
+            .Returns(call => ProjectionRebuildCheckpointSaveResult.Success(
+                CreateRebuildCheckpoint(call.ArgAt<long>(1), call.ArgAt<ProjectionRebuildStatus>(2), "operation-1", call.ArgAt<long?>(5))));
+
+        (ProjectionUpdateOrchestrator sut, _, _, _, _) = CreateSut(
+            checkpointTracker,
+            rebuildCheckpointStore: rebuildCheckpointStore);
+
+        await sut.RebuildProjectionAsync(CreateRebuildScope());
+
+        _ = await rebuildCheckpointStore.Received(1).SaveAsync(
+            Arg.Is<ProjectionRebuildCheckpointScope>(scope => scope.AggregateId == null),
+            Arg.Any<long>(),
+            ProjectionRebuildStatus.Succeeded,
+            null,
+            Arg.Any<CancellationToken>(),
+            Arg.Any<long?>(),
+            Arg.Any<bool>());
+    }
+
     [Fact]
     public async Task RebuildProjectionAsync_AcceptedApplyAdvancesRebuildCheckpoint() {
         IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();

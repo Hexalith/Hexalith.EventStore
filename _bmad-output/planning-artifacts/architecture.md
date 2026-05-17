@@ -89,7 +89,7 @@ Gaps identified through Advanced Elicitation (Pre-mortem, Failure Mode Analysis,
 | #     | Gap                                                                                                                                                                                                                   | Source             | Impact                                                                     |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | -------------------------------------------------------------------------- |
 | GAP-1 | **Command status storage mechanism undefined.** FR5 defines `GET /api/v1/commands/status/{correlationId}` but Data Schemas has no key pattern for command status records.                                                    | SC-3, Failure Mode | Affects state store key strategy, actor state design, and API query model  |
-| GAP-2 | **Domain service error/rejection contract missing.** FR21 defines happy path `(Command, CurrentState?) -> List<DomainEvent>` but not how services signal command rejection (exception? empty list? rejection event?). | SRT-1, CR-1        | Affects actor processing logic, error propagation, and dead-letter content |
+| GAP-2 | **Domain service error/rejection contract missing.** FR21 defines happy path `(Command, CurrentState?) -> DomainResult` but not how services signal command rejection (exception? empty result? rejection event?). | SRT-1, CR-1        | Affects actor processing logic, error propagation, and dead-letter content |
 | GAP-3 | **Atomic event writes on non-transactional backends.** FR16 requires 0-or-N atomic writes, but Redis lacks multi-key transactions. No compensating pattern defined.                                                   | PM-3, Failure Mode | Affects fundamental storage strategy and backend compatibility promise     |
 
 **Design-Phase (resolve during component design):**
@@ -147,7 +147,7 @@ Three preliminary decisions emerging from the analysis. These are **provisional*
 
 #### ADR-P3: Domain Service Contract -- Result Object Over Exceptions
 
-- **Context:** FR21 defines `(Command, CurrentState?) -> List<DomainEvent>` but the error/rejection path is undefined (GAP-2).
+- **Context:** FR21 defines `(Command, CurrentState?) -> DomainResult` but the error/rejection path is undefined (GAP-2).
 - **Provisional Decision:** Domain services return a result object that contains either a list of events (success) or an error descriptor (rejection). Empty event lists are valid (command acknowledged, no state change). Exceptions indicate infrastructure failures, not domain rejections.
 - **Rationale:** Distinguishes between domain rejections (business rule violations -- expected, logged, returned to caller) and infrastructure failures (network errors, timeouts -- retried via DAPR resiliency). This distinction affects dead-letter routing and retry behavior.
 
@@ -454,7 +454,7 @@ Hexalith.EventStore/
 
 #### D3: Domain Service Error Contract -- Errors as Events
 
-- **Contract:** `(Command, CurrentState?) -> List<DomainEvent>` -- always returns events, never throws for domain logic
+- **Contract:** `(Command, CurrentState?) -> DomainResult` -- always returns an aggregate type plus event outputs, never throws for domain logic
 - **Domain rejection:** Expressed as rejection event types via naming convention (e.g., `OrderRejected`, `PaymentDeclined`, `InsufficientFundsDetected`) AND `IRejectionEvent` marker interface for programmatic identification
 - **Rejection persistence:** Persisted to event stream like any other event -- rejection events increment the aggregate sequence number
 - **Backward-compatible deserialization (CRITICAL):** Domain services MUST maintain backward-compatible deserialization for all event types they have ever produced. UnknownEvent during state rehydration is an error condition, not a skip-and-continue path. Skipping unknown events produces incorrect aggregate state. Recovery: redeploy previous domain service version, then add backward-compatible deserializer for removed event type
@@ -809,7 +809,7 @@ Hexalith.EventStore/
 │   │   │   ├── AggregateIdentity.cs            # tenant:domain:aggregate-id tuple
 │   │   │   └── IdentityParser.cs               # Parse/format identity strings
 │   │   ├── Results/
-│   │   │   └── DomainResult.cs                 # List<DomainEvent> (D3: always events)
+│   │   │   └── DomainResult.cs                 # Aggregate type + event outputs (D3: always DomainResult)
 │   │   └── Serialization/
 │   │       └── EventSerializer.cs              # JSON serialization contracts
 │   │
@@ -1121,7 +1121,7 @@ Actor Step 3: EventStreamReader.RehydrateAsync() (snapshot + events)
 Actor Step 4: DaprDomainServiceInvoker.InvokeAsync() (D7, DAPR policies layer 6)
     │
     ▼
-Domain service returns List<DomainEvent> (D3: state-change or rejection)
+Domain service returns DomainResult (D3: state-change or rejection event outputs)
     │
     ▼
 EventStore populates all 11 envelope metadata fields (SEC-1)

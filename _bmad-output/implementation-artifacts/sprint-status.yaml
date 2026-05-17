@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-17T10:30:00+02:00' # Story 22.6 pass-5 continuation closed remaining current pass-5 items M1-5P/M11-5P/L4-5P; focused Server projection tests passed 71/71. Story remains in-progress because older deferred/decision review items are still open.
+last_updated: '2026-05-17T16:45:00+02:00' # Story 22.6 moved to review after sixth code-review pass (Opus 4.7 1M): 3 decision-needed resolved (D1 revert validator to lowercase, D2 keep ToSequence==FromSequence empty-page, D3 keep empty-domain Succeeded) + 20 patches applied across 8 files (5 false-positives dismissed with justification, 3 newly-deferred items appended to deferred-work.md). Build clean (0 warn/0 err). Tier-1 tests green: Contracts 333/333, Client 393/393 (+3 new P16 tests), Testing 110/110, Server focused 121/121. Server.Tests full suite has 13 pre-existing unrelated failures (verified at unpatched HEAD: ReplayController, ValidationExceptionHandler, QueryNotFoundExceptionHandler, EventStoreTrace) and 6 Tier-2 AggregateActorIntegrationTests skipped (require live DAPR sidecar).
 # Previous last_updated detail preserved: 2026-05-17T00:00:00+02:00 - Story 22.6 moved to in-progress after pass-5 review (Opus 4.7 1M): pass-4 verified at HEAD only 2/30 items landed and 2 actively worsened by commit 7a077da2; pass-5 surfaced 10 decisions + 30 patches + 4 defers + 6 dismissals. User selected narrow-scope apply (CRITICAL + key HIGH = 10 patches); all 4 CRITICAL (C1-5P/C2-5P/C3-5P/C4-5P) + 4 HIGH (H1/H2/H3/H8-5P) + P-DEC3-5P + P-DEC6-5P landed. Build clean; Client.Tests 389/389 + Testing.Tests 110/110 pass at user-selected gate. Server.Tests not run at gate — known regression risk on existing NSubstitute mocks for SaveAsync->ResetAsync swap (C2-5P), new isPerAggregateProgress param (P-DEC6-5P), and lifecycleScope OperationId thread (C1-5P). 24 patches + 4 resolved-decision-derived patches still outstanding. H12-5P deferred (cannot retro-amend merged commit b802f4d5).
 # Previous last_updated detail preserved: 2026-05-16T18:30:00+02:00 - Story 22.6 moved to review after third continuation pass (Opus 4.7 1M) applied all 37 patches across 18 files.
 # Previous last_updated detail preserved: 2026-05-15T16:00:15+02:00 - Story 22.6 moved to review after P4/P-D2 apply-driven rebuild advancement, final focused validation, and story artifact update.
@@ -329,7 +329,7 @@ development_status:
   22-3-gateway-owned-tenant-and-rbac-enforcement: done
   22-4-query-behavior-policy-and-error-taxonomy: done
   22-5-event-publishing-guarantees-and-backend-deployment-matrix: done
-  22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints: in-progress
+  22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints: review
   22-7a-payload-and-snapshot-protection-hooks: ready-for-dev
   22-7b-unreadable-protected-data-behavior: blocked
   22-7c-crypto-shredding-workflow-and-restored-backup-safety: blocked

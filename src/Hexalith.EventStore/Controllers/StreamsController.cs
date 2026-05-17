@@ -147,6 +147,14 @@ public sealed partial class StreamsController(
         catch (OperationCanceledException) {
             throw;
         }
+        catch (ArgumentOutOfRangeException) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                ProblemTypeUris.BadRequest,
+                "Bad Request",
+                "Stream sequence boundary is out of range.",
+                StreamReplayReasonCodes.InvalidRange);
+        }
         catch (ArgumentException) {
             return ProblemWithReason(
                 StatusCodes.Status400BadRequest,
@@ -273,6 +281,17 @@ public sealed partial class StreamsController(
                 StreamReplayReasonCodes.InvalidAggregateIdentity);
         }
 
+        // P6-6P: PageSize validated FIRST because the FromSequence overflow guard reads PageSize.
+        // A negative PageSize would otherwise inflate `int.MaxValue - PageSize - 1L` and relax the guard.
+        if (request.PageSize is <= 0 or > _maxPageSize) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                ProblemTypeUris.BadRequest,
+                "Bad Request",
+                $"'pageSize' must be between 1 and {_maxPageSize}.",
+                StreamReplayReasonCodes.InvalidRange);
+        }
+
         if (request.FromSequence < 0
             || request.FromSequence > int.MaxValue - request.PageSize - 1L
             || (request.ToSequence.HasValue && (request.ToSequence.Value < request.FromSequence || request.ToSequence.Value > int.MaxValue))) {
@@ -281,15 +300,6 @@ public sealed partial class StreamsController(
                 ProblemTypeUris.BadRequest,
                 "Bad Request",
                 "'fromSequence' must be >= 0 and 'toSequence' must not be less than 'fromSequence' or greater than the supported sequence boundary.",
-                StreamReplayReasonCodes.InvalidRange);
-        }
-
-        if (request.PageSize is <= 0 or > _maxPageSize) {
-            return ProblemWithReason(
-                StatusCodes.Status400BadRequest,
-                ProblemTypeUris.BadRequest,
-                "Bad Request",
-                $"'pageSize' must be between 1 and {_maxPageSize}.",
                 StreamReplayReasonCodes.InvalidRange);
         }
 
@@ -306,16 +316,24 @@ public sealed partial class StreamsController(
     }
 
     private static bool IsCanonicalTenantOrDomain(string value) {
+        // P21-6P: tenant/domain identifiers MUST be lowercase. State-store keys
+        // (projection-rebuild-checkpoints:{tenant}:{domain}:...) are case-sensitive,
+        // so accepting mixed case would let "Tenant-A" and "tenant-a" address
+        // different rows and break cross-case tenant isolation. Operators must
+        // canonicalize externally and submit lowercase identifiers.
         if (value.Length > 64 || value.Any(c => c is < (char)0x20 or >= (char)0x7F)) {
             return false;
         }
 
-        if (!char.IsAsciiLetterOrDigit(value[0]) || !char.IsAsciiLetterOrDigit(value[^1])) {
+        if (!IsLowerAsciiAlphanumeric(value[0]) || !IsLowerAsciiAlphanumeric(value[^1])) {
             return false;
         }
 
-        return value.All(c => char.IsAsciiLetterOrDigit(c) || c == '-');
+        return value.All(c => IsLowerAsciiAlphanumeric(c) || c == '-');
     }
+
+    private static bool IsLowerAsciiAlphanumeric(char c)
+        => c is >= 'a' and <= 'z' || char.IsAsciiDigit(c);
 
     private static bool IsValidAggregateId(string value) {
         if (value.Length > 256 || value.Any(c => c is < (char)0x20 or >= (char)0x7F)) {
@@ -351,7 +369,15 @@ public sealed partial class StreamsController(
             return IsServiceUnavailable(actorException.InnerException, depth + 1);
         }
 
-        if (exception is DaprException or HttpRequestException or IOException or TaskCanceledException) {
+        // P2-6P: TaskCanceledException is a subclass of OperationCanceledException. The outer
+        // dispatcher already rethrows bare OperationCanceledException; classifying TaskCanceledException
+        // as transient here produced false-positive 503s on client-disconnect cancellation.
+        // OperationCanceledException-derived frames are excluded so cancellation propagates.
+        if (exception is OperationCanceledException) {
+            return false;
+        }
+
+        if (exception is DaprException or HttpRequestException or IOException) {
             return true;
         }
 

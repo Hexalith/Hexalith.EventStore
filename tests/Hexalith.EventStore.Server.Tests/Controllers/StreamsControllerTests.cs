@@ -152,6 +152,11 @@ public class StreamsControllerTests {
 
     [Theory]
     [InlineData(Tenant, Domain, ":actor-key")]
+    // P21-6P: uppercase tenant/domain identifiers must be rejected so cross-case callers
+    // cannot address different state-store rows under the illusion of "the same tenant."
+    [InlineData("Tenant-A", Domain, AggregateId)]
+    [InlineData(Tenant, "Party", AggregateId)]
+    [InlineData("TENANT", Domain, AggregateId)]
     public async Task ReadStreamAsyncWithInvalidIdentityShapeReturnsDedicatedReasonBeforeActorProxy(
         string tenant,
         string domain,
@@ -194,6 +199,32 @@ public class StreamsControllerTests {
         ProblemDetails problem = AssertProblem(result, StatusCodes.Status400BadRequest);
         problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.InvalidRange);
         actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
+    }
+
+    // P22-6P: ToSequence == FromSequence is now a valid request that returns an empty page
+    // (200 OK with EventCount=0, LastSequenceReturned=null, LatestSequence=currentSequence).
+    // Previously this returned 400 InvalidRange. Documented in stream-replay-api.md.
+    [Fact]
+    public async Task ReadStreamAsyncWithToSequenceEqualToFromSequenceReturnsEmptyPage() {
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        _ = actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(Exists: true, CurrentSequence: 10));
+        _ = actor.ReadEventsRangeAsync(5, 5, Arg.Any<int>()).Returns([]);
+        (StreamsController controller, IActorProxyFactory actorProxyFactory, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator) = CreateController(actor);
+        tenantValidator.ConfiguredResult = TenantValidationResult.Allowed;
+        rbacValidator.ConfiguredResult = RbacValidationResult.Allowed;
+
+        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(
+            Tenant,
+            Domain,
+            AggregateId,
+            FromSequence: 5,
+            ToSequence: 5));
+
+        OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
+        StreamReadPage page = ok.Value.ShouldBeOfType<StreamReadPage>();
+        page.Metadata.LastSequenceReturned.ShouldBeNull();
+        page.Metadata.EventCount.ShouldBe(0);
+        page.Metadata.LatestSequence.ShouldBe(10);
     }
 
     [Fact]

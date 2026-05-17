@@ -261,9 +261,39 @@ public partial class ProjectionUpdateOrchestrator(
             return;
         }
 
-        ProjectionRebuildCheckpoint? initial = await rebuildCheckpointStore
-            .ReadAsync(scope, cancellationToken)
-            .ConfigureAwait(false);
+        // P10-6P: a transient store failure on the initial ReadAsync (DaprException etc.)
+        // would propagate uncaught before reaching the H1-5P catch (which is inside the
+        // foreach try block). The controller's Running write has already populated the
+        // active-rebuilds index, so without this guard the index entry would persist
+        // forever and the poller would be blocked indefinitely for (tenant, domain).
+        // Wrap the initial read so transient failures route through the H1-5P Failed
+        // write path uniformly.
+        ProjectionRebuildCheckpoint? initial;
+        try {
+            initial = await rebuildCheckpointStore
+                .ReadAsync(scope, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            ProjectionRebuildCheckpointSaveResult initFailSave = await rebuildCheckpointStore
+                .ResetAsync(
+                    scope,
+                    lastAppliedSequence: 0,
+                    ProjectionRebuildStatus.Failed,
+                    failureReasonCode: ex.GetType().Name,
+                    cancellationToken: CancellationToken.None,
+                    toPosition: null)
+                .ConfigureAwait(false);
+            if (!initFailSave.Succeeded) {
+                Log.RebuildTerminalFailWriteRejected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, initFailSave.ReasonCode ?? "unknown", ex.GetType().Name);
+            }
+
+            throw;
+        }
+
         if (!CanRunRebuild(initial)) {
             return;
         }
@@ -364,17 +394,30 @@ public partial class ProjectionUpdateOrchestrator(
             // or the inner ReadAsync leaves the row at Running and the poller is permanently
             // blocked for (tenant, domain). ResetAsync bypasses the monotonic guard so the
             // operator-scope Failed write lands regardless of accumulated highestMatchedProgress.
-            ProjectionRebuildCheckpointSaveResult failSave = await rebuildCheckpointStore
-                .ResetAsync(
-                    operatorScope,
-                    initial.LastAppliedSequence,
-                    ProjectionRebuildStatus.Failed,
-                    failureReasonCode: ex.GetType().Name,
-                    cancellationToken: CancellationToken.None,
-                    toPosition: initial.ToPosition)
-                .ConfigureAwait(false);
-            if (!failSave.Succeeded) {
-                Log.RebuildTerminalFailWriteRejected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, failSave.ReasonCode ?? "unknown", ex.GetType().Name);
+            // P4-6P: wrap the cleanup ResetAsync in try/catch (mirroring the OCE-branch cleanup
+            // at line ~354) so a secondary transient exception from the cleanup write does not
+            // silently replace the original exception on its way out of the method.
+            // P8-6P: use Math.Max(initial.LastAppliedSequence, highestMatchedProgress) so the
+            // Failed audit row does NOT regress below per-aggregate progress that landed during
+            // the iteration. Previously, the operator-scope row could end up with
+            // LastAppliedSequence < some-per-aggregate-row.LastAppliedSequence — breaking the
+            // invariant that operator-scope is the high-water mark.
+            try {
+                ProjectionRebuildCheckpointSaveResult failSave = await rebuildCheckpointStore
+                    .ResetAsync(
+                        operatorScope,
+                        Math.Max(initial.LastAppliedSequence, highestMatchedProgress),
+                        ProjectionRebuildStatus.Failed,
+                        failureReasonCode: ex.GetType().Name,
+                        cancellationToken: CancellationToken.None,
+                        toPosition: initial.ToPosition)
+                    .ConfigureAwait(false);
+                if (!failSave.Succeeded) {
+                    Log.RebuildTerminalFailWriteRejected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, failSave.ReasonCode ?? "unknown", ex.GetType().Name);
+                }
+            }
+            catch (Exception cleanupEx) when (cleanupEx is not OperationCanceledException) {
+                Log.RebuildCancelCleanupFailed(logger, cleanupEx, scope.Tenant, scope.Domain, scope.ProjectionName, cleanupEx.GetType().Name);
             }
 
             throw;
@@ -681,13 +724,19 @@ public partial class ProjectionUpdateOrchestrator(
             && (scope.AggregateId is null
                 || string.Equals(scope.AggregateId, identity.AggregateId, StringComparison.Ordinal));
 
-    // P14: include NotStarted so cancel-cleanup arriving before the first iteration still triggers
-    // the terminal write path. The store's lifecycle guards still prevent illegitimate transitions.
+    // P19-6P: NotStarted removed from the can-run set. The original "include NotStarted so
+    // cancel-cleanup arriving before the first iteration still triggers the terminal write
+    // path" rationale (P14) is redundant: the cancel-cleanup catch block runs regardless of
+    // CanRunRebuild and writes terminal Canceled when the snapshot status is non-terminal
+    // (NotStarted is non-terminal so cancel-cleanup still handles it). Permitting NotStarted
+    // here allowed a racing direct invocation to proceed without the controller having
+    // populated the active-rebuilds index, opening a poller-vs-rebuild race window. The
+    // controller's Reset+Replay path always writes Running before invoking the orchestrator,
+    // so a legitimate caller will pass this gate.
     private static bool CanRunRebuild(ProjectionRebuildCheckpoint? checkpoint)
         => checkpoint?.Status is ProjectionRebuildStatus.Running
             or ProjectionRebuildStatus.Resuming
-            or ProjectionRebuildStatus.Retrying
-            or ProjectionRebuildStatus.NotStarted;
+            or ProjectionRebuildStatus.Retrying;
 
     private static bool IsTerminalStatus(ProjectionRebuildStatus status)
         => status is ProjectionRebuildStatus.Succeeded

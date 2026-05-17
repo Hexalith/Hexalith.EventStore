@@ -281,7 +281,28 @@ public sealed partial class AdminProjectionRebuildController(
             }
 
             if (status == ProjectionRebuildStatus.Retrying && scopeForRebuild is not null && rebuildOrchestrator is not null) {
-                await rebuildOrchestrator.RebuildProjectionAsync(scopeForRebuild, ct).ConfigureAwait(false);
+                // P3-6P: the Retry row is already persisted with the fresh OperationId. If the
+                // orchestrator throws (transient DAPR, etc.) we MUST surface the new OperationId
+                // so the operator can poll / retry rather than seeing an opaque 500 with the row
+                // wedged at Retrying owned by a token the caller never received. Read the
+                // terminal snapshot to determine the real outcome.
+                try {
+                    await rebuildOrchestrator.RebuildProjectionAsync(scopeForRebuild, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) {
+                    throw;
+                }
+                catch (Exception) {
+                    ProjectionRebuildCheckpoint? terminalSnap = await checkpointStore
+                        .ReadAsync(scopeForRebuild, CancellationToken.None)
+                        .ConfigureAwait(false);
+                    string reason = terminalSnap?.FailureReasonCode ?? StreamReplayReasonCodes.ServiceUnavailable;
+                    return ProblemWithReason(
+                        StatusCodes.Status503ServiceUnavailable,
+                        "Service Unavailable",
+                        $"Retry started (operation {operationIdForResponse}) but rebuild execution did not complete: {reason}.",
+                        reason);
+                }
             }
 
             var result = new AdminOperationResult(
@@ -340,13 +361,27 @@ public sealed partial class AdminProjectionRebuildController(
             }
 
             if (runRebuild && rebuildOrchestrator is not null) {
-                await rebuildOrchestrator.RebuildProjectionAsync(scope, ct).ConfigureAwait(false);
+                // P14-6P: if the orchestrator re-throws (e.g., transient DAPR not classified as
+                // recoverable), the terminal-snapshot read path below is bypassed and the caller
+                // sees an unstructured 500. The H1-5P path inside the orchestrator already writes
+                // Failed via ResetAsync before re-throwing, so the snapshot is reliable.
+                try {
+                    await rebuildOrchestrator.RebuildProjectionAsync(scope, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) {
+                    throw;
+                }
+                catch (Exception) {
+                    // fall through to the terminal-snapshot read; if Failed was written we
+                    // surface the structured 409, otherwise the snapshot will be missing or
+                    // non-terminal and we fall through to the default 503 below.
+                }
 
                 // DEC7: read terminal checkpoint after synchronous rebuild execution. If the
                 // orchestrator wrote Failed, surface a 4xx with the failure reason instead of
                 // 202 Accepted + Success=true (which previously misled operators into thinking
                 // a Failed rebuild had succeeded).
-                ProjectionRebuildCheckpoint? terminalSnap = await checkpointStore.ReadAsync(scope, ct).ConfigureAwait(false);
+                ProjectionRebuildCheckpoint? terminalSnap = await checkpointStore.ReadAsync(scope, CancellationToken.None).ConfigureAwait(false);
                 if (terminalSnap?.Status == ProjectionRebuildStatus.Failed) {
                     return ProblemWithReason(
                         StatusCodes.Status409Conflict,

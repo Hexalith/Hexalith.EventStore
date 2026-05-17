@@ -727,10 +727,26 @@ public partial class AggregateActor(
             return false;
         }
 
-        return exception is System.Text.Json.JsonException
+        if (exception is System.Text.Json.JsonException
             or System.IO.InvalidDataException
-            or EventDeserializationException
-            || (exception.InnerException is not null && IsDeserializationFailure(exception.InnerException, depth + 1));
+            or EventDeserializationException) {
+            return true;
+        }
+
+        // P15-6P: AggregateException carries multiple inner exceptions in InnerExceptions;
+        // walking only InnerException loses every branch but the first. A real deserialization
+        // failure nested in InnerExceptions[i] would be misclassified as a programmer error.
+        if (exception is AggregateException aggregate) {
+            foreach (Exception inner in aggregate.InnerExceptions) {
+                if (IsDeserializationFailure(inner, depth + 1)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return exception.InnerException is not null && IsDeserializationFailure(exception.InnerException, depth + 1);
     }
 
     /// <inheritdoc/>

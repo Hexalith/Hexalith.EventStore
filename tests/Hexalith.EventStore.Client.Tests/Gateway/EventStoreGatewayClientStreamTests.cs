@@ -86,6 +86,28 @@ public class EventStoreGatewayClientStreamTests {
         httpClient.MaxResponseContentBufferSize.ShouldBe(1024);
     }
 
+    // P16-6P: validate the constructor's MaxStreamReadResponseBytes guards.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(int.MinValue)]
+    public void ConstructorRejectsNonPositiveMaxStreamReadResponseBytes(long invalid) {
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.OK, "{}")));
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new EventStoreGatewayClient(
+            httpClient,
+            Options.Create(new EventStoreGatewayClientOptions { MaxStreamReadResponseBytes = invalid })));
+    }
+
+    [Fact]
+    public void ConstructorRejectsMaxStreamReadResponseBytesGreaterThanIntMaxValue() {
+        using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.OK, "{}")));
+
+        _ = Should.Throw<ArgumentOutOfRangeException>(() => new EventStoreGatewayClient(
+            httpClient,
+            Options.Create(new EventStoreGatewayClientOptions { MaxStreamReadResponseBytes = (long)int.MaxValue + 1 })));
+    }
+
     private static HttpClient CreateClient(Func<HttpRequestMessage, Task<HttpResponseMessage>> handler)
         => new(new RecordingHandler((request, _) => handler(request))) { BaseAddress = new Uri("https://eventstore.local/") };
 

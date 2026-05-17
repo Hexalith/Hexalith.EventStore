@@ -94,6 +94,9 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         string key = GetStateKey(scope);
         string stateStoreName = options.Value.CheckpointStateStoreName;
         for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+            // P17-6P: observe cancellation between retry iterations even when the prior
+            // attempt did not throw (e.g., bare ETag conflict, !saved branch).
+            cancellationToken.ThrowIfCancellationRequested();
             try {
                 (ProjectionRebuildCheckpoint? existing, string etag) = await daprClient
                     .GetStateAndETagAsync<ProjectionRebuildCheckpoint>(
@@ -204,6 +207,21 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                 if (saved) {
                     string? activeIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
                     if (activeIndexFailure is not null) {
+                        // P13-6P: terminal-status (Succeeded/Failed/Canceled) checkpoint is already
+                        // persisted at this point. Failing the SaveAsync call would leave the caller
+                        // unsure whether the terminal write happened, AND the projection name would
+                        // stay in the active-index forever, blocking the poller permanently. For
+                        // terminal writes, treat the index-removal failure as best-effort: log
+                        // loudly so operators can observe the gap, but return Success so the next
+                        // lifecycle transition retries the index removal naturally. For active
+                        // (Running/Pausing/Resuming/Retrying/Canceling) writes, the index must
+                        // succeed (otherwise the poller cannot tell an operator rebuild is in
+                        // flight), so propagate the failure.
+                        if (IsTerminal(status)) {
+                            Log.CheckpointNoOpIndexUpdateFailed(logger, scope.Tenant, scope.Domain, scope.ProjectionName, activeIndexFailure);
+                            return ProjectionRebuildCheckpointSaveResult.Success(checkpoint);
+                        }
+
                         return ProjectionRebuildCheckpointSaveResult.Failure(activeIndexFailure);
                     }
 
@@ -211,6 +229,11 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                 }
 
                 Log.CheckpointConflict(logger, scope.Tenant, scope.Domain, scope.ProjectionName, scope.AggregateId ?? string.Empty, scope.OperationId ?? string.Empty, attempt + 1);
+
+                // P18-6P: ETag conflict — short backoff before retrying so hot keys do not thrash.
+                if (attempt < MaxEtagRetries - 1) {
+                    await Task.Delay(BoundedRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
+                }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
@@ -242,6 +265,8 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         string key = GetStateKey(scope);
         string stateStoreName = options.Value.CheckpointStateStoreName;
         for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+            // P17-6P: observe cancellation between retry iterations.
+            cancellationToken.ThrowIfCancellationRequested();
             try {
                 (ProjectionRebuildCheckpoint? existing, string etag) = await daprClient
                     .GetStateAndETagAsync<ProjectionRebuildCheckpoint>(
@@ -285,6 +310,13 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                 if (saved) {
                     string? activeIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
                     if (activeIndexFailure is not null) {
+                        // P13-6P: mirror SaveAsync — terminal Reset (rare; tests use Reset for Failed
+                        // and Canceled-write paths) treats index removal as best-effort.
+                        if (IsTerminal(status)) {
+                            Log.CheckpointNoOpIndexUpdateFailed(logger, scope.Tenant, scope.Domain, scope.ProjectionName, activeIndexFailure);
+                            return ProjectionRebuildCheckpointSaveResult.Success(checkpoint);
+                        }
+
                         return ProjectionRebuildCheckpointSaveResult.Failure(activeIndexFailure);
                     }
 
@@ -292,6 +324,11 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                 }
 
                 Log.CheckpointConflict(logger, scope.Tenant, scope.Domain, scope.ProjectionName, scope.AggregateId ?? string.Empty, scope.OperationId ?? string.Empty, attempt + 1);
+
+                // P18-6P: short backoff between ETag retries.
+                if (attempt < MaxEtagRetries - 1) {
+                    await Task.Delay(BoundedRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
+                }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
@@ -318,6 +355,8 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
 
         for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+            // P17-6P: observe cancellation between retry iterations.
+            cancellationToken.ThrowIfCancellationRequested();
             try {
                 string[]? activeProjections = await daprClient
                     .GetStateAsync<string[]>(
@@ -355,14 +394,22 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         CancellationToken cancellationToken) {
         bool active = IsLifecycleActive(status);
         bool terminal = IsTerminal(status);
-        if (!active && !terminal && status != ProjectionRebuildStatus.NotStarted) {
-            // No-op transitions (e.g., Paused-to-Paused via Save) do not change the index.
+        // P1-6P: NotStarted is NOT a deactivation. A Reset → NotStarted that proactively
+        // removed the projection from the index opened a race window between the Reset
+        // write and the subsequent Running write during which HasActiveOperatorRebuildForDomainAsync
+        // returned false and the poller could race the rebuild. Only IsLifecycleActive
+        // statuses add to the index; only terminal statuses remove from it. All other
+        // transitions (NotStarted, no-op same-status) leave the index untouched.
+        if (!active && !terminal) {
             return null;
         }
 
         string indexKey = GetActiveIndexKey(scope.Tenant, scope.Domain);
         string stateStoreName = options.Value.CheckpointStateStoreName;
         for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+            // P17-6P: observe cancellation between retry iterations even when the prior
+            // attempt did not throw (e.g., bare ETag conflict, !saved branch).
+            cancellationToken.ThrowIfCancellationRequested();
             try {
                 (string[]? existing, string etag) = await daprClient
                     .GetStateAndETagAsync<string[]>(
@@ -394,6 +441,12 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     .ConfigureAwait(false);
                 if (saved) {
                     return null;
+                }
+
+                // P18-6P: ETag conflict — back off briefly before the next attempt so hot keys
+                // do not thrash the state store. Mirrors the transient-store delay below.
+                if (attempt < MaxEtagRetries - 1) {
+                    await Task.Delay(BoundedRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
