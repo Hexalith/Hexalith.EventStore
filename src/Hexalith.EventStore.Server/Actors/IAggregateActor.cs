@@ -41,4 +41,10 @@ public interface IAggregateActor : IActor {
     /// </summary>
     /// <returns>The current sequence number, or 0 when the stream does not exist.</returns>
     Task<long> GetCurrentSequenceAsync();
+
+    /// <summary>
+    /// Gets aggregate stream metadata without reading event payload state.
+    /// </summary>
+    /// <returns>Stream existence and current sequence metadata.</returns>
+    Task<AggregateStreamMetadata> GetStreamMetadataAsync();
 }

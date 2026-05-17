@@ -339,11 +339,11 @@ public partial class ProjectionUpdateOrchestrator(
                     ProjectionRebuildCheckpointSaveResult cancelSave = await rebuildCheckpointStore
                         .ResetAsync(
                             operatorScope,
-                            canceledSnapshot.LastAppliedSequence,
+                            Math.Max(canceledSnapshot.LastAppliedSequence, highestMatchedProgress),
                             ProjectionRebuildStatus.Canceled,
-                            StreamReplayReasonCodes.RebuildCanceled,
-                            CancellationToken.None,
-                            canceledSnapshot.ToPosition)
+                            failureReasonCode: StreamReplayReasonCodes.RebuildCanceled,
+                            cancellationToken: CancellationToken.None,
+                            toPosition: canceledSnapshot.ToPosition)
                         .ConfigureAwait(false);
                     if (!cancelSave.Succeeded) {
                         Log.RebuildCancelCleanupRejected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, cancelSave.ReasonCode ?? "unknown");
@@ -368,9 +368,9 @@ public partial class ProjectionUpdateOrchestrator(
                     operatorScope,
                     initial.LastAppliedSequence,
                     ProjectionRebuildStatus.Failed,
-                    ex.GetType().Name,
-                    CancellationToken.None,
-                    initial.ToPosition)
+                    failureReasonCode: ex.GetType().Name,
+                    cancellationToken: CancellationToken.None,
+                    toPosition: initial.ToPosition)
                 .ConfigureAwait(false);
             if (!failSave.Succeeded) {
                 Log.RebuildTerminalFailWriteRejected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, failSave.ReasonCode ?? "unknown", ex.GetType().Name);
@@ -387,7 +387,8 @@ public partial class ProjectionUpdateOrchestrator(
         //   or operator re-invocation will pick up from per-aggregate progress).
         ProjectionRebuildCheckpoint? finalSnapshot = await rebuildCheckpointStore
             .ReadAsync(operatorScope, cancellationToken)
-            .ConfigureAwait(false);
+            .ConfigureAwait(false)
+            ?? initial;
         if (!CanRunRebuild(finalSnapshot)) {
             return;
         }
@@ -405,7 +406,9 @@ public partial class ProjectionUpdateOrchestrator(
             _ = await rebuildCheckpointStore
                 .SaveAsync(
                     operatorScope,
-                    Math.Max(finalSnapshot!.LastAppliedSequence, highestMatchedProgress),
+                    operatorScope.AggregateId is null
+                        ? finalSnapshot!.LastAppliedSequence
+                        : Math.Max(finalSnapshot!.LastAppliedSequence, highestMatchedProgress),
                     ProjectionRebuildStatus.Succeeded,
                     failureReasonCode: null,
                     CancellationToken.None,
@@ -445,10 +448,10 @@ public partial class ProjectionUpdateOrchestrator(
                     .ResetAsync(
                         operatorScope,
                         lastAppliedSequence: 0,
-                        ProjectionRebuildStatus.Failed,
-                        StreamReplayReasonCodes.NoDomainService,
-                        CancellationToken.None,
-                        toPosition)
+                        status: ProjectionRebuildStatus.Failed,
+                        failureReasonCode: StreamReplayReasonCodes.NoDomainService,
+                        cancellationToken: CancellationToken.None,
+                        toPosition: toPosition)
                     .ConfigureAwait(false);
                 return RebuildDeliveryResult.Interrupt();
             }
@@ -468,6 +471,17 @@ public partial class ProjectionUpdateOrchestrator(
                 // P8: empty-events path no longer masquerades as work-complete. PageComplete is
                 // explicit: we have reached the bound iff progress meets ToPosition (or there is
                 // no bound and the actor reports nothing more).
+                if (perAggregateProgress > 0) {
+                    Log.CheckpointDriftDetected(
+                        logger,
+                        identity.TenantId,
+                        identity.Domain,
+                        identity.AggregateId,
+                        ProjectionReasonCodes.CheckpointDrift,
+                        perAggregateProgress,
+                        0);
+                }
+
                 Log.NoEventsFound(logger, identity.TenantId, identity.Domain, identity.AggregateId);
                 bool reached = toPosition is null || perAggregateProgress >= toPosition.Value;
                 return RebuildDeliveryResult.Complete(perAggregateProgress, pageComplete: reached);
@@ -528,9 +542,9 @@ public partial class ProjectionUpdateOrchestrator(
                         operatorScope,
                         perAggregateProgress,
                         ProjectionRebuildStatus.Failed,
-                        StreamReplayReasonCodes.ProjectionApplyRejected,
-                        CancellationToken.None,
-                        toPosition)
+                        failureReasonCode: StreamReplayReasonCodes.ProjectionApplyRejected,
+                        cancellationToken: CancellationToken.None,
+                        toPosition: toPosition)
                     .ConfigureAwait(false);
                 return RebuildDeliveryResult.Interrupt();
             }
@@ -591,15 +605,18 @@ public partial class ProjectionUpdateOrchestrator(
             // IsDifferentOperation guard. The per-aggregate row may carry a prior operator's
             // OperationId after a Reset+Replay sequence; operator-scope row is the single source
             // of operator identity, per-aggregate rows are progress-only.
+            ProjectionRebuildCheckpointScope progressScope = operatorScope.AggregateId is null
+                ? perAggregateScope
+                : operatorScope;
             ProjectionRebuildCheckpointSaveResult save = await rebuildCheckpointStore!
                 .SaveAsync(
-                    perAggregateScope,
+                    progressScope,
                     highestAppliedSequence,
                     ProjectionRebuildStatus.Running,
                     failureReasonCode: null,
                     cancellationToken,
                     toPosition,
-                    isPerAggregateProgress: true)
+                    isPerAggregateProgress: operatorScope.AggregateId is null)
                 .ConfigureAwait(false);
             if (!save.Succeeded) {
                 Log.CheckpointSaveExhausted(logger, identity.TenantId, identity.Domain, identity.AggregateId, highestAppliedSequence);
@@ -640,7 +657,7 @@ public partial class ProjectionUpdateOrchestrator(
         long LastAppliedSequence,
         bool PageComplete,
         bool Interrupted) {
-        public static RebuildDeliveryResult Complete(long lastAppliedSequence, bool pageComplete = true)
+        public static RebuildDeliveryResult Complete(long lastAppliedSequence, bool pageComplete)
             => new(lastAppliedSequence, pageComplete, Interrupted: false);
 
         public static RebuildDeliveryResult Interrupt()
@@ -650,7 +667,7 @@ public partial class ProjectionUpdateOrchestrator(
     private static bool MatchesRebuildScope(ProjectionRebuildCheckpointScope scope, AggregateIdentity identity)
         => string.Equals(scope.Tenant, identity.TenantId, StringComparison.Ordinal)
             && string.Equals(scope.Domain, identity.Domain, StringComparison.Ordinal)
-            && (string.IsNullOrWhiteSpace(scope.AggregateId)
+            && (scope.AggregateId is null
                 || string.Equals(scope.AggregateId, identity.AggregateId, StringComparison.Ordinal));
 
     // P14: include NotStarted so cancel-cleanup arriving before the first iteration still triggers

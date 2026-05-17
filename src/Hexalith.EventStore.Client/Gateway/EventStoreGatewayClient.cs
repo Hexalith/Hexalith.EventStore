@@ -52,9 +52,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 $"MaxStreamReadResponseBytes must be <= {int.MaxValue} (HttpClient.MaxResponseContentBufferSize is int).");
         }
 
-        if (_httpClient.MaxResponseContentBufferSize > _options.MaxStreamReadResponseBytes) {
-            _httpClient.MaxResponseContentBufferSize = _options.MaxStreamReadResponseBytes;
-        }
+        _httpClient.MaxResponseContentBufferSize = _options.MaxStreamReadResponseBytes;
     }
 
     /// <inheritdoc />

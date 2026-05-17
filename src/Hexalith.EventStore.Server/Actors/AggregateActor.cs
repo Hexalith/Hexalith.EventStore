@@ -634,12 +634,6 @@ public partial class AggregateActor(
             return [];
         }
 
-        // P5: toSequence bounds check. Caller passing toSequence == long.MaxValue would have
-        // proceeded into downstream Math.Min arithmetic without guard.
-        if (toSequence is long ts && ts > int.MaxValue) {
-            throw new ArgumentOutOfRangeException(nameof(toSequence), "toSequence must be <= int.MaxValue.");
-        }
-
         AggregateIdentity identity = GetAggregateIdentityFromActorId();
 
         // P4: read metadata BEFORE the overflow guard so the empty-stream contract
@@ -662,13 +656,19 @@ public partial class AggregateActor(
         }
 
         long currentSequence = metadataResult.Value.CurrentSequence;
-        if (currentSequence <= 0) {
+        if (currentSequence < 0) {
             throw new InvalidOperationException(
                 $"Invalid aggregate metadata: CurrentSequence={currentSequence} for {identity.ActorId}");
         }
 
         if (currentSequence <= fromSequence) {
             return [];
+        }
+
+        // Caller passing toSequence == long.MaxValue against an empty stream should still receive
+        // the empty-page contract; validate the upper bound only once events may be read.
+        if (toSequence is long ts && ts > int.MaxValue) {
+            throw new ArgumentOutOfRangeException(nameof(toSequence), "toSequence must be <= int.MaxValue.");
         }
 
         if (fromSequence > int.MaxValue - (long)maxCount) {
@@ -684,6 +684,12 @@ public partial class AggregateActor(
 
     /// <inheritdoc/>
     public async Task<long> GetCurrentSequenceAsync() {
+        AggregateStreamMetadata metadata = await GetStreamMetadataAsync().ConfigureAwait(false);
+        return metadata.Exists ? metadata.CurrentSequence : 0;
+    }
+
+    /// <inheritdoc/>
+    public async Task<AggregateStreamMetadata> GetStreamMetadataAsync() {
         AggregateIdentity identity = GetAggregateIdentityFromActorId();
         ConditionalValue<AggregateMetadata> metadataResult;
         try {
@@ -697,7 +703,7 @@ public partial class AggregateActor(
         }
 
         if (!metadataResult.HasValue) {
-            return 0;
+            return new AggregateStreamMetadata(Exists: false, CurrentSequence: 0);
         }
 
         long currentSequence = metadataResult.Value.CurrentSequence;
@@ -706,18 +712,26 @@ public partial class AggregateActor(
                 $"Invalid aggregate metadata: CurrentSequence={currentSequence} for {identity.ActorId}");
         }
 
-        return currentSequence;
+        return new AggregateStreamMetadata(Exists: true, CurrentSequence: currentSequence);
     }
 
-    // P2: only treat JSON/serialization failures and DAPR state-store exceptions as data
-    // corruption. Application-layer programmer errors must propagate.
-    private static bool IsDeserializationFailure(Exception ex)
-        => ex is not OperationCanceledException
-            && (ex is System.Text.Json.JsonException
-                or System.IO.InvalidDataException
-                or EventDeserializationException
-                or Dapr.DaprException
-                || (ex.InnerException is not null && IsDeserializationFailure(ex.InnerException)));
+    private const int MaxExceptionFrames = 8;
+
+    // Only treat JSON/serialization failures as data corruption. DAPR exceptions are transport
+    // failures and must flow to the service-unavailable path instead.
+    private static bool IsDeserializationFailure(Exception exception)
+        => IsDeserializationFailure(exception, depth: 0);
+
+    private static bool IsDeserializationFailure(Exception exception, int depth) {
+        if (depth >= MaxExceptionFrames || exception is OperationCanceledException) {
+            return false;
+        }
+
+        return exception is System.Text.Json.JsonException
+            or System.IO.InvalidDataException
+            or EventDeserializationException
+            || (exception.InnerException is not null && IsDeserializationFailure(exception.InnerException, depth + 1));
+    }
 
     /// <inheritdoc/>
     public async Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period) {

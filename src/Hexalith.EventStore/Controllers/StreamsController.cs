@@ -101,12 +101,8 @@ public sealed partial class StreamsController(
                 new ActorId(identity.ActorId),
                 "AggregateActor");
 
-            long currentSequence = await actor.GetCurrentSequenceAsync().ConfigureAwait(false);
-            // P1: 404 covers any FromSequence when the stream does not exist (currentSequence == 0).
-            // The prior `&& request.FromSequence == 0` guard let non-zero From requests slip through
-            // as 200 OK + empty events + LatestSequence=0 (incoherent — caller cannot distinguish
-            // "stream gone" from "no new events").
-            if (currentSequence == 0) {
+            AggregateStreamMetadata streamMetadata = await actor.GetStreamMetadataAsync().ConfigureAwait(false);
+            if (!streamMetadata.Exists) {
                 return ProblemWithReason(
                     StatusCodes.Status404NotFound,
                     ProblemTypeUris.NotFound,
@@ -115,13 +111,16 @@ public sealed partial class StreamsController(
                     StreamReplayReasonCodes.MissingStream);
             }
 
+            long currentSequence = streamMetadata.CurrentSequence;
             ServerEventEnvelope[] pageEvents = await actor
                 .ReadEventsRangeAsync(request.FromSequence, request.ToSequence, request.PageSize + 1)
                 .ConfigureAwait(false);
 
             IReadOnlyList<ServerEventEnvelope> readEvents = [.. pageEvents.OrderBy(e => e.SequenceNumber)];
             IReadOnlyList<ServerEventEnvelope> orderedEvents = [.. readEvents.Take(request.PageSize)];
-            long latestSequence = currentSequence;
+            long latestSequence = orderedEvents.Count == 0
+                ? currentSequence
+                : Math.Max(currentSequence, orderedEvents[^1].SequenceNumber);
             long? lastReturned = orderedEvents.Count == 0
                 ? null
                 : orderedEvents[^1].SequenceNumber;
@@ -276,12 +275,12 @@ public sealed partial class StreamsController(
 
         if (request.FromSequence < 0
             || request.FromSequence > int.MaxValue - request.PageSize - 1L
-            || (request.ToSequence.HasValue && request.ToSequence.Value < request.FromSequence)) {
+            || (request.ToSequence.HasValue && (request.ToSequence.Value < request.FromSequence || request.ToSequence.Value > int.MaxValue))) {
             return ProblemWithReason(
                 StatusCodes.Status400BadRequest,
                 ProblemTypeUris.BadRequest,
                 "Bad Request",
-                "'fromSequence' must be >= 0 and 'toSequence' must not be less than 'fromSequence'.",
+                "'fromSequence' must be >= 0 and 'toSequence' must not be less than 'fromSequence' or greater than the supported sequence boundary.",
                 StreamReplayReasonCodes.InvalidRange);
         }
 
@@ -363,8 +362,8 @@ public sealed partial class StreamsController(
             return true;
         }
 
-        return exception.InnerException is not null
-            && IsServiceUnavailable(exception.InnerException, depth + 1);
+        return exception is AggregateException { InnerException: not null } aggregateException
+            && IsServiceUnavailable(aggregateException.InnerException!, depth + 1);
     }
 
     private static bool TryGetException<TException>(Exception exception, out TException? result)

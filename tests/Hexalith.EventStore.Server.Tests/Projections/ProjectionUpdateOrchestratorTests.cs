@@ -195,14 +195,16 @@ public class ProjectionUpdateOrchestratorTests {
             ProjectionRebuildStatus.Running,
             null,
             Arg.Any<CancellationToken>(),
-            2);
-        _ = await rebuildCheckpointStore.Received(1).SaveAsync(
-            Arg.Is<ProjectionRebuildCheckpointScope>(scope => scope.OperationId == "operation-1"),
             2,
+            isPerAggregateProgress: true);
+        _ = await rebuildCheckpointStore.DidNotReceive().SaveAsync(
+            Arg.Any<ProjectionRebuildCheckpointScope>(),
+            Arg.Any<long>(),
             ProjectionRebuildStatus.Succeeded,
-            null,
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>(),
-            2);
+            Arg.Any<long?>(),
+            Arg.Any<bool>());
     }
 
     [Fact]
@@ -259,14 +261,16 @@ public class ProjectionUpdateOrchestratorTests {
             ProjectionRebuildStatus.Running,
             null,
             Arg.Any<CancellationToken>(),
-            2);
-        _ = await rebuildCheckpointStore.Received(1).SaveAsync(
-            Arg.Is<ProjectionRebuildCheckpointScope>(scope => scope.AggregateId == null),
             2,
+            isPerAggregateProgress: true);
+        _ = await rebuildCheckpointStore.DidNotReceive().SaveAsync(
+            Arg.Any<ProjectionRebuildCheckpointScope>(),
+            Arg.Any<long>(),
             ProjectionRebuildStatus.Succeeded,
-            null,
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>(),
-            2);
+            Arg.Any<long?>(),
+            Arg.Any<bool>());
     }
 
     [Fact]
@@ -304,7 +308,7 @@ public class ProjectionUpdateOrchestratorTests {
 
         // Rejection records a safe Failed status without advancing beyond the last applied sequence.
         await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
-        _ = await rebuildCheckpointStore.Received(1).SaveAsync(
+        _ = await rebuildCheckpointStore.Received(1).ResetAsync(
             Arg.Is<ProjectionRebuildCheckpointScope>(scope => scope.OperationId == "operation-1"),
             0,
             ProjectionRebuildStatus.Failed,
@@ -381,14 +385,16 @@ public class ProjectionUpdateOrchestratorTests {
             ProjectionRebuildStatus.Running,
             null,
             Arg.Any<CancellationToken>(),
-            1000);
+            1000,
+            isPerAggregateProgress: true);
         _ = await rebuildCheckpointStore.DidNotReceive().SaveAsync(
             Arg.Any<ProjectionRebuildCheckpointScope>(),
             Arg.Any<long>(),
             ProjectionRebuildStatus.Succeeded,
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>(),
-            Arg.Any<long?>());
+            Arg.Any<long?>(),
+            Arg.Any<bool>());
     }
 
     [Fact]
@@ -440,6 +446,14 @@ public class ProjectionUpdateOrchestratorTests {
             .Returns(CreateRebuildCheckpoint(0, ProjectionRebuildStatus.Running, "operation-1", toPosition: 10));
         _ = rebuildCheckpointStore.ReadAsync(Arg.Is<ProjectionRebuildCheckpointScope>(s => s.AggregateId == TestIdentity.AggregateId), Arg.Any<CancellationToken>())
             .Returns<ProjectionRebuildCheckpoint?>(_ => throw new InvalidOperationException("rebuild checkpoint read failed"));
+        _ = rebuildCheckpointStore.ResetAsync(
+                Arg.Any<ProjectionRebuildCheckpointScope>(),
+                Arg.Any<long>(),
+                ProjectionRebuildStatus.Failed,
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>(),
+                Arg.Any<long?>())
+            .Returns(ProjectionRebuildCheckpointSaveResult.Success(CreateRebuildCheckpoint(0, ProjectionRebuildStatus.Failed, "operation-1", toPosition: 10)));
         IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
         (ProjectionUpdateOrchestrator sut, IActorProxyFactory actorProxyFactory, _, IDomainServiceResolver resolver, _) = CreateSut(
             checkpointTracker,
@@ -507,7 +521,8 @@ public class ProjectionUpdateOrchestratorTests {
                 Arg.Any<ProjectionRebuildStatus>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>(),
-                Arg.Any<long?>())
+                Arg.Any<long?>(),
+                Arg.Any<bool>())
             .Returns(call => ProjectionRebuildCheckpointSaveResult.Success(
                 CreateRebuildCheckpoint(call.ArgAt<long>(1), call.ArgAt<ProjectionRebuildStatus>(2), "operation-1", call.ArgAt<long?>(5))));
 

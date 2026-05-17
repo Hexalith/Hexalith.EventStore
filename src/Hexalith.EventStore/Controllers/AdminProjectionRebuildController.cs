@@ -242,6 +242,7 @@ public sealed partial class AdminProjectionRebuildController(
 
             ProjectionRebuildCheckpointSaveResult save;
             string operationIdForResponse;
+            ProjectionRebuildCheckpointScope? scopeForRebuild = null;
             if (status == ProjectionRebuildStatus.Retrying) {
                 // DEC9: Retry generates a fresh ULID (matches P-D5 design intent for Replay/Reset)
                 // so the audit trail distinguishes original-failed-then-retried-and-succeeded
@@ -250,9 +251,16 @@ public sealed partial class AdminProjectionRebuildController(
                 // P13: preserve the prior failure reason code on Retry so the audit trail
                 // surfaces "why did this rebuild fail before retry" even after success.
                 save = await checkpointStore
-                    .ResetAsync(retryScope, existing.LastAppliedSequence, status, existing.FailureReasonCode, ct, existing.ToPosition)
+                    .ResetAsync(
+                        retryScope,
+                        existing.LastAppliedSequence,
+                        status,
+                        failureReasonCode: existing.FailureReasonCode,
+                        cancellationToken: ct,
+                        toPosition: existing.ToPosition)
                     .ConfigureAwait(false);
                 operationIdForResponse = retryScope.OperationId ?? string.Empty;
+                scopeForRebuild = retryScope;
             }
             else {
                 // C1-5P (pass-5): The store's IsDifferentOperation guard now rejects writes
@@ -270,6 +278,10 @@ public sealed partial class AdminProjectionRebuildController(
 
             if (!save.Succeeded) {
                 return MapSaveFailure(save.ReasonCode);
+            }
+
+            if (status == ProjectionRebuildStatus.Retrying && scopeForRebuild is not null && rebuildOrchestrator is not null) {
+                await rebuildOrchestrator.RebuildProjectionAsync(scopeForRebuild, ct).ConfigureAwait(false);
             }
 
             var result = new AdminOperationResult(
@@ -312,7 +324,13 @@ public sealed partial class AdminProjectionRebuildController(
             ProjectionRebuildCheckpointScope scope = CreateScope(tenantId, projectionName, UniqueIdHelper.GenerateSortableUniqueStringId());
             ProjectionRebuildCheckpointSaveResult save = allowRewind
                 ? await checkpointStore
-                    .ResetAsync(scope, lastAppliedSequence, status, failureReasonCode, ct, toPosition)
+                    .ResetAsync(
+                        scope,
+                        lastAppliedSequence,
+                        status,
+                        failureReasonCode: failureReasonCode,
+                        cancellationToken: ct,
+                        toPosition: toPosition)
                     .ConfigureAwait(false)
                 : await checkpointStore
                     .SaveAsync(scope, lastAppliedSequence, status, failureReasonCode, ct, toPosition)
@@ -335,6 +353,15 @@ public sealed partial class AdminProjectionRebuildController(
                         "Conflict",
                         $"Projection rebuild failed: {terminalSnap.FailureReasonCode ?? StreamReplayReasonCodes.InternalError}.",
                         terminalSnap.FailureReasonCode ?? StreamReplayReasonCodes.InternalError);
+                }
+
+                if (terminalSnap?.Status == ProjectionRebuildStatus.Running) {
+                    var incomplete = new AdminOperationResult(
+                        false,
+                        scope.OperationId ?? string.Empty,
+                        "Projection rebuild page completed but more events remain; invoke replay again to continue.",
+                        StreamReplayReasonCodes.OperationInFlight);
+                    return Accepted(incomplete);
                 }
             }
 
@@ -385,8 +412,8 @@ public sealed partial class AdminProjectionRebuildController(
                 "Caller does not hold the required operator role.",
                 StreamReplayReasonCodes.ForbiddenRole),
             StreamReplayReasonCodes.NoDomainService => ProblemWithReason(
-                StatusCodes.Status409Conflict,
-                "Conflict",
+                StatusCodes.Status503ServiceUnavailable,
+                "Service Unavailable",
                 "No domain service is registered for the requested rebuild.",
                 StreamReplayReasonCodes.NoDomainService),
             _ => ProblemWithReason(
@@ -415,8 +442,11 @@ public sealed partial class AdminProjectionRebuildController(
         // P12: also surface Retry-After on 409 OperationInFlight so polling clients
         // do not converge on a tight retry loop while another operation is in flight.
         if (statusCode == StatusCodes.Status503ServiceUnavailable
-            || (statusCode == StatusCodes.Status409Conflict && reasonCode == StreamReplayReasonCodes.OperationInFlight)) {
-            Response.Headers.RetryAfter = "5";
+            || (statusCode == StatusCodes.Status409Conflict
+                && reasonCode is StreamReplayReasonCodes.OperationInFlight
+                    or StreamReplayReasonCodes.CheckpointConflict
+                    or StreamReplayReasonCodes.StaleCheckpoint)) {
+            Response.Headers.RetryAfter = reasonCode == StreamReplayReasonCodes.NoDomainService ? "30" : "5";
         }
 
         return new ObjectResult(problem) { StatusCode = statusCode };

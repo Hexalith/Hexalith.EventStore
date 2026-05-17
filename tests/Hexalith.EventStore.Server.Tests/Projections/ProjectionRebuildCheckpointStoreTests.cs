@@ -381,7 +381,7 @@ public class ProjectionRebuildCheckpointStoreTests {
 
         result.Succeeded.ShouldBeFalse();
         result.ReasonCode.ShouldBe(StreamReplayReasonCodes.CheckpointUnavailable);
-        _ = await daprClient.DidNotReceive().TrySaveStateAsync(
+        _ = await daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             ProjectionRebuildCheckpointStore.GetStateKey(Scope),
             Arg.Any<ProjectionRebuildCheckpoint>(),

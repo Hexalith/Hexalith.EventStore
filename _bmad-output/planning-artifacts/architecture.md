@@ -88,7 +88,7 @@ Gaps identified through Advanced Elicitation (Pre-mortem, Failure Mode Analysis,
 
 | #     | Gap                                                                                                                                                                                                                   | Source             | Impact                                                                     |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | -------------------------------------------------------------------------- |
-| GAP-1 | **Command status storage mechanism undefined.** FR5 defines `GET /commands/{correlationId}/status` but Data Schemas has no key pattern for command status records.                                                    | SC-3, Failure Mode | Affects state store key strategy, actor state design, and API query model  |
+| GAP-1 | **Command status storage mechanism undefined.** FR5 defines `GET /api/v1/commands/status/{correlationId}` but Data Schemas has no key pattern for command status records.                                                    | SC-3, Failure Mode | Affects state store key strategy, actor state design, and API query model  |
 | GAP-2 | **Domain service error/rejection contract missing.** FR21 defines happy path `(Command, CurrentState?) -> List<DomainEvent>` but not how services signal command rejection (exception? empty list? rejection event?). | SRT-1, CR-1        | Affects actor processing logic, error propagation, and dead-letter content |
 | GAP-3 | **Atomic event writes on non-transactional backends.** FR16 requires 0-or-N atomic writes, but Redis lacks multi-key transactions. No compensating pattern defined.                                                   | PM-3, Failure Mode | Affects fundamental storage strategy and backend compatibility promise     |
 
@@ -445,7 +445,7 @@ Hexalith.EventStore/
 - **Pattern:** `{tenant}:{correlationId}:status` stored in DAPR state store
 - **Lifecycle updates:** Checkpointed state machine: `Received → Processing → EventsStored → EventsPublished → Completed | Rejected | PublishFailed | TimedOut`
 - **Received status location:** Written at API layer (`SubmitCommandHandler`) before actor invocation, ensuring status is queryable even if actor activation fails. All subsequent status transitions occur inside the actor
-- **Query model:** `GET /api/v1/commands/{correlationId}/status` reads directly from state store -- no actor activation required
+- **Query model:** `GET /api/v1/commands/status/{correlationId}` reads directly from state store -- no actor activation required
 - **Tenant scoping:** Key includes tenant; API enforces JWT tenant matches query tenant (SEC-3 enforced)
 - **Status content:** Includes current stage, timestamp, aggregate ID, and for terminal states: event count (Completed), rejection event type name (Rejected), failure reason (PublishFailed), or timeout duration (TimedOut)
 - **TTL:** Default 24-hour TTL on status entries via DAPR state store `ttlInSeconds` metadata, configurable per-tenant via DAPR config store. Prevents unbounded state store growth from ephemeral status records
@@ -877,8 +877,8 @@ Hexalith.EventStore/
 │   │   │   └── launchSettings.json
 │   │   ├── Controllers/
 │   │   │   ├── CommandsController.cs           # POST /api/v1/commands (FR1)
-│   │   │   ├── CommandStatusController.cs      # GET /api/v1/commands/{id}/status (FR5)
-│   │   │   └── ReplayController.cs             # POST /api/v1/commands/{id}/replay (FR6)
+│   │   │   ├── CommandStatusController.cs      # GET /api/v1/commands/status/{correlationId} (FR5)
+│   │   │   └── ReplayController.cs             # POST /api/v1/commands/replay/{correlationId} (FR6)
 │   │   ├── Middleware/
 │   │   │   ├── CorrelationIdMiddleware.cs      # Generates/propagates correlation ID (FR4)
 │   │   │   └── TenantRateLimitingMiddleware.cs # Per-tenant rate limiting (D8)

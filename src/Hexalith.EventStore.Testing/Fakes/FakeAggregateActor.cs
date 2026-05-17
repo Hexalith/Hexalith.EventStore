@@ -55,6 +55,10 @@ public class FakeAggregateActor : IAggregateActor {
         => Task.FromResult(ConfiguredEvents.Length == 0 ? 0 : ConfiguredEvents.Max(e => e.SequenceNumber));
 
     /// <inheritdoc/>
+    public Task<AggregateStreamMetadata> GetStreamMetadataAsync()
+        => Task.FromResult(new AggregateStreamMetadata(Exists: ConfiguredEvents.Length > 0, CurrentSequence: ConfiguredEvents.Length == 0 ? 0 : ConfiguredEvents.Max(e => e.SequenceNumber)));
+
+    /// <inheritdoc/>
     public Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command) {
         ArgumentNullException.ThrowIfNull(command);
         _receivedCommands.Enqueue(command);

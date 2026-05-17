@@ -21,8 +21,6 @@ public sealed partial class ProjectionRebuildCheckpointStore(
     private const string StateKeyPrefix = "projection-rebuild-checkpoints:";
     private const string ActiveIndexKeyPrefix = "projection-rebuild-active-index:";
 
-    // Bounded retry delays paired one-to-one with retry attempts beyond the first.
-    // Static asserts in the loop guarantee s_retryDelays.Length == MaxEtagRetries - 1.
     private static readonly TimeSpan[] s_retryDelays = [
         TimeSpan.FromMilliseconds(50),
         TimeSpan.FromMilliseconds(200),
@@ -76,7 +74,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             _ = UniqueIdHelper.ToGuid(operationId);
             return true;
         }
-        catch (Exception ex) when (ex is ArgumentException or FormatException) {
+        catch (Exception ex) when (ex is not OperationCanceledException and not OutOfMemoryException) {
             return false;
         }
     }
@@ -214,7 +212,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
 
                 Log.CheckpointConflict(logger, scope.Tenant, scope.Domain, scope.ProjectionName, scope.AggregateId ?? string.Empty, scope.OperationId ?? string.Empty, attempt + 1);
             }
-            catch (OperationCanceledException) {
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
             }
             catch (Exception ex) when (IsStateStoreUnavailable(ex)) {
@@ -223,7 +221,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointUnavailable);
                 }
 
-                await Task.Delay(s_retryDelays[attempt], cancellationToken).ConfigureAwait(false);
+                await Task.Delay(BoundedRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -276,14 +274,6 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     failureReasonCode,
                     toPosition);
 
-                bool activeStatus = IsLifecycleActive(status);
-                if (activeStatus) {
-                    string? activeIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
-                    if (activeIndexFailure is not null) {
-                        return ProjectionRebuildCheckpointSaveResult.Failure(activeIndexFailure);
-                    }
-                }
-
                 bool saved = await daprClient
                     .TrySaveStateAsync(
                         stateStoreName,
@@ -293,11 +283,9 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                 if (saved) {
-                    if (!activeStatus) {
-                        string? activeIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
-                        if (activeIndexFailure is not null) {
-                            return ProjectionRebuildCheckpointSaveResult.Failure(activeIndexFailure);
-                        }
+                    string? activeIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
+                    if (activeIndexFailure is not null) {
+                        return ProjectionRebuildCheckpointSaveResult.Failure(activeIndexFailure);
                     }
 
                     return ProjectionRebuildCheckpointSaveResult.Success(checkpoint);
@@ -305,7 +293,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
 
                 Log.CheckpointConflict(logger, scope.Tenant, scope.Domain, scope.ProjectionName, scope.AggregateId ?? string.Empty, scope.OperationId ?? string.Empty, attempt + 1);
             }
-            catch (OperationCanceledException) {
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
             }
             catch (Exception ex) when (IsStateStoreUnavailable(ex)) {
@@ -314,7 +302,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointUnavailable);
                 }
 
-                await Task.Delay(s_retryDelays[attempt], cancellationToken).ConfigureAwait(false);
+                await Task.Delay(BoundedRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -329,25 +317,32 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
 
-        try {
-            string[]? activeProjections = await daprClient
-                .GetStateAsync<string[]>(
-                    options.Value.CheckpointStateStoreName,
-                    GetActiveIndexKey(tenant, domain),
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-            return activeProjections is { Length: > 0 };
+        for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+            try {
+                string[]? activeProjections = await daprClient
+                    .GetStateAsync<string[]>(
+                        options.Value.CheckpointStateStoreName,
+                        GetActiveIndexKey(tenant, domain),
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                return activeProjections is { Length: > 0 };
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                throw;
+            }
+            catch (Exception ex) when (IsStateStoreUnavailable(ex)) {
+                if (attempt >= MaxEtagRetries - 1) {
+                    // Fail closed: when the index store cannot answer after bounded retries, assume
+                    // an operator rebuild MAY be active so the poller skips delivery.
+                    Log.ActiveIndexReadFailed(logger, ex, tenant, domain, ex.GetType().Name);
+                    return true;
+                }
+
+                await Task.Delay(BoundedRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
+            }
         }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception ex) when (IsStateStoreUnavailable(ex)) {
-            // Fail closed: when the index store cannot answer, assume an operator rebuild MAY
-            // be active so the poller skips delivery. The poller routinely re-checks; transient
-            // outages do not corrupt projection state, only delay polling.
-            Log.ActiveIndexReadFailed(logger, ex, tenant, domain, ex.GetType().Name);
-            return true;
-        }
+
+        return true;
     }
 
     // D3-B: SaveAsync/ResetAsync write a per-(tenant, domain) index of active projection names.
@@ -401,7 +396,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     return null;
                 }
             }
-            catch (OperationCanceledException) {
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
             }
             catch (Exception ex) when (IsStateStoreUnavailable(ex)) {
@@ -410,7 +405,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     return StreamReplayReasonCodes.CheckpointUnavailable;
                 }
 
-                await Task.Delay(s_retryDelays[attempt], cancellationToken).ConfigureAwait(false);
+                await Task.Delay(BoundedRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -446,7 +441,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         if (!string.IsNullOrWhiteSpace(scope.OperationId)) {
             ValidateKeyPart(scope.OperationId, nameof(scope.OperationId));
             if (!IsValidOperationId(scope.OperationId)) {
-                throw new ArgumentException("OperationId must be a valid ULID.", nameof(scope.OperationId));
+                throw new ArgumentException("OperationId must be a valid Crockford-base32 ULID and must not contain I, L, O, or U.", nameof(scope.OperationId));
             }
         }
     }
@@ -455,7 +450,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
         if (value.AsSpan().IndexOfAny(s_reservedChars) >= 0) {
             throw new ArgumentException(
-                $"{parameterName} must not contain ':', '\\0', '|', '\\r', or '\\n'.",
+                $"{parameterName} must not contain ':', '\\0', '|', '*', '\\r', or '\\n'.",
                 parameterName);
         }
     }
@@ -499,6 +494,8 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         ProjectionRebuildCheckpointScope scope,
         ProjectionRebuildCheckpoint existing) {
         if (string.IsNullOrWhiteSpace(existing.OperationId)) {
+            // Migration-era checkpoint rows may not have OperationId. Treat them as legacy
+            // progress-only rows so an operator can take ownership through the next lifecycle write.
             return false;
         }
 
@@ -516,13 +513,13 @@ public sealed partial class ProjectionRebuildCheckpointStore(
     }
 
     private static bool IsStateStoreUnavailable(Exception exception)
-        => IsStateStoreUnavailable(exception, depth: 0);
+        => IsStateStoreUnavailable(exception, depth: 0, parentIsTransport: false);
 
     // P18: bound is exclusive; depth==0..MaxExceptionFrames-1 are examined (== MaxExceptionFrames frames).
     // Renamed from MaxExceptionUnwindDepth to make the constant name reflect actual behavior.
     private const int MaxExceptionFrames = 8;
 
-    private static bool IsStateStoreUnavailable(Exception exception, int depth) {
+    private static bool IsStateStoreUnavailable(Exception exception, int depth, bool parentIsTransport) {
         if (depth >= MaxExceptionFrames) {
             return false;
         }
@@ -531,17 +528,24 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             return true;
         }
 
-        // DEC4: TimeoutException is transient ONLY when wrapped under DaprException or
-        // HttpRequestException (e.g., HTTP/2 socket timeout surfacing through Dapr SDK).
+        // TimeoutException is transient ONLY when immediately wrapped under Dapr/HTTP/socket/IO
+        // transport exceptions. Other wrapper chains are treated as application failures.
         // Bare TimeoutException at the top level is treated as a programmer/data error so it
         // surfaces as 500 InternalError rather than masking application bugs as 503.
-        if (exception is TimeoutException && depth > 0) {
-            return true;
+        if (exception is TimeoutException) {
+            return parentIsTransport;
         }
 
+        bool currentIsTransport = exception is DaprException
+            or HttpRequestException
+            or IOException
+            or System.Net.Sockets.SocketException;
         return exception.InnerException is not null
-            && IsStateStoreUnavailable(exception.InnerException, depth + 1);
+            && IsStateStoreUnavailable(exception.InnerException, depth + 1, currentIsTransport);
     }
+
+    private static TimeSpan BoundedRetryDelay(int attempt)
+        => s_retryDelays[Math.Min(attempt, s_retryDelays.Length - 1)];
 
     private static partial class Log {
         [LoggerMessage(

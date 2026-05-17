@@ -476,7 +476,7 @@ The key insight: Hexalith is **none of these**. It is a **platform** -- closer t
 |---------|---------------|-------------------|------------------------|
 | Pure function programming model | **Novel** (for event sourcing) | Serverless functions (AWS Lambda, Azure Functions) | `IDomainProcessor<TCommand, TState>` with `(Command, CurrentState?) -> List<DomainEvent>` |
 | Async command submission (`202 Accepted`) | **Established** | REST API best practices, message queues | `POST /commands` returns `202` + `Location` header + `Retry-After` |
-| Correlation ID-based tracking | **Established** | Distributed tracing (OpenTelemetry, Zipkin) | `X-Correlation-ID` header, `/commands/{correlationId}/status` endpoint |
+| Correlation ID-based tracking | **Established** | Distributed tracing (OpenTelemetry, Zipkin) | `X-Correlation-ID` header, `/api/v1/commands/status/{correlationId}` endpoint |
 | DAPR sidecar runtime | **Established** (in cloud-native) | Service mesh, sidecar patterns | DAPR as the infrastructure abstraction layer |
 | Platform-calls-your-code inversion | **Novel** (for event stores) | Serverless platforms, DAPR actors | Domain service registers via config, EventStore invokes via DAPR service invocation |
 | Event envelope with 11 metadata fields | **Established** | CloudEvents 1.0, message envelopes | CloudEvents-compliant envelope with Hexalith extensions |
@@ -489,7 +489,7 @@ The key insight: Hexalith is **none of these**. It is a **platform** -- closer t
 |--------------|-------------------|-------------|---------------|
 | Pure function domain processor | **Serverless function** (Lambda, Azure Functions) | Developers already understand "write a function, the platform runs it." No server management, no lifecycle code. | Documentation: "Think of your domain processor as a serverless function for commands" |
 | Append-only event stream | **Git commit history** | Every event is an immutable commit. The current state is reconstructed by replaying history. You never edit history, you append new events. | Documentation: "Events are like git commits -- immutable, ordered, and the full history is always available" |
-| Correlation ID tracking | **Package tracking number** | You submit a package (command), get a tracking number (correlation ID), and check status anytime. The package moves through stages just like a command moves through lifecycle states. | API docs: "Your correlation ID works like a tracking number -- check status anytime at `/commands/{correlationId}/status`" |
+| Correlation ID tracking | **Package tracking number** | You submit a package (command), get a tracking number (correlation ID), and check status anytime. The package moves through stages just like a command moves through lifecycle states. | API docs: "Your correlation ID works like a tracking number -- check status anytime at `/api/v1/commands/status/{correlationId}`" |
 | 8-state command lifecycle | **CI/CD pipeline** | Developers already read horizontal pipeline stages with status icons. Received -> Processing -> Completed is the same visual language as Build -> Test -> Deploy. | v2 Dashboard: Render command lifecycle as horizontal pipeline stages with status icons and duration |
 
 ### Experience Mechanics
@@ -921,12 +921,12 @@ flowchart TD
     A[Marco runs dotnet aspire run] --> B[Aspire dashboard shows EventStore + sample service]
     B --> C[Opens Swagger UI at /swagger]
 
-    C --> D[Finds POST /api/commands endpoint]
+    C --> D[Finds POST /api/v1/commands endpoint]
     D --> E[Sends IncrementCounter command<br/>with tenant-id, aggregate-id, payload]
     E --> F[Receives 202 Accepted + correlation ID]
 
     F --> G{Next action}
-    G -->|Poll status| H[GET /api/commands/status/{correlationId}]
+    G -->|Poll status| H[GET /api/v1/commands/status/{correlationId}]
     G -->|Open dashboard| I[Navigate to Blazor dashboard]
 
     H --> J[Status: Completed<br/>Events produced: CounterIncremented]
@@ -1781,10 +1781,10 @@ The v2 dashboard journeys (Alex, Jerome, Marco, Priya) define the visual experie
 
 **Trigger:** Sanjay is integrating a payment system and sends a command with a missing required field.
 
-**Entry point:** `POST /api/commands` via Swagger UI or programmatic HTTP client.
+**Entry point:** `POST /api/v1/commands` via Swagger UI or programmatic HTTP client.
 
 ```
-POST /api/commands
+POST /api/v1/commands
 Content-Type: application/json
 Authorization: Bearer <valid-jwt>
 
@@ -1805,7 +1805,7 @@ Authorization: Bearer <valid-jwt>
     "title": "Command Validation Failed",
     "status": 400,
     "detail": "The TransferFunds command payload is missing required fields. See 'errors' for specifics.",
-    "instance": "/api/commands",
+    "instance": "/api/v1/commands",
     "correlationId": "01JQXYZ1234567890ABCDEF",
     "errors": {
         "payload.destinationAccount": "Required field is missing.",
@@ -1834,7 +1834,7 @@ Authorization: Bearer <valid-jwt>
 **Scenario A — Missing Authorization header:**
 
 ```
-POST /api/commands
+POST /api/v1/commands
 Content-Type: application/json
 
 { ... }
@@ -1848,7 +1848,7 @@ Content-Type: application/json
     "title": "Authentication Required",
     "status": 401,
     "detail": "A valid JWT bearer token is required in the Authorization header. See your identity provider for token issuance.",
-    "instance": "/api/commands"
+    "instance": "/api/v1/commands"
 }
 ```
 
@@ -1862,7 +1862,7 @@ Response header: `WWW-Authenticate: Bearer realm="hexalith-eventstore"`
     "title": "Authentication Token Expired",
     "status": 401,
     "detail": "The provided JWT expired at 2026-03-14T23:59:59Z. Request a new token from your identity provider.",
-    "instance": "/api/commands"
+    "instance": "/api/v1/commands"
 }
 ```
 
@@ -1886,7 +1886,7 @@ Response header: `WWW-Authenticate: Bearer realm="hexalith-eventstore", error="i
 **Trigger:** Sanjay's JWT is valid but doesn't include claims for the target tenant.
 
 ```
-POST /api/commands
+POST /api/v1/commands
 Content-Type: application/json
 Authorization: Bearer <valid-jwt-for-tenant-beta>
 
@@ -1906,7 +1906,7 @@ Authorization: Bearer <valid-jwt-for-tenant-beta>
     "title": "Insufficient Permissions",
     "status": 403,
     "detail": "Your credentials do not authorize command submission to tenant 'tenant-acme'. Verify your JWT includes the required tenant claim.",
-    "instance": "/api/commands",
+    "instance": "/api/v1/commands",
     "correlationId": "01JQXYZ9876543210FEDCBA"
 }
 ```
@@ -1928,7 +1928,7 @@ Authorization: Bearer <valid-jwt-for-tenant-beta>
 **Trigger:** Two commands arrive for the same aggregate simultaneously. The second one conflicts.
 
 ```
-POST /api/commands
+POST /api/v1/commands
 Content-Type: application/json
 Authorization: Bearer <valid-jwt>
 
@@ -1947,7 +1947,7 @@ Authorization: Bearer <valid-jwt>
     "title": "Concurrency Conflict",
     "status": 409,
     "detail": "Another command was processed for aggregate 'order-42' while yours was in flight. Retry your command — the system will apply it against the updated state.",
-    "instance": "/api/commands",
+    "instance": "/api/v1/commands",
     "correlationId": "01JQXYZCONFLICT1234ABCD"
 }
 ```
@@ -1972,7 +1972,7 @@ Response header: `Retry-After: 1`
 **Trigger:** The DAPR sidecar is down or unreachable. The EventStore cannot route commands.
 
 ```
-POST /api/commands
+POST /api/v1/commands
 Content-Type: application/json
 Authorization: Bearer <valid-jwt>
 
@@ -1987,7 +1987,7 @@ Authorization: Bearer <valid-jwt>
     "title": "Service Temporarily Unavailable",
     "status": 503,
     "detail": "The command processing pipeline is temporarily unavailable. Retry after the indicated interval.",
-    "instance": "/api/commands"
+    "instance": "/api/v1/commands"
 }
 ```
 
@@ -2039,7 +2039,7 @@ Concrete deliverables extracted from this UX spec that apply to v1 (no Blazor da
 | A6 | No event sourcing terminology in any error response | Rule E6, Experience Principle "consistent mental model" | Grep test: "aggregate", "event stream", "actor", "DAPR", "sidecar" never appear in ProblemDetails |
 | A7 | OpenAPI 3.1 spec with Swagger UI at `/swagger` | Design System Foundation, UX Pattern Analysis | Swagger UI loads on running EventStore with grouped endpoints |
 | A8 | Pre-populated example payloads in OpenAPI spec | Pattern Analysis "Try-it-now", Act 2 mechanics | Swagger UI "Try it out" pre-fills a valid Counter domain command |
-| A9 | Command status endpoint at `/api/commands/status/{correlationId}` | Act 2 mechanics, Core Experience | Returns current lifecycle state with timestamp |
+| A9 | Command status endpoint at `/api/v1/commands/status/{correlationId}` | Act 2 mechanics, Core Experience | Returns current lifecycle state with timestamp |
 | A10 | `202 Accepted` response with `Location` + `Retry-After` headers | Act 2, PRD response codes | `Location` points to status endpoint. `Retry-After: 1` |
 | A11 | Error `type` URIs resolve to documentation pages | Rule E10 | Each `https://hexalith.io/problems/*` URI returns a human-readable page |
 

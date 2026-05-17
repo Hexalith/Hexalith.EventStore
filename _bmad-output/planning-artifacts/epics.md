@@ -102,7 +102,7 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 - FR47: A developer can run end-to-end contract tests validating the full command lifecycle
 - FR48: A domain service developer can implement a domain aggregate by inheriting from EventStoreAggregate with typed Apply methods, with convention-based DAPR resource naming
 
-**Query Pipeline & Projection Caching — v2 (FR50-FR64)**
+**Query Pipeline & Projection Caching — current release (FR50-FR64)**
 
 - FR50: The system can route incoming query messages to query actors using a 3-tier routing model: (1) queries with EntityId route to `{QueryType}-{TenantId}-{EntityId}`, (2) queries without EntityId but with payload route to `{QueryType}-{TenantId}-{Checksum}`, (3) queries without EntityId and empty payload route to `{QueryType}-{TenantId}`
 - FR51: The system can maintain one ETag actor per `{ProjectionType}:{TenantId}` storing a self-routing ETag, regenerated on every projection change notification
@@ -174,7 +174,7 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 - NFR33: Per-tenant rate limiting with configurable threshold (default: 1,000 commands/minute/tenant), returning 429 + Retry-After
 - NFR34: Per-consumer rate limiting with configurable threshold (default: 100 commands/second/consumer), returning 429 + Retry-After
 
-**Query Pipeline Performance — v2 (NFR35-NFR39)**
+**Query Pipeline Performance — current release (NFR35-NFR39)**
 
 - NFR35: ETag pre-check must complete within 5ms at p99 for warm ETag actors
 - NFR36: Query actor cache hit must complete within 10ms at p99
@@ -279,7 +279,7 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 
 - UX-DR12: OpenAPI 3.1 spec with Swagger UI at `/swagger` on running EventStore, with grouped endpoints
 - UX-DR13: Pre-populated example payloads in OpenAPI spec -- Swagger UI "Try it out" pre-fills a valid Counter domain command
-- UX-DR14: Command status endpoint at `/api/commands/status/{correlationId}` returning current lifecycle state with timestamp
+- UX-DR14: Command status endpoint at `/api/v1/commands/status/{correlationId}` returning current lifecycle state with timestamp
 - UX-DR15: `202 Accepted` response with `Location` header (pointing to status endpoint) + `Retry-After: 1` header
 
 **Developer SDK UX (v1)**
@@ -433,12 +433,28 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 
 ## Epic List
 
+## Walking Skeleton Gate
+
+Before treating the foundation sequence as implementation-ready in a new execution pass, prove a thin clone-to-command-flow path:
+
+- AppHost starts EventStore and one sample domain service.
+- A single sample command is submitted through `POST /api/v1/commands`.
+- One event is persisted for the aggregate.
+- Command status is observable through `GET /api/v1/commands/status/{correlationId}`.
+- At least one structured log or trace carries the same correlation ID.
+
+Later epics deepen persistence, auth, distribution, testing, and operations. This gate exists to keep onboarding value visible early.
+
 ### Epic 1: Domain Contract Foundation
+Outcome: Domain developers can define safe commands, events, identities, and aggregate behavior without infrastructure code.
+
 A domain service developer can define commands, events, identity types, and aggregate state using EventStore's shared type system — ULID-based IDs, MessageType value objects, 14-field event envelope, EventStoreAggregate base class, and IRejectionEvent marker interface.
 **FRs covered:** FR1 (types), FR2 (types), FR11, FR21, FR26, FR48, FR65, FR66
 **Also:** D3, D12 (ULID), UX-DR16-DR20
 
 ### Epic 2: Event Persistence & Aggregate Processing
+Outcome: API-submitted commands can produce durable, replayable aggregate event streams.
+
 Commands routed to aggregate actors trigger state rehydration from events, domain service invocation via the pure function contract, and atomic event persistence with sequence numbers, optimistic concurrency, and idempotency detection.
 **FRs covered:** FR3, FR9, FR10, FR12, FR14, FR15, FR16, FR23, FR49
 **Also:** D1, D2, D7, Rules 6/11
@@ -449,21 +465,29 @@ An API consumer can POST commands via REST, receive 202 Accepted + correlation I
 **Also:** D5, UX-DR1-DR15, Rules 7/12/13
 
 ### Epic 4: Event Distribution & Pub/Sub
+Outcome: Subscribers can receive persisted events reliably without coupling to storage internals.
+
 Persisted events are automatically published to per-tenant-per-domain CloudEvents 1.0 topics with at-least-once delivery, resilient backlog draining during pub/sub outages, and per-aggregate backpressure.
 **FRs covered:** FR17, FR18, FR19, FR20, FR67
 **Also:** D6
 
 ### Epic 5: Security & Multi-Tenant Isolation
+Outcome: Tenants can submit and process commands without data crossing identity, storage, or pub/sub boundaries.
+
 JWT-based authentication, claims-based authorization (tenant/domain/command type), three-layer data isolation (data path, storage key, pub/sub topic), DAPR access control policies, and E2E security testing with Keycloak in Aspire.
 **FRs covered:** FR27, FR28, FR29, FR30, FR31, FR32, FR33, FR34
 **Also:** D4, D11, SEC-1-SEC-5, Rule 16
 
 ### Epic 6: Observability & Operations
+Outcome: Operators can trace command lifecycle failures using logs, traces, and health endpoints.
+
 OpenTelemetry traces span the full command lifecycle, structured logs carry correlation/causation IDs at every pipeline stage, and health/readiness endpoints report DAPR sidecar, state store, and pub/sub status.
 **FRs covered:** FR35, FR36, FR37, FR38, FR39
 **Also:** Rule 5/9, UX-DR24, UX-DR28
 
 ### Epic 7: Snapshots, Rate Limiting & Performance
+Outcome: Operators can keep command processing responsive under stream growth and abuse pressure.
+
 Configurable snapshots accelerate state rehydration, per-tenant and per-consumer rate limiting prevents abuse, and aggregate-level backpressure protects against saga storms.
 **FRs covered:** FR13
 **Also:** D8, NFR33, NFR34, Rule 15
@@ -484,6 +508,8 @@ Connected clients receive push "changed" signals when projections update, with R
 **Also:** UX-DR39
 
 ### Epic 11: Server-Managed Projection Builder
+Outcome: Projection owners can get queryable read models without owning pub/sub subscriptions.
+
 EventStore delivers persisted events to domain services' /project endpoints via DAPR service invocation, caches the returned projection state in ProjectionActor, and supports immediate (fire-and-forget) or polled delivery modes — making queries return real data without domain services managing pub/sub subscriptions.
 **FRs covered:** (new — from superpowers spec, SCP-Projection Stories 8.9-8.11)
 **Also:** ProjectionEventDto, ProjectionRequest/Response, AggregateActor.GetEventsAsync, convention-based discovery
@@ -499,6 +525,8 @@ Quick start guide (3 pages, clone to first command in 10 minutes), error referen
 **Also:** UX-DR30-DR33, SCP-Docs
 
 ### Epic 14: Admin API Foundation & Abstractions
+Outcome: Admin users, CLI users, and MCP agents share one secure operational API.
+
 Shared service interfaces, DTOs, and Admin.Server REST API backed by DAPR. The single backend consumed by Web UI (in-process), CLI (HTTP), and MCP (HTTP). Aspire integration with dedicated DAPR sidecar.
 **FRs covered:** FR79, FR82
 **NFRs covered:** NFR40, NFR44, NFR46
@@ -532,6 +560,8 @@ MCP server exposing admin operations as AI-callable tools with structured JSON o
 **Dependencies:** Epic 14
 
 ### Epic 19: Admin — DAPR Infrastructure Visibility
+Outcome: Operators can diagnose DAPR sidecar, actor, pub/sub, and resiliency health from EventStore context.
+
 DAPR-specific monitoring: sidecar health, actor inspector, pub/sub delivery metrics, resiliency policy viewer, component health history.
 **FRs covered:** FR75 (DAPR portion)
 **Dependencies:** Epics 14, 15
@@ -543,6 +573,8 @@ Breakthrough debugging features: blame view (per-field provenance), bisect tool 
 **Dependencies:** Epic 15
 
 ### Epic 21: Admin UI Fluent UI v5 Stability Migration
+Outcome: Admin users retain stable, accessible, testable workflows on Fluent UI v5.
+
 The admin UI remains stable, accessible, and testable on Fluent UI Blazor v5. This completed migration preserved existing admin workflows while updating package, component, layout, theme, dialog, toast, DataGrid, and CSS token usage.
 **Dependencies:** Epics 15, 16, 19, 20 (all completed UI work)
 **Status:** Completed historical migration. New UI stories should use the Fluent UI v5 patterns established by Epic 21.
@@ -557,6 +589,8 @@ EventStore becomes the stable gateway contract for downstream bounded contexts s
 **Stories (10):** 22-1 gateway command/query contract closure and package docs, 22-2 projection adapter contract and generic query actor model, 22-3 gateway-owned tenant and RBAC enforcement, 22-4 query behavior policy and error taxonomy, 22-5 event publishing guarantees and backend deployment matrix, 22-6 stream replay/read APIs and projection rebuild checkpoints, 22-7a payload and snapshot protection hooks, 22-7b unreadable protected data behavior, 22-7c crypto-shredding workflow and restored-backup safety, 22-7d protected data redaction across operational surfaces
 
 ## Epic 1: Domain Contract Foundation
+
+Outcome: Domain developers can define safe commands, events, identities, and aggregate behavior without infrastructure code.
 
 A domain service developer can define commands, events, identity types, and aggregate state using EventStore's shared type system — ULID-based IDs, MessageType value objects, 14-field event envelope, EventStoreAggregate base class, and IRejectionEvent marker interface.
 
@@ -669,6 +703,8 @@ So that command status tracking uses a shared vocabulary and terminated aggregat
 **And** the event stream remains immutable and replayable.
 
 ## Epic 2: Event Persistence & Aggregate Processing
+
+Outcome: API-submitted commands can produce durable, replayable aggregate event streams.
 
 Commands routed to aggregate actors trigger state rehydration from events, domain service invocation via the pure function contract, and atomic event persistence with sequence numbers, optimistic concurrency, and idempotency detection.
 
@@ -883,6 +919,14 @@ So that my retry logic and error handling work correctly.
 **And** validation of inbound correlation IDs follows Story 3.2's ULID rule (no `Guid.TryParse`).
 *Reference:* 401/403/409/503 paths must agree with 200/202/400 paths on identifier semantics.
 
+**Split map for future follow-ups:** Story 3.5 is completed historical work. Future error-response follow-ups should split by independently testable behavior:
+
+- 3.5a Authentication failure ProblemDetails and `WWW-Authenticate` behavior
+- 3.5b Tenant authorization failure ProblemDetails
+- 3.5c Optimistic concurrency conflict and retry hints
+- 3.5d Infrastructure unavailable behavior and terminology redaction
+- 3.5e Correlation ID serialization consistency across errors
+
 ### Story 3.6: OpenAPI Specification & Swagger UI
 
 As an API consumer,
@@ -905,6 +949,8 @@ So that I can explore and test the API without reading separate documentation.
 **Then** they resolve to human-readable documentation explaining the error, with an example and resolution guidance (UX-DR7).
 
 ## Epic 4: Event Distribution & Pub/Sub
+
+Outcome: Subscribers can receive persisted events reliably without coupling to storage internals.
 
 Persisted events are automatically published to per-tenant-per-domain CloudEvents 1.0 topics with at-least-once delivery, resilient backlog draining during pub/sub outages, and per-aggregate backpressure.
 
@@ -957,6 +1003,8 @@ So that saga storms and head-of-line blocking cascades are prevented.
 **And** backpressure is per-aggregate, not system-wide.
 
 ## Epic 5: Security & Multi-Tenant Isolation
+
+Outcome: Tenants can submit and process commands without data crossing identity, storage, or pub/sub boundaries.
 
 JWT-based authentication, claims-based authorization (tenant/domain/command type), three-layer data isolation (data path, storage key, pub/sub topic), DAPR access control policies, and E2E security testing with Keycloak in Aspire.
 
@@ -1050,6 +1098,8 @@ So that the full six-layer auth pipeline is verified at runtime with real IdP-is
 
 ## Epic 6: Observability & Operations
 
+Outcome: Operators can trace command lifecycle failures using logs, traces, and health endpoints.
+
 OpenTelemetry traces span the full command lifecycle, structured logs carry correlation/causation IDs at every pipeline stage, and health/readiness endpoints report DAPR sidecar, state store, and pub/sub status.
 
 ### Story 6.1: OpenTelemetry Tracing Across Command Lifecycle
@@ -1104,6 +1154,8 @@ So that load balancers and orchestrators can route traffic correctly.
 **Then** the system reports not-ready with the failing dependency identified.
 
 ## Epic 7: Snapshots, Rate Limiting & Performance
+
+Outcome: Operators can keep command processing responsive under stream growth and abuse pressure.
 
 Configurable snapshots accelerate state rehydration, per-tenant and per-consumer rate limiting prevents abuse, and aggregate-level backpressure protects against saga storms.
 
@@ -1245,6 +1297,13 @@ So that domain logic, DAPR integration, and full pipeline are each validated at 
 **Given** Tier 3 E2E contract tests,
 **When** executed with full DAPR init + Docker,
 **Then** the full command lifecycle is validated across the complete Aspire topology (FR47).
+
+**Split map for future test-platform follow-ups:** Story 8.5 is completed historical work. Future test-platform changes should split by test tier and evidence workflow:
+
+- 8.5a Tier 1 pure domain unit test harness
+- 8.5b Tier 2 DAPR actor integration test harness
+- 8.5c Tier 3 Aspire E2E contract test harness
+- 8.5d Test execution guidance and evidence collection
 
 ### Story 8.6: Deployment Manifests & Environment Portability
 
@@ -1442,6 +1501,8 @@ So that real-time notifications resume after network interruptions without manua
 **And** real-time push notifications resume without developer intervention.
 
 ## Epic 11: Server-Managed Projection Builder
+
+Outcome: Projection owners can get queryable read models without owning pub/sub subscriptions.
 
 EventStore delivers persisted events to domain services' /project endpoints via DAPR service invocation, caches the returned projection state in ProjectionActor, and supports immediate (fire-and-forget) or polled delivery modes — making queries return real data without domain services managing pub/sub subscriptions.
 
@@ -1681,15 +1742,17 @@ So that docs, planning artifacts, and code tell the same story.
 
 ## Epic 14: Admin API Foundation & Abstractions
 
+Outcome: Admin users, CLI users, and MCP agents share one secure operational API.
+
 Status: Completed. Sprint status source of truth: `_bmad-output/implementation-artifacts/sprint-status.yaml`.
 
 Completed stories:
 
-- 14.1 Admin abstractions service interfaces and DTOs: `_bmad-output/implementation-artifacts/14-1-admin-abstractions-service-interfaces-and-dtos.md`
-- 14.2 Admin server DAPR-backed service implementations: `_bmad-output/implementation-artifacts/14-2-admin-server-dapr-backed-service-implementations.md`
-- 14.3 Admin server REST API controllers with JWT auth: `_bmad-output/implementation-artifacts/14-3-admin-server-rest-api-controllers-with-jwt-auth.md`
-- 14.4 Admin server Aspire resource integration: `_bmad-output/implementation-artifacts/14-4-admin-server-aspire-resource-integration.md`
-- 14.5 Admin API OpenAPI spec and Swagger UI: `_bmad-output/implementation-artifacts/14-5-admin-api-openapi-spec-and-swagger-ui.md`
+- 14.1 Admin abstractions service interfaces and DTOs - Outcome: shared Admin API contracts define the operational surface used by Web UI, CLI, and MCP. Key acceptance: DTOs remain DAPR/backend-agnostic and support admin read/write roles. Detail: `_bmad-output/implementation-artifacts/14-1-admin-abstractions-service-interfaces-and-dtos.md`
+- 14.2 Admin server DAPR-backed service implementations - Outcome: Admin.Server reads operational state through DAPR abstractions. Key acceptance: state access preserves EventStore key derivation and avoids backend-specific coupling. Detail: `_bmad-output/implementation-artifacts/14-2-admin-server-dapr-backed-service-implementations.md`
+- 14.3 Admin server REST API controllers with JWT auth - Outcome: admin clients can call authenticated REST endpoints. Key acceptance: authorization gates protect read/write operations and return stable error responses. Detail: `_bmad-output/implementation-artifacts/14-3-admin-server-rest-api-controllers-with-jwt-auth.md`
+- 14.4 Admin server Aspire resource integration - Outcome: the admin server runs as part of the Aspire topology with its own DAPR sidecar. Key acceptance: AppHost wiring exposes the admin resource without bypassing EventStore security boundaries. Detail: `_bmad-output/implementation-artifacts/14-4-admin-server-aspire-resource-integration.md`
+- 14.5 Admin API OpenAPI spec and Swagger UI - Outcome: admin developers can inspect and exercise the Admin API interactively. Key acceptance: OpenAPI documents auth, schemas, and admin route behavior consistently. Detail: `_bmad-output/implementation-artifacts/14-5-admin-api-openapi-spec-and-swagger-ui.md`
 
 ## Epic 15: Admin Web UI - Core Developer Experience
 
@@ -1697,21 +1760,21 @@ Status: Completed. Sprint status source of truth: `_bmad-output/implementation-a
 
 Completed stories:
 
-- 15.1 Blazor shell, Fluent UI layout, command palette, and dark mode: `_bmad-output/implementation-artifacts/15-1-blazor-shell-fluentui-layout-command-palette-dark-mode.md`
-- 15.2 Activity feed and recently active streams: `_bmad-output/implementation-artifacts/15-2-activity-feed-recent-active-streams.md`
-- 15.3 Stream browser command/event/query timeline: `_bmad-output/implementation-artifacts/15-3-stream-browser-command-event-query-timeline.md`
-- 15.4 Aggregate state inspector and diff viewer: `_bmad-output/implementation-artifacts/15-4-aggregate-state-inspector-and-diff-viewer.md`
-- 15.5 Projection dashboard status, lag, errors, and controls: `_bmad-output/implementation-artifacts/15-5-projection-dashboard-status-lag-errors-controls.md`
-- 15.6 Event type catalog searchable registry: `_bmad-output/implementation-artifacts/15-6-event-type-catalog-searchable-registry.md`
-- 15.7 Health dashboard with observability deep links: `_bmad-output/implementation-artifacts/15-7-health-dashboard-with-observability-deep-links.md`
-- 15.8 Deep linking and breadcrumbs: `_bmad-output/implementation-artifacts/15-8-deep-linking-and-breadcrumbs.md`
-- 15.9 Commands page cross-stream command list: `_bmad-output/implementation-artifacts/15-9-commands-page-cross-stream-command-list.md`
-- 15.10 Admin UI data pipeline fixes: `_bmad-output/implementation-artifacts/15-10-admin-ui-data-pipeline-fixes.md`
-- 15.11 Persistent state store and command activity: `_bmad-output/implementation-artifacts/15-11-persistent-state-store-and-command-activity.md`
-- 15.12 Events page cross-stream browser: `_bmad-output/implementation-artifacts/15-12-events-page-cross-stream-browser.md`
-- 15.12a Missing timeline endpoint: `_bmad-output/implementation-artifacts/15-12a-implement-missing-timeline-endpoint.md`
-- 15.12b Missing event detail endpoint: `_bmad-output/implementation-artifacts/15-12b-implement-missing-event-detail-endpoint.md`
-- 15.13 Stream activity tracker writer: `_bmad-output/implementation-artifacts/15-13-stream-activity-tracker-writer.md`
+- 15.1 Blazor shell, Fluent UI layout, command palette, and dark mode - Outcome: developers get a navigable Fluent UI admin shell. Key acceptance: command palette, layout, theme, and shell navigation work without introducing another UI system. Detail: `_bmad-output/implementation-artifacts/15-1-blazor-shell-fluentui-layout-command-palette-dark-mode.md`
+- 15.2 Activity feed and recently active streams - Outcome: operators can scan recent EventStore activity. Key acceptance: stream status and last-activity data are visible across tenants within authorized scope. Detail: `_bmad-output/implementation-artifacts/15-2-activity-feed-recent-active-streams.md`
+- 15.3 Stream browser command/event/query timeline - Outcome: developers can inspect a unified timeline for a stream. Key acceptance: commands, events, and query/projection activity are correlated in order. Detail: `_bmad-output/implementation-artifacts/15-3-stream-browser-command-event-query-timeline.md`
+- 15.4 Aggregate state inspector and diff viewer - Outcome: developers can inspect aggregate state and compare positions. Key acceptance: point-in-time state and diffs highlight changes without leaking protected payloads. Detail: `_bmad-output/implementation-artifacts/15-4-aggregate-state-inspector-and-diff-viewer.md`
+- 15.5 Projection dashboard status, lag, errors, and controls - Outcome: operators can monitor and manage projections. Key acceptance: lag, throughput, errors, pause/resume/reset controls, and failure states are visible. Detail: `_bmad-output/implementation-artifacts/15-5-projection-dashboard-status-lag-errors-controls.md`
+- 15.6 Event type catalog searchable registry - Outcome: developers can browse registered event, command, and aggregate types. Key acceptance: schemas, relationships, versions, and search affordances are available. Detail: `_bmad-output/implementation-artifacts/15-6-event-type-catalog-searchable-registry.md`
+- 15.7 Health dashboard with observability deep links - Outcome: operators can see health summary and jump to external tools. Key acceptance: DAPR/component health and links to configured observability tools degrade gracefully. Detail: `_bmad-output/implementation-artifacts/15-7-health-dashboard-with-observability-deep-links.md`
+- 15.8 Deep linking and breadcrumbs - Outcome: investigations can be shared and retraced. Key acceptance: admin views expose stable URLs and context-aware breadcrumb trails. Detail: `_bmad-output/implementation-artifacts/15-8-deep-linking-and-breadcrumbs.md`
+- 15.9 Commands page cross-stream command list - Outcome: operators can search command activity across streams. Key acceptance: command status, correlation IDs, filters, and tenant scope are visible. Detail: `_bmad-output/implementation-artifacts/15-9-commands-page-cross-stream-command-list.md`
+- 15.10 Admin UI data pipeline fixes - Outcome: admin screens consume operational data consistently. Key acceptance: client adapters, loading states, and error mapping match Admin API contracts. Detail: `_bmad-output/implementation-artifacts/15-10-admin-ui-data-pipeline-fixes.md`
+- 15.11 Persistent state store and command activity - Outcome: command activity survives process restarts for admin views. Key acceptance: persisted operational indexes are readable through the Admin API. Detail: `_bmad-output/implementation-artifacts/15-11-persistent-state-store-and-command-activity.md`
+- 15.12 Events page cross-stream browser - Outcome: operators can browse events across streams. Key acceptance: filters, paging, event metadata, and tenant boundaries work on large result sets. Detail: `_bmad-output/implementation-artifacts/15-12-events-page-cross-stream-browser.md`
+- 15.12a Missing timeline endpoint - Outcome: the UI timeline has a matching server endpoint. Key acceptance: endpoint shape, authorization, and response model satisfy the timeline view. Detail: `_bmad-output/implementation-artifacts/15-12a-implement-missing-timeline-endpoint.md`
+- 15.12b Missing event detail endpoint - Outcome: event detail navigation has a matching server endpoint. Key acceptance: event metadata/detail retrieval respects tenant and redaction rules. Detail: `_bmad-output/implementation-artifacts/15-12b-implement-missing-event-detail-endpoint.md`
+- 15.13 Stream activity tracker writer - Outcome: recent-stream lists are populated by runtime activity. Key acceptance: command/event processing records activity without blocking the main pipeline. Detail: `_bmad-output/implementation-artifacts/15-13-stream-activity-tracker-writer.md`
 
 Follow-up sprint change proposals:
 
@@ -1724,13 +1787,13 @@ Status: Completed. Sprint status source of truth: `_bmad-output/implementation-a
 
 Completed stories:
 
-- 16.1 Storage growth analyzer with treemap: `_bmad-output/implementation-artifacts/16-1-storage-growth-analyzer-with-treemap.md`
-- 16.2 Snapshot management and auto-snapshot policies: `_bmad-output/implementation-artifacts/16-2-snapshot-management-and-auto-snapshot-policies.md`
-- 16.3 Compaction manager: `_bmad-output/implementation-artifacts/16-3-compaction-manager.md`
-- 16.4 Backup and restore console: `_bmad-output/implementation-artifacts/16-4-backup-and-restore-console.md`
-- 16.5 Tenant management quotas onboarding comparison: `_bmad-output/implementation-artifacts/16-5-tenant-management-quotas-onboarding-comparison.md`
-- 16.6 Dead-letter queue manager: `_bmad-output/implementation-artifacts/16-6-dead-letter-queue-manager.md`
-- 16.7 Consistency checker: `_bmad-output/implementation-artifacts/16-7-consistency-checker.md`
+- 16.1 Storage growth analyzer with treemap - Outcome: DBAs can identify growth patterns and hot streams. Key acceptance: storage summaries are tenant-aware and visualized without backend-specific assumptions. Detail: `_bmad-output/implementation-artifacts/16-1-storage-growth-analyzer-with-treemap.md`
+- 16.2 Snapshot management and auto-snapshot policies - Outcome: operators can inspect and manage snapshot behavior. Key acceptance: policies, thresholds, and manual snapshot actions preserve configured defaults and safety checks. Detail: `_bmad-output/implementation-artifacts/16-2-snapshot-management-and-auto-snapshot-policies.md`
+- 16.3 Compaction manager - Outcome: DBAs can reason about compaction candidates and actions. Key acceptance: operations expose status and guardrails without mutating immutable event records. Detail: `_bmad-output/implementation-artifacts/16-3-compaction-manager.md`
+- 16.4 Backup and restore console - Outcome: operators can initiate and inspect backup/restore workflows. Key acceptance: progress, failures, and safety metadata are visible. Detail: `_bmad-output/implementation-artifacts/16-4-backup-and-restore-console.md`
+- 16.5 Tenant management quotas onboarding comparison - Outcome: operators can compare tenant quotas and onboarding status. Key acceptance: EventStore consumes Hexalith.Tenants data without owning tenant lifecycle. Detail: `_bmad-output/implementation-artifacts/16-5-tenant-management-quotas-onboarding-comparison.md`
+- 16.6 Dead-letter queue manager - Outcome: operators can inspect and act on dead-lettered commands/events. Key acceptance: retry, skip, archive, and bulk operations are permissioned and auditable. Detail: `_bmad-output/implementation-artifacts/16-6-dead-letter-queue-manager.md`
+- 16.7 Consistency checker - Outcome: DBAs can detect operational inconsistencies. Key acceptance: checks report actionable findings without direct backend coupling. Detail: `_bmad-output/implementation-artifacts/16-7-consistency-checker.md`
 
 ## Epic 17: Admin CLI (`eventstore-admin`)
 
@@ -1738,14 +1801,14 @@ Status: Completed. Sprint status source of truth: `_bmad-output/implementation-a
 
 Completed stories:
 
-- 17.1 CLI scaffold, System.CommandLine, and global options: `_bmad-output/implementation-artifacts/17-1-cli-scaffold-system-commandline-global-options.md`
-- 17.2 Stream subcommand query/list/events/state: `_bmad-output/implementation-artifacts/17-2-stream-subcommand-query-list-events-state.md`
-- 17.3 Projection subcommand list/status/pause/resume/reset: `_bmad-output/implementation-artifacts/17-3-projection-subcommand-list-status-pause-resume-reset.md`
-- 17.4 Health subcommand exit codes for CI/CD: `_bmad-output/implementation-artifacts/17-4-health-subcommand-exit-codes-for-cicd.md`
-- 17.5 Tenant subcommand list/quotas/verify: `_bmad-output/implementation-artifacts/17-5-tenant-subcommand-list-quotas-verify.md`
-- 17.6 Snapshot and backup subcommands: `_bmad-output/implementation-artifacts/17-6-snapshot-and-backup-subcommands.md`
-- 17.7 Connection profiles and shell completions: `_bmad-output/implementation-artifacts/17-7-connection-profiles-and-shell-completions.md`
-- 17.8 .NET tool packaging and distribution: `_bmad-output/implementation-artifacts/17-8-dotnet-tool-packaging-and-distribution.md`
+- 17.1 CLI scaffold, System.CommandLine, and global options - Outcome: operators have a scriptable `eventstore-admin` entrypoint. Key acceptance: global URL, token, format, and output options are available. Detail: `_bmad-output/implementation-artifacts/17-1-cli-scaffold-system-commandline-global-options.md`
+- 17.2 Stream subcommand query/list/events/state - Outcome: scripts can inspect stream state and events. Key acceptance: stream commands return JSON/CSV/table output and respect tenant scope. Detail: `_bmad-output/implementation-artifacts/17-2-stream-subcommand-query-list-events-state.md`
+- 17.3 Projection subcommand list/status/pause/resume/reset - Outcome: operators can manage projections from the CLI. Key acceptance: write operations require the appropriate confirmation and role. Detail: `_bmad-output/implementation-artifacts/17-3-projection-subcommand-list-status-pause-resume-reset.md`
+- 17.4 Health subcommand exit codes for CI/CD - Outcome: CI/CD can gate on EventStore health. Key acceptance: exit codes 0, 1, and 2 map to healthy, degraded, and critical states. Detail: `_bmad-output/implementation-artifacts/17-4-health-subcommand-exit-codes-for-cicd.md`
+- 17.5 Tenant subcommand list/quotas/verify - Outcome: operators can verify tenant posture from scripts. Key acceptance: tenant data remains delegated to Hexalith.Tenants and output is scoped. Detail: `_bmad-output/implementation-artifacts/17-5-tenant-subcommand-list-quotas-verify.md`
+- 17.6 Snapshot and backup subcommands - Outcome: DBAs can automate snapshot and backup operations. Key acceptance: commands expose progress and safe failure states. Detail: `_bmad-output/implementation-artifacts/17-6-snapshot-and-backup-subcommands.md`
+- 17.7 Connection profiles and shell completions - Outcome: CLI users can switch environments and complete live resource names. Key acceptance: profiles persist connection context and completions query authorized data. Detail: `_bmad-output/implementation-artifacts/17-7-connection-profiles-and-shell-completions.md`
+- 17.8 .NET tool packaging and distribution - Outcome: `eventstore-admin` can be installed and versioned as a .NET tool. Key acceptance: packaging aligns with release/versioning rules. Detail: `_bmad-output/implementation-artifacts/17-8-dotnet-tool-packaging-and-distribution.md`
 
 ## Epic 18: Admin MCP Server
 
@@ -1753,24 +1816,26 @@ Status: Completed. Sprint status source of truth: `_bmad-output/implementation-a
 
 Completed stories:
 
-- 18.1 MCP server scaffold with stdio transport: `_bmad-output/implementation-artifacts/18-1-mcp-server-scaffold-stdio-transport.md`
-- 18.2 Read tools for stream state, projection schema, and metrics: `_bmad-output/implementation-artifacts/18-2-read-tools-stream-state-projection-schema-metrics.md`
-- 18.3 Diagnostic tools for causation diff and consistency: `_bmad-output/implementation-artifacts/18-3-diagnostic-tools-causation-diff-consistency.md`
-- 18.4 Write tools with approval gates: `_bmad-output/implementation-artifacts/18-4-write-tools-with-approval-gates.md`
-- 18.5 Tenant context and investigation session state: `_bmad-output/implementation-artifacts/18-5-tenant-context-and-investigation-session-state.md`
+- 18.1 MCP server scaffold with stdio transport - Outcome: AI agents can connect to EventStore admin tooling. Key acceptance: stdio transport exposes structured tool registration without requiring direct DAPR access. Detail: `_bmad-output/implementation-artifacts/18-1-mcp-server-scaffold-stdio-transport.md`
+- 18.2 Read tools for stream state, projection schema, and metrics - Outcome: agents can inspect operational state. Key acceptance: read tools return structured JSON and honor tenant/role context. Detail: `_bmad-output/implementation-artifacts/18-2-read-tools-stream-state-projection-schema-metrics.md`
+- 18.3 Diagnostic tools for causation diff and consistency - Outcome: agents can perform guided investigations. Key acceptance: causation, diff, and consistency tools return machine-readable evidence. Detail: `_bmad-output/implementation-artifacts/18-3-diagnostic-tools-causation-diff-consistency.md`
+- 18.4 Write tools with approval gates - Outcome: agents can propose operational writes safely. Key acceptance: destructive or state-changing actions require explicit approval parameters. Detail: `_bmad-output/implementation-artifacts/18-4-write-tools-with-approval-gates.md`
+- 18.5 Tenant context and investigation session state - Outcome: agents can maintain scoped investigations across tool calls. Key acceptance: tenant context prevents accidental cross-tenant leakage. Detail: `_bmad-output/implementation-artifacts/18-5-tenant-context-and-investigation-session-state.md`
 
 ## Epic 19: Admin - DAPR Infrastructure Visibility
+
+Outcome: Operators can diagnose DAPR sidecar, actor, pub/sub, and resiliency health from EventStore context.
 
 Status: Completed. Sprint status source of truth: `_bmad-output/implementation-artifacts/sprint-status.yaml`.
 
 Completed stories:
 
-- 19.1 DAPR component status dashboard: `_bmad-output/implementation-artifacts/19-1-dapr-component-status-dashboard.md`
-- 19.2 DAPR actor inspector: `_bmad-output/implementation-artifacts/19-2-dapr-actor-inspector.md`
-- 19.3 DAPR pub/sub delivery metrics: `_bmad-output/implementation-artifacts/19-3-dapr-pubsub-delivery-metrics.md`
-- 19.4 DAPR resiliency policy viewer: `_bmad-output/implementation-artifacts/19-4-dapr-resiliency-policy-viewer.md`
-- 19.5 DAPR component health history: `_bmad-output/implementation-artifacts/19-5-dapr-component-health-history.md`
-- 19.6 Admin DAPR metadata diagnostics: `_bmad-output/implementation-artifacts/19-6-admin-dapr-metadata-diagnostics.md`
+- 19.1 DAPR component status dashboard - Outcome: operators can see DAPR component readiness from EventStore context. Key acceptance: state store, pub/sub, secret store, and sidecar status are visible. Detail: `_bmad-output/implementation-artifacts/19-1-dapr-component-status-dashboard.md`
+- 19.2 DAPR actor inspector - Outcome: operators can inspect actor placement and state health. Key acceptance: actor diagnostics avoid direct state mutation and preserve tenant boundaries. Detail: `_bmad-output/implementation-artifacts/19-2-dapr-actor-inspector.md`
+- 19.3 DAPR pub/sub delivery metrics - Outcome: operators can monitor event delivery behavior. Key acceptance: metrics surface publish, retry, drain, and failure indicators. Detail: `_bmad-output/implementation-artifacts/19-3-dapr-pubsub-delivery-metrics.md`
+- 19.4 DAPR resiliency policy viewer - Outcome: operators can verify runtime resiliency configuration. Key acceptance: configured policies are visible without implying unsupported guarantees. Detail: `_bmad-output/implementation-artifacts/19-4-dapr-resiliency-policy-viewer.md`
+- 19.5 DAPR component health history - Outcome: operators can see historical component health trends. Key acceptance: history distinguishes unavailable data from healthy zero-component states. Detail: `_bmad-output/implementation-artifacts/19-5-dapr-component-health-history.md`
+- 19.6 Admin DAPR metadata diagnostics - Outcome: operators can inspect DAPR metadata for troubleshooting. Key acceptance: diagnostics expose safe metadata and avoid secrets or payload content. Detail: `_bmad-output/implementation-artifacts/19-6-admin-dapr-metadata-diagnostics.md`
 
 ## Epic 20: Admin - Advanced Debugging
 
@@ -1778,11 +1843,13 @@ Status: Completed. Sprint status source of truth: `_bmad-output/implementation-a
 
 Completed stories:
 
-- 20.1 Blame view per-field provenance: `_bmad-output/implementation-artifacts/20-1-blame-view-per-field-provenance.md`
-- 20.2 Bisect tool for binary search state divergence: `_bmad-output/implementation-artifacts/20-2-bisect-tool-binary-search-state-divergence.md`
-- 20.3 Step-through event debugger: `_bmad-output/implementation-artifacts/20-3-step-through-event-debugger.md`
-- 20.4 Command sandbox test harness: `_bmad-output/implementation-artifacts/20-4-command-sandbox-test-harness.md`
-- 20.5 Correlation ID trace map: `_bmad-output/implementation-artifacts/20-5-correlation-id-trace-map.md`
+- 20.1 Blame view per-field provenance - Outcome: developers can identify which event last changed each state field. Key acceptance: provenance links fields to event, command, user, and correlation metadata. Detail: `_bmad-output/implementation-artifacts/20-1-blame-view-per-field-provenance.md`
+- 20.2 Bisect tool for binary search state divergence - Outcome: developers can narrow divergence to a specific event range. Key acceptance: binary-search workflow preserves stream order and reports useful checkpoints. Detail: `_bmad-output/implementation-artifacts/20-2-bisect-tool-binary-search-state-divergence.md`
+- 20.3 Step-through event debugger - Outcome: developers can replay state transitions interactively. Key acceptance: stepping shows before/after state without mutating persisted events. Detail: `_bmad-output/implementation-artifacts/20-3-step-through-event-debugger.md`
+- 20.4 Command sandbox test harness - Outcome: developers can test command effects safely. Key acceptance: sandbox execution is isolated from production event streams. Detail: `_bmad-output/implementation-artifacts/20-4-command-sandbox-test-harness.md`
+- 20.5 Correlation ID trace map - Outcome: operators can follow causation chains across commands, events, projections, and traces. Key acceptance: trace map carries correlation IDs and deep links to observability tools. Detail: `_bmad-output/implementation-artifacts/20-5-correlation-id-trace-map.md`
+
+Admin UX validation note: UX-DR41 through UX-DR59 remain story-level acceptance criteria. Architecture ADR-P4 and ADR-P5 support the three-interface admin model and observability deep-link strategy, but command palette, breadcrumbs, virtualized rendering, keyboard shortcuts, CLI profiles/REPL/completions, MCP tenant context, and investigation session state must stay visible in story validation.
 
 ## Epic 21: Admin UI Fluent UI v5 Stability Migration
 
@@ -1792,22 +1859,22 @@ Outcome: The admin UI remains stable, accessible, and testable on Fluent UI Blaz
 
 Completed stories:
 
-- 21.0 bUnit smoke tests baseline: `_bmad-output/implementation-artifacts/21-0-bunit-smoke-tests-baseline.md`
-- 21.1 Package version and csproj infrastructure: `_bmad-output/implementation-artifacts/21-1-package-version-csproj-infrastructure.md`
-- 21.2 Layout and navigation foundation: `_bmad-output/implementation-artifacts/21-2-layout-and-navigation-foundation.md`
-- 21.3 ButtonAppearance enum migration: `_bmad-output/implementation-artifacts/21-3-appearance-enum-button-appearance.md`
-- 21.4 BadgeAppearance and LinkAppearance migration: `_bmad-output/implementation-artifacts/21-4-appearance-enum-badge-link-appearance.md`
-- 21.5 Component renames: `_bmad-output/implementation-artifacts/21-5-component-renames.md`
-- 21.6 Dialog restructure: `_bmad-output/implementation-artifacts/21-6-dialog-restructure.md`
-- 21.7 Toast API update: `_bmad-output/implementation-artifacts/21-7-toast-api-update.md`
-- 21.8 CSS token migration: `_bmad-output/implementation-artifacts/21-8-css-token-migration.md`
-- 21.9 DataGrid remaining enum renames: `_bmad-output/implementation-artifacts/21-9-datagrid-remaining-enum-renames.md`
-- 21.9.5 Admin UI tests v5 migration: `_bmad-output/implementation-artifacts/21-9-5-admin-ui-tests-v5-migration.md`
-- 21.9.5.7 Admin UI tests v5 runtime migration: `_bmad-output/implementation-artifacts/21-9-5-7-admin-ui-tests-v5-runtime-migration.md`
-- 21.10 Sample Blazor UI alignment: `_bmad-output/implementation-artifacts/21-10-sample-blazorui-alignment.md`
-- 21.11 NavMenu v5 fix: `_bmad-output/implementation-artifacts/21-11-navmenu-v5-fix.md`
-- 21.12 FluentDesignTheme integration: `_bmad-output/implementation-artifacts/21-12-fluentdesigntheme-integration.md`
-- 21.13 UI bug fixes batch: `_bmad-output/implementation-artifacts/21-13-ui-bug-fixes-batch.md`
+- 21.0 bUnit smoke tests baseline - Outcome: migration work has a UI regression baseline. Key acceptance: representative admin components render before the Fluent UI v5 changes. Detail: `_bmad-output/implementation-artifacts/21-0-bunit-smoke-tests-baseline.md`
+- 21.1 Package version and csproj infrastructure - Outcome: UI projects consume the Fluent UI v5 package family consistently. Key acceptance: package references follow centralized versioning rules. Detail: `_bmad-output/implementation-artifacts/21-1-package-version-csproj-infrastructure.md`
+- 21.2 Layout and navigation foundation - Outcome: core layout/navigation survives the v5 migration. Key acceptance: shell, nav, and layout components render with v5 APIs. Detail: `_bmad-output/implementation-artifacts/21-2-layout-and-navigation-foundation.md`
+- 21.3 ButtonAppearance enum migration - Outcome: button usage compiles and renders with v5 appearance APIs. Key acceptance: actions preserve their visual intent and tests pass. Detail: `_bmad-output/implementation-artifacts/21-3-appearance-enum-button-appearance.md`
+- 21.4 BadgeAppearance and LinkAppearance migration - Outcome: badges and links use v5 appearance APIs. Key acceptance: status indicators and links preserve accessible semantics. Detail: `_bmad-output/implementation-artifacts/21-4-appearance-enum-badge-link-appearance.md`
+- 21.5 Component renames - Outcome: renamed Fluent components are updated across admin UI. Key acceptance: compile-time component changes do not alter user workflows. Detail: `_bmad-output/implementation-artifacts/21-5-component-renames.md`
+- 21.6 Dialog restructure - Outcome: dialogs follow Fluent UI v5 structure. Key acceptance: modal flows still open, close, validate, and preserve focus behavior. Detail: `_bmad-output/implementation-artifacts/21-6-dialog-restructure.md`
+- 21.7 Toast API update - Outcome: notifications use the v5 toast API. Key acceptance: success, error, and status messages still surface appropriately. Detail: `_bmad-output/implementation-artifacts/21-7-toast-api-update.md`
+- 21.8 CSS token migration - Outcome: styling uses Fluent UI v5 tokens. Key acceptance: theme and spacing remain consistent with the admin UI shell. Detail: `_bmad-output/implementation-artifacts/21-8-css-token-migration.md`
+- 21.9 DataGrid remaining enum renames - Outcome: grids compile and render with remaining v5 enum changes. Key acceptance: table interactions and visual states remain intact. Detail: `_bmad-output/implementation-artifacts/21-9-datagrid-remaining-enum-renames.md`
+- 21.9.5 Admin UI tests v5 migration - Outcome: UI tests run against Fluent UI v5 components. Key acceptance: test helpers and assertions match updated rendered output. Detail: `_bmad-output/implementation-artifacts/21-9-5-admin-ui-tests-v5-migration.md`
+- 21.9.5.7 Admin UI tests v5 runtime migration - Outcome: runtime-specific v5 issues are covered by tests. Key acceptance: browser/runtime behavior aligns with bUnit expectations. Detail: `_bmad-output/implementation-artifacts/21-9-5-7-admin-ui-tests-v5-runtime-migration.md`
+- 21.10 Sample Blazor UI alignment - Outcome: sample UI follows the same Fluent UI v5 patterns. Key acceptance: sample pages remain usable and consistent with admin UI conventions. Detail: `_bmad-output/implementation-artifacts/21-10-sample-blazorui-alignment.md`
+- 21.11 NavMenu v5 fix - Outcome: navigation menu works after the v5 migration. Key acceptance: selected state, navigation targets, and accessibility remain correct. Detail: `_bmad-output/implementation-artifacts/21-11-navmenu-v5-fix.md`
+- 21.12 FluentDesignTheme integration - Outcome: admin UI uses the v5 theme provider correctly. Key acceptance: light/dark theme behavior and design tokens apply consistently. Detail: `_bmad-output/implementation-artifacts/21-12-fluentdesigntheme-integration.md`
+- 21.13 UI bug fixes batch - Outcome: post-migration admin UI regressions are resolved. Key acceptance: known rendering and interaction bugs are fixed with focused tests. Detail: `_bmad-output/implementation-artifacts/21-13-ui-bug-fixes-batch.md`
 
 Related sprint change proposals:
 
@@ -1842,6 +1909,13 @@ So that Parties can call EventStore without duplicating gateway wire contracts.
 **Given** generated API docs and package guidance,
 **When** refreshed,
 **Then** they show Contracts, Client, and Testing ownership consistently.
+
+**Split map for follow-up work:** Story 22.1 is broad and should be split by package ownership when additional review fixes or follow-up stories are created:
+
+- 22.1a Contracts gateway DTOs and ProblemDetails extension names
+- 22.1b Client high-level command/query methods
+- 22.1c Testing fakes and builders
+- 22.1d Package ownership docs and generated API refresh
 
 ### Story 22.2: Projection Adapter Contract and Generic Query Actor Model
 
@@ -1923,6 +1997,13 @@ So that Parties projections can rely on EventStore publication guarantees.
 **When** publish-after-persist recovery and ordering behavior are exercised,
 **Then** backend-specific guarantees are proven or explicitly marked unsupported.
 
+**Split map for follow-up work:** Story 22.5 is completed. Future publishing-guarantee work should split by independently provable contract:
+
+- 22.5a Durable publish-after-persist semantics
+- 22.5b Backend deployment matrix and ordering/session policy
+- 22.5c Drain, retry, and dead-letter behavior
+- 22.5d Backend-specific proof tests and evidence
+
 ### Story 22.6: Stream Replay/Read APIs and Projection Rebuild Checkpoints
 
 As a projection owner,
@@ -1991,18 +2072,66 @@ So that GDPR deletion workflows remain safe after backup restore and operational
 **When** EventStore validates protected payload or snapshot state,
 **Then** restored data cannot silently become readable again without an explicit, documented operator decision.
 
-### Story 22.7d: Protected Data Redaction Across Operational Surfaces
+### Story 22.7d-1: Protected Data Redaction in Logs and ProblemDetails
 
 As a security reviewer,
-I want diagnostics and admin surfaces to avoid protected payload disclosure,
-So that logs, errors, replay, rebuild, backup validation, UI, CLI, MCP, and tests remain useful without leaking protected data.
+I want logs and ProblemDetails to expose only protected-data metadata,
+So that API and runtime diagnostics never leak protected payload or snapshot content.
 
 **Acceptance Criteria:**
 
-**Given** logs, ProblemDetails, admin UI, CLI, MCP, or test artifacts are produced,
+**Given** logs or ProblemDetails are produced,
 **When** protected content is involved,
 **Then** protected payload and snapshot content is never exposed.
 
-**Given** replay, rebuild, or backup validation touches protected content,
-**When** diagnostics are emitted,
+**Given** diagnostics include protected-data context,
+**When** fields are serialized,
+**Then** only metadata, identifiers, status, reason codes, and redacted placeholders are present.
+
+### Story 22.7d-2: Protected Data Redaction in Admin API and Web UI
+
+As an operator,
+I want admin API and Web UI surfaces to show protected-data status without plaintext,
+So that investigation workflows remain useful and safe.
+
+**Acceptance Criteria:**
+
+**Given** admin API or Web UI responses include protected-data records,
+**When** an operator inspects streams, state, projections, or failures,
+**Then** the surface shows protection state, identifiers, and safe operational metadata only.
+
+**Given** a UI component renders protected-data details,
+**When** payload or snapshot content would otherwise be displayed,
+**Then** the component renders a redacted placeholder and preserves navigation, filtering, and diagnostic context.
+
+### Story 22.7d-3: Protected Data Redaction in CLI and MCP
+
+As an automation user,
+I want CLI and MCP outputs to return structured redacted metadata,
+So that scripts and AI agents can diagnose issues without receiving protected content.
+
+**Acceptance Criteria:**
+
+**Given** CLI or MCP read operations return protected-data records,
+**When** output is serialized as JSON, CSV, table text, or MCP tool JSON,
+**Then** protected payload and snapshot content is absent and redaction status is explicit.
+
+**Given** MCP write tools or CLI write operations touch protected content,
+**When** approval prompts or previews are generated,
+**Then** they show only safe metadata and never include plaintext or key material.
+
+### Story 22.7d-4: Protected Data Redaction in Replay, Rebuild, Backup Validation, and Tests
+
+As a platform owner,
+I want replay, rebuild, backup validation, and test artifacts to preserve redaction guarantees,
+So that operational recovery cannot bypass protection boundaries.
+
+**Acceptance Criteria:**
+
+**Given** replay, projection rebuild, or backup validation touches protected content,
+**When** diagnostics, progress records, or failure details are emitted,
 **Then** only metadata, identifiers, status, and redacted placeholders are present.
+
+**Given** automated tests or evidence artifacts exercise protected-data paths,
+**When** test output, snapshots, or logs are captured,
+**Then** protected payload and snapshot content is never written to artifacts.

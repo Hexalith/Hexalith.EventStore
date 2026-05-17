@@ -199,6 +199,36 @@ public class FakeEventStoreGatewayClientTests {
     }
 
     [Fact]
+    public void StreamReadPageBuilderDeterministicFactoryGeneratesDistinctEventIds() {
+        StreamReadEvent item = StreamReadPageBuilder
+            .Create()
+            .WithDeterministicIds(sequence => $"id-{sequence}")
+            .AddEvent(11)
+            .Build()
+            .Events
+            .Single();
+
+        item.MessageId.ShouldBe("id-11-message");
+        item.CorrelationId.ShouldBe("id-11-correlation");
+        item.CausationId.ShouldBe("id-11-causation");
+    }
+
+    [Fact]
+    public void StreamReadPageBuilderRoleAwareFactoryReceivesEachIdKind() {
+        StreamReadEvent item = StreamReadPageBuilder
+            .Create()
+            .WithDeterministicIds((sequence, kind) => $"{kind}:{sequence}")
+            .AddEvent(11)
+            .Build()
+            .Events
+            .Single();
+
+        item.MessageId.ShouldBe("Message:11");
+        item.CorrelationId.ShouldBe("Correlation:11");
+        item.CausationId.ShouldBe("Causation:11");
+    }
+
+    [Fact]
     public async Task ConfigureStreamReadContinuationNormalizesMetadataFromEvents() {
         StreamReadPage inconsistent = new(
             "tenant-a",
