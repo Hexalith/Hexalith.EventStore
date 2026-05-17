@@ -323,25 +323,57 @@ public partial class ProjectionUpdateOrchestrator(
             }
         }
         catch (OperationCanceledException) {
-            // DEC3-P/P14/P15: cancel-cleanup must reach a terminal lifecycle write even when the
-            // store's lifecycle guards (IsLifecycleProtected) would reject SaveAsync. Use ResetAsync,
-            // which is the documented trust boundary for operator-intentional terminal writes.
-            ProjectionRebuildCheckpoint? canceledSnapshot = await rebuildCheckpointStore
-                .ReadAsync(operatorScope, CancellationToken.None)
-                .ConfigureAwait(false);
-            if (canceledSnapshot is not null && !IsTerminalStatus(canceledSnapshot.Status)) {
-                ProjectionRebuildCheckpointSaveResult cancelSave = await rebuildCheckpointStore
-                    .ResetAsync(
-                        operatorScope,
-                        canceledSnapshot.LastAppliedSequence,
-                        ProjectionRebuildStatus.Canceled,
-                        StreamReplayReasonCodes.RebuildCanceled,
-                        CancellationToken.None,
-                        canceledSnapshot.ToPosition)
+            // C3-5P (pass-5): wrap cancel-cleanup in try/catch so a transient DaprException /
+            // HttpRequestException during the ReadAsync / ResetAsync calls does not silently
+            // replace the OperationCanceledException on its way out of the method. Losing the OCE
+            // would cause callers to see a transport exception instead of the original cancel and
+            // the active-rebuilds index entry would persist indefinitely.
+            try {
+                // DEC3-P/P14/P15: cancel-cleanup must reach a terminal lifecycle write even when the
+                // store's lifecycle guards (IsLifecycleProtected) would reject SaveAsync. Use ResetAsync,
+                // which is the documented trust boundary for operator-intentional terminal writes.
+                ProjectionRebuildCheckpoint? canceledSnapshot = await rebuildCheckpointStore
+                    .ReadAsync(operatorScope, CancellationToken.None)
                     .ConfigureAwait(false);
-                if (!cancelSave.Succeeded) {
-                    Log.RebuildCancelCleanupRejected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, cancelSave.ReasonCode ?? "unknown");
+                if (canceledSnapshot is not null && !IsTerminalStatus(canceledSnapshot.Status)) {
+                    ProjectionRebuildCheckpointSaveResult cancelSave = await rebuildCheckpointStore
+                        .ResetAsync(
+                            operatorScope,
+                            canceledSnapshot.LastAppliedSequence,
+                            ProjectionRebuildStatus.Canceled,
+                            StreamReplayReasonCodes.RebuildCanceled,
+                            CancellationToken.None,
+                            canceledSnapshot.ToPosition)
+                        .ConfigureAwait(false);
+                    if (!cancelSave.Succeeded) {
+                        Log.RebuildCancelCleanupRejected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, cancelSave.ReasonCode ?? "unknown");
+                    }
                 }
+            }
+            catch (Exception cleanupEx) when (cleanupEx is not OperationCanceledException) {
+                Log.RebuildCancelCleanupFailed(logger, cleanupEx, scope.Tenant, scope.Domain, scope.ProjectionName, cleanupEx.GetType().Name);
+            }
+
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            // H1-5P (pass-5): catch transient/programmer exceptions at the rebuild boundary so the
+            // operator-scope row reaches a terminal Failed status and the active-rebuilds index is
+            // cleared. Without this catch a single DaprException from EnumerateTrackedIdentitiesAsync
+            // or the inner ReadAsync leaves the row at Running and the poller is permanently
+            // blocked for (tenant, domain). ResetAsync bypasses the monotonic guard so the
+            // operator-scope Failed write lands regardless of accumulated highestMatchedProgress.
+            ProjectionRebuildCheckpointSaveResult failSave = await rebuildCheckpointStore
+                .ResetAsync(
+                    operatorScope,
+                    initial.LastAppliedSequence,
+                    ProjectionRebuildStatus.Failed,
+                    ex.GetType().Name,
+                    CancellationToken.None,
+                    initial.ToPosition)
+                .ConfigureAwait(false);
+            if (!failSave.Succeeded) {
+                Log.RebuildTerminalFailWriteRejected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, failSave.ReasonCode ?? "unknown", ex.GetType().Name);
             }
 
             throw;
@@ -364,13 +396,19 @@ public partial class ProjectionUpdateOrchestrator(
             || highestMatchedProgress >= finalToPosition;
 
         if (!matchedAny || (allMatchedWorkComplete && reachedBound)) {
+            // H3-5P (pass-5): use CancellationToken.None for the terminal Succeeded write so a
+            // cancel race between iteration exit and terminal write does not silently drop the
+            // audit trail. Mirrors the C2-5P / NoDomainService / ProjectionApplyRejected pattern
+            // documented in DeliverProjectionForRebuildAsync. Without this, an ASP.NET request
+            // timeout disposing the request CT just before this write would propagate as OCE and
+            // the cancel-cleanup catch would mis-stamp a successful rebuild as Canceled.
             _ = await rebuildCheckpointStore
                 .SaveAsync(
                     operatorScope,
                     Math.Max(finalSnapshot!.LastAppliedSequence, highestMatchedProgress),
                     ProjectionRebuildStatus.Succeeded,
                     failureReasonCode: null,
-                    cancellationToken,
+                    CancellationToken.None,
                     finalSnapshot.ToPosition)
                 .ConfigureAwait(false);
         }
@@ -397,9 +435,14 @@ public partial class ProjectionUpdateOrchestrator(
                 // rebuild lifecycle stops and the active-rebuilds index is cleared. P10 +
                 // CancellationToken.None on the failure write so cancel-race does not lose the
                 // audit trail.
+                //
+                // C2-5P (pass-5): use ResetAsync so the new StaleCheckpoint guard in SaveAsync
+                // (rejects status=Failed with lastAppliedSequence < existing.LastAppliedSequence)
+                // does not silently drop the audit write. ResetAsync explicitly bypasses
+                // monotonic guards per its XML doc; lifecycle reaches Failed reliably.
                 Log.NoDomainServiceRegistered(logger, identity.TenantId, identity.Domain);
                 _ = await rebuildCheckpointStore!
-                    .SaveAsync(
+                    .ResetAsync(
                         operatorScope,
                         lastAppliedSequence: 0,
                         ProjectionRebuildStatus.Failed,
@@ -474,8 +517,14 @@ public partial class ProjectionUpdateOrchestrator(
                     GetContentTypeForLog(responseHandle.Content));
                 // P10: durability of failure recording — use CancellationToken.None so a cancel
                 // race during the failure write does not silently drop the audit trail.
+                //
+                // C2-5P (pass-5): use ResetAsync so the new StaleCheckpoint guard in SaveAsync
+                // (rejects status=Failed with lastAppliedSequence < existing.LastAppliedSequence)
+                // does not silently drop the audit write when a prior aggregate's per-aggregate
+                // progress has already advanced operator-scope's LastAppliedSequence above this
+                // aggregate's progress. ResetAsync explicitly bypasses monotonic guards.
                 _ = await rebuildCheckpointStore!
-                    .SaveAsync(
+                    .ResetAsync(
                         operatorScope,
                         perAggregateProgress,
                         ProjectionRebuildStatus.Failed,
@@ -538,6 +587,10 @@ public partial class ProjectionUpdateOrchestrator(
 
             long highestAppliedSequence = events.Max(e => e.SequenceNumber);
             // D3-A: write per-aggregate progress to per-aggregate scope, NOT operator scope.
+            // P-DEC6-5P (pass-5): isPerAggregateProgress:true tells SaveAsync to bypass the
+            // IsDifferentOperation guard. The per-aggregate row may carry a prior operator's
+            // OperationId after a Reset+Replay sequence; operator-scope row is the single source
+            // of operator identity, per-aggregate rows are progress-only.
             ProjectionRebuildCheckpointSaveResult save = await rebuildCheckpointStore!
                 .SaveAsync(
                     perAggregateScope,
@@ -545,7 +598,8 @@ public partial class ProjectionUpdateOrchestrator(
                     ProjectionRebuildStatus.Running,
                     failureReasonCode: null,
                     cancellationToken,
-                    toPosition)
+                    toPosition,
+                    isPerAggregateProgress: true)
                 .ConfigureAwait(false);
             if (!save.Succeeded) {
                 Log.CheckpointSaveExhausted(logger, identity.TenantId, identity.Domain, identity.AggregateId, highestAppliedSequence);
@@ -871,5 +925,17 @@ public partial class ProjectionUpdateOrchestrator(
             Level = LogLevel.Warning,
             Message = "Projection rebuild cancel-cleanup write rejected: TenantId={TenantId}, Domain={Domain}, ProjectionName={ProjectionName}, ReasonCode={ReasonCode}, Stage=ProjectionRebuildCancelCleanupRejected")]
         public static partial void RebuildCancelCleanupRejected(ILogger logger, string tenantId, string domain, string projectionName, string reasonCode);
+
+        [LoggerMessage(
+            EventId = 1148,
+            Level = LogLevel.Error,
+            Message = "Projection rebuild cancel-cleanup failed: TenantId={TenantId}, Domain={Domain}, ProjectionName={ProjectionName}, ExceptionType={ExceptionType}, Stage=ProjectionRebuildCancelCleanupFailed")]
+        public static partial void RebuildCancelCleanupFailed(ILogger logger, Exception exception, string tenantId, string domain, string projectionName, string exceptionType);
+
+        [LoggerMessage(
+            EventId = 1149,
+            Level = LogLevel.Error,
+            Message = "Projection rebuild terminal Failed write rejected: TenantId={TenantId}, Domain={Domain}, ProjectionName={ProjectionName}, ReasonCode={ReasonCode}, ExceptionType={ExceptionType}, Stage=ProjectionRebuildTerminalFailWriteRejected")]
+        public static partial void RebuildTerminalFailWriteRejected(ILogger logger, string tenantId, string domain, string projectionName, string reasonCode, string exceptionType);
     }
 }

@@ -42,6 +42,10 @@ foreach (StreamReadEvent item in page.Events) {
 
 Reading a page does not advance rebuild progress. Advance a checkpoint only after the projection apply path accepts the page.
 
+### Domain `/project` Idempotency Requirement
+
+Domain services MUST implement `/project` as a strictly idempotent operation: applying the same page event sequence one or more times must produce the same projection state. EventStore writes projection state via `UpdateProjectionAsync` BEFORE persisting the per-aggregate rebuild checkpoint; on a checkpoint-save failure (`checkpoint-conflict` or `checkpoint-unavailable`), the projection state is already advanced but the per-aggregate progress cursor is not, and the next rebuild iteration will re-apply the same events. Non-idempotent domain `/project` handlers (counters that increment unconditionally, append-only logs that do not de-duplicate by event id, side effects that fire on every call) will double-apply and corrupt projection state. Use the `messageId` field on `StreamReadEvent` as the de-duplication key when persisting projection mutations.
+
 ## Checkpoint Semantics
 
 `ProjectionRebuildCheckpoint` is scoped by tenant, domain, projection name, optional aggregate id, and operation id. EventStore persists rebuild progress with optimistic concurrency and monotonic max-sequence semantics:
@@ -84,12 +88,15 @@ Stable stream replay and rebuild reason codes include:
 - `token-request-mismatch`
 - `unauthorized-tenant`
 - `forbidden-replay-scope`
+- `forbidden-role`
 - `missing-stream`
 - `missing-event`
 - `corrupt-event`
 - `protected-payload-unavailable`
 - `projection-apply-rejected`
 - `checkpoint-conflict`
+- `stale-checkpoint`
+- `operation-in-flight`
 - `checkpoint-drift`
 - `checkpoint-unavailable`
 - `poller-rebuild-conflict`
@@ -99,6 +106,7 @@ Stable stream replay and rebuild reason codes include:
 - `domain-failure`
 - `retryable-transient-failure`
 - `service-unavailable`
+- `no-domain-service`
 - `internal-error`
 
 ## Forbidden Paths

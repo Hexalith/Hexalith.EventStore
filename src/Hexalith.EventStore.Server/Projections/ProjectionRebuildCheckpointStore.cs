@@ -88,7 +88,8 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         ProjectionRebuildStatus status,
         string? failureReasonCode = null,
         CancellationToken cancellationToken = default,
-        long? toPosition = null) {
+        long? toPosition = null,
+        bool isPerAggregateProgress = false) {
         ValidateScope(scope);
         ArgumentOutOfRangeException.ThrowIfNegative(lastAppliedSequence);
 
@@ -105,12 +106,17 @@ public sealed partial class ProjectionRebuildCheckpointStore(
 
                 if (existing is not null) {
                     ValidateCheckpointScope(scope, existing);
-                    // P16/DEC10: reject when the existing record carries an OperationId and the caller
-                    // either presents a different one or omits one entirely. Covers active operators
-                    // racing each other, poller-without-OpId clobbering an active operator, and
-                    // terminal-record OperationId overwrite from a different operator.
-                    if (IsDifferentOperation(scope, existing)
-                        && (IsLifecycleActive(existing.Status) || IsTerminal(existing.Status))) {
+                    // P-DEC6-5P (pass-5): per-aggregate progress writes bypass IsDifferentOperation
+                    // because the operator-scope row is the single source of operator identity.
+                    // Per-aggregate rows inherited the operator's OperationId at row creation; a
+                    // subsequent operator B's Reset+Replay updates the operator-scope row's
+                    // OperationId but the per-aggregate rows still carry A's. Without this carve-out
+                    // B's per-aggregate writes would wedge forever (DEC7-4P).
+                    // P16/DEC10/P-DEC3-5P: reject when the existing record carries an OperationId
+                    // and the caller either presents a different one or omits one entirely. The
+                    // pass-5 P-DEC3-5P extension removes the status filter so NotStarted rows are
+                    // also protected (cheap defense-in-depth; mirror Reset-to-NotStarted race).
+                    if (!isPerAggregateProgress && IsDifferentOperation(scope, existing)) {
                         Log.OperationConflict(logger, scope.Tenant, scope.Domain, scope.ProjectionName, existing.Status.ToString(), StreamReplayReasonCodes.OperationInFlight);
                         return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.OperationInFlight);
                     }
@@ -120,9 +126,14 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                         && existing.Status == status
                         && string.Equals(existing.FailureReasonCode, failureReasonCode, StringComparison.Ordinal)
                         && existing.ToPosition == toPosition) {
+                        // H2-5P (pass-5): index update is best-effort on no-op. Logging a warning
+                        // on transient index-store failure lets operators observe the gap, but the
+                        // checkpoint state is already correct so the no-op return must succeed.
+                        // The previous behavior (return Failure(CheckpointUnavailable)) flipped a
+                        // semantically-successful no-op into a 503 for callers polling for confirm.
                         string? noOpIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
                         if (noOpIndexFailure is not null) {
-                            return ProjectionRebuildCheckpointSaveResult.Failure(noOpIndexFailure);
+                            Log.CheckpointNoOpIndexUpdateFailed(logger, scope.Tenant, scope.Domain, scope.ProjectionName, noOpIndexFailure);
                         }
 
                         // H11: surface the caller's OperationId (if any) instead of the existing
@@ -131,6 +142,17 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                             string.IsNullOrWhiteSpace(scope.OperationId)
                                 ? existing
                                 : existing with { OperationId = scope.OperationId });
+                    }
+
+                    // H8-5P (pass-5): once IsDifferentOperation rejects same-OperationId terminal
+                    // overwrites at the SaveAsync layer, an operator with a MATCHING OperationId
+                    // could still flip Succeeded→Paused/Canceled and mutate audited terminal state.
+                    // Reject all status changes against terminal records (only idempotent same-status
+                    // no-op above is permitted). Operators wanting to start a fresh rebuild after a
+                    // terminal record must route through ResetAsync (the documented trust boundary).
+                    if (IsTerminal(existing.Status)) {
+                        Log.CheckpointLifecycleProtected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, existing.Status.ToString(), status.ToString(), StreamReplayReasonCodes.CheckpointConflict);
+                        return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointConflict);
                     }
 
                     // C4 + H7: SaveAsync must NOT regress lifecycle into Running from a terminal
@@ -168,14 +190,11 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     failureReasonCode,
                     toPosition);
 
-                bool activeStatus = IsLifecycleActive(status);
-                if (activeStatus) {
-                    string? activeIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
-                    if (activeIndexFailure is not null) {
-                        return ProjectionRebuildCheckpointSaveResult.Failure(activeIndexFailure);
-                    }
-                }
-
+                // C4-5P (pass-5): Reverts pass-5-worsening — write checkpoint FIRST for ALL
+                // statuses, then update the active-index on success only. The prior code wrote
+                // the active-index BEFORE TrySaveStateAsync for active statuses; on ETag-retry-
+                // exhaustion or CheckpointUnavailable the index entry persisted as a phantom and
+                // HasActiveOperatorRebuildForDomainAsync returned true forever for (tenant, domain).
                 bool saved = await daprClient
                     .TrySaveStateAsync(
                         stateStoreName,
@@ -185,11 +204,9 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                 if (saved) {
-                    if (!activeStatus) {
-                        string? activeIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
-                        if (activeIndexFailure is not null) {
-                            return ProjectionRebuildCheckpointSaveResult.Failure(activeIndexFailure);
-                        }
+                    string? activeIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
+                    if (activeIndexFailure is not null) {
+                        return ProjectionRebuildCheckpointSaveResult.Failure(activeIndexFailure);
                     }
 
                     return ProjectionRebuildCheckpointSaveResult.Success(checkpoint);
@@ -609,5 +626,16 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             string domain,
             string projectionName,
             string exceptionType);
+
+        [LoggerMessage(
+            EventId = 1198,
+            Level = LogLevel.Warning,
+            Message = "Projection rebuild checkpoint no-op active-index update failed: TenantId={TenantId}, Domain={Domain}, ProjectionName={ProjectionName}, ReasonCode={ReasonCode}, Stage=ProjectionRebuildCheckpointNoOpIndexUpdateFailed")]
+        public static partial void CheckpointNoOpIndexUpdateFailed(
+            ILogger logger,
+            string tenantId,
+            string domain,
+            string projectionName,
+            string reasonCode);
     }
 }

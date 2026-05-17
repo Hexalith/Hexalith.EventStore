@@ -449,3 +449,9 @@ _bmad-output/process-notes/predev-preflight-*.json
 _bmad-output/process-notes/code-review-preflight-*.json
 _bmad-output/process-notes/preflight-*.json
 _bmad-output/process-notes/predev-hardening-runs.log
+
+# BMAD review diff snapshots (large patch dumps, not source — review-cycle byproducts)
+_bmad-output/implementation-artifacts/*-review-diff.patch
+_bmad-output/implementation-artifacts/*-review-pass-*.diff
+_bmad-output/implementation-artifacts/*-current-review.diff
+_bmad-output/implementation-artifacts/*-fresh-review.diff

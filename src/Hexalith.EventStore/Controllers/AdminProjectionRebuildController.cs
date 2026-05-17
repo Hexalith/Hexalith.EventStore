@@ -255,8 +255,15 @@ public sealed partial class AdminProjectionRebuildController(
                 operationIdForResponse = retryScope.OperationId ?? string.Empty;
             }
             else {
+                // C1-5P (pass-5): The store's IsDifferentOperation guard now rejects writes
+                // whose scope OperationId differs from (or is null while) the existing record's
+                // OperationId. CreateScope defaults OperationId=null, so without this overlay
+                // Pause/Resume/Cancel against any operator-owned active rebuild would return 409
+                // OperationInFlight. The lifecycle transition is by the existing operator's
+                // identity, so threading existing.OperationId is the correct expression of intent.
+                ProjectionRebuildCheckpointScope lifecycleScope = scope with { OperationId = existing.OperationId };
                 save = await checkpointStore
-                    .SaveAsync(scope, existing.LastAppliedSequence, status, failureReasonCode, ct, existing.ToPosition)
+                    .SaveAsync(lifecycleScope, existing.LastAppliedSequence, status, failureReasonCode, ct, existing.ToPosition)
                     .ConfigureAwait(false);
                 operationIdForResponse = existing.OperationId ?? scope.OperationId ?? string.Empty;
             }
