@@ -310,6 +310,7 @@ public partial class ProjectionUpdateOrchestrator(
                         identity,
                         operatorScope,
                         perAggregateScope,
+                        perAggregateRow,
                         perAggregateProgress,
                         toPosition,
                         cancellationToken)
@@ -421,6 +422,7 @@ public partial class ProjectionUpdateOrchestrator(
         AggregateIdentity identity,
         ProjectionRebuildCheckpointScope operatorScope,
         ProjectionRebuildCheckpointScope perAggregateScope,
+        ProjectionRebuildCheckpoint? initialPerAggregateRow,
         long perAggregateProgress,
         long? toPosition,
         CancellationToken cancellationToken) {
@@ -595,6 +597,15 @@ public partial class ProjectionUpdateOrchestrator(
                 return RebuildDeliveryResult.Interrupt();
             }
 
+            if (operatorScope.AggregateId is null) {
+                ProjectionRebuildCheckpoint? preSavePerAggregate = await rebuildCheckpointStore
+                    .ReadAsync(perAggregateScope, cancellationToken)
+                    .ConfigureAwait(false);
+                if (PerAggregateProgressChanged(initialPerAggregateRow, preSavePerAggregate)) {
+                    return RebuildDeliveryResult.Interrupt();
+                }
+            }
+
             await writeProxy
                 .UpdateProjectionAsync(ProjectionState.FromJsonElement(response.ProjectionType, identity.TenantId, response.State))
                 .ConfigureAwait(false);
@@ -682,6 +693,19 @@ public partial class ProjectionUpdateOrchestrator(
         => status is ProjectionRebuildStatus.Succeeded
             or ProjectionRebuildStatus.Failed
             or ProjectionRebuildStatus.Canceled;
+
+    private static bool PerAggregateProgressChanged(
+        ProjectionRebuildCheckpoint? initial,
+        ProjectionRebuildCheckpoint? current) {
+        if (initial is null || current is null) {
+            return initial is not null || current is not null;
+        }
+
+        return !string.Equals(initial.OperationId, current.OperationId, StringComparison.Ordinal)
+            || initial.LastAppliedSequence != current.LastAppliedSequence
+            || initial.Status != current.Status
+            || initial.ToPosition != current.ToPosition;
+    }
 
     // Bounded page size for operator rebuild reads. Prevents O(N) full-stream replays per iteration
     // and bounds the per-page apply work. Domain-wide rebuild enumerates aggregates separately;

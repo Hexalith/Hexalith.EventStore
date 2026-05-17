@@ -284,7 +284,9 @@ public class ProjectionRebuildCheckpointStoreTests {
     public async Task SaveAsyncRejectsConcurrentActiveOperationInsteadOfOverwritingOperationId() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         ProjectionRebuildCheckpoint existing = CreateCheckpoint(10, ProjectionRebuildStatus.Running);
+        var captured = new List<ProjectionRebuildCheckpoint>();
         SetupGetStateAndEtag(daprClient, existing, "etag-1");
+        SetupTrySaveCapture(daprClient, captured);
         var store = CreateStore(daprClient);
 
         ProjectionRebuildCheckpointSaveResult result = await store.SaveAsync(
@@ -294,21 +296,19 @@ public class ProjectionRebuildCheckpointStoreTests {
 
         result.Succeeded.ShouldBeFalse();
         result.ReasonCode.ShouldBe(StreamReplayReasonCodes.OperationInFlight);
-        _ = await daprClient.DidNotReceiveWithAnyArgs().TrySaveStateAsync<ProjectionRebuildCheckpoint>(
-            default!,
-            default!,
-            default!,
-            default!,
-            stateOptions: default,
-            metadata: default,
-            cancellationToken: default);
+        captured.ShouldBeEmpty();
+        existing.LastAppliedSequence.ShouldBe(10);
+        existing.Status.ShouldBe(ProjectionRebuildStatus.Running);
+        existing.OperationId.ShouldBe(Scope.OperationId);
     }
 
     [Fact]
     public async Task SaveAsyncFailedWithLowerSequenceReturnsStaleCheckpoint() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         ProjectionRebuildCheckpoint existing = CreateCheckpoint(10, ProjectionRebuildStatus.Running);
+        var captured = new List<ProjectionRebuildCheckpoint>();
         SetupGetStateAndEtag(daprClient, existing, "etag-1");
+        SetupTrySaveCapture(daprClient, captured);
         var store = CreateStore(daprClient);
 
         ProjectionRebuildCheckpointSaveResult result = await store.SaveAsync(
@@ -319,14 +319,10 @@ public class ProjectionRebuildCheckpointStoreTests {
 
         result.Succeeded.ShouldBeFalse();
         result.ReasonCode.ShouldBe(StreamReplayReasonCodes.StaleCheckpoint);
-        _ = await daprClient.DidNotReceiveWithAnyArgs().TrySaveStateAsync<ProjectionRebuildCheckpoint>(
-            default!,
-            default!,
-            default!,
-            default!,
-            stateOptions: default,
-            metadata: default,
-            cancellationToken: default);
+        captured.ShouldBeEmpty();
+        existing.LastAppliedSequence.ShouldBe(10);
+        existing.Status.ShouldBe(ProjectionRebuildStatus.Running);
+        existing.FailureReasonCode.ShouldBeNull();
     }
 
     [Fact]
@@ -364,6 +360,7 @@ public class ProjectionRebuildCheckpointStoreTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         SetupGetStateAndEtag(daprClient, null, string.Empty);
         string activeIndexKey = ProjectionRebuildCheckpointStore.GetActiveIndexKey(Scope.Tenant, Scope.Domain);
+        var captured = new List<ProjectionRebuildCheckpoint>();
         _ = daprClient.GetStateAndETagAsync<string[]>(
                 "statestore",
                 activeIndexKey,
@@ -371,7 +368,7 @@ public class ProjectionRebuildCheckpointStoreTests {
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(Task.FromException<(string[], string)>(new DaprException("active index down")));
-        SetupTrySave(daprClient, true);
+        SetupTrySaveCapture(daprClient, captured);
         var store = CreateStore(daprClient);
 
         ProjectionRebuildCheckpointSaveResult result = await store.SaveAsync(
@@ -389,6 +386,15 @@ public class ProjectionRebuildCheckpointStoreTests {
             stateOptions: Arg.Any<StateOptions?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>());
+        ProjectionRebuildCheckpoint saved = captured.ShouldHaveSingleItem();
+        saved.Tenant.ShouldBe(Scope.Tenant);
+        saved.Domain.ShouldBe(Scope.Domain);
+        saved.ProjectionName.ShouldBe(Scope.ProjectionName);
+        saved.AggregateId.ShouldBe(Scope.AggregateId);
+        saved.OperationId.ShouldBe(Scope.OperationId);
+        saved.LastAppliedSequence.ShouldBe(11);
+        saved.Status.ShouldBe(ProjectionRebuildStatus.Running);
+        saved.FailureReasonCode.ShouldBeNull();
     }
 
     [Fact]
@@ -444,6 +450,20 @@ public class ProjectionRebuildCheckpointStoreTests {
                 "statestore",
                 ProjectionRebuildCheckpointStore.GetStateKey(Scope),
                 Arg.Any<ProjectionRebuildCheckpoint>(),
+                Arg.Any<string>(),
+                stateOptions: Arg.Any<StateOptions?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(result);
+
+    private static void SetupTrySaveCapture(
+        DaprClient daprClient,
+        List<ProjectionRebuildCheckpoint> captured,
+        bool result = true)
+        => _ = daprClient.TrySaveStateAsync(
+                "statestore",
+                ProjectionRebuildCheckpointStore.GetStateKey(Scope),
+                Arg.Do<ProjectionRebuildCheckpoint>(captured.Add),
                 Arg.Any<string>(),
                 stateOptions: Arg.Any<StateOptions?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),

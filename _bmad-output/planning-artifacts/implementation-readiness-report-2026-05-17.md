@@ -47,7 +47,7 @@ excludedPatternMatches:
 ### Architecture Files Found
 
 **Whole Documents:**
-- `architecture.md` (116,994 bytes, modified 2026-05-12 20:50:34)
+- `architecture.md` (117,023 bytes, modified 2026-05-17 09:56:03)
 
 **Sharded Documents:**
 - None found
@@ -55,7 +55,7 @@ excludedPatternMatches:
 ### Epics & Stories Files Found
 
 **Whole Documents:**
-- `epics.md` (111,943 bytes, modified 2026-05-12 20:40:24)
+- `epics.md` (129,259 bytes, modified 2026-05-17 10:00:42)
 
 **Sharded Documents:**
 - None found
@@ -70,7 +70,7 @@ excludedPatternMatches:
 ### UX Design Files Found
 
 **Whole Documents:**
-- `ux-design-specification.md` (144,917 bytes, modified 2026-04-12 09:36:02)
+- `ux-design-specification.md` (144,976 bytes, modified 2026-05-17 09:56:03)
 
 **Sharded Documents:**
 - None found
@@ -393,7 +393,7 @@ No extra FR IDs were found in the epics document that are absent from the PRD.
 ### Coverage Notes
 
 - The epics document includes an explicit FR Coverage Map covering FR1-FR104.
-- The opening Requirements Inventory section lists FR1-FR64 but does not list FR68-FR104 there; however, the later FR Coverage Map and Epic 22 story section cover FR68-FR104.
+- The opening Requirements Inventory section lists FR1-FR67 but does not list FR68-FR104 there; however, the later FR Coverage Map and Epic 22 story section cover FR68-FR104.
 - FR77 is covered through Epic 16 with tenant lifecycle delegated to the Hexalith.Tenants peer service, matching the PRD language.
 
 ## UX Alignment Assessment
@@ -425,14 +425,12 @@ The UX document covers the multi-modal product experience across Developer SDK, 
 
 | Issue | Source | Impact | Recommendation |
 | ----- | ------ | ------ | -------------- |
-| API route version mismatch | UX error journeys and implementation checklist use `/api/commands` and `/api/commands/status/{correlationId}`; PRD uses `/api/v1/commands`, `/api/v1/commands/status/{correlationId}`, and `/api/v1/commands/replay/{correlationId}` | API documentation, Swagger examples, tests, and ProblemDetails `instance` values may diverge | Update UX examples/checklist to the PRD versioned routes or explicitly document compatibility redirects |
-| Command status route ordering mismatch | Architecture includes `GET /api/v1/commands/{correlationId}/status` in some sections, while PRD uses `GET /api/v1/commands/status/{correlationId}` | Implementers may create incompatible route shapes or duplicate endpoints | Pick one canonical route in PRD, architecture, UX, OpenAPI, and tests; current PRD route should be treated as canonical unless changed deliberately |
 | Admin UX interaction requirements are architecture-supported at high level but story-owned | Architecture says command palette, breadcrumbs, virtualized rendering, keyboard shortcuts, CLI profiles/REPL/completions, and MCP session state remain story-level acceptance criteria | These details could be missed if implementation only follows architecture decisions | Preserve UX-DR41-UX-DR59 as acceptance criteria in Epics 15, 17, 18, and 20 validation |
 
 ### Warnings
 
 - UX documentation is present and substantial; no missing-UX warning is needed.
-- Route/version mismatches should be resolved before API/client test generation to avoid locking in incompatible examples.
+- API route examples are aligned across PRD, UX, and architecture on the `/api/v1/commands` route family.
 - Blazor/Admin details are phase-scoped to v2 and beyond; readiness review should continue checking phase boundaries so v1 work is not blocked by deferred UI scope.
 
 ## Epic Quality Review
@@ -444,8 +442,8 @@ Reviewed `epics.md` against create-epics-and-stories standards for user-value sl
 Validation facts:
 
 - Epics found: 22
-- Explicit inline story sections found: 66
-- Inline stories with Given/When/Then acceptance criteria: 66/66
+- Explicit inline story sections found: 69
+- Inline stories with Given/When/Then acceptance criteria: 69/69
 - Linked implementation artifact story files referenced by completed/historical epics: 67
 - Linked artifact files found on disk: 67/67
 - Linked artifact files containing acceptance criteria: 67/67
@@ -498,31 +496,15 @@ Examples:
 - Story 8.5 combines unit, integration, and E2E contract test architecture.
 - Story 22.1 combines Contracts DTOs, Client APIs, Testing fakes/builders, compatibility wrappers, and generated documentation.
 - Story 22.5 combines publishing guarantees, backend deployment matrix, retry/outbox/drain behavior, dead-letter policy, and backend-specific tests.
-- Story 22.7d spans logs, ProblemDetails, admin UI, CLI, MCP, replay, rebuild, backup validation, and tests.
+- Story 22.7d has been split into 22.7d-1 through 22.7d-4, which resolves the largest protected-data redaction sizing concern.
 
-Impact: These stories are testable, but several are broad enough to become mini-epics. That increases implementation risk and makes review/acceptance less crisp.
+Impact: These stories are testable, and several now include split maps for follow-up work, but the remaining broad stories can still become mini-epics if implemented as a single change. That increases implementation risk and makes review/acceptance less crisp.
 
-Recommendation: Split compound stories by independently releasable surface or behavior. For example, split Story 22.1 into Contracts DTOs, Client methods, Testing fakes, and package documentation.
-
-#### MAJ-4: Route Shape Inconsistencies Leak Into Story Quality
-
-The route mismatch found during UX alignment also affects story quality. Story 3.3 and related API stories should lock one command status route shape, but PRD, architecture, and UX currently contain variants.
-
-Impact: Acceptance criteria may pass while implementing an endpoint shape that disagrees with another planning artifact.
-
-Recommendation: Correct the canonical API route before implementation or test generation, then update affected acceptance criteria and OpenAPI examples.
+Recommendation: Continue splitting compound stories by independently releasable surface or behavior when creating implementation stories. The split maps already added for Stories 8.5, 22.1, and 22.5 are useful patterns to keep.
 
 ### Minor Concerns
 
-#### MIN-1: Phase Labels Are Inconsistent Around Query Pipeline Scope
-
-The PRD calls query/projection caching part of the current release, while the epics requirements inventory labels "Query Pipeline & Projection Caching — v2". The epic list itself treats it as Epic 9/10/12/13 work rather than purely deferred v2 work.
-
-Impact: Teams may misclassify query pipeline stories as deferred when the PRD says they are current-release scope.
-
-Recommendation: Normalize phase labels across PRD, epics, and sprint status.
-
-#### MIN-2: Historical/Migration Epics Need Clearer Outcome Framing
+#### MIN-1: Historical/Migration Epics Need Clearer Outcome Framing
 
 Epic 21 is a historical migration and is marked completed, but as an epic title it is implementation-mechanical. Its outcome is stability, accessibility, and testability on Fluent UI v5.
 
@@ -536,6 +518,7 @@ Recommendation: Rename or annotate historical migration epics with the operation
 - Inline stories consistently use Given/When/Then acceptance criteria, and the criteria are generally specific and independently testable.
 - No explicit forward dependency language was found that requires a later story or later epic to make an earlier story work.
 - Linked implementation artifacts for completed epics all exist and contain acceptance criteria.
+- Route shape and query-pipeline phase labels are now aligned across the PRD, UX, architecture, and epics artifacts.
 - Database/table-upfront anti-pattern was not observed. The system mostly uses DAPR state-store keys and actor state rather than large upfront relational schema creation.
 
 ### Best Practices Compliance Checklist
@@ -547,7 +530,7 @@ Recommendation: Rename or annotate historical migration epics with the operation
 | Stories appropriately sized | Partial | Most are testable; several compound stories should be split |
 | No forward dependencies | Pass | No explicit future-story dependency violations found |
 | Database/entities created when needed | Pass | No big upfront table/model creation pattern found |
-| Clear acceptance criteria | Pass | 66/66 inline stories and 67/67 linked artifacts contain acceptance criteria |
+| Clear acceptance criteria | Pass | 69/69 inline stories and 67/67 linked artifacts contain acceptance criteria |
 | Traceability to FRs maintained | Pass | 104/104 PRD FRs covered |
 
 ## Summary and Recommendations
@@ -556,35 +539,33 @@ Recommendation: Rename or annotate historical migration epics with the operation
 
 NEEDS WORK
 
-The implementation artifacts are not blocked by missing PRD coverage: required documents exist, the PRD is complete, 104/104 PRD functional requirements are mapped to epics, and story acceptance criteria coverage is strong. However, the planning set should not be treated as fully ready until the route inconsistencies and epic-structure defects are addressed or explicitly accepted.
+The implementation artifacts are not blocked by missing PRD coverage: required documents exist, the PRD is complete, 104/104 PRD functional requirements are mapped to epics, UX documentation is present, and story acceptance criteria coverage is strong. However, the planning set should not be treated as fully implementation-ready until the epic-structure defects are addressed or explicitly accepted.
 
 ### Critical Issues Requiring Immediate Action
 
 1. Technical epic structure violates create-epics-and-stories standards. Several epics are implementation-layer milestones rather than user-value slices, especially early foundation epics.
-2. API route inconsistencies exist across UX, PRD, and architecture. UX uses `/api/commands`; PRD uses `/api/v1/commands`; architecture contains another status route variant.
-3. The first-run/onboarding value path is sequenced too late. Aspire, sample app, and first running topology appear in Epic 8 even though they are core PRD/UX success gates.
-4. Several stories are compound and should be split before new implementation work uses them as execution units.
-5. Epics 14-21 are not self-contained in `epics.md`; they rely on linked implementation artifact files for story detail.
+2. The first-run/onboarding value path is sequenced too late. Aspire, sample app, and first running topology appear in Epic 8 even though they are core PRD/UX success gates.
+3. Several stories are compound and should be split before new implementation work uses them as execution units.
+4. Epics 14-21 are not self-contained in `epics.md`; they rely on linked implementation artifact files for story detail.
 
 ### Recommended Next Steps
 
-1. Canonicalize API route shapes across PRD, UX, architecture, epics, OpenAPI expectations, and tests. Treat `/api/v1/commands`, `/api/v1/commands/status/{correlationId}`, and `/api/v1/commands/replay/{correlationId}` as canonical unless the product owner deliberately changes them.
-2. Reframe or annotate technical epics with explicit user outcomes. At minimum, add outcome statements that explain who can do what after each epic completes.
-3. Pull a thin walking skeleton into the earliest epic sequence: AppHost, sample domain service, one command, one persisted event, and one observable trace.
-4. Split oversized stories before assigning them for implementation, especially Story 3.5, Story 8.5, Story 22.1, Story 22.5, and Story 22.7d.
-5. Add compact story summaries for Epics 14-21 directly in `epics.md`, while keeping links to the detailed implementation artifact files.
-6. Normalize phase labels for query/projection caching so PRD, epics, and sprint status all agree whether the work is current release, v1.1, or v2.
-7. Preserve UX-DR41 through UX-DR59 as acceptance criteria in Admin Web UI, CLI, MCP, and advanced debugging stories; architecture supports them only at a high level.
+1. Reframe or annotate technical epics with explicit user outcomes. At minimum, add outcome statements that explain who can do what after each epic completes.
+2. Pull a thin walking skeleton into the earliest epic sequence: AppHost, sample domain service, one command, one persisted event, and one observable trace.
+3. Split oversized stories before assigning them for implementation, especially Story 3.5, Story 8.5, Story 22.1, and Story 22.5. Keep using the split-map pattern already present in the document.
+4. Add compact story summaries for Epics 14-21 directly in `epics.md`, while keeping links to the detailed implementation artifact files.
+5. Rename or annotate historical/migration epics, especially Epic 21, with the stability/accessibility/testability outcome they protect.
+6. Preserve UX-DR41 through UX-DR59 as acceptance criteria in Admin Web UI, CLI, MCP, and advanced debugging stories; architecture supports them only at a high level.
 
 ### Final Note
 
-This assessment identified 8 issues across 4 categories:
+This assessment identified 6 issues across 4 categories:
 
 - 1 critical epic-structure violation
-- 4 major readiness issues
-- 2 minor consistency concerns
-- 1 UX/API route alignment warning that also affects story quality
+- 3 major readiness issues
+- 1 minor historical/migration framing concern
+- 1 UX/admin acceptance-criteria preservation warning
 
-The artifacts are strong on requirements coverage and acceptance criteria mechanics. The main risk is not missing requirements; it is that implementers could follow technically organized epics and inconsistent route examples into avoidable rework. Address the critical and major issues before using the planning set as the primary implementation guide.
+The artifacts are strong on requirements coverage and acceptance criteria mechanics. The main risk is not missing requirements; it is that implementers could follow technically organized epics into delayed user validation and larger-than-needed implementation batches. Address the critical and major issues before using the planning set as the primary implementation guide.
 
 Assessment completed on 2026-05-17 by Codex using `bmad-check-implementation-readiness`.
