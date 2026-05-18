@@ -221,7 +221,7 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 
 **Architecture Security Constraints (SEC-1 to SEC-5)**
 
-- SEC-1: EventStore owns all 11 envelope metadata fields (at EventPersister after domain service returns)
+- SEC-1: EventStore owns all 14 envelope metadata fields (at EventPersister after domain service returns)
 - SEC-2: Tenant validation BEFORE state rehydration (at Actor Step 2 TenantValidator)
 - SEC-3: Command status queries are tenant-scoped (CommandStatusController JWT tenant match)
 - SEC-4: Extension metadata sanitized at API gateway (CorrelationIdMiddleware / validation pipeline)
@@ -268,7 +268,7 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 - UX-DR3: `errors` object with JSON path keys (e.g., `payload.amount`) on 400 validation failures, with human-readable messages per field
 - UX-DR4: `WWW-Authenticate` header on 401 responses per RFC 6750 with `realm`, `error`, and `error_description`
 - UX-DR5: `Retry-After` header on 409 (1s interval) and 503 (30s interval) responses
-- UX-DR6: No event sourcing terminology in any error response -- "aggregate", "event stream", "actor", "DAPR", "sidecar" never appear in ProblemDetails
+- UX-DR6: No internal event sourcing terminology in ProblemDetails prose -- "event stream", "actor", "DAPR", and "sidecar" never appear in human-readable `title`, `detail`, or reason text. Stable API field names such as `aggregateId` may appear only as field paths or extension keys when identifying invalid request fields
 - UX-DR7: Error `type` URIs are stable, unique per error category, and resolve to human-readable documentation pages
 - UX-DR8: Expired vs. missing JWT distinguished with two different `type` URIs (`authentication-required` vs. `token-expired`)
 - UX-DR9: 403 responses name the specific rejected tenant but do NOT enumerate authorized tenants (information disclosure prevention)
@@ -300,7 +300,7 @@ This document provides the complete epic and story breakdown for Hexalith.EventS
 
 **Cross-Surface Consistency (v1)**
 
-- UX-DR26: Shared terminology (Command, Event, Aggregate, Tenant, Domain, Correlation ID) across OpenAPI schema names, SDK type names, structured log fields, error messages
+- UX-DR26: Shared terminology (Command, Event, Aggregate, Tenant, Domain, Correlation ID) across OpenAPI schema names, SDK type names, structured log fields, and admin/diagnostic surfaces; consumer-facing ProblemDetails prose follows UX-DR6
 - UX-DR27: Shared lifecycle model -- `CommandStatus` values identical in API `status` field and SDK enum
 - UX-DR28: Structured logs with correlation/causation IDs at every entry, filterable by correlation ID in Aspire
 - UX-DR29: Status color semantics documented in OpenAPI descriptions
@@ -457,6 +457,7 @@ Later epics deepen persistence, auth, distribution, testing, and operations. Thi
 - Treat documented split maps as binding guidance for future implementation stories and review follow-ups.
 - Create new sprint-status rows from split maps only when implementation starts.
 - Keep completed Epics 14-21 compact in this document: each completed story summary should include story key/title, outcome, key acceptance point, and link to the detailed implementation artifact.
+- For any new implementation, review, regression fix, or follow-up touching completed Epics 14-21, load the linked `Detail` implementation artifacts before accepting, changing, or testing the story. Missing or unreadable linked artifacts block readiness for that follow-up.
 
 ### Epic 1: Domain Contract Foundation
 **Outcome:** Domain developers can define safe commands, events, identities, and aggregate behavior without infrastructure code.

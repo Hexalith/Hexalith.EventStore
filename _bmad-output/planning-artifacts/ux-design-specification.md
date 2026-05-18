@@ -133,7 +133,7 @@ The goal is not to eliminate steps, but to ensure every action has an obvious ou
 
 **What happens automatically without user intervention:**
 - Correlation ID generation and propagation (if not provided by the caller)
-- All 11 event envelope metadata fields populated by EventStore (SEC-1)
+- All 14 event envelope metadata fields populated by EventStore, with metadata JSON persisted separately from payload JSON (SEC-1)
 - Snapshot creation at configurable intervals (default every 100 events)
 - Dead-letter routing for infrastructure failures after DAPR retry exhaustion
 - Command status lifecycle tracking (Received -> Processing -> EventsStored -> EventsPublished -> Completed)
@@ -382,7 +382,7 @@ Selected based on technical research validation and Epic 21 migration work. Blaz
 
 **v1 Design Consistency (API + SDK):**
 
-- **Shared vocabulary**: Command, Event, Aggregate, Tenant, Domain, Correlation ID -- same terms in OpenAPI schema names, SDK type names, structured log fields, and error messages
+- **Shared vocabulary**: Command, Event, Aggregate, Tenant, Domain, Correlation ID -- same terms in OpenAPI schema names, SDK type names, structured log fields, and admin/diagnostic surfaces. Consumer-facing ProblemDetails prose uses reader-friendly language and follows the internal-terminology limits in Rule E6.
 - **Shared lifecycle model**: The 8-state command lifecycle (Received -> Processing -> EventsStored -> EventsPublished -> Completed | Rejected | PublishFailed | TimedOut) is represented identically in API status responses, SDK enums, and structured log entries
 - **Shared error semantics**: RFC 7807 ProblemDetails at the API surface, typed exceptions in the SDK, structured log entries with the same field names -- all carrying correlationId and tenantId
 
@@ -1946,7 +1946,7 @@ Authorization: Bearer <valid-jwt>
     "type": "https://hexalith.io/problems/concurrency-conflict",
     "title": "Concurrency Conflict",
     "status": 409,
-    "detail": "Another command was processed for aggregate 'order-42' while yours was in flight. Retry your command — the system will apply it against the updated state.",
+    "detail": "Another command was processed for this resource while yours was in flight. Retry your command; the system will apply it against the updated state.",
     "instance": "/api/v1/commands",
     "correlationId": "01JQXYZCONFLICT1234ABCD"
 }
@@ -2017,7 +2017,7 @@ These rules apply to every HTTP error response from the EventStore:
 | E3 | `type` is a stable URI that uniquely identifies the error category | Enables programmatic error handling without string-matching `detail`. |
 | E4 | `correlationId` is included only when a command entered the pipeline (400 with validation = yes, 401 = no, 403 = yes, 409 = yes, 503 = no) | Correlation IDs are for tracking commands, not for pre-pipeline rejections. |
 | E5 | `Retry-After` header on 409 and 503 responses | Enables automatic retry logic in HTTP clients. |
-| E6 | No event sourcing terminology in any error response | "aggregate," "event stream," "actor," "DAPR" never appear in consumer-facing errors. |
+| E6 | No internal event sourcing terminology in ProblemDetails prose | Human-readable `title`, `detail`, and reason text never include "event stream," "actor," "DAPR," or "sidecar." Stable API field names such as `aggregateId` may appear only as field paths or extension keys when identifying invalid request fields. |
 | E7 | No stack traces in production error responses | Stack traces are logged server-side with the correlation ID for developer debugging. |
 | E8 | Validation errors use JSON path notation (`payload.amount`) in the `errors` object | Field-level specificity lets consumers build clear UI error messages. |
 | E9 | 401 responses include `WWW-Authenticate` header per RFC 6750 | Standard OAuth2 error communication. |
@@ -2036,7 +2036,7 @@ Concrete deliverables extracted from this UX spec that apply to v1 (no Blazor da
 | A3 | `errors` object with JSON path keys on 400 | Journey 6, Rule E8 | Validation failures list each invalid field with a human-readable message |
 | A4 | `WWW-Authenticate` header on 401 | Journey 7, Rule E9 | Includes `realm`, `error`, and `error_description` per RFC 6750 |
 | A5 | `Retry-After` header on 409 and 503 | Journeys 9–10, Rule E5 | 409: short interval (1s). 503: longer interval (30s) |
-| A6 | No event sourcing terminology in any error response | Rule E6, Experience Principle "consistent mental model" | Grep test: "aggregate", "event stream", "actor", "DAPR", "sidecar" never appear in ProblemDetails |
+| A6 | No internal event sourcing terminology in ProblemDetails prose | Rule E6, Experience Principle "consistent mental model" | `title`, `detail`, and reason text never contain internal implementation terms. Field-path checks allow stable API contract names such as `aggregateId` only in validation field keys. |
 | A7 | OpenAPI 3.1 spec with Swagger UI at `/swagger` | Design System Foundation, UX Pattern Analysis | Swagger UI loads on running EventStore with grouped endpoints |
 | A8 | Pre-populated example payloads in OpenAPI spec | Pattern Analysis "Try-it-now", Act 2 mechanics | Swagger UI "Try it out" pre-fills a valid Counter domain command |
 | A9 | Command status endpoint at `/api/v1/commands/status/{correlationId}` | Act 2 mechanics, Core Experience | Returns current lifecycle state with timestamp |
@@ -2067,7 +2067,7 @@ Concrete deliverables extracted from this UX spec that apply to v1 (no Blazor da
 
 | # | Deliverable | Spec Source | Acceptance Criteria |
 |---|-------------|-------------|---------------------|
-| C1 | Shared terminology: Command, Event, Aggregate, Tenant, Domain, Correlation ID | Cross-Surface Consistency Rules | Same terms in OpenAPI schema names, SDK type names, structured log fields, error messages |
+| C1 | Shared terminology: Command, Event, Aggregate, Tenant, Domain, Correlation ID | Cross-Surface Consistency Rules | Same terms in OpenAPI schema names, SDK type names, structured log fields, and admin/diagnostic surfaces; consumer-facing ProblemDetails prose follows Rule E6 |
 | C2 | Shared lifecycle model in API responses and SDK enum | Cross-Surface Consistency Rules, Semantic Foundation | `CommandStatus` values identical in API `status` field and SDK enum |
 | C3 | Structured logs with correlation/causation IDs | Act 3, Experience Principle "the trace tells the story" | Every log entry includes `correlationId` field. Aspire structured log viewer can filter by correlation ID |
 | C4 | Status color semantics documented in OpenAPI descriptions | Visual Design Foundation, Cross-Surface Consistency | OpenAPI `description` fields reference the status color vocabulary for consumer documentation tools |

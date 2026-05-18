@@ -120,7 +120,7 @@ Identified through Red Team analysis -- these are non-negotiable constraints tha
 
 | #     | Constraint                                                                                                                                                                                                                                                                                                                                   | Rationale |
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| SEC-1 | **EventStore owns all 11 envelope metadata fields.** Domain services return event payloads only; EventStore populates aggregateId, tenantId, domain, sequenceNumber, timestamp, correlationId, causationId, userId, domainServiceVersion, eventTypeName, serializationFormat. Prevents event stream poisoning via malicious domain services. | RT-2      |
+| SEC-1 | **EventStore owns all 14 envelope metadata fields.** Domain services return event payloads only; EventStore populates messageId, aggregateId, aggregateType, tenantId, sequenceNumber, globalPosition, timestamp, correlationId, causationId, userId, eventType, domainServiceVersion, metadataVersion, and extensions. Envelope metadata and payload are persisted as separate JSON documents. Prevents event stream poisoning via malicious domain services. | RT-2      |
 | SEC-2 | **Tenant validation occurs BEFORE state rehydration.** During actor activation or rebalancing, command tenant must be validated against actor identity before any state is loaded. Prevents tenant escape during actor rebalancing.                                                                                                          | RT-1      |
 | SEC-3 | **Command status queries are tenant-scoped.** FR5 status endpoint must filter by authenticated tenant, not just correlation ID. Prevents cross-tenant information leakage via correlation ID collision.                                                                                                                                      | RT-3      |
 | SEC-4 | **Extension metadata is sanitized at the API gateway.** Max size limits, character validation, and injection prevention applied before extensions enter the processing pipeline.                                                                                                                                                             | RT-4      |
@@ -1124,7 +1124,7 @@ Actor Step 4: DaprDomainServiceInvoker.InvokeAsync() (D7, DAPR policies layer 6)
 Domain service returns DomainResult (D3: state-change or rejection event outputs)
     │
     ▼
-EventStore populates all 11 envelope metadata fields (SEC-1)
+EventStore populates all 14 envelope metadata fields and persists metadata JSON separately from payload JSON (SEC-1)
     │
     ▼
 Actor Step 5: StateMachine.ExecuteAsync()
@@ -1254,7 +1254,7 @@ Admin UX validation note: UX-DR41-UX-DR59 are supported by ADR-P4 for the three-
 
 | #     | Constraint                                      | Enforcement Point                              |
 | ----- | ----------------------------------------------- | ---------------------------------------------- |
-| SEC-1 | EventStore owns all 11 envelope metadata fields | EventPersister (after domain service returns)  |
+| SEC-1 | EventStore owns all 14 envelope metadata fields | EventPersister (after domain service returns)  |
 | SEC-2 | Tenant validation BEFORE state rehydration      | Actor Step 2 (TenantValidator)                 |
 | SEC-3 | Command status queries are tenant-scoped        | CommandStatusController (JWT tenant match)     |
 | SEC-4 | Extension metadata sanitized at API gateway     | CorrelationIdMiddleware / validation pipeline  |

@@ -737,7 +737,7 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 | Feature                           | Dependency                     | Value                                                             |
 | --------------------------------- | ------------------------------ | ----------------------------------------------------------------- |
 | Admin API Foundation              | v1 stable, Contracts types     | Shared service layer for Web UI, CLI, and MCP — all DAPR-abstracted |
-| Admin Web UI (Blazor Fluent UI)   | Admin API, Blazor Fluent UI V4 | Enables Alex's (Journey 3), Maria's (Journey 8) operational workflows — stream browsing, aggregate inspection, projection management, health dashboard with deep links to Zipkin/Grafana/Aspire |
+| Admin Web UI (Blazor Fluent UI)   | Admin API, Blazor Fluent UI v5 | Enables Alex's (Journey 3), Maria's (Journey 8) operational workflows — stream browsing, aggregate inspection, projection management, health dashboard with deep links to Zipkin/Grafana/Aspire. Epic 21 is the established Fluent UI v5 migration baseline for future admin UI work |
 | Admin CLI (`eventstore-admin`)    | Admin API                      | Scriptable administration for CI/CD gates, cron jobs, and DBA automation — JSON/CSV/table output, exit codes, shell completions |
 | Admin MCP Server                  | Admin API                      | AI agent programmatic access — enables Claude's Journey 9: autonomous diagnosis, causation tracing, remediation proposals with approval gates |
 | Dead-Letter Management            | Admin API                      | Browse, search, retry, skip, archive failed events across all three interfaces |
