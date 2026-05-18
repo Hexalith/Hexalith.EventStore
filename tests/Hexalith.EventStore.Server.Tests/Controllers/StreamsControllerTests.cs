@@ -179,11 +179,34 @@ public class StreamsControllerTests {
             Tenant,
             Domain,
             AggregateId,
-            FromSequence: int.MaxValue));
+            FromSequence: (long)int.MaxValue + 1));
 
         ProblemDetails problem = AssertProblem(result, StatusCodes.Status400BadRequest);
         problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.InvalidRange);
         actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task ReadStreamAsyncAllowsNearBoundaryRangeSupportedByActor() {
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        long fromSequence = int.MaxValue - 100L;
+        _ = actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(Exists: true, CurrentSequence: int.MaxValue - 50L));
+        _ = actor.ReadEventsRangeAsync(fromSequence, null, 101).Returns([BuildEnvelope(int.MaxValue - 99L)]);
+        (StreamsController controller, _, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator) = CreateController(actor);
+        tenantValidator.ConfiguredResult = TenantValidationResult.Allowed;
+        rbacValidator.ConfiguredResult = RbacValidationResult.Allowed;
+
+        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(
+            Tenant,
+            Domain,
+            AggregateId,
+            FromSequence: fromSequence,
+            PageSize: 100));
+
+        OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
+        StreamReadPage page = ok.Value.ShouldBeOfType<StreamReadPage>();
+        page.Events.Single().SequenceNumber.ShouldBe(int.MaxValue - 99L);
+        _ = await actor.Received(1).ReadEventsRangeAsync(fromSequence, null, 101);
     }
 
     [Fact]

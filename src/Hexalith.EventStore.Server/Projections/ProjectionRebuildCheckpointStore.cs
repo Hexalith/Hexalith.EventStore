@@ -23,6 +23,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
     private const int MaxEtagRetries = 5;
     private const string StateKeyPrefix = "projection-rebuild-checkpoints:";
     private const string ActiveIndexKeyPrefix = "projection-rebuild-active-index:";
+    private const string ActivePairIndexKey = "projection-rebuild-active-index-pairs";
 
     private static readonly TimeSpan[] s_retryDelays = [
         TimeSpan.FromMilliseconds(50),
@@ -36,6 +37,15 @@ public sealed partial class ProjectionRebuildCheckpointStore(
     // During a brief store flap, this prevents every poller tick across every aggregate in the
     // (tenant, domain) from thundering the failed index store.
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, DateTimeOffset> s_failClosedCache
+        = new(StringComparer.Ordinal);
+
+    // P2-8P (pass-8): track per-(tenant, domain) last successful read time so a fail-closed
+    // write that races AFTER a known-good read does not poison the cache. The previous code
+    // had a window where A.success(t=0.1) + A.TryRemove(t=0.2) + B.write(t=2) left the
+    // cache with B's stale fail-closed verdict despite A's recent success. The write
+    // branch now skips its set if a more-recent success has been recorded since the request
+    // started.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, DateTimeOffset> s_lastReadSuccessAt
         = new(StringComparer.Ordinal);
     private static readonly TimeSpan s_failClosedTtl = TimeSpan.FromSeconds(5);
 
@@ -90,7 +100,11 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             _ = UniqueIdHelper.ToGuid(operationId);
             return true;
         }
-        catch (Exception ex) when (ex is FormatException or ArgumentException) {
+        catch (Exception ex) when (ex is FormatException or ArgumentException or OverflowException) {
+            // P17-8P (pass-8): include OverflowException in the catch filter. UniqueIdHelper.ToGuid
+            // performs fixed-width Crockford-base32 parsing whose overflow path can throw
+            // OverflowException for malformed inputs. Without this branch, malformed ULIDs surfaced
+            // as 500 InternalError instead of "invalid-operation-id" 400.
             return false;
         }
     }
@@ -143,16 +157,13 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                         && existing.Status == status
                         && string.Equals(existing.FailureReasonCode, failureReasonCode, StringComparison.Ordinal)
                         && existing.ToPosition == toPosition) {
-                        // H2-5P (pass-5): index update is best-effort on no-op. Logging a warning
-                        // on transient index-store failure lets operators observe the gap, but the
-                        // checkpoint state is already correct so the no-op return must succeed.
-                        // The previous behavior (return Failure(CheckpointUnavailable)) flipped a
-                        // semantically-successful no-op into a 503 for callers polling for confirm.
-                        string? noOpIndexFailure = await UpdateActiveIndexForLifecycleAsync(scope, status, cancellationToken).ConfigureAwait(false);
-                        if (noOpIndexFailure is not null) {
-                            Log.CheckpointNoOpIndexUpdateFailed(logger, scope.Tenant, scope.Domain, scope.ProjectionName, noOpIndexFailure);
-                        }
-
+                        // P28-7P (pass-7 MEDIUM): skip the active-index round-trip on a true no-op
+                        // (same status, same sequence, same metadata). The active-index should
+                        // already reflect the existing status — the prior lifecycle write that
+                        // produced `existing` was responsible for it. P-DEC1-8P
+                        // ActiveRebuildIndexCleanupService is the explicit recovery path for any
+                        // index/checkpoint divergence left behind by a partial prior write, so
+                        // burning a GET/SET per poll-confirm tick here is wasteful.
                         // H11: surface the caller's OperationId (if any) instead of the existing
                         // operation's, so a no-op response does not leak a prior operator's id.
                         return ProjectionRebuildCheckpointSaveResult.Success(
@@ -167,7 +178,12 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     // Reject all status changes against terminal records (only idempotent same-status
                     // no-op above is permitted). Operators wanting to start a fresh rebuild after a
                     // terminal record must route through ResetAsync (the documented trust boundary).
-                    if (IsTerminal(existing.Status)) {
+                    // C1-8P (= P27-7P, pass-7 MEDIUM): per-aggregate progress writes bypass the
+                    // terminal-status guard. Migration-era / hand-edited per-aggregate rows with
+                    // Succeeded would otherwise wedge the orchestrator's per-aggregate Save into
+                    // CheckpointConflict → Interrupt() forever. The operator-scope row remains
+                    // the single source of operator identity and is still terminal-protected.
+                    if (!isPerAggregateProgress && IsTerminal(existing.Status)) {
                         Log.CheckpointLifecycleProtected(logger, scope.Tenant, scope.Domain, scope.ProjectionName, existing.Status.ToString(), status.ToString(), StreamReplayReasonCodes.CheckpointConflict);
                         return ProjectionRebuildCheckpointSaveResult.Failure(StreamReplayReasonCodes.CheckpointConflict);
                     }
@@ -367,16 +383,24 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         string tenant,
         string domain,
         CancellationToken cancellationToken = default) {
-        ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
-        ArgumentException.ThrowIfNullOrWhiteSpace(domain);
+        // P9-8P (pass-8): validate canonical key parts on tenant/domain to forbid the `:`
+        // delimiter (and other reserved chars) at the API boundary. Without this, a malicious or
+        // mis-configured caller could submit tenant="a:b" + domain="c" colliding with
+        // tenant="a" + domain="b:c" in the process-local cache key — a cross-tenant fail-closed
+        // poisoning vector.
+        ValidateKeyPart(tenant, nameof(tenant));
+        ValidateKeyPart(domain, nameof(domain));
 
         // P11-7P (pass-7): TTL cache short-circuit. If a recent fail-closed verdict is still valid
         // for this (tenant, domain), return true without re-querying the index store. Prevents
         // every poller tick across every aggregate in the domain from thrashing during a brief
         // store flap.
+        // P2-8P (pass-8): capture request start time so a fail-closed write that races AFTER a
+        // concurrent success does not overwrite the cleared state with stale verdict.
+        DateTimeOffset requestStartedAt = DateTimeOffset.UtcNow;
         string cacheKey = string.Concat(tenant, ":", domain);
         if (s_failClosedCache.TryGetValue(cacheKey, out DateTimeOffset failClosedUntil)
-            && failClosedUntil > DateTimeOffset.UtcNow) {
+            && failClosedUntil > requestStartedAt) {
             return true;
         }
 
@@ -393,6 +417,9 @@ public sealed partial class ProjectionRebuildCheckpointStore(
 
                 // P11-7P (pass-7): success — drop any stale fail-closed cache entry so the next
                 // poller tick uses live data.
+                // P2-8P (pass-8): record the success timestamp so a concurrent fail-closed write
+                // racing AFTER this success can detect it and skip its own write.
+                s_lastReadSuccessAt[cacheKey] = DateTimeOffset.UtcNow;
                 _ = s_failClosedCache.TryRemove(cacheKey, out _);
                 return activeProjections is { Length: > 0 };
             }
@@ -406,7 +433,15 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     // P11-7P (pass-7): cache the fail-closed verdict for s_failClosedTtl so the
                     // next poller tick within the TTL short-circuits without re-querying.
                     Log.ActiveIndexReadFailed(logger, ex, tenant, domain, ex.GetType().Name);
-                    s_failClosedCache[cacheKey] = DateTimeOffset.UtcNow + s_failClosedTtl;
+
+                    // P2-8P (pass-8): only set the fail-closed cache if no successful read has
+                    // landed since this request started. Otherwise we would overwrite a recent
+                    // success with a stale fail-closed verdict, poisoning the cache for s_failClosedTtl.
+                    if (!s_lastReadSuccessAt.TryGetValue(cacheKey, out DateTimeOffset lastSuccess)
+                        || lastSuccess < requestStartedAt) {
+                        s_failClosedCache[cacheKey] = DateTimeOffset.UtcNow + s_failClosedTtl;
+                    }
+
                     return true;
                 }
 
@@ -415,6 +450,145 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         }
 
         return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyCollection<(string Tenant, string Domain)>> ListActiveRebuildIndexPairsAsync(
+        CancellationToken cancellationToken = default) {
+        string[]? activePairs = await daprClient
+            .GetStateAsync<string[]>(
+                options.Value.CheckpointStateStoreName,
+                ActivePairIndexKey,
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        if (activePairs is null || activePairs.Length == 0) {
+            return [];
+        }
+
+        var pairs = new HashSet<(string Tenant, string Domain)>();
+        foreach (string pair in activePairs) {
+            if (TryDecodeActivePair(pair, out string? tenant, out string? domain)) {
+                pairs.Add((tenant, domain));
+            }
+        }
+
+        return [.. pairs];
+    }
+
+    /// <inheritdoc/>
+    public async Task<int> ClearOrphanActiveRebuildIndexEntriesAsync(
+        string tenant,
+        string domain,
+        CancellationToken cancellationToken = default) {
+        // P-DEC1-8P (pass-8): canonical-key guard mirrors HasActiveOperatorRebuildForDomainAsync.
+        ValidateKeyPart(tenant, nameof(tenant));
+        ValidateKeyPart(domain, nameof(domain));
+
+        string indexKey = GetActiveIndexKey(tenant, domain);
+        string stateStoreName = options.Value.CheckpointStateStoreName;
+        for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+            cancellationToken.ThrowIfCancellationRequested();
+            try {
+                (string[]? existing, string etag) = await daprClient
+                    .GetStateAndETagAsync<string[]>(
+                        stateStoreName,
+                        indexKey,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (existing is null || existing.Length == 0) {
+                    return 0;
+                }
+
+                var orphans = new List<string>();
+                var keep = new List<string>(existing.Length);
+                foreach (string projectionName in existing) {
+                    if (string.IsNullOrWhiteSpace(projectionName)) {
+                        orphans.Add(projectionName ?? string.Empty);
+                        continue;
+                    }
+
+                    ProjectionRebuildCheckpoint? checkpoint = await ReadAsync(
+                            new ProjectionRebuildCheckpointScope(tenant, domain, projectionName, AggregateId: null, OperationId: null),
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                    if (checkpoint is null || IsTerminal(checkpoint.Status)) {
+                        orphans.Add(projectionName);
+                    }
+                    else {
+                        keep.Add(projectionName);
+                    }
+                }
+
+                if (orphans.Count == 0) {
+                    return 0;
+                }
+
+                var revalidatedOrphans = new List<string>(orphans.Count);
+                foreach (string orphan in orphans) {
+                    if (string.IsNullOrWhiteSpace(orphan)) {
+                        revalidatedOrphans.Add(orphan);
+                        continue;
+                    }
+
+                    ProjectionRebuildCheckpoint? checkpoint = await ReadAsync(
+                            new ProjectionRebuildCheckpointScope(tenant, domain, orphan, AggregateId: null, OperationId: null),
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                    if (checkpoint is null || IsTerminal(checkpoint.Status)) {
+                        revalidatedOrphans.Add(orphan);
+                    }
+                    else {
+                        keep.Add(orphan);
+                    }
+                }
+
+                if (revalidatedOrphans.Count == 0) {
+                    return 0;
+                }
+
+                string[] next = [.. keep];
+                bool saved = await daprClient
+                    .TrySaveStateAsync(
+                        stateStoreName,
+                        indexKey,
+                        next,
+                        etag,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                if (saved) {
+                    foreach (string orphan in revalidatedOrphans) {
+                        Log.ActiveIndexOrphanCleared(logger, tenant, domain, orphan);
+                    }
+
+                    if (next.Length == 0) {
+                        _ = await UpdateActivePairIndexAsync(tenant, domain, shouldExist: false, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    return revalidatedOrphans.Count;
+                }
+
+                if (attempt < MaxEtagRetries - 1) {
+                    await Task.Delay(BoundedRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
+                }
+                else {
+                    Log.ActiveIndexCleanupConflict(logger, tenant, domain, revalidatedOrphans.Count);
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                throw;
+            }
+            catch (Exception ex) when (IsStateStoreUnavailable(ex)) {
+                Log.ActiveIndexReadFailed(logger, ex, tenant, domain, ex.GetType().Name);
+                if (attempt >= MaxEtagRetries - 1) {
+                    return 0;
+                }
+
+                await Task.Delay(BoundedRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        return 0;
     }
 
     // D3-B: SaveAsync/ResetAsync write a per-(tenant, domain) index of active projection names.
@@ -460,6 +634,57 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                 }
 
                 if (!changed) {
+                    // P16-7P (pass-7 MEDIUM): when terminal-remove sees the index as null (the read
+                    // returned no entry), defensively assert the empty state via a fresh save. A
+                    // concurrent path may have created an entry between our GET and this no-op
+                    // return; that entry should not block the poller post-terminal. If the assert
+                    // fails (ETag mismatch from a concurrent writer that just inserted), the next
+                    // attempt re-reads and removes correctly.
+                    if (!active && existing is null) {
+                        bool savedAssert = await daprClient
+                            .TrySaveStateAsync(
+                                stateStoreName,
+                                indexKey,
+                                Array.Empty<string>(),
+                                etag,
+                                cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
+                        if (savedAssert) {
+                            return await UpdateActivePairIndexAsync(scope.Tenant, scope.Domain, shouldExist: false, cancellationToken).ConfigureAwait(false);
+                        }
+
+                        // ETag conflict: fall through to retry-loop tail (back off and re-read).
+                        if (attempt < MaxEtagRetries - 1) {
+                            await Task.Delay(BoundedRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
+                        }
+
+                        continue;
+                    }
+
+                    if (active) {
+                        bool savedAssert = await daprClient
+                            .TrySaveStateAsync(
+                                stateStoreName,
+                                indexKey,
+                                existing ?? current.ToArray(),
+                                etag,
+                                cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
+                        if (savedAssert) {
+                            return await UpdateActivePairIndexAsync(scope.Tenant, scope.Domain, shouldExist: true, cancellationToken).ConfigureAwait(false);
+                        }
+
+                        if (attempt < MaxEtagRetries - 1) {
+                            await Task.Delay(BoundedRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
+                        }
+
+                        continue;
+                    }
+
+                    if (terminal && existing is { Length: 0 }) {
+                        return await UpdateActivePairIndexAsync(scope.Tenant, scope.Domain, shouldExist: false, cancellationToken).ConfigureAwait(false);
+                    }
+
                     return null;
                 }
 
@@ -473,7 +698,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                 if (saved) {
-                    return null;
+                    return await UpdateActivePairIndexAsync(scope.Tenant, scope.Domain, shouldExist: active || next.Length > 0, cancellationToken).ConfigureAwait(false);
                 }
 
                 // P18-6P: ETag conflict — back off briefly before the next attempt so hot keys
@@ -487,6 +712,62 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             }
             catch (Exception ex) when (IsStateStoreUnavailable(ex)) {
                 Log.ActiveIndexWriteFailed(logger, ex, scope.Tenant, scope.Domain, scope.ProjectionName, ex.GetType().Name);
+                if (attempt >= MaxEtagRetries - 1) {
+                    return StreamReplayReasonCodes.CheckpointUnavailable;
+                }
+
+                await Task.Delay(BoundedRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        return StreamReplayReasonCodes.CheckpointConflict;
+    }
+
+    private async Task<string?> UpdateActivePairIndexAsync(
+        string tenant,
+        string domain,
+        bool shouldExist,
+        CancellationToken cancellationToken) {
+        string pairKey = EncodeActivePair(tenant, domain);
+        string stateStoreName = options.Value.CheckpointStateStoreName;
+        for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+            cancellationToken.ThrowIfCancellationRequested();
+            try {
+                (string[]? existing, string etag) = await daprClient
+                    .GetStateAndETagAsync<string[]>(
+                        stateStoreName,
+                        ActivePairIndexKey,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                var current = new HashSet<string>(existing ?? [], StringComparer.Ordinal);
+                bool changed = shouldExist
+                    ? current.Add(pairKey)
+                    : current.Remove(pairKey);
+                if (!changed) {
+                    return null;
+                }
+
+                bool saved = await daprClient
+                    .TrySaveStateAsync(
+                        stateStoreName,
+                        ActivePairIndexKey,
+                        current.ToArray(),
+                        etag,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                if (saved) {
+                    return null;
+                }
+
+                if (attempt < MaxEtagRetries - 1) {
+                    await Task.Delay(BoundedRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                throw;
+            }
+            catch (Exception ex) when (IsStateStoreUnavailable(ex)) {
+                Log.ActiveIndexWriteFailed(logger, ex, tenant, domain, "*", ex.GetType().Name);
                 if (attempt >= MaxEtagRetries - 1) {
                     return StreamReplayReasonCodes.CheckpointUnavailable;
                 }
@@ -513,6 +794,34 @@ public sealed partial class ProjectionRebuildCheckpointStore(
 
     internal static string GetActiveIndexKey(string tenant, string domain)
         => string.Concat(ActiveIndexKeyPrefix, tenant, ":", domain);
+
+    internal static string GetActivePairIndexKey()
+        => ActivePairIndexKey;
+
+    private static string EncodeActivePair(string tenant, string domain)
+        => string.Concat(tenant, ":", domain);
+
+    private static bool TryDecodeActivePair(string value, out string tenant, out string domain) {
+        tenant = string.Empty;
+        domain = string.Empty;
+        int separator = value.IndexOf(':', StringComparison.Ordinal);
+        if (separator <= 0 || separator >= value.Length - 1) {
+            return false;
+        }
+
+        tenant = value[..separator];
+        domain = value[(separator + 1)..];
+        try {
+            ValidateKeyPart(tenant, nameof(tenant));
+            ValidateKeyPart(domain, nameof(domain));
+            return true;
+        }
+        catch (ArgumentException) {
+            tenant = string.Empty;
+            domain = string.Empty;
+            return false;
+        }
+    }
 
     private static void ValidateScope(ProjectionRebuildCheckpointScope scope) {
         ArgumentNullException.ThrowIfNull(scope);
@@ -605,35 +914,75 @@ public sealed partial class ProjectionRebuildCheckpointStore(
     // Renamed from MaxExceptionUnwindDepth to make the constant name reflect actual behavior.
     private const int MaxExceptionFrames = 8;
 
+    // P1-8P (pass-8): align classification policy with StreamsController.IsServiceUnavailable.
+    // Previously this method classified raw `IOException` and `TaskCanceledException` as transient
+    // at depth 0, AND recursed through arbitrary InnerException chains. That broke parity with the
+    // controller (a wrapped `FileNotFoundException` from the state-store call became 503 here
+    // versus 500 in the controller). The narrowed behavior:
+    //   * `DaprException`, `HttpRequestException`, `SocketException` are transient at any depth.
+    //   * `TaskCanceledException` is transient when caller cancellation was not requested; the
+    //     explicit OCE catch blocks above preserve requested cancellation.
+    //   * `IOException` is transient ONLY when wrapped under a known transport exception.
+    //   * `TimeoutException` is transient ONLY when its immediate parent is a transport frame.
+    //   * Recursion follows ONLY `AggregateException.InnerExceptions` — arbitrary intermediate
+    //     `InvalidOperationException(inner: DaprException)` no longer masks application bugs as
+    //     503. M13-5P pass-5 established this rule for the controller; P1-8P pass-8 extends it
+    //     to the store.
     private static bool IsStateStoreUnavailable(Exception exception, int depth, bool parentIsTransport) {
         if (depth >= MaxExceptionFrames) {
             return false;
         }
 
-        if (exception is DaprException or HttpRequestException or IOException or TaskCanceledException) {
+        if (exception is DaprException or HttpRequestException or System.Net.Sockets.SocketException) {
             return true;
         }
 
-        // TimeoutException is transient ONLY when immediately wrapped under Dapr/HTTP/socket/IO
-        // transport exceptions. Other wrapper chains are treated as application failures.
-        // Bare TimeoutException at the top level is treated as a programmer/data error so it
+        if (exception is TaskCanceledException) {
+            return true;
+        }
+
+        if (exception is OperationCanceledException) {
+            // P2-6P / controller parity: OCE-derived frames are not transient; cancellation
+            // propagation is handled by the explicit `catch (OperationCanceledException) when (
+            // cancellationToken.IsCancellationRequested) { throw; }` blocks above. Non-requested
+            // TaskCanceledException is handled above as a transport timeout.
+            return false;
+        }
+
+        // TimeoutException is transient ONLY when immediately wrapped under a confirmed transport
+        // frame. Bare TimeoutException at the top level is treated as a programmer/data error so it
         // surfaces as 500 InternalError rather than masking application bugs as 503.
         if (exception is TimeoutException) {
             return parentIsTransport;
         }
 
-        bool currentIsTransport = exception is DaprException
-            or HttpRequestException
-            or IOException
-            or System.Net.Sockets.SocketException;
-        return exception.InnerException is not null
-            && IsStateStoreUnavailable(exception.InnerException, depth + 1, currentIsTransport);
+        // IOException at depth > 0 (wrapped under a transport exception) remains transient, but at
+        // depth 0 (raw IOException) surfaces as application failure. Mirrors controller P13-7P.
+        if (exception is IOException && parentIsTransport) {
+            return true;
+        }
+
+        // Only AggregateException recursion is permitted (P1-8P pass-8 alignment with controller).
+        if (exception is AggregateException aggregateException) {
+            foreach (Exception inner in aggregateException.InnerExceptions) {
+                if (IsStateStoreUnavailable(inner, depth + 1, parentIsTransport: false)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     // P12-7P / P32-7P (pass-7): add ±25% jitter to bounded retry delays so concurrent writers on
     // the same hot key (active-index ETag conflict) do not thundering-herd in lockstep.
+    // P14-8P (pass-8): removed the Math.Min(attempt, s_retryDelays.Length - 1) clamp. The
+    // static constructor invariant `s_retryDelays.Length == MaxEtagRetries - 1` and the call-site
+    // invariant `attempt < MaxEtagRetries - 1` jointly guarantee the index is in range. The clamp
+    // was masking a potential contract violation; without it, any future drift surfaces immediately
+    // as IndexOutOfRangeException at first invocation.
     private static TimeSpan BoundedRetryDelay(int attempt) {
-        TimeSpan baseDelay = s_retryDelays[Math.Min(attempt, s_retryDelays.Length - 1)];
+        TimeSpan baseDelay = s_retryDelays[attempt];
         int totalMs = (int)baseDelay.TotalMilliseconds;
         int jitterRangeMs = Math.Max(1, totalMs / 4);
         int signedJitter = System.Random.Shared.Next(-jitterRangeMs, jitterRangeMs + 1);
@@ -679,9 +1028,13 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             string attemptedStatus,
             string reasonCode);
 
+        // P26-7P (pass-7 MEDIUM): elevated to Error. A malformed persisted OperationId signals
+        // a corrupt state-store row that an operator must remediate; orchestrator and poller
+        // both treat the row as "no checkpoint", so any active-index entry for this projection
+        // also leaks. Operators need this to escalate above routine warnings.
         [LoggerMessage(
             EventId = 1193,
-            Level = LogLevel.Warning,
+            Level = LogLevel.Error,
             Message = "Projection rebuild checkpoint malformed operation id discarded: TenantId={TenantId}, Domain={Domain}, ProjectionName={ProjectionName}, Stage=ProjectionRebuildCheckpointMalformedOperationId")]
         public static partial void CheckpointMalformedOperationId(
             ILogger logger,
@@ -734,5 +1087,26 @@ public sealed partial class ProjectionRebuildCheckpointStore(
             string domain,
             string projectionName,
             string reasonCode);
+
+        // P-DEC1-8P (pass-8): one log per orphan index entry cleared by the cleanup service.
+        [LoggerMessage(
+            EventId = 1199,
+            Level = LogLevel.Warning,
+            Message = "Projection rebuild active-index orphan cleared by cleanup service: TenantId={TenantId}, Domain={Domain}, ProjectionName={ProjectionName}, Stage=ProjectionRebuildActiveIndexOrphanCleared")]
+        public static partial void ActiveIndexOrphanCleared(
+            ILogger logger,
+            string tenantId,
+            string domain,
+            string projectionName);
+
+        [LoggerMessage(
+            EventId = 1205,
+            Level = LogLevel.Warning,
+            Message = "Projection rebuild active-index cleanup ETag conflict: TenantId={TenantId}, Domain={Domain}, OrphanCount={OrphanCount}, Stage=ProjectionRebuildActiveIndexCleanupConflict")]
+        public static partial void ActiveIndexCleanupConflict(
+            ILogger logger,
+            string tenantId,
+            string domain,
+            int orphanCount);
     }
 }

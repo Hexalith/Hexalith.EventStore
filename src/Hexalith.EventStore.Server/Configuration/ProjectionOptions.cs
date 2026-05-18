@@ -24,6 +24,15 @@ public record ProjectionOptions {
     public Dictionary<string, DomainProjectionOptions> Domains { get; init; } = [];
 
     /// <summary>
+    /// P-DEC1-8P (pass-8): cadence in seconds for the active-rebuild-index cleanup service.
+    /// Default 60s. Set to 0 to disable the cleanup service. The cleanup service polls known
+    /// (tenant, domain) pairs and clears active-index entries whose operator-scope checkpoint is
+    /// terminal or missing — recovering from partial best-effort active-index writes left behind
+    /// by the P13-6P terminal-write recovery path.
+    /// </summary>
+    public int RebuildIndexCleanupCadenceSeconds { get; init; } = 60;
+
+    /// <summary>
     /// Gets the effective refresh interval for a given domain.
     /// </summary>
     /// <param name="domain">The domain name.</param>
@@ -52,6 +61,10 @@ public record ProjectionOptions {
 
         if (DefaultRefreshIntervalMs < 0) {
             throw new InvalidOperationException("Projection default refresh interval must be >= 0.");
+        }
+
+        if (RebuildIndexCleanupCadenceSeconds < 0) {
+            throw new InvalidOperationException("Projection rebuild index cleanup cadence must be >= 0 seconds (0 disables the cleanup service).");
         }
 
         HashSet<string> seenKeys = new(StringComparer.OrdinalIgnoreCase);

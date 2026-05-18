@@ -1,3 +1,5 @@
+using Dapr;
+
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Streams;
@@ -303,20 +305,44 @@ public sealed partial class AdminProjectionRebuildController(
                     throw;
                 }
                 catch (Exception) {
-                    ProjectionRebuildCheckpoint? terminalSnap = await checkpointStore
-                        .ReadAsync(scopeForRebuild, CancellationToken.None)
-                        .ConfigureAwait(false);
+                    // P11-8P (pass-8): wrap the post-throw terminal-snapshot ReadAsync. A transient
+                    // store failure on this read would propagate as 500 with no structured reason
+                    // code, even though the rebuild itself may have written Failed audit data we
+                    // could not retrieve. On read failure, fall back to 503 with ServiceUnavailable.
+                    ProjectionRebuildCheckpoint? terminalSnap = null;
+                    try {
+                        terminalSnap = await checkpointStore
+                            .ReadAsync(scopeForRebuild, CancellationToken.None)
+                            .ConfigureAwait(false);
+                    }
+                    catch (Exception readEx) when (IsTransientStoreReadFailure(readEx)) {
+                        return ProblemWithReason(
+                            StatusCodes.Status503ServiceUnavailable,
+                            "Service Unavailable",
+                            $"Retry started (operation {operationIdForResponse}) but terminal status could not be read: {readEx.GetType().Name}.",
+                            StreamReplayReasonCodes.ServiceUnavailable);
+                    }
+
                     // P4-7P (pass-7): If the rebuild wrote Failed with a permanent reasonCode
                     // (ProjectionApplyRejected, ForbiddenRole, InvalidRange, etc.), route through
                     // MapSaveFailure so the operator sees the correct 409/403 status instead of
                     // a uniform 503 (which semantically suggests "transient — retry"). 503 stays
                     // for the no-terminal-snapshot fallthrough where we genuinely don't know the
                     // outcome.
-                    if (terminalSnap is { Status: ProjectionRebuildStatus.Failed, FailureReasonCode: { Length: > 0 } reasonCode }) {
+                    // P11-8P (pass-8): treat empty-string FailureReasonCode as null. The original
+                    // pattern `{ Length: > 0 }` already excluded empties from this branch, but the
+                    // fallthrough then used `terminalSnap?.FailureReasonCode ?? ServiceUnavailable`
+                    // which does NOT coalesce empty strings — the empty reasonCode leaked into the
+                    // ProblemDetails as a meaningless `reasonCode: ""`. The check below normalizes
+                    // empty to null via IsNullOrWhiteSpace.
+                    if (terminalSnap is { Status: ProjectionRebuildStatus.Failed, FailureReasonCode: { Length: > 0 } reasonCode }
+                        && !string.IsNullOrWhiteSpace(reasonCode)) {
                         return MapSaveFailure(reasonCode);
                     }
 
-                    string reason = terminalSnap?.FailureReasonCode ?? StreamReplayReasonCodes.ServiceUnavailable;
+                    string reason = string.IsNullOrWhiteSpace(terminalSnap?.FailureReasonCode)
+                        ? StreamReplayReasonCodes.ServiceUnavailable
+                        : terminalSnap!.FailureReasonCode!;
                     return ProblemWithReason(
                         StatusCodes.Status503ServiceUnavailable,
                         "Service Unavailable",
@@ -515,6 +541,12 @@ public sealed partial class AdminProjectionRebuildController(
                 reasonCode ?? StreamReplayReasonCodes.ServiceUnavailable),
         };
 
+    private static bool IsTransientStoreReadFailure(Exception exception)
+        => exception is DaprException
+            or HttpRequestException
+            or System.Net.Sockets.SocketException
+            or TaskCanceledException;
+
     private ObjectResult ProblemWithReason(int statusCode, string title, string detail, string reasonCode) {
         Log.LifecycleRejected(logger, reasonCode);
         var problem = new ProblemDetails {
@@ -566,10 +598,21 @@ public sealed partial class AdminProjectionRebuildController(
         // state-store rows the public poller could never address — the rebuild appeared
         // active to the admin but invisible to the poller, breaking conflict isolation.
         // Mirror StreamsController.IsCanonicalTenantOrDomain rules.
+        // P12-8P (pass-8): differentiate empty-input from malformed-input. Empty input gets a
+        // dedicated "must not be empty" message; only non-empty malformed input gets the longer
+        // canonicalization rule description.
+        if (string.IsNullOrWhiteSpace(tenantId)) {
+            throw new ArgumentException("tenantId must not be empty.", nameof(tenantId));
+        }
+
         if (!IsCanonicalTenantOrProjection(tenantId)) {
             throw new ArgumentException(
                 "tenantId must be lowercase ASCII alphanumeric (a-z, 0-9, '-'), max 64 chars, alphanumeric first and last.",
                 nameof(tenantId));
+        }
+
+        if (string.IsNullOrWhiteSpace(projectionName)) {
+            throw new ArgumentException("projectionName must not be empty.", nameof(projectionName));
         }
 
         if (!IsCanonicalTenantOrProjection(projectionName)) {

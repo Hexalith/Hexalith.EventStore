@@ -119,9 +119,37 @@ public sealed partial class StreamsController(
             }
 
             long currentSequence = streamMetadata.CurrentSequence;
-            ServerEventEnvelope[] pageEvents = await actor
-                .ReadEventsRangeAsync(request.FromSequence, request.ToSequence, request.PageSize + 1)
-                .ConfigureAwait(false);
+            ServerEventEnvelope[] pageEvents;
+            try {
+                pageEvents = await actor
+                    .ReadEventsRangeAsync(request.FromSequence, request.ToSequence, request.PageSize + 1)
+                    .ConfigureAwait(false);
+            }
+            catch (ActorMethodInvocationException ex) when (
+                ex.InnerException is InvalidOperationException invalidOp
+                && invalidOp.Message.Contains("Current sequence", StringComparison.OrdinalIgnoreCase)) {
+                // P21-7P (pass-7 MEDIUM): the stream was deleted between GetStreamMetadataAsync
+                // (which returned Exists=true) and ReadEventsRangeAsync (which throws when actor
+                // state is no longer accessible). Remap to 404 MissingStream instead of falling to
+                // the 500 catchall, mirroring the Exists=false branch above.
+                Log.StreamReadFailed(logger, ex, request.Tenant, request.Domain, request.AggregateId ?? string.Empty, StreamReplayReasonCodes.MissingStream);
+                return ProblemWithReason(
+                    StatusCodes.Status404NotFound,
+                    ProblemTypeUris.NotFound,
+                    "Not Found",
+                    "Event stream does not exist.",
+                    StreamReplayReasonCodes.MissingStream);
+            }
+            catch (InvalidOperationException ex) when (
+                ex.Message.Contains("Current sequence", StringComparison.OrdinalIgnoreCase)) {
+                Log.StreamReadFailed(logger, ex, request.Tenant, request.Domain, request.AggregateId ?? string.Empty, StreamReplayReasonCodes.MissingStream);
+                return ProblemWithReason(
+                    StatusCodes.Status404NotFound,
+                    ProblemTypeUris.NotFound,
+                    "Not Found",
+                    "Event stream does not exist.",
+                    StreamReplayReasonCodes.MissingStream);
+            }
 
             IReadOnlyList<ServerEventEnvelope> readEvents = [.. pageEvents.OrderBy(e => e.SequenceNumber)];
             IReadOnlyList<ServerEventEnvelope> orderedEvents = [.. readEvents.Take(request.PageSize)];
@@ -300,7 +328,7 @@ public sealed partial class StreamsController(
         }
 
         if (request.FromSequence < 0
-            || request.FromSequence > int.MaxValue - request.PageSize - 1L
+            || request.FromSequence > int.MaxValue
             || (request.ToSequence.HasValue && (request.ToSequence.Value < request.FromSequence || request.ToSequence.Value > int.MaxValue))) {
             return ProblemWithReason(
                 StatusCodes.Status400BadRequest,
@@ -405,8 +433,25 @@ public sealed partial class StreamsController(
             return true;
         }
 
-        return exception is AggregateException { InnerException: not null } aggregateException
-            && IsServiceUnavailable(aggregateException.InnerException!, depth + 1);
+        // C4-8P (= P20-7P, pass-7 MEDIUM): walk ALL AggregateException.InnerExceptions, not just
+        // the first one. A Task.WhenAll-style AggregateException with a transport at index >= 1
+        // was misclassified as 500 InternalError because only InnerException (= InnerExceptions[0])
+        // was being walked. Non-AggregateException intermediate frames are NOT walked (per M13-5P
+        // pass-5: walking arbitrary InnerException causes application bugs like
+        // `InvalidOperationException(inner: HttpRequestException)` to misclassify as 503). The
+        // P1-8P pass-8 alignment objective is achieved by narrowing the checkpoint store to match
+        // this safer policy, not by broadening the controller.
+        if (exception is AggregateException aggregateException) {
+            foreach (Exception inner in aggregateException.InnerExceptions) {
+                if (IsServiceUnavailable(inner, depth + 1)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return false;
     }
 
     private static bool TryGetException<TException>(Exception exception, out TException? result)

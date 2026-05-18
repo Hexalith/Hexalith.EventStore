@@ -123,6 +123,7 @@ Stable stream replay and rebuild reason codes include:
 - `rebuild-operation-not-found`
 - `rebuild-canceled`
 - `rebuild-paused`
+- `operator-preempted`
 - `domain-failure`
 - `retryable-transient-failure`
 - `service-unavailable`
