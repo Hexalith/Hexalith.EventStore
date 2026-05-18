@@ -4,6 +4,7 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Actors;
@@ -267,7 +268,8 @@ public sealed partial class StreamsController(
             envelope.CorrelationId,
             envelope.CausationId,
             envelope.Timestamp,
-            string.IsNullOrWhiteSpace(envelope.UserId) ? null : envelope.UserId);
+            string.IsNullOrWhiteSpace(envelope.UserId) ? null : envelope.UserId,
+            EventStorePayloadProtectionMetadataCarrier.Read(envelope.Extensions));
 
     private ObjectResult ProblemWithReason(
         int statusCode,

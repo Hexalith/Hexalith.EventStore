@@ -3,6 +3,7 @@ using System.Text;
 
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Contracts.Events;
+using Hexalith.EventStore.Contracts.Security;
 
 namespace Hexalith.EventStore.Testing.Builders;
 /// <summary>
@@ -111,6 +112,18 @@ public sealed class EventEnvelopeBuilder {
     /// <param name="extensions">The extension metadata.</param>
     /// <returns>This builder instance.</returns>
     public EventEnvelopeBuilder WithExtensions(IReadOnlyDictionary<string, string>? extensions) { _extensions = extensions; return this; }
+
+    /// <summary>
+    /// Stamps the supplied protection metadata onto the envelope extensions under the canonical
+    /// EventStore protection key. Existing extension entries are preserved.
+    /// </summary>
+    /// <param name="metadata">The protection metadata to attach.</param>
+    /// <returns>This builder instance.</returns>
+    public EventEnvelopeBuilder WithProtectionMetadata(EventStorePayloadProtectionMetadata metadata) {
+        ArgumentNullException.ThrowIfNull(metadata);
+        _extensions = EventStorePayloadProtectionMetadataCarrier.Write(_extensions, metadata);
+        return this;
+    }
 
     /// <summary>Builds the <see cref="EventEnvelope"/> instance.</summary>
     /// <returns>A new <see cref="EventEnvelope"/> with the configured values.</returns>

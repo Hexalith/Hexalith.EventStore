@@ -5,9 +5,12 @@ using Hexalith.EventStore.Contracts.Security;
 namespace Hexalith.EventStore.Server.Events;
 
 /// <summary>
-/// Default implementation that leaves payloads and snapshots unchanged.
+/// Default implementation that leaves payloads and snapshots unchanged while emitting well-formed
+/// <see cref="PayloadProtectionState.Unprotected"/> metadata so downstream consumers can always
+/// distinguish "explicitly unprotected" from "legacy / no metadata".
 /// </summary>
 public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionService {
+    /// <inheritdoc/>
     public Task<PayloadProtectionResult> ProtectEventPayloadAsync(
         AggregateIdentity identity,
         IEventPayload eventPayload,
@@ -21,9 +24,13 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
         ArgumentNullException.ThrowIfNull(payloadBytes);
         ArgumentException.ThrowIfNullOrWhiteSpace(serializationFormat);
 
-        return Task.FromResult(new PayloadProtectionResult(payloadBytes, serializationFormat));
+        return Task.FromResult(new PayloadProtectionResult(
+            payloadBytes,
+            serializationFormat,
+            EventStorePayloadProtectionMetadata.Unprotected()));
     }
 
+    /// <inheritdoc/>
     public Task<PayloadProtectionResult> UnprotectEventPayloadAsync(
         AggregateIdentity identity,
         string eventTypeName,
@@ -35,9 +42,23 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
         ArgumentNullException.ThrowIfNull(payloadBytes);
         ArgumentException.ThrowIfNullOrWhiteSpace(serializationFormat);
 
-        return Task.FromResult(new PayloadProtectionResult(payloadBytes, serializationFormat));
+        return Task.FromResult(new PayloadProtectionResult(
+            payloadBytes,
+            serializationFormat,
+            EventStorePayloadProtectionMetadata.Unprotected()));
     }
 
+    /// <inheritdoc/>
+    public Task<PayloadProtectionResult> UnprotectEventPayloadAsync(
+        AggregateIdentity identity,
+        string eventTypeName,
+        byte[] payloadBytes,
+        string serializationFormat,
+        EventStorePayloadProtectionMetadata? metadata,
+        CancellationToken cancellationToken = default)
+        => UnprotectEventPayloadAsync(identity, eventTypeName, payloadBytes, serializationFormat, cancellationToken);
+
+    /// <inheritdoc/>
     public Task<object> ProtectSnapshotStateAsync(
         AggregateIdentity identity,
         object state,
@@ -48,9 +69,33 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
         return Task.FromResult(state);
     }
 
+    /// <inheritdoc/>
     public Task<object> UnprotectSnapshotStateAsync(
         AggregateIdentity identity,
         object state,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(state);
+
+        return Task.FromResult(state);
+    }
+
+    /// <inheritdoc/>
+    public Task<SnapshotProtectionResult> ProtectSnapshotAsync(
+        AggregateIdentity identity,
+        object state,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(state);
+
+        return Task.FromResult(new SnapshotProtectionResult(state, EventStorePayloadProtectionMetadata.Unprotected()));
+    }
+
+    /// <inheritdoc/>
+    public Task<object> UnprotectSnapshotAsync(
+        AggregateIdentity identity,
+        object state,
+        EventStorePayloadProtectionMetadata? metadata,
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(state);

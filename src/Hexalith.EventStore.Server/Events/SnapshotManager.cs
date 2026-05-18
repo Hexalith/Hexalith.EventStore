@@ -34,23 +34,28 @@ public class SnapshotManager(
         long sequenceNumber,
         object state,
         IActorStateManager stateManager,
-        string? correlationId = null) {
+        string? correlationId = null,
+        CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(stateManager);
 
         try {
-            object protectedState = await payloadProtectionService
-                .ProtectSnapshotStateAsync(identity, state)
+            SnapshotProtectionResult protectionResult = await payloadProtectionService
+                .ProtectSnapshotAsync(identity, state, cancellationToken)
                 .ConfigureAwait(false);
+            if (!EventStorePayloadProtectionMetadataCarrier.TryValidate(protectionResult.Metadata, out _)) {
+                throw new InvalidOperationException("Snapshot protection metadata is invalid.");
+            }
 
             var snapshot = new SnapshotRecord(
                 SequenceNumber: sequenceNumber,
-                State: protectedState,
+                State: protectionResult.State,
                 CreatedAt: DateTimeOffset.UtcNow,
                 Domain: identity.Domain,
                 AggregateId: identity.AggregateId,
-                TenantId: identity.TenantId);
+                TenantId: identity.TenantId,
+                ProtectionMetadata: protectionResult.Metadata);
 
             // Stage the snapshot write -- committed by caller's SaveStateAsync (D1)
             await stateManager
@@ -83,7 +88,8 @@ public class SnapshotManager(
     public async Task<SnapshotRecord?> LoadSnapshotAsync(
         AggregateIdentity identity,
         IActorStateManager stateManager,
-        string? correlationId = null) {
+        string? correlationId = null,
+        CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(stateManager);
 
@@ -97,11 +103,22 @@ public class SnapshotManager(
             }
 
             SnapshotRecord snapshot = result.Value;
+
+            // Legacy snapshots persisted before Story 22.7a have no ProtectionMetadata. Map to the
+            // explicit legacy compatibility record so callers never see a null sentinel.
+            EventStorePayloadProtectionMetadata effectiveMetadata = NormalizeSnapshotMetadata(snapshot.ProtectionMetadata);
+
+            // Provider-opaque snapshots are passed through verbatim: never invoke unprotect on
+            // bytes whose provider EventStore cannot identify.
+            if (effectiveMetadata.State == PayloadProtectionState.ProviderOpaque) {
+                return snapshot with { ProtectionMetadata = effectiveMetadata };
+            }
+
             object unprotectedState = await payloadProtectionService
-                .UnprotectSnapshotStateAsync(identity, snapshot.State)
+                .UnprotectSnapshotAsync(identity, snapshot.State, effectiveMetadata, cancellationToken)
                 .ConfigureAwait(false);
 
-            return snapshot with { State = unprotectedState };
+            return snapshot with { State = unprotectedState, ProtectionMetadata = effectiveMetadata };
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             // Deserialization failure: delete corrupt snapshot and fall back to full replay
@@ -147,5 +164,19 @@ public class SnapshotManager(
         }
 
         return opts.DefaultInterval;
+    }
+
+    private static EventStorePayloadProtectionMetadata NormalizeSnapshotMetadata(EventStorePayloadProtectionMetadata? metadata) {
+        if (metadata is null) {
+            return EventStorePayloadProtectionMetadataCarrier.Legacy();
+        }
+
+        if (EventStorePayloadProtectionMetadataCarrier.TryValidate(metadata, out _)) {
+            return metadata;
+        }
+
+        return metadata.MetadataVersion > EventStorePayloadProtectionMetadata.CurrentMetadataVersion
+            ? EventStorePayloadProtectionMetadata.ProviderOpaque("unknownVersion")
+            : EventStorePayloadProtectionMetadata.ProviderOpaque("forbidden");
     }
 }

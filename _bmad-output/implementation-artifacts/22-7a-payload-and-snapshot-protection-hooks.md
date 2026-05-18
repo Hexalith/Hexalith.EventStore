@@ -1,6 +1,6 @@
 # Story 22.7a: Payload and Snapshot Protection Hooks
 
-Status: ready-for-dev
+Status: done
 
 Context created: 2026-05-13
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
@@ -97,60 +97,60 @@ so that protected state can be persisted, published, rehydrated, replayed, and r
 
 ## Tasks / Subtasks
 
-- [ ] **ST0 - Baseline current hook behavior and freeze metadata decisions.** (AC: 1, 2, 3, 4, 5, 6)
-    - [ ] Read this story, Epic 22, PRD FR102-FR104, architecture `Payload and Snapshot Protection`, Stories 22.1-22.6, and `_bmad-output/project-context.md` before code edits.
-    - [ ] Inventory `IEventPayloadProtectionService`, `PayloadProtectionResult`, `NoOpEventPayloadProtectionService`, `EventPersister`, `EventPublisher`, `SnapshotManager`, `SnapshotRecord`, server and contract `EventEnvelope`, and existing payload-redaction tests.
-    - [ ] Inventory public package surfaces affected by Story 22.6 if present: stream read/replay DTOs, event page DTOs, gateway client methods, Testing builders/fakes, and replay/rebuild docs.
-    - [ ] Record a decision table for event payload metadata shape, snapshot metadata shape, no-op default state, publish-time protect/unprotect policy, replay/read metadata exposure, and backward compatibility for existing envelopes/snapshots.
-    - [ ] Record exact field names or equivalents for protection state, provider/scheme identifier, metadata version, safe key alias, serialization/content hint, and compatibility flags.
-    - [ ] Reserve a stable metadata namespace or carrier key, such as an EventStore-owned protection extension key if `Extensions` remains the event storage carrier, and document how unknown future metadata fields are preserved or rejected.
-    - [ ] Define the exact meanings of `unprotected`/`no-op`, `protected`, and `provider-opaque`, including whether each state can be published, replayed, rebuilt, or exposed through EventStore-owned read DTOs.
-    - [ ] Define legacy behavior for persisted events with `Extensions: null` and snapshots with no metadata; missing metadata must map to an explicit compatibility state, not an implementation accident.
-    - [ ] Define fail-closed behavior for malformed metadata, unknown required metadata versions, missing required fields, unsafe key aliases, and bytes/metadata state mismatches.
-    - [ ] Define the invariant that transformed content and metadata state travel together across persist, publish, read/replay, rebuild, and snapshot paths, including the exact tests that prove mismatches cannot be emitted.
-    - [ ] Record explicit out-of-scope items for 22.7b-22.7d: missing-key behavior, key invalidation, backup restore safety, and full operational redaction.
+- [x] **ST0 - Baseline current hook behavior and freeze metadata decisions.** (AC: 1, 2, 3, 4, 5, 6)
+    - [x] Read this story, Epic 22, PRD FR102-FR104, architecture `Payload and Snapshot Protection`, Stories 22.1-22.6, and `_bmad-output/project-context.md` before code edits.
+    - [x] Inventory `IEventPayloadProtectionService`, `PayloadProtectionResult`, `NoOpEventPayloadProtectionService`, `EventPersister`, `EventPublisher`, `SnapshotManager`, `SnapshotRecord`, server and contract `EventEnvelope`, and existing payload-redaction tests.
+    - [x] Inventory public package surfaces affected by Story 22.6 if present: stream read/replay DTOs, event page DTOs, gateway client methods, Testing builders/fakes, and replay/rebuild docs.
+    - [x] Record a decision table for event payload metadata shape, snapshot metadata shape, no-op default state, publish-time protect/unprotect policy, replay/read metadata exposure, and backward compatibility for existing envelopes/snapshots.
+    - [x] Record exact field names or equivalents for protection state, provider/scheme identifier, metadata version, safe key alias, serialization/content hint, and compatibility flags.
+    - [x] Reserve a stable metadata namespace or carrier key, such as an EventStore-owned protection extension key if `Extensions` remains the event storage carrier, and document how unknown future metadata fields are preserved or rejected.
+    - [x] Define the exact meanings of `unprotected`/`no-op`, `protected`, and `provider-opaque`, including whether each state can be published, replayed, rebuilt, or exposed through EventStore-owned read DTOs.
+    - [x] Define legacy behavior for persisted events with `Extensions: null` and snapshots with no metadata; missing metadata must map to an explicit compatibility state, not an implementation accident.
+    - [x] Define fail-closed behavior for malformed metadata, unknown required metadata versions, missing required fields, unsafe key aliases, and bytes/metadata state mismatches.
+    - [x] Define the invariant that transformed content and metadata state travel together across persist, publish, read/replay, rebuild, and snapshot paths, including the exact tests that prove mismatches cannot be emitted.
+    - [x] Record explicit out-of-scope items for 22.7b-22.7d: missing-key behavior, key invalidation, backup restore safety, and full operational redaction.
 
-- [ ] **ST1 - Add contract-layer protection metadata types.** (AC: 1, 2, 4, 5)
-    - [ ] Add a small immutable contract type for protection metadata under `src/Hexalith.EventStore.Contracts/Security` or an equivalent established namespace.
-    - [ ] Extend `PayloadProtectionResult` to return transformed bytes, serialization format, and protection metadata while preserving the no-op construction path.
-    - [ ] Add or adapt snapshot protection result semantics so snapshot state and snapshot metadata travel together without using ambiguous raw `object` return values for new code.
-    - [ ] Add validation that metadata fields are non-secret, bounded, serialization-safe, and stable across JSON round trips.
-    - [ ] Reject or sanitize metadata values that use forbidden secret-shaped field names or values, including raw keys, plaintext, IVs/nonces, authentication tags, provider-private blobs, state-store keys, and connection strings.
-    - [ ] Centralize metadata parsing/validation so all callers get identical legacy, malformed, unknown-version, and provider-opaque behavior instead of duplicating dictionary/string checks.
-    - [ ] Keep provider-specific implementations out of Contracts; Contracts owns shape and semantics only.
+- [x] **ST1 - Add contract-layer protection metadata types.** (AC: 1, 2, 4, 5)
+    - [x] Add a small immutable contract type for protection metadata under `src/Hexalith.EventStore.Contracts/Security` or an equivalent established namespace.
+    - [x] Extend `PayloadProtectionResult` to return transformed bytes, serialization format, and protection metadata while preserving the no-op construction path.
+    - [x] Add or adapt snapshot protection result semantics so snapshot state and snapshot metadata travel together without using ambiguous raw `object` return values for new code.
+    - [x] Add validation that metadata fields are non-secret, bounded, serialization-safe, and stable across JSON round trips.
+    - [x] Reject or sanitize metadata values that use forbidden secret-shaped field names or values, including raw keys, plaintext, IVs/nonces, authentication tags, provider-private blobs, state-store keys, and connection strings.
+    - [x] Centralize metadata parsing/validation so all callers get identical legacy, malformed, unknown-version, and provider-opaque behavior instead of duplicating dictionary/string checks.
+    - [x] Keep provider-specific implementations out of Contracts; Contracts owns shape and semantics only.
 
-- [ ] **ST2 - Persist and convert event protection metadata.** (AC: 1, 3, 4, 5)
-    - [ ] Update `EventPersister` so protected-event metadata is written with the persisted server `EventEnvelope` using the ST0-approved location.
-    - [ ] Update server-to-contract envelope conversion so metadata reaches public event envelopes and replay/read DTOs without exposing payload bytes.
-    - [ ] Update `EventPublisher` to follow the ST0 publish-time policy and preserve or transform metadata consistently.
-    - [ ] Add checked legacy event fixtures or equivalent serialized test data proving pre-22.7a records with missing metadata still deserialize, convert, and replay/read through the compatibility path.
-    - [ ] Ensure failures from protection hooks route through existing infrastructure failure/dead-letter behavior and do not log payload bytes or secret metadata.
-    - [ ] Add negative tests for persisted/published event records where metadata claims `unprotected` while bytes came from a protected provider, metadata claims `protected` while bytes are the no-op/plain payload, metadata version is unknown, or provider-opaque state is exposed through read/replay DTOs.
-    - [ ] Add focused tests proving protected metadata is present after persistence, publication, conversion to contract envelope, and no-op flows.
+- [x] **ST2 - Persist and convert event protection metadata.** (AC: 1, 3, 4, 5)
+    - [x] Update `EventPersister` so protected-event metadata is written with the persisted server `EventEnvelope` using the ST0-approved location.
+    - [x] Update server-to-contract envelope conversion so metadata reaches public event envelopes and replay/read DTOs without exposing payload bytes.
+    - [x] Update `EventPublisher` to follow the ST0 publish-time policy and preserve or transform metadata consistently.
+    - [x] Add checked legacy event fixtures or equivalent serialized test data proving pre-22.7a records with missing metadata still deserialize, convert, and replay/read through the compatibility path.
+    - [x] Ensure failures from protection hooks route through existing infrastructure failure/dead-letter behavior and do not log payload bytes or secret metadata.
+    - [x] Add negative tests for persisted/published event records where metadata claims `unprotected` while bytes came from a protected provider, metadata claims `protected` while bytes are the no-op/plain payload, metadata version is unknown, or provider-opaque state is exposed through read/replay DTOs.
+    - [x] Add focused tests proving protected metadata is present after persistence, publication, conversion to contract envelope, and no-op flows.
 
-- [ ] **ST3 - Persist and load snapshot protection metadata.** (AC: 2, 3, 4, 5)
-    - [ ] Update `SnapshotRecord` or an equivalent wrapper to carry snapshot protection metadata without breaking old no-metadata snapshots.
-    - [ ] Update `SnapshotManager.CreateSnapshotAsync` to store protected state and metadata from the protection service.
-    - [ ] Update `SnapshotManager.LoadSnapshotAsync` to pass metadata back to the protection service or use the ST0-approved compatibility path.
-    - [ ] Add checked legacy snapshot fixtures or equivalent serialized test data covering old raw snapshots, new no-op snapshots, new protected snapshots, missing metadata, unknown metadata version, and provider-opaque metadata.
-    - [ ] Keep snapshot creation advisory and load fallback behavior consistent with current semantics; do not implement missing-key failure policy beyond metadata needed by 22.7b.
-    - [ ] Add mismatch tests for snapshots where state content and metadata state disagree, and require the same fail-closed/provider-opaque handling chosen for events unless ST0 records a snapshot-specific reason.
-    - [ ] Add tests for no-op snapshot compatibility, protected snapshot metadata persistence, old snapshot load compatibility, and payload/state redaction in failure logs.
+- [x] **ST3 - Persist and load snapshot protection metadata.** (AC: 2, 3, 4, 5)
+    - [x] Update `SnapshotRecord` or an equivalent wrapper to carry snapshot protection metadata without breaking old no-metadata snapshots.
+    - [x] Update `SnapshotManager.CreateSnapshotAsync` to store protected state and metadata from the protection service.
+    - [x] Update `SnapshotManager.LoadSnapshotAsync` to pass metadata back to the protection service or use the ST0-approved compatibility path.
+    - [x] Add checked legacy snapshot fixtures or equivalent serialized test data covering old raw snapshots, new no-op snapshots, new protected snapshots, missing metadata, unknown metadata version, and provider-opaque metadata.
+    - [x] Keep snapshot creation advisory and load fallback behavior consistent with current semantics; do not implement missing-key failure policy beyond metadata needed by 22.7b.
+    - [x] Add mismatch tests for snapshots where state content and metadata state disagree, and require the same fail-closed/provider-opaque handling chosen for events unless ST0 records a snapshot-specific reason.
+    - [x] Add tests for no-op snapshot compatibility, protected snapshot metadata persistence, old snapshot load compatibility, and payload/state redaction in failure logs.
 
-- [ ] **ST4 - Update public Testing and documentation surfaces.** (AC: 1, 2, 4, 5, 6)
-    - [ ] Add or update Testing builders/fakes for protected and unprotected event envelopes, payload protection results, snapshot records, and replay/read page items.
-    - [ ] Update package reference docs and API index entries for the protection metadata contract.
-    - [ ] Create or update `docs/guides/payload-protection-and-crypto-shredding.md` with only the 22.7a hook registration, metadata, no-op default, and deferral boundaries.
-    - [ ] Update any Story 22.6 replay/read docs so protected metadata appears in examples without showing protected payload content.
-    - [ ] Keep examples provider-neutral; do not require Azure Key Vault, DAPR secret store, local certificates, or a specific encryption algorithm in this story.
+- [x] **ST4 - Update public Testing and documentation surfaces.** (AC: 1, 2, 4, 5, 6)
+    - [x] Add or update Testing builders/fakes for protected and unprotected event envelopes, payload protection results, snapshot records, and replay/read page items.
+    - [x] Update package reference docs and API index entries for the protection metadata contract.
+    - [x] Create or update `docs/guides/payload-protection-and-crypto-shredding.md` with only the 22.7a hook registration, metadata, no-op default, and deferral boundaries.
+    - [x] Update any Story 22.6 replay/read docs so protected metadata appears in examples without showing protected payload content.
+    - [x] Keep examples provider-neutral; do not require Azure Key Vault, DAPR secret store, local certificates, or a specific encryption algorithm in this story.
 
-- [ ] **ST5 - Prove no-leak and compatibility behavior.** (AC: 1, 2, 3, 4, 5, 6)
-    - [ ] Extend Contracts tests for metadata validation, JSON round trips, no-op defaults, and event envelope serialization.
-    - [ ] Extend Server tests for `EventPersister`, `EventPublisher`, `SnapshotManager`, contract envelope conversion, and protection hook invocation order.
-    - [ ] Add tests that prove every protection/unprotection hook receives the caller's `CancellationToken`, and that `OperationCanceledException` propagates without being mapped to non-cancellation infrastructure failure.
-    - [ ] Extend existing payload-redaction source/log tests to cover new metadata fields and ensure forbidden field names or secret values are not logged.
-    - [ ] Extend Client/Testing tests only where public replay/read or gateway DTOs expose the metadata.
-    - [ ] Run focused test projects individually and record evidence. At minimum: `tests/Hexalith.EventStore.Contracts.Tests`, relevant `tests/Hexalith.EventStore.Server.Tests` slices, and `tests/Hexalith.EventStore.Testing.Tests` if Testing builders/fakes change.
+- [x] **ST5 - Prove no-leak and compatibility behavior.** (AC: 1, 2, 3, 4, 5, 6)
+    - [x] Extend Contracts tests for metadata validation, JSON round trips, no-op defaults, and event envelope serialization.
+    - [x] Extend Server tests for `EventPersister`, `EventPublisher`, `SnapshotManager`, contract envelope conversion, and protection hook invocation order.
+    - [x] Add tests that prove every protection/unprotection hook receives the caller's `CancellationToken`, and that `OperationCanceledException` propagates without being mapped to non-cancellation infrastructure failure.
+    - [x] Extend existing payload-redaction source/log tests to cover new metadata fields and ensure forbidden field names or secret values are not logged.
+    - [x] Extend Client/Testing tests only where public replay/read or gateway DTOs expose the metadata.
+    - [x] Run focused test projects individually and record evidence. At minimum: `tests/Hexalith.EventStore.Contracts.Tests`, relevant `tests/Hexalith.EventStore.Server.Tests` slices, and `tests/Hexalith.EventStore.Testing.Tests` if Testing builders/fakes change.
 
 ## Test Evidence Required
 
@@ -234,6 +234,15 @@ so that protected state can be persisted, published, rehydrated, replayed, and r
 - `src/Hexalith.EventStore.Server/Events/SnapshotManager.cs`
 - `src/Hexalith.EventStore.Server/Events/SnapshotRecord.cs`
 
+### Review Findings
+
+- [x] [Review][Patch] Snapshot metadata is persisted and loaded without carrier validation, so malformed or secret-shaped typed metadata can bypass the event fail-closed path [src/Hexalith.EventStore.Server/Events/SnapshotManager.cs:44]
+- [x] [Review][Patch] Serialized `eventstore.protection` JSON silently ignores unknown top-level fields, allowing forbidden provider-private fields to be accepted instead of mapped to `ProviderOpaque` [src/Hexalith.EventStore.Contracts/Security/EventStorePayloadProtectionMetadataCarrier.cs:196]
+- [x] [Review][Patch] Event unprotect receives bytes and format only, so `EventPublisher` reads stored metadata but cannot pass key alias/scheme/legacy state back to the provider [src/Hexalith.EventStore.Server/Events/EventPublisher.cs:95]
+- [x] [Review][Patch] `FakeEventPersister` still emits `Extensions: null`, so the Testing package fake does not preserve the new explicit no-op metadata contract [src/Hexalith.EventStore.Testing/Fakes/FakeEventPersister.cs:61]
+- [x] [Review][Patch] Checked-in API reference docs are stale and omit the new metadata/result/state public contract surface [docs/reference/api/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Security.md:8]
+- [x] [Review][Patch] Provider-opaque publish documentation contradicts itself by saying opaque records are never republished and later that they are published verbatim [docs/guides/payload-protection-and-crypto-shredding.md:113]
+
 ## Party-Mode Review
 
 ### 2026-05-13T16:22:13+02:00
@@ -285,24 +294,173 @@ so that protected state can be persisted, published, rehydrated, replayed, and r
 
 ### Agent Model Used
 
-TBD by dev agent.
+Claude Opus 4.7 (1M context)
+
+### ST0 Decision Table (frozen 2026-05-18)
+
+**Metadata type and namespace**
+
+- New sealed immutable record `EventStorePayloadProtectionMetadata` lives in `Hexalith.EventStore.Contracts.Security`. Provider-neutral, JSON-serializable, validated at construction.
+- New enum `PayloadProtectionState`: `Unprotected`, `Protected`, `ProviderOpaque`.
+
+**Field shape**
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `State` | yes | `Unprotected`, `Protected`, or `ProviderOpaque`. |
+| `MetadataVersion` | yes | Integer >= 1. Current schema version is 1. Unknown future versions fail-closed to `ProviderOpaque`. |
+| `Scheme` | optional | Provider/scheme family identifier (e.g. `"aes-gcm-256"`, `"none"`). Required when `State != Unprotected`. Bounded length, non-secret. |
+| `KeyAlias` | optional | Non-secret key reference alias. Treated sensitive-by-default. Bounded length. NEVER raw key material. |
+| `ContentHint` | optional | Content-type hint after un/protection (e.g. `"application/json"`). |
+| `CompatibilityFlags` | optional | Small bounded `IReadOnlyDictionary<string, string>` for forward-compatible flags. Hard cap (8 entries, 64-char key, 256-char value). Keys must be safe identifiers; secret-shaped keys/values rejected. |
+
+**Forbidden field names / value shapes (rejected at validation)**
+
+Lowercase keyword scan rejecting either as a `CompatibilityFlags` key or as a substring of any string value: `key=` (with non-empty rhs), `iv=`, `nonce=`, `tag=`, `password`, `secret`, `bearer `, `private-key`, `connection-string`, `plaintext`, `dapr-secret`, `vault-uri`. Top-level `KeyAlias` and `Scheme` are also length-bounded and ASCII-printable only.
+
+**Storage carrier**
+
+- **Events:** persisted server `EventEnvelope.Extensions` dictionary carries a single EventStore-owned key `eventstore.protection` whose value is a UTF-8 JSON serialization of `EventStorePayloadProtectionMetadata`. Carrier helpers (`EventStorePayloadProtectionMetadataCarrier`) in `Contracts.Security` centralize read/write/legacy/malformed handling. Other `Extensions` keys are preserved unchanged.
+- **Snapshots:** `SnapshotRecord` gains an optional `ProtectionMetadata` typed field (nullable). Legacy snapshots deserialize with `ProtectionMetadata = null` and are mapped to the legacy compatibility state.
+
+**No-op default state**
+
+The default `NoOpEventPayloadProtectionService` returns `EventStorePayloadProtectionMetadata(State: Unprotected, MetadataVersion: 1, Scheme: null, KeyAlias: null, ContentHint: null, CompatibilityFlags: null)` for every protect/unprotect call. The persisted `eventstore.protection` extension is written by `EventPersister` so consumers can always distinguish "this row is explicitly unprotected" from a legacy row.
+
+**Legacy compatibility (missing metadata)**
+
+- Persisted event without `eventstore.protection` extension OR with `Extensions: null` → carrier returns `EventStorePayloadProtectionMetadata(Unprotected, 1, Scheme: null, KeyAlias: null, ContentHint: null, CompatibilityFlags: { "legacy": "missing" })`. Legacy rows behave as `Unprotected` for downstream consumers but the flag preserves provenance.
+- Persisted snapshot with `ProtectionMetadata: null` → carrier returns the same `Unprotected + legacy=missing` metadata.
+
+**Fail-closed (malformed metadata)**
+
+- JSON parse failure, unknown `MetadataVersion > 1`, missing required `State`, or `State`/`Scheme` mismatch (e.g. `Protected` without a `Scheme`) → carrier returns `EventStorePayloadProtectionMetadata(ProviderOpaque, 1, Scheme: null, KeyAlias: null, ContentHint: null, CompatibilityFlags: { "parseError": "true" })`. Never inferred to `Unprotected`.
+- Forbidden secret-shaped fields in stored metadata → same `ProviderOpaque` mapping with `CompatibilityFlags["forbidden"] = "true"`.
+
+**Bytes/metadata invariant**
+
+EventStore never emits a payload whose `State` claims `Unprotected` while bytes came from a non-no-op `Protect*` call, nor `Protected` metadata on bytes returned by a no-op call. Provider returns, legacy reads, publish-time transformations, replay/read DTO projection, and snapshot load paths all carry the metadata returned by the protection service alongside the bytes it produced. ProviderOpaque bytes are passed through without invoking unprotection.
+
+**Publish-time policy**
+
+`EventPublisher.PublishEventsAsync` continues to call `UnprotectEventPayloadAsync` before DAPR publication (today's behavior, preserved for domain-service compatibility). The published envelope `Extensions` dictionary carries the `eventstore.protection` key with the metadata returned by `UnprotectEventPayloadAsync` (typically `Unprotected` for the no-op provider; a custom unprotecting provider may return any state and the publisher emits exactly what it returned). This makes EventStore's "protected-at-rest only" posture explicit on the wire; subscribers can distinguish payload protection states without inspecting bytes. Note: a fully fail-closed publish-time policy that refuses to publish `Protected` bytes is deferred to Story 22.7b alongside missing-key behavior.
+
+**Hook boundaries**
+
+- `ProtectEventPayloadAsync`: in `EventPersister.PersistEventsAsync`, after the payload bytes/format are computed and before `IActorStateManager.SetStateAsync`. Caller's `CancellationToken` is forwarded.
+- `UnprotectEventPayloadAsync`: in `EventPublisher.PublishEventsAsync`, once per stored envelope, before constructing the publish envelope. Caller's `CancellationToken` is forwarded.
+- `ProtectSnapshotAsync` (new typed method): in `SnapshotManager.CreateSnapshotAsync`, before `IActorStateManager.SetStateAsync`. Caller's `CancellationToken` is forwarded.
+- `UnprotectSnapshotAsync` (new typed method): in `SnapshotManager.LoadSnapshotAsync`, after `TryGetStateAsync` and before returning. Caller's `CancellationToken` is forwarded.
+
+**Snapshot API evolution**
+
+The contract `IEventPayloadProtectionService` keeps existing `ProtectSnapshotStateAsync`/`UnprotectSnapshotStateAsync` (raw `object` in/out) for backward compatibility with any external implementer. Two new typed methods are added as default interface methods so implementers may opt in:
+
+- `Task<SnapshotProtectionResult> ProtectSnapshotAsync(identity, state, ct)`
+- `Task<object> UnprotectSnapshotAsync(identity, protectedState, EventStorePayloadProtectionMetadata? metadata, ct)`
+
+Default implementations delegate to the existing object-based methods and wrap the result in `Unprotected` metadata (legacy provider passthrough). The production `NoOpEventPayloadProtectionService` overrides them explicitly to return well-formed `Unprotected` metadata.
+
+**Cancellation propagation**
+
+All four hook invocations forward the caller's `CancellationToken`. `OperationCanceledException` is rethrown by `EventPublisher` and `EventPersister` without being mapped to infrastructure failure.
+
+**Public read/replay DTO compatibility**
+
+`StreamReadEvent` (Story 22.6) gains an optional `ProtectionMetadata` field of type `EventStorePayloadProtectionMetadata?`. `StreamsController.ToStreamReadEvent` populates it from the stored envelope's `Extensions` via the carrier. The `Hexalith.EventStore.Client` HTTP path remains backward-compatible because the field is nullable. `StreamReadPageBuilder` exposes a `WithProtection` helper.
+
+**Out of scope (deferred to 22.7b-d)**
+
+- Missing-key behavior, key invalidation/rotation/restoration, crypto-shredding workflow (22.7c).
+- Fail-closed publish-time refusal for `Protected` bytes when the provider cannot unprotect (22.7b).
+- Restored-backup safety / cross-environment key reachability (22.7c).
+- Full operational redaction across Admin UI, CLI, MCP, ProblemDetails, backup validation tooling (22.7d).
+- Real encryption provider implementation, key vault integration, cloud KMS, DAPR secret store wiring.
 
 ### Debug Log References
 
-- TBD by dev agent.
+- Story 22.7a implementation pass kicked off 2026-05-18.
+- Focused validation:
+  - `dotnet test tests/Hexalith.EventStore.Contracts.Tests` → 359/359 passed (incl. 26 new `EventStorePayloadProtectionMetadataTests`).
+  - `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "Events|Security|Logging"` → 95/95 focused unit-only slice passed; pre-existing 37 failures (Tier-2 DAPR placement/scheduler tests and ValidationExceptionHandler/QueryNotFoundExceptionHandler/ReplayController/CommandStatusController) verified unchanged from Story 22.6's documented baseline.
+  - `dotnet test tests/Hexalith.EventStore.Testing.Tests` → 112/112 passed.
+  - `dotnet test tests/Hexalith.EventStore.Client.Tests` → 393/393 passed.
+  - `dotnet test tests/Hexalith.EventStore.Sample.Tests` → 74/74 passed.
+  - `dotnet test tests/Hexalith.EventStore.SignalR.Tests` → 35/35 passed.
+- `dotnet build Hexalith.EventStore.slnx --configuration Debug` → 0 warnings, 0 errors.
 
 ### Completion Notes List
 
-- TBD by dev agent.
+- **Contracts contract.** Added `EventStorePayloadProtectionMetadata` (state, version, scheme, key alias, content hint, compatibility flags), `PayloadProtectionState` enum, `SnapshotProtectionResult`, and the `EventStorePayloadProtectionMetadataCarrier` helper. Carrier centralizes serialize/parse/validate/legacy/forbidden-shape logic so every caller gets identical state-machine semantics.
+- **PayloadProtectionResult evolution.** Added a `Metadata` field with backward-compatible constructor that emits `Unprotected` metadata when callers don't migrate. No-op call sites compile unchanged.
+- **Interface evolution.** Added metadata-aware event unprotect and typed snapshot methods `ProtectSnapshotAsync` / `UnprotectSnapshotAsync` to `IEventPayloadProtectionService` as default-interface implementations that delegate to the existing object-based methods. External implementers continue to compile; production code now uses the typed methods.
+- **Server persistence.** `EventPersister` writes the `eventstore.protection` extension on every persisted envelope. `EventPublisher` reads the stored metadata, passes through `ProviderOpaque` records verbatim (never invokes unprotect on bytes EventStore cannot identify), and re-stamps the published envelope with the metadata returned by the provider. Both forward the caller's `CancellationToken` to the protection hooks.
+- **Snapshot persistence.** `SnapshotRecord` gains an optional `ProtectionMetadata` field. `SnapshotManager` calls the new typed methods; legacy `ProtectionMetadata == null` snapshots map to the explicit `Legacy()` compatibility record on load; invalid typed metadata maps to `ProviderOpaque`; provider-opaque snapshots are returned without invoking `UnprotectSnapshotAsync`.
+- **Read DTO.** `StreamReadEvent` gains an optional `ProtectionMetadata` field. `StreamsController.ToStreamReadEvent` populates it via the carrier so downstream replay consumers see the protection state without inspecting bytes.
+- **Testing surfaces.** `EventEnvelopeBuilder.WithProtectionMetadata`, `StreamReadPageBuilder.WithProtection`, `FakeSnapshotManager`, and `FakeEventPersister` now stamp metadata onto fixtures. `FakeEventPersister` and `ISnapshotManager` plumb the optional `CancellationToken` through.
+- **Docs.** Added `docs/guides/payload-protection-and-crypto-shredding.md` with the hook contract, state machine, fail-closed rules, and 22.7b/22.7c/22.7d deferral boundaries. Updated `docs/reference/stream-replay-api.md` and the checked-in API reference docs to mention the new metadata/result/state surfaces.
+- **No-leak proof.** Sentinel-based tests in `Contracts.Tests.Security.EventStorePayloadProtectionMetadataTests` and `Server.Tests.Security.PayloadProtectionHookTests` verify (a) the carrier rejects metadata containing forbidden secret-shaped substrings before serialization, (b) `Unprotected` / `Protected` / `ProviderOpaque` bytes and metadata stay coupled, (c) the existing `ToString()` redaction still applies after the extension dictionary is populated.
+- **Out of scope, explicitly deferred.** Real encryption provider, key lifecycle (deletion/rotation/invalidation), missing-key behavior, crypto-shredding workflow, restored-backup safety, full operational redaction in Admin UI/CLI/MCP/ProblemDetails/backup tooling — all tracked for Stories 22.7b/22.7c/22.7d.
 
 ### File List
 
-- TBD by dev agent.
+**Contracts**
+
+- `src/Hexalith.EventStore.Contracts/Security/EventStorePayloadProtectionMetadata.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/EventStorePayloadProtectionMetadataCarrier.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/PayloadProtectionState.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/SnapshotProtectionResult.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/PayloadProtectionResult.cs` (modified — added `Metadata` field with backward-compatible constructor)
+- `src/Hexalith.EventStore.Contracts/Security/IEventPayloadProtectionService.cs` (modified — added metadata-aware event unprotect and typed snapshot methods as default interface methods)
+- `src/Hexalith.EventStore.Contracts/Streams/StreamReadEvent.cs` (modified — added optional `ProtectionMetadata`)
+
+**Server**
+
+- `src/Hexalith.EventStore.Server/Events/NoOpEventPayloadProtectionService.cs` (modified — emits typed metadata)
+- `src/Hexalith.EventStore.Server/Events/EventPersister.cs` (modified — stamps protection extension, forwards `CancellationToken`)
+- `src/Hexalith.EventStore.Server/Events/IEventPersister.cs` (modified — added optional `CancellationToken`)
+- `src/Hexalith.EventStore.Server/Events/EventPublisher.cs` (modified — metadata-aware unprotect, opaque passthrough, re-stamps published extensions)
+- `src/Hexalith.EventStore.Server/Events/SnapshotManager.cs` (modified — typed snapshot hook calls, metadata validation, legacy mapping)
+- `src/Hexalith.EventStore.Server/Events/ISnapshotManager.cs` (modified — added optional `CancellationToken`)
+- `src/Hexalith.EventStore.Server/Events/SnapshotRecord.cs` (modified — added optional `ProtectionMetadata`)
+
+**Gateway**
+
+- `src/Hexalith.EventStore/Controllers/StreamsController.cs` (modified — projects protection metadata into `StreamReadEvent`)
+
+**Testing**
+
+- `src/Hexalith.EventStore.Testing/Builders/EventEnvelopeBuilder.cs` (modified — `WithProtectionMetadata`)
+- `src/Hexalith.EventStore.Testing/Builders/StreamReadPageBuilder.cs` (modified — `WithProtection`)
+- `src/Hexalith.EventStore.Testing/Fakes/FakeSnapshotManager.cs` (modified — emits typed metadata)
+- `src/Hexalith.EventStore.Testing/Fakes/FakeEventPersister.cs` (modified — stamps no-op metadata, added optional `CancellationToken`)
+
+**Tests**
+
+- `tests/Hexalith.EventStore.Contracts.Tests/Security/EventStorePayloadProtectionMetadataTests.cs` (new — 28 tests)
+- `tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionHookTests.cs` (new — 13 tests)
+- `tests/Hexalith.EventStore.Server.Tests/Events/EventPublisherTests.cs` (modified — relaxed strict envelope equality to a predicate match that accommodates the new protection extension)
+
+**Documentation**
+
+- `docs/guides/payload-protection-and-crypto-shredding.md` (new)
+- `docs/reference/api/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Security.EventStorePayloadProtectionMetadata.md` (new)
+- `docs/reference/api/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Security.EventStorePayloadProtectionMetadataCarrier.md` (new)
+- `docs/reference/api/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Security.PayloadProtectionState.md` (new)
+- `docs/reference/api/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Security.SnapshotProtectionResult.md` (new)
+- `docs/reference/api/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Security.IEventPayloadProtectionService.md` (modified)
+- `docs/reference/api/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Security.PayloadProtectionResult.md` (modified)
+- `docs/reference/api/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Security.md` (modified)
+- `docs/reference/api/index.md` (modified)
+- `docs/reference/stream-replay-api.md` (modified — mentions new `protectionMetadata` field)
+- `_bmad-output/implementation-artifacts/22-7a-payload-and-snapshot-protection-hooks.md` (this story file)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (status updated)
 
 ## Verification Status
 
 - Story context created by BMAD pre-dev hardening automation on 2026-05-13.
-- Pre-dev creation validation pending below is automation-only and does not claim implementation verification.
+- Code review patch pass 2026-05-18 (GPT-5 Codex): all 6 patch findings resolved. Validation: `dotnet test tests/Hexalith.EventStore.Contracts.Tests --filter EventStorePayloadProtectionMetadataTests` (28/28), `dotnet test tests/Hexalith.EventStore.Server.Tests --filter PayloadProtectionHookTests` (13/13), `dotnet test tests/Hexalith.EventStore.Testing.Tests` (112/112), `dotnet build Hexalith.EventStore.slnx --configuration Debug` (0 warnings, 0 errors), and `git diff --check` (line-ending warnings only).
+- Implementation pass 2026-05-18 (Claude Opus 4.7 1M): ST0–ST5 complete. Focused validation evidence recorded in Debug Log References.
 
 ## Change Log
 
@@ -311,3 +469,5 @@ TBD by dev agent.
 | 2026-05-13 | Story created from Epic 22.7a with hook/metadata-only scope, explicit 22.7b-22.7d deferrals, current implementation inventory, and focused test evidence requirements. |
 | 2026-05-13 | Party-mode review applied metadata schema, legacy compatibility, publish-policy, snapshot parity, no-leak, and ATDD evidence clarifications. |
 | 2026-05-13 | Advanced elicitation applied metadata state-machine, bytes/metadata invariant, provider-opaque, and key-alias sensitivity hardening. |
+| 2026-05-18 | Implementation pass complete: new Contracts metadata types + carrier, EventPersister/EventPublisher/SnapshotManager hook integration, StreamReadEvent + Testing builder/fake exposure, payload-protection guide, sentinel-based no-leak tests. 26+12+regression-test updates pass; sprint status moved to review. |
+| 2026-05-18 | Code review patches applied: snapshot metadata validation, unknown JSON field fail-closed handling, metadata-aware event unprotect overload, FakeEventPersister no-op metadata, API reference refresh, and provider-opaque docs correction. Story moved to done. |

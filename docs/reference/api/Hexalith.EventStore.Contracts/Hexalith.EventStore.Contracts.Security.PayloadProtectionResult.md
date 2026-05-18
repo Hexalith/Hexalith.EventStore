@@ -4,7 +4,7 @@
 
 ## PayloadProtectionResult Class
 
-Represents transformed payload bytes after optional protection or unprotection\.
+Represents transformed payload bytes after optional protection or unprotection together with the protection metadata returned by the provider\.
 
 ```csharp
 public sealed record PayloadProtectionResult : System.IEquatable<Hexalith.EventStore.Contracts.Security.PayloadProtectionResult>
@@ -37,6 +37,16 @@ The transformed payload bytes\.
 `SerializationFormat` [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
 
 The serialization format associated with the transformed payload\.
+
+<a name='Hexalith.EventStore.Contracts.Security.PayloadProtectionResult.PayloadProtectionResult(byte[],string,Hexalith.EventStore.Contracts.Security.EventStorePayloadProtectionMetadata)'></a>
+
+## PayloadProtectionResult\(byte\[\], string, EventStorePayloadProtectionMetadata\) Constructor
+
+Represents transformed payload bytes after optional protection or unprotection together with provider-neutral protection metadata\.
+
+```csharp
+public PayloadProtectionResult(byte[] PayloadBytes, string SerializationFormat, EventStorePayloadProtectionMetadata Metadata);
+```
 ### Properties
 
 <a name='Hexalith.EventStore.Contracts.Security.PayloadProtectionResult.PayloadBytes'></a>
@@ -64,3 +74,16 @@ public string SerializationFormat { get; init; }
 
 #### Property Value
 [System\.String](https://learn.microsoft.com/en-us/dotnet/api/system.string 'System\.String')
+
+<a name='Hexalith.EventStore.Contracts.Security.PayloadProtectionResult.Metadata'></a>
+
+## PayloadProtectionResult\.Metadata Property
+
+Provider-neutral protection metadata describing how `PayloadBytes` was produced\.
+
+```csharp
+public EventStorePayloadProtectionMetadata Metadata { get; init; }
+```
+
+#### Property Value
+[EventStorePayloadProtectionMetadata](Hexalith.EventStore.Contracts.Security.EventStorePayloadProtectionMetadata.md 'Hexalith\.EventStore\.Contracts\.Security\.EventStorePayloadProtectionMetadata')

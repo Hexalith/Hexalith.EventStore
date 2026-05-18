@@ -1,3 +1,5 @@
+using Hexalith.EventStore.Contracts.Security;
+
 namespace Hexalith.EventStore.Server.Events;
 
 /// <summary>
@@ -10,10 +12,16 @@ namespace Hexalith.EventStore.Server.Events;
 /// <param name="Domain">The domain name.</param>
 /// <param name="AggregateId">The aggregate identifier.</param>
 /// <param name="TenantId">The tenant identifier.</param>
+/// <param name="ProtectionMetadata">
+/// Optional payload protection metadata returned by <see cref="IEventPayloadProtectionService.ProtectSnapshotAsync"/>.
+/// <see langword="null"/> indicates a legacy snapshot persisted before Story 22.7a (mapped to the
+/// <see cref="EventStorePayloadProtectionMetadataCarrier.Legacy"/> state by callers).
+/// </param>
 public record SnapshotRecord(
     long SequenceNumber,
     object State,
     DateTimeOffset CreatedAt,
     string Domain,
     string AggregateId,
-    string TenantId);
+    string TenantId,
+    EventStorePayloadProtectionMetadata? ProtectionMetadata = null);

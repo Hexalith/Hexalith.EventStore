@@ -3,6 +3,7 @@ using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
 
 namespace Hexalith.EventStore.Testing.Fakes;
@@ -33,7 +34,8 @@ public sealed class FakeEventPersister : IEventPersister {
         string aggregateType,
         CommandEnvelope command,
         DomainResult domainResult,
-        string domainServiceVersion) {
+        string domainServiceVersion,
+        CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
         ArgumentNullException.ThrowIfNull(command);
@@ -57,6 +59,10 @@ public sealed class FakeEventPersister : IEventPersister {
             string eventTypeName = eventPayload.GetType().FullName ?? eventPayload.GetType().Name;
             byte[] payloadBytes = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(eventPayload, eventPayload.GetType());
 
+            IDictionary<string, string> extensions = EventStorePayloadProtectionMetadataCarrier.Write(
+                extensions: (IDictionary<string, string>?)null,
+                metadata: EventStorePayloadProtectionMetadata.Unprotected());
+
             var envelope = new EventEnvelope(
                 MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
                 AggregateId: identity.AggregateId,
@@ -74,7 +80,7 @@ public sealed class FakeEventPersister : IEventPersister {
                 MetadataVersion: 1,
                 SerializationFormat: "json",
                 Payload: payloadBytes,
-                Extensions: null);
+                Extensions: extensions);
 
             _persistedEvents.Add(envelope);
             envelopes.Add(envelope);

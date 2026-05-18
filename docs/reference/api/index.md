@@ -16,7 +16,7 @@ Domain types shared between client and server: commands, events, results, and ag
 | [Events](Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Events.md) | Event payload contracts and metadata | `EventEnvelope`, `EventMetadata`, `IEventPayload` |
 | [Identity](Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Identity.md) | Aggregate identity with key derivation | `AggregateIdentity`, `IdentityParser` |
 | [Results](Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Results.md) | Domain processing result types | `DomainResult`, `DomainServiceWireResult` |
-| [Security](Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Security.md) | GDPR payload protection abstractions | `IEventPayloadProtectionService`, `PayloadProtectionResult` |
+| [Security](Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Security.md) | GDPR payload protection abstractions | `IEventPayloadProtectionService`, `PayloadProtectionResult`, `EventStorePayloadProtectionMetadata`, `PayloadProtectionState` |
 
 ## Hexalith.EventStore.Client
 

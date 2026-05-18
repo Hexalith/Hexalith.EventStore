@@ -110,6 +110,45 @@ System.Threading.Tasks.Task<Hexalith.EventStore.Contracts.Security.PayloadProtec
 #### Returns
 [System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[PayloadProtectionResult](Hexalith.EventStore.Contracts.Security.PayloadProtectionResult.md 'Hexalith\.EventStore\.Contracts\.Security\.PayloadProtectionResult')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
 
+<a name='Hexalith.EventStore.Contracts.Security.IEventPayloadProtectionService.UnprotectEventPayloadAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,string,byte[],string,Hexalith.EventStore.Contracts.Security.EventStorePayloadProtectionMetadata,System.Threading.CancellationToken)'></a>
+
+## IEventPayloadProtectionService\.UnprotectEventPayloadAsync\(AggregateIdentity, string, byte\[\], string, EventStorePayloadProtectionMetadata, CancellationToken\) Method
+
+Removes optional protection from an event payload using the metadata persisted alongside the payload\.
+
+```csharp
+System.Threading.Tasks.Task<Hexalith.EventStore.Contracts.Security.PayloadProtectionResult> UnprotectEventPayloadAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity identity, string eventTypeName, byte[] payloadBytes, string serializationFormat, Hexalith.EventStore.Contracts.Security.EventStorePayloadProtectionMetadata? metadata, System.Threading.CancellationToken cancellationToken=default(System.Threading.CancellationToken));
+```
+
+#### Returns
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[PayloadProtectionResult](Hexalith.EventStore.Contracts.Security.PayloadProtectionResult.md 'Hexalith\.EventStore\.Contracts\.Security\.PayloadProtectionResult')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
+
+<a name='Hexalith.EventStore.Contracts.Security.IEventPayloadProtectionService.ProtectSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,object,System.Threading.CancellationToken)'></a>
+
+## IEventPayloadProtectionService\.ProtectSnapshotAsync\(AggregateIdentity, object, CancellationToken\) Method
+
+Applies optional protection to snapshot state and returns the transformed state with protection metadata\.
+
+```csharp
+System.Threading.Tasks.Task<Hexalith.EventStore.Contracts.Security.SnapshotProtectionResult> ProtectSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity identity, object state, System.Threading.CancellationToken cancellationToken=default(System.Threading.CancellationToken));
+```
+
+#### Returns
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[SnapshotProtectionResult](Hexalith.EventStore.Contracts.Security.SnapshotProtectionResult.md 'Hexalith\.EventStore\.Contracts\.Security\.SnapshotProtectionResult')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
+
+<a name='Hexalith.EventStore.Contracts.Security.IEventPayloadProtectionService.UnprotectSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,object,Hexalith.EventStore.Contracts.Security.EventStorePayloadProtectionMetadata,System.Threading.CancellationToken)'></a>
+
+## IEventPayloadProtectionService\.UnprotectSnapshotAsync\(AggregateIdentity, object, EventStorePayloadProtectionMetadata, CancellationToken\) Method
+
+Removes optional protection from snapshot state using the metadata persisted alongside the snapshot\.
+
+```csharp
+System.Threading.Tasks.Task<object> UnprotectSnapshotAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity identity, object state, Hexalith.EventStore.Contracts.Security.EventStorePayloadProtectionMetadata? metadata, System.Threading.CancellationToken cancellationToken=default(System.Threading.CancellationToken));
+```
+
+#### Returns
+[System\.Threading\.Tasks\.Task&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')[System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system.object 'System\.Object')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1 'System\.Threading\.Tasks\.Task\`1')
+
 <a name='Hexalith.EventStore.Contracts.Security.IEventPayloadProtectionService.UnprotectSnapshotStateAsync(Hexalith.EventStore.Contracts.Identity.AggregateIdentity,object,System.Threading.CancellationToken)'></a>
 
 ## IEventPayloadProtectionService\.UnprotectSnapshotStateAsync\(AggregateIdentity, object, CancellationToken\) Method

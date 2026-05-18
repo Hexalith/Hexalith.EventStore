@@ -66,7 +66,7 @@ public sealed class FakeSnapshotManager : ISnapshotManager {
     }
 
     /// <inheritdoc/>
-    public Task CreateSnapshotAsync(AggregateIdentity identity, long sequenceNumber, object state, IActorStateManager stateManager, string? correlationId = null) {
+    public Task CreateSnapshotAsync(AggregateIdentity identity, long sequenceNumber, object state, IActorStateManager stateManager, string? correlationId = null, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(stateManager);
@@ -79,14 +79,15 @@ public sealed class FakeSnapshotManager : ISnapshotManager {
             CreatedAt: DateTimeOffset.UtcNow,
             Domain: identity.Domain,
             AggregateId: identity.AggregateId,
-            TenantId: identity.TenantId);
+            TenantId: identity.TenantId,
+            ProtectionMetadata: Hexalith.EventStore.Contracts.Security.EventStorePayloadProtectionMetadata.Unprotected());
 
         _snapshots[identity.SnapshotKey] = snapshot;
         return Task.CompletedTask;
     }
 
     /// <inheritdoc/>
-    public Task<SnapshotRecord?> LoadSnapshotAsync(AggregateIdentity identity, IActorStateManager stateManager, string? correlationId = null) {
+    public Task<SnapshotRecord?> LoadSnapshotAsync(AggregateIdentity identity, IActorStateManager stateManager, string? correlationId = null, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(stateManager);
 
