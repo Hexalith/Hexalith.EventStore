@@ -58,7 +58,9 @@
             </div>
 
             <h4 style="margin: 8px 0 0 0;">Event Payload</h4>
-            <JsonViewer Json="@_eventDetail.PayloadJson" AriaLabel="Event payload JSON" />
+            <JsonViewer Json="@_eventDetail.PayloadJson"
+                        RedactedContent="@_eventDetail.Payload"
+                        AriaLabel="Event payload JSON" />
 
             <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center"
                          Style="margin: 8px 0 0 0;">
@@ -77,6 +79,7 @@
             else if (_stateSnapshot is not null)
             {
                 <JsonViewer Json="@_stateSnapshot.StateJson"
+                            RedactedContent="@_stateSnapshot.State"
                             AriaLabel="@($"Aggregate state at sequence {_eventDetail.SequenceNumber}")" />
             }
             else if (_stateError is not null)
@@ -262,6 +265,11 @@
         {
             _stateError = "Backend unavailable. State inspection is temporarily offline.";
             _stateErrorRetryable = true;
+        }
+        catch (AdminApiProblemException ex)
+        {
+            _stateError = ex.Detail ?? ex.Message;
+            _stateErrorRetryable = ex.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable;
         }
         catch (InvalidOperationException ex)
         {

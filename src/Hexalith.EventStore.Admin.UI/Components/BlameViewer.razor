@@ -1,6 +1,9 @@
 @namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models
 @using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Components.Shared
 @using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
 @inject AdminStreamApiClient ApiClient
 
 <div class="blame-viewer" role="region" aria-label="@($"Blame view at sequence {_atSequence}")">
@@ -77,20 +80,16 @@
                         aria-label="Per-field provenance table">
             <PropertyColumn Property="@(f => f.FieldPath)" Title="Field Path" Class="monospace" Sortable="true" />
             <TemplateColumn Title="Current Value" Sortable="false">
-                <span class="monospace" title="@context.CurrentValue">
-                    @TruncateValue(context.CurrentValue)
-                </span>
+                @FieldValueContent(context.CurrentValue, context.CurrentContent)
             </TemplateColumn>
             <TemplateColumn Title="Previous Value" Sortable="false">
-                @if (string.IsNullOrEmpty(context.PreviousValue))
+                @if (context.PreviousContent is null && string.IsNullOrEmpty(context.PreviousValue))
                 {
                     <span style="color: var(--colorNeutralForeground3);">&mdash;</span>
                 }
                 else
                 {
-                    <span class="monospace" title="@context.PreviousValue">
-                        @TruncateValue(context.PreviousValue)
-                    </span>
+                    @FieldValueContent(context.PreviousValue, context.PreviousContent)
                 }
             </TemplateColumn>
             <TemplateColumn Title="Last Changed By" Sortable="true" SortBy="@_sortByEventType">
@@ -227,6 +226,10 @@
         {
             _error = "Blame computation timed out — try a shorter range.";
         }
+        catch (AdminApiProblemException ex)
+        {
+            _error = SafeProblemMessage(ex);
+        }
         catch
         {
             _error = "Unable to compute blame view — check server connectivity.";
@@ -302,4 +305,26 @@
             ? timestamp.ToString("HH:mm:ss")
             : timestamp.ToString("MMM dd HH:mm");
     }
+
+    private static string SafeProblemMessage(AdminApiProblemException exception)
+        => exception.Detail ?? exception.Message;
+
+    private static RenderFragment FieldValueContent(string? value, AdminRedactedContent? content) => builder =>
+    {
+        if (content is not null)
+        {
+            builder.OpenComponent<ProtectedContentPanel>(0);
+            builder.AddAttribute(1, nameof(ProtectedContentPanel.Content), content);
+            builder.AddAttribute(2, nameof(ProtectedContentPanel.Compact), true);
+            builder.CloseComponent();
+            return;
+        }
+
+        string safeValue = value ?? string.Empty;
+        builder.OpenElement(3, "span");
+        builder.AddAttribute(4, "class", "monospace");
+        builder.AddAttribute(5, "title", safeValue);
+        builder.AddContent(6, TruncateValue(safeValue));
+        builder.CloseElement();
+    };
 }

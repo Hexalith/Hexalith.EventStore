@@ -3,6 +3,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
+using Hexalith.EventStore.Admin.Server.Services;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -72,6 +73,9 @@ public class AdminStreamsController(
                 .ConfigureAwait(false);
             return Ok(result);
         }
+        catch (AdminUpstreamProblemException ex) {
+            return UpstreamProblem(ex);
+        }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetRecentCommands), ex);
         }
@@ -102,6 +106,9 @@ public class AdminStreamsController(
                 .GetStreamTimelineAsync(tenantId, domain, aggregateId, fromSequence, toSequence, count, ct)
                 .ConfigureAwait(false);
             return Ok(result);
+        }
+        catch (AdminUpstreamProblemException ex) {
+            return UpstreamProblem(ex);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetStreamTimeline), ex);
@@ -141,6 +148,9 @@ public class AdminStreamsController(
         }
         catch (ArgumentException ex) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
+        }
+        catch (AdminUpstreamProblemException ex) {
+            return UpstreamProblem(ex);
         }
         catch (HttpRequestException ex) when (TryMapUpstreamStatus(ex, out IActionResult? mapped)) {
             return mapped!;
@@ -185,6 +195,9 @@ public class AdminStreamsController(
         catch (ArgumentException ex) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
         }
+        catch (AdminUpstreamProblemException ex) {
+            return UpstreamProblem(ex);
+        }
         catch (HttpRequestException ex) when (TryMapUpstreamStatus(ex, out IActionResult? mapped)) {
             return mapped!;
         }
@@ -224,6 +237,9 @@ public class AdminStreamsController(
             return result is null
                 ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Stream not found.")
                 : Ok(result);
+        }
+        catch (AdminUpstreamProblemException ex) {
+            return UpstreamProblem(ex);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetAggregateBlame), ex);
@@ -279,6 +295,9 @@ public class AdminStreamsController(
         catch (ArgumentException ex) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
         }
+        catch (AdminUpstreamProblemException ex) {
+            return UpstreamProblem(ex);
+        }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(BisectAggregateState), ex);
         }
@@ -319,6 +338,9 @@ public class AdminStreamsController(
         }
         catch (ArgumentException ex) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
+        }
+        catch (AdminUpstreamProblemException ex) {
+            return UpstreamProblem(ex);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetEventStepFrame), ex);
@@ -366,6 +388,9 @@ public class AdminStreamsController(
         catch (ArgumentException ex) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
         }
+        catch (AdminUpstreamProblemException ex) {
+            return UpstreamProblem(ex);
+        }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(GetEventDetail), ex);
         }
@@ -404,6 +429,9 @@ public class AdminStreamsController(
         }
         catch (ArgumentException ex) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
+        }
+        catch (AdminUpstreamProblemException ex) {
+            return UpstreamProblem(ex);
         }
         catch (HttpRequestException ex) when (TryMapUpstreamStatus(ex, out IActionResult? mapped)) {
             return mapped!;
@@ -456,6 +484,9 @@ public class AdminStreamsController(
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(SandboxCommand), ex);
+        }
+        catch (AdminUpstreamProblemException ex) {
+            return UpstreamProblem(ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(SandboxCommand), ex);
@@ -523,6 +554,18 @@ public class AdminStreamsController(
             StatusCodes.Status500InternalServerError,
             "Internal Server Error",
             "An unexpected error occurred.");
+    }
+
+    private ObjectResult UpstreamProblem(AdminUpstreamProblemException ex) {
+        if (!ex.ProblemDetails.Extensions.ContainsKey("correlationId")) {
+            ex.ProblemDetails.Extensions["correlationId"] = HttpContext.Items["CorrelationId"]?.ToString()
+                ?? Guid.NewGuid().ToString();
+        }
+
+        ex.ProblemDetails.Instance ??= HttpContext.Request.Path;
+        return new ObjectResult(ex.ProblemDetails) {
+            StatusCode = (int)ex.StatusCode
+        };
     }
 
     private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null) {

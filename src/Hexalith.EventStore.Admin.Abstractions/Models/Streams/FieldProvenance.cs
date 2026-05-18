@@ -1,3 +1,7 @@
+using System.Text.Json.Serialization;
+
+using Hexalith.EventStore.Admin.Abstractions.Models;
+
 namespace Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 /// <summary>
@@ -23,11 +27,21 @@ public record FieldProvenance(
     /// <summary>Gets the JSON path to the field.</summary>
     public string FieldPath { get; } = FieldPath ?? string.Empty;
 
-    /// <summary>Gets the current value as opaque JSON string.</summary>
-    public string CurrentValue { get; } = CurrentValue ?? string.Empty;
+    /// <summary>Gets the current value as opaque JSON string when the content is safe to expose.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string CurrentValue { get; init; } = CurrentValue ?? string.Empty;
 
-    /// <summary>Gets the previous value; empty if the field was introduced by the last change event.</summary>
-    public string PreviousValue { get; } = PreviousValue ?? string.Empty;
+    /// <summary>Gets the previous value when the content is safe to expose.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string PreviousValue { get; init; } = PreviousValue ?? string.Empty;
+
+    /// <summary>Gets the current redacted value descriptor.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AdminRedactedContent? CurrentContent { get; init; }
+
+    /// <summary>Gets the previous redacted value descriptor.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AdminRedactedContent? PreviousContent { get; init; }
 
     /// <summary>Gets the event type name that last changed this field.</summary>
     public string LastChangedByEventType { get; } = LastChangedByEventType ?? string.Empty;

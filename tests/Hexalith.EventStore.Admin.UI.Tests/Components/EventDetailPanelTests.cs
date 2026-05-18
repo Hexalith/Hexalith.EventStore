@@ -1,7 +1,9 @@
 using Bunit;
 
+using Hexalith.EventStore.Admin.Abstractions.Models;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.UI.Components;
+using Hexalith.EventStore.Testing.Security;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -45,6 +47,44 @@ public class EventDetailPanelTests : AdminUITestContext {
 
         IRenderedComponent<EventDetailPanel> cut = RenderPanel(5);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("count"), TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public void EventDetailPanel_RendersRedactedPayloadAndStateWithoutSentinelLeak() {
+        EventDetail detail = EventDetail.WithRedactedPayload(
+            "tenant-a",
+            "Counter",
+            "agg-1",
+            5,
+            "CounterIncremented",
+            DateTimeOffset.UtcNow,
+            "corr-1",
+            null,
+            "user-1",
+            Redacted("event-payload", sequenceNumber: 5, correlationId: "corr-1"));
+        SetupDetailMock(detail);
+        _ = _mockApiClient.GetAggregateStateAtPositionAsync(
+            "tenant-a", "Counter", "agg-1", 5, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<AggregateStateSnapshot?>(
+                AggregateStateSnapshot.WithRedactedState(
+                    "tenant-a",
+                    "Counter",
+                    "agg-1",
+                    5,
+                    DateTimeOffset.UtcNow,
+                    Redacted("aggregate-state", sequenceNumber: 5, correlationId: "corr-1"))));
+
+        IRenderedComponent<EventDetailPanel> cut = RenderPanel(5);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("provider-unavailable"), TimeSpan.FromSeconds(5));
+
+        string markup = cut.Markup;
+        ProtectedDataLeakSentinel.AssertNoLeak([markup]);
+        markup.ShouldContain("Protected content redacted");
+        markup.ShouldContain("event-payload");
+        markup.ShouldContain("aggregate-state");
+        markup.ShouldContain("Check provider health");
+        markup.ShouldNotContain("payloadJson");
+        markup.ShouldNotContain("stateJson");
     }
 
     [Fact]
@@ -123,4 +163,19 @@ public class EventDetailPanelTests : AdminUITestContext {
 
     private static EventDetail CreateEventDetail(long seq, string eventType, string payload = "{}") => new("tenant-a", "Counter", "agg-1", seq,
             eventType, DateTimeOffset.UtcNow, "corr-1", null, null, payload);
+
+    private static AdminRedactedContent Redacted(string contentKind, long? sequenceNumber = null, string? correlationId = null)
+        => AdminRedactedContent.Protected(
+            contentKind,
+            reasonCode: "provider-unavailable",
+            stage: "admin-ui",
+            metadataVersion: 1,
+            retryable: true,
+            permanent: false,
+            safeNextAction: "Check provider health and retry after the protected-data provider is available.",
+            tenantId: "tenant-a",
+            domain: "Counter",
+            aggregateId: "agg-1",
+            sequenceNumber: sequenceNumber,
+            correlationId: correlationId);
 }

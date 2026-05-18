@@ -184,7 +184,14 @@
                 <span title="@context.OriginalCommandType">@GetShortTypeName(context.OriginalCommandType)</span>
             </TemplateColumn>
             <TemplateColumn Title="Failure Reason" Sortable="false">
-                <span title="@context.FailureReason">@Truncate(context.FailureReason, 60)</span>
+                @if (context.Failure is not null)
+                {
+                    <ProtectedContentPanel Content="@context.Failure" Compact="true" />
+                }
+                else
+                {
+                    <span title="@SafeFailureText(context)">@Truncate(SafeFailureText(context), 60)</span>
+                }
                 @if (_expandedEntry?.MessageId == context.MessageId)
                 {
                     <FluentCard Style="margin-top: 8px; padding: 12px;" aria-label="Dead-letter entry details">
@@ -208,7 +215,16 @@
                         </div>
                         <FluentCard Style="margin-top: 8px; background: var(--colorNeutralBackground2); padding: 8px;">
                             <strong>Failure Reason:</strong>
-                            <pre style="margin: 6px 0 0; white-space: pre-wrap; font-family: var(--fontFamilyBase); font-size: 12px;">@context.FailureReason</pre>
+                            @if (context.Failure is not null)
+                            {
+                                <div style="margin-top: 6px;">
+                                    <ProtectedContentPanel Content="@context.Failure" />
+                                </div>
+                            }
+                            else
+                            {
+                                <pre style="margin: 6px 0 0; white-space: pre-wrap; font-family: var(--fontFamilyBase); font-size: 12px;">@SafeFailureText(context)</pre>
+                            }
                         </FluentCard>
                     </FluentCard>
                 }
@@ -610,14 +626,14 @@
         {
             filtered = filtered.Where(e =>
                 !_knownCategories.Any(cat =>
-                    e.FailureReason.Contains(cat, StringComparison.OrdinalIgnoreCase)));
+                    SafeFailureSearchText(e).Contains(cat, StringComparison.OrdinalIgnoreCase)));
         }
         else if (!string.IsNullOrWhiteSpace(_failureCategory)
             && !string.Equals(_failureCategory, "All", StringComparison.OrdinalIgnoreCase))
         {
             string category = _failureCategory;
             filtered = filtered.Where(e =>
-                e.FailureReason.Contains(category, StringComparison.OrdinalIgnoreCase));
+                SafeFailureSearchText(e).Contains(category, StringComparison.OrdinalIgnoreCase));
         }
 
         if (!string.IsNullOrWhiteSpace(_searchFilter))
@@ -625,7 +641,7 @@
             string search = _searchFilter;
             filtered = filtered.Where(e =>
                 e.OriginalCommandType.Contains(search, StringComparison.OrdinalIgnoreCase)
-                || e.FailureReason.Contains(search, StringComparison.OrdinalIgnoreCase));
+                || SafeFailureSearchText(e).Contains(search, StringComparison.OrdinalIgnoreCase));
         }
 
         _filteredEntries = filtered.ToList();
@@ -998,6 +1014,16 @@
     // Helpers
     private static string Truncate(string value, int maxLength) =>
         value.Length <= maxLength ? value : value[..maxLength];
+
+    private static string SafeFailureText(DeadLetterEntry entry)
+        => entry.Failure is null
+            ? entry.FailureReason ?? string.Empty
+            : $"{entry.Failure.Placeholder} ReasonCode={entry.Failure.ReasonCode}; Stage={entry.Failure.Stage}; Content={entry.Failure.ContentKind}.";
+
+    private static string SafeFailureSearchText(DeadLetterEntry entry)
+        => entry.Failure is null
+            ? entry.FailureReason ?? string.Empty
+            : string.Join(' ', entry.Failure.ContentKind, entry.Failure.ReasonCode, entry.Failure.Stage, entry.Failure.SafeNextAction);
 
     private static string GetShortTypeName(string fullTypeName)
     {

@@ -9,6 +9,8 @@ using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
 using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Problems;
+using Hexalith.EventStore.Testing.Security;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -322,6 +324,66 @@ public class DaprStreamQueryServiceTests {
         HttpRequestException ex = await Should.ThrowAsync<HttpRequestException>(
             () => service.GetEventDetailAsync("tenant1", "orders", "order-1", 5));
         ex.StatusCode.ShouldBe(System.Net.HttpStatusCode.ServiceUnavailable);
+    }
+
+    [Fact]
+    public async Task GetEventDetailAsync_ProtectedProblemDetails_PreservesSafeExtensionsAndDropsProviderPrivateValues() {
+        (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(new {
+            type = UnreadableProtectedDataProblem.TypeUri,
+            title = UnreadableProtectedDataProblem.DefaultTitle,
+            status = 503,
+            detail = "Protection provider is temporarily unavailable. Retry later with backoff.",
+            correlationId = "corr-1",
+            reasonCode = "provider-unavailable",
+            stage = "admin-inspection",
+            tenantId = "tenant-a",
+            domain = "Counter",
+            aggregateId = "agg-1",
+            sequenceNumber = 5,
+            retryable = true,
+            permanent = false,
+            providerPrivateMetadata = ProtectedDataLeakSentinel.ProtectedProviderPrivateBlob,
+            rawException = ProtectedDataLeakSentinel.ProtectedProviderExceptionText,
+        }, System.Net.HttpStatusCode.ServiceUnavailable);
+
+        AdminUpstreamProblemException ex = await Should.ThrowAsync<AdminUpstreamProblemException>(
+            () => service.GetEventDetailAsync("tenant-a", "Counter", "agg-1", 5));
+
+        ex.StatusCode.ShouldBe(System.Net.HttpStatusCode.ServiceUnavailable);
+        ex.ProblemDetails.Type.ShouldBe(UnreadableProtectedDataProblem.TypeUri);
+        ex.ProblemDetails.Extensions["reasonCode"].ShouldBe("provider-unavailable");
+        ex.ProblemDetails.Extensions["stage"].ShouldBe("admin-inspection");
+        ex.ProblemDetails.Extensions.ContainsKey("providerPrivateMetadata").ShouldBeFalse();
+        ex.ProblemDetails.Extensions.ContainsKey("rawException").ShouldBeFalse();
+
+        string serialized = System.Text.Json.JsonSerializer.Serialize(ex.ProblemDetails);
+        ProtectedDataLeakSentinel.AssertNoLeak([serialized]);
+    }
+
+    [Fact]
+    public async Task GetEventDetailAsync_ProtectedProblemDetails_DropsNestedValuesEvenWhenExtensionNameIsAllowed() {
+        (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(new {
+            type = UnreadableProtectedDataProblem.TypeUri,
+            title = UnreadableProtectedDataProblem.DefaultTitle,
+            status = 503,
+            detail = "Protection provider is temporarily unavailable. Retry later with backoff.",
+            correlationId = "corr-1",
+            reasonCode = new {
+                code = "provider-unavailable",
+                providerPrivateMetadata = ProtectedDataLeakSentinel.ProtectedProviderPrivateBlob,
+            },
+            stage = "admin-inspection",
+        }, System.Net.HttpStatusCode.ServiceUnavailable);
+
+        AdminUpstreamProblemException ex = await Should.ThrowAsync<AdminUpstreamProblemException>(
+            () => service.GetEventDetailAsync("tenant-a", "Counter", "agg-1", 5));
+
+        ex.ProblemDetails.Extensions.ContainsKey("reasonCode").ShouldBeFalse();
+        ex.ProblemDetails.Extensions["stage"].ShouldBe("admin-inspection");
+        string serialized = System.Text.Json.JsonSerializer.Serialize(ex.ProblemDetails);
+        ProtectedDataLeakSentinel.AssertNoLeak([serialized]);
     }
 
     [Fact]

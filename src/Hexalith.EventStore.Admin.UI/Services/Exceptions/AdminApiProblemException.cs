@@ -13,6 +13,8 @@ public sealed class AdminApiProblemException(
     string? errorCode = null,
     string? traceId = null,
     string? operationId = null,
+    string? problemType = null,
+    IReadOnlyDictionary<string, object?>? extensions = null,
     Exception? innerException = null) : Exception(message, innerException) {
     public HttpStatusCode? StatusCode { get; } = statusCode;
     public string? Title { get; } = title;
@@ -20,4 +22,6 @@ public sealed class AdminApiProblemException(
     public string? ErrorCode { get; } = errorCode;
     public string? TraceId { get; } = traceId;
     public string? OperationId { get; } = operationId;
+    public string? ProblemType { get; } = problemType;
+    public IReadOnlyDictionary<string, object?> Extensions { get; } = extensions ?? new Dictionary<string, object?>();
 }

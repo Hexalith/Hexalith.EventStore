@@ -1,5 +1,7 @@
 @namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models
 @using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Components.Shared
 @using Hexalith.EventStore.Admin.UI.Services
 @using Hexalith.EventStore.Admin.UI.Services.Exceptions
 @inject AdminStreamApiClient ApiClient
@@ -36,6 +38,7 @@
         <EmptyState Title="@($"Initial state at sequence #{ToSequence}")"
                     Description="This is the first state of the aggregate — all fields are new." />
         <JsonViewer Json="@_toState.StateJson"
+                    RedactedContent="@_toState.State"
                     AriaLabel="@($"Initial aggregate state at sequence {ToSequence}")" />
     }
     else if (_diffError is not null)
@@ -56,16 +59,10 @@
                         aria-label="@($"Field changes between sequence {FromSequence} and {ToSequence}")">
             <PropertyColumn Property="@(f => f.FieldPath)" Title="Field Path" Class="monospace diff-field-path" />
             <TemplateColumn Title="Old Value" Class="diff-old-value">
-                <span class="monospace" aria-label="@($"Previous value: {TruncateValue(context.OldValue)}")"
-                      title="@context.OldValue">
-                    <span aria-hidden="true" style="margin-right: 4px;">&minus;</span>@TruncateValue(context.OldValue)
-                </span>
+                @FieldValueContent(context.OldValue, context.OldContent, "Previous")
             </TemplateColumn>
             <TemplateColumn Title="New Value" Class="diff-new-value">
-                <span class="monospace" aria-label="@($"New value: {TruncateValue(context.NewValue)}")"
-                      title="@context.NewValue">
-                    <span aria-hidden="true" style="margin-right: 4px;">+</span>@TruncateValue(context.NewValue)
-                </span>
+                @FieldValueContent(context.NewValue, context.NewContent, "New")
             </TemplateColumn>
         </FluentDataGrid>
 
@@ -98,6 +95,7 @@
                 @if (_fromState is not null)
                 {
                     <JsonViewer Json="@_fromState.StateJson"
+                                RedactedContent="@_fromState.State"
                                 AriaLabel="@($"Full aggregate state at sequence {FromSequence}")" />
                 }
                 else if (FromSequence == 0)
@@ -117,6 +115,7 @@
                 @if (_toState is not null)
                 {
                     <JsonViewer Json="@_toState.StateJson"
+                                RedactedContent="@_toState.State"
                                 AriaLabel="@($"Full aggregate state at sequence {ToSequence}")" />
                 }
                 else
@@ -287,6 +286,7 @@
                 ForbiddenAccessException => "Access denied. You do not have permission to compute this diff.",
                 ServiceUnavailableException => "Backend unavailable. Diff is temporarily offline.",
                 OperationCanceledException => "Diff timed out \u2014 try a smaller range.",
+                AdminApiProblemException problem => problem.Detail ?? problem.Message,
                 InvalidOperationException invalid => string.IsNullOrWhiteSpace(invalid.Message)
                     ? "Invalid sequence range for diff."
                     : invalid.Message,
@@ -379,4 +379,25 @@
 
         return value.Length > 80 ? value[..80] + "\u2026" : value;
     }
+
+    private static RenderFragment FieldValueContent(string? value, AdminRedactedContent? content, string prefix) => builder =>
+    {
+        if (content is not null)
+        {
+            builder.OpenComponent<ProtectedContentPanel>(0);
+            builder.AddAttribute(1, nameof(ProtectedContentPanel.Content), content);
+            builder.AddAttribute(2, nameof(ProtectedContentPanel.Compact), true);
+            builder.CloseComponent();
+            return;
+        }
+
+        string safeValue = value ?? string.Empty;
+        string truncated = TruncateValue(safeValue);
+        builder.OpenElement(3, "span");
+        builder.AddAttribute(4, "class", "monospace");
+        builder.AddAttribute(5, "aria-label", $"{prefix} value: {truncated}");
+        builder.AddAttribute(6, "title", safeValue);
+        builder.AddContent(7, truncated);
+        builder.CloseElement();
+    };
 }

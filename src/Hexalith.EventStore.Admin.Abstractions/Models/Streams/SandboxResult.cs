@@ -1,3 +1,7 @@
+using System.Text.Json.Serialization;
+
+using Hexalith.EventStore.Admin.Abstractions.Models;
+
 namespace Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 /// <summary>
@@ -46,11 +50,44 @@ public record SandboxResult(
     /// <summary>Gets the events that would be produced.</summary>
     public IReadOnlyList<SandboxEvent> ProducedEvents { get; } = ProducedEvents ?? [];
 
-    /// <summary>Gets the aggregate state JSON after applying produced events.</summary>
-    public string ResultingStateJson { get; } = ResultingStateJson ?? string.Empty;
+    /// <summary>Gets the aggregate state JSON after applying produced events when safe to expose.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string ResultingStateJson { get; init; } = ResultingStateJson ?? string.Empty;
+
+    /// <summary>Gets the redacted resulting-state descriptor.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AdminRedactedContent? ResultingState { get; init; }
 
     /// <summary>Gets the diff between input state and resulting state.</summary>
     public IReadOnlyList<FieldChange> StateChanges { get; } = StateChanges ?? [];
+
+    /// <summary>Gets the error message when safe to expose.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ErrorMessage { get; init; } = ErrorMessage;
+
+    /// <summary>Gets the redacted error descriptor.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AdminRedactedContent? Error { get; init; }
+
+    /// <summary>Creates a sandbox result whose protected content is represented by redacted descriptors.</summary>
+    public static SandboxResult WithRedactedContent(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long atSequence,
+        string commandType,
+        string outcome,
+        IReadOnlyList<SandboxEvent> producedEvents,
+        AdminRedactedContent resultingState,
+        IReadOnlyList<FieldChange> stateChanges,
+        AdminRedactedContent error,
+        long executionTimeMs)
+        => new(tenantId, domain, aggregateId, atSequence, commandType, outcome, producedEvents, "{}", stateChanges, null, executionTimeMs) {
+            ResultingStateJson = null!,
+            ResultingState = resultingState ?? throw new ArgumentNullException(nameof(resultingState)),
+            ErrorMessage = null,
+            Error = error ?? throw new ArgumentNullException(nameof(error))
+        };
 
     /// <summary>
     /// Returns a string representation with ResultingStateJson, event payloads, and field values redacted (SEC-5).

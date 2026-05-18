@@ -1,3 +1,7 @@
+using System.Text.Json.Serialization;
+
+using Hexalith.EventStore.Admin.Abstractions.Models;
+
 namespace Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 /// <summary>
@@ -49,8 +53,30 @@ public record EventDetail(
         ? CorrelationId
         : throw new ArgumentException("CorrelationId cannot be null, empty, or whitespace.", nameof(CorrelationId));
 
-    /// <summary>Gets the serialized event payload as opaque JSON.</summary>
-    public string PayloadJson { get; } = PayloadJson ?? throw new ArgumentNullException(nameof(PayloadJson));
+    /// <summary>Gets the serialized event payload as opaque JSON when the content is safe to expose.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string PayloadJson { get; init; } = PayloadJson ?? throw new ArgumentNullException(nameof(PayloadJson));
+
+    /// <summary>Gets the redacted payload descriptor when payload content is protected or unreadable.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AdminRedactedContent? Payload { get; init; }
+
+    /// <summary>Creates an event detail response whose payload is represented by a redacted descriptor.</summary>
+    public static EventDetail WithRedactedPayload(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        string eventTypeName,
+        DateTimeOffset timestamp,
+        string correlationId,
+        string? causationId,
+        string? userId,
+        AdminRedactedContent payload)
+        => new(tenantId, domain, aggregateId, sequenceNumber, eventTypeName, timestamp, correlationId, causationId, userId, "{}") {
+            PayloadJson = null!,
+            Payload = payload ?? throw new ArgumentNullException(nameof(payload))
+        };
 
     /// <summary>
     /// Returns a string representation with PayloadJson redacted (SEC-5).

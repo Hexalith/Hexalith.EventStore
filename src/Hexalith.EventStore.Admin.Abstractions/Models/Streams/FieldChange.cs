@@ -1,3 +1,7 @@
+using System.Text.Json.Serialization;
+
+using Hexalith.EventStore.Admin.Abstractions.Models;
+
 namespace Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 /// <summary>
@@ -12,11 +16,30 @@ public record FieldChange(string FieldPath, string OldValue, string NewValue) {
         ? FieldPath
         : throw new ArgumentException("FieldPath cannot be null, empty, or whitespace.", nameof(FieldPath));
 
-    /// <summary>Gets the previous value as opaque JSON scalar.</summary>
-    public string OldValue { get; } = OldValue ?? throw new ArgumentNullException(nameof(OldValue));
+    /// <summary>Gets the previous value as opaque JSON scalar when the content is safe to expose.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string OldValue { get; init; } = OldValue ?? throw new ArgumentNullException(nameof(OldValue));
 
-    /// <summary>Gets the new value as opaque JSON scalar.</summary>
-    public string NewValue { get; } = NewValue ?? throw new ArgumentNullException(nameof(NewValue));
+    /// <summary>Gets the new value as opaque JSON scalar when the content is safe to expose.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string NewValue { get; init; } = NewValue ?? throw new ArgumentNullException(nameof(NewValue));
+
+    /// <summary>Gets the previous redacted value descriptor.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AdminRedactedContent? OldContent { get; init; }
+
+    /// <summary>Gets the new redacted value descriptor.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AdminRedactedContent? NewContent { get; init; }
+
+    /// <summary>Creates a field change whose values are represented by redacted descriptors.</summary>
+    public static FieldChange Redacted(string fieldPath, AdminRedactedContent oldContent, AdminRedactedContent newContent)
+        => new(fieldPath, "{}", "{}") {
+            OldValue = null!,
+            NewValue = null!,
+            OldContent = oldContent ?? throw new ArgumentNullException(nameof(oldContent)),
+            NewContent = newContent ?? throw new ArgumentNullException(nameof(newContent))
+        };
 
     /// <summary>
     /// Returns a string representation with OldValue and NewValue redacted (SEC-5).

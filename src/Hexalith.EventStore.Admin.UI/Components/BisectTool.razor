@@ -1,6 +1,9 @@
 @namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models
 @using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Components.Shared
 @using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
 @implements IAsyncDisposable
 @inject AdminStreamApiClient ApiClient
 
@@ -181,14 +184,10 @@
                             aria-label="Divergent field changes">
                 <PropertyColumn Property="@(f => f.FieldPath)" Title="Field Path" Class="monospace" Sortable="true" />
                 <TemplateColumn Title="Old Value" Sortable="false">
-                    <span class="monospace" title="@context.OldValue">
-                        @TruncateValue(context.OldValue)
-                    </span>
+                    @FieldValueContent(context.OldValue, context.OldContent)
                 </TemplateColumn>
                 <TemplateColumn Title="New Value" Sortable="false">
-                    <span class="monospace" title="@context.NewValue">
-                        @TruncateValue(context.NewValue)
-                    </span>
+                    @FieldValueContent(context.NewValue, context.NewContent)
                 </TemplateColumn>
             </FluentDataGrid>
         }
@@ -336,7 +335,7 @@
             AggregateStateSnapshot? state = await ApiClient.GetAggregateStateAtPositionAsync(
                 TenantId, Domain, AggregateId, _goodSequence!.Value, _cts.Token);
 
-            if (state is not null && !string.IsNullOrWhiteSpace(state.StateJson))
+            if (state is not null && state.State is null && !string.IsNullOrWhiteSpace(state.StateJson))
             {
                 _availableFields = ExtractLeafFieldPaths(state.StateJson);
                 _filteredAvailableFields = _availableFields;
@@ -350,6 +349,10 @@
         catch (OperationCanceledException)
         {
             _validationError = "Field loading timed out.";
+        }
+        catch (AdminApiProblemException ex)
+        {
+            _validationError = SafeProblemMessage(ex);
         }
         catch
         {
@@ -424,6 +427,11 @@
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.BadRequest)
         {
             _error = ex.Message;
+            _phase = BisectPhase.Error;
+        }
+        catch (AdminApiProblemException ex)
+        {
+            _error = SafeProblemMessage(ex);
             _phase = BisectPhase.Error;
         }
         catch
@@ -505,6 +513,9 @@
         StateHasChanged();
     }
 
+    private static string SafeProblemMessage(AdminApiProblemException exception)
+        => exception.Detail ?? exception.Message;
+
     private static List<string> ExtractLeafFieldPaths(string stateJson)
     {
         try
@@ -561,6 +572,25 @@
             ? timestamp.ToString("HH:mm:ss")
             : timestamp.ToString("MMM dd HH:mm");
     }
+
+    private static RenderFragment FieldValueContent(string? value, AdminRedactedContent? content) => builder =>
+    {
+        if (content is not null)
+        {
+            builder.OpenComponent<ProtectedContentPanel>(0);
+            builder.AddAttribute(1, nameof(ProtectedContentPanel.Content), content);
+            builder.AddAttribute(2, nameof(ProtectedContentPanel.Compact), true);
+            builder.CloseComponent();
+            return;
+        }
+
+        string safeValue = value ?? string.Empty;
+        builder.OpenElement(3, "span");
+        builder.AddAttribute(4, "class", "monospace");
+        builder.AddAttribute(5, "title", safeValue);
+        builder.AddContent(6, TruncateValue(safeValue));
+        builder.CloseElement();
+    };
 
     public async ValueTask DisposeAsync()
     {

@@ -1,7 +1,10 @@
 @namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models
 @using System.Text.Json
 @using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Components.Shared
 @using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
 @inject AdminStreamApiClient ApiClient
 @implements IAsyncDisposable
 
@@ -103,9 +106,16 @@
             }
             else if (_result.Outcome == "error")
             {
-                <IssueBanner Visible="true"
-                             Title="Sandbox Error"
-                             Description="@(_result.ErrorMessage ?? "Unknown error")" />
+                @if (_result.Error is not null)
+                {
+                    <ProtectedContentPanel Content="_result.Error" />
+                }
+                else
+                {
+                    <IssueBanner Visible="true"
+                                 Title="Sandbox Error"
+                                 Description="@(_result.ErrorMessage ?? "Unknown error")" />
+                }
             }
 
             @* Produced Events *@
@@ -129,7 +139,7 @@
                     <TemplateColumn Title="Payload">
                         <FluentButton Appearance="ButtonAppearance.Transparent"
                                       OnClick="@(() => ShowEventPayloadAsync(context))"
-                                      aria-label="@($"View payload for event {context.Index}")">
+                                      aria-label="@($"View safe payload summary for event {context.Index}")">
                             View Payload
                         </FluentButton>
                     </TemplateColumn>
@@ -167,14 +177,10 @@
                                 aria-label="State changes table">
                     <PropertyColumn Property="@(fc => fc.FieldPath)" Title="Field Path" Class="monospace" />
                     <TemplateColumn Title="Old Value">
-                        <span class="monospace" title="@context.OldValue">
-                            @TruncateValue(context.OldValue)
-                        </span>
+                        @FieldValueContent(context.OldValue, context.OldContent)
                     </TemplateColumn>
                     <TemplateColumn Title="New Value">
-                        <span class="monospace" title="@context.NewValue">
-                            @TruncateValue(context.NewValue)
-                        </span>
+                        @FieldValueContent(context.NewValue, context.NewContent)
                     </TemplateColumn>
                 </FluentDataGrid>
             }
@@ -183,7 +189,9 @@
             @if (_result.Outcome == "accepted" && _result.ProducedEvents.Count > 0)
             {
                 <h4 style="margin-top: 16px;">Resulting State (after applying @_result.ProducedEvents.Count events)</h4>
-                <JsonViewer Json="@_result.ResultingStateJson" AriaLabel="Resulting aggregate state" />
+                <JsonViewer Json="@_result.ResultingStateJson"
+                            RedactedContent="@_result.ResultingState"
+                            AriaLabel="Resulting aggregate state" />
             }
 
             @* Execution metadata *@
@@ -202,7 +210,10 @@
                 </FluentText>
             </TitleTemplate>
             <ChildContent>
-                <JsonViewer Json="@_selectedEventPayload" AriaLabel="Event payload" MaxHeight="500" />
+                <JsonViewer Json="@_selectedEventPayload"
+                            RedactedContent="@_selectedEventRedacted"
+                            AriaLabel="Event payload"
+                            MaxHeight="500" />
             </ChildContent>
             <ActionTemplate>
                 <FluentButton Appearance="ButtonAppearance.Primary" OnClick="ClosePayloadDialogAsync">Close</FluentButton>
@@ -223,6 +234,7 @@
     private List<FieldChange> _filteredStateChanges = [];
     private FluentDialog? _payloadDialog;
     private string _selectedEventPayload = string.Empty;
+    private AdminRedactedContent? _selectedEventRedacted;
     private string _selectedEventTypeName = string.Empty;
     private CancellationTokenSource? _cts;
 
@@ -328,6 +340,10 @@
         {
             _apiError = "Sandbox timed out — state reconstruction may be too slow for this aggregate (large stream without nearby snapshots). Try specifying a sequence closer to a known snapshot position, or use a smaller aggregate for testing.";
         }
+        catch (AdminApiProblemException ex)
+        {
+            _apiError = SafeProblemMessage(ex);
+        }
         catch
         {
             _apiError = "Unable to run sandbox — check server connectivity.";
@@ -370,11 +386,31 @@
     {
         _selectedEventTypeName = evt.EventTypeName;
         _selectedEventPayload = evt.PayloadJson;
+        _selectedEventRedacted = evt.Payload;
         if (_payloadDialog is not null)
         {
             await _payloadDialog.ShowAsync().ConfigureAwait(false);
         }
     }
+
+    private static RenderFragment FieldValueContent(string? value, AdminRedactedContent? content) => builder =>
+    {
+        if (content is not null)
+        {
+            builder.OpenComponent<ProtectedContentPanel>(0);
+            builder.AddAttribute(1, nameof(ProtectedContentPanel.Content), content);
+            builder.AddAttribute(2, nameof(ProtectedContentPanel.Compact), true);
+            builder.CloseComponent();
+            return;
+        }
+
+        string safeValue = value ?? string.Empty;
+        builder.OpenElement(3, "span");
+        builder.AddAttribute(4, "class", "monospace");
+        builder.AddAttribute(5, "title", safeValue);
+        builder.AddContent(6, TruncateValue(safeValue));
+        builder.CloseElement();
+    };
 
     private async Task ClosePayloadDialogAsync()
     {
@@ -398,6 +434,9 @@
 
         return value.Length > 60 ? string.Concat(value.AsSpan(0, 57), "...") : value;
     }
+
+    private static string SafeProblemMessage(AdminApiProblemException exception)
+        => exception.Detail ?? exception.Message;
 
     public async ValueTask DisposeAsync()
     {

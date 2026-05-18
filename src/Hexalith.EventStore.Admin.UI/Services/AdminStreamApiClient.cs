@@ -20,6 +20,37 @@ public class AdminStreamApiClient(
     ILogger<AdminStreamApiClient> logger) {
     private static readonly PagedResult<CommandSummary> _emptyCommandsResult = new([], 0, null);
     private static readonly PagedResult<StreamSummary> _emptyStreamsResult = new([], 0, null);
+    private static readonly ISet<string> ProtectedProblemTypes = new HashSet<string>(StringComparer.Ordinal) {
+        "https://hexalith.io/problems/unreadable-protected-data",
+        "https://hexalith.io/problems/crypto-shredding-workflow-conflict",
+        "https://hexalith.io/problems/restored-backup-admission-conflict",
+    };
+
+    private static readonly ISet<string> SafeProblemExtensions = new HashSet<string>(StringComparer.Ordinal) {
+        "correlationId",
+        "reasonCode",
+        "reasonCategory",
+        "stage",
+        "tenantId",
+        "domain",
+        "aggregateId",
+        "sequenceNumber",
+        "checkpointId",
+        "metadataVersion",
+        "retryable",
+        "permanent",
+        "workflowId",
+        "workflowState",
+        "nextAction",
+        "fromSequence",
+        "toSequence",
+        "auditId",
+        "irreversibleDecisionRecorded",
+        "admissionId",
+        "admissionState",
+        "backupManifestId",
+        "watermarkConflict",
+    };
 
     /// <summary>
     /// Gets recent commands across all streams, optionally filtered by tenant, status, and command type.
@@ -49,6 +80,7 @@ public class AdminStreamApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch commands from {Url}", url);
@@ -82,6 +114,7 @@ public class AdminStreamApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch streams from {Url}", url);
@@ -108,6 +141,7 @@ public class AdminStreamApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch system health");
@@ -135,6 +169,7 @@ public class AdminStreamApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch tenants");
@@ -174,6 +209,7 @@ public class AdminStreamApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch timeline from {Url}", url);
@@ -212,6 +248,7 @@ public class AdminStreamApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch event detail from {Url}", url);
@@ -250,6 +287,7 @@ public class AdminStreamApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch aggregate state from {Url}", url);
@@ -290,6 +328,7 @@ public class AdminStreamApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch aggregate state diff from {Url}", url);
@@ -332,6 +371,7 @@ public class AdminStreamApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch aggregate blame from {Url}", url);
@@ -381,6 +421,7 @@ public class AdminStreamApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogWarning(ex, "Failed to fetch bisect result from {Url}", url);
@@ -424,6 +465,7 @@ public class AdminStreamApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogWarning(ex, "Failed to fetch event step frame from {Url}", url);
@@ -467,6 +509,7 @@ public class AdminStreamApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogWarning(ex, "Failed to execute sandbox command from {Url}", url);
@@ -565,6 +608,7 @@ public class AdminStreamApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch causation chain from {Url}", url);
@@ -616,6 +660,7 @@ public class AdminStreamApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogWarning(ex, "Failed to fetch correlation trace map from {Url}", url);
@@ -647,6 +692,7 @@ public class AdminStreamApiClient(
         catch (Exception ex) when (ex is not UnauthorizedAccessException
             and not ForbiddenAccessException
             and not InvalidOperationException
+            and not AdminApiProblemException
             and not ServiceUnavailableException
             and not OperationCanceledException) {
             logger.LogError(ex, "Failed to fetch aggregate types from {Url}", url);
@@ -711,6 +757,22 @@ public class AdminStreamApiClient(
         // Extract details before throwing — using statement will dispose the response
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
+        AdminClientProblem problem = await ReadProblemAsync(response).ConfigureAwait(false);
+        if (problem.Type is not null && ProtectedProblemTypes.Contains(problem.Type)) {
+            string message = problem.Detail
+                ?? problem.Title
+                ?? "Protected data status returned by the admin API.";
+            throw new AdminApiProblemException(
+                message,
+                statusCode,
+                problem.Title,
+                problem.Detail,
+                problem.Extensions.TryGetValue("reasonCode", out object? reasonCode) ? reasonCode?.ToString() : null,
+                problem.Extensions.TryGetValue("correlationId", out object? correlationId) ? correlationId?.ToString() : null,
+                null,
+                problem.Type,
+                problem.Extensions);
+        }
 
         if (statusCode is HttpStatusCode.UnprocessableEntity or HttpStatusCode.BadRequest) {
             string? errorDetail = null;
@@ -742,4 +804,69 @@ public class AdminStreamApiClient(
                 statusCode),
         };
     }
+
+    private static async Task<AdminClientProblem> ReadProblemAsync(HttpResponseMessage response) {
+        try {
+            string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(body)) {
+                return new AdminClientProblem(null, null, null, new Dictionary<string, object?>());
+            }
+
+            using JsonDocument document = JsonDocument.Parse(body);
+            JsonElement root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) {
+                return new AdminClientProblem(null, null, null, new Dictionary<string, object?>());
+            }
+
+            var extensions = new Dictionary<string, object?>(StringComparer.Ordinal);
+            foreach (JsonProperty property in root.EnumerateObject()) {
+                if (property.Name is "type" or "title" or "status" or "detail" or "instance"
+                    || !SafeProblemExtensions.Contains(property.Name)) {
+                    continue;
+                }
+
+                if (TryConvertSafeJsonValue(property.Value, out object? safeValue)) {
+                    extensions[property.Name] = safeValue;
+                }
+            }
+
+            return new AdminClientProblem(
+                TryGetString(root, "type"),
+                TryGetString(root, "title"),
+                TryGetString(root, "detail"),
+                extensions);
+        }
+        catch (JsonException) {
+            return new AdminClientProblem(null, null, null, new Dictionary<string, object?>());
+        }
+    }
+
+    private static string? TryGetString(JsonElement root, string propertyName)
+        => root.TryGetProperty(propertyName, out JsonElement value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
+
+    private static bool TryConvertSafeJsonValue(JsonElement value, out object? safeValue) {
+        safeValue = value.ValueKind switch {
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Number when value.TryGetInt64(out long longValue) => longValue,
+            JsonValueKind.Number when value.TryGetDouble(out double doubleValue) => doubleValue,
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => null,
+        };
+
+        return value.ValueKind is JsonValueKind.String
+            or JsonValueKind.Number
+            or JsonValueKind.True
+            or JsonValueKind.False
+            or JsonValueKind.Null;
+    }
+
+    private sealed record AdminClientProblem(
+        string? Type,
+        string? Title,
+        string? Detail,
+        IReadOnlyDictionary<string, object?> Extensions);
 }
