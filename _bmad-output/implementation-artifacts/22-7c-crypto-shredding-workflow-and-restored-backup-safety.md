@@ -1,6 +1,6 @@
 # Story 22.7c: Crypto-Shredding Workflow and Restored-Backup Safety
 
-Status: blocked
+Status: ready-for-dev
 
 Context created: 2026-05-13
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`

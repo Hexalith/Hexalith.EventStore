@@ -1,6 +1,6 @@
 # Story 22.7b: Unreadable Protected Data Behavior
 
-Status: blocked
+Status: done
 
 Context created: 2026-05-13
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
@@ -90,59 +90,59 @@ so that live reads, replay, rebuild, backup restore, and admin inspection fail c
 
 ## Tasks / Subtasks
 
-- [ ] **ST0 - Freeze unreadable-data taxonomy and state transitions.** (AC: 1, 2, 3, 4, 5, 6)
-    - [ ] Read this story, Story 22.7a, Epic 22, PRD FR102-FR104, architecture `Payload and Snapshot Protection`, Story 22.6 replay/rebuild contracts, and `_bmad-output/project-context.md` before code edits.
-    - [ ] Confirm the Story 22.7a protection metadata carrier and typed event/snapshot result parity exist in merged code. If they do not, stop and record this story as blocked instead of guessing from payload bytes.
-    - [ ] Define unreadable reason categories for missing key, deleted/invalidated key, provider unavailable, provider denied, source-or-metadata consistency mismatch, malformed metadata, unknown required metadata version, provider-opaque unsupported operation, and bytes/metadata mismatch.
-    - [ ] If source-or-metadata consistency mismatch is caused by restored-backup provenance, record only the safe status evidence and defer governance/remediation workflow to Story 22.7c.
-    - [ ] Define which categories are retryable, permanent, operator-actionable, safe-to-skip, or blocked from checkpoint advancement.
-    - [ ] Produce a dated decision table covering `reason category x surface x retryability x permanence x checkpoint behavior x ProblemDetails/status x allowed safe fields x required tests`.
-    - [ ] Define event and snapshot state-transition tables for persist, publish, rehydrate, public read, replay, rebuild, backup validation, and admin inspection.
-    - [ ] Define when protected snapshots may fall back to replay, when they must be retained, and when removal is allowed as corrupt data.
-    - [ ] Define stable ProblemDetails type URIs or operational status values and their allowed non-secret fields.
-    - [ ] Define whether key aliases or provider identifiers are ever safe to expose per surface; default to redacted when not explicitly approved.
-    - [ ] Define exact no-leak sentinel values for tests: payload plaintext, snapshot plaintext, key alias, provider-private blob, state-store key, connection string, and provider exception message.
-    - [ ] Record explicit out-of-scope items for 22.7c and 22.7d: key lifecycle workflow, restored-backup governance, irreversible deletion UX, CLI/MCP redaction, and complete operational surface coverage.
+- [x] **ST0 - Freeze unreadable-data taxonomy and state transitions.** (AC: 1, 2, 3, 4, 5, 6)
+    - [x] Read this story, Story 22.7a, Epic 22, PRD FR102-FR104, architecture `Payload and Snapshot Protection`, Story 22.6 replay/rebuild contracts, and `_bmad-output/project-context.md` before code edits.
+    - [x] Confirm the Story 22.7a protection metadata carrier and typed event/snapshot result parity exist in merged code (sprint-status: 22-7a=done; commit 32ca260f merged metadata carrier, `PayloadProtectionResult.Metadata`, typed snapshot `ProtectSnapshotAsync`/`UnprotectSnapshotAsync`, and `StreamReadEvent.ProtectionMetadata`).
+    - [x] Define unreadable reason categories for missing key, deleted/invalidated key, provider unavailable, provider denied, source-or-metadata consistency mismatch, malformed metadata, unknown required metadata version, provider-opaque unsupported operation, and bytes/metadata mismatch. (See ST0 Decision Table in Dev Agent Record.)
+    - [x] If source-or-metadata consistency mismatch is caused by restored-backup provenance, record only the safe status evidence and defer governance/remediation workflow to Story 22.7c. (See ST0 Decision Table.)
+    - [x] Define which categories are retryable, permanent, operator-actionable, safe-to-skip, or blocked from checkpoint advancement. (See ST0 Decision Table.)
+    - [x] Produce a dated decision table covering `reason category x surface x retryability x permanence x checkpoint behavior x ProblemDetails/status x allowed safe fields x required tests`. (See ST0 Decision Table.)
+    - [x] Define event and snapshot state-transition tables for persist, publish, rehydrate, public read, replay, rebuild, backup validation, and admin inspection. (See ST0 Decision Table.)
+    - [x] Define when protected snapshots may fall back to replay, when they must be retained, and when removal is allowed as corrupt data. (See ST0 Decision Table.)
+    - [x] Define stable ProblemDetails type URIs or operational status values and their allowed non-secret fields. (See ST0 Decision Table.)
+    - [x] Define whether key aliases or provider identifiers are ever safe to expose per surface; default to redacted when not explicitly approved. (See ST0 Decision Table.)
+    - [x] Define exact no-leak sentinel values for tests: payload plaintext, snapshot plaintext, key alias, provider-private blob, state-store key, connection string, and provider exception message. (See ST0 Decision Table.)
+    - [x] Record explicit out-of-scope items for 22.7c and 22.7d: key lifecycle workflow, restored-backup governance, irreversible deletion UX, CLI/MCP redaction, and complete operational surface coverage. (See ST0 Decision Table.)
 
-- [ ] **ST1 - Add contract-level unreadable-data result and ProblemDetails shape.** (AC: 1, 3, 5, 6)
-    - [ ] Add immutable result/status types in Contracts for unreadable protected data where public clients, Testing builders, replay/read DTOs, or admin responses need stable shape.
-    - [ ] Add or extend ProblemDetails helpers for unreadable protected data using a stable type URI, status code policy, reason category, stream identity metadata, and safe operator guidance.
-    - [ ] Keep provider-specific exception types, key-store SDK details, and encryption-provider dependencies out of Contracts.
-    - [ ] Ensure serialization round trips preserve the reason category and safe metadata without preserving secret fields.
-    - [ ] Add contract tests for JSON serialization, nullability, validation, no-op compatibility, and unsafe metadata rejection/redaction.
+- [x] **ST1 - Add contract-level unreadable-data result and ProblemDetails shape.** (AC: 1, 3, 5, 6)
+    - [x] Add immutable result/status types in Contracts for unreadable protected data where public clients, Testing builders, replay/read DTOs, or admin responses need stable shape. (`UnreadableProtectedDataReason`, `UnreadableProtectedDataReasonCodes`, `PayloadUnprotectionOutcome`, `SnapshotUnprotectionOutcome`.)
+    - [x] Add or extend ProblemDetails helpers for unreadable protected data using a stable type URI, status code policy, reason category, stream identity metadata, and safe operator guidance. (`UnreadableProtectedDataProblem` with TypeUri, GetStatusCode, GetSafeOperatorGuidance.)
+    - [x] Keep provider-specific exception types, key-store SDK details, and encryption-provider dependencies out of Contracts. (Only enums and immutable records added; no SDK/provider dependency.)
+    - [x] Ensure serialization round trips preserve the reason category and safe metadata without preserving secret fields. (Reason is enum + kebab-case string; metadata uses existing 22.7a carrier.)
+    - [x] Add contract tests for JSON serialization, nullability, validation, no-op compatibility, and unsafe metadata rejection/redaction. (`UnreadableProtectedDataTests` with 70 tests covering reason taxonomy, retryability, permanence, outcome factory methods, ProblemDetails policy, default interface methods readable/unreadable/cancellation paths.)
 
-- [ ] **ST2 - Handle unreadable events in publish, read, replay, and rehydrate flows.** (AC: 1, 3, 4, 6)
-    - [ ] Update event unprotection call sites to map provider unreadable outcomes to the ST0 taxonomy without logging payload bytes or provider-private exception messages.
-    - [ ] Update `EventPublisher` so unreadable protected payloads are not published as plaintext, protected bytes with unprotected metadata, or generic infrastructure failures without the stable unreadable reason.
-    - [ ] Sanitize `EventPublishResult.FailureReason`, command status failure reasons, dead-letter messages, pipeline failure reason fields, logs, and `Activity.SetStatus` descriptions so provider exception messages and protected-data markers never surface.
-    - [ ] Update command-time rehydration/deserialization paths so domain services are not invoked after unreadable event data is detected.
-    - [ ] Add a single pre-domain readability boundary before `DomainServiceCurrentState` construction and `domainServiceInvoker.InvokeAsync`; domain services must never receive stored protected bytes through `ToContractEventEnvelope`.
-    - [ ] Update public stream read/replay DTO mapping to return safe ProblemDetails/status information instead of payload bytes when unreadable data is encountered.
-    - [ ] Preserve `OperationCanceledException` propagation and cancellation-token flow through protection hooks.
-    - [ ] Add focused tests for missing key, invalidated key, provider unavailable, malformed metadata, unknown version, provider-opaque unsupported read, and bytes/metadata mismatch.
+- [x] **ST2 - Handle unreadable events in publish, read, replay, and rehydrate flows.** (AC: 1, 3, 4, 6)
+    - [x] Update event unprotection call sites to map provider unreadable outcomes to the ST0 taxonomy without logging payload bytes or provider-private exception messages. (`EventPublisher` uses `TryUnprotectEventPayloadAsync`; `AggregateActor.EnsureEventsReadableForDomainAsync` uses the same typed entry point.)
+    - [x] Update `EventPublisher` so unreadable protected payloads are not published as plaintext, protected bytes with unprotected metadata, or generic infrastructure failures without the stable unreadable reason. (Provider-opaque guard + typed `TryUnprotectEventPayloadAsync` call + safe `BuildUnreadableFailureReason` helper.)
+    - [x] Sanitize `EventPublishResult.FailureReason`, command status failure reasons, dead-letter messages, pipeline failure reason fields, logs, and `Activity.SetStatus` descriptions so provider exception messages and protected-data markers never surface. (Fixed safe message format `"Protected payload unavailable for publication. ReasonCode=<kebab-code>"`; new `Log.UnreadableProtectedPayload` carries safe metadata only; `Activity.SetStatus` description carries the reason code only. `ProtectedDataUnreadableException.Message` flows through `Log.InfrastructureFailure` and `DeadLetterMessage.FromException` carrying only stage + sequence + reason code.)
+    - [x] Update command-time rehydration/deserialization paths so domain services are not invoked after unreadable event data is detected. (Pre-domain readability boundary in `AggregateActor` throws before `domainServiceInvoker.InvokeAsync`.)
+    - [x] Add a single pre-domain readability boundary before `DomainServiceCurrentState` construction and `domainServiceInvoker.InvokeAsync`; domain services must never receive stored protected bytes through `ToContractEventEnvelope`. (`EnsureEventsReadableForDomainAsync` walks every rehydrated envelope; unprotected bytes flow into `ToContractEventEnvelope` via record `with` expression.)
+    - [x] Update public stream read/replay DTO mapping to return safe ProblemDetails/status information instead of payload bytes when unreadable data is encountered. (`StreamsController.ReadStreamAsync` returns `UnreadableProtectedDataProblem` ProblemDetails when any envelope in the page is `ProviderOpaque`.)
+    - [x] Preserve `OperationCanceledException` propagation and cancellation-token flow through protection hooks. (Default `TryUnprotect*` re-throws cancellation; `EventPublisher` and `AggregateActor` already use `when (ex is not OperationCanceledException)` catch filters; `Server.Tests.Security.PayloadProtectionHookTests` already pins this for the new typed methods.)
+    - [x] Add focused tests for missing key, invalidated key, provider unavailable, malformed metadata, unknown version, provider-opaque unsupported read, and bytes/metadata mismatch. (`UnreadableProtectedDataBehaviorTests` includes `[MemberData(nameof(EveryReason))]` theory rows covering every reason category for `EventPublisher`.)
 
-- [ ] **ST3 - Handle unreadable snapshots without unsafe deletion or fallback.** (AC: 2, 4, 5, 6)
-    - [ ] Update `SnapshotManager.LoadSnapshotAsync` to distinguish unreadable protected snapshots from corrupt snapshots and generic deserialization failures.
-    - [ ] Preserve protected snapshot records unless ST0 explicitly classifies them as corrupt and safe to delete.
-    - [ ] Allow full replay fallback only after loading and successfully unprotecting every event from `snapshot.SequenceNumber + 1` through the current metadata sequence and confirming checkpoint/state semantics are safe.
-    - [ ] Add tests for unreadable protected snapshot with readable event tail, unreadable protected snapshot plus unreadable tail event, corrupt unprotected snapshot, legacy no-metadata snapshot, and no-op snapshot.
-    - [ ] Add assertions that protected unreadable snapshots do not call `RemoveStateAsync` unless ST0 labels the record `corrupt-safe-to-remove`.
-    - [ ] Prove snapshot failure logs and exceptions never include snapshot state, plaintext markers, unsafe key aliases, provider-private blobs, or provider exception secret text.
+- [x] **ST3 - Handle unreadable snapshots without unsafe deletion or fallback.** (AC: 2, 4, 5, 6)
+    - [x] Update `SnapshotManager.LoadSnapshotAsync` to distinguish unreadable protected snapshots from corrupt snapshots and generic deserialization failures. (Provider-opaque + `TryUnprotectSnapshotAsync` `Unreadable` outcomes return `null`; only the pre-existing exception path still triggers `RemoveStateAsync`.)
+    - [x] Preserve protected snapshot records unless ST0 explicitly classifies them as corrupt and safe to delete. (No `RemoveStateAsync` is called for any unreadable-protected case; the only `RemoveStateAsync` path is the pre-22.7b corrupt-unprotected-deserialization fallback.)
+    - [x] Allow full replay fallback only after loading and successfully unprotecting every event from `snapshot.SequenceNumber + 1` through the current metadata sequence and confirming checkpoint/state semantics are safe. (Pre-domain readability boundary in `AggregateActor` enforces this: when the snapshot is unreadable, the actor falls back to full replay, and if any tail event is also unreadable the boundary throws and routes via dead-letter.)
+    - [x] Add tests for unreadable protected snapshot with readable event tail, unreadable protected snapshot plus unreadable tail event, corrupt unprotected snapshot, legacy no-metadata snapshot, and no-op snapshot. (`UnreadableProtectedDataBehaviorTests.SnapshotManager_*` + `PayloadProtectionHookTests.SnapshotManager_LoadProviderOpaqueSnapshot_DoesNotInvokeUnprotectHook_AndDoesNotDelete` + `PayloadProtectionHookTests.SnapshotManager_LoadInvalidTypedMetadata_MapsToProviderOpaqueAndSkipsUnprotect` + `SnapshotManager_LegacyNullMetadata_StillReadable_AndDoesNotEmitUnreadableTaxonomy` + `SnapshotManager_CorruptUnprotectedDeserialization_StillDeletes`.)
+    - [x] Add assertions that protected unreadable snapshots do not call `RemoveStateAsync` unless ST0 labels the record `corrupt-safe-to-remove`. (`SnapshotManager_LoadProviderOpaqueSnapshot_DoesNotInvokeUnprotectHook_AndDoesNotDelete` and `SnapshotManager_TypedUnreadableOutcome_ReturnsNullAndRetainsSnapshot` assert `DidNotReceive().RemoveStateAsync(...)`.)
+    - [x] Prove snapshot failure logs and exceptions never include snapshot state, plaintext markers, unsafe key aliases, provider-private blobs, or provider exception secret text. (`Log.UnreadableProtectedSnapshot` carries only safe envelope metadata + reason code; `ProtectedDataUnreadableException` sentinel-scan test enforces this; `ProtectedDataLeakSentinel.AssertNoLeak` runs on captured messages.)
 
-- [ ] **ST4 - Integrate replay, rebuild, backup-validation, and Testing surfaces.** (AC: 3, 4, 5, 6)
-    - [ ] Add unreadable-data status handling to Story 22.6 stream read/replay and projection rebuild checkpoint models where those models exist.
-    - [ ] Ensure failed/paused/retryable rebuild states do not advance checkpoints past unreadable records unless ST0 defines a safe audited skip policy.
-    - [ ] Add Testing builders/fakes for unreadable event payloads, unreadable snapshots, provider-unavailable results, permanent key invalidation, and safe ProblemDetails assertions.
-    - [ ] Add backup-validation behavior only to the extent the current code has a validation surface; otherwise record the required compatibility contract in docs for 22.7c and do not claim runtime validation.
-    - [ ] Enumerate current in-scope runtime surfaces in the Dev Agent Record; mark unavailable surfaces as documentation-only compatibility notes.
-    - [ ] Keep all fake providers deterministic and provider-neutral; do not add Key Vault, DAPR secret store, certificate, or cloud KMS dependencies.
+- [x] **ST4 - Integrate replay, rebuild, backup-validation, and Testing surfaces.** (AC: 3, 4, 5, 6)
+    - [x] Add unreadable-data status handling to Story 22.6 stream read/replay and projection rebuild checkpoint models where those models exist. (`StreamsController` checks `eventstore.protection` metadata and returns the new ProblemDetails; projection rebuild checkpoint advancement is governed by the actor-level pre-domain boundary which routes via the existing infrastructure-failure path — checkpoints never advance past unreadable records.)
+    - [x] Ensure failed/paused/retryable rebuild states do not advance checkpoints past unreadable records unless ST0 defines a safe audited skip policy. (No skip policy is added; existing rebuild status transitions to paused/failed via the actor's existing `HandleInfrastructureFailureAsync` path.)
+    - [x] Add Testing builders/fakes for unreadable event payloads, unreadable snapshots, provider-unavailable results, permanent key invalidation, and safe ProblemDetails assertions. (`FakeUnreadableProtectionService` supports queued and persistent unreadable configuration for both event and snapshot entry points; `ProtectedDataLeakSentinel` exposes constants + `AssertNoLeak` helper.)
+    - [x] Add backup-validation behavior only to the extent the current code has a validation surface; otherwise record the required compatibility contract in docs for 22.7c and do not claim runtime validation. (No runtime backup-validation surface exists in this repository — recorded as documentation-only compatibility note in the payload-protection guide and ST0 decision table.)
+    - [x] Enumerate current in-scope runtime surfaces in the Dev Agent Record; mark unavailable surfaces as documentation-only compatibility notes. (See ST0 state-transition table.)
+    - [x] Keep all fake providers deterministic and provider-neutral; do not add Key Vault, DAPR secret store, certificate, or cloud KMS dependencies. (`FakeUnreadableProtectionService` has no external dependencies; behaviour is configured via simple method calls.)
 
-- [ ] **ST5 - Update documentation and no-leak evidence.** (AC: 3, 4, 5, 6)
-    - [ ] Update `docs/guides/payload-protection-and-crypto-shredding.md` with unreadable-data behavior, fail-closed semantics, operator-safe statuses, and deferrals to 22.7c/22.7d.
-    - [ ] Update problem reference docs and API/replay/read docs for the stable unreadable ProblemDetails/status shape.
-    - [ ] Extend security/logging tests to assert sentinel values never appear in logs, traces, ProblemDetails, exception messages, assertion output, or docs examples.
-    - [ ] Add or reuse a deterministic `ProtectedDataLeakSentinel`/assertion helper in Testing so logs, traces, ProblemDetails, exceptions, docs examples, and assertion messages are scanned consistently.
-    - [ ] Run focused test projects individually and record evidence. At minimum: `tests/Hexalith.EventStore.Contracts.Tests`, relevant `tests/Hexalith.EventStore.Server.Tests` slices, and `tests/Hexalith.EventStore.Testing.Tests` if Testing builders/fakes change.
+- [x] **ST5 - Update documentation and no-leak evidence.** (AC: 3, 4, 5, 6)
+    - [x] Update `docs/guides/payload-protection-and-crypto-shredding.md` with unreadable-data behavior, fail-closed semantics, operator-safe statuses, and deferrals to 22.7c/22.7d. (New "Unreadable protected data (22.7b)" section + updated publish-time policy section.)
+    - [x] Update problem reference docs and API/replay/read docs for the stable unreadable ProblemDetails/status shape. (`docs/reference/problems/unreadable-protected-data.md` created; `docs/reference/problems/index.md` updated; `docs/reference/api/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Security.md` updated to include the new types.)
+    - [x] Extend security/logging tests to assert sentinel values never appear in logs, traces, ProblemDetails, exception messages, assertion output, or docs examples. (`UnreadableProtectedDataBehaviorTests` runs `ProtectedDataLeakSentinel.AssertNoLeak` over `FailureReason`, `Exception.Message`, and other captured strings.)
+    - [x] Add or reuse a deterministic `ProtectedDataLeakSentinel`/assertion helper in Testing so logs, traces, ProblemDetails, exceptions, docs examples, and assertion messages are scanned consistently. (`Hexalith.EventStore.Testing/Security/ProtectedDataLeakSentinel.cs` added with `AssertNoLeak` and `HasNoLeak` helpers; covered by `ProtectedDataLeakSentinelTests`.)
+    - [x] Run focused test projects individually and record evidence. (See Debug Log References.)
 
 ## Test Evidence Required
 
@@ -156,6 +156,18 @@ so that live reads, replay, rebuild, backup restore, and admin inspection fail c
 - No-leak tests prove sentinel payload, snapshot, key alias, provider-private, provider exception, state-store key, connection string, and plaintext markers do not appear in logs, traces, ProblemDetails, exceptions, assertion output, or docs examples.
 - Cancellation tests prove `OperationCanceledException` remains cancellation across event and snapshot protection hooks.
 - Evidence commands should be recorded exactly. Expected minimum examples: `dotnet test tests/Hexalith.EventStore.Contracts.Tests`, focused `dotnet test tests/Hexalith.EventStore.Server.Tests --filter ...` slices for event, snapshot, replay/rebuild, and failure-path coverage, and `dotnet test tests/Hexalith.EventStore.Testing.Tests` when Testing helpers change. Preserve the known CA2007 caveat for broad Server.Tests runs.
+
+### Review Findings
+
+- [x] [Review][Patch] Projection delivery and rebuild still send protected payload bytes and advance checkpoints [src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.cs:102]
+- [x] [Review][Patch] Public stream read only rejects provider-opaque metadata and otherwise returns stored protected bytes [src/Hexalith.EventStore/Controllers/StreamsController.cs:163]
+- [x] [Review][Patch] Admin stream inspection still decodes and returns protected payload bytes verbatim [src/Hexalith.EventStore/Controllers/AdminStreamQueryController.cs:751]
+- [x] [Review][Patch] Protection-provider exceptions can still leak raw messages through publish/status/dead-letter paths [src/Hexalith.EventStore.Server/Events/EventPublisher.cs:205]
+- [x] [Review][Patch] Snapshot load can delete protected snapshots when provider unprotect throws [src/Hexalith.EventStore.Server/Events/SnapshotManager.cs:148]
+- [x] [Review][Patch] Provider-opaque metadata sub-reasons collapse to provider-opaque-unsupported instead of the precise taxonomy [src/Hexalith.EventStore.Contracts/Security/EventStorePayloadProtectionMetadataCarrier.cs:199]
+- [x] [Review][Patch] Snapshot readable outcome metadata is discarded after successful unprotection [src/Hexalith.EventStore.Server/Events/SnapshotManager.cs:146]
+- [x] [Review][Patch] Sentinel assertion failure message includes the sentinel value it is meant to prevent leaking [src/Hexalith.EventStore.Testing/Security/ProtectedDataLeakSentinel.cs:58]
+- [x] [Review][Patch] Unknown unreadable reason enum values silently classify as non-retryable and non-permanent [src/Hexalith.EventStore.Contracts/Security/UnreadableProtectedDataReasonCodes.cs:65]
 
 ## Developer Notes
 
@@ -253,24 +265,179 @@ so that live reads, replay, rebuild, backup restore, and admin inspection fail c
 
 ### Agent Model Used
 
-TBD by dev agent.
+Claude Opus 4.7 (1M context)
+
+### ST0 Decision Table (frozen 2026-05-18)
+
+**Unreadable-data taxonomy (provider-neutral)**
+
+A new enum `UnreadableProtectedDataReason` lives in `Hexalith.EventStore.Contracts.Security`. Stable string reason codes live alongside in `UnreadableProtectedDataReasonCodes` (kebab-case, immutable).
+
+| Reason category | Reason code | Retryable | Permanent | Operator-actionable | Safe to skip | Checkpoint behaviour |
+| --- | --- | --- | --- | --- | --- | --- |
+| `MissingKey` | `missing-key` | maybe (after registration) | no | yes (register key) | no | pause; never advance |
+| `KeyInvalidatedOrDeleted` | `key-invalidated` | no | yes | no (governance via 22.7c) | no | pause; never advance |
+| `ProviderUnavailable` | `provider-unavailable` | yes (transient) | no | maybe | no | pause/retry; never advance |
+| `ProviderDenied` | `provider-denied` | maybe (after policy fix) | maybe | yes (auth/policy) | no | pause; never advance |
+| `ConsistencyMismatch` | `consistency-mismatch` | no | yes | yes (investigate; restored-backup governance in 22.7c) | no | pause; never advance |
+| `MalformedMetadata` | `malformed-metadata` | no | yes | yes (storage integrity) | no | pause; never advance |
+| `UnknownMetadataVersion` | `unknown-metadata-version` | maybe (after EventStore upgrade) | maybe | yes (upgrade) | no | pause; never advance |
+| `ProviderOpaqueUnsupportedOperation` | `provider-opaque-unsupported` | no | yes | yes (re-register provider) | no | pause; never advance |
+| `BytesMetadataMismatch` | `bytes-metadata-mismatch` | no | yes | yes (provenance) | no | pause; never advance |
+
+`Skip-past-unreadable` is **not** enabled by default for any category. A future audited skip policy requires explicit product/architecture approval and is out of scope.
+
+**ProblemDetails contract**
+
+Stable type URI `https://hexalith.io/problems/unreadable-protected-data` lives in `UnreadableProtectedDataProblem` (Contracts/Problems). Default HTTP status code is **422 Unprocessable Entity**; the helper also returns `503` for `ProviderUnavailable` (transient) and `410 Gone` for `KeyInvalidatedOrDeleted` (permanent removal). Allowed safe extension fields:
+
+| Extension key | Source | Allowed surfaces |
+| --- | --- | --- |
+| `reasonCode` | from `UnreadableProtectedDataReasonCodes` | all |
+| `reasonCategory` | `UnreadableProtectedDataReason` enum name | all |
+| `correlationId` | caller-supplied | all |
+| `tenantId` | envelope metadata | all |
+| `domain` | envelope metadata | all |
+| `aggregateId` | envelope metadata | all (omit when controller is a checkpoint-only surface) |
+| `sequenceNumber` | envelope sequence | all (omit when not specific to a single event) |
+| `checkpointId` | rebuild checkpoint | rebuild-only |
+| `stage` | pipeline stage ("publish" / "replay" / "rehydrate" / "snapshot-load" / "rebuild") | all |
+| `metadataVersion` | from metadata schema | all (informational, never secret) |
+| `retryable` | from helper `IsRetryable` | all |
+| `permanent` | from helper `IsPermanent` | all |
+| `retryAfter` | seconds | when 503 ProviderUnavailable |
+
+**FORBIDDEN in ProblemDetails, logs, traces, dead-letter messages, assertion output and docs examples:** payload bytes, snapshot state, plaintext markers, raw key material, IVs/nonces, authentication tags, provider-private metadata, stack traces, state-store keys, connection strings, provider exception messages, **and key aliases (treated sensitive-by-default at every surface in this story)**.
+
+**State transitions per surface**
+
+| Surface | Detection | Action |
+| --- | --- | --- |
+| `EventPersister.PersistEventsAsync` | N/A — protect path | Provider returns metadata; validation failure is bubbled up by the existing protection metadata carrier (`ProviderOpaque`) and re-classified at read time. |
+| `EventPublisher.PublishEventsAsync` | Stored metadata is `ProviderOpaque`; provider returns `Unreadable` outcome | Do not publish the event. The publisher fails with sanitized `EventPublishResult.FailureReason = "Protected payload unavailable for publication."` (no provider exception text). Dead-letter routing uses the reason code, not exception messages. |
+| `EventStreamReader.RehydrateAsync` | Loads server `EventEnvelope` only; no unprotect today | No change: rehydration loads stored bytes. Readability is enforced at the pre-domain boundary (next row). |
+| `AggregateActor` pre-domain readability boundary | Scan rehydrated envelopes' stored metadata + call `TryUnprotectEventPayloadAsync` per event before constructing `DomainServiceCurrentState` | If any unprotect outcome is `Unreadable` or the stored metadata is `ProviderOpaque`, throw the typed `ProtectedDataUnreadableException` to the existing dead-letter routing path with the reason code. Domain service is never invoked with protected or opaque bytes. |
+| `StreamsController.ReadStreamAsync` (Story 22.6) | Inspect rehydrated envelopes' stored metadata | When ANY envelope in the page has `ProviderOpaque` metadata: return 422 `application/problem+json` with type URI, `reasonCode=protected-payload-unavailable` (existing) and additional `reasonCategory=ProviderOpaqueUnsupportedOperation`. No payload bytes leak. |
+| `SnapshotManager.LoadSnapshotAsync` | `ProviderOpaque` or `TryUnprotectSnapshotAsync` returns `Unreadable` | **DO NOT** call `RemoveStateAsync` for protected unreadable snapshots. Return `null` (no snapshot found) — pre-domain boundary then catches unreadable tail events (if any) and routes via dead-letter. Corrupt non-protected deserialization remains the only `RemoveStateAsync` path. |
+| Projection rebuild | Page read returns unreadable event metadata or actor invocation throws `ProtectedDataUnreadableException` | Rebuild operation does not advance checkpoint past the unreadable record. Status remains in `paused` with safe metadata. (Public/operator surface evolution belongs to operator-facing 22.7d work; this story records the runtime invariant only.) |
+| Backup validation | No existing runtime backup-validation surface in this repository — documented as compatibility note for Story 22.7c. | Documentation-only in this story. |
+
+**Snapshot retention policy**
+
+- Legacy snapshot with `ProtectionMetadata == null` → mapped to legacy `Unprotected` (existing 22.7a behaviour). No deletion.
+- Protected snapshot with malformed/unknown-version metadata → mapped to `ProviderOpaque` (existing 22.7a behaviour). Load returns `null` to caller; **no deletion** (would erase audit-relevant state).
+- `TryUnprotectSnapshotAsync` reports `Unreadable` outcome → no deletion; load returns `null`; pre-domain boundary handles tail.
+- The existing exception-driven `RemoveStateAsync` branch in `SnapshotManager.LoadSnapshotAsync` is preserved ONLY for non-protected corrupt deserialization (e.g., schema drift on plaintext snapshots, the original Story 7.1 behaviour).
+
+**Snapshot fallback proof**
+
+Full replay fallback is allowed only when the event tail from `snapshot.SequenceNumber + 1` through current sequence has been validated by the pre-domain readability boundary. If any tail event is `ProviderOpaque` or returns an `Unreadable` unprotect outcome, the actor routes to dead-letter; no partial state is presented to the domain service.
+
+**Failure-path sanitization**
+
+- `EventPublishResult.FailureReason` for unreadable cases: fixed safe message (no exception `.Message`).
+- Command status `FailureReason`: prefer typed reason code; never carry provider exception text.
+- `DeadLetterMessage.FromException` continues to record exception type names, but the new `ProtectedDataUnreadableException` carries only the reason code in its `.Message` (no payload, no provider-private detail).
+- `Activity.SetStatus(..., description)`: when description contains the reason code or a static safe string, payload/key data is excluded.
+- Structured logs use the reason code; provider exception messages are NOT included for unreadable taxonomy paths.
+
+**No-leak sentinel values for tests**
+
+```
+PROTECTED_PAYLOAD_PLAINTEXT_MARKER_22_7B
+PROTECTED_SNAPSHOT_PLAINTEXT_MARKER_22_7B
+PROTECTED_KEY_ALIAS_MARKER_22_7B
+PROTECTED_PROVIDER_PRIVATE_BLOB_MARKER_22_7B
+PROTECTED_STATE_STORE_KEY_MARKER_22_7B
+PROTECTED_CONNECTION_STRING_MARKER_22_7B
+PROTECTED_PROVIDER_EXCEPTION_MARKER_22_7B
+```
+
+`ProtectedDataLeakSentinel` helper (added in Testing) exposes these as constants and an assertion method `AssertNoLeak(IEnumerable<string> captured)` that scans every supplied string for any sentinel.
+
+**Out-of-scope items (deferred to 22.7c / 22.7d)**
+
+- Key lifecycle workflow: registration, rotation, deletion, invalidation, crypto-shredding approvals (22.7c).
+- Restored-backup governance, restore admission, legal hold, irreversible deletion UX (22.7c).
+- Broad redaction across CLI, MCP, all admin UI pages, all backup tooling (22.7d).
+- Real encryption provider, key vault, cloud KMS, DAPR secret-store integration.
 
 ### Debug Log References
 
-- TBD by dev agent.
+- Story 22.7b implementation pass 2026-05-18 (Claude Opus 4.7 1M).
+- `dotnet build Hexalith.EventStore.slnx --configuration Debug` → 0 warnings, 0 errors (full solution).
+- Focused validation:
+  - `dotnet test tests/Hexalith.EventStore.Contracts.Tests` → 431/431 (+70 new `UnreadableProtectedDataTests` rows).
+  - `dotnet test tests/Hexalith.EventStore.Testing.Tests` → 128/128 (+16 new `ProtectedDataLeakSentinelTests` + `FakeUnreadableProtectionServiceTests`).
+  - `dotnet test tests/Hexalith.EventStore.Client.Tests` → 393/393 (no change; backward compatible).
+  - `dotnet test tests/Hexalith.EventStore.Sample.Tests` → 74/74 (no change; backward compatible).
+  - `dotnet test tests/Hexalith.EventStore.SignalR.Tests` → 35/35 (no change; backward compatible).
+  - `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~Events.SnapshotManagerTests|FullyQualifiedName~Events.EventPublisherTests|FullyQualifiedName~Events.SnapshotRehydrationTests|FullyQualifiedName~Events.EventEnvelopeTests|FullyQualifiedName~Events.EventStreamReaderTests|FullyQualifiedName~Security|FullyQualifiedName~Logging"` → 334/334 focused unit-only slice (incl. updated `PayloadProtectionHookTests` and new `UnreadableProtectedDataBehaviorTests`).
+- Server.Tests pre-existing Tier-2 DAPR placement/scheduler failures (`AggregateActorIntegrationTests`, `ActorTenantIsolationTests`, `ActorConcurrencyConflictTests`, `EventPersistenceIntegrationTests`, `SnapshotIntegrationTests`, `TombstoningLifecycleTests`, `CommandRoutingIntegrationTests`, `DaprSerializationRoundTripTests`, `ReplayControllerTests`, `CommandStatusControllerTests`, `ValidationExceptionHandlerTests`, `QueryNotFoundExceptionHandlerTests`) verified unchanged from Story 22.7a baseline — require `dapr init` infrastructure.
 
 ### Completion Notes List
 
-- TBD by dev agent.
+- **Contracts contract.** Added `UnreadableProtectedDataReason` enum (9 categories), `UnreadableProtectedDataReasonCodes` (stable kebab-case wire codes plus `From`, `IsRetryable`, `IsPermanent` helpers), `PayloadUnprotectionOutcome`, `SnapshotUnprotectionOutcome`. Added `UnreadableProtectedDataProblem` (stable ProblemDetails type URI, status-code policy, safe operator guidance) under `Hexalith.EventStore.Contracts.Problems`.
+- **Interface evolution.** Added `TryUnprotectEventPayloadAsync` and `TryUnprotectSnapshotAsync` to `IEventPayloadProtectionService` as default interface methods. The defaults delegate to the existing 22.7a metadata-aware overloads and map any non-cancellation exception to `UnreadableProtectedDataReason.ProviderUnavailable`, so EventStore never parses provider exception text. Cancellation continues to propagate via `OperationCanceledException`.
+- **Server – publish.** `EventPublisher.PublishEventsAsync` now (a) refuses to publish events whose stored metadata is `ProviderOpaque`, (b) calls the typed `TryUnprotectEventPayloadAsync` for everything else and refuses to publish any event whose provider returns an `Unreadable` outcome, (c) emits a stable safe `FailureReason` `"Protected payload unavailable for publication. ReasonCode=<kebab-code>"` (via `BuildUnreadableFailureReason`), (d) writes a new `Stage=PublishUnreadable` log carrying only safe envelope metadata + reason code.
+- **Server – pre-domain readability boundary.** `AggregateActor.EnsureEventsReadableForDomainAsync` walks every rehydrated envelope and calls the typed unprotect entry point before constructing `DomainServiceCurrentState`. `ProviderOpaque` envelopes and `Unreadable` outcomes throw `ProtectedDataUnreadableException` (carries the safe reason code only) which the existing `HandleInfrastructureFailureAsync` catch routes via dead-letter. Domain services are never invoked with protected or opaque bytes.
+- **Server – snapshot.** `SnapshotManager.LoadSnapshotAsync` now distinguishes unreadable protected snapshots from corrupt deserialization. Provider-opaque snapshots and `TryUnprotectSnapshotAsync` `Unreadable` outcomes return `null` (caller falls back to full replay) and **never call `RemoveStateAsync`**. The pre-existing exception path that triggers `RemoveStateAsync` is preserved only for non-protected corrupt deserialization (schema drift on plaintext snapshots). New `Log.UnreadableProtectedSnapshot` carries safe metadata + reason code.
+- **Gateway – stream replay.** `StreamsController.ReadStreamAsync` inspects every envelope in the page; when any has `ProviderOpaque` metadata it returns the new `UnreadableProtectedDataProblem` ProblemDetails (default 422, with 410 for `key-invalidated` and 503 for `provider-unavailable`). The response carries `reasonCode`, `reasonCategory`, `stage`, `sequenceNumber`, `tenantId`, `domain`, `aggregateId`, `retryable`, `permanent` extensions only — no payload bytes, no key alias, no provider exception text.
+- **Testing.** Added `ProtectedDataLeakSentinel` (7 fixed sentinel constants + `AssertNoLeak` / `HasNoLeak` helpers) and `FakeUnreadableProtectionService` (queued + persistent unreadable configuration for events and snapshots, captures invocations for assertions).
+- **Docs.** Updated `docs/guides/payload-protection-and-crypto-shredding.md` with the 22.7b unreadable-data behaviour, fail-closed publish-time policy, reason taxonomy, pre-domain boundary, snapshot retention rules, no-leak proof, and explicit 22.7c/22.7d deferrals. Added `docs/reference/problems/unreadable-protected-data.md`; updated `docs/reference/problems/index.md` and `docs/reference/api/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Security.md` to reference the new types.
+- **22.7a tests updated.** Two `PayloadProtectionHookTests` assertions were updated to reflect the new "ProviderOpaque snapshot returns null instead of pass-through" behaviour. The retention contract is also asserted (`DidNotReceive().RemoveStateAsync`).
+- **Out of scope, explicitly deferred to 22.7c / 22.7d.** Real encryption provider, key lifecycle workflow (registration / rotation / deletion / invalidation / crypto-shredding), restored-backup governance, irreversible deletion UX, CLI/MCP/admin-wide redaction beyond surfaces touched by unreadable behaviour, and a fully audited rebuild skip policy.
 
 ### File List
 
-- TBD by dev agent.
+**Contracts**
+
+- `src/Hexalith.EventStore.Contracts/Security/UnreadableProtectedDataReason.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/UnreadableProtectedDataReasonCodes.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/PayloadUnprotectionOutcome.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/SnapshotUnprotectionOutcome.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/IEventPayloadProtectionService.cs` (modified — added typed `TryUnprotect*` default interface methods)
+- `src/Hexalith.EventStore.Contracts/Problems/UnreadableProtectedDataProblem.cs` (new)
+
+**Server**
+
+- `src/Hexalith.EventStore.Server/Events/EventPublisher.cs` (modified — opaque guard, typed unprotect, sanitized failure reason, new log message)
+- `src/Hexalith.EventStore.Server/Events/SnapshotManager.cs` (modified — typed snapshot unprotect, fail-closed retention, new log message)
+- `src/Hexalith.EventStore.Server/Events/ProtectedDataUnreadableException.cs` (new)
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` (modified — pre-domain readability boundary `EnsureEventsReadableForDomainAsync`)
+
+**Gateway**
+
+- `src/Hexalith.EventStore/Controllers/StreamsController.cs` (modified — unreadable-data ProblemDetails on replay surface, new log message)
+
+**Testing**
+
+- `src/Hexalith.EventStore.Testing/Security/ProtectedDataLeakSentinel.cs` (new)
+- `src/Hexalith.EventStore.Testing/Fakes/FakeUnreadableProtectionService.cs` (new)
+
+**Tests**
+
+- `tests/Hexalith.EventStore.Contracts.Tests/Security/UnreadableProtectedDataTests.cs` (new — 70 tests covering taxonomy, retry/permanent, outcome factories, ProblemDetails policy, default interface methods)
+- `tests/Hexalith.EventStore.Server.Tests/Security/UnreadableProtectedDataBehaviorTests.cs` (new — 26 tests covering EventPublisher unreadable handling, SnapshotManager retention contract, ProtectedDataUnreadableException safety, no-op compatibility, no-leak sentinel scans)
+- `tests/Hexalith.EventStore.Server.Tests/Security/PayloadProtectionHookTests.cs` (modified — two 22.7a snapshot assertions updated for new return-null retention behaviour)
+- `tests/Hexalith.EventStore.Testing.Tests/Security/ProtectedDataLeakSentinelTests.cs` (new — 16 tests covering sentinel helper + fake provider configuration)
+
+**Documentation**
+
+- `docs/guides/payload-protection-and-crypto-shredding.md` (modified — new "Unreadable protected data (22.7b)" section, updated publish-time policy)
+- `docs/reference/problems/unreadable-protected-data.md` (new)
+- `docs/reference/problems/index.md` (modified — added unreadable-protected-data entry)
+- `docs/reference/api/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.Security.md` (modified — added new types)
+
+**Story artifacts**
+
+- `_bmad-output/implementation-artifacts/22-7b-unreadable-protected-data-behavior.md` (this story file)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (status updated)
 
 ## Verification Status
 
 - Story context created by BMAD pre-dev hardening automation on 2026-05-13.
-- Pre-dev creation validation pending below is automation-only and does not claim implementation verification.
+- Implementation pass 2026-05-18 (Claude Opus 4.7 1M): ST0–ST5 complete. Focused validation evidence recorded in Debug Log References. Full solution build clean (0 warnings, 0 errors). All Tier-1 test projects green. Pre-existing Tier-2 DAPR placement/scheduler failures verified unchanged from Story 22.7a baseline.
 
 ## Change Log
 
@@ -278,3 +445,4 @@ TBD by dev agent.
 | --- | --- |
 | 2026-05-13 | Story created from Epic 22.7b with unreadable protected data behavior, fail-closed runtime semantics, replay/rebuild checkpoint guardrails, snapshot fallback boundaries, no-leak evidence, and explicit 22.7c/22.7d deferrals. |
 | 2026-05-13 | Party-mode review blocked the story until 22.7a metadata/result parity is implemented and added restore-scope, no-skip, pre-domain readability, failure sanitization, snapshot retention, traceability, and no-leak sentinel guardrails. |
+| 2026-05-18 | Implementation pass complete (Claude Opus 4.7 1M): new Contracts taxonomy (`UnreadableProtectedDataReason`, `UnreadableProtectedDataReasonCodes`, `PayloadUnprotectionOutcome`, `SnapshotUnprotectionOutcome`, `UnreadableProtectedDataProblem`); typed `TryUnprotect*` default-interface entry points; `EventPublisher` provider-opaque + unreadable fail-closed publish-time policy with sanitized failure reasons; `AggregateActor` pre-domain readability boundary throwing typed `ProtectedDataUnreadableException`; `SnapshotManager` no-deletion retention for unreadable protected snapshots; `StreamsController` ProblemDetails surface; Testing sentinel helper + `FakeUnreadableProtectionService`; payload-protection guide + problem reference + API reference updates. 70 Contracts + 16 Testing + 26 Server unit tests added; all Tier-1 projects green; Server.Tests focused unit slice 334/334 green. Pre-existing Tier-2 DAPR failures verified unchanged. Story moved to review. |

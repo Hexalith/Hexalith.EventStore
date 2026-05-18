@@ -114,16 +114,119 @@ without being mapped to an infrastructure failure.
 `UnprotectEventPayloadAsync` or `UnprotectSnapshotAsync` on opaque bytes, never publishes them in
 plaintext, and never treats them as safely unprotected.
 
-## Publish-time policy (22.7a)
+## Publish-time policy (22.7a + 22.7b)
 
 EventStore continues to call `UnprotectEventPayloadAsync` before DAPR publication so existing
 subscribers and domain services see plaintext payloads. The published envelope's
 `eventstore.protection` extension carries the metadata returned by the provider, so subscribers
 can distinguish protected-at-rest events without inspecting bytes.
 
-Provider-opaque envelopes are published verbatim with the opaque metadata intact. A fully
-fail-closed publish-time policy that refuses to publish `Protected` bytes when the provider
-cannot unprotect them is **deferred to Story 22.7b** alongside missing-key behavior.
+**Story 22.7b — fail-closed publish-time policy.** EventStore now refuses to publish events whose
+stored metadata is `ProviderOpaque` and refuses to publish events whose provider returns an
+`Unreadable` outcome from the new typed entry point. In both cases:
+
+- `EventPublishResult.Success` is `false` and `PublishedCount` reflects only the events that were
+  successfully published before the unreadable event was encountered.
+- `EventPublishResult.FailureReason` is the stable safe string
+  `"Protected payload unavailable for publication. ReasonCode=<kebab-code>"` where `<kebab-code>`
+  is one of the values in `UnreadableProtectedDataReasonCodes`. No provider exception text,
+  payload bytes, or key alias is ever included.
+- A `Stage=PublishUnreadable` log line is emitted carrying only safe envelope metadata
+  (`CorrelationId`, `CausationId`, `TenantId`, `Domain`, `AggregateId`, `SequenceNumber`,
+  `ReasonCode`).
+
+## Unreadable protected data (22.7b)
+
+When the registered provider cannot return interpretable bytes — missing key, invalidated/deleted
+key, transient provider unavailability, malformed metadata, unknown metadata version,
+provider-opaque records, bytes/metadata mismatch, or consistency mismatch — EventStore treats the
+condition as a **first-class platform state**, not as a deserialization error or provider
+exception leak. The classification is provider-neutral and lives in
+`Hexalith.EventStore.Contracts.Security.UnreadableProtectedDataReason`.
+
+### Typed unreadable outcomes
+
+Providers signal unreadable conditions through two metadata-aware typed entry points added to
+`IEventPayloadProtectionService` as default interface methods:
+
+```csharp
+Task<PayloadUnprotectionOutcome> TryUnprotectEventPayloadAsync(
+    AggregateIdentity identity,
+    string eventTypeName,
+    byte[] payloadBytes,
+    string serializationFormat,
+    EventStorePayloadProtectionMetadata? metadata,
+    CancellationToken cancellationToken = default);
+
+Task<SnapshotUnprotectionOutcome> TryUnprotectSnapshotAsync(
+    AggregateIdentity identity,
+    object state,
+    EventStorePayloadProtectionMetadata? metadata,
+    CancellationToken cancellationToken = default);
+```
+
+Return `PayloadUnprotectionOutcome.Unreadable(reason)` (or `SnapshotUnprotectionOutcome.Unreadable`)
+to report a classified unreadable condition. Throw `OperationCanceledException` for cancellation
+only; any other exception thrown from a provider that has not overridden these typed methods is
+mapped to `UnreadableProtectedDataReason.ProviderUnavailable` by the default delegating
+implementation so EventStore never parses provider exception text.
+
+### Reason taxonomy
+
+| Reason | Stable code | Retryable | Permanent | Recommended HTTP status |
+| --- | --- | --- | --- | --- |
+| `MissingKey` | `missing-key` | maybe (operator) | no | 422 |
+| `KeyInvalidatedOrDeleted` | `key-invalidated` | no | yes | 410 |
+| `ProviderUnavailable` | `provider-unavailable` | yes | no | 503 |
+| `ProviderDenied` | `provider-denied` | maybe | maybe | 422 |
+| `ConsistencyMismatch` | `consistency-mismatch` | no | yes | 422 |
+| `MalformedMetadata` | `malformed-metadata` | no | yes | 422 |
+| `UnknownMetadataVersion` | `unknown-metadata-version` | maybe (upgrade) | maybe | 422 |
+| `ProviderOpaqueUnsupportedOperation` | `provider-opaque-unsupported` | no | yes | 422 |
+| `BytesMetadataMismatch` | `bytes-metadata-mismatch` | no | yes | 422 |
+
+`skip-past-unreadable` is **not** enabled by default for any category. A future audited skip
+policy requires explicit product/architecture approval and remains out of scope for 22.7b.
+
+### Pre-domain readability boundary
+
+`AggregateActor` now scans every rehydrated event before constructing
+`DomainServiceCurrentState`: stored `ProviderOpaque` envelopes and `Unreadable` provider outcomes
+throw `ProtectedDataUnreadableException` (a safe-message exception that carries the reason code
+only — no payload bytes, no provider exception text). The exception is routed by the existing
+infrastructure failure path to dead-letter, and domain services are never invoked with protected
+or opaque bytes.
+
+### Snapshot retention
+
+Protected snapshots that cannot be unprotected are **retained** in storage. `LoadSnapshotAsync`
+returns `null` so the caller falls back to event replay (where the pre-domain readability
+boundary then handles any unreadable tail events). The existing `RemoveStateAsync` path is
+preserved only for non-protected corrupt deserialization (schema drift on plaintext snapshots).
+
+### ProblemDetails surface
+
+The public stream read/replay endpoint (`POST /api/v1/streams/read`) returns the stable
+`https://hexalith.io/problems/unreadable-protected-data` ProblemDetails when any event in the
+page is `ProviderOpaque`. The response carries only safe envelope metadata (`tenantId`, `domain`,
+`aggregateId`, `sequenceNumber`, `reasonCode`, `reasonCategory`, `stage`, `retryable`,
+`permanent`). Payload bytes, key alias, provider exception text, and stack traces are
+**never** included.
+
+### No-leak proof
+
+Testing surfaces include `ProtectedDataLeakSentinel` (constants for plaintext, snapshot
+plaintext, key alias, provider-private blob, state-store key, connection string, provider
+exception text) with an `AssertNoLeak(IEnumerable<string?>)` helper. The Server tests inject
+these sentinels into protection-service fakes (`FakeUnreadableProtectionService`) and scan every
+captured log line, failure reason, ProblemDetails JSON, and exception message.
+
+## Deferred to Stories 22.7c / 22.7d
+
+- Key lifecycle workflow (registration, rotation, deletion, invalidation, **crypto-shredding**)
+  and restored-backup governance — Story 22.7c.
+- Broad redaction across CLI, MCP, all admin UI pages, all backup tooling — Story 22.7d.
+- Real encryption provider, key vault integration, cloud KMS, DAPR secret-store integration.
 
 ## Registering a custom provider
 

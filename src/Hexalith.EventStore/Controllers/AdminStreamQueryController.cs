@@ -11,10 +11,13 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Server.Events;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -36,7 +39,8 @@ public class AdminStreamQueryController(
     IActorProxyFactory actorProxyFactory,
     IDomainServiceInvoker domainServiceInvoker,
     IAggregateStateReconstructor aggregateStateReconstructor,
-    ILogger<AdminStreamQueryController> logger) : ControllerBase {
+    ILogger<AdminStreamQueryController> logger,
+    IEventPayloadProtectionService? payloadProtectionService = null) : ControllerBase {
     private const int _defaultMaxBisectFields = 1_000;
     private const int _defaultMaxBisectSteps = 30;
     private const int _defaultMaxEvents = 10_000;
@@ -48,6 +52,7 @@ public class AdminStreamQueryController(
     private const int _maxDirectTimelineCount = 1_000;
 
     private const string _replayProblemTypePrefix = "urn:hexalith:eventstore:replay:";
+    private readonly IEventPayloadProtectionService _payloadProtectionService = payloadProtectionService ?? new NoOpEventPayloadProtectionService();
 
     private static readonly JsonDocumentOptions _payloadParseOptions = new() { MaxDepth = 64 };
 
@@ -748,8 +753,8 @@ public class AdminStreamQueryController(
 
     /// <summary>
     /// Returns full detail for the event at the requested sequence number. Used by the Admin UI event detail
-    /// panel, CLI stream commands, and MCP diagnostics. Payload is returned verbatim for authorized inspection;
-    /// SEC-5 redaction applies only to logs and <see cref="EventDetail.ToString"/>, not the API response body.
+    /// panel, CLI stream commands, and MCP diagnostics. Protected payloads are returned only after
+    /// successful unprotection; unreadable protected data returns a safe ProblemDetails response.
     /// </summary>
     [HttpGet("{tenantId}/{domain}/{aggregateId}/events/{sequenceNumber:long}")]
     [ProducesResponseType(typeof(EventDetail), StatusCodes.Status200OK)]
@@ -794,8 +799,21 @@ public class AdminStreamQueryController(
                     detail: "Event not found.");
             }
 
-            string decoded = target.Payload is { Length: > 0 }
-                ? Encoding.UTF8.GetString(target.Payload)
+            AdminReadabilityResult readable = await TryMakeAdminEventReadableAsync(identity, target, "admin-event-detail", ct)
+                .ConfigureAwait(false);
+            if (readable.UnreadableReason is not null) {
+                return CreateUnreadableProtectedDataProblem(
+                    readable.UnreadableReason.Value,
+                    tenantId,
+                    domain,
+                    aggregateId,
+                    sequenceNumber,
+                    "admin-event-detail");
+            }
+
+            ServerEventEnvelope readableTarget = readable.Envelope!;
+            string decoded = readableTarget.Payload is { Length: > 0 }
+                ? Encoding.UTF8.GetString(readableTarget.Payload)
                 : string.Empty;
             string payloadJson = string.IsNullOrWhiteSpace(decoded) ? "{}" : decoded;
 
@@ -803,12 +821,12 @@ public class AdminStreamQueryController(
                 TenantId: tenantId,
                 Domain: domain,
                 AggregateId: aggregateId,
-                SequenceNumber: target.SequenceNumber,
-                EventTypeName: target.EventTypeName,
-                Timestamp: target.Timestamp,
-                CorrelationId: target.CorrelationId,
-                CausationId: string.IsNullOrWhiteSpace(target.CausationId) ? null : target.CausationId,
-                UserId: string.IsNullOrWhiteSpace(target.UserId) ? null : target.UserId,
+                SequenceNumber: readableTarget.SequenceNumber,
+                EventTypeName: readableTarget.EventTypeName,
+                Timestamp: readableTarget.Timestamp,
+                CorrelationId: readableTarget.CorrelationId,
+                CausationId: string.IsNullOrWhiteSpace(readableTarget.CausationId) ? null : readableTarget.CausationId,
+                UserId: string.IsNullOrWhiteSpace(readableTarget.UserId) ? null : readableTarget.UserId,
                 PayloadJson: payloadJson);
 
             return Ok(detail);
@@ -1054,10 +1072,24 @@ public class AdminStreamQueryController(
                 .OrderBy(fc => fc.FieldPath, StringComparer.Ordinal)
                 .ToList();
 
+            AdminReadabilityResult readable = await TryMakeAdminEventReadableAsync(identity, targetEvent, "admin-event-step", ct)
+                .ConfigureAwait(false);
+            if (readable.UnreadableReason is not null) {
+                return CreateUnreadableProtectedDataProblem(
+                    readable.UnreadableReason.Value,
+                    tenantId,
+                    domain,
+                    aggregateId,
+                    at,
+                    "admin-event-step");
+            }
+
+            ServerEventEnvelope readableTargetEvent = readable.Envelope!;
+
             // Get event payload as JSON string
             string eventPayloadJson;
             try {
-                eventPayloadJson = System.Text.Encoding.UTF8.GetString(targetEvent.Payload);
+                eventPayloadJson = System.Text.Encoding.UTF8.GetString(readableTargetEvent.Payload);
             }
             catch {
                 eventPayloadJson = "{}";
@@ -1068,11 +1100,11 @@ public class AdminStreamQueryController(
                 Domain: domain,
                 AggregateId: aggregateId,
                 SequenceNumber: at,
-                EventTypeName: targetEvent.EventTypeName ?? string.Empty,
-                Timestamp: targetEvent.Timestamp,
-                CorrelationId: targetEvent.CorrelationId ?? string.Empty,
-                CausationId: targetEvent.CausationId ?? string.Empty,
-                UserId: targetEvent.UserId ?? string.Empty,
+                EventTypeName: readableTargetEvent.EventTypeName ?? string.Empty,
+                Timestamp: readableTargetEvent.Timestamp,
+                CorrelationId: readableTargetEvent.CorrelationId ?? string.Empty,
+                CausationId: readableTargetEvent.CausationId ?? string.Empty,
+                UserId: readableTargetEvent.UserId ?? string.Empty,
                 EventPayloadJson: eventPayloadJson,
                 StateJson: stateJson,
                 FieldChanges: fieldChanges,
@@ -1554,6 +1586,101 @@ public class AdminStreamQueryController(
             failedSequenceNumber: sequence,
             failedEventType: string.Empty,
             lastAppliedSequenceNumber: replay.LastAppliedSequenceNumber))!;
+
+    private async Task<AdminReadabilityResult> TryMakeAdminEventReadableAsync(
+        AggregateIdentity identity,
+        ServerEventEnvelope envelope,
+        string stage,
+        CancellationToken cancellationToken) {
+        EventStorePayloadProtectionMetadata storedMetadata = EventStorePayloadProtectionMetadataCarrier
+            .Read(envelope.Extensions);
+
+        if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {
+            return AdminReadabilityResult.Unreadable(
+                UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(storedMetadata));
+        }
+
+        if (storedMetadata.State == PayloadProtectionState.Unprotected) {
+            return AdminReadabilityResult.Readable(envelope);
+        }
+
+        PayloadUnprotectionOutcome outcome;
+        try {
+            outcome = await _payloadProtectionService
+                .TryUnprotectEventPayloadAsync(
+                    identity,
+                    envelope.EventTypeName,
+                    envelope.Payload,
+                    envelope.SerializationFormat,
+                    storedMetadata,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch {
+            logger.LogWarning(
+                "Protected event unreadable during admin inspection: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, SequenceNumber={SequenceNumber}, ReasonCode={ReasonCode}, Stage={Stage}",
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                envelope.SequenceNumber,
+                UnreadableProtectedDataReasonCodes.ProviderUnavailable,
+                stage);
+            return AdminReadabilityResult.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable);
+        }
+
+        if (outcome.IsUnreadable) {
+            return AdminReadabilityResult.Unreadable(outcome.UnreadableReason!.Value);
+        }
+
+        return AdminReadabilityResult.Readable(envelope with {
+            Payload = outcome.PayloadBytes!,
+            SerializationFormat = outcome.SerializationFormat!,
+            Extensions = EventStorePayloadProtectionMetadataCarrier.Write(envelope.Extensions, outcome.Metadata),
+        });
+    }
+
+    private ObjectResult CreateUnreadableProtectedDataProblem(
+        UnreadableProtectedDataReason reason,
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        string stage) {
+        int statusCode = UnreadableProtectedDataProblem.GetStatusCode(reason);
+        string reasonCode = UnreadableProtectedDataReasonCodes.From(reason);
+        ObjectResult result = Problem(
+            statusCode: statusCode,
+            type: UnreadableProtectedDataProblem.TypeUri,
+            title: UnreadableProtectedDataProblem.DefaultTitle,
+            detail: UnreadableProtectedDataProblem.GetSafeOperatorGuidance(reason));
+
+        if (result.Value is ProblemDetails problem) {
+            problem.Extensions["reasonCode"] = reasonCode;
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionReasonCategory] = reason.ToString();
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionStage] = stage;
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionSequenceNumber] = sequenceNumber;
+            problem.Extensions[GatewayProblemDetailsExtensions.TenantId] = tenantId;
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionDomain] = domain;
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionAggregateId] = aggregateId;
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionRetryable] = UnreadableProtectedDataReasonCodes.IsRetryable(reason);
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionPermanent] = UnreadableProtectedDataReasonCodes.IsPermanent(reason);
+        }
+
+        return result;
+    }
+
+    private sealed record AdminReadabilityResult(
+        ServerEventEnvelope? Envelope,
+        UnreadableProtectedDataReason? UnreadableReason) {
+        public static AdminReadabilityResult Readable(ServerEventEnvelope envelope)
+            => new(envelope, null);
+
+        public static AdminReadabilityResult Unreadable(UnreadableProtectedDataReason reason)
+            => new(null, reason);
+    }
 
     private static string SafeReplayProblemMessage(AggregateReconstructionResult replay, string title) {
         string sequenceSuffix = replay.FailedSequenceNumber.HasValue

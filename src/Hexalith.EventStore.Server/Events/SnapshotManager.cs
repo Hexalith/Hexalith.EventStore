@@ -14,7 +14,7 @@ namespace Hexalith.EventStore.Server.Events;
 /// Snapshot creation is advisory -- failures never block command processing (rule #12).
 /// Does NOT call SaveStateAsync -- the caller commits atomically (D1).
 /// </summary>
-public class SnapshotManager(
+public partial class SnapshotManager(
     IOptions<SnapshotOptions> options,
     ILogger<SnapshotManager> logger,
     IEventPayloadProtectionService payloadProtectionService) : ISnapshotManager {
@@ -108,21 +108,61 @@ public class SnapshotManager(
             // explicit legacy compatibility record so callers never see a null sentinel.
             EventStorePayloadProtectionMetadata effectiveMetadata = NormalizeSnapshotMetadata(snapshot.ProtectionMetadata);
 
-            // Provider-opaque snapshots are passed through verbatim: never invoke unprotect on
-            // bytes whose provider EventStore cannot identify.
+            // Story 22.7b: Provider-opaque protected snapshots must NOT be deleted (would erase
+            // audit-relevant state). Return null so the actor falls back to full replay; if the
+            // event tail is also unreadable, the pre-domain readability boundary will fail closed.
             if (effectiveMetadata.State == PayloadProtectionState.ProviderOpaque) {
-                return snapshot with { ProtectionMetadata = effectiveMetadata };
+                UnreadableProtectedDataReason opaqueReason = UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(effectiveMetadata);
+                Log.UnreadableProtectedSnapshot(
+                    logger,
+                    correlationId ?? string.Empty,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    snapshot.SequenceNumber,
+                    UnreadableProtectedDataReasonCodes.From(opaqueReason));
+                return null;
             }
 
-            object unprotectedState = await payloadProtectionService
-                .UnprotectSnapshotAsync(identity, snapshot.State, effectiveMetadata, cancellationToken)
-                .ConfigureAwait(false);
+            // Story 22.7b: use the typed snapshot unprotect entry point. Unreadable outcomes (e.g.
+            // missing key, provider unavailable) DO NOT trigger snapshot deletion — protected
+            // unreadable data is not the same as corrupt unprotected data. The actor will replay
+            // the event tail; if that tail is also unreadable, the pre-domain boundary fails closed.
+            SnapshotUnprotectionOutcome outcome;
+            try {
+                outcome = await payloadProtectionService
+                    .TryUnprotectSnapshotAsync(identity, snapshot.State, effectiveMetadata, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch {
+                outcome = SnapshotUnprotectionOutcome.Unreadable(
+                    UnreadableProtectedDataReason.ProviderUnavailable,
+                    effectiveMetadata);
+            }
 
-            return snapshot with { State = unprotectedState, ProtectionMetadata = effectiveMetadata };
+            if (outcome.IsUnreadable) {
+                Log.UnreadableProtectedSnapshot(
+                    logger,
+                    correlationId ?? string.Empty,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    snapshot.SequenceNumber,
+                    UnreadableProtectedDataReasonCodes.From(outcome.UnreadableReason!.Value));
+                return null;
+            }
+
+            return snapshot with { State = outcome.State!, ProtectionMetadata = outcome.Metadata };
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             // Deserialization failure: delete corrupt snapshot and fall back to full replay
             // Rule #5: Never log snapshot state content
+            // Story 22.7b: this RemoveStateAsync path is ONLY for non-protected corrupt
+            // deserialization (schema drift on plaintext snapshots). Protected unreadable cases
+            // are routed above via TryUnprotectSnapshotAsync and DO NOT delete the snapshot.
             logger.LogWarning(
                 ex,
                 "Snapshot deserialization failed, deleting corrupt snapshot and falling back to full replay: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}",
@@ -178,5 +218,22 @@ public class SnapshotManager(
         return metadata.MetadataVersion > EventStorePayloadProtectionMetadata.CurrentMetadataVersion
             ? EventStorePayloadProtectionMetadata.ProviderOpaque("unknownVersion")
             : EventStorePayloadProtectionMetadata.ProviderOpaque("forbidden");
+    }
+
+    private static partial class Log {
+        // Story 22.7b: unreadable protected snapshot. Carries safe envelope metadata + reason code
+        // only — no snapshot state, no payload bytes, no key alias, no provider exception text.
+        [LoggerMessage(
+            EventId = 7100,
+            Level = LogLevel.Warning,
+            Message = "Unreadable protected snapshot retained (no deletion): CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, SequenceNumber={SequenceNumber}, ReasonCode={ReasonCode}, Stage=SnapshotUnreadable")]
+        public static partial void UnreadableProtectedSnapshot(
+            ILogger logger,
+            string correlationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            long sequenceNumber,
+            string reasonCode);
     }
 }
