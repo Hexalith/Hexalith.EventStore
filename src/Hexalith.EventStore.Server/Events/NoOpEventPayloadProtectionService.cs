@@ -59,6 +59,26 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
         => UnprotectEventPayloadAsync(identity, eventTypeName, payloadBytes, serializationFormat, cancellationToken);
 
     /// <inheritdoc/>
+    public Task<PayloadUnprotectionOutcome> TryUnprotectEventPayloadAsync(
+        AggregateIdentity identity,
+        string eventTypeName,
+        byte[] payloadBytes,
+        string serializationFormat,
+        EventStorePayloadProtectionMetadata? metadata,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventTypeName);
+        ArgumentNullException.ThrowIfNull(payloadBytes);
+        ArgumentException.ThrowIfNullOrWhiteSpace(serializationFormat);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        EventStorePayloadProtectionMetadata effectiveMetadata = metadata ?? EventStorePayloadProtectionMetadata.Unprotected();
+        return Task.FromResult(effectiveMetadata.State == PayloadProtectionState.Protected
+            ? PayloadUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.MissingKey, effectiveMetadata)
+            : PayloadUnprotectionOutcome.Readable(payloadBytes, serializationFormat, effectiveMetadata));
+    }
+
+    /// <inheritdoc/>
     public Task<object> ProtectSnapshotStateAsync(
         AggregateIdentity identity,
         object state,
@@ -101,5 +121,21 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
         ArgumentNullException.ThrowIfNull(state);
 
         return Task.FromResult(state);
+    }
+
+    /// <inheritdoc/>
+    public Task<SnapshotUnprotectionOutcome> TryUnprotectSnapshotAsync(
+        AggregateIdentity identity,
+        object state,
+        EventStorePayloadProtectionMetadata? metadata,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(state);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        EventStorePayloadProtectionMetadata effectiveMetadata = metadata ?? EventStorePayloadProtectionMetadata.Unprotected();
+        return Task.FromResult(effectiveMetadata.State == PayloadProtectionState.Protected
+            ? SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.MissingKey, effectiveMetadata)
+            : SnapshotUnprotectionOutcome.Readable(state, effectiveMetadata));
     }
 }

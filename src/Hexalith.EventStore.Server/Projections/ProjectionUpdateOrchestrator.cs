@@ -10,6 +10,7 @@ using Dapr.Client;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
@@ -38,11 +39,13 @@ public partial class ProjectionUpdateOrchestrator(
     IProjectionCheckpointTracker checkpointTracker,
     IOptions<ProjectionOptions> projectionOptions,
     ILogger<ProjectionUpdateOrchestrator> logger,
-    IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
+    IProjectionRebuildCheckpointStore? rebuildCheckpointStore = null,
+    IEventPayloadProtectionService? payloadProtectionService = null) : IProjectionUpdateOrchestrator, IProjectionPollerDeliveryGateway, IProjectionRebuildOrchestrator {
     // Per-aggregate serialization across orchestrator instances. Entries are evicted and the
     // underlying SemaphoreSlim disposed when the last holder releases, so a multi-tenant server
     // with many short-lived aggregates does not accumulate kernel handles indefinitely.
     internal static readonly KeyedSemaphore<string> ProjectionLocks = new(StringComparer.Ordinal);
+    private readonly IEventPayloadProtectionService _payloadProtectionService = payloadProtectionService ?? new NoOpEventPayloadProtectionService();
 
     /// <inheritdoc/>
     public async Task UpdateProjectionAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) {
@@ -147,23 +150,25 @@ public partial class ProjectionUpdateOrchestrator(
                 return;
             }
 
-            // Step 3: Map EventEnvelope[] to ProjectionEventDto[]
-            var projectionEvents = new ProjectionEventDto[events.Length];
-            for (int i = 0; i < events.Length; i++) {
-                EventEnvelope e = events[i];
-                projectionEvents[i] = new ProjectionEventDto(
-                    e.EventTypeName,
-                    e.Payload,
-                    e.SerializationFormat,
-                    e.SequenceNumber,
-                    e.Timestamp,
-                    e.CorrelationId,
-                    e.MessageId,
-                    e.UserId);
+            ProjectionReadabilityResult projectionReadability = await TryBuildProjectionEventsAsync(
+                    identity,
+                    events,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (projectionReadability.UnreadableReason is not null) {
+                Log.UnreadableProtectedEvent(
+                    logger,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    projectionReadability.SequenceNumber ?? 0,
+                    UnreadableProtectedDataReasonCodes.From(projectionReadability.UnreadableReason.Value),
+                    "projection-delivery");
+                return;
             }
 
             // Step 4: Invoke domain service /project endpoint via DAPR
-            var request = new ProjectionRequest(identity.TenantId, identity.Domain, identity.AggregateId, projectionEvents);
+            var request = new ProjectionRequest(identity.TenantId, identity.Domain, identity.AggregateId, projectionReadability.Events!);
             using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
                 registration.AppId,
                 "project",
@@ -638,21 +643,34 @@ public partial class ProjectionUpdateOrchestrator(
                 return RebuildDeliveryResult.Complete(perAggregateProgress, pageComplete: reached);
             }
 
-            var projectionEvents = new ProjectionEventDto[events.Length];
-            for (int i = 0; i < events.Length; i++) {
-                EventEnvelope e = events[i];
-                projectionEvents[i] = new ProjectionEventDto(
-                    e.EventTypeName,
-                    e.Payload,
-                    e.SerializationFormat,
-                    e.SequenceNumber,
-                    e.Timestamp,
-                    e.CorrelationId,
-                    e.MessageId,
-                    e.UserId);
+            ProjectionReadabilityResult projectionReadability = await TryBuildProjectionEventsAsync(
+                    identity,
+                    events,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (projectionReadability.UnreadableReason is not null) {
+                string reasonCode = UnreadableProtectedDataReasonCodes.From(projectionReadability.UnreadableReason.Value);
+                Log.UnreadableProtectedEvent(
+                    logger,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    projectionReadability.SequenceNumber ?? 0,
+                    reasonCode,
+                    "projection-rebuild");
+                _ = await rebuildCheckpointStore!
+                    .ResetAsync(
+                        operatorScope,
+                        perAggregateProgress,
+                        ProjectionRebuildStatus.Failed,
+                        failureReasonCode: reasonCode,
+                        cancellationToken: CancellationToken.None,
+                        toPosition: toPosition)
+                    .ConfigureAwait(false);
+                return RebuildDeliveryResult.Interrupt();
             }
 
-            var request = new ProjectionRequest(identity.TenantId, identity.Domain, identity.AggregateId, projectionEvents);
+            var request = new ProjectionRequest(identity.TenantId, identity.Domain, identity.AggregateId, projectionReadability.Events!);
             using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
                 registration.AppId,
                 "project",
@@ -937,6 +955,81 @@ public partial class ProjectionUpdateOrchestrator(
             OperationId = checkpoint.OperationId,
         };
 
+    private async Task<ProjectionReadabilityResult> TryBuildProjectionEventsAsync(
+        AggregateIdentity identity,
+        IReadOnlyList<EventEnvelope> events,
+        CancellationToken cancellationToken) {
+        var projectionEvents = new ProjectionEventDto[events.Count];
+        for (int i = 0; i < events.Count; i++) {
+            EventEnvelope envelope = events[i];
+            EventStorePayloadProtectionMetadata storedMetadata = EventStorePayloadProtectionMetadataCarrier
+                .Read(envelope.Extensions);
+
+            if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {
+                return ProjectionReadabilityResult.Unreadable(
+                    UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(storedMetadata),
+                    envelope.SequenceNumber);
+            }
+
+            byte[] payload = envelope.Payload;
+            string serializationFormat = envelope.SerializationFormat;
+            if (storedMetadata.State == PayloadProtectionState.Protected) {
+                PayloadUnprotectionOutcome outcome;
+                try {
+                    outcome = await _payloadProtectionService
+                        .TryUnprotectEventPayloadAsync(
+                            identity,
+                            envelope.EventTypeName,
+                            envelope.Payload,
+                            envelope.SerializationFormat,
+                            storedMetadata,
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) {
+                    throw;
+                }
+                catch {
+                    return ProjectionReadabilityResult.Unreadable(
+                        UnreadableProtectedDataReason.ProviderUnavailable,
+                        envelope.SequenceNumber);
+                }
+
+                if (outcome.IsUnreadable) {
+                    return ProjectionReadabilityResult.Unreadable(
+                        outcome.UnreadableReason!.Value,
+                        envelope.SequenceNumber);
+                }
+
+                payload = outcome.PayloadBytes!;
+                serializationFormat = outcome.SerializationFormat!;
+            }
+
+            projectionEvents[i] = new ProjectionEventDto(
+                envelope.EventTypeName,
+                payload,
+                serializationFormat,
+                envelope.SequenceNumber,
+                envelope.Timestamp,
+                envelope.CorrelationId,
+                envelope.MessageId,
+                envelope.UserId);
+        }
+
+        return ProjectionReadabilityResult.Readable(projectionEvents);
+    }
+
+    private sealed record ProjectionReadabilityResult(
+        ProjectionEventDto[]? Events,
+        UnreadableProtectedDataReason? UnreadableReason,
+        long? SequenceNumber) {
+        public static ProjectionReadabilityResult Readable(ProjectionEventDto[] events)
+            => new(events, null, null);
+
+        public static ProjectionReadabilityResult Unreadable(UnreadableProtectedDataReason reason, long sequenceNumber)
+            => new(null, reason, sequenceNumber);
+    }
+
     private async Task<HttpResponseMessage?> SendProjectRequestAsync(
         HttpClient httpClient,
         HttpRequestMessage httpRequest,
@@ -1193,5 +1286,11 @@ public partial class ProjectionUpdateOrchestrator(
             Level = LogLevel.Error,
             Message = "Projection rebuild terminal Failed write rejected: TenantId={TenantId}, Domain={Domain}, ProjectionName={ProjectionName}, ReasonCode={ReasonCode}, ExceptionType={ExceptionType}, Stage=ProjectionRebuildTerminalFailWriteRejected")]
         public static partial void RebuildTerminalFailWriteRejected(ILogger logger, string tenantId, string domain, string projectionName, string reasonCode, string exceptionType);
+
+        [LoggerMessage(
+            EventId = 1150,
+            Level = LogLevel.Warning,
+            Message = "Unreadable protected event blocked projection delivery: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, SequenceNumber={SequenceNumber}, ReasonCode={ReasonCode}, Stage={Stage}")]
+        public static partial void UnreadableProtectedEvent(ILogger logger, string tenantId, string domain, string aggregateId, long sequenceNumber, string reasonCode, string stage);
     }
 }

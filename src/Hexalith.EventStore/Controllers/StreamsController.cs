@@ -4,6 +4,7 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.ErrorHandling;
@@ -31,7 +32,8 @@ public sealed partial class StreamsController(
     IActorProxyFactory actorProxyFactory,
     GatewayTenantValidator tenantValidator,
     IRbacValidator rbacValidator,
-    ILogger<StreamsController> logger) : ControllerBase {
+    ILogger<StreamsController> logger,
+    IEventPayloadProtectionService? payloadProtectionService = null) : ControllerBase {
     // P6-7P (pass-7): _maxPageSize is load-bearing for the FromSequence overflow guard at
     // line ~295 which evaluates `int.MaxValue - request.PageSize - 1L`. If _maxPageSize were
     // bumped to near-int.MaxValue, the expression would overflow to a negative long and the
@@ -42,6 +44,7 @@ public sealed partial class StreamsController(
     private const int _maxPageSize = 1_000;
     private const string _streamReadMessageCategory = "replay";
     private const string _streamReadMessageType = "StreamRead";
+    private readonly IEventPayloadProtectionService _payloadProtectionService = payloadProtectionService ?? new NoOpEventPayloadProtectionService();
 
     /// <summary>
     /// Reads a public EventStore stream page for downstream replay/rebuild use.
@@ -154,6 +157,35 @@ public sealed partial class StreamsController(
 
             IReadOnlyList<ServerEventEnvelope> readEvents = [.. pageEvents.OrderBy(e => e.SequenceNumber)];
             IReadOnlyList<ServerEventEnvelope> orderedEvents = [.. readEvents.Take(request.PageSize)];
+
+            // Story 22.7b: fail closed when any envelope in the page is provider-opaque. EventStore
+            // must not return opaque protected bytes through the public replay surface — the
+            // ProblemDetails carries only safe metadata (no payload, no key alias, no provider
+            // exception text).
+            var readableEvents = new List<ServerEventEnvelope>(orderedEvents.Count);
+            foreach (ServerEventEnvelope envelope in orderedEvents) {
+                ReplayReadabilityResult readable = await TryMakeReplayEventReadableAsync(identity, envelope, cancellationToken)
+                    .ConfigureAwait(false);
+                if (readable.UnreadableReason is not null) {
+                    string reasonCode = UnreadableProtectedDataReasonCodes.From(readable.UnreadableReason.Value);
+                    Log.UnreadableProtectedPayloadAtReplay(
+                        logger,
+                        request.Tenant,
+                        request.Domain,
+                        request.AggregateId ?? string.Empty,
+                        envelope.SequenceNumber,
+                        reasonCode);
+                    return CreateUnreadableProtectedDataProblem(
+                        readable.UnreadableReason.Value,
+                        request.Tenant,
+                        request.Domain,
+                        request.AggregateId,
+                        envelope.SequenceNumber);
+                }
+
+                readableEvents.Add(readable.Envelope!);
+            }
+
             long latestSequence = orderedEvents.Count == 0
                 ? currentSequence
                 : Math.Max(currentSequence, orderedEvents[^1].SequenceNumber);
@@ -170,7 +202,7 @@ public sealed partial class StreamsController(
                 identity.TenantId,
                 identity.Domain,
                 identity.AggregateId,
-                [.. orderedEvents.Select(ToStreamReadEvent)],
+                [.. readableEvents.Select(ToStreamReadEvent)],
                 new StreamReadMetadata(
                     request.FromSequence,
                     request.ToSequence,
@@ -271,6 +303,62 @@ public sealed partial class StreamsController(
             string.IsNullOrWhiteSpace(envelope.UserId) ? null : envelope.UserId,
             EventStorePayloadProtectionMetadataCarrier.Read(envelope.Extensions));
 
+    private async Task<ReplayReadabilityResult> TryMakeReplayEventReadableAsync(
+        AggregateIdentity identity,
+        ServerEventEnvelope envelope,
+        CancellationToken cancellationToken) {
+        EventStorePayloadProtectionMetadata storedMetadata = EventStorePayloadProtectionMetadataCarrier
+            .Read(envelope.Extensions);
+
+        if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {
+            return ReplayReadabilityResult.Unreadable(
+                UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(storedMetadata));
+        }
+
+        if (storedMetadata.State == PayloadProtectionState.Unprotected) {
+            return ReplayReadabilityResult.Readable(envelope);
+        }
+
+        PayloadUnprotectionOutcome outcome;
+        try {
+            outcome = await _payloadProtectionService
+                .TryUnprotectEventPayloadAsync(
+                    identity,
+                    envelope.EventTypeName,
+                    envelope.Payload,
+                    envelope.SerializationFormat,
+                    storedMetadata,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch {
+            return ReplayReadabilityResult.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable);
+        }
+
+        if (outcome.IsUnreadable) {
+            return ReplayReadabilityResult.Unreadable(outcome.UnreadableReason!.Value);
+        }
+
+        return ReplayReadabilityResult.Readable(envelope with {
+            Payload = outcome.PayloadBytes!,
+            SerializationFormat = outcome.SerializationFormat!,
+            Extensions = EventStorePayloadProtectionMetadataCarrier.Write(envelope.Extensions, outcome.Metadata),
+        });
+    }
+
+    private sealed record ReplayReadabilityResult(
+        ServerEventEnvelope? Envelope,
+        UnreadableProtectedDataReason? UnreadableReason) {
+        public static ReplayReadabilityResult Readable(ServerEventEnvelope envelope)
+            => new(envelope, null);
+
+        public static ReplayReadabilityResult Unreadable(UnreadableProtectedDataReason reason)
+            => new(null, reason);
+    }
+
     private ObjectResult ProblemWithReason(
         int statusCode,
         string type,
@@ -284,6 +372,44 @@ public sealed partial class StreamsController(
             detail: detail);
         if (result.Value is ProblemDetails problem) {
             problem.Extensions["reasonCode"] = reasonCode;
+        }
+
+        return result;
+    }
+
+    // Story 22.7b: stable ProblemDetails surface for unreadable protected data. Carries only safe
+    // envelope metadata (tenant, domain, aggregate, sequence) and the typed taxonomy fields. NEVER
+    // includes payload bytes, snapshot state, key alias, provider exception text, or stack trace.
+    private ObjectResult CreateUnreadableProtectedDataProblem(
+        UnreadableProtectedDataReason reason,
+        string tenant,
+        string domain,
+        string? aggregateId,
+        long sequenceNumber) {
+        int statusCode = UnreadableProtectedDataProblem.GetStatusCode(reason);
+        string reasonCode = UnreadableProtectedDataReasonCodes.From(reason);
+        ObjectResult result = Problem(
+            statusCode: statusCode,
+            type: UnreadableProtectedDataProblem.TypeUri,
+            title: UnreadableProtectedDataProblem.DefaultTitle,
+            detail: UnreadableProtectedDataProblem.GetSafeOperatorGuidance(reason));
+        if (result.Value is ProblemDetails problem) {
+            problem.Extensions["reasonCode"] = reasonCode;
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionReasonCategory] = reason.ToString();
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionStage] = "replay";
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionSequenceNumber] = sequenceNumber;
+            problem.Extensions[GatewayProblemDetailsExtensions.TenantId] = tenant;
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionDomain] = domain;
+            if (!string.IsNullOrWhiteSpace(aggregateId)) {
+                problem.Extensions[UnreadableProtectedDataProblem.ExtensionAggregateId] = aggregateId;
+            }
+
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionRetryable] = UnreadableProtectedDataReasonCodes.IsRetryable(reason);
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionPermanent] = UnreadableProtectedDataReasonCodes.IsPermanent(reason);
+        }
+
+        if (statusCode == StatusCodes.Status503ServiceUnavailable) {
+            Response.Headers.RetryAfter = "5";
         }
 
         return result;
@@ -484,6 +610,20 @@ public sealed partial class StreamsController(
             string tenantId,
             string domain,
             string aggregateId,
+            string reasonCode);
+
+        // Story 22.7b: unreadable protected event encountered at replay surface. Carries safe
+        // envelope metadata only — no event bytes, no key alias, no provider exception text.
+        [LoggerMessage(
+            EventId = 1181,
+            Level = LogLevel.Warning,
+            Message = "Unreadable protected event at replay: TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, SequenceNumber={SequenceNumber}, ReasonCode={ReasonCode}, Stage=ReplayUnreadable")]
+        public static partial void UnreadableProtectedPayloadAtReplay(
+            ILogger logger,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            long sequenceNumber,
             string reasonCode);
     }
 }

@@ -82,26 +82,70 @@ public partial class EventPublisher(
                 EventStorePayloadProtectionMetadata storedMetadata = EventStorePayloadProtectionMetadataCarrier
                     .Read(eventEnvelope.Extensions);
 
-                // Provider-opaque envelopes are passed through verbatim: EventStore must never
-                // invoke unprotect on bytes whose provider it cannot identify (ST0 invariant).
-                PayloadProtectionResult protectionResult;
+                // Story 22.7b: Provider-opaque records cannot be safely published. EventStore must
+                // never invoke unprotect on bytes whose provider it cannot identify, AND must not
+                // publish opaque bytes under publish-time metadata that would lie about state. Fail
+                // closed with a sanitized reason — no provider exception text, no payload bytes.
                 if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {
-                    protectionResult = new PayloadProtectionResult(
-                        eventEnvelope.Payload,
-                        eventEnvelope.SerializationFormat,
-                        storedMetadata);
+                    UnreadableProtectedDataReason opaqueReason = UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(storedMetadata);
+                    string opaqueReasonCode = UnreadableProtectedDataReasonCodes.From(opaqueReason);
+                    Log.UnreadableProtectedPayload(
+                        logger,
+                        correlationId,
+                        causationId,
+                        identity.TenantId,
+                        identity.Domain,
+                        identity.AggregateId,
+                        eventEnvelope.SequenceNumber,
+                        opaqueReasonCode);
+                    _ = (activity?.SetStatus(ActivityStatusCode.Error, $"Stage=Publish ReasonCode={opaqueReasonCode}"));
+                    return new EventPublishResult(false, publishedCount, BuildUnreadableFailureReason(opaqueReasonCode));
                 }
-                else {
-                    protectionResult = await payloadProtectionService
-                        .UnprotectEventPayloadAsync(
-                        identity,
-                        eventEnvelope.EventTypeName,
-                        eventEnvelope.Payload,
-                        eventEnvelope.SerializationFormat,
-                        storedMetadata,
-                        cancellationToken)
+
+                // Story 22.7b: Use the typed metadata-aware unprotect entry point so unreadable
+                // outcomes (missing key, key invalidated, provider unavailable, ...) come back as
+                // safe classified results instead of provider exceptions. Cancellation continues to
+                // propagate through `OperationCanceledException`.
+                PayloadUnprotectionOutcome unprotectOutcome;
+                try {
+                    unprotectOutcome = await payloadProtectionService
+                        .TryUnprotectEventPayloadAsync(
+                            identity,
+                            eventEnvelope.EventTypeName,
+                            eventEnvelope.Payload,
+                            eventEnvelope.SerializationFormat,
+                            storedMetadata,
+                            cancellationToken)
                         .ConfigureAwait(false);
                 }
+                catch (OperationCanceledException) {
+                    throw;
+                }
+                catch {
+                    unprotectOutcome = PayloadUnprotectionOutcome.Unreadable(
+                        UnreadableProtectedDataReason.ProviderUnavailable,
+                        storedMetadata);
+                }
+
+                if (unprotectOutcome.IsUnreadable) {
+                    string unreadableReasonCode = UnreadableProtectedDataReasonCodes.From(unprotectOutcome.UnreadableReason!.Value);
+                    Log.UnreadableProtectedPayload(
+                        logger,
+                        correlationId,
+                        causationId,
+                        identity.TenantId,
+                        identity.Domain,
+                        identity.AggregateId,
+                        eventEnvelope.SequenceNumber,
+                        unreadableReasonCode);
+                    _ = (activity?.SetStatus(ActivityStatusCode.Error, $"Stage=Publish ReasonCode={unreadableReasonCode}"));
+                    return new EventPublishResult(false, publishedCount, BuildUnreadableFailureReason(unreadableReasonCode));
+                }
+
+                var protectionResult = new PayloadProtectionResult(
+                    unprotectOutcome.PayloadBytes!,
+                    unprotectOutcome.SerializationFormat!,
+                    unprotectOutcome.Metadata);
 
                 // Re-stamp the published extensions with the provider-returned metadata so
                 // subscribers can observe the publish-time protection state without inspecting
@@ -181,6 +225,13 @@ public partial class EventPublisher(
         }
     }
 
+    // Story 22.7b: Stable, sanitized failure reason message. The format
+    // `"Protected payload unavailable for publication. ReasonCode=<kebab-code>"` is documented
+    // and parseable; the reason code is the only variable component. NEVER include provider
+    // exception text, payload bytes, key alias, or provider-private detail.
+    internal static string BuildUnreadableFailureReason(string reasonCode)
+        => $"Protected payload unavailable for publication. ReasonCode={reasonCode}";
+
     private static bool IsTestPublishFaultActive(
         EventPublisherOptions options,
         string correlationId,
@@ -256,5 +307,21 @@ public partial class EventPublisher(
             string domain,
             string aggregateId,
             string topic);
+
+        // Story 22.7b: Unreadable protected event at publish time. Carries only safe envelope
+        // metadata + the stable reason code. NEVER include provider exception text or event bytes.
+        [LoggerMessage(
+            EventId = 3104,
+            Level = LogLevel.Warning,
+            Message = "Unreadable protected event at publish: CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, SequenceNumber={SequenceNumber}, ReasonCode={ReasonCode}, Stage=PublishUnreadable")]
+        public static partial void UnreadableProtectedPayload(
+            ILogger logger,
+            string correlationId,
+            string causationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            long sequenceNumber,
+            string reasonCode);
     }
 }

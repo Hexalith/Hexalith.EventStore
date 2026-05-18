@@ -8,11 +8,15 @@
 | [EventStorePayloadProtectionMetadata](Hexalith.EventStore.Contracts.Security.EventStorePayloadProtectionMetadata.md 'Hexalith\.EventStore\.Contracts\.Security\.EventStorePayloadProtectionMetadata') | Provider-neutral protection metadata describing how an event payload or snapshot state was transformed\. |
 | [EventStorePayloadProtectionMetadataCarrier](Hexalith.EventStore.Contracts.Security.EventStorePayloadProtectionMetadataCarrier.md 'Hexalith\.EventStore\.Contracts\.Security\.EventStorePayloadProtectionMetadataCarrier') | Centralized helpers for the `eventstore.protection` envelope extension contract\. |
 | [PayloadProtectionResult](Hexalith.EventStore.Contracts.Security.PayloadProtectionResult.md 'Hexalith\.EventStore\.Contracts\.Security\.PayloadProtectionResult') | Represents transformed payload bytes after optional protection or unprotection\. |
+| [PayloadUnprotectionOutcome](Hexalith.EventStore.Contracts.Security.PayloadUnprotectionOutcome.md 'Hexalith\.EventStore\.Contracts\.Security\.PayloadUnprotectionOutcome') | Typed result from metadata-aware unprotect entry points; classifies readable vs unreadable outcomes \(Story 22\.7b\)\. |
 | [SnapshotProtectionResult](Hexalith.EventStore.Contracts.Security.SnapshotProtectionResult.md 'Hexalith\.EventStore\.Contracts\.Security\.SnapshotProtectionResult') | Represents transformed snapshot state together with protection metadata\. |
+| [SnapshotUnprotectionOutcome](Hexalith.EventStore.Contracts.Security.SnapshotUnprotectionOutcome.md 'Hexalith\.EventStore\.Contracts\.Security\.SnapshotUnprotectionOutcome') | Typed result from metadata-aware snapshot unprotect entry points \(Story 22\.7b\)\. |
+| [UnreadableProtectedDataReasonCodes](Hexalith.EventStore.Contracts.Security.UnreadableProtectedDataReasonCodes.md 'Hexalith\.EventStore\.Contracts\.Security\.UnreadableProtectedDataReasonCodes') | Stable kebab-case wire codes plus retryable/permanent classifiers for the unreadable-protected-data taxonomy \(Story 22\.7b\)\. |
 
 | Enums | |
 | :--- | :--- |
 | [PayloadProtectionState](Hexalith.EventStore.Contracts.Security.PayloadProtectionState.md 'Hexalith\.EventStore\.Contracts\.Security\.PayloadProtectionState') | Provider-neutral protection state for event payloads and snapshots\. |
+| [UnreadableProtectedDataReason](Hexalith.EventStore.Contracts.Security.UnreadableProtectedDataReason.md 'Hexalith\.EventStore\.Contracts\.Security\.UnreadableProtectedDataReason') | Provider-neutral classification for protected payload or snapshot state that EventStore cannot safely return \(Story 22\.7b\)\. |
 
 | Interfaces | |
 | :--- | :--- |

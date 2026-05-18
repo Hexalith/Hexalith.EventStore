@@ -45,6 +45,12 @@ Some responses include Hexalith-specific extension fields:
 | 501    | [not-implemented](./not-implemented.md) | Query endpoint not available |
 | 503    | [service-unavailable](./service-unavailable.md) | Processing pipeline temporarily down |
 
+## Protected Data Errors
+
+| Status | Error Type | Description |
+| ------ | ---------- | ----------- |
+| 410 / 422 / 503 | [unreadable-protected-data](./unreadable-protected-data.md) | Protected payload or snapshot cannot be returned safely |
+
 ## Query Reason Codes
 
 Query submission uses the standard error types above plus stable `reasonCode` extensions for non-auth query policy and projection failures.

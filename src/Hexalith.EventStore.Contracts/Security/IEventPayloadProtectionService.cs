@@ -129,4 +129,76 @@ public interface IEventPayloadProtectionService {
         EventStorePayloadProtectionMetadata? metadata,
         CancellationToken cancellationToken = default)
         => UnprotectSnapshotStateAsync(identity, state, cancellationToken);
+
+    /// <summary>
+    /// Story 22.7b — typed unprotection that returns a <see cref="PayloadUnprotectionOutcome"/>
+    /// classifying the result as readable or unreadable. Providers that need to signal "missing
+    /// key", "provider unavailable", "consistency mismatch" or other unreadable conditions MUST
+    /// use this entry point: exceptions are reserved for cancellation or unexpected infrastructure
+    /// failure and must not be parsed for public unreadable-data classification. The default
+    /// implementation delegates to the metadata-aware <see cref="UnprotectEventPayloadAsync(AggregateIdentity, string, byte[], string, EventStorePayloadProtectionMetadata?, CancellationToken)"/>
+    /// overload and reports any non-cancellation exception as a generic provider-unavailable
+    /// readable failure mapped to <see cref="UnreadableProtectedDataReason.ProviderUnavailable"/>.
+    /// </summary>
+    /// <param name="identity">The aggregate identity owning the payload.</param>
+    /// <param name="eventTypeName">The fully-qualified event type name.</param>
+    /// <param name="payloadBytes">The protected payload bytes.</param>
+    /// <param name="serializationFormat">The serialization format identifier.</param>
+    /// <param name="metadata">The protection metadata persisted alongside the payload.</param>
+    /// <param name="cancellationToken">The caller's cancellation token.</param>
+    /// <returns>A typed <see cref="PayloadUnprotectionOutcome"/>.</returns>
+    async Task<PayloadUnprotectionOutcome> TryUnprotectEventPayloadAsync(
+        AggregateIdentity identity,
+        string eventTypeName,
+        byte[] payloadBytes,
+        string serializationFormat,
+        EventStorePayloadProtectionMetadata? metadata,
+        CancellationToken cancellationToken = default) {
+        try {
+            PayloadProtectionResult result = await UnprotectEventPayloadAsync(
+                identity,
+                eventTypeName,
+                payloadBytes,
+                serializationFormat,
+                metadata,
+                cancellationToken).ConfigureAwait(false);
+            return PayloadUnprotectionOutcome.FromResult(result);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch {
+            // Default implementation is conservative: any non-cancellation failure becomes a
+            // transient provider-unavailable outcome. Custom providers should override this
+            // entry point and return the precise unreadable category they observe.
+            return PayloadUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable, metadata);
+        }
+    }
+
+    /// <summary>
+    /// Story 22.7b — typed snapshot unprotection entry point with explicit unreadable handling.
+    /// Mirrors <see cref="TryUnprotectEventPayloadAsync"/> for snapshot state.
+    /// </summary>
+    /// <param name="identity">The aggregate identity owning the snapshot.</param>
+    /// <param name="state">The (possibly protected) snapshot state object.</param>
+    /// <param name="metadata">The protection metadata persisted alongside the snapshot, or <see langword="null"/> for legacy records.</param>
+    /// <param name="cancellationToken">The caller's cancellation token.</param>
+    /// <returns>A typed <see cref="SnapshotUnprotectionOutcome"/>.</returns>
+    async Task<SnapshotUnprotectionOutcome> TryUnprotectSnapshotAsync(
+        AggregateIdentity identity,
+        object state,
+        EventStorePayloadProtectionMetadata? metadata,
+        CancellationToken cancellationToken = default) {
+        try {
+            object unprotected = await UnprotectSnapshotAsync(identity, state, metadata, cancellationToken)
+                .ConfigureAwait(false);
+            return SnapshotUnprotectionOutcome.Readable(unprotected, metadata ?? EventStorePayloadProtectionMetadata.Unprotected());
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch {
+            return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable, metadata);
+        }
+    }
 }

@@ -278,11 +278,25 @@ public partial class AggregateActor(
 
                         lastSnapshotSequence = rehydrationResult?.LastSnapshotSequence ?? 0;
 
+                        // Story 22.7b: pre-domain readability boundary. Unprotect every rehydrated
+                        // event BEFORE constructing DomainServiceCurrentState so domain services
+                        // never receive protected bytes through ToContractEventEnvelope. Any
+                        // ProviderOpaque envelope or Unreadable provider outcome throws the typed
+                        // ProtectedDataUnreadableException which is caught below and routed via the
+                        // existing dead-letter path. OperationCanceledException continues to
+                        // propagate unchanged.
+                        IReadOnlyList<EventEnvelope> readableEvents = rehydrationResult is null
+                            ? []
+                            : await EnsureEventsReadableForDomainAsync(
+                                command.AggregateIdentity,
+                                rehydrationResult.Events,
+                                CancellationToken.None).ConfigureAwait(false);
+
                         currentState = rehydrationResult is null
                             ? null
                             : new DomainServiceCurrentState(
                                 rehydrationResult.SnapshotState,
-                                [.. rehydrationResult.Events.Select(ToContractEventEnvelope)],
+                                [.. readableEvents.Select(ToContractEventEnvelope)],
                                 rehydrationResult.LastSnapshotSequence,
                                 rehydrationResult.CurrentSequence);
 
@@ -1546,6 +1560,71 @@ public partial class AggregateActor(
         }
 
         return [.. events];
+    }
+
+    /// <summary>
+    /// Story 22.7b: pre-domain readability boundary. Walks every rehydrated envelope, calls the
+    /// metadata-aware typed unprotect entry point, and returns a list of envelopes whose payload
+    /// bytes are safe to forward to a domain service (or any caller that needs plaintext). Throws
+    /// <see cref="ProtectedDataUnreadableException"/> with a safe reason code (no provider
+    /// exception text, no payload bytes, no key alias) when any event is provider-opaque or the
+    /// provider classifies it as unreadable.
+    /// </summary>
+    private async Task<IReadOnlyList<EventEnvelope>> EnsureEventsReadableForDomainAsync(
+        AggregateIdentity identity,
+        IReadOnlyList<EventEnvelope> events,
+        CancellationToken cancellationToken) {
+        if (events.Count == 0) {
+            return events;
+        }
+
+        var readable = new List<EventEnvelope>(events.Count);
+        foreach (EventEnvelope envelope in events) {
+            EventStorePayloadProtectionMetadata storedMetadata = EventStorePayloadProtectionMetadataCarrier
+                .Read(envelope.Extensions);
+
+            if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {
+                throw new ProtectedDataUnreadableException(
+                    UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(storedMetadata),
+                    stage: "rehydrate",
+                    sequenceNumber: envelope.SequenceNumber);
+            }
+
+            PayloadUnprotectionOutcome outcome;
+            try {
+                outcome = await payloadProtectionService
+                    .TryUnprotectEventPayloadAsync(
+                        identity,
+                        envelope.EventTypeName,
+                        envelope.Payload,
+                        envelope.SerializationFormat,
+                        storedMetadata,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch {
+                outcome = PayloadUnprotectionOutcome.Unreadable(
+                    UnreadableProtectedDataReason.ProviderUnavailable,
+                    storedMetadata);
+            }
+
+            if (outcome.IsUnreadable) {
+                throw new ProtectedDataUnreadableException(
+                    outcome.UnreadableReason!.Value,
+                    stage: "rehydrate",
+                    sequenceNumber: envelope.SequenceNumber);
+            }
+
+            readable.Add(envelope with {
+                Payload = outcome.PayloadBytes!,
+                SerializationFormat = outcome.SerializationFormat!,
+            });
+        }
+
+        return readable;
     }
 
     private static ContractEventEnvelope ToContractEventEnvelope(EventEnvelope envelope) =>

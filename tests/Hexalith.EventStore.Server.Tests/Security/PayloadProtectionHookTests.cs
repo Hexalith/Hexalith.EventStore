@@ -174,7 +174,10 @@ public class PayloadProtectionHookTests {
     }
 
     [Fact]
-    public async Task SnapshotManager_LoadProviderOpaqueSnapshot_DoesNotInvokeUnprotectHook() {
+    public async Task SnapshotManager_LoadProviderOpaqueSnapshot_DoesNotInvokeUnprotectHook_AndDoesNotDelete() {
+        // Story 22.7b: ProviderOpaque snapshots are RETAINED (no RemoveStateAsync) but
+        // LoadSnapshotAsync returns null so the caller falls back to event replay. The pre-domain
+        // readability boundary handles the tail if any of those events are also unreadable.
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         var opaqueSnapshot = new SnapshotRecord(
             SequenceNumber: 5,
@@ -191,13 +194,16 @@ public class PayloadProtectionHookTests {
 
         SnapshotRecord? loaded = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
 
-        loaded.ShouldNotBeNull();
-        loaded!.ProtectionMetadata!.State.ShouldBe(PayloadProtectionState.ProviderOpaque);
+        loaded.ShouldBeNull();
         tracker.UnprotectSnapshotCallCount.ShouldBe(0);
+        await stateManager.DidNotReceive().RemoveStateAsync(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task SnapshotManager_LoadInvalidTypedMetadata_MapsToProviderOpaqueAndSkipsUnprotect() {
+        // Story 22.7b: invalid typed metadata is normalized to ProviderOpaque, then LoadSnapshotAsync
+        // returns null (and DOES NOT delete the stored snapshot — protected unreadable data is not
+        // the same as corrupt unprotected data).
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         var invalidSnapshot = new SnapshotRecord(
             SequenceNumber: 5,
@@ -220,9 +226,9 @@ public class PayloadProtectionHookTests {
 
         SnapshotRecord? loaded = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
 
-        loaded.ShouldNotBeNull();
-        loaded!.ProtectionMetadata!.State.ShouldBe(PayloadProtectionState.ProviderOpaque);
+        loaded.ShouldBeNull();
         tracker.UnprotectSnapshotCallCount.ShouldBe(0);
+        await stateManager.DidNotReceive().RemoveStateAsync(TestIdentity.SnapshotKey, Arg.Any<CancellationToken>());
     }
 
     [Fact]

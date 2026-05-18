@@ -4,12 +4,15 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Contracts.Streams;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Tests.Fakes;
+using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -134,6 +137,37 @@ public class StreamsControllerTests {
         problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.MissingEvent);
         problem.Detail.ShouldNotBeNull();
         AssertNoForbiddenLeakage(problem);
+    }
+
+    [Fact]
+    public async Task ReadStreamAsyncWithUnreadableProtectedPayloadReturnsProblemDetailsInsteadOfPayload() {
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        _ = actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(Exists: true, CurrentSequence: 1));
+        _ = actor.ReadEventsRangeAsync(1, null, 2).Returns([
+            BuildEnvelope(
+                1,
+                [9, 9, 9],
+                new EventStorePayloadProtectionMetadata(
+                    PayloadProtectionState.Protected,
+                    1,
+                    Scheme: "test-aead",
+                    KeyAlias: "safe-test-alias",
+                    ContentHint: null,
+                    CompatibilityFlags: null)),
+        ]);
+        var protectionService = new FakeUnreadableProtectionService();
+        protectionService.ConfigureEventUnreadable(UnreadableProtectedDataReason.MissingKey);
+        (StreamsController controller, _, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator) = CreateController(actor, protectionService);
+        tenantValidator.ConfiguredResult = TenantValidationResult.Allowed;
+        rbacValidator.ConfiguredResult = RbacValidationResult.Allowed;
+
+        IActionResult result = await controller.ReadStreamAsync(new StreamReadRequest(Tenant, Domain, AggregateId, FromSequence: 1, PageSize: 1));
+
+        ProblemDetails problem = AssertProblem(result, StatusCodes.Status422UnprocessableEntity);
+        problem.Type.ShouldBe(UnreadableProtectedDataProblem.TypeUri);
+        problem.Extensions["reasonCode"].ShouldBe(UnreadableProtectedDataReasonCodes.MissingKey);
+        problem.Extensions[UnreadableProtectedDataProblem.ExtensionSequenceNumber].ShouldBe(1L);
+        protectionService.EventUnprotectInvocations.Count.ShouldBe(1);
     }
 
     [Fact]
@@ -376,7 +410,8 @@ public class StreamsControllerTests {
     }
 
     private static (StreamsController Controller, IActorProxyFactory ActorProxyFactory, FakeTenantValidator TenantValidator, FakeRbacValidator RbacValidator) CreateController(
-        IAggregateActor? actor = null) {
+        IAggregateActor? actor = null,
+        IEventPayloadProtectionService? payloadProtectionService = null) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         if (actor is not null) {
             _ = actorProxyFactory
@@ -394,7 +429,8 @@ public class StreamsControllerTests {
             actorProxyFactory,
             tenantValidator,
             rbacValidator,
-            NullLogger<StreamsController>.Instance) {
+            NullLogger<StreamsController>.Instance,
+            payloadProtectionService) {
             ControllerContext = new ControllerContext {
                 HttpContext = new DefaultHttpContext {
                     User = new ClaimsPrincipal(new ClaimsIdentity([
@@ -442,6 +478,12 @@ public class StreamsControllerTests {
     }
 
     private static ServerEventEnvelope BuildEnvelope(long seq)
+        => BuildEnvelope(seq, [], metadata: null);
+
+    private static ServerEventEnvelope BuildEnvelope(
+        long seq,
+        byte[] payload,
+        EventStorePayloadProtectionMetadata? metadata)
         => new(
             MessageId: $"msg-{seq}",
             AggregateId: AggregateId,
@@ -458,6 +500,8 @@ public class StreamsControllerTests {
             EventTypeName: "PartyRenamed",
             MetadataVersion: 1,
             SerializationFormat: "json",
-            Payload: [],
-            Extensions: null);
+            Payload: payload,
+            Extensions: metadata is null
+                ? null
+                : EventStorePayloadProtectionMetadataCarrier.Write((IDictionary<string, string>?)null, metadata));
 }
