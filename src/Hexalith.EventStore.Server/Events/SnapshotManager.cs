@@ -111,8 +111,18 @@ public partial class SnapshotManager(
             // Story 22.7b: Provider-opaque protected snapshots must NOT be deleted (would erase
             // audit-relevant state). Return null so the actor falls back to full replay; if the
             // event tail is also unreadable, the pre-domain readability boundary will fail closed.
+            // Story 22.7c: route every fail-closed snapshot-load decision through the canonical
+            // ProtectedDataReadabilityDecisionFactory so the publisher, actor, snapshot manager,
+            // and stream reader emit decisions with identical shape.
             if (effectiveMetadata.State == PayloadProtectionState.ProviderOpaque) {
-                UnreadableProtectedDataReason opaqueReason = UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(effectiveMetadata);
+                ProtectedDataReadabilityDecision opaqueDecision = ProtectedDataReadabilityDecisionFactory.FromMetadata(
+                    effectiveMetadata,
+                    ProtectedDataDecisionStage.SnapshotLoad,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    snapshot.SequenceNumber,
+                    correlationId);
                 Log.UnreadableProtectedSnapshot(
                     logger,
                     correlationId ?? string.Empty,
@@ -120,7 +130,7 @@ public partial class SnapshotManager(
                     identity.Domain,
                     identity.AggregateId,
                     snapshot.SequenceNumber,
-                    UnreadableProtectedDataReasonCodes.From(opaqueReason));
+                    opaqueDecision.ReasonCode);
                 return null;
             }
 
@@ -143,7 +153,15 @@ public partial class SnapshotManager(
                     effectiveMetadata);
             }
 
-            if (outcome.IsUnreadable) {
+            ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecisionFactory.FromOutcome(
+                outcome,
+                ProtectedDataDecisionStage.SnapshotLoad,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                snapshot.SequenceNumber,
+                correlationId);
+            if (!decision.IsReadable) {
                 Log.UnreadableProtectedSnapshot(
                     logger,
                     correlationId ?? string.Empty,
@@ -151,7 +169,7 @@ public partial class SnapshotManager(
                     identity.Domain,
                     identity.AggregateId,
                     snapshot.SequenceNumber,
-                    UnreadableProtectedDataReasonCodes.From(outcome.UnreadableReason!.Value));
+                    decision.ReasonCode);
                 return null;
             }
 

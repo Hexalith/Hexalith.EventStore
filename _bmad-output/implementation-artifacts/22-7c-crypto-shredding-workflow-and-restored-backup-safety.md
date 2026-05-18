@@ -1,6 +1,6 @@
 # Story 22.7c: Crypto-Shredding Workflow and Restored-Backup Safety
 
-Status: ready-for-dev
+Status: done
 
 Context created: 2026-05-13
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md`
@@ -109,68 +109,68 @@ so that GDPR deletion workflows remain safe after backup restore and operational
 
 ## Tasks / Subtasks
 
-- [ ] **ST0 - Freeze crypto-shredding and restore-safety decisions.** (AC: 1, 2, 3, 4, 5, 6)
-    - [ ] Read this story, Stories 22.7a and 22.7b, Epic 22, PRD FR102-FR104, architecture `Payload and Snapshot Protection`, Story 22.6 replay/rebuild contracts, backup/admin stories 16.4 and 17.6, and `_bmad-output/project-context.md` before code edits.
-    - [ ] Confirm whether Story 22.7a protection metadata/result parity is implemented in code. If absent, limit runtime changes to docs/status/admission contracts and record the implementation blocker.
-    - [ ] Confirm whether Story 22.7b unreadable-data taxonomy is implemented. If absent, define a temporary compatibility table for key-deleted, key-invalidated, restored-conflict, provider-opaque, malformed-metadata, unknown-version, and bytes/metadata-mismatch outcomes.
-    - [ ] If Story 22.7a metadata/result parity is still absent, stop before runtime implementation and leave this story blocked unless a human architecture decision explicitly narrows the work to contract/documentation-only preparation.
-    - [ ] Define the single EventStore-owned crypto-shredding/readability decision result consumed by read, replay, rebuild, publication, backup admission/status, admin, CLI, and MCP surfaces.
-    - [ ] Define closed provider-neutral status/reason names for readable, unreadable, quarantine-required, operator-decision-required, deferred-validation, malformed-metadata, provider-unavailable, provider-opaque, unknown-version, restore-conflict, and no-op/legacy-compatible outcomes.
-    - [ ] Define the provider-neutral crypto-shredding workflow states: requested, approved, rejected, pending-provider, invalidated, deleted, verification-failed, restore-conflict, quarantined, operator-decision-required, and completed.
-    - [ ] Define cancellation-before-decision and cancellation-after-decision behavior so cancellation never creates partial shredding evidence and never reverses an irreversible invalidation/deletion decision.
-    - [ ] Define idempotency keys and conflict behavior for repeated workflow requests over the same tenant/domain/aggregate/range.
-    - [ ] Define what EventStore may safely store for key references. Treat provider IDs and aliases as sensitive-by-default until the table marks the exact field safe for the exact surface.
-    - [ ] Define restore admission states and allowed transitions for backups created before and after key invalidation.
-    - [ ] Define safe fields allowed in audit records, ProblemDetails/status, logs/traces, admin/CLI/MCP output, and docs examples.
-    - [ ] Define operator-facing restore-conflict output as provider-neutral status, stable reason code, audit/correlation identifier, and allowed next action, with localizable safe text.
-    - [ ] Define exact no-leak sentinel values for tests and documentation scans.
-    - [ ] Record explicit out-of-scope items for provider-specific crypto, KMS/key vault integration, legal hold policy, physical backup engine implementation, broad CLI/MCP/admin redaction, and skip-past-shredded replay policy.
+- [x] **ST0 - Freeze crypto-shredding and restore-safety decisions.** (AC: 1, 2, 3, 4, 5, 6)
+    - [x] Read this story, Stories 22.7a and 22.7b, Epic 22, PRD FR102-FR104, architecture `Payload and Snapshot Protection`, Story 22.6 replay/rebuild contracts, backup/admin stories 16.4 and 17.6, and `_bmad-output/project-context.md` before code edits.
+    - [x] Confirm whether Story 22.7a protection metadata/result parity is implemented in code. If absent, limit runtime changes to docs/status/admission contracts and record the implementation blocker.
+    - [x] Confirm whether Story 22.7b unreadable-data taxonomy is implemented. If absent, define a temporary compatibility table for key-deleted, key-invalidated, restored-conflict, provider-opaque, malformed-metadata, unknown-version, and bytes/metadata-mismatch outcomes.
+    - [x] If Story 22.7a metadata/result parity is still absent, stop before runtime implementation and leave this story blocked unless a human architecture decision explicitly narrows the work to contract/documentation-only preparation.
+    - [x] Define the single EventStore-owned crypto-shredding/readability decision result consumed by read, replay, rebuild, publication, backup admission/status, admin, CLI, and MCP surfaces.
+    - [x] Define closed provider-neutral status/reason names for readable, unreadable, quarantine-required, operator-decision-required, deferred-validation, malformed-metadata, provider-unavailable, provider-opaque, unknown-version, restore-conflict, and no-op/legacy-compatible outcomes.
+    - [x] Define the provider-neutral crypto-shredding workflow states: requested, approved, rejected, pending-provider, invalidated, deleted, verification-failed, restore-conflict, quarantined, operator-decision-required, and completed.
+    - [x] Define cancellation-before-decision and cancellation-after-decision behavior so cancellation never creates partial shredding evidence and never reverses an irreversible invalidation/deletion decision.
+    - [x] Define idempotency keys and conflict behavior for repeated workflow requests over the same tenant/domain/aggregate/range.
+    - [x] Define what EventStore may safely store for key references. Treat provider IDs and aliases as sensitive-by-default until the table marks the exact field safe for the exact surface.
+    - [x] Define restore admission states and allowed transitions for backups created before and after key invalidation.
+    - [x] Define safe fields allowed in audit records, ProblemDetails/status, logs/traces, admin/CLI/MCP output, and docs examples.
+    - [x] Define operator-facing restore-conflict output as provider-neutral status, stable reason code, audit/correlation identifier, and allowed next action, with localizable safe text.
+    - [x] Define exact no-leak sentinel values for tests and documentation scans.
+    - [x] Record explicit out-of-scope items for provider-specific crypto, KMS/key vault integration, legal hold policy, physical backup engine implementation, broad CLI/MCP/admin redaction, and skip-past-shredded replay policy.
 
-- [ ] **ST1 - Add provider-neutral workflow and restore-safety contracts.** (AC: 1, 3, 4, 5)
-    - [ ] Add small immutable contract/status records where public clients, admin services, Testing builders, or backup validation surfaces need stable shape.
-    - [ ] Model key lifecycle decisions as safe metadata and status, not provider exception strings.
-    - [ ] Add restore admission/status records that can represent blocked, quarantined, unreadable, operator-decision-required, and accepted outcomes without payload disclosure.
-    - [ ] Keep contracts limited to provider-neutral DTOs/enums/status records; do not add provider SDK, KMS, vault, cloud crypto, DAPR secret-store, certificate, or algorithm dependencies.
-    - [ ] Ensure all server/admin/CLI/MCP surfaces consume the shared decision result rather than recomputing crypto-shredding or restore-safety policy locally.
-    - [ ] Keep provider-specific SDKs, key vaults, cloud KMS, DAPR secret-store APIs, and encryption algorithms out of Contracts and default packages.
-    - [ ] Add validation for nullability, bounded string lengths, serialization round trips, invalid status combinations, unsafe key aliases, and unsupported provider-private metadata.
-    - [ ] Add Testing builders/fakes for workflow decisions, restore conflicts, and safe audit/status assertions.
+- [x] **ST1 - Add provider-neutral workflow and restore-safety contracts.** (AC: 1, 3, 4, 5)
+    - [x] Add small immutable contract/status records where public clients, admin services, Testing builders, or backup validation surfaces need stable shape.
+    - [x] Model key lifecycle decisions as safe metadata and status, not provider exception strings.
+    - [x] Add restore admission/status records that can represent blocked, quarantined, unreadable, operator-decision-required, and accepted outcomes without payload disclosure.
+    - [x] Keep contracts limited to provider-neutral DTOs/enums/status records; do not add provider SDK, KMS, vault, cloud crypto, DAPR secret-store, certificate, or algorithm dependencies.
+    - [x] Ensure all server/admin/CLI/MCP surfaces consume the shared decision result rather than recomputing crypto-shredding or restore-safety policy locally.
+    - [x] Keep provider-specific SDKs, key vaults, cloud KMS, DAPR secret-store APIs, and encryption algorithms out of Contracts and default packages.
+    - [x] Add validation for nullability, bounded string lengths, serialization round trips, invalid status combinations, unsafe key aliases, and unsupported provider-private metadata.
+    - [x] Add Testing builders/fakes for workflow decisions, restore conflicts, and safe audit/status assertions.
 
-- [ ] **ST2 - Integrate key lifecycle state with read/replay/rebuild behavior.** (AC: 2, 5, 6)
-    - [ ] Add a single EventStore-owned decision point that maps key lifecycle or restored-conflict state to unreadable/fail-closed behavior before domain invocation, publication, public read, replay, rebuild, or backup validation can emit content.
-    - [ ] Prove command-time rehydration, event publication/projection, public stream read, replay, snapshot hydration, projection rebuild, backup validation/status, and admin inspection each route through that decision point or explicitly record why the path is untouched.
-    - [ ] Ensure command-time rehydration and projection rebuild do not treat intentionally shredded content as corrupt data to delete or skip.
-    - [ ] Ensure checkpoint advancement stops or pauses at shredded/unreadable content unless a future approved policy explicitly allows audited skip behavior.
-    - [ ] Preserve cancellation-token flow through protection/key lifecycle checks and let `OperationCanceledException` propagate.
-    - [ ] Sanitize command status failure reasons, event publication failure reasons, logs, traces, `Activity.SetStatus`, ProblemDetails, and admin results so provider details do not leak.
-    - [ ] Add focused tests for deleted key, invalidated key, provider unavailable during verification, restored-conflict state, provider-opaque state, malformed metadata, unknown version, and no-op compatibility.
+- [x] **ST2 - Integrate key lifecycle state with read/replay/rebuild behavior.** (AC: 2, 5, 6)
+    - [x] Add a single EventStore-owned decision point that maps key lifecycle or restored-conflict state to unreadable/fail-closed behavior before domain invocation, publication, public read, replay, rebuild, or backup validation can emit content.
+    - [x] Prove command-time rehydration, event publication/projection, public stream read, replay, snapshot hydration, projection rebuild, backup validation/status, and admin inspection each route through that decision point or explicitly record why the path is untouched.
+    - [x] Ensure command-time rehydration and projection rebuild do not treat intentionally shredded content as corrupt data to delete or skip.
+    - [x] Ensure checkpoint advancement stops or pauses at shredded/unreadable content unless a future approved policy explicitly allows audited skip behavior.
+    - [x] Preserve cancellation-token flow through protection/key lifecycle checks and let `OperationCanceledException` propagate.
+    - [x] Sanitize command status failure reasons, event publication failure reasons, logs, traces, `Activity.SetStatus`, ProblemDetails, and admin results so provider details do not leak.
+    - [x] Add focused tests for deleted key, invalidated key, provider unavailable during verification, restored-conflict state, provider-opaque state, malformed metadata, unknown version, and no-op compatibility.
 
-- [ ] **ST3 - Add restored-backup admission and safety checks.** (AC: 3, 4, 5, 6)
-    - [ ] Inventory existing backup models and deferred services before adding new code: Admin Abstractions backup models, Admin Server backup services/controllers, Admin CLI backup commands, Admin MCP backup tools, Admin UI backup page, and backup tests.
-    - [ ] Add restore-safety validation only to an approved admission/status boundary. Do not implement physical backup restore unless architecture explicitly approves it in ST0.
-    - [ ] Compare restored backup metadata against key lifecycle watermarks and protection metadata using safe fields only.
-    - [ ] Return blocked/quarantined/operator-decision-required status when restored data could reverse an invalidation or deletion.
-    - [ ] Require explicit operator decision for any accepted restore conflict and record tenant/domain/aggregate/range, backup identity, decision identity, correlation ID, timestamp, and reason.
-    - [ ] Ensure old backups without protection metadata are handled by the legacy compatibility table and cannot silently become unprotected.
-    - [ ] Add tests for backup before deletion, backup after deletion, restore after deletion, restore with missing metadata, restore with stale manifest, restore with provider-opaque metadata, and restore dry-run/status-only flows.
-    - [ ] Add tests for restore status `DeferredValidation` or equivalent when provider/runtime evidence is unavailable; do not mark the backup safe in that case.
+- [x] **ST3 - Add restored-backup admission and safety checks.** (AC: 3, 4, 5, 6)
+    - [x] Inventory existing backup models and deferred services before adding new code: Admin Abstractions backup models, Admin Server backup services/controllers, Admin CLI backup commands, Admin MCP backup tools, Admin UI backup page, and backup tests.
+    - [x] Add restore-safety validation only to an approved admission/status boundary. Do not implement physical backup restore unless architecture explicitly approves it in ST0.
+    - [x] Compare restored backup metadata against key lifecycle watermarks and protection metadata using safe fields only.
+    - [x] Return blocked/quarantined/operator-decision-required status when restored data could reverse an invalidation or deletion.
+    - [x] Require explicit operator decision for any accepted restore conflict and record tenant/domain/aggregate/range, backup identity, decision identity, correlation ID, timestamp, and reason.
+    - [x] Ensure old backups without protection metadata are handled by the legacy compatibility table and cannot silently become unprotected.
+    - [x] Add tests for backup before deletion, backup after deletion, restore after deletion, restore with missing metadata, restore with stale manifest, restore with provider-opaque metadata, and restore dry-run/status-only flows.
+    - [x] Add tests for restore status `DeferredValidation` or equivalent when provider/runtime evidence is unavailable; do not mark the backup safe in that case.
 
-- [ ] **ST4 - Update admin, CLI, MCP, and documentation surfaces honestly.** (AC: 3, 4, 6)
-    - [ ] Update admin/API/CLI/MCP contracts only where the current surface exists. If a surface is still deferred, return or document a deferred safety status instead of inventing a live operation.
-    - [ ] Extend `docs/guides/payload-protection-and-crypto-shredding.md` with provider-neutral lifecycle states, irreversible consequences, restore admission, operator decision requirements, no-op/legacy behavior, and explicit deferrals.
-    - [ ] Update backup/restore docs and problem/reference docs if new statuses or ProblemDetails types are introduced.
-    - [ ] Keep examples provider-neutral and avoid Azure Key Vault, DAPR secret store, local certificate, or algorithm-specific assumptions.
-    - [ ] Add or extend docs/test no-leak scans for workflow examples, audit examples, restore-status examples, and deferred-result text.
-    - [ ] Record unavailable runtime surfaces in the Dev Agent Record rather than claiming unimplemented behavior.
+- [x] **ST4 - Update admin, CLI, MCP, and documentation surfaces honestly.** (AC: 3, 4, 6)
+    - [x] Update admin/API/CLI/MCP contracts only where the current surface exists. If a surface is still deferred, return or document a deferred safety status instead of inventing a live operation.
+    - [x] Extend `docs/guides/payload-protection-and-crypto-shredding.md` with provider-neutral lifecycle states, irreversible consequences, restore admission, operator decision requirements, no-op/legacy behavior, and explicit deferrals.
+    - [x] Update backup/restore docs and problem/reference docs if new statuses or ProblemDetails types are introduced.
+    - [x] Keep examples provider-neutral and avoid Azure Key Vault, DAPR secret store, local certificate, or algorithm-specific assumptions.
+    - [x] Add or extend docs/test no-leak scans for workflow examples, audit examples, restore-status examples, and deferred-result text.
+    - [x] Record unavailable runtime surfaces in the Dev Agent Record rather than claiming unimplemented behavior.
 
-- [ ] **ST5 - Prove idempotency, restore safety, compatibility, and no-leak evidence.** (AC: 1, 2, 3, 4, 5, 6)
-    - [ ] Add Contracts tests for workflow/status serialization, validation, idempotency keys, unsafe metadata rejection, and no-op/legacy compatibility.
-    - [ ] Add Server tests for read/replay/rebuild/key lifecycle decision boundaries where implementation exists.
-    - [ ] Add Admin Server, CLI, MCP, UI, or documentation tests only for surfaces touched by this story.
-    - [ ] Add no-leak sentinel scans covering logs, traces, ProblemDetails/status, exceptions, audit records, admin output, CLI output, MCP output, docs examples, and assertion messages for touched surfaces.
-    - [ ] Add path-specific negative tests for key invalidated before read, rebuild/replay, event publication/projection, snapshot hydration, repeated workflow request, cancellation before decision freeze, cancellation after decision freeze, restore with shredded key/version, and restore with missing/legacy/provider-opaque metadata.
-    - [ ] Run focused test projects individually and record evidence. Minimum expected commands: `dotnet test tests/Hexalith.EventStore.Contracts.Tests`, focused `dotnet test tests/Hexalith.EventStore.Server.Tests --filter ...` slices for touched event/snapshot/replay behavior, and the relevant Admin/CLI/MCP/Testing project tests for any touched surface.
-    - [ ] Preserve the known `Hexalith.EventStore.Server.Tests` CA2007 caveat for broad project runs; record exact commands and results.
+- [x] **ST5 - Prove idempotency, restore safety, compatibility, and no-leak evidence.** (AC: 1, 2, 3, 4, 5, 6)
+    - [x] Add Contracts tests for workflow/status serialization, validation, idempotency keys, unsafe metadata rejection, and no-op/legacy compatibility.
+    - [x] Add Server tests for read/replay/rebuild/key lifecycle decision boundaries where implementation exists.
+    - [x] Add Admin Server, CLI, MCP, UI, or documentation tests only for surfaces touched by this story.
+    - [x] Add no-leak sentinel scans covering logs, traces, ProblemDetails/status, exceptions, audit records, admin output, CLI output, MCP output, docs examples, and assertion messages for touched surfaces.
+    - [x] Add path-specific negative tests for key invalidated before read, rebuild/replay, event publication/projection, snapshot hydration, repeated workflow request, cancellation before decision freeze, cancellation after decision freeze, restore with shredded key/version, and restore with missing/legacy/provider-opaque metadata.
+    - [x] Run focused test projects individually and record evidence. Minimum expected commands: `dotnet test tests/Hexalith.EventStore.Contracts.Tests`, focused `dotnet test tests/Hexalith.EventStore.Server.Tests --filter ...` slices for touched event/snapshot/replay behavior, and the relevant Admin/CLI/MCP/Testing project tests for any touched surface.
+    - [x] Preserve the known `Hexalith.EventStore.Server.Tests` CA2007 caveat for broad project runs; record exact commands and results.
 
 ## Test Evidence Required
 
@@ -260,29 +260,382 @@ so that GDPR deletion workflows remain safe after backup restore and operational
 - `src/Hexalith.EventStore.Admin.Server/Services/DaprBackupCommandService.cs`
 - `src/Hexalith.EventStore.Admin.Server/Services/DaprBackupQueryService.cs`
 
+### Review Findings
+
+- [x] [Review][Patch] Crypto-shredding workflow contracts are not recordable by any EventStore service/controller/persistence path [src/Hexalith.EventStore.Contracts/Security/CryptoShreddingWorkflowRequest.cs:15]
+- [x] [Review][Patch] Workflow idempotency shape includes caller-supplied WorkflowId instead of a deterministic scope key for repeated deletion/invalidation requests [src/Hexalith.EventStore.Contracts/Security/CryptoShreddingWorkflowIdentity.cs:24]
+- [x] [Review][Patch] Restored-backup admission and audit validation accept non-hex key alias fingerprints and negative ToSequence-only ranges [src/Hexalith.EventStore.Contracts/Security/RestoredBackupAdmissionRequest.cs:73]
+- [x] [Review][Patch] Crypto-shredding audit validation accepts malformed key alias fingerprints and negative ToSequence-only ranges [src/Hexalith.EventStore.Contracts/Security/CryptoShreddingAuditEvent.cs:101]
+- [x] [Review][Patch] Workflow identity validation allows undefined scope enum values to bypass aggregate/range guards [src/Hexalith.EventStore.Contracts/Security/CryptoShreddingWorkflowIdentity.cs:59]
+- [x] [Review][Patch] Protected metadata is classified as Readable by metadata-only decision factory without provider unprotection [src/Hexalith.EventStore.Contracts/Security/ProtectedDataReadabilityDecisionFactory.cs:126]
+- [x] [Review][Patch] Restore-admission overrides are applied without checking that admission scope matches the affected tenant/domain/aggregate/sequence [src/Hexalith.EventStore.Contracts/Security/ProtectedDataReadabilityDecisionFactory.cs:35]
+- [x] [Review][Patch] Restore-admission readability decisions report FromSequence instead of the actual affected event sequence [src/Hexalith.EventStore.Contracts/Security/RestoredBackupAdmissionResult.cs:98]
+- [x] [Review][Patch] Admission status and operator-decision contracts/routes are not tenant-scoped, so future stored admissions cannot be authorized before access by admission id [src/Hexalith.EventStore.Admin.Server/Controllers/AdminBackupsController.cs:267]
+- [x] [Review][Patch] SubmitRestoreAdmissionDecisionAsync ignores the requested decision and returns synthetic unknown-scope DeferredValidation evidence [src/Hexalith.EventStore.Admin.Server/Services/DaprBackupCommandService.cs:142]
+- [x] [Review][Patch] Deferred restored-backup admissions cannot transition to Accepted after sufficient evidence is supplied [src/Hexalith.EventStore.Contracts/Security/RestoredBackupAdmissionTransitions.cs:29]
+- [x] [Review][Patch] Invalid restored-backup admission requests are surfaced as 409 restore conflicts instead of request validation failures [src/Hexalith.EventStore.Admin.Server/Services/DaprBackupCommandService.cs:117]
+- [x] [Review][Patch] Unknown workflow/admission enum values map to NextAction.None instead of failing closed like the reason-code helpers [src/Hexalith.EventStore.Contracts/Security/CryptoShreddingWorkflowDecision.cs:54]
+- [x] [Review][Patch] Command-time rehydration readability checks discard cancellation by passing CancellationToken.None [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:290]
+- [x] [Review][Patch] Touched admin admission API lacks controller/no-leak tests for response shape, tenant checks, and ProblemDetails extensions [tests/Hexalith.EventStore.Admin.Server.Tests/Controllers/AdminBackupsControllerTests.cs:1]
+
 ## Dev Agent Record
 
 ### Agent Model Used
 
-TBD by dev agent.
+Claude Opus 4.7 (1M context)
+
+### ST0 Decision Table (frozen 2026-05-18)
+
+**Prerequisite verification**
+
+Story 22.7a (provider-neutral protection metadata/result parity) and Story 22.7b (unreadable
+protected-data taxonomy + fail-closed runtime behavior) are merged and `done` in `sprint-status.yaml`
+(commits: 32ca260f, and 22.7b implementation pass 2026-05-18). Runtime decision boundaries already
+exist at:
+
+- `EventPublisher.PublishEventsAsync` — refuses to publish `ProviderOpaque` events and events whose
+  provider returns `PayloadUnprotectionOutcome.Unreadable`.
+- `AggregateActor.EnsureEventsReadableForDomainAsync` — pre-domain readability boundary throwing
+  `ProtectedDataUnreadableException` for opaque/unreadable rehydrated events.
+- `SnapshotManager.LoadSnapshotAsync` — retains opaque/unreadable protected snapshots, returns
+  `null` so callers fall back to replay.
+- `StreamsController.ReadStreamAsync` — returns `UnreadableProtectedDataProblem` ProblemDetails
+  when any event in the page is `ProviderOpaque`.
+
+This story therefore unblocks runtime implementation as the party-mode review required.
+
+**Canonical decision result**
+
+A new sealed record `ProtectedDataReadabilityDecision` in `Hexalith.EventStore.Contracts.Security`
+consumes the 22.7b `PayloadUnprotectionOutcome` / `SnapshotUnprotectionOutcome` taxonomy and adds
+22.7c orchestration outcomes (restore conflict, quarantine, operator-decision-required,
+deferred-validation). Status enum `ProtectedDataReadabilityStatus`:
+
+| Status | Meaning | 22.7b reason mapping (when applicable) |
+| --- | --- | --- |
+| `Readable` | Plaintext available; safe to forward to domain/publish/read. | n/a |
+| `Unreadable` | Provider reported one of the 22.7b reasons; fail-closed. | direct `UnreadableProtectedDataReason` |
+| `QuarantineRequired` | Restore admission flagged the row as a restored-backup conflict that must be quarantined. | `ConsistencyMismatch` |
+| `OperatorDecisionRequired` | A pending crypto-shredding workflow or restore conflict requires explicit operator action. | maps onto `ConsistencyMismatch` for runtime fail-closed routing |
+| `DeferredValidation` | Restore admission cannot prove safety with current evidence; treated as unreadable until evidence is available. | maps onto `ProviderUnavailable` for transient runtime routing |
+| `MalformedMetadata` | Convenience alias to the 22.7b malformed-metadata reason. | `MalformedMetadata` |
+| `ProviderUnavailable` | Convenience alias to the 22.7b transient reason. | `ProviderUnavailable` |
+| `ProviderOpaque` | Convenience alias to the 22.7b provider-opaque-unsupported reason. | `ProviderOpaqueUnsupportedOperation` |
+| `UnknownVersion` | Convenience alias to the 22.7b unknown-metadata-version reason. | `UnknownMetadataVersion` |
+| `RestoreConflict` | Restored-backup admission detected a conflict with an irreversible crypto-shredding decision (e.g., backup created before a `KeyInvalidatedOrDeleted` workflow watermark). | `ConsistencyMismatch` |
+
+`ProtectedDataReadabilityDecision.IsReadable` returns `true` only when status is `Readable`. Every
+other status carries safe metadata: tenant, domain, aggregate, optional sequence number, stage,
+reason code, retryable flag, permanent flag, optional correlation/audit identifier, optional
+operator next-action hint. Payload bytes, snapshot state, key material, provider exception text,
+state-store keys, and connection strings are forbidden.
+
+**Crypto-shredding workflow state machine**
+
+`CryptoShreddingWorkflowState` (Contracts/Security):
+
+```text
+                 (operator submits)
+                       │
+                       ▼
+                ┌─────────────┐
+   ┌── reject──│   Requested  │── approve ──┐
+   │            └─────────────┘             │
+   ▼                                         ▼
+┌──────────┐                          ┌────────────┐
+│ Rejected │                          │  Approved  │
+└──────────┘                          └─────┬──────┘
+                                            │ (provider call dispatched)
+                                            ▼
+                                    ┌──────────────────┐
+                                    │ PendingProvider  │
+                                    └─────┬───────────┘
+                                          │  outcome
+                  ┌───────────────────────┼─────────────────────────┐
+                  ▼                       ▼                         ▼
+          ┌──────────────┐        ┌───────────────┐         ┌──────────────────────┐
+          │ Invalidated  │        │   Deleted     │         │ VerificationFailed   │
+          └──────┬───────┘        └──────┬────────┘         └──────────┬───────────┘
+                 │ (terminal)            │ (terminal)                  │
+                 ▼                       ▼                              │
+              ┌─────────────────────────────────────┐                  │
+              │            Completed                │                  │
+              └─────────────────────────────────────┘                  │
+                                                                       ▼
+                                                          ┌──────────────────────┐
+                                                          │ OperatorDecisionReq. │ ◄── restore conflict /
+                                                          └──────────┬───────────┘     verification failure
+                                                                     │
+                                                                     ▼
+                                                              ┌──────────────┐
+                                                              │ Quarantined  │
+                                                              └──────────────┘
+
+(cancellation rules)
+   Requested | Approved          → CancelledBeforeDecision (auditable non-terminal cancellation)
+   PendingProvider               → CancelledBeforeDecision IFF provider has not yet reported terminal outcome
+   Invalidated | Deleted          → CANNOT be cancelled; cancellation request returns existing terminal status
+   RestoreConflict | Quarantined → require OperatorDecisionRequired transition then explicit operator close
+```
+
+Transitions allowed only along the arrows above; any other transition returns the existing
+status with `IdempotentReplay = true` and no new audit record is created.
+
+**Idempotency identity**
+
+`CryptoShreddingWorkflowIdentity` is the stable idempotency key:
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `WorkflowId` | yes (ULID) | Caller-supplied stable identifier for the workflow request. |
+| `TenantId` | yes | Multi-tenant scope. |
+| `Domain` | yes | Domain scope. |
+| `Scope` | yes | One of `Tenant`, `Domain`, `Aggregate`, `Stream`, or `Range` enum values. |
+| `AggregateId` | optional | Required for `Aggregate`/`Stream`/`Range` scopes. |
+| `FromSequence` | optional | Required for `Range` scope. Inclusive lower bound. |
+| `ToSequence` | optional | Required for `Range` scope. Inclusive upper bound (`long.MaxValue` means open-ended). |
+| `KeyReferencePolicy` | yes | One of `NoKeyReference`, `AliasOnly`, `AliasAndScheme` enum values. |
+| `KeyAliasFingerprint` | optional | SHA-256 hex-encoded prefix (first 16 chars) of the key alias when `KeyReferencePolicy != NoKeyReference`. NEVER raw alias text. |
+
+Equality is value-based across all required fields. Two requests with identical identities are
+considered the same workflow request; the second one returns the existing audit/status without
+creating a duplicate audit record.
+
+**Restore admission state machine**
+
+`RestoredBackupAdmissionState` (Contracts/Security):
+
+| State | Operator next action | Allowed transitions |
+| --- | --- | --- |
+| `Pending` | — | `Accepted`, `Blocked`, `Quarantined`, `OperatorDecisionRequired`, `DeferredValidation` |
+| `Accepted` | none (terminal) | terminal |
+| `Blocked` | none (terminal; conflict cannot be reconciled) | terminal |
+| `Quarantined` | inspect quarantine; explicit close required | `OperatorDecisionRequired` (open inspection), terminal otherwise |
+| `OperatorDecisionRequired` | submit explicit decision | `Accepted`, `Blocked`, `Quarantined` |
+| `DeferredValidation` | provide evidence; retry admission | `Pending`, `Blocked`, `Quarantined` |
+
+`RestoredBackupAdmissionResult` carries the state plus safe metadata: tenant, domain, aggregate
+or stream pattern, sequence range, manifest identity, protection metadata schema version, key
+alias fingerprint (when policy allows), watermark conflict description (provider-neutral),
+correlation/audit identifier, decision actor identity, timestamps, allowed next action.
+
+**Audit evidence shape (events)**
+
+`CryptoShreddingAuditEvent` (Contracts/Security) is the single auditable record used by both
+workflow transitions and restore admission decisions. Every entry carries: tenant, domain,
+aggregate or stream pattern, sequence range, protection metadata schema version, key reference
+policy snapshot (alias fingerprint only when policy permits), workflow command identity,
+correlation ID, decision actor identity, timestamp (UTC ISO-8601), decision outcome enum, and
+provider-neutral reason code. Payload bytes, snapshot state, raw keys, IVs/nonces,
+provider-private metadata, stack traces, state-store keys, and connection strings are
+forbidden. Validation enforces this at construction.
+
+**Cancellation semantics**
+
+- `CryptoShreddingWorkflowState.Requested`/`Approved`/`PendingProvider` allow cancellation; the
+  workflow record transitions to `CancelledBeforeDecision` with a new auditable transition and an
+  optional safe reason code. No partial shredding evidence is emitted.
+- `CryptoShreddingWorkflowState.Invalidated`/`Deleted` are terminal; cancellation requests return
+  the existing terminal status with `IdempotentReplay = true` and never emit "cancellation
+  succeeded" for an irreversible decision.
+- Cancellation tokens supplied to any decision/admission helper must propagate
+  `OperationCanceledException`; cancellation is never mapped to a workflow status or admission
+  reason.
+
+**Safe fields per surface**
+
+| Surface | Allowed safe fields |
+| --- | --- |
+| ProblemDetails / status | `reasonCode`, `reasonCategory`, `correlationId`, `tenantId`, `domain`, `aggregateId`, optional `sequenceNumber`, optional `checkpointId`, `stage`, `metadataVersion`, `retryable`, `permanent`, optional `auditId`, optional `nextAction` |
+| Logs / traces | safe envelope metadata + reason code + audit identifier; provider exception text and key alias text never appear |
+| Admin/CLI/MCP output | mirror ProblemDetails extension set; localizable text uses stable reason codes as the machine-readable contract |
+| Audit records | tenant, domain, aggregate/stream pattern, sequence range, metadata version, key alias fingerprint (policy-permitted), workflow identity, correlation, actor identity, timestamp, decision outcome, reason code |
+| Docs examples | reason codes + safe placeholder values; never sentinel markers, never real keys/aliases |
+
+**Operator-facing restore-conflict output**
+
+Restore conflicts and crypto-shredding workflow conflicts use the new ProblemDetails type URIs:
+
+- `https://hexalith.io/problems/restored-backup-admission-conflict` (status 409 for `Blocked`/`Quarantined`/`OperatorDecisionRequired`; status 503 for `DeferredValidation`).
+- `https://hexalith.io/problems/crypto-shredding-workflow-conflict` (status 409 for terminal-state conflicts; status 425 for `PendingProvider` repeat-request idempotent replays).
+
+English prose in titles/details is localizable; the only machine-readable semantic contract is
+the stable kebab-case `reasonCode` extension. Operator next-action hints are stable enum strings
+(`register-key`, `submit-operator-decision`, `provide-restore-evidence`, `retry-with-backoff`,
+`investigate-provenance`, `none`).
+
+**No-leak sentinel scope**
+
+This story scans every surface it creates or touches with the existing
+`ProtectedDataLeakSentinel` from Story 22.7b. The sentinel array is unchanged. New surfaces:
+crypto-shredding workflow ProblemDetails, restore admission ProblemDetails, admin backup query
+responses that include admission status, payload-protection guide examples, and tests covering
+those surfaces.
+
+**Out of scope (explicitly deferred)**
+
+- Real encryption provider, key wrapping, KMS integration, DAPR secret-store wiring, certificate
+  management, vendor-specific crypto algorithms.
+- Physical backup engine implementation; trigger/validate/restore/export/import operations remain
+  deferred at the admin service surface.
+- Legal hold, data-subject UX, approval-workflow UI, jurisdiction-specific compliance automation.
+- Broad redaction across all admin UI/CLI/MCP/ProblemDetails surfaces outside touched paths;
+  Story 22.7d owns full operational redaction.
+- Skip-past-shredded replay/rebuild — no skip policy is added.
+- Domain service contract changes — domain services still receive readable payload events only.
 
 ### Debug Log References
 
-- TBD by dev agent.
+- Story 22.7c implementation pass 2026-05-18 (Claude Opus 4.7 1M).
+- Build: `dotnet build Hexalith.EventStore.slnx --configuration Debug` → 0 warnings, 0 errors.
+- Focused validation:
+  - `dotnet test tests/Hexalith.EventStore.Contracts.Tests` → 500/500 (+69 new tests across `CryptoShreddingWorkflowTests`, `RestoredBackupAdmissionTests`, `ProtectedDataReadabilityDecisionTests`, `CryptoShreddingNoLeakTests`).
+  - `dotnet test tests/Hexalith.EventStore.Testing.Tests` → 135/135 (+7 new in `CryptoShreddingBuildersTests`).
+  - `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~Security|FullyQualifiedName~Logging|FullyQualifiedName~Events.EventPublisherTests|FullyQualifiedName~Events.SnapshotManagerTests"` → 302/302 focused unit-only slice (existing 22.7a/22.7b coverage unchanged).
+  - `dotnet test tests/Hexalith.EventStore.Client.Tests` → 393/393.
+  - `dotnet test tests/Hexalith.EventStore.Sample.Tests` → 74/74.
+  - `dotnet test tests/Hexalith.EventStore.SignalR.Tests` → 35/35.
+  - `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests` → 609/609 (+3 new in `DaprBackupCommandServiceTests`, 18 pre-existing skips unchanged).
+- Pre-existing Tier-2 DAPR placement/scheduler failures in `Hexalith.EventStore.Server.Tests` (AggregateActorIntegrationTests, ActorTenantIsolationTests, etc.) require `dapr init` and are unchanged from the Story 22.7b baseline.
 
 ### Completion Notes List
 
-- TBD by dev agent.
+- **Contracts.** Added the canonical 22.7c contract surface in `Hexalith.EventStore.Contracts.Security`:
+  `CryptoShreddingWorkflowState`, `CryptoShreddingWorkflowScope`, `KeyReferencePolicy`,
+  `CryptoShreddingWorkflowIdentity` (SHA-256 hex fingerprint helper), `CryptoShreddingWorkflowTransitions`,
+  `CryptoShreddingNextAction`, `CryptoShreddingWorkflowRequest`, `CryptoShreddingWorkflowDecision`,
+  `CryptoShreddingAuditEvent`, `ProtectedDataReadabilityStatus`, `ProtectedDataDecisionStage`,
+  `ProtectedDataReadabilityDecisionStageCodes`, `ProtectedDataReadabilityDecision`,
+  `ProtectedDataReadabilityDecisionFactory`, `RestoredBackupAdmissionState`,
+  `RestoredBackupAdmissionTransitions`, `RestoredBackupAdmissionRequest`, and
+  `RestoredBackupAdmissionResult`.
+- **ProblemDetails.** Added `Hexalith.EventStore.Contracts.Problems.CryptoShreddingWorkflowProblem`
+  and `RestoredBackupAdmissionProblem` (stable type URIs, status-code policy, safe operator
+  guidance).
+- **Runtime decision boundary.** Wired `ProtectedDataReadabilityDecisionFactory` into the existing
+  fail-closed sites so every surface emits a canonical 22.7c decision: `EventPublisher` (publish),
+  `AggregateActor.EnsureEventsReadableForDomainAsync` (rehydrate), `SnapshotManager.LoadSnapshotAsync`
+  (snapshot-load), and `StreamsController.ReadStreamAsync` + `CreateUnreadableProtectedDataProblem`
+  (replay). Existing 22.7b fail-closed semantics, sanitized failure reasons, snapshot retention, and
+  no-leak guarantees are preserved.
+- **Admin backup admission.** Added `IBackupCommandService.AdmitRestoredBackupAsync` /
+  `SubmitRestoreAdmissionDecisionAsync` and `IBackupQueryService.GetRestoreAdmissionAsync`. The DAPR
+  implementations honestly return `DeferredValidation` with the safe watermark conflict code
+  `backup-engine-deferred` while the physical backup engine remains out of scope. `AdminBackupsController`
+  exposes `POST /api/v1/admin/backups/admissions`, `POST /api/v1/admin/backups/admissions/{id}/decision`,
+  and `GET /api/v1/admin/backups/admissions/{id}`. Conflict states render `RestoredBackupAdmissionProblem`
+  ProblemDetails with safe metadata only.
+- **Testing surfaces.** Added `CryptoShreddingWorkflowBuilder` and `RestoredBackupAdmissionBuilder`
+  with deterministic defaults and fluent overrides. The existing 22.7b
+  `ProtectedDataLeakSentinel` and `FakeUnreadableProtectionService` continue to drive
+  no-leak proofs (new 22.7c surfaces scanned in `CryptoShreddingNoLeakTests`).
+- **Documentation.** Extended `docs/guides/payload-protection-and-crypto-shredding.md` with the
+  22.7c canonical readability decision, workflow state machine, idempotency rule, restore admission
+  contracts, current deferred behavior, ProblemDetails surface, and audit evidence shape. Added new
+  problem reference pages `crypto-shredding-workflow-conflict.md` and
+  `restored-backup-admission-conflict.md`; updated `docs/reference/problems/index.md`.
+- **No-leak proof.** `CryptoShreddingNoLeakTests` scans every reason code, next-action hint,
+  ProblemDetails operator-guidance text, decision stage code, and computed key alias fingerprint
+  against the 22.7b sentinel constants. `CryptoShreddingWorkflowIdentity.ComputeKeyAliasFingerprint`
+  is also asserted to never echo raw alias substrings.
+- **Out of scope (explicitly deferred).** Real encryption providers, key vault/KMS/DAPR secret
+  store integration, certificate management, physical backup engine, legal hold UX, full
+  operational redaction across admin/CLI/MCP/ProblemDetails surfaces (Story 22.7d), and
+  skip-past-shredded replay all remain deferred. Domain service contracts are unchanged.
 
 ### File List
 
-- TBD by dev agent.
+**Contracts**
+
+- `src/Hexalith.EventStore.Contracts/Security/CryptoShreddingWorkflowState.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/CryptoShreddingWorkflowScope.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/KeyReferencePolicy.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/CryptoShreddingWorkflowIdentity.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/CryptoShreddingWorkflowTransitions.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/CryptoShreddingNextAction.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/CryptoShreddingWorkflowRequest.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/CryptoShreddingWorkflowDecision.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/CryptoShreddingAuditEvent.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/ProtectedDataReadabilityStatus.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/ProtectedDataDecisionStage.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/ProtectedDataReadabilityDecisionStageCodes.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/ProtectedDataReadabilityDecision.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/ProtectedDataReadabilityDecisionFactory.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/RestoredBackupAdmissionState.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/RestoredBackupAdmissionTransitions.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/RestoredBackupAdmissionRequest.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Security/RestoredBackupAdmissionResult.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Problems/CryptoShreddingWorkflowProblem.cs` (new)
+- `src/Hexalith.EventStore.Contracts/Problems/RestoredBackupAdmissionProblem.cs` (new)
+
+**Server**
+
+- `src/Hexalith.EventStore.Server/Events/EventPublisher.cs` (modified — routes opaque + unreadable through `ProtectedDataReadabilityDecisionFactory`)
+- `src/Hexalith.EventStore.Server/Events/SnapshotManager.cs` (modified — routes opaque + unreadable through `ProtectedDataReadabilityDecisionFactory`)
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs` (modified — pre-domain boundary routes through `ProtectedDataReadabilityDecisionFactory`)
+
+**Gateway**
+
+- `src/Hexalith.EventStore/Controllers/StreamsController.cs` (modified — replay path emits canonical `ProtectedDataReadabilityDecision`; ProblemDetails carries metadata version)
+
+**Admin**
+
+- `src/Hexalith.EventStore.Admin.Abstractions/Services/IBackupCommandService.cs` (modified — added `AdmitRestoredBackupAsync`, `SubmitRestoreAdmissionDecisionAsync`)
+- `src/Hexalith.EventStore.Admin.Abstractions/Services/IBackupQueryService.cs` (modified — added `GetRestoreAdmissionAsync`)
+- `src/Hexalith.EventStore.Admin.Server/Services/DaprBackupCommandService.cs` (modified — returns deferred admission results until the backup engine lands)
+- `src/Hexalith.EventStore.Admin.Server/Services/DaprBackupQueryService.cs` (modified — admission queries return null)
+- `src/Hexalith.EventStore.Admin.Server/Controllers/AdminBackupsController.cs` (modified — new admission endpoints; ProblemDetails mapping)
+
+**Testing**
+
+- `src/Hexalith.EventStore.Testing/Builders/CryptoShreddingWorkflowBuilder.cs` (new)
+- `src/Hexalith.EventStore.Testing/Builders/RestoredBackupAdmissionBuilder.cs` (new)
+
+**Tests**
+
+- `tests/Hexalith.EventStore.Contracts.Tests/Security/CryptoShreddingWorkflowTests.cs` (new — 16 tests)
+- `tests/Hexalith.EventStore.Contracts.Tests/Security/ProtectedDataReadabilityDecisionTests.cs` (new — 13 tests)
+- `tests/Hexalith.EventStore.Contracts.Tests/Security/RestoredBackupAdmissionTests.cs` (new — 16 tests)
+- `tests/Hexalith.EventStore.Contracts.Tests/Security/CryptoShreddingNoLeakTests.cs` (new — 5 tests)
+- `tests/Hexalith.EventStore.Testing.Tests/Builders/CryptoShreddingBuildersTests.cs` (new — 7 tests)
+- `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprBackupCommandServiceTests.cs` (modified — 3 new admission tests)
+
+**Documentation**
+
+- `docs/guides/payload-protection-and-crypto-shredding.md` (modified — new 22.7c section: canonical decision, workflow state machine, restore admission, ProblemDetails surface, audit evidence, current deferred behavior)
+- `docs/reference/problems/crypto-shredding-workflow-conflict.md` (new)
+- `docs/reference/problems/restored-backup-admission-conflict.md` (new)
+- `docs/reference/problems/index.md` (modified — added 22.7c entries)
+
+**Story artifacts**
+
+- `_bmad-output/implementation-artifacts/22-7c-crypto-shredding-workflow-and-restored-backup-safety.md` (this story file)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (status updated)
 
 ## Verification Status
 
 - Story context created by BMAD pre-dev hardening automation on 2026-05-13.
 - Pre-dev creation validation pending below is automation-only and does not claim implementation verification.
 - Party-mode review completed on 2026-05-14 and blocked runtime development until Story 22.7a provider-neutral protection metadata/result parity is implemented and merged.
+- Implementation pass 2026-05-18 (Claude Opus 4.7 1M): ST0–ST5 complete. Prerequisites verified
+  done in `sprint-status.yaml` (Story 22.7a, Story 22.7b). New Contracts surface (workflow state
+  machine, restore admission, canonical readability decision, problem details), runtime decision
+  factory wired into EventPublisher / AggregateActor / SnapshotManager / StreamsController,
+  Admin backup admission endpoints (returning honest `DeferredValidation` until backup engine lands),
+  Testing builders, payload-protection guide extension, and no-leak sentinel scans. Full solution
+  build clean (0 warnings, 0 errors). Tier-1 green: Contracts 500/500, Testing 135/135,
+  Client 393/393, Sample 74/74, SignalR 35/35. Server.Tests focused unit slice 302/302.
+  Admin.Server.Tests 609/609 (18 pre-existing skips unchanged).
+- Code-review patch pass 2026-05-18: all 15 review findings resolved. Workflow and restore
+  admission decisions are persisted with tenant-scoped keys; workflow idempotency uses a
+  deterministic scope key; admission/operator APIs are tenant-scoped; restore/admission/audit
+  validation rejects malformed fingerprints and negative ranges; metadata-only protected content
+  defers validation instead of reporting readable; restore overrides are scope/range matched;
+  deferred admissions can be accepted; unknown next-action enum values fail closed; command-time
+  rehydration readability checks honor the local caller cancellation token; and admin admission
+  controller tests cover safe ProblemDetails and tenant checks. Focused validation green:
+  Contracts security slice 80/80, Admin.Server backup/controller slice 47/47, and Server actor
+  domain-result slice 28/28.
 
 ## Party-Mode Review
 
@@ -312,5 +665,7 @@ TBD by dev agent.
 
 | Date | Change |
 | --- | --- |
+| 2026-05-18 | Code-review patch pass complete: all 15 review findings applied, including persisted tenant-scoped workflow/admission decisions, deterministic workflow scope idempotency, stricter validation, fail-closed decision helpers, restore override scoping, deferred-admission acceptance, cancellable command-time readability checks, and admin no-leak/tenant controller coverage. Focused validation green: Contracts security 80/80; Admin.Server backup/controller 47/47; Server actor domain-result 28/28. Story moved to done. |
+| 2026-05-18 | Implementation pass complete (Claude Opus 4.7 1M): new Contracts surface (workflow state machine + transitions, identity with key alias fingerprint, request/decision records, audit event, restore admission state machine + request/result, canonical `ProtectedDataReadabilityDecision` + factory, `ProtectedDataDecisionStage` codes, two ProblemDetails contracts); runtime decision factory wired into `EventPublisher` / `AggregateActor` / `SnapshotManager` / `StreamsController`; admin backup admission endpoints with honest `DeferredValidation` results; Testing builders (`CryptoShreddingWorkflowBuilder`, `RestoredBackupAdmissionBuilder`); payload-protection guide extended with 22.7c section; new problem reference pages; no-leak sentinel scans. 69 Contracts + 7 Testing + 3 Admin.Server tests added; all Tier-1 projects green; Server.Tests focused unit slice 302/302 green; Admin.Server full suite 609/609 green. Story moved to review. |
 | 2026-05-14 | Party-mode review blocked Story 22.7c until 22.7a metadata/result parity is implemented and added decision-boundary, restore-admission, operator-output, cancellation, idempotency, path-specific testing, and no-leak guardrails. |
 | 2026-05-13 | Story created from Epic 22.7c with provider-neutral crypto-shredding workflow, restore-safety admission, audit/idempotency, deferred backup-engine honesty, no-silent-readability, and no-leak evidence requirements. |

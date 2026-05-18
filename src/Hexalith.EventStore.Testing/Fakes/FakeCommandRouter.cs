@@ -23,7 +23,7 @@ public class FakeCommandRouter : ICommandRouter {
             var envelope = SubmitCommandExtensions.ToCommandEnvelope(command);
 
             // Actor exceptions should propagate (not caught)
-            return FakeActor.ProcessCommandAsync(envelope);
+            return FakeActor.ProcessCommandAsync(envelope, cancellationToken);
         }
 
         return Task.FromResult(new CommandProcessingResult(Accepted: true, CorrelationId: command.CorrelationId));
