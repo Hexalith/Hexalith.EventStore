@@ -1,7 +1,9 @@
+using System.Text.Json;
+
 namespace Hexalith.EventStore.Models;
 
 /// <summary>
 /// Compatibility wrapper for the public command gateway response contract.
 /// </summary>
-public record SubmitCommandResponse(string CorrelationId)
-    : Hexalith.EventStore.Contracts.Commands.SubmitCommandResponse(CorrelationId);
+public record SubmitCommandResponse(string CorrelationId, JsonElement? ResultPayload = null)
+    : Hexalith.EventStore.Contracts.Commands.SubmitCommandResponse(CorrelationId, ResultPayload);

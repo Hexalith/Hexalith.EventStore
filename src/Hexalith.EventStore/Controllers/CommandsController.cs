@@ -117,7 +117,21 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
         Response.Headers["Location"] = absoluteLocationUri;
         Response.Headers["Retry-After"] = "1";
 
-        return Accepted(new SubmitCommandResponse(result.CorrelationId));
+        return Accepted(new SubmitCommandResponse(result.CorrelationId, ParseOptionalResultPayload(result.ResultPayload)));
+    }
+
+    private static JsonElement? ParseOptionalResultPayload(string? resultPayload) {
+        if (string.IsNullOrWhiteSpace(resultPayload)) {
+            return null;
+        }
+
+        try {
+            using JsonDocument document = JsonDocument.Parse(resultPayload);
+            return document.RootElement.Clone();
+        }
+        catch (JsonException) {
+            return null;
+        }
     }
 
     private Dictionary<string, string>? BuildTrustedExtensions(IDictionary<string, string>? requestExtensions) {

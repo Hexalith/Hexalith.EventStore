@@ -78,7 +78,7 @@ public partial class SubmitCommandHandler(
 
         // Read final status once for both activity trackers (advisory, rule #12)
         CommandStatusRecord? finalStatus = null;
-        if (activityTracker is not null || streamActivityTracker is not null) {
+        if (activityTracker is not null || streamActivityTracker is not null || processingResult.ResultPayload is not null) {
             try {
                 finalStatus = await statusStore
                     .ReadStatusAsync(request.Tenant, request.CorrelationId, cancellationToken)
@@ -164,7 +164,14 @@ public partial class SubmitCommandHandler(
 
         Log.CommandRouted(logger, request.CorrelationId);
 
-        return result;
+        return result with
+        {
+            ResultPayload = processingResult.Accepted
+                && processingResult.ResultPayload is not null
+                && finalStatus?.Status == CommandStatus.Completed
+                    ? processingResult.ResultPayload
+                    : null,
+        };
     }
 
     private static partial class Log {

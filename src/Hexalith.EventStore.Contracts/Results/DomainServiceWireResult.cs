@@ -10,9 +10,11 @@ namespace Hexalith.EventStore.Contracts.Results;
 /// </summary>
 /// <param name="IsRejection">True when all emitted events are rejection events.</param>
 /// <param name="Events">Serialized event payloads with explicit type names.</param>
+/// <param name="ResultPayload">Optional serialized payload for enriched successful command results.</param>
 public sealed record DomainServiceWireResult(
     bool IsRejection,
-    IReadOnlyList<DomainServiceWireEvent> Events) {
+    IReadOnlyList<DomainServiceWireEvent> Events,
+    string? ResultPayload = null) {
     /// <summary>
     /// Converts a <see cref="DomainResult"/> into a wire-safe representation.
     /// </summary>
@@ -28,7 +30,8 @@ public sealed record DomainServiceWireResult(
             events.Add(new DomainServiceWireEvent(eventTypeName, payloadBytes, "json"));
         }
 
-        return new DomainServiceWireResult(result.IsRejection, events);
+        string? resultPayload = result.IsSuccess ? result.ResultPayload : null;
+        return new DomainServiceWireResult(result.IsRejection, events, resultPayload);
     }
 }
 

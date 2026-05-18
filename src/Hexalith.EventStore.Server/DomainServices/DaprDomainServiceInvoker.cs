@@ -124,7 +124,10 @@ public partial class DaprDomainServiceInvoker(
                 : new SerializedEventPayload(wireEvent.EventTypeName, wireEvent.Payload, wireEvent.SerializationFormat);
         }
 
-        return new DomainResult(events);
+        DomainResult result = new(events);
+        return result.IsSuccess && !string.IsNullOrWhiteSpace(wireResult.ResultPayload)
+            ? new PayloadDomainResult(events, wireResult.ResultPayload)
+            : result;
     }
 
     private static partial class Log {
@@ -268,4 +271,8 @@ public partial class DaprDomainServiceInvoker(
 
     private sealed record SerializedRejectionEventPayload(string EventTypeName, byte[] PayloadBytes, string SerializationFormat)
         : ISerializedEventPayload, IRejectionEvent;
+
+    private sealed record PayloadDomainResult(IReadOnlyList<IEventPayload> Events, string Payload) : DomainResult(Events) {
+        public override string? ResultPayload => Payload;
+    }
 }
