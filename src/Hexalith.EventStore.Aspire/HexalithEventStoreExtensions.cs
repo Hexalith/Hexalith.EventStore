@@ -36,6 +36,12 @@ public static class HexalithEventStoreExtensions {
     /// any manual <c>appsettings.json</c> entry. Should be an absolute path produced by the
     /// AppHost's <c>ResolveDaprConfigPath</c> helper. <c>null</c> leaves the env var unset and
     /// the resiliency page falls back to its "configuration not available" empty state.
+    /// Note: this env var (and the localhost-based <c>EventStoreDaprHttpEndpoint</c> /
+    /// <c>TraceUrl</c> / <c>MetricsUrl</c> / <c>LogsUrl</c> Aspire-dashboard URLs) is only
+    /// injected when the AppHost is in <i>run mode</i>. In <i>publish mode</i> (aspirate,
+    /// Aspire publishers) these are skipped so they do not leak host-resolved paths or
+    /// dashboard URLs into generated K8s ConfigMaps; operators wire the production values
+    /// via their kustomize overlay / Helm values / appsettings.
     /// </param>
     /// <param name="eventStoreDaprHttpPort">
     /// DAPR HTTP port for the EventStore sidecar. Defaults to 3501. This port MUST be free on the host at
@@ -100,29 +106,36 @@ public static class HexalithEventStoreExtensions {
         // All services use keyPrefix:none so keys are shared across appIds.
         // It does not publish or subscribe directly, so it intentionally does not
         // reference the pub/sub component.
-        string eventStoreEndpointUrl = "http://localhost:" + eventStoreDaprHttpPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        _ = adminServer.WithReference(eventStore);
 
-        // Pre-fill the Admin UI's observability deep-links with the Aspire dashboard URLs
-        // for a zero-config dev experience. These env vars are ONLY injected under Aspire
-        // orchestration (this extension never runs in production deployments). In prod the
-        // operator sets AdminServer:TraceUrl / MetricsUrl / LogsUrl in their own appsettings
-        // (or env vars / Helm values) pointing to their actual observability stack
-        // (Grafana, Datadog, Application Insights, etc.).
+        // Aspire-orchestration-only env vars. These resolve to localhost-based endpoints
+        // and the Aspire dashboard, which are valid under `dotnet aspire run` but NOT in
+        // publish mode (aspirate-generated K8s manifests, Aspire publishers, etc.). In
+        // publish mode the operator is responsible for wiring the equivalent values via
+        // their own appsettings / Helm values / kustomize overlay, pointing at the
+        // cluster-resolved endpoints and their actual observability stack (Grafana,
+        // Datadog, Application Insights, etc.). Without this gate, aspirate captures
+        // these dev-mode values and bakes them into production ConfigMaps where they
+        // resolve nowhere -- breaking byte-determinism (host paths) and silently
+        // misrouting observability links (localhost:17017 dashboard URLs).
         // The Aspire dashboard default port is 17017; override these env vars if you run
         // the dashboard on a different port.
-        const string AspireDashboardBaseUrl = "https://localhost:17017";
-        _ = adminServer
-            .WithReference(eventStore)
-            .WithEnvironment("AdminServer__EventStoreDaprHttpEndpoint", eventStoreEndpointUrl)
-            .WithEnvironment("AdminServer__TraceUrl", AspireDashboardBaseUrl + "/traces")
-            .WithEnvironment("AdminServer__MetricsUrl", AspireDashboardBaseUrl + "/metrics")
-            .WithEnvironment("AdminServer__LogsUrl", AspireDashboardBaseUrl + "/structuredlogs")
-            .WithDaprSidecar(sidecar => sidecar
-                .WithOptions(new DaprSidecarOptions {
-                    AppId = "eventstore-admin",
-                    Config = adminServerDaprConfigPath,
-                })
-                .WithReference(stateStore));
+        if (!builder.ExecutionContext.IsPublishMode) {
+            const string AspireDashboardBaseUrl = "https://localhost:17017";
+            string eventStoreEndpointUrl = "http://localhost:" + eventStoreDaprHttpPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            _ = adminServer
+                .WithEnvironment("AdminServer__EventStoreDaprHttpEndpoint", eventStoreEndpointUrl)
+                .WithEnvironment("AdminServer__TraceUrl", AspireDashboardBaseUrl + "/traces")
+                .WithEnvironment("AdminServer__MetricsUrl", AspireDashboardBaseUrl + "/metrics")
+                .WithEnvironment("AdminServer__LogsUrl", AspireDashboardBaseUrl + "/structuredlogs");
+        }
+
+        _ = adminServer.WithDaprSidecar(sidecar => sidecar
+            .WithOptions(new DaprSidecarOptions {
+                AppId = "eventstore-admin",
+                Config = adminServerDaprConfigPath,
+            })
+            .WithReference(stateStore));
 
         // Auto-inject the resiliency YAML path so /dapr/resiliency works out of the box under
         // Aspire orchestration. The AppHost owns this path because it knows the absolute on-disk
@@ -130,7 +143,11 @@ public static class HexalithEventStoreExtensions {
         // forcing operators to maintain a duplicated entry in Admin.Server.Host/appsettings.json
         // and avoids working-directory fragility (the resiliency.yaml lives in the AppHost
         // project, not the Admin.Server.Host project).
-        if (!string.IsNullOrWhiteSpace(resiliencyConfigPath)) {
+        // Aspire-orchestration-only: in publish mode the resolved absolute path is the
+        // AppHost machine's home directory, not a container-internal path. Operators
+        // running in K8s mount the resiliency YAML via Volume + ConfigMap and set this
+        // env var in their kustomize overlay or Helm values.
+        if (!builder.ExecutionContext.IsPublishMode && !string.IsNullOrWhiteSpace(resiliencyConfigPath)) {
             _ = adminServer.WithEnvironment("AdminServer__ResiliencyConfigPath", resiliencyConfigPath);
         }
 
