@@ -59,7 +59,7 @@ public partial class QueryRouter(
                 new ActorId(actorId),
                 actorTypeName);
 
-            QueryResult? result = await proxy.QueryAsync(envelope).ConfigureAwait(false);
+            QueryResult? result = await InvokeProjectionActorAsync(proxy, envelope, cancellationToken).ConfigureAwait(false);
 
             if (result is null) {
                 Log.QueryExecutionFailed(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.ActorResponseMismatch);
@@ -120,6 +120,25 @@ public partial class QueryRouter(
                     || message.Contains("could not find address for actor", StringComparison.OrdinalIgnoreCase)
                     || message.Contains("no address found for actor", StringComparison.OrdinalIgnoreCase)
                     || message.Contains("actor not found", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static Task<QueryResult> InvokeProjectionActorAsync(
+        IProjectionActor proxy,
+        QueryEnvelope envelope,
+        CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // DAPR strongly typed actor proxies are generated from the actor interface and derive from
+        // ActorProxy. The actor interface method stays source-compatible while the weak proxy call
+        // carries the route-level cancellation token to the DAPR invocation operation.
+        if (proxy is ActorProxy actorProxy) {
+            return actorProxy.InvokeMethodAsync<QueryEnvelope, QueryResult>(
+                nameof(IProjectionActor.QueryAsync),
+                envelope,
+                cancellationToken);
+        }
+
+        return proxy.QueryAsync(envelope);
     }
 
     private static partial class Log {

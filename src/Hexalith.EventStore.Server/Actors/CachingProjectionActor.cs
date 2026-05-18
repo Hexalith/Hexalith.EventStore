@@ -31,13 +31,24 @@ public abstract partial class CachingProjectionActor(
     private string? _discoveredProjectionType;
 
     /// <inheritdoc/>
-    public async Task<QueryResult> QueryAsync(QueryEnvelope envelope) {
+    public Task<QueryResult> QueryAsync(QueryEnvelope envelope) =>
+        QueryAsync(envelope, CancellationToken.None);
+
+    /// <summary>
+    /// Serves a projection query with an EventStore-owned cancellation boundary.
+    /// </summary>
+    /// <param name="envelope">The query envelope containing routing metadata and UTF-8 JSON payload bytes.</param>
+    /// <param name="cancellationToken">The token to observe before cache, ETag, execution, and cache-store work.</param>
+    /// <returns>The query result containing payload bytes or an adapter-edge failure.</returns>
+    public async Task<QueryResult> QueryAsync(QueryEnvelope envelope, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(envelope);
+        cancellationToken.ThrowIfCancellationRequested();
 
         // IETagService handles actor ID derivation, proxy timeout, and fail-open (returns null on error)
         string? currentETag = await eTagService
-            .GetCurrentETagAsync(GetEffectiveProjectionType(envelope.Domain), envelope.TenantId)
+            .GetCurrentETagAsync(GetEffectiveProjectionType(envelope.Domain), envelope.TenantId, cancellationToken)
             .ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
 
         // ETag changed → every cached entry is now stale (the underlying read model moved). Wipe
         // the whole map and track the new ETag as the validity stamp for subsequent stores.
@@ -54,12 +65,15 @@ public abstract partial class CachingProjectionActor(
         // Cache hit: ETag is non-null AND we have an entry matching this (QueryType, Payload, UserId).
         if (currentETag is not null
             && _payloadCache.TryGetValue(cacheKey, out byte[]? cachedBytes)) {
+            cancellationToken.ThrowIfCancellationRequested();
             Log.CacheHit(logger, envelope.CorrelationId, Id.GetId(), currentETag[..Math.Min(8, currentETag.Length)]);
             return new QueryResult(true, cachedBytes, ProjectionType: _discoveredProjectionType);
         }
 
         // Cache miss: execute the actual query
-        QueryResult result = await ExecuteQueryAsync(envelope).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        QueryResult result = await ExecuteQueryAsync(envelope, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (result.Success) {
             string? projectionType = ValidateProjectionTypeOrNull(envelope.CorrelationId, Id.GetId(), result.ProjectionType);
@@ -99,6 +113,7 @@ public abstract partial class CachingProjectionActor(
                 _payloadCache.Clear();
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             _payloadCache[cacheKey] = result.PayloadBytes!;
             Log.CacheMiss(logger, envelope.CorrelationId, Id.GetId(), currentETag[..Math.Min(8, currentETag.Length)]);
         }
@@ -131,6 +146,17 @@ public abstract partial class CachingProjectionActor(
     /// as your <c>IQueryContract.ProjectionType</c>.
     /// </remarks>
     protected abstract Task<QueryResult> ExecuteQueryAsync(QueryEnvelope envelope);
+
+    /// <summary>
+    /// Executes the actual query logic against the domain service / read model with cancellation support.
+    /// </summary>
+    /// <param name="envelope">The query envelope containing routing and payload data.</param>
+    /// <param name="cancellationToken">The token to pass to downstream query/state reads.</param>
+    /// <returns>The query result from the domain service.</returns>
+    protected virtual Task<QueryResult> ExecuteQueryAsync(QueryEnvelope envelope, CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
+        return ExecuteQueryAsync(envelope);
+    }
 
     private string GetEffectiveProjectionType(string fallbackDomain)
         => _discoveredProjectionType ?? fallbackDomain;

@@ -84,6 +84,40 @@ public class DaprETagServiceTests {
     }
 
     [Fact]
+    public async Task GetCurrentETagAsync_PreCancelledToken_ThrowsBeforeActorProxyCreation() {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        var service = new DaprETagService(factory, NullLogger<DaprETagService>.Instance);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(
+            () => service.GetCurrentETagAsync("counter", "tenant1", cts.Token));
+
+        _ = factory.DidNotReceive().CreateActorProxy<IETagActor>(
+            Arg.Any<ActorId>(),
+            Arg.Any<string>(),
+            Arg.Any<ActorProxyOptions>());
+    }
+
+    [Fact]
+    public async Task GetCurrentETagAsync_OperationCanceledException_IsNotFailOpenNull() {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IETagActor actor = Substitute.For<IETagActor>();
+        _ = actor.GetCurrentETagAsync().ThrowsAsync(new OperationCanceledException("etag cancelled"));
+        _ = factory.CreateActorProxy<IETagActor>(
+            Arg.Any<ActorId>(),
+            ETagActor.ETagActorTypeName,
+            Arg.Any<ActorProxyOptions>()).Returns(actor);
+
+        var service = new DaprETagService(factory, NullLogger<DaprETagService>.Instance);
+
+        OperationCanceledException exception = await Should.ThrowAsync<OperationCanceledException>(
+            () => service.GetCurrentETagAsync("counter", "tenant1"));
+
+        exception.Message.ShouldContain("etag cancelled");
+    }
+
+    [Fact]
     public async Task GetCurrentETagAsync_DerivesActorId_WithColonSeparator() {
         // Arrange
         string selfRoutingETag = SelfRoutingETag.GenerateNew("my-domain");

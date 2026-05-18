@@ -73,6 +73,26 @@ public class EventReplayProjectionActorTests {
     }
 
     [Fact]
+    public async Task UpdateProjectionAsync_WithCancellationToken_PassesTokenToActorStateAndNotifier() {
+        (EventReplayProjectionActor actor, IActorStateManager stateManager, IProjectionChangeNotifier notifier, _) = CreateActor();
+        ProjectionState state = CreateTestState();
+        using var cts = new CancellationTokenSource();
+
+        await actor.UpdateProjectionAsync(state, cts.Token);
+
+        await stateManager.Received(1).SetStateAsync(
+            EventReplayProjectionActor.ProjectionStateKey,
+            state,
+            Arg.Is<CancellationToken>(token => token == cts.Token));
+        await stateManager.Received(1).SaveStateAsync(Arg.Is<CancellationToken>(token => token == cts.Token));
+        await notifier.Received(1).NotifyProjectionChangedAsync(
+            TestProjectionType,
+            TestTenantId,
+            null,
+            Arg.Is<CancellationToken>(token => token == cts.Token));
+    }
+
+    [Fact]
     public async Task UpdateProjectionAsync_TriggersNotification() {
         (EventReplayProjectionActor actor, _, IProjectionChangeNotifier notifier, _) = CreateActor();
         ProjectionState state = CreateTestState();
@@ -193,6 +213,29 @@ public class EventReplayProjectionActorTests {
         result.Success.ShouldBeTrue();
         result.GetPayload().GetProperty("count").GetInt32().ShouldBe(42);
         result.ProjectionType.ShouldBe(TestProjectionType);
+    }
+
+    [Fact]
+    public async Task ExecuteQueryAsync_WithCancellationToken_PassesTokenToStateRead() {
+        (EventReplayProjectionActor actor, IActorStateManager stateManager, _, IETagService eTagService) = CreateActor();
+        QueryEnvelope envelope = CreateTestEnvelope();
+        ProjectionState state = CreateTestState();
+        using var cts = new CancellationTokenSource();
+
+        _ = eTagService.GetCurrentETagAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+
+        _ = stateManager.TryGetStateAsync<ProjectionState>(
+            EventReplayProjectionActor.ProjectionStateKey,
+            Arg.Is<CancellationToken>(token => token == cts.Token))
+            .Returns(new ConditionalValue<ProjectionState>(true, state));
+
+        QueryResult result = await actor.QueryAsync(envelope, cts.Token);
+
+        result.Success.ShouldBeTrue();
+        _ = await stateManager.Received(1).TryGetStateAsync<ProjectionState>(
+            EventReplayProjectionActor.ProjectionStateKey,
+            Arg.Is<CancellationToken>(token => token == cts.Token));
     }
 
     [Fact]

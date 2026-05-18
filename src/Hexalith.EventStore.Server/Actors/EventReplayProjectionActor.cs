@@ -35,23 +35,38 @@ public partial class EventReplayProjectionActor(
     internal const string ProjectionStateKey = "projection-state";
 
     /// <inheritdoc/>
-    public async Task UpdateProjectionAsync(ProjectionState state) {
+    public Task UpdateProjectionAsync(ProjectionState state) =>
+        UpdateProjectionAsync(state, CancellationToken.None);
+
+    /// <summary>
+    /// Persists projection state and notifies subscribers with cancellation support for EventStore-owned state operations.
+    /// </summary>
+    /// <param name="state">The projection state to persist.</param>
+    /// <param name="cancellationToken">The token to pass to DAPR actor state and notification operations.</param>
+    /// <returns>A task that represents the asynchronous update operation.</returns>
+    public async Task UpdateProjectionAsync(ProjectionState state, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentException.ThrowIfNullOrWhiteSpace(state.ProjectionType);
         ArgumentException.ThrowIfNullOrWhiteSpace(state.TenantId);
+        cancellationToken.ThrowIfCancellationRequested();
 
         // 1. Persist to DAPR actor state
-        await StateManager.SetStateAsync(ProjectionStateKey, state).ConfigureAwait(false);
-        await StateManager.SaveStateAsync().ConfigureAwait(false);
+        await StateManager.SetStateAsync(ProjectionStateKey, state, cancellationToken).ConfigureAwait(false);
+        await StateManager.SaveStateAsync(cancellationToken).ConfigureAwait(false);
 
         Log.ProjectionStatePersisted(logger, Id.GetId(), state.ProjectionType, state.TenantId);
+        cancellationToken.ThrowIfCancellationRequested();
 
         // 2. Regenerate ETag + broadcast SignalR (fail-open on notifier path)
         try {
             await projectionChangeNotifier.NotifyProjectionChangedAsync(
                 state.ProjectionType,
-                state.TenantId)
+                state.TenantId,
+                cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
         }
         catch (Exception ex) {
             Log.ProjectionChangeNotificationFailed(logger, Id.GetId(), state.ProjectionType, state.TenantId, ex.GetType().Name);
@@ -59,11 +74,18 @@ public partial class EventReplayProjectionActor(
     }
 
     /// <inheritdoc/>
-    protected override async Task<QueryResult> ExecuteQueryAsync(QueryEnvelope envelope) {
+    protected override Task<QueryResult> ExecuteQueryAsync(QueryEnvelope envelope) =>
+        ExecuteQueryAsync(envelope, CancellationToken.None);
+
+    /// <inheritdoc/>
+    protected override async Task<QueryResult> ExecuteQueryAsync(QueryEnvelope envelope, CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
+
         // Read last persisted state from DAPR actor state
         ConditionalValue<ProjectionState> result =
-            await StateManager.TryGetStateAsync<ProjectionState>(ProjectionStateKey)
+            await StateManager.TryGetStateAsync<ProjectionState>(ProjectionStateKey, cancellationToken)
                 .ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (!result.HasValue) {
             Log.NoPersistedState(logger, Id.GetId());

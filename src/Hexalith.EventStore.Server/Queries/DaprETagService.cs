@@ -24,17 +24,33 @@ public partial class DaprETagService(
         string projectionType, string tenantId, CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectionType);
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        cancellationToken.ThrowIfCancellationRequested();
 
         string actorId = $"{projectionType}:{tenantId}";
         try {
             IETagActor proxy = actorProxyFactory.CreateActorProxy<IETagActor>(
                 new ActorId(actorId), ETagActor.ETagActorTypeName, _proxyOptions);
-            return await proxy.GetCurrentETagAsync().ConfigureAwait(false);
+            return await InvokeETagActorAsync(proxy, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
         }
         catch (Exception ex) {
             Log.ETagFetchFailed(logger, actorId, ex.GetType().Name);
             return null;
         }
+    }
+
+    private static Task<string?> InvokeETagActorAsync(IETagActor proxy, CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (proxy is ActorProxy actorProxy) {
+            return actorProxy.InvokeMethodAsync<string?>(
+                nameof(IETagActor.GetCurrentETagAsync),
+                cancellationToken);
+        }
+
+        return proxy.GetCurrentETagAsync();
     }
 
     private static partial class Log {

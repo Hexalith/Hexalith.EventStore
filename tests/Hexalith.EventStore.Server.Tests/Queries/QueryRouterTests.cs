@@ -527,4 +527,37 @@ public class QueryRouterTests {
         await Should.ThrowAsync<OperationCanceledException>(
             () => router.RouteQueryAsync(CreateTestQuery()));
     }
+
+    [Fact]
+    public async Task RouteQueryAsync_PreCancelledToken_ThrowsBeforeProxyCreation() {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(
+            () => router.RouteQueryAsync(CreateTestQuery(), cts.Token));
+
+        _ = factory.DidNotReceive().CreateActorProxy<IProjectionActor>(
+            Arg.Any<ActorId>(),
+            Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_OperationCanceledException_IsNotConvertedToAdapterFailure() {
+        IProjectionActor actor = Substitute.For<IProjectionActor>();
+        _ = actor.QueryAsync(Arg.Any<QueryEnvelope>())
+            .Throws(new OperationCanceledException("abandoned request"));
+
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+
+        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+
+        OperationCanceledException exception = await Should.ThrowAsync<OperationCanceledException>(
+            () => router.RouteQueryAsync(CreateTestQuery()));
+
+        exception.Message.ShouldContain("abandoned request");
+    }
 }

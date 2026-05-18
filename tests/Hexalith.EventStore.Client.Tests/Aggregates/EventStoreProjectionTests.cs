@@ -89,6 +89,16 @@ public class EventStoreProjectionTests : IDisposable {
     }
 
     [Fact]
+    public async Task Project_PreCancelledToken_ThrowsBeforeApplyingEvents() {
+        var projection = new TestProjection();
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        _ = Assert.Throws<OperationCanceledException>(() =>
+            projection.Project(new object[] { new ItemAdded { Name = "a" } }, cts.Token));
+    }
+
+    [Fact]
     public void ProjectFromJson_ValidArray_AppliesEvents() {
         var projection = new TestProjection();
         string json = """
@@ -103,6 +113,18 @@ public class EventStoreProjectionTests : IDisposable {
 
         Assert.Equal(2, model.Count);
         Assert.Equal("second", model.LastAdded);
+    }
+
+    [Fact]
+    public async Task ProjectFromJson_PreCancelledToken_ThrowsBeforeApplyingEvents() {
+        var projection = new TestProjection();
+        JsonElement jsonArray = JsonSerializer.Deserialize<JsonElement>(
+            """[{"eventTypeName":"ItemAdded","payload":{"Name":"from-json"}}]""");
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        _ = Assert.Throws<OperationCanceledException>(() =>
+            projection.ProjectFromJson(jsonArray, cts.Token));
     }
 
     [Fact]

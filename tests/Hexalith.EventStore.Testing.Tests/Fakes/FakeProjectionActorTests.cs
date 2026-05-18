@@ -37,6 +37,31 @@ public class FakeProjectionActorTests {
     }
 
     [Fact]
+    public async Task QueryAsync_WithCancellationToken_RecordsToken() {
+        var sut = new FakeProjectionActor();
+        QueryEnvelope envelope = CreateTestEnvelope();
+        using var cts = new CancellationTokenSource();
+
+        _ = await sut.QueryAsync(envelope, cts.Token);
+
+        CancellationToken received = Assert.Single(sut.ReceivedCancellationTokens);
+        Assert.Equal(cts.Token, received);
+    }
+
+    [Fact]
+    public async Task QueryAsync_WithPreCancelledToken_ThrowsWithoutRecordingEnvelope() {
+        var sut = new FakeProjectionActor();
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        _ = await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            sut.QueryAsync(CreateTestEnvelope(), cts.Token));
+
+        Assert.Empty(sut.ReceivedEnvelopes);
+        Assert.Empty(sut.ReceivedCancellationTokens);
+    }
+
+    [Fact]
     public async Task QueryAsync_ThrowsConfiguredException() {
         var sut = new FakeProjectionActor {
             ConfiguredException = new InvalidOperationException("boom"),
@@ -125,7 +150,19 @@ public class FakeProjectionActorTests {
             .Single()
             .ShouldBe(typeof(QueryEnvelope));
 
+        fakeType.GetProperty(nameof(FakeProjectionActor.ReceivedCancellationTokens))!
+            .PropertyType
+            .GetGenericArguments()
+            .Single()
+            .ShouldBe(typeof(CancellationToken));
+
         fakeType.GetMethod(nameof(FakeProjectionActor.QueryAsync), [typeof(QueryEnvelope)])!
+            .ReturnType
+            .GetGenericArguments()
+            .Single()
+            .ShouldBe(typeof(QueryResult));
+
+        fakeType.GetMethod(nameof(FakeProjectionActor.QueryAsync), [typeof(QueryEnvelope), typeof(CancellationToken)])!
             .ReturnType
             .GetGenericArguments()
             .Single()

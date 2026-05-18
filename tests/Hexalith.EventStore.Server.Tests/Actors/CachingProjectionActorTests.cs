@@ -763,6 +763,68 @@ public class CachingProjectionActorTests {
     }
 
     [Fact]
+    public async Task QueryAsync_PreCancelledToken_DoesNotReadETagOrExecuteQuery() {
+        IETagService eTagService = Substitute.For<IETagService>();
+        var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, QueryResult.FromPayload(JsonDocument.Parse("{}").RootElement));
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(
+            () => actor.QueryAsync(CreateEnvelope(), cts.Token));
+
+        _ = await eTagService.DidNotReceive().GetCurrentETagAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+        actor.ExecuteCallCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task QueryAsync_CancellationToken_IsPassedToETagAndExecuteQuery() {
+        string currentETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(currentETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":42}").RootElement;
+        var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, QueryResult.FromPayload(payload));
+        using var cts = new CancellationTokenSource();
+
+        _ = await actor.QueryAsync(CreateEnvelope(), cts.Token);
+
+        _ = await eTagService.Received(1).GetCurrentETagAsync(
+            "counter",
+            "tenant1",
+            Arg.Is<CancellationToken>(token => token == cts.Token));
+        actor.LastCancellationToken.ShouldBe(cts.Token);
+    }
+
+    [Fact]
+    public async Task QueryAsync_PreCancelledToken_TakesPrecedenceOverWarmCacheHit() {
+        string currentETag = GenerateTestETag();
+        IETagService eTagService = Substitute.For<IETagService>();
+        _ = eTagService.GetCurrentETagAsync("counter", "tenant1", Arg.Any<CancellationToken>())
+            .Returns(currentETag);
+
+        JsonElement payload = JsonDocument.Parse("{\"count\":42}").RootElement;
+        var host = ActorHost.CreateForTest<TestCachingProjectionActor>();
+        var actor = new TestCachingProjectionActor(host, eTagService, QueryResult.FromPayload(payload));
+        QueryEnvelope envelope = CreateEnvelope();
+        _ = await actor.QueryAsync(envelope);
+        actor.ExecuteCallCount.ShouldBe(1);
+
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(
+            () => actor.QueryAsync(envelope, cts.Token));
+
+        actor.ExecuteCallCount.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task QueryAsync_ETagChange_InvalidatesAllCachedEntries() {
         // When the projection's ETag changes, EVERY cached entry (regardless of QueryType) must
         // be invalidated — the underlying read model has moved.
@@ -853,6 +915,19 @@ public class CachingProjectionActorTests {
         public int ExecuteCallCount { get; private set; }
 
         protected override Task<QueryResult> ExecuteQueryAsync(QueryEnvelope envelope) {
+            LastCancellationToken = CancellationToken.None;
+            return ExecuteCoreAsync();
+        }
+
+        public CancellationToken LastCancellationToken { get; private set; }
+
+        protected override Task<QueryResult> ExecuteQueryAsync(QueryEnvelope envelope, CancellationToken cancellationToken) {
+            LastCancellationToken = cancellationToken;
+            cancellationToken.ThrowIfCancellationRequested();
+            return ExecuteCoreAsync();
+        }
+
+        private Task<QueryResult> ExecuteCoreAsync() {
             int index = Math.Min(ExecuteCallCount, _results.Length - 1);
             ExecuteCallCount++;
             return Task.FromResult(_results[index]);

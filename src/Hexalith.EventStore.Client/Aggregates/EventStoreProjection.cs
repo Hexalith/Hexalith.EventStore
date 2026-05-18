@@ -25,7 +25,7 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
 
     /// <summary>
     /// Gets or sets the projection change notifier. Set post-construction by DI registration.
-    /// When set, <see cref="Project"/> auto-calls <see cref="IProjectionChangeNotifier.NotifyProjectionChangedAsync"/>
+    /// When set, <see cref="Project(System.Collections.IEnumerable)"/> auto-calls <see cref="IProjectionChangeNotifier.NotifyProjectionChangedAsync"/>
     /// after successful projection. When null, a warning is logged (FM-5).
     /// </summary>
     public IProjectionChangeNotifier? Notifier { get; set; }
@@ -63,13 +63,25 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
     /// </summary>
     /// <param name="events">The events to project, as an enumerable of typed event objects.</param>
     /// <returns>The projected read model with all events applied.</returns>
-    public TReadModel Project(System.Collections.IEnumerable events) {
+    public TReadModel Project(System.Collections.IEnumerable events) =>
+        Project(events, CancellationToken.None);
+
+    /// <summary>
+    /// Projects events onto a read model by replaying them through typed Apply methods.
+    /// </summary>
+    /// <param name="events">The events to project, as an enumerable of typed event objects.</param>
+    /// <param name="cancellationToken">The token to observe between event applications.</param>
+    /// <returns>The projected read model with all events applied.</returns>
+    public TReadModel Project(System.Collections.IEnumerable events, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(events);
+        cancellationToken.ThrowIfCancellationRequested();
 
         Dictionary<string, MethodInfo> applyMethods = GetOrBuildApplyMethods();
         var model = new TReadModel();
 
         foreach (object? evt in events) {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (evt is null) {
                 continue;
             }
@@ -80,6 +92,7 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
             }
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         FireProjectionChangeNotification();
 
         return model;
@@ -90,7 +103,18 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
     /// </summary>
     /// <param name="jsonArray">A JSON element containing an array of event objects.</param>
     /// <returns>The projected read model with all events applied.</returns>
-    public TReadModel ProjectFromJson(JsonElement jsonArray) {
+    public TReadModel ProjectFromJson(JsonElement jsonArray) =>
+        ProjectFromJson(jsonArray, CancellationToken.None);
+
+    /// <summary>
+    /// Projects events from a JSON array onto a read model.
+    /// </summary>
+    /// <param name="jsonArray">A JSON element containing an array of event objects.</param>
+    /// <param name="cancellationToken">The token to observe between event applications.</param>
+    /// <returns>The projected read model with all events applied.</returns>
+    public TReadModel ProjectFromJson(JsonElement jsonArray, CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (jsonArray.ValueKind != JsonValueKind.Array) {
             throw new ArgumentException(
                 $"Expected JSON array but received {jsonArray.ValueKind}.", nameof(jsonArray));
@@ -100,6 +124,8 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
         var model = new TReadModel();
 
         foreach (JsonElement eventElement in jsonArray.EnumerateArray()) {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (eventElement.ValueKind != JsonValueKind.Object) {
                 throw new InvalidOperationException(
                     string.Format(
@@ -130,6 +156,7 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
             ApplyEventByName(model, eventTypeName, eventElement, applyMethods);
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         FireProjectionChangeNotification();
 
         return model;
