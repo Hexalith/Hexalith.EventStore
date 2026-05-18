@@ -84,4 +84,12 @@ public static class StreamReplayReasonCodes {
 
     /// <summary>No domain service is registered for the requested rebuild.</summary>
     public const string NoDomainService = "no-domain-service";
+
+    /// <summary>
+    /// The rebuild operation was preempted by a concurrent operator (P8-8P pass-8). Per-aggregate
+    /// progress drift between the page read and the projection-state write indicates that another
+    /// operator's Reset+Replay (or competing in-flight rebuild) advanced the per-aggregate row;
+    /// this operation has been canceled to preserve the other operator's progress.
+    /// </summary>
+    public const string OperatorPreempted = "operator-preempted";
 }

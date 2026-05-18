@@ -35,6 +35,22 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     /// instances are commonly shared across consumers, the buffer cap applies to ALL endpoints
     /// invoked via the same client. Configure a typed client per gateway when other endpoints
     /// (e.g., large query responses) need a higher cap.
+    /// <para>
+    /// P16-8P (pass-8): the buffer cap is now applied min-only — the constructor reduces the cap
+    /// when the option is smaller than the caller-configured existing value, but it never raises
+    /// a lower caller cap. This restores the pre-DEC6-7P behavior and prevents silent behavior
+    /// change when callers pre-size HttpClient.MaxResponseContentBufferSize for narrow workloads.
+    /// </para>
+    /// <para>
+    /// P22-7P (pass-7 MEDIUM): when multiple gateway clients are constructed concurrently against
+    /// the same shared <see cref="HttpClient"/> with different
+    /// <see cref="EventStoreGatewayClientOptions.MaxStreamReadResponseBytes"/> values, the min-only
+    /// assignment is still a race (last-writer-wins on the equal-or-smaller branch). The
+    /// recommended deployment pattern is one typed client per gateway via named DI options
+    /// (<c>services.AddHttpClient&lt;EventStoreGatewayClient&gt;(...)</c>), giving each gateway
+    /// its own HttpClient instance. The shared-HttpClient pattern is supported for compatibility
+    /// but not optimal under multi-tenant DI configuration.
+    /// </para>
     /// </remarks>
     public EventStoreGatewayClient(HttpClient httpClient, IOptions<EventStoreGatewayClientOptions> options) {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
@@ -52,7 +68,12 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 $"MaxStreamReadResponseBytes must be <= {int.MaxValue} (HttpClient.MaxResponseContentBufferSize is int).");
         }
 
-        _httpClient.MaxResponseContentBufferSize = _options.MaxStreamReadResponseBytes;
+        // P16-8P (pass-8): apply min-only. If the caller pre-configured a lower buffer (e.g.,
+        // for a narrow query workload), do NOT raise it. Only lower the cap when the option
+        // value is more restrictive than the current setting.
+        if (_options.MaxStreamReadResponseBytes < _httpClient.MaxResponseContentBufferSize) {
+            _httpClient.MaxResponseContentBufferSize = _options.MaxStreamReadResponseBytes;
+        }
     }
 
     /// <inheritdoc />

@@ -75,6 +75,13 @@ public static class EventStoreServerServiceCollectionExtensions {
             .Validate(o => { o.Validate(); return true; }, "Projection configuration is invalid. All intervals must be >= 0 and domain keys must be non-empty.")
             .ValidateOnStart();
         _ = services.AddHostedService<ProjectionDiscoveryHostedService>();
+        // P-DEC1-8P/P4-9P: register cleanup only when DaprClient is available. Non-DAPR test
+        // hosts use the same no-op pattern as the projection poller so they do not emit recurring
+        // sweep failures from DAPR-backed stores.
+        _ = services.AddSingleton<IHostedService>(serviceProvider =>
+            serviceProvider.GetService<DaprClient>() is null
+                ? NoOpHostedService.Instance
+                : ActivatorUtilities.CreateInstance<ActiveRebuildIndexCleanupService>(serviceProvider));
         _ = services.AddSingleton<IHostedService>(serviceProvider => {
             if (serviceProvider.GetService<DaprClient>() is null) {
                 // R2P9 — emit the disable warning via a source-generated LoggerMessage so the Stage tag

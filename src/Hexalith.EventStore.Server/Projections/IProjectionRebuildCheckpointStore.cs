@@ -74,4 +74,28 @@ public interface IProjectionRebuildCheckpointStore {
         string tenant,
         string domain,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists tenant/domain pairs that currently have active rebuild index entries.
+    /// </summary>
+    Task<IReadOnlyCollection<(string Tenant, string Domain)>> ListActiveRebuildIndexPairsAsync(
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// P-DEC1-8P (pass-8): clears active-rebuild index entries whose operator-scope checkpoint is
+    /// terminal (<see cref="ProjectionRebuildStatus.Succeeded"/> /
+    /// <see cref="ProjectionRebuildStatus.Failed"/> / <see cref="ProjectionRebuildStatus.Canceled"/>)
+    /// or missing. Backed by <see cref="ReadAsync"/> per projection name and an ETag-aware index
+    /// write. Returns the number of orphan entries cleared.
+    /// </summary>
+    /// <remarks>
+    /// Called by the hosted background cleanup service to recover from partial best-effort active-
+    /// index writes left behind by the P13-6P terminal-write recovery path. Without periodic
+    /// cleanup, a terminal write whose index removal failed transiently would leave a phantom
+    /// active-rebuild entry indefinitely, blocking the poller for the affected (tenant, domain).
+    /// </remarks>
+    Task<int> ClearOrphanActiveRebuildIndexEntriesAsync(
+        string tenant,
+        string domain,
+        CancellationToken cancellationToken = default);
 }

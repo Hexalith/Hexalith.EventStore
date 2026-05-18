@@ -671,13 +671,22 @@ public partial class AggregateActor(
             throw new ArgumentOutOfRangeException(nameof(toSequence), "toSequence must be <= int.MaxValue.");
         }
 
-        if (fromSequence > int.MaxValue - (long)maxCount) {
+        // P19-7P (pass-7 MEDIUM): only refuse when `fromSequence` itself is at the int boundary
+        // (no room to compute `fromSequence + 1`). The prior guard `fromSequence > int.MaxValue -
+        // maxCount` was overly conservative — for `fromSequence = int.MaxValue - 100, maxCount =
+        // 200, currentSequence = int.MaxValue - 50` we have 50 events to read, but the old guard
+        // refused. The available-count clamp below already bounds the actual read to whatever the
+        // stream contains.
+        if (fromSequence >= int.MaxValue) {
             throw new ArgumentOutOfRangeException(nameof(fromSequence), "Requested event range exceeds the supported sequence boundary.");
         }
 
         long upperBound = Math.Min(toSequence ?? currentSequence, currentSequence);
         long availableCount = upperBound - fromSequence;
-        int count = checked((int)Math.Min(availableCount, maxCount));
+        // Clamp count to the int range explicitly — `Math.Min(availableCount, maxCount)` can still
+        // exceed int when callers pass very large maxCount near boundary fromSequence values.
+        long boundedAvailable = Math.Min(availableCount, (long)int.MaxValue - fromSequence);
+        int count = checked((int)Math.Min(boundedAvailable, maxCount));
         int startSequence = checked((int)(fromSequence + 1));
         return await ReadEventsRangeAsync(identity, startSequence, count).ConfigureAwait(false);
     }
@@ -707,6 +716,11 @@ public partial class AggregateActor(
         }
 
         long currentSequence = metadataResult.Value.CurrentSequence;
+        // P4-8P (pass-8): relax from `<= 0` to `< 0`. Per P-DEC3-7P (pass-7), an Exists=true row
+        // with CurrentSequence==0 is a valid "touched but empty" stream (ReadEventsRangeAsync's
+        // empty-stream short-circuit returns []). The previous `<= 0` check threw on this state,
+        // breaking the controller's StreamMetadataAsync → ReadEventsRangeAsync flow for touched
+        // empty streams. Only a negative CurrentSequence remains a corruption indicator.
         if (currentSequence < 0) {
             throw new InvalidOperationException(
                 $"Invalid aggregate metadata: CurrentSequence={currentSequence} for {identity.ActorId}");
@@ -723,6 +737,15 @@ public partial class AggregateActor(
         => IsDeserializationFailure(exception, depth: 0);
 
     private static bool IsDeserializationFailure(Exception exception, int depth) {
+        if (ContainsOperationCanceledException(exception, depth)) {
+            return false;
+        }
+
+        // P18-7P (pass-7 MEDIUM): short-circuit on OperationCanceledException at every recursion
+        // depth. An OCE wrapped inside an AggregateException InnerExceptions[i] must NOT be
+        // classified as deserialization (which would consume it as EventDeserializationException
+        // and erase the cancellation signal). The depth-0 check already exists for top-level OCE;
+        // this extends the contract to nested chains.
         if (depth >= MaxExceptionFrames || exception is OperationCanceledException) {
             return false;
         }
@@ -737,6 +760,15 @@ public partial class AggregateActor(
         // walking only InnerException loses every branch but the first. A real deserialization
         // failure nested in InnerExceptions[i] would be misclassified as a programmer error.
         if (exception is AggregateException aggregate) {
+            // P18-7P (pass-7 MEDIUM): if ANY inner exception is OCE, the entire chain is treated
+            // as cancellation, not deserialization. This prevents a JsonException sibling from
+            // shadowing the cancellation signal in a Task.WhenAll-style failure.
+            foreach (Exception inner in aggregate.InnerExceptions) {
+                if (inner is OperationCanceledException) {
+                    return false;
+                }
+            }
+
             foreach (Exception inner in aggregate.InnerExceptions) {
                 if (IsDeserializationFailure(inner, depth + 1)) {
                     return true;
@@ -747,6 +779,28 @@ public partial class AggregateActor(
         }
 
         return exception.InnerException is not null && IsDeserializationFailure(exception.InnerException, depth + 1);
+    }
+
+    private static bool ContainsOperationCanceledException(Exception exception, int depth) {
+        if (depth >= MaxExceptionFrames) {
+            return false;
+        }
+
+        if (exception is OperationCanceledException) {
+            return true;
+        }
+
+        if (exception is AggregateException aggregate) {
+            foreach (Exception inner in aggregate.InnerExceptions) {
+                if (ContainsOperationCanceledException(inner, depth + 1)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return exception.InnerException is not null && ContainsOperationCanceledException(exception.InnerException, depth + 1);
     }
 
     /// <inheritdoc/>
