@@ -1,5 +1,6 @@
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
+using Hexalith.EventStore.Contracts.Security;
 
 namespace Hexalith.EventStore.Admin.Abstractions.Services;
 
@@ -51,4 +52,52 @@ public interface IBackupCommandService {
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The operation result.</returns>
     Task<AdminOperationResult> ImportStreamAsync(string tenantId, string content, CancellationToken ct = default);
+
+    /// <summary>
+    /// Story 22.7c — submits a restored-backup admission request. The admission result reports
+    /// whether the restored data may be served, must be blocked/quarantined, requires explicit
+    /// operator decision, or cannot be validated yet. Implementations MUST compare only safe
+    /// metadata (manifest identity, tenant/domain/aggregate scope, sequence range, protection
+    /// metadata version, key alias fingerprint) and MUST NOT inspect payload bytes, raw key
+    /// material, or provider-private metadata.
+    /// </summary>
+    /// <param name="request">The admission request.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A safe admission result.</returns>
+    Task<RestoredBackupAdmissionResult> AdmitRestoredBackupAsync(
+        RestoredBackupAdmissionRequest request,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Story 22.7c — records an explicit operator decision (accept, block, or quarantine) for an
+    /// admission that previously returned <see cref="RestoredBackupAdmissionState.OperatorDecisionRequired"/>,
+    /// <see cref="RestoredBackupAdmissionState.Quarantined"/>, or
+    /// <see cref="RestoredBackupAdmissionState.DeferredValidation"/>. The operation is idempotent
+    /// and scoped to the admission identifier.
+    /// </summary>
+    /// <param name="tenantId">The tenant scope of the admission.</param>
+    /// <param name="admissionId">The admission identifier.</param>
+    /// <param name="decision">The new admission state (must satisfy
+    /// <see cref="RestoredBackupAdmissionTransitions.IsAllowed"/>).</param>
+    /// <param name="operatorActorId">The operator submitting the decision.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The updated admission result.</returns>
+    Task<RestoredBackupAdmissionResult> SubmitRestoreAdmissionDecisionAsync(
+        string tenantId,
+        string admissionId,
+        RestoredBackupAdmissionState decision,
+        string operatorActorId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Story 22.7c — records an operator-initiated crypto-shredding workflow request using the
+    /// provider-neutral workflow contract. Provider execution remains outside this boundary; the
+    /// returned decision is the auditable EventStore workflow status.
+    /// </summary>
+    /// <param name="request">The workflow request.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The recorded workflow decision.</returns>
+    Task<CryptoShreddingWorkflowDecision> SubmitCryptoShreddingWorkflowAsync(
+        CryptoShreddingWorkflowRequest request,
+        CancellationToken ct = default);
 }

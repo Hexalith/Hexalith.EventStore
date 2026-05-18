@@ -162,25 +162,30 @@ public sealed partial class StreamsController(
             // must not return opaque protected bytes through the public replay surface — the
             // ProblemDetails carries only safe metadata (no payload, no key alias, no provider
             // exception text).
+            // Story 22.7c: route the readability check through the canonical
+            // ProtectedDataReadabilityDecisionFactory so the publisher, actor, snapshot manager,
+            // and replay surface all use the same decision shape.
             var readableEvents = new List<ServerEventEnvelope>(orderedEvents.Count);
             foreach (ServerEventEnvelope envelope in orderedEvents) {
                 ReplayReadabilityResult readable = await TryMakeReplayEventReadableAsync(identity, envelope, cancellationToken)
                     .ConfigureAwait(false);
                 if (readable.UnreadableReason is not null) {
-                    string reasonCode = UnreadableProtectedDataReasonCodes.From(readable.UnreadableReason.Value);
+                    ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecision.FromUnreadable(
+                        readable.UnreadableReason.Value,
+                        ProtectedDataDecisionStage.Replay,
+                        request.Tenant,
+                        request.Domain,
+                        request.AggregateId,
+                        envelope.SequenceNumber,
+                        readable.MetadataVersion);
                     Log.UnreadableProtectedPayloadAtReplay(
                         logger,
                         request.Tenant,
                         request.Domain,
                         request.AggregateId ?? string.Empty,
                         envelope.SequenceNumber,
-                        reasonCode);
-                    return CreateUnreadableProtectedDataProblem(
-                        readable.UnreadableReason.Value,
-                        request.Tenant,
-                        request.Domain,
-                        request.AggregateId,
-                        envelope.SequenceNumber);
+                        decision.ReasonCode);
+                    return CreateUnreadableProtectedDataProblem(decision);
                 }
 
                 readableEvents.Add(readable.Envelope!);
@@ -312,11 +317,12 @@ public sealed partial class StreamsController(
 
         if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {
             return ReplayReadabilityResult.Unreadable(
-                UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(storedMetadata));
+                UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(storedMetadata),
+                storedMetadata.MetadataVersion);
         }
 
         if (storedMetadata.State == PayloadProtectionState.Unprotected) {
-            return ReplayReadabilityResult.Readable(envelope);
+            return ReplayReadabilityResult.Readable(envelope, storedMetadata.MetadataVersion);
         }
 
         PayloadUnprotectionOutcome outcome;
@@ -335,28 +341,29 @@ public sealed partial class StreamsController(
             throw;
         }
         catch {
-            return ReplayReadabilityResult.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable);
+            return ReplayReadabilityResult.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable, storedMetadata.MetadataVersion);
         }
 
         if (outcome.IsUnreadable) {
-            return ReplayReadabilityResult.Unreadable(outcome.UnreadableReason!.Value);
+            return ReplayReadabilityResult.Unreadable(outcome.UnreadableReason!.Value, outcome.Metadata.MetadataVersion);
         }
 
         return ReplayReadabilityResult.Readable(envelope with {
             Payload = outcome.PayloadBytes!,
             SerializationFormat = outcome.SerializationFormat!,
             Extensions = EventStorePayloadProtectionMetadataCarrier.Write(envelope.Extensions, outcome.Metadata),
-        });
+        }, outcome.Metadata.MetadataVersion);
     }
 
     private sealed record ReplayReadabilityResult(
         ServerEventEnvelope? Envelope,
-        UnreadableProtectedDataReason? UnreadableReason) {
-        public static ReplayReadabilityResult Readable(ServerEventEnvelope envelope)
-            => new(envelope, null);
+        UnreadableProtectedDataReason? UnreadableReason,
+        int MetadataVersion) {
+        public static ReplayReadabilityResult Readable(ServerEventEnvelope envelope, int metadataVersion)
+            => new(envelope, null, metadataVersion);
 
-        public static ReplayReadabilityResult Unreadable(UnreadableProtectedDataReason reason)
-            => new(null, reason);
+        public static ReplayReadabilityResult Unreadable(UnreadableProtectedDataReason reason, int metadataVersion)
+            => new(null, reason, metadataVersion);
     }
 
     private ObjectResult ProblemWithReason(
@@ -377,35 +384,36 @@ public sealed partial class StreamsController(
         return result;
     }
 
-    // Story 22.7b: stable ProblemDetails surface for unreadable protected data. Carries only safe
-    // envelope metadata (tenant, domain, aggregate, sequence) and the typed taxonomy fields. NEVER
-    // includes payload bytes, snapshot state, key alias, provider exception text, or stack trace.
-    private ObjectResult CreateUnreadableProtectedDataProblem(
-        UnreadableProtectedDataReason reason,
-        string tenant,
-        string domain,
-        string? aggregateId,
-        long sequenceNumber) {
+    // Story 22.7b/22.7c: stable ProblemDetails surface for unreadable protected data. Carries only
+    // safe envelope metadata (tenant, domain, aggregate, sequence, metadata version) plus the
+    // canonical decision shape from Story 22.7c. NEVER includes payload bytes, snapshot state,
+    // key alias, provider exception text, or stack trace.
+    private ObjectResult CreateUnreadableProtectedDataProblem(ProtectedDataReadabilityDecision decision) {
+        ArgumentNullException.ThrowIfNull(decision);
+        UnreadableProtectedDataReason reason = decision.UnreadableReason!.Value;
         int statusCode = UnreadableProtectedDataProblem.GetStatusCode(reason);
-        string reasonCode = UnreadableProtectedDataReasonCodes.From(reason);
         ObjectResult result = Problem(
             statusCode: statusCode,
             type: UnreadableProtectedDataProblem.TypeUri,
             title: UnreadableProtectedDataProblem.DefaultTitle,
             detail: UnreadableProtectedDataProblem.GetSafeOperatorGuidance(reason));
         if (result.Value is ProblemDetails problem) {
-            problem.Extensions["reasonCode"] = reasonCode;
+            problem.Extensions["reasonCode"] = decision.ReasonCode;
             problem.Extensions[UnreadableProtectedDataProblem.ExtensionReasonCategory] = reason.ToString();
-            problem.Extensions[UnreadableProtectedDataProblem.ExtensionStage] = "replay";
-            problem.Extensions[UnreadableProtectedDataProblem.ExtensionSequenceNumber] = sequenceNumber;
-            problem.Extensions[GatewayProblemDetailsExtensions.TenantId] = tenant;
-            problem.Extensions[UnreadableProtectedDataProblem.ExtensionDomain] = domain;
-            if (!string.IsNullOrWhiteSpace(aggregateId)) {
-                problem.Extensions[UnreadableProtectedDataProblem.ExtensionAggregateId] = aggregateId;
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionStage] = ProtectedDataReadabilityDecisionStageCodes.From(decision.Stage);
+            if (decision.SequenceNumber.HasValue) {
+                problem.Extensions[UnreadableProtectedDataProblem.ExtensionSequenceNumber] = decision.SequenceNumber.Value;
             }
 
-            problem.Extensions[UnreadableProtectedDataProblem.ExtensionRetryable] = UnreadableProtectedDataReasonCodes.IsRetryable(reason);
-            problem.Extensions[UnreadableProtectedDataProblem.ExtensionPermanent] = UnreadableProtectedDataReasonCodes.IsPermanent(reason);
+            problem.Extensions[GatewayProblemDetailsExtensions.TenantId] = decision.TenantId;
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionDomain] = decision.Domain;
+            if (!string.IsNullOrWhiteSpace(decision.AggregateId)) {
+                problem.Extensions[UnreadableProtectedDataProblem.ExtensionAggregateId] = decision.AggregateId;
+            }
+
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionMetadataVersion] = decision.MetadataVersion;
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionRetryable] = decision.IsRetryable;
+            problem.Extensions[UnreadableProtectedDataProblem.ExtensionPermanent] = decision.IsPermanent;
         }
 
         if (statusCode == StatusCodes.Status503ServiceUnavailable) {

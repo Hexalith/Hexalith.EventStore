@@ -50,6 +50,8 @@ Some responses include Hexalith-specific extension fields:
 | Status | Error Type | Description |
 | ------ | ---------- | ----------- |
 | 410 / 422 / 503 | [unreadable-protected-data](./unreadable-protected-data.md) | Protected payload or snapshot cannot be returned safely |
+| 202 / 409 / 422 / 425 | [crypto-shredding-workflow-conflict](./crypto-shredding-workflow-conflict.md) | Crypto-shredding workflow conflict (Story 22.7c) |
+| 202 / 409 / 503 | [restored-backup-admission-conflict](./restored-backup-admission-conflict.md) | Restored-backup admission conflict (Story 22.7c) |
 
 ## Query Reason Codes
 

@@ -2,6 +2,8 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
+using Hexalith.EventStore.Contracts.Problems;
+using Hexalith.EventStore.Contracts.Security;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -211,6 +213,319 @@ public class AdminBackupsController(
             return UnexpectedError(nameof(ImportStream), ex);
         }
     }
+
+    /// <summary>
+    /// Story 22.7c — submits a restored-backup admission request. The response carries a safe
+    /// admission status with reason code, watermark conflict description, and operator next action.
+    /// Until the backup engine lands, the implementation returns <c>DeferredValidation</c>: callers
+    /// must NOT serve protected content based on the response.
+    /// </summary>
+    /// <param name="request">The admission request.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The admission result or a ProblemDetails describing the conflict.</returns>
+    [HttpPost("admissions")]
+    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [ProducesResponseType(typeof(RestoredBackupAdmissionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> SubmitAdmission(
+        [FromBody] RestoredBackupAdmissionRequest request,
+        CancellationToken ct = default) {
+        try {
+            ArgumentNullException.ThrowIfNull(request);
+            if (!request.TryValidate(out string? rejectionReason)) {
+                return CreateProblemResult(
+                    StatusCodes.Status400BadRequest,
+                    "Invalid Admission Request",
+                    rejectionReason);
+            }
+
+            // SEC-2: validate tenant access from request body
+            if (!User.HasClaim(AdminClaimTypes.AdminRole, nameof(AdminRole.Admin))
+                && !User.HasClaim(AdminClaimTypes.Tenant, request.TenantId)) {
+                return CreateProblemResult(
+                    StatusCodes.Status403Forbidden,
+                    "Tenant Access Denied",
+                    "Not authorized to admit restored backups for the requested tenant.");
+            }
+
+            RestoredBackupAdmissionResult result = await backupCommandService
+                .AdmitRestoredBackupAsync(request, ct)
+                .ConfigureAwait(false);
+            return MapAdmissionResult(result);
+        }
+        catch (ArgumentException ex) {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Invalid Admission Request", ex.Message);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(SubmitAdmission), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(SubmitAdmission), ex);
+        }
+    }
+
+    /// <summary>
+    /// Story 22.7c — records an operator decision for an existing admission record.
+    /// </summary>
+    /// <param name="tenantId">The tenant scope of the admission.</param>
+    /// <param name="admissionId">The admission identifier.</param>
+    /// <param name="decision">The operator decision.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The updated admission result.</returns>
+    [HttpPost("admissions/{tenantId}/{admissionId}/decision")]
+    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [ProducesResponseType(typeof(RestoredBackupAdmissionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> SubmitAdmissionDecision(
+        string tenantId,
+        string admissionId,
+        [FromQuery] RestoredBackupAdmissionState decision,
+        CancellationToken ct = default) {
+        try {
+            if (!CanAccessTenant(tenantId)) {
+                return TenantDenied("submit restored-backup admission decisions for");
+            }
+
+            string operatorActorId = User.FindFirst("sub")?.Value ?? "anonymous";
+            RestoredBackupAdmissionResult result = await backupCommandService
+                .SubmitRestoreAdmissionDecisionAsync(tenantId, admissionId, decision, operatorActorId, ct)
+                .ConfigureAwait(false);
+            return MapAdmissionResult(result);
+        }
+        catch (ArgumentException ex) {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Invalid Admission Decision", ex.Message);
+        }
+        catch (KeyNotFoundException ex) {
+            return CreateProblemResult(StatusCodes.Status404NotFound, "Admission Not Found", ex.Message);
+        }
+        catch (InvalidOperationException ex) {
+            return CreateProblemResult(StatusCodes.Status409Conflict, "Admission Conflict", ex.Message);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(SubmitAdmissionDecision), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(SubmitAdmissionDecision), ex);
+        }
+    }
+
+    /// <summary>
+    /// Story 22.7c — gets the current status of a restored-backup admission record.
+    /// </summary>
+    /// <param name="tenantId">The tenant scope of the admission.</param>
+    /// <param name="admissionId">The admission identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The admission status, or 404 when no record exists.</returns>
+    [HttpGet("admissions/{tenantId}/{admissionId}")]
+    [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
+    [ProducesResponseType(typeof(RestoredBackupAdmissionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetAdmission(
+        string tenantId,
+        string admissionId,
+        CancellationToken ct = default) {
+        try {
+            if (!CanAccessTenant(tenantId)) {
+                return TenantDenied("read restored-backup admissions for");
+            }
+
+            RestoredBackupAdmissionResult? result = await backupQueryService
+                .GetRestoreAdmissionAsync(tenantId, admissionId, ct)
+                .ConfigureAwait(false);
+            if (result is null) {
+                return CreateProblemResult(
+                    StatusCodes.Status404NotFound,
+                    "Admission Not Found",
+                    "No restored-backup admission record exists with the supplied identifier.");
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(GetAdmission), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(GetAdmission), ex);
+        }
+    }
+
+    /// <summary>
+    /// Story 22.7c — records an operator-initiated crypto-shredding workflow request.
+    /// </summary>
+    [HttpPost("crypto-shredding/workflows")]
+    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [ProducesResponseType(typeof(CryptoShreddingWorkflowDecision), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SubmitCryptoShreddingWorkflow(
+        [FromBody] CryptoShreddingWorkflowRequest request,
+        CancellationToken ct = default) {
+        try {
+            ArgumentNullException.ThrowIfNull(request);
+            if (!request.TryValidate(out string? rejectionReason)) {
+                return CreateProblemResult(
+                    StatusCodes.Status400BadRequest,
+                    "Invalid Crypto-Shredding Workflow Request",
+                    rejectionReason);
+            }
+
+            if (!CanAccessTenant(request.Identity.TenantId)) {
+                return TenantDenied("submit crypto-shredding workflows for");
+            }
+
+            CryptoShreddingWorkflowDecision result = await backupCommandService
+                .SubmitCryptoShreddingWorkflowAsync(request, ct)
+                .ConfigureAwait(false);
+            return MapWorkflowResult(result);
+        }
+        catch (ArgumentException ex) {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Invalid Crypto-Shredding Workflow Request", ex.Message);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(SubmitCryptoShreddingWorkflow), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(SubmitCryptoShreddingWorkflow), ex);
+        }
+    }
+
+    /// <summary>
+    /// Story 22.7c — gets the current status of a crypto-shredding workflow record.
+    /// </summary>
+    [HttpGet("crypto-shredding/workflows/{tenantId}/{workflowId}")]
+    [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
+    [ProducesResponseType(typeof(CryptoShreddingWorkflowDecision), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCryptoShreddingWorkflow(
+        string tenantId,
+        string workflowId,
+        CancellationToken ct = default) {
+        try {
+            if (!CanAccessTenant(tenantId)) {
+                return TenantDenied("read crypto-shredding workflows for");
+            }
+
+            CryptoShreddingWorkflowDecision? result = await backupQueryService
+                .GetCryptoShreddingWorkflowAsync(tenantId, workflowId, ct)
+                .ConfigureAwait(false);
+            if (result is null) {
+                return CreateProblemResult(
+                    StatusCodes.Status404NotFound,
+                    "Workflow Not Found",
+                    "No crypto-shredding workflow record exists with the supplied identifier.");
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(GetCryptoShreddingWorkflow), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(GetCryptoShreddingWorkflow), ex);
+        }
+    }
+
+    private IActionResult MapAdmissionResult(RestoredBackupAdmissionResult result) {
+        ArgumentNullException.ThrowIfNull(result);
+        int statusCode = RestoredBackupAdmissionProblem.GetStatusCode(result.State);
+        if (result.State == RestoredBackupAdmissionState.Accepted) {
+            return Ok(result);
+        }
+
+        if (result.State == RestoredBackupAdmissionState.Pending) {
+            return StatusCode(statusCode, result);
+        }
+
+        // Conflict states return a ProblemDetails surface carrying the safe admission metadata.
+        var problem = new ProblemDetails {
+            Status = statusCode,
+            Type = RestoredBackupAdmissionProblem.TypeUri,
+            Title = RestoredBackupAdmissionProblem.DefaultTitle,
+            Detail = RestoredBackupAdmissionProblem.GetSafeOperatorGuidance(result.State),
+            Instance = HttpContext.Request.Path,
+        };
+        problem.Extensions[RestoredBackupAdmissionProblem.ExtensionAdmissionId] = result.AdmissionId;
+        problem.Extensions[RestoredBackupAdmissionProblem.ExtensionAdmissionState] = result.State.ToString();
+        problem.Extensions[RestoredBackupAdmissionProblem.ExtensionReasonCode] = result.ReasonCode;
+        problem.Extensions[RestoredBackupAdmissionProblem.ExtensionNextAction] = result.NextAction.ToString();
+        problem.Extensions[RestoredBackupAdmissionProblem.ExtensionTenantId] = result.TenantId;
+        problem.Extensions[RestoredBackupAdmissionProblem.ExtensionDomain] = result.Domain;
+        problem.Extensions[RestoredBackupAdmissionProblem.ExtensionBackupManifestId] = result.BackupManifestId;
+        problem.Extensions[RestoredBackupAdmissionProblem.ExtensionMetadataVersion] = result.ProtectionMetadataVersion;
+        if (!string.IsNullOrWhiteSpace(result.WatermarkConflict)) {
+            problem.Extensions[RestoredBackupAdmissionProblem.ExtensionWatermarkConflict] = result.WatermarkConflict;
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.CorrelationId)) {
+            problem.Extensions[RestoredBackupAdmissionProblem.ExtensionCorrelationId] = result.CorrelationId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.AuditId)) {
+            problem.Extensions[RestoredBackupAdmissionProblem.ExtensionAuditId] = result.AuditId;
+        }
+
+        if (statusCode == StatusCodes.Status503ServiceUnavailable) {
+            Response.Headers.RetryAfter = "5";
+        }
+
+        return StatusCode(statusCode, problem);
+    }
+
+    private IActionResult MapWorkflowResult(CryptoShreddingWorkflowDecision result) {
+        ArgumentNullException.ThrowIfNull(result);
+        int statusCode = CryptoShreddingWorkflowProblem.GetStatusCode(result.State);
+        if (statusCode == StatusCodes.Status202Accepted) {
+            return StatusCode(statusCode, result);
+        }
+
+        var problem = new ProblemDetails {
+            Status = statusCode,
+            Type = CryptoShreddingWorkflowProblem.TypeUri,
+            Title = CryptoShreddingWorkflowProblem.DefaultTitle,
+            Detail = CryptoShreddingWorkflowProblem.GetSafeOperatorGuidance(result.State),
+            Instance = HttpContext.Request.Path,
+        };
+        problem.Extensions[CryptoShreddingWorkflowProblem.ExtensionWorkflowId] = result.Identity.WorkflowId;
+        problem.Extensions[CryptoShreddingWorkflowProblem.ExtensionWorkflowState] = result.State.ToString();
+        problem.Extensions[CryptoShreddingWorkflowProblem.ExtensionReasonCode] = result.ReasonCode;
+        problem.Extensions[CryptoShreddingWorkflowProblem.ExtensionNextAction] = result.NextAction.ToString();
+        problem.Extensions[CryptoShreddingWorkflowProblem.ExtensionTenantId] = result.Identity.TenantId;
+        problem.Extensions[CryptoShreddingWorkflowProblem.ExtensionDomain] = result.Identity.Domain;
+        problem.Extensions[CryptoShreddingWorkflowProblem.ExtensionIrreversibleDecisionRecorded] = result.IrreversibleDecisionRecorded;
+        if (!string.IsNullOrWhiteSpace(result.Identity.AggregateId)) {
+            problem.Extensions[CryptoShreddingWorkflowProblem.ExtensionAggregateId] = result.Identity.AggregateId;
+        }
+
+        if (result.Identity.FromSequence.HasValue) {
+            problem.Extensions[CryptoShreddingWorkflowProblem.ExtensionFromSequence] = result.Identity.FromSequence.Value;
+        }
+
+        if (result.Identity.ToSequence.HasValue) {
+            problem.Extensions[CryptoShreddingWorkflowProblem.ExtensionToSequence] = result.Identity.ToSequence.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.CorrelationId)) {
+            problem.Extensions[CryptoShreddingWorkflowProblem.ExtensionCorrelationId] = result.CorrelationId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.AuditId)) {
+            problem.Extensions[CryptoShreddingWorkflowProblem.ExtensionAuditId] = result.AuditId;
+        }
+
+        return StatusCode(statusCode, problem);
+    }
+
+    private bool CanAccessTenant(string tenantId)
+        => User.HasClaim(AdminClaimTypes.AdminRole, nameof(AdminRole.Admin))
+            || User.HasClaim(AdminClaimTypes.Tenant, tenantId);
+
+    private ObjectResult TenantDenied(string action)
+        => CreateProblemResult(
+            StatusCodes.Status403Forbidden,
+            "Tenant Access Denied",
+            $"Not authorized to {action} the requested tenant.");
 
     private string? ResolveTenantScope(string? requestedTenantId) {
         if (requestedTenantId is not null) {

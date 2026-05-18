@@ -5,6 +5,8 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
 using Hexalith.EventStore.Admin.Server.Controllers;
+using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Testing.Security;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -316,6 +318,138 @@ public class AdminBackupsControllerTests {
         objectResult.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
     }
 
+    // === Story 22.7c admission/workflow endpoints ===
+
+    [Fact]
+    public async Task SubmitAdmission_InvalidRequest_Returns400() {
+        RestoredBackupAdmissionRequest request = ValidAdmissionRequest() with { ToSequence = -1 };
+
+        IActionResult result = await _sut.SubmitAdmission(request);
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+    }
+
+    [Fact]
+    public async Task SubmitAdmission_DeferredValidation_ReturnsSafeProblemDetails() {
+        RestoredBackupAdmissionRequest request = ValidAdmissionRequest();
+        var admission = new RestoredBackupAdmissionResult(
+            request.AdmissionId,
+            RestoredBackupAdmissionState.DeferredValidation,
+            request.TenantId,
+            request.Domain,
+            request.AggregateId,
+            request.FromSequence,
+            request.ToSequence,
+            request.BackupManifestId,
+            request.ProtectionMetadataVersion,
+            request.KeyReferencePolicy,
+            request.KeyAliasFingerprint,
+            "backup-engine-deferred",
+            RestoredBackupAdmissionResult.DeferredValidationCode,
+            CryptoShreddingNextAction.ProvideRestoreEvidence,
+            request.CorrelationId,
+            null,
+            request.OperatorActorId,
+            DateTimeOffset.UtcNow,
+            false);
+        _ = _commandService.AdmitRestoredBackupAsync(request, Arg.Any<CancellationToken>())
+            .Returns(admission);
+
+        IActionResult result = await _sut.SubmitAdmission(request);
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+        ProblemDetails problem = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Extensions["admissionId"].ShouldBe(request.AdmissionId);
+        ProtectedDataLeakSentinel.AssertNoLeak(problem.Extensions.Values.Select(static v => v?.ToString()));
+    }
+
+    [Fact]
+    public async Task GetAdmission_NonAdminMismatchedTenant_Returns403WithoutLookup() {
+        _sut.ControllerContext.HttpContext.User = CreatePrincipal("ReadOnly", "tenant-a");
+
+        IActionResult result = await _sut.GetAdmission("tenant-b", "admission-1");
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        _ = await _queryService.DidNotReceiveWithAnyArgs()
+            .GetRestoreAdmissionAsync(default!, default!, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SubmitAdmissionDecision_PassesTenantAndDecisionToService() {
+        var admission = new RestoredBackupAdmissionResult(
+            "admission-1",
+            RestoredBackupAdmissionState.Accepted,
+            "tenant-a",
+            "orders",
+            "agg-1",
+            0,
+            10,
+            "manifest-1",
+            1,
+            KeyReferencePolicy.NoKeyReference,
+            null,
+            null,
+            RestoredBackupAdmissionResult.AcceptedCode,
+            CryptoShreddingNextAction.None,
+            null,
+            "audit-1",
+            "operator",
+            DateTimeOffset.UtcNow,
+            false);
+        _ = _commandService.SubmitRestoreAdmissionDecisionAsync(
+                "tenant-a",
+                "admission-1",
+                RestoredBackupAdmissionState.Accepted,
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(admission);
+
+        IActionResult result = await _sut.SubmitAdmissionDecision("tenant-a", "admission-1", RestoredBackupAdmissionState.Accepted);
+
+        OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
+        ok.Value.ShouldBe(admission);
+    }
+
+    [Fact]
+    public async Task SubmitCryptoShreddingWorkflow_ReturnsAcceptedDecision() {
+        CryptoShreddingWorkflowRequest request = ValidWorkflowRequest();
+        var decision = new CryptoShreddingWorkflowDecision(
+            request.Identity,
+            CryptoShreddingWorkflowState.Requested,
+            CryptoShreddingWorkflowDecision.ReasonCodeFor(CryptoShreddingWorkflowState.Requested),
+            CryptoShreddingWorkflowDecision.NextActionFor(CryptoShreddingWorkflowState.Requested),
+            request.CorrelationId,
+            "audit-1",
+            request.OperatorActorId,
+            DateTimeOffset.UtcNow,
+            false,
+            false);
+        _ = _commandService.SubmitCryptoShreddingWorkflowAsync(request, Arg.Any<CancellationToken>())
+            .Returns(decision);
+
+        IActionResult result = await _sut.SubmitCryptoShreddingWorkflow(request);
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status202Accepted);
+        objectResult.Value.ShouldBe(decision);
+    }
+
+    [Fact]
+    public async Task SubmitCryptoShreddingWorkflow_NonAdminMismatchedTenant_Returns403() {
+        _sut.ControllerContext.HttpContext.User = CreatePrincipal("ReadOnly", "tenant-a");
+        CryptoShreddingWorkflowRequest request = ValidWorkflowRequest() with {
+            Identity = ValidWorkflowRequest().Identity with { TenantId = "tenant-b" },
+        };
+
+        IActionResult result = await _sut.SubmitCryptoShreddingWorkflow(request);
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+    }
+
     // === Error code mapping ===
 
     [Fact]
@@ -354,6 +488,43 @@ public class AdminBackupsControllerTests {
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
         problemDetails.Extensions.ShouldContainKey("correlationId");
+    }
+
+    private static RestoredBackupAdmissionRequest ValidAdmissionRequest()
+        => new(
+            AdmissionId: "01HKADADADADADADADADADADAD",
+            TenantId: "tenant-a",
+            Domain: "orders",
+            AggregateId: "agg-1",
+            FromSequence: 0,
+            ToSequence: 10,
+            BackupManifestId: "manifest-1",
+            BackupCreatedAtUtc: DateTimeOffset.UtcNow,
+            RestoreRequestedAtUtc: DateTimeOffset.UtcNow,
+            ProtectionMetadataVersion: 1,
+            KeyReferencePolicy: KeyReferencePolicy.NoKeyReference,
+            KeyAliasFingerprint: null,
+            DeletionWatermarkUtc: null,
+            CorrelationId: "01HKCORR",
+            OperatorActorId: "operator");
+
+    private static CryptoShreddingWorkflowRequest ValidWorkflowRequest() {
+        var identity = new CryptoShreddingWorkflowIdentity(
+            WorkflowId: "01HKAAAAAAAAAAAAAAAAAAAAAA",
+            TenantId: "tenant-a",
+            Domain: "orders",
+            Scope: CryptoShreddingWorkflowScope.Aggregate,
+            AggregateId: "agg-1",
+            FromSequence: null,
+            ToSequence: null,
+            KeyReferencePolicy: KeyReferencePolicy.NoKeyReference,
+            KeyAliasFingerprint: null);
+        return new CryptoShreddingWorkflowRequest(
+            identity,
+            CryptoShreddingWorkflowState.Deleted,
+            "operator",
+            "01HKCORR",
+            DateTimeOffset.UtcNow);
     }
 
     private static ClaimsPrincipal CreatePrincipal(string adminRole, params string[] tenants) {

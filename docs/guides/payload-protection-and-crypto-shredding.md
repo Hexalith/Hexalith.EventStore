@@ -221,10 +221,124 @@ exception text) with an `AssertNoLeak(IEnumerable<string?>)` helper. The Server 
 these sentinels into protection-service fakes (`FakeUnreadableProtectionService`) and scan every
 captured log line, failure reason, ProblemDetails JSON, and exception message.
 
-## Deferred to Stories 22.7c / 22.7d
+## Crypto-shredding workflow and restored-backup safety (22.7c)
 
-- Key lifecycle workflow (registration, rotation, deletion, invalidation, **crypto-shredding**)
-  and restored-backup governance — Story 22.7c.
+Story 22.7c lands the **provider-neutral key-lifecycle workflow** and **restored-backup admission**
+contracts that build on top of the 22.7a/22.7b foundation. EventStore records auditable workflow
+state, restore admission decisions, and a single canonical readability decision result that every
+read, publish, replay, rebuild, snapshot-load, backup-admission, admin, CLI, and MCP surface
+consumes.
+
+> **Out of scope.** Real encryption providers, key vault / KMS integration, certificate
+> management, DAPR secret-store wiring, legal hold UX, jurisdiction-specific compliance
+> automation, full operational redaction (Story 22.7d), and a physical backup engine remain
+> deferred. Admin backup trigger/validate/restore/export/import operations still return a
+> deferred result; the new admission contracts return `DeferredValidation` until the engine
+> lands.
+
+### Canonical readability decision
+
+Every fail-closed runtime path produces a `ProtectedDataReadabilityDecision` (in
+`Hexalith.EventStore.Contracts.Security`). The decision wraps the 22.7b unreadable taxonomy with
+22.7c orchestration outcomes:
+
+| Status | Meaning |
+| --- | --- |
+| `Readable` | Plaintext available; safe to forward to domain/publish/read. |
+| `Unreadable` | Provider reported one of the 22.7b unreadable reasons. |
+| `MalformedMetadata` / `UnknownVersion` / `ProviderOpaque` / `ProviderUnavailable` | Convenience aliases mapping to specific 22.7b reasons. |
+| `DeferredValidation` | Restore admission cannot prove safety yet (transient unreadable). |
+| `RestoreConflict` | Restored backup conflicts with an irreversible workflow watermark. |
+| `QuarantineRequired` | Affected data is quarantined awaiting operator inspection. |
+| `OperatorDecisionRequired` | A pending workflow or restore conflict needs explicit operator action. |
+
+`ProtectedDataReadabilityDecisionFactory.FromOutcome(...)` / `.FromMetadata(...)` are the only
+entry points runtime callers use; they accept an optional `RestoredBackupAdmissionResult` and let
+admission conflicts override the per-row readability conclusion.
+
+### Crypto-shredding workflow state machine
+
+```text
+            Requested ──approve──▶ Approved ──dispatch──▶ PendingProvider
+                │                                              │
+                │ reject                                        │ provider terminal outcome
+                ▼                                               ▼
+              Rejected                          ┌─── Invalidated ──▶ Completed
+                                                ├─── Deleted ──────▶ Completed
+                                                ├─── VerificationFailed ──▶ OperatorDecisionRequired
+                                                └─── (cancel)     ──▶ CancelledBeforeDecision
+
+restored backup admission conflict
+   ─▶ Invalidated/Deleted ─▶ RestoreConflict ─▶ OperatorDecisionRequired ─▶ {Quarantined, Completed}
+```
+
+- **Idempotency** is value-based on `CryptoShreddingWorkflowIdentity` (workflow ULID, tenant,
+  domain, scope, aggregate, sequence range, key reference policy, key alias fingerprint). Repeated
+  requests after a terminal state return the existing audit/status with `IdempotentReplay = true`.
+- **Cancellation** is allowed only in non-terminal states (`Requested`, `Approved`,
+  `PendingProvider`). After `Invalidated`/`Deleted`, cancellation cannot undo the decision; the
+  caller receives the existing terminal status.
+- **Key references** are always stored as 16-character SHA-256 hex fingerprints. Raw key aliases
+  are NEVER persisted, even when the policy permits a reference.
+
+### Restored-backup admission
+
+`IBackupCommandService.AdmitRestoredBackupAsync` accepts a `RestoredBackupAdmissionRequest` (safe
+metadata only — tenant, domain, aggregate, sequence range, manifest identity, protection metadata
+version, key alias fingerprint, deletion watermark) and returns a `RestoredBackupAdmissionResult`
+with one of:
+
+| State | Behavior |
+| --- | --- |
+| `Accepted` | Protected data may be served. |
+| `Blocked` | Restored backup conflicts with an irreversible workflow watermark; reading is blocked. |
+| `Quarantined` | Affected data is quarantined until an operator closes the inspection. |
+| `OperatorDecisionRequired` | Explicit operator decision is required before progress. |
+| `DeferredValidation` | Admission cannot be proved with current evidence; provide more and retry. |
+
+**Current behavior.** Until the backup engine lands, the implementation returns
+`DeferredValidation` with the safe watermark conflict code `backup-engine-deferred`. Callers
+must NOT serve protected content based on this admission. The admin API surfaces
+`POST /api/v1/admin/backups/admissions`,
+`POST /api/v1/admin/backups/admissions/{admissionId}/decision`, and
+`GET /api/v1/admin/backups/admissions/{admissionId}` so the contract can be exercised end-to-end.
+
+### Operator-facing ProblemDetails
+
+| Type URI | When |
+| --- | --- |
+| `https://hexalith.io/problems/unreadable-protected-data` | Read/replay/admin path observed unreadable protected data (22.7b). |
+| `https://hexalith.io/problems/crypto-shredding-workflow-conflict` | Workflow request conflicts with current state (409) or replays a pending decision (425). |
+| `https://hexalith.io/problems/restored-backup-admission-conflict` | Admission state is Blocked/Quarantined/OperatorDecisionRequired (409) or DeferredValidation (503). |
+
+All ProblemDetails responses carry only safe envelope metadata + stable kebab-case reason codes +
+operator next-action hints. Payload bytes, snapshot state, raw keys, key alias text, provider
+exception messages, state-store keys, connection strings, and stack traces never appear.
+
+### Audit evidence
+
+`CryptoShreddingAuditEvent` records every workflow transition and admission decision. Each entry
+carries: tenant, domain, aggregate or stream pattern, sequence range, protection metadata
+version, key reference policy + alias fingerprint (policy-permitted), workflow command identity,
+correlation, decision actor identity, timestamp, decision outcome enum, and reason code. Validation
+rejects records lacking required fields, and forbidden secret-shaped fields are caught at
+construction by `CryptoShreddingAuditEvent.TryValidate`.
+
+### Out of scope
+
+- Real encryption providers, key vault integration, cloud KMS integration, DAPR secret-store
+  setup, certificate management, provider-specific cryptographic algorithms.
+- Physical backup engine implementation — trigger/validate/restore/export/import operations
+  remain deferred.
+- Deleting immutable event records, snapshots, or audit records as the crypto-shredding
+  mechanism. Crypto-shredding records and enforces consequences; it never deletes audit-relevant
+  state.
+- Legal hold, data-subject UX, approval workflow UI, jurisdiction-specific compliance automation.
+- Broad operational redaction across all admin UI/CLI/MCP/ProblemDetails surfaces (Story 22.7d).
+- Skip-past-shredded replay/rebuild — no skip policy is added.
+
+## Deferred to Story 22.7d
+
 - Broad redaction across CLI, MCP, all admin UI pages, all backup tooling — Story 22.7d.
 - Real encryption provider, key vault integration, cloud KMS, DAPR secret-store integration.
 

@@ -6,6 +6,7 @@ using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
@@ -53,7 +54,7 @@ internal static class AggregateActorTestHelper {
         UserId: "system",
         Extensions: null);
 
-    internal static ActorTestContext CreateActor() {
+    internal static ActorTestContext CreateActor(IEventPayloadProtectionService? payloadProtectionService = null) {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
@@ -69,7 +70,7 @@ internal static class AggregateActorTestHelper {
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>())
             .Returns(true);
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, payloadProtectionService ?? new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher);
 
         // Set the mock state manager via reflection (Dapr runtime normally sets this)
         PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);

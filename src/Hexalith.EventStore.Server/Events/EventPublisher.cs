@@ -86,9 +86,19 @@ public partial class EventPublisher(
                 // never invoke unprotect on bytes whose provider it cannot identify, AND must not
                 // publish opaque bytes under publish-time metadata that would lie about state. Fail
                 // closed with a sanitized reason — no provider exception text, no payload bytes.
+                // Story 22.7c: every fail-closed publish path routes through the canonical
+                // ProtectedDataReadabilityDecision so observability is identical across surfaces.
                 if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {
                     UnreadableProtectedDataReason opaqueReason = UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(storedMetadata);
-                    string opaqueReasonCode = UnreadableProtectedDataReasonCodes.From(opaqueReason);
+                    ProtectedDataReadabilityDecision opaqueDecision = ProtectedDataReadabilityDecision.FromUnreadable(
+                        opaqueReason,
+                        ProtectedDataDecisionStage.Publish,
+                        identity.TenantId,
+                        identity.Domain,
+                        identity.AggregateId,
+                        eventEnvelope.SequenceNumber,
+                        storedMetadata.MetadataVersion,
+                        correlationId);
                     Log.UnreadableProtectedPayload(
                         logger,
                         correlationId,
@@ -97,9 +107,9 @@ public partial class EventPublisher(
                         identity.Domain,
                         identity.AggregateId,
                         eventEnvelope.SequenceNumber,
-                        opaqueReasonCode);
-                    _ = (activity?.SetStatus(ActivityStatusCode.Error, $"Stage=Publish ReasonCode={opaqueReasonCode}"));
-                    return new EventPublishResult(false, publishedCount, BuildUnreadableFailureReason(opaqueReasonCode));
+                        opaqueDecision.ReasonCode);
+                    _ = (activity?.SetStatus(ActivityStatusCode.Error, $"Stage={ProtectedDataReadabilityDecisionStageCodes.From(opaqueDecision.Stage)} ReasonCode={opaqueDecision.ReasonCode}"));
+                    return new EventPublishResult(false, publishedCount, BuildUnreadableFailureReason(opaqueDecision.ReasonCode));
                 }
 
                 // Story 22.7b: Use the typed metadata-aware unprotect entry point so unreadable
@@ -127,8 +137,17 @@ public partial class EventPublisher(
                         storedMetadata);
                 }
 
-                if (unprotectOutcome.IsUnreadable) {
-                    string unreadableReasonCode = UnreadableProtectedDataReasonCodes.From(unprotectOutcome.UnreadableReason!.Value);
+                // Story 22.7c: route through the canonical decision factory so the publisher,
+                // actor, snapshot manager, and stream reader emit decisions with identical shape.
+                ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecisionFactory.FromOutcome(
+                    unprotectOutcome,
+                    ProtectedDataDecisionStage.Publish,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    eventEnvelope.SequenceNumber,
+                    correlationId);
+                if (!decision.IsReadable) {
                     Log.UnreadableProtectedPayload(
                         logger,
                         correlationId,
@@ -137,9 +156,9 @@ public partial class EventPublisher(
                         identity.Domain,
                         identity.AggregateId,
                         eventEnvelope.SequenceNumber,
-                        unreadableReasonCode);
-                    _ = (activity?.SetStatus(ActivityStatusCode.Error, $"Stage=Publish ReasonCode={unreadableReasonCode}"));
-                    return new EventPublishResult(false, publishedCount, BuildUnreadableFailureReason(unreadableReasonCode));
+                        decision.ReasonCode);
+                    _ = (activity?.SetStatus(ActivityStatusCode.Error, $"Stage={ProtectedDataReadabilityDecisionStageCodes.From(decision.Stage)} ReasonCode={decision.ReasonCode}"));
+                    return new EventPublishResult(false, publishedCount, BuildUnreadableFailureReason(decision.ReasonCode));
                 }
 
                 var protectionResult = new PayloadProtectionResult(

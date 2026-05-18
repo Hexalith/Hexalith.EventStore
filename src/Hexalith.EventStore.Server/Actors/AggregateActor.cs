@@ -53,8 +53,18 @@ public partial class AggregateActor(
     private const string TraceStateExtensionKey = "tracestate";
     private const string PendingCommandCountKey = "pending_command_count";
     /// <inheritdoc/>
-    public async Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command) {
+    public Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command)
+        => ProcessCommandAsync(command, CancellationToken.None);
+
+    /// <summary>
+    /// Processes a command envelope within the aggregate actor context.
+    /// </summary>
+    /// <param name="command">The command envelope to process.</param>
+    /// <param name="cancellationToken">Cancellation token for local/in-process callers.</param>
+    /// <returns>The result of processing the command.</returns>
+    public async Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(command);
+        cancellationToken.ThrowIfCancellationRequested();
 
         Activity? processActivity;
         if (Activity.Current is null && TryGetFallbackParentContext(command, out ActivityContext fallbackParent)) {
@@ -290,7 +300,7 @@ public partial class AggregateActor(
                             : await EnsureEventsReadableForDomainAsync(
                                 command.AggregateIdentity,
                                 rehydrationResult.Events,
-                                CancellationToken.None).ConfigureAwait(false);
+                                cancellationToken).ConfigureAwait(false);
 
                         currentState = rehydrationResult is null
                             ? null
@@ -1583,10 +1593,20 @@ public partial class AggregateActor(
             EventStorePayloadProtectionMetadata storedMetadata = EventStorePayloadProtectionMetadataCarrier
                 .Read(envelope.Extensions);
 
+            // Story 22.7c: route every fail-closed rehydrate decision through the canonical
+            // ProtectedDataReadabilityDecisionFactory so the actor, publisher, snapshot manager,
+            // and stream reader emit decisions with identical shape.
             if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {
+                ProtectedDataReadabilityDecision opaqueDecision = ProtectedDataReadabilityDecisionFactory.FromMetadata(
+                    storedMetadata,
+                    ProtectedDataDecisionStage.Rehydrate,
+                    identity.TenantId,
+                    identity.Domain,
+                    identity.AggregateId,
+                    envelope.SequenceNumber);
                 throw new ProtectedDataUnreadableException(
-                    UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(storedMetadata),
-                    stage: "rehydrate",
+                    opaqueDecision.UnreadableReason!.Value,
+                    stage: ProtectedDataReadabilityDecisionStageCodes.From(opaqueDecision.Stage),
                     sequenceNumber: envelope.SequenceNumber);
             }
 
@@ -1611,10 +1631,17 @@ public partial class AggregateActor(
                     storedMetadata);
             }
 
-            if (outcome.IsUnreadable) {
+            ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecisionFactory.FromOutcome(
+                outcome,
+                ProtectedDataDecisionStage.Rehydrate,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                envelope.SequenceNumber);
+            if (!decision.IsReadable) {
                 throw new ProtectedDataUnreadableException(
-                    outcome.UnreadableReason!.Value,
-                    stage: "rehydrate",
+                    decision.UnreadableReason!.Value,
+                    stage: ProtectedDataReadabilityDecisionStageCodes.From(decision.Stage),
                     sequenceNumber: envelope.SequenceNumber);
             }
 

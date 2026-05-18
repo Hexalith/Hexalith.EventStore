@@ -7,6 +7,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.Extensions.Logging;
 
@@ -82,6 +83,40 @@ public class AggregateActorDomainResultTests {
             Arg.Is<object>(o => o.ToString()!.Contains("Domain service result")),
             Arg.Any<Exception?>(),
             Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_RehydrationReadability_UsesCallerCancellationToken() {
+        // Arrange
+        var protectionService = new FakeUnreadableProtectionService();
+        ActorTestContext ctx = CreateActor(protectionService);
+        ConfigureNoDuplicate(ctx.StateManager);
+        using var cts = new CancellationTokenSource();
+
+        var metadata = new AggregateMetadata(1, DateTimeOffset.UtcNow, null);
+        _ = ctx.StateManager.TryGetStateAsync<AggregateMetadata>(
+            "test-tenant:test-domain:agg-001:metadata",
+            Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
+
+        var evt = new EventEnvelope(
+            "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0, DateTimeOffset.UtcNow,
+            "corr-1", "cause-1", "user-1", "1.0.0", "OrderCreated", 1, "json",
+            [1, 2, 3], null);
+        _ = ctx.StateManager.TryGetStateAsync<EventEnvelope>(
+            "test-tenant:test-domain:agg-001:events:1",
+            Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                cts.Cancel();
+                return new ConditionalValue<EventEnvelope>(true, evt);
+            });
+
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act & Assert
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => ctx.Actor.ProcessCommandAsync(envelope, cts.Token));
+        protectionService.EventUnprotectInvocations.ShouldBeEmpty();
     }
 
     [Fact]

@@ -59,8 +59,18 @@ public class FakeAggregateActor : IAggregateActor {
         => Task.FromResult(new AggregateStreamMetadata(Exists: ConfiguredEvents.Length > 0, CurrentSequence: ConfiguredEvents.Length == 0 ? 0 : ConfiguredEvents.Max(e => e.SequenceNumber)));
 
     /// <inheritdoc/>
-    public Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command) {
+    public Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command)
+        => ProcessCommandAsync(command, CancellationToken.None);
+
+    /// <summary>
+    /// Processes a command envelope while honoring local/in-process cancellation.
+    /// </summary>
+    /// <param name="command">The command envelope.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The configured command processing result.</returns>
+    public Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(command);
+        cancellationToken.ThrowIfCancellationRequested();
         _receivedCommands.Enqueue(command);
 
         if (ConfiguredException is not null) {
