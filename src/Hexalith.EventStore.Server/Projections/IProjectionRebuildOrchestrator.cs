@@ -26,6 +26,18 @@ public interface IProjectionRebuildOrchestrator {
     /// page or per aggregate. Acceptable under the current GlobalAdministrator-only operator-rebuild gate (D2b);
     /// any future change permitting tenant-scoped operator rebuild MUST add per-iteration tenant re-validation.
     /// </para>
+    /// <para>
+    /// <b>Operator-scope LastAppliedSequence semantics (P-DEC3-8P):</b> for domain-wide rebuilds
+    /// (<c>scope.AggregateId is null</c>), the operator-scope checkpoint row's <c>LastAppliedSequence</c>
+    /// is intentionally written as <c>0</c> after <see cref="ProjectionRebuildStatus.Succeeded"/>. Per-aggregate
+    /// rows carry truthful per-aggregate progress because aggregate sequence spaces are heterogeneous and a
+    /// cross-aggregate <c>Math.Max</c> would inflate the operator-scope value to an artifact of the largest
+    /// aggregate's space (e.g., domain covering aggregates A {0..100} and B {0..1000} would otherwise report
+    /// operator-scope LastAppliedSequence=1000 which is not meaningful domain-wide progress). Admin/CLI/MCP
+    /// callers querying domain-wide rebuild status should treat operator-scope <c>LastAppliedSequence</c> as
+    /// "rebuild completed" rather than a progress indicator; per-aggregate rows are the source of truth.
+    /// Aggregate-scoped rebuilds (<c>scope.AggregateId is not null</c>) write the actual applied sequence.
+    /// </para>
     /// </remarks>
     Task RebuildProjectionAsync(ProjectionRebuildCheckpointScope scope, CancellationToken cancellationToken = default);
 }

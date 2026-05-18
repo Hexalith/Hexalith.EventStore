@@ -12,7 +12,7 @@ Request body: `StreamReadRequest`
 - `domain`: domain identifier.
 - `aggregateId`: aggregate-specific stream identifier. Domain-wide rebuild enumeration is operator-owned and is not exposed as raw state-store scans.
 - `fromSequence`: exclusive lower sequence bound. Use `0` to read from the beginning.
-- `toSequence`: optional inclusive upper sequence bound. When `toSequence` is set equal to `fromSequence` the request is valid and EventStore returns an empty page (`eventCount == 0`, `lastSequenceReturned == null`, `latestSequence == currentSequence`). Use this shape to probe stream existence without reading events. Empty streams that have actor metadata (touched aggregates with no events persisted) return 200 with `eventCount == 0` and `latestSequence == 0`; only the absence of actor metadata returns 404 `missing-stream`.
+- `toSequence`: optional inclusive upper sequence bound. When `toSequence` is set equal to `fromSequence` the request is valid and EventStore returns an empty page (`eventCount == 0`, `lastSequenceReturned == null`, `latestSequence >= currentSequence`). Use this shape to probe stream existence without reading events. Empty streams that have actor metadata (touched aggregates with no events persisted) return 200 with `eventCount == 0` and `latestSequence == 0`; only the absence of actor metadata returns 404 `missing-stream`. `latestSequence` is `>=` rather than `==` `currentSequence` because the actor may persist new events between the metadata read and the range read; the response always reflects the highest sequence number actually returned.
 - `checkpoint`: optional `ProjectionRebuildCheckpoint` cursor metadata.
 - `continuationToken`: opaque token from a prior page. Current implementation fails closed for supplied tokens until request-bound validation is enabled.
 - `pageSize`: maximum events per page, bounded by EventStore.
@@ -66,6 +66,10 @@ Tenant and domain identifiers are case-sensitive at the state-store layer. Event
 The current poller/rebuild conflict check assumes `projectionName == domain` for domain projection rebuilds. If an operator uses a projection name that differs from the EventStore domain, the conflict guard may not identify the same checkpoint scope. Use the domain name as the projection name for this story's rebuild endpoints until a later contract introduces an explicit domain-to-projection mapping.
 
 ## Operator Lifecycle
+
+### Domain-wide Rebuild Progress Reporting
+
+For domain-wide rebuilds (no `aggregateId`), the operator-scope checkpoint row's `lastAppliedSequence` is intentionally reported as `0` after `succeeded`. Per-aggregate checkpoint rows carry truthful per-aggregate progress; admin/CLI/MCP callers should treat the operator-scope `lastAppliedSequence` for domain-wide rebuilds as a "rebuild completed" marker rather than a progress indicator. The cross-aggregate maximum would otherwise inflate to an artifact of the largest aggregate's sequence space (e.g., a domain covering aggregates A `{0..100}` and B `{0..1000}` would report `1000` which is not meaningful as domain-wide progress). Aggregate-scoped rebuilds (with an explicit `aggregateId`) report the actual applied sequence.
 
 Operator rebuild lifecycle endpoints are under `api/v1/admin/projections/{tenantId}/{projectionName}`:
 
