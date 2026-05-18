@@ -43,7 +43,7 @@
   </ItemGroup>
   <ItemGroup Label="Blazor">
     <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="5.0.0-rc.2-26098.1" />
-    <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.14.1" />
+    <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.14.2" />
   </ItemGroup>
   <ItemGroup Label="Hexalith">
     <PackageVersion Include="Hexalith.Commons.UniqueIds" Version="2.13.0" />
