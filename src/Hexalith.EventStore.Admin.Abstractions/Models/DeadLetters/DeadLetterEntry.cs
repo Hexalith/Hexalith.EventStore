@@ -1,3 +1,7 @@
+using System.Text.Json.Serialization;
+
+using Hexalith.EventStore.Admin.Abstractions.Models;
+
 namespace Hexalith.EventStore.Admin.Abstractions.Models.DeadLetters;
 
 /// <summary>
@@ -47,15 +51,36 @@ public record DeadLetterEntry(
         ? CorrelationId
         : throw new ArgumentException("CorrelationId cannot be null, empty, or whitespace.", nameof(CorrelationId));
 
-    /// <summary>Gets the failure reason.</summary>
-    public string FailureReason { get; } = !string.IsNullOrWhiteSpace(FailureReason)
+    /// <summary>Gets the failure reason when safe to expose.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string FailureReason { get; init; } = !string.IsNullOrWhiteSpace(FailureReason)
         ? FailureReason
         : throw new ArgumentException("FailureReason cannot be null, empty, or whitespace.", nameof(FailureReason));
+
+    /// <summary>Gets the redacted failure descriptor.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AdminRedactedContent? Failure { get; init; }
 
     /// <summary>Gets the original command type.</summary>
     public string OriginalCommandType { get; } = !string.IsNullOrWhiteSpace(OriginalCommandType)
         ? OriginalCommandType
         : throw new ArgumentException("OriginalCommandType cannot be null, empty, or whitespace.", nameof(OriginalCommandType));
+
+    /// <summary>Creates a dead-letter entry whose failure diagnostic is represented by a redacted descriptor.</summary>
+    public static DeadLetterEntry WithRedactedFailure(
+        string messageId,
+        string tenantId,
+        string domain,
+        string aggregateId,
+        string correlationId,
+        AdminRedactedContent failure,
+        DateTimeOffset failedAtUtc,
+        int retryCount,
+        string originalCommandType)
+        => new(messageId, tenantId, domain, aggregateId, correlationId, AdminRedactedContent.DefaultPlaceholder, failedAtUtc, retryCount, originalCommandType) {
+            FailureReason = null!,
+            Failure = failure ?? throw new ArgumentNullException(nameof(failure))
+        };
 
     /// <summary>
     /// Returns a string representation with failure details redacted (SEC-5).

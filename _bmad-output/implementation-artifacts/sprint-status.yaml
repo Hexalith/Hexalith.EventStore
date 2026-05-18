@@ -35,7 +35,10 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-18T18:40:00+02:00' # Story 22.7d-1 moved review -> done after code review patches and validation passed.
+last_updated: '2026-05-18T18:50:46+02:00' # Story 22.7d-2 moved in-progress -> done after review fixes and focused Admin validation passed.
+# Previous last_updated detail preserved: 2026-05-18T18:50:00+02:00 - Story 22.7d-2 moved ready-for-dev -> in-progress for Admin API/Web UI protected-data redaction implementation.
+# Previous last_updated detail preserved: 2026-05-18T18:45:00+02:00 - Story 22.7d-2 materialized by bmad-create-story and moved backlog -> ready-for-dev for Admin API/Web UI protected-data redaction.
+# Previous last_updated detail preserved: 2026-05-18T18:40:00+02:00 - Story 22.7d-1 moved review -> done after code review patches and validation passed.
 # Previous last_updated detail preserved: 2026-05-18T16:00:00+02:00 - Story 22.7d-1 moved in-progress -> review after runtime diagnostic redaction implementation and focused validation passed.
 # Previous last_updated detail preserved: 2026-05-18T13:51:00+02:00 - Story 22.7d-1 moved ready-for-dev -> in-progress for protected-data runtime diagnostic redaction implementation.
 # Previous last_updated detail preserved: 2026-05-18T18:30:00+02:00 - Story 22.7d-1 advanced elicitation hardening applied while remaining ready-for-dev: allow-list-first diagnostics, risky-callsite inventory/disposition, Contracts-vs-runtime redactor ownership, provider-exception redactor tests, dead-letter metadata checks, activity event/tag checks, and individual ProblemDetails extension assertions.
@@ -363,7 +366,7 @@ development_status:
   # for 22-7d-1..4 must be created via bmad-create-story before they can move to ready-for-dev.
   22-7d-protected-data-redaction-across-operational-surfaces: backlog
   22-7d-1-protected-data-redaction-in-logs-and-problemdetails: done
-  22-7d-2-protected-data-redaction-in-admin-api-and-web-ui: backlog
+  22-7d-2-protected-data-redaction-in-admin-api-and-web-ui: done
   22-7d-3-protected-data-redaction-in-cli-and-mcp: backlog
   22-7d-4-protected-data-redaction-in-replay-rebuild-backup-validation-and-tests: backlog
   epic-22-retrospective: optional

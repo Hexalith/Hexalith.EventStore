@@ -1,7 +1,9 @@
 @namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models
 @using Hexalith.EventStore.Admin.Abstractions.Models.Streams
 @using Hexalith.EventStore.Admin.UI.Components.Shared
 @using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
 @inject AdminStreamApiClient ApiClient
 @implements IAsyncDisposable
 
@@ -214,22 +216,20 @@
                     }
                     else
                     {
-                        <span class="monospace" title="@context.OldValue">
-                            @TruncateValue(context.OldValue)
-                        </span>
+                        @FieldValueContent(context.OldValue, context.OldContent)
                     }
                 </TemplateColumn>
                 <TemplateColumn Title="New Value">
-                    <span class="monospace" title="@context.NewValue">
-                        @TruncateValue(context.NewValue)
-                    </span>
+                    @FieldValueContent(context.NewValue, context.NewContent)
                 </TemplateColumn>
             </FluentDataGrid>
         }
 
         @* Section 2: Current State *@
         <h4 style="margin: 12px 0 4px 0;">Aggregate State at Sequence @_frame.SequenceNumber</h4>
-        <JsonViewer Json="@_frame.StateJson" AriaLabel="@($"Aggregate state at sequence {_frame.SequenceNumber}")" />
+        <JsonViewer Json="@_frame.StateJson"
+                    RedactedContent="@_frame.State"
+                    AriaLabel="@($"Aggregate state at sequence {_frame.SequenceNumber}")" />
 
         @* Navigation links *@
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 12px;">
@@ -264,7 +264,10 @@
                 Event Payload — Sequence @(_frame?.SequenceNumber)
             </TitleTemplate>
             <ChildContent>
-                <JsonViewer Json="@_frame?.EventPayloadJson" AriaLabel="Event payload JSON" MaxHeight="500" />
+                <JsonViewer Json="@_frame?.EventPayloadJson"
+                            RedactedContent="@_frame?.EventPayload"
+                            AriaLabel="Event payload JSON"
+                            MaxHeight="500" />
             </ChildContent>
             <ActionTemplate>
                 <FluentButton Appearance="ButtonAppearance.Primary" OnClick="ClosePayloadAsync">
@@ -395,7 +398,11 @@
         {
             _error = $"Sequence {sequenceNumber} is beyond the stream's events.";
         }
-        catch
+        catch (AdminApiProblemException ex)
+                {
+                    _error = SafeProblemMessage(ex);
+                    }
+                catch
         {
             _error = "Unable to load event frame — check server connectivity.";
         }
@@ -496,6 +503,11 @@
                     _error = "Frame load timed out — the aggregate state may be too large to reconstruct.";
                     break;
                 }
+                catch (AdminApiProblemException ex)
+                {
+                    _error = SafeProblemMessage(ex);
+                    break;
+                    }
                 catch
                 {
                     _error = "Unable to load event frame — check server connectivity.";
@@ -811,4 +823,26 @@
 
     private static string FormatTimestamp(DateTimeOffset timestamp)
         => timestamp == DateTimeOffset.MinValue ? string.Empty : TimeFormatHelper.FormatRelativeTime(timestamp);
+
+    private static string SafeProblemMessage(AdminApiProblemException exception)
+        => exception.Detail ?? exception.Message;
+
+    private static RenderFragment FieldValueContent(string? value, AdminRedactedContent? content) => builder =>
+    {
+        if (content is not null)
+        {
+            builder.OpenComponent<ProtectedContentPanel>(0);
+            builder.AddAttribute(1, nameof(ProtectedContentPanel.Content), content);
+            builder.AddAttribute(2, nameof(ProtectedContentPanel.Compact), true);
+            builder.CloseComponent();
+            return;
+        }
+
+        string safeValue = value ?? string.Empty;
+        builder.OpenElement(3, "span");
+        builder.AddAttribute(4, "class", "monospace");
+        builder.AddAttribute(5, "title", safeValue);
+        builder.AddContent(6, TruncateValue(safeValue));
+        builder.CloseElement();
+    };
 }

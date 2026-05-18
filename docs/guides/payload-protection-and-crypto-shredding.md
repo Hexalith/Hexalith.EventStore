@@ -336,6 +336,28 @@ serializing arbitrary objects and scrubbing afterward. Unknown provider exceptio
 `reasonCode=protected-data-diagnostic-redacted`; typed unreadable protected-data exceptions preserve
 their stable unreadable reason code.
 
+### Admin API and Web UI redaction
+
+Story 22.7d-2 adds an Admin-facing redacted-content descriptor,
+`AdminRedactedContent`, for protected payload/state/diagnostic presentation. Admin DTOs that can
+represent protected content expose safe metadata and a typed descriptor (`payload`, `state`,
+`eventPayload`, `resultingState`, `failure`, or `diagnostic`) instead of serializing raw-bearing
+properties for protected responses.
+
+| Admin surface | Safe projection |
+| --- | --- |
+| Stream event detail | Event metadata plus `payload` descriptor; protected responses omit `payloadJson`. |
+| Aggregate state/snapshot | Tenant/domain/aggregate/sequence/timestamp plus `state` descriptor; protected responses omit `stateJson`. |
+| Step debugger and diff/blame values | Event context plus field descriptors; protected responses omit `eventPayloadJson`, `stateJson`, `oldValue`, and `newValue` where redacted. |
+| Sandbox result | Command type/outcome/timing plus event/state/error descriptors; protected responses omit command/event/resulting-state raw JSON and unsafe error text. |
+| Dead letters and projection errors | Message IDs, tenant/domain/aggregate/correlation/type metadata plus `failure` or `diagnostic` descriptor; provider exception text remains out of Admin-facing JSON. |
+| Upstream protected ProblemDetails | Admin.Server preserves known protected-data type URIs, status, safe detail, reason/stage/correlation/tenant/domain/aggregate metadata, retry/permanent flags, and guidance; provider-private extensions are dropped. |
+| Web UI JSON rendering | `JsonViewer` renders `ProtectedContentPanel` for descriptors and does not echo invalid raw JSON fallback text. |
+
+The descriptor carries only `contentKind`, deterministic placeholder text, `reasonCode`, `stage`,
+`metadataVersion`, `retryable`, `permanent`, safe next action, and safe navigation metadata. It is a
+projection boundary, not a wrapper around the original content.
+
 ### Audit evidence
 
 `CryptoShreddingAuditEvent` records every workflow transition and admission decision. Each entry
@@ -355,7 +377,8 @@ construction by `CryptoShreddingAuditEvent.TryValidate`.
   mechanism. Crypto-shredding records and enforces consequences; it never deletes audit-relevant
   state.
 - Legal hold, data-subject UX, approval workflow UI, jurisdiction-specific compliance automation.
-- Broad operational redaction across all admin UI/CLI/MCP/ProblemDetails surfaces (Story 22.7d).
+- CLI/MCP output redaction and replay/rebuild/backup-validation artifact scans remain delegated to
+  Stories 22.7d-3 and 22.7d-4.
 - Skip-past-shredded replay/rebuild — no skip policy is added.
 
 ## Deferred to Story 22.7d

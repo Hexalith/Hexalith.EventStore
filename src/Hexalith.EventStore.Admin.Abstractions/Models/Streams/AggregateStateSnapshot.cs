@@ -1,3 +1,7 @@
+using System.Text.Json.Serialization;
+
+using Hexalith.EventStore.Admin.Abstractions.Models;
+
 namespace Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 /// <summary>
@@ -31,8 +35,26 @@ public record AggregateStateSnapshot(
         ? AggregateId
         : throw new ArgumentException("AggregateId cannot be null, empty, or whitespace.", nameof(AggregateId));
 
-    /// <summary>Gets the serialized aggregate state as opaque JSON.</summary>
-    public string StateJson { get; } = StateJson ?? throw new ArgumentNullException(nameof(StateJson));
+    /// <summary>Gets the serialized aggregate state as opaque JSON when the content is safe to expose.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string StateJson { get; init; } = StateJson ?? throw new ArgumentNullException(nameof(StateJson));
+
+    /// <summary>Gets the redacted state descriptor when aggregate state is protected or unreadable.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AdminRedactedContent? State { get; init; }
+
+    /// <summary>Creates a state response whose state content is represented by a redacted descriptor.</summary>
+    public static AggregateStateSnapshot WithRedactedState(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        DateTimeOffset timestamp,
+        AdminRedactedContent state)
+        => new(tenantId, domain, aggregateId, sequenceNumber, timestamp, "{}") {
+            StateJson = null!,
+            State = state ?? throw new ArgumentNullException(nameof(state))
+        };
 
     /// <summary>
     /// Returns a string representation with StateJson redacted (SEC-5).

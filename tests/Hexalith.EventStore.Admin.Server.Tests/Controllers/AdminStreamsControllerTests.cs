@@ -6,6 +6,8 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
 using Hexalith.EventStore.Admin.Server.Controllers;
+using Hexalith.EventStore.Admin.Server.Services;
+using Hexalith.EventStore.Contracts.Problems;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -223,6 +225,29 @@ public class AdminStreamsControllerTests {
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+    }
+
+    [Fact]
+    public async Task GetEventStepFrame_ProtectedUpstreamProblem_PreservesProblemDetails() {
+        var problem = new ProblemDetails {
+            Type = UnreadableProtectedDataProblem.TypeUri,
+            Title = UnreadableProtectedDataProblem.DefaultTitle,
+            Status = StatusCodes.Status503ServiceUnavailable,
+            Detail = "Protection provider is temporarily unavailable. Retry later with backoff.",
+        };
+        problem.Extensions["reasonCode"] = "provider-unavailable";
+        problem.Extensions["stage"] = "admin-inspection";
+        _ = _service.GetEventStepFrameAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
+            .Throws(new AdminUpstreamProblemException(problem, System.Net.HttpStatusCode.ServiceUnavailable));
+
+        IActionResult result = await _sut.GetEventStepFrame("t", "d", "a", 1);
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+        ProblemDetails returned = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        returned.Type.ShouldBe(UnreadableProtectedDataProblem.TypeUri);
+        returned.Extensions["reasonCode"].ShouldBe("provider-unavailable");
+        returned.Extensions["stage"].ShouldBe("admin-inspection");
     }
 
     [Fact]

@@ -1,3 +1,7 @@
+using System.Text.Json.Serialization;
+
+using Hexalith.EventStore.Admin.Abstractions.Models;
+
 namespace Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 /// <summary>
@@ -19,8 +23,13 @@ public record SandboxCommandRequest(
     /// <summary>Gets the fully qualified command type name.</summary>
     public string CommandType { get; } = CommandType ?? string.Empty;
 
-    /// <summary>Gets the command payload as a JSON string.</summary>
-    public string? PayloadJson { get; } = PayloadJson;
+    /// <summary>Gets the command payload JSON when the content is safe to expose.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? PayloadJson { get; init; } = PayloadJson;
+
+    /// <summary>Gets the redacted command payload descriptor.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AdminRedactedContent? Payload { get; init; }
 
     /// <summary>Gets the optional correlation ID for tracing.</summary>
     public string? CorrelationId { get; } = CorrelationId;

@@ -1,3 +1,7 @@
+using System.Text.Json.Serialization;
+
+using Hexalith.EventStore.Admin.Abstractions.Models;
+
 namespace Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 /// <summary>
@@ -52,11 +56,21 @@ public record EventStepFrame(
     /// <summary>Gets the user who initiated the command that produced this event.</summary>
     public string UserId { get; } = UserId ?? string.Empty;
 
-    /// <summary>Gets the raw event payload JSON for inspection.</summary>
-    public string EventPayloadJson { get; } = EventPayloadJson ?? string.Empty;
+    /// <summary>Gets the event payload JSON when the content is safe to expose.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string EventPayloadJson { get; init; } = EventPayloadJson ?? string.Empty;
 
-    /// <summary>Gets the aggregate state JSON after applying this event.</summary>
-    public string StateJson { get; } = StateJson ?? string.Empty;
+    /// <summary>Gets the aggregate state JSON when the content is safe to expose.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string StateJson { get; init; } = StateJson ?? string.Empty;
+
+    /// <summary>Gets the redacted event payload descriptor.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AdminRedactedContent? EventPayload { get; init; }
+
+    /// <summary>Gets the redacted state descriptor.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AdminRedactedContent? State { get; init; }
 
     /// <summary>Gets the fields that changed from the previous state to the state after this event.</summary>
     public IReadOnlyList<FieldChange> FieldChanges { get; } = FieldChanges ?? [];
@@ -66,6 +80,28 @@ public record EventStepFrame(
 
     /// <summary>Gets a value indicating whether there is a next event (sequence &lt; total).</summary>
     public bool HasNext => SequenceNumber < TotalEvents;
+
+    /// <summary>Creates a step frame whose payload and state are represented by redacted descriptors.</summary>
+    public static EventStepFrame WithRedactedContent(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        string eventTypeName,
+        DateTimeOffset timestamp,
+        string correlationId,
+        string causationId,
+        string userId,
+        AdminRedactedContent eventPayload,
+        AdminRedactedContent state,
+        IReadOnlyList<FieldChange> fieldChanges,
+        long totalEvents)
+        => new(tenantId, domain, aggregateId, sequenceNumber, eventTypeName, timestamp, correlationId, causationId, userId, "{}", "{}", fieldChanges, totalEvents) {
+            EventPayloadJson = null!,
+            StateJson = null!,
+            EventPayload = eventPayload ?? throw new ArgumentNullException(nameof(eventPayload)),
+            State = state ?? throw new ArgumentNullException(nameof(state))
+        };
 
     /// <summary>
     /// Returns a string representation with EventPayloadJson, StateJson, and field values redacted (SEC-5).

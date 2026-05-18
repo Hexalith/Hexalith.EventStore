@@ -4,6 +4,7 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
 using Hexalith.EventStore.Testing.Http;
+using Hexalith.EventStore.Testing.Security;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -79,5 +80,99 @@ public class AdminStreamApiClientTests {
 
         _ = await Should.ThrowAsync<ServiceUnavailableException>(
             () => client.GetRecentlyActiveStreamsAsync(null, null, 10));
+    }
+
+    [Fact]
+    public async Task GetRecentCommandsAsync_ProtectedProblemDetails_PreservesSafeFieldsWithoutRawBody() {
+        string json = $$"""
+            {
+              "type": "https://hexalith.io/problems/unreadable-protected-data",
+              "title": "Protected data is unreadable",
+              "status": 503,
+              "detail": "Protection provider is temporarily unavailable. Retry later with backoff.",
+              "correlationId": "corr-1",
+              "reasonCode": "provider-unavailable",
+              "stage": "admin-inspection",
+              "providerPrivateMetadata": "{{ProtectedDataLeakSentinel.ProtectedProviderPrivateBlob}}",
+              "rawException": "{{ProtectedDataLeakSentinel.ProtectedProviderExceptionText}}"
+            }
+            """;
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.ServiceUnavailable, json);
+        AdminStreamApiClient client = CreateClient(httpClient);
+
+        AdminApiProblemException ex = await Should.ThrowAsync<AdminApiProblemException>(
+            () => client.GetRecentCommandsAsync(null, null, null, 10));
+
+        ex.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+        ex.ProblemType.ShouldBe("https://hexalith.io/problems/unreadable-protected-data");
+        ex.ErrorCode.ShouldBe("provider-unavailable");
+        ex.TraceId.ShouldBe("corr-1");
+        ex.Extensions["stage"].ShouldBe("admin-inspection");
+        ex.Extensions.ContainsKey("providerPrivateMetadata").ShouldBeFalse();
+        ex.Extensions.ContainsKey("rawException").ShouldBeFalse();
+        ProtectedDataLeakSentinel.AssertNoLeak([
+            ex.Message,
+            ex.Title ?? string.Empty,
+            ex.Detail ?? string.Empty,
+            System.Text.Json.JsonSerializer.Serialize(ex.Extensions),
+        ]);
+    }
+
+    [Fact]
+    public async Task GetEventDetailAsync_ProtectedProblemDetails_PropagatesSanitizedProblemException() {
+        string json = """
+            {
+              "type": "https://hexalith.io/problems/unreadable-protected-data",
+              "title": "Protected data is unreadable",
+              "status": 503,
+              "detail": "Protection provider is temporarily unavailable. Retry later with backoff.",
+              "correlationId": "corr-1",
+              "reasonCode": "provider-unavailable",
+              "stage": "admin-inspection"
+            }
+            """;
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.ServiceUnavailable, json);
+        AdminStreamApiClient client = CreateClient(httpClient);
+
+        AdminApiProblemException ex = await Should.ThrowAsync<AdminApiProblemException>(
+            () => client.GetEventDetailAsync("tenant-a", "Counter", "agg-1", 5));
+
+        ex.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+        ex.ProblemType.ShouldBe("https://hexalith.io/problems/unreadable-protected-data");
+        ex.ErrorCode.ShouldBe("provider-unavailable");
+        ex.TraceId.ShouldBe("corr-1");
+        ex.Extensions["stage"].ShouldBe("admin-inspection");
+    }
+
+    [Fact]
+    public async Task GetRecentCommandsAsync_ProtectedProblemDetails_DropsNestedValuesEvenWhenExtensionNameIsAllowed() {
+        string json = $$"""
+            {
+              "type": "https://hexalith.io/problems/unreadable-protected-data",
+              "title": "Protected data is unreadable",
+              "status": 503,
+              "detail": "Protection provider is temporarily unavailable. Retry later with backoff.",
+              "correlationId": "corr-1",
+              "reasonCode": {
+                "code": "provider-unavailable",
+                "providerPrivateMetadata": "{{ProtectedDataLeakSentinel.ProtectedProviderPrivateBlob}}"
+              },
+              "stage": "admin-inspection"
+            }
+            """;
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.ServiceUnavailable, json);
+        AdminStreamApiClient client = CreateClient(httpClient);
+
+        AdminApiProblemException ex = await Should.ThrowAsync<AdminApiProblemException>(
+            () => client.GetRecentCommandsAsync(null, null, null, 10));
+
+        ex.ErrorCode.ShouldBeNull();
+        ex.Extensions.ContainsKey("reasonCode").ShouldBeFalse();
+        ex.Extensions["stage"].ShouldBe("admin-inspection");
+        ProtectedDataLeakSentinel.AssertNoLeak([
+            ex.Message,
+            ex.Detail ?? string.Empty,
+            System.Text.Json.JsonSerializer.Serialize(ex.Extensions),
+        ]);
     }
 }

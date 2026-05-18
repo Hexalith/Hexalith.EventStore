@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 using Dapr.Client;
 
@@ -9,7 +10,9 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Problems;
 
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -26,6 +29,50 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<DaprStreamQueryService> _logger;
     private readonly AdminServerOptions _options;
+    private static readonly ISet<string> ProtectedProblemTypes = new HashSet<string>(StringComparer.Ordinal) {
+        UnreadableProtectedDataProblem.TypeUri,
+        CryptoShreddingWorkflowProblem.TypeUri,
+        RestoredBackupAdmissionProblem.TypeUri,
+    };
+
+    private static readonly ISet<string> SafeProblemExtensions = new HashSet<string>(StringComparer.Ordinal) {
+        "correlationId",
+        "reasonCode",
+        "tenantId",
+        "stage",
+        UnreadableProtectedDataProblem.ExtensionReasonCategory,
+        UnreadableProtectedDataProblem.ExtensionStage,
+        UnreadableProtectedDataProblem.ExtensionSequenceNumber,
+        UnreadableProtectedDataProblem.ExtensionCheckpointId,
+        UnreadableProtectedDataProblem.ExtensionDomain,
+        UnreadableProtectedDataProblem.ExtensionAggregateId,
+        UnreadableProtectedDataProblem.ExtensionMetadataVersion,
+        UnreadableProtectedDataProblem.ExtensionRetryable,
+        UnreadableProtectedDataProblem.ExtensionPermanent,
+        CryptoShreddingWorkflowProblem.ExtensionWorkflowId,
+        CryptoShreddingWorkflowProblem.ExtensionWorkflowState,
+        CryptoShreddingWorkflowProblem.ExtensionReasonCode,
+        CryptoShreddingWorkflowProblem.ExtensionNextAction,
+        CryptoShreddingWorkflowProblem.ExtensionTenantId,
+        CryptoShreddingWorkflowProblem.ExtensionDomain,
+        CryptoShreddingWorkflowProblem.ExtensionAggregateId,
+        CryptoShreddingWorkflowProblem.ExtensionFromSequence,
+        CryptoShreddingWorkflowProblem.ExtensionToSequence,
+        CryptoShreddingWorkflowProblem.ExtensionCorrelationId,
+        CryptoShreddingWorkflowProblem.ExtensionAuditId,
+        CryptoShreddingWorkflowProblem.ExtensionIrreversibleDecisionRecorded,
+        RestoredBackupAdmissionProblem.ExtensionAdmissionId,
+        RestoredBackupAdmissionProblem.ExtensionAdmissionState,
+        RestoredBackupAdmissionProblem.ExtensionReasonCode,
+        RestoredBackupAdmissionProblem.ExtensionNextAction,
+        RestoredBackupAdmissionProblem.ExtensionTenantId,
+        RestoredBackupAdmissionProblem.ExtensionDomain,
+        RestoredBackupAdmissionProblem.ExtensionBackupManifestId,
+        RestoredBackupAdmissionProblem.ExtensionMetadataVersion,
+        RestoredBackupAdmissionProblem.ExtensionWatermarkConflict,
+        RestoredBackupAdmissionProblem.ExtensionCorrelationId,
+        RestoredBackupAdmissionProblem.ExtensionAuditId,
+    };
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprStreamQueryService"/> class.
@@ -517,7 +564,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
 
         HttpClient httpClient = _httpClientFactory.CreateClient();
         using HttpResponseMessage httpResponse = await httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
-        _ = httpResponse.EnsureSuccessStatusCode();
+        await EnsureSuccessOrThrowProtectedProblemAsync(httpResponse, cts.Token).ConfigureAwait(false);
         return await httpResponse.Content.ReadFromJsonAsync<TResponse>(cts.Token).ConfigureAwait(false);
     }
 
@@ -542,8 +589,102 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
 
         HttpClient httpClient2 = _httpClientFactory.CreateClient();
         using HttpResponseMessage httpResponse2 = await httpClient2.SendAsync(request, cts.Token).ConfigureAwait(false);
-        _ = httpResponse2.EnsureSuccessStatusCode();
+        await EnsureSuccessOrThrowProtectedProblemAsync(httpResponse2, cts.Token).ConfigureAwait(false);
         return await httpResponse2.Content.ReadFromJsonAsync<TResponse>(cts.Token).ConfigureAwait(false);
+    }
+
+    private static async Task EnsureSuccessOrThrowProtectedProblemAsync(HttpResponseMessage response, CancellationToken ct) {
+        if (response.IsSuccessStatusCode) {
+            return;
+        }
+
+        AdminUpstreamProblemException? protectedProblem = await TryReadProtectedProblemAsync(response, ct).ConfigureAwait(false);
+        if (protectedProblem is not null) {
+            throw protectedProblem;
+        }
+
+        _ = response.EnsureSuccessStatusCode();
+    }
+
+    private static async Task<AdminUpstreamProblemException?> TryReadProtectedProblemAsync(HttpResponseMessage response, CancellationToken ct) {
+        string body;
+        try {
+            body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        }
+        catch {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(body)) {
+            return null;
+        }
+
+        try {
+            using JsonDocument document = JsonDocument.Parse(body);
+            JsonElement root = document.RootElement;
+            if (!root.TryGetProperty("type", out JsonElement typeElement)) {
+                return null;
+            }
+
+            string? type = typeElement.GetString();
+            if (string.IsNullOrWhiteSpace(type) || !ProtectedProblemTypes.Contains(type)) {
+                return null;
+            }
+
+            var problem = new ProblemDetails {
+                Type = type,
+                Title = GetOptionalString(root, "title"),
+                Status = GetOptionalInt32(root, "status") ?? (int)response.StatusCode,
+                Detail = GetOptionalString(root, "detail"),
+                Instance = GetOptionalString(root, "instance"),
+            };
+
+            foreach (JsonProperty property in root.EnumerateObject()) {
+                if (IsStandardProblemDetailsProperty(property.Name) || !SafeProblemExtensions.Contains(property.Name)) {
+                    continue;
+                }
+
+                if (TryConvertSafeJsonValue(property.Value, out object? safeValue)) {
+                    problem.Extensions[property.Name] = safeValue;
+                }
+            }
+
+            return new AdminUpstreamProblemException(problem, response.StatusCode);
+        }
+        catch (JsonException) {
+            return null;
+        }
+    }
+
+    private static bool IsStandardProblemDetailsProperty(string name)
+        => name is "type" or "title" or "status" or "detail" or "instance";
+
+    private static string? GetOptionalString(JsonElement root, string name)
+        => root.TryGetProperty(name, out JsonElement element) && element.ValueKind == JsonValueKind.String
+            ? element.GetString()
+            : null;
+
+    private static int? GetOptionalInt32(JsonElement root, string name)
+        => root.TryGetProperty(name, out JsonElement element) && element.TryGetInt32(out int value)
+            ? value
+            : null;
+
+    private static bool TryConvertSafeJsonValue(JsonElement value, out object? safeValue) {
+        safeValue = value.ValueKind switch {
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Number when value.TryGetInt64(out long longValue) => longValue,
+            JsonValueKind.Number when value.TryGetDouble(out double doubleValue) => doubleValue,
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => null,
+        };
+
+        return value.ValueKind is JsonValueKind.String
+            or JsonValueKind.Number
+            or JsonValueKind.True
+            or JsonValueKind.False
+            or JsonValueKind.Null;
     }
 
     private static string BuildQueryString(long? from, long? to, int count) {

@@ -1,9 +1,14 @@
 @namespace Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.Abstractions.Models
 @using System.Text.Json
 @using System.Text.RegularExpressions
 
 <div class="json-viewer" style="max-height: @(MaxHeight)px; overflow: auto;" role="code" aria-label="@AriaLabel">
-    @if (string.IsNullOrWhiteSpace(Json))
+    @if (RedactedContent is not null)
+    {
+        <ProtectedContentPanel Content="RedactedContent" />
+    }
+    else if (string.IsNullOrWhiteSpace(Json))
     {
         <div class="json-viewer__empty">No data</div>
     }
@@ -12,7 +17,7 @@
         <div class="json-viewer__warning" role="alert">
             <span>&#x26A0; Invalid JSON</span>
         </div>
-        <pre class="json-viewer__raw"><code>@Json</code></pre>
+        <pre class="json-viewer__raw"><code>JSON content could not be rendered safely.</code></pre>
     }
     else if (_isTruncated)
     {
@@ -37,6 +42,9 @@
 
     [Parameter]
     public string? Json { get; set; }
+
+    [Parameter]
+    public AdminRedactedContent? RedactedContent { get; set; }
 
     [Parameter]
     public string AriaLabel { get; set; } = "JSON content";

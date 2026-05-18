@@ -113,6 +113,7 @@
                             @_snapshot.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff zzz")
                         </span>
                         <JsonViewer Json="@_snapshot.StateJson"
+                                    RedactedContent="@_snapshot.State"
                                     AriaLabel="@($"Aggregate state at sequence {_snapshot.SequenceNumber}")" />
                     </div>
                 }
@@ -239,6 +240,11 @@
         catch (ServiceUnavailableException)
         {
             _fetchError = "Backend unavailable. State inspection is temporarily offline.";
+            _fetched = true;
+        }
+        catch (AdminApiProblemException ex)
+        {
+            _fetchError = ex.Detail ?? ex.Message;
             _fetched = true;
         }
         catch (InvalidOperationException ex)
