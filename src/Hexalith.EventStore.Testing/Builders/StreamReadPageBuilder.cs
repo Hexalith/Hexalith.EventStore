@@ -1,4 +1,5 @@
 using Hexalith.Commons.UniqueIds;
+using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Contracts.Streams;
 
 namespace Hexalith.EventStore.Testing.Builders;
@@ -35,6 +36,7 @@ public sealed class StreamReadPageBuilder {
     private long? _toSequence;
     private long _latestSequence;
     private ReplayContinuationToken? _nextContinuationToken;
+    private EventStorePayloadProtectionMetadata? _protectionMetadata;
     // Optional deterministic-id factory so tests asserting exact MessageId/CorrelationId/
     // CausationId values pin determinism. When null, the builder generates fresh ULIDs per build.
     private Func<long, StreamReadEventIdKind, string>? _idFactory;
@@ -107,8 +109,21 @@ public sealed class StreamReadPageBuilder {
             correlationId,
             causationId,
             DateTimeOffset.UnixEpoch.AddSeconds(sequenceNumber),
-            "user-1"));
+            "user-1",
+            _protectionMetadata));
         _latestSequence = Math.Max(_latestSequence, sequenceNumber);
+        return this;
+    }
+
+    /// <summary>
+    /// Stamps the supplied protection metadata onto every event subsequently added to the page.
+    /// Call before <see cref="AddEvent"/> for the events that should carry the metadata.
+    /// </summary>
+    /// <param name="metadata">The protection metadata to attach.</param>
+    /// <returns>This builder instance.</returns>
+    public StreamReadPageBuilder WithProtection(EventStorePayloadProtectionMetadata metadata) {
+        ArgumentNullException.ThrowIfNull(metadata);
+        _protectionMetadata = metadata;
         return this;
     }
 

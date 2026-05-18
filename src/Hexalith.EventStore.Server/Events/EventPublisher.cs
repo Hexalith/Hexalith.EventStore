@@ -79,14 +79,35 @@ public partial class EventPublisher(
 
             for (int i = 0; i < events.Count; i++) {
                 EventEnvelope eventEnvelope = events[i];
-                PayloadProtectionResult protectionResult = await payloadProtectionService
-                    .UnprotectEventPayloadAsync(
+                EventStorePayloadProtectionMetadata storedMetadata = EventStorePayloadProtectionMetadataCarrier
+                    .Read(eventEnvelope.Extensions);
+
+                // Provider-opaque envelopes are passed through verbatim: EventStore must never
+                // invoke unprotect on bytes whose provider it cannot identify (ST0 invariant).
+                PayloadProtectionResult protectionResult;
+                if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {
+                    protectionResult = new PayloadProtectionResult(
+                        eventEnvelope.Payload,
+                        eventEnvelope.SerializationFormat,
+                        storedMetadata);
+                }
+                else {
+                    protectionResult = await payloadProtectionService
+                        .UnprotectEventPayloadAsync(
                         identity,
                         eventEnvelope.EventTypeName,
                         eventEnvelope.Payload,
                         eventEnvelope.SerializationFormat,
+                        storedMetadata,
                         cancellationToken)
-                    .ConfigureAwait(false);
+                        .ConfigureAwait(false);
+                }
+
+                // Re-stamp the published extensions with the provider-returned metadata so
+                // subscribers can observe the publish-time protection state without inspecting
+                // bytes. Other extension entries are preserved.
+                IDictionary<string, string> publishExtensions = EventStorePayloadProtectionMetadataCarrier
+                    .Write(eventEnvelope.Extensions, protectionResult.Metadata);
 
                 EventEnvelope publishEnvelope = new(
                     MessageId: eventEnvelope.MessageId,
@@ -105,7 +126,7 @@ public partial class EventPublisher(
                     MetadataVersion: eventEnvelope.MetadataVersion,
                     SerializationFormat: protectionResult.SerializationFormat,
                     Payload: protectionResult.PayloadBytes,
-                    Extensions: eventEnvelope.Extensions);
+                    Extensions: publishExtensions);
 
                 var metadata = new Dictionary<string, string> {
                     ["cloudevent.type"] = eventEnvelope.EventTypeName,

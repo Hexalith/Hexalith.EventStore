@@ -1,3 +1,5 @@
+using Hexalith.EventStore.Contracts.Security;
+
 namespace Hexalith.EventStore.Contracts.Streams;
 
 /// <summary>
@@ -13,6 +15,7 @@ namespace Hexalith.EventStore.Contracts.Streams;
 /// <param name="CausationId">Optional causation identifier.</param>
 /// <param name="Timestamp">The event timestamp.</param>
 /// <param name="UserId">Optional authenticated subject identifier.</param>
+/// <param name="ProtectionMetadata">Optional payload protection metadata recorded by EventStore. <see langword="null"/> indicates legacy compatibility.</param>
 public sealed record StreamReadEvent(
     long SequenceNumber,
     string EventTypeName,
@@ -23,4 +26,5 @@ public sealed record StreamReadEvent(
     string? CorrelationId,
     string? CausationId,
     DateTimeOffset Timestamp,
-    string? UserId);
+    string? UserId,
+    EventStorePayloadProtectionMetadata? ProtectionMetadata = null);

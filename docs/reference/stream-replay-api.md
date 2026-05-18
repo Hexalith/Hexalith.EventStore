@@ -20,7 +20,7 @@ Request body: `StreamReadRequest`
 
 Response body: `StreamReadPage`
 
-- `events`: ordered `StreamReadEvent` records with sequence, type name, payload bytes, serialization format, metadata version, message id, correlation id, causation id, timestamp, and user id.
+- `events`: ordered `StreamReadEvent` records with sequence, type name, payload bytes, serialization format, metadata version, message id, correlation id, causation id, timestamp, user id, and optional `protectionMetadata`. The optional `protectionMetadata` field carries the provider-neutral payload protection record (state, scheme, key alias, content hint, compatibility flags) stamped by Story 22.7a. Legacy events that predate Story 22.7a return `protectionMetadata.state = "Unprotected"` with `compatibilityFlags.legacy = "missing"`. See [Payload and Snapshot Protection Hooks](../guides/payload-protection-and-crypto-shredding.md) for the metadata contract.
 - `metadata`: `fromSequence`, `toSequence`, `lastSequenceReturned` (`null` for empty pages), `latestSequence`, `eventCount`, `isTruncated`, and optional opaque `nextContinuationToken`.
 
 ## Client Usage

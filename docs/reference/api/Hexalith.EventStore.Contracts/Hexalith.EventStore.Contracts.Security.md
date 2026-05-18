@@ -5,7 +5,14 @@
 
 | Classes | |
 | :--- | :--- |
+| [EventStorePayloadProtectionMetadata](Hexalith.EventStore.Contracts.Security.EventStorePayloadProtectionMetadata.md 'Hexalith\.EventStore\.Contracts\.Security\.EventStorePayloadProtectionMetadata') | Provider-neutral protection metadata describing how an event payload or snapshot state was transformed\. |
+| [EventStorePayloadProtectionMetadataCarrier](Hexalith.EventStore.Contracts.Security.EventStorePayloadProtectionMetadataCarrier.md 'Hexalith\.EventStore\.Contracts\.Security\.EventStorePayloadProtectionMetadataCarrier') | Centralized helpers for the `eventstore.protection` envelope extension contract\. |
 | [PayloadProtectionResult](Hexalith.EventStore.Contracts.Security.PayloadProtectionResult.md 'Hexalith\.EventStore\.Contracts\.Security\.PayloadProtectionResult') | Represents transformed payload bytes after optional protection or unprotection\. |
+| [SnapshotProtectionResult](Hexalith.EventStore.Contracts.Security.SnapshotProtectionResult.md 'Hexalith\.EventStore\.Contracts\.Security\.SnapshotProtectionResult') | Represents transformed snapshot state together with protection metadata\. |
+
+| Enums | |
+| :--- | :--- |
+| [PayloadProtectionState](Hexalith.EventStore.Contracts.Security.PayloadProtectionState.md 'Hexalith\.EventStore\.Contracts\.Security\.PayloadProtectionState') | Provider-neutral protection state for event payloads and snapshots\. |
 
 | Interfaces | |
 | :--- | :--- |

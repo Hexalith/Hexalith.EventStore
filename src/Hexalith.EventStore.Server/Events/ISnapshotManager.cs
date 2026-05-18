@@ -30,8 +30,9 @@ public interface ISnapshotManager {
     /// <param name="state">The aggregate state to snapshot (domain-specific, opaque to EventStore).</param>
     /// <param name="stateManager">The actor state manager for staging the snapshot write.</param>
     /// <param name="correlationId">The correlation ID for structured logging (rule #9). Optional.</param>
+    /// <param name="cancellationToken">The caller's cancellation token. Forwarded to the snapshot protection hook.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    Task CreateSnapshotAsync(AggregateIdentity identity, long sequenceNumber, object state, IActorStateManager stateManager, string? correlationId = null);
+    Task CreateSnapshotAsync(AggregateIdentity identity, long sequenceNumber, object state, IActorStateManager stateManager, string? correlationId = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Loads an existing snapshot for an aggregate.
@@ -41,6 +42,7 @@ public interface ISnapshotManager {
     /// <param name="identity">The aggregate identity providing key derivation.</param>
     /// <param name="stateManager">The actor state manager for reading the snapshot.</param>
     /// <param name="correlationId">The correlation ID for structured logging (rule #9). Optional.</param>
+    /// <param name="cancellationToken">The caller's cancellation token. Forwarded to the snapshot protection hook.</param>
     /// <returns>The snapshot record, or null if no valid snapshot exists.</returns>
-    Task<SnapshotRecord?> LoadSnapshotAsync(AggregateIdentity identity, IActorStateManager stateManager, string? correlationId = null);
+    Task<SnapshotRecord?> LoadSnapshotAsync(AggregateIdentity identity, IActorStateManager stateManager, string? correlationId = null, CancellationToken cancellationToken = default);
 }

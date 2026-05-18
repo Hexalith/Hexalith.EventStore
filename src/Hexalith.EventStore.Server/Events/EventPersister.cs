@@ -33,7 +33,8 @@ public partial class EventPersister(
         string aggregateType,
         CommandEnvelope command,
         DomainResult domainResult,
-        string domainServiceVersion) {
+        string domainServiceVersion,
+        CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
         ArgumentNullException.ThrowIfNull(command);
@@ -76,8 +77,13 @@ public partial class EventPersister(
                     eventPayload,
                     eventTypeName,
                     payloadBytes,
-                    serializationFormat)
+                    serializationFormat,
+                    cancellationToken)
                 .ConfigureAwait(false);
+
+            IDictionary<string, string> extensions = EventStorePayloadProtectionMetadataCarrier.Write(
+                extensions: (IDictionary<string, string>?)null,
+                metadata: protectionResult.Metadata);
 
             var envelope = new EventEnvelope(
                 MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
@@ -96,7 +102,7 @@ public partial class EventPersister(
                 MetadataVersion: 1,
                 SerializationFormat: protectionResult.SerializationFormat,
                 Payload: protectionResult.PayloadBytes,
-                Extensions: null);
+                Extensions: extensions);
 
             envelopes.Add(envelope);
 

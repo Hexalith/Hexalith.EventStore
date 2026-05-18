@@ -96,10 +96,20 @@ public class EventPublisherTests {
         // Assert
         result.Success.ShouldBeTrue();
         result.PublishedCount.ShouldBe(1);
+
+        // Story 22.7a: the publisher constructs a new envelope with re-stamped protection metadata
+        // extensions, so identity-based equality on the input envelope no longer matches. Compare
+        // the load-bearing fields and confirm protection metadata is present.
         await daprClient.Received(1).PublishEventAsync(
             "pubsub",
             "test-tenant.test-domain.events",
-            envelope,
+            Arg.Is<EventEnvelope>(e =>
+                e.MessageId == envelope.MessageId
+                && e.AggregateId == envelope.AggregateId
+                && e.SequenceNumber == envelope.SequenceNumber
+                && e.EventTypeName == envelope.EventTypeName
+                && e.Extensions != null
+                && e.Extensions.ContainsKey("eventstore.protection")),
             Arg.Is<Dictionary<string, string>>(m =>
                 m["cloudevent.type"] == "OrderCreated" &&
                 m["cloudevent.source"] == "hexalith-eventstore/test-tenant/test-domain" &&

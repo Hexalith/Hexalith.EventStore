@@ -18,6 +18,7 @@ public interface IEventPersister {
     /// <param name="command">The original command envelope for metadata extraction.</param>
     /// <param name="domainResult">The domain result containing event payloads.</param>
     /// <param name="domainServiceVersion">The version of the domain service that produced the events.</param>
+    /// <param name="cancellationToken">The caller's cancellation token. Forwarded to <see cref="IEventPayloadProtectionService.ProtectEventPayloadAsync"/>.</param>
     /// <returns>The persist result containing the new sequence number and persisted envelopes.</returns>
-    Task<EventPersistResult> PersistEventsAsync(AggregateIdentity identity, string aggregateType, CommandEnvelope command, DomainResult domainResult, string domainServiceVersion);
+    Task<EventPersistResult> PersistEventsAsync(AggregateIdentity identity, string aggregateType, CommandEnvelope command, DomainResult domainResult, string domainServiceVersion, CancellationToken cancellationToken = default);
 }
