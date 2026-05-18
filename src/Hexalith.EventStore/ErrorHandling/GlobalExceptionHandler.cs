@@ -1,5 +1,6 @@
 
 using Hexalith.EventStore.Middleware;
+using Hexalith.EventStore.Server.Diagnostics;
 
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +14,12 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
 
         string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
 
-        logger.LogError(exception, "Unhandled exception. CorrelationId={CorrelationId}", correlationId);
+        string safeDiagnostic = ProtectedDataDiagnosticRedactor.RedactException(exception, "pipeline");
+        logger.LogError(
+            "Unhandled exception. CorrelationId={CorrelationId}, ExceptionType={ExceptionType}, SafeDiagnostic={SafeDiagnostic}",
+            correlationId,
+            exception.GetType().Name,
+            safeDiagnostic);
 
         string? tenantId = httpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj) && tenantObj is string t && !string.IsNullOrEmpty(t) ? t : null;
 

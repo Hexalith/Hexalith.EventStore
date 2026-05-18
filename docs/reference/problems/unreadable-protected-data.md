@@ -69,6 +69,7 @@ Content-Type: application/problem+json
     "status": 422,
     "detail": "Protection metadata is provider-opaque. The requested operation requires interpretable data.",
     "instance": "/api/v1/streams/read",
+    "correlationId": "01HW8M9Q2V1K3Z4Y5X6W7R8T9P",
     "reasonCode": "provider-opaque-unsupported",
     "reasonCategory": "ProviderOpaqueUnsupportedOperation",
     "stage": "replay",
@@ -76,9 +77,17 @@ Content-Type: application/problem+json
     "tenantId": "tenant-a",
     "domain": "billing",
     "aggregateId": "order-001",
+    "metadataVersion": 1,
     "retryable": false,
     "permanent": true
 }
+```
+
+When runtime diagnostics must describe an unsafe provider exception, EventStore uses deterministic
+fallback text instead of provider messages:
+
+```text
+Protected data diagnostic details were redacted. ReasonCode=<reason-code>; Stage=<stage>.
 ```
 
 ## What is NEVER Returned

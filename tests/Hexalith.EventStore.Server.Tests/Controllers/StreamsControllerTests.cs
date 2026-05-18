@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -13,6 +14,7 @@ using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Tests.Fakes;
 using Hexalith.EventStore.Testing.Fakes;
+using Hexalith.EventStore.Testing.Security;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -165,8 +167,11 @@ public class StreamsControllerTests {
 
         ProblemDetails problem = AssertProblem(result, StatusCodes.Status422UnprocessableEntity);
         problem.Type.ShouldBe(UnreadableProtectedDataProblem.TypeUri);
+        problem.Extensions[GatewayProblemDetailsExtensions.CorrelationId].ShouldBe("corr-stream-test");
         problem.Extensions["reasonCode"].ShouldBe(UnreadableProtectedDataReasonCodes.MissingKey);
         problem.Extensions[UnreadableProtectedDataProblem.ExtensionSequenceNumber].ShouldBe(1L);
+        string json = JsonSerializer.Serialize(problem, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        ProtectedDataLeakSentinel.AssertNoLeak([json, .. problem.Extensions.Values.Select(static v => v?.ToString())]);
         protectionService.EventUnprotectInvocations.Count.ShouldBe(1);
     }
 
@@ -439,6 +444,7 @@ public class StreamsControllerTests {
                 },
             },
         };
+        controller.HttpContext.Items["CorrelationId"] = "corr-stream-test";
 
         return (controller, actorProxyFactory, tenantValidator, rbacValidator);
     }

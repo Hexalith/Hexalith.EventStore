@@ -141,7 +141,8 @@ public class EventPublisherRetryComplianceTests {
 
         // Assert
         result.Success.ShouldBeFalse();
-        result.FailureReason!.ShouldContain("DaprClient internal error");
+        result.FailureReason!.ShouldContain("Protected data diagnostic details were redacted.");
+        result.FailureReason!.ShouldNotContain("DaprClient internal error");
         callCount.ShouldBe(1, "EventPublisher should call DaprClient exactly once -- no retry");
     }
 }

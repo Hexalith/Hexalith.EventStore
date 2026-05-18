@@ -5,6 +5,7 @@ using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.Server.Diagnostics;
 using Hexalith.EventStore.Server.Telemetry;
 
 using Microsoft.Extensions.Logging;
@@ -31,36 +32,41 @@ public partial class DeadLetterPublisher(
 
         string deadLetterTopic = options.Value.GetDeadLetterTopic(identity);
         string causationId = message.CausationId ?? message.CorrelationId;
+        DeadLetterMessage safeMessage = message with {
+            ErrorMessage = ProtectedDataDiagnosticRedactor.NormalizeDiagnosticText(
+                message.ErrorMessage,
+                message.FailureStage),
+        };
 
         using Activity? activity = EventStoreActivitySource.Instance.StartActivity(
             EventStoreActivitySource.EventsPublishDeadLetter, ActivityKind.Producer);
-        _ = (activity?.SetTag(EventStoreActivitySource.TagCorrelationId, message.CorrelationId));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagCorrelationId, safeMessage.CorrelationId));
         _ = (activity?.SetTag(EventStoreActivitySource.TagTenantId, identity.TenantId));
         _ = (activity?.SetTag(EventStoreActivitySource.TagDomain, identity.Domain));
         _ = (activity?.SetTag(EventStoreActivitySource.TagAggregateId, identity.AggregateId));
-        _ = (activity?.SetTag(EventStoreActivitySource.TagCommandType, message.CommandType));
-        _ = (activity?.SetTag(EventStoreActivitySource.TagFailureStage, message.FailureStage));
-        _ = (activity?.SetTag(EventStoreActivitySource.TagExceptionType, message.ExceptionType));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagCommandType, safeMessage.CommandType));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagFailureStage, safeMessage.FailureStage));
+        _ = (activity?.SetTag(EventStoreActivitySource.TagExceptionType, safeMessage.ExceptionType));
         _ = (activity?.SetTag(EventStoreActivitySource.TagDeadLetterTopic, deadLetterTopic));
 
         try {
             var metadata = new Dictionary<string, string> {
                 ["cloudevent.type"] = "deadletter.command.failed",
                 ["cloudevent.source"] = $"eventstore/{identity.TenantId}/{identity.Domain}",
-                ["cloudevent.id"] = message.CorrelationId,
+                ["cloudevent.id"] = safeMessage.CorrelationId,
                 ["cloudevent.datacontenttype"] = "application/json",
             };
 
             await daprClient.PublishEventAsync(
                 options.Value.PubSubName,
                 deadLetterTopic,
-                message,
+                safeMessage,
                 metadata,
                 cancellationToken).ConfigureAwait(false);
 
             // Rule #5: Never log command payload or event payload data (SEC-5).
             // Rule #9: correlationId in every structured log entry.
-            Log.DeadLetterPublished(logger, message.CorrelationId, causationId, identity.TenantId, identity.Domain, identity.AggregateId, message.CommandType, message.FailureStage, message.ExceptionType, message.ErrorMessage, deadLetterTopic);
+            Log.DeadLetterPublished(logger, safeMessage.CorrelationId, causationId, identity.TenantId, identity.Domain, identity.AggregateId, safeMessage.CommandType, safeMessage.FailureStage, safeMessage.ExceptionType, safeMessage.ErrorMessage, deadLetterTopic);
 
             _ = (activity?.SetStatus(ActivityStatusCode.Ok));
             return true;
@@ -69,12 +75,12 @@ public partial class DeadLetterPublisher(
             throw;
         }
         catch (Exception ex) {
+            string safeFailureMessage = ProtectedDataDiagnosticRedactor.RedactException(ex, "dead-letter-publication");
             // Dead-letter publication failure is non-blocking (AC #7).
             // Rule #5: Never log command payload data.
-            Log.DeadLetterPublicationFailed(logger, ex, message.CorrelationId, causationId, identity.TenantId, identity.Domain, identity.AggregateId, message.CommandType, message.FailureStage, message.ExceptionType, message.ErrorMessage, deadLetterTopic);
+            Log.DeadLetterPublicationFailed(logger, safeMessage.CorrelationId, causationId, identity.TenantId, identity.Domain, identity.AggregateId, safeMessage.CommandType, safeMessage.FailureStage, safeMessage.ExceptionType, safeMessage.ErrorMessage, deadLetterTopic, ex.GetType().Name, safeFailureMessage);
 
-            _ = (activity?.AddException(ex));
-            _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
+            ProtectedDataDiagnosticRedactor.RecordActivityException(activity, ex, "dead-letter-publication");
             return false;
         }
     }
@@ -100,10 +106,9 @@ public partial class DeadLetterPublisher(
         [LoggerMessage(
             EventId = 3201,
             Level = LogLevel.Error,
-            Message = "Dead-letter publication failed: CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, FailureStage={FailureStage}, ExceptionType={ExceptionType}, ErrorMessage={ErrorMessage}, DeadLetterTopic={DeadLetterTopic}, Stage=DeadLetterPublicationFailed")]
+            Message = "Dead-letter publication failed: CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, FailureStage={FailureStage}, ExceptionType={ExceptionType}, ErrorMessage={ErrorMessage}, DeadLetterTopic={DeadLetterTopic}, PublicationExceptionType={PublicationExceptionType}, FailureReason={FailureReason}, Stage=DeadLetterPublicationFailed")]
         public static partial void DeadLetterPublicationFailed(
             ILogger logger,
-            Exception ex,
             string correlationId,
             string causationId,
             string tenantId,
@@ -113,6 +118,8 @@ public partial class DeadLetterPublisher(
             string failureStage,
             string? exceptionType,
             string? errorMessage,
-            string deadLetterTopic);
+            string deadLetterTopic,
+            string publicationExceptionType,
+            string failureReason);
     }
 }
