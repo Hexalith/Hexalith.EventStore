@@ -117,10 +117,10 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
         Response.Headers["Location"] = absoluteLocationUri;
         Response.Headers["Retry-After"] = "1";
 
-        return Accepted(new SubmitCommandResponse(result.CorrelationId, ParseOptionalResultPayload(result.ResultPayload)));
+        return Accepted(new SubmitCommandResponse(result.CorrelationId, ParseOptionalResultPayload(result.ResultPayload, result.CorrelationId, logger)));
     }
 
-    private static JsonElement? ParseOptionalResultPayload(string? resultPayload) {
+    private static JsonElement? ParseOptionalResultPayload(string? resultPayload, string correlationId, ILogger logger) {
         if (string.IsNullOrWhiteSpace(resultPayload)) {
             return null;
         }
@@ -130,6 +130,9 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
             return document.RootElement.Clone();
         }
         catch (JsonException) {
+            logger.LogWarning(
+                "Malformed result payload from domain service for correlation '{CorrelationId}' could not be parsed as JSON; returning no resultPayload.",
+                correlationId);
             return null;
         }
     }
