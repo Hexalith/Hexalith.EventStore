@@ -75,7 +75,7 @@ public class DeadLetterMessageTests {
     }
 
     [Fact]
-    public void FromException_ExtractsErrorMessage() {
+    public void FromException_StoresSafeDiagnosticMessage() {
         // Arrange
         CommandEnvelope command = CreateTestEnvelope();
         var exception = new InvalidOperationException("State store unavailable");
@@ -87,7 +87,10 @@ public class DeadLetterMessageTests {
             exception);
 
         // Assert
-        message.ErrorMessage.ShouldBe("State store unavailable");
+        message.ErrorMessage.ShouldContain("Protected data diagnostic details were redacted.");
+        message.ErrorMessage.ShouldContain("ReasonCode=protected-data-diagnostic-redacted");
+        message.ErrorMessage.ShouldContain("Stage=Processing");
+        message.ErrorMessage.ShouldNotContain("State store unavailable");
         message.ErrorMessage.ShouldNotContain("at ");
         message.ErrorMessage.ShouldNotContain("StackTrace");
     }
@@ -164,6 +167,7 @@ public class DeadLetterMessageTests {
 
         // Assert
         message.ExceptionType.ShouldBe("HttpRequestException");
-        message.ErrorMessage.ShouldBe("Connection failed");
+        message.ErrorMessage.ShouldContain("Protected data diagnostic details were redacted.");
+        message.ErrorMessage.ShouldNotContain("Connection failed");
     }
 }

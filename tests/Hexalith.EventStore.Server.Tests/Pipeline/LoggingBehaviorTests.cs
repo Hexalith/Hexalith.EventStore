@@ -121,7 +121,8 @@ public class LoggingBehaviorTests : IDisposable {
         errorLog.Message.ShouldContain("test-domain");
         errorLog.Message.ShouldContain("agg-001");
         errorLog.Message.ShouldContain("InvalidOperationException");
-        errorLog.Message.ShouldContain("Handler failed");
+        errorLog.Message.ShouldContain("Protected data diagnostic details were redacted.");
+        errorLog.Message.ShouldNotContain("Handler failed");
     }
 
     [Fact]

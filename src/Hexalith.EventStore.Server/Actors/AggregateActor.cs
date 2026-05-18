@@ -12,6 +12,7 @@ using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.Server.Diagnostics;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Telemetry;
@@ -319,8 +320,7 @@ public partial class AggregateActor(
                         _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException) {
-                        _ = (activity?.AddException(ex));
-                        _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
+                        ProtectedDataDiagnosticRedactor.RecordActivityException(activity, ex, "rehydrate");
                         // State rehydration infrastructure failure -- dead-letter routing
                         return await HandleInfrastructureFailureAsync(
                             command, causationId, CommandStatus.Processing, ex,
@@ -352,8 +352,7 @@ public partial class AggregateActor(
                         _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException) {
-                        _ = (activity?.AddException(ex));
-                        _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
+                        ProtectedDataDiagnosticRedactor.RecordActivityException(activity, ex, "domain-service-invoke");
                         // Domain service invocation infrastructure failure -- dead-letter routing
                         return await HandleInfrastructureFailureAsync(
                             command, causationId, CommandStatus.Processing, ex,
@@ -442,8 +441,7 @@ public partial class AggregateActor(
                         _ = (activity?.SetStatus(ActivityStatusCode.Ok));
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException and not ConcurrencyConflictException) {
-                        _ = (activity?.AddException(ex));
-                        _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
+                        ProtectedDataDiagnosticRedactor.RecordActivityException(activity, ex, "event-persist");
                         // Event persistence infrastructure failure -- dead-letter routing
                         return await HandleInfrastructureFailureAsync(
                             command, causationId, CommandStatus.EventsStored, ex,
@@ -1044,14 +1042,14 @@ public partial class AggregateActor(
             _ = (activity?.SetTag("eventstore.failure_reason", failureReasonCode));
             _ = (activity?.SetStatus(ActivityStatusCode.Error, failureReasonCode));
 
-            UnpublishedEventsRecord updatedRecord = record.IncrementRetry(ex.Message);
+            string safeFailureReason = ProtectedDataDiagnosticRedactor.RedactException(ex, "drain");
+            UnpublishedEventsRecord updatedRecord = record.IncrementRetry(safeFailureReason);
             await StateManager.SetStateAsync(
                 UnpublishedEventsRecord.GetStateKey(correlationId),
                 updatedRecord).ConfigureAwait(false);
             await StateManager.SaveStateAsync().ConfigureAwait(false);
 
             logger.LogWarning(
-                ex,
                 "Drain failed with exception: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, RetryCount={RetryCount}, EventCount={EventCount}, StartSequence={StartSequence}, EndSequence={EndSequence}, FailureReason={FailureReason}",
                 correlationId,
                 identity.TenantId,
@@ -1061,7 +1059,7 @@ public partial class AggregateActor(
                 updatedRecord.EventCount,
                 updatedRecord.StartSequence,
                 updatedRecord.EndSequence,
-                ex.Message);
+                safeFailureReason);
 
             _ = (activity?.SetTag("eventstore.retry_count", updatedRecord.RetryCount));
         }
@@ -1691,7 +1689,8 @@ public partial class AggregateActor(
         Activity? processActivity,
         long startTicks,
         int? eventCount) {
-        Log.InfrastructureFailure(logger, command.CorrelationId, causationId, command.TenantId, command.Domain, command.AggregateId, command.CommandType, failureStage.ToString(), exception.GetType().Name, exception.Message);
+        string safeFailureReason = ProtectedDataDiagnosticRedactor.RedactException(exception, failureStage.ToString());
+        Log.InfrastructureFailure(logger, command.CorrelationId, causationId, command.TenantId, command.Domain, command.AggregateId, command.CommandType, failureStage.ToString(), exception.GetType().Name, safeFailureReason);
 
         var deadLetterMessage = DeadLetterMessage.FromException(
             command, failureStage, exception, eventCount);
@@ -1724,7 +1723,7 @@ public partial class AggregateActor(
 
         var failResult = new CommandProcessingResult(
             Accepted: false,
-            ErrorMessage: exception.Message,
+            ErrorMessage: safeFailureReason,
             CorrelationId: command.CorrelationId,
             EventCount: 0);
 
@@ -1732,7 +1731,7 @@ public partial class AggregateActor(
         await StateManager.SaveStateAsync().ConfigureAwait(false);
 
         // Advisory status write (non-blocking per rule #12)
-        await WriteAdvisoryStatusAsync(command, CommandStatus.Rejected, exception.Message).ConfigureAwait(false);
+        await WriteAdvisoryStatusAsync(command, CommandStatus.Rejected, safeFailureReason).ConfigureAwait(false);
 
         LogStageTransition(CommandStatus.Rejected, command, causationId, startTicks);
         LogCommandCompletedSummary(command, causationId, CommandStatus.Rejected, startTicks);

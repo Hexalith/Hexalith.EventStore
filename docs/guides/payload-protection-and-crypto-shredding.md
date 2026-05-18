@@ -315,6 +315,27 @@ All ProblemDetails responses carry only safe envelope metadata + stable kebab-ca
 operator next-action hints. Payload bytes, snapshot state, raw keys, key alias text, provider
 exception messages, state-store keys, connection strings, and stack traces never appear.
 
+### Runtime diagnostic redaction
+
+Story 22.7d-1 centralizes protected-data-capable runtime diagnostic text behind
+`ProtectedDataDiagnosticRedactor` in `Hexalith.EventStore.Server`. Runtime callers must not pass
+`exception.Message`, provider result text, metadata dictionaries, command payloads, event payloads,
+snapshot state, state-store keys, or connection strings directly into log template parameters,
+OpenTelemetry status descriptions/events, command status failure text, publish failure reasons, or
+dead-letter diagnostic fields.
+
+| Surface | Safe fields |
+| --- | --- |
+| Logs and source-generated log properties | `correlationId`, `causationId`, `tenantId`, `domain`, `aggregateId`, `commandType`, `eventTypeName`, `sequenceNumber`, `stage`, `reasonCode`, duration/count metadata. |
+| OpenTelemetry status/events | `stage`, `reasonCode`, safe exception type, and `eventstore.protected_data_diagnostic_redacted=true`. |
+| Command status / publish failure / dead-letter diagnostics | Deterministic safe fallback text: `Protected data diagnostic details were redacted. ReasonCode=<reason-code>; Stage=<stage>.` |
+| Unreadable protected-data ProblemDetails | Stable type/title/status/detail plus `correlationId`, `tenantId`, `domain`, `aggregateId`, `sequenceNumber`, `stage`, `reasonCode`, `reasonCategory`, `metadataVersion`, `retryable`, `permanent`. |
+
+The allow-list rule is constructive: safe output is projected from approved metadata, not produced by
+serializing arbitrary objects and scrubbing afterward. Unknown provider exceptions use
+`reasonCode=protected-data-diagnostic-redacted`; typed unreadable protected-data exceptions preserve
+their stable unreadable reason code.
+
 ### Audit evidence
 
 `CryptoShreddingAuditEvent` records every workflow transition and admission decision. Each entry

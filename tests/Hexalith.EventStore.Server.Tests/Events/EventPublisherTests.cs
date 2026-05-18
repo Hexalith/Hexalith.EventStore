@@ -297,7 +297,8 @@ public class EventPublisherTests {
         // Assert -- does NOT throw, returns failure result
         result.Success.ShouldBeFalse();
         result.PublishedCount.ShouldBe(0);
-        result.FailureReason!.ShouldContain("Pub/sub component unavailable");
+        result.FailureReason!.ShouldContain("Protected data diagnostic details were redacted.");
+        result.FailureReason!.ShouldNotContain("Pub/sub component unavailable");
     }
 
     [Fact]
@@ -442,7 +443,8 @@ public class EventPublisherTests {
         // Assert
         result.Success.ShouldBeFalse();
         result.PublishedCount.ShouldBe(2); // Events 1-2 published, 3 failed
-        result.FailureReason!.ShouldContain("Connection reset");
+        result.FailureReason!.ShouldContain("Protected data diagnostic details were redacted.");
+        result.FailureReason!.ShouldNotContain("Connection reset");
     }
 
     // --- Task 6.10: Empty event list ---

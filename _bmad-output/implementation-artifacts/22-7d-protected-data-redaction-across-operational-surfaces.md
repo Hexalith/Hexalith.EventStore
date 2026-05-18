@@ -1,6 +1,8 @@
 # Story 22.7d: Protected Data Redaction Across Operational Surfaces
 
-Status: blocked
+Status: backlog
+
+> Implementation gate cleared 2026-05-18: Stories 22.7a (PR #243, commit 32ca260f), 22.7b (PR #245, commit a6b139d9), and 22.7c (PR #246, commit c8446744) are all merged to main and marked done in `sprint-status.yaml`. The provider-neutral protection metadata/result parity, unreadable taxonomy, and crypto-shredding/restore-safety contracts now exist. Per the container guidance in `sprint-status.yaml`, do not assign this row; split work into child stories 22-7d-1..4 via `bmad-create-story` before any of them can move to `ready-for-dev`.
 
 Context created: 2026-05-14
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12.md`

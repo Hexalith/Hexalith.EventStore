@@ -35,7 +35,14 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-18T15:25:00+02:00' # Story 22.7c moved to done after full code-review patch pass: all 15 review findings applied, including persisted tenant-scoped workflow/admission decisions, deterministic workflow scope idempotency, stricter validation, fail-closed decision helpers, restore override scoping, deferred-admission acceptance, cancellable command-time readability checks, and admin no-leak/tenant controller coverage. Focused validation green: Contracts security slice 80/80; Admin.Server backup/controller slice 47/47; Server actor domain-result slice 28/28.
+last_updated: '2026-05-18T18:40:00+02:00' # Story 22.7d-1 moved review -> done after code review patches and validation passed.
+# Previous last_updated detail preserved: 2026-05-18T16:00:00+02:00 - Story 22.7d-1 moved in-progress -> review after runtime diagnostic redaction implementation and focused validation passed.
+# Previous last_updated detail preserved: 2026-05-18T13:51:00+02:00 - Story 22.7d-1 moved ready-for-dev -> in-progress for protected-data runtime diagnostic redaction implementation.
+# Previous last_updated detail preserved: 2026-05-18T18:30:00+02:00 - Story 22.7d-1 advanced elicitation hardening applied while remaining ready-for-dev: allow-list-first diagnostics, risky-callsite inventory/disposition, Contracts-vs-runtime redactor ownership, provider-exception redactor tests, dead-letter metadata checks, activity event/tag checks, and individual ProblemDetails extension assertions.
+# Previous last_updated detail preserved: 2026-05-18T18:20:00+02:00 - Story 22.7d-1 party-mode review hardening applied while remaining ready-for-dev: explicit shared redaction boundary, path-specific sentinel evidence, safe fallback text, structured log/telemetry/persistence assertions, and ProblemDetails example requirements.
+# Previous last_updated detail preserved: 2026-05-18T18:10:00+02:00 - Story 22.7d-1 materialized by bmad-create-story and moved backlog -> ready-for-dev for protected-data redaction in logs and ProblemDetails. Container 22-7d remains backlog/unassignable; 22.7d-2..4 remain backlog until their child story files are created.
+# Previous last_updated detail preserved: 2026-05-18T18:00:00+02:00 - Stories 22.7d (container) and 22.7d-1..4 (children) moved blocked -> backlog: implementation gate cleared after prerequisites 22.7a (PR #243, 32ca260f), 22.7b (PR #245, a6b139d9), and 22.7c (PR #246, c8446744) all merged to main and marked done. Container 22-7d must not be assigned (see line 354); next step is bmad-create-story for each of 22-7d-1..4 to materialize child story files before any of them can move to ready-for-dev.
+# Previous last_updated detail preserved: 2026-05-18T15:25:00+02:00 - Story 22.7c moved to done after full code-review patch pass: all 15 review findings applied, including persisted tenant-scoped workflow/admission decisions, deterministic workflow scope idempotency, stricter validation, fail-closed decision helpers, restore override scoping, deferred-admission acceptance, cancellable command-time readability checks, and admin no-leak/tenant controller coverage. Focused validation green: Contracts security slice 80/80; Admin.Server backup/controller slice 47/47; Server actor domain-result slice 28/28.
 # Previous last_updated detail preserved: 2026-05-19T01:30:00+02:00 - Story 22.7c moved to review after crypto-shredding workflow + restored-backup safety implementation: new Contracts surface (12 enums/records + 2 ProblemDetails), canonical ProtectedDataReadabilityDecision factory wired into EventPublisher/AggregateActor/SnapshotManager/StreamsController, admin backup admission endpoints returning honest DeferredValidation, Testing builders, payload-protection guide extension + 2 new problem reference pages, no-leak sentinel scans. Full solution build 0 warnings/0 errors. Tier-1 green: Contracts 500/500 (+69 new), Testing 135/135 (+7 new), Client 393/393, Sample 74/74, SignalR 35/35. Server.Tests focused unit slice 302/302 green. Admin.Server full suite 609/609 green (+3 new admission tests, 18 pre-existing skips unchanged).
 # Previous last_updated detail preserved: 2026-05-18T23:59:30+02:00 - Story 22.7c moved to in-progress for crypto-shredding workflow and restored-backup safety. Prerequisites verified: 22.7a metadata/result parity and 22.7b unreadable taxonomy both done.
 # Previous last_updated detail preserved: 2026-05-18T23:58:00+02:00 - Story 22.7b moved to done after code-review patch pass: projection delivery/rebuild, public stream read, and admin inspection now fail closed through typed unprotect/readability boundaries; provider-opaque metadata sub-reasons map to the precise unreadable taxonomy; provider unprotect exceptions are sanitized; protected snapshots are retained on provider failure; readable snapshot metadata is preserved; sentinel assertion output no longer leaks sentinels; unreadable reason retry/permanent helpers now throw on unknown enum values. Validation green: full solution build 0 warnings/0 errors; Contracts.Tests 431/431; Testing.Tests 128/128; Server.Tests focused security/controllers/projections slice 378/378 with 17 skipped pre-existing projection ATDD placeholders.
@@ -352,11 +359,13 @@ development_status:
   22-7b-unreadable-protected-data-behavior: done
   22-7c-crypto-shredding-workflow-and-restored-backup-safety: done
   # Container only: do not assign. Use 22-7d-1 through 22-7d-4 for implementation and review.
-  22-7d-protected-data-redaction-across-operational-surfaces: blocked
-  22-7d-1-protected-data-redaction-in-logs-and-problemdetails: blocked
-  22-7d-2-protected-data-redaction-in-admin-api-and-web-ui: blocked
-  22-7d-3-protected-data-redaction-in-cli-and-mcp: blocked
-  22-7d-4-protected-data-redaction-in-replay-rebuild-backup-validation-and-tests: blocked
+  # Implementation gate cleared 2026-05-18: prerequisites 22.7a/22.7b/22.7c all done. Child story files
+  # for 22-7d-1..4 must be created via bmad-create-story before they can move to ready-for-dev.
+  22-7d-protected-data-redaction-across-operational-surfaces: backlog
+  22-7d-1-protected-data-redaction-in-logs-and-problemdetails: done
+  22-7d-2-protected-data-redaction-in-admin-api-and-web-ui: backlog
+  22-7d-3-protected-data-redaction-in-cli-and-mcp: backlog
+  22-7d-4-protected-data-redaction-in-replay-rebuild-backup-validation-and-tests: backlog
   epic-22-retrospective: optional
 
   # Post-Epic Deferred Work Cleanup (sprint-change-proposal-2026-05-04-deferred-work-triage.md)
@@ -413,30 +422,24 @@ development_status:
   post-epic-4-r4a6-drain-integrity-guard: done
   post-epic-4-r4a8-story-numbering-comments: done
 
-  # Tenant Management Debug Cluster Fix (sprint-change-proposal-2026-05-05-tenant-management-debug-cluster.md)
-  # Consolidated story spanning Hexalith.EventStore + Hexalith.Tenants submodule.
-  # ST1 (UI Immediate bind) + ST2 (admin JSON enum converter) applied in this commit.
-  # ST3 (GlobalAdministratorProjectionHandler in Hexalith.Tenants) + ST4 (admin error-path handling) remain.
+  # Admin UI Manual-Test Follow-Up Cluster (post-Epic-21)
+  # Consolidates the tenant-management-debug fix and all admin-ui manual-test follow-up workstreams.
+  # Source proposals:
+  #   - sprint-change-proposal-2026-05-05-tenant-management-debug-cluster.md (tenant-management-debug-cluster-fix)
+  #   - sprint-change-proposal-2026-05-05-admin-ui-state-inspection-cluster.md (admin-ui-state-inspection-cluster-fix)
+  #   - sprint-change-proposal-2026-05-06-admin-ui-manual-test-bug-bundle.md (admin-ui-manual-test-bug-bundle)
+  #   - sprint-change-proposal-2026-05-07-admin-ui-manual-test-bundle-carveout.md (admin-ui-aggregate-state-replay-correctness — Group A carve-out)
+  #   - sprint-change-proposal-2026-05-07-admin-ui-manual-test-suite-issues.md (Issues #6-#18 split into 6 focused workstreams)
+  # Scope notes:
+  #   - tenant-management-debug-cluster-fix spans Hexalith.EventStore + Hexalith.Tenants submodule (ST1/ST2 applied; ST3/ST4 closed downstream).
+  #   - admin-ui-state-inspection-cluster-fix adds /state, /diff, /causation endpoints + UI defect fixes, error handling, Fluent UI v5 dialog repair.
+  #   - admin-ui-manual-test-bug-bundle covers Issues #1-#3; Issue #4 deferred; Issue #5 carved out to admin-ui-aggregate-state-replay-correctness; ST11 manual Aspire smoke is operator-only.
+  #   - admin-ui-aggregate-state-replay-correctness implements domain-owned replay per ADR-1 (/replay-state endpoint, IAggregateStateReconstructor, EventStoreAggregate<TState> replay handler).
+  #   - The six 2026-05-07 workstreams split Issues #6-#18 across direct UI fixes, DAPR metadata truthfulness, admin operational index population, missing upstream DBA operations, and consistency/tenant UX polish.
   tenant-management-debug-cluster-fix: done
-
-  # Admin UI Stream State-Inspection Cluster (sprint-change-proposal-2026-05-05-admin-ui-state-inspection-cluster.md)
-  # ST1-ST3: add missing /state, /diff, /causation endpoints in Hexalith.EventStore.
-  # ST4-ST7: UI defect fixes + categorized error handling + Fluent UI v5 dialog repair + tests.
   admin-ui-state-inspection-cluster-fix: done
-
-  # Admin UI Manual-Test Unblocker Bundle (sprint-change-proposal-2026-05-06-admin-ui-manual-test-bug-bundle.md)
-  # Bundled Issues #1 (tenant discovery), #2 (truthful metrics), #3 (copy stopPropagation); Issue #4 deferred; Issue #5 carved out 2026-05-07 -> admin-ui-aggregate-state-replay-correctness
-  # per sprint-change-proposal-2026-05-07-admin-ui-manual-test-bundle-carveout.md. ST11 manual Aspire smoke flagged operator-only.
   admin-ui-manual-test-bug-bundle: done
-
-  # Admin UI Aggregate State Replay Correctness — Group A carve-out
-  # Domain-owned replay service per ADR-1: new domain-service /replay-state endpoint, IAggregateStateReconstructor, replay handler in EventStoreAggregate<TState>.
-  # Sibling story admin-ui-manual-test-bug-bundle owns Groups B/C/D. Manual-test guide unblocks only after both stories ship.
   admin-ui-aggregate-state-replay-correctness: done
-
-  # Admin UI Manual Test Suite Issues #6-#18 (sprint-change-proposal-2026-05-07-admin-ui-manual-test-suite-issues.md)
-  # Approved 2026-05-07. Split into focused workstreams because the bundle mixes direct UI fixes, DAPR metadata truthfulness,
-  # admin operational index population, missing upstream DBA operations, and consistency/tenant UX polish.
   admin-ui-health-dapr-truthfulness-fix: done
   admin-ui-operator-action-and-dev-role-testability-fix: done
   admin-ui-actor-diagnostics-honesty-fix: done

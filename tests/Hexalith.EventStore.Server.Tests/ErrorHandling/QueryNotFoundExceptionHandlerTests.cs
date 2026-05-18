@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Queries;
 
@@ -65,6 +66,6 @@ public class QueryNotFoundExceptionHandlerTests {
         body.ShouldNotContain("order-123");
         body.ShouldContain("The requested resource was not found.");
         body.ShouldNotContain("aggregate");
-        body.ShouldNotContain("projection");
+        body.ShouldContain(QueryProblemReasonCodes.ProjectionMissing);
     }
 }

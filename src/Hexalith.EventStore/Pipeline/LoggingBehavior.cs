@@ -2,6 +2,7 @@
 using System.Diagnostics;
 
 using Hexalith.EventStore.Middleware;
+using Hexalith.EventStore.Server.Diagnostics;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Telemetry;
 using Hexalith.EventStore.Telemetry;
@@ -69,13 +70,16 @@ public partial class LoggingBehavior<TRequest, TResponse>(
 
             return response;
         }
+        catch (OperationCanceledException) {
+            throw;
+        }
         catch (Exception ex) {
             TimeSpan elapsed = Stopwatch.GetElapsedTime(startTimestamp);
+            string safeExceptionMessage = ProtectedDataDiagnosticRedactor.RedactException(ex, "pipeline");
 
-            _ = (activity?.AddException(ex));
-            _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
+            ProtectedDataDiagnosticRedactor.RecordActivityException(activity, ex, "pipeline");
 
-            Log.PipelineError(logger, ex, correlationId, causationId, commandType, tenant, domain, aggregateId, ex.GetType().Name, ex.Message, elapsed.TotalMilliseconds);
+            Log.PipelineError(logger, correlationId, causationId, commandType, tenant, domain, aggregateId, ex.GetType().Name, safeExceptionMessage, elapsed.TotalMilliseconds);
 
             throw;
         }
@@ -125,10 +129,9 @@ public partial class LoggingBehavior<TRequest, TResponse>(
         [LoggerMessage(
             EventId = 1002,
             Level = LogLevel.Error,
-            Message = "MediatR pipeline error: CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}, ExceptionType={ExceptionType}, Message={ExceptionMessage}, DurationMs={DurationMs}, Stage=PipelineError")]
+            Message = "MediatR pipeline error: CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}, ExceptionType={ExceptionType}, SafeDiagnostic={SafeDiagnostic}, DurationMs={DurationMs}, Stage=PipelineError")]
         public static partial void PipelineError(
             ILogger logger,
-            Exception ex,
             string correlationId,
             string causationId,
             string commandType,
@@ -136,7 +139,7 @@ public partial class LoggingBehavior<TRequest, TResponse>(
             string? domain,
             string? aggregateId,
             string exceptionType,
-            string exceptionMessage,
+            string safeDiagnostic,
             double durationMs);
     }
 }

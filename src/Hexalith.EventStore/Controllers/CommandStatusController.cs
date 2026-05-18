@@ -6,6 +6,7 @@ using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Models;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Diagnostics;
 using Hexalith.EventStore.Server.Telemetry;
 using Hexalith.EventStore.Telemetry;
 
@@ -143,9 +144,11 @@ public class CommandStatusController(
                 $"No command status found for correlation ID '{correlationId}'.",
                 requestCorrelationId);
         }
+        catch (OperationCanceledException) {
+            throw;
+        }
         catch (Exception ex) {
-            _ = (activity?.AddException(ex));
-            _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
+            ProtectedDataDiagnosticRedactor.RecordActivityException(activity, ex, "command-status");
             throw;
         }
     }

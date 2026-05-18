@@ -6,6 +6,7 @@ using Dapr.Client;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.Server.Diagnostics;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Telemetry;
 
@@ -234,13 +235,13 @@ public partial class EventPublisher(
             throw;
         }
         catch (Exception ex) {
+            string safeFailureReason = ProtectedDataDiagnosticRedactor.RedactException(ex, "publish");
             // Rule #13: No stack traces in error responses.
             // Rule #5: Never log event payload data.
-            Log.EventPublicationFailed(logger, ex, correlationId, causationId, identity.TenantId, identity.Domain, identity.AggregateId, topic, publishedCount, events.Count);
+            Log.EventPublicationFailed(logger, correlationId, causationId, identity.TenantId, identity.Domain, identity.AggregateId, topic, publishedCount, events.Count, ex.GetType().Name, safeFailureReason);
 
-            _ = (activity?.AddException(ex));
-            _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
-            return new EventPublishResult(false, publishedCount, ex.Message);
+            ProtectedDataDiagnosticRedactor.RecordActivityException(activity, ex, "publish");
+            return new EventPublishResult(false, publishedCount, safeFailureReason);
         }
     }
 
@@ -290,10 +291,9 @@ public partial class EventPublisher(
         [LoggerMessage(
             EventId = 3101,
             Level = LogLevel.Error,
-            Message = "Event publication failed: CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Topic={Topic}, PublishedCount={PublishedCount}, TotalCount={TotalCount}, Stage=EventPublicationFailed")]
+            Message = "Event publication failed: CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Topic={Topic}, PublishedCount={PublishedCount}, TotalCount={TotalCount}, ExceptionType={ExceptionType}, SafeDiagnostic={SafeDiagnostic}, Stage=EventPublicationFailed")]
         public static partial void EventPublicationFailed(
             ILogger logger,
-            Exception ex,
             string correlationId,
             string causationId,
             string tenantId,
@@ -301,7 +301,9 @@ public partial class EventPublisher(
             string aggregateId,
             string topic,
             int publishedCount,
-            int totalCount);
+            int totalCount,
+            string exceptionType,
+            string safeDiagnostic);
 
         [LoggerMessage(
             EventId = 3102,

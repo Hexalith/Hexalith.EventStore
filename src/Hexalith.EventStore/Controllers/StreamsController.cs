@@ -9,6 +9,7 @@ using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Diagnostics;
 using Hexalith.EventStore.Server.Events;
 
 using Microsoft.AspNetCore.Authorization;
@@ -177,7 +178,8 @@ public sealed partial class StreamsController(
                         request.Domain,
                         request.AggregateId,
                         envelope.SequenceNumber,
-                        readable.MetadataVersion);
+                        readable.MetadataVersion,
+                        GetRequestCorrelationId());
                     Log.UnreadableProtectedPayloadAtReplay(
                         logger,
                         request.Tenant,
@@ -398,22 +400,9 @@ public sealed partial class StreamsController(
             title: UnreadableProtectedDataProblem.DefaultTitle,
             detail: UnreadableProtectedDataProblem.GetSafeOperatorGuidance(reason));
         if (result.Value is ProblemDetails problem) {
-            problem.Extensions["reasonCode"] = decision.ReasonCode;
-            problem.Extensions[UnreadableProtectedDataProblem.ExtensionReasonCategory] = reason.ToString();
-            problem.Extensions[UnreadableProtectedDataProblem.ExtensionStage] = ProtectedDataReadabilityDecisionStageCodes.From(decision.Stage);
-            if (decision.SequenceNumber.HasValue) {
-                problem.Extensions[UnreadableProtectedDataProblem.ExtensionSequenceNumber] = decision.SequenceNumber.Value;
+            foreach (KeyValuePair<string, object?> extension in ProtectedDataDiagnosticRedactor.BuildUnreadableProblemExtensions(decision)) {
+                problem.Extensions[extension.Key] = extension.Value;
             }
-
-            problem.Extensions[GatewayProblemDetailsExtensions.TenantId] = decision.TenantId;
-            problem.Extensions[UnreadableProtectedDataProblem.ExtensionDomain] = decision.Domain;
-            if (!string.IsNullOrWhiteSpace(decision.AggregateId)) {
-                problem.Extensions[UnreadableProtectedDataProblem.ExtensionAggregateId] = decision.AggregateId;
-            }
-
-            problem.Extensions[UnreadableProtectedDataProblem.ExtensionMetadataVersion] = decision.MetadataVersion;
-            problem.Extensions[UnreadableProtectedDataProblem.ExtensionRetryable] = decision.IsRetryable;
-            problem.Extensions[UnreadableProtectedDataProblem.ExtensionPermanent] = decision.IsPermanent;
         }
 
         if (statusCode == StatusCodes.Status503ServiceUnavailable) {
@@ -422,6 +411,11 @@ public sealed partial class StreamsController(
 
         return result;
     }
+
+    private string? GetRequestCorrelationId()
+        => HttpContext?.Items.TryGetValue("CorrelationId", out object? value) == true
+            ? value?.ToString()
+            : null;
 
     private IActionResult? ValidateRequest(StreamReadRequest request) {
         if (string.IsNullOrWhiteSpace(request.Tenant)

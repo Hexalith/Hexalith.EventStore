@@ -7,6 +7,7 @@ using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Models;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Diagnostics;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Telemetry;
 using Hexalith.EventStore.Telemetry;
@@ -216,9 +217,11 @@ public class ReplayController(
             _ = (activity?.SetStatus(ActivityStatusCode.Ok));
             return Accepted(absoluteLocationUri, new ReplayCommandResponse(replayCorrelationId, IsReplay: true, PreviousStatus: previousStatus, OriginalCorrelationId: correlationId));
         }
+        catch (OperationCanceledException) {
+            throw;
+        }
         catch (Exception ex) {
-            _ = (activity?.AddException(ex));
-            _ = (activity?.SetStatus(ActivityStatusCode.Error, ex.Message));
+            ProtectedDataDiagnosticRedactor.RecordActivityException(activity, ex, "replay");
             throw;
         }
     }

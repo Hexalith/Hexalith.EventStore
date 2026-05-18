@@ -48,7 +48,8 @@ public static class ValidationProblemDetailsFactory {
 
         string? reasonCode = failures
             .Select(f => f.ErrorCode)
-            .FirstOrDefault(static errorCode => errorCode.StartsWith("query_", StringComparison.Ordinal));
+            .FirstOrDefault(static errorCode => !string.IsNullOrWhiteSpace(errorCode)
+                && errorCode.StartsWith("query_", StringComparison.Ordinal));
 
         return CreateCore(detail, errors, correlationId, tenantId, reasonCode);
     }

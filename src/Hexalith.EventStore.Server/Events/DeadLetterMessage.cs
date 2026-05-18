@@ -1,5 +1,6 @@
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Server.Diagnostics;
 
 namespace Hexalith.EventStore.Server.Events;
 /// <summary>
@@ -10,7 +11,7 @@ namespace Hexalith.EventStore.Server.Events;
 /// <param name="Command">The full, unmodified command envelope for replay support.</param>
 /// <param name="FailureStage">The CommandStatus value at the time of failure.</param>
 /// <param name="ExceptionType">The exception type name (no stack trace per rule #13).</param>
-/// <param name="ErrorMessage">The exception message (no stack trace per rule #13).</param>
+/// <param name="ErrorMessage">The safe diagnostic message (no stack trace or provider text per rule #13).</param>
 /// <param name="CorrelationId">The correlation identifier for request tracing.</param>
 /// <param name="CausationId">The optional causation identifier.</param>
 /// <param name="TenantId">The tenant identifier.</param>
@@ -53,7 +54,7 @@ public record DeadLetterMessage(
             Command: command,
             FailureStage: failureStage.ToString(),
             ExceptionType: exception.GetType().Name,
-            ErrorMessage: exception.Message,
+            ErrorMessage: ProtectedDataDiagnosticRedactor.RedactException(exception, failureStage.ToString()),
             CorrelationId: command.CorrelationId,
             CausationId: command.CausationId,
             TenantId: command.TenantId,
