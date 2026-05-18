@@ -6,7 +6,7 @@ Before you start the quickstart, you need three tools installed: the .NET 10 SDK
 
 ## .NET 10 SDK
 
-Hexalith.EventStore targets .NET 10. You need the .NET 10 SDK (version 10.0.300 or later) to build and run the project.
+Hexalith.EventStore targets .NET 10. You need the .NET 10 SDK (version 10.0.300 or later patch in the same feature band) to build and run the project.
 
 **Install:** Use the official installation guidance for your platform:
 
@@ -20,7 +20,7 @@ Hexalith.EventStore targets .NET 10. You need the .NET 10 SDK (version 10.0.300 
 $ dotnet --version
 ```
 
-Expected output: `10.0.300` or later (any later 10.0.x patch version works).
+Expected output: `10.0.300` or later patch in the same feature band.
 
 ## .NET Aspire CLI
 
@@ -150,7 +150,7 @@ You should see `dapr_placement`, `dapr_redis`, and `dapr_zipkin` listed as runni
 Run these commands to confirm everything is set up correctly:
 
 ```bash
-$ dotnet --version    # 10.0.300 or later
+$ dotnet --version    # 10.0.300 or later patch in the same feature band
 $ aspire --version    # Version string (e.g., 9.2.0)
 $ docker --version    # Output starts with "Docker version"
 $ docker info         # Returns Docker server information (daemon running)

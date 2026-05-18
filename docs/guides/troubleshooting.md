@@ -166,7 +166,7 @@ The current .NET SDK does not support targeting .NET 10.0. Either target .NET 9.
 
     ```bash
     $ dotnet --version
-    # Expected: 10.0.300 or later patch
+    # Expected: 10.0.300 or later patch in the same feature band
     ```
 
 ### Sample Build Failure
