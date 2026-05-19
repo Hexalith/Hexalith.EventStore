@@ -1,0 +1,55 @@
+{
+  "dimension": "isolation",
+  "score": 93,
+  "max_score": 100,
+  "grade": "A",
+  "violations": [
+    {
+      "file": "tests/Hexalith.EventStore.Admin.UI.E2E/PlaywrightFixture.cs",
+      "line": 100,
+      "severity": "LOW",
+      "category": "shared-host-state",
+      "description": "All tests in the 'Playwright' collection share a single WebApplication host instance (started once in InitializeAsync). New IBrowserContext per test isolates client-side state (localStorage, cookies, console subscriptions), but any server-side mutation (in-memory caches, registered handlers, captured logs, file uploads) would leak across tests. Today's tests are read-only against the Admin.UI host so the leak vector is dormant, but future write-path tests could silently couple. Consider documenting the read-only invariant or scoping write tests to a separate collection with a per-class fixture.",
+      "suggestion": "Add a comment in PlaywrightFixture.cs stating 'Tests in the Playwright collection must not mutate server-side state (no commands, no event writes). Use a separate per-class fixture for write-path tests.' Alternatively, expose a fixture reset hook (RestartHostAsync) for tests that need fresh server state.",
+      "code_snippet": "IBrowserContext context = await _browser.NewContextAsync(new BrowserNewContextOptions { BaseURL = BaseUrl, IgnoreHTTPSErrors = true }).ConfigureAwait(false);"
+    },
+    {
+      "file": "tests/Hexalith.EventStore.Admin.UI.E2E/AdminUIE2EFixture.cs",
+      "line": 12,
+      "severity": "LOW",
+      "category": "unused-fixture",
+      "description": "AdminUIE2EFixture defines an alternative IAsyncLifetime fixture that builds a WebApplicationFactory<Program> but does not appear to be wired into any [Collection] or [IClassFixture<>] in the audited tests. An unused-but-present fixture is a latent isolation hazard: a future test may instantiate it alongside the PlaywrightFixture, double-starting Program with conflicting Aspire/DAPR config, and produce hard-to-diagnose state collisions. Either delete it or attach it to a CollectionDefinition with a clear scoping comment.",
+      "suggestion": "Delete AdminUIE2EFixture.cs (the in-use fixture is PlaywrightFixture) OR attach it to its own collection with a docstring explaining when it should be preferred over PlaywrightFixture.",
+      "code_snippet": "public class AdminUIE2EFixture : IAsyncLifetime"
+    },
+    {
+      "file": "tests/Hexalith.EventStore.Admin.UI.E2E/Dw5SidebarShortcutBrowserAtddTests.cs",
+      "line": 91,
+      "severity": "LOW",
+      "category": "explicit-isolation-documentation",
+      "description": "CtrlB_StorageKey_MatchesViewportTier_AndPersistsAcrossRefresh writes hexalith-sidebar-collapsed-{tier} to localStorage and never explicitly clears it. Isolation is currently provided implicitly because each test in the collection gets a fresh IBrowserContext via CreatePageAsync, so localStorage is scoped per-test and discarded on context dispose. The implicit isolation is correct but invisible at the call site — a future refactor that reuses a context across tests (e.g., a 'fast' mode that skips context creation) would silently couple this localStorage write to neighbouring tests like CtrlK_OpenCloseReopen_StillWorksAfterCtrlBActivity, which currently happens to also press Ctrl+B in its arrange phase. Add a comment naming the implicit contract so the dependency is searchable.",
+      "suggestion": "At the top of the test method (or above CreatePageAsync usage), add a comment: '// Isolation: per-test IBrowserContext means localStorage is scoped to this test; no cleanup required. Do not refactor to a shared context without auditing this assumption.'",
+      "code_snippet": "await page.Keyboard.PressAsync(\"Control+b\");"
+    },
+    {
+      "file": "tests/Hexalith.EventStore.Admin.UI.E2E/Dw5TypeCatalogNavigationBrowserAtddTests.cs",
+      "line": 58,
+      "severity": "LOW",
+      "category": "subscription-scoping",
+      "description": "SidebarNav_From_Types_ProducesNoConsoleErrors registers a page.Console handler. The handler is correctly scoped to the per-test page (subscription dies with the context). However, the handler captures the local 'errors' list by closure — if a future refactor moves the handler registration above CreatePageAsync (e.g., to a fixture method), the closure would survive and accumulate errors across tests. This is currently a non-issue but worth documenting.",
+      "suggestion": "Keep handler registration inline with the per-test page (current pattern is correct). Optionally add 'await using' on the page subscription pattern or a try/finally that explicitly does 'page.Console -= handler' to make the lifetime obvious.",
+      "code_snippet": "page.Console += (_, msg) => { if (msg.Type == \"error\") { errors.Add(msg.Text); } };"
+    }
+  ],
+  "passed_checks": 18,
+  "failed_checks": 4,
+  "total_checks": 22,
+  "violation_summary": { "HIGH": 0, "MEDIUM": 0, "LOW": 4 },
+  "recommendations": [
+    "Document the read-only-host invariant for the Playwright collection in PlaywrightFixture.cs — the shared WebApplication is safe only because no audited test mutates server-side state.",
+    "Delete the unused AdminUIE2EFixture.cs (or attach it to a real CollectionDefinition with a clear scoping comment) to remove a latent dual-fixture hazard.",
+    "Add inline comments at localStorage-writing and console-subscribing test sites making the per-test IBrowserContext isolation contract explicit, so a future refactor cannot silently break it.",
+    "If a write-path E2E test is ever added (e.g., command submit, event publish), put it in a separate collection with its own fixture that recycles the host per-class or per-test."
+  ],
+  "summary": "Per-test IBrowserContext via CreatePageAsync + await-using disposal correctly isolates client-side state (localStorage, console subscriptions, cookies) across all Playwright-collection tests, with no HIGH/MEDIUM isolation violations and only minor documentation/cleanup LOW findings."
+}
