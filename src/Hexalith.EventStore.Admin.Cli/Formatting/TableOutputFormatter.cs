@@ -98,7 +98,7 @@ public class TableOutputFormatter : IOutputFormatter {
         foreach (ColumnDefinition col in columns) {
             PropertyInfo? prop = type.GetProperty(col.PropertyName, BindingFlags.Public | BindingFlags.Instance);
             if (prop is not null) {
-                result.Add((col.Header, obj => FormatValue(prop.GetValue(obj)), col));
+                result.Add((col.Header, obj => FormatPropertyValue(obj, prop), col));
             }
         }
 
@@ -119,7 +119,7 @@ public class TableOutputFormatter : IOutputFormatter {
                 continue;
             }
 
-            result.Add((prop.Name, obj => FormatValue(prop.GetValue(obj))));
+            result.Add((prop.Name, obj => SafeOutputValueFormatter.Format(prop.GetValue(obj))));
         }
 
         return result;
@@ -141,12 +141,11 @@ public class TableOutputFormatter : IOutputFormatter {
         return string.Join("  ", cells);
     }
 
-    private static string FormatValue(object? value)
-        => value switch {
-            null => string.Empty,
-            Enum e => e.ToString(),
-            _ => value.ToString() ?? string.Empty,
-        };
+    // Per D4: fail-closed. When a descriptor property is null, render an empty cell rather than
+    // falling back to a raw value. Raw fields (PayloadJson, StateJson, OldValue, NewValue, ...)
+    // are not exposed through table view; users requiring full content must use --output json.
+    private static string FormatPropertyValue(object obj, PropertyInfo prop)
+        => SafeOutputValueFormatter.Format(prop.GetValue(obj));
 
     private static bool IsScalarType(Type type) {
         Type underlying = Nullable.GetUnderlyingType(type) ?? type;

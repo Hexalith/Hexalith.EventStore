@@ -121,4 +121,21 @@ public class StreamToolsTests {
 
         _ = Should.NotThrow(() => JsonDocument.Parse(result));
     }
+
+    [Fact]
+    public async Task GetEventDetail_SentinelBearingPayloadJson_DoesNotLeak() {
+        // P1 — sentinel injection at the per-tool boundary (not just ToolHelper) proves the no-leak
+        // invariant flows through StreamTools.GetEventDetail's SerializeResult call.
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        string sentinelBearing = $$"""{"tenantId":"t1","domain":"Orders","aggregateId":"o1","sequenceNumber":1,"eventTypeName":"OrderPlaced","timestamp":"2026-01-01T00:00:00Z","correlationId":"c1","causationId":null,"userId":null,"payloadJson":"{{Testing.Security.ProtectedDataLeakSentinel.ProtectedPayloadPlaintext}}"}""";
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, sentinelBearing);
+        var client = new AdminApiClient(httpClient);
+
+        string result = await StreamTools.GetEventDetail(client, new InvestigationSession(), "t1", "Orders", "o1", 1, ct);
+
+        Testing.Security.ProtectedDataLeakSentinel.AssertNoLeak([result]);
+        result.ShouldNotContain("payloadJson");
+        using var doc = JsonDocument.Parse(result);
+        doc.RootElement.GetProperty("payload").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+    }
 }

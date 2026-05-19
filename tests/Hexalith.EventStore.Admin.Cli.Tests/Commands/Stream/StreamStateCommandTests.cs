@@ -46,7 +46,14 @@ public class StreamStateCommandTests {
         // Assert
         output.ShouldContain("Tenant");
         output.ShouldContain("acme");
-        output.ShouldContain("StateJson");
+        output.ShouldContain("State");
+    }
+
+    [Fact]
+    public void StreamStateCommand_TableColumns_DoNotSelectRawStateJson() {
+        StreamStateCommand.Columns
+            .Select(c => c.PropertyName)
+            .ShouldNotContain("StateJson");
     }
 
     [Fact]

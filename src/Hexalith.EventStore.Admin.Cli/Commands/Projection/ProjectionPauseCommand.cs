@@ -54,7 +54,7 @@ public static class ProjectionPauseCommand {
                 .ConfigureAwait(false);
 
             if (!result.Success) {
-                Console.Error.WriteLine(result.Message ?? "Operation failed.");
+                Console.Error.WriteLine(SafeOutputValueFormatter.SafeText(result.Message ?? "Operation failed."));
                 return ExitCodes.Error;
             }
 

@@ -117,4 +117,21 @@ public class BackupWriteToolsTests {
 
         _ = Should.NotThrow(() => JsonDocument.Parse(result));
     }
+
+    [Fact]
+    public async Task TriggerBackup_SentinelBearingRawCapableField_DoesNotLeak() {
+        // P1 — sentinel injected into a raw-capable property (payloadJson) must be projected to a
+        // safe descriptor when serialized through ToolHelper.SerializeResult, per D2 narrow-scope contract.
+        // Note: server-controlled descriptive text (e.g., AdminOperationResult.Message) is intentionally
+        // NOT scoped by D2 — that path's safety is owned by the Admin API server-side ProblemDetails contract.
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        string sentinelResult = $$"""{"success":true,"operationId":"op-1","payloadJson":"{{Testing.Security.ProtectedDataLeakSentinel.ProtectedPayloadPlaintext}}","errorCode":null}""";
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, sentinelResult);
+        var client = new AdminApiClient(httpClient);
+
+        string result = await BackupWriteTools.TriggerBackup(client, "t1", confirm: true, cancellationToken: ct);
+
+        Testing.Security.ProtectedDataLeakSentinel.AssertNoLeak([result]);
+        result.ShouldNotContain("payloadJson");
+    }
 }

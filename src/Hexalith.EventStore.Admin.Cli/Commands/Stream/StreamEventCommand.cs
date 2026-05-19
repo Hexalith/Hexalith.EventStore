@@ -21,7 +21,7 @@ public static class StreamEventCommand {
         new("CorrelationId", "CorrelationId"),
         new("CausationId", "CausationId"),
         new("UserId", "UserId"),
-        new("PayloadJson", "PayloadJson", MaxWidth: 80),
+        new("Payload", "Payload", MaxWidth: 80),
     ];
 
     /// <summary>

@@ -293,4 +293,21 @@ public class ProjectionWriteToolsTests {
 
         _ = Should.NotThrow(() => JsonDocument.Parse(result));
     }
+
+    [Fact]
+    public async Task PauseProjection_SentinelBearingRawCapableField_DoesNotLeak() {
+        // P1 — sentinel injected into a raw-capable property (stateJson) must be projected to a
+        // safe descriptor when serialized through ToolHelper.SerializeResult, per D2 narrow-scope contract.
+        // Note: AdminOperationResult.Message survives sanitization by design (D2 narrow); server-side
+        // ProblemDetails contract is the owner for descriptive text safety.
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        string sentinelResult = $$"""{"success":true,"operationId":"op-1","stateJson":"{{Testing.Security.ProtectedDataLeakSentinel.ProtectedSnapshotPlaintext}}","errorCode":null}""";
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, sentinelResult);
+        var client = new AdminApiClient(httpClient);
+
+        string result = await ProjectionWriteTools.PauseProjection(client, "t1", "OrderSummary", confirm: true, cancellationToken: ct);
+
+        Testing.Security.ProtectedDataLeakSentinel.AssertNoLeak([result]);
+        result.ShouldNotContain("stateJson");
+    }
 }

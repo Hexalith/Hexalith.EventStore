@@ -1,7 +1,9 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
 
+using Hexalith.EventStore.Admin.Abstractions.Security;
 using Hexalith.EventStore.Admin.Cli.Formatting;
+using Hexalith.EventStore.Contracts.Problems;
 
 namespace Hexalith.EventStore.Admin.Cli.Client;
 
@@ -9,6 +11,8 @@ namespace Hexalith.EventStore.Admin.Cli.Client;
 /// HTTP client wrapper for calling the Admin REST API.
 /// </summary>
 public class AdminApiClient : IDisposable {
+    private const int MaxProblemDetailsBytes = 65_536;
+    private const int MaxExtensionValueChars = 1024;
     private readonly HttpClient _httpClient;
     private readonly bool _ownsClient;
 
@@ -80,6 +84,11 @@ public class AdminApiClient : IDisposable {
         }
 
         using (response) {
+            AdminApiException? problemException = await TryCreateProblemExceptionAsync(response, path, resolvedUrl, cancellationToken).ConfigureAwait(false);
+            if (problemException is not null) {
+                throw problemException;
+            }
+
             int statusCode = (int)response.StatusCode;
             switch (statusCode) {
                 case 401:
@@ -133,20 +142,27 @@ public class AdminApiClient : IDisposable {
 
         using (response) {
             int statusCode = (int)response.StatusCode;
+            if (statusCode == 404) {
+                return null;
+            }
+
+            AdminApiException? problemException = await TryCreateProblemExceptionAsync(response, path, resolvedUrl, cancellationToken).ConfigureAwait(false);
+            if (problemException is not null) {
+                throw problemException;
+            }
+
             switch (statusCode) {
                 case 401:
                     throw new AdminApiException($"Authentication required. Use --token to provide a JWT token. (URL: {resolvedUrl})");
                 case 403:
                     throw new AdminApiException($"Access denied. Insufficient permissions. (URL: {resolvedUrl})");
-                case 404:
-                    return null;
                 case >= 500:
                     throw new AdminApiException($"Admin API server error: {statusCode}. (URL: {resolvedUrl})");
             }
 
             _ = response.EnsureSuccessStatusCode();
 
-            string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            string json = await ReadResponseBodyAsync(response, resolvedUrl, cancellationToken).ConfigureAwait(false);
             try {
                 return JsonSerializer.Deserialize<T>(json, JsonDefaults.Options)
                     ?? throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.");
@@ -189,6 +205,11 @@ public class AdminApiClient : IDisposable {
         }
 
         using (response) {
+            AdminApiException? problemException = await TryCreateProblemExceptionAsync(response, path, resolvedUrl, cancellationToken).ConfigureAwait(false);
+            if (problemException is not null) {
+                throw problemException;
+            }
+
             int statusCode = (int)response.StatusCode;
             switch (statusCode) {
                 case 401:
@@ -206,7 +227,7 @@ public class AdminApiClient : IDisposable {
                 _ = response.EnsureSuccessStatusCode();
             }
 
-            string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            string json = await ReadResponseBodyAsync(response, resolvedUrl, cancellationToken).ConfigureAwait(false);
             try {
                 return JsonSerializer.Deserialize<TResponse>(json, JsonDefaults.Options)
                     ?? throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.");
@@ -250,6 +271,11 @@ public class AdminApiClient : IDisposable {
         }
 
         using (response) {
+            AdminApiException? problemException = await TryCreateProblemExceptionAsync(response, path, resolvedUrl, cancellationToken).ConfigureAwait(false);
+            if (problemException is not null) {
+                throw problemException;
+            }
+
             int statusCode = (int)response.StatusCode;
             switch (statusCode) {
                 case 401:
@@ -266,7 +292,7 @@ public class AdminApiClient : IDisposable {
                 _ = response.EnsureSuccessStatusCode();
             }
 
-            string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            string json = await ReadResponseBodyAsync(response, resolvedUrl, cancellationToken).ConfigureAwait(false);
             try {
                 return JsonSerializer.Deserialize<TResponse>(json, JsonDefaults.Options)
                     ?? throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.");
@@ -303,6 +329,11 @@ public class AdminApiClient : IDisposable {
         }
 
         using (response) {
+            AdminApiException? problemException = await TryCreateProblemExceptionAsync(response, path, resolvedUrl, cancellationToken).ConfigureAwait(false);
+            if (problemException is not null) {
+                throw problemException;
+            }
+
             int statusCode = (int)response.StatusCode;
             switch (statusCode) {
                 case 401:
@@ -319,7 +350,7 @@ public class AdminApiClient : IDisposable {
                 _ = response.EnsureSuccessStatusCode();
             }
 
-            string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            string json = await ReadResponseBodyAsync(response, resolvedUrl, cancellationToken).ConfigureAwait(false);
             try {
                 return JsonSerializer.Deserialize<TResponse>(json, JsonDefaults.Options)
                     ?? throw new AdminApiException("Invalid response from Admin API. Possible version mismatch between CLI and server.");
@@ -338,4 +369,198 @@ public class AdminApiClient : IDisposable {
 
         GC.SuppressFinalize(this);
     }
+
+    private static async Task<AdminApiException?> TryCreateProblemExceptionAsync(
+        HttpResponseMessage response,
+        string path,
+        string resolvedUrl,
+        CancellationToken cancellationToken) {
+        if (response.IsSuccessStatusCode) {
+            return null;
+        }
+
+        int statusCode = (int)response.StatusCode;
+        long? contentLength = response.Content.Headers.ContentLength;
+        if (contentLength is 0) {
+            return null;
+        }
+
+        if (contentLength > MaxProblemDetailsBytes) {
+            return CreateGenericFailure(statusCode, resolvedUrl, path);
+        }
+
+        byte[]? body;
+        try {
+            body = await ReadBoundedBytesAsync(response, MaxProblemDetailsBytes, cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException) {
+            return CreateGenericFailure(statusCode, resolvedUrl, path);
+        }
+        catch (IOException) {
+            return CreateGenericFailure(statusCode, resolvedUrl, path);
+        }
+
+        if (body is null) {
+            return CreateGenericFailure(statusCode, resolvedUrl, path);
+        }
+
+        if (body.Length == 0) {
+            return null;
+        }
+
+        try {
+            using JsonDocument doc = JsonDocument.Parse(body);
+            if (doc.RootElement.ValueKind is not JsonValueKind.Object) {
+                return CreateGenericFailure(statusCode, resolvedUrl, path);
+            }
+
+            AdminApiProblemDetails problem = ParseSafeProblemDetails(doc.RootElement, statusCode);
+            if (problem.Type is null && problem.Title is null && problem.Extensions.Count == 0) {
+                return CreateGenericFailure(statusCode, resolvedUrl, path);
+            }
+
+            return new AdminApiException(BuildProblemMessage(problem, statusCode), statusCode, problem);
+        }
+        catch (JsonException) {
+            return CreateGenericFailure(statusCode, resolvedUrl, path);
+        }
+    }
+
+    /// <summary>
+    /// Reads up to <paramref name="maxBytes"/> bytes from the response body.
+    /// Returns <see langword="null"/> when the body exceeds the cap (size enforced before full buffering).
+    /// </summary>
+    private static async Task<byte[]?> ReadBoundedBytesAsync(
+        HttpResponseMessage response,
+        int maxBytes,
+        CancellationToken cancellationToken) {
+        using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        using MemoryStream buffer = new();
+        byte[] chunk = new byte[8192];
+        int total = 0;
+        while (true) {
+            int read = await stream.ReadAsync(chunk.AsMemory(0, chunk.Length), cancellationToken).ConfigureAwait(false);
+            if (read == 0) {
+                break;
+            }
+
+            total += read;
+            if (total > maxBytes) {
+                return null;
+            }
+
+            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+        }
+
+        return buffer.ToArray();
+    }
+
+    /// <summary>
+    /// Reads the full response body as UTF-8 text, wrapping transport/IO exceptions in
+    /// a user-friendly <see cref="AdminApiException"/>.
+    /// </summary>
+    private static async Task<string> ReadResponseBodyAsync(
+        HttpResponseMessage response,
+        string resolvedUrl,
+        CancellationToken cancellationToken) {
+        try {
+            return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) {
+            throw new AdminApiException($"Cannot read Admin API response. (URL: {resolvedUrl})", ex);
+        }
+        catch (IOException ex) {
+            throw new AdminApiException($"Cannot read Admin API response. (URL: {resolvedUrl})", ex);
+        }
+    }
+
+    private static AdminApiException CreateGenericFailure(int statusCode, string resolvedUrl, string path)
+        => new($"Admin API request failed with HTTP {statusCode}. (URL: {resolvedUrl}{path})", statusCode);
+
+    private static AdminApiProblemDetails ParseSafeProblemDetails(JsonElement root, int fallbackStatusCode) {
+        string? type = GetSafeString(root, "type");
+        string? title = GetSafeString(root, "title");
+        string? detail = GetSafeString(root, "detail");
+        int? status = root.TryGetProperty("status", out JsonElement statusElement) && statusElement.TryGetInt32(out int parsedStatus)
+            ? parsedStatus
+            : fallbackStatusCode;
+
+        Dictionary<string, string> extensions = new(StringComparer.Ordinal);
+        foreach (JsonProperty property in root.EnumerateObject()) {
+            if (IsStandardProblemProperty(property.Name) || !IsAllowedProblemExtension(property.Name)) {
+                continue;
+            }
+
+            if (TryGetSafeScalar(property.Value, out string? safeValue) && safeValue is not null) {
+                extensions[property.Name] = safeValue;
+            }
+        }
+
+        return new AdminApiProblemDetails(type, title, status, detail, extensions);
+    }
+
+    private static string BuildProblemMessage(AdminApiProblemDetails problem, int statusCode) {
+        string title = string.IsNullOrWhiteSpace(problem.Title)
+            ? "Admin API request failed"
+            : problem.Title;
+
+        return problem.Extensions.TryGetValue(GatewayProblemDetailsExtensions.ReasonCode, out string? reasonCode)
+            ? $"{title}. HTTP {statusCode}. Reason: {reasonCode}."
+            : $"{title}. HTTP {statusCode}.";
+    }
+
+    private static string? GetSafeString(JsonElement root, string propertyName)
+        => root.TryGetProperty(propertyName, out JsonElement value) && TryGetSafeScalar(value, out string? safeValue)
+            ? safeValue
+            : null;
+
+    private static bool TryGetSafeScalar(JsonElement value, out string? safeValue) {
+        safeValue = null;
+        switch (value.ValueKind) {
+            case JsonValueKind.String:
+                string? text = value.GetString();
+                if (string.IsNullOrEmpty(text) || UnsafeMarkerDetection.ContainsUnsafeMarker(text)) {
+                    return false;
+                }
+
+                safeValue = text.Length > MaxExtensionValueChars
+                    ? string.Concat(text.AsSpan(0, MaxExtensionValueChars - 1), "…")
+                    : text;
+                return true;
+            case JsonValueKind.Number:
+                safeValue = value.GetRawText();
+                return true;
+            case JsonValueKind.True:
+                safeValue = "true";
+                return true;
+            case JsonValueKind.False:
+                safeValue = "false";
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static bool IsStandardProblemProperty(string propertyName)
+        => propertyName.Equals("type", StringComparison.Ordinal)
+        || propertyName.Equals("title", StringComparison.Ordinal)
+        || propertyName.Equals("status", StringComparison.Ordinal)
+        || propertyName.Equals("detail", StringComparison.Ordinal)
+        || propertyName.Equals("instance", StringComparison.Ordinal);
+
+    private static bool IsAllowedProblemExtension(string propertyName)
+        => propertyName.Equals(GatewayProblemDetailsExtensions.CorrelationId, StringComparison.Ordinal)
+        || propertyName.Equals(GatewayProblemDetailsExtensions.TenantId, StringComparison.Ordinal)
+        || propertyName.Equals(GatewayProblemDetailsExtensions.Reason, StringComparison.Ordinal)
+        || propertyName.Equals(GatewayProblemDetailsExtensions.ReasonCode, StringComparison.Ordinal)
+        || propertyName.Equals(GatewayProblemDetailsExtensions.RetryAfter, StringComparison.Ordinal)
+        || propertyName.Equals(UnreadableProtectedDataProblem.ExtensionReasonCategory, StringComparison.Ordinal)
+        || propertyName.Equals(UnreadableProtectedDataProblem.ExtensionStage, StringComparison.Ordinal)
+        || propertyName.Equals(UnreadableProtectedDataProblem.ExtensionSequenceNumber, StringComparison.Ordinal)
+        || propertyName.Equals(UnreadableProtectedDataProblem.ExtensionCheckpointId, StringComparison.Ordinal)
+        || propertyName.Equals(UnreadableProtectedDataProblem.ExtensionDomain, StringComparison.Ordinal)
+        || propertyName.Equals(UnreadableProtectedDataProblem.ExtensionAggregateId, StringComparison.Ordinal)
+        || propertyName.Equals(UnreadableProtectedDataProblem.ExtensionMetadataVersion, StringComparison.Ordinal)
+        || propertyName.Equals(UnreadableProtectedDataProblem.ExtensionRetryable, StringComparison.Ordinal)
+        || propertyName.Equals(UnreadableProtectedDataProblem.ExtensionPermanent, StringComparison.Ordinal);
 }

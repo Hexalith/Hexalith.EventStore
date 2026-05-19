@@ -13,6 +13,6 @@ public static class JsonDefaults {
     public static readonly JsonSerializerOptions Options = new() {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+        Converters = { new EventDetailJsonConverter(), new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 }

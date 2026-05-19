@@ -1,11 +1,13 @@
 using System.Net;
 using System.Text.Json;
 
+using Hexalith.EventStore.Admin.Abstractions.Models;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Cli.Client;
 using Hexalith.EventStore.Admin.Cli.Commands.Stream;
 using Hexalith.EventStore.Admin.Cli.Formatting;
 using Hexalith.EventStore.Testing.Http;
+using Hexalith.EventStore.Testing.Security;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Commands.Stream;
 
@@ -13,7 +15,16 @@ public class StreamDiffCommandTests {
     private static AggregateStateDiff CreateTestDiff()
         => new(5, 10,
         [
-            new FieldChange("count", "41", "42"),
+            FieldChange.Redacted(
+                "count",
+                AdminRedactedContent.Protected(
+                    contentKind: "field-value", reasonCode: "protected-content", stage: "cli-test",
+                    metadataVersion: null, retryable: false, permanent: false,
+                    safeNextAction: "Inspect descriptor."),
+                AdminRedactedContent.Protected(
+                    contentKind: "field-value", reasonCode: "protected-content", stage: "cli-test",
+                    metadataVersion: null, retryable: false, permanent: false,
+                    safeNextAction: "Inspect descriptor.")),
             new FieldChange("lastUpdated", "2026-03-24T10:00:00Z", "2026-03-25T10:00:00Z"),
         ]);
 
@@ -33,8 +44,8 @@ public class StreamDiffCommandTests {
     }
 
     [Fact]
-    public void StreamDiffCommand_ReturnsFieldChanges() {
-        // Arrange — test formatting directly
+    public void StreamDiffCommand_RendersDescriptorContent_WhenPresent() {
+        // Arrange — descriptor-bearing field renders the descriptor; raw-only field renders empty (D4 fail-closed).
         AggregateStateDiff diff = CreateTestDiff();
         IOutputFormatter formatter = new TableOutputFormatter();
 
@@ -43,11 +54,68 @@ public class StreamDiffCommandTests {
 
         // Assert
         output.ShouldContain("FieldPath");
-        output.ShouldContain("OldValue");
-        output.ShouldContain("NewValue");
+        output.ShouldContain("Old");
+        output.ShouldContain("New");
         output.ShouldContain("count");
-        output.ShouldContain("41");
-        output.ShouldContain("42");
+        output.ShouldContain("lastUpdated");
+        output.ShouldContain("Protected content redacted.");
+    }
+
+    [Fact]
+    public void StreamDiffCommand_RawOnlyChange_RendersEmptyOldNew_FailClosed() {
+        // Arrange — D4: when descriptor is null, raw OldValue/NewValue must NOT appear in table output.
+        AggregateStateDiff diff = new(5, 10, [new FieldChange("count", "41", "42")]);
+        IOutputFormatter formatter = new TableOutputFormatter();
+
+        // Act
+        string output = formatter.FormatCollection(diff.ChangedFields.ToList(), StreamDiffCommand.Columns);
+
+        // Assert — field path visible, raw values absent (no fallback to OldValue/NewValue).
+        output.ShouldContain("count");
+        output.ShouldNotContain("41");
+        output.ShouldNotContain("42");
+    }
+
+    [Fact]
+    public void StreamDiffCommand_CsvRawOnlyChange_RendersEmptyOldNew_FailClosed() {
+        // Arrange — same D4 fail-closed test for CSV output.
+        AggregateStateDiff diff = new(5, 10, [new FieldChange("count", "41", "42")]);
+        IOutputFormatter formatter = new CsvOutputFormatter();
+
+        // Act
+        string output = formatter.FormatCollection(diff.ChangedFields.ToList(), StreamDiffCommand.Columns);
+
+        // Assert
+        output.ShouldContain("count");
+        output.ShouldNotContain("41");
+        output.ShouldNotContain("42");
+    }
+
+    [Fact]
+    public void StreamDiffCommand_FailClosed_NoSentinelLeak_WhenRawOnlyChangeContainsSentinel() {
+        // P17: raw OldValue/NewValue containing a sentinel must not leak through fallback (now removed by D4).
+        AggregateStateDiff diff = new(
+            5, 10,
+            [new FieldChange("count", ProtectedDataLeakSentinel.ProtectedPayloadPlaintext, ProtectedDataLeakSentinel.ProtectedPayloadPlaintext)]);
+        IOutputFormatter table = new TableOutputFormatter();
+        IOutputFormatter csv = new CsvOutputFormatter();
+
+        // Act
+        string tableOutput = table.FormatCollection(diff.ChangedFields.ToList(), StreamDiffCommand.Columns);
+        string csvOutput = csv.FormatCollection(diff.ChangedFields.ToList(), StreamDiffCommand.Columns);
+
+        // Assert
+        ProtectedDataLeakSentinel.AssertNoLeak([tableOutput, csvOutput]);
+    }
+
+    [Fact]
+    public void StreamDiffCommand_TableColumns_DoNotSelectRawFieldValues() {
+        IReadOnlyList<string> propertyNames = StreamDiffCommand.Columns
+            .Select(c => c.PropertyName)
+            .ToList();
+
+        propertyNames.ShouldNotContain("OldValue");
+        propertyNames.ShouldNotContain("NewValue");
     }
 
     [Fact]

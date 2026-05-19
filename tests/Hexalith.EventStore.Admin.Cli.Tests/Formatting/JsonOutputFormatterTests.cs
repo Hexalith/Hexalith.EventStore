@@ -1,5 +1,8 @@
+using Hexalith.EventStore.Admin.Abstractions.Models;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
+using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Cli.Formatting;
+using Hexalith.EventStore.Testing.Security;
 
 namespace Hexalith.EventStore.Admin.Cli.Tests.Formatting;
 
@@ -47,5 +50,48 @@ public class JsonOutputFormatterTests {
         result.ShouldContain("\"healthy\"");
         result.ShouldNotContain("\"0\"");
         result.ShouldNotContain(": 0");
+    }
+
+    [Fact]
+    public void JsonFormatter_RedactedEventDetail_OmitsRawPayloadJsonAndKeepsDescriptor() {
+        JsonOutputFormatter formatter = new();
+        EventDetail detail = EventDetail.WithRedactedPayload(
+            "acme",
+            "orders",
+            "order-1",
+            42,
+            "OrderCreated",
+            DateTimeOffset.UtcNow,
+            "corr-1",
+            "caus-1",
+            "user-1",
+            AdminRedactedContent.Protected(
+                contentKind: "event-payload",
+                reasonCode: "protected-content",
+                stage: "cli-json",
+                metadataVersion: 1,
+                retryable: false,
+                permanent: false,
+                safeNextAction: "Inspect protection metadata."));
+
+        string result = formatter.Format(detail);
+
+        ProtectedDataLeakSentinel.AssertNoLeak([result]);
+        result.ShouldNotContain("payloadJson");
+        result.ShouldContain("payload");
+        result.ShouldContain("Protected content redacted.");
+        result.ShouldContain("event-payload");
+        result.ShouldContain("protected-content");
+    }
+
+    [Fact]
+    public void JsonFormatter_StringValueContainingProtectedSentinel_IsRedacted() {
+        JsonOutputFormatter formatter = new();
+        var item = new { Message = ProtectedDataLeakSentinel.ProtectedProviderExceptionText };
+
+        string result = formatter.Format(item);
+
+        ProtectedDataLeakSentinel.AssertNoLeak([result]);
+        result.ShouldContain("Protected content redacted.");
     }
 }

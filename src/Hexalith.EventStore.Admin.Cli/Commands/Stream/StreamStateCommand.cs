@@ -17,7 +17,7 @@ public static class StreamStateCommand {
         new("AggregateId", "AggregateId"),
         new("Seq", "SequenceNumber"),
         new("Timestamp", "Timestamp"),
-        new("StateJson", "StateJson", MaxWidth: 80),
+        new("State", "State", MaxWidth: 80),
     ];
 
     /// <summary>

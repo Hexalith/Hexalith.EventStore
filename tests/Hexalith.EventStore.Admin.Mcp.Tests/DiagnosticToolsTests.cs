@@ -141,4 +141,19 @@ public class DiagnosticToolsTests {
         doc.RootElement.GetProperty("error").GetBoolean().ShouldBeTrue();
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("invalid-input");
     }
+
+    [Fact]
+    public async Task DiffAggregateState_SentinelBearingFieldValues_DoNotLeak() {
+        // P1 — sentinel-bearing oldValue/newValue must be projected to safe descriptors at the per-tool boundary.
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        string sentinelDiff = $$"""{"fromSequence":1,"toSequence":5,"changedFields":[{"fieldPath":"$.secret","oldValue":"{{Testing.Security.ProtectedDataLeakSentinel.ProtectedPayloadPlaintext}}","newValue":"{{Testing.Security.ProtectedDataLeakSentinel.ProtectedSnapshotPlaintext}}"}]}""";
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, sentinelDiff);
+        var client = new AdminApiClient(httpClient);
+
+        string result = await DiagnosticTools.DiffAggregateState(client, "t1", "Orders", "o1", 1, 5, ct);
+
+        Testing.Security.ProtectedDataLeakSentinel.AssertNoLeak([result]);
+        result.ShouldNotContain("oldValue");
+        result.ShouldNotContain("newValue");
+    }
 }

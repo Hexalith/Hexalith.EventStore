@@ -4,6 +4,7 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Mcp.Tools;
 using Hexalith.EventStore.Testing.Http;
+using Hexalith.EventStore.Testing.Security;
 
 namespace Hexalith.EventStore.Admin.Mcp.Tests;
 
@@ -36,6 +37,22 @@ public class ServerToolsTests {
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unreachable");
         doc.RootElement.GetProperty("serverName").GetString().ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task Ping_DoesNotLeakProtectedSentinel_WhenConnectionExceptionContainsSensitiveText() {
+        // Arrange
+        using HttpClient httpClient = CreateThrowingHttpClient(new HttpRequestException(ProtectedDataLeakSentinel.ProtectedConnectionString));
+        var client = new AdminApiClient(httpClient);
+
+        // Act
+        string result = await ServerTools.Ping(client, CancellationToken.None);
+
+        // Assert
+        ProtectedDataLeakSentinel.AssertNoLeak([result]);
+        using var doc = JsonDocument.Parse(result);
+        doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("unreachable");
+        doc.RootElement.GetProperty("details").GetString().ShouldBe("Admin API is unreachable.");
     }
 
     [Fact]

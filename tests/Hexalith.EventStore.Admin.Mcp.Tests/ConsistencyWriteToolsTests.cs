@@ -200,4 +200,19 @@ public class ConsistencyWriteToolsTests {
 
         _ = Should.NotThrow(() => JsonDocument.Parse(result));
     }
+
+    [Fact]
+    public async Task TriggerCheck_SentinelBearingRawCapableField_DoesNotLeak() {
+        // P1 — sentinel injected into a raw-capable property (providerMetadata) must be projected to a
+        // safe descriptor when serialized through ToolHelper.SerializeResult, per D2 narrow-scope contract.
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        string sentinelResult = $$"""{"success":true,"operationId":"op-1","providerMetadata":"{{Testing.Security.ProtectedDataLeakSentinel.ProtectedProviderPrivateBlob}}","errorCode":null}""";
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, sentinelResult);
+        var client = new AdminApiClient(httpClient);
+
+        string result = await ConsistencyWriteTools.TriggerCheck(client, "SequenceContinuity", confirm: true, cancellationToken: ct);
+
+        Testing.Security.ProtectedDataLeakSentinel.AssertNoLeak([result]);
+        result.ShouldNotContain("providerMetadata");
+    }
 }

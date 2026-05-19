@@ -358,6 +358,26 @@ The descriptor carries only `contentKind`, deterministic placeholder text, `reas
 `metadataVersion`, `retryable`, `permanent`, safe next action, and safe navigation metadata. It is a
 projection boundary, not a wrapper around the original content.
 
+### CLI and MCP redaction
+
+Story 22.7d-3 extends the same `AdminRedactedContent` boundary to `eventstore-admin` and
+`Hexalith.EventStore.Admin.Mcp`. CLI JSON, table, CSV, and `--output` file paths render protected
+content through descriptor/status fields. MCP result, preview, and error JSON use the same safe
+projection so automation clients receive machine-readable metadata without protected payload/state
+content.
+
+| CLI/MCP surface | Safe projection |
+| --- | --- |
+| CLI JSON output | Protected DTO responses keep descriptor fields such as `payload` and `state`; raw names such as `payloadJson` and `stateJson` are omitted when descriptors are present. |
+| CLI table/CSV output | Raw-bearing columns are replaced by safe descriptor/status columns. Non-protected values may still render through the safe formatter when no descriptor is present. |
+| CLI stderr and API errors | Protected-data ProblemDetails preserve allow-listed scalar metadata (`reasonCode`, `stage`, `metadataVersion`, retry/permanent flags, tenant/domain/aggregate/sequence/correlation identifiers) and drop raw bodies, nested provider metadata, stack traces, and provider exception text. |
+| MCP tool results | Raw-capable JSON fields are projected to safe descriptor names such as `payload`, `state`, `oldContent`, `newContent`, `diagnostic`, or status descriptors. |
+| MCP previews and errors | Approval previews and error JSON use safe operation/status metadata only; payload JSON, snapshot state, connection strings, provider-private metadata, and exception text are redacted before serialization. |
+
+Replay/rebuild/backup-validation artifact scans remain Story 22.7d-4. CLI/MCP callers that consume
+those future results must continue to use descriptor/status fields rather than reintroducing raw
+artifact text.
+
 ### Audit evidence
 
 `CryptoShreddingAuditEvent` records every workflow transition and admission decision. Each entry
@@ -377,13 +397,12 @@ construction by `CryptoShreddingAuditEvent.TryValidate`.
   mechanism. Crypto-shredding records and enforces consequences; it never deletes audit-relevant
   state.
 - Legal hold, data-subject UX, approval workflow UI, jurisdiction-specific compliance automation.
-- CLI/MCP output redaction and replay/rebuild/backup-validation artifact scans remain delegated to
-  Stories 22.7d-3 and 22.7d-4.
+- Replay/rebuild/backup-validation artifact scans remain delegated to Story 22.7d-4.
 - Skip-past-shredded replay/rebuild — no skip policy is added.
 
 ## Deferred to Story 22.7d
 
-- Broad redaction across CLI, MCP, all admin UI pages, all backup tooling — Story 22.7d.
+- Replay/rebuild/backup-validation artifact scans — Story 22.7d-4.
 - Real encryption provider, key vault integration, cloud KMS, DAPR secret-store integration.
 
 ## Registering a custom provider

@@ -77,7 +77,7 @@ public static class BackupExportStreamCommand {
                 .ConfigureAwait(false);
 
             if (!result.Success) {
-                Console.Error.WriteLine(result.ErrorMessage ?? "Export failed.");
+                Console.Error.WriteLine(SafeOutputValueFormatter.SafeText(result.ErrorMessage ?? "Export failed."));
                 return ExitCodes.Error;
             }
 

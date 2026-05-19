@@ -13,8 +13,8 @@ public static class StreamDiffCommand {
     internal static readonly List<ColumnDefinition> Columns =
     [
         new("FieldPath", "FieldPath"),
-        new("OldValue", "OldValue"),
-        new("NewValue", "NewValue"),
+        new("Old", "OldContent"),
+        new("New", "NewContent"),
     ];
 
     /// <summary>

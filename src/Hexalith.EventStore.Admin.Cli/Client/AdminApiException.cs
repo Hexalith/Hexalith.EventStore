@@ -26,6 +26,15 @@ public class AdminApiException : Exception {
         : base(message) => HttpStatusCode = httpStatusCode;
 
     /// <summary>
+    /// Initializes a new instance of the <see cref="AdminApiException"/> class with safe ProblemDetails.
+    /// </summary>
+    public AdminApiException(string message, int httpStatusCode, AdminApiProblemDetails problem)
+        : base(message) {
+        HttpStatusCode = httpStatusCode;
+        Problem = problem;
+    }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="AdminApiException"/> class.
     /// </summary>
     public AdminApiException()
@@ -36,4 +45,9 @@ public class AdminApiException : Exception {
     /// Gets the HTTP status code that caused this exception, or <c>null</c> if not HTTP-related.
     /// </summary>
     public int? HttpStatusCode { get; }
+
+    /// <summary>
+    /// Gets the safe ProblemDetails subset returned by the Admin API, if one was available.
+    /// </summary>
+    public AdminApiProblemDetails? Problem { get; }
 }

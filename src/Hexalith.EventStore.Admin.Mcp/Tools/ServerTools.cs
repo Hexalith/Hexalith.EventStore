@@ -55,12 +55,12 @@ internal sealed class ServerTools {
                 details = $"HTTP {(int)ex.StatusCode} {ex.StatusCode}",
             }, ToolHelper.JsonOptions);
         }
-        catch (HttpRequestException ex) {
+        catch (HttpRequestException) {
             return JsonSerializer.Serialize(new {
                 serverName = _serverName,
                 serverVersion = _serverVersion,
                 adminApiStatus = "unreachable",
-                details = ex.Message,
+                details = "Admin API is unreachable.",
             }, ToolHelper.JsonOptions);
         }
         catch (TaskCanceledException) {
@@ -71,12 +71,12 @@ internal sealed class ServerTools {
                 details = "Request timed out or was cancelled.",
             }, ToolHelper.JsonOptions);
         }
-        catch (JsonException ex) {
+        catch (JsonException) {
             return JsonSerializer.Serialize(new {
                 serverName = _serverName,
                 serverVersion = _serverVersion,
                 adminApiStatus = "error",
-                details = $"Invalid response from Admin API: {ex.Message}",
+                details = "Invalid response from Admin API.",
             }, ToolHelper.JsonOptions);
         }
     }

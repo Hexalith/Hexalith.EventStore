@@ -3,6 +3,7 @@ using System.Net;
 using System.Text.Json;
 
 using Hexalith.EventStore.Admin.Mcp.Tools;
+using Hexalith.EventStore.Testing.Security;
 
 namespace Hexalith.EventStore.Admin.Mcp.Tests;
 
@@ -69,6 +70,26 @@ public class ToolHelperTests {
     }
 
     [Fact]
+    public void SerializeResult_RawProtectedFields_AreProjectedToSafeDescriptorNames() {
+        var data = new {
+            TenantId = "acme",
+            PayloadJson = ProtectedDataLeakSentinel.ProtectedPayloadPlaintext,
+            StateJson = ProtectedDataLeakSentinel.ProtectedSnapshotPlaintext,
+            SafeIdentifier = "stream-1",
+        };
+
+        string result = ToolHelper.SerializeResult(data);
+
+        ProtectedDataLeakSentinel.AssertNoLeak([result]);
+        result.ShouldNotContain("payloadJson");
+        result.ShouldNotContain("stateJson");
+        using var doc = JsonDocument.Parse(result);
+        doc.RootElement.GetProperty("safeIdentifier").GetString().ShouldBe("stream-1");
+        doc.RootElement.GetProperty("payload").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("state").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+    }
+
+    [Fact]
     public void SerializeError_ProducesStandardErrorShape() {
         string result = ToolHelper.SerializeError("not-found", "Entity not found");
 
@@ -99,7 +120,19 @@ public class ToolHelperTests {
 
         using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("server-error");
-        doc.RootElement.GetProperty("message").GetString().ShouldBe("Something unexpected happened");
+        doc.RootElement.GetProperty("message").GetString().ShouldBe("Unexpected Admin MCP tool error.");
+    }
+
+    [Fact]
+    public void HandleException_GenericException_DoesNotLeakProtectedSentinel() {
+        var ex = new InvalidOperationException(ProtectedDataLeakSentinel.ProtectedProviderExceptionText);
+
+        string result = ToolHelper.HandleException(ex);
+
+        ProtectedDataLeakSentinel.AssertNoLeak([result]);
+        using var doc = JsonDocument.Parse(result);
+        doc.RootElement.GetProperty("adminApiStatus").GetString().ShouldBe("server-error");
+        doc.RootElement.GetProperty("message").GetString().ShouldBe("Unexpected Admin MCP tool error.");
     }
 
     [Fact]
@@ -156,6 +189,103 @@ public class ToolHelperTests {
         doc.RootElement.GetProperty("parameters").GetProperty("tenantId").GetString().ShouldBe("acme");
         doc.RootElement.GetProperty("warning").GetString()!.ShouldNotBeNullOrWhiteSpace();
     }
+
+    [Fact]
+    public void SerializePreview_DoesNotLeakProtectedSentinelFromTextOrParameters() {
+        string result = ToolHelper.SerializePreview(
+            "backup-restore",
+            $"Restore backup containing {ProtectedDataLeakSentinel.ProtectedPayloadPlaintext}",
+            $"POST /api/v1/admin/backups/{ProtectedDataLeakSentinel.ProtectedConnectionString}/restore",
+            new {
+                payloadJson = ProtectedDataLeakSentinel.ProtectedPayloadPlaintext,
+                safeIdentifier = "backup-1",
+            },
+            ProtectedDataLeakSentinel.ProtectedProviderExceptionText);
+
+        ProtectedDataLeakSentinel.AssertNoLeak([result]);
+        using var doc = JsonDocument.Parse(result);
+        doc.RootElement.GetProperty("preview").GetBoolean().ShouldBeTrue();
+        doc.RootElement.GetProperty("parameters").GetProperty("safeIdentifier").GetString().ShouldBe("backup-1");
+        // P15 — assert each unsafe-text field collapsed to its fallback replacement, not just sentinel-free.
+        doc.RootElement.GetProperty("description").GetString().ShouldBe("Preview description redacted.");
+        doc.RootElement.GetProperty("endpoint").GetString().ShouldBe("Preview endpoint redacted.");
+        doc.RootElement.GetProperty("warning").GetString().ShouldBe("Preview warning redacted.");
+        // P15 — assert the raw-capable key was projected to the descriptor name (not just absent).
+        doc.RootElement.GetProperty("parameters").GetProperty("payload").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+    }
+
+    [Fact]
+    public void SerializeResult_RestrictsMarkerRedactionToRawCapableKeys_PerD2() {
+        // D2 — benign free-text values mentioning marker substrings under safe keys must NOT be replaced.
+        var data = new {
+            safeGuidance = "Inspect connectionString status via /api/v1/admin/diagnostics.",
+            payloadJson = ProtectedDataLeakSentinel.ProtectedPayloadPlaintext,
+        };
+
+        string result = ToolHelper.SerializeResult(data);
+
+        ProtectedDataLeakSentinel.AssertNoLeak([result]);
+        using var doc = JsonDocument.Parse(result);
+        // Safe text under a non-raw-capable key survives untouched.
+        doc.RootElement.GetProperty("safeGuidance").GetString().ShouldBe("Inspect connectionString status via /api/v1/admin/diagnostics.");
+        // Raw-capable key is projected to a descriptor.
+        doc.RootElement.GetProperty("payload").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+    }
+
+    [Fact]
+    public void SerializeResult_NestedAndStringifiedJson_AreSentinelFree_PerP22() {
+        // P22 — nested objects under safe keys are recursively sanitized; stringified JSON in non-raw-capable
+        // keys remains unsanitized (it's just a string), but its raw-capable key counterparts get descriptorised.
+        var data = new {
+            outer = new {
+                inner = new {
+                    payloadJson = ProtectedDataLeakSentinel.ProtectedPayloadPlaintext,
+                    stateJson = ProtectedDataLeakSentinel.ProtectedSnapshotPlaintext,
+                },
+            },
+        };
+
+        string result = ToolHelper.SerializeResult(data);
+
+        ProtectedDataLeakSentinel.AssertNoLeak([result]);
+        using var doc = JsonDocument.Parse(result);
+        doc.RootElement.GetProperty("outer").GetProperty("inner").GetProperty("payload").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("outer").GetProperty("inner").GetProperty("state").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+    }
+
+    [Fact]
+    public void SerializeResult_AllRawCapableFieldKinds_AreProjectedToDescriptors_PerP21() {
+        // P21 — every key listed in IsRawCapableProperty gets descriptorised, regardless of category.
+        var data = new {
+            commandPayload = ProtectedDataLeakSentinel.ProtectedPayloadPlaintext,
+            providerMetadata = ProtectedDataLeakSentinel.ProtectedProviderPrivateBlob,
+            providerPrivateMetadata = ProtectedDataLeakSentinel.ProtectedProviderPrivateBlob,
+            stateStoreKey = ProtectedDataLeakSentinel.ProtectedStateStoreKey,
+            connectionString = ProtectedDataLeakSentinel.ProtectedConnectionString,
+            keyAlias = ProtectedDataLeakSentinel.ProtectedKeyAlias,
+            rawResponseBody = "raw body containing PROTECTED_marker",
+            stackTrace = "at Provider.Throws() — PROTECTED_marker",
+            exceptionText = ProtectedDataLeakSentinel.ProtectedProviderExceptionText,
+        };
+
+        string result = ToolHelper.SerializeResult(data);
+
+        ProtectedDataLeakSentinel.AssertNoLeak([result]);
+        using var doc = JsonDocument.Parse(result);
+        doc.RootElement.GetProperty("payload").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("metadata").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("stateStoreKeyStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("connectionStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("keyStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("responseStatus").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+        doc.RootElement.GetProperty("diagnostic").GetProperty("placeholder").GetString().ShouldBe("Protected content redacted.");
+    }
+
+    // P13 — Defense-in-depth recursion bound (MaxSanitizeDepth = 64) is coded inside both
+    // ToolHelper.SanitizeNode and JsonOutputFormatter.SanitizeNode. End-to-end verification through
+    // SerializeResult is not feasible because System.Text.Json's own SerializeToNode/MaxDepth (64)
+    // throws on deeper input before our sanitizer is reached. The bound is therefore covered by
+    // code review and remains as belt-and-braces protection if upstream limits are raised.
 
     [Fact]
     public void HandleHttpException_409_ReturnsConflict() {
