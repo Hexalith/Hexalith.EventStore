@@ -73,6 +73,24 @@ public class DomainServiceResolver(
             return wildcardRegistration with { TenantId = tenantId };
         }
 
+        // K8s-sanitized wildcard fallback: "wildcard_domain_version" matches the same intent as
+        // "*|domain|version" but uses alphanumeric+underscore only. Kubernetes ConfigMap data keys
+        // (regex ^[A-Za-z0-9_.-]+$) and Pod container env names (regex ^[A-Za-z_][A-Za-z0-9_]*$)
+        // both reject '*' and '|'. Manifest-emitted configuration must therefore use the sanitized
+        // form. The mapping is a 1:1 textual substitution ("*|" → "wildcard_", "|" → "_") so the
+        // semantic remains wildcard-tenant-for-this-domain-and-version. Exact and pipe-form
+        // registrations still win over the sanitized form per lookup order above.
+        string sanitizedWildcardKey = $"wildcard_{domain}_{version}";
+        if (options.Value.Registrations.TryGetValue(sanitizedWildcardKey, out DomainServiceRegistration? sanitizedWildcardRegistration)) {
+            logger.LogDebug(
+                "Resolved domain service from sanitized wildcard registration: AppId={AppId}, Method={MethodName}, SanitizedKey={SanitizedKey}, TenantId={TenantId}",
+                sanitizedWildcardRegistration.AppId,
+                sanitizedWildcardRegistration.MethodName,
+                sanitizedWildcardKey,
+                tenantId);
+            return sanitizedWildcardRegistration with { TenantId = tenantId };
+        }
+
         // Try DAPR config store lookup only if explicitly configured (opt-in override).
         // When ConfigStoreName is null/empty, convention-based routing is used directly.
         if (!string.IsNullOrWhiteSpace(options.Value.ConfigStoreName)) {
