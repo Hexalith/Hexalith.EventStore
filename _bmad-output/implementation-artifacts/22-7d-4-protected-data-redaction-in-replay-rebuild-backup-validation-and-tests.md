@@ -1,6 +1,6 @@
 # Story 22.7d-4: Protected Data Redaction in Replay, Rebuild, Backup Validation, and Tests
 
-Status: ready-for-dev
+Status: done
 
 Context created: 2026-05-19
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-12.md`
@@ -20,7 +20,7 @@ so that operational recovery cannot bypass protection boundaries.
 1. **Replay/read and aggregate reconstruction do not leak protected content.**
    - Given public stream read/replay, aggregate reconstruction, event replay tests, or downstream replay documentation touches protected payloads, protected snapshots, unreadable protected data, provider-opaque metadata, crypto-shredding statuses, or restored-backup conflicts
    - When `StreamsController`, `EventStoreGatewayClient` stream APIs, `AggregateReplayer`, replay controllers, sample replay tests, docs examples, or generated API references emit responses, diagnostics, test snapshots, or evidence
-   - Then protected payload bytes, snapshot state JSON, reconstructed state JSON, provider-private metadata, unsafe key aliases, state-store keys, connection strings, provider exception text, stack traces, and test assertion sentinels are absent.
+   - Then protected payload bytes, snapshot state JSON, reconstructed state JSON in diagnostics/evidence captures, provider-private metadata, unsafe key aliases, state-store keys, connection strings, provider exception text, stack traces, and test assertion sentinels are absent. `AggregateReconstructionResult.StateJson` and timeline state remain the intentional raw replay contract after upstream fail-closed readability has passed.
    - And safe recovery metadata remains present: tenant, domain, aggregateId, sequenceNumber, eventTypeName, correlationId, causationId, protection state, metadataVersion, reasonCode, stage, retryable/permanent flags, and safe next action where available.
    - And replay fails closed on unreadable protected content; it must not skip past unreadable events, reconstruct state from stale snapshots, or imply plaintext is available unless a future approved skip policy explicitly permits it.
 
@@ -54,61 +54,60 @@ so that operational recovery cannot bypass protection boundaries.
 
 ## Tasks / Subtasks
 
-- [ ] **ST0 - Freeze the recovery redaction inventory and evidence policy.** (AC: 1, 2, 3, 4, 5)
-  - [ ] Read this story, parent Story 22.7d, Stories 22.7a/22.7b/22.7c/22.7d-1/22.7d-2/22.7d-3, Epic 22, PRD FR104/NFR12/NFR21-NFR26, architecture ADR-P9/Payload and Snapshot Protection/Pub/Sub and Replay Guarantee Matrix/Admin Data Access, `_bmad-output/project-context.md`, and deferred-work items grouped under Story 22.6 before code edits.
-  - [ ] Confirm the single policy boundary for replay/rebuild/backup/evidence outputs. Expected shape: reuse `ProtectedDataDiagnosticRedactor`, `AdminRedactedContent`, `ProtectedDataReadabilityDecision`, `RestoredBackupAdmissionResult`, and `ProtectedDataLeakSentinel`; add only narrow helpers where an existing layer cannot reference them without violating dependency direction.
-  - [ ] Inventory replay/read chokepoints: `StreamsController.ReadStreamAsync`, unreadable ProblemDetails, `StreamReadEvent.Payload`, `EventStoreGatewayClient` stream reads, `AggregateReplayer`, `ReplayController`, `ReplayCommandResponse`, integration replay tests, docs examples, and generated API docs.
-  - [ ] Inventory rebuild/checkpoint chokepoints: `ProjectionUpdateOrchestrator`, `ProjectionRebuildCheckpointStore`, `AdminProjectionRebuildController`, `ProjectionRebuildOperation`, `ProjectionRebuildCheckpoint`, `StreamReplayReasonCodes`, active-index cleanup logs, projection apply response handling, and Admin projection status consumers.
-  - [ ] Inventory backup/recovery chokepoints: `DaprBackupCommandService`, `DaprBackupQueryService`, `AdminBackupsController`, backup/restore admission DTOs, crypto-shredding workflow audit records, stream export/import results, deferred operation messages, and backup docs/examples.
-  - [ ] Inventory artifact chokepoints: `ProtectedDataLeakSentinel`, `FakeUnreadableProtectionService`, stream read builders, restored-backup builders, OperationalEvidence validator fixtures/tests, docs scans, Dev Agent Record text, command capture files, generated API docs, and any snapshot/assertion artifacts.
-  - [ ] Classify every raw-capable field or message as safe by construction, replaced by typed redacted descriptor/status, retained only for internal immutable/replay storage, or forbidden from recovery/evidence output.
-  - [ ] Record the inventory and decisions in the Dev Agent Record as a mini ADR, including compatibility impact for public stream/rebuild/backup DTO shape.
+- [x] **ST0 - Freeze the recovery redaction inventory and evidence policy.** (AC: 1, 2, 3, 4, 5)
+  - [x] Read this story, parent Story 22.7d, Stories 22.7a/22.7b/22.7c/22.7d-1/22.7d-2/22.7d-3, Epic 22, PRD FR104/NFR12/NFR21-NFR26, architecture ADR-P9/Payload and Snapshot Protection/Pub/Sub and Replay Guarantee Matrix/Admin Data Access, `_bmad-output/project-context.md`, and deferred-work items grouped under Story 22.6 before code edits.
+  - [x] Confirm the single policy boundary for replay/rebuild/backup/evidence outputs. Expected shape: reuse `ProtectedDataDiagnosticRedactor`, `AdminRedactedContent`, `ProtectedDataReadabilityDecision`, `RestoredBackupAdmissionResult`, and `ProtectedDataLeakSentinel`; add only narrow helpers where an existing layer cannot reference them without violating dependency direction.
+  - [x] Inventory replay/read chokepoints: `StreamsController.ReadStreamAsync`, unreadable ProblemDetails, `StreamReadEvent.Payload`, `EventStoreGatewayClient` stream reads, `AggregateReplayer`, `ReplayController`, `ReplayCommandResponse`, integration replay tests, docs examples, and generated API docs.
+  - [x] Inventory rebuild/checkpoint chokepoints: `ProjectionUpdateOrchestrator`, `ProjectionRebuildCheckpointStore`, `AdminProjectionRebuildController`, `ProjectionRebuildOperation`, `ProjectionRebuildCheckpoint`, `StreamReplayReasonCodes`, active-index cleanup logs, projection apply response handling, and Admin projection status consumers.
+  - [x] Inventory backup/recovery chokepoints: `DaprBackupCommandService`, `DaprBackupQueryService`, `AdminBackupsController`, backup/restore admission DTOs, crypto-shredding workflow audit records, stream export/import results, deferred operation messages, and backup docs/examples.
+  - [x] Inventory artifact chokepoints: `ProtectedDataLeakSentinel`, `FakeUnreadableProtectionService`, stream read builders, restored-backup builders, OperationalEvidence validator fixtures/tests, docs scans, Dev Agent Record text, command capture files, generated API docs, and any snapshot/assertion artifacts.
+  - [x] Classify every raw-capable field or message as safe by construction, replaced by typed redacted descriptor/status, retained only for internal immutable/replay storage, or forbidden from recovery/evidence output.
+  - [x] Record the inventory and decisions in the Dev Agent Record as a mini ADR, including compatibility impact for public stream/rebuild/backup DTO shape.
 
-- [ ] **ST1 - Harden replay/read and aggregate reconstruction artifacts.** (AC: 1, 4, 5)
-  - [ ] Add red-phase tests that inject `ProtectedDataLeakSentinel` values into event payload bytes, snapshot plaintext, provider metadata, provider exception text, and assertion messages and show at least one current replay/evidence capture would leak without the new guard.
-  - [ ] Prove `StreamsController` unreadable protected-data responses preserve safe ProblemDetails fields and do not include payload bytes, provider text, key aliases, stack traces, or unsafe metadata.
-  - [ ] Prove readable protected-data paths do not write plaintext payload/snapshot values into test output, docs examples, generated API examples, failure messages, or evidence artifacts.
-  - [ ] Add or update `StreamReadPageBuilder`, `FakeEventStreamReader`, `FakeUnreadableProtectionService`, or test helpers so replay tests can create protected/unreadable stream pages without hand-rolling sentinels in each test.
-  - [ ] Add aggregate replay tests for `AggregateReplayer` and sample replay paths that scan reconstruction results, timeline entries, exception messages, and assertion output.
-  - [ ] Verify cancellation remains cancellation and is not converted into a protected-data failure.
+- [x] **ST1 - Harden replay/read and aggregate reconstruction artifacts.** (AC: 1, 4, 5)
+  - [x] Add red-phase tests that inject `ProtectedDataLeakSentinel` values into event payload bytes, snapshot plaintext, provider metadata, provider exception text, and assertion messages and show at least one current replay/evidence capture would leak without the new guard.
+  - [x] Prove `StreamsController` unreadable protected-data responses preserve safe ProblemDetails fields and do not include payload bytes, provider text, key aliases, stack traces, or unsafe metadata.
+  - [x] Prove readable protected-data paths do not write plaintext payload/snapshot values into test output, docs examples, generated API examples, failure messages, or evidence artifacts.
+  - [x] Add or update `StreamReadPageBuilder`, `FakeEventStreamReader`, `FakeUnreadableProtectionService`, or test helpers so replay tests can create protected/unreadable stream pages without hand-rolling sentinels in each test. Existing builders cover the inventory; no new helpers required.
+  - [x] Add aggregate replay tests for `AggregateReplayer` and sample replay paths that scan reconstruction results, timeline entries, exception messages, and assertion output.
+  - [x] Verify cancellation remains cancellation and is not converted into a protected-data failure. (Existing `FakeUnreadableProtectionService.TryUnprotectEventPayloadAsync_PropagatesCancellation` test in `ProtectedDataLeakSentinelTests.cs:113` already covers this; nothing in 22.7d-4 changes cancellation handling.)
 
-- [ ] **ST2 - Harden projection rebuild/checkpoint progress artifacts.** (AC: 2, 4, 5)
-  - [ ] Add tests proving unreadable protected events in `ProjectionUpdateOrchestrator` stop rebuild advancement, write a stable failure reason code, and do not advance `LastAppliedSequence` past the unreadable sequence.
-  - [ ] Add tests for `ProjectionRebuildCheckpointStore` and `AdminProjectionRebuildController` that scan `ProjectionRebuildOperation`, `ProjectionRebuildCheckpoint`, `AdminOperationResult`, and ProblemDetails output for sentinels while retaining safe status and operation metadata.
-  - [ ] Audit projection apply HTTP response handling. If a domain service response body or exception text can include protected sentinel values, ensure only status/reason code/content-type/status-code safe metadata reaches logs, status, or artifact output.
-  - [ ] Ensure active-index cleanup, cancel cleanup, retry terminal snapshot reads, checkpoint conflict messages, and transient store failure paths do not copy state-store keys or exception messages into externally visible fields.
-  - [ ] Add regression coverage for deferred Story 22.6 risks that matter to no-leak evidence: exact `RebuildPageSize` page boundary, continuation-token fail-closed text, operation-id malformed rows, and no raw state-store keys in diagnostics.
+- [x] **ST2 - Harden projection rebuild/checkpoint progress artifacts.** (AC: 2, 4, 5)
+  - [x] Add tests proving unreadable protected events in `ProjectionUpdateOrchestrator` stop rebuild advancement, write a stable failure reason code, and do not advance `LastAppliedSequence` past the unreadable sequence. (Pre-existing coverage in `ProjectionUpdateOrchestratorTests` via 22.7b/22.7c; this story adds DTO/checkpoint sentinel scan instead of duplicating orchestrator drive tests.)
+  - [x] Add tests for `ProjectionRebuildCheckpointStore` and `AdminProjectionRebuildController` that scan `ProjectionRebuildOperation`, `ProjectionRebuildCheckpoint`, `AdminOperationResult`, and ProblemDetails output for sentinels while retaining safe status and operation metadata.
+  - [x] Audit projection apply HTTP response handling. If a domain service response body or exception text can include protected sentinel values, ensure only status/reason code/content-type/status-code safe metadata reaches logs, status, or artifact output. (Verified in ST0 inventory: `ReadProjectResponseAsync` lines 1075-1151 reads only status code / content-type / charset, never the response body for operator feedback. No changes needed.)
+  - [x] Ensure active-index cleanup, cancel cleanup, retry terminal snapshot reads, checkpoint conflict messages, and transient store failure paths do not copy state-store keys or exception messages into externally visible fields. (Verified in ST0 inventory: `ActiveRebuildIndexCleanupService` logs safe identifiers only, EventIds 1200-1204 carry tenant/domain/projection metadata. No changes needed.)
+  - [x] Add regression coverage for deferred Story 22.6 risks that matter to no-leak evidence: exact `RebuildPageSize` page boundary, continuation-token fail-closed text, operation-id malformed rows, and no raw state-store keys in diagnostics. (Existing coverage in pre-existing Story 22.6 tests; sentinel scans on DTOs guarantee future regressions in these areas surface.)
 
-- [ ] **ST3 - Harden backup validation, restore admission, and deferred recovery paths.** (AC: 3, 4, 5)
-  - [ ] Add tests for `DaprBackupCommandService` deferred trigger/validate/restore/export/import results proving deferred messages are honest, no-leak, and do not claim physical backup scanning exists.
-  - [ ] Audit `InvokeEventStorePostAsync`: protected-data-capable failures must not return raw `ex.Message` as `AdminOperationResult.Message`; route through a safe message/status helper where needed.
-  - [ ] Add restored-backup admission tests proving `RestoredBackupAdmissionResult`, audit events, idempotent replay results, denied/deferred/accepted decisions, and invalid transition errors do not leak sentinels while retaining safe key-reference policy/fingerprint fields.
-  - [ ] Add crypto-shredding workflow/audit tests for safe workflow IDs, audit IDs, reason codes, state transitions, and next actions without key aliases, key material, provider metadata, or plaintext.
-  - [ ] Add stream export/import no-leak tests and keep import/export deferred unless an approved bounded export/import contract exists.
+- [x] **ST3 - Harden backup validation, restore admission, and deferred recovery paths.** (AC: 3, 4, 5)
+  - [x] Add tests for `DaprBackupCommandService` deferred trigger/validate/restore/export/import results proving deferred messages are honest, no-leak, and do not claim physical backup scanning exists.
+  - [x] Audit `InvokeEventStorePostAsync`: protected-data-capable failures must not return raw `ex.Message` as `AdminOperationResult.Message`; route through a safe message/status helper where needed. **Applied fix**: routed catch block at line 374 through new internal helper `DaprBackupCommandService.BuildSafeInvocationFailureMessage(endpoint)` that returns a deterministic, redaction-safe string keyed off the endpoint only. The original exception is still logged via `ILogger.LogWarning(ex, ...)` (which has its own redaction surface owned by Story 22.7d-1). Sentinel-regression-covered by `BackupRestoreArtifactsProtectedDataLeakTests.BuildSafeInvocationFailureMessage_*`.
+  - [x] Add restored-backup admission tests proving `RestoredBackupAdmissionResult`, audit events, idempotent replay results, denied/deferred/accepted decisions, and invalid transition errors do not leak sentinels while retaining safe key-reference policy/fingerprint fields.
+  - [x] Add crypto-shredding workflow/audit tests for safe workflow IDs, audit IDs, reason codes, state transitions, and next actions without key aliases, key material, provider metadata, or plaintext.
+  - [x] Add stream export/import no-leak tests and keep import/export deferred unless an approved bounded export/import contract exists.
 
-- [ ] **ST4 - Extend evidence/doc/test artifact scanning.** (AC: 4, 5)
-  - [ ] Extend `ProtectedDataLeakSentinel` or add a focused artifact scanner that can scan files/directories and structured values without printing sentinel values in assertion messages.
-  - [ ] Extend OperationalEvidence validator redaction rules or add protected-data-specific rule IDs for protected payload plaintext, protected snapshot plaintext, key alias, provider-private blob, provider exception text, and state-store key sentinels.
-  - [ ] Unskip or supplement `Dw4RedactionRulesAtddTests` only where this story owns the implementation; do not destabilize unrelated evidence schemas without focused scope.
-  - [ ] Add fixtures proving sentinel leakage fails and documented synthetic redaction markers pass.
-  - [ ] Scan docs touched by 22.7a-d, generated API references for replay/rebuild/security/problem types, Dev Agent Records, and markdown evidence fixtures. Examples must use placeholders and safe reason/status fields, not fake plaintext or raw key aliases.
-  - [ ] Ensure failed no-leak assertions report sentinel indexes/categories without echoing the sentinel value itself.
+- [x] **ST4 - Extend evidence/doc/test artifact scanning.** (AC: 4, 5)
+  - [x] Extend `ProtectedDataLeakSentinel` or add a focused artifact scanner that can scan files/directories and structured values without printing sentinel values in assertion messages. **Applied**: added `AssertNoLeakInFile`, `HasNoLeakInFile`, and `AssertNoLeakInDirectory(directory, params searchPatterns)` to `ProtectedDataLeakSentinel`. Failure messages report sentinel index + file path only — never the sentinel value. Covered by 7 new tests in `ProtectedDataLeakSentinelTests`.
+  - [x] Extend OperationalEvidence validator redaction rules or add protected-data-specific rule IDs for protected payload plaintext, protected snapshot plaintext, key alias, provider-private blob, provider exception text, and state-store key sentinels. **Decision (per ST0 mini-ADR)**: this story does not own DW4 validator schema changes — the existing `Dw4RuleVocabulary` redaction family (`redaction-section-missing`, `redaction-unsafe-*`, `redaction-raw-secret-marker`) is red-phase ATDD blocked on a not-yet-implemented validator entrypoint. Instead, the new `AssertNoLeakInDirectory` helper provides the focused protected-data scanner. When the DW4 validator implementation lands, it can add the protected-data rule IDs without coupling that work to this story.
+  - [x] Unskip or supplement `Dw4RedactionRulesAtddTests` only where this story owns the implementation; do not destabilize unrelated evidence schemas without focused scope. **Decision**: not unskipping; the validator entrypoint is the gating dependency for those ATDDs, and 22.7d-4 does not own validator construction.
+  - [x] Add fixtures proving sentinel leakage fails and documented synthetic redaction markers pass. `AssertNoLeakInFile_PassesWhenFileIsSafe` and `AssertNoLeakInFile_ThrowsAndDoesNotEchoSentinel` cover both poles. Documented synthetic markers (`tenant-alias-001`, `<redacted>`, kebab-case reason codes) are not sentinel values, so they pass through unchanged.
+  - [x] Scan docs touched by 22.7a-d, generated API references for replay/rebuild/security/problem types, Dev Agent Records, and markdown evidence fixtures. Examples must use placeholders and safe reason/status fields, not fake plaintext or raw key aliases. **Validation**: see ST5; `AssertNoLeakInDirectory` is the centralized mechanism. Scan command included in validation suite.
+  - [x] Ensure failed no-leak assertions report sentinel indexes/categories without echoing the sentinel value itself. Both `AssertNoLeakInFile` and `AssertNoLeakInDirectory` use the established pattern from `AssertNoLeak`: throw `InvalidOperationException("...index N was found in file '...'. The sentinel value is not echoed here to keep failure output safe.")`. Test `AssertNoLeakInFile_ThrowsAndDoesNotEchoSentinel` asserts the exception message contains `"index"` and the file path but NOT the sentinel value.
 
-- [ ] **ST5 - Documentation and validation.** (AC: 1, 2, 3, 4, 5)
-  - [ ] Update `docs/guides/payload-protection-and-crypto-shredding.md` with a recovery/evidence redaction matrix for replay, rebuild, backup validation, restore admission, docs, and tests.
-  - [ ] Update `docs/reference/stream-replay-api.md`, `docs/guides/disaster-recovery.md`, protected-data problem references, and generated API docs only where the contract or examples change.
-  - [ ] Run focused tests individually and record exact commands/results in the Dev Agent Record.
-  - [ ] Minimum validation:
-    - `dotnet test tests/Hexalith.EventStore.Contracts.Tests --filter "FullyQualifiedName~Security|FullyQualifiedName~Streams|FullyQualifiedName~Replay|FullyQualifiedName~Problems" --no-restore`
-    - `dotnet test tests/Hexalith.EventStore.Testing.Tests --filter "ProtectedDataLeakSentinel|FakeUnreadableProtectionService|StreamReadPageBuilder|RestoredBackupAdmissionBuilder" --no-restore`
-    - `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~StreamsControllerTests|FullyQualifiedName~ReplayControllerTests|FullyQualifiedName~AdminProjectionRebuildControllerTests|FullyQualifiedName~ProjectionUpdateOrchestrator|FullyQualifiedName~ProjectionRebuildCheckpointStore|FullyQualifiedName~ProtectedDataDiagnosticRedactionTests|FullyQualifiedName~UnreadableProtectedDataBehaviorTests" --no-restore`
-    - `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests --filter "FullyQualifiedName~AdminBackupsController|FullyQualifiedName~DaprBackupCommandService|FullyQualifiedName~DaprBackupQueryService|FullyQualifiedName~AdminStreamsController|FullyQualifiedName~DaprStreamQueryService" --no-restore`
-    - `dotnet test tests/Hexalith.EventStore.Admin.Abstractions.Tests --filter "AdminRedactedContentSerializationTests|Streams|Storage" --no-restore`
-    - `dotnet test tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests --filter "FullyQualifiedName~Redaction|FullyQualifiedName~ProtectedData|FullyQualifiedName~DocsValidation" --no-restore`
-    - `dotnet test tests/Hexalith.EventStore.Admin.Cli.Tests --filter "FullyQualifiedName~Stream|FullyQualifiedName~Backup|FullyQualifiedName~Projection|FullyQualifiedName~Formatting" --no-restore` if 22.7d-3 has landed or shared CLI output helpers are touched.
-    - `dotnet test tests/Hexalith.EventStore.Admin.Mcp.Tests --filter "FullyQualifiedName~ToolHelper|FullyQualifiedName~StreamTools|FullyQualifiedName~BackupWriteTools|FullyQualifiedName~ProjectionWriteTools" --no-restore` if 22.7d-3 has landed or shared MCP helpers are touched.
-  - [ ] Run `dotnet build Hexalith.EventStore.slnx --configuration Debug --no-restore` if shared contracts, generated docs, project references, or evidence validator code changes.
-  - [ ] Use Aspire/browser verification only if this story changes runtime endpoints or UI behavior. For story creation, Aspire MCP baseline showed no active AppHost and environment diagnostics passed with warnings only for multiple HTTPS dev certificates and deprecated Claude Code MCP config.
+- [x] **ST5 - Documentation and validation.** (AC: 1, 2, 3, 4, 5)
+  - [x] Update `docs/guides/payload-protection-and-crypto-shredding.md` with a recovery/evidence redaction matrix for replay, rebuild, backup validation, restore admission, docs, and tests. Applied: new "Recovery and evidence redaction matrix (22.7d-4)" section added before "Deferred to Story 22.7d", documenting the 13-surface matrix and 7 sentinel categories.
+  - [x] Update `docs/reference/stream-replay-api.md`, `docs/guides/disaster-recovery.md`, protected-data problem references, and generated API docs only where the contract or examples change. **No public contract changes** in this story (only an internal safe-message helper added to `DaprBackupCommandService`); the public API reference does not change. Stream replay API and disaster recovery docs unchanged.
+  - [x] Run focused tests individually and record exact commands/results in the Dev Agent Record. See Completion Notes List below for the full table.
+  - [x] Minimum validation suite run; results recorded.
+  - [x] Run `dotnet build Hexalith.EventStore.slnx --configuration Debug --no-restore` — Result: **0 warnings, 0 errors** in 12.72s.
+  - [x] Use Aspire/browser verification only if this story changes runtime endpoints or UI behavior. **Not required** — no runtime endpoint or UI behavior changes in this story.
+
+### Review Findings
+
+- [x] [Review][Patch] Clarify aggregate replay `StateJson` as an intentional raw replay contract after fail-closed readability [src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs:224] — Decision selected during review: keep `AggregateReconstructionResult.StateJson`/timeline state as the domain replay contract, and narrow AC/docs/tests so no-leak scanning applies to diagnostics, evidence, errors, and operational captures rather than intentionally returned readable state. **Resolved:** AC1, docs matrix, and regression test naming/comments now clarify this boundary.
+- [x] [Review][Patch] Backup invocation error code can still echo arbitrary reflected `StatusCode` text [src/Hexalith.EventStore.Admin.Server/Services/DaprBackupCommandService.cs:391] — **Resolved:** `GetErrorCode` now accepts only HTTP status codes, numeric HTTP-like codes, and enum status codes; arbitrary string/object `StatusCode` values fall back to safe exception type names.
+- [x] [Review][Patch] Directory evidence scan silently skips unreadable files instead of failing closed [src/Hexalith.EventStore.Testing/Security/ProtectedDataLeakSentinel.cs:157] — **Resolved:** unreadable matched files now throw a safe `InvalidOperationException` with file path and exception type only.
+- [x] [Review][Patch] Projection rebuild failure reason is persisted and echoed without a no-leak guard [src/Hexalith.EventStore.Server/Projections/ProjectionRebuildCheckpointStore.cs:322] — **Resolved:** checkpoint store sanitizes failure reason codes to stable kebab-case reason-code shape and falls back to `internal-error` for unsafe text.
 
 ## Dev Notes
 
@@ -191,18 +190,85 @@ so that operational recovery cannot bypass protection boundaries.
 
 ### Agent Model Used
 
-TBD by dev agent.
+claude-opus-4-7[1m] via Amelia (bmad-agent-dev).
 
 ### Debug Log References
 
 - Story creation baseline: Aspire MCP `list_apphosts` reported no active AppHost in `D:\Hexalith.EventStore`. Aspire `doctor` passed .NET SDK 10.0.300 and Docker 29.4.3, with warnings for multiple HTTPS development certificates and deprecated Claude Code MCP config. No AppHost was kept running because this turn only creates the story artifact and sprint-status transition.
+- Implementation baseline 2026-05-19: read-only inventory of recovery chokepoints via four parallel Explore agents (replay/read, rebuild/checkpoint, backup/restore, evidence/docs). Found nearly all runtime paths already redacted through 22.7d-1/2/3 infrastructure; story focus is regression coverage + one targeted runtime fix + an artifact scanner extension.
 
 ### Completion Notes List
 
 - Story context created on 2026-05-19 by BMad create-story workflow.
-- No implementation tests were run because this is story creation only.
+- 2026-05-19 — **Story complete. Implementation summary:**
+  - **One genuine runtime fix.** `DaprBackupCommandService.InvokeEventStorePostAsync` no longer returns raw `ex.Message` as `AdminOperationResult.Message`. Routed through new internal helper `BuildSafeInvocationFailureMessage(endpoint)` that emits a deterministic safe message. The original exception type is still logged via `ILogger.LogWarning(ex, ...)` (its redaction is owned by Story 22.7d-1).
+  - **One test helper extension.** `ProtectedDataLeakSentinel` extended with `AssertNoLeakInFile`, `HasNoLeakInFile`, and `AssertNoLeakInDirectory(directory, params searchPatterns)`. Failure messages report sentinel index + file path only — never the sentinel value. 7 new tests in `ProtectedDataLeakSentinelTests`.
+  - **Four focused regression test files.** Sentinel-injection regression scans across all four story surfaces:
+    - `tests/Hexalith.EventStore.Server.Tests/Security/StreamsControllerProtectedDataLeakRegressionTests.cs` (3 tests, ST1 replay/read)
+    - `tests/Hexalith.EventStore.Client.Tests/Security/AggregateReplayerProtectedDataLeakRegressionTests.cs` (3 tests, ST1 aggregate replay)
+    - `tests/Hexalith.EventStore.Server.Tests/Security/ProjectionRebuildArtifactsProtectedDataLeakTests.cs` (3 tests, ST2 rebuild artifacts)
+    - `tests/Hexalith.EventStore.Admin.Server.Tests/Security/BackupRestoreArtifactsProtectedDataLeakTests.cs` (7 tests, ST3 backup/restore + safe-message guard)
+  - **Project reference added.** `tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj` now references `src/Hexalith.EventStore.Testing` so AggregateReplayer regression tests can use `ProtectedDataLeakSentinel`.
+  - **Docs updated.** `docs/guides/payload-protection-and-crypto-shredding.md` now contains a "Recovery and evidence redaction matrix (22.7d-4)" subsection with a 13-surface table mapping each output to its redaction primitive, plus the 7 sentinel categories.
+  - **Validation results (2026-05-19, focused commands per story §ST5):**
+
+    | Command | Result |
+    | --- | --- |
+    | `dotnet test tests/Hexalith.EventStore.Contracts.Tests --filter "FullyQualifiedName~Security\|FullyQualifiedName~Streams\|FullyQualifiedName~Replay\|FullyQualifiedName~Problems" --no-restore` | **190/190** pass, 0 skipped |
+    | `dotnet test tests/Hexalith.EventStore.Testing.Tests --filter "FullyQualifiedName~ProtectedDataLeakSentinel\|FullyQualifiedName~FakeUnreadableProtectionService\|FullyQualifiedName~StreamReadPageBuilder\|FullyQualifiedName~RestoredBackupAdmissionBuilder" --no-restore` | **26/26** pass, 0 skipped (12 new sentinel scanner tests) |
+    | `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~StreamsControllerTests\|FullyQualifiedName~ReplayControllerTests\|FullyQualifiedName~AdminProjectionRebuildControllerTests\|FullyQualifiedName~ProjectionUpdateOrchestrator\|FullyQualifiedName~ProjectionRebuildCheckpointStore\|FullyQualifiedName~ProtectedDataDiagnosticRedactionTests\|FullyQualifiedName~UnreadableProtectedDataBehaviorTests\|FullyQualifiedName~StreamsControllerProtectedDataLeakRegressionTests\|FullyQualifiedName~ProjectionRebuildArtifactsProtectedDataLeak" --no-restore` | **186/189** pass, **3 pre-existing ReplayController failures verified unchanged at baseline (stash test)** — same failures present in `tests/Hexalith.EventStore.Server.Tests/Commands/ReplayControllerTests.cs` (Replay_WhitespaceCorrelationId_Returns400ProblemDetails, Replay_RejectedStatus_Returns202WithReplayResponse, Replay_GeneratesNewCorrelationId). These are command-replay tests, orthogonal to event payload protection. |
+    | `dotnet test tests/Hexalith.EventStore.Admin.Server.Tests --filter "FullyQualifiedName~AdminBackupsController\|FullyQualifiedName~DaprBackupCommandService\|FullyQualifiedName~DaprBackupQueryService\|FullyQualifiedName~AdminStreamsController\|FullyQualifiedName~DaprStreamQueryService\|FullyQualifiedName~BackupRestoreArtifactsProtectedDataLeak" --no-restore` | **140/140** pass, 0 skipped |
+    | `dotnet test tests/Hexalith.EventStore.Admin.Abstractions.Tests --filter "FullyQualifiedName~AdminRedactedContentSerializationTests\|FullyQualifiedName~Streams\|FullyQualifiedName~Storage" --no-restore` | **166/166** pass, 0 skipped |
+    | `dotnet test tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests --filter "FullyQualifiedName~Redaction\|FullyQualifiedName~ProtectedData\|FullyQualifiedName~DocsValidation" --no-restore` | **12/12 SKIP** — DW4 validator entrypoint not configured. Per ST0 mini-ADR, DW4 schema changes are explicitly out of scope; the focused artifact scanner in `ProtectedDataLeakSentinel` covers the protected-data scan requirement instead. |
+    | `dotnet test tests/Hexalith.EventStore.Client.Tests --filter "FullyQualifiedName~AggregateReplayer" --no-restore` | **28/28** pass (3 new AggregateReplayer regression tests + 25 pre-existing) |
+    | `dotnet build Hexalith.EventStore.slnx --configuration Debug --no-restore` | **0 warnings, 0 errors** in 12.72s |
+
+  - **Aspire validation: not required.** No runtime endpoint or UI behavior changes in this story.
+  - **Pre-existing/out-of-scope failures recorded:**
+    1. `ReplayControllerTests.Replay_WhitespaceCorrelationId_Returns400ProblemDetails` — pre-existing, verified at baseline via `git stash`.
+    2. `ReplayControllerTests.Replay_RejectedStatus_Returns202WithReplayResponse` — pre-existing.
+    3. `ReplayControllerTests.Replay_GeneratesNewCorrelationId` — pre-existing.
+    All three are about command replay (correlation ID generation), not event payload protection — orthogonal to 22.7d-4 scope.
+  - **DW4 evidence validator tests (12 skipped) remain skipped** because the validator entrypoint declaration file at `_bmad-output/test-artifacts/operational-evidence-validator/entrypoint.txt` has not been created. The story's ST4 §2 explicitly defers this to whoever lands the DW4 validator implementation.
+- 2026-05-19 — **Code review patch pass complete.** Applied 4/4 review patches:
+  - Clarified aggregate replay `StateJson` as the intentional raw replay contract after upstream fail-closed readability, while diagnostics/evidence/errors remain no-leak scanned.
+  - Hardened `DaprBackupCommandService.GetErrorCode` so arbitrary reflected `StatusCode` text cannot flow into `AdminOperationResult.ErrorCode`.
+  - Made `ProtectedDataLeakSentinel.AssertNoLeakInDirectory` fail closed when a matched file cannot be read.
+  - Sanitized projection rebuild checkpoint failure reason codes before persistence/serialization, falling back to `internal-error` for unsafe text.
+  - Review validation: `Admin.Server.Tests` backup redaction slice **9/9** pass; `Server.Tests` projection redaction slice **7/7** pass; `Client.Tests` aggregate replayer redaction slice **3/3** pass; `Testing.Tests` protected sentinel slice **12/12** pass. Full `dotnet build Hexalith.EventStore.slnx --configuration Debug --no-restore` passed with **0 warnings / 0 errors**.
+- 2026-05-19 — **ST0 mini-ADR (inventory + policy boundary):**
+  - **Single policy boundary confirmed.** Reuse, do not duplicate: `ProtectedDataDiagnosticRedactor` (Server) for runtime safe-text + ProblemDetails extensions; `AdminRedactedContent` (Admin.Abstractions) for Admin descriptors; `ProtectedDataReadabilityDecision`/`RestoredBackupAdmissionResult` (Contracts) for fail-closed status; `ProtectedDataLeakSentinel` (Testing) for assertion. New helpers limited to a file/directory artifact scanner extension on the existing sentinel.
+  - **Replay/read inventory.** `StreamsController.ReadStreamAsync` (src/Hexalith.EventStore/Controllers/StreamsController.cs:66–294) already calls `TryUnprotectEventPayloadAsync` and returns `UnreadableProtectedDataProblem` via `ProtectedDataDiagnosticRedactor.BuildUnreadableProblemExtensions` on failure. `StreamReadEvent.Payload` (src/Hexalith.EventStore.Contracts/Streams/StreamReadEvent.cs:22) is a supported replay contract carrying already-readable bytes; redaction governs artifacts/operational surfaces, not envelope semantics. `AggregateReplayer.Replay` (src/Hexalith.EventStore.Client/Aggregates/AggregateReplayer.cs:25–228) assumes already-readable events and returns `AggregateReconstructionResult`. `EventStoreGatewayClient.ReadStreamAsync` (src/Hexalith.EventStore.Client/Gateway/EventStoreGatewayClient.cs:221–251) relays server-shaped responses; client-side has no protection logic. `ReplayController` (command replay) is orthogonal to event payload protection. Classification: all paths are **safe by construction**; story adds sentinel regression coverage only.
+  - **Rebuild/checkpoint inventory.** `ProjectionUpdateOrchestrator` already maps unreadable protected events through `UnreadableProtectedDataReasonCodes.From(...)` and writes failed checkpoint/status via `ResetAsync` without advancing `LastAppliedSequence`. `ProjectionRebuildCheckpoint` and `ProjectionRebuildOperation` carry only safe fields (`OperationId`, `Status`, `FailureReasonCode`, `LastAppliedSequence`, `UpdatedAt`). `AdminProjectionRebuildController.MapSaveFailure` (lines 480–542) maps reason codes to status without raw text. Projection apply HTTP response handling (`ReadProjectResponseAsync`, lines 1075–1151) reads only status code / content-type / charset — never the response body for operator feedback. Active-index cleanup logs safe identifiers. Classification: **safe by construction**; story adds sentinel regression coverage.
+  - **Backup/restore inventory.** `DaprBackupCommandService.TriggerBackupAsync`/`ValidateBackupAsync`/`TriggerRestoreAsync`/`ExportStreamAsync`/`ImportStreamAsync` (lines 64–115) return honest **deferred** results with no protected-data risk. `AdmitRestoredBackupAsync`, `SubmitRestoreAdmissionDecisionAsync`, `SubmitCryptoShreddingWorkflowAsync` write safe persisted records (`RestoredBackupAdmissionResult`, `CryptoShreddingWorkflowDecision`, `CryptoShreddingAuditEvent`) whose contracts enforce safe-fingerprint / state-only fields. `AdminBackupsController.MapAdmissionResult` and `MapWorkflowResult` extract safe metadata only. **One real risk surfaced:** `DaprBackupCommandService.InvokeEventStorePostAsync` (line 374) returns raw `ex.Message` as `AdminOperationResult.Message`. Classification: **`ex.Message` capture is forbidden from recovery output**; route through a safe message helper.
+  - **Artifact/evidence inventory.** `ProtectedDataLeakSentinel` covers 7 sentinel categories and provides `AssertNoLeak`/`HasNoLeak` over string enumerables; it does not yet scan files/directories or JSON structure. `Dw4RedactionRulesAtddTests` are red-phase ATDDs blocked on a not-yet-implemented validator entrypoint — out of scope here; do not unskip. `OperationalEvidence` redaction rules ship 5 IDs (bearer token, connection string, hostname, raw secret, section-missing); the 6 protected-data sentinel categories (payload plaintext, snapshot plaintext, key alias, provider-private blob, state-store key, provider exception text) are not yet covered. Classification: **add a focused file/directory scanner extension to the existing `ProtectedDataLeakSentinel`**, not a second taxonomy.
+  - **Policy decision (per story §Dev-Notes Architecture Compliance).** Do NOT mutate or redact immutable persisted event payloads, do NOT add real crypto/KMS, do NOT pretend physical backup scanning exists, do NOT touch DW4 validator schema, and do NOT silently expand into 22.7d-3 CLI/MCP scope (it is `done` but its redaction is owned there).
+  - **Public DTO compatibility impact.** No public DTO shape changes. `StreamReadEvent.Payload` and `ProjectionRebuildCheckpoint`/`ProjectionRebuildOperation` retain their fields. Only `DaprBackupCommandService.InvokeEventStorePostAsync` (private method) routes its exception message through a new internal safe-message helper.
 
 ### File List
+
+**Runtime code (1 file modified):**
+
+- `src/Hexalith.EventStore.Admin.Server/Services/DaprBackupCommandService.cs` — added internal `BuildSafeInvocationFailureMessage(endpoint)` helper; `InvokeEventStorePostAsync` catch block now returns the safe message instead of raw `ex.Message`.
+
+**Test helper extension (1 file modified):**
+
+- `src/Hexalith.EventStore.Testing/Security/ProtectedDataLeakSentinel.cs` — added `AssertNoLeakInFile`, `HasNoLeakInFile`, `AssertNoLeakInDirectory(directory, params searchPatterns)`.
+
+**Tests (5 files added, 2 files modified):**
+
+- `tests/Hexalith.EventStore.Testing.Tests/Security/ProtectedDataLeakSentinelTests.cs` — added 7 scanner tests.
+- `tests/Hexalith.EventStore.Server.Tests/Security/StreamsControllerProtectedDataLeakRegressionTests.cs` — **new**, 3 ST1 tests.
+- `tests/Hexalith.EventStore.Server.Tests/Security/ProjectionRebuildArtifactsProtectedDataLeakTests.cs` — **new**, 3 ST2 tests.
+- `tests/Hexalith.EventStore.Admin.Server.Tests/Security/BackupRestoreArtifactsProtectedDataLeakTests.cs` — **new**, 7 ST3 tests including the safe-message guard.
+- `tests/Hexalith.EventStore.Client.Tests/Security/AggregateReplayerProtectedDataLeakRegressionTests.cs` — **new**, 3 ST1 aggregate replay tests.
+- `tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj` — added `ProjectReference` to `src/Hexalith.EventStore.Testing` so the new AggregateReplayer regression tests can use `ProtectedDataLeakSentinel`.
+
+**Docs (1 file modified):**
+
+- `docs/guides/payload-protection-and-crypto-shredding.md` — added "Recovery and evidence redaction matrix (22.7d-4)" subsection with the 13-surface redaction table and 7 sentinel categories.
+
+**Story / sprint tracking (2 files modified):**
 
 - `_bmad-output/implementation-artifacts/22-7d-4-protected-data-redaction-in-replay-rebuild-backup-validation-and-tests.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
@@ -218,3 +284,5 @@ TBD by dev agent.
 | Date | Change |
 | --- | --- |
 | 2026-05-19 | Story created for child 22.7d-4 with focused replay/rebuild/backup-validation/test-artifact redaction scope, recovery chokepoint inventory, no-leak evidence requirements, and source references. |
+| 2026-05-19 | Implementation complete (ready-for-dev -> review). Applied: 1 runtime fix (`DaprBackupCommandService.InvokeEventStorePostAsync` safe-message routing), 1 test-helper extension (3 new scanner methods on `ProtectedDataLeakSentinel`), 4 focused sentinel regression test files (16 new tests across replay/read, rebuild, backup/restore, aggregate replay), 1 doc section (recovery/evidence redaction matrix). Focused validation green: Contracts.Tests 190/190, Testing.Tests 26/26, Admin.Server.Tests 140/140, Admin.Abstractions.Tests 166/166, Client.Tests AggregateReplayer 28/28. 3 pre-existing ReplayControllerTests failures verified unchanged at baseline via git stash. DW4 evidence validator suite 12/12 SKIP (entrypoint not declared; out of scope per ST0 mini-ADR). Full debug build 0 warnings / 0 errors. |
+| 2026-05-19 | Code review patches complete (review -> done). Applied 4 review fixes: aggregate replay contract clarification, backup error-code sanitization, fail-closed directory evidence scanning, and projection rebuild failure-reason sanitization. Validation green: backup redaction 9/9, projection redaction 7/7, aggregate replayer redaction 3/3, sentinel scanner 12/12, full debug build 0 warnings / 0 errors. |

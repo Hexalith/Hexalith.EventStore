@@ -120,6 +120,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         bool isPerAggregateProgress = false) {
         ValidateScope(scope);
         ArgumentOutOfRangeException.ThrowIfNegative(lastAppliedSequence);
+        string? safeFailureReasonCode = SanitizeFailureReasonCode(failureReasonCode);
 
         string key = GetStateKey(scope);
         string stateStoreName = options.Value.CheckpointStateStoreName;
@@ -155,7 +156,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     // P2/P14: Idempotent no-op ONLY when every observable field matches.
                     if (existing.LastAppliedSequence >= lastAppliedSequence
                         && existing.Status == status
-                        && string.Equals(existing.FailureReasonCode, failureReasonCode, StringComparison.Ordinal)
+                        && string.Equals(existing.FailureReasonCode, safeFailureReasonCode, StringComparison.Ordinal)
                         && existing.ToPosition == toPosition) {
                         // P28-7P (pass-7 MEDIUM): skip the active-index round-trip on a true no-op
                         // (same status, same sequence, same metadata). The active-index should
@@ -220,7 +221,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     monotonicSequence,
                     status,
                     DateTimeOffset.UtcNow,
-                    failureReasonCode,
+                    safeFailureReasonCode,
                     toPosition);
 
                 // C4-5P (pass-5): Reverts pass-5-worsening — write checkpoint FIRST for ALL
@@ -293,6 +294,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         long? toPosition = null) {
         ValidateScope(scope);
         ArgumentOutOfRangeException.ThrowIfNegative(lastAppliedSequence);
+        string? safeFailureReasonCode = SanitizeFailureReasonCode(failureReasonCode);
 
         string key = GetStateKey(scope);
         string stateStoreName = options.Value.CheckpointStateStoreName;
@@ -328,7 +330,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
                     lastAppliedSequence,
                     status,
                     DateTimeOffset.UtcNow,
-                    failureReasonCode,
+                    safeFailureReasonCode,
                     toPosition);
 
                 bool saved = await daprClient
@@ -972,6 +974,27 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         }
 
         return false;
+    }
+
+    internal static string? SanitizeFailureReasonCode(string? failureReasonCode) {
+        if (string.IsNullOrWhiteSpace(failureReasonCode)) {
+            return null;
+        }
+
+        string trimmed = failureReasonCode.Trim();
+        if (trimmed.Length > 128) {
+            return StreamReplayReasonCodes.InternalError;
+        }
+
+        foreach (char c in trimmed) {
+            if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') {
+                continue;
+            }
+
+            return StreamReplayReasonCodes.InternalError;
+        }
+
+        return trimmed;
     }
 
     // P12-7P / P32-7P (pass-7): add ±25% jitter to bounded retry delays so concurrent writers on
