@@ -207,6 +207,74 @@ public class DomainServiceResolverTests {
         v2.AppId.ShouldBe("sample-v2"); // wildcard
     }
 
+    [Fact]
+    public async Task ResolveAsync_SanitizedWildcardRegistration_MatchesAnyTenant() {
+        // Arrange — Kubernetes-valid sanitized wildcard key shape (Hexalith.Parties story 9.3 AC1).
+        // ConfigMap data keys and Pod env names reject '*' and '|', so manifest-emitted dictionary
+        // keys use the sanitized form "wildcard_<domain>_<version>". Resolver must match this in
+        // addition to the legacy pipe-form "*|domain|version".
+        var opts = new DomainServiceOptions {
+            Registrations = new Dictionary<string, DomainServiceRegistration> {
+                ["wildcard_party_v1"] = new("parties", "process", "*", "party", "v1"),
+            },
+        };
+        DomainServiceResolver resolver = CreateResolver(opts);
+
+        // Act
+        DomainServiceRegistration? a = await resolver.ResolveAsync("tenant-a", "party");
+        DomainServiceRegistration? b = await resolver.ResolveAsync("tenant-b", "party");
+
+        // Assert — every tenant resolves to the registered AppId; TenantId is rewritten to the caller.
+        _ = a.ShouldNotBeNull();
+        a.AppId.ShouldBe("parties");
+        a.MethodName.ShouldBe("process");
+        a.TenantId.ShouldBe("tenant-a");
+
+        _ = b.ShouldNotBeNull();
+        b.AppId.ShouldBe("parties");
+        b.TenantId.ShouldBe("tenant-b");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_SanitizedWildcard_RespectsVersionInKey() {
+        // Arrange — sanitized wildcard exists only for v2; v1 caller must fall through to convention.
+        var opts = new DomainServiceOptions {
+            Registrations = new Dictionary<string, DomainServiceRegistration> {
+                ["wildcard_counter_v2"] = new("sample-v2", "process", "*", "counter", "v2"),
+            },
+        };
+        DomainServiceResolver resolver = CreateResolver(opts);
+
+        // Act
+        DomainServiceRegistration? v1 = await resolver.ResolveAsync("tenant-a", "counter", "v1");
+        DomainServiceRegistration? v2 = await resolver.ResolveAsync("tenant-a", "counter", "v2");
+
+        // Assert
+        _ = v1.ShouldNotBeNull();
+        v1.AppId.ShouldBe("counter"); // convention fallback
+        _ = v2.ShouldNotBeNull();
+        v2.AppId.ShouldBe("sample-v2"); // sanitized wildcard match
+    }
+
+    [Fact]
+    public async Task ResolveAsync_PipeWildcardTakesPrecedenceOverSanitizedWildcard() {
+        // Arrange — both pipe and sanitized forms exist; pipe form must win (lookup order preserved).
+        var opts = new DomainServiceOptions {
+            Registrations = new Dictionary<string, DomainServiceRegistration> {
+                ["*|party|v1"] = new("legacy-svc", "process", "*", "party", "v1"),
+                ["wildcard_party_v1"] = new("sanitized-svc", "process", "*", "party", "v1"),
+            },
+        };
+        DomainServiceResolver resolver = CreateResolver(opts);
+
+        // Act
+        DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "party");
+
+        // Assert — pipe wildcard wins because it is checked first.
+        _ = result.ShouldNotBeNull();
+        result.AppId.ShouldBe("legacy-svc");
+    }
+
     // --- Config store routing (opt-in via ConfigStoreName) ---
 
     [Fact]
