@@ -35,7 +35,9 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-18T23:00:28+02:00' # Sprint planning refresh: canonical epic/story inventory validated from epics.md; no status transitions changed.
+last_updated: '2026-05-19T08:19:00+02:00' # Story 22.7d-4 materialized by bmad-create-story and moved backlog -> ready-for-dev for replay/rebuild/backup validation/test artifact protected-data redaction.
+# Previous last_updated detail preserved: 2026-05-19T08:11:54+02:00 - Story 22.7d-3 materialized by bmad-create-story and moved backlog -> ready-for-dev for CLI/MCP protected-data redaction.
+# Previous last_updated detail preserved: 2026-05-18T23:00:28+02:00 - Sprint planning refresh: canonical epic/story inventory validated from epics.md; no status transitions changed.
 # Previous last_updated detail preserved: 2026-05-18T18:50:46+02:00 - Story 22.7d-2 moved in-progress -> done after review fixes and focused Admin validation passed.
 # Previous last_updated detail preserved: 2026-05-18T18:50:00+02:00 - Story 22.7d-2 moved ready-for-dev -> in-progress for Admin API/Web UI protected-data redaction implementation.
 # Previous last_updated detail preserved: 2026-05-18T18:45:00+02:00 - Story 22.7d-2 materialized by bmad-create-story and moved backlog -> ready-for-dev for Admin API/Web UI protected-data redaction.
@@ -368,8 +370,8 @@ development_status:
   22-7d-protected-data-redaction-across-operational-surfaces: backlog
   22-7d-1-protected-data-redaction-in-logs-and-problemdetails: done
   22-7d-2-protected-data-redaction-in-admin-api-and-web-ui: done
-  22-7d-3-protected-data-redaction-in-cli-and-mcp: backlog
-  22-7d-4-protected-data-redaction-in-replay-rebuild-backup-validation-and-tests: backlog
+  22-7d-3-protected-data-redaction-in-cli-and-mcp: ready-for-dev
+  22-7d-4-protected-data-redaction-in-replay-rebuild-backup-validation-and-tests: ready-for-dev
   epic-22-retrospective: optional
 
   # Post-Epic Deferred Work Cleanup (sprint-change-proposal-2026-05-04-deferred-work-triage.md)
