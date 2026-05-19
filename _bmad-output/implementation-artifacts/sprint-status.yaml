@@ -35,7 +35,9 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-19T09:45:00+02:00' # Story 22.7d-3 moved review -> done after adversarial code review (Opus 4.7 1M, 3 layers, 65 raw findings) applied 28 patches (D1-D4 decisions + P1-P24): shared UnsafeMarkerDetection helper, TryGetAsync 404 carve-out, bounded ProblemDetails read, narrow MCP marker scope, fail-closed table/CSV (no raw fallback), Payload column width reverted to 80, EventDetail converter contract hardening, recursion depth bound, expanded sentinel-coverage tests. Focused validation green: CLI 153/153, MCP 116/116, Abstractions 2/2, Testing 5/5.
+last_updated: '2026-05-19T12:05:00+02:00' # Story 22.7d-4 moved review -> done after code-review patch pass. Applied 4 review fixes: aggregate replay StateJson contract clarification, DaprBackupCommandService safe error-code projection, ProtectedDataLeakSentinel fail-closed directory scans, and ProjectionRebuildCheckpointStore failure-reason sanitization. Validation green: Admin.Server backup redaction 9/9, Server projection redaction 7/7, Client aggregate replayer redaction 3/3, Testing protected sentinel 12/12, full debug build 0 warnings / 0 errors.
+# Previous last_updated detail preserved: 2026-05-19T10:30:00+02:00 - Story 22.7d-4 moved ready-for-dev -> in-progress for replay/rebuild/backup validation/test artifact protected-data redaction implementation.
+# Previous last_updated detail preserved: 2026-05-19T09:45:00+02:00 - Story 22.7d-3 moved review -> done after adversarial code review (Opus 4.7 1M, 3 layers, 65 raw findings) applied 28 patches (D1-D4 decisions + P1-P24): shared UnsafeMarkerDetection helper, TryGetAsync 404 carve-out, bounded ProblemDetails read, narrow MCP marker scope, fail-closed table/CSV (no raw fallback), Payload column width reverted to 80, EventDetail converter contract hardening, recursion depth bound, expanded sentinel-coverage tests. Focused validation green: CLI 153/153, MCP 116/116, Abstractions 2/2, Testing 5/5.
 # Previous last_updated detail preserved: 2026-05-19T08:49:00+02:00 - Story 22.7d-3 moved in-progress -> review after CLI/MCP protected-data redaction implementation and focused validation passed.
 # Previous last_updated detail preserved: 2026-05-19T08:34:00+02:00 - Story 22.7d-3 moved ready-for-dev -> in-progress for CLI/MCP protected-data redaction implementation.
 # Previous last_updated detail preserved: 2026-05-19T08:19:00+02:00 - Story 22.7d-4 materialized by bmad-create-story and moved backlog -> ready-for-dev for replay/rebuild/backup validation/test artifact protected-data redaction.
@@ -374,7 +376,7 @@ development_status:
   22-7d-1-protected-data-redaction-in-logs-and-problemdetails: done
   22-7d-2-protected-data-redaction-in-admin-api-and-web-ui: done
   22-7d-3-protected-data-redaction-in-cli-and-mcp: done
-  22-7d-4-protected-data-redaction-in-replay-rebuild-backup-validation-and-tests: ready-for-dev
+  22-7d-4-protected-data-redaction-in-replay-rebuild-backup-validation-and-tests: done
   epic-22-retrospective: optional
 
   # Post-Epic Deferred Work Cleanup (sprint-change-proposal-2026-05-04-deferred-work-triage.md)

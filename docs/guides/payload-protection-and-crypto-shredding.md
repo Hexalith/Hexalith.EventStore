@@ -400,9 +400,45 @@ construction by `CryptoShreddingAuditEvent.TryValidate`.
 - Replay/rebuild/backup-validation artifact scans remain delegated to Story 22.7d-4.
 - Skip-past-shredded replay/rebuild — no skip policy is added.
 
+### Recovery and evidence redaction matrix (22.7d-4)
+
+Story 22.7d-4 extends the protected-data no-leak guarantee to replay/read responses, projection
+rebuild artifacts, backup validation, restored-backup admission, deferred recovery paths, and
+operational evidence files. The matrix below summarizes which surface owns each output and which
+existing primitive enforces redaction. The same fail-closed and safe-fallback rules apply: no raw
+payload bytes, snapshot plaintext, provider exception text, provider-private metadata, state-store
+keys, connection strings, or key aliases reach operator-facing fields.
+
+| Surface | Output | Redaction primitive |
+| --- | --- | --- |
+| `StreamsController.ReadStreamAsync` unreadable path | `UnreadableProtectedDataProblem` ProblemDetails | `ProtectedDataDiagnosticRedactor.BuildUnreadableProblemExtensions(decision)` |
+| `StreamsController.ReadStreamAsync` readable path | `StreamReadEvent.Payload` (already-readable bytes returned to caller) | Append-only event-store contract; bytes are intentionally returned |
+| `AggregateReplayer.Replay` contract | `AggregateReconstructionResult.StateJson`, `Timeline[].StateJson`, `Message`, `FailedEventType` | `StateJson` is intentionally returned only after upstream readability has passed; no-leak scans cover diagnostics, evidence captures, and failure text, not the raw readable replay contract |
+| `ProjectionUpdateOrchestrator` unreadable event | Checkpoint `Failed` + reason code via `ResetAsync` | `UnreadableProtectedDataReasonCodes.From(decision)`; `LastAppliedSequence` never advances past the unreadable sequence |
+| `ProjectionRebuildCheckpoint` / `ProjectionRebuildOperation` | Public status DTO | Safe-by-construction record fields (`OperationId`, `Status`, `FailureReasonCode`, `LastAppliedSequence`, `UpdatedAt`); no raw exception or payload field exists on the contract |
+| `AdminProjectionRebuildController` failure mapping | RFC 7807 ProblemDetails | `MapSaveFailure(reasonCode)` returns stable status + reason code with no exception body |
+| Projection apply HTTP response | Logged status / reason code only | `ReadProjectResponseAsync` reads only status code + content type + charset; never reads response body for operator feedback |
+| `DaprBackupCommandService.Trigger/Validate/Restore/Export/Import` | `AdminOperationResult` / `StreamExportResult` | `CreateDeferredResult(operationId, deterministicMessage)` — honest, no-leak, deferred |
+| `DaprBackupCommandService.InvokeEventStorePostAsync` exception path | `AdminOperationResult.Message` | `BuildSafeInvocationFailureMessage(endpoint)` — deterministic safe string. Exception type is still logged via `ILogger.LogWarning(ex, ...)` (its redaction is owned by Story 22.7d-1) |
+| `RestoredBackupAdmissionResult` | Persisted + returned admission record | Safe-by-construction record fields (no raw alias, no provider blob); `KeyAliasFingerprint` is the only key-derived field, SHA-256 hex prefix only |
+| `CryptoShreddingWorkflowDecision` | Persisted + returned workflow record | Safe-by-construction record fields; no raw alias, no key material |
+| `CryptoShreddingAuditEvent` | Audit log | `TryValidate` enforces 14 structural invariants and rejects raw secret shapes at construction |
+| Test/evidence artifacts (files, directories, captured stdout/stderr) | Captured strings, written files | `ProtectedDataLeakSentinel.AssertNoLeak`, `AssertNoLeakInFile`, `AssertNoLeakInDirectory` |
+
+**Sentinel categories.** Seven sentinel values are defined in
+`ProtectedDataLeakSentinel`: protected payload plaintext, protected snapshot plaintext, key alias,
+provider-private blob, state-store key, connection string, and provider exception text. Tests inject
+these values into protection-service fakes, protection metadata, and exception messages, then assert
+no captured string from a public surface contains any sentinel. Failure messages report the sentinel
+**index** (not value) and the offending file path.
+
+**What is intentionally NOT in scope of this story.** No new encryption providers, no KMS / Key
+Vault / DAPR secret-store integration, no physical backup engine, no skip-past-unreadable replay
+policy, no DW4 validator schema changes, and no mutation of immutable persisted event payloads.
+
 ## Deferred to Story 22.7d
 
-- Replay/rebuild/backup-validation artifact scans — Story 22.7d-4.
+- ~~Replay/rebuild/backup-validation artifact scans — Story 22.7d-4.~~ **Completed by Story 22.7d-4.**
 - Real encryption provider, key vault integration, cloud KMS, DAPR secret-store integration.
 
 ## Registering a custom provider

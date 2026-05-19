@@ -50,6 +50,98 @@ public class ProtectedDataLeakSentinelTests {
 
     [Fact]
     public void HasNoLeak_ReturnsFalseWhenSentinelPresent() => ProtectedDataLeakSentinel.HasNoLeak(["safe", $"leak: {ProtectedDataLeakSentinel.ProtectedProviderExceptionText}"]).ShouldBeFalse();
+
+    [Fact]
+    public void AssertNoLeakInFile_PassesWhenFileIsSafe() {
+        string path = Path.Combine(Path.GetTempPath(), $"sentinel-safe-{Guid.NewGuid():N}.txt");
+        File.WriteAllText(path, "tenant-a:billing:agg-001 safe metadata\nReasonCode=protected-data-diagnostic-redacted");
+        try {
+            Should.NotThrow(() => ProtectedDataLeakSentinel.AssertNoLeakInFile(path));
+            ProtectedDataLeakSentinel.HasNoLeakInFile(path).ShouldBeTrue();
+        }
+        finally {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void AssertNoLeakInFile_ThrowsAndDoesNotEchoSentinel() {
+        string path = Path.Combine(Path.GetTempPath(), $"sentinel-leak-{Guid.NewGuid():N}.txt");
+        File.WriteAllText(path, $"some safe text\nthen: {ProtectedDataLeakSentinel.ProtectedKeyAlias}\nmore text");
+        try {
+            InvalidOperationException ex = Should.Throw<InvalidOperationException>(
+                () => ProtectedDataLeakSentinel.AssertNoLeakInFile(path));
+            ex.Message.ShouldContain("index");
+            ex.Message.ShouldContain(path);
+            ex.Message.ShouldNotContain(ProtectedDataLeakSentinel.ProtectedKeyAlias);
+            ProtectedDataLeakSentinel.HasNoLeakInFile(path).ShouldBeFalse();
+        }
+        finally {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void AssertNoLeakInFile_ThrowsFileNotFoundForMissingPath() {
+        string missing = Path.Combine(Path.GetTempPath(), $"sentinel-missing-{Guid.NewGuid():N}.txt");
+        _ = Should.Throw<FileNotFoundException>(() => ProtectedDataLeakSentinel.AssertNoLeakInFile(missing));
+        ProtectedDataLeakSentinel.HasNoLeakInFile(missing).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void AssertNoLeakInDirectory_FindsLeakAcrossPatternMatchedFiles() {
+        string dir = Path.Combine(Path.GetTempPath(), $"sentinel-dir-{Guid.NewGuid():N}");
+        _ = Directory.CreateDirectory(dir);
+        string safeFile = Path.Combine(dir, "evidence-safe.md");
+        string leakyFile = Path.Combine(dir, "evidence-leak.md");
+        File.WriteAllText(safeFile, "all good");
+        File.WriteAllText(leakyFile, $"oops: {ProtectedDataLeakSentinel.ProtectedProviderExceptionText}");
+        try {
+            InvalidOperationException ex = Should.Throw<InvalidOperationException>(
+                () => ProtectedDataLeakSentinel.AssertNoLeakInDirectory(dir, "*.md"));
+            ex.Message.ShouldContain(dir);
+            ex.Message.ShouldNotContain(ProtectedDataLeakSentinel.ProtectedProviderExceptionText);
+        }
+        finally {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AssertNoLeakInDirectory_PassesWhenAllFilesAreSafe() {
+        string dir = Path.Combine(Path.GetTempPath(), $"sentinel-dir-{Guid.NewGuid():N}");
+        _ = Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "a.md"), "safe");
+        File.WriteAllText(Path.Combine(dir, "b.md"), "Protected data diagnostic details were redacted. ReasonCode=missing-key; Stage=replay.");
+        try {
+            Should.NotThrow(() => ProtectedDataLeakSentinel.AssertNoLeakInDirectory(dir, "*.md"));
+        }
+        finally {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AssertNoLeakInDirectory_ThrowsDirectoryNotFoundForMissingPath() {
+        string missing = Path.Combine(Path.GetTempPath(), $"sentinel-dir-missing-{Guid.NewGuid():N}");
+        _ = Should.Throw<DirectoryNotFoundException>(
+            () => ProtectedDataLeakSentinel.AssertNoLeakInDirectory(missing, "*.md"));
+    }
+
+    [Fact]
+    public void AssertNoLeakInDirectory_EmptyPatternsScansEverything() {
+        string dir = Path.Combine(Path.GetTempPath(), $"sentinel-dir-{Guid.NewGuid():N}");
+        _ = Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "evidence.json"), $"\"detail\":\"{ProtectedDataLeakSentinel.ProtectedStateStoreKey}\"");
+        try {
+            InvalidOperationException ex = Should.Throw<InvalidOperationException>(
+                () => ProtectedDataLeakSentinel.AssertNoLeakInDirectory(dir));
+            ex.Message.ShouldNotContain(ProtectedDataLeakSentinel.ProtectedStateStoreKey);
+        }
+        finally {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
 }
 
 public class FakeUnreadableProtectionServiceTests {

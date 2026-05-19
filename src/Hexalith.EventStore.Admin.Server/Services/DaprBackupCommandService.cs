@@ -370,12 +370,20 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
             throw;
         }
         catch (Exception ex) {
+            // Story 22.7d-4: never echo provider exception text into AdminOperationResult.Message. The
+            // exception type stays in the logged warning above, but the operator-facing message is a
+            // stable safe string keyed off the endpoint. Error code keeps HTTP/SDK status when available.
             _logger.LogWarning(ex, "Failed to invoke EventStore endpoint '{Endpoint}'.", endpoint);
-            return new AdminOperationResult(false, ErrorNoOperation, ex.Message, GetErrorCode(ex));
+            return new AdminOperationResult(false, ErrorNoOperation, BuildSafeInvocationFailureMessage(endpoint), GetErrorCode(ex));
         }
     }
 
-    private static string GetErrorCode(Exception exception) {
+    internal static string BuildSafeInvocationFailureMessage(string endpoint)
+        => $"EventStore service invocation failed. Endpoint={endpoint}; details redacted from operator-facing message.";
+
+    internal static string GetErrorCode(Exception exception) {
+        ArgumentNullException.ThrowIfNull(exception);
+
         Exception current = exception;
         while (true) {
             if (current is HttpRequestException httpRequestException && httpRequestException.StatusCode is HttpStatusCode statusCode) {
@@ -383,8 +391,16 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
             }
 
             object? reflectedStatus = current.GetType().GetProperty("StatusCode")?.GetValue(current);
-            if (reflectedStatus is not null) {
-                return reflectedStatus.ToString() ?? current.GetType().Name;
+            if (reflectedStatus is HttpStatusCode reflectedHttpStatusCode) {
+                return ((int)reflectedHttpStatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            if (reflectedStatus is int reflectedIntStatusCode and >= 100 and <= 599) {
+                return reflectedIntStatusCode.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            if (reflectedStatus is Enum reflectedEnumStatusCode) {
+                return $"{reflectedEnumStatusCode.GetType().Name}.{reflectedEnumStatusCode}";
             }
 
             if (current.InnerException is null) {
