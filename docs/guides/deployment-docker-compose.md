@@ -183,7 +183,6 @@ $ cp src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml publish-output/d
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml publish-output/docker/dapr-config/
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.eventstore-admin.yaml publish-output/docker/dapr-config/
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.sample.yaml publish-output/docker/dapr-config/
-$ cp src/Hexalith.EventStore.AppHost/DaprComponents/configstore.yaml publish-output/docker/dapr-components/
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/resiliency.yaml publish-output/docker/dapr-components/
 $ cp src/Hexalith.EventStore.AppHost/DaprComponents/subscription-sample-counter.yaml publish-output/docker/dapr-components/
 ```
@@ -197,7 +196,7 @@ $ cp src/Hexalith.EventStore.AppHost/DaprComponents/subscription-sample-counter.
 >   value: "redis:6379"
 > ```
 >
-> Apply this change to `statestore.yaml`, `pubsub.yaml`, and `configstore.yaml` in your `dapr-components/` directory.
+> Apply this change to every component file in your `dapr-components/` directory (at minimum `statestore.yaml` and `pubsub.yaml`; also any optional `configstore.yaml` you add for dynamic domain service configuration — see [DAPR Component Reference: Configuration Store](dapr-component-reference.md#configuration-store)).
 
 ### Step 2: Add DAPR Sidecar Containers
 

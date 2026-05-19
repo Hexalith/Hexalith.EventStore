@@ -736,9 +736,11 @@ These settings are configured in your application code (via `ActorRuntimeOptions
 
 ## Configuration Store
 
-The configuration store provides dynamic key-value configuration for domain service registration. It maps tenant + domain + version combinations to service endpoint information, enabling the CommandAPI to discover and invoke domain services at runtime.
+A DAPR configuration store component named `configstore` can optionally provide dynamic key-value configuration for domain service registration, mapping tenant + domain + version combinations to service endpoint information so the CommandAPI can discover and invoke domain services at runtime.
 
-Source: `src/Hexalith.EventStore.AppHost/DaprComponents/configstore.yaml`
+**Status under Aspire orchestration:** the Aspire AppHost (`HexalithEventStoreExtensions.AddHexalithEventStore`) wires only the `statestore` and `pubsub` components into the EventStore sidecar. No `configstore` component is registered out of the box, and the bundled `dapr-configstore` health check is therefore `Degraded` by design — see [Story 14.3 deployment notes](../../_bmad-output/implementation-artifacts/14-3-azure-container-apps-deployment-guide-and-configuration.md) and [post-Epic-3 R3A7 follow-up notes](../../_bmad-output/implementation-artifacts/post-epic-3-r3a7-live-command-surface-verification.md). Code paths that consume the config store (`DaprRateLimitConfigSync`, `DomainServiceResolver`) fall back gracefully when the component is absent.
+
+If you want a working configuration store for a non-Aspire deployment (Docker Compose, Kubernetes), define a component file alongside your `statestore.yaml` and `pubsub.yaml`. A minimal Redis-backed example:
 
 ```yaml
 apiVersion: dapr.io/v1alpha1
@@ -757,11 +759,6 @@ spec:
           # Redis password for configuration-store connection.
           # Leave empty for local development without authentication.
           value: "{env:REDIS_PASSWORD}"
-# Default scope includes `eventstore`; add domain-service app-ids when they consume configuration directly.
-# Example:
-# scopes:
-#   - eventstore
-#   - sample
 scopes:
     - eventstore
 ```
