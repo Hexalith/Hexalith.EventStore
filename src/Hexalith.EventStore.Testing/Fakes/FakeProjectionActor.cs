@@ -43,8 +43,8 @@ public class FakeProjectionActor : IProjectionActor {
     /// <param name="cancellationToken">The cancellation token to record and observe.</param>
     /// <returns>The configured query result.</returns>
     public Task<QueryResult> QueryAsync(QueryEnvelope envelope, CancellationToken cancellationToken) {
-        ArgumentNullException.ThrowIfNull(envelope);
         cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(envelope);
         _receivedEnvelopes.Enqueue(envelope);
         _receivedCancellationTokens.Enqueue(cancellationToken);
 

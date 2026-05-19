@@ -73,8 +73,8 @@ public abstract class EventStoreProjection<TReadModel> : IEventStoreProjection
     /// <param name="cancellationToken">The token to observe between event applications.</param>
     /// <returns>The projected read model with all events applied.</returns>
     public TReadModel Project(System.Collections.IEnumerable events, CancellationToken cancellationToken) {
-        ArgumentNullException.ThrowIfNull(events);
         cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(events);
 
         Dictionary<string, MethodInfo> applyMethods = GetOrBuildApplyMethods();
         var model = new TReadModel();

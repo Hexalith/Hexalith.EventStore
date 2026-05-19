@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj" />
-    <ProjectReference Include="..\..\Hexalith.Tenants\src\Hexalith.Tenants.Contracts\Hexalith.Tenants.Contracts.csproj" />
+    <ProjectReference Include="$(HexalithTenantsBasePath)/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore\Hexalith.EventStore.csproj">
       <Aliases>global,eventstore</Aliases>
     </ProjectReference>

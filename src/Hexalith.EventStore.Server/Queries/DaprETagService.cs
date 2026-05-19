@@ -33,6 +33,11 @@ public partial class DaprETagService(
             return await InvokeETagActorAsync(proxy, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
+            // Bare OperationCanceledException is rethrown so cancellation remains distinguishable from
+            // adapter-edge failures (AC9). DAPR can wrap OCE inside ActorMethodInvocationException or
+            // RpcException; those wrapped cases fall through to the generic catch below and the
+            // documented fail-open path (return null). See Dapr.Actors docs on actor invocation
+            // exception propagation; revisit if production telemetry shows wrapping in this lane.
             throw;
         }
         catch (Exception ex) {

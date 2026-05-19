@@ -45,10 +45,10 @@ public partial class EventReplayProjectionActor(
     /// <param name="cancellationToken">The token to pass to DAPR actor state and notification operations.</param>
     /// <returns>A task that represents the asynchronous update operation.</returns>
     public async Task UpdateProjectionAsync(ProjectionState state, CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(state);
         ArgumentException.ThrowIfNullOrWhiteSpace(state.ProjectionType);
         ArgumentException.ThrowIfNullOrWhiteSpace(state.TenantId);
-        cancellationToken.ThrowIfCancellationRequested();
 
         // 1. Persist to DAPR actor state
         await StateManager.SetStateAsync(ProjectionStateKey, state, cancellationToken).ConfigureAwait(false);
@@ -66,6 +66,11 @@ public partial class EventReplayProjectionActor(
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
+            // Bare OperationCanceledException is rethrown so cancellation is not converted into a
+            // notifier-fail-open log entry (AC9). Notifier paths that wrap OCE inside another
+            // exception (e.g. SignalR transport / DAPR pub-sub wrappers) fall through to the generic
+            // catch below and the documented fail-open path. See Dapr.Actors / SignalR transport
+            // docs on exception propagation; revisit if production telemetry shows wrapping here.
             throw;
         }
         catch (Exception ex) {

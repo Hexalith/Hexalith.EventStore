@@ -41,8 +41,8 @@ public abstract partial class CachingProjectionActor(
     /// <param name="cancellationToken">The token to observe before cache, ETag, execution, and cache-store work.</param>
     /// <returns>The query result containing payload bytes or an adapter-edge failure.</returns>
     public async Task<QueryResult> QueryAsync(QueryEnvelope envelope, CancellationToken cancellationToken) {
-        ArgumentNullException.ThrowIfNull(envelope);
         cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(envelope);
 
         // IETagService handles actor ID derivation, proxy timeout, and fail-open (returns null on error)
         string? currentETag = await eTagService

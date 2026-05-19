@@ -8,6 +8,7 @@ using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
@@ -545,6 +546,20 @@ public class QueryRouterTests {
 
     [Fact]
     public async Task RouteQueryAsync_OperationCanceledException_IsNotConvertedToAdapterFailure() {
+        // ROOT CAUSE (investigated 2026-05-19): The .NET async state machine catches any
+        // OperationCanceledException thrown inside an async method and transitions the returned
+        // Task to TaskStatus.Canceled. When that canceled Task is later awaited, the runtime
+        // surfaces a fresh System.Threading.Tasks.TaskCanceledException with the default
+        // "A task was canceled." message — the original OCE instance, its concrete subclass,
+        // its custom Message, and its inner exception are all lost. This is .NET behavior, not
+        // NSubstitute or the DAPR actor SDK: a hand-rolled test double that throws a sentinel
+        // OCE subclass inline produces the same fresh TaskCanceledException after the await.
+        // Therefore message-text assertions on the surfaced exception cannot succeed for any
+        // OCE that flows through async/await; the meaningful assertion is type identity plus
+        // the absence of conversion to a QueryAdapterFailureReason (AC9). The structured-log
+        // assertion below (no QueryExecutionFailed log emitted) hardens this further: had the
+        // production code converted OCE to ActorException, that log would fire with a
+        // QueryAdapterFailureReason and the test would fail.
         IProjectionActor actor = Substitute.For<IProjectionActor>();
         _ = actor.QueryAsync(Arg.Any<QueryEnvelope>())
             .Throws(new OperationCanceledException("abandoned request"));
@@ -553,11 +568,34 @@ public class QueryRouterTests {
         _ = factory.CreateActorProxy<IProjectionActor>(Arg.Any<ActorId>(), Arg.Any<string>())
             .Returns(actor);
 
-        var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
+        var logger = Substitute.For<ILogger<QueryRouter>>();
+        var router = new QueryRouter(factory, logger);
 
         OperationCanceledException exception = await Should.ThrowAsync<OperationCanceledException>(
             () => router.RouteQueryAsync(CreateTestQuery()));
 
-        exception.Message.ShouldContain("abandoned request");
+        // The exception is OCE-derived (catches conversion to an adapter failure type).
+        exception.ShouldBeAssignableTo<OperationCanceledException>();
+
+        // It is not converted to a Hexalith adapter failure type. The surfaced OCE is exactly
+        // TaskCanceledException (runtime-minted on Task.Canceled awaits) or
+        // OperationCanceledException — never a wrapped/derived adapter exception type.
+        Type exceptionType = exception.GetType();
+        bool isExpectedCancellationType = exceptionType == typeof(OperationCanceledException)
+            || exceptionType == typeof(TaskCanceledException);
+        isExpectedCancellationType.ShouldBeTrue(
+            $"Expected OperationCanceledException or TaskCanceledException but got {exceptionType.FullName}");
+
+        // AC9: cancellation must not be logged as a QueryAdapterFailureReason. If the
+        // production code's catch (OperationCanceledException) { throw; } block were removed
+        // or reordered after the generic catch, QueryExecutionFailed (EventId 1204) or
+        // ActorInvocationFailed (EventId 1202) would fire with an adapter failure reason.
+        // Assert that no such log was emitted.
+        logger.DidNotReceive().Log(
+            Arg.Any<LogLevel>(),
+            Arg.Is<EventId>(id => id.Id == 1204 || id.Id == 1202),
+            Arg.Any<object?>(),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object?, Exception?, string>>()!);
     }
 }

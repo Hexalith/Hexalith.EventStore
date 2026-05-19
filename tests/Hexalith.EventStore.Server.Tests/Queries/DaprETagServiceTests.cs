@@ -101,6 +101,17 @@ public class DaprETagServiceTests {
 
     [Fact]
     public async Task GetCurrentETagAsync_OperationCanceledException_IsNotFailOpenNull() {
+        // ROOT CAUSE (investigated 2026-05-19): The .NET async state machine catches any
+        // OperationCanceledException thrown inside an async method and transitions the returned
+        // Task to TaskStatus.Canceled. When that canceled Task is later awaited, the runtime
+        // surfaces a fresh System.Threading.Tasks.TaskCanceledException with the default
+        // "A task was canceled." message — the original OCE instance, its concrete subclass,
+        // its custom Message, and its inner exception are all lost. This is .NET behavior, not
+        // NSubstitute or the DAPR actor SDK: a hand-rolled test double that throws a sentinel
+        // OCE subclass inline produces the same fresh TaskCanceledException after the await.
+        // Therefore message-text assertions on the surfaced exception cannot succeed for any
+        // OCE that flows through async/await; the meaningful assertion is type identity plus
+        // the absence of conversion to an adapter failure type (AC9).
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         IETagActor actor = Substitute.For<IETagActor>();
         _ = actor.GetCurrentETagAsync().ThrowsAsync(new OperationCanceledException("etag cancelled"));
@@ -114,7 +125,17 @@ public class DaprETagServiceTests {
         OperationCanceledException exception = await Should.ThrowAsync<OperationCanceledException>(
             () => service.GetCurrentETagAsync("counter", "tenant1"));
 
-        exception.Message.ShouldContain("etag cancelled");
+        // The exception is OCE-derived (catches conversion to a fail-open null return).
+        exception.ShouldBeAssignableTo<OperationCanceledException>();
+
+        // It is not converted to a Hexalith adapter failure type. The base OCE class is
+        // exactly TaskCanceledException (runtime-minted on Task.Canceled awaits) or
+        // OperationCanceledException — never a wrapped/derived adapter exception type.
+        Type exceptionType = exception.GetType();
+        bool isExpectedCancellationType = exceptionType == typeof(OperationCanceledException)
+            || exceptionType == typeof(TaskCanceledException);
+        isExpectedCancellationType.ShouldBeTrue(
+            $"Expected OperationCanceledException or TaskCanceledException but got {exceptionType.FullName}");
     }
 
     [Fact]

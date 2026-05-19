@@ -176,6 +176,55 @@ public class EventReplayProjectionActorTests {
     }
 
     [Fact]
+    public async Task UpdateProjectionAsync_NotifierThrowsOperationCanceled_RethrowsAndDoesNotLogFailOpen() {
+        // AC9: when the notifier rethrows OperationCanceledException, the actor's
+        // catch (OperationCanceledException) { throw; } block must propagate the cancellation
+        // (not convert it into a ProjectionChangeNotificationFailed fail-open log entry).
+        // If the catch block were removed, the generic catch (Exception) would swallow the OCE
+        // and log it as a notifier-fail-open warning instead of rethrowing.
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<EventReplayProjectionActor> logger = Substitute.For<ILogger<EventReplayProjectionActor>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        IETagService eTagService = Substitute.For<IETagService>();
+        IProjectionChangeNotifier notifier = Substitute.For<IProjectionChangeNotifier>();
+
+        var host = ActorHost.CreateForTest<EventReplayProjectionActor>(
+            new ActorTestOptions { ActorId = new ActorId(ActorIdString) });
+        var actor = new EventReplayProjectionActor(host, eTagService, notifier, logger);
+        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
+        prop?.SetValue(actor, stateManager);
+
+        ProjectionState state = CreateTestState();
+        _ = notifier.NotifyProjectionChangedAsync(
+                Arg.Any<string>(),
+                Arg.Any<string>(),
+                Arg.Any<string?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ => throw new OperationCanceledException("notifier cancelled"));
+
+        OperationCanceledException exception = await Should.ThrowAsync<OperationCanceledException>(
+            () => actor.UpdateProjectionAsync(state));
+
+        // The exception is OCE-derived (runtime may surface TaskCanceledException after async
+        // re-throw; both are acceptable for AC9 — the requirement is non-conversion to a
+        // generic notifier-failed adapter log).
+        exception.ShouldBeAssignableTo<OperationCanceledException>();
+
+        // State persistence completed before notifier was invoked (notifier failure happens
+        // after state save, per actor implementation).
+        await stateManager.Received(1).SaveStateAsync(Arg.Any<CancellationToken>());
+
+        // ProjectionChangeNotificationFailed (EventId 1093) must NOT be emitted: OCE rethrow
+        // is the documented behavior, not fail-open.
+        logger.DidNotReceive().Log(
+            Arg.Any<LogLevel>(),
+            Arg.Is<EventId>(id => id.Id == 1093),
+            Arg.Any<object?>(),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object?, Exception?, string>>()!);
+    }
+
+    [Fact]
     public async Task ExecuteQueryAsync_NoPersistedState_ReturnsFailure() {
         (EventReplayProjectionActor actor, IActorStateManager stateManager, _, IETagService eTagService) = CreateActor();
         QueryEnvelope envelope = CreateTestEnvelope();
