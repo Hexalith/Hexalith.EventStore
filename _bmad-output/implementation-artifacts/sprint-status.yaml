@@ -369,10 +369,13 @@ development_status:
   22-7a-payload-and-snapshot-protection-hooks: done
   22-7b-unreadable-protected-data-behavior: done
   22-7c-crypto-shredding-workflow-and-restored-backup-safety: done
-  # Container only: do not assign. Use 22-7d-1 through 22-7d-4 for implementation and review.
+  # Container only: do not assign for implementation. Use 22-7d-1 through 22-7d-4 for implementation and review.
   # Implementation gate cleared 2026-05-18: prerequisites 22.7a/22.7b/22.7c all done. Child story files
-  # for 22-7d-1..4 must be created via bmad-create-story before they can move to ready-for-dev.
-  22-7d-protected-data-redaction-across-operational-surfaces: backlog
+  # for 22-7d-1..4 were created via bmad-create-story and all four merged to main:
+  #   22-7d-1 PR #247 (commit 11853eff), 22-7d-2 PR #248 (commit 44d854bf),
+  #   22-7d-3 commit 59fd7260, 22-7d-4 PR #249 (commit 860cad4e).
+  # Container rolled up to done 2026-05-19 once all four children reached done.
+  22-7d-protected-data-redaction-across-operational-surfaces: done
   22-7d-1-protected-data-redaction-in-logs-and-problemdetails: done
   22-7d-2-protected-data-redaction-in-admin-api-and-web-ui: done
   22-7d-3-protected-data-redaction-in-cli-and-mcp: done
