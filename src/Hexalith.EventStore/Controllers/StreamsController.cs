@@ -35,6 +35,10 @@ public sealed partial class StreamsController(
     IRbacValidator rbacValidator,
     ILogger<StreamsController> logger,
     IEventPayloadProtectionService? payloadProtectionService = null) : ControllerBase {
+
+    // Bound is exclusive; depth==0..MaxExceptionFrames-1 are examined (== MaxExceptionFrames frames).
+    private const int _maxExceptionFrames = 8;
+
     // P6-7P (pass-7): _maxPageSize is load-bearing for the FromSequence overflow guard at
     // line ~295 which evaluates `int.MaxValue - request.PageSize - 1L`. If _maxPageSize were
     // bumped to near-int.MaxValue, the expression would overflow to a negative long and the
@@ -43,6 +47,7 @@ public sealed partial class StreamsController(
     // Documented as a static invariant (compile-time const) rather than a runtime check because
     // the compiler constant-folds any pattern test against the const and emits CS8519.
     private const int _maxPageSize = 1_000;
+
     private const string _streamReadMessageCategory = "replay";
     private const string _streamReadMessageType = "StreamRead";
     private readonly IEventPayloadProtectionService _payloadProtectionService = payloadProtectionService ?? new NoOpEventPayloadProtectionService();
@@ -70,11 +75,7 @@ public sealed partial class StreamsController(
 
         TenantValidationResult tenantResult = await tenantValidator
             .ValidateAsync(User, request.Tenant, cancellationToken, request.AggregateId)
-            .ConfigureAwait(false);
-        if (tenantResult is null) {
-            throw new InvalidOperationException("ITenantValidator.ValidateAsync returned null. Server bug.");
-        }
-
+            .ConfigureAwait(false) ?? throw new InvalidOperationException("ITenantValidator.ValidateAsync returned null. Server bug.");
         if (!tenantResult.IsAuthorized) {
             return ProblemWithReason(
                 StatusCodes.Status403Forbidden,
@@ -93,11 +94,7 @@ public sealed partial class StreamsController(
                 _streamReadMessageCategory,
                 cancellationToken,
                 request.AggregateId)
-            .ConfigureAwait(false);
-        if (rbacResult is null) {
-            throw new InvalidOperationException("IRbacValidator.ValidateAsync returned null. Server bug.");
-        }
-
+            .ConfigureAwait(false) ?? throw new InvalidOperationException("IRbacValidator.ValidateAsync returned null. Server bug.");
         if (!rbacResult.IsAuthorized) {
             return ProblemWithReason(
                 StatusCodes.Status403Forbidden,
@@ -171,7 +168,7 @@ public sealed partial class StreamsController(
                 ReplayReadabilityResult readable = await TryMakeReplayEventReadableAsync(identity, envelope, cancellationToken)
                     .ConfigureAwait(false);
                 if (readable.UnreadableReason is not null) {
-                    ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecision.FromUnreadable(
+                    var decision = ProtectedDataReadabilityDecision.FromUnreadable(
                         readable.UnreadableReason.Value,
                         ProtectedDataDecisionStage.Replay,
                         request.Tenant,
@@ -296,190 +293,6 @@ public sealed partial class StreamsController(
         }
     }
 
-    private static StreamReadEvent ToStreamReadEvent(ServerEventEnvelope envelope)
-        => new(
-            envelope.SequenceNumber,
-            envelope.EventTypeName,
-            envelope.Payload,
-            envelope.SerializationFormat,
-            envelope.MetadataVersion,
-            envelope.MessageId,
-            envelope.CorrelationId,
-            envelope.CausationId,
-            envelope.Timestamp,
-            string.IsNullOrWhiteSpace(envelope.UserId) ? null : envelope.UserId,
-            EventStorePayloadProtectionMetadataCarrier.Read(envelope.Extensions));
-
-    private async Task<ReplayReadabilityResult> TryMakeReplayEventReadableAsync(
-        AggregateIdentity identity,
-        ServerEventEnvelope envelope,
-        CancellationToken cancellationToken) {
-        EventStorePayloadProtectionMetadata storedMetadata = EventStorePayloadProtectionMetadataCarrier
-            .Read(envelope.Extensions);
-
-        if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {
-            return ReplayReadabilityResult.Unreadable(
-                UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(storedMetadata),
-                storedMetadata.MetadataVersion);
-        }
-
-        if (storedMetadata.State == PayloadProtectionState.Unprotected) {
-            return ReplayReadabilityResult.Readable(envelope, storedMetadata.MetadataVersion);
-        }
-
-        PayloadUnprotectionOutcome outcome;
-        try {
-            outcome = await _payloadProtectionService
-                .TryUnprotectEventPayloadAsync(
-                    identity,
-                    envelope.EventTypeName,
-                    envelope.Payload,
-                    envelope.SerializationFormat,
-                    storedMetadata,
-                    cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch {
-            return ReplayReadabilityResult.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable, storedMetadata.MetadataVersion);
-        }
-
-        if (outcome.IsUnreadable) {
-            return ReplayReadabilityResult.Unreadable(outcome.UnreadableReason!.Value, outcome.Metadata.MetadataVersion);
-        }
-
-        return ReplayReadabilityResult.Readable(envelope with {
-            Payload = outcome.PayloadBytes!,
-            SerializationFormat = outcome.SerializationFormat!,
-            Extensions = EventStorePayloadProtectionMetadataCarrier.Write(envelope.Extensions, outcome.Metadata),
-        }, outcome.Metadata.MetadataVersion);
-    }
-
-    private sealed record ReplayReadabilityResult(
-        ServerEventEnvelope? Envelope,
-        UnreadableProtectedDataReason? UnreadableReason,
-        int MetadataVersion) {
-        public static ReplayReadabilityResult Readable(ServerEventEnvelope envelope, int metadataVersion)
-            => new(envelope, null, metadataVersion);
-
-        public static ReplayReadabilityResult Unreadable(UnreadableProtectedDataReason reason, int metadataVersion)
-            => new(null, reason, metadataVersion);
-    }
-
-    private ObjectResult ProblemWithReason(
-        int statusCode,
-        string type,
-        string title,
-        string detail,
-        string reasonCode) {
-        ObjectResult result = Problem(
-            statusCode: statusCode,
-            type: type,
-            title: title,
-            detail: detail);
-        if (result.Value is ProblemDetails problem) {
-            problem.Extensions["reasonCode"] = reasonCode;
-        }
-
-        return result;
-    }
-
-    // Story 22.7b/22.7c: stable ProblemDetails surface for unreadable protected data. Carries only
-    // safe envelope metadata (tenant, domain, aggregate, sequence, metadata version) plus the
-    // canonical decision shape from Story 22.7c. NEVER includes payload bytes, snapshot state,
-    // key alias, provider exception text, or stack trace.
-    private ObjectResult CreateUnreadableProtectedDataProblem(ProtectedDataReadabilityDecision decision) {
-        ArgumentNullException.ThrowIfNull(decision);
-        UnreadableProtectedDataReason reason = decision.UnreadableReason!.Value;
-        int statusCode = UnreadableProtectedDataProblem.GetStatusCode(reason);
-        ObjectResult result = Problem(
-            statusCode: statusCode,
-            type: UnreadableProtectedDataProblem.TypeUri,
-            title: UnreadableProtectedDataProblem.DefaultTitle,
-            detail: UnreadableProtectedDataProblem.GetSafeOperatorGuidance(reason));
-        if (result.Value is ProblemDetails problem) {
-            foreach (KeyValuePair<string, object?> extension in ProtectedDataDiagnosticRedactor.BuildUnreadableProblemExtensions(decision)) {
-                problem.Extensions[extension.Key] = extension.Value;
-            }
-        }
-
-        if (statusCode == StatusCodes.Status503ServiceUnavailable) {
-            Response.Headers.RetryAfter = "5";
-        }
-
-        return result;
-    }
-
-    private string? GetRequestCorrelationId()
-        => HttpContext?.Items.TryGetValue("CorrelationId", out object? value) == true
-            ? value?.ToString()
-            : null;
-
-    private IActionResult? ValidateRequest(StreamReadRequest request) {
-        if (string.IsNullOrWhiteSpace(request.Tenant)
-            || string.IsNullOrWhiteSpace(request.Domain)) {
-            return ProblemWithReason(
-                StatusCodes.Status400BadRequest,
-                ProblemTypeUris.BadRequest,
-                "Bad Request",
-                "Tenant and domain are required.",
-                StreamReplayReasonCodes.MissingRequiredField);
-        }
-
-        if (string.IsNullOrWhiteSpace(request.AggregateId)) {
-            return ProblemWithReason(
-                StatusCodes.Status400BadRequest,
-                ProblemTypeUris.BadRequest,
-                "Bad Request",
-                "Aggregate identifier is required for the current stream read route.",
-                StreamReplayReasonCodes.MissingRequiredField);
-        }
-
-        if (!IsCanonicalTenantOrDomain(request.Tenant) || !IsCanonicalTenantOrDomain(request.Domain) || !IsValidAggregateId(request.AggregateId)) {
-            return ProblemWithReason(
-                StatusCodes.Status400BadRequest,
-                ProblemTypeUris.BadRequest,
-                "Bad Request",
-                "Stream identity is invalid.",
-                StreamReplayReasonCodes.InvalidAggregateIdentity);
-        }
-
-        // P6-6P: PageSize validated FIRST because the FromSequence overflow guard reads PageSize.
-        // A negative PageSize would otherwise inflate `int.MaxValue - PageSize - 1L` and relax the guard.
-        if (request.PageSize is <= 0 or > _maxPageSize) {
-            return ProblemWithReason(
-                StatusCodes.Status400BadRequest,
-                ProblemTypeUris.BadRequest,
-                "Bad Request",
-                $"'pageSize' must be between 1 and {_maxPageSize}.",
-                StreamReplayReasonCodes.InvalidRange);
-        }
-
-        if (request.FromSequence < 0
-            || request.FromSequence > int.MaxValue
-            || (request.ToSequence.HasValue && (request.ToSequence.Value < request.FromSequence || request.ToSequence.Value > int.MaxValue))) {
-            return ProblemWithReason(
-                StatusCodes.Status400BadRequest,
-                ProblemTypeUris.BadRequest,
-                "Bad Request",
-                "'fromSequence' must be >= 0 and 'toSequence' must not be less than 'fromSequence' or greater than the supported sequence boundary.",
-                StreamReplayReasonCodes.InvalidRange);
-        }
-
-        if (request.ContinuationToken is not null) {
-            return ProblemWithReason(
-                StatusCodes.Status400BadRequest,
-                ProblemTypeUris.BadRequest,
-                "Bad Request",
-                "Continuation token validation is fail-closed until token request binding is enabled.",
-                StreamReplayReasonCodes.InvalidContinuation);
-        }
-
-        return null;
-    }
-
     private static bool IsCanonicalTenantOrDomain(string value) {
         // P21-6P: tenant/domain identifiers MUST be lowercase. State-store keys
         // (projection-rebuild-checkpoints:{tenant}:{domain}:...) are case-sensitive,
@@ -500,26 +313,11 @@ public sealed partial class StreamsController(
     private static bool IsLowerAsciiAlphanumeric(char c)
         => c is >= 'a' and <= 'z' || char.IsAsciiDigit(c);
 
-    private static bool IsValidAggregateId(string value) {
-        if (value.Length > 256 || value.Any(c => c is < (char)0x20 or >= (char)0x7F)) {
-            return false;
-        }
-
-        if (!char.IsAsciiLetterOrDigit(value[0]) || !char.IsAsciiLetterOrDigit(value[^1])) {
-            return false;
-        }
-
-        return value.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '_' or '-');
-    }
-
     private static bool IsServiceUnavailable(Exception exception)
         => IsServiceUnavailable(exception, depth: 0);
 
-    // Bound is exclusive; depth==0..MaxExceptionFrames-1 are examined (== MaxExceptionFrames frames).
-    private const int MaxExceptionFrames = 8;
-
     private static bool IsServiceUnavailable(Exception exception, int depth) {
-        if (depth >= MaxExceptionFrames) {
+        if (depth >= _maxExceptionFrames) {
             return false;
         }
 
@@ -584,6 +382,32 @@ public sealed partial class StreamsController(
         return false;
     }
 
+    private static bool IsValidAggregateId(string value) {
+        if (value.Length > 256 || value.Any(c => c is < (char)0x20 or >= (char)0x7F)) {
+            return false;
+        }
+
+        if (!char.IsAsciiLetterOrDigit(value[0]) || !char.IsAsciiLetterOrDigit(value[^1])) {
+            return false;
+        }
+
+        return value.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '_' or '-');
+    }
+
+    private static StreamReadEvent ToStreamReadEvent(ServerEventEnvelope envelope)
+                            => new(
+            envelope.SequenceNumber,
+            envelope.EventTypeName,
+            envelope.Payload,
+            envelope.SerializationFormat,
+            envelope.MetadataVersion,
+            envelope.MessageId,
+            envelope.CorrelationId,
+            envelope.CausationId,
+            envelope.Timestamp,
+            string.IsNullOrWhiteSpace(envelope.UserId) ? null : envelope.UserId,
+            EventStorePayloadProtectionMetadataCarrier.Read(envelope.Extensions));
+
     private static bool TryGetException<TException>(Exception exception, out TException? result)
         where TException : Exception {
         Exception? current = exception;
@@ -598,6 +422,176 @@ public sealed partial class StreamsController(
 
         result = null;
         return false;
+    }
+
+    // Story 22.7b/22.7c: stable ProblemDetails surface for unreadable protected data. Carries only
+    // safe envelope metadata (tenant, domain, aggregate, sequence, metadata version) plus the
+    // canonical decision shape from Story 22.7c. NEVER includes payload bytes, snapshot state,
+    // key alias, provider exception text, or stack trace.
+    private ObjectResult CreateUnreadableProtectedDataProblem(ProtectedDataReadabilityDecision decision) {
+        ArgumentNullException.ThrowIfNull(decision);
+        UnreadableProtectedDataReason reason = decision.UnreadableReason!.Value;
+        int statusCode = UnreadableProtectedDataProblem.GetStatusCode(reason);
+        ObjectResult result = Problem(
+            statusCode: statusCode,
+            type: UnreadableProtectedDataProblem.TypeUri,
+            title: UnreadableProtectedDataProblem.DefaultTitle,
+            detail: UnreadableProtectedDataProblem.GetSafeOperatorGuidance(reason));
+        if (result.Value is ProblemDetails problem) {
+            foreach (KeyValuePair<string, object?> extension in ProtectedDataDiagnosticRedactor.BuildUnreadableProblemExtensions(decision)) {
+                problem.Extensions[extension.Key] = extension.Value;
+            }
+        }
+
+        if (statusCode == StatusCodes.Status503ServiceUnavailable) {
+            Response.Headers.RetryAfter = "5";
+        }
+
+        return result;
+    }
+
+    private string? GetRequestCorrelationId()
+        => HttpContext?.Items.TryGetValue("CorrelationId", out object? value) == true
+            ? value?.ToString()
+            : null;
+
+    private ObjectResult ProblemWithReason(
+        int statusCode,
+        string type,
+        string title,
+        string detail,
+        string reasonCode) {
+        ObjectResult result = Problem(
+            statusCode: statusCode,
+            type: type,
+            title: title,
+            detail: detail);
+        if (result.Value is ProblemDetails problem) {
+            problem.Extensions["reasonCode"] = reasonCode;
+        }
+
+        return result;
+    }
+
+    private async Task<ReplayReadabilityResult> TryMakeReplayEventReadableAsync(
+                        AggregateIdentity identity,
+        ServerEventEnvelope envelope,
+        CancellationToken cancellationToken) {
+        EventStorePayloadProtectionMetadata storedMetadata = EventStorePayloadProtectionMetadataCarrier
+            .Read(envelope.Extensions);
+
+        if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {
+            return ReplayReadabilityResult.Unreadable(
+                UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(storedMetadata),
+                storedMetadata.MetadataVersion);
+        }
+
+        if (storedMetadata.State == PayloadProtectionState.Unprotected) {
+            return ReplayReadabilityResult.Readable(envelope, storedMetadata.MetadataVersion);
+        }
+
+        PayloadUnprotectionOutcome outcome;
+        try {
+            outcome = await _payloadProtectionService
+                .TryUnprotectEventPayloadAsync(
+                    identity,
+                    envelope.EventTypeName,
+                    envelope.Payload,
+                    envelope.SerializationFormat,
+                    storedMetadata,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch {
+            return ReplayReadabilityResult.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable, storedMetadata.MetadataVersion);
+        }
+
+        if (outcome.IsUnreadable) {
+            return ReplayReadabilityResult.Unreadable(outcome.UnreadableReason!.Value, outcome.Metadata.MetadataVersion);
+        }
+
+        return ReplayReadabilityResult.Readable(envelope with {
+            Payload = outcome.PayloadBytes!,
+            SerializationFormat = outcome.SerializationFormat!,
+            Extensions = EventStorePayloadProtectionMetadataCarrier.Write(envelope.Extensions, outcome.Metadata),
+        }, outcome.Metadata.MetadataVersion);
+    }
+
+    private sealed record ReplayReadabilityResult(
+        ServerEventEnvelope? Envelope,
+        UnreadableProtectedDataReason? UnreadableReason,
+        int MetadataVersion) {
+        public static ReplayReadabilityResult Readable(ServerEventEnvelope envelope, int metadataVersion)
+            => new(envelope, null, metadataVersion);
+
+        public static ReplayReadabilityResult Unreadable(UnreadableProtectedDataReason reason, int metadataVersion)
+            => new(null, reason, metadataVersion);
+    }
+
+    private IActionResult? ValidateRequest(StreamReadRequest request) {
+        if (string.IsNullOrWhiteSpace(request.Tenant)
+            || string.IsNullOrWhiteSpace(request.Domain)) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                ProblemTypeUris.BadRequest,
+                "Bad Request",
+                "Tenant and domain are required.",
+                StreamReplayReasonCodes.MissingRequiredField);
+        }
+
+        if (string.IsNullOrWhiteSpace(request.AggregateId)) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                ProblemTypeUris.BadRequest,
+                "Bad Request",
+                "Aggregate identifier is required for the current stream read route.",
+                StreamReplayReasonCodes.MissingRequiredField);
+        }
+
+        if (!IsCanonicalTenantOrDomain(request.Tenant) || !IsCanonicalTenantOrDomain(request.Domain) || !IsValidAggregateId(request.AggregateId)) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                ProblemTypeUris.BadRequest,
+                "Bad Request",
+                "Stream identity is invalid.",
+                StreamReplayReasonCodes.InvalidAggregateIdentity);
+        }
+
+        // P6-6P: PageSize validated FIRST because the FromSequence overflow guard reads PageSize.
+        // A negative PageSize would otherwise inflate `int.MaxValue - PageSize - 1L` and relax the guard.
+        if (request.PageSize is <= 0 or > _maxPageSize) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                ProblemTypeUris.BadRequest,
+                "Bad Request",
+                $"'pageSize' must be between 1 and {_maxPageSize}.",
+                StreamReplayReasonCodes.InvalidRange);
+        }
+
+        if (request.FromSequence < 0
+            || request.FromSequence > int.MaxValue
+            || (request.ToSequence.HasValue && (request.ToSequence.Value < request.FromSequence || request.ToSequence.Value > int.MaxValue))) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                ProblemTypeUris.BadRequest,
+                "Bad Request",
+                "'fromSequence' must be >= 0 and 'toSequence' must not be less than 'fromSequence' or greater than the supported sequence boundary.",
+                StreamReplayReasonCodes.InvalidRange);
+        }
+
+        if (request.ContinuationToken is not null) {
+            return ProblemWithReason(
+                StatusCodes.Status400BadRequest,
+                ProblemTypeUris.BadRequest,
+                "Bad Request",
+                "Continuation token validation is fail-closed until token request binding is enabled.",
+                StreamReplayReasonCodes.InvalidContinuation);
+        }
+
+        return null;
     }
 
     private static partial class Log {

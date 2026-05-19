@@ -455,6 +455,7 @@ Later epics deepen persistence, auth, distribution, testing, and operations. Thi
 
 - Preserve completed epic and story IDs unless the project lead explicitly approves renumbering.
 - Treat documented split maps as binding guidance for future implementation stories and review follow-ups.
+- Do not assign broad umbrella epics or historical broad stories as single implementation units. For Epic 7, require separate validation evidence for snapshot correctness, tenant throttling, and consumer throttling. For Epic 8, assign and review the existing story boundaries separately for Aspire topology, sample service, package registration, testing, deployment manifests, and release automation.
 - Create new sprint-status rows from split maps only when implementation starts.
 - Keep completed Epics 14-21 compact in this document: each completed story summary should include story key/title, outcome, key acceptance point, and link to the detailed implementation artifact.
 - For any new implementation, review, regression fix, or follow-up touching completed Epics 14-21, load the linked `Detail` implementation artifacts before accepting, changing, or testing the story. Missing or unreadable linked artifacts block readiness for that follow-up.
@@ -474,6 +475,8 @@ Commands routed to aggregate actors trigger state rehydration from events, domai
 **Also:** D1, D2, D7, Rules 6/11
 
 ### Epic 3: Command REST API & Error Experience
+**Outcome:** API consumers can submit, track, replay, and diagnose commands through a stable REST surface with RFC 7807 errors.
+
 An API consumer can POST commands via REST, receive 202 Accepted + correlation ID, query command status, replay failed commands, and receive RFC 7807 error responses. Swagger UI provides interactive documentation with pre-populated examples.
 **FRs covered:** FR1 (REST), FR4, FR5, FR6, FR7, FR8
 **Also:** D5, UX-DR1-DR15, Rules 7/12/13
@@ -507,16 +510,22 @@ Configurable snapshots accelerate state rehydration, per-tenant and per-consumer
 **Also:** D8, NFR33, NFR34, Rule 15
 
 ### Epic 8: Aspire Orchestration, Sample App & Testing
+**Outcome:** Developers can start, inspect, test, package, and deploy the complete EventStore topology from the Aspire-backed development path.
+
 A developer starts the complete DAPR topology with a single Aspire command, references a working Counter domain service, and runs three-tier tests (unit, integration with DAPR, E2E contract). DevOps generates deployment manifests via Aspire publishers.
 **FRs covered:** FR22, FR24, FR25, FR40, FR41, FR42, FR43, FR44, FR45, FR46, FR47
 **Also:** D9, D10, UX-DR21-DR25
 
 ### Epic 9: Query Pipeline & ETag Caching
+**Outcome:** Query callers get cache-aware responses through deterministic routing, self-routing ETags, actor cache behavior, and compile-time response contracts.
+
 Queries are routed through a 3-tier model (entity, checksum, tenant), with self-routing ETag pre-checks returning HTTP 304, in-memory page cache in query actors, coarse invalidation on projection changes, and compile-time enforced query response contracts.
 **FRs covered:** FR50, FR51, FR52, FR53, FR54, FR57, FR58, FR61, FR62, FR63
 **Also:** NFR35-NFR39
 
 ### Epic 10: SignalR Real-Time Notifications
+**Outcome:** Connected clients receive projection-change notifications reliably across reconnects and multi-instance deployments.
+
 Connected clients receive push "changed" signals when projections update, with Redis backplane for multi-instance distribution and automatic group rejoining on connection recovery.
 **FRs covered:** FR55, FR56, FR59
 **Also:** UX-DR39
@@ -531,11 +540,15 @@ EventStore delivers persisted events to domain services' /project endpoints via 
 **Also:** ProjectionEventDto, ProjectionRequest/Response, AggregateActor.GetEventsAsync, convention-based discovery
 
 ### Epic 12: Blazor Sample UI & Refresh Patterns
+**Outcome:** Developers can compare runnable Blazor refresh patterns for projection changes and choose the right interaction model.
+
 The sample Blazor UI demonstrates 3 reference patterns for handling projection change notifications: toast notification, silent data reload, and selective component refresh. All pattern pages include interactive command buttons.
 **FRs covered:** FR60
 **Also:** SCP-Buttons, UX-DR40
 
 ### Epic 13: Documentation & Developer Onboarding
+**Outcome:** Developers can move from clone to first successful command quickly using docs and API references that match the implemented surface.
+
 Quick start guide (3 pages, clone to first command in 10 minutes), error reference pages at type URIs, progressive documentation structure, Swagger UI as embedded API reference, and repository-wide documentation refresh aligning with the implemented surface area.
 **FRs covered:** FR64
 **Also:** UX-DR30-DR33, SCP-Docs
@@ -598,6 +611,8 @@ The admin UI remains stable, accessible, and testable on Fluent UI Blazor v5. Th
 **Stories (14):** 21-0 bUnit baseline, 21-1 packages/csproj, 21-2 layout+navigation, 21-3 ButtonAppearance, 21-4 BadgeAppearance+LinkAppearance, 21-5 component renames, 21-6 dialog restructure, 21-7 toast API, 21-8 CSS tokens, 21-9 DataGrid/remaining, 21-10 Sample alignment, 21-11 NavMenu v5 fix, 21-12 FluentDesignTheme integration, 21-13 UI bug fixes batch
 
 ### Epic 22: Public Gateway and Downstream Integration Contracts
+**Outcome:** Downstream services can integrate through stable EventStore gateway packages and contracts without copying runtime internals.
+
 EventStore becomes the stable gateway contract for downstream bounded contexts such as Parties. Domain services no longer duplicate EventStore gateway DTOs, depend on EventStore service/server assemblies, perform request-path tenant authorization, or infer query/replay/publishing behavior from implementation details.
 **FRs covered:** FR83-FR104
 **Dependencies:** Epics 3, 4, 5, 8, 9, 11, 13, 16, 20
@@ -816,6 +831,7 @@ So that at-least-once delivery from callers doesn't produce duplicate events.
 **Then** the command is rejected and the caller is informed (FR7).
 
 ## Epic 3: Command REST API & Error Experience
+**Outcome:** API consumers can submit, track, replay, and diagnose commands through a stable REST surface with RFC 7807 errors.
 
 An API consumer can POST commands via REST, receive 202 Accepted + correlation ID, query command status, replay failed commands, and receive RFC 7807 error responses. Swagger UI provides interactive documentation with pre-populated examples.
 
@@ -1229,6 +1245,7 @@ So that individual consumers cannot overwhelm the system.
 **And** the consumer identity is derived from JWT claims.
 
 ## Epic 8: Aspire Orchestration, Sample App & Testing
+**Outcome:** Developers can start, inspect, test, package, and deploy the complete EventStore topology from the Aspire-backed development path.
 
 A developer starts the complete DAPR topology with a single Aspire command, references a working Counter domain service, and runs three-tier tests (unit, integration with DAPR, E2E contract). DevOps generates deployment manifests via Aspire publishers.
 
@@ -1376,6 +1393,7 @@ Status: Completed. Required review input: `_bmad-output/implementation-artifacts
 **Then** package versions are injected by the release process and match the generated GitHub release.
 
 ## Epic 9: Query Pipeline & ETag Caching
+**Outcome:** Query callers get cache-aware responses through deterministic routing, self-routing ETags, actor cache behavior, and compile-time response contracts.
 
 Queries are routed through a 3-tier model (entity, checksum, tenant), with self-routing ETag pre-checks returning HTTP 304, in-memory page cache in query actors, coarse invalidation on projection changes, and compile-time enforced query response contracts.
 
@@ -1483,6 +1501,7 @@ So that silent caching degradation is impossible when a microservice omits proje
 **Then** it is treated as an error equivalent to a missing response (FR62).
 
 ## Epic 10: SignalR Real-Time Notifications
+**Outcome:** Connected clients receive projection-change notifications reliably across reconnects and multi-instance deployments.
 
 Connected clients receive push "changed" signals when projections update, with Redis backplane for multi-instance distribution and automatic group rejoining on connection recovery.
 
@@ -1666,6 +1685,7 @@ So that I have a working reference for how domain services build projection stat
 **And** no `QueryNotFoundException` errors appear in eventstore logs.
 
 ## Epic 12: Blazor Sample UI & Refresh Patterns
+**Outcome:** Developers can compare runnable Blazor refresh patterns for projection changes and choose the right interaction model.
 
 The sample Blazor UI demonstrates 3 reference patterns for handling projection change notifications: toast notification, silent data reload, and selective component refresh. All pattern pages include interactive command buttons.
 
@@ -1708,6 +1728,7 @@ So that each pattern is a self-contained interactive demo.
 **Then** commands are successfully sent to the EventStore API and the respective pattern behavior is observable.
 
 ## Epic 13: Documentation & Developer Onboarding
+**Outcome:** Developers can move from clone to first successful command quickly using docs and API references that match the implemented surface.
 
 Quick start guide (3 pages, clone to first command in 10 minutes), error reference pages at type URIs, progressive documentation structure, Swagger UI as embedded API reference, and repository-wide documentation refresh aligning with the implemented surface area.
 
@@ -1936,6 +1957,7 @@ Related sprint change proposals:
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-16-epic-21-post-boot-fixes.md`
 
 ## Epic 22: Public Gateway and Downstream Integration Contracts
+**Outcome:** Downstream services can integrate through stable EventStore gateway packages and contracts without copying runtime internals.
 
 EventStore becomes the stable gateway contract for downstream bounded contexts such as Parties. Domain services no longer duplicate EventStore gateway DTOs, depend on EventStore service/server assemblies, perform request-path tenant authorization, or infer query/replay/publishing behavior from implementation details.
 

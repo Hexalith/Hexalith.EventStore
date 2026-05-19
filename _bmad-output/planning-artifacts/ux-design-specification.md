@@ -479,7 +479,7 @@ The key insight: Hexalith is **none of these**. It is a **platform** -- closer t
 | Correlation ID-based tracking | **Established** | Distributed tracing (OpenTelemetry, Zipkin) | `X-Correlation-ID` header, `/api/v1/commands/status/{correlationId}` endpoint |
 | DAPR sidecar runtime | **Established** (in cloud-native) | Service mesh, sidecar patterns | DAPR as the infrastructure abstraction layer |
 | Platform-calls-your-code inversion | **Novel** (for event stores) | Serverless platforms, DAPR actors | Domain service registers via config, EventStore invokes via DAPR service invocation |
-| Event envelope with 11 metadata fields | **Established** | CloudEvents 1.0, message envelopes | CloudEvents-compliant envelope with Hexalith extensions |
+| Event envelope with 14 metadata fields | **Established** | CloudEvents 1.0, message envelopes | CloudEvents-compliant metadata envelope with `metadataVersion`, Hexalith extensions, and payload stored separately |
 | Append-only event stream | **Established** | Event sourcing fundamentals | Immutable event storage with sequence numbers |
 | 8-state command lifecycle | **Novel** | CI/CD pipeline stages (familiar visual) | Received -> Processing -> EventsStored -> EventsPublished -> Completed | Rejected | PublishFailed | TimedOut |
 

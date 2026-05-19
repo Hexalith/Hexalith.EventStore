@@ -259,7 +259,7 @@ Hexalith.Tenants is itself an event-sourced service built on Hexalith.EventStore
 | 3   | **Security (Six-Layer Auth)**     | API gateway, MediatR pipeline, actor processing, DAPR policies                                                                  | Authorization decisions at 6 distinct points; JWT claims flow through entire pipeline; DAPR access control policies restrict service-to-service communication                                                                                               |
 | 4   | **Error Propagation**             | Domain services -> actors -> API -> dead-letter                                                                                 | Domain rejections vs. infrastructure failures must be distinguished; dead-letter topic must carry full context; correlation IDs must be traceable across all failure paths                                                                                  |
 | 5   | **Infrastructure Portability**    | State store, pub/sub, config store                                                                                              | All persistence and messaging through DAPR abstractions; no direct backend access; backend-specific behavior documented in compatibility matrix                                                                                                             |
-| 6   | **Event Envelope Consistency**    | Persistence, distribution, domain service contract, client SDK                                                                  | 11-field metadata schema is irreversible; EventStore owns all metadata population; extension bag for unforeseen needs                                                                                                                                       |
+| 6   | **Event Envelope Consistency**    | Persistence, distribution, domain service contract, client SDK                                                                  | 14-field metadata schema with `metadataVersion` and separate metadata/payload JSON documents is irreversible; EventStore owns all metadata population; extension bag for unforeseen needs                                                                  |
 | 7   | **Crash Recovery**                | Actor processing, state machine, pub/sub delivery                                                                               | Checkpointed state machine must resume from correct stage; no duplicate event persistence; events eventually published after pub/sub recovery                                                                                                               |
 | 8   | **Convention-First with Configuration Overrides** | Domain service routing (convention default), snapshot intervals, tenant routing                                         | Convention-based routing by default (AppId = domain name); DAPR config store opt-in for overrides; dynamic updates without system restart (NFR20)                                                                                                            |
 | 9   | **Versioning**                    | Event envelope (MAJOR), domain service contract (MAJOR), API (v1 path prefix), NuGet packages (SemVer, monorepo single version) | Envelope changes are irreversible; all packages versioned together; API versioned in URL path                                                                                                                                                               |
@@ -553,7 +553,7 @@ Hexalith.EventStore/
 
 **Implementation Sequence:**
 
-1. **Contracts package first** -- Event envelope (11 fields + IRejectionEvent), identity scheme, command/event types, rejection event naming convention
+1. **Contracts package first** -- Event envelope (14 metadata fields, metadataVersion, separate metadata/payload JSON storage, and IRejectionEvent), identity scheme, command/event types, rejection event naming convention
 2. **Testing package early** -- In-memory DAPR mocks (InMemoryStateManager, FakeDomainServiceInvoker), assertion utilities. Built early so all subsequent packages can be test-driven
 3. **Server package** -- Actor processing pipeline (thin orchestrator with 5-step delegation), D1 storage, D3 error contract, D7 invocation, checkpointed state machine
 4. **EventStore host** -- REST endpoints with D5 error format, D8 rate limiting, D2 status storage with TTL, health checks (DAPR sidecar + config store)
@@ -798,7 +798,7 @@ Hexalith.EventStore/
 │   ├── Hexalith.EventStore.Contracts/          # NuGet: Event envelope, types, identity
 │   │   ├── Hexalith.EventStore.Contracts.csproj  # Depends on Hexalith.Commons.UniqueIds (D12)
 │   │   ├── Events/
-│   │   │   ├── EventEnvelope.cs                # 11-field metadata + payload + extensions
+│   │   │   ├── EventEnvelope.cs                # 14-field metadata + separate payload + extensions
 │   │   │   ├── EventMetadata.cs                # Metadata record type
 │   │   │   ├── IEventPayload.cs                # Marker interface for event payloads
 │   │   │   └── IRejectionEvent.cs              # Marker interface for rejection events (D3)
