@@ -1,7 +1,6 @@
 
 using System.Text.Json;
 
-using Dapr.Actors;
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Contracts.Queries;
@@ -13,14 +12,38 @@ namespace Hexalith.EventStore.Server.Queries;
 /// <summary>
 /// Routes queries to the correct projection actor based on canonical identity derivation.
 /// </summary>
-public partial class QueryRouter(
-    IActorProxyFactory actorProxyFactory,
-    ILogger<QueryRouter> logger) : IQueryRouter {
+public partial class QueryRouter : IQueryRouter {
     /// <summary>
     /// The DAPR actor type name for projection actors. Application developers register
     /// their concrete implementation with this name.
     /// </summary>
     public const string ProjectionActorTypeName = "ProjectionActor";
+
+    private readonly IProjectionActorInvoker _invoker;
+    private readonly ILogger<QueryRouter> _logger;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="QueryRouter"/> class.
+    /// </summary>
+    /// <remarks>
+    /// Production constructor used by DI. Wraps the supplied
+    /// <see cref="IActorProxyFactory"/> in the default weak-path invoker so the DAPR
+    /// <c>ActorProxy.InvokeMethodAsync</c> call carries the request-scope
+    /// <see cref="CancellationToken"/> into the invocation operation.
+    /// </remarks>
+    public QueryRouter(IActorProxyFactory actorProxyFactory, ILogger<QueryRouter> logger)
+        : this(new DefaultProjectionActorInvoker(actorProxyFactory), logger) {
+    }
+
+    /// <summary>
+    /// Internal test constructor that accepts a substituted <see cref="IProjectionActorInvoker"/>.
+    /// </summary>
+    internal QueryRouter(IProjectionActorInvoker invoker, ILogger<QueryRouter> logger) {
+        ArgumentNullException.ThrowIfNull(invoker);
+        ArgumentNullException.ThrowIfNull(logger);
+        _invoker = invoker;
+        _logger = logger;
+    }
 
     /// <inheritdoc/>
     public async Task<QueryRouterResult> RouteQueryAsync(
@@ -41,8 +64,8 @@ public partial class QueryRouter(
             : query.Payload.Length > 0 ? 2
             : 3;
 
-        Log.QueryRouting(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId);
-        Log.QueryRoutingTierSelected(logger, query.CorrelationId, tier, actorId);
+        Log.QueryRouting(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId);
+        Log.QueryRoutingTierSelected(_logger, query.CorrelationId, tier, actorId);
 
         var envelope = new QueryEnvelope(
             query.Tenant,
@@ -55,54 +78,50 @@ public partial class QueryRouter(
             query.EntityId);
 
         try {
-            IProjectionActor proxy = actorProxyFactory.CreateActorProxy<IProjectionActor>(
-                new ActorId(actorId),
-                actorTypeName);
-
-            QueryResult? result = await InvokeProjectionActorAsync(proxy, envelope, cancellationToken).ConfigureAwait(false);
+            QueryResult? result = await _invoker.InvokeAsync(actorId, actorTypeName, envelope, cancellationToken).ConfigureAwait(false);
 
             if (result is null) {
-                Log.QueryExecutionFailed(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.ActorResponseMismatch);
+                Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.ActorResponseMismatch);
                 return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.ActorResponseMismatch);
             }
 
             if (!result.Success) {
-                Log.QueryExecutionFailed(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, result.ErrorMessage);
+                Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, result.ErrorMessage);
                 return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: result.ErrorMessage);
             }
 
             if (result.PayloadBytes is not { Length: > 0 }) {
-                Log.QueryExecutionFailed(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.MissingPayload);
+                Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.MissingPayload);
                 return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.MissingPayload);
             }
 
             try {
                 JsonElement payload = result.GetPayload();
-                Log.QueryRouted(logger, query.CorrelationId, actorId);
+                Log.QueryRouted(_logger, query.CorrelationId, actorId);
                 return new QueryRouterResult(Success: true, Payload: payload, NotFound: false, ProjectionType: result.ProjectionType);
             }
             catch (JsonException) {
-                Log.QueryExecutionFailed(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.SerializationFailure);
+                Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.SerializationFailure);
                 return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.SerializationFailure);
             }
         }
-        catch (ActorMethodInvocationException ex) when (IsProjectionActorNotFound(ex)) {
-            Log.ProjectionActorNotFound(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, actorId);
-            return new QueryRouterResult(Success: false, Payload: null, NotFound: true);
-        }
-        catch (Exception ex) when (IsProjectionActorNotFound(ex)) {
-            Log.ProjectionActorNotFound(logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, actorId);
+        catch (Dapr.Actors.ActorMethodInvocationException ex) when (IsProjectionActorNotFound(ex)) {
+            Log.ProjectionActorNotFound(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, actorId);
             return new QueryRouterResult(Success: false, Payload: null, NotFound: true);
         }
         catch (OperationCanceledException) {
             throw;
         }
-        catch (ActorMethodInvocationException ex) {
-            Log.ActorInvocationFailed(logger, ex, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId);
+        catch (Exception ex) when (IsProjectionActorNotFound(ex)) {
+            Log.ProjectionActorNotFound(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, actorId);
+            return new QueryRouterResult(Success: false, Payload: null, NotFound: true);
+        }
+        catch (Dapr.Actors.ActorMethodInvocationException ex) {
+            Log.ActorInvocationFailed(_logger, ex, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId);
             return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.ActorException);
         }
         catch (Exception ex) {
-            Log.ActorInvocationFailed(logger, ex, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId);
+            Log.ActorInvocationFailed(_logger, ex, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId);
             return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.ActorException);
         }
     }
@@ -120,25 +139,6 @@ public partial class QueryRouter(
                     || message.Contains("could not find address for actor", StringComparison.OrdinalIgnoreCase)
                     || message.Contains("no address found for actor", StringComparison.OrdinalIgnoreCase)
                     || message.Contains("actor not found", StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static Task<QueryResult> InvokeProjectionActorAsync(
-        IProjectionActor proxy,
-        QueryEnvelope envelope,
-        CancellationToken cancellationToken) {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // DAPR strongly typed actor proxies are generated from the actor interface and derive from
-        // ActorProxy. The actor interface method stays source-compatible while the weak proxy call
-        // carries the route-level cancellation token to the DAPR invocation operation.
-        if (proxy is ActorProxy actorProxy) {
-            return actorProxy.InvokeMethodAsync<QueryEnvelope, QueryResult>(
-                nameof(IProjectionActor.QueryAsync),
-                envelope,
-                cancellationToken);
-        }
-
-        return proxy.QueryAsync(envelope);
     }
 
     private static partial class Log {
