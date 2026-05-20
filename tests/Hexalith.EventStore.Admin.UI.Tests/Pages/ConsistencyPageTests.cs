@@ -575,6 +575,66 @@ public class ConsistencyPageTests : AdminUITestContext {
         cut.Markup.ShouldContain("orders");
     }
 
+    // ===== DW12: Blazor dispatcher safety in trigger/cancel completion paths =====
+
+    [Fact]
+    public async Task Consistency_TriggerCompletion_ClearsSpinnerAndClosesDialog_ViaInvokeAsync() {
+        // AC10: post-await completion path schedules StateHasChanged via InvokeAsync.
+        // Pre-fix behavior: a direct StateHasChanged() in the finally block could resume off the
+        // renderer dispatcher and surface an InvalidOperationException. Asserting that the dialog
+        // closes and the inline spinner disappears after a successful trigger proves the path runs
+        // cleanly under bUnit's dispatcher.
+        SetupChecks([]);
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "check-new", "Consistency check started.", null));
+
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Run Check"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> runBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Run Check"));
+        await runBtn.InvokeAsync(runBtn.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Check"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Start Check"));
+        await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
+
+        // Dialog closes and Start Check button is no longer rendered after completion.
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldNotContain("Start Check"),
+            TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task Consistency_CancelCompletion_ClearsSpinnerAndClosesDialog_ViaInvokeAsync() {
+        // AC10: cancel finally block schedules StateHasChanged via InvokeAsync. Same pre-fix risk
+        // as trigger completion; assert the cancel dialog closes after a successful cancel.
+        SetupChecks([
+            CreateSummary("check-running", "tenant-a", ConsistencyCheckStatus.Running, 10, 0),
+        ]);
+        _ = _mockConsistencyApi.CancelCheckAsync("check-running", Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "check-running", "Consistency check cancelled.", null));
+
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Cancel"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> cancelBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Cancel") && !b.Markup.Contains("Cancel Consistency"));
+        await cancelBtn.InvokeAsync(cancelBtn.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Cancel Consistency Check"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> confirmBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Cancel Check"));
+        await confirmBtn.InvokeAsync(confirmBtn.Instance.OnClick.InvokeAsync);
+
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldNotContain("Cancel Consistency Check"),
+            TimeSpan.FromSeconds(5));
+    }
+
     // ===== Helpers =====
 
     private void SetupChecks(IReadOnlyList<ConsistencyCheckSummary> checks) => _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())

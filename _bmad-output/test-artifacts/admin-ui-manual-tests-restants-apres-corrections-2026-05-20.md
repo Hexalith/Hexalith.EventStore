@@ -908,12 +908,15 @@ Issue 9: OK
 Issue 11: OK
 Issue 12: OK / KO / non teste
 Issue 15: OK / KO / non teste
-Issue 16: OK / KO / non teste
-Issue 17: OK / KO / non teste
+Issue 16: OK (2026-05-20, DW12 retest)
+Issue 17: OK (2026-05-20, DW12 retest)
 Issue 18: OK / KO / non teste
 
 Notes / messages exacts:
 - Issue 9 Retry/Skip/Archive: 404 NotFound recuperable pour `manual-dlq-tenant-a-001`; plus de 500 model-binding.
 - Issue 11 Projection `counter` (`tenant-a`): detail affiche Running, Lag 0, Last Position 18, `{}`, pas d'erreurs.
 - Observation: boutons Pause/Reset/Replay visibles sur le detail fallback; Reset operation `01KS2VTP9JHT2CCX5KPOPAY91H`, Pause trace `a696b60d04dd91c7c8c7c4e57530f98a`.
+- Issue 16 (DW12 retest, 2026-05-20): `/consistency Run Check` sur `tenant-a / counter` -> `Check ID 01KS2ZFRC4H500HCC7B49ADDR3`, `Completed`, `Streams Checked = 1`, `Anomalies Found = 1`. Apres le run, les stat cards affichent `Total Checks = 1`, `Last Check = 9s ago`, `Total Anomalies = 1`, `Running Now = 0` (plus de subtitle fige a 0/Never).
+- Issue 17 (DW12 retest, 2026-05-20): aucune anomalie `SequenceContinuity` "Missing event at sequence N" pour `counter-1`, aucune anomalie `MetadataConsistency` "Aggregate metadata is missing.". Seule anomalie restante = `Warning / projectionpositions / tenant-a / counter / all` libellee "Projection diagnostic limitation: domain-scoped projection positions are not granular." (limitation classifiee, pas data-loss).
+- AC10 dispatcher (DW12 retest, 2026-05-20): exercice trigger/cancel rapide sur `/consistency` sans aucune exception `Consistency.OnTriggerConfirm` ou `Consistency.OnCancelConfirm` dans la console navigateur ni dans les logs serveur Aspire.
 ```
