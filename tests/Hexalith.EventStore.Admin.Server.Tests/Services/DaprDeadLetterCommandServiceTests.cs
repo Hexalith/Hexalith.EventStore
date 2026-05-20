@@ -182,13 +182,16 @@ public class DaprDeadLetterCommandServiceTests {
     // === Error code extraction ===
 
     [Fact]
-    public async Task InvokePost_ExtractsHttpStatusCode_FromHttpRequestException() {
+    public async Task InvokePost_MapsHttpStatusCode_FromHttpRequestException() {
+        // 404 must canonicalize to "NotFound" so AdminDeadLettersController surfaces a recoverable
+        // 404 ProblemDetails for visual-fixture DLQ misses (DW11 AC4) instead of falling through
+        // to 500.
         (DaprDeadLetterCommandService service, TestHttpMessageHandler handler) = CreateService();
         handler.SetupErrorResponse(HttpStatusCode.NotFound);
 
         AdminOperationResult result = await service.RetryDeadLettersAsync("tenant-a", ["msg-1"]);
 
         result.Success.ShouldBeFalse();
-        result.ErrorCode.ShouldBe("404");
+        result.ErrorCode.ShouldBe("NotFound");
     }
 }

@@ -225,12 +225,14 @@ public class DaprDeadLetterServiceTests {
 
     [Fact]
     public async Task RetryDeadLettersAsync_MapsHttpStatusCode_WhenRequestFails() {
+        // 401 canonicalizes to "Unauthorized" so AdminDeadLettersController surfaces a 403
+        // ProblemDetails instead of falling through to 500 (DW11 — AC4).
         (DaprDeadLetterCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
         handler.SetupErrorResponse(HttpStatusCode.Unauthorized);
 
         AdminOperationResult result = await service.RetryDeadLettersAsync("tenant1", ["msg-1"]);
 
         result.Success.ShouldBeFalse();
-        result.ErrorCode.ShouldBe("401");
+        result.ErrorCode.ShouldBe("Unauthorized");
     }
 }
