@@ -365,6 +365,35 @@ public class StreamDetailPageTests : AdminUITestContext {
             TimeSpan.FromSeconds(5));
     }
 
+    [Theory]
+    [InlineData("All")]
+    [InlineData("Commands")]
+    [InlineData("Events")]
+    [InlineData("Queries")]
+    public async Task StreamDetail_TimelineFilterClick_ClosesPreviouslyOpenedStateInspector(string filterLabel) {
+        SetupTimeline(CreateTimelineResult(5));
+        StateInspectorModal.ShowDialogAsyncOverride = _ => Task.CompletedTask;
+        try {
+            IRenderedComponent<StreamDetail> cut = RenderStreamDetail();
+            cut.WaitForAssertion(() => cut.Markup.ShouldContain("SomeType1"), TimeSpan.FromSeconds(5));
+
+            InvokePrivate(cut.Instance, "OnInspectStateFromDetail", 2L);
+            cut.Render();
+            cut.WaitForAssertion(() => cut.Markup.ShouldContain("State Inspector"), TimeSpan.FromSeconds(5));
+
+            AngleSharp.Dom.IElement filterButton = cut.FindAll("fluent-button")
+                .First(b => b.TextContent.Contains(filterLabel, StringComparison.Ordinal));
+            await cut.InvokeAsync(() => filterButton.Click());
+
+            cut.WaitForAssertion(
+                () => cut.Markup.ShouldNotContain("State Inspector"),
+                TimeSpan.FromSeconds(5));
+        }
+        finally {
+            StateInspectorModal.ShowDialogAsyncOverride = null;
+        }
+    }
+
     private void SetupBlameMock() => _ = _mockApiClient.GetAggregateBlameAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<long?>(), Arg.Any<CancellationToken>())
@@ -387,5 +416,12 @@ public class StreamDetailPageTests : AdminUITestContext {
         }
 
         return new PagedResult<TimelineEntry>(entries, count, null);
+    }
+
+    private static void InvokePrivate(object target, string methodName, params object?[] args) {
+        System.Reflection.MethodInfo method = target.GetType()
+            .GetMethod(methodName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Private method '{methodName}' was not found.");
+        _ = method.Invoke(target, args);
     }
 }

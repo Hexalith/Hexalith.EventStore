@@ -1,5 +1,6 @@
 using Bunit;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.UI.Services;
 
 using Microsoft.Extensions.Configuration;
@@ -76,6 +77,23 @@ public class MainLayoutTests : AdminUITestContext {
         cut.Markup.ShouldContain("ReadOnly");
         cut.Markup.ShouldContain("Operator");
         cut.Markup.ShouldContain("Admin");
+    }
+
+    [Fact]
+    public async Task MainLayout_DevelopmentRoleSelector_DoesNotRenderRedundantVisibleRoleCopy() {
+        ConfigureRoleSwitcher("Development", authority: null);
+
+        IRenderedComponent<Hexalith.EventStore.Admin.UI.Layout.MainLayout> cut = Render<Hexalith.EventStore.Admin.UI.Layout.MainLayout>(
+            parameters => parameters.Add(p => p.Body, builder => builder.AddContent(0, "Content")));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Development role"), TimeSpan.FromSeconds(5));
+
+        DevelopmentAdminRoleState roleState = Services.GetRequiredService<DevelopmentAdminRoleState>();
+        await cut.InvokeAsync(() => roleState.SetRole(AdminRole.Operator));
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Operator"), TimeSpan.FromSeconds(5));
+        cut.Markup.ShouldNotContain("Role: Operator");
+        cut.Markup.ShouldNotContain("Development role Operator selected.");
+        cut.Markup.ShouldContain("aria-label=\"Development role\"");
     }
 
     [Theory]

@@ -4,6 +4,7 @@ using System.Diagnostics;
 
 using Dapr.Client;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Commands;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
@@ -12,6 +13,7 @@ using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
 using Hexalith.EventStore.Admin.Server.Tests.Helpers;
+using Hexalith.EventStore.Contracts.Commands;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -46,6 +48,9 @@ public class DaprHealthQueryServiceTests {
             _ = streamQuery.GetRecentlyActiveStreamsAsync(
                     Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromResult(new PagedResult<StreamSummary>([], 0, null)));
+            _ = streamQuery.GetRecentCommandsAsync(
+                    Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromResult(new PagedResult<CommandSummary>([], 0, null)));
         }
 
         if (infrastructure is null) {
@@ -510,8 +515,8 @@ public class DaprHealthQueryServiceTests {
     }
 
     [Fact]
-    public async Task GetSystemHealthAsync_EventsPerSecondAndErrorPercentage_ReportedAsUnavailable() {
-        // ADR-3: these metrics have no source wired; UI must distinguish unavailable from real zero.
+    public async Task GetSystemHealthAsync_EventsPerSecondAndErrorPercentage_ReportRealZero_WhenEvidenceSourcesAreAvailable() {
+        // DW10: an empty but readable stream/command activity source is a real zero, not unavailable.
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata());
         _ = daprClient.GetStateAsync<string>(
@@ -529,8 +534,49 @@ public class DaprHealthQueryServiceTests {
 
         SystemHealthReport result = await service.GetSystemHealthAsync();
 
-        result.EventsPerSecondStatus.ShouldBe(SystemHealthMetricStatus.Unavailable);
-        result.ErrorPercentageStatus.ShouldBe(SystemHealthMetricStatus.Unavailable);
+        result.EventsPerSecond.ShouldBe(0);
+        result.EventsPerSecondStatus.ShouldBe(SystemHealthMetricStatus.Available);
+        result.ErrorPercentage.ShouldBe(0);
+        result.ErrorPercentageStatus.ShouldBe(SystemHealthMetricStatus.Available);
+    }
+
+    [Fact]
+    public async Task GetSystemHealthAsync_ErrorPercentage_ComputesFailedCommandShare_WhenCommandEvidenceIsAvailable() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(CreateMetadata());
+        _ = daprClient.GetStateAsync<string>(
+            "statestore", "admin:health-check",
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => (string?)null);
+        _ = daprClient.CreateInvokeMethodRequest(
+            Arg.Any<HttpMethod>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(callInfo => new HttpRequestMessage(
+                callInfo.ArgAt<HttpMethod>(0),
+                new Uri($"http://localhost/{callInfo.ArgAt<string>(2)}")));
+
+        IStreamQueryService streamQuery = Substitute.For<IStreamQueryService>();
+        _ = streamQuery.GetRecentlyActiveStreamsAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new PagedResult<StreamSummary>([], 0, null)));
+
+        IReadOnlyList<CommandSummary> commands =
+        [
+            new("tenant-a", "counter", "counter-1", "corr-1", "IncrementCounter", CommandStatus.Completed, DateTimeOffset.UtcNow, 1, null),
+            new("tenant-a", "counter", "counter-1", "corr-2", "IncrementCounter", CommandStatus.PublishFailed, DateTimeOffset.UtcNow, null, "publish failed"),
+            new("tenant-a", "counter", "counter-1", "corr-3", "IncrementCounter", CommandStatus.TimedOut, DateTimeOffset.UtcNow, null, "timeout"),
+            new("tenant-a", "counter", "counter-1", "corr-4", "IncrementCounter", CommandStatus.Rejected, DateTimeOffset.UtcNow, null, "business rejection"),
+        ];
+        _ = streamQuery.GetRecentCommandsAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new PagedResult<CommandSummary>(commands, commands.Count, null)));
+
+        (DaprHealthQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient, streamQuery: streamQuery);
+        handler.SetupJsonResponse("ok");
+
+        SystemHealthReport result = await service.GetSystemHealthAsync();
+
+        result.ErrorPercentageStatus.ShouldBe(SystemHealthMetricStatus.Available);
+        result.ErrorPercentage.ShouldBe(50);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using Bunit;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.UI.Components.Shared;
@@ -150,6 +151,34 @@ public class IndexPageTests : AdminUITestContext {
         // No fake-precision values for the unimplemented metrics.
         cut.Markup.ShouldNotContain("0.0/s");
         cut.Markup.ShouldNotContain("0.00%");
+    }
+
+    [Fact]
+    public void LandingPage_WhenMetricsAvailableAndZero_RendersRealZeroInsteadOfUnavailable() {
+        SystemHealthReport health = new(
+            HealthStatus.Healthy,
+            TotalEventCount: 0,
+            EventsPerSecond: 0,
+            ErrorPercentage: 0,
+            DaprComponents: [],
+            ObservabilityLinks: new ObservabilityLinks(null, null, null),
+            TotalEventCountStatus: SystemHealthMetricStatus.Available,
+            EventsPerSecondStatus: SystemHealthMetricStatus.Available,
+            ErrorPercentageStatus: SystemHealthMetricStatus.Available,
+            InventorySourceStatus: RemoteMetadataStatus.Available,
+            LocalSidecarMetadataStatus: RemoteMetadataStatus.Available);
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SystemHealthReport?>(health));
+        _ = _mockApiClient.GetRecentlyActiveStreamsAsync(
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new PagedResult<StreamSummary>([], 0, null)));
+
+        IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Index> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Index>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Events/sec"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldNotContain("unavailable");
+        cut.Markup.ShouldContain($"{0.0.ToString("F1")}/s");
+        cut.Markup.ShouldContain($"{0.0.ToString("F2")}%");
     }
 
     [Fact]

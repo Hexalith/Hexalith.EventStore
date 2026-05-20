@@ -25,19 +25,16 @@
                 <HeaderStatusIndicator ConnectionStatus="_connectionStatus" HealthSummary="@_healthSummary" />
                 @if (RoleState.IsRoleSwitcherAvailable)
                 {
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <FluentSelect TOption="string" TValue="string"
-                                      Value="@_selectedRoleValue"
-                                      ValueChanged="OnSelectedRoleChangedAsync"
-                                      aria-label="Development role"
-                                      style="min-width: 120px;">
-                            <FluentOption Value="@nameof(AdminRole.ReadOnly)">ReadOnly</FluentOption>
-                            <FluentOption Value="@nameof(AdminRole.Operator)">Operator</FluentOption>
-                            <FluentOption Value="@nameof(AdminRole.Admin)">Admin</FluentOption>
-                        </FluentSelect>
-                        <span style="font-size: 12px; color: var(--colorNeutralForeground3);">Role: @_selectedRoleValue</span>
-                    </div>
-                    <span class="visually-hidden" aria-live="polite">@_roleAnnouncement</span>
+                    <FluentSelect TOption="string" TValue="string"
+                                  Value="@_selectedRoleValue"
+                                  ValueChanged="OnSelectedRoleChangedAsync"
+                                  aria-label="Development role"
+                                  title="Development role"
+                                  style="min-width: 120px;">
+                        <FluentOption Value="@nameof(AdminRole.ReadOnly)">ReadOnly</FluentOption>
+                        <FluentOption Value="@nameof(AdminRole.Operator)">Operator</FluentOption>
+                        <FluentOption Value="@nameof(AdminRole.Admin)">Admin</FluentOption>
+                    </FluentSelect>
                 }
                 <ThemeToggle />
             </div>
@@ -74,7 +71,6 @@
     private bool _pollingFailed;
     private bool _pollingSucceeded;
     private string _selectedRoleValue = nameof(AdminRole.Admin);
-    private string _roleAnnouncement = "Development role Admin selected.";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -286,7 +282,6 @@
         {
             _userRole = role;
             _selectedRoleValue = role.ToString();
-            _roleAnnouncement = $"Development role {role} selected.";
             StateHasChanged();
         });
     }
