@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-05-20T14:26:58+02:00 - Sprint Change Proposal approved: sprint-change-proposal-2026-05-20-admin-ui-manual-retest-residuals.md routes Admin UI manual retest residuals CC-1..CC-6 into DW11-DW15 backlog rows and creates corresponding story handoff files. Completed Admin cluster rows remain done.
+# last_updated: 2026-05-20T16:17:16+02:00 - Story post-epic-deferred-dw11-admin-action-binding-and-projection-detail-contracts moved in-progress -> done after manual Issue 9/Issue 11 retest evidence was recorded. Retry/Skip/Archive now return recoverable 404 NotFound for visual DLQ fixture; projection detail renders tenant-a/counter fallback detail.
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -45,7 +45,19 @@
 # - Epic 11 remains supplemental projection-builder scope under the approved change proposal unless the PRD is amended with explicit new FR coverage.
 
 generated: 2026-03-15
-last_updated: '2026-05-20T14:26:58+02:00' # Sprint Change Proposal approved: sprint-change-proposal-2026-05-20-admin-ui-manual-retest-residuals.md routes Admin UI manual retest residuals CC-1..CC-6 into DW11-DW15 backlog rows and creates corresponding story handoff files. Completed Admin cluster rows remain done.
+last_updated: '2026-05-20T16:17:16+02:00' # Story post-epic-deferred-dw11-admin-action-binding-and-projection-detail-contracts moved in-progress -> done after manual Issue 9/Issue 11 retest evidence was recorded. Retry/Skip/Archive now return recoverable 404 NotFound for visual DLQ fixture; projection detail renders tenant-a/counter fallback detail.
+# Previous last_updated detail preserved: 2026-05-20T17:45:00+02:00 - Story post-epic-deferred-dw11-admin-action-binding-and-projection-detail-contracts moved review -> in-progress after code-review patches fixed projection fallback tenant filtering, source-key logging, and bounded fallback state reads. Manual Issue 9/Issue 11 retest evidence remains open.
+# Previous last_updated detail preserved: 2026-05-20T17:30:00+02:00 - Story post-epic-deferred-dw11-admin-action-binding-and-projection-detail-contracts moved in-progress -> review after DeadLetterActionRequest class-shape fix, HTTP-level binding tests, canonical DLQ HTTP-status mapping, and DaprProjectionQueryService Admin read-model fallback for 404/405/501 with tenant precedence and structured logging. Admin.Server.Tests 671/671 (18 skipped pre-existing), focused Admin.UI slice 19/19, 0 warnings.
+# Previous last_updated detail preserved: 2026-05-20T16:00:00+02:00 - Story post-epic-deferred-dw11-admin-action-binding-and-projection-detail-contracts moved ready-for-dev -> in-progress for dead-letter action binding and projection detail contract fixes.
+# Previous last_updated detail preserved: 2026-05-20T15:12:01+02:00 - Story post-epic-deferred-dw11-admin-action-binding-and-projection-detail-contracts second elicitation simplification applied while remaining ready-for-dev: fallback logging, empty JSON fallback configuration, Dev Agent Record decision notes, richer Issue 11 manual evidence fields, and preferred implementation sequence.
+# Previous last_updated detail preserved: 2026-05-20T15:09:37+02:00 - Story post-epic-deferred-dw11-admin-action-binding-and-projection-detail-contracts advanced elicitation hardening applied while remaining ready-for-dev: explicit implementation decision, list-fidelity projection fallback, whitespace/duplicate message-id validation, ordinal projection-name matching, and preserving indexed projection status during fallback.
+# Previous last_updated detail preserved: 2026-05-20T15:09:00+02:00 - Story post-epic-deferred-dw12-consistency-actor-state-contract-and-dispatcher-fix second elicitation simplification applied while remaining ready-for-dev: explicit assumptions, preferred implementation thread, avoid-list, deferred chaos scope, and minimum automation set.
+# Previous last_updated detail preserved: 2026-05-20T15:05:00+02:00 - Story post-epic-deferred-dw12-consistency-actor-state-contract-and-dispatcher-fix advanced elicitation hardening applied while remaining ready-for-dev: duplicate/out-of-order sequence coverage, partial timeline protection, failure taxonomy, cancellation propagation, identity validation, and query-contract decision record.
+# Previous last_updated detail preserved: 2026-05-20T15:01:00+02:00 - Story post-epic-deferred-dw12-consistency-actor-state-contract-and-dispatcher-fix party-mode review hardening applied while remaining ready-for-dev: timeline-first continuity contract, inconclusive metadata behavior, real-gap/query-failure tests, projection warning classification, and dispatcher scan scope.
+# Previous last_updated detail preserved: 2026-05-20T15:00:42+02:00 - Story post-epic-deferred-dw11-admin-action-binding-and-projection-detail-contracts party-mode review hardening applied while remaining ready-for-dev: HTTP-level model-binding tests, mandatory narrow Admin read-model projection detail fallback, tenant-safe identity matching, and non-fabricated fallback detail fields.
+# Previous last_updated detail preserved: 2026-05-20T14:55:00+02:00 - Story post-epic-deferred-dw12-consistency-actor-state-contract-and-dispatcher-fix materialized by bmad-create-story and moved backlog -> ready-for-dev for actor-state-backed consistency false-positive fixes plus Consistency UI dispatcher safety.
+# Previous last_updated detail preserved: 2026-05-20T14:54:47+02:00 - Story post-epic-deferred-dw11-admin-action-binding-and-projection-detail-contracts materialized by bmad-create-story and moved backlog -> ready-for-dev for dead-letter action binding and projection detail contract fixes.
+# Previous last_updated detail preserved: 2026-05-20T14:26:58+02:00 - Sprint Change Proposal approved: sprint-change-proposal-2026-05-20-admin-ui-manual-retest-residuals.md routes Admin UI manual retest residuals CC-1..CC-6 into DW11-DW15 backlog rows and creates corresponding story handoff files. Completed Admin cluster rows remain done.
 # Previous last_updated detail preserved: 2026-05-20T13:10:51+02:00 - WS-1 moved in-progress -> review after P6 Tier 1 test relocation and clean documented AppHost rerun.
 # Previous last_updated detail preserved: 2026-05-20T10:49:55+02:00 - Readiness guardrails applied: parent/container stories are non-assignable, technical epic titles are stable labels, completed Admin/UI follow-ups require linked Detail artifacts, WS-1 is the first-class bootstrap gate, PRD scope horizons govern implementation selection, UX-DR41..UX-DR59 stay visible in story review, and Epic 11 remains supplemental unless PRD coverage changes.
 # Previous last_updated detail preserved: 2026-05-20T10:20:54+02:00 - Sprint planning refresh: canonical epic/story inventory validated from epics.md; no status transitions changed; preserved 54 existing carry-forward rows outside canonical epic inventory.
@@ -495,8 +507,8 @@ development_status:
 
   # Post-DW10 Admin UI manual retest residuals
   # Added by sprint-change-proposal-2026-05-20-admin-ui-manual-retest-residuals.md.
-  post-epic-deferred-dw11-admin-action-binding-and-projection-detail-contracts: backlog
-  post-epic-deferred-dw12-consistency-actor-state-contract-and-dispatcher-fix: backlog
+  post-epic-deferred-dw11-admin-action-binding-and-projection-detail-contracts: done
+  post-epic-deferred-dw12-consistency-actor-state-contract-and-dispatcher-fix: ready-for-dev
   post-epic-deferred-dw13-tenant-lifecycle-actor-timeout-investigation: backlog
   post-epic-deferred-dw14-admin-deferred-operations-ux-policy: backlog
   post-epic-deferred-dw15-admin-ui-blazor-navigation-hygiene: backlog

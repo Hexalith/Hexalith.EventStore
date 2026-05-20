@@ -123,10 +123,14 @@ public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
         Exception current = exception;
         while (true) {
             if (current is HttpRequestException httpRequestException && httpRequestException.StatusCode is HttpStatusCode statusCode) {
-                return ((int)statusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                return MapHttpStatusToErrorCode(statusCode);
             }
 
             object? reflectedStatus = current.GetType().GetProperty("StatusCode")?.GetValue(current);
+            if (reflectedStatus is HttpStatusCode reflectedHttpStatus) {
+                return MapHttpStatusToErrorCode(reflectedHttpStatus);
+            }
+
             if (reflectedStatus is not null) {
                 return reflectedStatus.ToString() ?? current.GetType().Name;
             }
@@ -138,6 +142,17 @@ public sealed class DaprDeadLetterCommandService : IDeadLetterCommandService {
             current = current.InnerException;
         }
     }
+
+    private static string MapHttpStatusToErrorCode(HttpStatusCode statusCode) => statusCode switch {
+        HttpStatusCode.NotFound => "NotFound",
+        HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => "Unauthorized",
+        HttpStatusCode.BadRequest
+            or HttpStatusCode.Conflict
+            or HttpStatusCode.UnprocessableEntity
+            or HttpStatusCode.MethodNotAllowed
+            or HttpStatusCode.Gone => "InvalidOperation",
+        _ => ((int)statusCode).ToString(System.Globalization.CultureInfo.InvariantCulture),
+    };
 
     private static HttpRequestMessage CreateFallbackRequest<TRequest>(string endpoint, TRequest request)
         => new(HttpMethod.Post, endpoint) {

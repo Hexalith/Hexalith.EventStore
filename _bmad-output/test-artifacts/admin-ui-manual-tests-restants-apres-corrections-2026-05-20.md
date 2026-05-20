@@ -619,6 +619,21 @@ Proposition de changement:
   fixture visuelle existe, l'action peut ensuite renvoyer un 404/422 metier, mais
   plus un 500 de model binding.
 
+Retest DW11 du 2026-05-20 apres restart Aspire, `FLUSHALL` Redis, et reapplication
+des fixtures:
+
+- Retry: OK. `Retry failed` avec status `404 NotFound`, message
+  `Response status code does not indicate success: 404 (Not Found).`
+- Skip: OK. `Skip failed` avec status `404 NotFound`, message
+  `Response status code does not indicate success: 404 (Not Found).`
+- Archive: OK. `Archive failed` avec status `404 NotFound`, message
+  `Response status code does not indicate success: 404 (Not Found).`
+- Tenant: `tenant-a`.
+- Message id: `manual-dlq-tenant-a-001`.
+- Conclusion: OK pour DW11. Les actions ne produisent plus le 500 de model
+  binding; la fixture visuelle retourne un 404 metier recuperable, conforme au
+  comportement accepte.
+
 ### CC-2 / Issue 11 - Projection detail renvoie "Projection not found"
 
 Symptome utilisateur:
@@ -656,6 +671,31 @@ Analyse:
   - soit ajouter un endpoint EventStore detail;
   - soit construire le detail depuis l'index Admin.Server;
   - soit changer l'UI pour ne pas proposer un detail tant que le backend ne le supporte pas.
+
+Retest DW11 du 2026-05-20 apres restart Aspire, `FLUSHALL` Redis, et reapplication
+des fixtures:
+
+- Issue 11: OK.
+- Projection detail ouverte: `counter` / `tenant-a`.
+- Status: `Running`.
+- Lag: `0`.
+- Throughput: `0,0 /s`.
+- Errors: `0`.
+- Last Position: `18`.
+- Last Processed: `4m ago` au moment du test.
+- Subscribed Event Types: `0`, `No subscribed event types`.
+- Configuration affichee: `{}`.
+- Errors detail: `No errors recorded`.
+- Conclusion: OK pour DW11. Le detail ne renvoie plus `Projection not found` pour
+  la fixture `tenant-a` / `counter`; le detail fallback limite est affichable et
+  coherent avec les donnees de liste.
+- Observation hors perimetre DW11: les boutons Pause / Reset / Replay sont
+  visibles sur le detail fallback. Pause a produit la trace
+  `a696b60d04dd91c7c8c7c4e57530f98a`. Replay affiche `Replay initiated
+  (Operation:...)` puis reste lance. Reset affiche `Reset initiated
+  (Operation: 01KS2VTP9JHT2CCX5KPOPAY91H)` puis `Operation submitted-status may
+  take a moment to update`. A surveiller dans un suivi projection-lifecycle si le
+  comportement operationnel attendu n'est pas celui-ci.
 
 ### CC-3 / Issue 15 - Snapshot / Compaction / Backup / Export sont "deferred"
 
@@ -864,8 +904,8 @@ Copie-colle ce bloc apres ton run:
 Issue 2: OK / KO
 State Inspector: OK / KO
 Issue 13: OK / KO
-Issue 9: OK / KO / non teste
-Issue 11: OK / KO / non teste
+Issue 9: OK
+Issue 11: OK
 Issue 12: OK / KO / non teste
 Issue 15: OK / KO / non teste
 Issue 16: OK / KO / non teste
@@ -873,5 +913,7 @@ Issue 17: OK / KO / non teste
 Issue 18: OK / KO / non teste
 
 Notes / messages exacts:
--
+- Issue 9 Retry/Skip/Archive: 404 NotFound recuperable pour `manual-dlq-tenant-a-001`; plus de 500 model-binding.
+- Issue 11 Projection `counter` (`tenant-a`): detail affiche Running, Lag 0, Last Position 18, `{}`, pas d'erreurs.
+- Observation: boutons Pause/Reset/Replay visibles sur le detail fallback; Reset operation `01KS2VTP9JHT2CCX5KPOPAY91H`, Pause trace `a696b60d04dd91c7c8c7c4e57530f98a`.
 ```

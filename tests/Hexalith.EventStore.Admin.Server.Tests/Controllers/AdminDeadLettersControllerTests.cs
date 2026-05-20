@@ -46,7 +46,7 @@ public class AdminDeadLettersControllerTests {
         _ = _commandService.RetryDeadLettersAsync("tenant-a", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
             .Returns(expected);
 
-        IActionResult result = await _sut.RetryDeadLetters("tenant-a", new DeadLetterActionRequest(["msg-1"]));
+        IActionResult result = await _sut.RetryDeadLetters("tenant-a", new DeadLetterActionRequest { MessageIds = ["msg-1"] });
 
         OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         okResult.Value.ShouldBe(expected);
@@ -58,7 +58,7 @@ public class AdminDeadLettersControllerTests {
         _ = _commandService.SkipDeadLettersAsync("tenant-a", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
             .Returns(expected);
 
-        IActionResult result = await _sut.SkipDeadLetters("tenant-a", new DeadLetterActionRequest(["msg-1"]));
+        IActionResult result = await _sut.SkipDeadLetters("tenant-a", new DeadLetterActionRequest { MessageIds = ["msg-1"] });
 
         OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         okResult.Value.ShouldBe(expected);
@@ -70,7 +70,7 @@ public class AdminDeadLettersControllerTests {
         _ = _commandService.ArchiveDeadLettersAsync("tenant-a", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
             .Returns(expected);
 
-        IActionResult result = await _sut.ArchiveDeadLetters("tenant-a", new DeadLetterActionRequest(["msg-1"]));
+        IActionResult result = await _sut.ArchiveDeadLetters("tenant-a", new DeadLetterActionRequest { MessageIds = ["msg-1"] });
 
         OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         okResult.Value.ShouldBe(expected);

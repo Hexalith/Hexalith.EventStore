@@ -94,7 +94,7 @@ public class AdminDeadLettersController(
 
         try {
             AdminOperationResult result = await deadLetterCommandService
-                .RetryDeadLettersAsync(tenantId, request.MessageIds, ct)
+                .RetryDeadLettersAsync(tenantId, NormalizeMessageIds(request.MessageIds!), ct)
                 .ConfigureAwait(false);
             return MapOperationResult(result);
         }
@@ -124,7 +124,7 @@ public class AdminDeadLettersController(
 
         try {
             AdminOperationResult result = await deadLetterCommandService
-                .SkipDeadLettersAsync(tenantId, request.MessageIds, ct)
+                .SkipDeadLettersAsync(tenantId, NormalizeMessageIds(request.MessageIds!), ct)
                 .ConfigureAwait(false);
             return MapOperationResult(result);
         }
@@ -154,7 +154,7 @@ public class AdminDeadLettersController(
 
         try {
             AdminOperationResult result = await deadLetterCommandService
-                .ArchiveDeadLettersAsync(tenantId, request.MessageIds, ct)
+                .ArchiveDeadLettersAsync(tenantId, NormalizeMessageIds(request.MessageIds!), ct)
                 .ConfigureAwait(false);
             return MapOperationResult(result);
         }
@@ -164,6 +164,20 @@ public class AdminDeadLettersController(
         catch (Exception ex) when (ex is not OperationCanceledException) {
             return UnexpectedError(nameof(ArchiveDeadLetters), ex);
         }
+    }
+
+    private static IReadOnlyList<string> NormalizeMessageIds(IReadOnlyList<string> messageIds) {
+        // De-duplicates with case-sensitive ordinal comparison to avoid replaying the same
+        // dead-letter twice in one operator action while preserving the operator-provided order.
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var deduped = new List<string>(messageIds.Count);
+        foreach (string messageId in messageIds) {
+            if (seen.Add(messageId)) {
+                deduped.Add(messageId);
+            }
+        }
+
+        return deduped;
     }
 
     private string? ResolveTenantScope(string? requestedTenantId) {

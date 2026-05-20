@@ -66,7 +66,7 @@ public class AdminProjectionsController(
         string projectionName,
         CancellationToken ct = default) {
         try {
-            ProjectionDetail result = await projectionQueryService
+            ProjectionDetail? result = await projectionQueryService
                 .GetProjectionDetailAsync(tenantId, projectionName, ct)
                 .ConfigureAwait(false);
             return result is null
