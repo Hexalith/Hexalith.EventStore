@@ -298,7 +298,11 @@ public class AggregateActorDomainResultTests {
 
         // Assert
         result.Accepted.ShouldBeFalse();
-        result.ErrorMessage!.ShouldContain("Service unavailable");
+        string errorMessage = result.ErrorMessage.ShouldNotBeNull();
+        errorMessage.ShouldContain("Protected data diagnostic details were redacted.");
+        errorMessage.ShouldContain("ReasonCode=protected-data-diagnostic-redacted");
+        errorMessage.ShouldContain("Stage=Processing");
+        errorMessage.ShouldNotContain("Service unavailable");
     }
 
     [Fact]
@@ -320,7 +324,7 @@ public class AggregateActorDomainResultTests {
             envelope.CorrelationId,
             Arg.Is<CommandStatusRecord>(record =>
                 record.Status == CommandStatus.Rejected
-                && record.FailureReason == "Service unavailable"
+                && record.FailureReason == "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing."
                 && record.RejectionEventType == null),
             Arg.Any<CancellationToken>());
     }

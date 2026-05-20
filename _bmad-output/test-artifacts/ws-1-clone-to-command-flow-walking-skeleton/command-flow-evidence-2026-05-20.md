@@ -18,7 +18,7 @@ No JWTs, connection strings, or secrets are recorded here.
 
 ## AppHost Attempts
 
-### Documented command
+### Documented command - initial review finding
 
 Command:
 
@@ -44,6 +44,31 @@ Result:
 
 ```text
 request returned 500 Internal Server Error for API route and version http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.54/version, check if the server supports the requested API version
+```
+
+### Documented command - P6 follow-up rerun
+
+Command:
+
+```powershell
+$env:EnableKeycloak='false'; aspire run --detach --non-interactive --project 'src\Hexalith.EventStore.AppHost\Hexalith.EventStore.AppHost.csproj' --format Json
+```
+
+Result on 2026-05-20 after the review follow-up:
+
+- AppHost detached successfully without `SKIP_PREREQUISITE_CHECK=true`.
+- AppHost path: `D:\Hexalith.EventStore\src\Hexalith.EventStore.AppHost\Hexalith.EventStore.AppHost.csproj`
+- AppHost PID: `132088`
+- Aspire CLI log: `C:\Users\JeromePiquot\.aspire\logs\cli_20260520T110928354_detach-child_5822811aa5864e63a14ccef2f69aa7a4.log`
+- `eventstore-scerrkak` (`eventstore`): Running, Healthy, HTTP endpoint `http://localhost:8080`
+- `sample-xgbfgxjd` (`sample`): Running, Healthy, HTTP endpoint `http://localhost:5189`
+- `pubsub`: Running, Healthy
+- `statestore`: Running, Healthy
+
+The AppHost was stopped cleanly after the resource-health capture:
+
+```powershell
+aspire stop --apphost src\Hexalith.EventStore.AppHost\Hexalith.EventStore.AppHost.csproj --non-interactive
 ```
 
 ### Diagnostic runtime proof
@@ -131,13 +156,21 @@ Structured log evidence from `eventstore-gbvwbeks`:
 
 ## Automated Coverage
 
+Focused WS-1 AppHost prerequisite coverage:
+
+```powershell
+dotnet test tests\Hexalith.EventStore.AppHost.Tests\Hexalith.EventStore.AppHost.Tests.csproj
+```
+
+Result: Passed, 4 tests, 0 failed.
+
 Focused WS-1 integration coverage:
 
 ```powershell
-dotnet test tests/Hexalith.EventStore.IntegrationTests --filter "FullyQualifiedName~LiveCommandSurfaceSmokeTests|FullyQualifiedName~CommandLifecycleTests|FullyQualifiedName~PrerequisiteValidatorTests"
+dotnet test tests\Hexalith.EventStore.IntegrationTests\Hexalith.EventStore.IntegrationTests.csproj --filter "FullyQualifiedName~LiveCommandSurfaceSmokeTests|FullyQualifiedName~CommandLifecycleTests"
 ```
 
-Result: Passed, 11 tests, 0 failed.
+Result: Passed, 10 tests, 0 failed.
 
 Unit test projects run individually:
 
@@ -160,10 +193,10 @@ Results:
 - `PrerequisiteValidator` now uses a lightweight Docker server-version probe instead of `docker info`, and the command timeout is 120 seconds to tolerate slow Docker Desktop startup.
 - The prerequisite validator has an injectable runner and regression coverage for the slow Docker probe case.
 - `SubmitCommandResponse.ResultPayload` is omitted from JSON when it is null, preserving the accepted-command correlation-only response contract while still allowing enriched payloads when present.
+- `PrerequisiteValidatorTests` were moved from the Tier 3 integration test project into the new Tier 1 `Hexalith.EventStore.AppHost.Tests` project.
 
 ## Caveats
 
-- The final exact documented CLI run could not register an AppHost because local Docker Desktop returned HTTP 500 for `/version`. This is captured as local prerequisite health, not as a command-flow product failure.
-- Earlier in the session, Docker was healthy enough for the diagnostic AppHost to start and for the live command proof to complete.
+- The initial exact documented CLI run could not register an AppHost because local Docker Desktop returned HTTP 500 for `/version`. A later review-follow-up rerun succeeded without bypassing prerequisite checks and confirmed healthy `eventstore`, `sample`, `pubsub`, and `statestore` resources.
 - Local DAPR placement/scheduler binaries were not available under `%USERPROFILE%\.dapr\bin`; only `daprd.exe` was present. No manual placement/scheduler startup evidence was possible in this Windows environment.
 - `Hexalith.EventStore.Server.Tests` was not run; project context documents a pre-existing CA2007 warning-as-error build failure in that test project.

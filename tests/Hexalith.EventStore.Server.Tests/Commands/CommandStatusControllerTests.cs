@@ -196,7 +196,7 @@ public class CommandStatusControllerTests {
         ObjectResult objResult = result.ShouldBeOfType<ObjectResult>();
         objResult.StatusCode.ShouldBe(400);
         ProblemDetails pd = objResult.Value.ShouldBeOfType<ProblemDetails>();
-        pd.Detail.ShouldBe("Correlation ID is required.");
+        pd.Detail.ShouldBe("Correlation ID must be 1-128 characters of alphanumerics and hyphens (with alphanumeric anchors).");
         pd.Type.ShouldBe("https://hexalith.io/problems/bad-request");
         pd.Extensions.ShouldContainKey("correlationId");
         _controller.HttpContext.Response.ContentType.ShouldBe("application/problem+json");

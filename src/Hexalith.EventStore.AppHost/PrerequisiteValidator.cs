@@ -98,17 +98,25 @@ internal static class PrerequisiteValidator {
                         CreateNoWindow = true,
                     });
 
-                // WaitForExit returns false on timeout; check before accessing ExitCode.
-                bool exited = process?.WaitForExit(timeout) ?? false;
-                if (!exited || process is null) {
-                    if (process is not null) {
-                        process.Kill(entireProcessTree: true);
-                    }
-
+                if (process is null) {
                     return new PrerequisiteCommandResult(false, null);
                 }
 
-                string output = process.StandardOutput.ReadToEnd();
+                // Drain both pipes concurrently before WaitForExit to prevent deadlock:
+                // if the child fills either kernel buffer, it blocks on write while we
+                // block on WaitForExit — neither side makes progress.
+                Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync();
+                Task<string> stderrTask = process.StandardError.ReadToEndAsync();
+
+                // WaitForExit returns false on timeout; check before accessing ExitCode.
+                bool exited = process.WaitForExit(timeout);
+                if (!exited) {
+                    process.Kill(entireProcessTree: true);
+                    process.WaitForExit();
+                    return new PrerequisiteCommandResult(false, null);
+                }
+
+                string output = stdoutTask.GetAwaiter().GetResult();
                 return new PrerequisiteCommandResult(process.ExitCode == 0, output);
             }
             catch (Exception ex) {

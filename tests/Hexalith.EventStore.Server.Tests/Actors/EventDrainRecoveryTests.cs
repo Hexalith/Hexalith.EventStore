@@ -129,7 +129,7 @@ public class EventDrainRecoveryTests {
         IActorStateManager stateManager,
         IEventPublisher eventPublisher,
         ActorTimerManager timerManager,
-        string expectedFailureDetail,
+        string expectedRedactedFailureMustNotContain,
         int expectedRetryCount = 1,
         string correlationId = "corr-drain") {
         _ = await eventPublisher.DidNotReceive().PublishEventsAsync(
@@ -149,7 +149,10 @@ public class EventDrainRecoveryTests {
             Arg.Is<UnpublishedEventsRecord>(r =>
                 r.RetryCount == expectedRetryCount
                 && r.LastFailureReason != null
-                && r.LastFailureReason.Contains(expectedFailureDetail)),
+                && r.LastFailureReason.Contains("Protected data diagnostic details were redacted.")
+                && r.LastFailureReason.Contains("ReasonCode=protected-data-diagnostic-redacted")
+                && r.LastFailureReason.Contains("Stage=drain")
+                && !r.LastFailureReason.Contains(expectedRedactedFailureMustNotContain)),
             Arg.Any<CancellationToken>());
 
         await stateManager.Received().SaveStateAsync(Arg.Any<CancellationToken>());

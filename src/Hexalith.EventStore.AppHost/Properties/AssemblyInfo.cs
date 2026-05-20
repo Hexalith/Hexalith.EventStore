@@ -1,3 +1,3 @@
 using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("Hexalith.EventStore.IntegrationTests")]
+[assembly: InternalsVisibleTo("Hexalith.EventStore.AppHost.Tests")]

@@ -122,6 +122,21 @@ dotnet test tests/Hexalith.EventStore.IntegrationTests --filter "FullyQualifiedN
 - [Source: tests/Hexalith.EventStore.IntegrationTests/ContractTests/LiveCommandSurfaceSmokeTests.cs]
 - [Source: tests/Hexalith.EventStore.IntegrationTests/ContractTests/CommandLifecycleTests.cs]
 
+### Review Findings
+
+- [x] [Review][Decision] D1 — AC #1 not fully closed: documented `EnableKeycloak=false aspire run ...` command was blocked by local Docker Desktop HTTP 500 before and after the PrerequisiteValidator fix; no clean re-run without `SKIP_PREREQUISITE_CHECK=true` was recorded in evidence. → Decision: re-run required; story moved to in-progress.
+- [x] [Review][Decision] D2 — Evidence-first scope: `IPrerequisiteCommandRunner` interface, `ProcessPrerequisiteCommandRunner` inner class, `InternalsVisibleTo` in AssemblyInfo.cs, and new `PrerequisiteValidatorTests.cs` were added as structural testability scaffolding beyond the minimal probe argument change. → Decision: scope accepted as justified quality improvement.
+- [x] [Review][Patch] P1 — Stderr pipe deadlock and stdout read-after-wait. → Applied in uncommitted working-tree changes: concurrent `ReadToEndAsync()` for both stdout and stderr pipes started before `WaitForExit`. [src/Hexalith.EventStore.AppHost/PrerequisiteValidator.cs]
+- [x] [Review][Patch] P2 — Kill-then-dispose race: `process.Kill(entireProcessTree: true)` is asynchronous; `Dispose()` could be called before the process exits, leaking OS handles. → Applied: added `process.WaitForExit()` after `Kill` on the timeout path. [src/Hexalith.EventStore.AppHost/PrerequisiteValidator.cs]
+- [x] [Review][Patch] P3 — `JsonElement.Undefined` not suppressed by `WhenWritingNull`. → Applied: defensive Undefined guard added in `ParseOptionalResultPayload`. [src/Hexalith.EventStore/Controllers/CommandsController.cs]
+- [x] [Review][Patch] P4 — Test timeout assertion too loose (`>= 90s` instead of `== CommandTimeout`). → Applied. [tests/Hexalith.EventStore.IntegrationTests/Configuration/PrerequisiteValidatorTests.cs]
+- [x] [Review][Patch] P5 — Missing test coverage for Docker-fail, DAPR-not-installed, DAPR-not-initialized paths. P5(d) serialization test already present in SubmitCommandResponseTests.cs. → Applied: three new test cases added with `ScriptedRunner` stub. [tests/Hexalith.EventStore.IntegrationTests/Configuration/PrerequisiteValidatorTests.cs]
+- [x] [Review][Patch] P6 — `PrerequisiteValidatorTests` belongs in a Tier 1 unit test project, not Tier 3. Requires creating a new `Hexalith.EventStore.AppHost.Tests` project and updating `InternalsVisibleTo`. → Applied: created `Hexalith.EventStore.AppHost.Tests`, moved the prerequisite validator tests out of Tier 3 integration tests, and updated `InternalsVisibleTo`. [tests/Hexalith.EventStore.AppHost.Tests/Configuration/PrerequisiteValidatorTests.cs; src/Hexalith.EventStore.AppHost/Properties/AssemblyInfo.cs]
+- [x] [Review][Defer] W1 — 240 s worst-case startup gate with no user feedback between the two probes — pre-existing behavioral characteristic; not a defect introduced by this PR [src/Hexalith.EventStore.AppHost/PrerequisiteValidator.cs] — deferred, pre-existing
+- [x] [Review][Defer] W2 — `InternalsVisibleTo` declared without strong-name token — pre-existing project practice (no strong naming in this codebase); minor surface-area note [src/Hexalith.EventStore.AppHost/Properties/AssemblyInfo.cs] — deferred, pre-existing
+- [x] [Review][Defer] W3 — `Kill(entireProcessTree: true)` may terminate shared CI infrastructure processes — pre-existing concern for any process-killing probe; acceptable for a dev-only startup gate [src/Hexalith.EventStore.AppHost/PrerequisiteValidator.cs] — deferred, pre-existing
+- [x] [Review][Defer] W4 — `Models.SubmitCommandResponse` redeclares `ResultPayload` without inheriting `JsonIgnore`; active controller path uses `Contracts.Commands.SubmitCommandResponse` directly so no runtime impact today, but the wrapper is a latent attribution gap [src/Hexalith.EventStore/Models/SubmitCommandResponse.cs] — deferred, pre-existing
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -134,6 +149,7 @@ GPT-5 Codex
 - `_bmad-output/test-artifacts/ws-1-clone-to-command-flow-walking-skeleton/aspire-run-documented-enablekeycloak-false-2026-05-20.out.log`
 - `_bmad-output/test-artifacts/ws-1-clone-to-command-flow-walking-skeleton/aspire-run-documented-enablekeycloak-false-2026-05-20.err.log`
 - `C:\Users\JeromePiquot\.aspire\logs\cli_20260520T101445_5a5ce1f5.log`
+- `C:\Users\JeromePiquot\.aspire\logs\cli_20260520T110928354_detach-child_5822811aa5864e63a14ccef2f69aa7a4.log`
 - Diagnostic runtime proof logs referenced in the evidence artifact, including status trace `c0c24dff863d4ddca09633b7061e7229` and command trace `efdfff7ddfecb4794267625ee1d0c449`.
 
 ### Implementation Plan
@@ -153,6 +169,8 @@ GPT-5 Codex
 - Added prerequisite validator regression coverage and tightened the Docker probe to avoid false negatives from slow `docker info` calls.
 - Fixed `SubmitCommandResponse` JSON serialization so accepted-command responses omit null `resultPayload` while preserving future enriched responses.
 - Recorded validation commands and caveats in the evidence artifact.
+- Resolved review patch P6 by moving prerequisite validator regression tests into a dedicated Tier 1 AppHost test project and narrowing `InternalsVisibleTo` to that test assembly.
+- Re-ran the documented `EnableKeycloak=false` AppHost path without `SKIP_PREREQUISITE_CHECK=true`; `eventstore`, `sample`, `pubsub`, and `statestore` were running and healthy, then the AppHost was stopped cleanly.
 
 ### File List
 
@@ -160,11 +178,15 @@ GPT-5 Codex
 - `_bmad-output/implementation-artifacts/ws-1-clone-to-command-flow-walking-skeleton.md`
 - `_bmad-output/test-artifacts/ws-1-clone-to-command-flow-walking-skeleton/command-flow-evidence-2026-05-20.md`
 - `_bmad-output/test-artifacts/ws-1-clone-to-command-flow-walking-skeleton/aspire-run*.log`
+- `Hexalith.EventStore.slnx`
 - `src/Hexalith.EventStore.AppHost/PrerequisiteValidator.cs`
 - `src/Hexalith.EventStore.AppHost/Properties/AssemblyInfo.cs`
 - `src/Hexalith.EventStore.Contracts/Commands/SubmitCommandResponse.cs`
-- `tests/Hexalith.EventStore.IntegrationTests/Configuration/PrerequisiteValidatorTests.cs`
+- `tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj`
+- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/PrerequisiteValidatorTests.cs`
+- `tests/Hexalith.EventStore.IntegrationTests/Configuration/PrerequisiteValidatorTests.cs` (deleted)
 
 ### Change Log
 
 - 2026-05-20: Moved WS-1 into implementation, captured command-flow evidence, fixed the AppHost prerequisite probe, preserved accepted-command response JSON shape, and moved WS-1 to review.
+- 2026-05-20: Addressed review patch P6 by moving prerequisite validator tests to Tier 1 AppHost tests, reran validation, captured clean documented AppHost startup, and returned WS-1 to review.
