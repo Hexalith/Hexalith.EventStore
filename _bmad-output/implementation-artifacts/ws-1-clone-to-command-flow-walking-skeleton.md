@@ -1,6 +1,6 @@
 # Story WS-1: Clone-to-Command Flow Walking Skeleton
 
-Status: review
+Status: done
 
 <!-- Source: _bmad-output/planning-artifacts/epics.md - Story WS-1 -->
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -136,6 +136,14 @@ dotnet test tests/Hexalith.EventStore.IntegrationTests --filter "FullyQualifiedN
 - [x] [Review][Defer] W2 — `InternalsVisibleTo` declared without strong-name token — pre-existing project practice (no strong naming in this codebase); minor surface-area note [src/Hexalith.EventStore.AppHost/Properties/AssemblyInfo.cs] — deferred, pre-existing
 - [x] [Review][Defer] W3 — `Kill(entireProcessTree: true)` may terminate shared CI infrastructure processes — pre-existing concern for any process-killing probe; acceptable for a dev-only startup gate [src/Hexalith.EventStore.AppHost/PrerequisiteValidator.cs] — deferred, pre-existing
 - [x] [Review][Defer] W4 — `Models.SubmitCommandResponse` redeclares `ResultPayload` without inheriting `JsonIgnore`; active controller path uses `Contracts.Commands.SubmitCommandResponse` directly so no runtime impact today, but the wrapper is a latent attribution gap [src/Hexalith.EventStore/Models/SubmitCommandResponse.cs] — deferred, pre-existing
+- [x] [Review][Patch] P7 — `stderrTask` never awaited on success path; both tasks abandoned on timeout path. If `dapr --version` writes to stderr, `daprResult.Output` is empty string → false "DAPR runtime is not initialized" error blocking AppHost startup. On timeout: `Kill`+`WaitForExit` called but neither task is awaited, leaving background reads racing against `Dispose()`. → Applied: await both tasks on success path (stdout first, stderr fallback); drain both on timeout path via `Task.WhenAll`. [src/Hexalith.EventStore.AppHost/PrerequisiteValidator.cs]
+- [x] [Review][Patch] P8 — `SlowDockerProbeRunner` threshold hardcoded at 90 s but `CommandTimeout` is 120 s; test passes only because 120 ≥ 90. If `CommandTimeout` were reduced to 60 s, `Success` returns false while `errors.ShouldBeEmpty()` still fires — a false-pass. → Applied: threshold derived from `PrerequisiteValidator.CommandTimeout - TimeSpan.FromSeconds(1)`. [tests/Hexalith.EventStore.AppHost.Tests/Configuration/PrerequisiteValidatorTests.cs]
+- [x] [Review][Patch] P9 — `ScriptedRunner` ignores its `timeout` parameter and routes every non-`"docker"` command to the `dapr` result; a future third prerequisite check would silently receive the dapr stub, and timeout-boundary contracts are never exercised by any existing test. → Applied: replaced ternary with explicit `switch` expression; unknown commands return a failure with a diagnostic message. [tests/Hexalith.EventStore.AppHost.Tests/Configuration/PrerequisiteValidatorTests.cs]
+- [x] [Review][Patch] P10 — No test covers the both-fail scenario (Docker and DAPR both missing simultaneously); a regression that short-circuits on the first failure would not be caught since all existing tests assert `ShouldHaveSingleItem()`. → Applied: added `GetMissingPrerequisites_WhenBothFail_ReturnsTwoErrors` test. [tests/Hexalith.EventStore.AppHost.Tests/Configuration/PrerequisiteValidatorTests.cs]
+- [x] [Review][Patch] P11 — `IPrerequisiteCommandRunner` interface declaration uses K&R brace style (opening brace on same line), violating the Allman convention mandated by `.editorconfig`. → Applied: moved opening brace to new line. [src/Hexalith.EventStore.AppHost/PrerequisiteValidator.cs]
+- [x] [Review][Defer] W5 — `Guid.TryParse` in `CorrelationIdMiddlewareTests.cs` lines 27 and 67 violates the ULID ID validation rule (CLAUDE.md R2-A7); pre-existing, not introduced by this story [tests/Hexalith.EventStore.IntegrationTests/Middleware/CorrelationIdMiddlewareTests.cs] — deferred, pre-existing
+- [x] [Review][Defer] W6 — `Guid.TryParse` + `Guid.NewGuid()` in `Admin.Server.Host` correlation middleware production code violates the ULID ID validation rule; pre-existing, not touched by this story [src/Hexalith.EventStore.Admin.Server.Host/Middleware/CorrelationIdMiddleware.cs] — deferred, pre-existing
+- [x] [Review][Defer] W7 — No unit tests cover `Validate()` env-var bypass paths (`CI`, `SKIP_PREREQUISITE_CHECK`, `DOTNET_RUNNING_IN_CONTAINER`, `PUBLISH_TARGET`); `Validate()` was not refactored for testability in this story [src/Hexalith.EventStore.AppHost/PrerequisiteValidator.cs] — deferred, pre-existing
 
 ## Dev Agent Record
 

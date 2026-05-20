@@ -5,7 +5,7 @@ namespace Hexalith.EventStore.AppHost.Tests.Configuration;
 public class PrerequisiteValidatorTests {
     [Fact]
     public void GetMissingPrerequisites_UsesLightweightServerVersionProbeWithExtendedTimeout() {
-        var runner = new SlowDockerProbeRunner(TimeSpan.FromSeconds(90));
+        var runner = new SlowDockerProbeRunner(PrerequisiteValidator.CommandTimeout - TimeSpan.FromSeconds(1));
 
         IReadOnlyList<string> errors = PrerequisiteValidator.GetMissingPrerequisites(
             runner,
@@ -54,9 +54,26 @@ public class PrerequisiteValidatorTests {
         errors[0].ShouldContain("DAPR runtime");
     }
 
+    [Fact]
+    public void GetMissingPrerequisites_WhenBothFail_ReturnsTwoErrors() {
+        var runner = new ScriptedRunner(
+            docker: new PrerequisiteCommandResult(false, null),
+            dapr: new PrerequisiteCommandResult(false, null));
+
+        IReadOnlyList<string> errors = PrerequisiteValidator.GetMissingPrerequisites(runner, PrerequisiteValidator.CommandTimeout);
+
+        errors.Count.ShouldBe(2);
+        errors.ShouldContain(e => e.Contains("Docker"));
+        errors.ShouldContain(e => e.Contains("DAPR CLI"));
+    }
+
     private sealed class ScriptedRunner(PrerequisiteCommandResult docker, PrerequisiteCommandResult dapr) : IPrerequisiteCommandRunner {
         public PrerequisiteCommandResult Run(string command, string args, TimeSpan timeout) {
-            return command == "docker" ? docker : dapr;
+            return command switch {
+                "docker" => docker,
+                "dapr" => dapr,
+                _ => new PrerequisiteCommandResult(false, $"Unknown command: {command}")
+            };
         }
     }
 
