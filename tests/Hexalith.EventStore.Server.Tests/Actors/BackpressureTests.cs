@@ -1,6 +1,4 @@
 
-using System.Reflection;
-
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
@@ -20,6 +18,7 @@ using NSubstitute;
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 
@@ -55,8 +54,7 @@ public class BackpressureTests {
             Options.Create(backpressureOptions ?? new BackpressureOptions()),
             deadLetterPublisher);
 
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         // Default: no pipeline state (fresh command, not a resume)
         _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())

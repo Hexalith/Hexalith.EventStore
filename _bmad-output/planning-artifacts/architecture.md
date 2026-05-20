@@ -196,11 +196,11 @@ Three preliminary decisions emerging from the analysis. These are **provisional*
 
 | Dependency        | Version                    | Constraint Type                                                       |
 | ----------------- | -------------------------- | --------------------------------------------------------------------- |
-| .NET              | 10 LTS (November 2025 GA)  | Target framework `net10.0`                                            |
+| .NET              | 10 LTS / SDK 10.0.300      | Target framework `net10.0`; local SDK pinned by `global.json`         |
 | C#                | 14                         | Language features                                                     |
-| DAPR Runtime      | 1.14+                      | Sidecar model, actors, state store, pub/sub, config store, resiliency |
-| Aspire            | 13                         | Orchestration, service defaults, publishers                           |
-| DAPR SDK for .NET | Compatible with DAPR 1.14+ | Actor client, state management, pub/sub client                        |
+| DAPR Runtime      | 1.17.7                     | Sidecar model, actors, state store, pub/sub, config store, resiliency |
+| Aspire            | CLI/AppHost SDK 13.3.2; Aspire.Hosting packages 13.3.3 | Orchestration, service defaults, publishers                           |
+| DAPR SDK for .NET | 1.17.9                     | Actor client, state management, pub/sub client                        |
 
 **DAPR Building Block Dependencies (v1):**
 
@@ -283,17 +283,17 @@ Hexalith.Tenants is itself an event-sourced service built on Hexalith.EventStore
 
 **Server Platform + NuGet Library (backend infrastructure)** -- a distributed systems server with a client SDK. The starter establishes the multi-project solution structure for 5 NuGet packages + Aspire orchestration + DAPR actor hosting.
 
-### Verified Current Versions (February 2026)
+### Verified Current Versions (May 2026)
 
 | Technology                           | Version                                    | Notes                                                                 |
 | ------------------------------------ | ------------------------------------------ | --------------------------------------------------------------------- |
 | .NET SDK                             | 10.0.300                                   | LTS, supported until November 2028                                    |
 | C#                                   | 14                                         | Ships with .NET 10                                                    |
-| DAPR Runtime                         | 1.16.6                                     | Latest stable (updated from PRD's 1.14+ minimum)                      |
-| DAPR .NET SDK                        | Dapr.Client 1.16.1, Dapr.AspNetCore 1.16.1 | Requires .NET 8+                                                      |
-| Aspire                               | 13.1.2                                     | Polyglot platform, requires .NET 10 SDK                               |
+| DAPR Runtime                         | 1.17.7                                     | Local runtime verified with `dapr --version`                          |
+| DAPR .NET SDK                        | Dapr.Client/Dapr.AspNetCore/Dapr.Actors 1.17.9 | Package baseline from `Directory.Packages.props`                  |
+| Aspire                               | CLI/AppHost SDK 13.3.2; Aspire.Hosting packages 13.3.3 | Local CLI and package baseline                          |
 | CommunityToolkit.Aspire.Hosting.Dapr | 13.0.0                                     | Aspire + DAPR integration (replaces deprecated `Aspire.Hosting.Dapr`) |
-| Blazor Fluent UI                     | 5.0.0                                      | WC v3 foundation; Fluent 2 design system; FluentLayout, FluentProviders |
+| Blazor Fluent UI                     | 5.0.0-rc.2-26098.1                         | Current Admin UI component baseline                                   |
 
 ### Starter Options Considered
 
@@ -305,7 +305,7 @@ Hexalith.Tenants is itself an event-sourced service built on Hexalith.EventStore
 
 ### Selected Starter: Custom Solution from Individual Templates
 
-**Rationale:** Hexalith.EventStore's 6-package NuGet architecture, DAPR actor interface/implementation separation, and Aspire orchestration don't match any existing starter. Building from individual `dotnet new` templates provides precise control while leveraging .NET 10 / Aspire 13.1 scaffolding.
+**Rationale:** Hexalith.EventStore's 6-package NuGet architecture, DAPR actor interface/implementation separation, and Aspire orchestration don't match any existing starter. Building from individual `dotnet new` templates provides precise control while leveraging .NET 10 / Aspire 13.3 scaffolding.
 
 **Initialization Command:**
 
@@ -366,9 +366,9 @@ Hexalith.EventStore/
 
 | Package                                         | Project(s)         | Version |
 | ----------------------------------------------- | ------------------ | ------- |
-| `Dapr.Actors.AspNetCore`                        | EventStore, Server | 1.16.x  |
-| `Dapr.Client`                                   | Server, Client     | 1.16.1  |
-| `Dapr.AspNetCore`                               | EventStore         | 1.16.1  |
+| `Dapr.Actors.AspNetCore`                        | EventStore, Server | 1.17.9  |
+| `Dapr.Client`                                   | Server, Client     | 1.17.9  |
+| `Dapr.AspNetCore`                               | EventStore         | 1.17.9  |
 | `CommunityToolkit.Aspire.Hosting.Dapr`          | AppHost            | 13.0.0  |
 | `MediatR`                                       | Server, EventStore | latest  |
 | `Microsoft.AspNetCore.Authentication.JwtBearer` | EventStore         | 10.0.x  |
@@ -410,7 +410,7 @@ Hexalith.EventStore/
 
 | Decision          | Choice                                                               | Source                     |
 | ----------------- | -------------------------------------------------------------------- | -------------------------- |
-| Runtime           | .NET 10 LTS, C# 14, DAPR 1.16+, Aspire 13.1                          | PRD + version verification |
+| Runtime           | .NET SDK 10.0.300, C# 14, DAPR runtime 1.17.7, DAPR .NET packages 1.17.9, Aspire AppHost SDK/CLI 13.3.2, Aspire.Hosting 13.3.3 | PRD + version verification |
 | API Style         | REST with `/api/v1/` path prefix                                     | PRD                        |
 | Auth Model        | JWT with six-layer defense in depth                                  | PRD                        |
 | Package Structure | 5 NuGet packages + EventStore host + Aspire orchestration            | PRD + Starter              |

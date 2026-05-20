@@ -1,6 +1,4 @@
 
-using System.Reflection;
-
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
@@ -21,6 +19,7 @@ using NSubstitute;
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
@@ -54,8 +53,7 @@ public class EventPublicationIntegrationTests {
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), Substitute.For<IDeadLetterPublisher>());
 
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         // Default: no idempotency record
         _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())

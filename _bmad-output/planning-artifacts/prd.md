@@ -44,8 +44,10 @@ classification:
         - DAPR runtime dependency adding operational surface area
     projectContext: "Greenfield codebase, pre-validated architecture"
     scopeStrategy: "Deliberate phasing - v1 actors with workflow-ready design, v2 workflow migration"
-lastEdited: "2026-03-14"
+lastEdited: "2026-05-20"
 editHistory:
+    - date: "2026-05-20"
+      changes: "Readiness cleanup: normalized current technology baseline to .NET SDK 10.0.300, DAPR runtime 1.17.7 with .NET package family 1.17.9, Aspire AppHost SDK/CLI 13.3.2 with Aspire.Hosting 13.3.3, and Fluent UI 5.0.0-rc.2-26098.1. Added scope horizon governance so current-release, v1.1, v2, v3, and v4 material cannot be selected accidentally without sprint-status routing."
     - date: "2026-03-14"
       changes: "Apply brainstorming session 2026-03-13 (DDD Message Design for Hexalith.Tenants) + validation fixes. Post-validation: fixed Journey 5 command payload (critical), FR23 field enumeration, line 86 Blazor→Aspire dashboard, line 88 learning curve quantified (4hr), line 118 ops model threshold (<2 escalations/month). Added FR65 (metadataVersion for external contract evolution), FR66 (aggregate tombstoning/lifecycle termination), FR67 (per-aggregate backpressure with HTTP 429). Event envelope 13→14 fields (added metadataVersion). Added JSON-only serialization note."
     - date: "2026-03-14"
@@ -79,7 +81,7 @@ Hexalith.EventStore is an open-source, DAPR-native event sourcing server platfor
 
 **Development Strategy:** Deliberate phasing -- the current release delivers the complete command-to-event pipeline plus the query/projection caching pipeline (self-routing ETag cache invalidation with runtime projection discovery, query actor routing, optional SignalR real-time notification, and query contract support) using DAPR actors with a workflow-ready state machine design. v2 now focuses on DAPR Workflow orchestration and a comprehensive Administration Tooling layer — Blazor Web UI (event store-specific operational dashboard with developer debugging and DBA operations), CLI tool (`eventstore-admin` distributed as a .NET global tool), and MCP server (enabling AI agents to diagnose and manage the event store programmatically). The admin tooling provides event store domain-aware views (streams, aggregates, projections, sagas) with deep links to existing observability tools (Zipkin/Jaeger for traces, Prometheus/Grafana for metrics, Aspire Dashboard for structured logs) — it does not replicate their functionality.
 
-**Technology Stack:** .NET 10 LTS, DAPR 1.16.1, Aspire 13.1.x, C# 14
+**Technology Stack:** .NET SDK 10.0.300, .NET 10 LTS / C# 14, DAPR runtime 1.17.7 with DAPR .NET packages 1.17.9, Aspire AppHost SDK/CLI 13.3.2 with Aspire.Hosting packages 13.3.3, Blazor Fluent UI 5.0.0-rc.2-26098.1
 
 ## Success Criteria
 
@@ -199,6 +201,21 @@ Performance and resilience targets are summarized here as success criteria; deta
 | Advocacy         | 1+ community blog post or talk        | External content creation       |
 
 ## Product Scope
+
+### Scope Horizon Governance
+
+The PRD intentionally contains historical v1 requirements, current implementation scope, v1.1 downstream integration closure, v2 administration tooling, and v3/v4 roadmap concepts. Sprint planning must use this table before selecting work:
+
+| Horizon | PRD Material | Implementation Selection Rule |
+| ------- | ------------ | ----------------------------- |
+| Current repository baseline | Epics 1-22 in `epics.md`, as tracked by `_bmad-output/implementation-artifacts/sprint-status.yaml` | Use sprint-status rows and active story files as the source of assignable work. A PRD requirement alone is not assignable. |
+| v1 historical foundation | FR1-FR67 and NFR1-NFR34 command, event, security, operations, and deployment requirements | Treat as implemented baseline unless sprint-status opens a regression or follow-up row. |
+| Current query/projection release | FR50-FR64 and NFR35-NFR39 | Treat as implemented baseline plus regression surface. New work requires explicit story routing. |
+| v1.1 downstream contract closure | FR83-FR104 | Treat as Epic 22 scope. Parent/container stories remain non-assignable; child rows and follow-up rows own implementation. |
+| v2 administration tooling | FR68-FR82 and NFR40-NFR46 | Treat as completed admin baseline in Epics 14-21. Any follow-up must load the linked implementation artifact before approval. |
+| v3/v4 roadmap | Enterprise readiness and ecosystem/community roadmap sections | Inform strategy only. Do not implement without a new PRD update, architecture impact note, and epic/story routing. |
+
+Epic 11 remains supplemental implementation scope authorized by the approved server-managed projection-builder change proposal. It supports existing query/projection FRs but does not create additional numbered PRD coverage unless this PRD is amended with explicit projection-builder FRs.
 
 ### MVP - Minimum Viable Product
 
@@ -506,8 +523,10 @@ Hexalith.EventStore is a hybrid project type: an **infrastructure server platfor
 **Runtime Stack:**
 
 - .NET 10 LTS (November 2025 GA) with C# 14
-- DAPR 1.16.1 runtime (sidecar model)
-- Aspire 13 for orchestration and deployment
+- .NET SDK 10.0.300 for local builds
+- DAPR runtime 1.17.7 (sidecar model) with DAPR .NET packages 1.17.9
+- Aspire AppHost SDK/CLI 13.3.2 with Aspire.Hosting packages 13.3.3 for orchestration and deployment
+- Blazor Fluent UI 5.0.0-rc.2-26098.1 for the admin UI baseline
 - Target frameworks: `net10.0` for all projects
 
 **DAPR Building Block Dependencies:**
@@ -690,7 +709,7 @@ Hexalith.EventStore's MVP is a **platform MVP** -- the minimum infrastructure th
 **Resource Requirements:**
 
 - Primary developer: 1 senior .NET developer (Jerome) with deep DAPR and DDD expertise
-- Infrastructure: DAPR runtime, .NET 10 SDK, Aspire 13 tooling
+- Infrastructure: DAPR runtime 1.17.7, .NET SDK 10.0.300, Aspire CLI/AppHost SDK 13.3.2 tooling
 - Testing environments: Redis (local dev), PostgreSQL (production validation)
 - No additional team members required for v1; v2 Blazor dashboard may benefit from frontend contribution
 

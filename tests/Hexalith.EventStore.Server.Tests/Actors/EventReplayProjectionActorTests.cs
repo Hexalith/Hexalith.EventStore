@@ -1,5 +1,4 @@
 
-using System.Reflection;
 using System.Text.Json;
 
 using Dapr.Actors;
@@ -15,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 
 using Shouldly;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 
@@ -35,8 +35,7 @@ public class EventReplayProjectionActorTests {
 
         var actor = new EventReplayProjectionActor(host, eTagService, notifier, logger);
 
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         return (actor, stateManager, notifier, eTagService);
     }
@@ -191,8 +190,7 @@ public class EventReplayProjectionActorTests {
         var host = ActorHost.CreateForTest<EventReplayProjectionActor>(
             new ActorTestOptions { ActorId = new ActorId(ActorIdString) });
         var actor = new EventReplayProjectionActor(host, eTagService, notifier, logger);
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         ProjectionState state = CreateTestState();
         _ = notifier.NotifyProjectionChangedAsync(

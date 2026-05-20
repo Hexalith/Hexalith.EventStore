@@ -40,7 +40,7 @@ public class TombstoningLifecycleTests : IDisposable {
         // ADR R1A7-01: reset any leftover SetupResponse registrations from a sibling test class
         // in the same [Collection]; without this, the SetupHandler calls below throw
         // InvalidOperationException per the mutual-exclusion contract.
-        _fixture.DomainServiceInvoker.ClearAll();
+        _fixture.ResetTestState();
 
         Func<CommandEnvelope, object?, Task<DomainResult>> dispatch =
             (cmd, state) => _aggregate.ProcessAsync(cmd, state);
@@ -52,7 +52,7 @@ public class TombstoningLifecycleTests : IDisposable {
     }
 
     /// <summary>Leaves the shared <see cref="Hexalith.EventStore.Testing.Fakes.FakeDomainServiceInvoker"/> clean for the next sibling test class.</summary>
-    public void Dispose() => _fixture.DomainServiceInvoker.ClearAll();
+    public void Dispose() => _fixture.ResetTestState();
 
     /// <summary>
     /// Scenario 1: after CloseCounter, a follow-up IncrementCounter is rejected and persisted as

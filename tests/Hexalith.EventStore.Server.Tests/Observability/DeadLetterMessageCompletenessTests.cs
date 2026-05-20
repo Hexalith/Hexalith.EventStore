@@ -1,6 +1,4 @@
 
-using System.Reflection;
-
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
@@ -21,6 +19,7 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Observability;
 /// <summary>
@@ -69,8 +68,7 @@ public class DeadLetterMessageCompletenessTests {
             Options.Create(new BackpressureOptions()),
             fakeDeadLetter);
 
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         // Default: no duplicates, no pipeline state, no metadata
         _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -187,18 +185,23 @@ public class DeadLetterMessageCompletenessTests {
 
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Specific domain failure reason"));
+        DateTimeOffset before = DateTimeOffset.UtcNow;
 
         // Act
         _ = await actor.ProcessCommandAsync(envelope);
+        DateTimeOffset after = DateTimeOffset.UtcNow;
 
         // Assert
         DeadLetterMessage dl = fakeDeadLetter.GetDeadLetterMessages()[0].Message;
 
         dl.FailureStage.ShouldNotBeNullOrEmpty("FailureStage should be populated");
         dl.ExceptionType.ShouldBe("InvalidOperationException");
-        dl.ErrorMessage.ShouldBe("Specific domain failure reason");
-        dl.FailedAt.ShouldBeGreaterThan(DateTimeOffset.UtcNow.AddMinutes(-1), "FailedAt should be recent");
-        dl.FailedAt.ShouldBeLessThanOrEqualTo(DateTimeOffset.UtcNow.AddSeconds(1));
+        dl.ErrorMessage.ShouldContain("Protected data diagnostic details were redacted.");
+        dl.ErrorMessage.ShouldContain("ReasonCode=protected-data-diagnostic-redacted");
+        dl.ErrorMessage.ShouldContain("Stage=Processing");
+        dl.ErrorMessage.ShouldNotContain("Specific domain failure reason");
+        dl.FailedAt.ShouldBeGreaterThanOrEqualTo(before);
+        dl.FailedAt.ShouldBeLessThanOrEqualTo(after);
     }
 
     #endregion
@@ -262,10 +265,12 @@ public class DeadLetterMessageCompletenessTests {
         dl.ExceptionType.Contains("at ").ShouldBeFalse("ExceptionType should not contain stack trace");
         dl.ExceptionType.Contains(Environment.NewLine).ShouldBeFalse("ExceptionType should not contain newlines");
 
-        // ErrorMessage should be just the message, not the full ToString with stack trace
-        dl.ErrorMessage.ShouldBe("Test failure with stack trace");
+        // ErrorMessage should be safe diagnostic text, not the provider exception text or full ToString with stack trace.
+        dl.ErrorMessage.ShouldContain("Protected data diagnostic details were redacted.");
+        dl.ErrorMessage.ShouldContain("ReasonCode=protected-data-diagnostic-redacted");
         dl.ErrorMessage.Contains("at ").ShouldBeFalse("ErrorMessage should not contain stack trace");
         dl.ErrorMessage.Contains("StackTrace").ShouldBeFalse("ErrorMessage should not reference stack trace");
+        dl.ErrorMessage.Contains("Test failure with stack trace").ShouldBeFalse("ErrorMessage should not expose provider exception text");
     }
 
     #endregion

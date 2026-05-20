@@ -13,6 +13,7 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 
@@ -32,8 +33,7 @@ public class ETagActorTests {
         var actor = new ETagActor(host, NullLogger<ETagActor>.Instance);
 
         // Dapr runtime sets StateManager internally; tests inject a substitute.
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         return (actor, stateManager);
     }

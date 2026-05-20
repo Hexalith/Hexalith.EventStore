@@ -1,6 +1,4 @@
 
-using System.Reflection;
-
 using Dapr.Actors;
 using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
@@ -22,6 +20,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 
 using Shouldly;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
@@ -141,8 +140,7 @@ public class DataPathIsolationTests {
             new ActorTestOptions { ActorId = new ActorId($"{tenantId}:{domain}:{aggId}") });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher);
 
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
@@ -200,8 +198,7 @@ public class DataPathIsolationTests {
             new ActorTestOptions { ActorId = new ActorId($"{tenantId}:{domain}:{aggId}") });
         var actor = new AggregateActor(host, actorLogger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher);
 
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));
@@ -251,8 +248,7 @@ public class DataPathIsolationTests {
             new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher);
 
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(false, default!));

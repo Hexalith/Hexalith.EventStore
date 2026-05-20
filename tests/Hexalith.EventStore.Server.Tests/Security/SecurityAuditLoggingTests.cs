@@ -1,5 +1,4 @@
 
-using System.Reflection;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -31,6 +30,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 
 using Shouldly;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>
@@ -139,8 +139,7 @@ public class SecurityAuditLoggingTests {
             statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher);
 
         // Inject mock state manager via public property (established pattern from DataPathIsolationTests)
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         // Set up the state manager to return no existing state
         _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())

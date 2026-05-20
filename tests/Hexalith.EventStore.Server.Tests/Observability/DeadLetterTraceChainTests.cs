@@ -27,6 +27,7 @@ using NSubstitute.ExceptionExtensions;
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Observability;
 /// <summary>
@@ -74,8 +75,7 @@ public class DeadLetterTraceChainTests {
             Options.Create(new BackpressureOptions()),
             fakeDeadLetter);
 
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         // Default: no duplicates, no pipeline state, no metadata
         _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -135,8 +135,7 @@ public class DeadLetterTraceChainTests {
             Options.Create(new BackpressureOptions()),
             deadLetterPublisher);
 
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
@@ -188,8 +187,7 @@ public class DeadLetterTraceChainTests {
             Options.Create(new BackpressureOptions()),
             deadLetterPublisher);
 
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));

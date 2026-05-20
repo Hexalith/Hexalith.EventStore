@@ -20,8 +20,8 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Target .NET SDK `10.0.300` and `net10.0`; keep new projects aligned with root `global.json` and `Directory.Build.props`.
 - Use centralized package management in `Directory.Packages.props`; do not add package versions directly to individual `.csproj` files unless the repo already makes an explicit exception.
 - Aspire is the application orchestrator. App model changes belong in `src/Hexalith.EventStore.AppHost/Program.cs` and require an Aspire restart to take effect.
-- Use Aspire package versions aligned with `Aspire.AppHost.Sdk/13.2.2`; consult current Aspire integration docs before adding app model resources.
-- Use DAPR through the configured sidecar model and package family `1.17.7`; application code should stay portable across DAPR state store/pubsub backends.
+- Use Aspire package versions aligned with `Aspire.AppHost.Sdk/13.3.2`, Aspire CLI `13.3.2`, and `Aspire.Hosting` packages `13.3.3`; consult current Aspire integration docs before adding app model resources.
+- Use DAPR through the configured sidecar runtime `1.17.7` and .NET package family `1.17.9`; application code should stay portable across DAPR state store/pubsub backends.
 - Admin UI is Blazor with Microsoft Fluent UI `5.0.0-rc.2-26098.1`; preserve existing Fluent UI component patterns instead of introducing a second UI component system.
 - Node dependencies are release/workflow tooling only; do not introduce frontend build assumptions unless the touched project already has them.
 
@@ -118,4 +118,4 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Review periodically for outdated rules.
 - Remove rules that become obvious or stop preventing real mistakes.
 
-Last Updated: 2026-05-10
+Last Updated: 2026-05-20

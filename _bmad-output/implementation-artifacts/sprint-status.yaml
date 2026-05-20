@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-05-20T10:20:54+02:00 - Sprint planning refresh: canonical epic/story inventory validated from epics.md; no status transitions changed; preserved 54 existing carry-forward rows outside canonical epic inventory.
+# last_updated: 2026-05-20T10:49:55+02:00 - Readiness guardrails applied: parent/container stories are non-assignable, technical epic titles are stable labels, completed Admin/UI follow-ups require linked Detail artifacts, WS-1 is the first-class bootstrap gate, PRD scope horizons govern implementation selection, UX-DR41..UX-DR59 stay visible in story review, and Epic 11 remains supplemental unless PRD coverage changes.
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,9 +33,20 @@
 # - Stories can be worked in parallel if team capacity allows
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+#
+# PLANNING GUARDRAILS:
+# ====================
+# - Use epic Outcomes and Capability aliases from epics.md for sprint planning; epic titles are stable identifiers, not implementation objectives.
+# - Do not assign parent/container rows directly. For 22-1 use child rows 22-1a..22-1d; for 22-5 use child rows 22-5a..22-5d; for 22-7d use child rows 22-7d-1..22-7d-4.
+# - Any follow-up touching completed Epics 14-21 must cite and load the linked Detail implementation artifact before approval, change, or test review.
+# - WS-1 is the first-class bootstrap/readiness gate for any greenfield or re-bootstrap pass over Epics 1-8.
+# - PRD scope horizons govern implementation selection: current baseline and v1.1/v2 work must be routed through sprint-status; v3/v4 roadmap concepts require new PRD/architecture/story routing before implementation.
+# - UX-DR41..UX-DR59 remain story-level acceptance criteria for Admin Web UI, CLI, and MCP follow-ups.
+# - Epic 11 remains supplemental projection-builder scope under the approved change proposal unless the PRD is amended with explicit new FR coverage.
 
 generated: 2026-03-15
-last_updated: '2026-05-20T10:20:54+02:00' # Sprint planning refresh: canonical epic/story inventory validated from epics.md; no status transitions changed; preserved 54 existing carry-forward rows outside canonical epic inventory.
+last_updated: '2026-05-20T10:49:55+02:00' # Readiness guardrails applied: parent/container stories are non-assignable, technical epic titles are stable labels, completed Admin/UI follow-ups require linked Detail artifacts, WS-1 is the first-class bootstrap gate, PRD scope horizons govern implementation selection, UX-DR41..UX-DR59 stay visible in story review, and Epic 11 remains supplemental unless PRD coverage changes.
+# Previous last_updated detail preserved: 2026-05-20T10:20:54+02:00 - Sprint planning refresh: canonical epic/story inventory validated from epics.md; no status transitions changed; preserved 54 existing carry-forward rows outside canonical epic inventory.
 # Previous last_updated detail preserved: 2026-05-19T17:53:03+02:00 - Epic 22 retrospective completed and saved to _bmad-output/implementation-artifacts/epic-22-retro-2026-05-19.md. Epic 22 and its retrospective were moved to done after all Epic 22 story rows, 22.7d child rows, and post-epic-22-r22a1-query-router-actor-proxy-fix were already done. Retrospective captured key lessons: public contract ownership worked, fail-closed/no-leak proof improved, integration/runtime proof remains environment-gated in a few areas, and no Epic 23 exists yet.
 # Previous last_updated detail preserved: 2026-05-19T15:45:00+02:00 - Story post-epic-22-r22a1-query-router-actor-proxy-fix moved review -> done after code-review patch pass. Applied all 4 review fixes: production-path weak ActorProxy regression guard, list-tenants payload/JSON assertions, cancellation-before-not-found classification, and fixed configuration-store documentation links. Fresh EnableKeycloak=false Aspire smoke through eventstore-admin returned GET /api/v1/admin/tenants 200 OK with []; fresh EventStore logs showed 0 QueryRouter EventId 1202 / weak-proxy NRE entries for ActorId=tenants:system:index. Validation green: focused Server.Tests slice QueryRouter|SubmitQuery|DefaultProjectionActorInvoker 91/91; full Release solution build 0 warnings / 0 errors.
 # Previous last_updated detail preserved: 2026-05-19T15:30:00+02:00 - Story post-epic-22-r22a1-query-router-actor-proxy-fix moved ready-for-dev -> review after QueryRouter weak ActorProxy fix and orphan configstore cleanup. Internal IProjectionActorInvoker seam added with regression-sensitive guard tests; orphan src/Hexalith.EventStore.AppHost/DaprComponents/configstore.yaml deleted; architecture.md/dapr-component-reference.md/deployment-docker-compose.md updated. Focused Server.Tests slice QueryRouter|SubmitQuery|DefaultProjectionActorInvoker 90/90 green; full Release solution build 0 warnings / 0 errors. Aspire smoke (real Admin UI Tenants workflow) operator-deferred; recorded in _bmad-output/test-artifacts/post-epic-22-r22a1-query-router-actor-proxy-fix/evidence.md as the one ST5 sub-task to close before done.
@@ -368,10 +379,12 @@ development_status:
   # Story 22.7 split by sprint-change-proposal-2026-05-12.md after implementation readiness approval.
   # Parent/container rows must not be assigned for new implementation. Create or move child rows when work starts.
   epic-22: done
+  # Container only: do not assign directly. Use 22-1a, 22-1b, 22-1c, and 22-1d for implementation/review evidence.
   22-1-gateway-command-query-contract-closure-and-package-docs: done
   22-2-projection-adapter-contract-and-generic-query-actor-model: done
   22-3-gateway-owned-tenant-and-rbac-enforcement: done
   22-4-query-behavior-policy-and-error-taxonomy: done
+  # Container only: do not assign directly. Use 22-5a, 22-5b, 22-5c, and 22-5d for implementation/review evidence.
   22-5-event-publishing-guarantees-and-backend-deployment-matrix: done
   22-6-stream-replay-read-apis-and-projection-rebuild-checkpoints: done
   22-7a-payload-and-snapshot-protection-hooks: done

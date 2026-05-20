@@ -1,6 +1,4 @@
 
-using System.Reflection;
-
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
@@ -18,6 +16,7 @@ using NSubstitute;
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 
@@ -46,8 +45,7 @@ public class AggregateActorGetEventsTests {
             Options.Create(new BackpressureOptions()),
             deadLetterPublisher);
 
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         return (actor, stateManager);
     }

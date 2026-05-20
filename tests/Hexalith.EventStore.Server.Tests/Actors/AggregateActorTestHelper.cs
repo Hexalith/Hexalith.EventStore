@@ -1,6 +1,4 @@
 
-using System.Reflection;
-
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
@@ -19,6 +17,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 
@@ -73,8 +72,7 @@ internal static class AggregateActorTestHelper {
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, payloadProtectionService ?? new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher);
 
         // Set the mock state manager via reflection (Dapr runtime normally sets this)
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         // Default: domain service returns NoOp
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())

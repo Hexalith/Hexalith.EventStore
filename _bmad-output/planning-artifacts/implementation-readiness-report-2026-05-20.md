@@ -631,3 +631,21 @@ No critical issues require immediate action before proceeding.
 This assessment identified 9 issues across document hygiene, UX handoff, epic structure, story assignability, scope governance, and technology-baseline consistency. None are critical blockers, but the major issues should be controlled before new implementation begins.
 
 Assessment completed on 2026-05-20 by Codex using the `bmad-check-implementation-readiness` workflow.
+
+## Resolution Addendum - 2026-05-20
+
+Corrective planning updates were applied through `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-20-readiness-guardrails.md`.
+
+Resolution summary:
+
+1. Technology-centric epic-title risk is mitigated by capability aliases in `epics.md` and a sprint-status guardrail requiring planning to use Outcomes and Capability aliases.
+2. Parent/container stories 22.1 and 22.5 are explicitly non-assignable in `epics.md` and `sprint-status.yaml`; child stories own implementation/review evidence.
+3. Completed Admin/UI Epics 14-21 now have a top-level handoff guard requiring linked `Detail` artifacts before follow-up approval, change, or testing.
+4. WS-1 is now the first-class bootstrap/readiness slice for greenfield or re-bootstrap work.
+5. PRD, architecture, UX, and project context now align to the verified baseline: .NET SDK 10.0.300, DAPR runtime 1.17.7, DAPR .NET packages 1.17.9, Aspire CLI/AppHost SDK 13.3.2, Aspire.Hosting packages 13.3.3, and Fluent UI 5.0.0-rc.2-26098.1.
+6. PRD scope horizon governance now distinguishes current baseline, v1 historical foundation, current query/projection release, v1.1 downstream contract closure, v2 admin tooling, and v3/v4 roadmap material.
+7. UX-DR41 through UX-DR59 are preserved as visible story-level acceptance criteria for Admin Web UI, CLI, and MCP follow-ups.
+8. WS-1 acceptance criteria are now Given/When/Then formatted.
+9. Epic 11 is explicitly documented as supplemental projection-builder scope tied to the approved change proposal unless the PRD adds new numbered FR coverage.
+
+Post-correction status: READY, with the guardrails above as binding handoff controls for future implementation selection.

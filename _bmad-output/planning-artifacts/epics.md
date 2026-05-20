@@ -439,15 +439,25 @@ As a developer evaluating the foundation sequence,
 I want the thinnest EventStore command path proven end to end,
 So that foundation work remains anchored to observable user value.
 
-Readiness rule: WS-1 must be verified before any new implementation pass over Epics 1-8 foundation work, even though the historical implementation later deepens the topology in Epic 8.
+Readiness rule: WS-1 is the first-class bootstrap/readiness slice for greenfield or re-bootstrap work. It must be verified before any new implementation pass over Epics 1-8 foundation work, even though the historical implementation later deepens the topology in Epic 8.
 
 **Acceptance Criteria:**
 
-- AppHost starts EventStore and one sample domain service.
-- A single sample command is submitted through `POST /api/v1/commands`.
-- One event is persisted for the aggregate.
-- Command status is observable through `GET /api/v1/commands/status/{correlationId}`.
-- At least one structured log or trace carries the same correlation ID.
+**Given** a clean checkout with documented prerequisites installed,
+**When** the AppHost starts,
+**Then** EventStore and one sample domain service are running.
+
+**Given** the AppHost is running,
+**When** a single sample command is submitted through `POST /api/v1/commands`,
+**Then** one event is persisted for the aggregate.
+
+**Given** the command submission returned a correlation ID,
+**When** the developer calls `GET /api/v1/commands/status/{correlationId}`,
+**Then** command status is observable.
+
+**Given** the command lifecycle has run,
+**When** logs or traces are inspected,
+**Then** at least one structured log or trace carries the same correlation ID.
 
 Later epics deepen persistence, auth, distribution, testing, and operations. This gate exists to keep onboarding value visible early.
 
@@ -459,9 +469,14 @@ Later epics deepen persistence, auth, distribution, testing, and operations. Thi
 - Create new sprint-status rows from split maps only when implementation starts.
 - Keep completed Epics 14-21 compact in this document: each completed story summary should include story key/title, outcome, key acceptance point, and link to the detailed implementation artifact.
 - For any new implementation, review, regression fix, or follow-up touching completed Epics 14-21, load the linked `Detail` implementation artifacts before accepting, changing, or testing the story. Missing or unreadable linked artifacts block readiness for that follow-up.
+- Treat epic titles as stable IDs, not sprint objectives. Sprint planning must use each epic's `Outcome` and `Capability alias` so implementation choices stay anchored to user-visible capability.
+- Parent/container stories marked `Container Only` are summary records and are not assignable implementation units. Their acceptance criteria are summary acceptance only; implementation and review must use the listed child stories.
+- Keep UX-DR41 through UX-DR59 visible during Admin Web UI, CLI, and MCP story review. Architecture ADR-P4/ADR-P5 authorize the model, but the UX requirements remain story-level acceptance criteria.
+- Use the PRD scope horizon table before selecting work. Roadmap v3/v4 concepts require a new PRD/architecture/story routing pass before implementation.
 
 ### Epic 1: Domain Contract Foundation
 **Outcome:** Domain developers can define safe commands, events, identities, and aggregate behavior without infrastructure code.
+**Capability alias:** Define domain behavior safely without infrastructure code.
 
 A domain service developer can define commands, events, identity types, and aggregate state using EventStore's shared type system — ULID-based IDs, MessageType value objects, 14-field event envelope, EventStoreAggregate base class, and IRejectionEvent marker interface.
 **FRs covered:** FR1 (types), FR2 (types), FR11, FR21, FR26, FR48, FR65, FR66
@@ -469,6 +484,7 @@ A domain service developer can define commands, events, identity types, and aggr
 
 ### Epic 2: Event Persistence & Aggregate Processing
 **Outcome:** API-submitted commands can produce durable, replayable aggregate event streams.
+**Capability alias:** Turn submitted commands into durable, replayable event streams.
 
 Commands routed to aggregate actors trigger state rehydration from events, domain service invocation via the pure function contract, and atomic event persistence with sequence numbers, optimistic concurrency, and idempotency detection.
 **FRs covered:** FR3, FR9, FR10, FR12, FR14, FR15, FR16, FR23, FR49
@@ -483,6 +499,7 @@ An API consumer can POST commands via REST, receive 202 Accepted + correlation I
 
 ### Epic 4: Event Distribution & Pub/Sub
 **Outcome:** Subscribers can receive persisted events reliably without coupling to storage internals.
+**Capability alias:** Deliver persisted events reliably to authorized subscribers.
 
 Persisted events are automatically published to per-tenant-per-domain CloudEvents 1.0 topics with at-least-once delivery, resilient backlog draining during pub/sub outages, and per-aggregate backpressure.
 **FRs covered:** FR17, FR18, FR19, FR20, FR67
@@ -490,6 +507,7 @@ Persisted events are automatically published to per-tenant-per-domain CloudEvent
 
 ### Epic 5: Security & Multi-Tenant Isolation
 **Outcome:** Tenants can submit and process commands without data crossing identity, storage, or pub/sub boundaries.
+**Capability alias:** Keep tenant command processing isolated across every boundary.
 
 JWT-based authentication, claims-based authorization (tenant/domain/command type), three-layer data isolation (data path, storage key, pub/sub topic), DAPR access control policies, and E2E security testing with Keycloak in Aspire.
 **FRs covered:** FR27, FR28, FR29, FR30, FR31, FR32, FR33, FR34
@@ -504,6 +522,7 @@ OpenTelemetry traces span the full command lifecycle, structured logs carry corr
 
 ### Epic 7: Snapshots, Rate Limiting & Performance
 **Outcome:** Operators can keep command processing responsive under stream growth and abuse pressure.
+**Capability alias:** Keep command processing responsive under growth and abuse.
 
 Configurable snapshots accelerate state rehydration, per-tenant and per-consumer rate limiting prevents abuse, and aggregate-level backpressure protects against saga storms.
 **FRs covered:** FR13
@@ -518,6 +537,7 @@ A developer starts the complete DAPR topology with a single Aspire command, refe
 
 ### Epic 9: Query Pipeline & ETag Caching
 **Outcome:** Query callers get cache-aware responses through deterministic routing, self-routing ETags, actor cache behavior, and compile-time response contracts.
+**Capability alias:** Serve cache-aware queries with safe invalidation and stable contracts.
 
 Queries are routed through a 3-tier model (entity, checksum, tenant), with self-routing ETag pre-checks returning HTTP 304, in-memory page cache in query actors, coarse invalidation on projection changes, and compile-time enforced query response contracts.
 **FRs covered:** FR50, FR51, FR52, FR53, FR54, FR57, FR58, FR61, FR62, FR63
@@ -532,6 +552,7 @@ Connected clients receive push "changed" signals when projections update, with R
 
 ### Epic 11: Server-Managed Projection Builder
 **Outcome:** Projection owners can get queryable read models without owning pub/sub subscriptions.
+**Capability alias:** Build queryable read models without projection owners managing subscriptions.
 
 EventStore delivers persisted events to domain services' /project endpoints via DAPR service invocation, caches the returned projection state in ProjectionActor, and supports immediate (fire-and-forget) or polled delivery modes — making queries return real data without domain services managing pub/sub subscriptions.
 **Authority:** Approved projection change scope from SCP-Projection Stories 8.9-8.11.
@@ -555,6 +576,7 @@ Quick start guide (3 pages, clone to first command in 10 minutes), error referen
 
 ### Epic 14: Admin API Foundation & Abstractions
 **Outcome:** Admin users, CLI users, and MCP agents share one secure operational API.
+**Capability alias:** Give every admin surface one secure operational contract.
 
 Shared service interfaces, DTOs, and Admin.Server REST API backed by DAPR. The single backend consumed by Web UI (in-process), CLI (HTTP), and MCP (HTTP). Aspire integration with dedicated DAPR sidecar.
 **FRs covered:** FR79, FR82
@@ -590,6 +612,7 @@ MCP server exposing admin operations as AI-callable tools with structured JSON o
 
 ### Epic 19: Admin — DAPR Infrastructure Visibility
 **Outcome:** Operators can diagnose DAPR sidecar, actor, pub/sub, and resiliency health from EventStore context.
+**Capability alias:** Diagnose DAPR runtime health from EventStore context.
 
 DAPR-specific monitoring: sidecar health, actor inspector, pub/sub delivery metrics, resiliency policy viewer, component health history.
 **FRs covered:** FR75 (DAPR portion)
@@ -603,6 +626,7 @@ Breakthrough debugging features: blame view (per-field provenance), bisect tool 
 
 ### Epic 21: Admin UI Fluent UI v5 Stability Migration
 **Outcome:** Admin users retain stable, accessible, testable workflows on Fluent UI v5.
+**Capability alias:** Keep admin workflows stable, accessible, and testable on Fluent UI v5.
 
 The admin UI remains stable, accessible, and testable on Fluent UI Blazor v5. This completed migration preserved existing admin workflows while updating package, component, layout, theme, dialog, toast, DataGrid, and CSS token usage.
 **Dependencies:** Epics 15, 16, 19, 20 (all completed UI work)
@@ -622,6 +646,7 @@ EventStore becomes the stable gateway contract for downstream bounded contexts s
 ## Epic 1: Domain Contract Foundation
 
 **Outcome:** Domain developers can define safe commands, events, identities, and aggregate behavior without infrastructure code.
+**Capability alias:** Define domain behavior safely without infrastructure code.
 
 A domain service developer can define commands, events, identity types, and aggregate state using EventStore's shared type system — ULID-based IDs, MessageType value objects, 14-field event envelope, EventStoreAggregate base class, and IRejectionEvent marker interface.
 
@@ -736,6 +761,7 @@ So that command status tracking uses a shared vocabulary and terminated aggregat
 ## Epic 2: Event Persistence & Aggregate Processing
 
 **Outcome:** API-submitted commands can produce durable, replayable aggregate event streams.
+**Capability alias:** Turn submitted commands into durable, replayable event streams.
 
 Commands routed to aggregate actors trigger state rehydration from events, domain service invocation via the pure function contract, and atomic event persistence with sequence numbers, optimistic concurrency, and idempotency detection.
 
@@ -983,6 +1009,7 @@ So that I can explore and test the API without reading separate documentation.
 ## Epic 4: Event Distribution & Pub/Sub
 
 **Outcome:** Subscribers can receive persisted events reliably without coupling to storage internals.
+**Capability alias:** Deliver persisted events reliably to authorized subscribers.
 
 Persisted events are automatically published to per-tenant-per-domain CloudEvents 1.0 topics with at-least-once delivery, resilient backlog draining during pub/sub outages, and per-aggregate backpressure.
 
@@ -1037,6 +1064,7 @@ So that saga storms and head-of-line blocking cascades are prevented.
 ## Epic 5: Security & Multi-Tenant Isolation
 
 **Outcome:** Tenants can submit and process commands without data crossing identity, storage, or pub/sub boundaries.
+**Capability alias:** Keep tenant command processing isolated across every boundary.
 
 JWT-based authentication, claims-based authorization (tenant/domain/command type), three-layer data isolation (data path, storage key, pub/sub topic), DAPR access control policies, and E2E security testing with Keycloak in Aspire.
 
@@ -1188,6 +1216,7 @@ So that load balancers and orchestrators can route traffic correctly.
 ## Epic 7: Snapshots, Rate Limiting & Performance
 
 **Outcome:** Operators can keep command processing responsive under stream growth and abuse pressure.
+**Capability alias:** Keep command processing responsive under growth and abuse.
 
 Configurable snapshots accelerate state rehydration, per-tenant and per-consumer rate limiting prevents abuse, and aggregate-level backpressure protects against saga storms.
 
@@ -1394,6 +1423,7 @@ Status: Completed. Required review input: `_bmad-output/implementation-artifacts
 
 ## Epic 9: Query Pipeline & ETag Caching
 **Outcome:** Query callers get cache-aware responses through deterministic routing, self-routing ETags, actor cache behavior, and compile-time response contracts.
+**Capability alias:** Serve cache-aware queries with safe invalidation and stable contracts.
 
 Queries are routed through a 3-tier model (entity, checksum, tenant), with self-routing ETag pre-checks returning HTTP 304, in-memory page cache in query actors, coarse invalidation on projection changes, and compile-time enforced query response contracts.
 
@@ -1556,6 +1586,7 @@ So that real-time notifications resume after network interruptions without manua
 ## Epic 11: Server-Managed Projection Builder
 
 **Outcome:** Projection owners can get queryable read models without owning pub/sub subscriptions.
+**Capability alias:** Build queryable read models without projection owners managing subscriptions.
 
 EventStore delivers persisted events to domain services' /project endpoints via DAPR service invocation, caches the returned projection state in ProjectionActor, and supports immediate (fire-and-forget) or polled delivery modes — making queries return real data without domain services managing pub/sub subscriptions.
 
@@ -1802,6 +1833,7 @@ So that docs, planning artifacts, and code tell the same story.
 ## Epic 14: Admin API Foundation & Abstractions
 
 **Outcome:** Admin users, CLI users, and MCP agents share one secure operational API.
+**Capability alias:** Give every admin surface one secure operational contract.
 
 Status: Completed. Sprint status source of truth: `_bmad-output/implementation-artifacts/sprint-status.yaml`.
 
@@ -1894,6 +1926,7 @@ Completed stories:
 ## Epic 19: Admin - DAPR Infrastructure Visibility
 
 **Outcome:** Operators can diagnose DAPR sidecar, actor, pub/sub, and resiliency health from EventStore context.
+**Capability alias:** Diagnose DAPR runtime health from EventStore context.
 
 Status: Completed. Sprint status source of truth: `_bmad-output/implementation-artifacts/sprint-status.yaml`.
 
@@ -1931,6 +1964,7 @@ Status: Completed historical migration. Sprint status source of truth: `_bmad-ou
 Readiness review input: every implementation artifact linked in the `Detail` entries below is required evidence for Epic 21 acceptance review and for future Fluent UI v5 work.
 
 **Outcome:** The admin UI remains stable, accessible, and testable on Fluent UI Blazor v5. New UI stories may proceed using the Fluent UI v5 patterns established by these completed implementation artifacts.
+**Capability alias:** Keep admin workflows stable, accessible, and testable on Fluent UI v5.
 
 Completed stories:
 
@@ -1967,7 +2001,7 @@ As a downstream service developer,
 I want API-facing command/query DTOs and high-level client methods from EventStore packages,
 So that Parties can call EventStore without duplicating gateway wire contracts.
 
-Container rule: do not assign Story 22.1 directly for implementation. Implementation and review work must use child stories 22.1a through 22.1d so each package boundary has independently testable acceptance.
+Container rule: do not assign Story 22.1 directly for implementation. Implementation and review work must use child stories 22.1a through 22.1d so each package boundary has independently testable acceptance. The parent acceptance criteria below are summary acceptance only and must not be used as a single sprint task.
 
 **Acceptance Criteria:**
 
@@ -2125,7 +2159,7 @@ As a downstream projection owner,
 I want EventStore-published events to be durable, at-least-once, and causally ordered per aggregate where supported,
 So that Parties projections can rely on EventStore publication guarantees.
 
-Container rule: do not assign Story 22.5 directly for implementation. Implementation and review work must use child stories 22.5a through 22.5d so durability, backend policy, recovery behavior, and proof tests remain independently reviewable.
+Container rule: do not assign Story 22.5 directly for implementation. Implementation and review work must use child stories 22.5a through 22.5d so durability, backend policy, recovery behavior, and proof tests remain independently reviewable. The parent acceptance criteria below are summary acceptance only and must not be used as a single sprint task.
 
 **Acceptance Criteria:**
 

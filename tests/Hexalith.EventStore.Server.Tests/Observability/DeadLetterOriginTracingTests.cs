@@ -31,6 +31,7 @@ using NSubstitute.Core;
 using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Observability;
 /// <summary>
@@ -78,8 +79,7 @@ public class DeadLetterOriginTracingTests {
             Options.Create(new BackpressureOptions()),
             fakeDeadLetter);
 
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         // Default: no duplicates, no pipeline state, no metadata
         _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())

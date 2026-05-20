@@ -87,23 +87,30 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _daprHttpPort.ToString());
         Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _daprGrpcPort.ToString());
 
-        await VerifyPrerequisitesAsync().ConfigureAwait(false);
+        try {
+            await VerifyPrerequisitesAsync().ConfigureAwait(false);
 
-        _componentsDir = CreateComponentFiles();
+            _componentsDir = CreateComponentFiles();
 
-        await StartTestHostAsync().ConfigureAwait(false);
+            await StartTestHostAsync().ConfigureAwait(false);
 
-        await VerifyAppListeningAsync().ConfigureAwait(false);
+            await VerifyAppListeningAsync().ConfigureAwait(false);
 
-        StartDaprSidecar();
+            StartDaprSidecar();
 
-        await WaitForDaprHealthAsync().ConfigureAwait(false);
+            await WaitForDaprHealthAsync().ConfigureAwait(false);
 
-        // Let the sidecar complete its initial app discovery (GET /dapr/config)
-        // and actor registration with the placement service before running tests.
-        await Task.Delay(2000).ConfigureAwait(false);
+            // Let the sidecar complete its initial app discovery (GET /dapr/config)
+            // and actor registration with the placement service before running tests.
+            await Task.Delay(2000).ConfigureAwait(false);
 
-        await VerifyAppListeningAsync().ConfigureAwait(false);
+            await VerifyAppListeningAsync().ConfigureAwait(false);
+        }
+        catch {
+            await DisposeTestResourcesAsync().ConfigureAwait(false);
+            RestoreDaprPortEnvironment();
+            throw;
+        }
     }
 
     /// <summary>
@@ -120,36 +127,25 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
 
     /// <inheritdoc/>
     public async ValueTask DisposeAsync() {
-        if (_testHost is not null) {
-            await _testHost.StopAsync().ConfigureAwait(false);
-            await _testHost.DisposeAsync().ConfigureAwait(false);
-        }
+        await DisposeTestResourcesAsync().ConfigureAwait(false);
+        RestoreDaprPortEnvironment();
+    }
 
-        if (_daprProcess is not null && !_daprProcess.HasExited) {
-            _daprProcess.Kill(entireProcessTree: true);
-            await _daprProcess.WaitForExitAsync().ConfigureAwait(false);
-        }
-
-        _daprProcess?.Dispose();
-
-        if (_componentsDir is not null && Directory.Exists(_componentsDir)) {
-            try {
-                Directory.Delete(_componentsDir, recursive: true);
-            }
-            catch {
-                // Best-effort cleanup of temp files
-            }
-        }
-
-        // Restore previous env var values to reduce cross-test interference.
-        Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _previousDaprHttpPort);
-        Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _previousDaprGrpcPort);
+    /// <summary>
+    /// Clears shared fake state before a test class configures its scenario.
+    /// </summary>
+    public void ResetTestState() {
+        DomainServiceInvoker.ClearAll();
+        EventPublisher.Reset();
+        DeadLetterPublisher.Reset();
+        CommandStatusStore.Clear();
     }
 
     /// <summary>
     /// Configures the domain service invoker with Counter domain responses for integration tests.
     /// </summary>
     public void SetupCounterDomain() {
+        ResetTestState();
         DomainServiceInvoker.SetupResponse(
             "IncrementCounter",
             DomainResult.Success(new IEventPayload[] { new Hexalith.EventStore.Sample.Counter.Events.CounterIncremented() }));
@@ -161,6 +157,38 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
         DomainServiceInvoker.SetupResponse(
             "ResetCounter",
             DomainResult.Success(new IEventPayload[] { new Hexalith.EventStore.Sample.Counter.Events.CounterReset() }));
+    }
+
+    private async ValueTask DisposeTestResourcesAsync() {
+        if (_testHost is not null) {
+            await _testHost.StopAsync().ConfigureAwait(false);
+            await _testHost.DisposeAsync().ConfigureAwait(false);
+            _testHost = null;
+        }
+
+        if (_daprProcess is not null && !_daprProcess.HasExited) {
+            _daprProcess.Kill(entireProcessTree: true);
+            await _daprProcess.WaitForExitAsync().ConfigureAwait(false);
+        }
+
+        _daprProcess?.Dispose();
+        _daprProcess = null;
+
+        if (_componentsDir is not null && Directory.Exists(_componentsDir)) {
+            try {
+                Directory.Delete(_componentsDir, recursive: true);
+            }
+            catch {
+                // Best-effort cleanup of temp files
+            }
+        }
+
+        _componentsDir = null;
+    }
+
+    private void RestoreDaprPortEnvironment() {
+        Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _previousDaprHttpPort);
+        Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _previousDaprGrpcPort);
     }
 
     private static async Task VerifyPrerequisitesAsync() {

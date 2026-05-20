@@ -12,16 +12,19 @@ public class IdempotencyRecordTests {
     public void FromResult_MapsAllFields() {
         // Arrange
         var result = new CommandProcessingResult(Accepted: true, ErrorMessage: null, CorrelationId: "corr-123");
+        DateTimeOffset before = DateTimeOffset.UtcNow;
 
         // Act
         var record = IdempotencyRecord.FromResult("cause-456", result);
+        DateTimeOffset after = DateTimeOffset.UtcNow;
 
         // Assert
         record.CausationId.ShouldBe("cause-456");
         record.CorrelationId.ShouldBe("corr-123");
         record.Accepted.ShouldBeTrue();
         record.ErrorMessage.ShouldBeNull();
-        record.ProcessedAt.ShouldBeGreaterThan(DateTimeOffset.UtcNow.AddSeconds(-5));
+        record.ProcessedAt.ShouldBeGreaterThanOrEqualTo(before);
+        record.ProcessedAt.ShouldBeLessThanOrEqualTo(after);
     }
 
     [Fact]

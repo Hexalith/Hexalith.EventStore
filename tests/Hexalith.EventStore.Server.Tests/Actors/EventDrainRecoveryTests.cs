@@ -1,5 +1,4 @@
 
-using System.Reflection;
 using System.Diagnostics;
 
 using Dapr.Actors;
@@ -21,6 +20,7 @@ using NSubstitute;
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
@@ -42,8 +42,7 @@ public class EventDrainRecoveryTests {
             new ActorTestOptions { ActorId = new ActorId(actorId) });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), Substitute.For<IDeadLetterPublisher>());
 
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         return (actor, stateManager, logger, eventPublisher, statusStore);
     }
@@ -62,8 +61,7 @@ public class EventDrainRecoveryTests {
             new ActorTestOptions { ActorId = new ActorId(actorId), TimerManager = timerManager });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), Substitute.For<IDeadLetterPublisher>());
 
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         return (actor, stateManager, logger, eventPublisher, statusStore, timerManager);
     }

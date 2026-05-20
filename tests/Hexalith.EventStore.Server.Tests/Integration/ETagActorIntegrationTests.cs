@@ -26,6 +26,7 @@ using NSubstitute;
 using Shouldly;
 
 using EventStoreProgram = eventstore::Program;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Integration;
 
@@ -325,7 +326,7 @@ public class ETagActorIntegrationTests : IClassFixture<ETagActorIntegrationTests
             new ActorTestOptions { ActorId = new ActorId("order-list:acme") });
         var actor = new ETagActor(host, logger);
 
-        typeof(Actor).GetProperty("StateManager")?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         return (actor, stateManager);
     }

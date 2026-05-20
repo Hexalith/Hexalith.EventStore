@@ -73,6 +73,18 @@ public sealed class FakeEventPublisher : IEventPublisher {
     }
 
     /// <summary>
+    /// Clears captured publish calls, topic events, event counts, and configured failures.
+    /// </summary>
+    public void Reset() {
+        while (_publishCalls.TryTake(out _)) {
+        }
+
+        _eventsByTopic.Clear();
+        _ = Interlocked.Exchange(ref _publishedEventCount, 0);
+        ClearFailure();
+    }
+
+    /// <summary>
     /// Configures the fake to fail on a specific event index (0-based), simulating partial failure.
     /// Events before the failure index are "published" successfully.
     /// </summary>

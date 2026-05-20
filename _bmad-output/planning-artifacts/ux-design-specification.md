@@ -2,8 +2,8 @@
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 lastStep: 14
 completedAt: 2026-02-12
-revisedAt: 2026-03-15
-revisionNotes: "Added v1 API Error Journeys (6-10), v1 API Error Enforcement Rules, and v1 Implementation Checklist"
+revisedAt: 2026-05-20
+revisionNotes: "Added v1 API Error Journeys (6-10), v1 API Error Enforcement Rules, v1 Implementation Checklist, and readiness cleanup aligning Aspire/Fluent UI baselines with the current repository."
 inputDocuments:
   - product-brief-Hexalith.EventStore-2026-02-11.md
   - prd.md
@@ -347,7 +347,7 @@ Hexalith.EventStore requires a **multi-surface design system** approach -- four 
 |---------|-------------|---------|--------|
 | REST API (v1) | OpenAPI 3.1 + RFC 7807 Problem Details | v1 | Define in this document |
 | Developer SDK (v1) | .NET API Design Guidelines | v1 | Define in this document |
-| CLI/Aspire (v1) | Aspire Dashboard (existing) | 13.1 | Leverage as-is |
+| CLI/Aspire (v1) | Aspire Dashboard (existing) | CLI/AppHost SDK 13.3.2; Aspire.Hosting 13.3.3 | Leverage as-is |
 | Blazor Dashboard (v2) | Blazor Fluent UI v5 | 5.0.0-rc.2-26098.1 | Current project baseline, design tokens defined here |
 
 **Primary UI Design System: Blazor Fluent UI v5** (v2 dashboard)

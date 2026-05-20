@@ -77,8 +77,6 @@ public class Dw5TypeCatalogRenderLoopAtddTests : AdminUITestContext {
         int renderCountAfterFirst = cut.RenderCount;
 
         InvokeOnTabChanged(cut, "commands");
-        // Allow any pending renders to flush.
-        Thread.Sleep(50);
         int renderCountAfterSecond = cut.RenderCount;
 
         renderCountAfterSecond.ShouldBe(renderCountAfterFirst,
@@ -90,6 +88,6 @@ public class Dw5TypeCatalogRenderLoopAtddTests : AdminUITestContext {
             .GetMethod("OnTabChanged", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         method.ShouldNotBeNull(
             customMessage: "DW5 AC#3: TypeCatalog.OnTabChanged renamed/removed — test must be updated alongside the production refactor (?.Invoke would silently no-op).");
-        _ = cut.InvokeAsync(() => method!.Invoke(cut.Instance, [tabId]));
+        cut.InvokeAsync(() => method!.Invoke(cut.Instance, [tabId])).GetAwaiter().GetResult();
     }
 }

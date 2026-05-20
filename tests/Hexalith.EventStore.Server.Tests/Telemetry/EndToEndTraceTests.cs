@@ -1,7 +1,5 @@
 
 using System.Diagnostics;
-using System.Reflection;
-
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 using Dapr.Client;
@@ -22,6 +20,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 
 using Shouldly;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Telemetry;
 /// <summary>
@@ -49,8 +48,7 @@ public class EndToEndTraceTests {
             deadLetterPublisher);
 
         // Inject StateManager via reflection (Dapr framework normally handles this)
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         // Configure default: no duplicates, no pipeline state, no metadata
         _ = stateManager.TryGetStateAsync<CommandProcessingResult>(Arg.Any<string>(), Arg.Any<CancellationToken>())

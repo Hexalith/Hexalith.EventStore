@@ -1,6 +1,4 @@
 
-using System.Reflection;
-
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
@@ -20,6 +18,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 
 using Shouldly;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
@@ -52,8 +51,7 @@ public class MultiTenantPublicationTests {
             new ActorTestOptions { ActorId = new ActorId($"{tenantId}:{domain}:{aggregateId}") });
         var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, fakePublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), new Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher());
 
-        PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-        prop?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
         // Domain service returns a success event
         _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
@@ -124,8 +122,7 @@ public class MultiTenantPublicationTests {
                 new ActorTestOptions { ActorId = new ActorId($"{tenant}:orders:order-1") });
             var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, fakePublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), new Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher());
 
-            PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-            prop?.SetValue(actor, stateManager);
+            ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
             _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
                 .Returns(DomainResult.Success([new TestEvent()]));
@@ -166,8 +163,7 @@ public class MultiTenantPublicationTests {
                 new ActorTestOptions { ActorId = new ActorId($"acme:{domain}:agg-1") });
             var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, fakePublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), new Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher());
 
-            PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-            prop?.SetValue(actor, stateManager);
+            ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
             _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
                 .Returns(DomainResult.Success([new TestEvent()]));
@@ -214,8 +210,7 @@ public class MultiTenantPublicationTests {
                 new ActorTestOptions { ActorId = new ActorId($"{tenant}:{domain}:agg-1") });
             var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), commandStatusStore, fakePublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), new Hexalith.EventStore.Testing.Fakes.FakeDeadLetterPublisher());
 
-            PropertyInfo? prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance);
-            prop?.SetValue(actor, stateManager);
+            ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
 
             _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
                 .Returns(DomainResult.Success([new TestEvent()]));

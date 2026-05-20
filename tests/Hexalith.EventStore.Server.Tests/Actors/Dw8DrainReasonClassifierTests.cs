@@ -22,6 +22,7 @@ using NSubstitute;
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 
@@ -165,7 +166,7 @@ public class Dw8DrainReasonClassifierTests {
             Options.Create(new EventDrainOptions()),
             Options.Create(new BackpressureOptions()),
             Substitute.For<IDeadLetterPublisher>());
-        typeof(Actor).GetProperty("StateManager")?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
         return (actor, stateManager, logger, eventPublisher, statusStore);
     }
 
@@ -192,7 +193,7 @@ public class Dw8DrainReasonClassifierTests {
             Options.Create(new EventDrainOptions()),
             Options.Create(new BackpressureOptions()),
             Substitute.For<IDeadLetterPublisher>());
-        typeof(Actor).GetProperty("StateManager")?.SetValue(actor, stateManager);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
         return (actor, stateManager, logger, eventPublisher, statusStore, timerManager);
     }
 
