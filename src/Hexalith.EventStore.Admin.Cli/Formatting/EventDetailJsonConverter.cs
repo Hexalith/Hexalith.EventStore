@@ -8,7 +8,7 @@ namespace Hexalith.EventStore.Admin.Cli.Formatting;
 
 internal sealed class EventDetailJsonConverter : JsonConverter<EventDetail> {
     public override EventDetail? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) {
-        using JsonDocument doc = JsonDocument.ParseValue(ref reader);
+        using var doc = JsonDocument.ParseValue(ref reader);
         JsonElement root = doc.RootElement;
 
         bool hasPayloadDescriptor = root.TryGetProperty("payload", out JsonElement payloadElement)

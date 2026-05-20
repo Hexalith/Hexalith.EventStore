@@ -113,10 +113,15 @@ internal static class PrerequisiteValidator {
                 if (!exited) {
                     process.Kill(entireProcessTree: true);
                     process.WaitForExit();
+                    // Drain both tasks to prevent unobserved-exception faults after dispose.
+                    try { _ = Task.WhenAll(stdoutTask, stderrTask).GetAwaiter().GetResult(); } catch { }
                     return new PrerequisiteCommandResult(false, null);
                 }
 
-                string output = stdoutTask.GetAwaiter().GetResult();
+                string stdout = stdoutTask.GetAwaiter().GetResult();
+                // Some CLI tools (including dapr) write version info to stderr; fall back if stdout is empty.
+                string stderr = stderrTask.GetAwaiter().GetResult();
+                string output = string.IsNullOrEmpty(stdout) ? stderr : stdout;
                 return new PrerequisiteCommandResult(process.ExitCode == 0, output);
             }
             catch (Exception ex) {

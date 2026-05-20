@@ -255,7 +255,7 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
         }
 
         try {
-            using JsonDocument document = JsonDocument.Parse(body);
+            using var document = JsonDocument.Parse(body);
             JsonElement root = document.RootElement;
             string? detail = root.TryGetProperty("detail", out JsonElement detailElement)
                 && detailElement.ValueKind == JsonValueKind.String

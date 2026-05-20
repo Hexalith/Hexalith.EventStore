@@ -8,7 +8,7 @@ namespace Hexalith.EventStore.Server.Tests.Authorization;
 public class AuthorizationResultReasonCodeTests {
     [Fact]
     public void TenantDenied_CarriesReasonCodeSeparatelyFromReasonText() {
-        TenantValidationResult result = TenantValidationResult.Denied(
+        var result = TenantValidationResult.Denied(
             "Tenant is disabled.",
             AuthorizationFailureReason.TenantDisabled);
 
@@ -20,7 +20,7 @@ public class AuthorizationResultReasonCodeTests {
 
     [Fact]
     public void RbacDenied_CarriesReasonCodeSeparatelyFromReasonText() {
-        RbacValidationResult result = RbacValidationResult.Denied(
+        var result = RbacValidationResult.Denied(
             "Permission is missing.",
             AuthorizationFailureReason.InsufficientPermission);
 

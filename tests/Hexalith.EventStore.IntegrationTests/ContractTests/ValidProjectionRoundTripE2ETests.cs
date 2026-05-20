@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
@@ -205,7 +204,7 @@ public class ValidProjectionRoundTripE2ETests {
     }
 
     private static int ParseCountFromQueryBody(string body) {
-        using JsonDocument document = JsonDocument.Parse(body);
+        using var document = JsonDocument.Parse(body);
         JsonElement root = document.RootElement;
 
         if (!root.TryGetProperty("payload", out JsonElement payload)) {
@@ -228,7 +227,7 @@ public class ValidProjectionRoundTripE2ETests {
             }
 
             byte[] bytes = Convert.FromBase64String(encoded);
-            using JsonDocument inner = JsonDocument.Parse(bytes);
+            using var inner = JsonDocument.Parse(bytes);
             if (inner.RootElement.TryGetProperty("count", out JsonElement encodedCount)) {
                 return encodedCount.GetInt32();
             }

@@ -96,7 +96,7 @@ public sealed class PubSubDeliveryProofTests {
             GetInt32(drainRecord, "retryCount").ShouldBeGreaterThanOrEqualTo(0);
             GetInt32(drainRecord, "retryCount").ShouldBeLessThan(20);
             string? failureReason = GetString(drainRecord, "lastFailureReason");
-            failureReason.ShouldNotBeNull();
+            _ = failureReason.ShouldNotBeNull();
             failureReason.ShouldContain("Configured test publish fault");
 
             TryDeleteFaultFile();
@@ -138,7 +138,7 @@ public sealed class PubSubDeliveryProofTests {
         using HttpResponseMessage response = await _fixture.SubscriberClient
             .GetAsync($"/events?correlationId={Uri.EscapeDataString(correlationId)}")
             .ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        _ = response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<JsonElement[]>().ConfigureAwait(false) ?? [];
     }
 
@@ -205,7 +205,7 @@ public sealed class PubSubDeliveryProofTests {
         return hashValue.IsNull ? null : ParseJson(hashValue!);
 
         static JsonElement ParseJson(string json) {
-            using JsonDocument document = JsonDocument.Parse(json);
+            using var document = JsonDocument.Parse(json);
             return document.RootElement.Clone();
         }
     }

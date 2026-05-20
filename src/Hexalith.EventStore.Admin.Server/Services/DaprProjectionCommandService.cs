@@ -196,7 +196,7 @@ public sealed class DaprProjectionCommandService : IProjectionCommandService {
 
         using Stream stream = await httpResponse.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         using var buffer = new MemoryStream(capacity: Math.Min(MaxProblemDetailsBytes, (int)(httpResponse.Content.Headers.ContentLength ?? MaxProblemDetailsBytes)));
-        var chunk = new byte[8192];
+        byte[] chunk = new byte[8192];
         int totalRead = 0;
         while (true) {
             int read = await stream.ReadAsync(chunk, cancellationToken).ConfigureAwait(false);

@@ -77,8 +77,8 @@ public class SubmitQueryRequestTests {
         json.ShouldContain("\"projectionType\":\"party-summary\"");
         json.ShouldContain("\"entityId\":\"party-entity-1\"");
         json.ShouldContain("\"projectionActorType\":\"PartyProjectionActor\"");
-        roundTripped.ShouldNotBeNull();
-        roundTripped.Payload.ShouldNotBeNull();
+        _ = roundTripped.ShouldNotBeNull();
+        _ = roundTripped.Payload.ShouldNotBeNull();
         roundTripped.Payload.Value.GetProperty("page").GetInt32().ShouldBe(1);
         roundTripped.ProjectionActorType.ShouldBe("PartyProjectionActor");
     }
@@ -108,15 +108,15 @@ public class SubmitQueryRequestTests {
         json.ShouldContain("\"filters\"");
         json.ShouldContain("\"orderBy\"");
         json.ShouldContain("\"freshness\"");
-        roundTripped.ShouldNotBeNull();
-        roundTripped.Paging.ShouldNotBeNull();
+        _ = roundTripped.ShouldNotBeNull();
+        _ = roundTripped.Paging.ShouldNotBeNull();
         roundTripped.Paging.PageSize.ShouldBe(25);
         roundTripped.Paging.Offset.ShouldBe(50);
-        roundTripped.Filters.ShouldNotBeNull();
+        _ = roundTripped.Filters.ShouldNotBeNull();
         roundTripped.Filters[0].Operator.ShouldBe("eq");
-        roundTripped.OrderBy.ShouldNotBeNull();
+        _ = roundTripped.OrderBy.ShouldNotBeNull();
         roundTripped.OrderBy[0].Direction.ShouldBe(QuerySortDirection.Ascending);
-        roundTripped.Freshness.ShouldNotBeNull();
+        _ = roundTripped.Freshness.ShouldNotBeNull();
         roundTripped.Freshness.RequireFresh.ShouldBe(true);
     }
 
@@ -135,8 +135,8 @@ public class SubmitQueryRequestTests {
 
         SubmitQueryRequest? request = JsonSerializer.Deserialize<SubmitQueryRequest>(Json, options);
 
-        request.ShouldNotBeNull();
-        request.AdditionalProperties.ShouldNotBeNull();
+        _ = request.ShouldNotBeNull();
+        _ = request.AdditionalProperties.ShouldNotBeNull();
         request.AdditionalProperties.Keys.ShouldContain("where");
     }
 }

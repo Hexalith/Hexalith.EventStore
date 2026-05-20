@@ -1,10 +1,8 @@
 using System.Text;
 using System.Text.Json;
 
-using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Replay;
-using Hexalith.EventStore.Sample;
 using Hexalith.EventStore.Sample.Counter.Events;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -20,10 +18,8 @@ namespace Hexalith.EventStore.Sample.Tests.Counter;
 /// admin-ui-aggregate-state-replay-correctness so the headline correctness assertion
 /// (Count = 10 at sequence 18) is covered without DAPR or Aspire infrastructure.
 /// </summary>
-public class CounterAggregateReplayTests
-{
-    private static IServiceProvider BuildServiceProvider()
-    {
+public class CounterAggregateReplayTests {
+    private static IServiceProvider BuildServiceProvider() {
         ServiceCollection services = new();
         _ = services.AddEventStore(typeof(CounterAggregateReplayTests).Assembly, typeof(DomainServiceRequestRouter).Assembly);
         return services.BuildServiceProvider();
@@ -40,23 +36,19 @@ public class CounterAggregateReplayTests
             CorrelationId: $"corr-{seq}",
             CausationId: null);
 
-    private static ReplayEventEnvelope[] CanonicalCounterFixture()
-    {
+    private static ReplayEventEnvelope[] CanonicalCounterFixture() {
         var events = new List<ReplayEventEnvelope>(18);
         long seq = 0;
-        for (int i = 0; i < 5; i++)
-        {
+        for (int i = 0; i < 5; i++) {
             events.Add(MarkerEvent(++seq, nameof(CounterIncremented)));
         }
 
-        for (int i = 0; i < 2; i++)
-        {
+        for (int i = 0; i < 2; i++) {
             events.Add(MarkerEvent(++seq, nameof(CounterDecremented)));
         }
 
         events.Add(MarkerEvent(++seq, nameof(CounterReset)));
-        for (int i = 0; i < 10; i++)
-        {
+        for (int i = 0; i < 10; i++) {
             events.Add(MarkerEvent(++seq, nameof(CounterIncremented)));
         }
 
@@ -78,8 +70,7 @@ public class CounterAggregateReplayTests
         JsonDocument.Parse(json ?? "{}").RootElement.GetProperty("count").GetInt32();
 
     [Fact]
-    public void Replay_CanonicalSeed_AtSequence18_ReturnsCount10_ProvingApplyDrivenReplay()
-    {
+    public void Replay_CanonicalSeed_AtSequence18_ReturnsCount10_ProvingApplyDrivenReplay() {
         // The seeded tenant-a/counter/counter-1 stream uses marker events with empty
         // payloads. A payload deep-merge would yield {} and Count = 0. Apply-driven
         // replay through CounterState.Apply(...) yields Count = 10. This is the AC #1
@@ -97,8 +88,7 @@ public class CounterAggregateReplayTests
     [InlineData(5, 5)]
     [InlineData(7, 3)]
     [InlineData(8, 0)]
-    public void Replay_CanonicalSeed_AtCheckpoints_MatchesExpectedCount(long upTo, int expected)
-    {
+    public void Replay_CanonicalSeed_AtCheckpoints_MatchesExpectedCount(long upTo, int expected) {
         IServiceProvider services = BuildServiceProvider();
 
         AggregateReconstructionResult result = DomainServiceRequestRouter.Replay(services, BuildRequest(CanonicalCounterFixture(), upTo));
@@ -108,8 +98,7 @@ public class CounterAggregateReplayTests
     }
 
     [Fact]
-    public void Replay_TimelineMode_ReturnsPerEventStateMatchingCheckpoints()
-    {
+    public void Replay_TimelineMode_ReturnsPerEventStateMatchingCheckpoints() {
         IServiceProvider services = BuildServiceProvider();
 
         AggregateReconstructionResult result = DomainServiceRequestRouter.Replay(services, BuildRequest(CanonicalCounterFixture(), 18, timeline: true));
@@ -122,8 +111,7 @@ public class CounterAggregateReplayTests
     }
 
     [Fact]
-    public void Replay_UnknownDomain_ReturnsUnknownAggregateType()
-    {
+    public void Replay_UnknownDomain_ReturnsUnknownAggregateType() {
         IServiceProvider services = BuildServiceProvider();
 
         AggregateReconstructionRequest request = new(
@@ -143,11 +131,9 @@ public class CounterAggregateReplayTests
     }
 
     [Fact]
-    public void Replay_UnknownAggregateTypeForKnownDomain_ReturnsUnknownAggregateType()
-    {
+    public void Replay_UnknownAggregateTypeForKnownDomain_ReturnsUnknownAggregateType() {
         IServiceProvider services = BuildServiceProvider();
-        AggregateReconstructionRequest request = BuildRequest(CanonicalCounterFixture(), 1) with
-        {
+        AggregateReconstructionRequest request = BuildRequest(CanonicalCounterFixture(), 1) with {
             AggregateType = "DefinitelyNotCounter",
         };
 

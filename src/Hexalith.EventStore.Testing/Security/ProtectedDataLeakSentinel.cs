@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-
 namespace Hexalith.EventStore.Testing.Security;
 
 /// <summary>

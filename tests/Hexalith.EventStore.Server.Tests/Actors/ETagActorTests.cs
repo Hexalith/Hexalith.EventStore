@@ -6,6 +6,7 @@ using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Queries;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -13,7 +14,6 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
-using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 

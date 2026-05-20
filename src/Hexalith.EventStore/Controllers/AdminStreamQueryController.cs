@@ -1773,7 +1773,7 @@ public class AdminStreamQueryController(
     }
 
     private ObjectResult BadRequestWithReasonCode(string detail, string reasonCode) {
-        var problem = (ObjectResult)Problem(
+        ObjectResult problem = Problem(
             statusCode: StatusCodes.Status400BadRequest,
             title: "Bad Request",
             detail: detail);
@@ -1845,7 +1845,7 @@ public class AdminStreamQueryController(
         };
 
         string safeMessage = SafeReplayProblemMessage(replay, title);
-        var problem = (ObjectResult)Problem(
+        ObjectResult problem = Problem(
             statusCode: statusCode,
             title: title,
             detail: safeMessage,

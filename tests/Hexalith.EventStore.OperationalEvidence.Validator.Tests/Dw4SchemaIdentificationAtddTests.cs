@@ -15,32 +15,24 @@ public class Dw4SchemaIdentificationAtddTests {
     private const string _baseSkip = "ATDD red phase — DW4 ";
 
     [Fact(Skip = _baseSkip + "AC#1 / Adv-Elicitation — file with no schema marker must fail with schema-version-missing. Remove Skip when implementing.")]
-    public void SchemaIdentification_NoSchemaMarker_FailsClosedBeforeRules() {
-        AssertSchemaIdFailure(
+    public void SchemaIdentification_NoSchemaMarker_FailsClosedBeforeRules() => AssertSchemaIdFailure(
             "schema-missing.md",
             Dw4RuleVocabulary.SchemaVersionMissing);
-    }
 
     [Fact(Skip = _baseSkip + "AC#1 / Adv-Elicitation — file with duplicate schema markers must fail with schema-version-duplicate. Remove Skip when implementing.")]
-    public void SchemaIdentification_DuplicateSchemaMarkers_FailsClosedBeforeRules() {
-        AssertSchemaIdFailure(
+    public void SchemaIdentification_DuplicateSchemaMarkers_FailsClosedBeforeRules() => AssertSchemaIdFailure(
             "schema-duplicate-markers.md",
             Dw4RuleVocabulary.SchemaVersionDuplicate);
-    }
 
     [Fact(Skip = _baseSkip + "AC#1 / Adv-Elicitation — file with contradictory schema markers must fail with schema-version-contradictory. Remove Skip when implementing.")]
-    public void SchemaIdentification_ContradictorySchemaMarkers_FailsClosedBeforeRules() {
-        AssertSchemaIdFailure(
+    public void SchemaIdentification_ContradictorySchemaMarkers_FailsClosedBeforeRules() => AssertSchemaIdFailure(
             "schema-contradictory.md",
             Dw4RuleVocabulary.SchemaVersionContradictory);
-    }
 
     [Fact(Skip = _baseSkip + "AC#1 — unsupported future schema version must fail with schema-version-unsupported. Remove Skip when implementing.")]
-    public void SchemaIdentification_UnsupportedFutureVersion_FailsClosed() {
-        AssertSchemaIdFailure(
+    public void SchemaIdentification_UnsupportedFutureVersion_FailsClosed() => AssertSchemaIdFailure(
             "schema-unsupported-future-version.md",
             Dw4RuleVocabulary.SchemaVersionUnsupported);
-    }
 
     private static void AssertSchemaIdFailure(string fixtureFileName, string expectedRuleId) {
         Dw4FixtureCatalog.FixtureExpectation expected = Dw4FixtureCatalog.ByName[fixtureFileName];

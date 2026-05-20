@@ -1,10 +1,5 @@
-using System;
-using System.Collections.Generic;
-
 using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Contracts.Security;
-
-using Shouldly;
 
 namespace Hexalith.EventStore.Contracts.Tests.Security;
 

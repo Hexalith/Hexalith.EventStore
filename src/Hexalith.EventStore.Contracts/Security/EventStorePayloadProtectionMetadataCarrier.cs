@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -61,7 +58,7 @@ public static class EventStorePayloadProtectionMetadataCarrier {
             return false;
         }
 
-        if (metadata.MetadataVersion < 1 || metadata.MetadataVersion > EventStorePayloadProtectionMetadata.CurrentMetadataVersion) {
+        if (metadata.MetadataVersion is < 1 or > EventStorePayloadProtectionMetadata.CurrentMetadataVersion) {
             rejectionReason = $"MetadataVersion {metadata.MetadataVersion} is unsupported (must be 1..{EventStorePayloadProtectionMetadata.CurrentMetadataVersion}).";
             return false;
         }
@@ -226,7 +223,7 @@ public static class EventStorePayloadProtectionMetadataCarrier {
                 return EventStorePayloadProtectionMetadata.ProviderOpaque("unknownState");
             }
 
-            if (dto.MetadataVersion < 1 || dto.MetadataVersion > EventStorePayloadProtectionMetadata.CurrentMetadataVersion) {
+            if (dto.MetadataVersion is < 1 or > EventStorePayloadProtectionMetadata.CurrentMetadataVersion) {
                 return EventStorePayloadProtectionMetadata.ProviderOpaque("unknownVersion");
             }
 
@@ -331,7 +328,7 @@ public static class EventStorePayloadProtectionMetadataCarrier {
 
     private static bool IsAsciiPrintable(string value) {
         foreach (char c in value) {
-            if (c < 0x20 || c > 0x7E) {
+            if (c is < (char)0x20 or > (char)0x7E) {
                 return false;
             }
         }

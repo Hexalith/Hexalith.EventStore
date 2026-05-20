@@ -15,6 +15,7 @@ using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Telemetry;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 using Hexalith.EventStore.Telemetry;
 using Hexalith.EventStore.Testing.Fakes;
 
@@ -27,7 +28,6 @@ using NSubstitute.ExceptionExtensions;
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
-using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Observability;
 /// <summary>

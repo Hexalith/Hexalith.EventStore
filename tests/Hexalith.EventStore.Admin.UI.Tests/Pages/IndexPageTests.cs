@@ -177,8 +177,8 @@ public class IndexPageTests : AdminUITestContext {
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Events/sec"), TimeSpan.FromSeconds(5));
 
         cut.Markup.ShouldNotContain("unavailable");
-        cut.Markup.ShouldContain($"{0.0.ToString("F1")}/s");
-        cut.Markup.ShouldContain($"{0.0.ToString("F2")}%");
+        cut.Markup.ShouldContain($"{0.0:F1}/s");
+        cut.Markup.ShouldContain($"{0.0:F2}%");
     }
 
     [Fact]

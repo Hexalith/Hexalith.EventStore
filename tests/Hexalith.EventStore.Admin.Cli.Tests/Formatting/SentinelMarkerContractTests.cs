@@ -24,10 +24,8 @@ public class SentinelMarkerContractTests {
     [InlineData("Operator guidance about passwords (none configured).")]
     [InlineData("")]
     [InlineData(null)]
-    public void BenignTextIsNotFalseFlagged(string? value) {
-        UnsafeMarkerDetection.ContainsUnsafeMarker(value).ShouldBeFalse(
+    public void BenignTextIsNotFalseFlagged(string? value) => UnsafeMarkerDetection.ContainsUnsafeMarker(value).ShouldBeFalse(
             $"Safe text '{value}' was flagged by UnsafeMarkerDetection.ContainsUnsafeMarker. The marker patterns should require value-bearing key=value shapes, not bare keyword substrings.");
-    }
 
     [Theory]
     [InlineData("Server=...;ConnectionString=Endpoint=...")]
@@ -35,8 +33,6 @@ public class SentinelMarkerContractTests {
     [InlineData("AccountKey=foo")]
     [InlineData("password=hunter2")]
     [InlineData("PROTECTED_marker")]
-    public void RealCredentialShapesAreDetected(string value) {
-        UnsafeMarkerDetection.ContainsUnsafeMarker(value).ShouldBeTrue(
+    public void RealCredentialShapesAreDetected(string value) => UnsafeMarkerDetection.ContainsUnsafeMarker(value).ShouldBeTrue(
             $"Credential-shaped value '{value}' was not detected by UnsafeMarkerDetection.ContainsUnsafeMarker.");
-    }
 }

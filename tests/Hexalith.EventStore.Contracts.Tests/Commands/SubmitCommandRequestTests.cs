@@ -25,7 +25,7 @@ public class SubmitCommandRequestTests {
         request.CommandType.ShouldBe("CreateParty");
         request.Payload.GetProperty("name").GetString().ShouldBe("Demo");
         request.CorrelationId.ShouldBe("corr-1");
-        request.Extensions.ShouldNotBeNull();
+        _ = request.Extensions.ShouldNotBeNull();
         request.Extensions["source"].ShouldBe("test");
     }
 
@@ -49,7 +49,7 @@ public class SubmitCommandRequestTests {
 
         SubmitCommandRequest? roundTripped = JsonSerializer.Deserialize<SubmitCommandRequest>(json, options);
 
-        roundTripped.ShouldNotBeNull();
+        _ = roundTripped.ShouldNotBeNull();
         roundTripped.MessageId.ShouldBe("message-1");
         roundTripped.Payload.GetProperty("name").GetString().ShouldBe("Demo");
     }

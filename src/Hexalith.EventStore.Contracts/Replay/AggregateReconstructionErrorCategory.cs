@@ -4,8 +4,7 @@ namespace Hexalith.EventStore.Contracts.Replay;
 /// Categorical classification of aggregate replay failures. Used for ProblemDetails
 /// mapping in the Admin replay surface and for operator-facing diagnostics.
 /// </summary>
-public enum AggregateReconstructionErrorCategory
-{
+public enum AggregateReconstructionErrorCategory {
     /// <summary>No error. Pairs with <see cref="AggregateReconstructionStatus.Succeeded"/>.</summary>
     None = 0,
 

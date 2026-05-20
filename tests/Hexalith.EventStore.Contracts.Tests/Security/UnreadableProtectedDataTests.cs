@@ -1,13 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
-
-using Shouldly;
 
 namespace Hexalith.EventStore.Contracts.Tests.Security;
 
@@ -71,9 +64,9 @@ public class UnreadableProtectedDataTests {
     [Fact]
     public void PayloadOutcome_Readable_HasBytesAndMetadataAndNoReason() {
         byte[] bytes = [1, 2, 3];
-        EventStorePayloadProtectionMetadata metadata = EventStorePayloadProtectionMetadata.Unprotected();
+        var metadata = EventStorePayloadProtectionMetadata.Unprotected();
 
-        PayloadUnprotectionOutcome outcome = PayloadUnprotectionOutcome.Readable(bytes, "json", metadata);
+        var outcome = PayloadUnprotectionOutcome.Readable(bytes, "json", metadata);
 
         outcome.IsReadable.ShouldBeTrue();
         outcome.IsUnreadable.ShouldBeFalse();
@@ -86,7 +79,7 @@ public class UnreadableProtectedDataTests {
     [Theory]
     [MemberData(nameof(AllReasons))]
     public void PayloadOutcome_Unreadable_HasReasonAndNoPayload(UnreadableProtectedDataReason reason) {
-        PayloadUnprotectionOutcome outcome = PayloadUnprotectionOutcome.Unreadable(reason);
+        var outcome = PayloadUnprotectionOutcome.Unreadable(reason);
 
         outcome.IsReadable.ShouldBeFalse();
         outcome.IsUnreadable.ShouldBeTrue();
@@ -94,14 +87,14 @@ public class UnreadableProtectedDataTests {
         outcome.PayloadBytes.ShouldBeNull();
         outcome.SerializationFormat.ShouldBeNull();
         outcome.Metadata.State.ShouldBe(PayloadProtectionState.ProviderOpaque);
-        outcome.Metadata.CompatibilityFlags.ShouldNotBeNull();
+        _ = outcome.Metadata.CompatibilityFlags.ShouldNotBeNull();
         outcome.Metadata.CompatibilityFlags!["reason"].ShouldBe(UnreadableProtectedDataReasonCodes.From(reason));
     }
 
     [Theory]
     [MemberData(nameof(AllReasons))]
     public void SnapshotOutcome_Unreadable_HasReasonAndNoState(UnreadableProtectedDataReason reason) {
-        SnapshotUnprotectionOutcome outcome = SnapshotUnprotectionOutcome.Unreadable(reason);
+        var outcome = SnapshotUnprotectionOutcome.Unreadable(reason);
 
         outcome.IsReadable.ShouldBeFalse();
         outcome.IsUnreadable.ShouldBeTrue();
@@ -112,9 +105,9 @@ public class UnreadableProtectedDataTests {
     [Fact]
     public void SnapshotOutcome_Readable_HasState() {
         var state = new { Counter = 5 };
-        EventStorePayloadProtectionMetadata metadata = EventStorePayloadProtectionMetadata.Unprotected();
+        var metadata = EventStorePayloadProtectionMetadata.Unprotected();
 
-        SnapshotUnprotectionOutcome outcome = SnapshotUnprotectionOutcome.Readable(state, metadata);
+        var outcome = SnapshotUnprotectionOutcome.Readable(state, metadata);
 
         outcome.IsReadable.ShouldBeTrue();
         outcome.State.ShouldBe(state);
@@ -124,7 +117,7 @@ public class UnreadableProtectedDataTests {
     public void PayloadOutcome_FromResult_PromotesToReadableOutcome() {
         var result = new PayloadProtectionResult([1, 2, 3], "json", EventStorePayloadProtectionMetadata.Unprotected());
 
-        PayloadUnprotectionOutcome outcome = PayloadUnprotectionOutcome.FromResult(result);
+        var outcome = PayloadUnprotectionOutcome.FromResult(result);
 
         outcome.IsReadable.ShouldBeTrue();
         outcome.PayloadBytes.ShouldBe(result.PayloadBytes);
@@ -202,7 +195,7 @@ public class UnreadableProtectedDataTests {
         var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        await Should.ThrowAsync<OperationCanceledException>(async () => await service.TryUnprotectEventPayloadAsync(
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () => await service.TryUnprotectEventPayloadAsync(
             identity,
             "Type",
             [1, 2, 3],

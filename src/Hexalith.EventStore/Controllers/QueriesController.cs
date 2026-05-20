@@ -2,7 +2,6 @@
 using System.Text.Json;
 
 using Hexalith.EventStore.Authorization;
-using Hexalith.EventStore.Contracts.Authorization;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Middleware;

@@ -192,6 +192,6 @@ public class Dw3LargeStreamSurfaceAtddTests {
         // AtSequence=0 is the documented "empty initial state" path that
         // intentionally skips actor reads. AC #6 requires this to remain
         // honest and observable.
-        await actor.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
+        _ = await actor.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
     }
 }

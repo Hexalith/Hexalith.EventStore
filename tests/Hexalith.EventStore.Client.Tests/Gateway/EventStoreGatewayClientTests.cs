@@ -30,10 +30,10 @@ public class EventStoreGatewayClientTests {
         SubmitCommandResponse response = await client.SubmitCommandAsync(request);
 
         response.CorrelationId.ShouldBe("corr-1");
-        observedRequest.ShouldNotBeNull();
+        _ = observedRequest.ShouldNotBeNull();
         observedRequest.Method.ShouldBe(HttpMethod.Post);
         observedRequest.RequestUri!.AbsolutePath.ShouldBe("/api/v1/commands");
-        observedBody.ShouldNotBeNull();
+        _ = observedBody.ShouldNotBeNull();
         observedBody.ShouldContain("\"messageId\":\"message-1\"");
         observedBody.ShouldContain("\"aggregateId\":\"party-1\"");
     }
@@ -55,19 +55,19 @@ public class EventStoreGatewayClientTests {
         result.IsNotModified.ShouldBeTrue();
         result.Payload.ShouldBeNull();
         result.ETag.ShouldBe("etag-1");
-        result.Metadata.ShouldNotBeNull();
+        _ = result.Metadata.ShouldNotBeNull();
         result.Metadata.ETag.ShouldBe("etag-1");
         result.Metadata.IsNotModified.ShouldBe(true);
-        observedRequest.ShouldNotBeNull();
+        _ = observedRequest.ShouldNotBeNull();
         observedRequest.Headers.TryGetValues("If-None-Match", out IEnumerable<string>? values).ShouldBeTrue();
-        values.ShouldNotBeNull();
+        _ = values.ShouldNotBeNull();
         values.Single().ShouldBe("\"etag-1\"");
     }
 
     [Fact]
     public async Task SubmitQueryAsync_WithPayload_ReturnsTypedPayloadAndETag() {
         using HttpClient httpClient = CreateClient(_ => {
-            var response = Json(
+            HttpResponseMessage response = Json(
                 HttpStatusCode.OK,
                 "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3},\"metadata\":{\"isStale\":false,\"paging\":{\"pageSize\":25,\"offset\":50}}}");
             response.Headers.ETag = new EntityTagHeaderValue("\"etag-2\"");
@@ -81,12 +81,12 @@ public class EventStoreGatewayClientTests {
         result.IsNotModified.ShouldBeFalse();
         result.CorrelationId.ShouldBe("corr-2");
         result.ETag.ShouldBe("etag-2");
-        result.Payload.ShouldNotBeNull();
+        _ = result.Payload.ShouldNotBeNull();
         result.Payload.Count.ShouldBe(3);
-        result.Metadata.ShouldNotBeNull();
+        _ = result.Metadata.ShouldNotBeNull();
         result.Metadata.ETag.ShouldBe("etag-2");
         result.Metadata.IsNotModified.ShouldBe(false);
-        result.Metadata.Paging.ShouldNotBeNull();
+        _ = result.Metadata.Paging.ShouldNotBeNull();
         result.Metadata.Paging.PageSize.ShouldBe(25);
         result.Metadata.Paging.Offset.ShouldBe(50);
     }
@@ -157,7 +157,7 @@ public class EventStoreGatewayClientTests {
             Task.FromResult(Json(HttpStatusCode.Accepted, "{\"correlationId\":\"corr-1\"}")));
         var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => client.SubmitCommandAsync(CreateCommandRequest(), cancellationSource.Token));
     }
 
@@ -220,9 +220,9 @@ public class EventStoreGatewayClientTests {
 
         _ = await client.SubmitQueryAsync(CreateQueryRequest(), "etag-1");
 
-        observedRequest.ShouldNotBeNull();
+        _ = observedRequest.ShouldNotBeNull();
         observedRequest.Headers.TryGetValues("If-None-Match", out IEnumerable<string>? values).ShouldBeTrue();
-        values.ShouldNotBeNull();
+        _ = values.ShouldNotBeNull();
         values.Single().ShouldBe("\"etag-1\"");
     }
 
@@ -237,7 +237,7 @@ public class EventStoreGatewayClientTests {
 
         _ = await client.SubmitQueryAsync(CreateQueryRequest(), " ");
 
-        observedRequest.ShouldNotBeNull();
+        _ = observedRequest.ShouldNotBeNull();
         observedRequest.Headers.Contains("If-None-Match").ShouldBeFalse();
     }
 
@@ -249,14 +249,14 @@ public class EventStoreGatewayClientTests {
         using HttpClient httpClient = CreateClient(_ => Task.FromResult(Json(HttpStatusCode.OK, "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3}}")));
         var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
 
-        await Assert.ThrowsAsync<ArgumentException>(
+        _ = await Assert.ThrowsAsync<ArgumentException>(
             () => client.SubmitQueryAsync(CreateQueryRequest(), ifNoneMatch));
     }
 
     [Fact]
     public async Task SubmitQueryAsync_WithWeakResponseETag_ThrowsGatewayException() {
         using HttpClient httpClient = CreateClient(_ => {
-            var response = Json(HttpStatusCode.OK, "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3}}");
+            HttpResponseMessage response = Json(HttpStatusCode.OK, "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3}}");
             response.Headers.ETag = new EntityTagHeaderValue("\"etag-2\"", isWeak: true);
             return Task.FromResult(response);
         });
@@ -332,7 +332,7 @@ public class EventStoreGatewayClientTests {
             Task.FromResult(Json(HttpStatusCode.OK, "{\"correlationId\":\"corr-2\",\"payload\":{\"count\":3}}")));
         var client = new EventStoreGatewayClient(httpClient, Options.Create(new EventStoreGatewayClientOptions()));
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => client.SubmitQueryAsync(CreateQueryRequest(), cancellationToken: cancellationSource.Token));
     }
 

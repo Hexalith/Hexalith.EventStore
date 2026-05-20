@@ -1,7 +1,5 @@
 using System.Text.Json;
 
-using Hexalith.EventStore.Admin.UI.Services;
-
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 

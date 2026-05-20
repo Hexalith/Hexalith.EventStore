@@ -25,8 +25,7 @@ public sealed record AggregateReconstructionResult(
     string? FailedEventType,
     AggregateReconstructionErrorCategory ErrorCategory,
     string? Message,
-    IReadOnlyList<AggregateReconstructionTimelineEntry>? Timeline)
-{
+    IReadOnlyList<AggregateReconstructionTimelineEntry>? Timeline) {
     /// <summary>Convenience factory for the success path.</summary>
     public static AggregateReconstructionResult Succeeded(
         string stateJson,

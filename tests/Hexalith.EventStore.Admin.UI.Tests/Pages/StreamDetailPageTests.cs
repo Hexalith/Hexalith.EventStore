@@ -348,7 +348,7 @@ public class StreamDetailPageTests : AdminUITestContext {
     public async Task StreamDetail_CopyStreamKey_InvokesClipboardInterop() {
         SetupTimeline(CreateTimelineResult(2));
 
-        var copyHandler = JSInterop.Setup<bool>("hexalithAdmin.copyToClipboard", _ => true).SetResult(true);
+        JSRuntimeInvocationHandler<bool> copyHandler = JSInterop.Setup<bool>("hexalithAdmin.copyToClipboard", _ => true).SetResult(true);
 
         IRenderedComponent<StreamDetail> cut = RenderStreamDetail();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("test-tenant"), TimeSpan.FromSeconds(5));

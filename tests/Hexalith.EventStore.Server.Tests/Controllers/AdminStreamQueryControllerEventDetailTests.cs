@@ -11,7 +11,6 @@ using Hexalith.EventStore.Server.DomainServices;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
@@ -192,7 +191,7 @@ public class AdminStreamQueryControllerEventDetailTests {
         obj.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
         ProblemDetails problem = obj.Value.ShouldBeOfType<ProblemDetails>();
         problem.Title.ShouldBe("Bad Request");
-        problem.Detail.ShouldNotBeNull();
+        _ = problem.Detail.ShouldNotBeNull();
         problem.Detail.ShouldContain("'sequenceNumber' must be >= 1");
         _ = await actor.DidNotReceive().GetEventsAsync(Arg.Any<long>());
     }

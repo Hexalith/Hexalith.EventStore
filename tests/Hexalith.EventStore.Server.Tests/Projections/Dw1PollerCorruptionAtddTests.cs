@@ -5,7 +5,6 @@ using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 
@@ -24,15 +23,13 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 // Stable tracker disposition vocabulary:
 //   tracker_corrupt_scope_index, tracker_corrupt_identity_index,
 //   tracker_recovered, tracker_terminal_failure.
-public class Dw1PollerCorruptionAtddTests
-{
+public class Dw1PollerCorruptionAtddTests {
     private const string SkipReasonAc5 = "ATDD red phase — DW1 AC#5 (tracker corruption boundedness). Remove Skip when implementing.";
 
     private static readonly AggregateIdentity FastIdentity = new("tenant", "fast", "agg-1");
 
     [Fact(Skip = SkipReasonAc5)]
-    public async Task PollOnceAsync_ScopeIndexCorruption_EmitsTrackerCorruptScopeIndexReasonCode()
-    {
+    public async Task PollOnceAsync_ScopeIndexCorruption_EmitsTrackerCorruptScopeIndexReasonCode() {
         // Tracker enumeration fails with an exception carrying the scope-index marker.
         // The poller must classify it as tracker_corrupt_scope_index — distinct from a
         // generic EnumerationFailed with no scope classification.
@@ -48,8 +45,7 @@ public class Dw1PollerCorruptionAtddTests
     }
 
     [Fact(Skip = SkipReasonAc5)]
-    public async Task PollOnceAsync_IdentityIndexCorruption_EmitsTrackerCorruptIdentityIndexReasonCode()
-    {
+    public async Task PollOnceAsync_IdentityIndexCorruption_EmitsTrackerCorruptIdentityIndexReasonCode() {
         // Identity-page index corruption must classify distinctly from scope-index corruption
         // so operators can route remediation differently (per scope vs per identity).
         var trackerException = new InvalidOperationException("identity index page corrupt");
@@ -64,8 +60,7 @@ public class Dw1PollerCorruptionAtddTests
     }
 
     [Fact(Skip = SkipReasonAc5)]
-    public async Task PollOnceAsync_TrackerCorruption_BoundedRetryWithinSameTick()
-    {
+    public async Task PollOnceAsync_TrackerCorruption_BoundedRetryWithinSameTick() {
         // Boundedness invariant: corrupt tracker state must NOT cause repeated re-enumeration
         // within a single tick. The fake tracker counts how many times its enumerator was
         // entered; a bounded poller calls it at most once per PollOnceAsync.
@@ -80,8 +75,7 @@ public class Dw1PollerCorruptionAtddTests
     }
 
     [Fact(Skip = SkipReasonAc5)]
-    public async Task PollOnceAsync_TrackerCorruption_AdvancesNextDueToPreventTightRetryStorm()
-    {
+    public async Task PollOnceAsync_TrackerCorruption_AdvancesNextDueToPreventTightRetryStorm() {
         // After a corrupt-tracker tick, the next-due schedule for the configured polling
         // domain must be advanced by at least the configured interval. Otherwise the next
         // tick re-fires immediately and the poller hammers the failing tracker.
@@ -92,10 +86,8 @@ public class Dw1PollerCorruptionAtddTests
         ProjectionPollerService service = new(
             tracker,
             gateway,
-            Options.Create(new ProjectionOptions
-            {
-                Domains = new Dictionary<string, DomainProjectionOptions>
-                {
+            Options.Create(new ProjectionOptions {
+                Domains = new Dictionary<string, DomainProjectionOptions> {
                     ["fast"] = new() { RefreshIntervalMs = 1000 },
                 },
             }),
@@ -122,8 +114,7 @@ public class Dw1PollerCorruptionAtddTests
             new FakeTimeProvider(DateTimeOffset.UtcNow),
             new TestLogger<ProjectionPollerService>(entries));
 
-    private sealed class ThrowingTracker(Exception toThrow) : IProjectionCheckpointTracker
-    {
+    private sealed class ThrowingTracker(Exception toThrow) : IProjectionCheckpointTracker {
         public int EnumerationCount { get; private set; }
 
         public Task<long> ReadLastDeliveredSequenceAsync(AggregateIdentity identity, CancellationToken cancellationToken = default) =>
@@ -137,8 +128,7 @@ public class Dw1PollerCorruptionAtddTests
 
 #pragma warning disable CS1998, CS0162 // async lacks await + unreachable yield — required by IAsyncEnumerable signature for throw-only iterator
         public async IAsyncEnumerable<AggregateIdentity> EnumerateTrackedIdentitiesAsync(
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
+            [EnumeratorCancellation] CancellationToken cancellationToken = default) {
             EnumerationCount++;
             throw toThrow;
             yield break;
@@ -146,8 +136,7 @@ public class Dw1PollerCorruptionAtddTests
 #pragma warning restore CS1998, CS0162
     }
 
-    private sealed class NoopTickSource : IProjectionPollerTickSource
-    {
+    private sealed class NoopTickSource : IProjectionPollerTickSource {
         public Task<bool> WaitForNextTickAsync(TimeSpan interval, CancellationToken cancellationToken) =>
             Task.FromResult(true);
     }

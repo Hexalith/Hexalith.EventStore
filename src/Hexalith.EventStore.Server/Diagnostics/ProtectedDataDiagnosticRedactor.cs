@@ -69,7 +69,7 @@ internal static class ProtectedDataDiagnosticRedactor {
         _ = activity.SetStatus(ActivityStatusCode.Error, safeText);
         _ = activity.SetTag("eventstore.protected_data_diagnostic_redacted", true);
         _ = activity.SetTag("eventstore.failure_stage", SafeStage(stage));
-        activity.AddEvent(new ActivityEvent(
+        _ = activity.AddEvent(new ActivityEvent(
             "exception",
             tags: new ActivityTagsCollection {
                 ["exception.type"] = exception.GetType().FullName ?? exception.GetType().Name,

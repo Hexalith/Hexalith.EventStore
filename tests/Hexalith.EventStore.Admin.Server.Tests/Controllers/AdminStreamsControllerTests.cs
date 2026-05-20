@@ -257,7 +257,7 @@ public class AdminStreamsControllerTests {
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
         ProblemDetails problem = objectResult.Value.ShouldBeOfType<ProblemDetails>();
-        problem.Detail.ShouldNotBeNull();
+        _ = problem.Detail.ShouldNotBeNull();
         problem.Detail.ShouldContain("'sequenceNumber' must be >= 1");
         _ = await _service.DidNotReceive().GetEventDetailAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>());

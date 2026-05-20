@@ -34,7 +34,7 @@ public class Dw3TraceMapScanCapAtddTests {
         // tail events have it at the NEWER end. The scan starts from the latest
         // event and walks backward up to MaxEventScan items, so head events are
         // beyond the scan window when totalEvents > MaxEventScan.
-        ServerEventEnvelope[] envelopes = new ServerEventEnvelope[totalEvents];
+        var envelopes = new ServerEventEnvelope[totalEvents];
         for (int i = 0; i < totalEvents; i++) {
             int seq = i + 1;
             string corr = (i < correlationEventsAtHead || i >= totalEvents - correlationEventsAtTail)
@@ -213,7 +213,7 @@ public class Dw3TraceMapScanCapAtddTests {
         OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
         CorrelationTraceMap map = ok.Value.ShouldBeOfType<CorrelationTraceMap>();
 
-        map.ScanCapMessage.ShouldNotBeNull();
+        _ = map.ScanCapMessage.ShouldNotBeNull();
         // Party-mode handoff: text equivalent to
         // "Result truncated: scan cap reached at {count} events."
         // Either that exact phrasing or a stable-vocabulary alternative containing

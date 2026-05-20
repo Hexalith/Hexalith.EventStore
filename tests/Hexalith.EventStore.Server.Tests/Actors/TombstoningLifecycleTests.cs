@@ -43,7 +43,7 @@ public class TombstoningLifecycleTests : IDisposable {
         _fixture.ResetTestState();
 
         Func<CommandEnvelope, object?, Task<DomainResult>> dispatch =
-            (cmd, state) => _aggregate.ProcessAsync(cmd, state);
+            _aggregate.ProcessAsync;
 
         _fixture.DomainServiceInvoker.SetupHandler(commandType: nameof(IncrementCounter), handler: dispatch);
         _fixture.DomainServiceInvoker.SetupHandler(commandType: nameof(DecrementCounter), handler: dispatch);
@@ -78,17 +78,17 @@ public class TombstoningLifecycleTests : IDisposable {
             [typeof(CounterIncremented).FullName!, typeof(CounterClosed).FullName!, typeof(AggregateTerminated).FullName!]);
 
         rejected.Accepted.ShouldBeFalse();
-        rejected.ErrorMessage.ShouldNotBeNull();
+        _ = rejected.ErrorMessage.ShouldNotBeNull();
         rejected.ErrorMessage!.ShouldContain(nameof(AggregateTerminated));
 
         // Independent oracle on the rehydrated input handed to the domain service for the 3rd command:
         // the actor handed the rehydrated (CounterIncremented, CounterClosed) tail to CounterAggregate,
         // and the persisted AggregateTerminated event proves the ITerminatable gate fired end-to-end.
-        (CommandEnvelope LastCommand, object? LastState) lastInvocation = _fixture.DomainServiceInvoker.InvocationsWithState
+        (CommandEnvelope LastCommand, object? LastState) = _fixture.DomainServiceInvoker.InvocationsWithState
             .Where(i => i.Command.AggregateId == aggregateId)
             .Last();
-        lastInvocation.LastCommand.CommandType.ShouldBe(nameof(IncrementCounter));
-        DomainServiceCurrentState captured = lastInvocation.LastState.ShouldBeOfType<DomainServiceCurrentState>();
+        LastCommand.CommandType.ShouldBe(nameof(IncrementCounter));
+        DomainServiceCurrentState captured = LastState.ShouldBeOfType<DomainServiceCurrentState>();
         captured.Events.Count.ShouldBe(2);
         captured.Events.OrderBy(e => e.Metadata.SequenceNumber)
             .Select(e => e.Metadata.EventTypeName)
@@ -134,10 +134,10 @@ public class TombstoningLifecycleTests : IDisposable {
         // Independent oracle on the LAST command's rehydrated input: the captured Events list
         // contains four envelopes including TWO prior AggregateTerminated rejections. This proves
         // the rehydrator successfully replayed AggregateTerminated through the no-op Apply.
-        (CommandEnvelope LastCommand, object? LastState) lastInvocation = _fixture.DomainServiceInvoker.InvocationsWithState
+        (CommandEnvelope LastCommand, object? LastState) = _fixture.DomainServiceInvoker.InvocationsWithState
             .Where(i => i.Command.AggregateId == aggregateId)
             .Last();
-        DomainServiceCurrentState captured = lastInvocation.LastState.ShouldBeOfType<DomainServiceCurrentState>();
+        DomainServiceCurrentState captured = LastState.ShouldBeOfType<DomainServiceCurrentState>();
         captured.Events.Count.ShouldBe(4);
         captured.Events.OrderBy(e => e.Metadata.SequenceNumber)
             .Select(e => e.Metadata.EventTypeName)
@@ -178,7 +178,7 @@ public class TombstoningLifecycleTests : IDisposable {
         ordered[^1].EventTypeName.ShouldBe(typeof(AggregateTerminated).FullName!);
 
         rejected.Accepted.ShouldBeFalse();
-        rejected.ErrorMessage.ShouldNotBeNull();
+        _ = rejected.ErrorMessage.ShouldNotBeNull();
         rejected.ErrorMessage!.ShouldContain(nameof(AggregateTerminated));
 
         // Snapshot creation + snapshot-aware rehydration oracle (consumption point):
@@ -188,10 +188,10 @@ public class TombstoningLifecycleTests : IDisposable {
         //       Apply(AggregateTerminated) lookup.
         // Replaces a prior plan to probe the snapshot Redis key via DAPR HTTP — that probe required
         // parsing SnapshotRecord JSON shape and only confirmed the key existed.
-        (CommandEnvelope LastCommand, object? LastState) lastInvocation = _fixture.DomainServiceInvoker.InvocationsWithState
+        (CommandEnvelope LastCommand, object? LastState) = _fixture.DomainServiceInvoker.InvocationsWithState
             .Where(i => i.Command.AggregateId == aggregateId)
             .Last();
-        DomainServiceCurrentState captured = lastInvocation.LastState.ShouldBeOfType<DomainServiceCurrentState>();
+        DomainServiceCurrentState captured = LastState.ShouldBeOfType<DomainServiceCurrentState>();
         // Lower bound tolerates a one-step boundary shift in SnapshotManager.ShouldCreateSnapshotAsync's
         // > vs >= arithmetic (per AC #5's order-from-end note). Production observation: snapshot anchor
         // lands at sequence 14 when interval=15 — strictly less than the 15 hand-calculated in the spec

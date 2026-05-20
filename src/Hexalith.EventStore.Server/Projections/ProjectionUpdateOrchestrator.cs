@@ -1,5 +1,5 @@
-using System.Net.Http.Json;
 using System.Net;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
@@ -8,9 +8,9 @@ using Dapr.Actors.Client;
 using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Identity;
-using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
@@ -331,7 +331,7 @@ public partial class ProjectionUpdateOrchestrator(
                     continue;
                 }
 
-                touchedAggregateIds.Add(identity.AggregateId);
+                _ = touchedAggregateIds.Add(identity.AggregateId);
 
                 // Re-read OPERATOR scope to honor mid-iteration Pause/Cancel intent.
                 ProjectionRebuildCheckpoint? operatorSnap = await rebuildCheckpointStore
@@ -1160,9 +1160,9 @@ public partial class ProjectionUpdateOrchestrator(
         content?.Headers.ContentType?.ToString() ?? "none";
 
     private static string GetUpstreamReasonCode(HttpStatusCode statusCode) =>
-        (int)statusCode >= 400 && (int)statusCode <= 499
+        (int)statusCode is >= 400 and <= 499
             ? ProjectionReasonCodes.ProjectUpstream4xx
-            : (int)statusCode >= 500 && (int)statusCode <= 599
+            : (int)statusCode is >= 500 and <= 599
                 ? ProjectionReasonCodes.ProjectUpstream5xx
                 : ProjectionReasonCodes.ProjectUnexpectedStatus;
 

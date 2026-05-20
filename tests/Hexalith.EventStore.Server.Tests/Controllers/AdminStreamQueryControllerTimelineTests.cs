@@ -186,7 +186,7 @@ public class AdminStreamQueryControllerTimelineTests {
         obj.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
         ProblemDetails problem = obj.Value.ShouldBeOfType<ProblemDetails>();
         problem.Title.ShouldBe("Bad Request");
-        problem.Detail.ShouldNotBeNull();
+        _ = problem.Detail.ShouldNotBeNull();
         problem.Detail.ShouldContain("'from' must be >= 0");
         _ = await actor.DidNotReceive().GetEventsAsync(Arg.Any<long>());
     }
@@ -202,7 +202,7 @@ public class AdminStreamQueryControllerTimelineTests {
         ObjectResult obj = result.ShouldBeOfType<ObjectResult>();
         obj.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
         ProblemDetails problem = obj.Value.ShouldBeOfType<ProblemDetails>();
-        problem.Detail.ShouldNotBeNull();
+        _ = problem.Detail.ShouldNotBeNull();
         problem.Detail.ShouldContain("'to' must be >= 1");
     }
 
@@ -217,7 +217,7 @@ public class AdminStreamQueryControllerTimelineTests {
         ObjectResult obj = result.ShouldBeOfType<ObjectResult>();
         obj.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
         ProblemDetails problem = obj.Value.ShouldBeOfType<ProblemDetails>();
-        problem.Detail.ShouldNotBeNull();
+        _ = problem.Detail.ShouldNotBeNull();
         problem.Detail.ShouldContain("'to' must be >= 'from'");
     }
 

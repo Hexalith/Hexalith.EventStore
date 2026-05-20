@@ -216,30 +216,21 @@ public class AdminDeadLettersHttpBindingTests : IDisposable {
     private static void VerifyCommandServiceReceived(
         IDeadLetterCommandService commandService,
         string action,
-        IReadOnlyList<string> expectedIds) {
-        switch (action) {
-            case "retry":
-                _ = commandService.Received(1).RetryDeadLettersAsync(
-                    "tenant-a",
-                    Arg.Is<IReadOnlyList<string>>(ids => Sequence(ids, expectedIds)),
-                    Arg.Any<CancellationToken>());
-                break;
-            case "skip":
-                _ = commandService.Received(1).SkipDeadLettersAsync(
-                    "tenant-a",
-                    Arg.Is<IReadOnlyList<string>>(ids => Sequence(ids, expectedIds)),
-                    Arg.Any<CancellationToken>());
-                break;
-            case "archive":
-                _ = commandService.Received(1).ArchiveDeadLettersAsync(
-                    "tenant-a",
-                    Arg.Is<IReadOnlyList<string>>(ids => Sequence(ids, expectedIds)),
-                    Arg.Any<CancellationToken>());
-                break;
-            default:
-                throw new InvalidOperationException($"Unknown action '{action}'.");
-        }
-    }
+        IReadOnlyList<string> expectedIds) => _ = action switch {
+            "retry" => commandService.Received(1).RetryDeadLettersAsync(
+                                "tenant-a",
+                                Arg.Is<IReadOnlyList<string>>(ids => Sequence(ids, expectedIds)),
+                                Arg.Any<CancellationToken>()),
+            "skip" => commandService.Received(1).SkipDeadLettersAsync(
+                                "tenant-a",
+                                Arg.Is<IReadOnlyList<string>>(ids => Sequence(ids, expectedIds)),
+                                Arg.Any<CancellationToken>()),
+            "archive" => commandService.Received(1).ArchiveDeadLettersAsync(
+                                "tenant-a",
+                                Arg.Is<IReadOnlyList<string>>(ids => Sequence(ids, expectedIds)),
+                                Arg.Any<CancellationToken>()),
+            _ => throw new InvalidOperationException($"Unknown action '{action}'."),
+        };
 
     private static bool Sequence(IReadOnlyList<string> actual, IReadOnlyList<string> expected) {
         if (actual.Count != expected.Count) {

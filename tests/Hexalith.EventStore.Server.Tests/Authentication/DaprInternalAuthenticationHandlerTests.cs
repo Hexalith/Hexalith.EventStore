@@ -34,7 +34,7 @@ public class DaprInternalAuthenticationHandlerTests {
         AuthenticateResult result = await AuthenticateAsync(header: "tenants", allowedCallers: ["tenants"]);
 
         result.Succeeded.ShouldBeTrue();
-        result.Principal.ShouldNotBeNull();
+        _ = result.Principal.ShouldNotBeNull();
         result.Principal!.Identity?.IsAuthenticated.ShouldBeTrue();
         result.Principal.FindFirst(ClaimTypes.NameIdentifier)?.Value.ShouldBe("system:tenants");
         result.Principal.FindFirst("sub")?.Value.ShouldBe("system:tenants");

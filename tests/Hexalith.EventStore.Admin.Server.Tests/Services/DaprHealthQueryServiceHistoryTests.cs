@@ -227,7 +227,7 @@ public class DaprHealthQueryServiceHistoryTests {
         result.HasData.ShouldBeFalse();
         result.Entries.ShouldBeEmpty();
         result.HistoryStatus.ShouldBe(SystemHealthMetricStatus.Unavailable);
-        result.StatusMessage.ShouldNotBeNull();
+        _ = result.StatusMessage.ShouldNotBeNull();
         result.StatusMessage.ShouldContain("Health history storage is unavailable");
     }
 
@@ -242,7 +242,7 @@ public class DaprHealthQueryServiceHistoryTests {
             .Returns(call => NeverCompletesHistoryReadAsync(call.Arg<CancellationToken>()));
 
         DaprHealthQueryService service = CreateService(daprClient);
-        Stopwatch stopwatch = Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
 
         DaprComponentHealthTimeline result = await service.GetComponentHealthHistoryAsync(
             now.AddHours(-1), now, null, default);
@@ -251,7 +251,7 @@ public class DaprHealthQueryServiceHistoryTests {
         result.HasData.ShouldBeFalse();
         result.Entries.ShouldBeEmpty();
         result.HistoryStatus.ShouldBe(SystemHealthMetricStatus.Unavailable);
-        result.StatusMessage.ShouldNotBeNull();
+        _ = result.StatusMessage.ShouldNotBeNull();
         result.StatusMessage.ShouldContain("Health history storage is unavailable");
         stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(5));
 

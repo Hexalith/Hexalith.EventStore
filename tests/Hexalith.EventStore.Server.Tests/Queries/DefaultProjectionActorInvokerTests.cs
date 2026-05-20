@@ -75,7 +75,7 @@ public class DefaultProjectionActorInvokerTests {
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => invoker.InvokeAsync("a:b:c", "ProjectionActor", CreateEnvelope(), cts.Token));
 
         _ = factory.DidNotReceive().Create(
@@ -112,7 +112,5 @@ public class DefaultProjectionActorInvokerTests {
     }
 
     [Fact]
-    public void Constructor_NullFactory_ThrowsArgumentNullException() {
-        _ = Should.Throw<ArgumentNullException>(() => new DefaultProjectionActorInvoker(null!));
-    }
+    public void Constructor_NullFactory_ThrowsArgumentNullException() => _ = Should.Throw<ArgumentNullException>(() => new DefaultProjectionActorInvoker(null!));
 }

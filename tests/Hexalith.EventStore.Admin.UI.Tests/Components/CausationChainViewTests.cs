@@ -73,7 +73,7 @@ public class CausationChainViewTests : AdminUITestContext {
 
         AngleSharp.Dom.IElement? copyButton = cut.FindAll("fluent-button")
             .FirstOrDefault(b => b.GetAttribute("aria-label") == "Copy correlation ID");
-        copyButton.ShouldNotBeNull();
+        _ = copyButton.ShouldNotBeNull();
         copyButton!.Click();
 
         copiedCorrelation.ShouldBe("corr-click-test");
@@ -93,7 +93,7 @@ public class CausationChainViewTests : AdminUITestContext {
 
         AngleSharp.Dom.IElement? traceButton = cut.FindAll("fluent-button")
             .FirstOrDefault(b => b.GetAttribute("aria-label") == "Open trace map");
-        traceButton.ShouldNotBeNull();
+        _ = traceButton.ShouldNotBeNull();
         traceButton!.Click();
 
         tracedCorrelation.ShouldBe("corr-trace-test");

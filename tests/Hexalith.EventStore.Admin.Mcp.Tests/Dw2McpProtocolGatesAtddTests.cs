@@ -8,8 +8,6 @@ using Hexalith.EventStore.Testing.Http;
 
 using ModelContextProtocol.Server;
 
-using Shouldly;
-
 namespace Hexalith.EventStore.Admin.Mcp.Tests;
 
 // ATDD red-phase scaffolds for story:
@@ -31,8 +29,7 @@ namespace Hexalith.EventStore.Admin.Mcp.Tests;
 // Cross-reference: existing `ConfigurationValidationTests.cs` already covers env-var validation
 // at process boundary. This file extends the contract to in-process tool-discovery, write-preview
 // non-mutation, and session-fallback classification.
-public class Dw2McpProtocolGatesAtddTests
-{
+public class Dw2McpProtocolGatesAtddTests {
     private const string SkipReasonAc7 = "ATDD red phase — DW2 AC#7 (MCP startup + stdio discipline). Remove Skip after the DW2 live MCP transcript captures initialize → tools/list with stdout reserved for JSON-RPC and stderr carrying logs.";
     private const string SkipReasonAc8 = "ATDD red phase — DW2 AC#8 (write-preview non-mutation proof). Remove Skip after the live evidence captures one approval-gated write tool's preview shape AND a before/after non-mutation pair.";
     private const string SkipReasonAc9 = "ATDD red phase — DW2 AC#9 (session fallback classification). Remove Skip after the live transcript captures session-set-context followed by a scope-omitted tool call that uses session values, with absent/broken/blocked classification recorded.";
@@ -44,8 +41,7 @@ public class Dw2McpProtocolGatesAtddTests
     // ===== AC#7 — Tool discovery =====
 
     [Fact(Skip = SkipReasonAc7)]
-    public void ToolsAssembly_AdvertisesRepresentativeReadTool()
-    {
+    public void ToolsAssembly_AdvertisesRepresentativeReadTool() {
         // AC#7 — `tools/list` is the source of truth (MCP spec, server-tool discovery is assembly-
         // driven via WithToolsFromAssembly). The DW2 evidence transcript MUST include at least one
         // representative read tool — `health-status`, `health-dapr`, `stream-list`, or `stream-events`
@@ -59,8 +55,7 @@ public class Dw2McpProtocolGatesAtddTests
     }
 
     [Fact(Skip = SkipReasonAc7)]
-    public void ToolsAssembly_AdvertisesAtLeastOneApprovalGatedWriteTool()
-    {
+    public void ToolsAssembly_AdvertisesAtLeastOneApprovalGatedWriteTool() {
         // AC#8 — The DW2 evidence MUST exercise one approval-gated write-preview tool. Lock that
         // at least one such tool stays discoverable (consistency-trigger, projection-pause,
         // projection-resume, projection-reset, backup-create, etc.).
@@ -76,8 +71,7 @@ public class Dw2McpProtocolGatesAtddTests
     }
 
     [Fact(Skip = SkipReasonAc9)]
-    public void ToolsAssembly_AdvertisesSessionContextTools()
-    {
+    public void ToolsAssembly_AdvertisesSessionContextTools() {
         // AC#9 — Session fallback proof requires session-set-context AND session-get-context tools.
         // Lock their discoverability so a refactor can't silently remove the established
         // session-establishment path (which would leave session fallback "blocked by missing
@@ -91,8 +85,7 @@ public class Dw2McpProtocolGatesAtddTests
     // ===== AC#8 — Write-preview non-mutation =====
 
     [Fact(Skip = SkipReasonAc8)]
-    public async Task ConsistencyTrigger_WithoutConfirm_DoesNotInvokeAdminApi()
-    {
+    public async Task ConsistencyTrigger_WithoutConfirm_DoesNotInvokeAdminApi() {
         // AC#8 — The approval gate is contractual: confirm=false MUST short-circuit BEFORE any
         // HTTP call. The DW2 before/after non-mutation pair depends on this. This gate fails if
         // a refactor accidentally calls AdminApiClient.TriggerConsistencyCheckAsync regardless of
@@ -114,14 +107,13 @@ public class Dw2McpProtocolGatesAtddTests
             cancellationToken: ct);
 
         outboundCalls.ShouldBe(0);
-        using JsonDocument doc = JsonDocument.Parse(result);
+        using var doc = JsonDocument.Parse(result);
         doc.RootElement.GetProperty("preview").GetBoolean().ShouldBeTrue();
         doc.RootElement.GetProperty("action").GetString().ShouldBe("consistency-trigger");
     }
 
     [Fact(Skip = SkipReasonAc8)]
-    public async Task WritePreviewShape_IsStable_AcrossEvidenceTranscripts()
-    {
+    public async Task WritePreviewShape_IsStable_AcrossEvidenceTranscripts() {
         // AC#8 — The DW2 transcript needs a stable preview shape for review. Lock the keys
         // emitted by ToolHelper.SerializePreview so a future refactor can't reshape evidence.
         CancellationToken ct = TestContext.Current.CancellationToken;
@@ -137,7 +129,7 @@ public class Dw2McpProtocolGatesAtddTests
             confirm: false,
             cancellationToken: ct);
 
-        using JsonDocument doc = JsonDocument.Parse(result);
+        using var doc = JsonDocument.Parse(result);
         doc.RootElement.TryGetProperty("preview", out _).ShouldBeTrue();
         doc.RootElement.TryGetProperty("action", out _).ShouldBeTrue();
         doc.RootElement.TryGetProperty("description", out _).ShouldBeTrue();
@@ -149,8 +141,7 @@ public class Dw2McpProtocolGatesAtddTests
     // ===== AC#9 — Session fallback (positive + classification) =====
 
     [Fact(Skip = SkipReasonAc9)]
-    public async Task StreamList_OmittedScope_FallsBackToSessionTenantAndDomain()
-    {
+    public async Task StreamList_OmittedScope_FallsBackToSessionTenantAndDomain() {
         // AC#9 — When the caller omits tenantId/domain AND the session has them set, the tool
         // MUST forward session values (positive proof of the `feature present` classification).
         CancellationToken ct = TestContext.Current.CancellationToken;
@@ -165,14 +156,13 @@ public class Dw2McpProtocolGatesAtddTests
 
         _ = await StreamTools.ListStreams(client, session, tenantId: null, domain: null, cancellationToken: ct);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri!.PathAndQuery.ShouldContain($"tenantId={CanonicalTenant}");
         capturedUri.PathAndQuery.ShouldContain($"domain={CanonicalDomain}");
     }
 
     [Fact(Skip = SkipReasonAc9)]
-    public async Task SessionFallback_NoEstablishedContext_DoesNotFabricateScope()
-    {
+    public async Task SessionFallback_NoEstablishedContext_DoesNotFabricateScope() {
         // AC#9 — `feature absent` classification: when the session has NO context AND the caller
         // omits scope, the tool MUST NOT manufacture a tenant/domain. The outbound URI MUST omit
         // those query params entirely. This locks the negative case so the smoke transcript can
@@ -189,7 +179,7 @@ public class Dw2McpProtocolGatesAtddTests
 
         _ = await StreamTools.ListStreams(client, session, tenantId: null, domain: null, cancellationToken: ct);
 
-        capturedUri.ShouldNotBeNull();
+        _ = capturedUri.ShouldNotBeNull();
         capturedUri!.PathAndQuery.ShouldNotContain("tenantId=");
         capturedUri.PathAndQuery.ShouldNotContain("domain=");
     }
@@ -197,8 +187,7 @@ public class Dw2McpProtocolGatesAtddTests
     // ===== AC#7 — Stdio discipline =====
 
     [Fact(Skip = SkipReasonAc7)]
-    public async Task McpHost_ValidEnvVars_KeepsStdoutEmptyBeforeJsonRpc()
-    {
+    public async Task McpHost_ValidEnvVars_KeepsStdoutEmptyBeforeJsonRpc() {
         // AC#7 — Stdout is RESERVED for JSON-RPC. With valid env vars supplied and no client input
         // on stdin, the host MUST NOT emit any non-protocol bytes on stdout in the first 2s before
         // initialize. Logs go to stderr only. This gate fails if logging providers are
@@ -246,8 +235,7 @@ public class Dw2McpProtocolGatesAtddTests
 
     // ===== Helpers =====
 
-    private static IReadOnlyList<string> DiscoverToolNames()
-    {
+    private static IReadOnlyList<string> DiscoverToolNames() {
         // Mirror Program.cs discovery (WithToolsFromAssembly()): scan the Admin.Mcp assembly for
         // [McpServerTool] attributes on static methods inside [McpServerToolType] classes.
         Assembly mcpAssembly = typeof(AdminApiClient).Assembly;
@@ -270,8 +258,7 @@ public class Dw2McpProtocolGatesAtddTests
         return names;
     }
 
-    private static string ResolveMcpDll()
-    {
+    private static string ResolveMcpDll() {
         // Mirror ConfigurationValidationTests.ResolveMcpDll() so this scaffold doesn't depend on
         // a private helper. tests/Hexalith.EventStore.Admin.Mcp.Tests/bin/<config>/<tfm>/ →
         // src/Hexalith.EventStore.Admin.Mcp/bin/<config>/<tfm>/.

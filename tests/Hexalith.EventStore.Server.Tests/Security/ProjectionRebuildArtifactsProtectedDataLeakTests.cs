@@ -1,4 +1,3 @@
-using System;
 using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Security;

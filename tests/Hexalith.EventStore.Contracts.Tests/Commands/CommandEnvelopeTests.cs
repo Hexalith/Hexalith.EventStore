@@ -1,5 +1,3 @@
-using System.Reflection;
-
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 

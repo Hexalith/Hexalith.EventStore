@@ -21,9 +21,7 @@ public sealed class AdminApiAccessTokenProvider {
     public AdminApiAccessTokenProvider(IConfiguration configuration, DevelopmentAdminRoleState? roleState = null) {
         _configuration = configuration;
         _roleState = roleState;
-        if (_roleState is not null) {
-            _roleState.RoleChanged += _ => InvalidateCache();
-        }
+        _roleState?.RoleChanged += _ => InvalidateCache();
     }
 
     public async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default) {

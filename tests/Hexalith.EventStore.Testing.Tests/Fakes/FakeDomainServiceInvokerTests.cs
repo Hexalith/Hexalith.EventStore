@@ -97,7 +97,7 @@ public class FakeDomainServiceInvokerTests {
     public async Task SetupHandler_HandlerInvokedWithCommandAndCurrentState() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         var sut = new FakeDomainServiceInvoker();
-        var sentinel = new object();
+        object sentinel = new();
         CommandEnvelope? capturedCommand = null;
         object? capturedState = null;
         var expected = DomainResult.NoOp();

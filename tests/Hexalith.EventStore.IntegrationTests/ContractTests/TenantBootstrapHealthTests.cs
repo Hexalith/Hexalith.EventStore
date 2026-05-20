@@ -1,7 +1,6 @@
 
 using System.Text.Json;
 
-using global::Aspire.Hosting;
 using global::Aspire.Hosting.ApplicationModel;
 
 using Hexalith.EventStore.IntegrationTests.Fixtures;
@@ -24,8 +23,7 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 [Trait("Category", "E2E")]
 [Trait("Tier", "3")]
 [Collection("AspireContractTests")]
-public class TenantBootstrapHealthTests
-{
+public class TenantBootstrapHealthTests {
     private static readonly TimeSpan s_observationWindow = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan s_overallGuard = TimeSpan.FromMinutes(3);
 
@@ -56,8 +54,7 @@ public class TenantBootstrapHealthTests
     /// assertion fails with the captured StatusCode + Body.
     /// </summary>
     [Fact]
-    public async Task TenantBootstrap_FirstSixtySeconds_NoFailureEvents()
-    {
+    public async Task TenantBootstrap_FirstSixtySeconds_NoFailureEvents() {
         using var overallCts = new CancellationTokenSource(s_overallGuard);
 
         // Wait for tenants Healthy — bootstrap is deferred to ApplicationStarted so logs we
@@ -75,48 +72,39 @@ public class TenantBootstrapHealthTests
         using var windowCts = CancellationTokenSource.CreateLinkedTokenSource(overallCts.Token);
         windowCts.CancelAfter(s_observationWindow);
 
-        try
-        {
+        try {
             await foreach (IReadOnlyList<LogLine> batch in loggerService
                 .WatchAsync("tenants")
-                .WithCancellation(windowCts.Token))
-            {
-                foreach (LogLine line in batch)
-                {
-                    if (line.Content is null)
-                    {
+                .WithCancellation(windowCts.Token)) {
+                foreach (LogLine line in batch) {
+                    if (line.Content is null) {
                         continue;
                     }
 
                     // Diagnostic — capture the first few non-empty lines so a Skip message
                     // can show the actual format (helpful when the fixture's log shape drifts).
-                    if (sampleLines.Count < 3 && !string.IsNullOrWhiteSpace(line.Content))
-                    {
+                    if (sampleLines.Count < 3 && !string.IsNullOrWhiteSpace(line.Content)) {
                         sampleLines.Add(line.Content.Length <= 200 ? line.Content : line.Content[..200]);
                     }
 
-                    if (!line.Content.Contains(BootstrapCategory, StringComparison.Ordinal))
-                    {
+                    if (!line.Content.Contains(BootstrapCategory, StringComparison.Ordinal)) {
                         continue;
                     }
 
                     int? eventId = TryExtractEventId(line.Content);
-                    if (eventId is null)
-                    {
+                    if (eventId is null) {
                         continue;
                     }
 
                     observedEventIds.Add(eventId.Value);
 
-                    if (eventId == EventBootstrapFailed || eventId == EventBootstrapUnexpectedResponse)
-                    {
+                    if (eventId is EventBootstrapFailed or EventBootstrapUnexpectedResponse) {
                         failureLines.Add(line.Content);
                     }
                 }
             }
         }
-        catch (OperationCanceledException) when (windowCts.IsCancellationRequested && !overallCts.IsCancellationRequested)
-        {
+        catch (OperationCanceledException) when (windowCts.IsCancellationRequested && !overallCts.IsCancellationRequested) {
             // 60-second observation window completed normally.
         }
 
@@ -137,8 +125,7 @@ public class TenantBootstrapHealthTests
         // load-bearing regression watch and stays strict.)
         bool anySuccess = observedEventIds.Any(id =>
             id is EventBootstrapSkipped or EventBootstrapCommandSent or EventBootstrapAlreadyDone);
-        if (!anySuccess)
-        {
+        if (!anySuccess) {
             string sample = sampleLines.Count == 0
                 ? "(no log lines observed)"
                 : string.Join("\n  ", sampleLines);
@@ -158,32 +145,26 @@ public class TenantBootstrapHealthTests
     /// emits lines like {"EventId":2001,"LogLevel":"Information",...}. Returns null if the
     /// line is not parseable JSON or has no EventId.
     /// </summary>
-    private static int? TryExtractEventId(string content)
-    {
+    private static int? TryExtractEventId(string content) {
         int objectStart = content.IndexOf('{');
-        if (objectStart < 0)
-        {
+        if (objectStart < 0) {
             return null;
         }
 
         string json = content[objectStart..];
-        try
-        {
+        try {
             JsonElement element = JsonSerializer.Deserialize<JsonElement>(json);
-            if (element.ValueKind != JsonValueKind.Object)
-            {
+            if (element.ValueKind != JsonValueKind.Object) {
                 return null;
             }
 
             if (element.TryGetProperty("EventId", out JsonElement eid)
                 && eid.ValueKind == JsonValueKind.Number
-                && eid.TryGetInt32(out int value))
-            {
+                && eid.TryGetInt32(out int value)) {
                 return value;
             }
         }
-        catch (JsonException)
-        {
+        catch (JsonException) {
             // Non-JSON or malformed — ignore.
         }
 

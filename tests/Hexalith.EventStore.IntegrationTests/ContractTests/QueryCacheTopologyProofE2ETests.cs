@@ -38,7 +38,7 @@ public sealed partial class QueryCacheTopologyProofE2ETests {
         const string projectionType = "counter";
         const string queryType = "get-counter-status";
         string aggregateId = $"query-cache-topology-{Guid.NewGuid():N}";
-        QueryIdentity query = QueryIdentity.Create(tenant, domain, aggregateId, projectionType, queryType);
+        var query = QueryIdentity.Create(tenant, domain, aggregateId, projectionType, queryType);
 
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(4));
         CancellationToken ct = cts.Token;
@@ -449,9 +449,9 @@ public sealed partial class QueryCacheTopologyProofE2ETests {
 
         var body = new {
             MessageId = Guid.NewGuid().ToString(),
-            Tenant = query.Tenant,
-            Domain = query.Domain,
-            AggregateId = query.AggregateId,
+            query.Tenant,
+            query.Domain,
+            query.AggregateId,
             CommandType = "IncrementCounter",
             Payload = new { id = query.AggregateId },
         };
@@ -533,7 +533,7 @@ public sealed partial class QueryCacheTopologyProofE2ETests {
     }
 
     private static int ParseCountFromQueryBody(string body) {
-        using JsonDocument document = JsonDocument.Parse(body);
+        using var document = JsonDocument.Parse(body);
         JsonElement root = document.RootElement;
 
         if (!root.TryGetProperty("payload", out JsonElement payload)) {
@@ -556,7 +556,7 @@ public sealed partial class QueryCacheTopologyProofE2ETests {
             }
 
             byte[] bytes = Convert.FromBase64String(encoded);
-            using JsonDocument inner = JsonDocument.Parse(bytes);
+            using var inner = JsonDocument.Parse(bytes);
             if (inner.RootElement.TryGetProperty("count", out JsonElement encodedCount)) {
                 return encodedCount.GetInt32();
             }

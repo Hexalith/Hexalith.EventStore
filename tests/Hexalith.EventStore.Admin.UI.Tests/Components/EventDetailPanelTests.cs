@@ -51,7 +51,7 @@ public class EventDetailPanelTests : AdminUITestContext {
 
     [Fact]
     public void EventDetailPanel_RendersRedactedPayloadAndStateWithoutSentinelLeak() {
-        EventDetail detail = EventDetail.WithRedactedPayload(
+        var detail = EventDetail.WithRedactedPayload(
             "tenant-a",
             "Counter",
             "agg-1",

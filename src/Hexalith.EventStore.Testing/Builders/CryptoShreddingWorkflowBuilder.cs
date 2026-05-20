@@ -1,5 +1,3 @@
-using System;
-
 using Hexalith.EventStore.Contracts.Security;
 
 namespace Hexalith.EventStore.Testing.Builders;

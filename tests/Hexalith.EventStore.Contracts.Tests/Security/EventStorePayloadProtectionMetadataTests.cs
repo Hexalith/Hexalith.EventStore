@@ -1,9 +1,6 @@
-using System.Collections.Generic;
 using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Security;
-
-using Shouldly;
 
 namespace Hexalith.EventStore.Contracts.Tests.Security;
 
@@ -20,7 +17,7 @@ public class EventStorePayloadProtectionMetadataTests {
 
     [Fact]
     public void Unprotected_Default_HasUnprotectedStateAndCurrentVersion() {
-        EventStorePayloadProtectionMetadata metadata = EventStorePayloadProtectionMetadata.Unprotected();
+        var metadata = EventStorePayloadProtectionMetadata.Unprotected();
 
         metadata.State.ShouldBe(PayloadProtectionState.Unprotected);
         metadata.MetadataVersion.ShouldBe(EventStorePayloadProtectionMetadata.CurrentMetadataVersion);
@@ -32,17 +29,17 @@ public class EventStorePayloadProtectionMetadataTests {
 
     [Fact]
     public void ProviderOpaque_WithReason_RecordsCompatibilityFlag() {
-        EventStorePayloadProtectionMetadata metadata = EventStorePayloadProtectionMetadata.ProviderOpaque("parseError");
+        var metadata = EventStorePayloadProtectionMetadata.ProviderOpaque("parseError");
 
         metadata.State.ShouldBe(PayloadProtectionState.ProviderOpaque);
-        metadata.CompatibilityFlags.ShouldNotBeNull();
+        _ = metadata.CompatibilityFlags.ShouldNotBeNull();
         metadata.CompatibilityFlags!["reason"].ShouldBe("parseError");
     }
 
     [Fact]
     public void Equality_TwoUnprotectedRecords_AreEqual() {
-        EventStorePayloadProtectionMetadata a = EventStorePayloadProtectionMetadata.Unprotected();
-        EventStorePayloadProtectionMetadata b = EventStorePayloadProtectionMetadata.Unprotected();
+        var a = EventStorePayloadProtectionMetadata.Unprotected();
+        var b = EventStorePayloadProtectionMetadata.Unprotected();
 
         a.Equals(b).ShouldBeTrue();
         a.GetHashCode().ShouldBe(b.GetHashCode());
@@ -217,7 +214,7 @@ public class EventStorePayloadProtectionMetadataTests {
         EventStorePayloadProtectionMetadata result = EventStorePayloadProtectionMetadataCarrier.Read((IReadOnlyDictionary<string, string>?)null);
 
         result.State.ShouldBe(PayloadProtectionState.Unprotected);
-        result.CompatibilityFlags.ShouldNotBeNull();
+        _ = result.CompatibilityFlags.ShouldNotBeNull();
         result.CompatibilityFlags!["legacy"].ShouldBe("missing");
     }
 
@@ -234,7 +231,7 @@ public class EventStorePayloadProtectionMetadataTests {
     [Fact]
     public void Carrier_Write_ToMutableDictionary_PreservesOtherEntries() {
         var extensions = new Dictionary<string, string> { ["traceparent"] = "00-aaa-bbb-01" };
-        EventStorePayloadProtectionMetadata metadata = EventStorePayloadProtectionMetadata.Unprotected();
+        var metadata = EventStorePayloadProtectionMetadata.Unprotected();
 
         IDictionary<string, string> result = EventStorePayloadProtectionMetadataCarrier.Write((IDictionary<string, string>)extensions, metadata);
 
@@ -256,7 +253,7 @@ public class EventStorePayloadProtectionMetadataTests {
             CompatibilityFlags: new Dictionary<string, string> { ["note"] = PlaintextSecretMarker });
 
         EventStorePayloadProtectionMetadataCarrier.TryValidate(unsafeMetadata, out _).ShouldBeFalse();
-        Should.Throw<System.ArgumentException>(() => EventStorePayloadProtectionMetadataCarrier.Serialize(unsafeMetadata));
+        _ = Should.Throw<System.ArgumentException>(() => EventStorePayloadProtectionMetadataCarrier.Serialize(unsafeMetadata));
 
         // A non-secret-shaped alias passes validation and roundtrips cleanly.
         var safeMetadata = new EventStorePayloadProtectionMetadata(
@@ -276,7 +273,7 @@ public class EventStorePayloadProtectionMetadataTests {
         EventStorePayloadProtectionMetadata legacy = EventStorePayloadProtectionMetadataCarrier.Legacy();
 
         legacy.State.ShouldBe(PayloadProtectionState.Unprotected);
-        legacy.CompatibilityFlags.ShouldNotBeNull();
+        _ = legacy.CompatibilityFlags.ShouldNotBeNull();
         legacy.CompatibilityFlags!["legacy"].ShouldBe("missing");
     }
 }

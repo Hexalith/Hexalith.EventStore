@@ -1,5 +1,3 @@
-using Xunit;
-
 // Tier 3 spins up full Aspire topologies per collection fixture
 // (AspireContractTestFixture, AspireTopologyFixture, KeycloakAuthFixture,
 // AspireProjectionFaultTestFixture). Each sets process-level environment

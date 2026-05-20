@@ -7,8 +7,7 @@ namespace Hexalith.EventStore.Client.Aggregates;
 /// own the canonical Apply path. Domain-service routers invoke <see cref="Replay"/> when
 /// the EventStore server requests aggregate state reconstruction via <c>POST /replay-state</c>.
 /// </summary>
-public interface IAggregateReplay
-{
+public interface IAggregateReplay {
     /// <summary>
     /// Returns whether this replay handler owns the requested aggregate type hint.
     /// </summary>

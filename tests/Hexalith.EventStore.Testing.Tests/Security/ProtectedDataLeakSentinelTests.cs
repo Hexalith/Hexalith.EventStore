@@ -1,7 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Testing.Fakes;
@@ -207,7 +203,7 @@ public class FakeUnreadableProtectionServiceTests {
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        await Should.ThrowAsync<OperationCanceledException>(async () => await service.TryUnprotectEventPayloadAsync(
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () => await service.TryUnprotectEventPayloadAsync(
             TestIdentity, "Type", [1, 2, 3], "json", EventStorePayloadProtectionMetadata.Unprotected(), cts.Token));
     }
 
@@ -226,9 +222,9 @@ public class FakeUnreadableProtectionServiceTests {
     [Fact]
     public async Task EventUnprotectInvocations_AreCapturedForTestAssertions() {
         var service = new FakeUnreadableProtectionService();
-        await service.TryUnprotectEventPayloadAsync(
+        _ = await service.TryUnprotectEventPayloadAsync(
             TestIdentity, "TypeA", [1], "json", EventStorePayloadProtectionMetadata.Unprotected(), CancellationToken.None);
-        await service.TryUnprotectEventPayloadAsync(
+        _ = await service.TryUnprotectEventPayloadAsync(
             TestIdentity, "TypeB", [2], "json", null, CancellationToken.None);
 
         service.EventUnprotectInvocations.Count.ShouldBe(2);

@@ -11,6 +11,7 @@ using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Telemetry;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -20,7 +21,6 @@ using NSubstitute;
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
-using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
@@ -735,7 +735,7 @@ public class EventDrainRecoveryTests {
         await actor.ReceiveReminderAsync("drain-unpublished-corr-partial", [], TimeSpan.Zero, TimeSpan.Zero);
 
         // Assert
-        publishedSequences.ShouldNotBeNull();
+        _ = publishedSequences.ShouldNotBeNull();
         publishedSequences.ShouldBe([1L, 2L, 3L]);
         await stateManager.Received(1).RemoveStateAsync(
             "drain:corr-partial", Arg.Any<CancellationToken>());

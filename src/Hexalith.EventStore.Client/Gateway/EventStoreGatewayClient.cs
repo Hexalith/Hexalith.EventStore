@@ -456,12 +456,12 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     // do not appear twice (once as typed properties, once in Extensions).
     private static bool IsKnownProblemDetailsProperty(string propertyName)
         => propertyName is "type" or "title" or "status" or "detail" or "instance"
-            || propertyName == GatewayProblemDetailsExtensions.CorrelationId
-            || propertyName == GatewayProblemDetailsExtensions.TenantId
-            || propertyName == GatewayProblemDetailsExtensions.Errors
-            || propertyName == GatewayProblemDetailsExtensions.Reason
-            || propertyName == GatewayProblemDetailsExtensions.ReasonCode
-            || propertyName == GatewayProblemDetailsExtensions.RetryAfter;
+            or GatewayProblemDetailsExtensions.CorrelationId
+            or GatewayProblemDetailsExtensions.TenantId
+            or GatewayProblemDetailsExtensions.Errors
+            or GatewayProblemDetailsExtensions.Reason
+            or GatewayProblemDetailsExtensions.ReasonCode
+            or GatewayProblemDetailsExtensions.RetryAfter;
 
     private static class StatusCodes {
         public const int Ok = 200;

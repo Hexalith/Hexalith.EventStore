@@ -91,7 +91,7 @@ public partial class EventPublisher(
                 // ProtectedDataReadabilityDecision so observability is identical across surfaces.
                 if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {
                     UnreadableProtectedDataReason opaqueReason = UnreadableProtectedDataReasonMapper.FromProviderOpaqueMetadata(storedMetadata);
-                    ProtectedDataReadabilityDecision opaqueDecision = ProtectedDataReadabilityDecision.FromUnreadable(
+                    var opaqueDecision = ProtectedDataReadabilityDecision.FromUnreadable(
                         opaqueReason,
                         ProtectedDataDecisionStage.Publish,
                         identity.TenantId,

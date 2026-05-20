@@ -21,7 +21,7 @@ public class Dw9EvidenceValidatorPolishTests {
         Dw4Diagnostic diagnostic = outcome.Diagnostics.Single(d => d.Rule == expectedRuleId);
         diagnostic.Section.ShouldBe("Controls");
         diagnostic.Field.ShouldBe(expectedField);
-        diagnostic.Line.ShouldNotBeNull();
+        _ = diagnostic.Line.ShouldNotBeNull();
         diagnostic.Hint.ShouldNotBeNullOrWhiteSpace();
     }
 

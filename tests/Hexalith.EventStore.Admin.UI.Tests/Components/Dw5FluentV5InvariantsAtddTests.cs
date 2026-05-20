@@ -1,7 +1,5 @@
 using System.Text.RegularExpressions;
 
-using Shouldly;
-
 namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 
 // ATDD red-phase scaffolds for story:

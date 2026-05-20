@@ -12,32 +12,24 @@ public class Dw4SignalrEvidenceNegativeAtddTests {
     private const string _baseSkip = "ATDD red phase — DW4 ";
 
     [Fact(Skip = _baseSkip + "AC#2 — missing required SignalR metadata must fail with signalr-required-metadata-missing. Remove Skip when implementing.")]
-    public void SignalrEvidence_MissingRequiredMetadata_Fails() {
-        AssertFixture(
+    public void SignalrEvidence_MissingRequiredMetadata_Fails() => AssertFixture(
             "signalr-invalid-missing-metadata.md",
             Dw4RuleVocabulary.SignalrRequiredMetadataMissing);
-    }
 
     [Fact(Skip = _baseSkip + "AC#3 — placeholder unreplaced must fail with placeholder-unreplaced. Remove Skip when implementing.")]
-    public void SignalrEvidence_PlaceholderUnreplaced_Fails() {
-        AssertFixture(
+    public void SignalrEvidence_PlaceholderUnreplaced_Fails() => AssertFixture(
             "signalr-invalid-placeholder-unreplaced.md",
             Dw4RuleVocabulary.PlaceholderUnreplaced);
-    }
 
     [Fact(Skip = _baseSkip + "AC#4 — classification outside the 6-value SignalR enum must fail. Remove Skip when implementing.")]
-    public void SignalrEvidence_ClassificationNotInEnum_Fails() {
-        AssertFixture(
+    public void SignalrEvidence_ClassificationNotInEnum_Fails() => AssertFixture(
             "signalr-invalid-classification-not-in-enum.md",
             Dw4RuleVocabulary.ClassificationInvalid);
-    }
 
     [Fact(Skip = _baseSkip + "AC#6 — missing false-positive control must fail. Remove Skip when implementing.")]
-    public void SignalrEvidence_ControlMissing_Fails() {
-        AssertFixture(
+    public void SignalrEvidence_ControlMissing_Fails() => AssertFixture(
             "signalr-invalid-control-missing.md",
             Dw4RuleVocabulary.ControlRequiredMissing);
-    }
 
     private static void AssertFixture(string fixtureFileName, string expectedRuleId) {
         Dw4FixtureCatalog.FixtureExpectation expected = Dw4FixtureCatalog.ByName[fixtureFileName];

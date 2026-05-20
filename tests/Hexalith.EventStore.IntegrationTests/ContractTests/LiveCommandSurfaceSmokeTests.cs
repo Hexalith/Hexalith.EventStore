@@ -23,8 +23,7 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 [Trait("Category", "E2E")]
 [Trait("Tier", "3")]
 [Collection("AspireContractTests")]
-public class LiveCommandSurfaceSmokeTests
-{
+public class LiveCommandSurfaceSmokeTests {
     private static readonly TimeSpan s_statusPollTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan s_statusPollInterval = TimeSpan.FromMilliseconds(500);
     private static readonly Regex s_openApiVersion = new(@"^3\.1\.\d+$", RegexOptions.Compiled);
@@ -40,8 +39,7 @@ public class LiveCommandSurfaceSmokeTests
     /// minor (live observation: 3.1.1) — UX-DR12's design intent is "OpenAPI 3.1, not 3.0".
     /// </summary>
     [Fact]
-    public async Task PublicSurface_AllFourUrls_Return200WithExpectedShape()
-    {
+    public async Task PublicSurface_AllFourUrls_Return200WithExpectedShape() {
         // /swagger/index.html
         using HttpResponseMessage swagger = await _fixture.EventStoreClient.GetAsync("/swagger/index.html");
         swagger.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -86,10 +84,8 @@ public class LiveCommandSurfaceSmokeTests
     /// JwtAuthenticationIntegrationTests.
     /// </summary>
     [Fact]
-    public async Task PostCommands_NoAuthToken_Returns401WithStory35Contract()
-    {
-        var body = new
-        {
+    public async Task PostCommands_NoAuthToken_Returns401WithStory35Contract() {
+        var body = new {
             messageId = "irrelevant",
             tenant = "t",
             domain = "d",
@@ -98,8 +94,7 @@ public class LiveCommandSurfaceSmokeTests
             payload = new { },
         };
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands")
-        {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands") {
             Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"),
         };
         // NOTE: no Authorization header attached — that's the test.
@@ -114,7 +109,7 @@ public class LiveCommandSurfaceSmokeTests
         challenge.Parameter.ShouldNotBeNullOrEmpty();
         challenge.Parameter!.ShouldStartWith("realm=\"");
 
-        response.Content.Headers.ContentType?.MediaType.ShouldNotBeNull();
+        _ = (response.Content.Headers.ContentType?.MediaType.ShouldNotBeNull());
         response.Content.Headers.ContentType!.MediaType!.ShouldContain("problem+json");
 
         JsonElement problem = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -132,15 +127,13 @@ public class LiveCommandSurfaceSmokeTests
     /// "extract only if a third caller materializes" rule.
     /// </summary>
     [Fact]
-    public async Task PostCommands_SignedHappyPath_ReachesCompletedWithEvent()
-    {
+    public async Task PostCommands_SignedHappyPath_ReachesCompletedWithEvent() {
         // Pre-condition guard — the AspireContractTestFixture pins EnableKeycloak=false so the
         // symmetric-key path is the configured auth scheme. If the configured signing key ever
         // becomes unreachable (e.g., a future fixture refactor wipes appsettings.Development.json),
         // this skip path produces a clear signal — Fact C did not run because of fixture
         // configuration, not because of a Story 3.5 contract failure.
-        if (string.IsNullOrWhiteSpace(TestJwtTokenGenerator.SigningKey))
-        {
+        if (string.IsNullOrWhiteSpace(TestJwtTokenGenerator.SigningKey)) {
             Assert.Skip("Symmetric signing key not configured — Fact C cannot run; this is configuration, not a regression.");
         }
 
@@ -150,8 +143,7 @@ public class LiveCommandSurfaceSmokeTests
             domains: ["counter"],
             permissions: ["command:submit", "command:query"]);
 
-        var submitBody = new
-        {
+        var submitBody = new {
             MessageId = Guid.NewGuid().ToString(),
             Tenant = "tenant-a",
             Domain = "counter",
@@ -160,16 +152,14 @@ public class LiveCommandSurfaceSmokeTests
             Payload = new { id = Guid.NewGuid().ToString() },
         };
 
-        using var submitRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands")
-        {
+        using var submitRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands") {
             Content = new StringContent(JsonSerializer.Serialize(submitBody), Encoding.UTF8, "application/json"),
         };
         submitRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         using HttpResponseMessage submitResponse = await _fixture.EventStoreClient.SendAsync(submitRequest);
 
-        if (submitResponse.StatusCode != HttpStatusCode.Accepted)
-        {
+        if (submitResponse.StatusCode != HttpStatusCode.Accepted) {
             string failBody = await submitResponse.Content.ReadAsStringAsync();
             throw new ShouldAssertException(
                 $"Expected 202 Accepted on signed POST but was {(int)submitResponse.StatusCode} {submitResponse.StatusCode}.\nBody:\n{failBody}");
@@ -186,30 +176,25 @@ public class LiveCommandSurfaceSmokeTests
         DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(s_statusPollTimeout);
         JsonElement lastStatus = default;
 
-        while (DateTimeOffset.UtcNow < deadline)
-        {
+        while (DateTimeOffset.UtcNow < deadline) {
             using var statusRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/commands/status/{correlationIdValue}");
             statusRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             using HttpResponseMessage statusResponse = await _fixture.EventStoreClient.SendAsync(statusRequest);
 
-            if (statusResponse.StatusCode == HttpStatusCode.OK)
-            {
+            if (statusResponse.StatusCode == HttpStatusCode.OK) {
                 lastStatus = await statusResponse.Content.ReadFromJsonAsync<JsonElement>();
                 string statusValue = lastStatus.GetProperty("status").GetString()!;
 
-                if (observedStatuses.Count == 0 || observedStatuses[^1] != statusValue)
-                {
+                if (observedStatuses.Count == 0 || observedStatuses[^1] != statusValue) {
                     observedStatuses.Add(statusValue);
                 }
 
-                if (statusValue is "Completed" or "Rejected" or "PublishFailed" or "TimedOut")
-                {
+                if (statusValue is "Completed" or "Rejected" or "PublishFailed" or "TimedOut") {
                     break;
                 }
             }
-            else if ((int)statusResponse.StatusCode is >= 400 and < 500)
-            {
+            else if ((int)statusResponse.StatusCode is >= 400 and < 500) {
                 string errorBody = await statusResponse.Content.ReadAsStringAsync();
                 throw new ShouldAssertException(
                     $"Status endpoint returned {(int)statusResponse.StatusCode} (non-retriable) for correlationId '{correlationIdValue}'.\n{errorBody}");
@@ -226,8 +211,7 @@ public class LiveCommandSurfaceSmokeTests
         // if it collapsed (the common fast-path), the eventCount >= 1 check is the evidence that matters.
         // This mirrors CommandLifecycleTests.cs:96-111 per D2 decision.
         bool sawReceived = observedStatuses.Contains("Received");
-        if (sawReceived)
-        {
+        if (sawReceived) {
             observedStatuses.ShouldContain("Received",
                 "When observable, 'Received' MUST precede 'Completed' in the deduplicated sequence (AC #4)");
         }
@@ -253,10 +237,8 @@ public class LiveCommandSurfaceSmokeTests
     /// of post-epic-3-r3a1-replay-ulid-validation.
     /// </summary>
     [Fact]
-    public async Task Replay_AfterCompleted_DoesNotReturn400WithGuidText()
-    {
-        if (string.IsNullOrWhiteSpace(TestJwtTokenGenerator.SigningKey))
-        {
+    public async Task Replay_AfterCompleted_DoesNotReturn400WithGuidText() {
+        if (string.IsNullOrWhiteSpace(TestJwtTokenGenerator.SigningKey)) {
             Assert.Skip("Symmetric signing key not configured — Fact D pre-condition (Fact C path) cannot run.");
         }
 
@@ -267,8 +249,7 @@ public class LiveCommandSurfaceSmokeTests
             domains: ["counter"],
             permissions: ["command:submit", "command:query", "command:replay"]);
 
-        var submitBody = new
-        {
+        var submitBody = new {
             MessageId = Guid.NewGuid().ToString(),
             Tenant = "tenant-a",
             Domain = "counter",
@@ -277,8 +258,7 @@ public class LiveCommandSurfaceSmokeTests
             Payload = new { id = Guid.NewGuid().ToString() },
         };
 
-        using var submitRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands")
-        {
+        using var submitRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/commands") {
             Content = new StringContent(JsonSerializer.Serialize(submitBody), Encoding.UTF8, "application/json"),
         };
         submitRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -292,22 +272,18 @@ public class LiveCommandSurfaceSmokeTests
         // Wait until the command reaches Completed before replaying.
         DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(s_statusPollTimeout);
         bool reachedCompleted = false;
-        while (DateTimeOffset.UtcNow < deadline && !reachedCompleted)
-        {
+        while (DateTimeOffset.UtcNow < deadline && !reachedCompleted) {
             using var statusRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/commands/status/{correlationId}");
             statusRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             using HttpResponseMessage statusResponse = await _fixture.EventStoreClient.SendAsync(statusRequest);
-            if (statusResponse.StatusCode == HttpStatusCode.OK)
-            {
+            if (statusResponse.StatusCode == HttpStatusCode.OK) {
                 JsonElement statusBody = await statusResponse.Content.ReadFromJsonAsync<JsonElement>();
-                if (statusBody.GetProperty("status").GetString() == "Completed")
-                {
+                if (statusBody.GetProperty("status").GetString() == "Completed") {
                     reachedCompleted = true;
                     break;
                 }
             }
-            else if ((int)statusResponse.StatusCode is >= 400 and < 500)
-            {
+            else if ((int)statusResponse.StatusCode is >= 400 and < 500) {
                 string errorBody = await statusResponse.Content.ReadAsStringAsync();
                 throw new ShouldAssertException(
                     $"Fact D pre-condition: status endpoint returned {(int)statusResponse.StatusCode} (non-retriable) for correlationId '{correlationId}'.\n{errorBody}");
@@ -333,34 +309,28 @@ public class LiveCommandSurfaceSmokeTests
         // detail (if present) MUST NOT contain "GUID" (case-insensitive).
         string replayBodyText = await replayResponse.Content.ReadAsStringAsync();
         if (replayResponse.Content.Headers.ContentType?.MediaType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true
-            && !string.IsNullOrEmpty(replayBodyText))
-        {
+            && !string.IsNullOrEmpty(replayBodyText)) {
             JsonElement replayBody;
-            try
-            {
+            try {
                 replayBody = JsonSerializer.Deserialize<JsonElement>(replayBodyText);
             }
-            catch (JsonException ex)
-            {
+            catch (JsonException ex) {
                 throw new ShouldAssertException(
                     $"Replay response claimed Content-Type JSON but body was not parseable. "
                     + $"Status: {(int)replayResponse.StatusCode}. Body: {replayBodyText}. Parse error: {ex.Message}");
             }
 
             if (replayBody.TryGetProperty("type", out JsonElement typeElement)
-                && typeElement.ValueKind == JsonValueKind.String)
-            {
+                && typeElement.ValueKind == JsonValueKind.String) {
                 typeElement.GetString().ShouldNotBe(
                     "https://hexalith.io/problems/bad-request",
                     "Replay MUST NOT return bad-request type — that would regress post-epic-3-r3a1-replay-ulid-validation");
             }
 
             if (replayBody.TryGetProperty("detail", out JsonElement detailElement)
-                && detailElement.ValueKind == JsonValueKind.String)
-            {
+                && detailElement.ValueKind == JsonValueKind.String) {
                 string? detail = detailElement.GetString();
-                if (!string.IsNullOrEmpty(detail))
-                {
+                if (!string.IsNullOrEmpty(detail)) {
                     detail.Contains("GUID", StringComparison.OrdinalIgnoreCase).ShouldBeFalse(
                         $"Replay detail MUST NOT mention GUID format — that would regress R3-A1 ULID validation. detail: '{detail}'");
                 }

@@ -11,7 +11,6 @@ using eventstore::Hexalith.EventStore.ErrorHandling;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.IntegrationTests.Helpers;
-using Hexalith.EventStore.Server.Commands;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -96,8 +95,8 @@ public class ServiceUnavailableIntegrationTests(JwtAuthenticatedWebApplicationFa
         IReadOnlyDictionary<string, (CommandStatusRecord Record, DateTimeOffset Expiry)> all =
             factory.StatusStore.GetAllStatuses();
         List<string> leakedRecords = [.. all
-            .Where(kv => kv.Value.Record.Status == CommandStatus.Received
-                      || kv.Value.Record.Status == CommandStatus.Completed)
+            .Where(kv => kv.Value.Record.Status is CommandStatus.Received
+                      or CommandStatus.Completed)
             .Select(kv => $"CorrelationId={kv.Key}, Status={kv.Value.Record.Status}")];
         leakedRecords.ShouldBeEmpty(
             "503 path must not write any CommandStatusRecord — AuthorizationBehavior rejects before SubmitCommandHandler.");

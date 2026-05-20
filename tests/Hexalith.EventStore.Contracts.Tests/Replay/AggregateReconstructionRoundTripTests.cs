@@ -3,8 +3,6 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Replay;
 
-using Shouldly;
-
 namespace Hexalith.EventStore.Contracts.Tests.Replay;
 
 /// <summary>
@@ -12,13 +10,11 @@ namespace Hexalith.EventStore.Contracts.Tests.Replay;
 /// admin-ui-aggregate-state-replay-correctness. Both records cross the Dapr boundary as
 /// JSON; round-trip parity is the contract.
 /// </summary>
-public class AggregateReconstructionRoundTripTests
-{
+public class AggregateReconstructionRoundTripTests {
     private static readonly JsonSerializerOptions WebOptions = new(JsonSerializerDefaults.Web);
 
     [Fact]
-    public void Request_RoundTripsAllFields()
-    {
+    public void Request_RoundTripsAllFields() {
         AggregateReconstructionRequest original = new(
             TenantId: "tenant-a",
             Domain: "counter",
@@ -62,9 +58,8 @@ public class AggregateReconstructionRoundTripTests
     }
 
     [Fact]
-    public void Result_Succeeded_RoundTripsTimeline()
-    {
-        AggregateReconstructionResult original = AggregateReconstructionResult.Succeeded(
+    public void Result_Succeeded_RoundTripsTimeline() {
+        var original = AggregateReconstructionResult.Succeeded(
             stateJson: "{\"count\":10,\"isTerminated\":false}",
             lastAppliedSequenceNumber: 18,
             timeline: [
@@ -90,9 +85,8 @@ public class AggregateReconstructionRoundTripTests
     }
 
     [Fact]
-    public void Result_Partial_PreservesDiagnosticsAndStateUpToLastGood()
-    {
-        AggregateReconstructionResult original = AggregateReconstructionResult.Partial(
+    public void Result_Partial_PreservesDiagnosticsAndStateUpToLastGood() {
+        var original = AggregateReconstructionResult.Partial(
             stateJson: "{\"count\":3}",
             lastAppliedSequenceNumber: 3,
             failedSequenceNumber: 4,
@@ -114,9 +108,8 @@ public class AggregateReconstructionRoundTripTests
     }
 
     [Fact]
-    public void Result_Failed_OmitsStateAndPreservesDiagnostics()
-    {
-        AggregateReconstructionResult original = AggregateReconstructionResult.Failed(
+    public void Result_Failed_OmitsStateAndPreservesDiagnostics() {
+        var original = AggregateReconstructionResult.Failed(
             errorCategory: AggregateReconstructionErrorCategory.UnknownAggregateType,
             message: "No domain registered.",
             failedSequenceNumber: 1,
@@ -135,8 +128,7 @@ public class AggregateReconstructionRoundTripTests
     }
 
     [Fact]
-    public void Status_HasExpectedDiscriminants_ForRfc7807Mapping()
-    {
+    public void Status_HasExpectedDiscriminants_ForRfc7807Mapping() {
         // ProblemDetails mapping in AdminStreamQueryController depends on these enum values.
         ((int)AggregateReconstructionStatus.Succeeded).ShouldBe(0);
         ((int)AggregateReconstructionStatus.Partial).ShouldBe(1);
@@ -144,8 +136,7 @@ public class AggregateReconstructionRoundTripTests
     }
 
     [Fact]
-    public void ErrorCategory_HasExpectedDiscriminants_ForRfc7807Mapping()
-    {
+    public void ErrorCategory_HasExpectedDiscriminants_ForRfc7807Mapping() {
         ((int)AggregateReconstructionErrorCategory.None).ShouldBe(0);
         ((int)AggregateReconstructionErrorCategory.UnknownAggregateType).ShouldBe(1);
         ((int)AggregateReconstructionErrorCategory.UnknownEventType).ShouldBe(2);

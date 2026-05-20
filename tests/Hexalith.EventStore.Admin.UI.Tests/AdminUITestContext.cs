@@ -1,7 +1,6 @@
 using Bunit;
 
 using Hexalith.EventStore.Admin.UI.Tests.Services;
-using Hexalith.EventStore.Admin.UI.Services;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
@@ -74,7 +73,7 @@ public class AdminUITestContext : BunitContext {
                     Substitute.For<IHttpClientFactory>(),
                     NullLogger<AdminStreamApiClient>.Instance),
                 NullLogger<AdminTenantOptionsProvider>.Instance);
-            provider.GetTenantOptionsAsync(Arg.Any<CancellationToken>())
+            _ = provider.GetTenantOptionsAsync(Arg.Any<CancellationToken>())
                 .Returns(Task.FromResult(new TenantOptionsResult(
                     [],
                     TenantOptionsLoadStatus.Empty,

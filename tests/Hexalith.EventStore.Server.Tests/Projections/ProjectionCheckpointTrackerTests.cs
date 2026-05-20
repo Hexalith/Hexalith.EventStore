@@ -22,7 +22,7 @@ public class ProjectionCheckpointTrackerTests {
     public async Task ReadLastDeliveredSequenceAsync_MissingCheckpoint_ReturnsZero() {
         // Arrange
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         // Act
         long result = await tracker.ReadLastDeliveredSequenceAsync(TestIdentity);
@@ -40,7 +40,7 @@ public class ProjectionCheckpointTrackerTests {
                 ProjectionCheckpointTracker.GetStateKey(TestIdentity),
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(new ProjectionCheckpoint("test-tenant", "test-domain", "agg-001", 42, DateTimeOffset.UtcNow));
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         // Act
         long result = await tracker.ReadLastDeliveredSequenceAsync(TestIdentity);
@@ -55,7 +55,7 @@ public class ProjectionCheckpointTrackerTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         SetupGetStateAndEtag(daprClient, "custom-store", null, string.Empty);
         SetupTrySave(daprClient, "custom-store", true);
-        var tracker = CreateTracker(daprClient, "custom-store");
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient, "custom-store");
 
         // Act
         bool saved = await tracker.SaveDeliveredSequenceAsync(TestIdentity, 9);
@@ -85,7 +85,7 @@ public class ProjectionCheckpointTrackerTests {
                 ProjectionCheckpointTracker.GetStateKey(TestIdentity),
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(new ProjectionCheckpoint("other-tenant", "test-domain", "agg-001", 42, DateTimeOffset.UtcNow));
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         // Act & Assert
         _ = await Should.ThrowAsync<InvalidOperationException>(() => tracker.ReadLastDeliveredSequenceAsync(TestIdentity));
@@ -103,7 +103,7 @@ public class ProjectionCheckpointTrackerTests {
             "statestore",
             new ProjectionCheckpoint("test-tenant", "test-domain", "agg-001", 15, DateTimeOffset.UtcNow),
             "etag-2");
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         bool saved = await tracker.SaveDeliveredSequenceAsync(TestIdentity, 8);
 
@@ -128,7 +128,7 @@ public class ProjectionCheckpointTrackerTests {
             "statestore",
             new ProjectionCheckpoint("test-tenant", "test-domain", "agg-001", 12, DateTimeOffset.UtcNow),
             "etag-3");
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         bool saved = await tracker.SaveDeliveredSequenceAsync(TestIdentity, 12);
 
@@ -154,8 +154,8 @@ public class ProjectionCheckpointTrackerTests {
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(
-                ((ProjectionCheckpoint, string))(null!, "etag-1"),
-                ((ProjectionCheckpoint, string))(null!, "etag-2"));
+                (null!, "etag-1"),
+                (null!, "etag-2"));
         _ = daprClient.TrySaveStateAsync(
                 "statestore",
                 ProjectionCheckpointTracker.GetStateKey(TestIdentity),
@@ -165,7 +165,7 @@ public class ProjectionCheckpointTrackerTests {
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(false, true);
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         // Act
         bool saved = await tracker.SaveDeliveredSequenceAsync(TestIdentity, 11);
@@ -188,7 +188,7 @@ public class ProjectionCheckpointTrackerTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         SetupGetStateAndEtag(daprClient, "statestore", null, "etag-1");
         SetupTrySave(daprClient, "statestore", false);
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         // Act
         bool saved = await tracker.SaveDeliveredSequenceAsync(TestIdentity, 11);
@@ -220,7 +220,7 @@ public class ProjectionCheckpointTrackerTests {
     [Fact]
     public async Task SaveDeliveredSequenceAsync_NegativeSequence_ThrowsArgumentOutOfRangeException() {
         // Arrange
-        var tracker = CreateTracker(Substitute.For<DaprClient>());
+        ProjectionCheckpointTracker tracker = CreateTracker(Substitute.For<DaprClient>());
 
         // Act & Assert
         _ = await Should.ThrowAsync<ArgumentOutOfRangeException>(() => tracker.SaveDeliveredSequenceAsync(TestIdentity, -1));
@@ -237,7 +237,7 @@ public class ProjectionCheckpointTrackerTests {
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(Task.FromException<ProjectionCheckpoint>(new InvalidOperationException("state store unavailable")));
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         // Act & Assert -- tracker does not catch storage exceptions; orchestrator's outer catch handles them.
         _ = await Should.ThrowAsync<InvalidOperationException>(() => tracker.ReadLastDeliveredSequenceAsync(TestIdentity));
@@ -256,7 +256,7 @@ public class ProjectionCheckpointTrackerTests {
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(Task.FromException<(ProjectionCheckpoint, string)>(new InvalidOperationException("state store unavailable")));
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         // Act & Assert
         _ = await Should.ThrowAsync<InvalidOperationException>(() => tracker.SaveDeliveredSequenceAsync(TestIdentity, 7));
@@ -276,7 +276,7 @@ public class ProjectionCheckpointTrackerTests {
                 Task.FromException<(ProjectionCheckpoint, string)>(new InvalidOperationException("transient state store failure")),
                 Task.FromResult(((ProjectionCheckpoint, string))(null!, string.Empty)));
         SetupTrySave(daprClient, "statestore", true);
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         // Act
         bool saved = await tracker.SaveDeliveredSequenceAsync(TestIdentity, 7);
@@ -303,7 +303,7 @@ public class ProjectionCheckpointTrackerTests {
             "statestore",
             new ProjectionCheckpoint("other-tenant", "test-domain", "agg-001", 5, DateTimeOffset.UtcNow),
             "etag-1");
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         // Act & Assert
         _ = await Should.ThrowAsync<InvalidOperationException>(() => tracker.SaveDeliveredSequenceAsync(TestIdentity, 7));
@@ -328,7 +328,7 @@ public class ProjectionCheckpointTrackerTests {
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(Task.FromException<(ProjectionCheckpoint, string)>(new OperationCanceledException()));
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         // Act & Assert
         _ = await Should.ThrowAsync<OperationCanceledException>(() => tracker.SaveDeliveredSequenceAsync(TestIdentity, 7));
@@ -341,7 +341,7 @@ public class ProjectionCheckpointTrackerTests {
         // registration leaves the tracker with no orphan in-memory state — a subsequent call
         // with the same identity completes the registration end-to-end.
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         bool failScopeIndexRead = true;
         _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
@@ -359,14 +359,14 @@ public class ProjectionCheckpointTrackerTests {
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityScopePage?)null)!, string.Empty));
+            .Returns((null!, string.Empty));
         _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityPage>(
                 "statestore",
                 Arg.Any<string>(),
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityPage?)null)!, string.Empty));
+            .Returns((null!, string.Empty));
         _ = daprClient.TrySaveStateAsync(
                 "statestore",
                 Arg.Any<string>(),
@@ -428,7 +428,7 @@ public class ProjectionCheckpointTrackerTests {
     [Fact]
     public async Task TrackIdentityAsync_ScopeIndexRetryExhausted_ThrowsScopeExhaustionException() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
                 "statestore",
@@ -436,14 +436,14 @@ public class ProjectionCheckpointTrackerTests {
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityIndex?)null)!, string.Empty));
+            .Returns((null!, string.Empty));
         _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(
                 "statestore",
                 Arg.Any<string>(),
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityScopePage?)null)!, string.Empty));
+            .Returns((null!, string.Empty));
         _ = daprClient.TrySaveStateAsync(
                 "statestore",
                 Arg.Any<string>(),
@@ -482,7 +482,7 @@ public class ProjectionCheckpointTrackerTests {
         // previous TrackIdentityAsync_IndexRetryExhausted test only pinned the scope-path throw;
         // a regression that dropped the identity-path throw would slip past it.
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
         const string identityIndexKey = "projection-identities:index:test-tenant:test-domain";
 
         _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
@@ -491,21 +491,21 @@ public class ProjectionCheckpointTrackerTests {
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityIndex?)null)!, string.Empty));
+            .Returns((null!, string.Empty));
         _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(
                 "statestore",
                 Arg.Any<string>(),
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityScopePage?)null)!, string.Empty));
+            .Returns((null!, string.Empty));
         _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityPage>(
                 "statestore",
                 Arg.Any<string>(),
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityPage?)null)!, string.Empty));
+            .Returns((null!, string.Empty));
         _ = daprClient.TrySaveStateAsync(
                 "statestore",
                 Arg.Any<string>(),
@@ -556,7 +556,7 @@ public class ProjectionCheckpointTrackerTests {
     [Fact]
     public async Task TrackIdentityAsync_ExistingScopeScan_UsesEtagGuardedPageRead() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
         var existingScope = new ProjectionCheckpointTracker.ProjectionIdentityScope("test-tenant", "test-domain");
 
         _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
@@ -579,14 +579,14 @@ public class ProjectionCheckpointTrackerTests {
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityIndex?)null)!, string.Empty));
+            .Returns((null!, string.Empty));
         _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityPage>(
                 "statestore",
                 Arg.Any<string>(),
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityPage?)null)!, string.Empty));
+            .Returns((null!, string.Empty));
         _ = daprClient.TrySaveStateAsync(
                 "statestore",
                 Arg.Any<string>(),
@@ -635,7 +635,7 @@ public class ProjectionCheckpointTrackerTests {
         // with un-normalized values would persist verbatim — the AssertNoReservedChars guard
         // in ValidateIdentity is the defense-in-depth check for those bypass cases.
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
         var mixedCaseIdentity = new AggregateIdentity("Test-Tenant", "Test-Domain", "Agg-001");
 
         _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
@@ -644,21 +644,21 @@ public class ProjectionCheckpointTrackerTests {
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityIndex?)null)!, string.Empty));
+            .Returns((null!, string.Empty));
         _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(
                 "statestore",
                 Arg.Any<string>(),
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityScopePage?)null)!, string.Empty));
+            .Returns((null!, string.Empty));
         _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityPage>(
                 "statestore",
                 Arg.Any<string>(),
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityPage?)null)!, string.Empty));
+            .Returns((null!, string.Empty));
         _ = daprClient.TrySaveStateAsync(
                 "statestore",
                 Arg.Any<string>(),
@@ -716,7 +716,7 @@ public class ProjectionCheckpointTrackerTests {
         // upstream guarantee), the second TrackIdentityAsync call would either persist a duplicate
         // or fail dedup — both regressions visible to this test.
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
 
         // Initial scope index is empty — first call lays down page 0 with the scope.
         bool scopePersisted = false;
@@ -728,7 +728,7 @@ public class ProjectionCheckpointTrackerTests {
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => scopePersisted
                 ? (new ProjectionCheckpointTracker.ProjectionIdentityIndex(1, 1), "scope-index-etag")
-                : (((ProjectionCheckpointTracker.ProjectionIdentityIndex?)null)!, string.Empty));
+                : (null!, string.Empty));
         _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityScopePage>(
                 "statestore",
                 "projection-identities:scopes:0",
@@ -737,7 +737,7 @@ public class ProjectionCheckpointTrackerTests {
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => scopePersisted
                 ? (new ProjectionCheckpointTracker.ProjectionIdentityScopePage([new("test-tenant", "test-domain")]), "scope-page-etag")
-                : (((ProjectionCheckpointTracker.ProjectionIdentityScopePage?)null)!, string.Empty));
+                : (null!, string.Empty));
 
         bool identityPersisted = false;
         _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
@@ -748,7 +748,7 @@ public class ProjectionCheckpointTrackerTests {
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => identityPersisted
                 ? (new ProjectionCheckpointTracker.ProjectionIdentityIndex(1, 1), "id-index-etag")
-                : (((ProjectionCheckpointTracker.ProjectionIdentityIndex?)null)!, string.Empty));
+                : (null!, string.Empty));
         _ = daprClient.GetStateAndETagAsync<ProjectionCheckpointTracker.ProjectionIdentityPage>(
                 "statestore",
                 "projection-identities:page:test-tenant:test-domain:0",
@@ -757,7 +757,7 @@ public class ProjectionCheckpointTrackerTests {
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(_ => identityPersisted
                 ? (new ProjectionCheckpointTracker.ProjectionIdentityPage([new("test-tenant", "test-domain", "Agg-001")]), "id-page-etag")
-                : (((ProjectionCheckpointTracker.ProjectionIdentityPage?)null)!, string.Empty));
+                : (null!, string.Empty));
         _ = daprClient.TrySaveStateAsync(
                 "statestore",
                 Arg.Any<string>(),
@@ -816,7 +816,7 @@ public class ProjectionCheckpointTrackerTests {
     [Fact]
     public async Task TrackIdentityAsync_FullIdentityPage_AppendsToNextPageAndUpdatesIndex() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var tracker = CreateTracker(daprClient);
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient);
         var newIdentity = new AggregateIdentity("test-tenant", "test-domain", "agg-100");
         ProjectionCheckpointTracker.ProjectionIdentity[] fullPage = Enumerable
             .Range(0, 100)
@@ -857,7 +857,7 @@ public class ProjectionCheckpointTrackerTests {
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((((ProjectionCheckpointTracker.ProjectionIdentityPage?)null)!, string.Empty));
+            .Returns((null!, string.Empty));
         _ = daprClient.TrySaveStateAsync(
                 "statestore",
                 Arg.Any<string>(),
@@ -913,7 +913,7 @@ public class ProjectionCheckpointTrackerTests {
     public async Task EnumerateTrackedIdentitiesAsync_CorruptScopeIndex_LogsStableReasonAndStopsEnumeration() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var entries = new List<LogEntry>();
-        var tracker = CreateTracker(daprClient, logger: new TestLogger<ProjectionCheckpointTracker>(entries));
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient, logger: new TestLogger<ProjectionCheckpointTracker>(entries));
         _ = daprClient.GetStateAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
                 "statestore",
                 "projection-identities:scopes",
@@ -941,7 +941,7 @@ public class ProjectionCheckpointTrackerTests {
     public async Task EnumerateTrackedIdentitiesAsync_CorruptIdentityIndex_LogsStableReasonAndContinuesOtherScopes() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         var entries = new List<LogEntry>();
-        var tracker = CreateTracker(daprClient, logger: new TestLogger<ProjectionCheckpointTracker>(entries));
+        ProjectionCheckpointTracker tracker = CreateTracker(daprClient, logger: new TestLogger<ProjectionCheckpointTracker>(entries));
         _ = daprClient.GetStateAsync<ProjectionCheckpointTracker.ProjectionIdentityIndex>(
                 "statestore",
                 "projection-identities:scopes",

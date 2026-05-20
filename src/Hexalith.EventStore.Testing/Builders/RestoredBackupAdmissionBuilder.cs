@@ -1,5 +1,3 @@
-using System;
-
 using Hexalith.EventStore.Contracts.Security;
 
 namespace Hexalith.EventStore.Testing.Builders;
@@ -16,8 +14,8 @@ public sealed class RestoredBackupAdmissionBuilder {
     private long? _fromSequence;
     private long? _toSequence;
     private string _manifestId = "manifest-1";
-    private DateTimeOffset _backupCreatedAtUtc = new(2026, 5, 17, 0, 0, 0, TimeSpan.Zero);
-    private DateTimeOffset _restoreRequestedAtUtc = new(2026, 5, 18, 0, 0, 0, TimeSpan.Zero);
+    private readonly DateTimeOffset _backupCreatedAtUtc = new(2026, 5, 17, 0, 0, 0, TimeSpan.Zero);
+    private readonly DateTimeOffset _restoreRequestedAtUtc = new(2026, 5, 18, 0, 0, 0, TimeSpan.Zero);
     private int _protectionMetadataVersion = 1;
     private KeyReferencePolicy _keyReferencePolicy = KeyReferencePolicy.NoKeyReference;
     private string? _keyAliasFingerprint;
@@ -27,7 +25,7 @@ public sealed class RestoredBackupAdmissionBuilder {
     private RestoredBackupAdmissionState _state = RestoredBackupAdmissionState.DeferredValidation;
     private string? _watermarkConflict = "backup-engine-deferred";
     private string? _auditId;
-    private DateTimeOffset _decidedAtUtc = new(2026, 5, 18, 0, 1, 0, TimeSpan.Zero);
+    private readonly DateTimeOffset _decidedAtUtc = new(2026, 5, 18, 0, 1, 0, TimeSpan.Zero);
     private bool _idempotentReplay;
 
     /// <summary>Sets the admission identifier.</summary>

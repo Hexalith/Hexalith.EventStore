@@ -18,13 +18,9 @@ public class AuthorizationFailureReasonTests {
     [InlineData(AuthorizationFailureReason.InsufficientRole, "insufficient_role")]
     [InlineData(AuthorizationFailureReason.InsufficientPermission, "insufficient_permission")]
     [InlineData(AuthorizationFailureReason.AuthorizationServiceUnavailable, "authorization_service_unavailable")]
-    public void ToReasonCode_ReturnsStablePublicCode(AuthorizationFailureReason reason, string expected) {
-        reason.ToReasonCode().ShouldBe(expected);
-    }
+    public void ToReasonCode_ReturnsStablePublicCode(AuthorizationFailureReason reason, string expected) => reason.ToReasonCode().ShouldBe(expected);
 
     [Fact]
-    public void FromReasonCode_UnknownValueFailsClosedAsUnavailable() {
-        AuthorizationFailureReasonExtensions.FromReasonCode("not-a-public-code")
+    public void FromReasonCode_UnknownValueFailsClosedAsUnavailable() => AuthorizationFailureReasonExtensions.FromReasonCode("not-a-public-code")
             .ShouldBe(AuthorizationFailureReason.AuthorizationServiceUnavailable);
-    }
 }

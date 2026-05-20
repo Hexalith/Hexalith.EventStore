@@ -50,11 +50,9 @@ public class StreamStateCommandTests {
     }
 
     [Fact]
-    public void StreamStateCommand_TableColumns_DoNotSelectRawStateJson() {
-        StreamStateCommand.Columns
+    public void StreamStateCommand_TableColumns_DoNotSelectRawStateJson() => StreamStateCommand.Columns
             .Select(c => c.PropertyName)
             .ShouldNotContain("StateJson");
-    }
 
     [Fact]
     public async Task StreamStateCommand_NotFound_PrintsError() {

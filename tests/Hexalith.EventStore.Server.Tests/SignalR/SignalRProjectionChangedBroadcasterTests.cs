@@ -91,7 +91,7 @@ public class SignalRProjectionChangedBroadcasterTests {
         activity.GetTagItem("eventstore.signalr.tenant_id").ShouldBe("acme");
         activity.GetTagItem("eventstore.signalr.group_name").ShouldBe("order-list:acme");
         activity.GetTagItem("eventstore.signalr.result").ShouldBe("Success");
-        activity.GetTagItem("eventstore.signalr.elapsed_ms").ShouldNotBeNull();
+        _ = activity.GetTagItem("eventstore.signalr.elapsed_ms").ShouldNotBeNull();
     }
 
     [Fact]
@@ -170,7 +170,7 @@ public class SignalRProjectionChangedBroadcasterTests {
         Activity activity = activities.Single(a => a.OperationName == BroadcastActivityName);
         activity.GetTagItem("eventstore.signalr.result").ShouldBe("FailOpenFailure");
         activity.GetTagItem("eventstore.signalr.exception_type").ShouldBe("InvalidOperationException");
-        activity.GetTagItem("eventstore.signalr.elapsed_ms").ShouldNotBeNull();
+        _ = activity.GetTagItem("eventstore.signalr.elapsed_ms").ShouldNotBeNull();
     }
 
     [Fact]
@@ -248,7 +248,7 @@ public class SignalRProjectionChangedBroadcasterTests {
 
     private static int[] GetLoggerMessageEventIds(Type owner) {
         Type? logType = owner.GetNestedType("Log", BindingFlags.NonPublic);
-        logType.ShouldNotBeNull($"{owner.Name} must declare a nested Log helper class with [LoggerMessage] methods.");
+        _ = logType.ShouldNotBeNull($"{owner.Name} must declare a nested Log helper class with [LoggerMessage] methods.");
 
         return [.. logType
             .GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)

@@ -90,7 +90,7 @@ public class DaprETagServiceTests {
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => service.GetCurrentETagAsync("counter", "tenant1", cts.Token));
 
         _ = factory.DidNotReceive().CreateActorProxy<IETagActor>(
@@ -126,7 +126,7 @@ public class DaprETagServiceTests {
             () => service.GetCurrentETagAsync("counter", "tenant1"));
 
         // The exception is OCE-derived (catches conversion to a fail-open null return).
-        exception.ShouldBeAssignableTo<OperationCanceledException>();
+        _ = exception.ShouldBeAssignableTo<OperationCanceledException>();
 
         // It is not converted to a Hexalith adapter failure type. The base OCE class is
         // exactly TaskCanceledException (runtime-minted on Task.Canceled awaits) or

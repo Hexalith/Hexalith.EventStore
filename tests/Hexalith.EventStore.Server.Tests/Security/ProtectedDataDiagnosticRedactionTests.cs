@@ -12,7 +12,6 @@ using Hexalith.EventStore.Server.Diagnostics;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Projections;
-using Hexalith.EventStore.Testing.Fakes;
 using Hexalith.EventStore.Testing.Security;
 
 using Microsoft.AspNetCore.Http;
@@ -53,13 +52,13 @@ public class ProtectedDataDiagnosticRedactionTests : IDisposable {
         IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
         var httpContext = new DefaultHttpContext();
         httpContext.Items["CorrelationId"] = "corr-redact-logging";
-        accessor.HttpContext.Returns(httpContext);
+        _ = accessor.HttpContext.Returns(httpContext);
         var behavior = new LoggingBehavior<SubmitCommand, SubmitCommandResult>(logger, accessor);
         SubmitCommand command = CreateCommand("corr-redact-logging");
 
         string unsafeMessage = $"provider failed {ProtectedDataLeakSentinel.ProtectedProviderExceptionText} {ProtectedDataLeakSentinel.ProtectedKeyAlias}";
 
-        await Should.ThrowAsync<InvalidOperationException>(async () =>
+        _ = await Should.ThrowAsync<InvalidOperationException>(async () =>
             await behavior.Handle(
                 command,
                 new(_ => throw new InvalidOperationException(unsafeMessage)),
@@ -76,7 +75,7 @@ public class ProtectedDataDiagnosticRedactionTests : IDisposable {
             && Equals(a.GetTagItem("eventstore.correlation_id"), "corr-redact-logging"));
         activity.Status.ShouldBe(ActivityStatusCode.Error);
         ProtectedDataLeakSentinel.AssertNoLeak(CaptureActivityDiagnostics(activity));
-        activity.StatusDescription.ShouldNotBeNull();
+        _ = activity.StatusDescription.ShouldNotBeNull();
         activity.StatusDescription!.ShouldContain("ReasonCode=");
     }
 
@@ -85,7 +84,7 @@ public class ProtectedDataDiagnosticRedactionTests : IDisposable {
         CommandEnvelope command = CreateEnvelope();
         var ex = new InvalidOperationException($"provider failed {ProtectedDataLeakSentinel.ProtectedProviderExceptionText}");
 
-        DeadLetterMessage message = DeadLetterMessage.FromException(command, CommandStatus.Rejected, ex);
+        var message = DeadLetterMessage.FromException(command, CommandStatus.Rejected, ex);
 
         message.ErrorMessage.ShouldContain("Protected data diagnostic details were redacted.");
         ProtectedDataLeakSentinel.AssertNoLeak([message.ErrorMessage]);
@@ -96,7 +95,7 @@ public class ProtectedDataDiagnosticRedactionTests : IDisposable {
         var logs = new List<CapturedLogEntry>();
         var logger = new CapturingLogger<DeadLetterPublisher>(logs);
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.PublishEventAsync(
+        _ = daprClient.PublishEventAsync(
                 Arg.Any<string>(),
                 Arg.Any<string>(),
                 Arg.Any<DeadLetterMessage>(),
@@ -104,7 +103,7 @@ public class ProtectedDataDiagnosticRedactionTests : IDisposable {
                 Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException($"dapr failed {ProtectedDataLeakSentinel.ProtectedConnectionString}"));
         var publisher = new DeadLetterPublisher(daprClient, Options.Create(new EventPublisherOptions { PubSubName = "pubsub" }), logger);
-        DeadLetterMessage message = DeadLetterMessage.FromException(
+        var message = DeadLetterMessage.FromException(
             CreateEnvelope(),
             CommandStatus.Rejected,
             new InvalidOperationException($"provider failed {ProtectedDataLeakSentinel.ProtectedProviderExceptionText}"));
@@ -123,7 +122,7 @@ public class ProtectedDataDiagnosticRedactionTests : IDisposable {
     [Fact]
     public async Task EventPublisher_GenericPublishException_ReturnsSafeFailureReasonAndActivityStatus() {
         DaprClient daprClient = Substitute.For<DaprClient>();
-        daprClient.PublishEventAsync(
+        _ = daprClient.PublishEventAsync(
                 Arg.Any<string>(),
                 Arg.Any<string>(),
                 Arg.Any<EventEnvelope>(),
@@ -131,7 +130,7 @@ public class ProtectedDataDiagnosticRedactionTests : IDisposable {
                 Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException($"pubsub failed {ProtectedDataLeakSentinel.ProtectedConnectionString}"));
         IHostEnvironment env = Substitute.For<IHostEnvironment>();
-        env.EnvironmentName.Returns(Environments.Development);
+        _ = env.EnvironmentName.Returns(Environments.Development);
         var logs = new List<CapturedLogEntry>();
         var publisher = new EventPublisher(
             daprClient,
@@ -147,7 +146,7 @@ public class ProtectedDataDiagnosticRedactionTests : IDisposable {
             "corr-redact-publish");
 
         result.Success.ShouldBeFalse();
-        result.FailureReason.ShouldNotBeNull();
+        _ = result.FailureReason.ShouldNotBeNull();
         result.FailureReason!.ShouldContain("Protected data diagnostic details were redacted.");
         ProtectedDataLeakSentinel.AssertNoLeak([result.FailureReason]);
         Activity activity = _activities.Single(a => a.OperationName == "EventStore.Events.Publish"
@@ -174,7 +173,7 @@ public class ProtectedDataDiagnosticRedactionTests : IDisposable {
         DaprClient daprClient = Substitute.For<DaprClient>();
         DeadLetterMessage? publishedMessage = null;
         Dictionary<string, string>? publishedMetadata = null;
-        daprClient.PublishEventAsync(
+        _ = daprClient.PublishEventAsync(
                 Arg.Any<string>(),
                 Arg.Any<string>(),
                 Arg.Any<DeadLetterMessage>(),
@@ -196,7 +195,7 @@ public class ProtectedDataDiagnosticRedactionTests : IDisposable {
         bool published = await publisher.PublishDeadLetterAsync(TestIdentity, unsafeMessage);
 
         published.ShouldBeTrue();
-        publishedMessage.ShouldNotBeNull();
+        _ = publishedMessage.ShouldNotBeNull();
         publishedMessage.ErrorMessage.ShouldContain("Protected data diagnostic details were redacted.");
         ProtectedDataLeakSentinel.AssertNoLeak([
             publishedMessage.ErrorMessage,
@@ -209,7 +208,7 @@ public class ProtectedDataDiagnosticRedactionTests : IDisposable {
 
     [Fact]
     public void ProtectedDataDiagnosticRedactor_BuildsSafeUnreadableProblemExtensionsWithCorrelationId() {
-        ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecision.FromUnreadable(
+        var decision = ProtectedDataReadabilityDecision.FromUnreadable(
             UnreadableProtectedDataReason.MissingKey,
             ProtectedDataDecisionStage.Replay,
             TestIdentity.TenantId,

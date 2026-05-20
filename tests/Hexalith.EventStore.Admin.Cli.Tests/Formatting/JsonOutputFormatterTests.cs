@@ -55,7 +55,7 @@ public class JsonOutputFormatterTests {
     [Fact]
     public void JsonFormatter_RedactedEventDetail_OmitsRawPayloadJsonAndKeepsDescriptor() {
         JsonOutputFormatter formatter = new();
-        EventDetail detail = EventDetail.WithRedactedPayload(
+        var detail = EventDetail.WithRedactedPayload(
             "acme",
             "orders",
             "order-1",

@@ -11,7 +11,6 @@ namespace Hexalith.EventStore.Client.Handlers;
 
 internal static class DomainProcessorStateRehydrator {
     private static readonly ConcurrentDictionary<Type, Dictionary<string, MethodInfo>> ApplyMethodCache = new();
-    private static readonly JsonSerializerOptions WebJsonOptions = new(JsonSerializerDefaults.Web);
 
     internal static Dictionary<string, MethodInfo> DiscoverApplyMethods(Type stateType) =>
         ApplyMethodCache.GetOrAdd(
@@ -53,7 +52,7 @@ internal static class DomainProcessorStateRehydrator {
         };
 
     private static DomainServiceCurrentState DeserializeDomainServiceCurrentState(JsonElement json) =>
-        json.Deserialize<DomainServiceCurrentState>(WebJsonOptions)
+        json.Deserialize<DomainServiceCurrentState>(SerializerOptions)
         ?? throw new InvalidOperationException("Unable to deserialize snapshot-aware current state payload.");
 
     private static bool IsDomainServiceCurrentState(JsonElement json) =>
@@ -96,7 +95,7 @@ internal static class DomainProcessorStateRehydrator {
             return null;
         }
 
-        JsonElement json = JsonSerializer.SerializeToElement(snapshotState, snapshotState.GetType(), WebJsonOptions);
+        JsonElement json = JsonSerializer.SerializeToElement(snapshotState, snapshotState.GetType(), SerializerOptions);
         return json.ValueKind switch {
             JsonValueKind.Object when IsDomainServiceCurrentState(json) =>
                 RehydrateFromDomainServiceCurrentState<TState>(DeserializeDomainServiceCurrentState(json), applyMethods),
@@ -130,7 +129,7 @@ internal static class DomainProcessorStateRehydrator {
                 continue;
             }
 
-            object? value = valueElement.Deserialize(property.PropertyType, WebJsonOptions);
+            object? value = valueElement.Deserialize(property.PropertyType, SerializerOptions);
             _ = setter.Invoke(state, [value]);
         }
 
@@ -229,20 +228,16 @@ internal static class DomainProcessorStateRehydrator {
         EventEnvelope envelope,
         Dictionary<string, MethodInfo> applyMethods)
         where TState : class, new() {
-        MethodInfo? applyMethod = TryResolveApplyMethod(envelope.Metadata.EventTypeName, applyMethods);
-        if (applyMethod is null) {
-            throw new MissingApplyMethodException(
+        MethodInfo? applyMethod = TryResolveApplyMethod(envelope.Metadata.EventTypeName, applyMethods) ?? throw new MissingApplyMethodException(
                 stateType: typeof(TState),
                 eventTypeName: envelope.Metadata.EventTypeName,
                 messageId: envelope.Metadata.MessageId,
                 aggregateId: envelope.Metadata.AggregateId);
-        }
-
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
 
         try {
             using var payloadDoc = JsonDocument.Parse(envelope.Payload);
-            object? deserializedEvent = JsonSerializer.Deserialize(payloadDoc.RootElement, eventType, WebJsonOptions)
+            object? deserializedEvent = JsonSerializer.Deserialize(payloadDoc.RootElement, eventType, SerializerOptions)
                 ?? throw new InvalidOperationException(
                     string.Format(
                         CultureInfo.InvariantCulture,
@@ -271,13 +266,9 @@ internal static class DomainProcessorStateRehydrator {
         JsonElement eventElement,
         Dictionary<string, MethodInfo> applyMethods)
         where TState : class, new() {
-        MethodInfo? applyMethod = TryResolveApplyMethod(eventTypeName, applyMethods);
-        if (applyMethod is null) {
-            throw new MissingApplyMethodException(
+        MethodInfo? applyMethod = TryResolveApplyMethod(eventTypeName, applyMethods) ?? throw new MissingApplyMethodException(
                 stateType: typeof(TState),
                 eventTypeName: eventTypeName);
-        }
-
         Type eventType = applyMethod.GetParameters()[0].ParameterType;
 
         try {
@@ -286,10 +277,10 @@ internal static class DomainProcessorStateRehydrator {
                 if (payloadElement.ValueKind == JsonValueKind.String) {
                     byte[] payloadBytes = payloadElement.GetBytesFromBase64();
                     using var payloadDoc = JsonDocument.Parse(payloadBytes);
-                    deserializedEvent = JsonSerializer.Deserialize(payloadDoc.RootElement, eventType, WebJsonOptions);
+                    deserializedEvent = JsonSerializer.Deserialize(payloadDoc.RootElement, eventType, SerializerOptions);
                 }
                 else {
-                    deserializedEvent = JsonSerializer.Deserialize(payloadElement, eventType, WebJsonOptions);
+                    deserializedEvent = JsonSerializer.Deserialize(payloadElement, eventType, SerializerOptions);
                 }
 
                 if (deserializedEvent is null) {
@@ -305,7 +296,7 @@ internal static class DomainProcessorStateRehydrator {
                 _ = applyMethod.Invoke(state, [deserializedEvent]);
             }
             else {
-                object? deserializedEvent = JsonSerializer.Deserialize(eventElement, eventType, WebJsonOptions)
+                object? deserializedEvent = JsonSerializer.Deserialize(eventElement, eventType, SerializerOptions)
                     ?? throw new InvalidOperationException(
                         string.Format(
                             CultureInfo.InvariantCulture,
@@ -349,5 +340,5 @@ internal static class DomainProcessorStateRehydrator {
     }
 
     /// <summary>Gets the runtime serializer options used by replay/rehydration so payload deserialization is consistent across paths.</summary>
-    internal static JsonSerializerOptions SerializerOptions => WebJsonOptions;
+    internal static JsonSerializerOptions SerializerOptions { get; } = new(JsonSerializerDefaults.Web);
 }

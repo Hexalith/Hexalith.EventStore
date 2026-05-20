@@ -126,7 +126,7 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
         }
 
         try {
-            using JsonDocument document = JsonDocument.Parse(resultPayload);
+            using var document = JsonDocument.Parse(resultPayload);
             JsonElement element = document.RootElement.Clone();
             return element.ValueKind == JsonValueKind.Undefined ? null : element;
         }

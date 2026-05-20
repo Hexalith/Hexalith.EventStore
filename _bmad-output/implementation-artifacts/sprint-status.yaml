@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-05-20T18:04:00+02:00 - Story post-epic-deferred-dw13-tenant-lifecycle-actor-timeout-investigation second elicitation hardening applied while remaining ready-for-dev: decision questions, lifecycle contract mini ADR, operator persona acceptance, chaos probes, and cold/warm/reset evidence note.
+# last_updated: 2026-05-20T20:10:00+02:00 - Story post-epic-deferred-dw12-consistency-actor-state-contract-and-dispatcher-fix moved review -> done after code-review patch pass resolved all 6 findings.
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -46,6 +46,7 @@
 
 generated: 2026-03-15
 last_updated: '2026-05-20T20:10:00+02:00' # Story post-epic-deferred-dw12-consistency-actor-state-contract-and-dispatcher-fix moved review -> done after code-review patch pass resolved all 6 findings: scoped stream-query identity boundary documented for AC11, production cancellation propagated to active timeline reads, TotalCount coverage mismatch now Inconclusive, query failure taxonomy split by exposed failure signal, missing-event anomaly generation bounded by cap, and metadata-only checks require successful supported stream-read proof or emit Inconclusive. Focused Admin.Server consistency tests pass 27/27.
+# Previous last_updated detail preserved: 2026-05-20T00:00:00+02:00 - WS-1 moved review -> done after second code review pass (P7-P11 applied, all patches verified).
 # Previous last_updated detail preserved: 2026-05-20T19:30:00+02:00 - Story post-epic-deferred-dw12-consistency-actor-state-contract-and-dispatcher-fix manual operator validation completed under live Aspire/DAPR/Redis after FLUSHALL + Release build + fresh aspire run with EnableKeycloak=false. `/consistency Run Check` on tenant-a/counter (Check ID 01KS2ZFRC4H500HCC7B49ADDR3, Completed, 1 stream, 1 anomaly) returned 0 SequenceContinuity missing-event findings, 0 MetadataConsistency missing findings, and the expected ProjectionPositions Warning classified as a domain-scope diagnostic limitation. Stat cards refreshed truthfully (Total Checks=1, Last Check=9s ago, Total Anomalies=1, Running Now=0). Rapid trigger/cancel exercise produced no Consistency.OnTriggerConfirm/OnCancelConfirm dispatcher exception in browser console or server logs. Story remained in review, ready for code-review handoff.
 # Previous last_updated detail preserved: 2026-05-20T18:30:00+02:00 - Story post-epic-deferred-dw12-consistency-actor-state-contract-and-dispatcher-fix moved in-progress -> review after refactoring DaprConsistencyCommandService onto IStreamQueryService.GetStreamTimelineAsync, removing raw `:events:`/`:metadata` probing, adding paging/duplicate/out-of-order/cancellation handling, fixing Consistency.razor finally-block dispatcher safety, and adding 13 Admin.Server and 2 Admin.UI regression tests. Admin.Server.Tests 688/688 (18 skipped pre-existing), ConsistencyPageTests 31/31; the single Admin.UI suite failure (`JsonViewer_ShowsWarning_WhenJsonIsInvalid`) was reproduced on `main` before this change and is unrelated. Manual Issue 16 / Issue 17 retest under Aspire remains pending operator action.
 # Previous last_updated detail preserved: 2026-05-20T18:04:00+02:00 - Story post-epic-deferred-dw13-tenant-lifecycle-actor-timeout-investigation second elicitation hardening applied while remaining ready-for-dev: decision questions, lifecycle contract mini ADR, operator persona acceptance, chaos probes, and cold/warm/reset evidence note.
@@ -157,7 +158,7 @@ development_status:
   # Walking Skeleton readiness prerequisite
   # Added by sprint-change-proposal-2026-05-17-readiness-addendum.md.
   # Verify before any new implementation pass over Epics 1-8 foundation work.
-  ws-1-clone-to-command-flow-walking-skeleton: review
+  ws-1-clone-to-command-flow-walking-skeleton: done
 
   # Epic 1: Domain Contract Foundation
   epic-1: done

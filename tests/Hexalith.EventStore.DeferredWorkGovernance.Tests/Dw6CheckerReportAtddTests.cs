@@ -45,7 +45,7 @@ public class Dw6CheckerReportAtddTests {
 
         diagnostic.Heading.ShouldNotBeNullOrWhiteSpace();
         diagnostic.Excerpt.ShouldNotBeNullOrWhiteSpace();
-        diagnostic.Line.ShouldNotBeNull("A line number or stable locator is required when implementation can provide one.");
+        _ = diagnostic.Line.ShouldNotBeNull("A line number or stable locator is required when implementation can provide one.");
     }
 
     [Fact]

@@ -7,8 +7,6 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Channels;
 
-using Hexalith.EventStore.IntegrationTests.Fixtures;
-
 using Microsoft.AspNetCore.SignalR.Client;
 
 using Shouldly;
@@ -59,7 +57,7 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
             Uri instanceBHubUrl = new(instanceB.BaseUrl, "hubs/projection-changes");
             evidence.Topology = $"A={identityA.InstanceName} {instanceA.BaseUrl} pid={identityA.ProcessId}; B={identityB.InstanceName} {instanceB.BaseUrl} pid={identityB.ProcessId}; Redis={RedisEndpoint}";
 
-            Channel<ReceivedSignal> received = Channel.CreateUnbounded<ReceivedSignal>();
+            var received = Channel.CreateUnbounded<ReceivedSignal>();
             await using HubConnection connection = new HubConnectionBuilder()
                 .WithUrl(instanceBHubUrl.ToString())
                 .Build();
@@ -101,7 +99,7 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
             disabledIdentityA.BackplaneRedisConnectionString.ShouldBeNull();
             disabledIdentityB.BackplaneRedisConnectionString.ShouldBeNull();
 
-            Channel<ReceivedSignal> controlReceived = Channel.CreateUnbounded<ReceivedSignal>();
+            var controlReceived = Channel.CreateUnbounded<ReceivedSignal>();
             await using HubConnection controlConnection = new HubConnectionBuilder()
                 .WithUrl(new Uri(disabledB.BaseUrl, "hubs/projection-changes").ToString())
                 .Build();
@@ -220,8 +218,8 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
                 startInfo.Environment["EVENTSTORE_SIGNALR_REDIS"] = redisEndpoint;
             }
             else {
-                startInfo.Environment.Remove("EventStore__SignalR__BackplaneRedisConnectionString");
-                startInfo.Environment.Remove("EVENTSTORE_SIGNALR_REDIS");
+                _ = startInfo.Environment.Remove("EventStore__SignalR__BackplaneRedisConnectionString");
+                _ = startInfo.Environment.Remove("EVENTSTORE_SIGNALR_REDIS");
             }
 
             Process process = Process.Start(startInfo)
@@ -272,7 +270,7 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
             using HttpResponseMessage response = await _client
                 .PostAsJsonAsync("/_test/signalr/runtime-proof/broadcast", new RuntimeProofBroadcastRequest(projectionType, tenantId))
                 .ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
+            _ = response.EnsureSuccessStatusCode();
             RuntimeProofBroadcastResult? result = await response.Content
                 .ReadFromJsonAsync<RuntimeProofBroadcastResult>()
                 .ConfigureAwait(false);
@@ -331,14 +329,14 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
 
         private string ReadLogs() {
             var builder = new StringBuilder();
-            builder.AppendLine("stdout:");
+            _ = builder.AppendLine("stdout:");
             foreach (string line in _stdout.TakeLast(30)) {
-                builder.AppendLine(line);
+                _ = builder.AppendLine(line);
             }
 
-            builder.AppendLine("stderr:");
+            _ = builder.AppendLine("stderr:");
             foreach (string line in _stderr.TakeLast(30)) {
-                builder.AppendLine(line);
+                _ = builder.AppendLine(line);
             }
 
             return builder.ToString();
@@ -390,7 +388,7 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
                 "_bmad-output",
                 "test-artifacts",
                 "post-epic-10-r10a2-redis-backplane-runtime-proof");
-            Directory.CreateDirectory(outputDirectory);
+            _ = Directory.CreateDirectory(outputDirectory);
 
             string filePath = Path.Combine(outputDirectory, $"evidence-{DateTimeOffset.UtcNow:yyyy-MM-dd-HHmmss}Z.md");
             string gitCommit = await ReadGitCommitAsync().ConfigureAwait(false);

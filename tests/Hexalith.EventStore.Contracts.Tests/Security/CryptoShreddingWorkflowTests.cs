@@ -1,10 +1,6 @@
-using System;
-using System.Collections.Generic;
 using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Security;
-
-using Shouldly;
 
 namespace Hexalith.EventStore.Contracts.Tests.Security;
 
@@ -122,7 +118,7 @@ public class CryptoShreddingWorkflowTests {
             null,
             KeyReferencePolicy.NoKeyReference,
             null);
-        var b = a with { WorkflowId = "01HKBBBBBBBBBBBBBBBBBBBBBB" };
+        CryptoShreddingWorkflowIdentity b = a with { WorkflowId = "01HKBBBBBBBBBBBBBBBBBBBBBB" };
 
         b.ComputeScopeKey().ShouldBe(a.ComputeScopeKey());
     }
@@ -162,10 +158,9 @@ public class CryptoShreddingWorkflowTests {
 
     [Theory]
     [MemberData(nameof(AllStates))]
-    public void Transitions_IsAllowed_ReturnsFalseForSelfTransition(CryptoShreddingWorkflowState state) {
+    public void Transitions_IsAllowed_ReturnsFalseForSelfTransition(CryptoShreddingWorkflowState state) =>
         // Self-transitions are never explicitly allowed (they're treated as idempotent replays).
         CryptoShreddingWorkflowTransitions.IsAllowed(state, state).ShouldBeFalse();
-    }
 
     [Fact]
     public void Transitions_TerminalStates_AreTerminal() {
@@ -233,10 +228,8 @@ public class CryptoShreddingWorkflowTests {
     }
 
     [Fact]
-    public void Decision_NextActionFor_UnknownState_Throws() {
-        _ = Should.Throw<ArgumentOutOfRangeException>(
+    public void Decision_NextActionFor_UnknownState_Throws() => _ = Should.Throw<ArgumentOutOfRangeException>(
             () => CryptoShreddingWorkflowDecision.NextActionFor((CryptoShreddingWorkflowState)999));
-    }
 
     [Fact]
     public void Request_TryValidate_RejectsNonTerminalAction() {
@@ -395,7 +388,7 @@ public class CryptoShreddingWorkflowTests {
         string json = JsonSerializer.Serialize(audit);
         CryptoShreddingAuditEvent? round = JsonSerializer.Deserialize<CryptoShreddingAuditEvent>(json);
 
-        round.ShouldNotBeNull();
+        _ = round.ShouldNotBeNull();
         round.ShouldBe(audit);
     }
 }

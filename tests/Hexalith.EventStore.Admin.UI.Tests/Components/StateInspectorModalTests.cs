@@ -8,7 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
 
 using NSubstitute;
@@ -54,16 +53,16 @@ public class StateInspectorModalTests : AdminUITestContext {
 
         // Assert: the dialog body element is rendered.
         AngleSharp.Dom.IElement body = cut.Find("fluent-dialog-body");
-        body.ShouldNotBeNull();
+        _ = body.ShouldNotBeNull();
 
         // Assert: the State Inspector h3 heading is reachable inside the dialog body.
         AngleSharp.Dom.IElement? heading = body.QuerySelector("h3");
-        heading.ShouldNotBeNull();
+        _ = heading.ShouldNotBeNull();
         heading.TextContent.ShouldContain("State Inspector");
 
         // Assert: the scrollable content wrapper exists for sizing/overflow control.
         AngleSharp.Dom.IElement? contentWrapper = body.QuerySelector(".state-inspector-modal-body");
-        contentWrapper.ShouldNotBeNull();
+        _ = contentWrapper.ShouldNotBeNull();
 
         // Assert: the heading is NOT a descendant of the scrollable wrapper. This proves
         // the title row sits outside the overflow:auto region (close button stays visible
@@ -224,9 +223,9 @@ public class StateInspectorModalTests : AdminUITestContext {
                 cut.Markup.ShouldContain("Could not open the state inspector dialog. Try again.");
                 AngleSharp.Dom.IElement body = cut.Find("fluent-dialog-body");
                 AngleSharp.Dom.IElement? contentWrapper = body.QuerySelector(".state-inspector-modal-body");
-                contentWrapper.ShouldNotBeNull();
+                _ = contentWrapper.ShouldNotBeNull();
                 AngleSharp.Dom.IElement? error = contentWrapper.QuerySelector(".state-inspector-error");
-                error.ShouldNotBeNull();
+                _ = error.ShouldNotBeNull();
                 error.TextContent.ShouldContain("Could not open the state inspector dialog. Try again.");
             }, TimeSpan.FromSeconds(5));
 
@@ -277,7 +276,7 @@ public class StateInspectorModalTests : AdminUITestContext {
         System.Reflection.PropertyInfo? seam = typeof(StateInspectorModal)
             .GetProperty(nameof(StateInspectorModal.ShowDialogAsyncOverride), PrivateStatic);
 
-        seam.ShouldNotBeNull();
+        _ = seam.ShouldNotBeNull();
         seam.GetMethod!.IsPublic.ShouldBeFalse();
         seam.GetMethod!.IsStatic.ShouldBeTrue();
         seam.SetMethod!.IsPublic.ShouldBeFalse();

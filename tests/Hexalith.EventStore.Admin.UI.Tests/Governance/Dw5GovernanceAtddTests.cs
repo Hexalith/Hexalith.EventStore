@@ -1,7 +1,5 @@
 using System.Text.RegularExpressions;
 
-using Shouldly;
-
 namespace Hexalith.EventStore.Admin.UI.Tests.Governance;
 
 // ATDD red-phase scaffolds for story:
@@ -41,7 +39,7 @@ public class Dw5GovernanceAtddTests {
             .Select(name => Path.Combine(folder, name))
             .FirstOrDefault(File.Exists);
 
-        ledgerPath.ShouldNotBeNull(
+        _ = ledgerPath.ShouldNotBeNull(
             customMessage: "DW5 AC#1 requires a decision ledger file in the evidence folder.");
         string content = File.ReadAllText(ledgerPath!);
 
@@ -80,7 +78,7 @@ public class Dw5GovernanceAtddTests {
             .Select(name => Path.Combine(folder, name))
             .FirstOrDefault(File.Exists);
 
-        indexPath.ShouldNotBeNull(
+        _ = indexPath.ShouldNotBeNull(
             customMessage: "DW5 AC#10 requires an evidence index file (index.md / README.md / evidence.md) in the evidence folder.");
         string content = File.ReadAllText(indexPath!);
 
@@ -160,7 +158,7 @@ public class Dw5GovernanceAtddTests {
             "CHANGELOG.md",
         ];
 
-        List<string> violations = entries
+        var violations = entries
             .Where(e => !allowedPrefixes.Any(p => e.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
             .ToList();
 

@@ -16,9 +16,7 @@ public class TenantsAuthorizationContractMappingTests {
     [InlineData(TenantRole.TenantOwner)]
     [InlineData(TenantRole.TenantContributor)]
     [InlineData(TenantRole.TenantReader)]
-    public void TenantRole_PublicContractValues_AreKnownToGatewayAdapterShape(TenantRole role) {
-        Enum.IsDefined(role).ShouldBeTrue();
-    }
+    public void TenantRole_PublicContractValues_AreKnownToGatewayAdapterShape(TenantRole role) => Enum.IsDefined(role).ShouldBeTrue();
 
     private static AuthorizationFailureReason MapTenantStatus(TenantStatus status) => status switch {
         TenantStatus.Active => AuthorizationFailureReason.None,

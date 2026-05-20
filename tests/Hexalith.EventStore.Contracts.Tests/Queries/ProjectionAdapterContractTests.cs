@@ -71,7 +71,7 @@ public class ProjectionAdapterContractTests {
     public void QueryResult_FromPayload_StoresUtf8JsonPayloadBytes() {
         JsonElement payload = JsonDocument.Parse("{\"name\":\"Ada\"}").RootElement;
 
-        QueryResult sut = QueryResult.FromPayload(payload, "party");
+        var sut = QueryResult.FromPayload(payload, "party");
 
         sut.Success.ShouldBeTrue();
         sut.ProjectionType.ShouldBe("party");
@@ -80,7 +80,7 @@ public class ProjectionAdapterContractTests {
 
     [Fact]
     public void QueryResult_DataContractRoundTrip_PreservesFailureShape() {
-        QueryResult original = QueryResult.Failure("No projection state available");
+        var original = QueryResult.Failure("No projection state available");
         var serializer = new DataContractSerializer(typeof(QueryResult));
 
         using var stream = new MemoryStream();
@@ -99,7 +99,7 @@ public class ProjectionAdapterContractTests {
     public void IProjectionActor_IsPublicDaprActorContract() {
         typeof(IActor).IsAssignableFrom(typeof(IProjectionActor)).ShouldBeTrue();
 
-        typeof(IProjectionActor)
+        _ = typeof(IProjectionActor)
             .GetMethod(nameof(IProjectionActor.QueryAsync), [typeof(QueryEnvelope)])
             .ShouldNotBeNull();
     }
@@ -141,15 +141,13 @@ public class ProjectionAdapterContractTests {
     }
 
     [Fact]
-    public void QueryResult_FromPayload_ThrowsForUndefinedJsonElement() {
-        Should.Throw<ArgumentException>(() => QueryResult.FromPayload(default));
-    }
+    public void QueryResult_FromPayload_ThrowsForUndefinedJsonElement() => Should.Throw<ArgumentException>(() => QueryResult.FromPayload(default));
 
     [Fact]
     public void QueryResult_Failure_ThrowsForNullOrWhitespaceMessage() {
-        Should.Throw<ArgumentException>(() => QueryResult.Failure(null!));
-        Should.Throw<ArgumentException>(() => QueryResult.Failure(""));
-        Should.Throw<ArgumentException>(() => QueryResult.Failure("   "));
+        _ = Should.Throw<ArgumentException>(() => QueryResult.Failure(null!));
+        _ = Should.Throw<ArgumentException>(() => QueryResult.Failure(""));
+        _ = Should.Throw<ArgumentException>(() => QueryResult.Failure("   "));
     }
 
     [Fact]

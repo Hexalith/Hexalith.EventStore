@@ -24,7 +24,7 @@ public class ProjectionPollerServiceTests {
     public async Task PollOnceAsync_PositiveInterval_DeliversTrackedIdentity() {
         var tracker = new FakeProjectionCheckpointTracker(FastIdentity);
         IProjectionPollerDeliveryGateway orchestrator = Substitute.For<IProjectionPollerDeliveryGateway>();
-        var service = CreateService(
+        ProjectionPollerService service = CreateService(
             tracker,
             orchestrator,
             new ProjectionOptions { DefaultRefreshIntervalMs = 1000 });
@@ -38,7 +38,7 @@ public class ProjectionPollerServiceTests {
     public async Task PollOnceAsync_PerDomainIntervals_DoNotDeliverSlowDomainOnEveryFastTick() {
         var tracker = new FakeProjectionCheckpointTracker(FastIdentity, SlowIdentity);
         IProjectionPollerDeliveryGateway orchestrator = Substitute.For<IProjectionPollerDeliveryGateway>();
-        var service = CreateService(
+        ProjectionPollerService service = CreateService(
             tracker,
             orchestrator,
             new ProjectionOptions {
@@ -64,7 +64,7 @@ public class ProjectionPollerServiceTests {
         TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _ = orchestrator.DeliverProjectionAsync(FastIdentity, Arg.Any<CancellationToken>())
             .Returns(_ => release.Task);
-        var service = CreateService(
+        ProjectionPollerService service = CreateService(
             tracker,
             orchestrator,
             new ProjectionOptions { DefaultRefreshIntervalMs = 1000 });
@@ -84,7 +84,7 @@ public class ProjectionPollerServiceTests {
         var tracker = new FakeProjectionCheckpointTracker(FastIdentity);
         IProjectionPollerDeliveryGateway orchestrator = Substitute.For<IProjectionPollerDeliveryGateway>();
         var tickSource = new ManualProjectionPollerTickSource();
-        var service = CreateService(
+        ProjectionPollerService service = CreateService(
             tracker,
             orchestrator,
             new ProjectionOptions { DefaultRefreshIntervalMs = 1000 },
@@ -107,7 +107,7 @@ public class ProjectionPollerServiceTests {
             .Returns(
                 _ => throw new InvalidOperationException("project endpoint unavailable"),
                 _ => Task.CompletedTask);
-        var service = CreateService(
+        ProjectionPollerService service = CreateService(
             tracker,
             orchestrator,
             new ProjectionOptions { DefaultRefreshIntervalMs = 1000 });
@@ -126,7 +126,7 @@ public class ProjectionPollerServiceTests {
         _ = orchestrator.DeliverProjectionAsync(FastIdentity, Arg.Any<CancellationToken>())
             .Returns(_ => throw new InvalidOperationException("project endpoint unavailable"));
         var entries = new List<LogEntry>();
-        var service = CreateService(
+        ProjectionPollerService service = CreateService(
             tracker,
             orchestrator,
             new ProjectionOptions { DefaultRefreshIntervalMs = 1000 },
@@ -152,7 +152,7 @@ public class ProjectionPollerServiceTests {
         var tracker = new FakeProjectionCheckpointTracker(identities);
         IProjectionPollerDeliveryGateway orchestrator = Substitute.For<IProjectionPollerDeliveryGateway>();
         var entries = new List<LogEntry>();
-        var service = CreateService(
+        ProjectionPollerService service = CreateService(
             tracker,
             orchestrator,
             new ProjectionOptions { DefaultRefreshIntervalMs = 1000 },
@@ -178,7 +178,7 @@ public class ProjectionPollerServiceTests {
         var tracker = new FakeProjectionCheckpointTracker(FastIdentity);
         IProjectionPollerDeliveryGateway orchestrator = Substitute.For<IProjectionPollerDeliveryGateway>();
         var tickSource = new ManualProjectionPollerTickSource();
-        var service = CreateService(
+        ProjectionPollerService service = CreateService(
             tracker,
             orchestrator,
             new ProjectionOptions { DefaultRefreshIntervalMs = 1000 },
@@ -207,7 +207,7 @@ public class ProjectionPollerServiceTests {
         };
         IProjectionPollerDeliveryGateway orchestrator = Substitute.For<IProjectionPollerDeliveryGateway>();
         var entries = new List<LogEntry>();
-        var service = CreateService(
+        ProjectionPollerService service = CreateService(
             tracker,
             orchestrator,
             new ProjectionOptions { DefaultRefreshIntervalMs = 1000 },
@@ -254,11 +254,11 @@ public class ProjectionPollerServiceTests {
             }
 
             foreach (AggregateIdentity identity in identities) {
-                _enumerated.TrySetResult();
+                _ = _enumerated.TrySetResult();
                 yield return identity;
             }
 
-            _enumerated.TrySetResult();
+            _ = _enumerated.TrySetResult();
             await Task.CompletedTask;
         }
 
@@ -270,7 +270,7 @@ public class ProjectionPollerServiceTests {
         private readonly TaskCompletionSource _waiting = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public async Task<bool> WaitForNextTickAsync(TimeSpan interval, CancellationToken cancellationToken) {
-            _waiting.TrySetResult();
+            _ = _waiting.TrySetResult();
             return await _ticks.Reader.ReadAsync(cancellationToken);
         }
 

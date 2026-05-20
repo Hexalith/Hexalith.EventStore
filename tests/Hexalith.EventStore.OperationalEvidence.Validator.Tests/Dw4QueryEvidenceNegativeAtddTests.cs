@@ -15,46 +15,34 @@ public class Dw4QueryEvidenceNegativeAtddTests {
     private const string _baseSkip = "ATDD red phase — DW4 ";
 
     [Fact(Skip = _baseSkip + "AC#2 — missing required metadata field must fail with query-required-metadata-missing. Remove Skip when implementing.")]
-    public void QueryEvidence_MissingRequiredMetadata_Fails() {
-        AssertFixture(
+    public void QueryEvidence_MissingRequiredMetadata_Fails() => AssertFixture(
             "query-invalid-missing-metadata.md",
             Dw4RuleVocabulary.QueryRequiredMetadataMissing);
-    }
 
     [Fact(Skip = _baseSkip + "AC#3 — unreplaced angle-bracket placeholder must fail with placeholder-unreplaced. Remove Skip when implementing.")]
-    public void QueryEvidence_PlaceholderUnreplaced_Fails() {
-        AssertFixture(
+    public void QueryEvidence_PlaceholderUnreplaced_Fails() => AssertFixture(
             "query-invalid-placeholder-unreplaced.md",
             Dw4RuleVocabulary.PlaceholderUnreplaced);
-    }
 
     [Fact(Skip = _baseSkip + "AC#3 — empty required table cell must fail with required-table-cell-empty. Remove Skip when implementing.")]
-    public void QueryEvidence_EmptyRequiredTableCell_Fails() {
-        AssertFixture(
+    public void QueryEvidence_EmptyRequiredTableCell_Fails() => AssertFixture(
             "query-invalid-empty-required-table-cell.md",
             Dw4RuleVocabulary.RequiredTableCellEmpty);
-    }
 
     [Fact(Skip = _baseSkip + "AC#4 — classification outside the 9-value enum must fail with classification-invalid. Remove Skip when implementing.")]
-    public void QueryEvidence_ClassificationNotInEnum_Fails() {
-        AssertFixture(
+    public void QueryEvidence_ClassificationNotInEnum_Fails() => AssertFixture(
             "query-invalid-classification-not-in-enum.md",
             Dw4RuleVocabulary.ClassificationInvalid);
-    }
 
     [Fact(Skip = _baseSkip + "AC#6 — missing false-positive control must fail with control-required-missing. Remove Skip when implementing.")]
-    public void QueryEvidence_FalsePositiveControlMissing_Fails() {
-        AssertFixture(
+    public void QueryEvidence_FalsePositiveControlMissing_Fails() => AssertFixture(
             "query-invalid-control-missing.md",
             Dw4RuleVocabulary.ControlRequiredMissing);
-    }
 
     [Fact(Skip = _baseSkip + "AC#6 — missing correlation-integrity control must fail with correlation-control-required-missing. Remove Skip when implementing.")]
-    public void QueryEvidence_CorrelationControlMissing_Fails() {
-        AssertFixture(
+    public void QueryEvidence_CorrelationControlMissing_Fails() => AssertFixture(
             "query-invalid-correlation-control-missing.md",
             Dw4RuleVocabulary.CorrelationControlRequiredMissing);
-    }
 
     private static void AssertFixture(string fixtureFileName, string expectedRuleId) {
         Dw4FixtureCatalog.FixtureExpectation expected = Dw4FixtureCatalog.ByName[fixtureFileName];
