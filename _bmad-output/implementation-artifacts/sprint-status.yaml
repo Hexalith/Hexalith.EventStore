@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-05-20T10:49:55+02:00 - Readiness guardrails applied: parent/container stories are non-assignable, technical epic titles are stable labels, completed Admin/UI follow-ups require linked Detail artifacts, WS-1 is the first-class bootstrap gate, PRD scope horizons govern implementation selection, UX-DR41..UX-DR59 stay visible in story review, and Epic 11 remains supplemental unless PRD coverage changes.
+# last_updated: 2026-05-20T12:18:09+02:00 - WS-1 moved in-progress -> review after command-flow evidence and validation.
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -45,7 +45,8 @@
 # - Epic 11 remains supplemental projection-builder scope under the approved change proposal unless the PRD is amended with explicit new FR coverage.
 
 generated: 2026-03-15
-last_updated: '2026-05-20T10:49:55+02:00' # Readiness guardrails applied: parent/container stories are non-assignable, technical epic titles are stable labels, completed Admin/UI follow-ups require linked Detail artifacts, WS-1 is the first-class bootstrap gate, PRD scope horizons govern implementation selection, UX-DR41..UX-DR59 stay visible in story review, and Epic 11 remains supplemental unless PRD coverage changes.
+last_updated: '2026-05-20T12:18:09+02:00' # WS-1 moved in-progress -> review after command-flow evidence and validation.
+# Previous last_updated detail preserved: 2026-05-20T10:49:55+02:00 - Readiness guardrails applied: parent/container stories are non-assignable, technical epic titles are stable labels, completed Admin/UI follow-ups require linked Detail artifacts, WS-1 is the first-class bootstrap gate, PRD scope horizons govern implementation selection, UX-DR41..UX-DR59 stay visible in story review, and Epic 11 remains supplemental unless PRD coverage changes.
 # Previous last_updated detail preserved: 2026-05-20T10:20:54+02:00 - Sprint planning refresh: canonical epic/story inventory validated from epics.md; no status transitions changed; preserved 54 existing carry-forward rows outside canonical epic inventory.
 # Previous last_updated detail preserved: 2026-05-19T17:53:03+02:00 - Epic 22 retrospective completed and saved to _bmad-output/implementation-artifacts/epic-22-retro-2026-05-19.md. Epic 22 and its retrospective were moved to done after all Epic 22 story rows, 22.7d child rows, and post-epic-22-r22a1-query-router-actor-proxy-fix were already done. Retrospective captured key lessons: public contract ownership worked, fail-closed/no-leak proof improved, integration/runtime proof remains environment-gated in a few areas, and no Epic 23 exists yet.
 # Previous last_updated detail preserved: 2026-05-19T15:45:00+02:00 - Story post-epic-22-r22a1-query-router-actor-proxy-fix moved review -> done after code-review patch pass. Applied all 4 review fixes: production-path weak ActorProxy regression guard, list-tenants payload/JSON assertions, cancellation-before-not-found classification, and fixed configuration-store documentation links. Fresh EnableKeycloak=false Aspire smoke through eventstore-admin returned GET /api/v1/admin/tenants 200 OK with []; fresh EventStore logs showed 0 QueryRouter EventId 1202 / weak-proxy NRE entries for ActorId=tenants:system:index. Validation green: focused Server.Tests slice QueryRouter|SubmitQuery|DefaultProjectionActorInvoker 91/91; full Release solution build 0 warnings / 0 errors.
@@ -135,7 +136,7 @@ development_status:
   # Walking Skeleton readiness prerequisite
   # Added by sprint-change-proposal-2026-05-17-readiness-addendum.md.
   # Verify before any new implementation pass over Epics 1-8 foundation work.
-  ws-1-clone-to-command-flow-walking-skeleton: backlog
+  ws-1-clone-to-command-flow-walking-skeleton: review
 
   # Epic 1: Domain Contract Foundation
   epic-1: done
