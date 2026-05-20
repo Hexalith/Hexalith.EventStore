@@ -1,0 +1,70 @@
+{
+  "dimension": "isolation",
+  "score": 70,
+  "max_score": 100,
+  "grade": "C",
+  "violations": [
+    {
+      "file": "tests/Hexalith.EventStore.Server.Tests/Fixtures/DaprTestContainerFixture.cs",
+      "line": 60,
+      "severity": "HIGH",
+      "category": "collection-shared-mutable-fakes",
+      "description": "Collection-scoped Dapr fixture exposes shared fake publisher, dead-letter publisher, domain invoker, and command status store with no fixture-level reset hook.",
+      "suggestion": "Add ResetCollectedState() to the fixture and Reset/Clear methods to each fake; call before each DaprTestContainer test class."
+    },
+    {
+      "file": "tests/Hexalith.EventStore.Server.Tests/Events/EventPersistenceIntegrationTests.cs",
+      "line": 29,
+      "severity": "HIGH",
+      "category": "static-resource-lifetime",
+      "description": "Static Lazy<Task<IConnectionMultiplexer>> persists Redis connection state outside the fixture lifecycle.",
+      "suggestion": "Move the multiplexer into a disposable fixture and clear only EventStore test keys during setup."
+    },
+    {
+      "file": "tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestFixture.cs",
+      "line": 47,
+      "severity": "MEDIUM",
+      "category": "environment-restore-on-init-failure",
+      "description": "Fixture mutates environment variables and restores them in DisposeAsync, but InitializeAsync has no catch/restore path if build/start fails.",
+      "suggestion": "Adopt the AspirePubSubProofTestFixture SnapshotAndSet/RestoreEnvironmentSnapshot try/catch pattern."
+    },
+    {
+      "file": "tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireProjectionFaultTestFixture.cs",
+      "line": 30,
+      "severity": "MEDIUM",
+      "category": "environment-restore-on-init-failure",
+      "description": "Fault fixture mutates EnableKeycloak, environment, and sample fault flags before async startup completes.",
+      "suggestion": "Wrap startup in try/catch and restore the captured environment snapshot before rethrow."
+    },
+    {
+      "file": "tests/Hexalith.EventStore.IntegrationTests/Fixtures/KeycloakAuthFixture.cs",
+      "line": 45,
+      "severity": "MEDIUM",
+      "category": "environment-restore-on-init-failure",
+      "description": "Keycloak fixture has the same env-var leak shape if InitializeAsync throws before DisposeAsync.",
+      "suggestion": "Use a shared TestEnvScope helper from Hexalith.EventStore.Testing."
+    },
+    {
+      "file": "tests/Hexalith.EventStore.Admin.Cli.Tests/GlobalOptionsTests.cs",
+      "line": 21,
+      "severity": "MEDIUM",
+      "category": "environment-variable-snapshot",
+      "description": "Constructor clears EVENTSTORE_ADMIN_* variables without snapshotting prior values.",
+      "suggestion": "Mirror GlobalOptionsBindingProfileTests and restore original values in Dispose."
+    }
+  ],
+  "passed_checks": 690,
+  "failed_checks": 6,
+  "total_checks": 696,
+  "violation_summary": {
+    "HIGH": 2,
+    "MEDIUM": 4,
+    "LOW": 0
+  },
+  "recommendations": [
+    "Centralize environment mutation behind a TestEnvScope helper with try/finally semantics.",
+    "Reset collection-scoped fake state before each test class.",
+    "Move static Redis connection ownership into a disposable fixture."
+  ],
+  "summary": "Fixture investment is strong, but collection-scoped mutable state and environment mutation still create cross-test contamination risk."
+}

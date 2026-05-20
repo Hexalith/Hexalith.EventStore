@@ -1,552 +1,295 @@
 ---
 stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03-quality-evaluation', 'step-03f-aggregate-scores', 'step-04-generate-report']
 lastStep: 'step-04-generate-report'
-lastSaved: '2026-05-04'
+lastSaved: '2026-05-20'
 status: 'complete'
+humanApproval:
+  status: 'approved'
+  approvedBy: 'Jerome'
+  approvedOn: '2026-05-20'
 workflowType: 'testarch-test-review'
 reviewScope: 'suite'
-priorReview: 'archive/test-review-2026-04-18.md'
+priorReview: 'archive/test-review-2026-05-04.md'
 inputDocuments:
-  - '.claude/skills/bmad-testarch-test-review/resources/knowledge/test-quality.md'
-  - '.claude/skills/bmad-testarch-test-review/resources/knowledge/test-levels-framework.md'
-  - '.claude/skills/bmad-testarch-test-review/resources/knowledge/data-factories.md'
-  - '.claude/skills/bmad-testarch-test-review/resources/knowledge/selective-testing.md'
-  - '.claude/skills/bmad-testarch-test-review/resources/knowledge/test-healing-patterns.md'
-  - '.claude/skills/bmad-testarch-test-review/resources/knowledge/selector-resilience.md'
-  - '.claude/skills/bmad-testarch-test-review/resources/knowledge/timing-debugging.md'
-  - 'CLAUDE.md'
-  - '_bmad-output/test-artifacts/archive/test-review-2026-04-18.md (prior review for context)'
+  - '_bmad-output/project-context.md'
+  - '_bmad/tea/config.yaml'
+  - '.agents/skills/bmad-testarch-test-review/resources/tea-index.csv'
+  - '.agents/skills/bmad-testarch-test-review/resources/knowledge/test-quality.md'
+  - '.agents/skills/bmad-testarch-test-review/resources/knowledge/data-factories.md'
+  - '.agents/skills/bmad-testarch-test-review/resources/knowledge/test-levels-framework.md'
+  - '.agents/skills/bmad-testarch-test-review/resources/knowledge/selective-testing.md'
+  - '.agents/skills/bmad-testarch-test-review/resources/knowledge/test-healing-patterns.md'
+  - '.agents/skills/bmad-testarch-test-review/resources/knowledge/selector-resilience.md'
+  - '.agents/skills/bmad-testarch-test-review/resources/knowledge/timing-debugging.md'
+  - '.agents/skills/bmad-testarch-test-review/resources/knowledge/overview.md'
+  - '.agents/skills/bmad-testarch-test-review/resources/knowledge/api-request.md'
+  - '.agents/skills/bmad-testarch-test-review/resources/knowledge/auth-session.md'
+  - '.agents/skills/bmad-testarch-test-review/resources/knowledge/recurse.md'
+  - '.agents/skills/bmad-testarch-test-review/resources/knowledge/playwright-cli.md'
+  - '.agents/skills/bmad-testarch-test-review/resources/knowledge/pact-mcp.md'
+  - 'https://learn.microsoft.com/en-us/dotnet/core/extensions/timeprovider-testing'
+  - 'https://xunit.net/docs/shared-context'
+  - 'https://playwright.dev/dotnet/docs/locators'
+  - 'https://bunit.dev/docs/getting-started/writing-tests.html'
 ---
 
-# Test Quality Review — Hexalith.EventStore (Full Suite)
+# Test Quality Review - Hexalith.EventStore
 
-**Quality Score (raw)**: **38/100 (F)** — *see scoring caveat below*
-**Quality Score (calibrated)**: **B+ (86/100)** — adjusted for suite size
-**Review Date**: 2026-05-04
-**Review Scope**: suite — full .NET 10 test estate (632 files / 44.7 K LOC / ~4,297 methods / 15 projects + Tenants submodule)
-**Reviewer**: Murat (TEA Agent)
-**Stack**: .NET 10 / xUnit / NSubstitute / Shouldly / Microsoft.Playwright (.NET binding) / bUnit
-**Prior Review**: 2026-04-18 (88/100) — archived to `archive/test-review-2026-04-18.md`. Fresh review per user request, not a delta.
+**Quality Score**: 69/100 (C - Needs Improvement)
+**Calibrated Read**: B- for a large legacy suite, because the highest-value regression from the prior review is fixed.
+**Human Approval**: Approved by Jerome on 2026-05-20.
+**Review Date**: 2026-05-20
+**Review Scope**: suite
+**Reviewer**: Murat / TEA Agent
+**Stack**: .NET 10, xUnit v3, Shouldly, NSubstitute, bUnit, Microsoft.Playwright .NET, Aspire/Dapr integration tests
 
-> Note: This review audits existing tests; it does not generate them. Coverage mapping and gate decisions are out of scope — route those to the **trace** skill.
-
----
+Note: This review audits existing tests; it does not generate tests. Coverage mapping and gate decisions are out of scope here. Use `trace` for coverage decisions.
 
 ## Executive Summary
 
-**Overall Assessment**: **Good with three concentrated remediation hot spots.**
+**Overall Assessment**: Needs Improvement, with a positive trend on the biggest prior flake/performance issue.
 
-**Recommendation**: **Approve with Comments** — the suite is structurally healthy (strong xUnit fixture investment, zero sync-over-async, zero `async void`, mostly bounded polls). Three hot spots account for the bulk of the violation surface and most of them are old:
+**Recommendation**: Approve with Comments.
 
-1. **`DaprHealthHistoryCollectorTests` 51 s of real-time waits** — same finding as 2026-04-18, **not remediated**.
-2. **Reflection DRY violation** — `typeof(Actor).GetProperty("StateManager")` duplicated across **24 files / 32 sites** despite an existing helper (`AggregateActorTestHelper.cs:75`) nobody calls.
-3. **Oversized test files** — 90 files (14 % of the suite) exceed the 300 LOC DoD; `EventStoreAggregateTests.cs` **grew** from 1,030 → 1,109 LOC since the prior review.
+The May 4 blocker-sized hot spot in `DaprHealthHistoryCollectorTests` was fixed properly: the collector now accepts `TimeProvider`, and the tests drive it with `FakeTimeProvider`. That is exactly the right direction and it removes the prior 51 seconds of wall-clock waiting.
 
-A weighted mechanical score of 38 looks alarming, but it's an artefact of the unweighted penalty model (10 HIGH violations alone clamp determinism to 0). Calibrated for size, the suite quality is closer to **B+** — directionally healthy, with a small, well-defined backlog.
+The current risk has shifted. Maintainability is now the weak dimension: 113 test/support files exceed the 300 line DoD, the largest file is 1900 lines, and `Actor.StateManager` reflection injection is still duplicated across 35 sites. Isolation also needs attention because several collection-scoped fixtures mutate environment variables or shared fakes without a failure-safe reset story.
 
 ### Key Strengths
 
-✅ **Robust xUnit fixture investment** — 56 sites of `IClassFixture` / `ICollectionFixture` / `IAsyncLifetime`. The `EventStoreAggregateTests` cache-clear pattern (constructor *and* `Dispose`) is gold-standard and consistently mirrored across `AssemblyScannerTests`, `NamingConventionEngineTests`, `QueryContractResolverTests`, `EventStoreDomainAttributeTests`, `DomainProcessorTests`, and 5+ others.
-✅ **Async hygiene** — **zero** `.Result` / `.Wait()` / `.GetAwaiter().GetResult()` and **zero** `async void` test methods across 4,297 methods. This is exceptional. (Prior review's `AdminApiClientPostTests.cs:67` `.Result` is now resolved.)
-✅ **Tier discipline** — Tier 1 / Tier 2 / Tier 3 boundaries respected per `CLAUDE.md`. DAPR sidecar correctly shared across 11+ Tier 2 classes via `ICollectionFixture`. Aspire E2E collections use the same pattern.
-✅ **Justified chaos delays** — `ChaosResilienceTests.cs` 3-5 s delays are correctly modelling intentional disruption (per CLAUDE.md retro R2-A6) — explicitly *not* flagged.
-✅ **Polling-loop hygiene** — `Task.Delay(250-500ms)` instances are inside deadline-bounded poll loops with explicit `TimeoutException` failure modes.
-✅ **`AspirePubSubProofTestFixture`** — exemplar `SnapshotAndSet` / `RestoreEnvironmentSnapshot` env-var pattern with try/catch. Use it as the template for every other env-mutating fixture.
+- `DaprHealthHistoryCollectorTests` now uses `FakeTimeProvider`; this resolves the prior review's largest performance/determinism finding.
+- xUnit fixture investment is substantial: collection fixtures are used for Dapr, Aspire, Keycloak, Playwright, and pub/sub proof suites.
+- bUnit is used for most Admin UI component behavior, keeping many UI checks below browser/E2E level.
+- Integration tests have meaningful tenant/security coverage around Keycloak, Dapr access control, command lifecycle, and rate limiting.
+- The suite keeps coverage concerns separated from review concerns; no coverage score is inferred here.
 
 ### Key Weaknesses
 
-❌ **Persistent determinism regression** — `DaprHealthHistoryCollectorTests` still burns 51 s/run of real-time `Task.Delay` despite being flagged 2 weeks ago.
-❌ **Reflection DRY violation** — 32 sites of `typeof(Actor).GetProperty("StateManager")` across 24 files, while `AggregateActorTestHelper` already exists. ~150 LOC of duplication and a single point of failure when DAPR SDK changes the property.
-❌ **Oversized files trending worse** — `EventStoreAggregateTests` grew 79 LOC in 2 weeks; the 300 LOC DoD has no enforcement mechanism.
-❌ **Wall-clock assertions** — 3 sites (`IdempotencyRecordTests`, `DeadLetterMessageCompletenessTests`) assert against `DateTimeOffset.UtcNow ± delta` — flaky under GC pause / slow CI agent.
-❌ **Env-var leak hazard in 7 fixtures** — `IAsyncLifetime` fixtures mutate env vars before `BuildAsync`/`StartAsync` without try/catch; if init throws, xUnit skips `DisposeAsync` and the env vars leak to subsequent collections.
-❌ **Priority traits essentially absent** — only 2 `[Trait("Priority", ...)]` declarations across 4,297 methods. Selective execution by P0/P1 risk is not feasible today.
+- 113 files are over 300 lines; top files are now 1900, 1178, 1052, and 1035 lines.
+- Actor test harness reflection is repeated at 35 call sites instead of centralized.
+- Only 2 `Priority` traits were found across roughly 5288 Fact/Theory declarations.
+- Shared Dapr fakes and a static Redis multiplexer still have cross-test contamination risk.
+- Browser E2E selectors lean heavily on CSS selectors instead of Playwright role locators or stable test IDs.
 
----
+## Dimension Scores
 
-## Per-Dimension Scores
-
-| Dimension | Raw Score | Grade | Weight | Comments |
-|---|---:|---|---:|---|
-| Determinism | **0** | F | 0.30 | Score floored. 10 HIGH (4 of which are the same `DaprHealthHistoryCollector` class at 3 sites + `Task.Delay(2 s)` in 2 DAPR fixtures + 3 wall-clock asserts). |
-| Isolation | **76** | C | 0.30 | 2 HIGH (collection-shared fakes never reset; static undisposed Redis multiplexer) + 7 MEDIUM env-leak hazards. |
-| Maintainability | **18** | F | 0.25 | Score floored. 16 HIGH (10 oversized-file violations, 1 cohort-summary, 2 reflection-DRY, 1 hidden-assertion-cohort, 1 naming-convention divergence in Tenants, 1 oversized-method cohort). |
-| Performance | **73** | C | 0.15 | 3 HIGH all in `DaprHealthHistoryCollectorTests` — same root cause as determinism HIGH-1/2/3. |
-| **Weighted Overall** | **38** | **F** | 1.00 | Mechanical penalty model. **Calibrated for suite size, qualitative grade is B+.** |
-
-### Why the raw score is misleading
-
-The penalty model is `100 - sum(severity_weight × count)` with HIGH=10. Ten HIGH violations clamp any dimension to zero, regardless of whether the suite has 50 methods or 4,300. A more honest read: of 4,297 test methods, the violation surface touches **~120 method-test-instances** (~2.8 % of the suite). The remaining 97 % follows the DoD reasonably well — assertions are explicit, fixtures clean, polling loops bounded, and async discipline is strict. **The fixes are concentrated and high-leverage.**
-
----
+| Dimension | Score | Grade | Notes |
+|---|---:|---|---|
+| Determinism | 78 | C | Major prior wall-clock wait fixed; remaining issues are wall-clock timestamp assertions and three small hard waits. |
+| Isolation | 70 | C | Fixture model is good, but shared mutable fakes, static Redis lifetime, and env-var restore-on-init-failure hazards remain. |
+| Maintainability | 52 | F | Oversized files and duplicated actor reflection dominate the risk. |
+| Performance | 78 | C | Better than May 4; remaining costs are fixed Dapr warmup and repeated WebApplicationFactory startup. |
+| Overall | 69 | C | Weighted: determinism 30%, isolation 30%, maintainability 25%, performance 15%. |
 
 ## Quality Criteria Assessment
 
 | Criterion | Status | Violations | Notes |
 |---|---|---:|---|
-| Method naming convention (`Method_Scenario_Expected`) | ⚠️ WARN | ~22 | Main repo follows convention strongly (`EventStoreAggregateTests` 45/50, `ProjectionCheckpointTrackerTests` 21/22). Tenants submodule diverges to underscore-rich style (`TenantAggregateTests` 59/81 deviating). |
-| Test IDs / Trait tagging | ⚠️ WARN | ~62 | 36 of 581 main-repo test files use traits (~6%). IntegrationTests good (40%); Server.Tests poor (3%). Priority traits effectively absent (2 across 4,297 methods). |
-| Hard waits (`Thread.Sleep` / `Task.Delay` outside polls) | ❌ FAIL | 7 | 2× `Thread.Sleep(50ms)` in `PubSubDeliveryProofTests` retry loops; 3× `Task.Delay(17 s)` in `DaprHealthHistoryCollectorTests`; 2× `Task.Delay(2 s)` in DAPR fixtures. |
-| Determinism (no conditionals / wall-clock asserts) | ❌ FAIL | 3 | `IdempotencyRecordTests:24`, `DeadLetterMessageCompletenessTests:200,201` use `DateTimeOffset.UtcNow ± delta` assertions without `TimeProvider`. |
-| Isolation (cleanup, no shared state) | ⚠️ WARN | 12 | 2 HIGH (collection-shared fakes never reset; static `Lazy<Task<IConnectionMultiplexer>>` Redis); 7 MEDIUM env-var leak hazards in `IAsyncLifetime`. |
-| Fixture patterns | ✅ PASS | 0 | 56 fixture/lifetime sites; gold-standard cache-clear pattern in 10+ classes; exemplar env-snapshot pattern in `AspirePubSubProofTestFixture`. |
-| Data factories | ⚠️ WARN | n/a | Largely absent at module level — most tests construct test data inline. Not a violation per se for unit/integration .NET tests, but a missed reuse opportunity. |
-| Hidden assertions in helpers | ❌ FAIL | 1 cohort | 15 files have `Assert*` / `Verify*` / `Validate*` helpers performing multi-step orchestration plus assertions under names that imply pure checks. |
-| Test length (≤ 300 LOC) | ❌ FAIL | 90 | 14 % of the suite (90/632 files) violates DoD. 11 files >700 LOC. `EventStoreAggregateTests` grew +79 LOC since 2026-04-18. |
-| Test method length (≤ 80 LOC) | ❌ FAIL | 12 | Worst: `QueryCacheTopology_WhenProjectionChanges...` at 121 LOC. |
-| Reflection DRY | ❌ FAIL | 1 cohort | `typeof(Actor).GetProperty("StateManager")` duplicated 32 times in 24 files; an `AggregateActorTestHelper` already exists at line 75 nobody uses. |
-| Sync-over-async (`.Result`/`.Wait()`) | ✅ PASS | 0 | Clean. |
-| `async void` test methods | ✅ PASS | 0 | Clean. |
-| Story/Epic comment rot | ⚠️ WARN | 164 | 88 files contain `// Story X-Y` / `/// Epic N` comments — these rot relative to commit history per CLAUDE.md guidance. |
+| Test discovery | PASS | 0 | 696 test/support files reviewed under `tests`, `samples`, and `perf`; submodules were not recursively initialized. |
+| Hard waits | WARN | 4 | `DaprHealthHistoryCollectorTests` was fixed; remaining hard waits are short but still avoidable. |
+| Wall-clock determinism | FAIL | 2 cohorts | `IdempotencyRecordTests` and `DeadLetterMessageCompletenessTests` assert against `DateTimeOffset.UtcNow` tolerance windows. |
+| Isolation cleanup | FAIL | 3 cohorts | Shared Dapr fakes, static Redis connection, and env-var fixture startup failure paths. |
+| Fixture patterns | PASS | 0 | Strong use of `IClassFixture`, `ICollectionFixture`, and `IAsyncLifetime`. |
+| Test length | FAIL | 113 | 113 files over 300 lines; 10 files exceed 790 lines. |
+| Priority markers | WARN | 1 cohort | Only 2 priority traits across roughly 5288 Fact/Theory declarations. |
+| Selector resilience | WARN | 1 cohort | Admin UI E2E uses CSS selectors for navigation and Fluent UI shell elements. |
+| Assertion style | WARN | 1 cohort | Shouldly is preferred locally, but many older tests still use xUnit `Assert.*`. |
+| Performance | WARN | 3 | Fixed warmup and repeated factory startup are the main speed risks. |
 
-**Total Violations**: 0 Critical (P0 deploy-blocker), 31 High (P1), 14 Medium (P2), 9 Low (P3).
+**Total Violations**: 0 Critical, 6 High, 13 Medium, 1 Low.
 
----
+## Critical Issues
 
-## Critical Issues (P0 — Must Fix)
+No P0 deploy-blocking test quality issues detected.
 
-✅ **No P0 deploy-blocking issues detected.** No test depends on production data, no test silently swallows assertions, and no test introduces correctness risk to a release.
+## High-Priority Findings
 
----
+### H-1. Oversized Test Files Are Growing Past The DoD
 
-## High-Priority Findings (P1 — Should Fix Soon)
+**Severity**: P1 (High)
+**Location**: `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs:1`
+**Criterion**: Maintainability / test file length
+**Knowledge Base**: `test-quality.md`
 
-### H-1. `DaprHealthHistoryCollectorTests` — 51 s of real-time waits (PERSISTENT REGRESSION)
+The suite now has 113 test/support files over the 300 line DoD. The largest current files are:
 
-**Severity**: P1 (High) — performance + determinism overlap
-**Location**: `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprHealthHistoryCollectorTests.cs:71, 101, 145`
-**Criterion**: Hard waits, Tier 1 timing, Determinism
-**Knowledge**: `test-quality.md` (DoD: <1.5 min, no hard waits), `timing-debugging.md` (deterministic waits)
-**Status**: **Same finding as 2026-04-18 review — unresolved.**
+| Lines | File |
+|---:|---|
+| 1900 | `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs` |
+| 1178 | `tests/Hexalith.EventStore.Client.Tests/Aggregates/EventStoreAggregateTests.cs` |
+| 1052 | `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprInfrastructureQueryServiceTests.cs` |
+| 1035 | `tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs` |
+| 976 | `tests/Hexalith.EventStore.Server.Tests/Actors/EventDrainRecoveryTests.cs` |
+| 947 | `tests/Hexalith.EventStore.Server.Tests/Actors/CachingProjectionActorTests.cs` |
+| 928 | `tests/Hexalith.EventStore.Server.Tests/Controllers/QueriesControllerTests.cs` |
+| 827 | `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/DeadLettersPageTests.cs` |
+| 813 | `tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterOriginTracingTests.cs` |
+| 793 | `tests/Hexalith.EventStore.IntegrationTests/ContractTests/QueryCacheTopologyProofE2ETests.cs` |
 
-**Issue**:
-Three test methods use `await Task.Delay(TimeSpan.FromSeconds(17))` to wait for the hosted-service's 15 s timer to fire once. This is a Tier 1 unit-test class. 51 s of CI wall-clock per run for one collector class.
+**Recommendation**: add a CI/reporting guard for new or changed test files over 300 lines, then split the top files by behavior slice. Start with `ProjectionUpdateOrchestratorTests` because it is now the clear outlier.
 
-```csharp
-// ❌ Current (DaprHealthHistoryCollectorTests.cs:71)
-await collector.StartAsync(cts.Token);
-await Task.Delay(TimeSpan.FromSeconds(17)); // 15s delay + 2s buffer
-await cts.CancelAsync();
-```
+### H-2. Actor StateManager Reflection Is Still Duplicated
 
-**Fix**:
-Inject `TimeProvider` into `DaprHealthHistoryCollector` and use `Microsoft.Extensions.Time.Testing.FakeTimeProvider` to advance virtual time:
+**Severity**: P1 (High)
+**Location**: `tests/Hexalith.EventStore.Server.Tests/Telemetry/EndToEndTraceTests.cs:52`
+**Criterion**: Maintainability / SDK upgrade risk
+**Knowledge Base**: `test-quality.md`
 
-```csharp
-// ✅ Fixed
-var timeProvider = new FakeTimeProvider();
-var collector = new DaprHealthHistoryCollector(scopeFactory, opts, logger, timeProvider);
-var captured = new TaskCompletionSource();
-collector.OnIterationComplete = () => captured.TrySetResult();
+`typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance)` appears in 35 sites. `AggregateActorTestHelper` already contains this pattern at `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorTestHelper.cs:76`, but the helper is not broadly reused.
 
-await collector.StartAsync(cts.Token);
-timeProvider.Advance(TimeSpan.FromSeconds(15));
-await captured.Task.WaitAsync(TimeSpan.FromSeconds(5)); // bounded poll for the actual capture
-await cts.CancelAsync();
-```
+**Recommendation**: promote a reusable `ActorTestHarness.AttachStateManager(Actor actor, IActorStateManager stateManager)` into `src/Hexalith.EventStore.Testing` or a shared server test harness namespace. All direct reflection sites should call that helper so a future Dapr SDK change breaks in one place, not 35.
 
-**Why It Matters**: 51 s × every CI run × every PR. Compounded over Epic-22 cadence this is hours of wasted developer wait time per month. And it surfaces **detection blindness**: a finding that survives 2 reviews indicates no-one is enforcing remediation.
+### H-3. Collection-Scoped Dapr Fakes Can Bleed State
 
-**Related**: also recovers Determinism MEDIUM at line 33 (`Task.Delay(100)` outside poll loop, same pattern).
-
----
-
-### H-2. Reflection DRY violation — `Actor.StateManager` duplicated in 24 files
-
-**Severity**: P1 (High) — maintainability + Dapr-SDK upgrade hazard
-**Location**: 32 sites in 24 files (full list in appendix). Examples: `tests/Hexalith.EventStore.Server.Tests/Telemetry/EndToEndTraceTests.cs:52`, `Server.Tests/Observability/DeadLetterTraceChainTests.cs:77,138,191`, `Server.Tests/Security/DataPathIsolationTests.cs:144,203,254`, ...
-**Criterion**: Reflection DRY, single point of failure
-**Helper that already exists but is unused**: `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorTestHelper.cs:75`
-
-**Issue**:
-The pattern `typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance)?.SetValue(actor, stateManager)` is duplicated 32 times across 24 files because the DAPR Actor SDK doesn't expose a public way to inject a mock `IActorStateManager`. An encapsulating helper exists at `AggregateActorTestHelper.cs:75` — tests just don't call it.
-
-**Fix**:
-Promote the helper to a public, reusable test utility:
-
-```csharp
-// tests/Hexalith.EventStore.Testing/Harness/ActorTestHarness.cs (new)
-public static class ActorTestHarness
-{
-    public static void AttachStateManager<TActor>(TActor actor, IActorStateManager stateManager)
-        where TActor : Actor
-    {
-        var prop = typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance)
-            ?? throw new InvalidOperationException("Dapr.Actors.Runtime.Actor.StateManager property not found — DAPR SDK upgrade may have renamed it.");
-        prop.SetValue(actor, stateManager);
-    }
-}
-
-// Usage:
-var actor = new MyActor(host);
-ActorTestHarness.AttachStateManager(actor, mockStateManager);
-```
-
-Then migrate all 32 sites with an automated find/replace + manual review. Estimated reduction: **~150 LOC across 25 files** + a single point of failure when DAPR SDK changes the property name.
-
-**Why It Matters**: When DAPR 1.16/1.17 inevitably renames or restructures `Actor.StateManager`, every one of those 32 sites breaks independently. Concentration into one helper makes the upgrade a 5-minute change.
-
----
-
-### H-3. Oversized test files — 90 files breach the 300 LOC DoD; trend is worsening
-
-**Severity**: P1 (High) — maintainability, code review velocity
-**Location**: see Top-10 table below; full cohort details in appendix.
-**Criterion**: Test length (DoD: ≤ 300 LOC)
-**Trend signal**: `EventStoreAggregateTests.cs` grew **1,030 → 1,109 LOC** (+79) in 2 weeks.
-
-| LOC | File | Methods | Action |
-|---:|---|---:|---|
-| 1,455 | `Hexalith.Tenants/.../TenantAggregateTests.cs` | 81 | Split: `TenantLifecycleTests`, `TenantUserMembershipTests`, `TenantRbacTests`, `TenantStateReplayTests` |
-| 1,169 | `Hexalith.Tenants/.../TenantConformanceTests.cs` | 54 | Split by conformance dimension |
-| 1,109 | `Client.Tests/Aggregates/EventStoreAggregateTests.cs` | 50 | Split: `ProcessAsync_PayloadDispatch`, `ProcessAsync_StateRehydration`, `ProcessAsync_RecordAggregates`, `ProcessAsync_TerminationSemantics` |
-| 934 | `Server.Tests/Projections/ProjectionCheckpointTrackerTests.cs` | 22 | Extract `TrackIdentityAsync_*` group |
-| 813 | `Server.Tests/Observability/DeadLetterOriginTracingTests.cs` | — | Split by trace-chain stage |
-| 808 | `Server.Tests/Actors/EventDrainRecoveryTests.cs` | — | Split by recovery phase |
-| 793 | `IntegrationTests/ContractTests/QueryCacheTopologyProofE2ETests.cs` | — | Split by scenario; rename `Assert*` helpers to action verbs |
-| 771 | `Server.Tests/Controllers/QueriesControllerTests.cs` | 32 | Split by HTTP verb / endpoint |
-| 753 | `Server.Tests/Projections/ProjectionUpdateOrchestratorTests.cs` | — | Split by orchestration concern; remove story-comment rot |
-| 709 | `Server.Tests/Actors/CachingProjectionActorTests.cs` | — | Split by cache scenario |
-
-Plus 80 more files between 300-700 LOC.
-
-**Fix (process-level, highest ROI)**:
-Add a CI guard that fails the build when any file under `tests/` or `Hexalith.Tenants/tests/` exceeds 300 LOC. Example PowerShell pre-merge check:
-
-```powershell
-$violations = Get-ChildItem -Recurse tests, Hexalith.Tenants/tests -Filter '*.cs' |
-    Where-Object { $_.FullName -notmatch '\\(obj|bin)\\' } |
-    ForEach-Object {
-        $loc = (Get-Content $_.FullName).Count
-        if ($loc -gt 300) { [pscustomobject]@{ File = $_.FullName; LOC = $loc } }
-    }
-if ($violations) {
-    $violations | Format-Table
-    throw "Test file size DoD violation: $($violations.Count) files exceed 300 LOC"
-}
-```
-
-**Why It Matters**: Without enforcement, the 300 LOC limit is advisory and the suite has been silently growing past it. The +79 LOC in two weeks on `EventStoreAggregateTests` proves the trend is worsening.
-
----
-
-### H-4. `DaprTestContainerFixture` — collection-shared fakes never reset between tests
-
-**Severity**: P1 (High) — isolation hazard
+**Severity**: P1 (High)
 **Location**: `tests/Hexalith.EventStore.Server.Tests/Fixtures/DaprTestContainerFixture.cs:60`
-**Criterion**: Isolation, test-data leak
-**Knowledge**: `test-quality.md` Example 2 (auto-cleanup fixtures)
+**Criterion**: Isolation
+**Knowledge Base**: `test-quality.md`, `data-factories.md`
 
-**Issue**:
-`FakeEventPublisher`, `FakeDeadLetterPublisher`, `InMemoryCommandStatusStore`, and `FakeDomainServiceInvoker` are owned by the collection-scoped fixture. There is no `Reset()` between tests inside `[Collection("DaprTestContainer")]`. State accumulates: published events, command status records, dead-letter entries leak across every test in the collection lifetime. xUnit serializes tests in a collection, so **assertion bleed-through** is the typical failure mode (Test B sees the events Test A published).
+`DaprTestContainerFixture` exposes collection-shared `FakeDomainServiceInvoker`, `FakeEventPublisher`, `FakeDeadLetterPublisher`, and `InMemoryCommandStatusStore`. Eight test classes share the collection. There is no fixture-level `ResetCollectedState()` call before each class or test.
 
-**Fix**:
-Add `Reset()` methods to the fakes in `Hexalith.EventStore.Testing/Fakes/` and call them from each test class constructor (or via a per-test scope wrapper):
+**Recommendation**: add reset/clear methods on the fakes and call a fixture-level reset from each `[Collection("DaprTestContainer")]` test class constructor. This is higher value than adding more assertions because it protects every future test in the collection.
 
-```csharp
-public sealed class DaprTestContainerFixture : IAsyncLifetime
-{
-    public FakeEventPublisher FakeEventPublisher { get; } = new();
-    public InMemoryCommandStatusStore CommandStatusStore { get; } = new();
-    // ...
+### H-4. Static Redis Multiplexer Escapes Fixture Lifetime
 
-    public void ResetCollectedState()
-    {
-        FakeEventPublisher.Reset();
-        FakeDeadLetterPublisher.Reset();
-        CommandStatusStore.Reset();
-        FakeDomainServiceInvoker.Reset();
-    }
-}
-
-// In a test class constructor:
-public class MyTests(DaprTestContainerFixture fixture)
-{
-    private readonly DaprTestContainerFixture _fixture = fixture;
-    public MyTests(...) { _fixture.ResetCollectedState(); }
-}
-```
-
----
-
-### H-5. Static undisposed Redis multiplexer leaks across test process
-
-**Severity**: P1 (High) — isolation, resource leak
+**Severity**: P1 (High)
 **Location**: `tests/Hexalith.EventStore.Server.Tests/Events/EventPersistenceIntegrationTests.cs:29`
+**Criterion**: Isolation / resource lifetime
 
-**Issue**:
-A `static Lazy<Task<IConnectionMultiplexer>> RedisConnection` is initialized once per AppDomain and never disposed. The multiplexer leaks across tests, classes, and even fixture lifecycles. State cached in Redis between runs is observable by subsequent tests.
+`EventPersistenceIntegrationTests` owns a static `Lazy<Task<IConnectionMultiplexer>>`. It is not disposed with the collection fixture and can preserve connection/resource state outside the test lifetime.
 
-**Fix**:
-Move the multiplexer into `DaprTestContainerFixture` (or a sibling Tier-2 `RedisFixture`) so it is created and disposed deterministically. Add a fixture-init step that flushes the EventStore-related Redis keys (not full `FLUSHDB` which would clobber other suites).
+**Recommendation**: move Redis connection ownership into a disposable fixture and clear EventStore-specific keys during setup. Do not use global `FLUSHDB` unless the fixture owns the whole database.
 
----
+### H-5. Wall-Clock Timestamp Assertions Remain
 
-### H-6. Wall-clock assertions in 3 sites — flaky under GC pause / slow CI
+**Severity**: P1 (High)
+**Locations**:
 
-**Severity**: P1 (High) — determinism
-**Location**: `tests/Hexalith.EventStore.Server.Tests/Actors/IdempotencyRecordTests.cs:24`; `Server.Tests/Observability/DeadLetterMessageCompletenessTests.cs:200,201`
+- `tests/Hexalith.EventStore.Server.Tests/Actors/IdempotencyRecordTests.cs:24`
+- `tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterMessageCompletenessTests.cs:200`
 
-**Issue**:
-```csharp
-record.ProcessedAt.ShouldBeGreaterThan(DateTimeOffset.UtcNow.AddSeconds(-5));
-deadLetter.FailedAt.ShouldBeGreaterThan(DateTimeOffset.UtcNow.AddMinutes(-1));
-deadLetter.FailedAt.ShouldBeLessThanOrEqualTo(DateTimeOffset.UtcNow.AddSeconds(1));
-```
+**Criterion**: Determinism
+**Knowledge Base**: `timing-debugging.md`
 
-These rely on wall-clock proximity. On a slow CI agent under GC pause they can fail spuriously.
+The collector tests now prove the preferred pattern: inject `TimeProvider`, drive with `FakeTimeProvider`, and assert exact timestamps. A few actor/dead-letter tests still assert recency with `DateTimeOffset.UtcNow.AddSeconds(...)` or `AddMinutes(...)`.
 
-**Fix**:
-Inject `TimeProvider` into `IdempotencyRecord.FromResult` and the dead-letter recorder; assert against a known fixed `FakeTimeProvider.GetUtcNow()` value with `ShouldBe` equality, not inequality windows.
+**Recommendation**: extend the `TimeProvider` seam to idempotency/dead-letter creation paths or capture a fixed operation boundary time and assert relative ordering. Microsoft documents `FakeTimeProvider` specifically for deterministic time-dependent tests.
 
----
+## Medium-Priority Recommendations
 
-### H-7. Env-var leak hazard in 7 `IAsyncLifetime` fixtures
+### M-1. Wrap Env-Var Fixture Startup In Try/Catch Restore
 
-**Severity**: P1 (High) — isolation, cross-collection contamination
-**Location**: `AspireContractTestFixture.cs:44`, `AspireProjectionFaultTestFixture.cs:28`, `KeycloakAuthFixture.cs:42`, `AspireTopologyFixture.cs:50, +1 copy`, `DaprTestContainerFixture.cs:87`, `Hexalith.Tenants/.../TenantsDaprTestFixture.cs:85`. (7 files; 7 MEDIUM violations actually, listing here as a single P1 cohort by frequency.)
+**Severity**: P2 (Medium)
+**Locations**:
 
-**Issue**:
-Each fixture mutates env vars (`DAPR_HTTP_PORT`, `DAPR_GRPC_PORT`, `EnableKeycloak`, `ASPNETCORE_ENVIRONMENT`, `DOTNET_ENVIRONMENT`, `EventStore__SampleFaults__*`) **before** `BuildAsync` / `StartAsync`. **xUnit does NOT call `DisposeAsync` if `InitializeAsync` throws** — so any container-startup or realm-import failure leaks the env vars to subsequent collections in the same process.
+- `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireContractTestFixture.cs:47`
+- `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspireProjectionFaultTestFixture.cs:30`
+- `tests/Hexalith.EventStore.IntegrationTests/Fixtures/KeycloakAuthFixture.cs:45`
+- `tests/Hexalith.EventStore.Server.Tests/Fixtures/DaprTestContainerFixture.cs:87`
 
-**Fix**:
-Adopt the existing `AspirePubSubProofTestFixture.SnapshotAndSet` / `RestoreEnvironmentSnapshot` pattern. Wrap `InitializeAsync` in try/catch with explicit restoration before rethrow:
+These fixtures restore env vars in `DisposeAsync`, but if `InitializeAsync` throws before the fixture is fully initialized, cleanup is not guaranteed. `AspirePubSubProofTestFixture` already has the better pattern: snapshot values, wrap startup, restore in catch, and restore again in dispose.
 
-```csharp
-public async Task InitializeAsync()
-{
-    var snapshot = SnapshotEnvironment(["EnableKeycloak", "ASPNETCORE_ENVIRONMENT", "DOTNET_ENVIRONMENT"]);
-    Environment.SetEnvironmentVariable("EnableKeycloak", "true");
-    // ...
-    try
-    {
-        await BuildAsync();
-        await StartAsync();
-    }
-    catch
-    {
-        RestoreEnvironment(snapshot);
-        throw;
-    }
-}
-```
+### M-2. Replace Dapr Fixture Fixed Warmup With Readiness Polling
 
-Consider extracting a shared `TestEnvScope` utility to `Hexalith.EventStore.Testing`.
+**Severity**: P2 (Medium)
+**Location**: `tests/Hexalith.EventStore.Server.Tests/Fixtures/DaprTestContainerFixture.cs:104`
 
----
+The fixture waits two seconds after sidecar health so app discovery and actor registration can settle. That is understandable, but it is still time-based. Poll the actual readiness condition with a bounded deadline instead.
 
-## Medium-Priority Recommendations (P2)
+### M-3. Share JwtAuthenticatedWebApplicationFactory Where Safe
 
-### M-1. Convert `Thread.Sleep(50)` retries to async in `PubSubDeliveryProofTests`
-File: `PubSubDeliveryProofTests.cs:244, 266`. Promote `TryWriteFaultFile` / `TryDeleteFaultFile` to `Async` variants and use `await Task.Delay(50)`. Minor performance win, removes thread-blocking.
+**Severity**: P2 (Medium)
+**Location**: `tests/Hexalith.EventStore.IntegrationTests/EventStore/ValidationTests.cs:23`
 
-### M-2. Replace `Task.Delay(2000)` warmups in DAPR fixtures with bounded polls
-File: `DaprTestContainerFixture.cs:104`, `TenantsDaprTestFixture.cs:101`. Poll `/v1.0/metadata` or actor-placement readiness with a deadline cap; current 2 s flat is wasteful when the sidecar is faster, and underspends when it's slower.
+Nine EventStore integration classes use `IClassFixture<JwtAuthenticatedWebApplicationFactory>`, which means repeated factory construction. xUnit collection fixtures are designed for a shared context across classes. Use a collection fixture for read-only JWT factory tests, while keeping specialized rate-limiting factories separate.
 
-### M-3. Share `JwtAuthenticatedWebApplicationFactory` via `ICollectionFixture`
-9 `IntegrationTests/EventStore/*Tests.cs` classes use `IClassFixture<JwtAuthenticatedWebApplicationFactory>` — 9 redundant factory boots per Tier-3 run. Promote to `[CollectionDefinition("JwtAuthFactory")] : ICollectionFixture<JwtAuthenticatedWebApplicationFactory>` — recovers ~10-15 s/run.
+### M-4. Move Admin UI E2E Selectors Toward Role/Test-ID Locators
 
-### M-4. Strip Story/Epic identifiers from test comments (164 occurrences in 88 files)
-Examples: `// Story 18-4`, `/// Story 6.1 Task 7`. Per `CLAUDE.md`: planning identifiers belong in commits and the issue tracker, not in source. Add an `.editorconfig` or analyzer rule.
+**Severity**: P2 (Medium)
+**Locations**:
 
-### M-5. Adopt `Shouldly` consistently
-`CLAUDE.md` prescribes Shouldly. `Client.Tests` / `Server.Tests` largely use `xUnit Assert.*`; `Sample.Tests` / `Testing.Tests` use Shouldly. `DomainResultAssertionsTests` mixes both within one file. Pick one (Shouldly) and add an analyzer rule banning `Assert.Equal/True/False/NotNull` in tests.
+- `tests/Hexalith.EventStore.Admin.UI.E2E/BrowserSmokeTests.cs:46`
+- `tests/Hexalith.EventStore.Admin.UI.E2E/Dw5TypeCatalogNavigationBrowserAtddTests.cs:96`
+- `tests/Hexalith.EventStore.Admin.UI.E2E/Dw5SidebarShortcutBrowserAtddTests.cs:47`
 
-### M-6. Convert near-identical Facts to `[Theory]`+`[InlineData]`
-Highest-value targets:
-- `EventStoreAggregateTests.cs:411,429,444,459` — 4 invalid-JSON-shape Facts → 1 Theory.
-- `Server.Tests/Security/AccessControlPolicyTests.cs` — `Local*` / `Production*` mirrors → 1 Theory across env+component pairs.
-- `ProjectionCheckpointTrackerTests.cs` — 22 Facts, 0 Theories despite parametrizable groups (checkpoint count thresholds, retry counts).
+Playwright .NET locators auto-wait and are intended to represent user-facing semantics. CSS selectors are acceptable as a bridge, but navigation and command palette flows should prefer `GetByRoleAsync`/role locators or stable test IDs.
 
-### M-7. Rename `Assert*` helpers performing orchestration
-15 files have `Assert*` / `Verify*` / `Validate*` helpers that issue HTTP requests, mutate state, *and* assert. Rename to action verbs: `AssertWarmNotModifiedAsync` → `EnsureWarmRequestReturnsNotModifiedAndCaptureETag`. Keeps pure assertions narrowly scoped.
+### M-5. Backfill Priority Traits For Selective Execution
 
-### M-8. Snapshot/restore env vars in `GlobalOptionsTests`
-File: `Admin.Cli.Tests/GlobalOptionsTests.cs:18`. Constructor and `Dispose` null-out `EVENTSTORE_ADMIN_URL/TOKEN/FORMAT` without first capturing the prior value. Mirror `GlobalOptionsBindingProfileTests.cs` snapshot pattern.
+**Severity**: P2 (Medium)
+**Location**: `tests/Hexalith.EventStore.IntegrationTests/ContractTests/KeycloakAuthenticationTests.cs:21`
 
----
+Only two `Priority` traits were found. This blocks a risk-based test selection strategy. Start with P0/P1 labels for auth, command lifecycle, tenant isolation, Dapr access control, and data protection sentinels.
 
-## Low-Priority Suggestions (P3)
+### M-6. Convert Thread.Sleep Retry Loops To Async
 
-- Add inline justification comments to `[CollectionDefinition(DisableParallelization = true)]` declarations (especially `SignalRRedisBackplaneProofTestCollection`).
-- `HostBootstrapTests` HttpClient should be disposed (implement `IDisposable` on the test class).
-- `LogCapturingFactory.LogProvider` shared mutable state — add a comment that any test added must call `Clear()` first, or migrate to a per-test factory.
-- Tighten `InfrastructurePortabilityTests.cs:129` poll interval from 500ms to 250ms (matches sibling files).
+**Severity**: P2 (Medium)
+**Locations**:
 
----
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/Dw5TypeCatalogRenderLoopAtddTests.cs:81`
+- `tests/Hexalith.EventStore.IntegrationTests/ContractTests/PubSubDeliveryProofTests.cs:244`
+- `tests/Hexalith.EventStore.IntegrationTests/ContractTests/PubSubDeliveryProofTests.cs:266`
 
-## Best Practices Found (Use as References)
+Short sleeps are not catastrophic, but they are avoidable. Use bUnit `WaitForState`/`WaitForAssertion` for render stabilization and async cancellable retry for file-lock retries.
 
-### BP-1. Cache-clear in constructor AND `Dispose`
-**Location**: `tests/Hexalith.EventStore.Client.Tests/Aggregates/EventStoreAggregateTests.cs:14-24`
+## Best Practices Found
 
-```csharp
-public EventStoreAggregateTests() {
-    AssemblyScanner.ClearCache();
-    NamingConventionEngine.ClearCache();
-}
+### BP-1. FakeTimeProvider Collector Tests
 
-public void Dispose() {
-    AssemblyScanner.ClearCache();
-    NamingConventionEngine.ClearCache();
-    GC.SuppressFinalize(this);
-}
-```
+**Location**: `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprHealthHistoryCollectorTests.cs:52`
 
-Clears both *before* (defensive against prior leak) and *after* (defensive against future leak). Mirrored consistently across `AssemblyScannerTests`, `NamingConventionEngineTests`, `QueryContractResolverTests`, and 7+ others.
+This is the headline improvement since the May 4 review. Tests now instantiate `FakeTimeProvider`, pass it to the collector, and drive first capture deterministically. This aligns with Microsoft guidance for testing time-dependent code without waiting for actual time.
 
-### BP-2. Env-var snapshot/restore with try/catch
-**Location**: `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestFixture.cs`
+### BP-2. AspirePubSubProof Fixture Env Snapshot
 
-Use `SnapshotAndSet` / `RestoreEnvironmentSnapshot` helpers wrapped in try/catch. Promote this to a shared `TestEnvScope` utility in `Hexalith.EventStore.Testing` and apply to the 7 fixtures in H-7.
+**Location**: `tests/Hexalith.EventStore.IntegrationTests/Fixtures/AspirePubSubProofTestFixture.cs:39`
 
-### BP-3. Justified intentional delays
-**Location**: `tests/Hexalith.EventStore.IntegrationTests/ContractTests/ChaosResilienceTests.cs`
+The fixture snapshots environment variables before mutation and restores them in failure and dispose paths. Promote this into a shared `TestEnvScope` pattern.
 
-3-5 s `Task.Delay` are intentional chaos modeling, with surrounding context that makes the intent obvious. Don't refactor these.
+### BP-3. bUnit As The Default UI Test Level
 
-### BP-4. Bounded polling with deadline + `TimeoutException`
-**Location**: `PubSubDeliveryProofTests.cs:120-135`, `ContractTestHelpers.cs`
+**Location**: `tests/Hexalith.EventStore.Admin.UI.Tests/AdminUITestContext.cs:23`
 
-```csharp
-DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(SubscriberTimeout);
-while (DateTimeOffset.UtcNow < deadline) {
-    if (await CheckCondition()) return result;
-    await Task.Delay(TimeSpan.FromMilliseconds(250)).ConfigureAwait(false);
-}
-throw new TimeoutException($"...");
-```
+Admin UI component coverage largely stays in bUnit, reserving browser E2E for shell/navigation/accessibility proofs. This matches the test-level strategy: keep most checks at the lowest reliable level.
 
-Explicit deadline + explicit failure mode + bounded poll interval. This is the correct pattern.
+## Step Notes
 
----
+- Mode: Create.
+- Execution: Sequential. The workflow supports subagent-style workers, but this session did not explicitly request delegated agent work, so the four dimensions were run locally.
+- Browser evidence collection: skipped. No target URL was provided for this suite-level static review, and no CLI/MCP browser session was opened. No browser session cleanup was required.
+- Tests executed: none. This review is static analysis plus repository pattern inspection.
+- Temp artifacts: saved under `_bmad-output/test-artifacts/.tea-tmp/` with timestamp `2026-05-20T09-23-20`.
+
+## Knowledge And Official References
+
+- `test-quality.md`: deterministic, isolated, explicit, focused, fast, self-cleaning test DoD.
+- `data-factories.md`: factory/cleanup discipline.
+- `test-levels-framework.md`: lower test levels before E2E when possible.
+- `selector-resilience.md`: prefer resilient selectors over brittle CSS.
+- `timing-debugging.md`: event-based waits over hard waits.
+- Microsoft Learn, [Testing with FakeTimeProvider](https://learn.microsoft.com/en-us/dotnet/core/extensions/timeprovider-testing): confirms controllable time, instant advancement, and deterministic time-based tests.
+- xUnit.net, [Sharing Context between Tests](https://xunit.net/docs/shared-context): collection fixtures share context across multiple test classes.
+- Playwright .NET, [Locators](https://playwright.dev/dotnet/docs/locators): locators are the primary Playwright interaction model and support semantic querying/filtering.
+- bUnit, [Writing tests for Blazor components](https://bunit.dev/docs/getting-started/writing-tests.html): bUnit renders components through `BunitContext` and runs through normal .NET test frameworks.
 
 ## Next Steps
 
-### Immediate Actions (this sprint)
-
-1. **Fix H-1 (`DaprHealthHistoryCollectorTests`)** — inject `TimeProvider` + `FakeTimeProvider`. **Eliminates 4 violations + 51 s/CI.** Owner: Admin.Server team. Effort: ~2 h.
-2. **Promote `AggregateActorTestHelper.AttachStateManager` to a public `ActorTestHarness`** — migrate all 32 sites. **Eliminates ~150 LOC + DAPR upgrade hazard.** Owner: testing infra. Effort: ~4 h (most is automated find/replace + spot review).
-3. **Add CI guard for 300 LOC DoD** — fail build on test files exceeding the limit. **Stops the bleed (`EventStoreAggregateTests` +79 LOC in 2 weeks).** Effort: ~30 min.
-4. **Wrap H-7 fixtures in try/catch + env restore** — 7 files; mechanical change. Effort: ~1 h.
-
-### Follow-up Actions (next 1-2 sprints)
-
-5. Split the 11 oversized files >700 LOC by domain area. Effort: ~1 day per file.
-6. Inject `TimeProvider` into `IdempotencyRecord` + dead-letter recorder; rewrite 3 wall-clock asserts. Effort: ~2 h.
-7. Add `Reset()` to fakes; call from `DaprTestContainerFixture`. Effort: ~2 h.
-8. Move static Redis multiplexer into a fixture. Effort: ~1 h.
-9. Strip Story/Epic comment rot (164 sites). Effort: ~1 h with sed.
-10. Backfill `[Trait("Priority", ...)]` traits and decide on a tier/category trait policy. Effort: ~half day.
-
-### Re-Review
-
-⚠️ **Re-review after H-1, H-2, H-3 land.** The persistent regression on H-1 is the clearest signal that findings without enforcement aren't sticking. Schedule a checkpoint review to verify the CI guard is wired and the trend reversed.
-
----
+1. Add a report-only or failing CI guard for oversized test files; start in warn mode if the 113-file backlog is too large to block immediately.
+2. Promote `ActorTestHarness.AttachStateManager` and migrate duplicated reflection sites.
+3. Extract `TestEnvScope` from `AspirePubSubProofTestFixture` and apply it to Aspire, Keycloak, and Dapr fixtures.
+4. Reset Dapr collection fakes before each class/test in the shared collection.
+5. Run `trace` next if you want coverage mapping and a gate decision; this review intentionally avoids scoring coverage.
 
 ## Decision
 
-**Recommendation**: **Approve with Comments.**
+**Recommendation**: Approve with Comments.
 
-**Rationale**: The Hexalith.EventStore test suite is structurally healthy. Async hygiene is exceptional (zero sync-over-async, zero `async void` across 4,297 methods), fixture investment is strong, tier discipline holds, and gold-standard patterns exist and are mirrored in 10+ classes. The mechanical 38/100 score is dominated by a small number of concentrated, high-leverage issues — not by systemic decay. The single most valuable finding is the **persistent regression** on `DaprHealthHistoryCollectorTests`: when the same defect survives two reviews, the problem isn't the test, it's the absence of an enforcement mechanism. Fix-the-process recommendations (CI line-count guard, mandatory `ActorTestHarness` use, `[BannedApi]` analyzer for `Thread.Sleep` / multi-second `Task.Delay` outside polls) will deliver more long-term ROI than per-file cleanup.
-
-For the next reviewer (or Murat returning): the calibrated grade is **B+**. Priority order for remediation: H-1 → H-3 (CI guard) → H-2 → H-7 → H-4/H-5 → H-6 → mediums.
-
----
-
-## Recommended Next Workflow
-
-→ **`trace`** for coverage mapping & gate decision (the 300 LOC DoD findings here are about *what's tested*, not *whether it's tested*).
-→ **`automate`** for filling specific gaps once trace surfaces them (e.g., after the H-3 splits land, generate the missing slice tests with the new factories).
-→ **`hookify`** to convert the CI-guard recommendation into actual hooks/skills (line-count guard, banned-API analyzer).
-
----
-
-## Knowledge Base References
-
-This review consulted the following knowledge base fragments (all from `.claude/skills/bmad-testarch-test-review/resources/knowledge/`):
-
-- **test-quality.md** — DoD: deterministic, isolated, explicit assertions, focused (<300 LOC), fast (<1.5 min), self-cleaning, parallel-safe.
-- **test-levels-framework.md** — Tier 1 unit / Tier 2 integration / Tier 3 E2E selection rules.
-- **data-factories.md** — factory-with-overrides pattern, API-first seeding, cleanup discipline.
-- **selective-testing.md** — `[Trait]` / grep / spec-filter / diff-based execution, P0–P3 promotion stages.
-- **test-healing-patterns.md** — failure-signature catalogue.
-- **selector-resilience.md** — `data-testid > ARIA > text > CSS/ID` (relevant only for the `Admin.UI.E2E` Playwright project).
-- **timing-debugging.md** — network-first interception, deterministic waits, no `Thread.Sleep`/`Task.Delay` in tests.
-
-Coverage analysis is intentionally out of scope; route to `trace`.
-
----
-
-## Appendix A — Suite Inventory
-
-| Project | Files | LOC | Methods | Tier |
-|---|---:|---:|---:|---|
-| `Hexalith.EventStore.Server.Tests` | 169 | 40,494 | 1,560 | T2 |
-| `Hexalith.EventStore.Admin.UI.Tests` | 85 | 13,044 | 596 | T1 (bUnit) |
-| `Hexalith.EventStore.IntegrationTests` | 68 | 12,359 | 231 | T3 (Aspire) |
-| `Hexalith.EventStore.Admin.Server.Tests` | 58 | 9,269 | 455 | T1/T2 |
-| `Hexalith.EventStore.Admin.Cli.Tests` | 50 | 5,796 | 255 | T1 |
-| `Hexalith.EventStore.Admin.Mcp.Tests` | 31 | 3,903 | 250 | T1 |
-| `Hexalith.EventStore.Client.Tests` | 15 | 4,847 | 291 | T1 |
-| `Hexalith.EventStore.Admin.Abstractions.Tests` | 52 | 3,110 | 257 | T1 |
-| `Hexalith.EventStore.Contracts.Tests` | 24 | 2,234 | 202 | T1 |
-| `Hexalith.EventStore.Sample.Tests` | 8 | 1,106 | 63 | T1 |
-| `Hexalith.EventStore.Testing.Tests` | 11 | 1,050 | 78 | T1 |
-| `Hexalith.EventStore.SignalR.Tests` | 1 | 648 | 35 | T1 |
-| `Hexalith.EventStore.Admin.Server.Host.Tests` | 2 | 370 | 15 | T1 |
-| `Hexalith.EventStore.Admin.UI.E2E` | 6 | 358 | 9 | E2E |
-| `Hexalith.EventStore.TestSubscriber` | 1 | 188 | 0 | helper |
-| **Plus Hexalith.Tenants submodule tests** | 10+ | ~5K | ~150 | various |
-
----
-
-## Appendix B — Reflection DRY Sites (full list)
-
-`typeof(Actor).GetProperty("StateManager", BindingFlags.Public | BindingFlags.Instance)` appears in:
-
-- `Server.Tests/Telemetry/EndToEndTraceTests.cs:52`
-- `Server.Tests/Observability/DeadLetterTraceChainTests.cs:77, 138, 191`
-- `Server.Tests/Observability/DeadLetterOriginTracingTests.cs:81`
-- `Server.Tests/Observability/DeadLetterMessageCompletenessTests.cs:72`
-- `Server.Tests/Security/TenantInjectionPreventionTests.cs:74, 112, 152`
-- `Server.Tests/Security/SecurityAuditLoggingTests.cs:142`
-- `Server.Tests/Security/DataPathIsolationTests.cs:144, 203, 254`
-- `Server.Tests/Events/AtLeastOnceDeliveryTests.cs:268`
-- `Server.Tests/Events/PersistThenPublishResilienceTests.cs:66`
-- `Server.Tests/Integration/ETagActorIntegrationTests.cs:328`
-- `Admin.UI.Tests/Components/CommandPaletteTests.cs:13` (binding flags constant only)
-- `Server.Tests/Actors/AggregateActorTestHelper.cs:75` (existing helper — unused by 32 sites)
-- ...plus another ~15 sites cited by the maintainability subagent.
-
-Plus 5 additional reflection sites in `tests/Hexalith.EventStore.SignalR.Tests/EventStoreSignalRClientTests.cs:589, 597, 608, 621, 627` reaching into private members of `EventStoreSignalRClient`. These indicate the SUT lacks adequate testability seams (use `[InternalsVisibleTo]` or expose a `TestHook` class).
-
----
-
-## Appendix C — Trait Tagging Audit
-
-| Trait | Count | Coverage |
-|---|---:|---|
-| `[Trait("Category", "E2E")]` | 26 | IntegrationTests primarily |
-| `[Trait("Tier", "3")]` | 22 | IntegrationTests |
-| `[Trait("Tier", "2")]` | 20 | Server.Tests partial |
-| `[Trait("Category", "Integration")]` | 23 | mixed |
-| `[Trait("Tier", "1")]` | 3 | very partial |
-| `[Trait("Priority", "P0")]` | 1 | nearly absent |
-| `[Trait("Priority", "P1")]` | 1 | nearly absent |
-| Other | 3 | one-off |
-
-Totals: ~98 trait declarations across 4,297 methods (~2.3 % method-level coverage). Per-project file-level coverage: IntegrationTests 40 %, Admin.Server.Tests 5 %, Server.Tests 3 %.
-
----
+There are no P0 test quality blockers. The suite is large, valuable, and improving in the right places, especially with the `FakeTimeProvider` repair. The next quality return comes from enforcing maintainability and isolation guardrails so new tests do not keep adding weight to already-large files and shared fixtures.
 
 ## Review Metadata
 
 **Generated By**: BMad TEA Agent (Murat / Master Test Architect)
-**Workflow**: `bmad-testarch-test-review` v4.0
-**Execution Mode**: subagent (parallel; 4 quality dimensions)
-**Subagent Outputs**: `_bmad-output/test-artifacts/.tea-tmp/{determinism,isolation,maintainability,performance}-2026-05-04T15-30.json`
-**Aggregate Summary**: `_bmad-output/test-artifacts/.tea-tmp/summary-2026-05-04T15-30.json`
-**Workflow Steps Completed**: step-01-load-context → step-02-discover-tests → step-03-quality-evaluation → step-03f-aggregate-scores → step-04-generate-report
-**Timestamp**: 2026-05-04
+**Workflow**: `bmad-testarch-test-review`
+**Execution Mode**: sequential
+**Timestamp**: 2026-05-20T09-23-20
+**Prior Review Archived As**: `_bmad-output/test-artifacts/archive/test-review-2026-05-04.md`

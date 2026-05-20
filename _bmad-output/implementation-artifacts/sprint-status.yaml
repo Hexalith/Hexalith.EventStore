@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-05-14T10:29:00+02:00 - Story 22.7c blocked by party-mode review until Story 22.7a provider-neutral protection metadata/result parity is implemented and merged.
+# last_updated: 2026-05-20T10:20:54+02:00 - Sprint planning refresh: canonical epic/story inventory validated from epics.md; no status transitions changed; preserved 54 existing carry-forward rows outside canonical epic inventory.
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,9 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-15
-last_updated: '2026-05-19T15:45:00+02:00' # Story post-epic-22-r22a1-query-router-actor-proxy-fix moved review -> done after code-review patch pass. Applied all 4 review fixes: production-path weak ActorProxy regression guard, list-tenants payload/JSON assertions, cancellation-before-not-found classification, and fixed configuration-store documentation links. Fresh EnableKeycloak=false Aspire smoke through eventstore-admin returned GET /api/v1/admin/tenants 200 OK with []; fresh EventStore logs showed 0 QueryRouter EventId 1202 / weak-proxy NRE entries for ActorId=tenants:system:index. Validation green: focused Server.Tests slice QueryRouter|SubmitQuery|DefaultProjectionActorInvoker 91/91; full Release solution build 0 warnings / 0 errors.
+last_updated: '2026-05-20T10:20:54+02:00' # Sprint planning refresh: canonical epic/story inventory validated from epics.md; no status transitions changed; preserved 54 existing carry-forward rows outside canonical epic inventory.
+# Previous last_updated detail preserved: 2026-05-19T17:53:03+02:00 - Epic 22 retrospective completed and saved to _bmad-output/implementation-artifacts/epic-22-retro-2026-05-19.md. Epic 22 and its retrospective were moved to done after all Epic 22 story rows, 22.7d child rows, and post-epic-22-r22a1-query-router-actor-proxy-fix were already done. Retrospective captured key lessons: public contract ownership worked, fail-closed/no-leak proof improved, integration/runtime proof remains environment-gated in a few areas, and no Epic 23 exists yet.
+# Previous last_updated detail preserved: 2026-05-19T15:45:00+02:00 - Story post-epic-22-r22a1-query-router-actor-proxy-fix moved review -> done after code-review patch pass. Applied all 4 review fixes: production-path weak ActorProxy regression guard, list-tenants payload/JSON assertions, cancellation-before-not-found classification, and fixed configuration-store documentation links. Fresh EnableKeycloak=false Aspire smoke through eventstore-admin returned GET /api/v1/admin/tenants 200 OK with []; fresh EventStore logs showed 0 QueryRouter EventId 1202 / weak-proxy NRE entries for ActorId=tenants:system:index. Validation green: focused Server.Tests slice QueryRouter|SubmitQuery|DefaultProjectionActorInvoker 91/91; full Release solution build 0 warnings / 0 errors.
 # Previous last_updated detail preserved: 2026-05-19T15:30:00+02:00 - Story post-epic-22-r22a1-query-router-actor-proxy-fix moved ready-for-dev -> review after QueryRouter weak ActorProxy fix and orphan configstore cleanup. Internal IProjectionActorInvoker seam added with regression-sensitive guard tests; orphan src/Hexalith.EventStore.AppHost/DaprComponents/configstore.yaml deleted; architecture.md/dapr-component-reference.md/deployment-docker-compose.md updated. Focused Server.Tests slice QueryRouter|SubmitQuery|DefaultProjectionActorInvoker 90/90 green; full Release solution build 0 warnings / 0 errors. Aspire smoke (real Admin UI Tenants workflow) operator-deferred; recorded in _bmad-output/test-artifacts/post-epic-22-r22a1-query-router-actor-proxy-fix/evidence.md as the one ST5 sub-task to close before done.
 # Previous last_updated detail preserved: 2026-05-19T14:10:00+02:00 - Story post-epic-22-r22a1-query-router-actor-proxy-fix advanced elicitation hardening applied while remaining ready-for-dev: default invoker proof, eventstore-admin smoke, configstore reference cleanup, failure-class coverage, and explicit IActorProxyFactory.Create wording.
 # Previous last_updated detail preserved: 2026-05-19T14:05:00+02:00 - Story post-epic-22-r22a1-query-router-actor-proxy-fix party-mode review hardening applied while remaining ready-for-dev: old-implementation-sensitive weak-proxy tests, cancellation-token capture, real Tenants smoke proof, and empty-state evidence.
@@ -365,7 +367,7 @@ development_status:
   # Added by sprint-change-proposal-2026-05-12-eventstore-requirements-gaps-current.md.
   # Story 22.7 split by sprint-change-proposal-2026-05-12.md after implementation readiness approval.
   # Parent/container rows must not be assigned for new implementation. Create or move child rows when work starts.
-  epic-22: in-progress
+  epic-22: done
   22-1-gateway-command-query-contract-closure-and-package-docs: done
   22-2-projection-adapter-contract-and-generic-query-actor-model: done
   22-3-gateway-owned-tenant-and-rbac-enforcement: done
@@ -386,7 +388,7 @@ development_status:
   22-7d-2-protected-data-redaction-in-admin-api-and-web-ui: done
   22-7d-3-protected-data-redaction-in-cli-and-mcp: done
   22-7d-4-protected-data-redaction-in-replay-rebuild-backup-validation-and-tests: done
-  epic-22-retrospective: optional
+  epic-22-retrospective: done
 
   # Post-Epic-22 Follow-Up (sprint-change-proposal-2026-05-19-queryrouter-actor-proxy-nre.md)
   # Story 22.2 generic projection-actor query model NRE'd on the weak/JSON ActorProxy path.

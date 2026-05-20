@@ -1,0 +1,62 @@
+{
+  "dimension": "determinism",
+  "score": 78,
+  "max_score": 100,
+  "grade": "C",
+  "violations": [
+    {
+      "file": "tests/Hexalith.EventStore.Server.Tests/Actors/IdempotencyRecordTests.cs",
+      "line": 24,
+      "severity": "HIGH",
+      "category": "wall-clock-assertion",
+      "description": "Test asserts recency against DateTimeOffset.UtcNow instead of a fixed clock.",
+      "suggestion": "Inject or expose TimeProvider for the generated timestamp and assert against FakeTimeProvider.GetUtcNow()."
+    },
+    {
+      "file": "tests/Hexalith.EventStore.Server.Tests/Observability/DeadLetterMessageCompletenessTests.cs",
+      "line": 200,
+      "severity": "HIGH",
+      "category": "wall-clock-assertion",
+      "description": "Dead-letter timestamp assertions use a current-time tolerance window.",
+      "suggestion": "Drive dead-letter creation with a fixed TimeProvider or assert relative ordering captured before the operation."
+    },
+    {
+      "file": "tests/Hexalith.EventStore.Admin.UI.Tests/Pages/Dw5TypeCatalogRenderLoopAtddTests.cs",
+      "line": 81,
+      "severity": "MEDIUM",
+      "category": "hard-wait",
+      "description": "Bunit test uses Thread.Sleep(50) to flush possible renders.",
+      "suggestion": "Use bUnit WaitForState/WaitForAssertion or a render-count probe that observes the actual condition."
+    },
+    {
+      "file": "tests/Hexalith.EventStore.IntegrationTests/ContractTests/PubSubDeliveryProofTests.cs",
+      "line": 244,
+      "severity": "MEDIUM",
+      "category": "blocking-retry-wait",
+      "description": "File lock retry loops block the test thread with Thread.Sleep.",
+      "suggestion": "Convert retry helpers to async and await Task.Delay(..., TestContext.Current.CancellationToken)."
+    },
+    {
+      "file": "tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprHealthHistoryCollectorTests.cs",
+      "line": 34,
+      "severity": "LOW",
+      "category": "short-hard-wait",
+      "description": "Disabled collector test still uses a fixed 100 ms delay.",
+      "suggestion": "Replace with an observable completion signal or call ExecuteAsync through a testable wrapper."
+    }
+  ],
+  "passed_checks": 691,
+  "failed_checks": 5,
+  "total_checks": 696,
+  "violation_summary": {
+    "HIGH": 2,
+    "MEDIUM": 2,
+    "LOW": 1
+  },
+  "recommendations": [
+    "Continue the successful FakeTimeProvider pattern now present in DaprHealthHistoryCollectorTests.",
+    "Remove wall-clock assertion windows from actor/dead-letter tests.",
+    "Convert blocking Thread.Sleep retry loops to cancellable async waits."
+  ],
+  "summary": "The prior 51-second collector delay finding is resolved. Remaining determinism risk is concentrated in wall-clock assertions and three small hard-wait sites."
+}
