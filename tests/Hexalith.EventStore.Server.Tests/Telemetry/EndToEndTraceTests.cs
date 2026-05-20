@@ -1,5 +1,6 @@
 
 using System.Diagnostics;
+
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 using Dapr.Client;
@@ -13,6 +14,7 @@ using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Telemetry;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -20,7 +22,6 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 
 using Shouldly;
-using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Telemetry;
 /// <summary>

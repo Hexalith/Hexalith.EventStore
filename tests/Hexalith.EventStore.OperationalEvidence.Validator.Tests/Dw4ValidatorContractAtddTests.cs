@@ -18,7 +18,7 @@ public class Dw4ValidatorContractAtddTests {
     public void ValidatorEntrypoint_MustBeDeclaredAndResolveToInvoker() {
         IDw4ValidatorInvoker invoker = Dw4ValidatorInvokerFactory.Create();
 
-        invoker.ShouldNotBeNull();
+        _ = invoker.ShouldNotBeNull();
         invoker.EntrypointDescription.ShouldNotBeNullOrWhiteSpace(
             "Validator entrypoint must self-describe so reviewers can audit which validator produced diagnostics.");
     }

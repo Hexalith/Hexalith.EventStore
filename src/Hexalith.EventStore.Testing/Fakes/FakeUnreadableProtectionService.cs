@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;

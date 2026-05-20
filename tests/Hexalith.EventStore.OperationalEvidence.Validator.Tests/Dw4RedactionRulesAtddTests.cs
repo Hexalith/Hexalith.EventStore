@@ -14,46 +14,34 @@ public class Dw4RedactionRulesAtddTests {
     private const string _baseSkip = "ATDD red phase — DW4 ";
 
     [Fact(Skip = _baseSkip + "AC#5 — JWT-shaped bearer token outside redaction marker must fail. Remove Skip when implementing.")]
-    public void Redaction_BearerTokenInDiagnosticsText_Fails() {
-        AssertFixture(
+    public void Redaction_BearerTokenInDiagnosticsText_Fails() => AssertFixture(
             "query-invalid-redaction-bearer-token.md",
             Dw4RuleVocabulary.RedactionUnsafeBearerToken);
-    }
 
     [Fact(Skip = _baseSkip + "AC#5 — connection-string keyword must fail. Remove Skip when implementing.")]
-    public void Redaction_ConnectionStringKeyword_Fails() {
-        AssertFixture(
+    public void Redaction_ConnectionStringKeyword_Fails() => AssertFixture(
             "query-invalid-redaction-connection-string.md",
             Dw4RuleVocabulary.RedactionUnsafeConnectionString);
-    }
 
     [Fact(Skip = _baseSkip + "AC#5 — production hostname pattern must fail. Remove Skip when implementing.")]
-    public void Redaction_ProductionHostname_Fails() {
-        AssertFixture(
+    public void Redaction_ProductionHostname_Fails() => AssertFixture(
             "query-invalid-redaction-production-hostname.md",
             Dw4RuleVocabulary.RedactionUnsafeProductionHostname);
-    }
 
     [Fact(Skip = _baseSkip + "AC#5 — missing Redaction section must fail with redaction-section-missing. Remove Skip when implementing.")]
-    public void Redaction_SectionMissing_Fails() {
-        AssertFixture(
+    public void Redaction_SectionMissing_Fails() => AssertFixture(
             "query-invalid-redaction-section-missing.md",
             Dw4RuleVocabulary.RedactionSectionMissing);
-    }
 
     [Fact(Skip = _baseSkip + "AC#5 — raw secret marker (AKIA…, xoxb-, GitHub PAT shape) must fail. Remove Skip when implementing.")]
-    public void Redaction_RawSecretMarker_Fails() {
-        AssertFixture(
+    public void Redaction_RawSecretMarker_Fails() => AssertFixture(
             "query-invalid-raw-secret-marker.md",
             Dw4RuleVocabulary.RedactionRawSecretMarker);
-    }
 
     [Fact(Skip = _baseSkip + "AC#5 — SignalR fixture with bearer token must also fail. Remove Skip when implementing.")]
-    public void Redaction_SignalrBearerToken_Fails() {
-        AssertFixture(
+    public void Redaction_SignalrBearerToken_Fails() => AssertFixture(
             "signalr-invalid-redaction-bearer-token.md",
             Dw4RuleVocabulary.RedactionUnsafeBearerToken);
-    }
 
     [Fact(Skip = _baseSkip + "AC#5 — documented synthetic markers under Redaction must NOT trigger false positives. Remove Skip when implementing.")]
     public void Redaction_DocumentedSyntheticMarkers_Pass() {

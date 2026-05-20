@@ -2,7 +2,6 @@ using System.Text;
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Aggregates;
-using Hexalith.EventStore.Contracts.Aggregates;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Testing.Security;

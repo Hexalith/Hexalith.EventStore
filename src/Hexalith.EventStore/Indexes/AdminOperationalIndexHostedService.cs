@@ -1,5 +1,3 @@
-using System.Net.Http.Json;
-
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Projections;
@@ -8,7 +6,6 @@ using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Indexes;
@@ -107,7 +104,7 @@ public sealed partial class AdminOperationalIndexHostedService(
             .Where(static t => !string.IsNullOrWhiteSpace(t) && !string.Equals(t, "*", StringComparison.Ordinal))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Order(StringComparer.OrdinalIgnoreCase)];
-        Dictionary<string, AdminOperationalIndexDomainMetadata> metadataByDomain = metadata.ToDictionary(m => m.Domain, StringComparer.OrdinalIgnoreCase);
+        var metadataByDomain = metadata.ToDictionary(m => m.Domain, StringComparer.OrdinalIgnoreCase);
         var all = new List<ProjectionStatus>();
         var byTenant = new Dictionary<string, List<ProjectionStatus>>(StringComparer.OrdinalIgnoreCase);
 
@@ -166,7 +163,7 @@ public sealed partial class AdminOperationalIndexHostedService(
             .OrderBy(a => a.Domain, StringComparer.OrdinalIgnoreCase)
             .ThenBy(a => a.TypeName, StringComparer.Ordinal)];
 
-        Dictionary<string, List<ProjectionStatus>> normalizedByTenant = byTenant.ToDictionary(
+        var normalizedByTenant = byTenant.ToDictionary(
             p => p.Key,
             p => p.Value
                 .GroupBy(v => v.Name, StringComparer.OrdinalIgnoreCase)

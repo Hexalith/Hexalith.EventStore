@@ -650,7 +650,7 @@ public class BackupsPageTests : AdminUITestContext {
         SetPrivateField(cut.Instance, "_importTenantId", "tenant-a");
         SetPrivateField(cut.Instance, "_importContent", """{"TenantId":"tenant-a","Domain":"Counter","AggregateId":"counter-1","Events":[]}""");
         await cut.InvokeAsync(async () => {
-            Task importTask = (Task)typeof(Backups)
+            var importTask = (Task)typeof(Backups)
                 .GetMethod("OnImportConfirm", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
                 .Invoke(cut.Instance, null)!;
             await importTask;

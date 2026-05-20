@@ -409,7 +409,7 @@ public class AdminApiClient : IDisposable {
         }
 
         try {
-            using JsonDocument doc = JsonDocument.Parse(body);
+            using var doc = JsonDocument.Parse(body);
             if (doc.RootElement.ValueKind is not JsonValueKind.Object) {
                 return CreateGenericFailure(statusCode, resolvedUrl, path);
             }

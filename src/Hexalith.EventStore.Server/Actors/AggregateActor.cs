@@ -4,6 +4,7 @@ using System.Net;
 
 using Dapr;
 using Dapr.Actors.Runtime;
+
 using Grpc.Core;
 
 using Hexalith.EventStore.Contracts.Commands;
@@ -707,7 +708,7 @@ public partial class AggregateActor(
         long availableCount = upperBound - fromSequence;
         // Clamp count to the int range explicitly — `Math.Min(availableCount, maxCount)` can still
         // exceed int when callers pass very large maxCount near boundary fromSequence values.
-        long boundedAvailable = Math.Min(availableCount, (long)int.MaxValue - fromSequence);
+        long boundedAvailable = Math.Min(availableCount, int.MaxValue - fromSequence);
         int count = checked((int)Math.Min(boundedAvailable, maxCount));
         int startSequence = checked((int)(fromSequence + 1));
         return await ReadEventsRangeAsync(identity, startSequence, count).ConfigureAwait(false);
@@ -1081,16 +1082,16 @@ public partial class AggregateActor(
 
     private static bool IsDrainStateStoreBoundaryFailure(Exception exception) =>
         exception is EventDeserializationException
-        || exception is DaprException
-        || exception is RpcException
-        || exception is HttpRequestException;
+        or DaprException
+        or RpcException
+        or HttpRequestException;
 
     private static bool IsDrainPublishBoundaryFailure(Exception exception) =>
         exception is DaprException
-        || exception is RpcException
-        || exception is HttpRequestException
-        || exception is IOException
-        || exception is TimeoutException;
+        or RpcException
+        or HttpRequestException
+        or IOException
+        or TimeoutException;
 
     private static bool ContainsDaprUnavailableSignal(Exception exception) {
         for (Exception? current = exception; current is not null; current = current.InnerException) {

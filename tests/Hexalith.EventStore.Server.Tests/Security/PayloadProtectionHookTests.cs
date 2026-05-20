@@ -1,7 +1,4 @@
 using System.Text;
-using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 
 using Dapr.Actors.Runtime;
 using Dapr.Client;
@@ -56,7 +53,7 @@ public class PayloadProtectionHookTests {
     [Fact]
     public async Task EventPersister_NoOpProvider_StampsUnprotectedMetadataIntoExtensions() {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
-        stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
         var persister = new EventPersister(stateManager, Substitute.For<ILogger<EventPersister>>(), new NoOpEventPayloadProtectionService());
 
@@ -68,7 +65,7 @@ public class PayloadProtectionHookTests {
             domainServiceVersion: "v1");
 
         ServerEventEnvelope envelope = result.PersistedEnvelopes.ShouldHaveSingleItem();
-        envelope.Extensions.ShouldNotBeNull();
+        _ = envelope.Extensions.ShouldNotBeNull();
         envelope.Extensions!.ContainsKey(EventStorePayloadProtectionMetadataCarrier.ExtensionKey).ShouldBeTrue();
 
         EventStorePayloadProtectionMetadata recorded = EventStorePayloadProtectionMetadataCarrier.Read(envelope.Extensions);
@@ -79,7 +76,7 @@ public class PayloadProtectionHookTests {
     [Fact]
     public async Task EventPersister_CustomProvider_StampsProvidedMetadataIntoExtensions() {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
-        stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
         var customProvider = new FakeProtectionProvider(
@@ -114,7 +111,7 @@ public class PayloadProtectionHookTests {
     [Fact]
     public async Task EventPersister_ForwardsCancellationTokenToProtectionHook() {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
-        stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
 
         using var cts = new CancellationTokenSource();
@@ -122,7 +119,7 @@ public class PayloadProtectionHookTests {
         var capturingProvider = new CapturingProtectionProvider();
         var persister = new EventPersister(stateManager, Substitute.For<ILogger<EventPersister>>(), capturingProvider);
 
-        await persister.PersistEventsAsync(
+        _ = await persister.PersistEventsAsync(
             TestIdentity,
             aggregateType: "billing",
             CreateCommand(),
@@ -158,7 +155,7 @@ public class PayloadProtectionHookTests {
             AggregateId: TestIdentity.AggregateId,
             TenantId: TestIdentity.TenantId,
             ProtectionMetadata: null);
-        stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
+        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
             .Returns(new ConditionalValue<SnapshotRecord>(true, legacySnapshot));
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
 
@@ -166,10 +163,10 @@ public class PayloadProtectionHookTests {
         SnapshotRecord? loaded = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
 
         // Assert -- legacy record maps to explicit legacy compatibility metadata
-        loaded.ShouldNotBeNull();
-        loaded!.ProtectionMetadata.ShouldNotBeNull();
+        _ = loaded.ShouldNotBeNull();
+        _ = loaded!.ProtectionMetadata.ShouldNotBeNull();
         loaded.ProtectionMetadata!.State.ShouldBe(PayloadProtectionState.Unprotected);
-        loaded.ProtectionMetadata.CompatibilityFlags.ShouldNotBeNull();
+        _ = loaded.ProtectionMetadata.CompatibilityFlags.ShouldNotBeNull();
         loaded.ProtectionMetadata.CompatibilityFlags!["legacy"].ShouldBe("missing");
     }
 
@@ -187,7 +184,7 @@ public class PayloadProtectionHookTests {
             AggregateId: TestIdentity.AggregateId,
             TenantId: TestIdentity.TenantId,
             ProtectionMetadata: EventStorePayloadProtectionMetadata.ProviderOpaque("parseError"));
-        stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
+        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
             .Returns(new ConditionalValue<SnapshotRecord>(true, opaqueSnapshot));
         var tracker = new InvocationCountingProtectionProvider();
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), tracker);
@@ -219,7 +216,7 @@ public class PayloadProtectionHookTests {
                 KeyAlias: null,
                 ContentHint: null,
                 CompatibilityFlags: null));
-        stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
+        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
             .Returns(new ConditionalValue<SnapshotRecord>(true, invalidSnapshot));
         var tracker = new InvocationCountingProtectionProvider();
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), tracker);
@@ -249,14 +246,14 @@ public class PayloadProtectionHookTests {
             AggregateId: TestIdentity.AggregateId,
             TenantId: TestIdentity.TenantId,
             ProtectionMetadata: storedMetadata);
-        stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
+        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
             .Returns(new ConditionalValue<SnapshotRecord>(true, snapshot));
         var capturing = new CapturingProtectionProvider();
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), capturing);
 
         _ = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
 
-        capturing.LastUnprotectSnapshotMetadata.ShouldNotBeNull();
+        _ = capturing.LastUnprotectSnapshotMetadata.ShouldNotBeNull();
         capturing.LastUnprotectSnapshotMetadata!.State.ShouldBe(PayloadProtectionState.Protected);
         capturing.LastUnprotectSnapshotMetadata.Scheme.ShouldBe("myco-aead-v1");
     }
@@ -288,7 +285,7 @@ public class PayloadProtectionHookTests {
 
         _ = await publisher.PublishEventsAsync(TestIdentity, [envelope], "corr-1");
 
-        capturing.LastUnprotectEventMetadata.ShouldNotBeNull();
+        _ = capturing.LastUnprotectEventMetadata.ShouldNotBeNull();
         capturing.LastUnprotectEventMetadata!.State.ShouldBe(PayloadProtectionState.Protected);
         capturing.LastUnprotectEventMetadata.Scheme.ShouldBe("myco-aead-v1");
     }
@@ -305,7 +302,7 @@ public class PayloadProtectionHookTests {
     [Fact]
     public async Task NoOpEventPayloadProtectionService_UnprotectSnapshot_TypedMethod_AcceptsMetadataParameter() {
         var service = new NoOpEventPayloadProtectionService();
-        EventStorePayloadProtectionMetadata metadata = EventStorePayloadProtectionMetadata.Unprotected();
+        var metadata = EventStorePayloadProtectionMetadata.Unprotected();
 
         object result = await service.UnprotectSnapshotAsync(TestIdentity, "state", metadata);
 

@@ -61,9 +61,8 @@ internal sealed class ShellScriptValidatorInvoker : IDw4ValidatorInvoker {
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
+            WorkingDirectory = _repoRoot
         };
-
-        psi.WorkingDirectory = _repoRoot;
         psi.ArgumentList.Add(resolvedScriptPath);
         psi.ArgumentList.Add("--json");
         foreach (string path in fixturePaths) {
@@ -92,7 +91,7 @@ internal sealed class ShellScriptValidatorInvoker : IDw4ValidatorInvoker {
             return [];
         }
 
-        using JsonDocument doc = JsonDocument.Parse(stdout);
+        using var doc = JsonDocument.Parse(stdout);
         if (!doc.RootElement.TryGetProperty("diagnostics", out JsonElement arr) ||
             arr.ValueKind != JsonValueKind.Array) {
             throw new Dw4ValidatorNotConfiguredException(

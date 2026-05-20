@@ -2,7 +2,6 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 
-using Hexalith.EventStore.Admin.UI.Services;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
 
 using Microsoft.Extensions.Logging.Abstractions;
@@ -108,7 +107,7 @@ public class AdminDeadLetterApiClientErrorTests {
         AdminApiProblemException ex = await Should.ThrowAsync<AdminApiProblemException>(
             () => client.RetryDeadLettersAsync("tenant-a", ["msg-1"]));
 
-        ex.Detail.ShouldNotBeNull();
+        _ = ex.Detail.ShouldNotBeNull();
         ex.Detail.ShouldContain("[redacted]");
         ex.Detail.ShouldNotContain("secret-token");
         ex.Detail.ShouldNotContain("server01.internal");

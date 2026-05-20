@@ -710,7 +710,7 @@ public sealed class DaprInfrastructureQueryService : IDaprInfrastructureQuerySer
 
         try {
             JsonDocumentOptions options = new() { MaxDepth = 64 };
-            using JsonDocument document = JsonDocument.Parse(value, options);
+            using var document = JsonDocument.Parse(value, options);
             return FormatStateValue(document.RootElement);
         }
         catch (JsonException) {

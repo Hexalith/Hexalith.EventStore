@@ -12,6 +12,7 @@ using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Queries;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.AspNetCore.Hosting;
@@ -26,7 +27,6 @@ using NSubstitute;
 using Shouldly;
 
 using EventStoreProgram = eventstore::Program;
-using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Integration;
 

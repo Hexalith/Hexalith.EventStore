@@ -1,6 +1,5 @@
 using System.Reflection;
 using System.Text;
-using System.Text.Json.Nodes;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -21,7 +20,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
@@ -39,8 +37,7 @@ namespace Hexalith.EventStore.Server.Tests.Controllers;
 ///   - Failed/Partial replay results map to the documented RFC 7807 ProblemDetails matrix
 ///     (Failure and HTTP Semantics Matrix in the story Dev Notes).
 /// </summary>
-public class AdminStreamQueryControllerReplayDelegationTests
-{
+public class AdminStreamQueryControllerReplayDelegationTests {
     private const string _tenantId = "tenant-a";
     private const string _domain = "counter";
     private const string _aggregateId = "counter-1";
@@ -68,8 +65,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     private static AdminStreamQueryController CreateController(
         IAggregateActor actor,
         IAggregateStateReconstructor reconstructor,
-        IDomainServiceInvoker? invoker = null)
-    {
+        IDomainServiceInvoker? invoker = null) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         _ = actorProxyFactory
             .CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor", Arg.Any<ActorProxyOptions?>())
@@ -84,8 +80,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     private sealed record SerializedTestEvent(string EventTypeName, byte[] PayloadBytes, string SerializationFormat)
         : ISerializedEventPayload;
 
-    private static IAggregateStateReconstructor BuildReconstructor(AggregateReconstructionResult preset)
-    {
+    private static IAggregateStateReconstructor BuildReconstructor(AggregateReconstructionResult preset) {
         IAggregateStateReconstructor r = Substitute.For<IAggregateStateReconstructor>();
         _ = r.ReconstructAsync(
                 Arg.Any<AggregateIdentity>(),
@@ -104,8 +99,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     // ---------------------------------------------------------------
 
     [Fact]
-    public void Controller_HasNoDeepMergeOrReconstructStateMember_ProvingFallbackRemoved()
-    {
+    public void Controller_HasNoDeepMergeOrReconstructStateMember_ProvingFallbackRemoved() {
         // The canonical replay path forbids any controller-side aggregate reconstruction.
         // If a future change reintroduces a DeepMerge or ReconstructState helper this guard
         // breaks and forces the reviewer to confirm the ADR allows it.
@@ -122,8 +116,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     }
 
     [Fact]
-    public void Controller_RequiresIAggregateStateReconstructorInConstructor()
-    {
+    public void Controller_RequiresIAggregateStateReconstructorInConstructor() {
         ConstructorInfo[] ctors = typeof(AdminStreamQueryController).GetConstructors();
         ctors.Length.ShouldBe(1);
         ctors[0].GetParameters()
@@ -137,8 +130,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     // ---------------------------------------------------------------
 
     [Fact]
-    public async Task GetAggregateStateAsync_DelegatesToReconstructor()
-    {
+    public async Task GetAggregateStateAsync_DelegatesToReconstructor() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([BuildEnvelope(1)]);
         IAggregateStateReconstructor r = BuildReconstructor(
@@ -147,8 +139,8 @@ public class AdminStreamQueryControllerReplayDelegationTests
 
         IActionResult result = await controller.GetAggregateStateAsync(_tenantId, _domain, _aggregateId, 1, CancellationToken.None);
 
-        result.ShouldBeOfType<OkObjectResult>();
-        await r.Received(1).ReconstructAsync(
+        _ = result.ShouldBeOfType<OkObjectResult>();
+        _ = await r.Received(1).ReconstructAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<string>(),
             Arg.Any<IReadOnlyList<ServerEventEnvelope>>(),
@@ -159,8 +151,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     }
 
     [Fact]
-    public async Task DiffAggregateStateAsync_DelegatesToReconstructorWithTimeline()
-    {
+    public async Task DiffAggregateStateAsync_DelegatesToReconstructorWithTimeline() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([BuildEnvelope(1), BuildEnvelope(2)]);
         IAggregateStateReconstructor r = BuildReconstructor(
@@ -173,8 +164,8 @@ public class AdminStreamQueryControllerReplayDelegationTests
 
         IActionResult result = await controller.DiffAggregateStateAsync(_tenantId, _domain, _aggregateId, 1, 2, CancellationToken.None);
 
-        result.ShouldBeOfType<OkObjectResult>();
-        await r.Received(1).ReconstructAsync(
+        _ = result.ShouldBeOfType<OkObjectResult>();
+        _ = await r.Received(1).ReconstructAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<string>(),
             Arg.Any<IReadOnlyList<ServerEventEnvelope>>(),
@@ -185,8 +176,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     }
 
     [Fact]
-    public async Task GetAggregateBlameAsync_DelegatesToReconstructorWithTimeline()
-    {
+    public async Task GetAggregateBlameAsync_DelegatesToReconstructorWithTimeline() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([BuildEnvelope(1)]);
         IAggregateStateReconstructor r = BuildReconstructor(
@@ -196,8 +186,8 @@ public class AdminStreamQueryControllerReplayDelegationTests
 
         IActionResult result = await controller.GetAggregateBlameAsync(_tenantId, _domain, _aggregateId, at: null, ct: CancellationToken.None);
 
-        result.ShouldBeOfType<OkObjectResult>();
-        await r.Received(1).ReconstructAsync(
+        _ = result.ShouldBeOfType<OkObjectResult>();
+        _ = await r.Received(1).ReconstructAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<string>(),
             Arg.Any<IReadOnlyList<ServerEventEnvelope>>(),
@@ -208,8 +198,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     }
 
     [Fact]
-    public async Task BisectAggregateStateAsync_DelegatesToReconstructorWithTimeline()
-    {
+    public async Task BisectAggregateStateAsync_DelegatesToReconstructorWithTimeline() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([BuildEnvelope(1), BuildEnvelope(2), BuildEnvelope(3)]);
         IAggregateStateReconstructor r = BuildReconstructor(
@@ -224,8 +213,8 @@ public class AdminStreamQueryControllerReplayDelegationTests
         IActionResult result = await controller.BisectAggregateStateAsync(
             _tenantId, _domain, _aggregateId, good: 1, bad: 3, fields: "count", ct: CancellationToken.None);
 
-        result.ShouldBeOfType<OkObjectResult>();
-        await r.Received(1).ReconstructAsync(
+        _ = result.ShouldBeOfType<OkObjectResult>();
+        _ = await r.Received(1).ReconstructAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<string>(),
             Arg.Any<IReadOnlyList<ServerEventEnvelope>>(),
@@ -236,8 +225,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     }
 
     [Fact]
-    public async Task GetEventStepFrameAsync_DelegatesToReconstructorWithTimeline()
-    {
+    public async Task GetEventStepFrameAsync_DelegatesToReconstructorWithTimeline() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([BuildEnvelope(1), BuildEnvelope(2)]);
         IAggregateStateReconstructor r = BuildReconstructor(
@@ -250,8 +238,8 @@ public class AdminStreamQueryControllerReplayDelegationTests
 
         IActionResult result = await controller.GetEventStepFrameAsync(_tenantId, _domain, _aggregateId, at: 2, ct: CancellationToken.None);
 
-        result.ShouldBeOfType<OkObjectResult>();
-        await r.Received(1).ReconstructAsync(
+        _ = result.ShouldBeOfType<OkObjectResult>();
+        _ = await r.Received(1).ReconstructAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<string>(),
             Arg.Any<IReadOnlyList<ServerEventEnvelope>>(),
@@ -262,8 +250,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     }
 
     [Fact]
-    public async Task SandboxCommandAsync_HistoricalAtSequence_ReplaysOnlyEventsUpToSandboxPointPlusSyntheticEvents()
-    {
+    public async Task SandboxCommandAsync_HistoricalAtSequence_ReplaysOnlyEventsUpToSandboxPointPlusSyntheticEvents() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([BuildEnvelope(1), BuildEnvelope(2)]);
 
@@ -277,8 +264,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
                 Arg.Any<bool>(),
                 Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
+            .Returns(call => {
                 var envelopes = (IReadOnlyList<ServerEventEnvelope>)call[2]!;
                 replayCalls.Add(envelopes);
                 long target = (long)call[3]!;
@@ -300,15 +286,14 @@ public class AdminStreamQueryControllerReplayDelegationTests
 
         IActionResult result = await controller.SandboxCommandAsync(_tenantId, _domain, _aggregateId, request, CancellationToken.None);
 
-        result.ShouldBeOfType<OkObjectResult>();
+        _ = result.ShouldBeOfType<OkObjectResult>();
         replayCalls.Count.ShouldBe(2);
         replayCalls[1].Count.ShouldBe(2);
         replayCalls[1].Select(e => e.MessageId).ShouldBe(["msg-1", "sandbox-2"]);
     }
 
     [Fact]
-    public async Task SandboxCommandAsync_DomainInvocationFailure_ReturnsSafeOperatorMessage()
-    {
+    public async Task SandboxCommandAsync_DomainInvocationFailure_ReturnsSafeOperatorMessage() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         IAggregateStateReconstructor r = BuildReconstructor(AggregateReconstructionResult.Succeeded("{}", 0));
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
@@ -328,7 +313,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
         OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
         SandboxResult sandbox = ok.Value.ShouldBeOfType<SandboxResult>();
         sandbox.Outcome.ShouldBe("error");
-        sandbox.ErrorMessage.ShouldNotBeNull();
+        _ = sandbox.ErrorMessage.ShouldNotBeNull();
         sandbox.ErrorMessage!.ShouldContain("Verify the command type");
         sandbox.ErrorMessage.ShouldContain("looks like an event type");
         sandbox.ErrorMessage.ShouldNotContain("500");
@@ -336,8 +321,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     }
 
     [Fact]
-    public async Task DiffAggregateStateAsync_SucceededReplayMissingTimeline_ReturnsProblem()
-    {
+    public async Task DiffAggregateStateAsync_SucceededReplayMissingTimeline_ReturnsProblem() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([BuildEnvelope(1), BuildEnvelope(2)]);
         IAggregateStateReconstructor r = BuildReconstructor(
@@ -353,8 +337,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     }
 
     [Fact]
-    public async Task GetAggregateBlameAsync_TruncatedWindow_ReplaysFullHistoryUpToTarget()
-    {
+    public async Task GetAggregateBlameAsync_TruncatedWindow_ReplaysFullHistoryUpToTarget() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([BuildEnvelope(1), BuildEnvelope(2), BuildEnvelope(3)]);
         IAggregateStateReconstructor r = BuildReconstructor(
@@ -369,8 +352,8 @@ public class AdminStreamQueryControllerReplayDelegationTests
         IActionResult result = await controller.GetAggregateBlameAsync(
             _tenantId, _domain, _aggregateId, at: 3, maxEvents: 1, maxFields: 10, ct: CancellationToken.None);
 
-        result.ShouldBeOfType<OkObjectResult>();
-        await r.Received(1).ReconstructAsync(
+        _ = result.ShouldBeOfType<OkObjectResult>();
+        _ = await r.Received(1).ReconstructAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<string>(),
             Arg.Is<IReadOnlyList<ServerEventEnvelope>>(events => events.Count == 3),
@@ -394,8 +377,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     public async Task GetAggregateStateAsync_FailedReplay_ReturnsExpectedRfc7807ProblemDetails(
         AggregateReconstructionErrorCategory category,
         int expectedStatus,
-        string expectedTypeSlug)
-    {
+        string expectedTypeSlug) {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([BuildEnvelope(1)]);
         IAggregateStateReconstructor r = BuildReconstructor(
@@ -415,8 +397,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     }
 
     [Fact]
-    public async Task GetAggregateStateAsync_PartialReplay_Returns409ConflictWithApplyFailedType()
-    {
+    public async Task GetAggregateStateAsync_PartialReplay_Returns409ConflictWithApplyFailedType() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([BuildEnvelope(1)]);
         IAggregateStateReconstructor r = BuildReconstructor(
@@ -440,8 +421,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     }
 
     [Fact]
-    public async Task FailedReplay_NeverReturns200OkWithEmptyState()
-    {
+    public async Task FailedReplay_NeverReturns200OkWithEmptyState() {
         // Negative-evidence guard (AC #4): a Failed replay must not surface as a 200 OK with {}.
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([BuildEnvelope(1)]);
@@ -457,12 +437,11 @@ public class AdminStreamQueryControllerReplayDelegationTests
 
         ObjectResult obj = result.ShouldBeOfType<ObjectResult>();
         obj.StatusCode.ShouldNotBe(StatusCodes.Status200OK);
-        obj.Value.ShouldBeOfType<ProblemDetails>();
+        _ = obj.Value.ShouldBeOfType<ProblemDetails>();
     }
 
     [Fact]
-    public async Task FailedReplay_ProblemDetailsAlwaysContainsReplayExtensionKeys()
-    {
+    public async Task FailedReplay_ProblemDetailsAlwaysContainsReplayExtensionKeys() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([BuildEnvelope(1)]);
         IAggregateStateReconstructor r = BuildReconstructor(
@@ -478,7 +457,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
         problem.Extensions.Keys.ShouldContain("errorCategory");
         problem.Extensions.Keys.ShouldContain("message");
         problem.Extensions.Keys.ShouldContain("lastAppliedSequenceNumber");
-        problem.Detail.ShouldNotBeNull();
+        _ = problem.Detail.ShouldNotBeNull();
         problem.Detail.ShouldNotContain("raw detail");
         string extensionMessage = problem.Extensions["message"]!.ToString().ShouldNotBeNull();
         extensionMessage.ShouldNotContain("raw detail");
@@ -490,8 +469,7 @@ public class AdminStreamQueryControllerReplayDelegationTests
     // ---------------------------------------------------------------
 
     [Fact]
-    public async Task TraceCausationChainAsync_DoesNotInvokeReconstructor()
-    {
+    public async Task TraceCausationChainAsync_DoesNotInvokeReconstructor() {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetEventsAsync(0).Returns([BuildEnvelope(1)]);
         IAggregateStateReconstructor r = Substitute.For<IAggregateStateReconstructor>();
@@ -499,8 +477,8 @@ public class AdminStreamQueryControllerReplayDelegationTests
 
         IActionResult result = await controller.TraceCausationChainAsync(_tenantId, _domain, _aggregateId, at: 1, ct: CancellationToken.None);
 
-        result.ShouldBeOfType<OkObjectResult>();
-        await r.DidNotReceiveWithAnyArgs().ReconstructAsync(
+        _ = result.ShouldBeOfType<OkObjectResult>();
+        _ = await r.DidNotReceiveWithAnyArgs().ReconstructAsync(
             default!, default!, default!, default, default, default, default);
     }
 }

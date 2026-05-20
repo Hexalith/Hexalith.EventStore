@@ -103,7 +103,7 @@ public class ServiceCollectionExtensionsTests : IDisposable {
         using ServiceProvider provider = services.BuildServiceProvider();
         IEventStoreGatewayClient client = provider.GetRequiredService<IEventStoreGatewayClient>();
 
-        client.ShouldBeOfType<EventStoreGatewayClient>();
+        _ = client.ShouldBeOfType<EventStoreGatewayClient>();
     }
 
     [Fact]

@@ -1,9 +1,4 @@
-using System;
-using System.Collections.Generic;
-
 using Hexalith.EventStore.Contracts.Security;
-
-using Shouldly;
 
 namespace Hexalith.EventStore.Contracts.Tests.Security;
 
@@ -14,7 +9,7 @@ namespace Hexalith.EventStore.Contracts.Tests.Security;
 public class ProtectedDataReadabilityDecisionTests {
     [Fact]
     public void Readable_BuildsExpectedShape() {
-        ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecision.Readable(
+        var decision = ProtectedDataReadabilityDecision.Readable(
             ProtectedDataDecisionStage.Replay,
             "t1",
             "orders",
@@ -40,7 +35,7 @@ public class ProtectedDataReadabilityDecisionTests {
     [Theory]
     [MemberData(nameof(AllReasons))]
     public void FromUnreadable_MapsTo22_7bReasonCode(UnreadableProtectedDataReason reason) {
-        ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecision.FromUnreadable(
+        var decision = ProtectedDataReadabilityDecision.FromUnreadable(
             reason,
             ProtectedDataDecisionStage.Rehydrate,
             "t1",
@@ -58,7 +53,7 @@ public class ProtectedDataReadabilityDecisionTests {
 
     [Fact]
     public void RestoreConflict_IsPermanent_AndAsksForOperatorDecision() {
-        ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecision.RestoreConflict(
+        var decision = ProtectedDataReadabilityDecision.RestoreConflict(
             ProtectedDataDecisionStage.BackupAdmission,
             "t1",
             "orders",
@@ -76,7 +71,7 @@ public class ProtectedDataReadabilityDecisionTests {
 
     [Fact]
     public void DeferredValidation_IsRetryable_AndAsksForRestoreEvidence() {
-        ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecision.DeferredValidation(
+        var decision = ProtectedDataReadabilityDecision.DeferredValidation(
             ProtectedDataDecisionStage.BackupAdmission,
             "t1",
             "orders",
@@ -95,7 +90,7 @@ public class ProtectedDataReadabilityDecisionTests {
     [Fact]
     public void Factory_FromOutcome_RestoreAdmissionConflict_OverridesReadable() {
         // Readable provider outcome but admission says Blocked → decision must report RestoreConflict.
-        PayloadUnprotectionOutcome readable = PayloadUnprotectionOutcome.Readable(
+        var readable = PayloadUnprotectionOutcome.Readable(
             new byte[] { 1, 2 },
             "application/json",
             EventStorePayloadProtectionMetadata.Unprotected());
@@ -136,7 +131,7 @@ public class ProtectedDataReadabilityDecisionTests {
 
     [Fact]
     public void Factory_FromOutcome_IgnoresAdmissionForDifferentScope() {
-        PayloadUnprotectionOutcome readable = PayloadUnprotectionOutcome.Readable(
+        var readable = PayloadUnprotectionOutcome.Readable(
             new byte[] { 1, 2 },
             "application/json",
             EventStorePayloadProtectionMetadata.Unprotected());
@@ -175,7 +170,7 @@ public class ProtectedDataReadabilityDecisionTests {
 
     [Fact]
     public void Factory_FromMetadata_ProviderOpaque_MapsToUnreadable() {
-        EventStorePayloadProtectionMetadata opaque = EventStorePayloadProtectionMetadata.ProviderOpaque("forbidden");
+        var opaque = EventStorePayloadProtectionMetadata.ProviderOpaque("forbidden");
 
         ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecisionFactory.FromMetadata(
             opaque,
@@ -192,7 +187,7 @@ public class ProtectedDataReadabilityDecisionTests {
 
     [Fact]
     public void Factory_FromMetadata_ProtectedWithoutProviderOutcome_DefersValidation() {
-        EventStorePayloadProtectionMetadata protectedMetadata = EventStorePayloadProtectionMetadata.Unprotected(PayloadProtectionState.Protected);
+        var protectedMetadata = EventStorePayloadProtectionMetadata.Unprotected(PayloadProtectionState.Protected);
 
         ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecisionFactory.FromMetadata(
             protectedMetadata,

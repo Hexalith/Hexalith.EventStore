@@ -1,4 +1,5 @@
 using System.Diagnostics;
+
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
@@ -8,6 +9,7 @@ using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Telemetry;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -17,7 +19,6 @@ using NSubstitute;
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
-using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 
@@ -30,8 +31,7 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 //          drain_missing_event, drain_publish_failed, drain_terminal_failure, unknown.
 // AC #9 — Reminder re-entrancy idempotence: repeated reminder fire must not produce duplicate
 //          publish, duplicate counter decrement, or duplicate reminder unregister.
-public class Dw1DrainHardeningAtddTests
-{
+public class Dw1DrainHardeningAtddTests {
     private const string SkipReasonAc7 = "ATDD red phase — DW1 AC#7 (drain poison disposition). Remove Skip when implementing.";
     private const string SkipReasonAc8 = "ATDD red phase — DW1 AC#8 (drain stable reason codes). Remove Skip when implementing.";
     private const string SkipReasonAc9 = "ATDD red phase — DW1 AC#9 (reminder re-entrancy idempotence). Remove Skip when implementing.";
@@ -39,13 +39,11 @@ public class Dw1DrainHardeningAtddTests
     // ---------- AC #8: Stable activity reason codes ----------
 
     [Fact(Skip = SkipReasonAc8)]
-    public async Task DrainEventCountMismatch_ActivityFailureReasonTagIsStableReasonCode()
-    {
+    public async Task DrainEventCountMismatch_ActivityFailureReasonTagIsStableReasonCode() {
         // Today the drain code sets activity tag eventstore.failure_reason to the raw exception
         // message (e.g. "Drain record EventCount mismatch for ..."). After DW1 it must be the
         // stable bounded code drain_event_count_mismatch.
-        Activity? captured = await CaptureDrainActivityAsync(setupRecord: stateManager =>
-        {
+        Activity? captured = await CaptureDrainActivityAsync(setupRecord: stateManager => {
             var record = new UnpublishedEventsRecord(
                 CorrelationId: "corr-drain",
                 StartSequence: 10,
@@ -66,10 +64,8 @@ public class Dw1DrainHardeningAtddTests
     }
 
     [Fact(Skip = SkipReasonAc8)]
-    public async Task DrainMissingEventInRange_ActivityFailureReasonTagIsStableReasonCode()
-    {
-        Activity? captured = await CaptureDrainActivityAsync(setupRecord: stateManager =>
-        {
+    public async Task DrainMissingEventInRange_ActivityFailureReasonTagIsStableReasonCode() {
+        Activity? captured = await CaptureDrainActivityAsync(setupRecord: stateManager => {
             var record = new UnpublishedEventsRecord(
                 CorrelationId: "corr-drain",
                 StartSequence: 10,
@@ -89,8 +85,7 @@ public class Dw1DrainHardeningAtddTests
             _ = stateManager.TryGetStateAsync<AggregateMetadata>(
                 "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
                 .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
-            foreach (long seq in new long[] { 10, 12 })
-            {
+            foreach (long seq in new long[] { 10, 12 }) {
                 var evt = new EventEnvelope(
                     "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
                     "corr-drain", $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json", [1, 2, 3], null);
@@ -105,14 +100,12 @@ public class Dw1DrainHardeningAtddTests
     }
 
     [Fact(Skip = SkipReasonAc8)]
-    public async Task DrainPublishFailed_ActivityFailureReasonTagIsStableReasonCode()
-    {
+    public async Task DrainPublishFailed_ActivityFailureReasonTagIsStableReasonCode() {
         // Pub/sub publish returns failure — current code stores publishResult.FailureReason
         // (free-form publisher text) on the activity tag. DW1 requires the stable code
         // drain_publish_failed; the original publisher text remains in structured logs.
         Activity? captured = await CaptureDrainActivityAsync(
-            setupRecord: stateManager =>
-            {
+            setupRecord: stateManager => {
                 var record = new UnpublishedEventsRecord(
                     CorrelationId: "corr-drain",
                     StartSequence: 1,
@@ -128,28 +121,23 @@ public class Dw1DrainHardeningAtddTests
                     .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
                 ConfigureContiguousEvents(stateManager, startSequence: 1, eventCount: 2);
             },
-            setupPublisher: publisher =>
-            {
-                _ = publisher.PublishEventsAsync(
+            setupPublisher: publisher => _ = publisher.PublishEventsAsync(
                     Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
                     Arg.Any<IReadOnlyList<EventEnvelope>>(),
                     Arg.Any<string>(),
                     Arg.Any<CancellationToken>())
-                    .Returns(new EventPublishResult(false, 0, "pubsub component unavailable"));
-            });
+                    .Returns(new EventPublishResult(false, 0, "pubsub component unavailable")));
 
         _ = captured.ShouldNotBeNull();
         captured.GetTagItem("eventstore.failure_reason").ShouldBe("drain_publish_failed");
     }
 
     [Fact(Skip = SkipReasonAc8)]
-    public async Task DrainAnyClassifiedFailure_ActivityFailureReasonTagDoesNotContainRawExceptionMessage()
-    {
+    public async Task DrainAnyClassifiedFailure_ActivityFailureReasonTagDoesNotContainRawExceptionMessage() {
         // Privacy/cardinality invariant: even if the inner failure is "Object reference not set
         // to an instance of an object." the activity tag must not surface that text — only
         // the bounded reason code goes on the tag.
-        Activity? captured = await CaptureDrainActivityAsync(setupRecord: stateManager =>
-        {
+        Activity? captured = await CaptureDrainActivityAsync(setupRecord: stateManager => {
             var record = new UnpublishedEventsRecord(
                 CorrelationId: "corr-drain",
                 StartSequence: 1,
@@ -177,8 +165,7 @@ public class Dw1DrainHardeningAtddTests
     // ---------- AC #7: Drain poison side-effect invariants ----------
 
     [Fact(Skip = SkipReasonAc7)]
-    public async Task DrainEventCountMismatch_DoesNotDecrementPendingCommandCount()
-    {
+    public async Task DrainEventCountMismatch_DoesNotDecrementPendingCommandCount() {
         // Existing tests already prove no publish / no remove / no reminder unregister.
         // This scaffold pins the additional invariant: the pending_command_count must NOT
         // be decremented on integrity failure (R4-A6).
@@ -217,8 +204,7 @@ public class Dw1DrainHardeningAtddTests
     // ---------- AC #9: Reminder re-entrancy idempotence ----------
 
     [Fact(Skip = SkipReasonAc9)]
-    public async Task DrainReminder_FiredTwiceForSameCorrelationId_PublishesAtMostOnce()
-    {
+    public async Task DrainReminder_FiredTwiceForSameCorrelationId_PublishesAtMostOnce() {
         // Dapr actor reminders respect turn-based concurrency, but DW1 requires explicit
         // proof that two sequential reminder firings of the same correlation id do not
         // produce duplicate publish events. After a successful drain, the record is
@@ -261,8 +247,7 @@ public class Dw1DrainHardeningAtddTests
     }
 
     [Fact(Skip = SkipReasonAc9)]
-    public async Task DrainReminder_FiredTwiceForSameCorrelationId_DecrementsPendingCounterAtMostOnce()
-    {
+    public async Task DrainReminder_FiredTwiceForSameCorrelationId_DecrementsPendingCounterAtMostOnce() {
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher publisher, _, _) = CreateActorWithTimerManager();
         var record = new UnpublishedEventsRecord(
             CorrelationId: "corr-drain",
@@ -307,8 +292,7 @@ public class Dw1DrainHardeningAtddTests
     }
 
     [Fact(Skip = SkipReasonAc9)]
-    public async Task DrainReminder_FiredTwiceForSameCorrelationId_UnregistersReminderAtMostOnce()
-    {
+    public async Task DrainReminder_FiredTwiceForSameCorrelationId_UnregistersReminderAtMostOnce() {
         (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher publisher, _, ActorTimerManager timerManager) = CreateActorWithTimerManager();
         var record = new UnpublishedEventsRecord(
             CorrelationId: "corr-drain",
@@ -348,17 +332,13 @@ public class Dw1DrainHardeningAtddTests
 
     private static async Task<Activity?> CaptureDrainActivityAsync(
         Action<IActorStateManager> setupRecord,
-        Action<IEventPublisher>? setupPublisher = null)
-    {
+        Action<IEventPublisher>? setupPublisher = null) {
         Activity? captured = null;
-        using var listener = new ActivityListener
-        {
+        using var listener = new ActivityListener {
             ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = activity =>
-            {
-                if (activity.OperationName == EventStoreActivitySource.EventsDrain)
-                {
+            ActivityStopped = activity => {
+                if (activity.OperationName == EventStoreActivitySource.EventsDrain) {
                     captured = activity;
                 }
             },
@@ -376,8 +356,7 @@ public class Dw1DrainHardeningAtddTests
 
     private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger,
         IEventPublisher EventPublisher, ICommandStatusStore StatusStore) CreateActor(
-        string actorId = "test-tenant:test-domain:agg-001")
-    {
+        string actorId = "test-tenant:test-domain:agg-001") {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
@@ -398,8 +377,7 @@ public class Dw1DrainHardeningAtddTests
 
     private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger,
         IEventPublisher EventPublisher, ICommandStatusStore StatusStore, ActorTimerManager TimerManager) CreateActorWithTimerManager(
-        string actorId = "test-tenant:test-domain:agg-001")
-    {
+        string actorId = "test-tenant:test-domain:agg-001") {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
@@ -419,15 +397,13 @@ public class Dw1DrainHardeningAtddTests
         return (actor, stateManager, logger, eventPublisher, statusStore, timerManager);
     }
 
-    private static void ConfigureContiguousEvents(IActorStateManager stateManager, long startSequence, int eventCount)
-    {
+    private static void ConfigureContiguousEvents(IActorStateManager stateManager, long startSequence, int eventCount) {
         long endSequence = startSequence + eventCount - 1;
         var metadata = new AggregateMetadata(endSequence, DateTimeOffset.UtcNow, null);
         _ = stateManager.TryGetStateAsync<AggregateMetadata>(
             "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
-        for (long seq = startSequence; seq <= endSequence; seq++)
-        {
+        for (long seq = startSequence; seq <= endSequence; seq++) {
             var evt = new EventEnvelope(
                 "msg-1", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
                 "corr-drain", $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json", [1, 2, 3], null);

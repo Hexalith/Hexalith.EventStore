@@ -54,9 +54,10 @@ internal static class Dw6GovernanceCheckerInvokerFactory {
                 RedirectStandardError = true,
                 UseShellExecute = false,
             }) ?? throw new InvalidOperationException();
-            probe.WaitForExit(2000);
+            _ = probe.WaitForExit(2000);
             return probe.HasExited && probe.ExitCode == 0;
-        } catch {
+        }
+        catch {
             return false;
         }
     }
@@ -101,14 +102,15 @@ internal sealed class Dw6ShellGovernanceCheckerInvoker(string shell, string scri
         using Process process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Could not start DW6 governance checker process.");
 
-        using CancellationTokenSource timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutSource.CancelAfter(TimeSpan.FromMinutes(1));
         try {
             string stdout = await process.StandardOutput.ReadToEndAsync(timeoutSource.Token);
             string stderr = await process.StandardError.ReadToEndAsync(timeoutSource.Token);
             await process.WaitForExitAsync(timeoutSource.Token);
             return BuildReport(stdout, stderr, process.ExitCode);
-        } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
             try { process.Kill(entireProcessTree: true); } catch { /* process already gone */ }
             throw new TimeoutException("DW6 governance checker did not exit within the 1-minute test timeout.");
         }
@@ -129,7 +131,7 @@ internal sealed class Dw6ShellGovernanceCheckerInvoker(string shell, string scri
         => "\"" + value.Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";
 
     private static Dw6GovernanceReport ParseReport(string json, int fallbackExitCode) {
-        using JsonDocument document = JsonDocument.Parse(json);
+        using var document = JsonDocument.Parse(json);
         JsonElement root = document.RootElement;
         int exitCode = root.TryGetProperty("exitCode", out JsonElement exit)
             ? exit.GetInt32()

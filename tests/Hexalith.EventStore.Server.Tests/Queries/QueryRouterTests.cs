@@ -393,7 +393,7 @@ public class QueryRouterTests {
 
         var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => router.RouteQueryAsync(CreateTestQuery()));
     }
 
@@ -404,7 +404,7 @@ public class QueryRouterTests {
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => router.RouteQueryAsync(CreateTestQuery(), cts.Token));
 
         _ = await invoker.DidNotReceive().InvokeAsync(
@@ -438,14 +438,14 @@ public class QueryRouterTests {
         _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
             .Throws(new OperationCanceledException("abandoned request"));
 
-        var logger = Substitute.For<ILogger<QueryRouter>>();
+        ILogger<QueryRouter> logger = Substitute.For<ILogger<QueryRouter>>();
         var router = new QueryRouter(invoker, logger);
 
         OperationCanceledException exception = await Should.ThrowAsync<OperationCanceledException>(
             () => router.RouteQueryAsync(CreateTestQuery()));
 
         // The exception is OCE-derived (catches conversion to an adapter failure type).
-        exception.ShouldBeAssignableTo<OperationCanceledException>();
+        _ = exception.ShouldBeAssignableTo<OperationCanceledException>();
 
         // It is not converted to a Hexalith adapter failure type. The surfaced OCE is exactly
         // TaskCanceledException (runtime-minted on Task.Canceled awaits) or

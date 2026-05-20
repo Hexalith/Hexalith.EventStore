@@ -5,8 +5,7 @@ namespace Hexalith.EventStore.Contracts.Replay;
 /// and ProblemDetails mapping in the Admin replay surface (Failure and HTTP Semantics
 /// Matrix in admin-ui-aggregate-state-replay-correctness story).
 /// </summary>
-public enum AggregateReconstructionStatus
-{
+public enum AggregateReconstructionStatus {
     /// <summary>All requested events were applied successfully and <see cref="AggregateReconstructionResult.StateJson"/> is authoritative.</summary>
     Succeeded = 0,
 

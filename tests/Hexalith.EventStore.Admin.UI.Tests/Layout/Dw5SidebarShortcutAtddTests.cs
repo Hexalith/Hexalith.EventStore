@@ -42,7 +42,7 @@ public class Dw5SidebarShortcutAtddTests : AdminUITestContext {
             () => cut.Markup.ShouldContain("220px"),
             TimeSpan.FromSeconds(5));
 
-        await cut.InvokeAsync(() => cut.Instance.OnToggleSidebarShortcut());
+        await cut.InvokeAsync(cut.Instance.OnToggleSidebarShortcut);
 
         cut.WaitForAssertion(
             () => cut.Markup.ShouldContain("140px"),
@@ -62,10 +62,10 @@ public class Dw5SidebarShortcutAtddTests : AdminUITestContext {
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("220px"), TimeSpan.FromSeconds(5));
         int setCallsBefore = JSInterop.Invocations.Count(i => i.Identifier == "hexalithAdmin.setLocalStorage");
 
-        await cut.InvokeAsync(() => cut.Instance.OnToggleSidebarShortcut());
+        await cut.InvokeAsync(cut.Instance.OnToggleSidebarShortcut);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("140px"), TimeSpan.FromSeconds(5));
 
-        await cut.InvokeAsync(() => cut.Instance.OnToggleSidebarShortcut());
+        await cut.InvokeAsync(cut.Instance.OnToggleSidebarShortcut);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("220px"), TimeSpan.FromSeconds(5));
 
         string[] writes = JSInterop.Invocations
@@ -115,14 +115,14 @@ public class Dw5SidebarShortcutAtddTests : AdminUITestContext {
         string expectedValue = (!initialCollapsed).ToString().ToLowerInvariant();
 
         int setCallsBefore = JSInterop.Invocations.Count(i => i.Identifier == "hexalithAdmin.setLocalStorage");
-        await cut.InvokeAsync(() => cut.Instance.OnToggleSidebarShortcut());
+        await cut.InvokeAsync(cut.Instance.OnToggleSidebarShortcut);
 
         JSRuntimeInvocation invocation = JSInterop.Invocations
             .Where(i => i.Identifier == "hexalithAdmin.setLocalStorage")
             .Skip(setCallsBefore)
             .ShouldHaveSingleItem(
                 customMessage: "DW5 AC#6 expects exactly one setLocalStorage call per shortcut invocation.");
-        invocation.Arguments.ShouldNotBeNull();
+        _ = invocation.Arguments.ShouldNotBeNull();
         invocation.Arguments[0].ShouldBe(expectedKey,
             customMessage: $"DW5 AC#6 expects storage key '{expectedKey}' for viewport width {viewportWidth}px.");
         invocation.Arguments[1]?.ToString().ShouldBe(expectedValue,
@@ -167,7 +167,7 @@ public class Dw5SidebarShortcutAtddTests : AdminUITestContext {
 
         System.Reflection.FieldInfo? isOpenField = typeof(Hexalith.EventStore.Admin.UI.Components.CommandPalette)
             .GetField("_isOpen", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        isOpenField.ShouldNotBeNull(
+        _ = isOpenField.ShouldNotBeNull(
             customMessage: "DW5 AC#7: CommandPalette._isOpen field renamed/removed — test must be updated alongside the production refactor.");
 
         ((bool)isOpenField!.GetValue(palette.Instance)!).ShouldBeTrue(

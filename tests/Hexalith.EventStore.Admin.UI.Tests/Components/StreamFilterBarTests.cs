@@ -1,7 +1,6 @@
 using Bunit;
 
 using Hexalith.EventStore.Admin.UI.Components;
-using Hexalith.EventStore.Admin.UI.Services;
 
 namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 

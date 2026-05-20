@@ -579,7 +579,7 @@ public class EventStoreAggregateTests : IDisposable {
 
         DomainResult result = await aggregate.ProcessAsync(command, null);
 
-        var derived = Assert.IsType<DerivedDomainResult>(result);
+        DerivedDomainResult derived = Assert.IsType<DerivedDomainResult>(result);
         Assert.Equal("sync-derived", derived.Marker);
         ItemAdded evt = Assert.IsType<ItemAdded>(derived.Events[0]);
         Assert.Equal("derived-test", evt.Name);
@@ -592,7 +592,7 @@ public class EventStoreAggregateTests : IDisposable {
 
         DomainResult result = await aggregate.ProcessAsync(command, null);
 
-        var derived = Assert.IsType<DerivedDomainResult>(result);
+        DerivedDomainResult derived = Assert.IsType<DerivedDomainResult>(result);
         Assert.Equal("async-derived", derived.Marker);
         ItemAdded evt = Assert.IsType<ItemAdded>(derived.Events[0]);
         Assert.Equal("async-derived-test", evt.Name);

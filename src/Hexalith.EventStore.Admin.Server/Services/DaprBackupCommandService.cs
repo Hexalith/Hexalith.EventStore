@@ -164,11 +164,7 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
         string key = AdmissionKey(tenantId, admissionId);
         RestoredBackupAdmissionResult? existing = await _daprClient
             .GetStateAsync<RestoredBackupAdmissionResult>(_options.StateStoreName, key, cancellationToken: ct)
-            .ConfigureAwait(false);
-        if (existing is null) {
-            throw new KeyNotFoundException("Restored-backup admission record was not found.");
-        }
-
+            .ConfigureAwait(false) ?? throw new KeyNotFoundException("Restored-backup admission record was not found.");
         if (existing.State == decision) {
             return existing with { IdempotentReplay = true };
         }
@@ -292,8 +288,7 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
         RestoredBackupAdmissionState state,
         string watermarkConflict,
         string operatorActorId,
-        string? auditId) {
-        return new RestoredBackupAdmissionResult(
+        string? auditId) => new(
             AdmissionId: request.AdmissionId,
             State: state,
             TenantId: request.TenantId,
@@ -313,7 +308,6 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
             DecisionActorId: operatorActorId,
             DecidedAtUtc: DateTimeOffset.UtcNow,
             IdempotentReplay: false);
-    }
 
     internal static string AdmissionKey(string tenantId, string admissionId)
         => $"{AdmissionKeyPrefix}{tenantId}:{admissionId}";

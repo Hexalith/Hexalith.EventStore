@@ -32,19 +32,13 @@ public class Dw4DocsValidationWiringAtddTests {
     }
 
     [Fact(Skip = _baseSkip + "AC#10 — scripts/validate-docs.ps1 must invoke the validator OR carry a CI-deferred reason. Remove Skip when wiring.")]
-    public void CiIntegration_PowerShellScript_InvokesValidatorOrDeclaresDeferral() {
-        AssertScriptIntegration("scripts/validate-docs.ps1");
-    }
+    public void CiIntegration_PowerShellScript_InvokesValidatorOrDeclaresDeferral() => AssertScriptIntegration("scripts/validate-docs.ps1");
 
     [Fact(Skip = _baseSkip + "AC#10 — scripts/validate-docs.sh must invoke the validator OR carry a CI-deferred reason. Remove Skip when wiring.")]
-    public void CiIntegration_ShellScript_InvokesValidatorOrDeclaresDeferral() {
-        AssertScriptIntegration("scripts/validate-docs.sh");
-    }
+    public void CiIntegration_ShellScript_InvokesValidatorOrDeclaresDeferral() => AssertScriptIntegration("scripts/validate-docs.sh");
 
     [Fact(Skip = _baseSkip + "AC#10 — docs-validation.yml must invoke the validator OR carry a CI-deferred reason. Remove Skip when wiring.")]
-    public void CiIntegration_GitHubWorkflow_InvokesValidatorOrDeclaresDeferral() {
-        AssertScriptIntegration(".github/workflows/docs-validation.yml");
-    }
+    public void CiIntegration_GitHubWorkflow_InvokesValidatorOrDeclaresDeferral() => AssertScriptIntegration(".github/workflows/docs-validation.yml");
 
     [Fact(Skip = _baseSkip + "AC#10 — smoke: shelling out to the validator with a known-bad fixture must exit non-zero. Remove Skip when wiring.")]
     public void CiIntegration_SmokeRun_KnownBadFixtureExitsNonZero() {

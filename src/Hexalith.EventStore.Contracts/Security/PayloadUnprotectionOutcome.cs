@@ -1,5 +1,3 @@
-using System;
-
 namespace Hexalith.EventStore.Contracts.Security;
 
 /// <summary>

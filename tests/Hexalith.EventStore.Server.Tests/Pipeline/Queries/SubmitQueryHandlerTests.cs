@@ -185,7 +185,7 @@ public class SubmitQueryHandlerTests {
         var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
 
         // Act & Assert
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => handler.Handle(CreateTestQuery(), CancellationToken.None));
     }
 

@@ -152,10 +152,9 @@ public class CounterAggregateTests {
     }
 
     [Fact]
-    public void CounterState_IsTerminatableCompliant() {
+    public void CounterState_IsTerminatableCompliant() =>
         // R1-A2 sentinel — do not delete; protects ITerminatable replay safety. See _bmad-output/implementation-artifacts/post-epic-1-r1a2-terminatable-compliance-helper.md
         TerminatableComplianceAssertions.AssertTerminatableCompliance<CounterState>();
-    }
 
     [Fact]
     public void UseEventStore_SampleAssembly_ActivatesCounterWithConventionDerivedResourceNames() {

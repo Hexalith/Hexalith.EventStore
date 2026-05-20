@@ -59,7 +59,7 @@ public class AdminApiClientProblemDetailsTests {
         // P12 — per-extension length cap (1024 chars). A 60 KB upstream-controlled extension must
         // be truncated before landing on AdminApiException.Problem.Extensions.
         CancellationToken ct = TestContext.Current.CancellationToken;
-        string oversized = new string('a', 4096);
+        string oversized = new('a', 4096);
         string body = JsonSerializer.Serialize(new Dictionary<string, object?> {
             ["type"] = UnreadableProtectedDataProblem.TypeUri,
             ["title"] = UnreadableProtectedDataProblem.DefaultTitle,

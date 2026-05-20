@@ -44,10 +44,8 @@ public record QueryResult(
     /// <param name="projectionType">Optional projection type metadata.</param>
     /// <returns>A successful query result.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="payload"/> has <see cref="JsonValueKind.Undefined"/>.</exception>
-    public static QueryResult FromPayload(JsonElement payload, string? projectionType = null)
-    {
-        if (payload.ValueKind == JsonValueKind.Undefined)
-        {
+    public static QueryResult FromPayload(JsonElement payload, string? projectionType = null) {
+        if (payload.ValueKind == JsonValueKind.Undefined) {
             throw new ArgumentException("Payload element must not be Undefined.", nameof(payload));
         }
 
@@ -59,8 +57,7 @@ public record QueryResult(
     /// </summary>
     /// <param name="errorMessage">The failure message or <see cref="QueryAdapterFailureReason"/> category. Must not be null or whitespace.</param>
     /// <returns>An unsuccessful query result.</returns>
-    public static QueryResult Failure(string errorMessage)
-    {
+    public static QueryResult Failure(string errorMessage) {
         ArgumentException.ThrowIfNullOrWhiteSpace(errorMessage);
         return new(false, ErrorMessage: errorMessage);
     }

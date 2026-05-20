@@ -7,6 +7,7 @@ using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -16,7 +17,6 @@ using NSubstitute;
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
-using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 

@@ -1,5 +1,3 @@
-using Hexalith.EventStore.AppHost;
-
 namespace Hexalith.EventStore.AppHost.Tests.Configuration;
 
 public class PrerequisiteValidatorTests {
@@ -26,7 +24,7 @@ public class PrerequisiteValidatorTests {
 
         IReadOnlyList<string> errors = PrerequisiteValidator.GetMissingPrerequisites(runner, PrerequisiteValidator.CommandTimeout);
 
-        errors.ShouldHaveSingleItem();
+        _ = errors.ShouldHaveSingleItem();
         errors[0].ShouldContain("Docker");
     }
 
@@ -38,7 +36,7 @@ public class PrerequisiteValidatorTests {
 
         IReadOnlyList<string> errors = PrerequisiteValidator.GetMissingPrerequisites(runner, PrerequisiteValidator.CommandTimeout);
 
-        errors.ShouldHaveSingleItem();
+        _ = errors.ShouldHaveSingleItem();
         errors[0].ShouldContain("DAPR CLI");
     }
 
@@ -50,7 +48,7 @@ public class PrerequisiteValidatorTests {
 
         IReadOnlyList<string> errors = PrerequisiteValidator.GetMissingPrerequisites(runner, PrerequisiteValidator.CommandTimeout);
 
-        errors.ShouldHaveSingleItem();
+        _ = errors.ShouldHaveSingleItem();
         errors[0].ShouldContain("DAPR runtime");
     }
 
@@ -68,13 +66,11 @@ public class PrerequisiteValidatorTests {
     }
 
     private sealed class ScriptedRunner(PrerequisiteCommandResult docker, PrerequisiteCommandResult dapr) : IPrerequisiteCommandRunner {
-        public PrerequisiteCommandResult Run(string command, string args, TimeSpan timeout) {
-            return command switch {
-                "docker" => docker,
-                "dapr" => dapr,
-                _ => new PrerequisiteCommandResult(false, $"Unknown command: {command}")
-            };
-        }
+        public PrerequisiteCommandResult Run(string command, string args, TimeSpan timeout) => command switch {
+            "docker" => docker,
+            "dapr" => dapr,
+            _ => new PrerequisiteCommandResult(false, $"Unknown command: {command}")
+        };
     }
 
     private sealed class SlowDockerProbeRunner(TimeSpan minimumDockerTimeout) : IPrerequisiteCommandRunner {

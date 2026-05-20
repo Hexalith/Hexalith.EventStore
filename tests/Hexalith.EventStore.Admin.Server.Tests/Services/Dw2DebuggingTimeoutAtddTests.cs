@@ -1,4 +1,3 @@
-#pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
 
 using System.Diagnostics;
 
@@ -12,8 +11,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
-
-using Shouldly;
 
 namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 
@@ -40,8 +37,7 @@ namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 // assertions (lines below) over wall-clock timing. The wall-clock-bounded tests stay marked Skip
 // until the dev confirms the live cap matches the recorded evidence — they would otherwise add
 // 30+ seconds to CI.
-public class Dw2DebuggingTimeoutAtddTests
-{
+public class Dw2DebuggingTimeoutAtddTests {
     private const string SkipReasonAc5 = "ATDD red phase — DW2 AC#5 (Epic 20 debugging timeout discipline). Remove Skip after the live smoke captures a timeout-classified row for the targeted tool in the DW2 Epic 20 debugging evidence table.";
 
     private const string TenantId = "test-tenant-dw2";
@@ -56,8 +52,7 @@ public class Dw2DebuggingTimeoutAtddTests
     private const int BisectTimeoutSeconds = 60;
 
     private static (DaprStreamQueryService Service, TestHttpMessageHandler Handler) CreateService(
-        int? serviceInvocationTimeoutSeconds = null)
-    {
+        int? serviceInvocationTimeoutSeconds = null) {
         DaprClient daprClient = Substitute.For<DaprClient>();
         AdminServerOptions options = new() {
             EventStoreAppId = "eventstore",
@@ -80,8 +75,7 @@ public class Dw2DebuggingTimeoutAtddTests
     }
 
     [Fact(Skip = SkipReasonAc5)]
-    public async Task Blame_RaisesOperationCanceledException_WhenRemoteHangs()
-    {
+    public async Task Blame_RaisesOperationCanceledException_WhenRemoteHangs() {
         // AC#5 — blame MUST surface a cancellation/timeout to the caller; it MUST NOT silently
         // return a default AggregateBlameView. The DW2 evidence row needs a `timeout`
         // classification distinct from `empty success`.
@@ -90,8 +84,8 @@ public class Dw2DebuggingTimeoutAtddTests
         handler.SetupResponse(new HttpResponseMessage()); // overwritten next
         SetupHangingHandler(handler, hang);
 
-        Stopwatch sw = Stopwatch.StartNew();
-        await Should.ThrowAsync<OperationCanceledException>(async () =>
+        var sw = Stopwatch.StartNew();
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () =>
             await service.GetAggregateBlameAsync(TenantId, Domain, AggregateId, atSequence: null));
         sw.Stop();
 
@@ -100,15 +94,14 @@ public class Dw2DebuggingTimeoutAtddTests
     }
 
     [Fact(Skip = SkipReasonAc5)]
-    public async Task StepThrough_RaisesOperationCanceledException_WhenRemoteHangs()
-    {
+    public async Task StepThrough_RaisesOperationCanceledException_WhenRemoteHangs() {
         // AC#5 — step-through inherits the same 30-second contract as blame and trace map.
         (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
         TaskCompletionSource<HttpResponseMessage> hang = new();
         SetupHangingHandler(handler, hang);
 
-        Stopwatch sw = Stopwatch.StartNew();
-        await Should.ThrowAsync<OperationCanceledException>(async () =>
+        var sw = Stopwatch.StartNew();
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () =>
             await service.GetEventStepFrameAsync(TenantId, Domain, AggregateId, sequenceNumber: 1));
         sw.Stop();
 
@@ -116,15 +109,14 @@ public class Dw2DebuggingTimeoutAtddTests
     }
 
     [Fact(Skip = SkipReasonAc5)]
-    public async Task TraceMap_RaisesOperationCanceledException_WhenRemoteHangs()
-    {
+    public async Task TraceMap_RaisesOperationCanceledException_WhenRemoteHangs() {
         // AC#5 — trace map scans potentially large streams; the 30s cap is the documented bound.
         (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
         TaskCompletionSource<HttpResponseMessage> hang = new();
         SetupHangingHandler(handler, hang);
 
-        Stopwatch sw = Stopwatch.StartNew();
-        await Should.ThrowAsync<OperationCanceledException>(async () =>
+        var sw = Stopwatch.StartNew();
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () =>
             await service.GetCorrelationTraceMapAsync(TenantId, "01HXDW2CORR000000000001", domain: Domain, aggregateId: AggregateId));
         sw.Stop();
 
@@ -132,16 +124,15 @@ public class Dw2DebuggingTimeoutAtddTests
     }
 
     [Fact(Skip = SkipReasonAc5)]
-    public async Task Bisect_RaisesOperationCanceledException_AfterLongerCap()
-    {
+    public async Task Bisect_RaisesOperationCanceledException_AfterLongerCap() {
         // AC#5 — bisect performs O(log N) reconstructions. Its cap is 60s — DOUBLE the default
         // 30s. The DW2 evidence row MUST distinguish bisect's timeout cap from blame/step/trace.
         (DaprStreamQueryService service, TestHttpMessageHandler handler) = CreateService();
         TaskCompletionSource<HttpResponseMessage> hang = new();
         SetupHangingHandler(handler, hang);
 
-        Stopwatch sw = Stopwatch.StartNew();
-        await Should.ThrowAsync<OperationCanceledException>(async () =>
+        var sw = Stopwatch.StartNew();
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () =>
             await service.BisectAsync(TenantId, Domain, AggregateId, goodSequence: 0, badSequence: 100, fieldPaths: null));
         sw.Stop();
 
@@ -150,8 +141,7 @@ public class Dw2DebuggingTimeoutAtddTests
     }
 
     [Fact(Skip = SkipReasonAc5)]
-    public void TimeoutCapsAreDistinct_LockingPerToolBudget()
-    {
+    public void TimeoutCapsAreDistinct_LockingPerToolBudget() {
         // AC#5 — DW2 evidence is per-tool; the documented caps MUST stay distinct. This test
         // is a structural lock that fails if a refactor flattens all four to one shared value.
         BlameTimeoutSeconds.ShouldBe(30);
@@ -161,8 +151,7 @@ public class Dw2DebuggingTimeoutAtddTests
         BisectTimeoutSeconds.ShouldNotBe(BlameTimeoutSeconds);
     }
 
-    private static void SetupHangingHandler(TestHttpMessageHandler handler, TaskCompletionSource<HttpResponseMessage> hang)
-    {
+    private static void SetupHangingHandler(TestHttpMessageHandler handler, TaskCompletionSource<HttpResponseMessage> hang) {
         // Configure the handler so SendAsync awaits a TCS that is only completed when the
         // request's cancellation token fires. This proves the service's INTERNAL CTS — not the
         // caller's — is the source of the timeout, since we pass CancellationToken.None.

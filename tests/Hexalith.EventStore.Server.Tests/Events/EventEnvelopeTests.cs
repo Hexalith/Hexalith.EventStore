@@ -128,7 +128,7 @@ public class EventEnvelopeTests {
         using var ms = new System.IO.MemoryStream();
         serializer.WriteObject(ms, original);
         ms.Position = 0;
-        EventEnvelope deserialized = (EventEnvelope)serializer.ReadObject(ms)!;
+        var deserialized = (EventEnvelope)serializer.ReadObject(ms)!;
 
         deserialized.MessageId.ShouldBe(original.MessageId);
         deserialized.AggregateId.ShouldBe(original.AggregateId);

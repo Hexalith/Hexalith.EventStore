@@ -1,11 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Contracts.Security;
-
-using Shouldly;
 
 namespace Hexalith.EventStore.Contracts.Tests.Security;
 
@@ -33,13 +29,11 @@ public class RestoredBackupAdmissionTests {
             OperatorActorId: "operator");
 
     [Fact]
-    public void Request_TryValidate_AcceptsValidShape() {
-        ValidRequest().TryValidate(out string? reason).ShouldBeTrue(reason ?? "should be valid");
-    }
+    public void Request_TryValidate_AcceptsValidShape() => ValidRequest().TryValidate(out string? reason).ShouldBeTrue(reason ?? "should be valid");
 
     [Fact]
     public void Request_TryValidate_RejectsInvertedRange() {
-        var bad = ValidRequest() with { FromSequence = 20, ToSequence = 10 };
+        RestoredBackupAdmissionRequest bad = ValidRequest() with { FromSequence = 20, ToSequence = 10 };
 
         bad.TryValidate(out string? reason).ShouldBeFalse();
         reason.ShouldNotBeNullOrWhiteSpace();
@@ -47,7 +41,7 @@ public class RestoredBackupAdmissionTests {
 
     [Fact]
     public void Request_TryValidate_RejectsFingerprintWhenPolicyForbidsIt() {
-        var bad = ValidRequest() with {
+        RestoredBackupAdmissionRequest bad = ValidRequest() with {
             KeyReferencePolicy = KeyReferencePolicy.NoKeyReference,
             KeyAliasFingerprint = "deadbeef12345678",
         };
@@ -58,7 +52,7 @@ public class RestoredBackupAdmissionTests {
 
     [Fact]
     public void Request_TryValidate_RejectsFingerprintShape() {
-        var bad = ValidRequest() with {
+        RestoredBackupAdmissionRequest bad = ValidRequest() with {
             KeyReferencePolicy = KeyReferencePolicy.AliasOnly,
             KeyAliasFingerprint = "zzzzzzzzzzzzzzzz",
         };
@@ -69,7 +63,7 @@ public class RestoredBackupAdmissionTests {
 
     [Fact]
     public void Request_TryValidate_RejectsNegativeToSequence_WhenFromSequenceMissing() {
-        var bad = ValidRequest() with {
+        RestoredBackupAdmissionRequest bad = ValidRequest() with {
             FromSequence = null,
             ToSequence = -1,
         };
@@ -121,11 +115,9 @@ public class RestoredBackupAdmissionTests {
     }
 
     [Fact]
-    public void Transitions_DeferredValidation_AllowsAcceptanceAfterEvidence() {
-        RestoredBackupAdmissionTransitions.IsAllowed(
+    public void Transitions_DeferredValidation_AllowsAcceptanceAfterEvidence() => RestoredBackupAdmissionTransitions.IsAllowed(
             RestoredBackupAdmissionState.DeferredValidation,
             RestoredBackupAdmissionState.Accepted).ShouldBeTrue();
-    }
 
     [Fact]
     public void Transitions_TerminalStatesCannotMove() {
@@ -201,10 +193,8 @@ public class RestoredBackupAdmissionTests {
     }
 
     [Fact]
-    public void Result_NextActionFor_UnknownState_Throws() {
-        _ = Should.Throw<ArgumentOutOfRangeException>(
+    public void Result_NextActionFor_UnknownState_Throws() => _ = Should.Throw<ArgumentOutOfRangeException>(
             () => RestoredBackupAdmissionResult.NextActionFor((RestoredBackupAdmissionState)999));
-    }
 
     [Fact]
     public void Result_JsonRoundTrip_PreservesContract() {
@@ -232,7 +222,7 @@ public class RestoredBackupAdmissionTests {
         string json = JsonSerializer.Serialize(result);
         RestoredBackupAdmissionResult? round = JsonSerializer.Deserialize<RestoredBackupAdmissionResult>(json);
 
-        round.ShouldNotBeNull();
+        _ = round.ShouldNotBeNull();
         round.ShouldBe(result);
     }
 }

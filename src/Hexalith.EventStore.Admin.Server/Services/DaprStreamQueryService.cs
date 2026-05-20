@@ -620,7 +620,7 @@ public sealed class DaprStreamQueryService : IStreamQueryService {
         }
 
         try {
-            using JsonDocument document = JsonDocument.Parse(body);
+            using var document = JsonDocument.Parse(body);
             JsonElement root = document.RootElement;
             if (!root.TryGetProperty("type", out JsonElement typeElement)) {
                 return null;

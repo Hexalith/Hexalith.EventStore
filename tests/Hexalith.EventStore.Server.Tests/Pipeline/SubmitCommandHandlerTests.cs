@@ -114,7 +114,7 @@ public class SubmitCommandHandlerTests {
         SubmitCommandResult result = await handler.Handle(command, CancellationToken.None);
 
         // Assert — round-trip the *command's* correlation id (not the router's).
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.CorrelationId.ShouldBe(CommandCorrelationId);
 
         // Pin the success-path store-call shape so a future refactor that drops a write

@@ -23,8 +23,7 @@ public sealed class DaprAggregateStateReconstructor(
     DaprClient daprClient,
     IHttpClientFactory httpClientFactory,
     IDomainServiceResolver resolver,
-    ILogger<DaprAggregateStateReconstructor> logger) : IAggregateStateReconstructor
-{
+    ILogger<DaprAggregateStateReconstructor> logger) : IAggregateStateReconstructor {
     /// <summary>The replay endpoint method name registered by domain services.</summary>
     public const string ReplayStateMethodName = "replay-state";
 
@@ -38,25 +37,21 @@ public sealed class DaprAggregateStateReconstructor(
         long upToSequence,
         bool includeTimeline = false,
         string? requestId = null,
-        CancellationToken cancellationToken = default)
-    {
+        CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(events);
 
-        if (upToSequence < 0)
-        {
+        if (upToSequence < 0) {
             return AggregateReconstructionResult.Failed(
                 AggregateReconstructionErrorCategory.Unexpected,
                 "UpToSequence must be >= 0.");
         }
 
         string replayVersion;
-        try
-        {
+        try {
             replayVersion = ResolveReplayVersion(events, upToSequence);
         }
-        catch (ArgumentException)
-        {
+        catch (ArgumentException) {
             return AggregateReconstructionResult.Failed(
                 AggregateReconstructionErrorCategory.UnsupportedVersion,
                 "Domain service version metadata is not supported for replay.",
@@ -64,14 +59,12 @@ public sealed class DaprAggregateStateReconstructor(
         }
 
         DomainServiceRegistration? registration;
-        try
-        {
+        try {
             registration = await resolver
                 .ResolveAsync(identity.TenantId, identity.Domain, replayVersion, cancellationToken)
                 .ConfigureAwait(false);
         }
-        catch (DomainServiceException ex)
-        {
+        catch (DomainServiceException ex) {
             logger.LogWarning(
                 ex,
                 "Domain service registration lookup failed during replay: Tenant={TenantId}, Domain={Domain}, AggregateId={AggregateId}",
@@ -83,8 +76,7 @@ public sealed class DaprAggregateStateReconstructor(
                 $"Domain service registration for tenant '{identity.TenantId}', domain '{identity.Domain}' is not resolvable.");
         }
 
-        if (registration is null)
-        {
+        if (registration is null) {
             return AggregateReconstructionResult.Failed(
                 AggregateReconstructionErrorCategory.UnknownAggregateType,
                 $"No domain service is registered for tenant '{identity.TenantId}', domain '{identity.Domain}'.");
@@ -93,9 +85,8 @@ public sealed class DaprAggregateStateReconstructor(
         // Build the replay wire payload. Replay envelopes carry only the metadata the Apply
         // path consumes plus diagnostics fields; sensitive fields (UserId) are intentionally
         // omitted so replay traffic does not duplicate identity information.
-        ReplayEventEnvelope[] wireEvents = new ReplayEventEnvelope[events.Count];
-        for (int i = 0; i < events.Count; i++)
-        {
+        var wireEvents = new ReplayEventEnvelope[events.Count];
+        for (int i = 0; i < events.Count; i++) {
             EventEnvelope source = events[i];
             wireEvents[i] = new ReplayEventEnvelope(
                 SequenceNumber: source.SequenceNumber,
@@ -118,8 +109,7 @@ public sealed class DaprAggregateStateReconstructor(
             IncludeTimeline: includeTimeline,
             RequestId: requestId);
 
-        try
-        {
+        try {
             using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
                 registration.AppId,
                 ReplayStateMethodName,
@@ -129,15 +119,13 @@ public sealed class DaprAggregateStateReconstructor(
                 .SendAsync(httpRequest, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (httpResponse.StatusCode == HttpStatusCode.NotFound)
-            {
+            if (httpResponse.StatusCode == HttpStatusCode.NotFound) {
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.UnknownAggregateType,
                     $"Domain service '{registration.AppId}' has no '{ReplayStateMethodName}' endpoint for tenant '{identity.TenantId}', domain '{identity.Domain}'.");
             }
 
-            if (!httpResponse.IsSuccessStatusCode)
-            {
+            if (!httpResponse.IsSuccessStatusCode) {
                 long? contentLength = httpResponse.Content.Headers.ContentLength;
                 logger.LogWarning(
                     "Replay invocation returned non-success: AppId={AppId}, Status={StatusCode}, Tenant={TenantId}, Domain={Domain}, RequestId={RequestId}, ContentLength={ContentLength}",
@@ -156,8 +144,7 @@ public sealed class DaprAggregateStateReconstructor(
                 .ReadFromJsonAsync<AggregateReconstructionResult>(cancellationToken)
                 .ConfigureAwait(false);
 
-            if (result is null)
-            {
+            if (result is null) {
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.Unexpected,
                     $"Replay endpoint returned an empty response (Tenant '{identity.TenantId}', Domain '{identity.Domain}').");
@@ -165,8 +152,7 @@ public sealed class DaprAggregateStateReconstructor(
 
             return result;
         }
-        catch (JsonException ex)
-        {
+        catch (JsonException ex) {
             logger.LogWarning(
                 ex,
                 "Replay response could not be deserialized: AppId={AppId}, Tenant={TenantId}, Domain={Domain}, RequestId={RequestId}",
@@ -178,12 +164,10 @@ public sealed class DaprAggregateStateReconstructor(
                 AggregateReconstructionErrorCategory.Unexpected,
                 "Replay response could not be deserialized.");
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             logger.LogWarning(
                 ex,
                 "Replay invocation failed: AppId={AppId}, Tenant={TenantId}, Domain={Domain}, RequestId={RequestId}",
@@ -197,8 +181,7 @@ public sealed class DaprAggregateStateReconstructor(
         }
     }
 
-    private static string ResolveReplayVersion(IReadOnlyList<EventEnvelope> events, long upToSequence)
-    {
+    private static string ResolveReplayVersion(IReadOnlyList<EventEnvelope> events, long upToSequence) {
         string version = events
             .Where(e => e.SequenceNumber <= upToSequence)
             .OrderBy(e => e.SequenceNumber)

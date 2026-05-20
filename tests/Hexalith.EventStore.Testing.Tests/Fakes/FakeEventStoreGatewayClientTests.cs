@@ -38,7 +38,7 @@ public class FakeEventStoreGatewayClientTests {
 
         EventStoreQueryResult<CounterDto> response = await fake.SubmitQueryAsync<CounterDto>(request, "\"etag-1\"");
 
-        response.Payload.ShouldNotBeNull();
+        _ = response.Payload.ShouldNotBeNull();
         response.Payload.Count.ShouldBe(7);
         SubmittedQuery submitted = fake.SubmittedQueries.Single();
         submitted.Request.ShouldBe(request);
@@ -56,14 +56,14 @@ public class FakeEventStoreGatewayClientTests {
         response.IsNotModified.ShouldBeTrue();
         response.Payload.ShouldBeNull();
         response.ETag.ShouldBe("etag-1");
-        response.Metadata.ShouldNotBeNull();
+        _ = response.Metadata.ShouldNotBeNull();
         response.Metadata.ETag.ShouldBe("etag-1");
         response.Metadata.IsNotModified.ShouldBe(true);
     }
 
     [Fact]
     public async Task ConfigureCommandAccepted_ConfiguresTypedAcceptedResponse() {
-        var fake = new FakeEventStoreGatewayClient()
+        FakeEventStoreGatewayClient fake = new FakeEventStoreGatewayClient()
             .ConfigureCommandAccepted("corr-accepted");
 
         SubmitCommandResponse response = await fake.SubmitCommandAsync(CreateCommandRequest());
@@ -76,7 +76,7 @@ public class FakeEventStoreGatewayClientTests {
         EventStoreGatewayException exception = EventStoreGatewayExceptionBuilder
             .Validation("corr-validation", "tenant-a", new Dictionary<string, string> { ["tenant"] = "Tenant is required." })
             .Build();
-        var fake = new FakeEventStoreGatewayClient()
+        FakeEventStoreGatewayClient fake = new FakeEventStoreGatewayClient()
             .ConfigureCommandFailure(exception);
 
         EventStoreGatewayException thrown = await Assert.ThrowsAsync<EventStoreGatewayException>(
@@ -93,13 +93,13 @@ public class FakeEventStoreGatewayClientTests {
             ETag: "etag-query",
             IsNotModified: false,
             Paging: new QueryPagingMetadata(25, Offset: 50));
-        var fake = new FakeEventStoreGatewayClient()
+        FakeEventStoreGatewayClient fake = new FakeEventStoreGatewayClient()
             .ConfigureQuerySuccess(payload, "corr-query", "etag-query", metadata);
 
         EventStoreQueryResult<CounterDto> response = await fake.SubmitQueryAsync<CounterDto>(CreateQueryRequest());
 
         response.CorrelationId.ShouldBe("corr-query");
-        response.Payload.ShouldNotBeNull();
+        _ = response.Payload.ShouldNotBeNull();
         response.Payload.Count.ShouldBe(11);
         response.ETag.ShouldBe("etag-query");
         response.Metadata.ShouldBe(metadata);
@@ -107,7 +107,7 @@ public class FakeEventStoreGatewayClientTests {
 
     [Fact]
     public async Task ConfigureQuerySemanticFailure_ThrowsGatewayExceptionWithCorrelationId() {
-        var fake = new FakeEventStoreGatewayClient()
+        FakeEventStoreGatewayClient fake = new FakeEventStoreGatewayClient()
             .ConfigureQuerySemanticFailure("corr-semantic", "Projection denied.");
 
         EventStoreGatewayException thrown = await Assert.ThrowsAsync<EventStoreGatewayException>(
@@ -124,7 +124,7 @@ public class FakeEventStoreGatewayClientTests {
         EventStoreGatewayException exception = EventStoreGatewayExceptionBuilder
             .Unavailable("corr-down", "tenant-a", "PT30S")
             .Build();
-        var fake = new FakeEventStoreGatewayClient()
+        FakeEventStoreGatewayClient fake = new FakeEventStoreGatewayClient()
             .ConfigureQueryFailure(exception);
 
         EventStoreGatewayException thrown = await Assert.ThrowsAsync<EventStoreGatewayException>(
@@ -136,7 +136,7 @@ public class FakeEventStoreGatewayClientTests {
 
     [Fact]
     public async Task ConfigureQueryNotModified_ConfiguresCacheResult() {
-        var fake = new FakeEventStoreGatewayClient()
+        FakeEventStoreGatewayClient fake = new FakeEventStoreGatewayClient()
             .ConfigureQueryNotModified("etag-cache");
 
         EventStoreQueryResult response = await fake.SubmitQueryAsync(CreateQueryRequest());
@@ -144,7 +144,7 @@ public class FakeEventStoreGatewayClientTests {
         response.IsNotModified.ShouldBeTrue();
         response.Payload.ShouldBeNull();
         response.ETag.ShouldBe("etag-cache");
-        response.Metadata.ShouldNotBeNull();
+        _ = response.Metadata.ShouldNotBeNull();
         response.Metadata.ETag.ShouldBe("etag-cache");
         response.Metadata.IsNotModified.ShouldBe(true);
     }
@@ -157,7 +157,7 @@ public class FakeEventStoreGatewayClientTests {
             AggregateId: "party-1",
             Events: [],
             Metadata: new StreamReadMetadata(0, null, null, 0, 0, false, null));
-        var fake = new FakeEventStoreGatewayClient()
+        FakeEventStoreGatewayClient fake = new FakeEventStoreGatewayClient()
             .ConfigureStreamReadSuccess(page);
         var request = new StreamReadRequest("tenant-a", "party", "party-1", PageSize: 25);
 
@@ -173,7 +173,7 @@ public class FakeEventStoreGatewayClientTests {
             .Conflict("corr-conflict", "tenant-a")
             .WithReasonCode(StreamReplayReasonCodes.CheckpointConflict)
             .Build();
-        var fake = new FakeEventStoreGatewayClient()
+        FakeEventStoreGatewayClient fake = new FakeEventStoreGatewayClient()
             .ConfigureStreamReadFailure(exception);
 
         EventStoreGatewayException thrown = await Should.ThrowAsync<EventStoreGatewayException>(
@@ -194,7 +194,7 @@ public class FakeEventStoreGatewayClientTests {
 
         page.Events.Single().SequenceNumber.ShouldBe(11);
         page.Metadata.IsTruncated.ShouldBeTrue();
-        page.Metadata.NextContinuationToken.ShouldNotBeNull();
+        _ = page.Metadata.NextContinuationToken.ShouldNotBeNull();
         page.Metadata.NextContinuationToken.Value.ShouldBe("next-token");
     }
 
@@ -239,7 +239,7 @@ public class FakeEventStoreGatewayClientTests {
                 new StreamReadEvent(13, "PartyRenamed", [], "json", 1, "msg-13", null, null, DateTimeOffset.UnixEpoch, null),
             ],
             new StreamReadMetadata(10, null, 99, 99, 99, false, null));
-        var fake = new FakeEventStoreGatewayClient()
+        FakeEventStoreGatewayClient fake = new FakeEventStoreGatewayClient()
             .ConfigureStreamReadContinuation(inconsistent, "next-token");
 
         StreamReadPage page = await fake.ReadStreamAsync(new StreamReadRequest("tenant-a", "party", "party-1"));
@@ -278,7 +278,7 @@ public class FakeEventStoreGatewayClientTests {
         await cancellationSource.CancelAsync();
         var fake = new FakeEventStoreGatewayClient();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => fake.SubmitCommandAsync(CreateCommandRequest(), cancellationSource.Token));
 
         fake.SubmittedCommands.ShouldBeEmpty();
@@ -290,7 +290,7 @@ public class FakeEventStoreGatewayClientTests {
         await cancellationSource.CancelAsync();
         var fake = new FakeEventStoreGatewayClient();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => fake.SubmitQueryAsync(CreateQueryRequest(), cancellationToken: cancellationSource.Token));
 
         fake.SubmittedQueries.ShouldBeEmpty();

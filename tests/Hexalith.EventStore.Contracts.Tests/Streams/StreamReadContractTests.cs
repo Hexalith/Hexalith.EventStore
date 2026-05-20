@@ -35,10 +35,10 @@ public class StreamReadContractTests {
         json.ShouldContain("\"aggregateId\":\"party-1\"");
         json.ShouldContain("\"fromSequence\":10");
         json.ShouldContain("\"continuationToken\":{\"value\":\"opaque-token\"}");
-        roundTripped.ShouldNotBeNull();
-        roundTripped.Checkpoint.ShouldNotBeNull();
+        _ = roundTripped.ShouldNotBeNull();
+        _ = roundTripped.Checkpoint.ShouldNotBeNull();
         roundTripped.Checkpoint.Status.ShouldBe(ProjectionRebuildStatus.Running);
-        roundTripped.ContinuationToken.ShouldNotBeNull();
+        _ = roundTripped.ContinuationToken.ShouldNotBeNull();
         roundTripped.ContinuationToken.Value.ShouldBe("opaque-token");
     }
 
@@ -72,7 +72,7 @@ public class StreamReadContractTests {
 
         page.Metadata.EventCount.ShouldBe(1);
         page.Metadata.IsTruncated.ShouldBeTrue();
-        page.Metadata.NextContinuationToken.ShouldNotBeNull();
+        _ = page.Metadata.NextContinuationToken.ShouldNotBeNull();
         page.Events.Single().SequenceNumber.ShouldBe(11);
     }
 

@@ -21,7 +21,7 @@ public class SubmitCommandResponseTests {
 
         SubmitCommandResponse? roundTripped = JsonSerializer.Deserialize<SubmitCommandResponse>(json, options);
 
-        roundTripped.ShouldNotBeNull();
+        _ = roundTripped.ShouldNotBeNull();
         roundTripped.CorrelationId.ShouldBe("corr-1");
     }
 }

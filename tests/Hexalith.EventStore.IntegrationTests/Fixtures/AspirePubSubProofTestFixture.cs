@@ -93,7 +93,7 @@ public sealed class AspirePubSubProofTestFixture : IAsyncLifetime {
 
             _subscriberClient = _app.CreateHttpClient("eventstore-test-subscriber");
             _subscriberClient.Timeout = TimeSpan.FromSeconds(60);
-            _subscriberClient.DefaultRequestHeaders.TryAddWithoutValidation(AuthHeaderName, SubscriberAuthSecret);
+            _ = _subscriberClient.DefaultRequestHeaders.TryAddWithoutValidation(AuthHeaderName, SubscriberAuthSecret);
 
             // Connect to the Redis backing the DAPR state store / pub/sub. `dapr init` runs Redis on
             // localhost:6379 (see HexalithEventStoreExtensions); Aspire does not manage this resource.

@@ -101,7 +101,7 @@ public class AdminStreamQueryControllerStateDiffCausationTests {
                 IReadOnlyList<AggregateReconstructionTimelineEntry>? timeline = null;
                 if (includeTimeline) {
                     var list = new List<AggregateReconstructionTimelineEntry>();
-                    foreach (var evt in events) {
+                    foreach (ServerEventEnvelope evt in events) {
                         if (evt.SequenceNumber > upTo) {
                             continue;
                         }
@@ -162,7 +162,7 @@ public class AdminStreamQueryControllerStateDiffCausationTests {
         ObjectResult obj = result.ShouldBeOfType<ObjectResult>();
         obj.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
         ProblemDetails problem = obj.Value.ShouldBeOfType<ProblemDetails>();
-        problem.Detail.ShouldNotBeNull();
+        _ = problem.Detail.ShouldNotBeNull();
         problem.Detail.ShouldContain("'at'");
         _ = await actor.DidNotReceive().GetEventsAsync(Arg.Any<long>());
     }
@@ -207,7 +207,7 @@ public class AdminStreamQueryControllerStateDiffCausationTests {
         snapshot.SequenceNumber.ShouldBe(2L);
         snapshot.Timestamp.ShouldBe(events[1].Timestamp);
 
-        using JsonDocument doc = JsonDocument.Parse(snapshot.StateJson);
+        using var doc = JsonDocument.Parse(snapshot.StateJson);
         doc.RootElement.GetProperty("value").GetInt32().ShouldBe(1);
         doc.RootElement.GetProperty("label").GetString().ShouldBe("two");
     }

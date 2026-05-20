@@ -112,7 +112,7 @@ public partial class SubmitQueryRequestValidator : AbstractValidator<SubmitQuery
             .When(x => x.Paging?.Offset is not null);
 
         _ = RuleFor(x => x.Paging!.Cursor)
-            .Must(cursor => string.IsNullOrWhiteSpace(cursor))
+            .Must(string.IsNullOrWhiteSpace)
             .WithMessage("Cursor paging is reserved and is not supported by this endpoint yet.")
             .WithErrorCode(QueryProblemReasonCodes.InvalidPage)
             .When(x => x.Paging?.Cursor is not null);

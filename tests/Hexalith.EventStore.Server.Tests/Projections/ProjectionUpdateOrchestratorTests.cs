@@ -1,7 +1,7 @@
 
+using System.Net;
 using System.Text;
 using System.Text.Json;
-using System.Net;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -615,7 +615,7 @@ public class ProjectionUpdateOrchestratorTests {
             rebuildCheckpointStore: rebuildCheckpointStore);
         _ = actorProxyFactory.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor").Returns(aggregateActor);
 
-        await Should.ThrowAsync<InvalidOperationException>(() => sut.RebuildProjectionAsync(CreateRebuildScope()));
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => sut.RebuildProjectionAsync(CreateRebuildScope()));
 
         _ = await aggregateActor.DidNotReceiveWithAnyArgs().ReadEventsRangeAsync(default, default, default);
     }
@@ -769,7 +769,7 @@ public class ProjectionUpdateOrchestratorTests {
 
         // Assert - GetEventsAsync was called but no further processing
         _ = await aggregateActor.Received(1).GetEventsAsync(0);
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
         // No write actor proxy should be created
         _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IProjectionWriteActor>(default!, default!);
     }
@@ -985,7 +985,7 @@ public class ProjectionUpdateOrchestratorTests {
 
         // Act & Assert - no exception thrown (fire-and-forget safe)
         await Should.NotThrowAsync(() => sut.UpdateProjectionAsync(TestIdentity));
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     // --- Test 7: AC 3 - Resolver failure does not throw ---
@@ -999,7 +999,7 @@ public class ProjectionUpdateOrchestratorTests {
 
         // Act & Assert - no exception thrown
         await Should.NotThrowAsync(() => sut.UpdateProjectionAsync(TestIdentity));
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     // --- Test 8: AC 3 - GetEventsAsync failure does not throw ---
@@ -1019,7 +1019,7 @@ public class ProjectionUpdateOrchestratorTests {
 
         // Act & Assert - no exception thrown
         await Should.NotThrowAsync(() => sut.UpdateProjectionAsync(TestIdentity));
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Fact]
@@ -1051,7 +1051,7 @@ public class ProjectionUpdateOrchestratorTests {
         // Assert
         _ = await aggregateActor.Received(1).GetEventsAsync(0);
         await writeActor.Received(1).UpdateProjectionAsync(Arg.Any<ProjectionState>());
-        await checkpointTracker.Received(1).SaveDeliveredSequenceAsync(TestIdentity, 5, Arg.Any<CancellationToken>());
+        _ = await checkpointTracker.Received(1).SaveDeliveredSequenceAsync(TestIdentity, 5, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -1080,7 +1080,7 @@ public class ProjectionUpdateOrchestratorTests {
 
         // Assert - empty ProjectionType short-circuits the orchestrator before write/save
         await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Fact]
@@ -1107,7 +1107,7 @@ public class ProjectionUpdateOrchestratorTests {
 
         // Assert - null State short-circuits the orchestrator before write/save.
         await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Theory]
@@ -1145,7 +1145,7 @@ public class ProjectionUpdateOrchestratorTests {
             && e.Message.Contains($"ReasonCode={expectedReasonCode}", StringComparison.Ordinal)
             && e.Message.Contains($"HttpStatus={(int)statusCode}", StringComparison.Ordinal)
             && e.Message.Contains("AppId=counter-service", StringComparison.Ordinal));
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Theory]
@@ -1179,7 +1179,7 @@ public class ProjectionUpdateOrchestratorTests {
         await sut.UpdateProjectionAsync(TestIdentity);
 
         entries.ShouldContain(e => e.EventId.Id == 1141 && e.Message.Contains($"ReasonCode={expectedReasonCode}", StringComparison.Ordinal));
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Fact]
@@ -1211,7 +1211,7 @@ public class ProjectionUpdateOrchestratorTests {
             && e.Message.Contains("ExceptionType=JsonException", StringComparison.Ordinal)
             && e.Message.Contains("HttpStatus=200", StringComparison.Ordinal)
             && e.Message.Contains("ContentType=application/json", StringComparison.Ordinal));
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Fact]
@@ -1240,7 +1240,7 @@ public class ProjectionUpdateOrchestratorTests {
         await sut.UpdateProjectionAsync(TestIdentity);
 
         entries.ShouldContain(e => e.EventId.Id == 1141 && e.Message.Contains($"ReasonCode={ProjectionReasonCodes.ProjectInvalidCharset}", StringComparison.Ordinal));
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Fact]
@@ -1271,7 +1271,7 @@ public class ProjectionUpdateOrchestratorTests {
 
         entries.ShouldContain(e => e.EventId.Id == 1116 && e.Message.Contains($"ReasonCode={ProjectionReasonCodes.ProjectInvalidState}", StringComparison.Ordinal));
         await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Fact]
@@ -1298,7 +1298,7 @@ public class ProjectionUpdateOrchestratorTests {
         await Should.NotThrowAsync(() => sut.UpdateProjectionAsync(TestIdentity));
 
         entries.ShouldContain(e => e.EventId.Id == 1142 && e.Message.Contains($"ReasonCode={ProjectionReasonCodes.ProjectTimeout}", StringComparison.Ordinal));
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Fact]
@@ -1326,7 +1326,7 @@ public class ProjectionUpdateOrchestratorTests {
         // Caller-token cancellation must propagate as OperationCanceledException —
         // it must NOT collapse into the project_timeout/unknown reason-code path.
         _ = await Should.ThrowAsync<OperationCanceledException>(() => sut.UpdateProjectionAsync(TestIdentity, cts.Token));
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Fact]
@@ -1364,7 +1364,7 @@ public class ProjectionUpdateOrchestratorTests {
         entries.ShouldContain(e => e.EventId.Id == 1118 && e.Message.Contains("Stage=ProjectionCheckpointReadFailed", StringComparison.Ordinal));
         // Drift signal must NOT fire on a read failure — the path is fail-open, not drift.
         entries.ShouldNotContain(e => e.EventId.Id == 1143);
-        await checkpointTracker.Received(1).SaveDeliveredSequenceAsync(TestIdentity, 5, Arg.Any<CancellationToken>());
+        _ = await checkpointTracker.Received(1).SaveDeliveredSequenceAsync(TestIdentity, 5, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -1400,7 +1400,7 @@ public class ProjectionUpdateOrchestratorTests {
             && e.Message.Contains($"ReasonCode={ProjectionReasonCodes.CheckpointDrift}", StringComparison.Ordinal)
             && e.Message.Contains("LastDeliveredSequence=7", StringComparison.Ordinal)
             && e.Message.Contains("HighestEventSequence=0", StringComparison.Ordinal));
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Fact]
@@ -1433,7 +1433,7 @@ public class ProjectionUpdateOrchestratorTests {
             && e.Message.Contains($"ReasonCode={ProjectionReasonCodes.CheckpointDrift}", StringComparison.Ordinal)
             && e.Message.Contains("LastDeliveredSequence=7", StringComparison.Ordinal)
             && e.Message.Contains("HighestEventSequence=2", StringComparison.Ordinal));
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Fact]
@@ -1506,7 +1506,7 @@ public class ProjectionUpdateOrchestratorTests {
 
         // Act & Assert
         await Should.NotThrowAsync(() => sut.UpdateProjectionAsync(TestIdentity));
-        await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await checkpointTracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Fact]
@@ -1535,7 +1535,7 @@ public class ProjectionUpdateOrchestratorTests {
         // Act & Assert
         await Should.NotThrowAsync(() => sut.UpdateProjectionAsync(TestIdentity));
         await writeActor.Received(1).UpdateProjectionAsync(Arg.Any<ProjectionState>());
-        await checkpointTracker.Received(1).SaveDeliveredSequenceAsync(TestIdentity, 3, Arg.Any<CancellationToken>());
+        _ = await checkpointTracker.Received(1).SaveDeliveredSequenceAsync(TestIdentity, 3, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -1732,11 +1732,11 @@ public class ProjectionUpdateOrchestratorTests {
         await sut.UpdateProjectionAsync(TestIdentity);
 
         // Assert
-        capture.CapturedBody.ShouldNotBeNull();
+        _ = capture.CapturedBody.ShouldNotBeNull();
         ProjectionRequest? body = JsonSerializer.Deserialize<ProjectionRequest>(
             capture.CapturedBody!,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-        body.ShouldNotBeNull();
+        _ = body.ShouldNotBeNull();
         body!.TenantId.ShouldBe("test-tenant");
         body.Domain.ShouldBe("test-domain");
         body.AggregateId.ShouldBe("agg-001");
@@ -1760,7 +1760,7 @@ public class ProjectionUpdateOrchestratorTests {
     }
 
     private static IHttpClientFactory CreateHttpClientFactory(string json) {
-        var httpClientFactory = Substitute.For<IHttpClientFactory>();
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
         var client = new HttpClient(new JsonResponseHandler(json));
         _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(client);
         _ = httpClientFactory.CreateClient().Returns(client);
@@ -1768,7 +1768,7 @@ public class ProjectionUpdateOrchestratorTests {
     }
 
     private static IHttpClientFactory CreateHttpClientFactory(HttpMessageHandler handler) {
-        var httpClientFactory = Substitute.For<IHttpClientFactory>();
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
         var client = new HttpClient(handler);
         _ = httpClientFactory.CreateClient(Arg.Any<string>()).Returns(client);
         _ = httpClientFactory.CreateClient().Returns(client);
@@ -1806,9 +1806,9 @@ public class ProjectionUpdateOrchestratorTests {
     private static async IAsyncEnumerable<AggregateIdentity> ThrowCanceledBeforeFirstIdentity() {
         await Task.CompletedTask.ConfigureAwait(false);
         throw new OperationCanceledException("test cancellation");
-        #pragma warning disable CS0162
+#pragma warning disable CS0162
         yield return TestIdentity;
-        #pragma warning restore CS0162
+#pragma warning restore CS0162
     }
 
     private sealed class JsonResponseHandler(string json) : HttpMessageHandler {

@@ -58,11 +58,9 @@ public class StreamEventCommandTests {
     }
 
     [Fact]
-    public void StreamEventCommand_TableColumns_DoNotSelectRawPayloadJson() {
-        StreamEventCommand.Columns
+    public void StreamEventCommand_TableColumns_DoNotSelectRawPayloadJson() => StreamEventCommand.Columns
             .Select(c => c.PropertyName)
             .ShouldNotContain("PayloadJson");
-    }
 
     [Fact]
     public async Task StreamEventCommand_NotFound_PrintsError() {
@@ -121,7 +119,7 @@ public class StreamEventCommandTests {
     [Fact]
     public async Task StreamEventCommand_OutputFile_UsesSafeRedactedDescriptor() {
         CancellationToken ct = TestContext.Current.CancellationToken;
-        EventDetail detail = EventDetail.WithRedactedPayload(
+        var detail = EventDetail.WithRedactedPayload(
             "acme",
             "orders",
             "order-1",

@@ -174,11 +174,9 @@ public class DaprComponentsPageTests : AdminUITestContext {
 
     // ===== Helper methods =====
 
-    private void SetupOverview(DaprSidecarInfo? sidecar, IReadOnlyList<DaprComponentDetail> components) {
-        _ = _mockApiClient.GetInfrastructureOverviewAsync(Arg.Any<CancellationToken>())
+    private void SetupOverview(DaprSidecarInfo? sidecar, IReadOnlyList<DaprComponentDetail> components) => _ = _mockApiClient.GetInfrastructureOverviewAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<DaprInfrastructureOverview?>(
                 new DaprInfrastructureOverview(sidecar, components)));
-    }
 
     private static DaprSidecarInfo CreateSidecarInfo() => new(
         "test-app",

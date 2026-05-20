@@ -10,7 +10,6 @@ using Hexalith.EventStore.Configuration;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.ErrorHandling;
-using Hexalith.EventStore.Models;
 using Hexalith.EventStore.Pipeline;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
@@ -18,6 +17,7 @@ using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 using Hexalith.EventStore.Validation;
 
 using MediatR;
@@ -30,7 +30,6 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 
 using Shouldly;
-using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>

@@ -295,7 +295,7 @@ public class DaprStreamActivityTrackerTests {
             consistencyMode: Arg.Any<ConsistencyMode?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(((StreamStorageInfo?, string))(null, "etag-stream"));
+            .Returns((null, "etag-stream"));
         _ = _daprClient.TrySaveStateAsync(
             "statestore",
             Arg.Any<string>(),
@@ -311,7 +311,7 @@ public class DaprStreamActivityTrackerTests {
             consistencyMode: Arg.Any<ConsistencyMode?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(((StorageOverview?, string))(null, "etag-overview"));
+            .Returns((null, "etag-overview"));
         _ = _daprClient.TrySaveStateAsync(
             "statestore",
             Arg.Any<string>(),
@@ -327,7 +327,7 @@ public class DaprStreamActivityTrackerTests {
             consistencyMode: Arg.Any<ConsistencyMode?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(((long?, string))(null, "etag-count"));
+            .Returns((null, "etag-count"));
         _ = _daprClient.TrySaveStateAsync(
             "statestore",
             Arg.Any<string>(),
@@ -343,7 +343,7 @@ public class DaprStreamActivityTrackerTests {
             consistencyMode: Arg.Any<ConsistencyMode?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(((List<StreamStorageInfo>?, string))(null, "etag-hot"));
+            .Returns((null, "etag-hot"));
         _ = _daprClient.TrySaveStateAsync(
             "statestore",
             Arg.Any<string>(),

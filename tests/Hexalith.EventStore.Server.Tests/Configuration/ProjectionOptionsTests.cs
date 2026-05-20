@@ -10,21 +10,21 @@ public class ProjectionOptionsTests {
     public void Validate_DefaultOptions_DoesNotThrow() {
         var options = new ProjectionOptions();
 
-        Should.NotThrow(() => options.Validate());
+        Should.NotThrow(options.Validate);
     }
 
     [Fact]
     public void Validate_EmptyCheckpointStateStoreName_Throws() {
         var options = new ProjectionOptions { CheckpointStateStoreName = " " };
 
-        _ = Should.Throw<InvalidOperationException>(() => options.Validate());
+        _ = Should.Throw<InvalidOperationException>(options.Validate);
     }
 
     [Fact]
     public void Validate_NegativeDefaultRefreshInterval_Throws() {
         var options = new ProjectionOptions { DefaultRefreshIntervalMs = -1 };
 
-        _ = Should.Throw<InvalidOperationException>(() => options.Validate());
+        _ = Should.Throw<InvalidOperationException>(options.Validate);
     }
 
     [Fact]
@@ -35,7 +35,7 @@ public class ProjectionOptionsTests {
             },
         };
 
-        _ = Should.Throw<InvalidOperationException>(() => options.Validate());
+        _ = Should.Throw<InvalidOperationException>(options.Validate);
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public class ProjectionOptionsTests {
             },
         };
 
-        _ = Should.Throw<InvalidOperationException>(() => options.Validate());
+        _ = Should.Throw<InvalidOperationException>(options.Validate);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class ProjectionOptionsTests {
             },
         };
 
-        InvalidOperationException ex = Should.Throw<InvalidOperationException>(() => options.Validate());
+        InvalidOperationException ex = Should.Throw<InvalidOperationException>(options.Validate);
         ex.Message.ShouldContain("unique");
     }
 

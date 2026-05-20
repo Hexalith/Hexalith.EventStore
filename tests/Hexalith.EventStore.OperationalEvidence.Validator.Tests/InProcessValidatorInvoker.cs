@@ -19,33 +19,24 @@ namespace Hexalith.EventStore.OperationalEvidence.Validator.Tests;
 internal sealed class InProcessValidatorInvoker : IDw4ValidatorInvoker {
     private readonly string _typeQualifiedName;
 
-    public InProcessValidatorInvoker(string typeQualifiedName) {
-        _typeQualifiedName = typeQualifiedName ?? throw new ArgumentNullException(nameof(typeQualifiedName));
-    }
+    public InProcessValidatorInvoker(string typeQualifiedName) => _typeQualifiedName = typeQualifiedName ?? throw new ArgumentNullException(nameof(typeQualifiedName));
 
     public string EntrypointDescription => $"dotnet:{_typeQualifiedName}";
 
     public Dw4ValidationOutcome Validate(IEnumerable<string> fixturePaths) {
-        Type? validatorType = Type.GetType(_typeQualifiedName, throwOnError: false);
-        if (validatorType is null) {
-            throw new Dw4ValidatorNotConfiguredException(
+        Type validatorType = Type.GetType(_typeQualifiedName, throwOnError: false) ?? throw new Dw4ValidatorNotConfiguredException(
                 $"In-process validator type '{_typeQualifiedName}' not found. " +
                 "Add a project reference from the test project to the validator " +
                 "implementation, or fix the fully-qualified type name in entrypoint.txt.");
-        }
 
         MethodInfo? method = validatorType.GetMethod(
             "Validate",
             BindingFlags.Public | BindingFlags.Static,
             binder: null,
             types: [typeof(IEnumerable<string>)],
-            modifiers: null);
-        if (method is null) {
-            throw new Dw4ValidatorNotConfiguredException(
+            modifiers: null) ?? throw new Dw4ValidatorNotConfiguredException(
                 $"Validator type '{_typeQualifiedName}' must declare " +
                 "'public static Dw4ValidationOutcome Validate(IEnumerable<string> fixturePaths)'.");
-        }
-
         object? result = method.Invoke(obj: null, parameters: [fixturePaths]);
         if (result is Dw4ValidationOutcome outcome) {
             return outcome;

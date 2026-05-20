@@ -1,7 +1,5 @@
 using System.Text.Json.Serialization;
 
-using Hexalith.EventStore.Admin.Abstractions.Models;
-
 namespace Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 
 /// <summary>

@@ -5,8 +5,7 @@ namespace Hexalith.EventStore.Server.Projections;
 /// and tests must reference these symbols rather than string literals so that a future
 /// rename keeps both halves consistent.
 /// </summary>
-internal static class ProjectionReasonCodes
-{
+internal static class ProjectionReasonCodes {
     public const string ProjectUpstream4xx = "project_upstream_4xx";
     public const string ProjectUpstream5xx = "project_upstream_5xx";
     public const string ProjectUnexpectedStatus = "project_unexpected_status";

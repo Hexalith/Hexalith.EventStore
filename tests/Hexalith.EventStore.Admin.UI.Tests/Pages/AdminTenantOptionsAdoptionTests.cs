@@ -1,12 +1,9 @@
 using Bunit;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Commands;
-using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Projections;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.UI.Pages;
-using Hexalith.EventStore.Admin.UI.Services;
-using Hexalith.EventStore.Contracts.Commands;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;

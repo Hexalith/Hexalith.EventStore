@@ -430,7 +430,7 @@ public class DaprTenantQueryServiceTests {
 
         TenantDetail? result = await service.GetTenantDetailAsync("tenant1");
 
-        result.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
         result.TenantId.ShouldBe("tenant1");
         result.Status.ShouldBe(expected);
     }

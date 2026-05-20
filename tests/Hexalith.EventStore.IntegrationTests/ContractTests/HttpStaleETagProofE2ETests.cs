@@ -38,7 +38,7 @@ public sealed partial class HttpStaleETagProofE2ETests {
         const string projectionType = "counter";
         const string queryType = "get-counter-status";
         string aggregateId = $"stale-etag-proof-{Guid.NewGuid():N}";
-        QueryIdentity query = QueryIdentity.Create(tenant, domain, aggregateId, projectionType, queryType);
+        var query = QueryIdentity.Create(tenant, domain, aggregateId, projectionType, queryType);
 
         using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(4));
         CancellationToken ct = cts.Token;
@@ -163,7 +163,7 @@ public sealed partial class HttpStaleETagProofE2ETests {
                 .SendAsync(request, cancellationToken).ConfigureAwait(false);
 
             string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            QueryObservation observation = QueryObservation.FromResponse(response, body);
+            var observation = QueryObservation.FromResponse(response, body);
             AppendHistory(history, observation);
 
             lastResult = new QueryPollResult(
@@ -299,7 +299,7 @@ public sealed partial class HttpStaleETagProofE2ETests {
     }
 
     private static int ParseCountFromQueryBody(string body) {
-        using JsonDocument document = JsonDocument.Parse(body);
+        using var document = JsonDocument.Parse(body);
         JsonElement root = document.RootElement;
 
         if (!root.TryGetProperty("payload", out JsonElement payload)) {
@@ -322,7 +322,7 @@ public sealed partial class HttpStaleETagProofE2ETests {
             }
 
             byte[] bytes = DecodeBase64UrlToBytes(encoded);
-            using JsonDocument inner = JsonDocument.Parse(bytes);
+            using var inner = JsonDocument.Parse(bytes);
             if (inner.RootElement.TryGetProperty("count", out JsonElement encodedCount)) {
                 return encodedCount.GetInt32();
             }

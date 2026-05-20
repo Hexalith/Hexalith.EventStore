@@ -50,7 +50,7 @@ SignalROptions? signalROptions = app.Configuration
 
 if (signalROptions?.Enabled == true) {
     _ = app.MapHub<ProjectionChangedHub>(ProjectionChangedHub.HubPath);
-    app.MapSignalRRuntimeProofEndpoints();
+    _ = app.MapSignalRRuntimeProofEndpoints();
 }
 
 // Configure global request body size limit (1MB)

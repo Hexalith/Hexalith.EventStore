@@ -10,6 +10,7 @@ using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.Extensions.Logging;
@@ -19,7 +20,6 @@ using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
-using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Observability;
 /// <summary>

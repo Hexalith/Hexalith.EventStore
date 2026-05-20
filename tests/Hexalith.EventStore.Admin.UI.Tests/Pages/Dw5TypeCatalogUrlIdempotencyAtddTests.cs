@@ -123,9 +123,9 @@ public class Dw5TypeCatalogUrlIdempotencyAtddTests : AdminUITestContext {
         // Switch back to the default events tab.
         System.Reflection.MethodInfo? method = cut.Instance.GetType()
             .GetMethod("OnTabChanged", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        method.ShouldNotBeNull(
+        _ = method.ShouldNotBeNull(
             customMessage: "DW5 AC#4: TypeCatalog.OnTabChanged renamed/removed — test must be updated alongside the production refactor.");
-        await cut.InvokeAsync(() => method!.Invoke(cut.Instance, ["events"]));
+        _ = await cut.InvokeAsync(() => method!.Invoke(cut.Instance, ["events"]));
         cut.Render();
 
         Uri uri = new(nav.Uri);

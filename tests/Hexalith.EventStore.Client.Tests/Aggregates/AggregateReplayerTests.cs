@@ -16,8 +16,7 @@ namespace Hexalith.EventStore.Client.Tests.Aggregates;
 /// no payload deep-merge), AC #2 (explicit Failed/Partial), AC #5 (sequence ordering,
 /// duplicate guard, all 7 failure categories), and the side-effect-free contract.
 /// </summary>
-public class AggregateReplayerTests
-{
+public class AggregateReplayerTests {
     // ---------------------------------------------------------------
     // Fixture: marker-event Counter aggregate (mirrors the seeded
     // tenant-a/counter/counter-1 stream). Empty-payload events make
@@ -31,8 +30,7 @@ public class AggregateReplayerTests
     public sealed record CounterClosed : IEventPayload;
     public sealed record UnsupportedDeserializerEvent(Type Value) : IEventPayload;
 
-    public sealed class CounterState : ITerminatable
-    {
+    public sealed class CounterState : ITerminatable {
         public int Count { get; private set; }
         public bool IsTerminated { get; private set; }
         public void Apply(CounterIncremented e) => Count++;
@@ -42,31 +40,24 @@ public class AggregateReplayerTests
     }
 
     /// <summary>Throws the first time a payload is applied. Used to drive ApplyFailed paths.</summary>
-    public sealed class FailingState
-    {
+    public sealed class FailingState {
         public int CallCount { get; private set; }
-        public void Apply(CounterIncremented e)
-        {
+        public void Apply(CounterIncremented e) {
             CallCount++;
             throw new InvalidOperationException("Apply boom.");
         }
     }
 
     /// <summary>State with no Apply method to drive ApplyHandlerMissing.</summary>
-    public sealed class HandlerlessState
-    {
+    public sealed class HandlerlessState {
         public int Unused { get; init; }
     }
 
     /// <summary>State whose event payload forces a non-JsonException serializer failure.</summary>
-    public sealed class UnsupportedDeserializerState
-    {
+    public sealed class UnsupportedDeserializerState {
         public int Applied { get; private set; }
 
-        public void Apply(UnsupportedDeserializerEvent e)
-        {
-            Applied++;
-        }
+        public void Apply(UnsupportedDeserializerEvent e) => Applied++;
     }
 
     private static ReplayEventEnvelope BuildEnvelope(long sequence, string eventTypeName, string payloadJson = "{}")
@@ -81,23 +72,19 @@ public class AggregateReplayerTests
             CausationId: null);
 
     /// <summary>Canonical 18-event Counter fixture: 5 increments, 2 decrements, reset, 10 increments.</summary>
-    private static ReplayEventEnvelope[] CanonicalCounterFixture()
-    {
+    private static ReplayEventEnvelope[] CanonicalCounterFixture() {
         var events = new List<ReplayEventEnvelope>(18);
         long seq = 0;
-        for (int i = 0; i < 5; i++)
-        {
+        for (int i = 0; i < 5; i++) {
             events.Add(BuildEnvelope(++seq, nameof(CounterIncremented)));
         }
 
-        for (int i = 0; i < 2; i++)
-        {
+        for (int i = 0; i < 2; i++) {
             events.Add(BuildEnvelope(++seq, nameof(CounterDecremented)));
         }
 
         events.Add(BuildEnvelope(++seq, nameof(CounterReset)));
-        for (int i = 0; i < 10; i++)
-        {
+        for (int i = 0; i < 10; i++) {
             events.Add(BuildEnvelope(++seq, nameof(CounterIncremented)));
         }
 
@@ -132,8 +119,7 @@ public class AggregateReplayerTests
     [InlineData(7, 3)]
     [InlineData(8, 0)]
     [InlineData(18, 10)]
-    public void Replay_CanonicalCounterFixture_StateMatchesCheckpoint(long upTo, int expectedCount)
-    {
+    public void Replay_CanonicalCounterFixture_StateMatchesCheckpoint(long upTo, int expectedCount) {
         ReplayEventEnvelope[] events = CanonicalCounterFixture();
 
         AggregateReconstructionResult result = AggregateReplayer.Replay<CounterState>(BuildRequest(events, upTo));
@@ -144,8 +130,7 @@ public class AggregateReplayerTests
     }
 
     [Fact]
-    public void Replay_CanonicalCounterFixture_AtSequence18_Returns10NotZero()
-    {
+    public void Replay_CanonicalCounterFixture_AtSequence18_Returns10NotZero() {
         // Guard: payload deep-merge would return {} (count == 0) for marker events. Apply-driven
         // replay produces count = 10. This is the headline correctness assertion in AC #1.
         ReplayEventEnvelope[] events = CanonicalCounterFixture();
@@ -158,8 +143,7 @@ public class AggregateReplayerTests
     }
 
     [Fact]
-    public void Replay_UpToSequenceZero_ReturnsInitialState_WithoutInvokingApply()
-    {
+    public void Replay_UpToSequenceZero_ReturnsInitialState_WithoutInvokingApply() {
         AggregateReconstructionResult result = AggregateReplayer.Replay<CounterState>(BuildRequest(CanonicalCounterFixture(), 0));
 
         result.Status.ShouldBe(AggregateReconstructionStatus.Succeeded);
@@ -168,8 +152,7 @@ public class AggregateReplayerTests
     }
 
     [Fact]
-    public void Replay_UpToSequenceBeyondLastEvent_ReturnsLastValidState()
-    {
+    public void Replay_UpToSequenceBeyondLastEvent_ReturnsLastValidState() {
         ReplayEventEnvelope[] events = CanonicalCounterFixture();
 
         AggregateReconstructionResult result = AggregateReplayer.Replay<CounterState>(BuildRequest(events, 1000));
@@ -180,10 +163,9 @@ public class AggregateReplayerTests
     }
 
     [Fact]
-    public void Replay_OutOfOrderInput_AppliesInSequenceOrder()
-    {
+    public void Replay_OutOfOrderInput_AppliesInSequenceOrder() {
         ReplayEventEnvelope[] shuffled = CanonicalCounterFixture()
-            .OrderBy(e => (e.SequenceNumber * 7) % 17)
+            .OrderBy(e => e.SequenceNumber * 7 % 17)
             .ToArray();
 
         AggregateReconstructionResult result = AggregateReplayer.Replay<CounterState>(BuildRequest(shuffled, 18));
@@ -193,8 +175,7 @@ public class AggregateReplayerTests
     }
 
     [Fact]
-    public void Replay_DuplicateSequenceNumber_FailsExplicitly()
-    {
+    public void Replay_DuplicateSequenceNumber_FailsExplicitly() {
         // R2-A6 / story Replay Semantics: duplicate sequence/version must fail rather than
         // silently pick one ordering.
         ReplayEventEnvelope[] events = [
@@ -208,13 +189,12 @@ public class AggregateReplayerTests
         result.Status.ShouldBe(AggregateReconstructionStatus.Failed);
         result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.Unexpected);
         result.FailedSequenceNumber.ShouldBe(1);
-        result.Message.ShouldNotBeNull();
+        _ = result.Message.ShouldNotBeNull();
         result.Message.ShouldContain("Duplicate");
     }
 
     [Fact]
-    public void Replay_MissingSequenceGap_FailsExplicitly()
-    {
+    public void Replay_MissingSequenceGap_FailsExplicitly() {
         ReplayEventEnvelope[] events = [
             BuildEnvelope(1, nameof(CounterIncremented)),
             BuildEnvelope(3, nameof(CounterIncremented)),
@@ -225,13 +205,12 @@ public class AggregateReplayerTests
         result.Status.ShouldBe(AggregateReconstructionStatus.Failed);
         result.ErrorCategory.ShouldBe(AggregateReconstructionErrorCategory.Unexpected);
         result.FailedSequenceNumber.ShouldBe(2);
-        result.Message.ShouldNotBeNull();
+        _ = result.Message.ShouldNotBeNull();
         result.Message.ShouldContain("Missing stream sequence");
     }
 
     [Fact]
-    public void Replay_MissingInitialSequence_FailsExplicitly()
-    {
+    public void Replay_MissingInitialSequence_FailsExplicitly() {
         ReplayEventEnvelope[] events = [
             BuildEnvelope(2, nameof(CounterIncremented)),
         ];
@@ -244,8 +223,7 @@ public class AggregateReplayerTests
     }
 
     [Fact]
-    public void Replay_IncludeTimeline_EmitsPerEventStateSnapshots()
-    {
+    public void Replay_IncludeTimeline_EmitsPerEventStateSnapshots() {
         ReplayEventEnvelope[] events = CanonicalCounterFixture();
 
         AggregateReconstructionResult result = AggregateReplayer.Replay<CounterState>(BuildRequest(events, 18, includeTimeline: true));
@@ -261,8 +239,7 @@ public class AggregateReplayerTests
     }
 
     [Fact]
-    public void Replay_IncludeTimelineFalse_DoesNotAllocateSnapshots()
-    {
+    public void Replay_IncludeTimelineFalse_DoesNotAllocateSnapshots() {
         AggregateReconstructionResult result = AggregateReplayer.Replay<CounterState>(BuildRequest(CanonicalCounterFixture(), 18));
 
         result.Timeline.ShouldBeNull();
@@ -273,8 +250,7 @@ public class AggregateReplayerTests
     // ---------------------------------------------------------------
 
     [Fact]
-    public void Replay_UnknownEventType_FailsWithUnknownEventType()
-    {
+    public void Replay_UnknownEventType_FailsWithUnknownEventType() {
         ReplayEventEnvelope[] events = [
             BuildEnvelope(1, nameof(CounterIncremented)),
             BuildEnvelope(2, "TotallyUnregisteredEvent"),
@@ -290,8 +266,7 @@ public class AggregateReplayerTests
     }
 
     [Fact]
-    public void Replay_DeserializationFailure_FailsWithDeserializationFailed()
-    {
+    public void Replay_DeserializationFailure_FailsWithDeserializationFailed() {
         ReplayEventEnvelope[] events = [
             new ReplayEventEnvelope(
                 SequenceNumber: 1,
@@ -312,8 +287,7 @@ public class AggregateReplayerTests
     }
 
     [Fact]
-    public void Replay_NonJsonDeserializerFailure_FailsWithDeserializationFailed()
-    {
+    public void Replay_NonJsonDeserializerFailure_FailsWithDeserializationFailed() {
         ReplayEventEnvelope[] events = [
             BuildEnvelope(1, nameof(UnsupportedDeserializerEvent), "{\"value\":\"System.String\"}"),
         ];
@@ -326,8 +300,7 @@ public class AggregateReplayerTests
     }
 
     [Fact]
-    public void Replay_StateWithNoApplyMethod_FailsWithApplyHandlerMissing()
-    {
+    public void Replay_StateWithNoApplyMethod_FailsWithApplyHandlerMissing() {
         // ApplyHandlerMissing is the canonical category when the state type has no Apply for
         // the named event. Distinguishes the "no public Apply at all" case from "wrong type name".
         ReplayEventEnvelope[] events = [
@@ -343,8 +316,7 @@ public class AggregateReplayerTests
     }
 
     [Fact]
-    public void Replay_ApplyMethodThrows_ReturnsPartialAtLastGoodSequence()
-    {
+    public void Replay_ApplyMethodThrows_ReturnsPartialAtLastGoodSequence() {
         ReplayEventEnvelope[] events = [
             BuildEnvelope(1, nameof(CounterIncremented)),
             BuildEnvelope(2, nameof(CounterIncremented)),
@@ -357,14 +329,13 @@ public class AggregateReplayerTests
         result.LastAppliedSequenceNumber.ShouldBe(0);
         result.FailedSequenceNumber.ShouldBe(1);
         // Partial result preserves state up to last good event (which is empty here)
-        result.StateJson.ShouldNotBeNull();
+        _ = result.StateJson.ShouldNotBeNull();
         _ = result.Message.ShouldNotBeNull();
         result.Message.ShouldContain("Apply");
     }
 
     [Fact]
-    public void Replay_UnsupportedMetadataVersion_FailsWithUnsupportedVersion()
-    {
+    public void Replay_UnsupportedMetadataVersion_FailsWithUnsupportedVersion() {
         ReplayEventEnvelope[] events = [
             new ReplayEventEnvelope(
                 SequenceNumber: 1,
@@ -384,8 +355,7 @@ public class AggregateReplayerTests
     }
 
     [Fact]
-    public void Replay_UnsupportedSerializationFormat_FailsWithUnsupportedVersion()
-    {
+    public void Replay_UnsupportedSerializationFormat_FailsWithUnsupportedVersion() {
         ReplayEventEnvelope[] events = [
             new ReplayEventEnvelope(
                 SequenceNumber: 1,
@@ -405,8 +375,7 @@ public class AggregateReplayerTests
     }
 
     [Fact]
-    public void Replay_MissingEventTypeName_FailsWithUnknownEventType()
-    {
+    public void Replay_MissingEventTypeName_FailsWithUnknownEventType() {
         ReplayEventEnvelope[] events = [
             new ReplayEventEnvelope(
                 SequenceNumber: 1,
@@ -430,8 +399,7 @@ public class AggregateReplayerTests
     // ---------------------------------------------------------------
 
     [Fact]
-    public void Replay_RepeatedInvocations_ReturnIdenticalState()
-    {
+    public void Replay_RepeatedInvocations_ReturnIdenticalState() {
         // The replayer must be pure: a fresh TState() each call. If state were shared across
         // calls the second invocation would see Count = 20 instead of 10.
         ReplayEventEnvelope[] events = CanonicalCounterFixture();
@@ -445,24 +413,21 @@ public class AggregateReplayerTests
     }
 
     [Fact]
-    public void Replay_DoesNotMutateRequestEnvelopes()
-    {
+    public void Replay_DoesNotMutateRequestEnvelopes() {
         ReplayEventEnvelope[] events = CanonicalCounterFixture();
         long[] originalSequences = events.Select(e => e.SequenceNumber).ToArray();
         byte[][] originalPayloads = events.Select(e => (byte[])e.Payload.Clone()).ToArray();
 
         _ = AggregateReplayer.Replay<CounterState>(BuildRequest(events, 18));
 
-        for (int i = 0; i < events.Length; i++)
-        {
+        for (int i = 0; i < events.Length; i++) {
             events[i].SequenceNumber.ShouldBe(originalSequences[i]);
             events[i].Payload.ShouldBe(originalPayloads[i]);
         }
     }
 
     [Fact]
-    public void Replay_EventsBeyondUpToSequence_AreIgnored()
-    {
+    public void Replay_EventsBeyondUpToSequence_AreIgnored() {
         ReplayEventEnvelope[] events = CanonicalCounterFixture();
 
         AggregateReconstructionResult result = AggregateReplayer.Replay<CounterState>(BuildRequest(events, 5));

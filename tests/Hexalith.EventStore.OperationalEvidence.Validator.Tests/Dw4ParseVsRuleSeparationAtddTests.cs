@@ -15,25 +15,19 @@ public class Dw4ParseVsRuleSeparationAtddTests {
     private const string _baseSkip = "ATDD red phase — DW4 ";
 
     [Fact(Skip = _baseSkip + "AC#13 — malformed YAML must produce parse-yaml-malformed without business-rule noise. Remove Skip when implementing.")]
-    public void ParserFailure_MalformedYaml_ProducesParseFamilyOnly() {
-        AssertParserFailureIsolated(
+    public void ParserFailure_MalformedYaml_ProducesParseFamilyOnly() => AssertParserFailureIsolated(
             "parse-malformed-yaml.md",
             Dw4RuleVocabulary.ParseYamlMalformed);
-    }
 
     [Fact(Skip = _baseSkip + "AC#13 — malformed table must produce parse-table-malformed without business-rule noise. Remove Skip when implementing.")]
-    public void ParserFailure_MalformedTable_ProducesParseFamilyOnly() {
-        AssertParserFailureIsolated(
+    public void ParserFailure_MalformedTable_ProducesParseFamilyOnly() => AssertParserFailureIsolated(
             "parse-malformed-table.md",
             Dw4RuleVocabulary.ParseTableMalformed);
-    }
 
     [Fact(Skip = _baseSkip + "AC#13 — duplicate required heading must produce parse-heading-duplicate. Remove Skip when implementing.")]
-    public void ParserFailure_DuplicateRequiredHeading_ProducesParseFamilyOnly() {
-        AssertParserFailureIsolated(
+    public void ParserFailure_DuplicateRequiredHeading_ProducesParseFamilyOnly() => AssertParserFailureIsolated(
             "parse-duplicate-required-heading.md",
             Dw4RuleVocabulary.ParseHeadingDuplicate);
-    }
 
     private static void AssertParserFailureIsolated(string fixtureFileName, string expectedParserRuleId) {
         Dw4FixtureCatalog.FixtureExpectation expected = Dw4FixtureCatalog.ByName[fixtureFileName];
@@ -71,7 +65,7 @@ public class Dw4ParseVsRuleSeparationAtddTests {
             Dw4RuleVocabulary.ProfileAspireFieldsMissing,
         };
 
-        IEnumerable<string> noise = outcome.EmittedRuleIds.Where(r => businessFamilies.Contains(r));
+        IEnumerable<string> noise = outcome.EmittedRuleIds.Where(businessFamilies.Contains);
         noise.ShouldBeEmpty(
             "Parser failures must isolate from business rules. Emitting business-rule " +
             "diagnostics from a malformed input would falsely prove rule coverage.");

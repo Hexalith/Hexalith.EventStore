@@ -7,8 +7,7 @@ namespace Hexalith.EventStore.AppHost;
 
 internal sealed record PrerequisiteCommandResult(bool Success, string? Output);
 
-internal interface IPrerequisiteCommandRunner
-{
+internal interface IPrerequisiteCommandRunner {
     PrerequisiteCommandResult Run(string command, string args, TimeSpan timeout);
 }
 
@@ -115,7 +114,7 @@ internal static class PrerequisiteValidator {
                     process.Kill(entireProcessTree: true);
                     process.WaitForExit();
                     // Drain both tasks to prevent unobserved-exception faults after dispose.
-                    try { Task.WhenAll(stdoutTask, stderrTask).GetAwaiter().GetResult(); } catch { }
+                    try { _ = Task.WhenAll(stdoutTask, stderrTask).GetAwaiter().GetResult(); } catch { }
                     return new PrerequisiteCommandResult(false, null);
                 }
 

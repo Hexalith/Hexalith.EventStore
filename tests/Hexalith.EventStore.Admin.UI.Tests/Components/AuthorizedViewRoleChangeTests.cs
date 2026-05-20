@@ -3,7 +3,6 @@ using System.Security.Claims;
 using Bunit;
 
 using Hexalith.EventStore.Admin.UI.Components.Shared;
-using Hexalith.EventStore.Admin.UI.Services;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;

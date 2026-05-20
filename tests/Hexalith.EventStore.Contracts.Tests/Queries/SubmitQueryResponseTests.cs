@@ -41,7 +41,7 @@ public class SubmitQueryResponseTests {
 
         json.ShouldContain("\"correlationId\":\"corr-401\"");
         json.ShouldContain("\"success\":false");
-        roundTripped.ShouldNotBeNull();
+        _ = roundTripped.ShouldNotBeNull();
         roundTripped.CorrelationId.ShouldBe("corr-401");
         roundTripped.Success.ShouldBeFalse();
         roundTripped.ErrorMessage.ShouldBe("Forbidden");
@@ -73,14 +73,14 @@ public class SubmitQueryResponseTests {
         json.ShouldContain("\"etag\":\"etag-1\"");
         json.ShouldContain("\"isDegraded\":true");
         json.ShouldContain("\"pageSize\":25");
-        roundTripped.ShouldNotBeNull();
-        roundTripped.Metadata.ShouldNotBeNull();
+        _ = roundTripped.ShouldNotBeNull();
+        _ = roundTripped.Metadata.ShouldNotBeNull();
         roundTripped.Metadata.ETag.ShouldBe("etag-1");
         roundTripped.Metadata.IsDegraded.ShouldBe(true);
         roundTripped.Metadata.ServedAt.ShouldBe(servedAt);
-        roundTripped.Metadata.Paging.ShouldNotBeNull();
+        _ = roundTripped.Metadata.Paging.ShouldNotBeNull();
         roundTripped.Metadata.Paging.Offset.ShouldBe(50);
-        roundTripped.Metadata.WarningCodes.ShouldNotBeNull();
+        _ = roundTripped.Metadata.WarningCodes.ShouldNotBeNull();
         roundTripped.Metadata.WarningCodes.ShouldContain(QueryWarningCodes.DegradedSearch);
     }
 }

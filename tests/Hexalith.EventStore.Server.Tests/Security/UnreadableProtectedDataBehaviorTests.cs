@@ -1,9 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 using Dapr.Actors.Runtime;
 using Dapr.Client;
@@ -74,7 +69,7 @@ public class UnreadableProtectedDataBehaviorTests {
         ILogger<EventPublisher> logger = Substitute.For<ILogger<EventPublisher>>();
         _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         IHostEnvironment hostEnv = Substitute.For<IHostEnvironment>();
-        hostEnv.EnvironmentName.Returns(Environments.Development);
+        _ = hostEnv.EnvironmentName.Returns(Environments.Development);
         var publisher = new EventPublisher(daprClient, options, logger, protectionService, new NoOpProjectionUpdateOrchestrator(), hostEnvironment: hostEnv);
         return (publisher, daprClient, logger);
     }
@@ -184,7 +179,7 @@ public class UnreadableProtectedDataBehaviorTests {
     [Fact]
     public async Task EventPublisher_NoOpProvider_StillPublishes_AndNeverEmitsUnreadableTaxonomy() {
         var protectionService = new FakeUnreadableProtectionService(); // default: no unreadable configured
-        (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher(protectionService);
+        (EventPublisher publisher, _, _) = CreatePublisher(protectionService);
 
         EventEnvelope envelope = CreateProtectedEnvelope(1, EventStorePayloadProtectionMetadata.Unprotected());
 
@@ -223,7 +218,7 @@ public class UnreadableProtectedDataBehaviorTests {
             AggregateId: TestIdentity.AggregateId,
             TenantId: TestIdentity.TenantId,
             ProtectionMetadata: storedMetadata);
-        stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
+        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
             .Returns(new ConditionalValue<SnapshotRecord>(true, snapshot));
 
         var protectionService = new FakeUnreadableProtectionService();
@@ -248,15 +243,15 @@ public class UnreadableProtectedDataBehaviorTests {
             AggregateId: TestIdentity.AggregateId,
             TenantId: TestIdentity.TenantId,
             ProtectionMetadata: null);
-        stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
+        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
             .Returns(new ConditionalValue<SnapshotRecord>(true, legacy));
 
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
 
         SnapshotRecord? loaded = await manager.LoadSnapshotAsync(TestIdentity, stateManager);
 
-        loaded.ShouldNotBeNull();
-        loaded!.ProtectionMetadata.ShouldNotBeNull();
+        _ = loaded.ShouldNotBeNull();
+        _ = loaded!.ProtectionMetadata.ShouldNotBeNull();
         loaded.ProtectionMetadata!.State.ShouldBe(PayloadProtectionState.Unprotected);
         loaded.ProtectionMetadata.CompatibilityFlags!["legacy"].ShouldBe("missing");
     }
@@ -266,7 +261,7 @@ public class UnreadableProtectedDataBehaviorTests {
         // Story 22.7b: the existing RemoveStateAsync path is PRESERVED for non-protected corrupt
         // deserialization (schema drift, etc.). This is NOT changed by 22.7b.
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
-        stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
+        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
             .Throws<InvalidOperationException>();
 
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), new NoOpEventPayloadProtectionService());
@@ -289,7 +284,7 @@ public class UnreadableProtectedDataBehaviorTests {
             TenantId: TestIdentity.TenantId,
             ProtectionMetadata: new EventStorePayloadProtectionMetadata(
                 PayloadProtectionState.Protected, 1, "test", null, null, null));
-        stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
+        _ = stateManager.TryGetStateAsync<SnapshotRecord>(TestIdentity.SnapshotKey)
             .Returns(new ConditionalValue<SnapshotRecord>(true, snapshot));
 
         var protectionService = new FakeUnreadableProtectionService();
@@ -297,7 +292,7 @@ public class UnreadableProtectedDataBehaviorTests {
         cts.Cancel();
         var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), Substitute.For<ILogger<SnapshotManager>>(), protectionService);
 
-        await Should.ThrowAsync<OperationCanceledException>(async () =>
+        _ = await Should.ThrowAsync<OperationCanceledException>(async () =>
             await manager.LoadSnapshotAsync(TestIdentity, stateManager, cancellationToken: cts.Token));
     }
 

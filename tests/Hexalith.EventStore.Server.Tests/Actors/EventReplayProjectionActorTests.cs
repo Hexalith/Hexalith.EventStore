@@ -8,13 +8,13 @@ using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Queries;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Logging;
 
 using NSubstitute;
 
 using Shouldly;
-using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 
@@ -206,7 +206,7 @@ public class EventReplayProjectionActorTests {
         // The exception is OCE-derived (runtime may surface TaskCanceledException after async
         // re-throw; both are acceptable for AC9 — the requirement is non-conversion to a
         // generic notifier-failed adapter log).
-        exception.ShouldBeAssignableTo<OperationCanceledException>();
+        _ = exception.ShouldBeAssignableTo<OperationCanceledException>();
 
         // State persistence completed before notifier was invoked (notifier failure happens
         // after state save, per actor implementation).

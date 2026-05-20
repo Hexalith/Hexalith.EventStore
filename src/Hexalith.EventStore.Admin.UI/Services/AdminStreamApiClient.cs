@@ -812,7 +812,7 @@ public class AdminStreamApiClient(
                 return new AdminClientProblem(null, null, null, new Dictionary<string, object?>());
             }
 
-            using JsonDocument document = JsonDocument.Parse(body);
+            using var document = JsonDocument.Parse(body);
             JsonElement root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object) {
                 return new AdminClientProblem(null, null, null, new Dictionary<string, object?>());

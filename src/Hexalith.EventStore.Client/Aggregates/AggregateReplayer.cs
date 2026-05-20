@@ -13,8 +13,7 @@ namespace Hexalith.EventStore.Client.Aggregates;
 /// canonical <c>/replay-state</c> contract; the same Apply discovery is shared with
 /// <see cref="DomainProcessorStateRehydrator"/> so command-time and replay-time semantics stay aligned.
 /// </summary>
-public static class AggregateReplayer
-{
+public static class AggregateReplayer {
     /// <summary>
     /// Replays <paramref name="request"/> events through the supplied state type's Apply methods
     /// and returns a <see cref="AggregateReconstructionResult"/> categorizing the outcome.
@@ -23,8 +22,7 @@ public static class AggregateReplayer
     /// <param name="request">The reconstruction request.</param>
     /// <returns>The reconstruction result.</returns>
     public static AggregateReconstructionResult Replay<TState>(AggregateReconstructionRequest request)
-        where TState : class, new()
-    {
+        where TState : class, new() {
         ArgumentNullException.ThrowIfNull(request);
 
         Dictionary<string, MethodInfo> applyMethods = DomainProcessorStateRehydrator.DiscoverApplyMethods(typeof(TState));
@@ -42,8 +40,7 @@ public static class AggregateReplayer
             .OrderBy(e => e.SequenceNumber)
             .ToArray();
 
-        if (eligible.Length > 0 && eligible[0].SequenceNumber != 1)
-        {
+        if (eligible.Length > 0 && eligible[0].SequenceNumber != 1) {
             return AggregateReconstructionResult.Failed(
                 AggregateReconstructionErrorCategory.Unexpected,
                 "Missing stream sequence 1 detected during replay; reconstruction cannot skip events.",
@@ -54,10 +51,8 @@ public static class AggregateReplayer
         // Duplicate / conflicting sequence guard: any two events sharing the same sequence
         // number cannot be unambiguously ordered, so reconstruction must fail explicitly
         // rather than pick one arbitrarily.
-        for (int i = 1; i < eligible.Length; i++)
-        {
-            if (eligible[i].SequenceNumber == eligible[i - 1].SequenceNumber)
-            {
+        for (int i = 1; i < eligible.Length; i++) {
+            if (eligible[i].SequenceNumber == eligible[i - 1].SequenceNumber) {
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.Unexpected,
                     string.Format(
@@ -69,8 +64,7 @@ public static class AggregateReplayer
             }
 
             long expectedSequence = eligible[i - 1].SequenceNumber + 1;
-            if (eligible[i].SequenceNumber != expectedSequence)
-            {
+            if (eligible[i].SequenceNumber != expectedSequence) {
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.Unexpected,
                     string.Format(
@@ -85,10 +79,8 @@ public static class AggregateReplayer
         var state = new TState();
         long lastApplied = 0;
 
-        foreach (ReplayEventEnvelope evt in eligible)
-        {
-            if (evt.MetadataVersion < 1)
-            {
+        foreach (ReplayEventEnvelope evt in eligible) {
+            if (evt.MetadataVersion < 1) {
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.UnsupportedVersion,
                     string.Format(
@@ -102,8 +94,7 @@ public static class AggregateReplayer
                     lastAppliedSequenceNumber: lastApplied);
             }
 
-            if (string.IsNullOrWhiteSpace(evt.EventTypeName))
-            {
+            if (string.IsNullOrWhiteSpace(evt.EventTypeName)) {
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.UnknownEventType,
                     string.Format(
@@ -115,8 +106,7 @@ public static class AggregateReplayer
                     lastAppliedSequenceNumber: lastApplied);
             }
 
-            if (!string.Equals(evt.SerializationFormat, "json", StringComparison.OrdinalIgnoreCase))
-            {
+            if (!string.Equals(evt.SerializationFormat, "json", StringComparison.OrdinalIgnoreCase)) {
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.UnsupportedVersion,
                     string.Format(
@@ -131,8 +121,7 @@ public static class AggregateReplayer
             }
 
             MethodInfo? applyMethod = DomainProcessorStateRehydrator.TryResolveApplyMethod(evt.EventTypeName, applyMethods);
-            if (applyMethod is null)
-            {
+            if (applyMethod is null) {
                 return AggregateReconstructionResult.Failed(
                     applyMethods.Count == 0
                         ? AggregateReconstructionErrorCategory.ApplyHandlerMissing
@@ -152,15 +141,13 @@ public static class AggregateReplayer
 
             Type eventClrType = applyMethod.GetParameters()[0].ParameterType;
             object? deserialized;
-            try
-            {
+            try {
                 using JsonDocument doc = evt.Payload is { Length: > 0 }
                     ? JsonDocument.Parse(evt.Payload)
                     : JsonDocument.Parse("{}");
                 deserialized = JsonSerializer.Deserialize(doc.RootElement, eventClrType, serializerOptions);
             }
-            catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException)
-            {
+            catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException) {
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.DeserializationFailed,
                     string.Format(
@@ -174,8 +161,7 @@ public static class AggregateReplayer
                     lastAppliedSequenceNumber: lastApplied);
             }
 
-            if (deserialized is null)
-            {
+            if (deserialized is null) {
                 return AggregateReconstructionResult.Failed(
                     AggregateReconstructionErrorCategory.DeserializationFailed,
                     string.Format(
@@ -189,12 +175,10 @@ public static class AggregateReplayer
                     lastAppliedSequenceNumber: lastApplied);
             }
 
-            try
-            {
+            try {
                 _ = applyMethod.Invoke(state, [deserialized]);
             }
-            catch (TargetInvocationException)
-            {
+            catch (TargetInvocationException) {
                 string stateJson = SerializeState(state, serializerOptions);
                 return AggregateReconstructionResult.Partial(
                     stateJson: stateJson,
@@ -212,13 +196,10 @@ public static class AggregateReplayer
 
             lastApplied = evt.SequenceNumber;
 
-            if (timeline is not null)
-            {
-                timeline.Add(new AggregateReconstructionTimelineEntry(
+            timeline?.Add(new AggregateReconstructionTimelineEntry(
                     SequenceNumber: evt.SequenceNumber,
                     EventTypeName: evt.EventTypeName,
                     StateJson: SerializeState(state, serializerOptions)));
-            }
         }
 
         return AggregateReconstructionResult.Succeeded(

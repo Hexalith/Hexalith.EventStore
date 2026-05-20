@@ -51,7 +51,7 @@ public class DaprInfrastructureQueryServiceTests {
     public async Task GetActorInstanceStateAsync_LocalJsonElementValue_IsCappedForDisplay() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         string largeValue = new('x', 70 * 1024);
-        using JsonDocument document = JsonDocument.Parse(JsonSerializer.Serialize(largeValue));
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(largeValue));
         JsonElement stateValue = document.RootElement.Clone();
 
         _ = daprClient.GetStateAsync<JsonElement?>(
@@ -66,7 +66,7 @@ public class DaprInfrastructureQueryServiceTests {
 
         DaprActorStateEntry entry = result.ShouldNotBeNull().StateEntries.ShouldHaveSingleItem();
         entry.Found.ShouldBeTrue();
-        entry.JsonValue.ShouldNotBeNull();
+        _ = entry.JsonValue.ShouldNotBeNull();
         entry.JsonValue.Length.ShouldBeLessThan(largeValue.Length);
         entry.JsonValue.ShouldContain("[truncated, exceeds 64 KiB display cap]");
     }
@@ -299,7 +299,7 @@ public class DaprInfrastructureQueryServiceTests {
         result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
         result.RemoteEndpoint.ShouldBe("http://localhost:3501/");
         handler.LastRequestUri.ShouldBe("http://user:p%40ss@localhost:3501/v1.0/metadata");
-        httpClientFactory.Received(1).CreateClient("DaprSidecar");
+        _ = httpClientFactory.Received(1).CreateClient("DaprSidecar");
     }
 
     [Fact]
@@ -407,7 +407,7 @@ public class DaprInfrastructureQueryServiceTests {
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
             .Returns(call => NeverCompletesMetadataAsync(call.Arg<CancellationToken>()));
-        Stopwatch stopwatch = Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
 
         DaprInfrastructureQueryService service = CreateService(daprClient);
 

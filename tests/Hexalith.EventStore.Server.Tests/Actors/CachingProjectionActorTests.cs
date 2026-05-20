@@ -770,7 +770,7 @@ public class CachingProjectionActorTests {
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => actor.QueryAsync(CreateEnvelope(), cts.Token));
 
         _ = await eTagService.DidNotReceive().GetCurrentETagAsync(
@@ -818,7 +818,7 @@ public class CachingProjectionActorTests {
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
-        await Should.ThrowAsync<OperationCanceledException>(
+        _ = await Should.ThrowAsync<OperationCanceledException>(
             () => actor.QueryAsync(envelope, cts.Token));
 
         actor.ExecuteCallCount.ShouldBe(1);

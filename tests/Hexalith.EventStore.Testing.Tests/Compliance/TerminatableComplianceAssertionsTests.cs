@@ -10,21 +10,16 @@ namespace Hexalith.EventStore.Testing.Tests.Compliance;
 
 public class TerminatableComplianceAssertionsTests {
     [Fact]
-    public void AssertTerminatableCompliance_CompliantState_DoesNotThrow() {
-        TerminatableComplianceAssertions.AssertTerminatableCompliance<CompliantTerminatableState>();
-    }
+    public void AssertTerminatableCompliance_CompliantState_DoesNotThrow() => TerminatableComplianceAssertions.AssertTerminatableCompliance<CompliantTerminatableState>();
 
     [Fact]
-    public void AssertTerminatableCompliance_NonTerminatableState_DoesNotThrow() {
-        TerminatableComplianceAssertions.AssertTerminatableCompliance<NonTerminatableState>();
-    }
+    public void AssertTerminatableCompliance_NonTerminatableState_DoesNotThrow() => TerminatableComplianceAssertions.AssertTerminatableCompliance<NonTerminatableState>();
 
     [Fact]
-    public void AssertTerminatableCompliance_StateInheritsApplyFromBase_DoesNotThrow() {
+    public void AssertTerminatableCompliance_StateInheritsApplyFromBase_DoesNotThrow() =>
         // Pins AC #6: inherited public instance Apply methods on a base class satisfy the
         // contract — the helper mirrors DomainProcessorStateRehydrator's discovery walk.
         TerminatableComplianceAssertions.AssertTerminatableCompliance<InheritedApplyTerminatableState>();
-    }
 
     [Fact]
     public void AssertTerminatableCompliance_StateWithNoApplyMethods_ThrowsMissingApplyMethodException() {

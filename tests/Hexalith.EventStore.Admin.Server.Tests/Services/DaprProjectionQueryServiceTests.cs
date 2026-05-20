@@ -227,7 +227,7 @@ public class DaprProjectionQueryServiceTests {
         System.Net.HttpStatusCode upstreamStatus) {
         // AC5/AC6: Admin read-model fallback for 404/405/501 from EventStore.
         DaprClient daprClient = Substitute.For<DaprClient>();
-        var lastProcessedUtc = DateTimeOffset.UtcNow;
+        DateTimeOffset lastProcessedUtc = DateTimeOffset.UtcNow;
         var projections = new List<ProjectionStatus>
         {
             new("counter", "tenant-a", ProjectionStatusType.Running, 0, 4.2, 0, 18, lastProcessedUtc),
@@ -398,7 +398,7 @@ public class DaprProjectionQueryServiceTests {
 
         // The fallback path must not even consult the admin index when the upstream status is
         // outside the narrow allow-list.
-        await daprClient.DidNotReceive().GetStateAsync<List<ProjectionStatus>>(
+        _ = await daprClient.DidNotReceive().GetStateAsync<List<ProjectionStatus>>(
             Arg.Any<string>(), Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>());
     }
 
@@ -415,7 +415,7 @@ public class DaprProjectionQueryServiceTests {
 
         _ = await service.GetProjectionDetailAsync("tenant-a", "counter");
 
-        await daprClient.Received().GetStateAsync<List<ProjectionStatus>>(
+        _ = await daprClient.Received().GetStateAsync<List<ProjectionStatus>>(
             StateStoreName,
             "admin:projections:tenant-a",
             cancellationToken: Arg.Is<CancellationToken>(token => token.CanBeCanceled));

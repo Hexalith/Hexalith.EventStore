@@ -1,4 +1,3 @@
-#pragma warning disable CS8620 // Nullability mismatch in NSubstitute Returns() with nullable Dapr client methods
 
 using System.Net;
 using System.Text;
@@ -153,7 +152,7 @@ public class DaprActorQueryServiceTests {
         result.TotalKnownTypes.ShouldBe(3);
         result.TotalActiveActors.ShouldBe(1);
         result.InventorySource.ShouldBe("RemoteEventStoreSidecarMetadata");
-        result.InventoryMessage.ShouldNotBeNull();
+        _ = result.InventoryMessage.ShouldNotBeNull();
         result.InventoryMessage!.ShouldContain("partial", Case.Insensitive);
         result.ActorTypes.Select(a => a.TypeName).ShouldContain("AggregateActor");
         result.ActorTypes.Select(a => a.TypeName).ShouldContain("ProjectionActor");
@@ -323,9 +322,9 @@ public class DaprActorQueryServiceTests {
         result.LookupSource.ShouldBe("RemoteOwnerSidecarActorStateApi");
         result.StateEntries[0].Found.ShouldBeTrue();
         result.StateEntries[0].JsonValue.ShouldBe("{\"value\":\"abc123\"}");
-        handler.RequestUri.ShouldNotBeNull();
+        _ = handler.RequestUri.ShouldNotBeNull();
         handler.RequestUri!.AbsoluteUri.ShouldBe("http://owner-sidecar/v1.0/actors/ETagActor/Proj%3ATenant1/state/etag");
-        await daprClient.DidNotReceive().GetStateAsync<JsonElement?>(
+        _ = await daprClient.DidNotReceive().GetStateAsync<JsonElement?>(
             Arg.Any<string>(),
             Arg.Any<string>(),
             cancellationToken: Arg.Any<CancellationToken>());
@@ -389,7 +388,7 @@ public class DaprActorQueryServiceTests {
         result.LookupStatus.ShouldBe(DaprActorLookupStatus.LookupUnavailable);
         result.StateEntries[0].Found.ShouldBeFalse();
         result.StateEntries[0].JsonValue.ShouldBeNull();
-        result.Message.ShouldNotBeNull();
+        _ = result.Message.ShouldNotBeNull();
         result.Message!.ShouldContain("unavailable", Case.Insensitive);
     }
 
@@ -473,7 +472,7 @@ public class DaprActorQueryServiceTests {
         _ = result.ShouldNotBeNull();
         result.LookupStatus.ShouldBe(DaprActorLookupStatus.Available);
         result.OwnerAppId.ShouldBe(ownerAppId);
-        await daprClient.DidNotReceive().GetStateAsync<JsonElement?>(
+        _ = await daprClient.DidNotReceive().GetStateAsync<JsonElement?>(
             StateStoreName,
             Arg.Is<string>(key => key.StartsWith("eventstore-admin||", StringComparison.Ordinal)),
             cancellationToken: Arg.Any<CancellationToken>());
@@ -514,7 +513,7 @@ public class DaprActorQueryServiceTests {
     }
 
     private static JsonElement? JsonState(string json) {
-        using JsonDocument document = JsonDocument.Parse(json);
+        using var document = JsonDocument.Parse(json);
         return document.RootElement.Clone();
     }
 }

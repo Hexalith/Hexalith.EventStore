@@ -1,6 +1,7 @@
-namespace Hexalith.EventStore.ErrorHandling;
 
 using Hexalith.EventStore.Contracts.Authorization;
+
+namespace Hexalith.EventStore.ErrorHandling;
 
 public class CommandAuthorizationException : Exception {
     public CommandAuthorizationException(

@@ -88,12 +88,12 @@ public sealed partial class ActiveRebuildIndexCleanupService(
             // the pair index existed.
             var pairs = new HashSet<(string Tenant, string Domain)>();
             foreach ((string tenant, string domain) in await checkpointStore.ListActiveRebuildIndexPairsAsync(cancellationToken).ConfigureAwait(false)) {
-                pairs.Add((tenant, domain));
+                _ = pairs.Add((tenant, domain));
             }
 
             await foreach (AggregateIdentity identity in checkpointTracker.EnumerateTrackedIdentitiesAsync(cancellationToken).ConfigureAwait(false)) {
                 cancellationToken.ThrowIfCancellationRequested();
-                pairs.Add((identity.TenantId, identity.Domain));
+                _ = pairs.Add((identity.TenantId, identity.Domain));
             }
 
             if (pairs.Count == 0) {

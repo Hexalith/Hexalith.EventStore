@@ -6,8 +6,8 @@ using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Problems;
-using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Actors;
@@ -47,7 +47,7 @@ public class StreamsControllerTests {
 
         ProblemDetails problem = AssertProblem(result, StatusCodes.Status400BadRequest);
         problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.InvalidRange);
-        actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
+        _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class StreamsControllerTests {
 
         ProblemDetails problem = AssertProblem(result, StatusCodes.Status400BadRequest);
         problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.InvalidContinuation);
-        actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
+        _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public class StreamsControllerTests {
         ProblemDetails problem = AssertProblem(result, StatusCodes.Status403Forbidden);
         problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.UnauthorizedTenant);
         rbacValidator.ReceivedRequests.ShouldBeEmpty();
-        actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
+        _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public class StreamsControllerTests {
 
         ProblemDetails problem = AssertProblem(result, StatusCodes.Status403Forbidden);
         problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.ForbiddenReplayScope);
-        actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
+        _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public class StreamsControllerTests {
 
         ProblemDetails problem = AssertProblem(result, StatusCodes.Status404NotFound);
         problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.MissingEvent);
-        problem.Detail.ShouldNotBeNull();
+        _ = problem.Detail.ShouldNotBeNull();
         AssertNoForbiddenLeakage(problem);
     }
 
@@ -186,7 +186,7 @@ public class StreamsControllerTests {
         string json = System.Text.Json.JsonSerializer.Serialize(problem, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
         json.ShouldContain("\"reasonCode\"");
         json.ShouldNotContain("\"ReasonCode\"", Case.Sensitive);
-        actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
+        _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
     }
 
     [Theory]
@@ -207,7 +207,7 @@ public class StreamsControllerTests {
         ProblemDetails problem = AssertProblem(result, StatusCodes.Status400BadRequest);
         problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.InvalidAggregateIdentity);
         problem.Detail.ShouldBe("Stream identity is invalid.");
-        actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
+        _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
     }
 
     [Fact]
@@ -222,7 +222,7 @@ public class StreamsControllerTests {
 
         ProblemDetails problem = AssertProblem(result, StatusCodes.Status400BadRequest);
         problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.InvalidRange);
-        actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
+        _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
     }
 
     [Fact]
@@ -260,7 +260,7 @@ public class StreamsControllerTests {
 
         ProblemDetails problem = AssertProblem(result, StatusCodes.Status400BadRequest);
         problem.Extensions["reasonCode"].ShouldBe(StreamReplayReasonCodes.InvalidRange);
-        actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
+        _ = actorProxyFactory.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!, default);
     }
 
     // P22-6P: ToSequence == FromSequence is now a valid request that returns an empty page
@@ -271,7 +271,7 @@ public class StreamsControllerTests {
         IAggregateActor actor = Substitute.For<IAggregateActor>();
         _ = actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(Exists: true, CurrentSequence: 10));
         _ = actor.ReadEventsRangeAsync(5, 5, Arg.Any<int>()).Returns([]);
-        (StreamsController controller, IActorProxyFactory actorProxyFactory, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator) = CreateController(actor);
+        (StreamsController controller, _, FakeTenantValidator tenantValidator, FakeRbacValidator rbacValidator) = CreateController(actor);
         tenantValidator.ConfiguredResult = TenantValidationResult.Allowed;
         rbacValidator.ConfiguredResult = RbacValidationResult.Allowed;
 

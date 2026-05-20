@@ -1,6 +1,5 @@
 using Bunit;
 
-using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.UI.Pages;
 

@@ -48,7 +48,7 @@ public class ProjectionChangedHubTests {
         _ = await Should.ThrowAsync<HubException>(() =>
             sut.JoinGroup("order:list", "acme"));
 
-        await tenantValidator.DidNotReceive().ValidateAsync(
+        _ = await tenantValidator.DidNotReceive().ValidateAsync(
             Arg.Any<ClaimsPrincipal>(),
             Arg.Any<string>(),
             Arg.Any<CancellationToken>(),
@@ -114,7 +114,7 @@ public class ProjectionChangedHubTests {
             sut.JoinGroup("order-list", "acme"));
 
         ex.Message.ShouldContain("Authentication is required");
-        await tenantValidator.DidNotReceive().ValidateAsync(
+        _ = await tenantValidator.DidNotReceive().ValidateAsync(
             Arg.Any<ClaimsPrincipal>(),
             Arg.Any<string>(),
             Arg.Any<CancellationToken>(),
@@ -235,7 +235,7 @@ public class ProjectionChangedHubTests {
 
         await sut.JoinGroup("order-list", "acme");
 
-        await tenantValidator.Received(1).ValidateAsync(
+        _ = await tenantValidator.Received(1).ValidateAsync(
             Arg.Any<ClaimsPrincipal>(),
             "acme",
             cts.Token,

@@ -86,8 +86,8 @@ public class Dw5TypeCatalogRenderLoopAtddTests : AdminUITestContext {
     private static void InvokeOnTabChanged(IRenderedComponent<TypeCatalog> cut, string tabId) {
         System.Reflection.MethodInfo? method = cut.Instance.GetType()
             .GetMethod("OnTabChanged", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        method.ShouldNotBeNull(
+        _ = method.ShouldNotBeNull(
             customMessage: "DW5 AC#3: TypeCatalog.OnTabChanged renamed/removed — test must be updated alongside the production refactor (?.Invoke would silently no-op).");
-        cut.InvokeAsync(() => method!.Invoke(cut.Instance, [tabId])).GetAwaiter().GetResult();
+        _ = cut.InvokeAsync(() => method!.Invoke(cut.Instance, [tabId])).GetAwaiter().GetResult();
     }
 }

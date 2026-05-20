@@ -269,7 +269,7 @@ public class DaprHealthQueryServiceTests {
         using HttpClient remoteHttpClient = new(remoteHandler) { BaseAddress = new Uri("http://localhost") };
         IHttpClientFactory infraHttpFactory = Substitute.For<IHttpClientFactory>();
         _ = infraHttpFactory.CreateClient(Arg.Any<string>()).Returns(remoteHttpClient);
-        var infraOptions = Options.Create(new AdminServerOptions {
+        IOptions<AdminServerOptions> infraOptions = Options.Create(new AdminServerOptions {
             EventStoreDaprHttpEndpoint = "http://eventstore-sidecar:3500",
             StateStoreName = "statestore",
         });
@@ -305,17 +305,11 @@ public class DaprHealthQueryServiceTests {
             c.Status.ToString().ShouldNotContain("p@ssw0rd");
         }
 
-        if (result.ObservabilityLinks.TraceUrl is not null) {
-            result.ObservabilityLinks.TraceUrl.ShouldNotContain("p@ssw0rd");
-        }
+        result.ObservabilityLinks.TraceUrl?.ShouldNotContain("p@ssw0rd");
 
-        if (result.ObservabilityLinks.MetricsUrl is not null) {
-            result.ObservabilityLinks.MetricsUrl.ShouldNotContain("p@ssw0rd");
-        }
+        result.ObservabilityLinks.MetricsUrl?.ShouldNotContain("p@ssw0rd");
 
-        if (result.ObservabilityLinks.LogsUrl is not null) {
-            result.ObservabilityLinks.LogsUrl.ShouldNotContain("p@ssw0rd");
-        }
+        result.ObservabilityLinks.LogsUrl?.ShouldNotContain("p@ssw0rd");
 
         // (2) Walk every recorded log entry. The probe-failure warning includes the exception
         // by design (LogWarning(ex, ...)); we want that exception detail to remain inside the
@@ -499,7 +493,7 @@ public class DaprHealthQueryServiceTests {
 
         (DaprHealthQueryService service, TestHttpMessageHandler handler) = CreateService(daprClient, streamQuery: streamQuery);
         handler.SetupJsonResponse("ok");
-        Stopwatch stopwatch = Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
 
         SystemHealthReport result = await service.GetSystemHealthAsync();
 

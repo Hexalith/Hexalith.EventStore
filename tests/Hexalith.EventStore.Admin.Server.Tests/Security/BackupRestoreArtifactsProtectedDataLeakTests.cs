@@ -1,4 +1,3 @@
-using System;
 using System.Net;
 using System.Text.Json;
 
@@ -58,7 +57,7 @@ public class BackupRestoreArtifactsProtectedDataLeakTests {
 
     [Fact]
     public void RestoredBackupAdmissionResult_SafeFields_SerializeWithoutSentinel() {
-        var result = new RestoredBackupAdmissionBuilder()
+        RestoredBackupAdmissionResult result = new RestoredBackupAdmissionBuilder()
             .WithAdmissionId("01HRBAAAAAAAAAAAAAAAAAAAAA")
             .WithTenant("tenant-a")
             .WithDomain("orders")

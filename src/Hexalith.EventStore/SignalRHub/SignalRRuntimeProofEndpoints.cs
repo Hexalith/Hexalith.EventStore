@@ -45,31 +45,31 @@ public static class SignalRRuntimeProofEndpoints {
                 SignalRRuntimeProofBroadcastRequest? request,
                 IProjectionChangedBroadcaster broadcaster,
                 CancellationToken cancellationToken) => {
-                if (request is null) {
-                    return Results.BadRequest("request body is required.");
-                }
+                    if (request is null) {
+                        return Results.BadRequest("request body is required.");
+                    }
 
-                if (string.IsNullOrWhiteSpace(request.ProjectionType)
-                    || string.IsNullOrWhiteSpace(request.TenantId)) {
-                    return Results.BadRequest("projectionType and tenantId are required.");
-                }
+                    if (string.IsNullOrWhiteSpace(request.ProjectionType)
+                        || string.IsNullOrWhiteSpace(request.TenantId)) {
+                        return Results.BadRequest("projectionType and tenantId are required.");
+                    }
 
-                if (request.ProjectionType.Contains(':', StringComparison.Ordinal)
-                    || request.TenantId.Contains(':', StringComparison.Ordinal)) {
-                    return Results.BadRequest("projectionType and tenantId must not contain colons.");
-                }
+                    if (request.ProjectionType.Contains(':', StringComparison.Ordinal)
+                        || request.TenantId.Contains(':', StringComparison.Ordinal)) {
+                        return Results.BadRequest("projectionType and tenantId must not contain colons.");
+                    }
 
-                await broadcaster
-                    .BroadcastChangedAsync(request.ProjectionType, request.TenantId, cancellationToken)
-                    .ConfigureAwait(false);
+                    await broadcaster
+                        .BroadcastChangedAsync(request.ProjectionType, request.TenantId, cancellationToken)
+                        .ConfigureAwait(false);
 
-                return Results.Ok(new SignalRRuntimeProofBroadcastResult(
-                    ProjectionType: request.ProjectionType,
-                    TenantId: request.TenantId,
-                    GroupName: $"{request.ProjectionType}:{request.TenantId}",
-                    ProcessId: Environment.ProcessId,
-                    Timestamp: DateTimeOffset.UtcNow));
-            });
+                    return Results.Ok(new SignalRRuntimeProofBroadcastResult(
+                        ProjectionType: request.ProjectionType,
+                        TenantId: request.TenantId,
+                        GroupName: $"{request.ProjectionType}:{request.TenantId}",
+                        ProcessId: Environment.ProcessId,
+                        Timestamp: DateTimeOffset.UtcNow));
+                });
 
         return app;
     }

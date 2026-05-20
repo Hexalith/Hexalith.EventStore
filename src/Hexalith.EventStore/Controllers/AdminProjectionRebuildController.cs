@@ -1,11 +1,11 @@
 using Dapr;
 
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Projections;
-using Hexalith.Commons.UniqueIds;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

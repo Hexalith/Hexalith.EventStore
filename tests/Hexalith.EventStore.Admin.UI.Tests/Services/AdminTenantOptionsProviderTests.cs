@@ -1,7 +1,5 @@
-using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
-using Hexalith.EventStore.Admin.UI.Services;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
 
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,8 +12,7 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Services;
 public class AdminTenantOptionsProviderTests {
     private static AdminTenantOptionsProvider CreateProvider(
         AdminTenantApiClient? tenants = null,
-        AdminStreamApiClient? streams = null) {
-        return new AdminTenantOptionsProvider(
+        AdminStreamApiClient? streams = null) => new(
             tenants ?? Substitute.For<AdminTenantApiClient>(
                 Substitute.For<IHttpClientFactory>(),
                 NullLogger<AdminTenantApiClient>.Instance),
@@ -23,7 +20,6 @@ public class AdminTenantOptionsProviderTests {
                 Substitute.For<IHttpClientFactory>(),
                 NullLogger<AdminStreamApiClient>.Instance),
             NullLogger<AdminTenantOptionsProvider>.Instance);
-    }
 
     private static AdminTenantApiClient TenantsReturning(params TenantSummary[] tenants) {
         AdminTenantApiClient client = Substitute.For<AdminTenantApiClient>(

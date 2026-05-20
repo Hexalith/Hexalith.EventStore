@@ -27,7 +27,7 @@ public partial class SubmitCommandHandler(
         ICommandArchiveStore archiveStore,
         ICommandRouter commandRouter,
         ILogger<SubmitCommandHandler> logger)
-        : this(statusStore, archiveStore, commandRouter, null, (IStreamActivityTracker?)null, logger) { }
+        : this(statusStore, archiveStore, commandRouter, null, null, logger) { }
 
     public async Task<SubmitCommandResult> Handle(SubmitCommand request, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(request);
@@ -164,8 +164,7 @@ public partial class SubmitCommandHandler(
 
         Log.CommandRouted(logger, request.CorrelationId);
 
-        return result with
-        {
+        return result with {
             ResultPayload = processingResult.Accepted
                 && processingResult.ResultPayload is not null
                 && finalStatus?.Status == CommandStatus.Completed

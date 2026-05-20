@@ -84,7 +84,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
         ProblemDetails details = ShouldBeBadRequestProblem(result);
         ShouldHaveStableReasonCode(details, "count_above_limit");
 
-        await actor.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
+        _ = await actor.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
             Dw3TestUtilities.TenantId, Dw3TestUtilities.Domain, Dw3TestUtilities.AggregateId,
             from: null, to: null, count: 100, ct: CancellationToken.None);
 
-        result.ShouldBeOfType<OkObjectResult>(
+        _ = result.ShouldBeOfType<OkObjectResult>(
             "DW3 AC#5: default value (100) must remain compatible with current behavior.");
     }
 
@@ -114,7 +114,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
         ProblemDetails details = ShouldBeBadRequestProblem(result);
         ShouldHaveStableReasonCode(details, "max_events_above_limit");
 
-        await actor.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
+        _ = await actor.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
         ProblemDetails details = ShouldBeBadRequestProblem(result);
         ShouldHaveStableReasonCode(details, "max_fields_above_limit");
 
-        await actor.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
+        _ = await actor.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
     }
 
     // ---------------------------------------------------------------
@@ -147,7 +147,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
         ProblemDetails details = ShouldBeBadRequestProblem(result);
         ShouldHaveStableReasonCode(details, "max_steps_above_limit");
 
-        await actor.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
+        _ = await actor.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public class Dw3DirectMaxParameterBoundsAtddTests {
         ProblemDetails details = ShouldBeBadRequestProblem(result);
         ShouldHaveStableReasonCode(details, "max_fields_above_limit");
 
-        await actor.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
+        _ = await actor.DidNotReceiveWithAnyArgs().GetEventsAsync(default);
     }
 
     // ---------------------------------------------------------------

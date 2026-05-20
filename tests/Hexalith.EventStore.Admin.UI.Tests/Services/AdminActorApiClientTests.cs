@@ -69,7 +69,7 @@ public class AdminActorApiClientTests {
         result.ActorType.ShouldBe("AggregateActor");
         result.ActorId.ShouldBe("tenant-a:counter:counter-1");
         result.LookupStatus.ShouldBe(DaprActorLookupStatus.NotFound);
-        result.Message.ShouldNotBeNull();
+        _ = result.Message.ShouldNotBeNull();
         result.Message!.ShouldContain("not found", Case.Insensitive);
     }
 
@@ -85,7 +85,7 @@ public class AdminActorApiClientTests {
 
         _ = result.ShouldNotBeNull();
         result.LookupStatus.ShouldBe(DaprActorLookupStatus.LookupUnavailable);
-        result.Message.ShouldNotBeNull();
+        _ = result.Message.ShouldNotBeNull();
         result.Message!.ShouldContain("unavailable", Case.Insensitive);
     }
 

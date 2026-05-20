@@ -470,7 +470,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         var pairs = new HashSet<(string Tenant, string Domain)>();
         foreach (string pair in activePairs) {
             if (TryDecodeActivePair(pair, out string? tenant, out string? domain)) {
-                pairs.Add((tenant, domain));
+                _ = pairs.Add((tenant, domain));
             }
         }
 
@@ -987,7 +987,7 @@ public sealed partial class ProjectionRebuildCheckpointStore(
         }
 
         foreach (char c in trimmed) {
-            if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') {
+            if (c is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '-') {
                 continue;
             }
 

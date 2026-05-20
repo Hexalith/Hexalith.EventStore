@@ -1,7 +1,5 @@
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 
-using Microsoft.Extensions.Hosting;
-
 namespace Hexalith.EventStore.Admin.UI.Services;
 
 /// <summary>
@@ -9,22 +7,20 @@ namespace Hexalith.EventStore.Admin.UI.Services;
 /// without an external authentication authority.
 /// </summary>
 public sealed class DevelopmentAdminRoleState(IConfiguration configuration, IHostEnvironment environment) {
-    private AdminRole _selectedRole = AdminRole.Admin;
-
     public event Action<AdminRole>? RoleChanged;
 
-    public AdminRole SelectedRole => _selectedRole;
+    public AdminRole SelectedRole { get; private set; } = AdminRole.Admin;
 
     public bool IsRoleSwitcherAvailable =>
         environment.IsDevelopment()
         && string.IsNullOrWhiteSpace(configuration["EventStore:Authentication:Authority"]);
 
     public void SetRole(AdminRole role) {
-        if (!IsRoleSwitcherAvailable || role == _selectedRole) {
+        if (!IsRoleSwitcherAvailable || role == SelectedRole) {
             return;
         }
 
-        _selectedRole = role;
+        SelectedRole = role;
         RoleChanged?.Invoke(role);
     }
 }

@@ -6,8 +6,7 @@ namespace Hexalith.EventStore.Server.Actors;
 /// stable activity reason code `drain_event_count_mismatch` via type-match (not message
 /// prefix), so renaming the exception message will not regress the diagnostic vocabulary.
 /// </summary>
-internal sealed class DrainEventCountMismatchException : InvalidOperationException
-{
+internal sealed class DrainEventCountMismatchException : InvalidOperationException {
     public DrainEventCountMismatchException(
         string actorId,
         long startSequence,
@@ -17,7 +16,6 @@ internal sealed class DrainEventCountMismatchException : InvalidOperationExcepti
         : base(
             $"Drain record EventCount mismatch for {actorId}: startSequence={startSequence}, "
             + $"endSequence={endSequence}, eventCount={eventCount}, "
-            + $"expectedEventCount={expectedEventCount}.")
-    {
+            + $"expectedEventCount={expectedEventCount}.") {
     }
 }

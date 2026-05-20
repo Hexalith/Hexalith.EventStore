@@ -10,8 +10,7 @@ namespace Hexalith.EventStore.Server.DomainServices;
 /// service invocation so reconstruction always runs the same Apply convention as the
 /// command path. The Admin UI / Admin API never reconstruct state independently.
 /// </summary>
-public interface IAggregateStateReconstructor
-{
+public interface IAggregateStateReconstructor {
     /// <summary>
     /// Replays the supplied events through the owning domain's Apply convention up to
     /// <paramref name="upToSequence"/>. The implementation must be side-effect free: no

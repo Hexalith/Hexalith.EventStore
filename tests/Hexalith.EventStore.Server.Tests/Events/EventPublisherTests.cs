@@ -48,7 +48,7 @@ public class EventPublisherTests {
 
     private static IHostEnvironment CreateDevelopmentEnvironment() {
         IHostEnvironment env = Substitute.For<IHostEnvironment>();
-        env.EnvironmentName.Returns(Environments.Development);
+        _ = env.EnvironmentName.Returns(Environments.Development);
         return env;
     }
 
@@ -124,7 +124,7 @@ public class EventPublisherTests {
         EventEnvelope envelope = CreateTestEnvelope(sequenceNumber: 7, eventTypeName: "OrderConfirmed");
         EventEnvelope? publishedEnvelope = null;
         Dictionary<string, string>? publishedMetadata = null;
-        daprClient.PublishEventAsync(
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Do<EventEnvelope>(x => publishedEnvelope = x),
@@ -137,7 +137,7 @@ public class EventPublisherTests {
 
         // Assert
         result.Success.ShouldBeTrue();
-        publishedEnvelope.ShouldNotBeNull();
+        _ = publishedEnvelope.ShouldNotBeNull();
         publishedEnvelope.TenantId.ShouldBe("test-tenant");
         publishedEnvelope.Domain.ShouldBe("test-domain");
         publishedEnvelope.AggregateId.ShouldBe("agg-001");
@@ -147,7 +147,7 @@ public class EventPublisherTests {
         publishedEnvelope.MessageId.ShouldBe("msg-7");
         publishedEnvelope.EventTypeName.ShouldBe("OrderConfirmed");
 
-        publishedMetadata.ShouldNotBeNull();
+        _ = publishedMetadata.ShouldNotBeNull();
         publishedMetadata.Keys.ShouldBe(["cloudevent.type", "cloudevent.source", "cloudevent.id"], ignoreOrder: true);
         publishedMetadata["cloudevent.id"].ShouldBe("corr-001:7");
         publishedMetadata.Keys.ShouldNotContain(x => string.Equals(x, "rawPayload", StringComparison.OrdinalIgnoreCase));
@@ -315,7 +315,7 @@ public class EventPublisherTests {
 
             result.Success.ShouldBeFalse();
             result.PublishedCount.ShouldBe(0);
-            result.FailureReason.ShouldNotBeNull();
+            _ = result.FailureReason.ShouldNotBeNull();
             result.FailureReason.ShouldContain("Configured test publish fault");
             await daprClient.DidNotReceiveWithAnyArgs().PublishEventAsync<EventEnvelope>(default!, default!, default!, default!, default);
         }
@@ -330,7 +330,7 @@ public class EventPublisherTests {
         File.WriteAllText(faultFile, "fault");
         try {
             IHostEnvironment productionEnv = Substitute.For<IHostEnvironment>();
-            productionEnv.EnvironmentName.Returns(Environments.Production);
+            _ = productionEnv.EnvironmentName.Returns(Environments.Production);
 
             (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher(
                 new EventPublisherOptions {

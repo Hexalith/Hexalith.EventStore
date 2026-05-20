@@ -11,8 +11,6 @@ using NSubstitute;
 
 using Shouldly;
 
-using ServerEventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
-
 namespace Hexalith.EventStore.Server.Tests.Controllers;
 
 /// <summary>

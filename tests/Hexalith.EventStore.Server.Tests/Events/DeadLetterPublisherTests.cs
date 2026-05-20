@@ -86,7 +86,7 @@ public class DeadLetterPublisherTests {
         DeadLetterMessage message = CreateTestDeadLetterMessage(command);
 
         Dictionary<string, string>? capturedMetadata = null;
-        daprClient.PublishEventAsync(
+        _ = daprClient.PublishEventAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<DeadLetterMessage>(),

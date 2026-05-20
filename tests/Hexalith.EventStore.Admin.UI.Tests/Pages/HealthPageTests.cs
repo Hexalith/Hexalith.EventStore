@@ -153,7 +153,7 @@ public class HealthPageTests : AdminUITestContext {
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Total Events"), TimeSpan.FromSeconds(5));
 
         DashboardRefreshService refreshService = Services.GetRequiredService<DashboardRefreshService>();
-        await cut.InvokeAsync(() => refreshService.TriggerImmediateRefreshAsync());
+        await cut.InvokeAsync(refreshService.TriggerImmediateRefreshAsync);
 
         cut.WaitForAssertion(
             () => cut.Markup.ShouldContain("Health data may be stale"),
@@ -583,7 +583,7 @@ public class HealthPageTests : AdminUITestContext {
         warmCut.WaitForAssertion(() => warmCut.Markup.ShouldContain("Total Events"), TimeSpan.FromSeconds(5));
 
         DashboardRefreshService refreshService = Services.GetRequiredService<DashboardRefreshService>();
-        await warmCut.InvokeAsync(() => refreshService.TriggerImmediateRefreshAsync());
+        await warmCut.InvokeAsync(refreshService.TriggerImmediateRefreshAsync);
 
         warmCut.WaitForAssertion(
             () => warmCut.Markup.ShouldContain("Unable to load health status"),

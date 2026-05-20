@@ -14,7 +14,6 @@ using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Queries;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
@@ -33,8 +32,7 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 //   project_unsupported_content_type, project_invalid_charset, project_malformed_json,
 //   project_invalid_projection_type, project_invalid_state,
 //   project_timeout, project_cancelled, checkpoint_drift, unknown.
-public class Dw1ProjectionDeliveryAtddTests
-{
+public class Dw1ProjectionDeliveryAtddTests {
     private const string SkipReasonAc1 = "ATDD red phase — DW1 AC#1 (checkpoint drift). Remove Skip when implementing.";
     private const string SkipReasonAc2 = "ATDD red phase — DW1 AC#2 (/project failure classification). Remove Skip when implementing.";
     private const string SkipReasonAc3 = "ATDD red phase — DW1 AC#3 (cancellation vs timeout). Remove Skip when implementing.";
@@ -75,8 +73,7 @@ public class Dw1ProjectionDeliveryAtddTests
         CreateSut(
             HttpMessageHandler responseHandler,
             long? checkpointSequence = null,
-            EventEnvelope[]? events = null)
-    {
+            EventEnvelope[]? events = null) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         IDomainServiceResolver resolver = Substitute.For<IDomainServiceResolver>();
         IProjectionCheckpointTracker checkpointTracker = Substitute.For<IProjectionCheckpointTracker>();
@@ -115,8 +112,7 @@ public class Dw1ProjectionDeliveryAtddTests
     // ---------- AC #1: Checkpoint drift ----------
 
     [Fact(Skip = SkipReasonAc1)]
-    public async Task DeliverProjection_PersistedCheckpointAheadOfAggregateStream_EmitsCheckpointDriftReasonCode()
-    {
+    public async Task DeliverProjection_PersistedCheckpointAheadOfAggregateStream_EmitsCheckpointDriftReasonCode() {
         // Arrange — checkpoint claims sequence 99 was delivered, but the aggregate
         // actor only has events up to sequence 5. This is impossible state and must
         // be detected and reported with the stable reason code.
@@ -130,12 +126,11 @@ public class Dw1ProjectionDeliveryAtddTests
         // Assert — stable reason code emitted, write actor not called, checkpoint NOT advanced.
         logs.ShouldContain(e => e.Message.Contains("checkpoint_drift"), customMessage: "checkpoint_drift reason code missing from log entries");
         await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
-        await tracker.DidNotReceive().SaveDeliveredSequenceAsync(TestIdentity, Arg.Is<long>(s => s < 99), Arg.Any<CancellationToken>());
+        _ = await tracker.DidNotReceive().SaveDeliveredSequenceAsync(TestIdentity, Arg.Is<long>(s => s < 99), Arg.Any<CancellationToken>());
     }
 
     [Fact(Skip = SkipReasonAc1)]
-    public async Task DeliverProjection_PersistedCheckpointAheadOfAggregateStream_DoesNotRegressCheckpoint()
-    {
+    public async Task DeliverProjection_PersistedCheckpointAheadOfAggregateStream_DoesNotRegressCheckpoint() {
         // Drift must never cause the checkpoint to be saved at a lower value.
         var handler = new JsonStringHandler("""{"projectionType":"counter-summary","state":{"value":1}}""");
         (ProjectionUpdateOrchestrator sut, _, _, IProjectionCheckpointTracker tracker, _, _, _) =
@@ -143,14 +138,13 @@ public class Dw1ProjectionDeliveryAtddTests
 
         await sut.UpdateProjectionAsync(TestIdentity);
 
-        await tracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await tracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     // ---------- AC #2: /project failure classification ----------
 
     [Fact(Skip = SkipReasonAc2)]
-    public async Task DeliverProjection_Upstream4xx_LogsProjectUpstream4xxReasonCode()
-    {
+    public async Task DeliverProjection_Upstream4xx_LogsProjectUpstream4xxReasonCode() {
         var handler = new StatusCodeOnlyHandler(HttpStatusCode.BadRequest);
         (ProjectionUpdateOrchestrator sut, _, _, IProjectionCheckpointTracker tracker, IProjectionWriteActor writeActor, _, List<LogEntry> logs) =
             CreateSut(handler);
@@ -159,12 +153,11 @@ public class Dw1ProjectionDeliveryAtddTests
 
         logs.ShouldContain(e => e.Message.Contains("project_upstream_4xx"));
         await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
-        await tracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await tracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Fact(Skip = SkipReasonAc2)]
-    public async Task DeliverProjection_Upstream5xx_LogsProjectUpstream5xxReasonCode()
-    {
+    public async Task DeliverProjection_Upstream5xx_LogsProjectUpstream5xxReasonCode() {
         var handler = new StatusCodeOnlyHandler(HttpStatusCode.BadGateway);
         (ProjectionUpdateOrchestrator sut, _, _, IProjectionCheckpointTracker tracker, IProjectionWriteActor writeActor, _, List<LogEntry> logs) =
             CreateSut(handler);
@@ -173,12 +166,11 @@ public class Dw1ProjectionDeliveryAtddTests
 
         logs.ShouldContain(e => e.Message.Contains("project_upstream_5xx"));
         await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
-        await tracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await tracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Fact(Skip = SkipReasonAc2)]
-    public async Task DeliverProjection_UnsupportedContentType_LogsProjectUnsupportedContentTypeReasonCode()
-    {
+    public async Task DeliverProjection_UnsupportedContentType_LogsProjectUnsupportedContentTypeReasonCode() {
         var handler = new ContentTypeHandler(@"<xml/>", mediaType: "application/xml");
         (ProjectionUpdateOrchestrator sut, _, _, IProjectionCheckpointTracker tracker, IProjectionWriteActor writeActor, _, List<LogEntry> logs) =
             CreateSut(handler);
@@ -187,12 +179,11 @@ public class Dw1ProjectionDeliveryAtddTests
 
         logs.ShouldContain(e => e.Message.Contains("project_unsupported_content_type"));
         await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
-        await tracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await tracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Fact(Skip = SkipReasonAc2)]
-    public async Task DeliverProjection_InvalidCharset_LogsProjectInvalidCharsetReasonCode()
-    {
+    public async Task DeliverProjection_InvalidCharset_LogsProjectInvalidCharsetReasonCode() {
         var handler = new InvalidCharsetHandler();
         (ProjectionUpdateOrchestrator sut, _, _, _, _, _, List<LogEntry> logs) = CreateSut(handler);
 
@@ -202,8 +193,7 @@ public class Dw1ProjectionDeliveryAtddTests
     }
 
     [Fact(Skip = SkipReasonAc2)]
-    public async Task DeliverProjection_MalformedJson_LogsProjectMalformedJsonReasonCode()
-    {
+    public async Task DeliverProjection_MalformedJson_LogsProjectMalformedJsonReasonCode() {
         var handler = new JsonStringHandler("{not-json}");
         (ProjectionUpdateOrchestrator sut, _, _, IProjectionCheckpointTracker tracker, IProjectionWriteActor writeActor, _, List<LogEntry> logs) =
             CreateSut(handler);
@@ -212,12 +202,11 @@ public class Dw1ProjectionDeliveryAtddTests
 
         logs.ShouldContain(e => e.Message.Contains("project_malformed_json"));
         await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
-        await tracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await tracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     [Fact(Skip = SkipReasonAc2)]
-    public async Task DeliverProjection_EmptyProjectionType_LogsProjectInvalidProjectionTypeReasonCode()
-    {
+    public async Task DeliverProjection_EmptyProjectionType_LogsProjectInvalidProjectionTypeReasonCode() {
         // Today this case logs "ProjectionType is null or empty." (free-form text).
         // After DW1 it must log the stable reason code project_invalid_projection_type.
         var handler = new JsonStringHandler("""{"projectionType":"","state":{"value":1}}""");
@@ -229,8 +218,7 @@ public class Dw1ProjectionDeliveryAtddTests
     }
 
     [Fact(Skip = SkipReasonAc2)]
-    public async Task DeliverProjection_NullState_LogsProjectInvalidStateReasonCode()
-    {
+    public async Task DeliverProjection_NullState_LogsProjectInvalidStateReasonCode() {
         // Today this case logs "State is null or undefined." After DW1 it must log
         // the stable reason code project_invalid_state.
         var handler = new JsonStringHandler("""{"projectionType":"counter-summary","state":null}""");
@@ -242,8 +230,7 @@ public class Dw1ProjectionDeliveryAtddTests
     }
 
     [Fact(Skip = SkipReasonAc2)]
-    public async Task DeliverProjection_AnyClassifiedFailure_DoesNotLogEventPayload()
-    {
+    public async Task DeliverProjection_AnyClassifiedFailure_DoesNotLogEventPayload() {
         // Privacy invariant: failure logs must never carry event payload bytes.
         var handler = new StatusCodeOnlyHandler(HttpStatusCode.InternalServerError);
         (ProjectionUpdateOrchestrator sut, _, _, _, _, _, List<LogEntry> logs) =
@@ -257,8 +244,7 @@ public class Dw1ProjectionDeliveryAtddTests
     // ---------- AC #3: Cancellation vs timeout ----------
 
     [Fact(Skip = SkipReasonAc3)]
-    public async Task DeliverProjection_HostTokenCancelled_PropagatesOperationCanceledException()
-    {
+    public async Task DeliverProjection_HostTokenCancelled_PropagatesOperationCanceledException() {
         var handler = new JsonStringHandler("""{"projectionType":"counter-summary","state":{"value":1}}""");
         (ProjectionUpdateOrchestrator sut, _, _, _, _, _, _) = CreateSut(handler);
         using var cts = new CancellationTokenSource();
@@ -269,8 +255,7 @@ public class Dw1ProjectionDeliveryAtddTests
     }
 
     [Fact(Skip = SkipReasonAc3)]
-    public async Task DeliverProjection_HttpTimeoutWhileHostStillRunning_LogsProjectTimeoutAndDoesNotThrow()
-    {
+    public async Task DeliverProjection_HttpTimeoutWhileHostStillRunning_LogsProjectTimeoutAndDoesNotThrow() {
         // Inner HTTP timeout (e.g. linked-CTS timeout inside Dapr service invocation)
         // must NOT escape as host shutdown. It is a transient projection failure with
         // a stable reason code.
@@ -283,14 +268,13 @@ public class Dw1ProjectionDeliveryAtddTests
 
         logs.ShouldContain(e => e.Message.Contains("project_timeout"));
         await writeActor.DidNotReceiveWithAnyArgs().UpdateProjectionAsync(default!);
-        await tracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
+        _ = await tracker.DidNotReceiveWithAnyArgs().SaveDeliveredSequenceAsync(default!, default, default);
     }
 
     // ---------- AC #4: Per-aggregate serialization ----------
 
     [Fact(Skip = SkipReasonAc4)]
-    public async Task DeliverProjection_TwoOverlappingCallsForSameActorId_AreSerializedByKeyedSemaphore()
-    {
+    public async Task DeliverProjection_TwoOverlappingCallsForSameActorId_AreSerializedByKeyedSemaphore() {
         // Two parallel deliveries on the same identity must not enter the inner section concurrently.
         var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         int concurrent = 0;
@@ -303,21 +287,18 @@ public class Dw1ProjectionDeliveryAtddTests
             .Returns(true);
 
         IAggregateActor aggregateActor = Substitute.For<IAggregateActor>();
-        async Task<EventEnvelope[]> GatedGetEventsAsync()
-        {
+        async Task<EventEnvelope[]> GatedGetEventsAsync() {
             int observed = Interlocked.Increment(ref concurrent);
             int previousMax;
-            do
-            {
+            do {
                 previousMax = maxObservedConcurrent;
-                if (observed <= previousMax)
-                {
+                if (observed <= previousMax) {
                     break;
                 }
             }
             while (Interlocked.CompareExchange(ref maxObservedConcurrent, observed, previousMax) != previousMax);
 
-            await gate.Task.ConfigureAwait(false);
+            _ = await gate.Task.ConfigureAwait(false);
             _ = Interlocked.Decrement(ref concurrent);
             return [CreateEnvelope(1)];
         }
@@ -354,47 +335,37 @@ public class Dw1ProjectionDeliveryAtddTests
 
     // ---------- HTTP handlers ----------
 
-    private sealed class JsonStringHandler(string body) : HttpMessageHandler
-    {
+    private sealed class JsonStringHandler(string body) : HttpMessageHandler {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            {
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) {
                 Content = new StringContent(body, Encoding.UTF8, "application/json"),
             });
     }
 
-    private sealed class StatusCodeOnlyHandler(HttpStatusCode statusCode) : HttpMessageHandler
-    {
+    private sealed class StatusCodeOnlyHandler(HttpStatusCode statusCode) : HttpMessageHandler {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(new HttpResponseMessage(statusCode)
-            {
+            Task.FromResult(new HttpResponseMessage(statusCode) {
                 Content = new StringContent("{}", Encoding.UTF8, "application/json"),
             });
     }
 
-    private sealed class ContentTypeHandler(string body, string mediaType) : HttpMessageHandler
-    {
+    private sealed class ContentTypeHandler(string body, string mediaType) : HttpMessageHandler {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            {
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) {
                 Content = new StringContent(body, Encoding.UTF8, mediaType),
             });
     }
 
-    private sealed class InvalidCharsetHandler : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
+    private sealed class InvalidCharsetHandler : HttpMessageHandler {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
             var content = new ByteArrayContent("{}"u8.ToArray());
-            content.Headers.TryAddWithoutValidation("Content-Type", "application/json; charset=not-a-real-charset");
+            _ = content.Headers.TryAddWithoutValidation("Content-Type", "application/json; charset=not-a-real-charset");
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
         }
     }
 
-    private sealed class TaskCanceledTimeoutHandler : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
+    private sealed class TaskCanceledTimeoutHandler : HttpMessageHandler {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
             // Simulates an inner HTTP timeout: TaskCanceledException with no host-token cancellation.
             using var innerTimeoutCts = new CancellationTokenSource();
             innerTimeoutCts.Cancel();

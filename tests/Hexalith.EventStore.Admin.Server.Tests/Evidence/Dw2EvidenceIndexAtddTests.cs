@@ -1,5 +1,3 @@
-using Shouldly;
-
 namespace Hexalith.EventStore.Admin.Server.Tests.Evidence;
 
 // ATDD red-phase scaffolds for story:
@@ -22,16 +20,14 @@ namespace Hexalith.EventStore.Admin.Server.Tests.Evidence;
 // Skip rationale: tests are marked [Fact(Skip = "...")] until the DW2 evidence has been recorded.
 // Removing Skip per AC means the dev has captured the corresponding artefact and the gate will
 // stay green during regression.
-public class Dw2EvidenceIndexAtddTests
-{
+public class Dw2EvidenceIndexAtddTests {
     private const string SkipReasonAc11Folder = "ATDD red phase — DW2 AC#11 (evidence folder). Remove Skip after `_bmad-output/test-artifacts/post-epic-deferred-dw2-admin-dapr-mcp-live-evidence/` is created during the smoke run.";
     private const string SkipReasonAc11Index = "ATDD red phase — DW2 AC#11 (evidence index tables). Remove Skip after the evidence index file is written with all required tables.";
     private const string SkipReasonAc11Matrix = "ATDD red phase — DW2 AC#11 (per-surface RemoteMetadataStatus matrix). Remove Skip after the index records sidecar/actors/pubsub each as their own row.";
     private const string SkipReasonAc11Canonical = "ATDD red phase — DW2 AC#11 (canonical seeded-stream identifier block). Remove Skip after the canonical block is recorded once and reused across Admin API, Admin UI, MCP, and CommandAPI artefacts.";
     private const string SkipReasonAc12 = "ATDD red phase — DW2 AC#12 (deferred-work disposition markers). Remove Skip after the relevant bullets in deferred-work.md carry a DW2 disposition marker.";
 
-    private static string RepoRoot()
-    {
+    private static string RepoRoot() {
         // tests/Hexalith.EventStore.Admin.Server.Tests/bin/<config>/<tfm>/ → repo root
         string testDir = Path.GetDirectoryName(typeof(Dw2EvidenceIndexAtddTests).Assembly.Location)!;
         return Path.GetFullPath(Path.Combine(testDir, "..", "..", "..", "..", ".."));
@@ -44,8 +40,7 @@ public class Dw2EvidenceIndexAtddTests
         RepoRoot(), "_bmad-output", "implementation-artifacts", "deferred-work.md");
 
     [Fact(Skip = SkipReasonAc11Folder)]
-    public void EvidenceFolder_ExistsUnderTestArtifacts()
-    {
+    public void EvidenceFolder_ExistsUnderTestArtifacts() {
         // AC#11 — The evidence folder is the durable home for DW2 artefacts. Story Task 0.2
         // explicitly names this path; the scaffold gate fails until the folder is created.
         string folder = EvidenceFolder();
@@ -54,8 +49,7 @@ public class Dw2EvidenceIndexAtddTests
     }
 
     [Fact(Skip = SkipReasonAc11Index)]
-    public void EvidenceIndex_ContainsAllRequiredTables()
-    {
+    public void EvidenceIndex_ContainsAllRequiredTables() {
         // AC#11 — Evidence index MUST include eight tables. Each table header MUST be present so
         // reviewers can pair the smoke output with the index row. Acceptable index file names:
         // index.md, README.md, evidence.md (story Task 0.3 — markdown index file).
@@ -64,7 +58,7 @@ public class Dw2EvidenceIndexAtddTests
             .Select(name => Path.Combine(folder, name))
             .FirstOrDefault(File.Exists);
 
-        indexPath.ShouldNotBeNull(
+        _ = indexPath.ShouldNotBeNull(
             customMessage: "DW2 AC#11 requires an evidence index file (index.md / README.md / evidence.md) in the evidence folder.");
         string content = File.ReadAllText(indexPath!);
 
@@ -86,8 +80,7 @@ public class Dw2EvidenceIndexAtddTests
     }
 
     [Fact(Skip = SkipReasonAc11Matrix)]
-    public void EvidenceIndex_RemoteMetadataStatusMatrix_HasRowsPerSurface()
-    {
+    public void EvidenceIndex_RemoteMetadataStatusMatrix_HasRowsPerSurface() {
         // AC#11 — RemoteMetadataStatus MUST be recorded per surface. The matrix MUST contain the
         // strings "sidecar", "actors", and "pubsub" (case-insensitive) so a reviewer can confirm
         // each surface has its own row, not a single global degraded flag.
@@ -95,7 +88,7 @@ public class Dw2EvidenceIndexAtddTests
         string? indexPath = new[] { "index.md", "README.md", "evidence.md" }
             .Select(name => Path.Combine(folder, name))
             .FirstOrDefault(File.Exists);
-        indexPath.ShouldNotBeNull();
+        _ = indexPath.ShouldNotBeNull();
         string content = File.ReadAllText(indexPath!);
 
         content.ShouldContain("sidecar", Case.Insensitive);
@@ -105,8 +98,7 @@ public class Dw2EvidenceIndexAtddTests
     }
 
     [Fact(Skip = SkipReasonAc11Canonical)]
-    public void EvidenceIndex_RecordsCanonicalSeededStreamIdentifierBlock()
-    {
+    public void EvidenceIndex_RecordsCanonicalSeededStreamIdentifierBlock() {
         // AC#11 — Cross-Surface Consistency Rules require ONE canonical identifier block reused
         // across Admin API, Admin UI, MCP, and CommandAPI artefacts. The scaffold gate verifies
         // the canonical labels appear exactly once in the index file (label presence — not value).
@@ -114,7 +106,7 @@ public class Dw2EvidenceIndexAtddTests
         string? indexPath = new[] { "index.md", "README.md", "evidence.md" }
             .Select(name => Path.Combine(folder, name))
             .FirstOrDefault(File.Exists);
-        indexPath.ShouldNotBeNull();
+        _ = indexPath.ShouldNotBeNull();
         string content = File.ReadAllText(indexPath!);
 
         content.ShouldContain("TenantId", Case.Insensitive);
@@ -125,8 +117,7 @@ public class Dw2EvidenceIndexAtddTests
     }
 
     [Fact(Skip = SkipReasonAc12)]
-    public void DeferredWork_HasDw2DispositionMarker_OnAtLeastOneBullet()
-    {
+    public void DeferredWork_HasDw2DispositionMarker_OnAtLeastOneBullet() {
         // AC#12 — At least ONE bullet in deferred-work.md MUST carry a DW2 disposition marker.
         // Acceptable markers:
         //   STORY:post-epic-deferred-dw2-admin-dapr-mcp-live-evidence

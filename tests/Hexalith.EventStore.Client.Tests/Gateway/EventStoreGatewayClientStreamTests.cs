@@ -47,10 +47,10 @@ public class EventStoreGatewayClientStreamTests {
             PageSize: 25));
 
         page.Metadata.EventCount.ShouldBe(0);
-        observedRequest.ShouldNotBeNull();
+        _ = observedRequest.ShouldNotBeNull();
         observedRequest.Method.ShouldBe(HttpMethod.Post);
         observedRequest.RequestUri!.AbsolutePath.ShouldBe("/api/v1/streams/read");
-        observedBody.ShouldNotBeNull();
+        _ = observedBody.ShouldNotBeNull();
         observedBody.ShouldContain("\"tenant\":\"tenant-a\"");
         observedBody.ShouldContain("\"pageSize\":25");
     }

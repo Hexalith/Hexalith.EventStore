@@ -13,6 +13,7 @@ using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Telemetry;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,7 +23,6 @@ using NSubstitute;
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
-using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 
@@ -56,10 +56,8 @@ public class Dw8DrainReasonClassifierTests {
     }
 
     [Fact]
-    public void ClassifyDrainFailure_ResidualExceptionKeepsUnknownWireValue() {
-        AggregateActor.ClassifyDrainFailure(new InvalidOperationException("uncategorized"))
+    public void ClassifyDrainFailure_ResidualExceptionKeepsUnknownWireValue() => AggregateActor.ClassifyDrainFailure(new InvalidOperationException("uncategorized"))
             .ShouldBe(DrainReasonCodes.Unknown);
-    }
 
     [Fact]
     public async Task ReceiveReminder_DrainEventReadStateStoreFailure_ActivityFailureReasonIsStableCode() {

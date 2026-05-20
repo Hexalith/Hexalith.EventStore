@@ -91,18 +91,14 @@ public class MissingApplyMethodExceptionTests {
     public void Exception_IsAssignableToInvalidOperationException() {
         var ex = new MissingApplyMethodException(typeof(PlainState), "ItemAdded");
 
-        Assert.IsAssignableFrom<InvalidOperationException>(ex);
+        _ = Assert.IsAssignableFrom<InvalidOperationException>(ex);
     }
 
     [Fact]
-    public void Constructor_NullStateType_Throws() {
-        _ = Assert.Throws<ArgumentNullException>(
+    public void Constructor_NullStateType_Throws() => _ = Assert.Throws<ArgumentNullException>(
             () => new MissingApplyMethodException(stateType: null!, eventTypeName: "ItemAdded"));
-    }
 
     [Fact]
-    public void Constructor_WhitespaceEventTypeName_Throws() {
-        _ = Assert.Throws<ArgumentException>(
+    public void Constructor_WhitespaceEventTypeName_Throws() => _ = Assert.Throws<ArgumentException>(
             () => new MissingApplyMethodException(typeof(PlainState), "  "));
-    }
 }

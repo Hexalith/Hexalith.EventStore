@@ -871,8 +871,8 @@ public class QueriesControllerTests {
 
         OkObjectResult okResult = actionResult.ShouldBeOfType<OkObjectResult>();
         SubmitQueryResponse response = okResult.Value.ShouldBeOfType<SubmitQueryResponse>();
-        response.Metadata.ShouldNotBeNull();
-        response.Metadata.Paging.ShouldNotBeNull();
+        _ = response.Metadata.ShouldNotBeNull();
+        _ = response.Metadata.Paging.ShouldNotBeNull();
         response.Metadata.Paging.PageSize.ShouldBe(QueryPolicyLimits.DefaultPageSize);
         response.Metadata.Paging.Offset.ShouldBeNull();
     }

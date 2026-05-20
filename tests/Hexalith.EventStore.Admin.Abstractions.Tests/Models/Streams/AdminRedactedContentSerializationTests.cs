@@ -13,7 +13,7 @@ public class AdminRedactedContentSerializationTests {
 
     [Fact]
     public void EventDetail_RedactedPayloadSerialization_OmitsRawPayloadJsonAndKeepsSafeDescriptor() {
-        EventDetail detail = EventDetail.WithRedactedPayload(
+        var detail = EventDetail.WithRedactedPayload(
             "tenant-a",
             "Counter",
             "agg-1",
@@ -49,8 +49,7 @@ public class AdminRedactedContentSerializationTests {
         string json = JsonSerializer.Serialize(graph, JsonOptions);
 
         ProtectedDataLeakSentinel.AssertNoLeak([json]);
-        foreach (string forbidden in new[] { "\"payloadJson\"", "\"stateJson\"", "\"eventPayloadJson\"", "\"resultingStateJson\"", "\"failureReason\"", "\"errorMessage\"", "\"message\"" })
-        {
+        foreach (string forbidden in new[] { "\"payloadJson\"", "\"stateJson\"", "\"eventPayloadJson\"", "\"resultingStateJson\"", "\"failureReason\"", "\"errorMessage\"", "\"message\"" }) {
             json.ShouldNotContain(forbidden);
         }
 

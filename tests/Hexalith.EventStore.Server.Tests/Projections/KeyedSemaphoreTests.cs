@@ -35,7 +35,7 @@ public class KeyedSemaphoreTests {
         var firstReady = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var firstReleased = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        Task secondTask = Task.Run(async () => {
+        var secondTask = Task.Run(async () => {
             await firstReady.Task;
             using IDisposable second = await keyed.AcquireAsync("a", CancellationToken.None);
             firstReleased.Task.IsCompleted.ShouldBeTrue();
