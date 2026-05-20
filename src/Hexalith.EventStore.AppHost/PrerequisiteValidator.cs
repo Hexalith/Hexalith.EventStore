@@ -5,12 +5,21 @@
 
 namespace Hexalith.EventStore.AppHost;
 
+internal sealed record PrerequisiteCommandResult(bool Success, string? Output);
+
+internal interface IPrerequisiteCommandRunner {
+    PrerequisiteCommandResult Run(string command, string args, TimeSpan timeout);
+}
+
 /// <summary>
 /// Validates that required development prerequisites (Docker, DAPR) are available
 /// before Aspire builder initialization. Produces consolidated, actionable error
 /// messages with installation links when prerequisites are missing.
 /// </summary>
 internal static class PrerequisiteValidator {
+    internal static readonly TimeSpan CommandTimeout = TimeSpan.FromSeconds(120);
+    private const string DockerProbeArguments = "version --format \"{{.Server.Version}}\"";
+
     /// <summary>
     /// Checks for required prerequisites and exits with a consolidated error message
     /// if any are missing. Skipped in CI environments and publish scenarios.
@@ -25,33 +34,7 @@ internal static class PrerequisiteValidator {
             return;
         }
 
-        List<string> errors = [];
-
-        // Check Docker availability (docker info can be slow ~2-3s when Docker Desktop is starting)
-        if (!IsCommandAvailable("docker", "info")) {
-            errors.Add(
-                "Docker is not running or not installed.\n"
-                + "  Install Docker Desktop: https://docs.docker.com/get-docker/\n"
-                + "  Then start Docker Desktop and retry.");
-        }
-
-        // Check DAPR CLI + runtime initialization
-        (bool cliAvailable, string? daprOutput) = RunCommand("dapr", "--version");
-        if (!cliAvailable) {
-            errors.Add(
-                "DAPR CLI is not installed.\n"
-                + "  Install DAPR: https://docs.dapr.io/getting-started/install-dapr-cli/\n"
-                + "  Then run 'dapr init' and retry.");
-        }
-        else if (daprOutput is null
-            || daprOutput.Contains("Runtime version: n/a", StringComparison.OrdinalIgnoreCase)
-            || !daprOutput.Contains("Runtime version:", StringComparison.OrdinalIgnoreCase)) {
-            // CLI is installed but runtime is not initialized (n/a or line absent entirely)
-            errors.Add(
-                "DAPR runtime is not initialized.\n"
-                + "  Run 'dapr init' (recommended for full local development)\n"
-                + "  or 'dapr init --slim' (minimal, no Docker components) and retry.");
-        }
+        IReadOnlyList<string> errors = GetMissingPrerequisites(new ProcessPrerequisiteCommandRunner(), CommandTimeout);
 
         if (errors.Count > 0) {
             Console.Error.WriteLine("Prerequisites missing:");
@@ -65,32 +48,80 @@ internal static class PrerequisiteValidator {
         }
     }
 
-    private static bool IsCommandAvailable(string command, string args)
-        => RunCommand(command, args).Success;
+    internal static IReadOnlyList<string> GetMissingPrerequisites(
+        IPrerequisiteCommandRunner commandRunner,
+        TimeSpan commandTimeout) {
+        ArgumentNullException.ThrowIfNull(commandRunner);
 
-    private static (bool Success, string? Output) RunCommand(string command, string args) {
-        try {
-            using var process = System.Diagnostics.Process.Start(
-                new System.Diagnostics.ProcessStartInfo {
-                    FileName = command,
-                    Arguments = args,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                });
+        List<string> errors = [];
 
-            // WaitForExit returns false on timeout — must check before accessing ExitCode.
-            bool exited = process?.WaitForExit(TimeSpan.FromSeconds(5)) ?? false;
-            if (!exited || process is null) {
-                return (false, null);
-            }
-
-            string output = process.StandardOutput.ReadToEnd();
-            return (process.ExitCode == 0, output);
+        // Docker Desktop can be slow immediately after startup. Query the server version instead of
+        // the heavier `docker info` payload to prove the engine is reachable.
+        if (!commandRunner.Run("docker", DockerProbeArguments, commandTimeout).Success) {
+            errors.Add(
+                "Docker is not running or not installed.\n"
+                + "  Install Docker Desktop: https://docs.docker.com/get-docker/\n"
+                + "  Then start Docker Desktop and retry.");
         }
-        catch (Exception ex) {
-            return (false, $"Error executing '{command}': {ex.Message}");
+
+        // Check DAPR CLI + runtime initialization
+        PrerequisiteCommandResult daprResult = commandRunner.Run("dapr", "--version", commandTimeout);
+        if (!daprResult.Success) {
+            errors.Add(
+                "DAPR CLI is not installed.\n"
+                + "  Install DAPR: https://docs.dapr.io/getting-started/install-dapr-cli/\n"
+                + "  Then run 'dapr init' and retry.");
+        }
+        else if (daprResult.Output is null
+            || daprResult.Output.Contains("Runtime version: n/a", StringComparison.OrdinalIgnoreCase)
+            || !daprResult.Output.Contains("Runtime version:", StringComparison.OrdinalIgnoreCase)) {
+            // CLI is installed but runtime is not initialized (n/a or line absent entirely)
+            errors.Add(
+                "DAPR runtime is not initialized.\n"
+                + "  Run 'dapr init' (recommended for full local development)\n"
+                + "  or 'dapr init --slim' (minimal, no Docker components) and retry.");
+        }
+
+        return errors;
+    }
+
+    private sealed class ProcessPrerequisiteCommandRunner : IPrerequisiteCommandRunner {
+        public PrerequisiteCommandResult Run(string command, string args, TimeSpan timeout) {
+            try {
+                using var process = System.Diagnostics.Process.Start(
+                    new System.Diagnostics.ProcessStartInfo {
+                        FileName = command,
+                        Arguments = args,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                    });
+
+                if (process is null) {
+                    return new PrerequisiteCommandResult(false, null);
+                }
+
+                // Drain both pipes concurrently before WaitForExit to prevent deadlock:
+                // if the child fills either kernel buffer, it blocks on write while we
+                // block on WaitForExit — neither side makes progress.
+                Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync();
+                Task<string> stderrTask = process.StandardError.ReadToEndAsync();
+
+                // WaitForExit returns false on timeout; check before accessing ExitCode.
+                bool exited = process.WaitForExit(timeout);
+                if (!exited) {
+                    process.Kill(entireProcessTree: true);
+                    process.WaitForExit();
+                    return new PrerequisiteCommandResult(false, null);
+                }
+
+                string output = stdoutTask.GetAwaiter().GetResult();
+                return new PrerequisiteCommandResult(process.ExitCode == 0, output);
+            }
+            catch (Exception ex) {
+                return new PrerequisiteCommandResult(false, $"Error executing '{command}': {ex.Message}");
+            }
         }
     }
 }

@@ -130,7 +130,8 @@
       "Bash(grep -n \"TrackAsync\" /d/Hexalith.EventStore/src/Hexalith.EventStore.Server/Commands/*.cs)",
       "Bash(xargs grep:*)",
       "mcp__aspire__list_structured_logs",
-      "mcp__aspire__execute_resource_command"
+      "mcp__aspire__execute_resource_command",
+      "Bash(python3 \"D:\\\\Hexalith.EventStore\\\\_bmad\\\\scripts\\\\resolve_customization.py\" --skill \"D:\\\\Hexalith.EventStore\\\\.claude\\\\skills\\\\bmad-code-review\" --key workflow)"
     ]
   }
 }

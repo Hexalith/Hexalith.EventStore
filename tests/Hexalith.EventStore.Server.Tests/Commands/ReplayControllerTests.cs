@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.ErrorHandling;
+using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.Models;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Testing.Fakes;
@@ -88,7 +89,7 @@ public class ReplayControllerTests {
         AcceptedResult accepted = result.ShouldBeOfType<AcceptedResult>();
         ReplayCommandResponse response = accepted.Value.ShouldBeOfType<ReplayCommandResponse>();
         response.CorrelationId.ShouldNotBe(correlationId);
-        Guid.TryParse(response.CorrelationId, out _).ShouldBeTrue();
+        CorrelationIdMiddleware.IsValidIdentifier(response.CorrelationId).ShouldBeTrue();
         response.IsReplay.ShouldBeTrue();
         response.PreviousStatus.ShouldBe("Rejected");
         response.OriginalCorrelationId.ShouldBe(correlationId);
@@ -132,7 +133,7 @@ public class ReplayControllerTests {
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(400);
         ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
-        problemDetails.Detail.ShouldBe("Correlation ID must not be empty or whitespace.");
+        problemDetails.Detail.ShouldBe("Correlation ID must be 1-128 characters of alphanumerics and hyphens (with alphanumeric anchors).");
     }
 
     [Fact]
@@ -372,7 +373,7 @@ public class ReplayControllerTests {
         // Assert — replay should generate a new correlation ID, not reuse the original
         _ = capturedCommand.ShouldNotBeNull();
         capturedCommand.CorrelationId.ShouldNotBe(correlationId);
-        Guid.TryParse(capturedCommand.CorrelationId, out _).ShouldBeTrue();
+        CorrelationIdMiddleware.IsValidIdentifier(capturedCommand.CorrelationId).ShouldBeTrue();
     }
 
     [Fact]

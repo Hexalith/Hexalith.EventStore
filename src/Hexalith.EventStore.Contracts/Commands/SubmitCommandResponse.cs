@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Hexalith.EventStore.Contracts.Commands;
 
@@ -7,4 +8,6 @@ namespace Hexalith.EventStore.Contracts.Commands;
 /// </summary>
 /// <param name="CorrelationId">The correlation identifier used to track command processing status.</param>
 /// <param name="ResultPayload">Optional enriched result payload for completed synchronous command submissions.</param>
-public record SubmitCommandResponse(string CorrelationId, JsonElement? ResultPayload = null);
+public record SubmitCommandResponse(
+    string CorrelationId,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] JsonElement? ResultPayload = null);
