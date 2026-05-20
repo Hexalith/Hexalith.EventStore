@@ -3,6 +3,8 @@ using CommunityToolkit.Aspire.Hosting.Dapr;
 using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.Aspire;
 
+using System.Collections.Immutable;
+
 const string FalseLiteral = "false";
 
 PrerequisiteValidator.Validate();
@@ -16,6 +18,7 @@ string eventStoreAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.
 string adminServerAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.eventstore-admin.yaml");
 string sampleAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.sample.yaml");
 string tenantsAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.tenants.yaml");
+string emptyDaprResourcesPath = ResolveEmptyDaprResourcesPath();
 
 // Resolve the DAPR resiliency YAML path so the Admin.Server can render /dapr/resiliency
 // without requiring an appsettings.json edit. The AppHost is the only component that knows
@@ -103,6 +106,7 @@ IResourceBuilder<ProjectResource> sample = builder.AddProject<Projects.Hexalith_
         .WithOptions(new DaprSidecarOptions {
             AppId = "sample",
             Config = sampleAccessControlConfigPath,
+            ResourcesPaths = ImmutableHashSet.Create(emptyDaprResourcesPath),
         }));
 
 // Add Blazor UI sample — consumes EventStore via Aspire service discovery (Story 18-6).
@@ -213,6 +217,12 @@ static string ResolveDaprConfigPath(string fileName) {
     }
 
     return configPath;
+}
+
+static string ResolveEmptyDaprResourcesPath() {
+    string path = Path.Combine(Path.GetTempPath(), "hexalith-eventstore-empty-dapr-resources");
+    _ = Directory.CreateDirectory(path);
+    return path;
 }
 
 void ForwardEventStoreEnvironment(string configurationKey, string environmentKey) {
