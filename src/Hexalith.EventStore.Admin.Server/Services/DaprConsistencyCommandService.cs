@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Net;
 using System.Text.Json;
 
 using Dapr.Client;
@@ -20,7 +22,17 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// DAPR-backed implementation of <see cref="IConsistencyCommandService"/>.
 /// Triggers and cancels consistency checks using the state store for coordination.
 /// </summary>
+/// <remarks>
+/// DW12 decision record: sequence-continuity and metadata-consistency diagnostics depend
+/// on public EventStore query contracts (<see cref="IStreamQueryService"/>), not on the
+/// physical DAPR actor-state layout. Probing reconstructed <c>{tenant}:{domain}:{aggregate}:events:{seq}</c>
+/// or <c>:metadata</c> keys would break actor isolation and produced false positives for
+/// actor-backed streams. Checks may become Inconclusive when supported contracts cannot
+/// cover the required range, but they must never infer correctness from private storage keys.
+/// </remarks>
 public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
+    private static readonly ConcurrentDictionary<string, CancellationTokenSource> ActiveScans = new(StringComparer.Ordinal);
+
     private const int AnomalyCap = 500;
     private const string CheckKeyPrefix = "admin:consistency:";
     private const int IndexCap = 100;
@@ -28,6 +40,8 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
     private const int MaxETagRetries = 3;
     private const int TimeoutMinutes = 30;
     private const int TtlDays = 30;
+    private const int TimelinePageSize = 1_000;
+    private const int MaxTimelinePages = 32;
 
     private readonly DaprClient _daprClient;
     private readonly ILogger<DaprConsistencyCommandService> _logger;
@@ -82,6 +96,9 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
             };
 
             await SaveCheckResultAsync(key, cancelled, ct).ConfigureAwait(false);
+            if (ActiveScans.TryGetValue(checkId, out CancellationTokenSource? activeScan)) {
+                await activeScan.CancelAsync().ConfigureAwait(false);
+            }
 
             _logger.LogInformation("Consistency check '{CheckId}' cancelled.", checkId);
             return new AdminOperationResult(true, checkId, "Consistency check cancelled.", null);
@@ -235,6 +252,9 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
         string? domain,
         IReadOnlyList<ConsistencyCheckType> checkTypes) {
         string key = $"{CheckKeyPrefix}{checkId}";
+        using CancellationTokenSource scanCts = new();
+        _ = ActiveScans.TryAdd(checkId, scanCts);
+        CancellationToken scanToken = scanCts.Token;
         try {
             // Update status to Running
             ConsistencyCheckResult? current = await _daprClient
@@ -246,11 +266,11 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
             }
 
             current = current with { Status = ConsistencyCheckStatus.Running };
-            await SaveCheckResultAsync(key, current, CancellationToken.None).ConfigureAwait(false);
+            await SaveCheckResultAsync(key, current, scanToken).ConfigureAwait(false);
 
             // Sanity check: verify state store is accessible
             PagedResult<StreamSummary> sanityCheck = await _streamQueryService
-                .GetRecentlyActiveStreamsAsync(tenantId, domain, count: 1)
+                .GetRecentlyActiveStreamsAsync(tenantId, domain, count: 1, ct: scanToken)
                 .ConfigureAwait(false);
 
             if (sanityCheck is null) {
@@ -260,7 +280,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
 
             // Discover all aggregate streams
             PagedResult<StreamSummary> streams = await _streamQueryService
-                .GetRecentlyActiveStreamsAsync(tenantId, domain, count: 10000)
+                .GetRecentlyActiveStreamsAsync(tenantId, domain, count: 10000, ct: scanToken)
                 .ConfigureAwait(false);
 
             bool projectionCheckRequested = checkTypes.Contains(ConsistencyCheckType.ProjectionPositions);
@@ -275,27 +295,27 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
             if (projectionCheckRequested) {
                 List<ConsistencyAnomaly> projectionAnomalies = await CheckProjectionPositionsAsync(tenantId, domain).ConfigureAwait(false);
                 totalAnomaliesFound += projectionAnomalies.Count;
-                anomalies.AddRange(projectionAnomalies);
+                AddAnomaliesWithinCap(anomalies, projectionAnomalies);
             }
 
             foreach (StreamSummary stream in streams.Items) {
+                scanToken.ThrowIfCancellationRequested();
+
                 // Check if cancelled
                 ConsistencyCheckResult? latestState = await _daprClient
-                    .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key)
+                    .GetStateAsync<ConsistencyCheckResult>(_options.StateStoreName, key, cancellationToken: scanToken)
                     .ConfigureAwait(false);
 
                 if (latestState?.Status == ConsistencyCheckStatus.Cancelled) {
+                    await scanCts.CancelAsync().ConfigureAwait(false);
                     return;
                 }
 
-                List<ConsistencyAnomaly> streamAnomalies = await CheckStreamAsync(
-                    stream, effectiveCheckTypes).ConfigureAwait(false);
+                ConsistencyStreamCheckOutcome outcome = await CheckStreamAsync(
+                    stream, effectiveCheckTypes, scanToken).ConfigureAwait(false);
 
-                totalAnomaliesFound += streamAnomalies.Count;
-
-                if (anomalies.Count < AnomalyCap) {
-                    anomalies.AddRange(streamAnomalies);
-                }
+                totalAnomaliesFound += outcome.Anomalies.Count;
+                AddAnomaliesWithinCap(anomalies, outcome.Anomalies);
 
                 streamsChecked++;
 
@@ -305,7 +325,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
                         StreamsChecked = streamsChecked,
                         AnomaliesFound = totalAnomaliesFound,
                     };
-                    await SaveCheckResultAsync(key, current, CancellationToken.None).ConfigureAwait(false);
+                    await SaveCheckResultAsync(key, current, scanToken).ConfigureAwait(false);
                 }
             }
 
@@ -330,6 +350,9 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
                 "Consistency check '{CheckId}' completed. Streams: {Streams}, Anomalies: {Anomalies}.",
                 checkId, streamsChecked, totalAnomaliesFound);
         }
+        catch (OperationCanceledException) when (scanToken.IsCancellationRequested) {
+            _logger.LogInformation("Consistency check '{CheckId}' scan cancelled.", checkId);
+        }
         catch (Exception ex) {
             _logger.LogError(ex, "Consistency check '{CheckId}' failed.", checkId);
             try {
@@ -345,26 +368,52 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
                 _logger.LogError(inner, "Failed to update check '{CheckId}' to Failed status.", checkId);
             }
         }
+        finally {
+            _ = ActiveScans.TryRemove(checkId, out _);
+        }
     }
 
-    private async Task<List<ConsistencyAnomaly>> CheckStreamAsync(
+    internal async Task<ConsistencyStreamCheckOutcome> CheckStreamAsync(
         StreamSummary stream,
-        IReadOnlyList<ConsistencyCheckType> checkTypes) {
-        List<ConsistencyAnomaly> anomalies = [];
+        IReadOnlyList<ConsistencyCheckType> checkTypes,
+        CancellationToken ct) {
+        ArgumentNullException.ThrowIfNull(stream);
+        ArgumentNullException.ThrowIfNull(checkTypes);
 
-        foreach (ConsistencyCheckType checkType in checkTypes) {
+        List<ConsistencyAnomaly> anomalies = [];
+        SequenceRange? evaluatedRange = null;
+        long evaluatedEventCount = 0;
+
+        bool streamReadCompleted = false;
+        if (checkTypes.Contains(ConsistencyCheckType.SequenceContinuity)) {
+            try {
+                ContinuityResult continuity = await CheckSequenceContinuityAsync(stream, anomalies, ct).ConfigureAwait(false);
+                evaluatedRange = continuity.EvaluatedRange;
+                evaluatedEventCount = continuity.EvaluatedEventCount;
+                streamReadCompleted = continuity.StreamReadCompleted;
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) {
+                _logger.LogDebug(ex, "Error checking {CheckType} for stream {Tenant}:{Domain}:{Aggregate}.",
+                    ConsistencyCheckType.SequenceContinuity, stream.TenantId, stream.Domain, stream.AggregateId);
+            }
+        }
+
+        foreach (ConsistencyCheckType checkType in checkTypes.Where(t => t != ConsistencyCheckType.SequenceContinuity)) {
             try {
                 switch (checkType) {
-                    case ConsistencyCheckType.SequenceContinuity:
-                        await CheckSequenceContinuityAsync(stream, anomalies).ConfigureAwait(false);
-                        break;
                     case ConsistencyCheckType.SnapshotIntegrity:
-                        await CheckSnapshotIntegrityAsync(stream, anomalies).ConfigureAwait(false);
+                        await CheckSnapshotIntegrityAsync(stream, anomalies, ct).ConfigureAwait(false);
                         break;
                     case ConsistencyCheckType.MetadataConsistency:
-                        await CheckMetadataConsistencyAsync(stream, anomalies).ConfigureAwait(false);
+                        CheckMetadataConsistency(stream, anomalies, streamReadCompleted);
                         break;
                 }
+            }
+            catch (OperationCanceledException) {
+                throw;
             }
             catch (Exception ex) {
                 _logger.LogDebug(ex, "Error checking {CheckType} for stream {Tenant}:{Domain}:{Aggregate}.",
@@ -372,8 +421,10 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
             }
         }
 
-        return anomalies;
+        return new ConsistencyStreamCheckOutcome(anomalies, evaluatedRange, evaluatedEventCount);
     }
+
+    private readonly record struct ContinuityResult(SequenceRange? EvaluatedRange, long EvaluatedEventCount, bool StreamReadCompleted);
 
     private async Task<List<ConsistencyAnomaly>> CheckProjectionPositionsAsync(string? tenantId, string? domain) {
         List<ConsistencyAnomaly> anomalies = [];
@@ -457,8 +508,8 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
                     scope,
                     domain,
                     "all",
-                    "Domain-specific projection position validation is not granular.",
-                    "Projection indexes are tenant-scoped and do not include domain-level position partitioning.",
+                    "Projection diagnostic limitation: domain-scoped projection positions are not granular.",
+                    "Operational warning (check limitation), not an event-loss anomaly. The projection index is tenant-scoped and does not partition positions by domain. Re-run without the domain filter or extend the projection index contract to include domain partitioning if granular validation is required.",
                     null,
                     null));
             }
@@ -481,49 +532,222 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
         return anomalies;
     }
 
-    private async Task CheckSequenceContinuityAsync(StreamSummary stream, List<ConsistencyAnomaly> anomalies) {
+    private async Task<ContinuityResult> CheckSequenceContinuityAsync(
+        StreamSummary stream,
+        List<ConsistencyAnomaly> anomalies,
+        CancellationToken ct) {
         if (stream.LastEventSequence <= 0) {
-            return;
+            return new ContinuityResult(null, 0, true);
         }
 
-        for (long sequence = 1; sequence <= stream.LastEventSequence; sequence++) {
-            string eventKey = $"{stream.TenantId}:{stream.Domain}:{stream.AggregateId}:events:{sequence}";
-            try {
-                string? evt = await _daprClient
-                    .GetStateAsync<string>(_options.StateStoreName, eventKey)
-                    .ConfigureAwait(false);
+        long expectedMax = stream.LastEventSequence;
+        SequenceRange evaluatedRange = new(1, expectedMax);
+        List<long> observed = [];
+        bool partial = false;
+        long? cursor = null;
 
-                if (evt is null) {
-                    anomalies.Add(new ConsistencyAnomaly(
-                        UniqueIdHelper.GenerateSortableUniqueStringId(),
-                        ConsistencyCheckType.SequenceContinuity,
-                        sequence == 1 ? AnomalySeverity.Critical : AnomalySeverity.Error,
-                        stream.TenantId,
-                        stream.Domain,
-                        stream.AggregateId,
-                        $"Missing event at sequence {sequence}.",
-                        null,
-                        ExpectedSequence: sequence,
-                        ActualSequence: null));
-                }
+        for (int page = 0; page < MaxTimelinePages; page++) {
+            PagedResult<TimelineEntry> result;
+            try {
+                result = await _streamQueryService.GetStreamTimelineAsync(
+                    stream.TenantId,
+                    stream.Domain,
+                    stream.AggregateId,
+                    fromSequence: cursor,
+                    toSequence: expectedMax,
+                    count: TimelinePageSize,
+                    ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException ex) when (!ct.IsCancellationRequested) {
+                _logger.LogDebug(
+                    ex,
+                    "Sequence-continuity timeline read timed out for {Tenant}:{Domain}:{Aggregate}.",
+                    stream.TenantId, stream.Domain, stream.AggregateId);
+                AddTimelineReadFailureAnomaly(
+                    anomalies,
+                    stream,
+                    expectedMax,
+                    "Sequence continuity check timed out while reading the supported stream timeline.",
+                    "Timeout");
+                return new ContinuityResult(evaluatedRange, 0, false);
+            }
+            catch (OperationCanceledException) {
+                throw;
             }
             catch (Exception ex) {
-                _logger.LogDebug(ex, "Failed to read event key '{Key}'.", eventKey);
+                _logger.LogDebug(
+                    ex,
+                    "Sequence-continuity timeline read failed for {Tenant}:{Domain}:{Aggregate}.",
+                    stream.TenantId, stream.Domain, stream.AggregateId);
+                AddTimelineReadFailureAnomaly(
+                    anomalies,
+                    stream,
+                    expectedMax,
+                    GetTimelineReadFailureDescription(ex),
+                    GetTimelineReadFailureCategory(ex));
+                return new ContinuityResult(evaluatedRange, 0, false);
+            }
+
+            foreach (TimelineEntry entry in result.Items) {
+                if (entry.EntryType != TimelineEntryType.Event) {
+                    continue;
+                }
+
+                if (entry.SequenceNumber > 0 && entry.SequenceNumber <= expectedMax) {
+                    observed.Add(entry.SequenceNumber);
+                }
+            }
+
+            long observedCoverage = observed.Count;
+            long expectedCoverage = Math.Min(expectedMax, Math.Max(result.TotalCount, 0));
+            if (string.IsNullOrEmpty(result.ContinuationToken)
+                && expectedCoverage > observedCoverage) {
+                partial = true;
+                break;
+            }
+
+            if (string.IsNullOrEmpty(result.ContinuationToken)) {
+                break;
+            }
+
+            if (!long.TryParse(result.ContinuationToken, System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out long nextCursor)
+                || (cursor.HasValue && nextCursor <= cursor.Value)) {
+                partial = true;
+                break;
+            }
+
+            cursor = nextCursor;
+
+            if (page == MaxTimelinePages - 1) {
+                partial = true;
             }
         }
 
-        if (stream.EventCount != stream.LastEventSequence) {
+        if (partial) {
             anomalies.Add(new ConsistencyAnomaly(
                 UniqueIdHelper.GenerateSortableUniqueStringId(),
                 ConsistencyCheckType.SequenceContinuity,
-                AnomalySeverity.Error,
+                AnomalySeverity.Warning,
                 stream.TenantId,
                 stream.Domain,
                 stream.AggregateId,
-                "Event metadata mismatch between EventCount and LastEventSequence.",
+                "Sequence continuity check Inconclusive: supported timeline did not expose enough information to prove coverage.",
+                $"Evaluated up to {observed.Count} events for expected range 1..{expectedMax} before the paging safety guard tripped.",
+                ExpectedSequence: expectedMax,
+                ActualSequence: observed.Count));
+            return new ContinuityResult(evaluatedRange, observed.Distinct().LongCount(), false);
+        }
+
+        // Order normalize, detect duplicates separately from missing.
+        observed.Sort();
+        HashSet<long> distinct = [];
+        foreach (long seq in observed) {
+            if (!distinct.Add(seq)) {
+                AddAnomalyWithinCap(anomalies, new ConsistencyAnomaly(
+                        UniqueIdHelper.GenerateSortableUniqueStringId(),
+                        ConsistencyCheckType.SequenceContinuity,
+                        AnomalySeverity.Error,
+                        stream.TenantId,
+                        stream.Domain,
+                        stream.AggregateId,
+                        $"Duplicate sequence number {seq} reported by supported timeline contract.",
+                        null,
+                        ExpectedSequence: null,
+                        ActualSequence: seq));
+            }
+        }
+
+        long nextExpected = 1;
+        foreach (long sequence in distinct.Order()) {
+            if (sequence > nextExpected) {
+                AddMissingSequenceRange(anomalies, stream, nextExpected, sequence - 1);
+            }
+
+            if (sequence >= nextExpected) {
+                nextExpected = sequence + 1;
+            }
+        }
+
+        if (nextExpected <= expectedMax) {
+            AddMissingSequenceRange(anomalies, stream, nextExpected, expectedMax);
+        }
+
+        return new ContinuityResult(evaluatedRange, distinct.Count, true);
+    }
+
+    private static void AddAnomaliesWithinCap(List<ConsistencyAnomaly> target, IEnumerable<ConsistencyAnomaly> source) {
+        foreach (ConsistencyAnomaly anomaly in source) {
+            AddAnomalyWithinCap(target, anomaly);
+            if (target.Count >= AnomalyCap) {
+                return;
+            }
+        }
+    }
+
+    private static void AddAnomalyWithinCap(List<ConsistencyAnomaly> target, ConsistencyAnomaly anomaly) {
+        if (target.Count < AnomalyCap) {
+            target.Add(anomaly);
+        }
+    }
+
+    private static void AddTimelineReadFailureAnomaly(
+        List<ConsistencyAnomaly> anomalies,
+        StreamSummary stream,
+        long expectedMax,
+        string description,
+        string category) {
+        AddAnomalyWithinCap(anomalies, new ConsistencyAnomaly(
+            UniqueIdHelper.GenerateSortableUniqueStringId(),
+            ConsistencyCheckType.SequenceContinuity,
+            category is "AuthorizationFailure" ? AnomalySeverity.Error : AnomalySeverity.Warning,
+            stream.TenantId,
+            stream.Domain,
+            stream.AggregateId,
+            description,
+            $"Category: {category}. Raw DAPR state-store keys are not used as a fallback.",
+            ExpectedSequence: expectedMax,
+            ActualSequence: null));
+    }
+
+    private static string GetTimelineReadFailureCategory(Exception exception)
+        => exception switch {
+            AdminUpstreamProblemException ex when ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => "AuthorizationFailure",
+            AdminUpstreamProblemException ex when ex.StatusCode == HttpStatusCode.NotFound => "StreamNotFound",
+            AdminUpstreamProblemException => "QueryProblem",
+            HttpRequestException ex when ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => "AuthorizationFailure",
+            HttpRequestException ex when ex.StatusCode == HttpStatusCode.NotFound => "StreamNotFound",
+            HttpRequestException => "QueryException",
+            TimeoutException => "Timeout",
+            _ => "QueryException",
+        };
+
+    private static string GetTimelineReadFailureDescription(Exception exception)
+        => GetTimelineReadFailureCategory(exception) switch {
+            "AuthorizationFailure" => "Sequence continuity check failed: supported stream read was not authorized.",
+            "StreamNotFound" => "Sequence continuity check Inconclusive: supported stream read reported the stream was not found.",
+            "Timeout" => "Sequence continuity check timed out while reading the supported stream timeline.",
+            "QueryProblem" => "Sequence continuity check Inconclusive: supported stream read returned a query problem.",
+            _ => "Sequence continuity check Inconclusive: supported stream read failed.",
+        };
+
+    private static void AddMissingSequenceRange(
+        List<ConsistencyAnomaly> anomalies,
+        StreamSummary stream,
+        long firstMissing,
+        long lastMissing) {
+        for (long sequence = firstMissing; sequence <= lastMissing && anomalies.Count < AnomalyCap; sequence++) {
+            AddAnomalyWithinCap(anomalies, new ConsistencyAnomaly(
+                UniqueIdHelper.GenerateSortableUniqueStringId(),
+                ConsistencyCheckType.SequenceContinuity,
+                sequence == 1 ? AnomalySeverity.Critical : AnomalySeverity.Error,
+                stream.TenantId,
+                stream.Domain,
+                stream.AggregateId,
+                $"Missing event at sequence {sequence}.",
                 null,
-                stream.LastEventSequence,
-                stream.EventCount));
+                ExpectedSequence: sequence,
+                ActualSequence: null));
         }
     }
 
@@ -538,7 +762,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
             projection.LastProcessedPosition,
             projection.LastProcessedUtc);
 
-    private async Task CheckSnapshotIntegrityAsync(StreamSummary stream, List<ConsistencyAnomaly> anomalies) {
+    private async Task CheckSnapshotIntegrityAsync(StreamSummary stream, List<ConsistencyAnomaly> anomalies, CancellationToken ct) {
         // Check: no snapshot for aggregate with > 100 events
         if (!stream.HasSnapshot && stream.EventCount > 100) {
             anomalies.Add(new ConsistencyAnomaly(
@@ -561,7 +785,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
         string snapshotKey = $"{stream.TenantId}:{stream.Domain}:{stream.AggregateId}:snapshot";
         try {
             object? snapshot = await _daprClient
-                .GetStateAsync<object>(_options.StateStoreName, snapshotKey)
+                .GetStateAsync<object>(_options.StateStoreName, snapshotKey, cancellationToken: ct)
                 .ConfigureAwait(false);
             if (TryExtractLong(snapshot, "sequenceNumber", "SequenceNumber", "sequence", "Sequence", "lastSequence", "LastSequence", "position", "Position") is long snapshotSequence
                 && snapshotSequence > stream.LastEventSequence) {
@@ -578,49 +802,53 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
                     snapshotSequence));
             }
         }
+        catch (OperationCanceledException) {
+            throw;
+        }
         catch (Exception ex) {
             _logger.LogDebug(ex, "Failed to read snapshot key '{Key}'.", snapshotKey);
         }
     }
 
-    private async Task CheckMetadataConsistencyAsync(StreamSummary stream, List<ConsistencyAnomaly> anomalies) {
-        string metadataKey = $"{stream.TenantId}:{stream.Domain}:{stream.AggregateId}:metadata";
-        try {
-            object? metadata = await _daprClient
-                .GetStateAsync<object>(_options.StateStoreName, metadataKey)
-                .ConfigureAwait(false);
-
-            if (metadata is null && stream.EventCount > 0) {
-                anomalies.Add(new ConsistencyAnomaly(
-                    UniqueIdHelper.GenerateSortableUniqueStringId(),
-                    ConsistencyCheckType.MetadataConsistency,
-                    AnomalySeverity.Error,
-                    stream.TenantId,
-                    stream.Domain,
-                    stream.AggregateId,
-                    "Aggregate metadata is missing.",
-                    null,
-                    ExpectedSequence: stream.EventCount,
-                    ActualSequence: null));
-            }
-
-            long? metadataCount = TryExtractLong(metadata, "eventCount", "EventCount", "lastSequence", "LastSequence", "sequence", "Sequence");
-            if (metadataCount is not null && metadataCount.Value != stream.EventCount) {
-                anomalies.Add(new ConsistencyAnomaly(
-                    UniqueIdHelper.GenerateSortableUniqueStringId(),
-                    ConsistencyCheckType.MetadataConsistency,
-                    AnomalySeverity.Error,
-                    stream.TenantId,
-                    stream.Domain,
-                    stream.AggregateId,
-                    "Metadata count does not match actual event count.",
-                    null,
-                    stream.EventCount,
-                    metadataCount.Value));
-            }
+    /// <summary>
+    /// Metadata consistency uses <see cref="StreamSummary"/> evidence (EventCount, LastEventSequence)
+    /// as the supported signal. No raw <c>{tenant}:{domain}:{aggregateId}:metadata</c> probing — the
+    /// EventStore exposes no public metadata read contract, and reconstructing actor-state keys would
+    /// break actor isolation and produce false positives for actor-backed streams. When EventCount and
+    /// LastEventSequence agree, the result is Verified (no anomaly).
+    /// </summary>
+    private static void CheckMetadataConsistency(StreamSummary stream, List<ConsistencyAnomaly> anomalies, bool supportedStreamReadCompleted) {
+        if (stream.EventCount <= 0 && stream.LastEventSequence <= 0) {
+            return;
         }
-        catch (Exception ex) {
-            _logger.LogDebug(ex, "Failed to read metadata key '{Key}'.", metadataKey);
+
+        if (!supportedStreamReadCompleted) {
+            AddAnomalyWithinCap(anomalies, new ConsistencyAnomaly(
+                UniqueIdHelper.GenerateSortableUniqueStringId(),
+                ConsistencyCheckType.MetadataConsistency,
+                AnomalySeverity.Warning,
+                stream.TenantId,
+                stream.Domain,
+                stream.AggregateId,
+                "Metadata consistency check Inconclusive: no supported stream read proof was available.",
+                "The EventStore exposes no public metadata read contract; metadata verification requires coherent StreamSummary evidence plus a completed supported stream read.",
+                ExpectedSequence: stream.LastEventSequence,
+                ActualSequence: stream.EventCount));
+            return;
+        }
+
+        if (stream.EventCount != stream.LastEventSequence) {
+            AddAnomalyWithinCap(anomalies, new ConsistencyAnomaly(
+                UniqueIdHelper.GenerateSortableUniqueStringId(),
+                ConsistencyCheckType.MetadataConsistency,
+                AnomalySeverity.Error,
+                stream.TenantId,
+                stream.Domain,
+                stream.AggregateId,
+                "Metadata count does not match the latest event sequence.",
+                "Detected via the supported StreamSummary metadata signal (EventCount vs LastEventSequence).",
+                ExpectedSequence: stream.LastEventSequence,
+                ActualSequence: stream.EventCount));
         }
     }
 

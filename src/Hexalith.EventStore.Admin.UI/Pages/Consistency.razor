@@ -716,6 +716,7 @@
     private async Task OnTriggerConfirm()
     {
         _isTriggering = true;
+        // Renderer-synchronous: this method is invoked by FluentButton's OnClick on the dispatcher.
         StateHasChanged();
         try
         {
@@ -769,7 +770,8 @@
         finally
         {
             _isTriggering = false;
-            StateHasChanged();
+            // Post-await completion path: continuation may resume off the renderer dispatcher.
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -797,6 +799,7 @@
         }
 
         _isCancelling = true;
+        // Renderer-synchronous: this method is invoked by FluentButton's OnClick on the dispatcher.
         StateHasChanged();
         try
         {
@@ -826,7 +829,8 @@
         finally
         {
             _isCancelling = false;
-            StateHasChanged();
+            // Post-await completion path: continuation may resume off the renderer dispatcher.
+            await InvokeAsync(StateHasChanged);
         }
     }
 
