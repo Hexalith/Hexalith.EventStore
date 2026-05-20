@@ -526,6 +526,8 @@ else
     {
         _fromSequence = null;
         _toSequence = null;
+        _showInspectorModal = false;
+        _inspectorSequence = null;
         UpdateUrl();
         await LoadTimelineAsync();
     }
@@ -584,6 +586,8 @@ else
 
     private void ResetAllViewModes()
     {
+        _showInspectorModal = false;
+        _inspectorSequence = null;
         _traceMode = false;
         _traceCorrelationId = null;
         _sandboxMode = false;

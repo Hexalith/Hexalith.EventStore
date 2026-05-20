@@ -2,12 +2,14 @@ using System.Net.Http.Headers;
 
 using Dapr.Client;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Commands;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
 using Hexalith.EventStore.Admin.Abstractions.Models.Health;
 using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
+using Hexalith.EventStore.Contracts.Commands;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -119,25 +121,18 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
 
         ObservabilityLinks links = new(_options.TraceUrl, _options.MetricsUrl, _options.LogsUrl);
 
-        // ADR-3 (Truthful Metrics): TotalEventCount is derived from the bounded
-        // admin:stream-activity:all index; EventsPerSecond and ErrorPercentage have no
-        // injectable clock / rolling-window or rejection-rate source wired in this build,
-        // so they are reported with explicit Unavailable status. The numeric value stays
-        // 0 only as a wire-format fallback — UI must consult the *Status fields and render
-        // an unavailable indicator instead of the zero.
-        (long totalEventCount, SystemHealthMetricStatus totalEventCountStatus) =
-            await TryComputeTotalEventCountAsync(ct).ConfigureAwait(false);
+        HealthMetrics metrics = await TryComputeHealthMetricsAsync(ct).ConfigureAwait(false);
 
         return new SystemHealthReport(
             overallStatus,
-            TotalEventCount: totalEventCount,
-            EventsPerSecond: 0,
-            ErrorPercentage: 0,
+            TotalEventCount: metrics.TotalEventCount,
+            EventsPerSecond: metrics.EventsPerSecond,
+            ErrorPercentage: metrics.ErrorPercentage,
             components,
             links,
-            TotalEventCountStatus: totalEventCountStatus,
-            EventsPerSecondStatus: SystemHealthMetricStatus.Unavailable,
-            ErrorPercentageStatus: SystemHealthMetricStatus.Unavailable,
+            TotalEventCountStatus: metrics.TotalEventCountStatus,
+            EventsPerSecondStatus: metrics.EventsPerSecondStatus,
+            ErrorPercentageStatus: metrics.ErrorPercentageStatus,
             InventorySourceStatus: inventory.RemoteMetadataStatus,
             LocalSidecarMetadataStatus: inventory.LocalSidecarMetadataAvailable
                 ? RemoteMetadataStatus.Available
@@ -299,12 +294,29 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
     /// already used by every Admin UI page that lists streams, so this does not scan
     /// unbounded storage on a health request.
     /// </summary>
+    private async Task<HealthMetrics> TryComputeHealthMetricsAsync(CancellationToken ct) {
+        (long totalEventCount, double eventsPerSecond, SystemHealthMetricStatus streamStatus) =
+            await TryComputeStreamMetricsAsync(ct).ConfigureAwait(false);
+        (double errorPercentage, SystemHealthMetricStatus errorStatus) =
+            await TryComputeErrorPercentageAsync(ct).ConfigureAwait(false);
+
+        return new HealthMetrics(
+            totalEventCount,
+            eventsPerSecond,
+            errorPercentage,
+            streamStatus,
+            streamStatus,
+            errorStatus);
+    }
+
     /// <returns>
-    /// A tuple of (sum, status). Status is <see cref="SystemHealthMetricStatus.Unavailable"/>
-    /// when the index read fails so the UI can render an explicit unavailable indicator
-    /// rather than a misleading zero.
+    /// A tuple of (total event count, events per second, status). Status is
+    /// <see cref="SystemHealthMetricStatus.Unavailable"/> when the stream activity index read
+    /// fails so the UI can render an explicit unavailable indicator rather than a misleading
+    /// zero. When the index is readable but has no rolling throughput sample, the current
+    /// truthful throughput is zero.
     /// </returns>
-    private async Task<(long Sum, SystemHealthMetricStatus Status)> TryComputeTotalEventCountAsync(CancellationToken ct) {
+    private async Task<(long TotalEventCount, double EventsPerSecond, SystemHealthMetricStatus Status)> TryComputeStreamMetricsAsync(CancellationToken ct) {
         try {
             using var metricCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             metricCts.CancelAfter(TimeSpan.FromSeconds(3));
@@ -316,20 +328,59 @@ public sealed class DaprHealthQueryService : IHealthQueryService {
                 sum += s.EventCount;
             }
 
-            return (sum, SystemHealthMetricStatus.Available);
+            return (sum, 0, SystemHealthMetricStatus.Available);
         }
         catch (OperationCanceledException ex) when (!ct.IsCancellationRequested) {
             _logger.LogWarning(ex, "Timed out computing TotalEventCount from stream activity index — reporting Unavailable.");
-            return (0, SystemHealthMetricStatus.Unavailable);
+            return (0, 0, SystemHealthMetricStatus.Unavailable);
         }
         catch (OperationCanceledException) {
             throw;
         }
         catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to compute TotalEventCount from stream activity index — reporting Unavailable.");
+            return (0, 0, SystemHealthMetricStatus.Unavailable);
+        }
+    }
+
+    private async Task<(double Value, SystemHealthMetricStatus Status)> TryComputeErrorPercentageAsync(CancellationToken ct) {
+        try {
+            using var metricCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            metricCts.CancelAfter(TimeSpan.FromSeconds(3));
+            PagedResult<CommandSummary> page = await _streamQuery
+                .GetRecentCommandsAsync(tenantId: null, status: null, commandType: null, count: 1000, metricCts.Token)
+                .ConfigureAwait(false);
+
+            if (page.Items.Count == 0) {
+                return (0, SystemHealthMetricStatus.Available);
+            }
+
+            int failedCount = page.Items.Count(IsFailedCommand);
+            return (failedCount * 100d / page.Items.Count, SystemHealthMetricStatus.Available);
+        }
+        catch (OperationCanceledException ex) when (!ct.IsCancellationRequested) {
+            _logger.LogWarning(ex, "Timed out computing ErrorPercentage from command activity index — reporting Unavailable.");
+            return (0, SystemHealthMetricStatus.Unavailable);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            _logger.LogWarning(ex, "Failed to compute ErrorPercentage from command activity index — reporting Unavailable.");
             return (0, SystemHealthMetricStatus.Unavailable);
         }
     }
+
+    private static bool IsFailedCommand(CommandSummary command)
+        => command.Status is CommandStatus.PublishFailed or CommandStatus.TimedOut;
+
+    private sealed record HealthMetrics(
+        long TotalEventCount,
+        double EventsPerSecond,
+        double ErrorPercentage,
+        SystemHealthMetricStatus TotalEventCountStatus,
+        SystemHealthMetricStatus EventsPerSecondStatus,
+        SystemHealthMetricStatus ErrorPercentageStatus);
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<DaprComponentHealth>> GetDaprComponentStatusAsync(CancellationToken ct = default) {
