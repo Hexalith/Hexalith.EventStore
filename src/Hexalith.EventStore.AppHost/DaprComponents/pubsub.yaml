@@ -94,7 +94,7 @@ spec:
   version: v1
   metadata:
     - name: redisHost
-      value: "{env:REDIS_HOST|localhost:6379}"
+      value: "{env:REDIS_HOST|127.0.0.1:6379}"
     - name: redisPassword
       value: "{env:REDIS_PASSWORD}"
     # Dead-letter topic: undeliverable messages (retry exhaustion) route here by default.

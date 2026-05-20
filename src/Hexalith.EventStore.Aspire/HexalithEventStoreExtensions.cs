@@ -66,10 +66,12 @@ public static class HexalithEventStoreExtensions {
         ArgumentOutOfRangeException.ThrowIfLessThan(eventStoreDaprHttpPort, 1024);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(eventStoreDaprHttpPort, 65535);
 
-        // Redis is provided by `dapr init` at localhost:6379, not managed by Aspire.
+        const string LocalDaprRedisHost = "127.0.0.1:6379";
+
+        // Redis is provided by `dapr init` at 127.0.0.1:6379, not managed by Aspire.
         // The dapr init container runs independently of the Aspire lifecycle, so state
         // survives AppHost restarts naturally. DAPR component YAMLs default to
-        // localhost:6379 via {env:REDIS_HOST|localhost:6379}.
+        // 127.0.0.1:6379 via {env:REDIS_HOST|127.0.0.1:6379}.
 
         // Use AddDaprComponent instead of AddDaprStateStore so that WithMetadata
         // actually propagates into the generated YAML. AddDaprStateStore spawns a
@@ -78,9 +80,11 @@ public static class HexalithEventStoreExtensions {
         IResourceBuilder<IDaprComponentResource> stateStore = builder
             .AddDaprComponent("statestore", "state.redis")
             .WithMetadata("actorStateStore", "true")
-            .WithMetadata("redisHost", "localhost:6379")
+            .WithMetadata("redisHost", LocalDaprRedisHost)
             .WithMetadata("keyPrefix", "none");
-        IResourceBuilder<IDaprComponentResource> pubSub = builder.AddDaprPubSub("pubsub");
+        IResourceBuilder<IDaprComponentResource> pubSub = builder
+            .AddDaprPubSub("pubsub")
+            .WithMetadata("redisHost", LocalDaprRedisHost);
 
         // Wire up EventStore with DAPR sidecar and component references.
         // AppPort is intentionally omitted so the CommunityToolkit auto-detects
