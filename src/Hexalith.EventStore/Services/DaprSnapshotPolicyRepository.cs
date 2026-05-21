@@ -39,6 +39,8 @@ public sealed partial class DaprSnapshotPolicyRepository(
             return validationResult;
         }
 
+        ArgumentNullException.ThrowIfNull(request);
+
         string operationId = CreateOperationId("snapshot-policy-set", identity);
         DateTimeOffset now = DateTimeOffset.UtcNow;
 
@@ -52,7 +54,7 @@ public sealed partial class DaprSnapshotPolicyRepository(
                 identity.TenantId,
                 identity.Domain,
                 identity.AggregateType,
-                request!.IntervalEvents,
+                request.IntervalEvents,
                 createdAtUtc);
 
             bool allSaved = await MutateIndexAsync(
