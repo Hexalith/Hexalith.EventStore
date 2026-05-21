@@ -135,6 +135,43 @@ public class HttpContextAdminAuthContextTests {
         sut.GetUserId().ShouldBeNull();
     }
 
+    // === GetCorrelationId ===
+
+    [Fact]
+    public void GetCorrelationId_ReturnsCorrelationItem_WhenPresent() {
+        DefaultHttpContext httpContext = new();
+        httpContext.Items["CorrelationId"] = "corr-123";
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
+
+        var sut = new HttpContextAdminAuthContext(accessor);
+
+        sut.GetCorrelationId().ShouldBe("corr-123");
+    }
+
+    [Fact]
+    public void GetCorrelationId_FallsBackToTraceIdentifier_WhenNoCorrelationItem() {
+        DefaultHttpContext httpContext = new() {
+            TraceIdentifier = "trace-456",
+        };
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns(httpContext);
+
+        var sut = new HttpContextAdminAuthContext(accessor);
+
+        sut.GetCorrelationId().ShouldBe("trace-456");
+    }
+
+    [Fact]
+    public void GetCorrelationId_ReturnsNull_WhenHttpContextIsNull() {
+        IHttpContextAccessor accessor = Substitute.For<IHttpContextAccessor>();
+        _ = accessor.HttpContext.Returns((HttpContext?)null);
+
+        var sut = new HttpContextAdminAuthContext(accessor);
+
+        sut.GetCorrelationId().ShouldBeNull();
+    }
+
     // === Helpers ===
 
     private static IHttpContextAccessor CreateAccessorWithAuthHeader(string? authorizationValue) {

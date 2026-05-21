@@ -184,7 +184,7 @@ public class BackupRestoreArtifactsProtectedDataLeakTests {
     }
 
     [Fact]
-    public void StreamExportResult_DeferredOutput_ContainsNoSentinel() {
+    public void StreamExportResult_FailureOutput_ContainsNoSentinel() {
         var result = new StreamExportResult(
             Success: false,
             TenantId: "tenant-a",
@@ -193,7 +193,8 @@ public class BackupRestoreArtifactsProtectedDataLeakTests {
             EventCount: 0,
             Content: null,
             FileName: null,
-            ErrorMessage: "Stream export is deferred. EventStore does not yet have an approved export contract.");
+            ErrorMessage: "Stream export failed. ReasonCode=protected-payload-unavailable.",
+            ErrorCode: "protected-payload-unavailable");
 
         string json = JsonSerializer.Serialize(result, JsonOpts);
         ProtectedDataLeakSentinel.AssertNoLeak([
@@ -204,6 +205,7 @@ public class BackupRestoreArtifactsProtectedDataLeakTests {
             result.AggregateId,
             result.Content,
             result.FileName,
+            result.ErrorCode,
         ]);
     }
 

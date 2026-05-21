@@ -81,6 +81,16 @@ public static class BackupExportStreamCommand {
                 return ExitCodes.Error;
             }
 
+            if (options.OutputFile is not null) {
+                if (string.IsNullOrWhiteSpace(result.Content)) {
+                    Console.Error.WriteLine("Export succeeded but returned no downloadable content.");
+                    return ExitCodes.Error;
+                }
+
+                int contentWriteResult = writer.Write(result.Content);
+                return contentWriteResult != ExitCodes.Success ? contentWriteResult : ExitCodes.Success;
+            }
+
             string output;
             if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase)) {
                 output = formatter.Format(result);

@@ -31,6 +31,12 @@ public sealed class AdminServerOptions {
     public int MaxTimelineEvents { get; set; } = 1000;
 
     /// <summary>
+    /// Gets or sets the maximum number of events returned by a bounded stream export.
+    /// Larger streams export the newest window and mark the export document as truncated.
+    /// </summary>
+    public int MaxStreamExportEvents { get; set; } = 50_000;
+
+    /// <summary>
     /// Gets or sets the timeout in seconds for DAPR service invocation calls.
     /// </summary>
     public int ServiceInvocationTimeoutSeconds { get; set; } = 30;

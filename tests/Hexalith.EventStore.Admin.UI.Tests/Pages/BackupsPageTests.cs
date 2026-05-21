@@ -301,7 +301,7 @@ public class BackupsPageTests : AdminUITestContext {
 
     [Fact]
     public void BackupsPage_CreateButton_ShowsDeferredBadgeBeforeDialog() {
-        // AC1, AC2, AC5, AC8: deferred badges visible before any dialog opens.
+        // DW18-AC6: backup creation stays deferred; stream export no longer does.
         SetupJobs([]);
 
         IRenderedComponent<Backups> cut = Render<Backups>();
@@ -309,7 +309,7 @@ public class BackupsPageTests : AdminUITestContext {
 
         cut.Markup.ShouldContain("Deferred by backend");
         cut.Markup.ShouldContain("data-deferred-action=\"backup-create\"");
-        cut.Markup.ShouldContain("data-deferred-action=\"stream-export\"");
+        cut.Markup.ShouldNotContain("data-deferred-action=\"stream-export\"");
     }
 
     [Fact]
@@ -345,8 +345,8 @@ public class BackupsPageTests : AdminUITestContext {
     }
 
     [Fact]
-    public async Task BackupsPage_ExportDialog_PreCommunicatesDeferredBeforeSubmit() {
-        // AC5, AC8, AC9 for Export.
+    public async Task BackupsPage_ExportDialog_NoLongerPreCommunicatesDeferredBeforeSubmit() {
+        // DW18-AC6: stream export is real; backup create/validate stay deferred.
         SetupJobs([]);
 
         IRenderedComponent<Backups> cut = Render<Backups>();
@@ -357,9 +357,9 @@ public class BackupsPageTests : AdminUITestContext {
         await exportBtn.InvokeAsync(exportBtn.Instance.OnClick.InvokeAsync);
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Tenant ID"), TimeSpan.FromSeconds(5));
 
-        cut.Markup.ShouldContain("Stream export is deferred. EventStore needs an approved bounded export contract, format, and event limit before this operation can run.");
-        cut.Markup.ShouldContain("<span>Submit Deferred Request</span>");
-        cut.Markup.ShouldNotContain(">Export<");
+        cut.Markup.ShouldNotContain("Stream export is deferred");
+        cut.Markup.ShouldContain("<span>Export</span>");
+        cut.Markup.ShouldNotContain("data-deferred-action=\"stream-export\"");
     }
 
     [Fact]
@@ -733,9 +733,9 @@ public class BackupsPageTests : AdminUITestContext {
         await fields.First(f => f.Markup.Contains("Aggregate ID")).InvokeAsync(
             () => fields.First(f => f.Markup.Contains("Aggregate ID")).Instance.ValueChanged.InvokeAsync("a1"));
 
-        // Click Submit Deferred Request
+        // Click Export
         IRenderedComponent<FluentButton> submitBtn = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("<span>Submit Deferred Request</span>"));
+            .First(b => b.Markup.Contains("<span>Export</span>"));
         await submitBtn.InvokeAsync(submitBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — API invoked
@@ -744,14 +744,15 @@ public class BackupsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe("Stream export is deferred. EventStore needs an approved bounded export contract, format, and event limit before this operation can run.");
-        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
+        toastOptions.Body.ShouldBe("Exported 100 events.");
+        toastOptions.Intent.ShouldBe(ToastIntent.Success);
+        _ = JSInterop.VerifyInvoke("blazorDownloadFile");
     }
 
     [Fact]
-    public async Task BackupsPage_ExportDialog_ShowsDeferredToastAndClearsBusyState() {
+    public async Task BackupsPage_ExportDialog_ShowsErrorToastAndClearsBusyState_WhenBackendReturnsFailure() {
         SetupJobs([]);
-        const string deferredMessage = "Stream export is deferred. EventStore needs an approved bounded export contract, format, and event limit before this operation can run.";
+        const string failureMessage = "Stream export failed. ReasonCode=missing-stream.";
         _ = _mockBackupApi.ExportStreamAsync(Arg.Any<StreamExportRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<StreamExportResult?>(new StreamExportResult(
                 false,
@@ -761,7 +762,8 @@ public class BackupsPageTests : AdminUITestContext {
                 0,
                 null,
                 null,
-                deferredMessage)));
+                failureMessage,
+                "missing-stream")));
 
         IRenderedComponent<Backups> cut = Render<Backups>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Export Stream"), TimeSpan.FromSeconds(5));
@@ -780,21 +782,20 @@ public class BackupsPageTests : AdminUITestContext {
             () => fields.First(f => f.Markup.Contains("Aggregate ID")).Instance.ValueChanged.InvokeAsync("counter-1"));
 
         IRenderedComponent<FluentButton> submitBtn = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("<span>Submit Deferred Request</span>"));
+            .First(b => b.Markup.Contains("<span>Export</span>"));
         await submitBtn.InvokeAsync(submitBtn.Instance.OnClick.InvokeAsync);
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(deferredMessage);
-        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
+        toastOptions.Body.ShouldBe(failureMessage);
+        toastOptions.Intent.ShouldBe(ToastIntent.Error);
         cut.Markup.ShouldContain("Export Stream");
         submitBtn.Instance.Disabled.ShouldBeFalse();
     }
 
     [Fact]
-    public async Task BackupsPage_ExportDialog_ShowsWarningToast_WhenBackendReportsSuccessTrueWithDeferredMessage() {
+    public async Task BackupsPage_ExportDialog_DownloadsAndCloses_WhenBackendReportsSuccess() {
         SetupJobs([]);
-        const string deferredMessage = "Stream export is deferred.";
         _ = _mockBackupApi.ExportStreamAsync(Arg.Any<StreamExportRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<StreamExportResult?>(new StreamExportResult(
                 true,
@@ -804,7 +805,7 @@ public class BackupsPageTests : AdminUITestContext {
                 0,
                 "{}",
                 "export.json",
-                deferredMessage)));
+                null)));
 
         IRenderedComponent<Backups> cut = Render<Backups>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Export Stream"), TimeSpan.FromSeconds(5));
@@ -823,14 +824,14 @@ public class BackupsPageTests : AdminUITestContext {
             () => fields.First(f => f.Markup.Contains("Aggregate ID")).Instance.ValueChanged.InvokeAsync("counter-1"));
 
         IRenderedComponent<FluentButton> submitBtn = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("<span>Submit Deferred Request</span>"));
+            .First(b => b.Markup.Contains("<span>Export</span>"));
         await submitBtn.InvokeAsync(submitBtn.Instance.OnClick.InvokeAsync);
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(deferredMessage);
-        toastOptions.Intent.ShouldNotBe(ToastIntent.Success);
-        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
+        toastOptions.Body.ShouldBe("Exported 0 events.");
+        toastOptions.Intent.ShouldBe(ToastIntent.Success);
+        _ = JSInterop.VerifyInvoke("blazorDownloadFile");
     }
 
     [Fact]

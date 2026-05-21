@@ -30,4 +30,13 @@ public sealed class HttpContextAdminAuthContext(IHttpContextAccessor httpContext
         return user?.FindFirst("sub")?.Value
             ?? user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
     }
+
+    /// <inheritdoc/>
+    public string? GetCorrelationId() {
+        HttpContext? context = httpContextAccessor.HttpContext;
+        string? itemCorrelationId = context?.Items["CorrelationId"]?.ToString();
+        return !string.IsNullOrWhiteSpace(itemCorrelationId)
+            ? itemCorrelationId
+            : context?.TraceIdentifier;
+    }
 }
