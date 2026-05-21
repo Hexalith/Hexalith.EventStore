@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using Dapr.Client;
 
@@ -10,8 +12,11 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
+using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Contracts.Streams;
 
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -25,8 +30,14 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
     private const string AdmissionKeyPrefix = "admin:restore-admissions:";
     private const string AuditKeyPrefix = "admin:crypto-shredding-audit:";
     private const string ErrorNoOperation = "error-no-operation";
+    private const string StreamReadEndpoint = "api/v1/streams/read";
+    private const int StreamExportPageSize = 1_000;
     private const string WorkflowIdKeyPrefix = "admin:crypto-shredding-workflows:id:";
     private const string WorkflowScopeKeyPrefix = "admin:crypto-shredding-workflows:scope:";
+    private static readonly JsonSerializerOptions ExportJsonOptions = new(JsonSerializerDefaults.Web) {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        Converters = { new JsonStringEnumConverter() },
+    };
 
     private readonly IAdminAuthContext _authContext;
     private readonly DaprClient _daprClient;
@@ -93,15 +104,118 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
         StreamExportRequest request,
         CancellationToken ct = default) {
         ArgumentNullException.ThrowIfNull(request);
-        return await Task.FromResult(new StreamExportResult(
-            false,
-            request.TenantId,
-            request.Domain,
-            request.AggregateId,
-            0,
-            null,
-            null,
-            "Stream export is deferred. EventStore needs an approved bounded export contract, format, and event limit before this operation can run.")).ConfigureAwait(false);
+        if (_options.MaxStreamExportEvents <= 0) {
+            throw new InvalidOperationException("AdminServer:MaxStreamExportEvents must be greater than zero.");
+        }
+
+        int exportLimit = _options.MaxStreamExportEvents;
+        if (TryValidateExportRequest(request, out string? validationError) is false) {
+            return CreateExportFailure(request, "RejectedValidation", validationError!, request.Format, exportLimit);
+        }
+
+        string? normalizedFormat = NormalizeExportFormat(request.Format);
+        if (normalizedFormat is null) {
+            return CreateExportFailure(
+                request,
+                "RejectedValidation",
+                "Unsupported stream export format. Supported formats are JSON and CloudEvents.",
+                request.Format,
+                exportLimit);
+        }
+
+        try {
+            StreamReadPage probe = await ReadStreamPageAsync(
+                new StreamReadRequest(
+                    request.TenantId,
+                    request.Domain,
+                    request.AggregateId,
+                    FromSequence: 0,
+                    PageSize: Math.Min(StreamExportPageSize, exportLimit)),
+                ct).ConfigureAwait(false);
+
+            if (probe.Metadata.LatestSequence <= 0 || (probe.Events.Count == 0 && probe.Metadata.LastSequenceReturned is null)) {
+                return CreateExportFailure(request, "NoExportableEvents", "Stream export failed. ReasonCode=NoExportableEvents.", normalizedFormat, exportLimit);
+            }
+
+            long latestSequence = probe.Metadata.LatestSequence;
+            bool truncated = latestSequence > exportLimit;
+            long firstExportedSequence = truncated ? latestSequence - exportLimit + 1 : 1;
+            long readCursor = firstExportedSequence - 1;
+            long toSequence = latestSequence;
+            var exportedEvents = new List<StreamReadEvent>(Math.Min(exportLimit, StreamExportPageSize));
+
+            if (!truncated) {
+                exportedEvents.AddRange(probe.Events.Where(e => e.SequenceNumber >= firstExportedSequence && e.SequenceNumber <= toSequence));
+                readCursor = probe.Metadata.LastSequenceReturned ?? readCursor;
+            }
+
+            while (readCursor < toSequence && exportedEvents.Count < exportLimit) {
+                int pageSize = Math.Min(StreamExportPageSize, exportLimit - exportedEvents.Count);
+                StreamReadPage page = await ReadStreamPageAsync(
+                    new StreamReadRequest(
+                        request.TenantId,
+                        request.Domain,
+                        request.AggregateId,
+                        FromSequence: readCursor,
+                        ToSequence: toSequence,
+                        PageSize: pageSize),
+                    ct).ConfigureAwait(false);
+
+                if (page.Events.Count == 0 || page.Metadata.LastSequenceReturned is null) {
+                    break;
+                }
+
+                exportedEvents.AddRange(page.Events.Where(e => e.SequenceNumber >= firstExportedSequence && e.SequenceNumber <= toSequence));
+                readCursor = page.Metadata.LastSequenceReturned.Value;
+            }
+
+            if (exportedEvents.Count == 0) {
+                return CreateExportFailure(request, "NoExportableEvents", "Stream export failed. ReasonCode=NoExportableEvents.", normalizedFormat, exportLimit);
+            }
+
+            exportedEvents = [.. exportedEvents.OrderBy(e => e.SequenceNumber).Take(exportLimit)];
+            if (exportedEvents.Any(static e => e.ProtectionMetadata?.State is PayloadProtectionState.Protected or PayloadProtectionState.ProviderOpaque)) {
+                throw new StreamExportFailureException(StreamReplayReasonCodes.ProtectedPayloadUnavailable);
+            }
+
+            string content = BuildExportContent(
+                request,
+                normalizedFormat,
+                exportedEvents,
+                latestSequence,
+                firstExportedSequence,
+                toSequence,
+                exportLimit,
+                truncated);
+            string fileName = BuildExportFileName(request, normalizedFormat, DateTimeOffset.UtcNow);
+
+            LogStreamExportSucceeded(request, normalizedFormat, exportedEvents.Count, exportLimit, truncated);
+
+            return new StreamExportResult(
+                true,
+                request.TenantId,
+                request.Domain,
+                request.AggregateId,
+                exportedEvents.Count,
+                content,
+                fileName,
+                null);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
+            return CreateExportFailure(request, StreamReplayReasonCodes.ServiceUnavailable, $"Stream export failed. ReasonCode={StreamReplayReasonCodes.ServiceUnavailable}.", normalizedFormat, exportLimit);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (StreamExportFailureException ex) {
+            return CreateExportFailure(request, ex.ErrorCode, $"Stream export failed. ReasonCode={ex.ErrorCode}.", normalizedFormat, exportLimit);
+        }
+        catch (HttpRequestException) {
+            return CreateExportFailure(request, StreamReplayReasonCodes.ServiceUnavailable, $"Stream export failed. ReasonCode={StreamReplayReasonCodes.ServiceUnavailable}.", normalizedFormat, exportLimit);
+        }
+        catch (JsonException) {
+            return CreateExportFailure(request, StreamReplayReasonCodes.CorruptEvent, $"Stream export failed. ReasonCode={StreamReplayReasonCodes.CorruptEvent}.", normalizedFormat, exportLimit);
+        }
 
     }
 
@@ -329,6 +443,248 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
     private static AdminOperationResult CreateDeferredResult(string operationId, string message)
         => new(false, operationId, message, "Deferred");
 
+    private StreamExportResult CreateExportFailure(
+        StreamExportRequest request,
+        string errorCode,
+        string message,
+        string? format,
+        int exportLimit) {
+        LogStreamExportFailed(request, format, exportLimit, errorCode);
+        return new(false, request.TenantId, request.Domain, request.AggregateId, 0, null, null, message, errorCode);
+    }
+
+    private void LogStreamExportSucceeded(
+        StreamExportRequest request,
+        string format,
+        int eventCount,
+        int exportLimit,
+        bool truncated)
+        => _logger.LogInformation(
+            "Stream export completed: SubjectId={SubjectId}, CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Format={Format}, EventCount={EventCount}, RequestedCap={RequestedCap}, ExportLimit={ExportLimit}, Truncated={Truncated}, Stage=StreamExport",
+            GetAuditSubject(),
+            GetAuditCorrelationId(),
+            request.TenantId,
+            request.Domain,
+            request.AggregateId,
+            format,
+            eventCount,
+            exportLimit,
+            exportLimit,
+            truncated);
+
+    private void LogStreamExportFailed(
+        StreamExportRequest request,
+        string? format,
+        int exportLimit,
+        string reasonCode)
+        => _logger.LogWarning(
+            "Stream export failed: SubjectId={SubjectId}, CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Format={Format}, RequestedCap={RequestedCap}, ReasonCode={ReasonCode}, Stage=StreamExport",
+            GetAuditSubject(),
+            GetAuditCorrelationId(),
+            request.TenantId,
+            request.Domain,
+            request.AggregateId,
+            string.IsNullOrWhiteSpace(format) ? "(none)" : format.Trim(),
+            exportLimit,
+            reasonCode);
+
+    private string GetAuditSubject()
+        => _authContext.GetUserId() ?? "anonymous";
+
+    private string GetAuditCorrelationId()
+        => _authContext.GetCorrelationId() ?? "(none)";
+
+    private static bool TryValidateExportRequest(StreamExportRequest request, out string? validationError) {
+        if (string.IsNullOrWhiteSpace(request.TenantId)) {
+            validationError = "TenantId is required.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Domain)) {
+            validationError = "Domain is required.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.AggregateId)) {
+            validationError = "AggregateId is required.";
+            return false;
+        }
+
+        validationError = null;
+        return true;
+    }
+
+    private static string? NormalizeExportFormat(string? format) {
+        if (string.IsNullOrWhiteSpace(format)) {
+            return null;
+        }
+
+        string normalized = format.Trim();
+        if (string.Equals(normalized, "JSON", StringComparison.OrdinalIgnoreCase)) {
+            return "JSON";
+        }
+
+        if (string.Equals(normalized, "CloudEvents", StringComparison.OrdinalIgnoreCase)) {
+            return "CloudEvents";
+        }
+
+        return null;
+    }
+
+    private static string BuildExportContent(
+        StreamExportRequest request,
+        string format,
+        IReadOnlyList<StreamReadEvent> events,
+        long latestSequence,
+        long fromSequence,
+        long toSequence,
+        int exportLimit,
+        bool truncated) {
+        DateTimeOffset exportedAtUtc = DateTimeOffset.UtcNow;
+        object document = string.Equals(format, "CloudEvents", StringComparison.Ordinal)
+            ? new {
+                tenantId = request.TenantId,
+                domain = request.Domain,
+                aggregateId = request.AggregateId,
+                format,
+                eventCount = events.Count,
+                latestSequence,
+                fromSequence,
+                toSequence,
+                exportLimit,
+                truncated,
+                exportedAtUtc,
+                events = events.Select(e => ToCloudEvent(request, e)).ToArray(),
+            }
+            : new {
+                tenantId = request.TenantId,
+                domain = request.Domain,
+                aggregateId = request.AggregateId,
+                format,
+                eventCount = events.Count,
+                latestSequence,
+                fromSequence,
+                toSequence,
+                exportLimit,
+                truncated,
+                exportedAtUtc,
+                events = events.Select(ToJsonExportEvent).ToArray(),
+            };
+
+        return JsonSerializer.Serialize(document, ExportJsonOptions);
+    }
+
+    private static object ToJsonExportEvent(StreamReadEvent streamEvent)
+        => new {
+            sequenceNumber = streamEvent.SequenceNumber,
+            eventTypeName = streamEvent.EventTypeName,
+            messageId = streamEvent.MessageId,
+            correlationId = streamEvent.CorrelationId,
+            causationId = streamEvent.CausationId,
+            timestamp = streamEvent.Timestamp,
+            userId = streamEvent.UserId,
+            metadataVersion = streamEvent.MetadataVersion,
+            serializationFormat = streamEvent.SerializationFormat,
+            protectionState = streamEvent.ProtectionMetadata?.State.ToString() ?? PayloadProtectionState.Unprotected.ToString(),
+            payload = ReadPayload(streamEvent),
+        };
+
+    private static object ToCloudEvent(StreamExportRequest request, StreamReadEvent streamEvent)
+        => new {
+            specversion = "1.0",
+            id = streamEvent.MessageId,
+            source = $"/eventstore/tenants/{request.TenantId}/domains/{request.Domain}/aggregates/{request.AggregateId}",
+            type = streamEvent.EventTypeName,
+            subject = $"{request.TenantId}/{request.Domain}/{request.AggregateId}#{streamEvent.SequenceNumber}",
+            time = streamEvent.Timestamp,
+            datacontenttype = IsJsonPayload(streamEvent) ? "application/json" : "application/octet-stream",
+            data = ReadPayload(streamEvent),
+        };
+
+    private static object ReadPayload(StreamReadEvent streamEvent) {
+        if (IsJsonPayload(streamEvent)) {
+            using JsonDocument document = JsonDocument.Parse(streamEvent.Payload);
+            return document.RootElement.Clone();
+        }
+
+        return Convert.ToBase64String(streamEvent.Payload);
+    }
+
+    private static bool IsJsonPayload(StreamReadEvent streamEvent)
+        => string.Equals(streamEvent.SerializationFormat, "json", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(streamEvent.SerializationFormat, "application/json", StringComparison.OrdinalIgnoreCase);
+
+    private static string BuildExportFileName(StreamExportRequest request, string format, DateTimeOffset exportedAtUtc) {
+        string timestamp = exportedAtUtc.UtcDateTime.ToString("yyyyMMddTHHmmssZ", System.Globalization.CultureInfo.InvariantCulture);
+        return $"{SanitizeFileNamePart(request.TenantId)}_{SanitizeFileNamePart(request.Domain)}_{SanitizeFileNamePart(request.AggregateId)}_{format.ToLowerInvariant()}_{timestamp}.json";
+    }
+
+    private static string SanitizeFileNamePart(string value) {
+        var builder = new StringBuilder(value.Length);
+        foreach (char c in value) {
+            builder.Append(char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.' ? c : '_');
+        }
+
+        return builder.Length == 0 ? "stream" : builder.ToString();
+    }
+
+    private async Task<StreamReadPage> ReadStreamPageAsync(StreamReadRequest request, CancellationToken ct) {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
+
+        using HttpRequestMessage httpRequest = _daprClient.CreateInvokeMethodRequest(
+            HttpMethod.Post,
+            _options.EventStoreAppId,
+            StreamReadEndpoint)
+            ?? CreateFallbackRequest(HttpMethod.Post, StreamReadEndpoint, request);
+        httpRequest.Method = HttpMethod.Post;
+        httpRequest.Content = JsonContent.Create(request, options: ExportJsonOptions);
+
+        string? token = _authContext.GetToken();
+        if (token is not null) {
+            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        HttpClient httpClient = _httpClientFactory.CreateClient();
+        using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cts.Token).ConfigureAwait(false);
+        if (!httpResponse.IsSuccessStatusCode) {
+            throw await CreateStreamExportFailureAsync(httpResponse, cts.Token).ConfigureAwait(false);
+        }
+
+        return await httpResponse.Content.ReadFromJsonAsync<StreamReadPage>(ExportJsonOptions, cts.Token).ConfigureAwait(false)
+            ?? throw new StreamExportFailureException(StreamReplayReasonCodes.InternalError);
+    }
+
+    private static async Task<StreamExportFailureException> CreateStreamExportFailureAsync(
+        HttpResponseMessage response,
+        CancellationToken ct) {
+        string? reasonCode = null;
+        try {
+            ProblemDetails? problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(ExportJsonOptions, ct).ConfigureAwait(false);
+            if (problem?.Extensions.TryGetValue("reasonCode", out object? reasonValue) == true) {
+                reasonCode = reasonValue?.ToString();
+            }
+        }
+        catch (JsonException) {
+            // Fall back to HTTP status mapping below.
+        }
+        catch (NotSupportedException) {
+            // Fall back to HTTP status mapping below.
+        }
+
+        return new StreamExportFailureException(reasonCode ?? response.StatusCode switch {
+            HttpStatusCode.NotFound => StreamReplayReasonCodes.MissingStream,
+            HttpStatusCode.Unauthorized => StreamReplayReasonCodes.UnauthorizedTenant,
+            HttpStatusCode.Forbidden => StreamReplayReasonCodes.ForbiddenReplayScope,
+            HttpStatusCode.BadRequest => StreamReplayReasonCodes.InvalidRange,
+            HttpStatusCode.Conflict => StreamReplayReasonCodes.OperationInFlight,
+            HttpStatusCode.RequestTimeout => StreamReplayReasonCodes.ServiceUnavailable,
+            HttpStatusCode.ServiceUnavailable => StreamReplayReasonCodes.ServiceUnavailable,
+            HttpStatusCode.InternalServerError => StreamReplayReasonCodes.InternalError,
+            _ => StreamReplayReasonCodes.InternalError,
+        });
+    }
+
     private async Task<AdminOperationResult> InvokeEventStorePostAsync<TRequest>(
         string endpoint,
         TRequest request,
@@ -409,4 +765,8 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
         => new(method, endpoint) {
             Content = JsonContent.Create(request),
         };
+
+    private sealed class StreamExportFailureException(string errorCode) : Exception(errorCode) {
+        public string ErrorCode { get; } = errorCode;
+    }
 }

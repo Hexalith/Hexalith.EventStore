@@ -232,9 +232,9 @@ consumes.
 > **Out of scope.** Real encryption providers, key vault / KMS integration, certificate
 > management, DAPR secret-store wiring, legal hold UX, jurisdiction-specific compliance
 > automation, full operational redaction (Story 22.7d), and a physical backup engine remain
-> deferred. Admin backup trigger/validate/restore/export/import operations still return a
-> deferred result; the new admission contracts return `DeferredValidation` until the engine
-> lands.
+> deferred. Admin backup trigger/validate/restore/import operations still return a
+> deferred result; bounded single-stream export uses the EventStore stream-read path.
+> The restored-backup admission contracts return `DeferredValidation` until the engine lands.
 
 ### Canonical readability decision
 
@@ -391,8 +391,8 @@ construction by `CryptoShreddingAuditEvent.TryValidate`.
 
 - Real encryption providers, key vault integration, cloud KMS integration, DAPR secret-store
   setup, certificate management, provider-specific cryptographic algorithms.
-- Physical backup engine implementation — trigger/validate/restore/export/import operations
-  remain deferred.
+- Physical backup engine implementation — trigger/validate/restore/import operations
+  remain deferred. Bounded single-stream export is available separately through the Admin API.
 - Deleting immutable event records, snapshots, or audit records as the crypto-shredding
   mechanism. Crypto-shredding records and enforces consequences; it never deletes audit-relevant
   state.

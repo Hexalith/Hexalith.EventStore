@@ -11,6 +11,7 @@ namespace Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 /// <param name="Content">Serialized export content.</param>
 /// <param name="FileName">Suggested filename for download.</param>
 /// <param name="ErrorMessage">Error details if failed.</param>
+/// <param name="ErrorCode">Stable failure code if failed.</param>
 public record StreamExportResult(
     bool Success,
     string TenantId,
@@ -19,4 +20,5 @@ public record StreamExportResult(
     long EventCount,
     string? Content,
     string? FileName,
-    string? ErrorMessage);
+    string? ErrorMessage,
+    string? ErrorCode = null);

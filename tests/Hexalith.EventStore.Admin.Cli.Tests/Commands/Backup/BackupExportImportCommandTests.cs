@@ -16,6 +16,9 @@ public class BackupExportImportCommandTests : IDisposable {
     private static GlobalOptions CreateOptions(string format = "table")
         => new("http://localhost:5002", null, format, null);
 
+    private static GlobalOptions CreateOptionsWithOutputFile(string outputFile, string format = "table")
+        => new("http://localhost:5002", null, format, outputFile);
+
     private static (AdminApiClient Client, MockHttpMessageHandler Handler) CreateMockClientWithHandler(
         object responseBody,
         HttpStatusCode statusCode = HttpStatusCode.OK) {
@@ -78,6 +81,25 @@ public class BackupExportImportCommandTests : IDisposable {
         _ = handler.LastRequest.Content.ShouldNotBeNull();
         string body = await handler.LastRequest.Content!.ReadAsStringAsync();
         body.ShouldContain("CloudEvents");
+    }
+
+    [Fact]
+    public async Task BackupExportStreamCommand_OutputFile_WritesExportContent() {
+        string exportContent = """{"tenantId":"acme","eventCount":1,"events":[{"type":"OrderCreated"}]}""";
+        StreamExportResult result = new(true, "acme", "counter", "order-123", 1, exportContent, "file.json", null);
+        (AdminApiClient client, _) = CreateMockClientWithHandler(result);
+        string tempFile = Path.GetTempFileName();
+        _tempFiles.Add(tempFile);
+        GlobalOptions options = CreateOptionsWithOutputFile(tempFile);
+
+        int exitCode;
+        using (client) {
+            exitCode = await BackupExportStreamCommand.ExecuteAsync(client, options, "acme", "counter", "order-123", "JSON", CancellationToken.None);
+        }
+
+        exitCode.ShouldBe(ExitCodes.Success);
+        string written = await File.ReadAllTextAsync(tempFile);
+        written.ShouldContain(exportContent);
     }
 
     [Fact]

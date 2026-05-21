@@ -39,7 +39,7 @@ public sealed class DaprCommandAggregateTypeResolver(
 
     private async Task<IReadOnlyList<CommandTypeInfo>> GetCommandsAsync(string domain, CancellationToken cancellationToken) {
         DateTimeOffset now = DateTimeOffset.UtcNow;
-        if (_cache.TryGetValue(domain, out CacheEntry cached) && cached.ExpiresAtUtc > now) {
+        if (_cache.TryGetValue(domain, out CacheEntry? cached) && cached.ExpiresAtUtc > now) {
             return cached.Commands;
         }
 

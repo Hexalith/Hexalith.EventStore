@@ -6,7 +6,10 @@ using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
 using Hexalith.EventStore.Admin.Server.Tests.Helpers;
 using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Contracts.Streams;
 
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -17,11 +20,15 @@ namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 public class DaprBackupCommandServiceTests {
     private const string EventStoreAppId = "eventstore";
 
-    private static (DaprBackupCommandService Service, TestHttpMessageHandler Handler, DaprClient DaprClient) CreateService() {
+    private static (DaprBackupCommandService Service, TestHttpMessageHandler Handler, DaprClient DaprClient) CreateService(
+        int maxStreamExportEvents = 50_000,
+        IAdminAuthContext? authContext = null,
+        ILogger<DaprBackupCommandService>? logger = null) {
         DaprClient daprClient = Substitute.For<DaprClient>();
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             EventStoreAppId = EventStoreAppId,
             ServiceInvocationTimeoutSeconds = 30,
+            MaxStreamExportEvents = maxStreamExportEvents,
         });
 
         var handler = new TestHttpMessageHandler();
@@ -33,8 +40,8 @@ public class DaprBackupCommandServiceTests {
             daprClient,
             httpClientFactory,
             options,
-            new NullAdminAuthContext(),
-            NullLogger<DaprBackupCommandService>.Instance);
+            authContext ?? new NullAdminAuthContext(),
+            logger ?? NullLogger<DaprBackupCommandService>.Instance);
 
         return (service, handler, daprClient);
     }
@@ -79,14 +86,257 @@ public class DaprBackupCommandServiceTests {
     }
 
     [Fact]
-    public async Task ExportStreamAsync_ReturnsDeferredResult_WithoutCallingEventStore() {
+    public async Task ExportStreamAsync_EmptyStreamReadReturnsNoExportableEvents() {
         (DaprBackupCommandService service, TestHttpMessageHandler handler, _) = CreateService();
+        handler.SetupJsonResponse(new StreamReadPage(
+            "tenant-a",
+            "counter",
+            "counter-1",
+            [],
+            new StreamReadMetadata(0, null, null, 0, 0, false, null)));
 
-        StreamExportResult result = await service.ExportStreamAsync(new StreamExportRequest("tenant-a", "Counter", "counter-1"));
+        StreamExportResult result = await service.ExportStreamAsync(new StreamExportRequest("tenant-a", "counter", "counter-1"));
 
         result.Success.ShouldBeFalse();
         result.EventCount.ShouldBe(0);
-        result.ErrorMessage!.ShouldContain("Stream export is deferred");
+        result.Content.ShouldBeNull();
+        result.FileName.ShouldBeNull();
+        result.ErrorCode.ShouldBe("NoExportableEvents");
+        handler.RequestCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ExportStreamAsync_DW18AC1_ReadsEventStoreStreamAndReturnsJsonExport() {
+        (DaprBackupCommandService service, TestHttpMessageHandler handler, _) = CreateService();
+        handler.SetupJsonResponse(new StreamReadPage(
+            "tenant-a",
+            "counter",
+            "counter-1",
+            [
+                CreateStreamEvent(1, """{"value":1}"""),
+                CreateStreamEvent(2, """{"value":2}"""),
+            ],
+            new StreamReadMetadata(0, null, 2, 2, 2, false, null)));
+
+        StreamExportResult result = await service.ExportStreamAsync(new StreamExportRequest("tenant-a", "counter", "counter-1", "JSON"));
+
+        result.Success.ShouldBeTrue();
+        result.EventCount.ShouldBe(2);
+        result.FileName.ShouldNotBeNull();
+        result.FileName!.ShouldEndWith(".json");
+        result.Content.ShouldNotBeNull();
+        result.Content!.ShouldContain("\"format\":\"JSON\"");
+        result.Content.ShouldContain("\"eventCount\":2");
+        result.Content.ShouldContain("\"truncated\":false");
+        result.Content.ShouldContain("\"payload\":{\"value\":1}");
+        handler.RequestCount.ShouldBe(1);
+        handler.LastRequestBody.ShouldNotBeNull();
+        handler.LastRequestBody!.ShouldContain("\"tenant\":\"tenant-a\"");
+        handler.LastRequestBody.ShouldContain("\"domain\":\"counter\"");
+        handler.LastRequestBody.ShouldContain("\"aggregateId\":\"counter-1\"");
+        handler.LastRequestBody.ShouldContain("\"pageSize\":1000");
+    }
+
+    [Fact]
+    public async Task ExportStreamAsync_DW18AC3_UnsupportedFormatReturnsValidationFailureWithoutEventStoreCall() {
+        (DaprBackupCommandService service, TestHttpMessageHandler handler, _) = CreateService();
+
+        StreamExportResult result = await service.ExportStreamAsync(new StreamExportRequest("tenant-a", "counter", "counter-1", "XML"));
+
+        result.Success.ShouldBeFalse();
+        result.Content.ShouldBeNull();
+        result.FileName.ShouldBeNull();
+        result.ErrorCode.ShouldBe("RejectedValidation");
+        result.ErrorMessage.ShouldNotBeNull();
+        result.ErrorMessage!.ShouldContain("Unsupported stream export format");
+        handler.RequestCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ExportStreamAsync_DW18AC4_ReturnsCloudEventsDocument() {
+        (DaprBackupCommandService service, TestHttpMessageHandler handler, _) = CreateService();
+        handler.SetupJsonResponse(new StreamReadPage(
+            "tenant-a",
+            "counter",
+            "counter-1",
+            [CreateStreamEvent(1, """{"value":1}""")],
+            new StreamReadMetadata(0, null, 1, 1, 1, false, null)));
+
+        StreamExportResult result = await service.ExportStreamAsync(new StreamExportRequest("tenant-a", "counter", "counter-1", "CloudEvents"));
+
+        result.Success.ShouldBeTrue();
+        result.Content.ShouldNotBeNull();
+        result.Content!.ShouldContain("\"format\":\"CloudEvents\"");
+        result.Content.ShouldContain("\"specversion\":\"1.0\"");
+        result.Content.ShouldContain("\"source\":\"/eventstore/tenants/tenant-a/domains/counter/aggregates/counter-1\"");
+        result.Content.ShouldContain("\"data\":{\"value\":1}");
+    }
+
+    [Fact]
+    public async Task ExportStreamAsync_DW18AC2_OversizedStreamExportsNewestWindow() {
+        (DaprBackupCommandService service, TestHttpMessageHandler handler, _) = CreateService(maxStreamExportEvents: 3);
+        handler.SetupResponseSequence(
+            System.Net.Http.Json.JsonContent.Create(new StreamReadPage(
+                "tenant-a",
+                "counter",
+                "counter-1",
+                [CreateStreamEvent(1, """{"value":1}""")],
+                new StreamReadMetadata(0, null, 1, 5, 1, true, null))).ReadAsResponse(),
+            System.Net.Http.Json.JsonContent.Create(new StreamReadPage(
+                "tenant-a",
+                "counter",
+                "counter-1",
+                [
+                    CreateStreamEvent(3, """{"value":3}"""),
+                    CreateStreamEvent(4, """{"value":4}"""),
+                    CreateStreamEvent(5, """{"value":5}"""),
+                ],
+                new StreamReadMetadata(2, 5, 5, 5, 3, false, null))).ReadAsResponse());
+
+        StreamExportResult result = await service.ExportStreamAsync(new StreamExportRequest("tenant-a", "counter", "counter-1", "JSON"));
+
+        result.Success.ShouldBeTrue();
+        result.EventCount.ShouldBe(3);
+        result.Content.ShouldNotBeNull();
+        result.Content!.ShouldContain("\"fromSequence\":3");
+        result.Content.ShouldContain("\"toSequence\":5");
+        result.Content.ShouldContain("\"exportLimit\":3");
+        result.Content.ShouldContain("\"truncated\":true");
+        result.Content.ShouldNotContain("\"sequenceNumber\":1");
+        result.Content.ShouldContain("\"sequenceNumber\":3");
+        handler.RequestCount.ShouldBe(2);
+        handler.LastRequestBody.ShouldNotBeNull();
+        handler.LastRequestBody!.ShouldContain("\"fromSequence\":2");
+        handler.LastRequestBody.ShouldContain("\"toSequence\":5");
+    }
+
+    [Fact]
+    public async Task ExportStreamAsync_DW18AC5_MissingStreamProblemReturnsSafeFailure() {
+        (DaprBackupCommandService service, TestHttpMessageHandler handler, _) = CreateService();
+        handler.SetupJsonResponse(new ProblemDetails {
+            Status = 404,
+            Title = "Not Found",
+            Detail = "Event stream does not exist.",
+            Extensions = { ["reasonCode"] = StreamReplayReasonCodes.MissingStream },
+        }, System.Net.HttpStatusCode.NotFound);
+
+        StreamExportResult result = await service.ExportStreamAsync(new StreamExportRequest("tenant-a", "counter", "counter-1", "JSON"));
+
+        result.Success.ShouldBeFalse();
+        result.Content.ShouldBeNull();
+        result.FileName.ShouldBeNull();
+        result.ErrorCode.ShouldBe(StreamReplayReasonCodes.MissingStream);
+        result.ErrorMessage.ShouldBe("Stream export failed. ReasonCode=missing-stream.");
+    }
+
+    [Fact]
+    public async Task ExportStreamAsync_DW18AC5_NonProblemDetailsUnauthorizedMapsStableFailure() {
+        (DaprBackupCommandService service, TestHttpMessageHandler handler, _) = CreateService();
+        handler.SetupResponse(new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized) {
+            Content = new StringContent("not-json", System.Text.Encoding.UTF8, "text/plain"),
+        });
+
+        StreamExportResult result = await service.ExportStreamAsync(new StreamExportRequest("tenant-a", "counter", "counter-1", "JSON"));
+
+        result.Success.ShouldBeFalse();
+        result.Content.ShouldBeNull();
+        result.FileName.ShouldBeNull();
+        result.ErrorCode.ShouldBe(StreamReplayReasonCodes.UnauthorizedTenant);
+        result.ErrorMessage.ShouldBe("Stream export failed. ReasonCode=unauthorized-tenant.");
+    }
+
+    [Fact]
+    public async Task ExportStreamAsync_DW18AC5_TransportFailureMapsToSafeUnavailableResult() {
+        (DaprBackupCommandService service, TestHttpMessageHandler handler, _) = CreateService();
+        handler.SetupException(new HttpRequestException("connection string sentinel must not leak"));
+
+        StreamExportResult result = await service.ExportStreamAsync(new StreamExportRequest("tenant-a", "counter", "counter-1", "JSON"));
+
+        result.Success.ShouldBeFalse();
+        result.Content.ShouldBeNull();
+        result.FileName.ShouldBeNull();
+        result.ErrorCode.ShouldBe(StreamReplayReasonCodes.ServiceUnavailable);
+        result.ErrorMessage.ShouldBe("Stream export failed. ReasonCode=service-unavailable.");
+        result.ErrorMessage.ShouldNotBeNull();
+        result.ErrorMessage.ShouldNotContain("connection string");
+    }
+
+    [Fact]
+    public async Task ExportStreamAsync_DW18AC5_ProtectedPayloadFailsClosedWithoutContent() {
+        (DaprBackupCommandService service, TestHttpMessageHandler handler, _) = CreateService();
+        handler.SetupJsonResponse(new StreamReadPage(
+            "tenant-a",
+            "counter",
+            "counter-1",
+            [CreateStreamEvent(1, """{"value":1}""") with { ProtectionMetadata = EventStorePayloadProtectionMetadata.ProviderOpaque("sentinel") }],
+            new StreamReadMetadata(0, null, 1, 1, 1, false, null)));
+
+        StreamExportResult result = await service.ExportStreamAsync(new StreamExportRequest("tenant-a", "counter", "counter-1", "JSON"));
+
+        result.Success.ShouldBeFalse();
+        result.Content.ShouldBeNull();
+        result.FileName.ShouldBeNull();
+        result.ErrorCode.ShouldBe(StreamReplayReasonCodes.ProtectedPayloadUnavailable);
+        result.ErrorMessage.ShouldBe("Stream export failed. ReasonCode=protected-payload-unavailable.");
+    }
+
+    [Fact]
+    public async Task ExportStreamAsync_DW18AC7_LogsSafeAuditFieldsForSuccess() {
+        var logger = new RecordingLogger<DaprBackupCommandService>();
+        var authContext = new TestAdminAuthContext("operator-sub", "corr-123");
+        (DaprBackupCommandService service, TestHttpMessageHandler handler, _) = CreateService(
+            maxStreamExportEvents: 50_000,
+            authContext,
+            logger);
+        handler.SetupJsonResponse(new StreamReadPage(
+            "tenant-a",
+            "counter",
+            "counter-1",
+            [CreateStreamEvent(1, """{"value":1}""")],
+            new StreamReadMetadata(0, null, 1, 1, 1, false, null)));
+
+        StreamExportResult result = await service.ExportStreamAsync(new StreamExportRequest("tenant-a", "counter", "counter-1", "JSON"));
+
+        result.Success.ShouldBeTrue();
+        RecordingLogger<DaprBackupCommandService>.LogRecord record = logger.Records.ShouldHaveSingleItem();
+        record.Level.ShouldBe(LogLevel.Information);
+        record.Message.ShouldContain("SubjectId=operator-sub");
+        record.Message.ShouldContain("CorrelationId=corr-123");
+        record.Message.ShouldContain("RequestedCap=50000");
+        record.Message.ShouldContain("EventCount=1");
+        record.Message.ShouldContain("Truncated=False");
+    }
+
+    [Fact]
+    public async Task ExportStreamAsync_DW18AC7_LogsSafeAuditFieldsForValidationFailure() {
+        var logger = new RecordingLogger<DaprBackupCommandService>();
+        var authContext = new TestAdminAuthContext("operator-sub", "corr-456");
+        (DaprBackupCommandService service, TestHttpMessageHandler handler, _) = CreateService(
+            authContext: authContext,
+            logger: logger);
+
+        StreamExportResult result = await service.ExportStreamAsync(new StreamExportRequest("tenant-a", "counter", "counter-1", "XML"));
+
+        result.Success.ShouldBeFalse();
+        handler.RequestCount.ShouldBe(0);
+        RecordingLogger<DaprBackupCommandService>.LogRecord record = logger.Records.ShouldHaveSingleItem();
+        record.Level.ShouldBe(LogLevel.Warning);
+        record.Message.ShouldContain("SubjectId=operator-sub");
+        record.Message.ShouldContain("CorrelationId=corr-456");
+        record.Message.ShouldContain("RequestedCap=50000");
+        record.Message.ShouldContain("ReasonCode=RejectedValidation");
+        record.Message.ShouldContain("Format=XML");
+    }
+
+
+    [Fact]
+    public async Task ExportStreamAsync_InvalidMaxEventsConfigurationFailsBeforeEventStoreCall() {
+        (DaprBackupCommandService service, TestHttpMessageHandler handler, _) = CreateService(maxStreamExportEvents: 0);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => service.ExportStreamAsync(new StreamExportRequest("tenant-a", "counter", "counter-1", "JSON")));
+
+        exception.Message.ShouldContain("MaxStreamExportEvents");
         handler.RequestCount.ShouldBe(0);
     }
 
@@ -229,4 +479,32 @@ public class DaprBackupCommandServiceTests {
         result.IdempotentReplay.ShouldBeTrue();
         result.Identity.WorkflowId.ShouldBe(existing.Identity.WorkflowId);
     }
+
+    private static StreamReadEvent CreateStreamEvent(long sequenceNumber, string payload)
+        => new(
+            sequenceNumber,
+            "counter-incremented-v1",
+            System.Text.Encoding.UTF8.GetBytes(payload),
+            "json",
+            1,
+            $"01J{sequenceNumber:00000000000000000000000}",
+            $"01C{sequenceNumber:00000000000000000000000}",
+            $"01K{sequenceNumber:00000000000000000000000}",
+            DateTimeOffset.Parse("2026-05-21T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture),
+            "operator-subject");
+
+    private sealed class TestAdminAuthContext(string? userId, string? correlationId) : IAdminAuthContext {
+        public string? GetToken() => null;
+
+        public string? GetUserId() => userId;
+
+        public string? GetCorrelationId() => correlationId;
+    }
+}
+
+internal static class JsonContentTestExtensions {
+    public static HttpResponseMessage ReadAsResponse(this HttpContent content)
+        => new(System.Net.HttpStatusCode.OK) {
+            Content = content,
+        };
 }

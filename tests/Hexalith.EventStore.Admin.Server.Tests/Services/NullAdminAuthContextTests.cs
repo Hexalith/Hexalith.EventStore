@@ -16,6 +16,12 @@ public class NullAdminAuthContextTests {
     }
 
     [Fact]
+    public void GetCorrelationId_ReturnsNull() {
+        NullAdminAuthContext context = new();
+        context.GetCorrelationId().ShouldBeNull();
+    }
+
+    [Fact]
     public void ImplementsIAdminAuthContext() {
         NullAdminAuthContext context = new();
         _ = context.ShouldBeAssignableTo<IAdminAuthContext>();

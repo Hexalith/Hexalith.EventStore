@@ -11,4 +11,7 @@ public sealed class NullAdminAuthContext : IAdminAuthContext {
 
     /// <inheritdoc/>
     public string? GetUserId() => null;
+
+    /// <inheritdoc/>
+    public string? GetCorrelationId() => null;
 }

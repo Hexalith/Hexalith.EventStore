@@ -19,4 +19,10 @@ public interface IAdminAuthContext {
     /// </summary>
     /// <returns>The user identifier, or null.</returns>
     string? GetUserId();
+
+    /// <summary>
+    /// Gets the current request correlation identifier, or null if not available.
+    /// </summary>
+    /// <returns>The correlation identifier, or null.</returns>
+    string? GetCorrelationId();
 }
