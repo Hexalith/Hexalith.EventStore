@@ -93,4 +93,18 @@ public class SnapshotSetPolicyCommandTests {
         // Assert
         exitCode.ShouldBe(ExitCodes.Error);
     }
+
+    [Fact]
+    public async Task SnapshotSetPolicyCommand_TypedValidationFailure_ReturnsError() {
+        AdminOperationResult result = new(false, "snapshot-policy-set-rejected", "Invalid interval", "RejectedValidation");
+        (AdminApiClient client, _) = CreateMockClientWithHandler(result);
+        GlobalOptions options = CreateOptions("table");
+
+        int exitCode;
+        using (client) {
+            exitCode = await SnapshotSetPolicyCommand.ExecuteAsync(client, options, "acme", "counter", "Counter", 9, CancellationToken.None);
+        }
+
+        exitCode.ShouldBe(ExitCodes.Error);
+    }
 }

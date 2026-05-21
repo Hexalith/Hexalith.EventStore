@@ -11,6 +11,7 @@ using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Services;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -30,6 +31,7 @@ namespace Hexalith.EventStore.Controllers;
 public sealed class AdminStorageCommandController(
     IActorProxyFactory actorProxyFactory,
     DaprClient daprClient,
+    DaprSnapshotPolicyRepository snapshotPolicyRepository,
     EventStoreTenantValidator tenantValidator,
     IRbacValidator rbacValidator,
     IOptions<CommandStatusOptions> commandStatusOptions,
@@ -39,6 +41,84 @@ public sealed class AdminStorageCommandController(
     private const string SnapshotJobIndexPrefix = "admin:storage-snapshot-jobs:";
 
     private readonly string _stateStoreName = commandStatusOptions.Value.StateStoreName;
+
+    /// <summary>
+    /// Sets an exact automatic snapshot policy.
+    /// </summary>
+    /// <param name="request">Policy set request.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A typed admin operation result.</returns>
+    [HttpPut("snapshot-policy")]
+    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<AdminOperationResult>> SetSnapshotPolicy(
+        [FromBody] SnapshotPolicySetRequest? request,
+        CancellationToken ct = default) {
+        if (request is null) {
+            return Ok(new AdminOperationResult(
+                false,
+                "snapshot-policy-set-request-invalid",
+                "Snapshot policy request body is required.",
+                "RejectedValidation"));
+        }
+
+        AdminOperationResult? validationResult = DaprSnapshotPolicyRepository.Validate(request);
+        if (validationResult is not null) {
+            return Ok(validationResult);
+        }
+
+        AdminOperationResult? authResult = await AuthorizePolicyMutationAsync(
+            request.TenantId,
+            request.Domain,
+            request.AggregateType,
+            "snapshot-policy-set",
+            ct).ConfigureAwait(false);
+        if (authResult is not null) {
+            return Ok(authResult);
+        }
+
+        return Ok(await snapshotPolicyRepository.SetPolicyAsync(request, ct).ConfigureAwait(false));
+    }
+
+    /// <summary>
+    /// Deletes an exact automatic snapshot policy.
+    /// </summary>
+    /// <param name="request">Policy delete request.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A typed admin operation result.</returns>
+    [HttpDelete("snapshot-policy")]
+    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<AdminOperationResult>> DeleteSnapshotPolicy(
+        [FromBody] SnapshotPolicyDeleteRequest? request,
+        CancellationToken ct = default) {
+        if (request is null) {
+            return Ok(new AdminOperationResult(
+                false,
+                "snapshot-policy-delete-request-invalid",
+                "Snapshot policy request body is required.",
+                "RejectedValidation"));
+        }
+
+        AdminOperationResult? validationResult = DaprSnapshotPolicyRepository.Validate(request);
+        if (validationResult is not null) {
+            return Ok(validationResult);
+        }
+
+        AdminOperationResult? authResult = await AuthorizePolicyMutationAsync(
+            request.TenantId,
+            request.Domain,
+            request.AggregateType,
+            "snapshot-policy-delete",
+            ct).ConfigureAwait(false);
+        if (authResult is not null) {
+            return Ok(authResult);
+        }
+
+        return Ok(await snapshotPolicyRepository.DeletePolicyAsync(request, ct).ConfigureAwait(false));
+    }
 
     /// <summary>
     /// Creates a manual aggregate snapshot inside the target aggregate actor boundary.
@@ -231,6 +311,56 @@ public sealed class AdminStorageCommandController(
         || user.HasClaim("eventstore:admin-role", "Operator")
         || user.HasClaim("eventstore:admin-role", "Admin")
         || user.HasClaim("eventstore:permission", "command:replay");
+
+    private async Task<AdminOperationResult?> AuthorizePolicyMutationAsync(
+        string? tenantId,
+        string? domain,
+        string? aggregateType,
+        string operationPrefix,
+        CancellationToken ct) {
+        string safeTenantId = tenantId ?? string.Empty;
+        string safeDomain = domain ?? string.Empty;
+        string safeAggregateType = aggregateType ?? string.Empty;
+        string operationId = $"{operationPrefix}-{Hash($"{safeTenantId}|{safeDomain}|{safeAggregateType}")}";
+
+        TenantValidationResult tenantResult = await tenantValidator
+            .ValidateAsync(User, safeTenantId, ct, safeAggregateType)
+            .ConfigureAwait(false);
+        if (!tenantResult.IsAuthorized) {
+            return new AdminOperationResult(
+                false,
+                operationId,
+                tenantResult.Reason ?? "Tenant access denied.",
+                "RejectedUnauthorized");
+        }
+
+        if (!HasSnapshotPolicyAccess(User)) {
+            return new AdminOperationResult(
+                false,
+                operationId,
+                "Operator permission is required.",
+                "RejectedUnauthorized");
+        }
+
+        RbacValidationResult rbacResult = await rbacValidator
+            .ValidateAsync(User, safeTenantId, safeDomain, "snapshot:policy", "admin", ct, safeAggregateType)
+            .ConfigureAwait(false);
+        return rbacResult.IsAuthorized
+            ? null
+            : new AdminOperationResult(
+                false,
+                operationId,
+                rbacResult.Reason ?? "Operator permission is required.",
+                "RejectedUnauthorized");
+    }
+
+    private static bool HasSnapshotPolicyAccess(System.Security.Claims.ClaimsPrincipal user)
+        => GlobalAdministratorHelper.IsGlobalAdministrator(user)
+        || user.HasClaim("eventstore:admin-role", "Operator")
+        || user.HasClaim("eventstore:admin-role", "Admin")
+        || user.HasClaim("eventstore:permission", "admin:*")
+        || user.HasClaim("eventstore:permission", "storage:*")
+        || user.HasClaim("eventstore:permission", "snapshot:policy");
 
     private static string Hash(string value) {
         byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value));

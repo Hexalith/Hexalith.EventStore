@@ -30,6 +30,7 @@ internal sealed record ActorTestContext(
     ILogger<AggregateActor> Logger,
     IDomainServiceInvoker Invoker,
     ISnapshotManager SnapshotManager,
+    ICommandAggregateTypeResolver AggregateTypeResolver,
     ICommandStatusStore StatusStore,
     IEventPublisher EventPublisher,
     IDeadLetterPublisher DeadLetterPublisher);
@@ -59,6 +60,9 @@ internal static class AggregateActorTestHelper {
         _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
         IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
         ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandAggregateTypeResolver aggregateTypeResolver = Substitute.For<ICommandAggregateTypeResolver>();
+        _ = aggregateTypeResolver.ResolveAsync(Arg.Any<CommandEnvelope>(), Arg.Any<CancellationToken>())
+            .Returns((string?)null);
         ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
         IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
@@ -69,7 +73,7 @@ internal static class AggregateActorTestHelper {
             Arg.Any<DeadLetterMessage>(),
             Arg.Any<CancellationToken>())
             .Returns(true);
-        var actor = new AggregateActor(host, logger, invoker, snapshotManager, payloadProtectionService ?? new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher);
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, payloadProtectionService ?? new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher, commandAggregateTypeResolver: aggregateTypeResolver);
 
         // Set the mock state manager via reflection (Dapr runtime normally sets this)
         ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
@@ -90,7 +94,7 @@ internal static class AggregateActorTestHelper {
             Arg.Any<CancellationToken>())
             .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
 
-        return new ActorTestContext(actor, stateManager, logger, invoker, snapshotManager, commandStatusStore, eventPublisher, deadLetterPublisher);
+        return new ActorTestContext(actor, stateManager, logger, invoker, snapshotManager, aggregateTypeResolver, commandStatusStore, eventPublisher, deadLetterPublisher);
     }
 
     internal static void ConfigureNoDuplicate(IActorStateManager stateManager) {

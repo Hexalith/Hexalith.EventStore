@@ -80,9 +80,11 @@ public sealed class DaprStorageCommandService : IStorageCommandService {
         string aggregateType,
         int intervalEvents,
         CancellationToken ct = default)
-        => await Task.FromResult(CreateDeferredResult(
-            "deferred-snapshot-policy-set",
-            "Snapshot policy changes are deferred. EventStore does not yet have an approved runtime snapshot policy engine.")).ConfigureAwait(false);
+        => await InvokeEventStoreAsync(
+            HttpMethod.Put,
+            "api/v1/admin/storage/snapshot-policy",
+            new SnapshotPolicySetRequest(tenantId, domain, aggregateType, intervalEvents),
+            ct).ConfigureAwait(false);
 
     /// <inheritdoc/>
     public async Task<AdminOperationResult> DeleteSnapshotPolicyAsync(
@@ -90,9 +92,11 @@ public sealed class DaprStorageCommandService : IStorageCommandService {
         string domain,
         string aggregateType,
         CancellationToken ct = default)
-        => await Task.FromResult(CreateDeferredResult(
-            "deferred-snapshot-policy-delete",
-            "Snapshot policy deletion is deferred. EventStore does not yet have an approved runtime snapshot policy engine.")).ConfigureAwait(false);
+        => await InvokeEventStoreAsync(
+            HttpMethod.Delete,
+            "api/v1/admin/storage/snapshot-policy",
+            new SnapshotPolicyDeleteRequest(tenantId, domain, aggregateType),
+            ct).ConfigureAwait(false);
 
     private static AdminOperationResult CreateDeferredResult(string operationId, string message)
         => new(false, operationId, message, "Deferred");

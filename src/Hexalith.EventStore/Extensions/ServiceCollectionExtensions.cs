@@ -15,7 +15,9 @@ using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.OpenApi;
 using Hexalith.EventStore.Pipeline;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline;
+using Hexalith.EventStore.Services;
 using Hexalith.EventStore.Validation;
 
 using Microsoft.AspNetCore.Authentication;
@@ -146,6 +148,10 @@ public static class EventStoreServiceCollectionExtensions {
         _ = services.AddSingleton<DaprCommandActivityTracker>();
         _ = services.AddSingleton<ICommandActivityTracker>(sp => sp.GetRequiredService<DaprCommandActivityTracker>());
         _ = services.AddSingleton<ICommandActivityReader>(sp => sp.GetRequiredService<DaprCommandActivityTracker>());
+
+        _ = services.AddSingleton<DaprSnapshotPolicyRepository>();
+        _ = services.AddSingleton<ISnapshotPolicyResolver>(sp => sp.GetRequiredService<DaprSnapshotPolicyRepository>());
+        _ = services.AddSingleton<ICommandAggregateTypeResolver, DaprCommandAggregateTypeResolver>();
 
         // Stream activity tracking for admin UI Streams/Events pages (DAPR state store backed).
         // Writer only — the reader lives in DaprStreamQueryService on the Admin.Server side.

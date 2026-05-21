@@ -17,16 +17,28 @@ namespace Hexalith.EventStore.Server.Events;
 public partial class SnapshotManager(
     IOptions<SnapshotOptions> options,
     ILogger<SnapshotManager> logger,
-    IEventPayloadProtectionService payloadProtectionService) : ISnapshotManager {
+    IEventPayloadProtectionService payloadProtectionService,
+    ISnapshotPolicyResolver? snapshotPolicyResolver = null) : ISnapshotManager {
     /// <inheritdoc/>
-    public Task<bool> ShouldCreateSnapshotAsync(string tenantId, string domain, long currentSequence, long lastSnapshotSequence) {
+    public async Task<bool> ShouldCreateSnapshotAsync(
+        string tenantId,
+        string domain,
+        string aggregateType,
+        long currentSequence,
+        long lastSnapshotSequence,
+        CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
+        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
 
-        int interval = GetInterval(tenantId, domain);
+        int interval = await GetIntervalAsync(tenantId, domain, aggregateType, cancellationToken).ConfigureAwait(false);
         bool shouldCreate = (currentSequence - lastSnapshotSequence) >= interval;
-        return Task.FromResult(shouldCreate);
+        return shouldCreate;
     }
+
+    /// <inheritdoc/>
+    public Task<bool> ShouldCreateSnapshotAsync(string tenantId, string domain, long currentSequence, long lastSnapshotSequence)
+        => ShouldCreateSnapshotAsync(tenantId, domain, domain, currentSequence, lastSnapshotSequence);
 
     /// <inheritdoc/>
     public async Task CreateSnapshotAsync(
@@ -311,10 +323,19 @@ public partial class SnapshotManager(
         return SnapshotLoadResult.Readable(readable);
     }
 
-    private int GetInterval(string tenantId, string domain) {
+    private async Task<int> GetIntervalAsync(string tenantId, string domain, string aggregateType, CancellationToken cancellationToken) {
+        if (snapshotPolicyResolver is not null) {
+            int? persistedInterval = await snapshotPolicyResolver
+                .GetIntervalAsync(tenantId, domain, aggregateType, cancellationToken)
+                .ConfigureAwait(false);
+            if (persistedInterval is not null) {
+                return persistedInterval.Value;
+            }
+        }
+
         SnapshotOptions opts = options.Value;
 
-        // Three-tier resolution: tenant-domain > domain > default
+        // Static fallback resolution: tenant-domain > domain > default
         string tenantDomainKey = $"{tenantId}:{domain}".ToLowerInvariant();
         if (opts.TenantDomainIntervals.TryGetValue(tenantDomainKey, out int tenantDomainInterval)) {
             return tenantDomainInterval;

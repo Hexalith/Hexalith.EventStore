@@ -75,7 +75,9 @@ public static class SnapshotSetPolicyCommand {
                 .PutAsync<AdminOperationResult>(path, cancellationToken)
                 .ConfigureAwait(false);
 
-            Console.Error.WriteLine($"Snapshot policy set. Operation ID: {result.OperationId}");
+            Console.Error.WriteLine(result.Success
+                ? $"Snapshot policy set. Operation ID: {result.OperationId}"
+                : result.Message ?? $"Snapshot policy set failed. Operation ID: {result.OperationId}");
 
             string output;
             if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase)) {
@@ -86,7 +88,9 @@ public static class SnapshotSetPolicyCommand {
             }
 
             int writeResult = writer.Write(output);
-            return writeResult != ExitCodes.Success ? writeResult : ExitCodes.Success;
+            return writeResult != ExitCodes.Success
+                ? writeResult
+                : result.Success ? ExitCodes.Success : ExitCodes.Error;
         }
         catch (AdminApiException ex) {
             string message = ex.HttpStatusCode switch {

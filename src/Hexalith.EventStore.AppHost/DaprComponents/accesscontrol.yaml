@@ -37,5 +37,5 @@ spec:
         namespace: "default"
         operations:
           - name: /**
-            httpVerb: ['GET', 'POST', 'PUT']
+            httpVerb: ['GET', 'POST', 'PUT', 'DELETE']
             action: allow

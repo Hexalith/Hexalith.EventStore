@@ -65,7 +65,9 @@ public static class SnapshotDeletePolicyCommand {
                 .DeleteAsync<AdminOperationResult>(path, cancellationToken)
                 .ConfigureAwait(false);
 
-            Console.Error.WriteLine($"Snapshot policy deleted. Operation ID: {result.OperationId}");
+            Console.Error.WriteLine(result.Success
+                ? $"Snapshot policy deleted. Operation ID: {result.OperationId}"
+                : result.Message ?? $"Snapshot policy delete failed. Operation ID: {result.OperationId}");
 
             string output;
             if (string.Equals(options.Format, "json", StringComparison.OrdinalIgnoreCase)) {
@@ -76,7 +78,9 @@ public static class SnapshotDeletePolicyCommand {
             }
 
             int writeResult = writer.Write(output);
-            return writeResult != ExitCodes.Success ? writeResult : ExitCodes.Success;
+            return writeResult != ExitCodes.Success
+                ? writeResult
+                : result.Success ? ExitCodes.Success : ExitCodes.Error;
         }
         catch (AdminApiException ex) {
             string message = ex.HttpStatusCode switch {

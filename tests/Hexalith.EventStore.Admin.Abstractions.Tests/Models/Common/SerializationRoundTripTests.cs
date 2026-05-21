@@ -95,6 +95,26 @@ public class SerializationRoundTripTests {
     }
 
     [Fact]
+    public void SnapshotPolicySetRequest_RoundTrips() {
+        var original = new SnapshotPolicySetRequest("acme", "orders", "OrderAggregate", 100);
+
+        string json = JsonSerializer.Serialize(original, _options);
+        SnapshotPolicySetRequest? deserialized = JsonSerializer.Deserialize<SnapshotPolicySetRequest>(json, _options);
+
+        deserialized.ShouldBe(original);
+    }
+
+    [Fact]
+    public void SnapshotPolicyDeleteRequest_RoundTrips() {
+        var original = new SnapshotPolicyDeleteRequest("acme", "orders", "OrderAggregate");
+
+        string json = JsonSerializer.Serialize(original, _options);
+        SnapshotPolicyDeleteRequest? deserialized = JsonSerializer.Deserialize<SnapshotPolicyDeleteRequest>(json, _options);
+
+        deserialized.ShouldBe(original);
+    }
+
+    [Fact]
     public void FieldChange_RoundTrips() {
         var original = new FieldChange("$.status", "\"open\"", "\"closed\"");
         string json = JsonSerializer.Serialize(original, _options);

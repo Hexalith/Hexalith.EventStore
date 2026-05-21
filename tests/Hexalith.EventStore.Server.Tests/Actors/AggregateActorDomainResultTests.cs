@@ -522,7 +522,27 @@ public class AggregateActorDomainResultTests {
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
 
         // Assert -- ShouldCreateSnapshotAsync called with newSequence=4 (3 existing + 1 new), lastSnapshotSequence=0
-        _ = await ctx.SnapshotManager.Received(1).ShouldCreateSnapshotAsync("test-tenant", "test-domain", 4, 0);
+        _ = await ctx.SnapshotManager.Received(1).ShouldCreateSnapshotAsync("test-tenant", "test-domain", "test-domain", 4, 0);
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_UsesResolvedAggregateTypeForSnapshotPolicyDecision() {
+        // Arrange
+        ActorTestContext ctx = CreateActor();
+        ConfigureNoDuplicate(ctx.StateManager);
+        ConfigureExistingAggregate(ctx.StateManager, 3);
+        _ = ctx.AggregateTypeResolver.ResolveAsync(Arg.Any<CommandEnvelope>(), Arg.Any<CancellationToken>())
+            .Returns("OrderAggregate");
+
+        var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
+        _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        _ = await ctx.Actor.ProcessCommandAsync(envelope);
+
+        // Assert -- aggregate type comes from EventStore-owned catalog resolution, not caller extensions.
+        _ = await ctx.SnapshotManager.Received(1).ShouldCreateSnapshotAsync("test-tenant", "test-domain", "OrderAggregate", 4, 0);
     }
 
     [Fact]
@@ -534,7 +554,7 @@ public class AggregateActorDomainResultTests {
 
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
         _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
-        _ = ctx.SnapshotManager.ShouldCreateSnapshotAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>())
+        _ = ctx.SnapshotManager.ShouldCreateSnapshotAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>())
             .Returns(true);
 
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -560,7 +580,7 @@ public class AggregateActorDomainResultTests {
 
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
         _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
-        _ = ctx.SnapshotManager.ShouldCreateSnapshotAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>())
+        _ = ctx.SnapshotManager.ShouldCreateSnapshotAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>())
             .Returns(false);
 
         CommandEnvelope envelope = CreateTestEnvelope();
@@ -599,7 +619,7 @@ public class AggregateActorDomainResultTests {
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
 
         // Assert -- ShouldCreateSnapshotAsync called with lastSnapshotSequence=100 from loaded snapshot
-        _ = await ctx.SnapshotManager.Received(1).ShouldCreateSnapshotAsync("test-tenant", "test-domain", 4, 100);
+        _ = await ctx.SnapshotManager.Received(1).ShouldCreateSnapshotAsync("test-tenant", "test-domain", "test-domain", 4, 100);
     }
 
     [Fact]
@@ -617,6 +637,6 @@ public class AggregateActorDomainResultTests {
         _ = await ctx.Actor.ProcessCommandAsync(envelope);
 
         // Assert -- ShouldCreateSnapshotAsync called on rejection path
-        _ = await ctx.SnapshotManager.Received(1).ShouldCreateSnapshotAsync("test-tenant", "test-domain", Arg.Any<long>(), Arg.Is<long>(0));
+        _ = await ctx.SnapshotManager.Received(1).ShouldCreateSnapshotAsync("test-tenant", "test-domain", "test-domain", Arg.Any<long>(), Arg.Is<long>(0));
     }
 }

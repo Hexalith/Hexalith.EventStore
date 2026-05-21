@@ -11,10 +11,22 @@ namespace Hexalith.EventStore.Server.Events;
 public interface ISnapshotManager {
     /// <summary>
     /// Determines whether a snapshot should be created based on the configured interval.
-    /// Uses three-tier resolution: tenant-domain override > domain override > system default.
+    /// Uses four-tier resolution: persisted policy > tenant-domain override > domain override > system default.
     /// </summary>
     /// <param name="tenantId">The tenant ID (used with domain for per-tenant-domain interval overrides).</param>
     /// <param name="domain">The domain name (used to resolve per-domain interval overrides).</param>
+    /// <param name="aggregateType">The aggregate type used for exact persisted policy lookup.</param>
+    /// <param name="currentSequence">The current event sequence number after persistence.</param>
+    /// <param name="lastSnapshotSequence">The sequence number of the last snapshot (0 if none).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns><c>true</c> if a snapshot should be created; otherwise <c>false</c>.</returns>
+    Task<bool> ShouldCreateSnapshotAsync(string tenantId, string domain, string aggregateType, long currentSequence, long lastSnapshotSequence, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Determines whether a snapshot should be created based on static tenant/domain options.
+    /// </summary>
+    /// <param name="tenantId">The tenant ID.</param>
+    /// <param name="domain">The domain name.</param>
     /// <param name="currentSequence">The current event sequence number after persistence.</param>
     /// <param name="lastSnapshotSequence">The sequence number of the last snapshot (0 if none).</param>
     /// <returns><c>true</c> if a snapshot should be created; otherwise <c>false</c>.</returns>
