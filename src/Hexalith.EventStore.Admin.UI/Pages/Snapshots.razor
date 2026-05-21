@@ -23,17 +23,11 @@
                           aria-label="Add snapshot policy">
                 Add Policy
             </FluentButton>
-            <div style="display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px;"
-                 data-deferred-action="manual-snapshot">
-                <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
-                              OnClick="OpenCreateSnapshotDialog"
-                              aria-label="Create snapshot for aggregate (currently deferred by backend)">
-                    Create Snapshot
-                </FluentButton>
-                <FluentBadge Appearance="BadgeAppearance.Ghost"
-                             aria-label="Manual snapshot creation deferred by backend"
-                             Content="Deferred by backend" />
-            </div>
+            <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                          OnClick="OpenCreateSnapshotDialog"
+                          aria-label="Create snapshot for aggregate">
+                Create Snapshot
+            </FluentButton>
         </AuthorizedView>
         <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                       OnClick="OnManualRefresh"
@@ -272,19 +266,13 @@
 @if (_showCreateSnapshotDialog)
 {
     <FluentDialog @ref="_createSnapshotDialog" Modal="true"
-                  aria-label="Create snapshot (deferred)"
+                  aria-label="Create snapshot"
                   Style="min-width: 400px; max-width: 500px;">
         <FluentDialogBody>
             <TitleTemplate>
                 <h3 style="margin: 0;">Create Snapshot</h3>
             </TitleTemplate>
             <ChildContent>
-                <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 12px;"
-                            aria-label="Deferred operation notice">
-                    <p style="margin: 0; font-size: 13px; color: var(--colorNeutralForeground2);">
-                        @ManualSnapshotDeferredMessage
-                    </p>
-                </FluentCard>
                 <FluentTextInput @bind-Value="_snapshotTenantId"
                                  Label="Tenant ID" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
@@ -302,7 +290,7 @@
                 <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCreateSnapshotDialogAsync">Cancel</FluentButton>
                 <FluentButton Appearance="ButtonAppearance.Primary"
                               OnClick="OnCreateSnapshotConfirm"
-                              aria-label="Submit deferred manual snapshot request"
+                              aria-label="Create snapshot"
                               Disabled="@(!IsSnapshotFormValid || _isOperating)">
                     @if (_isOperating)
                     {
@@ -310,7 +298,7 @@
                     }
                     else
                     {
-                        <span>Submit Deferred Request</span>
+                        <span>Create Snapshot</span>
                     }
                 </FluentButton>
             </ActionTemplate>
@@ -322,7 +310,6 @@
     private IReadOnlyList<SnapshotPolicy>? _policies;
     private bool _isLoading = true;
     private bool _apiUnavailable;
-    private const string ManualSnapshotDeferredMessage = "Manual snapshot creation is deferred. EventStore does not yet have an approved snapshot job model for operator-triggered snapshots.";
     private string _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
     private string? _tenantFilter;
     private string? _tenantFilterInput;
@@ -759,11 +746,15 @@
                 _snapshotTenantId!, _snapshotDomain!, _snapshotAggregateId!,
                 _loadCts?.Token ?? default);
 
-            // Manual snapshot creation is policy-deferred for this iteration. Never surface success,
-            // even on backend Success=true with deferred-looking messages. Keep dialog open so the
-            // operator can dismiss explicitly after seeing the warning.
-            string deferredBody = SelectDeferredResultMessage(result?.Message, ManualSnapshotDeferredMessage);
-            await ToastService.ShowWarningAsync(deferredBody);
+            if (result?.Success == true)
+            {
+                await ToastService.ShowSuccessAsync(result.Message ?? "Manual snapshot created.");
+                await CloseCreateSnapshotDialogAsync();
+            }
+            else
+            {
+                await ToastService.ShowWarningAsync(result?.Message ?? "Manual snapshot creation did not complete.");
+            }
         }
         catch (ServiceUnavailableException)
         {
@@ -787,15 +778,6 @@
             StateHasChanged();
         }
     }
-
-    private static string SelectDeferredResultMessage(string? message, string fallback) =>
-        IsDeferredOperationMessage(message) ? message!.Trim() : fallback;
-
-    private static bool IsDeferredOperationMessage(string? message) =>
-        !string.IsNullOrWhiteSpace(message)
-        && (message.Contains("deferred", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("unsupported", StringComparison.OrdinalIgnoreCase)
-            || message.Contains("unavailable", StringComparison.OrdinalIgnoreCase));
 
     public async ValueTask DisposeAsync()
     {

@@ -237,16 +237,16 @@ public class SnapshotsPageTests : AdminUITestContext {
     }
 
     [Fact]
-    public async Task SnapshotsPage_CreateSnapshotDialog_ShowsDeferredToastAndClearsBusyState() {
+    public async Task SnapshotsPage_CreateSnapshotDialog_ShowsWarningToastAndClearsBusyState_WhenBackendReturnsTypedFailure() {
         SetupPolicies([]);
-        const string deferredMessage = "Manual snapshot creation is deferred. EventStore does not yet have an approved snapshot job model for operator-triggered snapshots.";
+        const string failureMessage = "Aggregate stream was not found.";
         _ = _mockSnapshotApi.CreateSnapshotAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
                 false,
-                "deferred-manual-snapshot",
-                deferredMessage,
-                "Deferred")));
+                "manual-snapshot-request-1",
+                failureMessage,
+                "NotFound")));
 
         IRenderedComponent<Snapshots> cut = Render<Snapshots>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Snapshot"), TimeSpan.FromSeconds(5));
@@ -265,19 +265,19 @@ public class SnapshotsPageTests : AdminUITestContext {
             () => fields.First(f => f.Markup.Contains("Aggregate ID")).Instance.ValueChanged.InvokeAsync("counter-1"));
 
         IRenderedComponent<FluentButton> submitButton = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("<span>Submit Deferred Request</span>"));
+            .First(b => b.Markup.Contains("<span>Create Snapshot</span>"));
         await submitButton.InvokeAsync(submitButton.Instance.OnClick.InvokeAsync);
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Body.ShouldBe(failureMessage);
         toastOptions.Intent.ShouldBe(ToastIntent.Warning);
         cut.Markup.ShouldContain("Create Snapshot");
         submitButton.Instance.Disabled.ShouldBeFalse();
     }
 
     [Fact]
-    public void SnapshotsPage_CreateSnapshotButton_ShowsDeferredBadgeBeforeDialog() {
+    public void SnapshotsPage_CreateSnapshotButton_DoesNotShowDeferredBadgeBeforeDialog() {
         // AC1, AC2, AC8: visible deferred status before operator opens the dialog.
         SetupPolicies([]);
 
@@ -285,12 +285,12 @@ public class SnapshotsPageTests : AdminUITestContext {
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Snapshot"), TimeSpan.FromSeconds(5));
 
         // Assert — deferred badge is visible on the page surface, before any dialog opens.
-        cut.Markup.ShouldContain("Deferred by backend");
-        cut.Markup.ShouldContain("data-deferred-action=\"manual-snapshot\"");
+        cut.Markup.ShouldNotContain("Deferred by backend");
+        cut.Markup.ShouldNotContain("data-deferred-action=\"manual-snapshot\"");
     }
 
     [Fact]
-    public async Task SnapshotsPage_CreateSnapshotDialog_PreCommunicatesDeferredBeforeSubmit() {
+    public async Task SnapshotsPage_CreateSnapshotDialog_UsesCreateSnapshotActionLabel() {
         // AC1, AC2, AC8, AC9: opened dialog states deferred state and uses truthful final action label.
         SetupPolicies([]);
 
@@ -303,24 +303,23 @@ public class SnapshotsPageTests : AdminUITestContext {
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Aggregate ID"), TimeSpan.FromSeconds(5));
 
         // Assert — dialog body carries the exact deferred message.
-        cut.Markup.ShouldContain("Manual snapshot creation is deferred. EventStore does not yet have an approved snapshot job model for operator-triggered snapshots.");
+        cut.Markup.ShouldNotContain("Manual snapshot creation is deferred");
 
         // Assert — final action label is truthful, never "Create Snapshot" as a verb.
-        cut.Markup.ShouldContain("<span>Submit Deferred Request</span>");
-        cut.Markup.ShouldNotContain("<span>Create Snapshot</span>");
+        cut.Markup.ShouldContain("<span>Create Snapshot</span>");
+        cut.Markup.ShouldNotContain("<span>Submit Deferred Request</span>");
     }
 
     [Fact]
-    public async Task SnapshotsPage_CreateSnapshotDialog_ShowsWarningToast_WhenBackendReportsSuccessTrueWithDeferredMessage() {
-        // AC7: no fake-success toast even when backend returns Success=true with deferred-looking message.
+    public async Task SnapshotsPage_CreateSnapshotDialog_ShowsSuccessToastAndCloses_WhenBackendSucceeds() {
         SetupPolicies([]);
-        const string deferredMessage = "Manual snapshot creation is deferred.";
+        const string successMessage = "Manual snapshot created.";
         _ = _mockSnapshotApi.CreateSnapshotAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
                 true,
-                "deferred-success-true",
-                deferredMessage,
+                "manual-snapshot-abc",
+                successMessage,
                 null)));
 
         IRenderedComponent<Snapshots> cut = Render<Snapshots>();
@@ -340,13 +339,14 @@ public class SnapshotsPageTests : AdminUITestContext {
             () => fields.First(f => f.Markup.Contains("Aggregate ID")).Instance.ValueChanged.InvokeAsync("counter-1"));
 
         IRenderedComponent<FluentButton> submitButton = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("<span>Submit Deferred Request</span>"));
+            .First(b => b.Markup.Contains("<span>Create Snapshot</span>"));
         await submitButton.InvokeAsync(submitButton.Instance.OnClick.InvokeAsync);
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Intent.ShouldNotBe(ToastIntent.Success);
-        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
+        toastOptions.Body.ShouldBe(successMessage);
+        toastOptions.Intent.ShouldBe(ToastIntent.Success);
+        cut.Markup.ShouldNotContain("Aggregate ID");
     }
 
     [Fact]

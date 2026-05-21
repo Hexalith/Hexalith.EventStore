@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-05-21 - Story post-epic-deferred-dw15-admin-ui-blazor-navigation-hygiene moved review -> done after code-review patches; DW15 bUnit tests 9/9 + TypeCatalog slice 39/39 PASS. Runtime/manual Issue 12 validation blocked by SDK 10.0.300 pin.
+# last_updated: 2026-05-21 - DW16 manual snapshot creation backend review patches applied and story moved review -> done; DW17 remains ready-for-dev.
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -417,3 +417,14 @@ development_status:
   post-epic-deferred-dw13-tenant-lifecycle-actor-timeout-investigation: done
   post-epic-deferred-dw14-admin-deferred-operations-ux-policy: done
   post-epic-deferred-dw15-admin-ui-blazor-navigation-hygiene: done
+
+  # Post-DW14 Admin backend deferred Group A quick wins
+  # Added by sprint-change-proposal-2026-05-21-admin-deferred-quick-wins.md.
+  # Three sized-down backend follow-ups that complete the implementable slice of
+  # FR76 without new architecture (snapshot manual creation, snapshot policy CRUD,
+  # stream export). Group B (backup, validation, restore, import, compaction)
+  # is tracked as ACCEPTED-DEBT in deferred-work.md with owner=architect,
+  # next-review-date=2026-08-31.
+  post-epic-deferred-dw16-manual-snapshot-creation-backend: done
+  post-epic-deferred-dw17-snapshot-policy-crud-backend: ready-for-dev
+  post-epic-deferred-dw18-stream-export-backend: backlog

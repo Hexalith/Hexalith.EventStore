@@ -1,6 +1,7 @@
 
 using System.Diagnostics;
 using System.Net;
+using System.Text.Json;
 
 using Dapr;
 using Dapr.Actors.Runtime;
@@ -9,6 +10,7 @@ using Grpc.Core;
 
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Commands;
@@ -49,7 +51,8 @@ public partial class AggregateActor(
     IEventPublisher eventPublisher,
     IOptions<EventDrainOptions> drainOptions,
     IOptions<BackpressureOptions> backpressureOptions,
-    IDeadLetterPublisher deadLetterPublisher)
+    IDeadLetterPublisher deadLetterPublisher,
+    IServiceProvider? serviceProvider = null)
     : Actor(host), IAggregateActor, IRemindable {
     private const string TraceParentExtensionKey = "traceparent";
     private const string TraceStateExtensionKey = "tracestate";
@@ -750,6 +753,173 @@ public partial class AggregateActor(
         }
 
         return new AggregateStreamMetadata(Exists: true, CurrentSequence: currentSequence);
+    }
+
+    /// <inheritdoc/>
+    public async Task<ManualSnapshotResult> CreateManualSnapshotAsync(string? correlationId) {
+        AggregateIdentity identity = GetAggregateIdentityFromActorId();
+        long currentSequence = 0;
+
+        try {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            CancellationToken cancellationToken = timeout.Token;
+
+            AggregateStreamMetadata metadata = await GetStreamMetadataAsync().ConfigureAwait(false);
+            currentSequence = metadata.CurrentSequence;
+            if (!metadata.Exists || metadata.CurrentSequence <= 0) {
+                return new ManualSnapshotResult(
+                    ManualSnapshotOutcome.NotFound,
+                    0,
+                    identity.SnapshotKey,
+                    "NotFound",
+                    "Aggregate stream was not found.");
+            }
+
+            SnapshotLoadResult snapshotInspection = await snapshotManager
+                .InspectSnapshotForManualOverwriteAsync(identity, StateManager, correlationId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (snapshotInspection.Outcome is SnapshotLoadOutcome.UnreadableProtected
+                or SnapshotLoadOutcome.ProviderOpaque
+                or SnapshotLoadOutcome.Corrupt) {
+                return new ManualSnapshotResult(
+                    ManualSnapshotOutcome.UnreadableProtected,
+                    metadata.CurrentSequence,
+                    identity.SnapshotKey,
+                    snapshotInspection.ReasonCode ?? snapshotInspection.Outcome.ToString(),
+                    "Existing snapshot cannot be safely read.");
+            }
+
+            if (snapshotInspection.Snapshot is not null
+                && snapshotInspection.Snapshot.SequenceNumber >= metadata.CurrentSequence) {
+                return new ManualSnapshotResult(
+                    ManualSnapshotOutcome.AlreadyCurrent,
+                    metadata.CurrentSequence,
+                    identity.SnapshotKey,
+                    null,
+                    null);
+            }
+
+            var eventStreamReader = new EventStreamReader(
+                StateManager,
+                Host.LoggerFactory.CreateLogger<EventStreamReader>());
+
+            object? snapshotState = await MaterializeManualSnapshotStateAsync(
+                identity,
+                eventStreamReader,
+                metadata.CurrentSequence,
+                correlationId,
+                cancellationToken).ConfigureAwait(false);
+            if (snapshotState is null) {
+                return new ManualSnapshotResult(
+                    ManualSnapshotOutcome.InfrastructureFailure,
+                    metadata.CurrentSequence,
+                    identity.SnapshotKey,
+                    "StateReconstructionFailed",
+                    "Manual snapshot state could not be reconstructed.");
+            }
+
+            await snapshotManager.CreateSnapshotAsync(
+                identity,
+                metadata.CurrentSequence,
+                snapshotState,
+                StateManager,
+                correlationId,
+                cancellationToken,
+                throwOnFailure: true).ConfigureAwait(false);
+            await StateManager.SaveStateAsync().ConfigureAwait(false);
+
+            return new ManualSnapshotResult(
+                ManualSnapshotOutcome.Created,
+                metadata.CurrentSequence,
+                identity.SnapshotKey,
+                null,
+                null);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (ProtectedDataUnreadableException ex) {
+            return new ManualSnapshotResult(
+                ManualSnapshotOutcome.UnreadableProtected,
+                ex.SequenceNumber ?? currentSequence,
+                identity.SnapshotKey,
+                ex.ReasonCode,
+                "Protected event data cannot be safely read.");
+        }
+        catch (Exception ex) {
+            logger.LogWarning(
+                "Manual snapshot creation failed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Reason={Reason}",
+                correlationId,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                ex.GetType().Name);
+            return new ManualSnapshotResult(
+                ManualSnapshotOutcome.InfrastructureFailure,
+                currentSequence,
+                identity.SnapshotKey,
+                "InfrastructureFailure",
+                "Manual snapshot creation failed.");
+        }
+    }
+
+    private async Task<object?> MaterializeManualSnapshotStateAsync(
+        AggregateIdentity identity,
+        EventStreamReader eventStreamReader,
+        long currentSequence,
+        string? correlationId,
+        CancellationToken cancellationToken) {
+        IAggregateStateReconstructor? reconstructor = serviceProvider?.GetService(typeof(IAggregateStateReconstructor)) as IAggregateStateReconstructor;
+        if (reconstructor is null) {
+            logger.LogWarning(
+                "Manual snapshot state reconstruction service is unavailable: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}",
+                correlationId,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId);
+            return null;
+        }
+
+        RehydrationResult? fullReplay = await eventStreamReader
+            .RehydrateAsync(identity)
+            .ConfigureAwait(false);
+        if (fullReplay is null || fullReplay.Events.Count == 0) {
+            return null;
+        }
+
+        IReadOnlyList<EventEnvelope> readableEvents = await EnsureEventsReadableForDomainAsync(
+            identity,
+            fullReplay.Events,
+            cancellationToken).ConfigureAwait(false);
+
+        string aggregateType = readableEvents[^1].AggregateType;
+        var reconstruction = await reconstructor
+            .ReconstructAsync(
+                identity,
+                aggregateType,
+                readableEvents,
+                currentSequence,
+                includeTimeline: false,
+                requestId: correlationId,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (reconstruction.Status != AggregateReconstructionStatus.Succeeded
+            || reconstruction.LastAppliedSequenceNumber != currentSequence
+            || string.IsNullOrWhiteSpace(reconstruction.StateJson)) {
+            logger.LogWarning(
+                "Manual snapshot state reconstruction failed: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Status={Status}, LastAppliedSequenceNumber={LastAppliedSequenceNumber}",
+                correlationId,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                reconstruction.Status,
+                reconstruction.LastAppliedSequenceNumber);
+            return null;
+        }
+
+        return JsonSerializer.Deserialize<JsonElement>(reconstruction.StateJson);
     }
 
     private const int MaxExceptionFrames = 8;

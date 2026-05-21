@@ -59,6 +59,14 @@ public class FakeAggregateActor : IAggregateActor {
         => Task.FromResult(new AggregateStreamMetadata(Exists: ConfiguredEvents.Length > 0, CurrentSequence: ConfiguredEvents.Length == 0 ? 0 : ConfiguredEvents.Max(e => e.SequenceNumber)));
 
     /// <inheritdoc/>
+    public Task<ManualSnapshotResult> CreateManualSnapshotAsync(string? correlationId) {
+        long sequence = ConfiguredEvents.Length == 0 ? 0 : ConfiguredEvents.Max(e => e.SequenceNumber);
+        return Task.FromResult(sequence == 0
+            ? new ManualSnapshotResult(ManualSnapshotOutcome.NotFound, 0, null, "NotFound", "Aggregate stream was not found.")
+            : new ManualSnapshotResult(ManualSnapshotOutcome.Created, sequence, "snapshot", null, null));
+    }
+
+    /// <inheritdoc/>
     public Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command)
         => ProcessCommandAsync(command, CancellationToken.None);
 

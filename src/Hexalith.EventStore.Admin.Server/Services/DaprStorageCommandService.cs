@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
 
@@ -67,9 +68,10 @@ public sealed class DaprStorageCommandService : IStorageCommandService {
         string domain,
         string aggregateId,
         CancellationToken ct = default)
-        => await Task.FromResult(CreateDeferredResult(
-            "deferred-manual-snapshot",
-            "Manual snapshot creation is deferred. EventStore does not yet have an approved snapshot job model for operator-triggered snapshots.")).ConfigureAwait(false);
+        => await InvokeEventStorePostAsync(
+            "api/v1/admin/storage/snapshot",
+            new ManualSnapshotRequest(tenantId, domain, aggregateId),
+            ct).ConfigureAwait(false);
 
     /// <inheritdoc/>
     public async Task<AdminOperationResult> SetSnapshotPolicyAsync(
@@ -138,7 +140,7 @@ public sealed class DaprStorageCommandService : IStorageCommandService {
         }
         catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to invoke EventStore endpoint '{Endpoint}'.", endpoint);
-            return new AdminOperationResult(false, ErrorNoOperation, ex.Message, GetErrorCode(ex));
+            return new AdminOperationResult(false, ErrorNoOperation, "EventStore service invocation failed.", GetErrorCode(ex));
         }
     }
 

@@ -35,7 +35,8 @@ public partial class SnapshotManager(
         object state,
         IActorStateManager stateManager,
         string? correlationId = null,
-        CancellationToken cancellationToken = default) {
+        CancellationToken cancellationToken = default,
+        bool throwOnFailure = false) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(stateManager);
@@ -71,6 +72,10 @@ public partial class SnapshotManager(
                 sequenceNumber);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
+            if (throwOnFailure) {
+                throw;
+            }
+
             // Advisory: snapshot failure must not block command processing (rule #12)
             // Rule #5: Never log snapshot state content (payload data)
             logger.LogWarning(
@@ -206,6 +211,104 @@ public partial class SnapshotManager(
 
             return null;
         }
+    }
+
+    /// <inheritdoc/>
+    public async Task<SnapshotLoadResult> InspectSnapshotForManualOverwriteAsync(
+        AggregateIdentity identity,
+        IActorStateManager stateManager,
+        string? correlationId = null,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(stateManager);
+
+        ConditionalValue<SnapshotRecord> result;
+        try {
+            result = await stateManager
+                .TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            // Deserialization failure on inspection: surface as Corrupt without deleting. The
+            // manual overwrite path must fail closed; deletion is reserved for the command-time
+            // path that has fallback-via-replay semantics.
+            logger.LogWarning(
+                "Snapshot inspection failed (corrupt or unreadable): CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Reason={Reason}",
+                correlationId,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                ex.GetType().Name);
+            return SnapshotLoadResult.Corrupt("CorruptSnapshot");
+        }
+
+        if (!result.HasValue) {
+            return SnapshotLoadResult.Absent();
+        }
+
+        SnapshotRecord snapshot = result.Value;
+        EventStorePayloadProtectionMetadata effectiveMetadata = NormalizeSnapshotMetadata(snapshot.ProtectionMetadata);
+
+        if (effectiveMetadata.State == PayloadProtectionState.ProviderOpaque) {
+            ProtectedDataReadabilityDecision decision = ProtectedDataReadabilityDecisionFactory.FromMetadata(
+                effectiveMetadata,
+                ProtectedDataDecisionStage.SnapshotLoad,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                snapshot.SequenceNumber,
+                correlationId);
+            Log.UnreadableProtectedSnapshot(
+                logger,
+                correlationId ?? string.Empty,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                snapshot.SequenceNumber,
+                decision.ReasonCode);
+            return SnapshotLoadResult.ProviderOpaque(decision.ReasonCode);
+        }
+
+        SnapshotUnprotectionOutcome outcome;
+        try {
+            outcome = await payloadProtectionService
+                .TryUnprotectSnapshotAsync(identity, snapshot.State, effectiveMetadata, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch {
+            outcome = SnapshotUnprotectionOutcome.Unreadable(
+                UnreadableProtectedDataReason.ProviderUnavailable,
+                effectiveMetadata);
+        }
+
+        ProtectedDataReadabilityDecision readDecision = ProtectedDataReadabilityDecisionFactory.FromOutcome(
+            outcome,
+            ProtectedDataDecisionStage.SnapshotLoad,
+            identity.TenantId,
+            identity.Domain,
+            identity.AggregateId,
+            snapshot.SequenceNumber,
+            correlationId);
+        if (!readDecision.IsReadable) {
+            Log.UnreadableProtectedSnapshot(
+                logger,
+                correlationId ?? string.Empty,
+                identity.TenantId,
+                identity.Domain,
+                identity.AggregateId,
+                snapshot.SequenceNumber,
+                readDecision.ReasonCode);
+            return SnapshotLoadResult.UnreadableProtected(readDecision.ReasonCode);
+        }
+
+        SnapshotRecord readable = snapshot with { State = outcome.State!, ProtectionMetadata = outcome.Metadata };
+        return SnapshotLoadResult.Readable(readable);
     }
 
     private int GetInterval(string tenantId, string domain) {

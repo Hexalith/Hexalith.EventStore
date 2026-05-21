@@ -47,4 +47,12 @@ public interface IAggregateActor : IActor {
     /// </summary>
     /// <returns>Stream existence and current sequence metadata.</returns>
     Task<AggregateStreamMetadata> GetStreamMetadataAsync();
+
+    /// <summary>
+    /// Creates a manual snapshot for the actor's current stream sequence from inside the
+    /// aggregate actor boundary.
+    /// </summary>
+    /// <param name="correlationId">Optional correlation id for logs and diagnostics.</param>
+    /// <returns>The actor-owned manual snapshot result.</returns>
+    Task<ManualSnapshotResult> CreateManualSnapshotAsync(string? correlationId);
 }
