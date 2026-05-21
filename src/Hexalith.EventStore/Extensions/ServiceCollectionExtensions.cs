@@ -346,9 +346,9 @@ public static class EventStoreServiceCollectionExtensions {
         _ = services.AddOpenApi(options => {
             _ = options.AddDocumentTransformer((document, context, ct) => {
                 document.Info = new OpenApiInfo {
-                    Title = "Hexalith EventStore Command API",
+                    Title = "Hexalith EventStore Gateway API",
                     Version = "v1",
-                    Description = "Event Sourcing infrastructure server for multi-tenant command processing with per-tenant rate limiting, JWT authentication, and comprehensive status tracking. Error reference documentation is available at `/problems/{error-type}` on this server. In production, error type URIs resolve at `https://hexalith.io/problems/{error-type}`.",
+                    Description = "Versioned v1 gateway API for multi-tenant command processing, projection queries, JWT authentication, and command status tracking. Error reference documentation is available at `/problems`, `/problems/catalog.json`, and `/problems/{error-type}` on this server. Domain rejection documentation is available at `/problems/domain-rejections/{reasonCode}`. MVP compliance notice: Hexalith Parties is not GDPR-compliant for regulated EU personal data until v1.1; development and API documentation surfaces intentionally keep that warning visible. In production, error type URIs resolve at `https://hexalith.io/problems/{error-type}`.",
                 };
 
                 // Add JWT Bearer security scheme

@@ -24,7 +24,11 @@ public static class ErrorReferenceEndpoints {
         int StatusCode,
         string Description,
         string ExampleJson,
-        string[] ResolutionSteps);
+        string[] ResolutionSteps) {
+        public string TypeUri => $"https://hexalith.io/problems/{Slug}";
+
+        public string CorrectiveAction => ResolutionSteps.FirstOrDefault() ?? "Review the problem response and retry when appropriate.";
+    }
 
     /// <summary>
     /// Gets all defined error reference models.
@@ -82,6 +86,16 @@ public static class ErrorReferenceEndpoints {
             """{"type":"https://hexalith.io/problems/command-status-not-found","title":"Not Found","status":404,"detail":"No command status found for correlation ID '01JAXYZ1234567890ABCDEFGH'."}""",
             ["Verify the correlation ID from the original 202 Accepted response.", "Status records may expire after the configured retention period."]),
 
+        new("unsupported-api-version", "Unsupported API Version", 400,
+            "The API version in the request path is not supported by this service.",
+            """{"type":"https://hexalith.io/problems/unsupported-api-version","title":"Unsupported API version","status":400,"detail":"API version 'v2' is not supported. Supported versions: v1.","reasonCode":"unsupported-api-version","requestedVersion":"v2","supportedVersions":["v1"]}""",
+            ["Use one of the supported API versions listed in supportedVersions.", "Update generated clients to target the documented v1 endpoints."]),
+
+        new("domain-rejections", "Domain Rejections", 422,
+            "A command reached the domain pipeline but was rejected by stable business rules or validation.",
+            """{"type":"https://hexalith.io/problems/domain-rejections/party-command-validation-rejected","title":"Party Command Validation Rejected","status":422,"detail":"Domain rejection returned by the aggregate.","reasonCode":"party-command-validation-rejected","rejectionType":"Hexalith.Parties.Contracts.Events.PartyCommandValidationRejected","correctiveAction":"Review the rejection detail, correct the request, and retry when appropriate."}""",
+            ["Open /problems/domain-rejections/{reasonCode} for the specific rejection.", "Use correctiveAction and rejectionType to route client remediation."]),
+
         new("backpressure-exceeded", "Backpressure Exceeded", 429,
             "The target aggregate has too many pending commands (processing or awaiting drain recovery). Per-aggregate backpressure has rejected the command to prevent saga storms.",
             """{"type":"https://hexalith.io/problems/backpressure-exceeded","title":"Too Many Requests","status":429,"detail":"The target aggregate is under backpressure due to excessive pending commands. Please retry after the specified interval.","correlationId":"01JAXYZ1234567890ABCDEFGH","tenantId":"tenant-a"}""",
@@ -110,6 +124,18 @@ public static class ErrorReferenceEndpoints {
         RouteGroupBuilder group = endpoints.MapGroup("/problems")
             .ExcludeFromDescription();
 
+        _ = group.MapGet("", () => Results.Content(RenderIndexHtml(), "text/html"));
+
+        _ = group.MapGet("/catalog.json", () => Results.Json(ErrorModels));
+
+        _ = group.MapGet("/domain-rejections/{reasonCode}.json", (string reasonCode) =>
+            Results.Json(DomainRejectionProblemCatalog.FromReasonCode(reasonCode)));
+
+        _ = group.MapGet("/domain-rejections/{reasonCode}", (string reasonCode) => {
+            DomainRejectionProblem model = DomainRejectionProblemCatalog.FromReasonCode(reasonCode);
+            return Results.Content(RenderDomainRejectionHtml(model), "text/html");
+        });
+
         _ = group.MapGet("/{errorType}", (string errorType) => {
             if (!_errorModels.TryGetValue(errorType, out ErrorReferenceModel? model)) {
                 return Results.NotFound();
@@ -121,9 +147,63 @@ public static class ErrorReferenceEndpoints {
         return endpoints;
     }
 
+    private static string RenderIndexHtml() {
+        string listItems = string.Join(
+            "\n",
+            ErrorModels.Select(static model =>
+                $"<li><a href=\"/problems/{WebUtility.HtmlEncode(model.Slug)}\">{WebUtility.HtmlEncode(model.Title)}</a> <code>{WebUtility.HtmlEncode(model.TypeUri)}</code></li>"));
+
+        return $$"""
+            <!DOCTYPE html>
+            <html lang="en">
+            <head><meta charset="utf-8"><title>Hexalith EventStore Error Catalog</title>
+            <style>body{font-family:system-ui,sans-serif;max-width:840px;margin:2rem auto;padding:0 1rem;line-height:1.6}code{background:#f4f4f4;padding:.1rem .25rem;border-radius:4px}li{margin:.4rem 0}</style>
+            </head>
+            <body>
+            <h1>Hexalith EventStore Error Catalog</h1>
+            <p>Stable ProblemDetails types, status codes, corrective actions, and examples for the v1 gateway API.</p>
+            <p><strong>MVP compliance notice:</strong> Hexalith Parties is not GDPR-compliant for regulated EU personal data until v1.1. Development and API documentation surfaces intentionally keep that warning visible.</p>
+            <ul>{{listItems}}</ul>
+            <p>Domain-specific rejection pages are available at <code>/problems/domain-rejections/{reasonCode}</code>.</p>
+            </body>
+            </html>
+            """;
+    }
+
+    private static string RenderDomainRejectionHtml(DomainRejectionProblem model) {
+        string title = WebUtility.HtmlEncode($"{model.Title} ({model.StatusCode})");
+        string typeUri = WebUtility.HtmlEncode(model.TypeUri);
+        string description = WebUtility.HtmlEncode(model.Explanation);
+        string correctiveAction = WebUtility.HtmlEncode(model.CorrectiveAction);
+        string exampleJson = WebUtility.HtmlEncode($$"""
+            {"type":"{{model.TypeUri}}","title":"{{model.Title}}","status":{{model.StatusCode}},"detail":"Domain rejection returned by the aggregate.","reasonCode":"{{model.ReasonCode}}","rejectionType":"Hexalith.Parties.Contracts.Events.{{model.RejectionName}}","correctiveAction":"{{model.CorrectiveAction}}"}
+            """);
+
+        return $$"""
+            <!DOCTYPE html>
+            <html lang="en">
+            <head><meta charset="utf-8"><title>{{title}}</title>
+            <style>body{font-family:system-ui,sans-serif;max-width:720px;margin:2rem auto;padding:0 1rem;line-height:1.6}pre{background:#f4f4f4;padding:1rem;overflow-x:auto;border-radius:4px}code{background:#f4f4f4;padding:.1rem .25rem;border-radius:4px}h1{border-bottom:2px solid #333;padding-bottom:.5rem}</style>
+            </head>
+            <body>
+            <h1>{{title}}</h1>
+            <p>{{description}}</p>
+            <dl>
+            <dt>Type URI</dt><dd><code>{{typeUri}}</code></dd>
+            <dt>Corrective action</dt><dd>{{correctiveAction}}</dd>
+            </dl>
+            <h2>Example</h2>
+            <pre>{{exampleJson}}</pre>
+            </body>
+            </html>
+            """;
+    }
+
     private static string RenderHtml(ErrorReferenceModel model) {
         string title = WebUtility.HtmlEncode($"{model.Title} ({model.StatusCode})");
+        string typeUri = WebUtility.HtmlEncode(model.TypeUri);
         string description = WebUtility.HtmlEncode(model.Description);
+        string correctiveAction = WebUtility.HtmlEncode(model.CorrectiveAction);
         string exampleJson = WebUtility.HtmlEncode(model.ExampleJson);
 
         string resolutionItems = string.Join(
@@ -139,6 +219,10 @@ public static class ErrorReferenceEndpoints {
             <body>
             <h1>{{title}}</h1>
             <p>{{description}}</p>
+            <dl>
+            <dt>Type URI</dt><dd><code>{{typeUri}}</code></dd>
+            <dt>Corrective action</dt><dd>{{correctiveAction}}</dd>
+            </dl>
             <h2>Example</h2>
             <pre>{{exampleJson}}</pre>
             <h2>Resolution</h2>
