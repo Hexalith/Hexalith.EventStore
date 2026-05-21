@@ -238,6 +238,8 @@ else
 
     private CancellationTokenSource? _debounceTokenSource;
     private string? _pendingTypeSelection;
+    private bool _explicitTabFromUrl;
+    private bool _disposed;
 
     private bool HasSelection => _selectedEvent is not null || _selectedCommand is not null || _selectedAggregate is not null;
 
@@ -285,16 +287,36 @@ else
     {
         ReadUrlParameters();
         await LoadDataAsync().ConfigureAwait(false);
+        if (_disposed)
+        {
+            return;
+        }
+
         RefreshService.OnDataChanged += OnRefreshSignal;
     }
 
     private void OnRefreshSignal(DashboardData data)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         _ = InvokeAsync(async () =>
         {
+            if (_disposed)
+            {
+                return;
+            }
+
             try
             {
                 await LoadDataAsync().ConfigureAwait(false);
+                if (_disposed)
+                {
+                    return;
+                }
+
                 StateHasChanged();
             }
             catch (ObjectDisposedException)
@@ -305,8 +327,13 @@ else
 
     public async ValueTask DisposeAsync()
     {
-        _debounceTokenSource?.Cancel();
-        _debounceTokenSource?.Dispose();
+        // Set _disposed first so any late tab/debounce/refresh callback that races
+        // with teardown short-circuits in UpdateUrl before reaching NavigateTo.
+        _disposed = true;
+        CancellationTokenSource? debounceTokenSource = _debounceTokenSource;
+        _debounceTokenSource = null;
+        debounceTokenSource?.Cancel();
+        debounceTokenSource?.Dispose();
         RefreshService.OnDataChanged -= OnRefreshSignal;
         await Task.CompletedTask.ConfigureAwait(false);
         GC.SuppressFinalize(this);
@@ -322,6 +349,7 @@ else
         if (!string.IsNullOrEmpty(tab) && tab is "events" or "commands" or "aggregates")
         {
             _activeTab = tab;
+            _explicitTabFromUrl = true;
         }
 
         string? domain = query["domain"];
@@ -433,6 +461,38 @@ else
     // P-8: Search in unfiltered data for deep link resolution
     private void SelectTypeByName(string typeName)
     {
+        _selectedEvent = null;
+        _selectedCommand = null;
+        _selectedAggregate = null;
+
+        if (!_explicitTabFromUrl)
+        {
+            _selectedEvent = _allEvents.FirstOrDefault(e =>
+                string.Equals(e.TypeName, typeName, StringComparison.OrdinalIgnoreCase));
+            if (_selectedEvent is not null)
+            {
+                _activeTab = "events";
+                return;
+            }
+
+            _selectedCommand = _allCommands.FirstOrDefault(c =>
+                string.Equals(c.TypeName, typeName, StringComparison.OrdinalIgnoreCase));
+            if (_selectedCommand is not null)
+            {
+                _activeTab = "commands";
+                return;
+            }
+
+            _selectedAggregate = _allAggregates.FirstOrDefault(a =>
+                string.Equals(a.TypeName, typeName, StringComparison.OrdinalIgnoreCase));
+            if (_selectedAggregate is not null)
+            {
+                _activeTab = "aggregates";
+            }
+
+            return;
+        }
+
         switch (_activeTab)
         {
             case "events":
@@ -475,11 +535,17 @@ else
     // P-1 + P-2: Proper debounce with CTS disposal
     private void OnSearchValueChanged(string? value)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         _searchText = value ?? string.Empty;
 
-        _debounceTokenSource?.Cancel();
-        _debounceTokenSource?.Dispose();
+        CancellationTokenSource? previousDebounceTokenSource = _debounceTokenSource;
         _debounceTokenSource = new CancellationTokenSource();
+        previousDebounceTokenSource?.Cancel();
+        previousDebounceTokenSource?.Dispose();
         CancellationToken token = _debounceTokenSource.Token;
 
         _ = Task.Run(async () =>
@@ -487,8 +553,18 @@ else
             try
             {
                 await Task.Delay(300, token).ConfigureAwait(false);
+                if (_disposed)
+                {
+                    return;
+                }
+
                 await InvokeAsync(() =>
                 {
+                    if (_disposed)
+                    {
+                        return;
+                    }
+
                     ApplyFilters();
                     UpdateUrl();
                     StateHasChanged();
@@ -496,6 +572,10 @@ else
             }
             catch (OperationCanceledException)
             {
+            }
+            catch (ObjectDisposedException)
+            {
+                // DW15 CC-6: InvokeAsync on a torn-down component scope.
             }
         }, token);
     }
@@ -609,6 +689,15 @@ else
 
     private void UpdateUrl(bool pushHistory = false)
     {
+        // DW15 CC-6 guard: once DisposeAsync has begun, late ActiveTabIdChanged,
+        // debounce, and refresh callbacks must not call NavigateTo. NavigationManager's
+        // enhanced-navigation path performs JS interop that throws JSDisconnectedException
+        // when the Blazor Server circuit is being torn down.
+        if (_disposed)
+        {
+            return;
+        }
+
         List<string> queryParts = [];
 
         if (_activeTab != "events")
@@ -661,6 +750,20 @@ else
             return;
         }
 
-        NavigationManager.NavigateTo(url, forceLoad: false, replace: !pushHistory);
+        try
+        {
+            NavigationManager.NavigateTo(url, forceLoad: false, replace: !pushHistory);
+        }
+        catch (Microsoft.JSInterop.JSDisconnectedException)
+        {
+            // DW15 CC-6: circuit disconnected mid-navigation. Same teardown noise as
+            // the _disposed early-return guards above, but raised from the framework
+            // side when disposal and the user-initiated callback race.
+        }
+        catch (ObjectDisposedException)
+        {
+            // DW15 CC-6: NavigationManager scope disposed mid-navigation. Narrow
+            // teardown catch; unrelated navigation failures must remain visible.
+        }
     }
 }
