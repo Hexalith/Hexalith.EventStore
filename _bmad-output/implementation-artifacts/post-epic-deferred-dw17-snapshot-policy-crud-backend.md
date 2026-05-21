@@ -1,6 +1,6 @@
 # Post-Epic Deferred DW17: Snapshot Policy CRUD Backend
 
-Status: ready-for-dev
+Status: done
 
 Context created: 2026-05-21
 Source proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-21-admin-deferred-quick-wins.md`
@@ -190,71 +190,80 @@ Index mutation rules:
 
 ## Tasks / Subtasks
 
-- [ ] Reconfirm baseline and route inventory before editing. (AC: 1, 2, 9)
-  - [ ] Read `DaprStorageCommandService.SetSnapshotPolicyAsync`, `DeleteSnapshotPolicyAsync`, `AdminStorageController.SetSnapshotPolicy`, `DeleteSnapshotPolicy`, `AdminSnapshotApiClient`, CLI snapshot commands, and current snapshots page tests.
-  - [ ] Confirm whether DW16 has landed. If DW16 is still only `ready-for-dev`, keep this story independent and do not rely on DW16 upstream route code.
-  - [ ] Confirm the current EventStore host has no implemented upstream routes for policy set/delete, or if DW16 introduced an admin storage controller shell, extend it rather than creating a duplicate route family.
-  - [ ] Preserve existing external Admin.Server routes: `PUT` and `DELETE api/v1/admin/storage/{tenantId}/{domain}/{aggregateType}/snapshot-policy`.
+- [x] Reconfirm baseline and route inventory before editing. (AC: 1, 2, 9)
+  - [x] Read `DaprStorageCommandService.SetSnapshotPolicyAsync`, `DeleteSnapshotPolicyAsync`, `AdminStorageController.SetSnapshotPolicy`, `DeleteSnapshotPolicy`, `AdminSnapshotApiClient`, CLI snapshot commands, and current snapshots page tests.
+  - [x] Confirm whether DW16 has landed. If DW16 is still only `ready-for-dev`, keep this story independent and do not rely on DW16 upstream route code.
+  - [x] Confirm the current EventStore host has no implemented upstream routes for policy set/delete, or if DW16 introduced an admin storage controller shell, extend it rather than creating a duplicate route family.
+  - [x] Preserve existing external Admin.Server routes: `PUT` and `DELETE api/v1/admin/storage/{tenantId}/{domain}/{aggregateType}/snapshot-policy`.
 
-- [ ] Add or reuse policy request contracts. (AC: 2, 3, 4, 7)
-  - [ ] Add `SnapshotPolicySetRequest(TenantId, Domain, AggregateType, IntervalEvents)` and `SnapshotPolicyDeleteRequest(TenantId, Domain, AggregateType)` under `src/Hexalith.EventStore.Admin.Abstractions/Models/Storage/`, or document the existing equivalent used instead.
-  - [ ] Reuse the existing `SnapshotPolicy` record for persisted/read rows.
-  - [ ] Add model/serialization tests in `tests/Hexalith.EventStore.Admin.Abstractions.Tests` if a new DTO or reason-code constants are introduced.
-  - [ ] Do not add a second operation-result envelope; use `AdminOperationResult`.
+- [x] Add or reuse policy request contracts. (AC: 2, 3, 4, 7)
+  - [x] Add `SnapshotPolicySetRequest(TenantId, Domain, AggregateType, IntervalEvents)` and `SnapshotPolicyDeleteRequest(TenantId, Domain, AggregateType)` under `src/Hexalith.EventStore.Admin.Abstractions/Models/Storage/`, or document the existing equivalent used instead.
+  - [x] Reuse the existing `SnapshotPolicy` record for persisted/read rows.
+  - [x] Add model/serialization tests in `tests/Hexalith.EventStore.Admin.Abstractions.Tests` if a new DTO or reason-code constants are introduced.
+  - [x] Do not add a second operation-result envelope; use `AdminOperationResult`.
 
-- [ ] Implement EventStore upstream policy routes. (AC: 2, 3, 4, 7)
-  - [ ] Add `PUT api/v1/admin/storage/snapshot-policy` and `DELETE api/v1/admin/storage/snapshot-policy` under `src/Hexalith.EventStore/Controllers` using the request DTOs above.
-  - [ ] Authenticate the forwarded bearer token and enforce Operator/Admin plus tenant authorization before any DAPR state mutation.
-  - [ ] Validate tenant/domain/aggregateType using existing identity/name validation utilities where possible; otherwise use the same structural rules enforced by `AggregateIdentity`.
-  - [ ] Validate interval minimum with `SnapshotOptions.MinimumInterval` and maximum with a local documented constant `MaxSnapshotPolicyIntervalEvents = 100000`.
-  - [ ] Return typed `AdminOperationResult` values for success, validation, unauthorized/tenant mismatch, not found, state conflict exhaustion, and unexpected safe failures.
-  - [ ] Add route-contract tests for set/delete success, `RejectedValidation`, missing token, bad token, wrong tenant, missing permission, missing policy delete, and state-store unavailable.
+- [x] Implement EventStore upstream policy routes. (AC: 2, 3, 4, 7)
+  - [x] Add `PUT api/v1/admin/storage/snapshot-policy` and `DELETE api/v1/admin/storage/snapshot-policy` under `src/Hexalith.EventStore/Controllers` using the request DTOs above.
+  - [x] Authenticate the forwarded bearer token and enforce Operator/Admin plus tenant authorization before any DAPR state mutation.
+  - [x] Validate tenant/domain/aggregateType using existing identity/name validation utilities where possible; otherwise use the same structural rules enforced by `AggregateIdentity`.
+  - [x] Validate interval minimum with `SnapshotOptions.MinimumInterval` and maximum with a local documented constant `MaxSnapshotPolicyIntervalEvents = 100000`.
+  - [x] Return typed `AdminOperationResult` values for success, validation, unauthorized/tenant mismatch, not found, state conflict exhaustion, and unexpected safe failures.
+  - [x] Add route-contract tests for set/delete success, `RejectedValidation`, missing token, bad token, wrong tenant, missing permission, missing policy delete, and state-store unavailable.
 
-- [ ] Implement ETag-safe policy index writer. (AC: 3, 4, 5, 8)
-  - [ ] Add a focused EventStore-side snapshot policy repository/service for policy index updates rather than embedding list mutation in the controller.
-  - [ ] Read and write both `admin:storage-snapshot-policies:all` and `admin:storage-snapshot-policies:{tenantId}` with ETag-based optimistic concurrency, using exactly 5 immediate read/modify/`TrySaveStateAsync` attempts.
-  - [ ] Ensure set/update and delete are applied consistently to both index scopes. A returned success means both scopes are consistent.
-  - [ ] If one scope fails after the other succeeds, return `UpstreamUnavailable`, log safe reconciliation details, and ensure the next successful mutation for the same tenant normalizes both scopes.
-  - [ ] Do not describe partial two-key failures as rollback. The required behavior is detect, return typed non-success, log safe reconciliation detail, and repair through normal next-mutation normalization.
-  - [ ] Normalize matching keys consistently: tenant and domain follow `AggregateIdentity` canonicalization; aggregateType matching is `StringComparer.OrdinalIgnoreCase`.
-  - [ ] Sort lists deterministically before save.
-  - [ ] Test stale-index repair: tenant scope missing/global present and global missing/tenant present for both set and delete.
+- [x] Implement ETag-safe policy index writer. (AC: 3, 4, 5, 8)
+  - [x] Add a focused EventStore-side snapshot policy repository/service for policy index updates rather than embedding list mutation in the controller.
+  - [x] Read and write both `admin:storage-snapshot-policies:all` and `admin:storage-snapshot-policies:{tenantId}` with ETag-based optimistic concurrency, using exactly 5 immediate read/modify/`TrySaveStateAsync` attempts.
+  - [x] Ensure set/update and delete are applied consistently to both index scopes. A returned success means both scopes are consistent.
+  - [x] If one scope fails after the other succeeds, return `UpstreamUnavailable`, log safe reconciliation details, and ensure the next successful mutation for the same tenant normalizes both scopes.
+  - [x] Do not describe partial two-key failures as rollback. The required behavior is detect, return typed non-success, log safe reconciliation detail, and repair through normal next-mutation normalization.
+  - [x] Normalize matching keys consistently: tenant and domain follow `AggregateIdentity` canonicalization; aggregateType matching is `StringComparer.OrdinalIgnoreCase`.
+  - [x] Sort lists deterministically before save.
+  - [x] Test stale-index repair: tenant scope missing/global present and global missing/tenant present for both set and delete.
 
-- [ ] Wire Admin.Server command methods to EventStore. (AC: 1, 9)
-  - [ ] Change `SetSnapshotPolicyAsync` to call `PUT api/v1/admin/storage/snapshot-policy` on EventStore app-id with `SnapshotPolicySetRequest`.
-  - [ ] Change `DeleteSnapshotPolicyAsync` to call `DELETE api/v1/admin/storage/snapshot-policy` on EventStore app-id with `SnapshotPolicyDeleteRequest`.
-  - [ ] Preserve bearer-token forwarding via `IAdminAuthContext.GetToken()`.
-  - [ ] Add a test that captures the outgoing `Authorization` header and proves the bearer token is forwarded.
-  - [ ] Sanitize service invocation failure messages. Do not leak raw exception text, provider details, connection strings, or state-store keys to operators.
-  - [ ] Keep `TriggerCompactionAsync` deferred. Keep `CreateSnapshotAsync` behavior aligned with DW16 state. Keep backup/export/import untouched.
+- [x] Wire Admin.Server command methods to EventStore. (AC: 1, 9)
+  - [x] Change `SetSnapshotPolicyAsync` to call `PUT api/v1/admin/storage/snapshot-policy` on EventStore app-id with `SnapshotPolicySetRequest`.
+  - [x] Change `DeleteSnapshotPolicyAsync` to call `DELETE api/v1/admin/storage/snapshot-policy` on EventStore app-id with `SnapshotPolicyDeleteRequest`.
+  - [x] Preserve bearer-token forwarding via `IAdminAuthContext.GetToken()`.
+  - [x] Add a test that captures the outgoing `Authorization` header and proves the bearer token is forwarded.
+  - [x] Sanitize service invocation failure messages. Do not leak raw exception text, provider details, connection strings, or state-store keys to operators.
+  - [x] Keep `TriggerCompactionAsync` deferred. Keep `CreateSnapshotAsync` behavior aligned with DW16 state. Keep backup/export/import untouched.
 
-- [ ] Bridge persisted policies into automatic snapshot resolution. (AC: 6, 7, 10)
-  - [ ] Locate the single runtime decision path: `AggregateActor` Step 5b calls `snapshotManager.ShouldCreateSnapshotAsync(command.TenantId, command.Domain, persistResult.NewSequenceNumber, lastSnapshotSequence)`.
-  - [ ] Prefer updating `ISnapshotManager.ShouldCreateSnapshotAsync` to include `aggregateType`, then update `SnapshotManager`, `FakeSnapshotManager`, `AggregateActor`, and every NSubstitute setup/assertion atomically, similar to Story 7.1's tenantId signature change.
-  - [ ] If the implementation keeps `ISnapshotManager` stable instead, record the reason in the Dev Agent Record and prove there is still exactly one EventStore-owned runtime policy lookup path.
-  - [ ] Add an EventStore.Server-owned policy resolver backed by the snapshot policy repository or an approved cache. The resolver must check exact persisted tenant/domain/aggregateType policy first, then fall back to static tenant-domain/domain/default options.
-  - [ ] Avoid per-command state-store reads without a performance decision. Acceptable options include short in-memory TTL cache, actor-local cache refreshed after policy changes, or a single scoped resolver with a bounded stale window no longer than 30 seconds documented in tests.
-  - [ ] Ensure delete invalidates or expires the runtime policy view so fallback behavior resumes.
-  - [ ] Add tests for precedence and aggregate-type isolation: exact policy wins, static tenant-domain fallback, static domain fallback, static default fallback, delete returns to fallback, and one aggregate type does not affect another.
+- [x] Bridge persisted policies into automatic snapshot resolution. (AC: 6, 7, 10)
+  - [x] Locate the single runtime decision path: `AggregateActor` Step 5b calls `snapshotManager.ShouldCreateSnapshotAsync(command.TenantId, command.Domain, persistResult.NewSequenceNumber, lastSnapshotSequence)`.
+  - [x] Prefer updating `ISnapshotManager.ShouldCreateSnapshotAsync` to include `aggregateType`, then update `SnapshotManager`, `FakeSnapshotManager`, `AggregateActor`, and every NSubstitute setup/assertion atomically, similar to Story 7.1's tenantId signature change.
+  - [x] If the implementation keeps `ISnapshotManager` stable instead, record the reason in the Dev Agent Record and prove there is still exactly one EventStore-owned runtime policy lookup path.
+  - [x] Add an EventStore.Server-owned policy resolver backed by the snapshot policy repository or an approved cache. The resolver must check exact persisted tenant/domain/aggregateType policy first, then fall back to static tenant-domain/domain/default options.
+  - [x] Avoid per-command state-store reads without a performance decision. Acceptable options include short in-memory TTL cache, actor-local cache refreshed after policy changes, or a single scoped resolver with a bounded stale window no longer than 30 seconds documented in tests.
+  - [x] Ensure delete invalidates or expires the runtime policy view so fallback behavior resumes.
+  - [x] Add tests for precedence and aggregate-type isolation: exact policy wins, static tenant-domain fallback, static domain fallback, static default fallback, delete returns to fallback, and one aggregate type does not affect another.
 
-- [ ] Update tests across affected surfaces. (AC: 1-10)
-  - [ ] Update Admin.Server `DaprStorageCommandServiceTests` and `DaprStorageServiceTests`: set/delete now invoke EventStore and preserve typed results; compaction still returns deferred with zero upstream calls.
-  - [ ] Update `AdminStorageControllerTests` only where expectations need real success or typed failure assertions.
-  - [ ] Add EventStore.Server route/service tests for set/update/delete/not-found/validation/concurrency and runtime policy application.
-  - [ ] Update `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/SnapshotsPageTests.cs` deferred set/delete assertions to success/typed failure, while preserving manual snapshot deferred tests.
-  - [ ] Update `AdminSnapshotApiClientTests` and `Admin.Cli.Tests` snapshot policy command tests for success and typed failures.
-  - [ ] Add a test proving rejected auth/tenant failures happen before any DAPR policy state read, not merely before write.
-  - [ ] Add a regression test where a policy for one aggregate type does not affect another aggregate type in the same domain.
-  - [ ] Add a regression test proving the runtime decision receives aggregate type, either through the updated `ISnapshotManager` signature or through the documented single resolver path.
-  - [ ] Add untouched-operation regression tests proving manual snapshot, compaction, backup, restore, import, and export behavior is unchanged by DW17.
+- [x] Update tests across affected surfaces. (AC: 1-10)
+  - [x] Update Admin.Server `DaprStorageCommandServiceTests` and `DaprStorageServiceTests`: set/delete now invoke EventStore and preserve typed results; compaction still returns deferred with zero upstream calls.
+  - [x] Update `AdminStorageControllerTests` only where expectations need real success or typed failure assertions.
+  - [x] Add EventStore.Server route/service tests for set/update/delete/not-found/validation/concurrency and runtime policy application.
+  - [x] Update `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/SnapshotsPageTests.cs` deferred set/delete assertions to success/typed failure, while preserving manual snapshot deferred tests.
+  - [x] Update `AdminSnapshotApiClientTests` and `Admin.Cli.Tests` snapshot policy command tests for success and typed failures.
+  - [x] Add a test proving rejected auth/tenant failures happen before any DAPR policy state read, not merely before write.
+  - [x] Add a regression test where a policy for one aggregate type does not affect another aggregate type in the same domain.
+  - [x] Add a regression test proving the runtime decision receives aggregate type, either through the updated `ISnapshotManager` signature or through the documented single resolver path.
+  - [x] Add untouched-operation regression tests proving manual snapshot, compaction, backup, restore, import, and export behavior is unchanged by DW17.
 
-- [ ] Validate and capture evidence. (AC: 8, 10)
-  - [ ] Run focused Admin.Abstractions tests if DTOs changed.
-  - [ ] Run focused Admin.Server storage command/controller tests.
-  - [ ] Run focused EventStore.Server snapshot/policy tests. If `Hexalith.EventStore.Server.Tests` still hits the known CA2007 build blocker, record the unchanged blocker and run the narrowest compilable subset.
-  - [ ] Run focused Admin.UI snapshots tests and Admin.Cli snapshot policy tests.
-  - [ ] If possible, run Aspire with `EnableKeycloak=false`, set a policy, read it back, process enough commands to cross the new interval, and save sanitized API/state evidence under `_bmad-output/test-artifacts/post-epic-deferred-dw17-snapshot-policy-crud-backend/`.
-  - [ ] Update this story's Dev Agent Record, File List, Verification Status, and Change Log before moving to review.
+- [x] Validate and capture evidence. (AC: 8, 10)
+  - [x] Run focused Admin.Abstractions tests if DTOs changed.
+  - [x] Run focused Admin.Server storage command/controller tests.
+  - [x] Run focused EventStore.Server snapshot/policy tests. If `Hexalith.EventStore.Server.Tests` still hits the known CA2007 build blocker, record the unchanged blocker and run the narrowest compilable subset.
+  - [x] Run focused Admin.UI snapshots tests and Admin.Cli snapshot policy tests.
+  - [x] If possible, run Aspire with `EnableKeycloak=false`, set a policy, read it back, process enough commands to cross the new interval, and save sanitized API/state evidence under `_bmad-output/test-artifacts/post-epic-deferred-dw17-snapshot-policy-crud-backend/`.
+  - [x] Update this story's Dev Agent Record, File List, Verification Status, and Change Log before moving to review.
+
+### Review Findings
+
+- [x] [Review][Patch] Runtime snapshot policy lookup misses admin aggregate-type policies and trusts caller extensions [src/Hexalith.EventStore.Server/Actors/AggregateActor.cs:403] — fixed by resolving aggregate type from the EventStore-owned command type catalog, registering the resolver, falling back safely to domain only when catalog lookup is unavailable, and adding runtime coverage.
+- [x] [Review][Patch] DAPR access-control policy does not allow the new snapshot-policy DELETE invocation [src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml:39] — fixed by allowing `DELETE` for `eventstore-admin` service invocation.
+- [x] [Review][Patch] Existing Admin.Server storage service tests still expect deferred snapshot-policy writes [tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprStorageServiceTests.cs:242] — fixed by updating Admin.Server storage service tests to assert real EventStore delegation and typed invocation failure behavior.
+- [x] [Review][Patch] Two-index stale repair does not reconcile missing rows across scopes [src/Hexalith.EventStore/Services/DaprSnapshotPolicyRepository.cs:56] — fixed by dual-reading global and tenant indexes, preserving existing creation timestamps across either scope, and merging repair policies during bounded ETag mutations.
+- [x] [Review][Patch] Invalid policy requests can be authorized before validation and return unauthorized instead of RejectedValidation [src/Hexalith.EventStore/Controllers/AdminStorageCommandController.cs:66] — fixed by adding side-effect-free request validation before tenant/RBAC authorization for set and delete routes, with controller regression coverage.
+- [x] [Review][Patch] Required AC10 route, concurrency, and runtime-threshold coverage is incomplete [tests/Hexalith.EventStore.Server.Tests/Controllers/DaprSnapshotPolicyRepositoryTests.cs:17] — fixed by adding repository stale-index repair/runtime aggregate-type matching tests, controller validation-order tests, resolver catalog tests, and actor snapshot-policy aggregate-type coverage.
 
 ## Dev Notes
 
@@ -443,28 +452,70 @@ Use the dev JWT shape from `AGENTS.md`: issuer `hexalith-dev`, audience `hexalit
 
 ### Agent Model Used
 
-TBD by dev agent.
+GPT-5 Codex
 
 ### Debug Log References
+
+- `aspire run --apphost .\src\Hexalith.EventStore.AppHost\Hexalith.EventStore.AppHost.csproj --detach --non-interactive --format Json` initially failed during AppHost build with an MSBuild named-pipe timeout; after Release/Debug builds, detached `--no-build` Aspire runs succeeded.
+- First live API smoke used stale Debug binaries and still returned `ErrorCode=Deferred`; stopped Aspire, rebuilt Debug, restarted, then policy set/read/delete succeeded.
+- Sanitized live evidence: `_bmad-output/test-artifacts/post-epic-deferred-dw17-snapshot-policy-crud-backend/aspire-smoke-evidence.md`.
 
 ### Completion Notes List
 
 - Story context engine analysis completed on 2026-05-21. Comprehensive developer guide created for snapshot policy CRUD backend implementation.
 - Party-mode review fixes applied on 2026-05-21: route/DTO contract, policy identity, runtime precedence, consistency model, ETag retry semantics, delete/stale-index repair behavior, cache invalidation bound, auth matrix, and concrete test gates added.
 - Advanced elicitation refinements applied on 2026-05-21: runtime bridge preference, two-key consistency semantics, auth-before-state-read proof, and partial-failure repair wording tightened.
+- Implemented EventStore-owned snapshot policy set/delete routes using `SnapshotPolicySetRequest` and `SnapshotPolicyDeleteRequest`, with operator/tenant checks before DAPR policy state access.
+- Added `DaprSnapshotPolicyRepository` to persist policy rows into both global and tenant-scoped active-list indexes using 5-attempt ETag retries, deterministic operation ids, deterministic ordering, validation bounds, typed not-found/upstream-unavailable outcomes, and a 30-second runtime lookup cache invalidated on mutation.
+- Wired Admin.Server policy set/delete methods to EventStore service invocation with bearer-token forwarding; compaction and other unrelated deferred operations remain unchanged.
+- Extended the snapshot decision path to pass aggregate type into `ISnapshotManager`, resolve exact persisted policies before static fallback options, and keep aggregate-type isolation visible in tests.
+- Updated Admin UI/API client and CLI snapshot policy tests so policy writes expect real success or typed non-success outcomes instead of `Deferred`.
 
 ### File List
 
+- `_bmad-output/implementation-artifacts/post-epic-deferred-dw17-snapshot-policy-crud-backend.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/test-artifacts/post-epic-deferred-dw17-snapshot-policy-crud-backend/aspire-smoke-evidence.md`
+- `src/Hexalith.EventStore.Admin.Abstractions/Models/Storage/SnapshotPolicyDeleteRequest.cs`
+- `src/Hexalith.EventStore.Admin.Abstractions/Models/Storage/SnapshotPolicySetRequest.cs`
+- `src/Hexalith.EventStore.Admin.Cli/Commands/Snapshot/SnapshotDeletePolicyCommand.cs`
+- `src/Hexalith.EventStore.Admin.Cli/Commands/Snapshot/SnapshotSetPolicyCommand.cs`
+- `src/Hexalith.EventStore.Admin.Server/Services/DaprStorageCommandService.cs`
+- `src/Hexalith.EventStore.Server/Actors/AggregateActor.cs`
+- `src/Hexalith.EventStore.Server/Events/ISnapshotManager.cs`
+- `src/Hexalith.EventStore.Server/Events/ISnapshotPolicyResolver.cs`
+- `src/Hexalith.EventStore.Server/Events/SnapshotManager.cs`
+- `src/Hexalith.EventStore.Testing/Fakes/FakeSnapshotManager.cs`
+- `src/Hexalith.EventStore/Controllers/AdminStorageCommandController.cs`
+- `src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs`
+- `src/Hexalith.EventStore/Services/DaprSnapshotPolicyRepository.cs`
+- `tests/Hexalith.EventStore.Admin.Abstractions.Tests/Models/Common/SerializationRoundTripTests.cs`
+- `tests/Hexalith.EventStore.Admin.Cli.Tests/Commands/Snapshot/SnapshotDeletePolicyCommandTests.cs`
+- `tests/Hexalith.EventStore.Admin.Cli.Tests/Commands/Snapshot/SnapshotSetPolicyCommandTests.cs`
+- `tests/Hexalith.EventStore.Admin.Server.Tests/Services/DaprStorageCommandServiceTests.cs`
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/SnapshotsPageTests.cs`
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Services/AdminSnapshotApiClientTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorDomainResultTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Controllers/AdminStorageCommandControllerTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Controllers/DaprSnapshotPolicyRepositoryTests.cs`
+- `tests/Hexalith.EventStore.Server.Tests/Events/SnapshotManagerTests.cs`
+
 ### Verification Status
 
-- Story artifact created and sprint-status row moved from `backlog` to `ready-for-dev`.
-- No product code or tests were changed during story creation.
-- No Aspire runtime validation was run during story creation; this turn only creates the ready-for-dev implementation story.
+- `dotnet test tests\Hexalith.EventStore.Admin.Abstractions.Tests --configuration Release --filter "FullyQualifiedName~SnapshotPolicy|FullyQualifiedName~SerializationRoundTrip" -m:1 --no-restore` passed: 33 tests.
+- `dotnet test tests\Hexalith.EventStore.Admin.Server.Tests --configuration Release --filter "FullyQualifiedName~DaprStorageCommandService|FullyQualifiedName~AdminStorageController" -m:1 --no-restore` passed: 17 tests.
+- `dotnet test tests\Hexalith.EventStore.Server.Tests --configuration Release --filter "FullyQualifiedName~DaprSnapshotPolicyRepository|FullyQualifiedName~SnapshotManager|FullyQualifiedName~AggregateActorDomainResult|FullyQualifiedName~AdminStorageCommandController" -m:1 --no-restore` passed: 86 tests.
+- `dotnet test tests\Hexalith.EventStore.Admin.UI.Tests --configuration Release --filter "FullyQualifiedName~SnapshotsPage|FullyQualifiedName~AdminSnapshotApiClient" -m:1 --no-restore` passed: 30 tests.
+- `dotnet test tests\Hexalith.EventStore.Admin.Cli.Tests --configuration Release --filter "FullyQualifiedName~Snapshot" -m:1 --no-restore` passed: 19 tests.
+- `dotnet build .\Hexalith.EventStore.slnx --configuration Release -m:1 --no-restore` passed with 0 warnings and 0 errors.
+- `dotnet build .\Hexalith.EventStore.slnx -m:1 --no-restore` passed with 0 warnings and 0 errors after stopping Aspire.
+- Aspire live smoke with `EnableKeycloak=false` passed for Admin.Server policy set -> tenant read -> delete -> tenant read; runtime resource state was healthy and the apphost was stopped after capture.
 
 ### Change Log
 
 | Date | Version | Description | Author |
 | --- | ---: | --- | --- |
+| 2026-05-21 | 2.0 | Implemented DW17 snapshot policy CRUD backend, EventStore-owned DAPR policy indexes, runtime aggregate-type policy resolution, Admin.Server forwarding, UI/CLI/client test updates, and live Aspire set/read/delete evidence. | Codex |
 | 2026-05-21 | 1.2 | Applied advanced elicitation refinements: preferred aggregate-type runtime signature, single runtime lookup path, explicit two-key non-atomic consistency model, auth-before-state-read test gate, and partial-failure repair semantics. | Codex |
 | 2026-05-21 | 1.1 | Applied Party Mode review fixes: exact route/DTO contracts, policy identity and precedence, two-index consistency/failure model, 5-attempt ETag conflict rule, stale-index repair, cache invalidation bound, auth matrix, and concrete test gates. | Codex |
 | 2026-05-21 | 1.0 | Created ready-for-dev DW17 story with EventStore-owned snapshot policy set/delete, DAPR state indexes, runtime snapshot-policy resolution, validation boundaries, ETag concurrency, tests, and evidence guidance. | Codex |

@@ -52,7 +52,8 @@ public partial class AggregateActor(
     IOptions<EventDrainOptions> drainOptions,
     IOptions<BackpressureOptions> backpressureOptions,
     IDeadLetterPublisher deadLetterPublisher,
-    IServiceProvider? serviceProvider = null)
+    IServiceProvider? serviceProvider = null,
+    ICommandAggregateTypeResolver? commandAggregateTypeResolver = null)
     : Actor(host), IAggregateActor, IRemindable {
     private const string TraceParentExtensionKey = "traceparent";
     private const string TraceStateExtensionKey = "tracestate";
@@ -389,10 +390,12 @@ public partial class AggregateActor(
                             Host.LoggerFactory.CreateLogger<EventPersister>(),
                             payloadProtectionService);
 
+                        string aggregateType = await ResolveAggregateTypeAsync(command, cancellationToken).ConfigureAwait(false);
+
                         persistResult = await eventPersister
                             .PersistEventsAsync(
                                 identity: command.AggregateIdentity,
-                                aggregateType: command.Domain,
+                                aggregateType: aggregateType,
                                 command: command,
                                 domainResult: domainResult,
                                 domainServiceVersion: domainServiceVersion)
@@ -401,7 +404,7 @@ public partial class AggregateActor(
                         // Step 5b: Snapshot creation (Story 3.9)
                         if (persistResult.NewSequenceNumber > 0 && currentState is not null) {
                             bool shouldSnapshot = await snapshotManager
-                                .ShouldCreateSnapshotAsync(command.TenantId, command.Domain, persistResult.NewSequenceNumber, lastSnapshotSequence)
+                                .ShouldCreateSnapshotAsync(command.TenantId, command.Domain, aggregateType, persistResult.NewSequenceNumber, lastSnapshotSequence)
                                 .ConfigureAwait(false);
 
                             if (shouldSnapshot) {
@@ -1843,6 +1846,19 @@ public partial class AggregateActor(
                 envelope.SerializationFormat),
             envelope.Payload,
             envelope.Extensions is null ? null : new Dictionary<string, string>(envelope.Extensions));
+
+    private async Task<string> ResolveAggregateTypeAsync(CommandEnvelope command, CancellationToken cancellationToken) {
+        if (commandAggregateTypeResolver is not null) {
+            string? resolved = await commandAggregateTypeResolver
+                .ResolveAsync(command, cancellationToken)
+                .ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(resolved)) {
+                return resolved.Trim();
+            }
+        }
+
+        return command.Domain;
+    }
 
     /// <summary>
     /// Handles infrastructure failures by routing to dead-letter and transitioning to Rejected.

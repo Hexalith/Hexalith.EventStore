@@ -43,8 +43,8 @@ public class AdminSnapshotApiClientTests {
     }
 
     [Fact]
-    public async Task SetSnapshotPolicyAsync_ReturnsDeferredResult_WhenApiReturnsTypedOutcome() {
-        string json = """{"success":false,"operationId":"deferred-snapshot-policy-set","message":"Snapshot policy changes are deferred.","errorCode":"Deferred"}""";
+    public async Task SetSnapshotPolicyAsync_ReturnsSuccessResult_WhenApiReturnsTypedOutcome() {
+        string json = """{"success":true,"operationId":"snapshot-policy-set-abc","message":"Snapshot policy saved.","errorCode":null}""";
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
 
         AdminSnapshotApiClient client = CreateClient(httpClient);
@@ -52,9 +52,9 @@ public class AdminSnapshotApiClientTests {
         AdminOperationResult? result = await client.SetSnapshotPolicyAsync("tenant-a", "Counter", "CounterAggregate", 100);
 
         _ = result.ShouldNotBeNull();
-        result.Success.ShouldBeFalse();
-        result.ErrorCode.ShouldBe("Deferred");
-        result.Message!.ShouldContain("deferred");
+        result.Success.ShouldBeTrue();
+        result.ErrorCode.ShouldBeNull();
+        result.Message!.ShouldContain("saved");
     }
 
     [Fact]
@@ -73,8 +73,8 @@ public class AdminSnapshotApiClientTests {
     }
 
     [Fact]
-    public async Task DeleteSnapshotPolicyAsync_ReturnsDeferredResult_WhenApiReturnsTypedOutcome() {
-        string json = """{"success":false,"operationId":"deferred-snapshot-policy-delete","message":"Snapshot policy deletion is deferred.","errorCode":"Deferred"}""";
+    public async Task DeleteSnapshotPolicyAsync_ReturnsTypedFailure_WhenApiReturnsNotFoundOutcome() {
+        string json = """{"success":false,"operationId":"snapshot-policy-delete-abc","message":"Snapshot policy was not found.","errorCode":"NotFound"}""";
         using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.OK, json);
 
         AdminSnapshotApiClient client = CreateClient(httpClient);
@@ -83,7 +83,7 @@ public class AdminSnapshotApiClientTests {
 
         _ = result.ShouldNotBeNull();
         result.Success.ShouldBeFalse();
-        result.ErrorCode.ShouldBe("Deferred");
-        result.Message!.ShouldContain("deferred");
+        result.ErrorCode.ShouldBe("NotFound");
+        result.Message!.ShouldContain("not found");
     }
 }

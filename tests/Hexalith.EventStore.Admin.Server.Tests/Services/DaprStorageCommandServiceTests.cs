@@ -1,6 +1,7 @@
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Admin.Server.Services;
 using Hexalith.EventStore.Admin.Server.Tests.Helpers;
@@ -15,7 +16,7 @@ namespace Hexalith.EventStore.Admin.Server.Tests.Services;
 public class DaprStorageCommandServiceTests {
     private const string EventStoreAppId = "eventstore";
 
-    private static (DaprStorageCommandService Service, TestHttpMessageHandler Handler) CreateService() {
+    private static (DaprStorageCommandService Service, TestHttpMessageHandler Handler) CreateService(IAdminAuthContext? authContext = null) {
         DaprClient daprClient = Substitute.For<DaprClient>();
         IOptions<AdminServerOptions> options = Options.Create(new AdminServerOptions {
             EventStoreAppId = EventStoreAppId,
@@ -31,7 +32,7 @@ public class DaprStorageCommandServiceTests {
             daprClient,
             httpClientFactory,
             options,
-            new NullAdminAuthContext(),
+            authContext ?? new NullAdminAuthContext(),
             NullLogger<DaprStorageCommandService>.Instance);
 
         return (service, handler);
@@ -69,28 +70,42 @@ public class DaprStorageCommandServiceTests {
     }
 
     [Fact]
-    public async Task SetSnapshotPolicyAsync_ReturnsDeferred_WithoutCallingEventStore() {
-        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
+    public async Task SetSnapshotPolicyAsync_InvokesEventStoreAndForwardsBearerToken() {
+        IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
+        _ = authContext.GetToken().Returns("jwt-token");
+        (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService(authContext);
+        handler.SetupJsonResponse(new AdminOperationResult(true, "snapshot-policy-set-abc", "Snapshot policy saved.", null));
 
         AdminOperationResult result = await service.SetSnapshotPolicyAsync("tenant-a", "Counter", "CounterAggregate", 100);
 
-        result.Success.ShouldBeFalse();
-        result.OperationId.ShouldBe("deferred-snapshot-policy-set");
-        result.ErrorCode.ShouldBe("Deferred");
-        result.Message!.ShouldContain("Snapshot policy changes are deferred");
-        handler.RequestCount.ShouldBe(0);
+        result.Success.ShouldBeTrue();
+        result.OperationId.ShouldBe("snapshot-policy-set-abc");
+        handler.RequestCount.ShouldBe(1);
+        handler.LastRequest!.Method.ShouldBe(HttpMethod.Put);
+        handler.LastRequest.RequestUri!.ToString().ShouldContain("api/v1/admin/storage/snapshot-policy");
+        handler.LastRequest.Headers.Authorization!.Scheme.ShouldBe("Bearer");
+        handler.LastRequest.Headers.Authorization.Parameter.ShouldBe("jwt-token");
+        string body = handler.LastRequestBody.ShouldNotBeNull();
+        body.ShouldContain("\"tenantId\":\"tenant-a\"");
+        body.ShouldContain("\"domain\":\"Counter\"");
+        body.ShouldContain("\"aggregateType\":\"CounterAggregate\"");
+        body.ShouldContain("\"intervalEvents\":100");
     }
 
     [Fact]
-    public async Task DeleteSnapshotPolicyAsync_ReturnsDeferred_WithoutCallingEventStore() {
+    public async Task DeleteSnapshotPolicyAsync_InvokesEventStore() {
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupJsonResponse(new AdminOperationResult(true, "snapshot-policy-delete-abc", "Snapshot policy deleted.", null));
 
         AdminOperationResult result = await service.DeleteSnapshotPolicyAsync("tenant-a", "Counter", "CounterAggregate");
 
-        result.Success.ShouldBeFalse();
-        result.OperationId.ShouldBe("deferred-snapshot-policy-delete");
-        result.ErrorCode.ShouldBe("Deferred");
-        result.Message!.ShouldContain("Snapshot policy deletion is deferred");
-        handler.RequestCount.ShouldBe(0);
+        result.Success.ShouldBeTrue();
+        result.OperationId.ShouldBe("snapshot-policy-delete-abc");
+        handler.RequestCount.ShouldBe(1);
+        handler.LastRequest!.Method.ShouldBe(HttpMethod.Delete);
+        string body = handler.LastRequestBody.ShouldNotBeNull();
+        body.ShouldContain("\"tenantId\":\"tenant-a\"");
+        body.ShouldContain("\"domain\":\"Counter\"");
+        body.ShouldContain("\"aggregateType\":\"CounterAggregate\"");
     }
 }

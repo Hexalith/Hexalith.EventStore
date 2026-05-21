@@ -239,19 +239,22 @@ public class DaprStorageServiceTests {
     }
 
     [Fact]
-    public async Task SetSnapshotPolicyAsync_ReturnsDeferred_WithoutCallingEventStore() {
+    public async Task SetSnapshotPolicyAsync_InvokesEventStoreAndReturnsTypedResult() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         IAdminAuthContext authContext = Substitute.For<IAdminAuthContext>();
         _ = authContext.GetToken().Returns("storage-token");
 
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService(daprClient, authContext);
+        handler.SetupJsonResponse(new AdminOperationResult(true, "snapshot-policy-set-abc", "Snapshot policy saved.", null));
 
         AdminOperationResult result = await service.SetSnapshotPolicyAsync("tenant1", "orders", "OrderAggregate", 100);
 
-        result.Success.ShouldBeFalse();
-        result.ErrorCode.ShouldBe("Deferred");
-        result.Message!.ShouldContain("Snapshot policy changes are deferred");
-        handler.RequestCount.ShouldBe(0);
+        result.Success.ShouldBeTrue();
+        result.OperationId.ShouldBe("snapshot-policy-set-abc");
+        result.ErrorCode.ShouldBeNull();
+        handler.RequestCount.ShouldBe(1);
+        handler.LastRequest!.Method.ShouldBe(HttpMethod.Put);
+        handler.LastRequest.Headers.Authorization!.Parameter.ShouldBe("storage-token");
     }
 
     [Fact]
@@ -277,15 +280,15 @@ public class DaprStorageServiceTests {
     }
 
     [Fact]
-    public async Task SetSnapshotPolicyAsync_ReturnsDeferred_WhenHandlerWouldReturnForbidden() {
+    public async Task SetSnapshotPolicyAsync_ReturnsTypedInvocationFailure_WhenHandlerReturnsForbidden() {
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
         handler.SetupErrorResponse(HttpStatusCode.Forbidden);
 
         AdminOperationResult result = await service.SetSnapshotPolicyAsync("tenant1", "orders", "OrderAggregate", 100);
 
         result.Success.ShouldBeFalse();
-        result.ErrorCode.ShouldBe("Deferred");
-        handler.RequestCount.ShouldBe(0);
+        result.ErrorCode.ShouldBe("403");
+        handler.RequestCount.ShouldBe(1);
     }
 
     [Fact]

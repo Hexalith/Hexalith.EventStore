@@ -10,6 +10,7 @@ using Hexalith.EventStore.Authorization;
 using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Services;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -105,6 +106,107 @@ public class AdminStorageCommandControllerTests {
         operation.OperationId.ShouldStartWith("manual-snapshot-");
     }
 
+    [Fact]
+    public async Task SetSnapshotPolicy_TenantDenied_DoesNotReadPolicyState() {
+        (AdminStorageCommandController controller, _, EventStoreTenantValidator tenantValidator, _, DaprClient daprClient) = CreateController(
+            CreatePrincipal(new Claim("eventstore:admin-role", "Operator")));
+        _ = tenantValidator.ValidateAsync(
+                Arg.Any<ClaimsPrincipal>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>(),
+                Arg.Any<string?>())
+            .Returns(TenantValidationResult.Denied("Tenant access denied."));
+
+        ActionResult<AdminOperationResult> result = await controller.SetSnapshotPolicy(
+            new SnapshotPolicySetRequest("tenant-a", "orders", "OrderAggregate", 100));
+
+        AdminOperationResult operation = ExtractOperation(result);
+        operation.Success.ShouldBeFalse();
+        operation.ErrorCode.ShouldBe("RejectedUnauthorized");
+        _ = await daprClient.DidNotReceiveWithAnyArgs().GetStateAsync<List<SnapshotPolicy>>(
+            default!,
+            default!,
+            consistencyMode: default,
+            metadata: default!,
+            cancellationToken: default);
+        _ = await daprClient.DidNotReceiveWithAnyArgs().GetStateAndETagAsync<List<SnapshotPolicy>>(
+            default!,
+            default!,
+            consistencyMode: default,
+            metadata: default!,
+            cancellationToken: default);
+    }
+
+    [Fact]
+    public async Task SetSnapshotPolicy_InvalidRequest_ReturnsRejectedValidationBeforeTenantAuth() {
+        (AdminStorageCommandController controller, _, EventStoreTenantValidator tenantValidator, _, DaprClient daprClient) = CreateController(
+            CreatePrincipal(new Claim("eventstore:admin-role", "Operator")));
+
+        ActionResult<AdminOperationResult> result = await controller.SetSnapshotPolicy(
+            new SnapshotPolicySetRequest("", "orders", "OrderAggregate", 100));
+
+        AdminOperationResult operation = ExtractOperation(result);
+        operation.Success.ShouldBeFalse();
+        operation.ErrorCode.ShouldBe("RejectedValidation");
+        _ = await tenantValidator.DidNotReceive().ValidateAsync(
+            Arg.Any<ClaimsPrincipal>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
+        _ = await daprClient.DidNotReceiveWithAnyArgs().GetStateAsync<List<SnapshotPolicy>>(
+            default!,
+            default!,
+            consistencyMode: default,
+            metadata: default!,
+            cancellationToken: default);
+    }
+
+    [Fact]
+    public async Task DeleteSnapshotPolicy_InvalidRequest_ReturnsRejectedValidationBeforeTenantAuth() {
+        (AdminStorageCommandController controller, _, EventStoreTenantValidator tenantValidator, _, DaprClient daprClient) = CreateController(
+            CreatePrincipal(new Claim("eventstore:admin-role", "Operator")));
+
+        ActionResult<AdminOperationResult> result = await controller.DeleteSnapshotPolicy(
+            new SnapshotPolicyDeleteRequest("tenant-a", "", "OrderAggregate"));
+
+        AdminOperationResult operation = ExtractOperation(result);
+        operation.Success.ShouldBeFalse();
+        operation.ErrorCode.ShouldBe("RejectedValidation");
+        _ = await tenantValidator.DidNotReceive().ValidateAsync(
+            Arg.Any<ClaimsPrincipal>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
+        _ = await daprClient.DidNotReceiveWithAnyArgs().GetStateAsync<List<SnapshotPolicy>>(
+            default!,
+            default!,
+            consistencyMode: default,
+            metadata: default!,
+            cancellationToken: default);
+    }
+
+    [Fact]
+    public async Task DeleteSnapshotPolicy_MissingPolicy_ReturnsTypedNotFound() {
+        (AdminStorageCommandController controller, _, _, _, DaprClient daprClient) = CreateController(
+            CreatePrincipal(new Claim("eventstore:admin-role", "Operator")));
+        SetupPolicyIndex(daprClient, []);
+
+        ActionResult<AdminOperationResult> result = await controller.DeleteSnapshotPolicy(
+            new SnapshotPolicyDeleteRequest("tenant-a", "orders", "OrderAggregate"));
+
+        AdminOperationResult operation = ExtractOperation(result);
+        operation.Success.ShouldBeFalse();
+        operation.ErrorCode.ShouldBe("NotFound");
+        _ = await daprClient.DidNotReceiveWithAnyArgs().TrySaveStateAsync<List<SnapshotPolicy>>(
+            default!,
+            default!,
+            default!,
+            default!,
+            stateOptions: default,
+            metadata: default!,
+            cancellationToken: default);
+    }
+
     private static (AdminStorageCommandController Controller, IActorProxyFactory Factory, EventStoreTenantValidator TenantValidator, IRbacValidator RbacValidator, DaprClient DaprClient) CreateController(
         ClaimsPrincipal user,
         IAggregateActor? actor = null) {
@@ -137,6 +239,10 @@ public class AdminStorageCommandControllerTests {
         var controller = new AdminStorageCommandController(
             factory,
             daprClient,
+            new DaprSnapshotPolicyRepository(
+                daprClient,
+                Options.Create(new CommandStatusOptions { StateStoreName = "statestore" }),
+                NullLogger<DaprSnapshotPolicyRepository>.Instance),
             tenantValidator,
             rbacValidator,
             Options.Create(new CommandStatusOptions { StateStoreName = "statestore" }),
@@ -167,6 +273,16 @@ public class AdminStorageCommandControllerTests {
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
             .Returns(saveResult);
+    }
+
+    private static void SetupPolicyIndex(DaprClient daprClient, List<SnapshotPolicy> policies) {
+        _ = daprClient.GetStateAsync<List<SnapshotPolicy>>(
+                "statestore",
+                Arg.Any<string>(),
+                consistencyMode: Arg.Any<ConsistencyMode?>(),
+                metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => policies);
     }
 
     private static ClaimsPrincipal CreatePrincipal(params Claim[] claims)

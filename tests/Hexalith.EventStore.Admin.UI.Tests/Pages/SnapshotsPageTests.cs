@@ -210,16 +210,16 @@ public class SnapshotsPageTests : AdminUITestContext {
     }
 
     [Fact]
-    public async Task SnapshotsPage_CreatePolicyDialog_ShowsDeferredToastAndClearsBusyState() {
+    public async Task SnapshotsPage_CreatePolicyDialog_ShowsTypedFailureToastAndClearsBusyState() {
         SetupPolicies([]);
-        const string deferredMessage = "Snapshot policy changes are deferred.";
+        const string failureMessage = "Snapshot policy interval must be between 10 and 100000 events.";
         _ = _mockSnapshotApi.SetSnapshotPolicyAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
                 false,
-                "deferred-snapshot-policy-set",
-                deferredMessage,
-                "Deferred")));
+                "snapshot-policy-set-rejected",
+                failureMessage,
+                "RejectedValidation")));
 
         NavManager.NavigateTo("/snapshots?create=true&tenant=tenant-x&domain=sales&aggregateType=OrderAggregate");
         IRenderedComponent<Snapshots> cut = Render<Snapshots>();
@@ -231,7 +231,7 @@ public class SnapshotsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Body.ShouldBe(failureMessage);
         cut.Markup.ShouldContain("Create Snapshot Policy");
         createBtn.Instance.Disabled.ShouldBeFalse();
     }
@@ -378,17 +378,17 @@ public class SnapshotsPageTests : AdminUITestContext {
     }
 
     [Fact]
-    public async Task SnapshotsPage_DeleteDialog_ShowsDeferredToastAndClearsBusyState() {
+    public async Task SnapshotsPage_DeleteDialog_ShowsTypedFailureToastAndClearsBusyState() {
         SnapshotPolicy policy = new("tenant-a", "orders", "OrderAggregate", 100, DateTimeOffset.UtcNow.AddDays(-5));
         SetupPolicies([policy]);
-        const string deferredMessage = "Snapshot policy deletion is deferred.";
+        const string failureMessage = "Snapshot policy was not found.";
         _ = _mockSnapshotApi.DeleteSnapshotPolicyAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
                 false,
-                "deferred-snapshot-policy-delete",
-                deferredMessage,
-                "Deferred")));
+                "snapshot-policy-delete-missing",
+                failureMessage,
+                "NotFound")));
 
         IRenderedComponent<Snapshots> cut = Render<Snapshots>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
@@ -404,7 +404,7 @@ public class SnapshotsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Body.ShouldBe(failureMessage);
         cut.Markup.ShouldContain("Delete Snapshot Policy");
         confirmBtn.Instance.Disabled.ShouldBeFalse();
     }

@@ -183,7 +183,7 @@ Pure domain types plus stable public gateway wire contracts. This package contai
 
 | Package                    | Version |
 | -------------------------- | ------- |
-| Dapr.Actors                | see `Directory.Packages.props` |
+| Dapr.Actors                | 1.17.9  |
 | Hexalith.Commons.UniqueIds | see `Directory.Packages.props` |
 
 ```bash
@@ -214,7 +214,7 @@ DI registration, domain processor abstractions, the fluent `AddEventStore` exten
 
 | Package                                   | Version |
 | ----------------------------------------- | ------- |
-| Dapr.Client                               | see `Directory.Packages.props` |
+| Dapr.Client                               | 1.17.9  |
 | Microsoft.Extensions.Configuration.Binder | 10.0.0  |
 | Microsoft.Extensions.Hosting.Abstractions | 10.0.0  |
 
@@ -238,9 +238,9 @@ Aggregate actors, command routing, event persistence, state rehydration, and DAP
 
 | Package                | Version |
 | ---------------------- | ------- |
-| Dapr.Client            | see `Directory.Packages.props` |
-| Dapr.Actors            | see `Directory.Packages.props` |
-| Dapr.Actors.AspNetCore | see `Directory.Packages.props` |
+| Dapr.Client            | 1.17.9  |
+| Dapr.Actors            | 1.17.9  |
+| Dapr.Actors.AspNetCore | 1.17.9  |
 | MediatR                | 14.0.0  |
 
 ```bash

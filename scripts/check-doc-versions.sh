@@ -18,7 +18,7 @@ PROPS="Directory.Packages.props"
 DOC="docs/reference/nuget-packages.md"
 [[ -f "$PROPS" ]] || { echo "ERROR: $PROPS not found (cwd=$PWD) — run from repo root" >&2; exit 1; }
 [[ -f "$DOC" ]]   || { echo "ERROR: $DOC not found (cwd=$PWD) — run from repo root" >&2; exit 1; }
-EXPECTED_DAPR_ROWS=4   # Dapr.Client x2 (Client + Server tables) + Dapr.Actors + Dapr.Actors.AspNetCore
+EXPECTED_DAPR_ROWS=5   # Dapr.Actors x2 (Contracts + Server) + Dapr.Client x2 (Client + Server) + Dapr.Actors.AspNetCore
 
 # Pre-flight: detect multi-line <PackageVersion> elements (regex can't handle them).
 multiline=$(grep -cE "<PackageVersion[^/]*$" "$PROPS" || true)

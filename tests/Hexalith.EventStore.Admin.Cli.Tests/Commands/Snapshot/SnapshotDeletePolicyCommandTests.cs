@@ -56,4 +56,18 @@ public class SnapshotDeletePolicyCommandTests {
         // Assert
         exitCode.ShouldBe(ExitCodes.Error);
     }
+
+    [Fact]
+    public async Task SnapshotDeletePolicyCommand_TypedNotFound_ReturnsError() {
+        AdminOperationResult result = new(false, "snapshot-policy-delete-missing", "Snapshot policy was not found.", "NotFound");
+        (AdminApiClient client, _) = CreateMockClientWithHandler(result);
+        GlobalOptions options = CreateOptions("table");
+
+        int exitCode;
+        using (client) {
+            exitCode = await SnapshotDeletePolicyCommand.ExecuteAsync(client, options, "acme", "counter", "Counter", CancellationToken.None);
+        }
+
+        exitCode.ShouldBe(ExitCodes.Error);
+    }
 }

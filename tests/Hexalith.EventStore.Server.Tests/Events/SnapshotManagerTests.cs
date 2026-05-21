@@ -19,12 +19,13 @@ public class SnapshotManagerTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     private static (SnapshotManager Manager, IActorStateManager StateManager) CreateManager(
-        SnapshotOptions? options = null) {
+        SnapshotOptions? options = null,
+        ISnapshotPolicyResolver? snapshotPolicyResolver = null) {
         options ??= new SnapshotOptions();
         IOptions<SnapshotOptions> optionsWrapper = Options.Create(options);
         ILogger<SnapshotManager> logger = Substitute.For<ILogger<SnapshotManager>>();
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
-        return (new SnapshotManager(optionsWrapper, logger, new NoOpEventPayloadProtectionService()), stateManager);
+        return (new SnapshotManager(optionsWrapper, logger, new NoOpEventPayloadProtectionService(), snapshotPolicyResolver), stateManager);
     }
 
     // === 8.2: ShouldCreateSnapshot at default interval ===
@@ -374,6 +375,40 @@ public class SnapshotManagerTests {
         bool result = await manager.ShouldCreateSnapshotAsync("other-tenant", "other-domain", 99, 0);
 
         result.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ShouldCreateSnapshot_PersistedPolicyWinsOverStaticFallbacks() {
+        ISnapshotPolicyResolver resolver = Substitute.For<ISnapshotPolicyResolver>();
+        _ = resolver.GetIntervalAsync("acme", "payments", "InvoiceAggregate", Arg.Any<CancellationToken>())
+            .Returns(12);
+        var options = new SnapshotOptions {
+            DefaultInterval = 100,
+            DomainIntervals = new Dictionary<string, int> { ["payments"] = 50 },
+            TenantDomainIntervals = new Dictionary<string, int> { ["acme:payments"] = 25 }
+        };
+        (SnapshotManager manager, _) = CreateManager(options, resolver);
+
+        bool result = await manager.ShouldCreateSnapshotAsync("acme", "payments", "InvoiceAggregate", 12, 0);
+
+        result.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ShouldCreateSnapshot_PersistedPolicyIsAggregateTypeSpecific() {
+        ISnapshotPolicyResolver resolver = Substitute.For<ISnapshotPolicyResolver>();
+        _ = resolver.GetIntervalAsync("acme", "payments", "InvoiceAggregate", Arg.Any<CancellationToken>())
+            .Returns(10);
+        _ = resolver.GetIntervalAsync("acme", "payments", "OrderAggregate", Arg.Any<CancellationToken>())
+            .Returns((int?)null);
+        var options = new SnapshotOptions { DefaultInterval = 100 };
+        (SnapshotManager manager, _) = CreateManager(options, resolver);
+
+        bool invoice = await manager.ShouldCreateSnapshotAsync("acme", "payments", "InvoiceAggregate", 10, 0);
+        bool order = await manager.ShouldCreateSnapshotAsync("acme", "payments", "OrderAggregate", 10, 0);
+
+        invoice.ShouldBeTrue();
+        order.ShouldBeFalse();
     }
 
     [Fact]
