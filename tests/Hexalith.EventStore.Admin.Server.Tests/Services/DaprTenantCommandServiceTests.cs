@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 
 using Dapr.Client;
 
@@ -147,6 +148,74 @@ public class DaprTenantCommandServiceTests {
         result.Success.ShouldBeTrue();
     }
 
+    [Fact]
+    public async Task EnableTenantAsync_UsesSortableIdentifiers_ForMessageAndCorrelationIds() {
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupEmptyResponse(HttpStatusCode.Accepted);
+
+        AdminOperationResult result = await service.EnableTenantAsync("manual-test-tenant-a");
+
+        using JsonDocument body = JsonDocument.Parse(handler.LastRequestBody.ShouldNotBeNull());
+        string messageId = body.RootElement.GetProperty("messageId").GetString().ShouldNotBeNull();
+        string correlationId = body.RootElement.GetProperty("correlationId").GetString().ShouldNotBeNull();
+
+        messageId.ShouldMatch("^[0-9A-HJKMNP-TV-Z]{26}$");
+        correlationId.ShouldMatch("^[0-9A-HJKMNP-TV-Z]{26}$");
+        result.OperationId.ShouldBe(correlationId);
+    }
+
+    [Fact]
+    public async Task EnableTenantAsync_PreservesOperationId_WhenInvocationTimesOutAfterCommandBodyExists() {
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new OperationCanceledException("simulated DAPR timeout"));
+
+        AdminOperationResult result = await service.EnableTenantAsync("manual-test-tenant-a");
+
+        using JsonDocument body = JsonDocument.Parse(handler.LastRequestBody.ShouldNotBeNull());
+        string correlationId = body.RootElement.GetProperty("correlationId").GetString().ShouldNotBeNull();
+
+        result.Success.ShouldBeFalse();
+        result.OperationId.ShouldBe(correlationId);
+        result.OperationId.ShouldNotBe("error-no-operation");
+        result.ErrorCode.ShouldBe("timeout");
+        string message = result.Message.ShouldNotBeNull();
+        message.ShouldContain("may still be processing");
+        message.ShouldNotContain("OperationCanceledException");
+        message.ShouldNotContain("simulated DAPR timeout");
+    }
+
+    [Fact]
+    public async Task EnableTenantAsync_PreservesUnavailableCode_WhenProblemDetailsContainsType() {
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupResponse(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) {
+            Content = new StringContent(
+                """{"type":"https://httpstatuses.com/503","title":"Service Unavailable","detail":"upstream down"}"""),
+        });
+
+        AdminOperationResult result = await service.EnableTenantAsync("manual-test-tenant-a");
+
+        result.Success.ShouldBeFalse();
+        result.ErrorCode.ShouldBe("unavailable");
+        result.Message.ShouldNotBeNull().ShouldContain("503");
+    }
+
+    [Fact]
+    public async Task EnableTenantAsync_ClassifiesUnexpectedExceptionAsUnexpected_AfterOperationIdExists() {
+        (DaprTenantCommandService service, TestHttpMessageHandler handler) = CreateService();
+        handler.SetupException(new InvalidOperationException("local serialization defect"));
+
+        AdminOperationResult result = await service.EnableTenantAsync("manual-test-tenant-a");
+
+        using JsonDocument body = JsonDocument.Parse(handler.LastRequestBody.ShouldNotBeNull());
+        string correlationId = body.RootElement.GetProperty("correlationId").GetString().ShouldNotBeNull();
+
+        result.Success.ShouldBeFalse();
+        result.OperationId.ShouldBe(correlationId);
+        result.ErrorCode.ShouldBe("unexpected");
+        result.Message.ShouldNotBeNull().ShouldContain("Unexpected tenant command failure");
+        result.Message.ShouldNotContain("local serialization defect");
+    }
+
     // === AddUserToTenantAsync ===
 
     [Fact]
@@ -176,7 +245,7 @@ public class DaprTenantCommandServiceTests {
         AdminOperationResult result = await service.AddUserToTenantAsync("acme-corp", "user-001", "0");
 
         result.Success.ShouldBeFalse();
-        result.ErrorCode.ShouldBe("INVALID_ROLE");
+        result.ErrorCode.ShouldBe("invalid-request");
     }
 
     [Fact]

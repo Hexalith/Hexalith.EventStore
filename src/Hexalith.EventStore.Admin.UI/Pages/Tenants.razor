@@ -860,7 +860,7 @@
         if (_lifecycleTarget is null) { return; }
         await ExecuteLifecycleAction(
             ct => TenantApi.DisableTenantAsync(_lifecycleTarget.TenantId, ct),
-            $"Tenant {_lifecycleTarget.TenantId} disabled.",
+            "Disable",
             "Failed to disable tenant.");
     }
 
@@ -869,11 +869,11 @@
         if (_lifecycleTarget is null) { return; }
         await ExecuteLifecycleAction(
             ct => TenantApi.EnableTenantAsync(_lifecycleTarget.TenantId, ct),
-            $"Tenant {_lifecycleTarget.TenantId} enabled.",
+            "Enable",
             "Failed to enable tenant.");
     }
 
-    private async Task ExecuteLifecycleAction(Func<CancellationToken, Task<AdminOperationResult?>> action, string successMsg, string failMsg)
+    private async Task ExecuteLifecycleAction(Func<CancellationToken, Task<AdminOperationResult?>> action, string actionName, string failMsg)
     {
         _isOperating = true;
         StateHasChanged();
@@ -886,7 +886,8 @@
             AdminOperationResult? result = await action(_operationCts.Token);
             if (result?.Success == true)
             {
-                await ToastService.ShowSuccessAsync(successMsg);
+                await ToastService.ShowInfoAsync(
+                    $"{actionName} request accepted; final tenant status is unknown until the tenant list confirms it. Refresh to check status. Operation ID: {result.OperationId}.");
                 await CloseLifecycleDialogAsync().ConfigureAwait(false);
                 await LoadDataAsync();
             }
@@ -895,9 +896,9 @@
                 await ToastService.ShowErrorAsync(result?.Message ?? failMsg);
             }
         }
-        catch (ServiceUnavailableException)
+        catch (ServiceUnavailableException ex)
         {
-            await ToastService.ShowErrorAsync("Tenants service unavailable. Try again later.");
+            await ToastService.ShowErrorAsync(ex.Message);
         }
         catch (Exception ex)
         {

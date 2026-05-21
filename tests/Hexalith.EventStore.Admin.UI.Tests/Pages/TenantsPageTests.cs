@@ -5,6 +5,7 @@ using Bunit;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.UI.Pages;
 using Hexalith.EventStore.Admin.UI.Services.Exceptions;
+using Hexalith.EventStore.Admin.UI.Tests.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -335,6 +336,60 @@ public class TenantsPageTests : AdminUITestContext {
 
         // Assert — Enable button appears
         cut.Markup.ShouldContain("Enable");
+    }
+
+    [Fact]
+    public async Task TenantsPage_EnableAccepted_ShowsStatusUnknownCopyAndDoesNotClaimEnabled() {
+        // Arrange
+        TenantSummary tenant = CreateTenant("manual-test-tenant-a", "Manual Test Tenant A", TenantStatusType.Disabled);
+        _ = _mockTenantApi.ListTenantsAsync(Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult<IReadOnlyList<TenantSummary>>([tenant]),
+                Task.FromResult<IReadOnlyList<TenantSummary>>([tenant]));
+        _ = _mockTenantApi.EnableTenantAsync("manual-test-tenant-a", Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "01JAXYZ1234567890ABCDEFGH", null, null));
+        TestToastService toastService = Services.GetRequiredService<TestToastService>();
+
+        // Act
+        IRenderedComponent<Tenants> cut = Render<Tenants>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("manual-test-tenant-a"), TimeSpan.FromSeconds(5));
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OpenEnableDialog", tenant));
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnEnableConfirm"));
+
+        // Assert
+        cut.WaitForAssertion(() => {
+            string body = toastService.LastOptions?.Body?.ToString() ?? string.Empty;
+            body.ShouldContain("Enable request accepted");
+            body.ShouldContain("status is unknown");
+            body.ShouldContain("01JAXYZ1234567890ABCDEFGH");
+            body.ShouldNotContain("Tenant manual-test-tenant-a enabled.");
+        }, TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
+    public async Task TenantsPage_EnableAccepted_KeepsCommandResultVisible_WhenRefreshFails() {
+        TenantSummary tenant = CreateTenant("manual-test-tenant-a", "Manual Test Tenant A", TenantStatusType.Disabled);
+        int listCalls = 0;
+        _ = _mockTenantApi.ListTenantsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => listCalls++ == 0
+                ? Task.FromResult<IReadOnlyList<TenantSummary>>([tenant])
+                : Task.FromException<IReadOnlyList<TenantSummary>>(new ServiceUnavailableException("Tenant list timeout")));
+        _ = _mockTenantApi.EnableTenantAsync("manual-test-tenant-a", Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "01JAXYZ1234567890ABCDEFGH", null, null));
+        TestToastService toastService = Services.GetRequiredService<TestToastService>();
+
+        IRenderedComponent<Tenants> cut = Render<Tenants>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("manual-test-tenant-a"), TimeSpan.FromSeconds(5));
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OpenEnableDialog", tenant));
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnEnableConfirm"));
+
+        cut.WaitForAssertion(() => {
+            string body = toastService.LastOptions?.Body?.ToString() ?? string.Empty;
+            body.ShouldContain("Enable request accepted");
+            body.ShouldContain("01JAXYZ1234567890ABCDEFGH");
+            cut.Markup.ShouldContain("Unable to load tenant data");
+            cut.Markup.ShouldContain("manual-test-tenant-a");
+        }, TimeSpan.FromSeconds(2));
     }
 
     [Fact]

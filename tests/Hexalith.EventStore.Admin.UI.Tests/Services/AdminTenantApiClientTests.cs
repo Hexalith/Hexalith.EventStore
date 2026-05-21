@@ -90,4 +90,48 @@ public class AdminTenantApiClientTests {
 
         result.ShouldBeNull();
     }
+
+    [Fact]
+    public async Task EnableTenantAsync_ThrowsServiceUnavailableWithProblemDetail_WhenGatewayTimeout() {
+        string json = """
+        {
+          "status": 504,
+          "title": "Operation Timed Out",
+          "detail": "Enable request timed out. The operation may still be processing. Operation ID: 01JAXYZ1234567890ABCDEFGH.",
+          "operationId": "01JAXYZ1234567890ABCDEFGH",
+          "errorCode": "timeout"
+        }
+        """;
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.GatewayTimeout, json);
+
+        AdminTenantApiClient client = CreateClient(httpClient);
+
+        ServiceUnavailableException ex = await Should.ThrowAsync<ServiceUnavailableException>(
+            () => client.EnableTenantAsync("manual-test-tenant-a"));
+
+        ex.Message.ShouldContain("may still be processing");
+        ex.Message.ShouldContain("01JAXYZ1234567890ABCDEFGH");
+    }
+
+    [Fact]
+    public async Task EnableTenantAsync_IncludesProblemExtensions_WhenDetailOmitsOperationId() {
+        string json = """
+        {
+          "status": 504,
+          "title": "Operation Timed Out",
+          "operationId": "01JAXYZ1234567890ABCDEFGH",
+          "errorCode": "timeout"
+        }
+        """;
+        using HttpClient httpClient = MockHttpMessageHandler.CreateJsonClient(HttpStatusCode.GatewayTimeout, json);
+
+        AdminTenantApiClient client = CreateClient(httpClient);
+
+        ServiceUnavailableException ex = await Should.ThrowAsync<ServiceUnavailableException>(
+            () => client.EnableTenantAsync("manual-test-tenant-a"));
+
+        ex.Message.ShouldContain("Operation Timed Out");
+        ex.Message.ShouldContain("01JAXYZ1234567890ABCDEFGH");
+        ex.Message.ShouldContain("timeout");
+    }
 }

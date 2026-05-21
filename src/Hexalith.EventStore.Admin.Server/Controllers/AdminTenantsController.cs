@@ -145,7 +145,7 @@ public class AdminTenantsController(
                 .ConfigureAwait(false);
             return result.Success
                 ? Accepted(result)
-                : CreateProblemResult(StatusCodes.Status422UnprocessableEntity, "Operation Failed", result.Message);
+                : CommandFailureResult(result);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(CreateTenant), ex);
@@ -172,7 +172,7 @@ public class AdminTenantsController(
                 .ConfigureAwait(false);
             return result.Success
                 ? Accepted(result)
-                : CreateProblemResult(StatusCodes.Status422UnprocessableEntity, "Operation Failed", result.Message);
+                : CommandFailureResult(result);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(DisableTenant), ex);
@@ -199,7 +199,7 @@ public class AdminTenantsController(
                 .ConfigureAwait(false);
             return result.Success
                 ? Accepted(result)
-                : CreateProblemResult(StatusCodes.Status422UnprocessableEntity, "Operation Failed", result.Message);
+                : CommandFailureResult(result);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(EnableTenant), ex);
@@ -229,7 +229,7 @@ public class AdminTenantsController(
                 .ConfigureAwait(false);
             return result.Success
                 ? Accepted(result)
-                : CreateProblemResult(StatusCodes.Status422UnprocessableEntity, "Operation Failed", result.Message);
+                : CommandFailureResult(result);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(AddUserToTenant), ex);
@@ -259,7 +259,7 @@ public class AdminTenantsController(
                 .ConfigureAwait(false);
             return result.Success
                 ? Accepted(result)
-                : CreateProblemResult(StatusCodes.Status422UnprocessableEntity, "Operation Failed", result.Message);
+                : CommandFailureResult(result);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(RemoveUserFromTenant), ex);
@@ -289,7 +289,7 @@ public class AdminTenantsController(
                 .ConfigureAwait(false);
             return result.Success
                 ? Accepted(result)
-                : CreateProblemResult(StatusCodes.Status422UnprocessableEntity, "Operation Failed", result.Message);
+                : CommandFailureResult(result);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
             return ServiceUnavailable(nameof(ChangeUserRole), ex);
@@ -371,15 +371,61 @@ public class AdminTenantsController(
             "An unexpected error occurred.");
     }
 
+    private ObjectResult CommandFailureResult(AdminOperationResult result) {
+        int statusCode = GetCommandFailureStatus(result.ErrorCode);
+        string title = statusCode switch {
+            StatusCodes.Status400BadRequest => "Bad Request",
+            StatusCodes.Status503ServiceUnavailable => "Service Unavailable",
+            StatusCodes.Status504GatewayTimeout => "Operation Timed Out",
+            StatusCodes.Status500InternalServerError => "Internal Server Error",
+            _ => "Operation Failed",
+        };
+
+        return CreateProblemResult(
+            statusCode,
+            title,
+            result.Message ?? "The tenant operation failed.",
+            result.OperationId,
+            result.ErrorCode);
+    }
+
+    private static int GetCommandFailureStatus(string? errorCode)
+        => errorCode?.Trim().ToLowerInvariant() switch {
+            "invalid-request" or "400" => StatusCodes.Status400BadRequest,
+            "timeout" or "408" or "504" => StatusCodes.Status504GatewayTimeout,
+            "unavailable" or "401" or "403" or "404" or "429" or "502" or "503" => StatusCodes.Status503ServiceUnavailable,
+            "unexpected" or "unexpected_status" or "unexpected-status" or "500" => StatusCodes.Status500InternalServerError,
+            _ => StatusCodes.Status422UnprocessableEntity,
+        };
+
     private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null) {
+        return CreateProblemResult(statusCode, title, detail, operationId: null, errorCode: null);
+    }
+
+    private ObjectResult CreateProblemResult(
+        int statusCode,
+        string title,
+        string? detail,
+        string? operationId,
+        string? errorCode) {
         string correlationId = HttpContext.Items["CorrelationId"]?.ToString()
             ?? Guid.NewGuid().ToString();
-        return new ObjectResult(new ProblemDetails {
+        var problem = new ProblemDetails {
             Status = statusCode,
             Title = title,
             Detail = detail,
             Instance = HttpContext.Request.Path,
             Extensions = { ["correlationId"] = correlationId },
-        }) { StatusCode = statusCode };
+        };
+
+        if (!string.IsNullOrWhiteSpace(operationId)) {
+            problem.Extensions["operationId"] = operationId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(errorCode)) {
+            problem.Extensions["errorCode"] = errorCode;
+        }
+
+        return new ObjectResult(problem) { StatusCode = statusCode };
     }
 }

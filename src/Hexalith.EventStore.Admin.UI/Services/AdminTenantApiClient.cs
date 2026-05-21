@@ -269,6 +269,8 @@ public class AdminTenantApiClient(
 
         HttpStatusCode statusCode = response.StatusCode;
         string? reasonPhrase = response.ReasonPhrase;
+        ProblemDetailInfo? problemDetail = await TryReadProblemDetailAsync(response).ConfigureAwait(false);
+        string? problemMessage = FormatProblemDetail(problemDetail);
 
         if (statusCode == HttpStatusCode.UnprocessableEntity) {
             string? errorDetail = null;
@@ -284,7 +286,7 @@ public class AdminTenantApiClient(
             }
 
             throw new InvalidOperationException(
-                errorDetail ?? reasonPhrase ?? "The operation was rejected by the server.");
+                problemMessage ?? errorDetail ?? reasonPhrase ?? "The operation was rejected by the server.");
         }
 
         throw statusCode switch {
@@ -292,12 +294,67 @@ public class AdminTenantApiClient(
                 "Authentication required. Please sign in again."),
             HttpStatusCode.Forbidden => new ForbiddenAccessException(
                 "Access denied. Insufficient permissions to access this resource."),
+            HttpStatusCode.BadRequest => new InvalidOperationException(
+                problemMessage ?? "The admin request was invalid."),
             HttpStatusCode.ServiceUnavailable => new ServiceUnavailableException(
-                "The admin backend service is temporarily unavailable."),
+                problemMessage ?? "The admin backend service is temporarily unavailable."),
+            HttpStatusCode.GatewayTimeout => new ServiceUnavailableException(
+                problemMessage ?? "The admin backend service timed out."),
             _ => new HttpRequestException(
-                $"Admin API returned {(int)statusCode}: {reasonPhrase}",
+                problemMessage ?? $"Admin API returned {(int)statusCode}: {reasonPhrase}",
                 null,
                 statusCode),
         };
     }
+
+    private static string? FormatProblemDetail(ProblemDetailInfo? problemDetail) {
+        if (problemDetail is null) {
+            return null;
+        }
+
+        string message = string.IsNullOrWhiteSpace(problemDetail.Detail)
+            ? problemDetail.Title ?? "The admin request failed."
+            : problemDetail.Detail;
+
+        if (!string.IsNullOrWhiteSpace(problemDetail.OperationId)
+            && !message.Contains(problemDetail.OperationId, StringComparison.Ordinal)) {
+            message = $"{message} Operation ID: {problemDetail.OperationId}.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(problemDetail.ErrorCode)
+            && !message.Contains(problemDetail.ErrorCode, StringComparison.OrdinalIgnoreCase)) {
+            message = $"{message} Error code: {problemDetail.ErrorCode}.";
+        }
+
+        return message;
+    }
+
+    private static async Task<ProblemDetailInfo?> TryReadProblemDetailAsync(HttpResponseMessage response) {
+        try {
+            string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(body)) {
+                return null;
+            }
+
+            using var doc = JsonDocument.Parse(body);
+            string? detail = doc.RootElement.TryGetProperty("detail", out JsonElement detailElement)
+                ? detailElement.GetString()
+                : null;
+            string? title = doc.RootElement.TryGetProperty("title", out JsonElement titleElement)
+                ? titleElement.GetString()
+                : null;
+            string? operationId = doc.RootElement.TryGetProperty("operationId", out JsonElement operationElement)
+                ? operationElement.GetString()
+                : null;
+            string? errorCode = doc.RootElement.TryGetProperty("errorCode", out JsonElement errorCodeElement)
+                ? errorCodeElement.GetString()
+                : null;
+            return new ProblemDetailInfo(title, detail, operationId, errorCode);
+        }
+        catch {
+            return null;
+        }
+    }
+
+    private sealed record ProblemDetailInfo(string? Title, string? Detail, string? OperationId, string? ErrorCode);
 }
