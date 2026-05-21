@@ -1,6 +1,6 @@
 # Post-Epic Deferred DW14: Admin Deferred Operations UX Policy
 
-Status: ready-for-dev
+Status: done
 
 Context created: 2026-05-20
 Context refreshed: 2026-05-21
@@ -85,37 +85,37 @@ The source evidence classifies this as a scope/UX gap, not a runtime crash. The 
 
 ## Tasks / Subtasks
 
-- [ ] Reconfirm deferred UX scope before editing. (AC: 1, 2, 8)
-  - [ ] Re-read the CC-3 section in the 2026-05-20 proposal and source evidence.
-  - [ ] Treat the recommended decision as selected for this story: honest deferred UX, not backend engines.
-  - [ ] Use the Truth-before-submit deferred operation pattern for all five Issue 15 operations unless evidence proves a stricter disabled-button variant is necessary.
-  - [ ] Record any discovered backend support that contradicts the deferred decision before changing UI copy.
-- [ ] Add focused bUnit coverage first. (AC: 1, 2, 7, 8, 9, 11)
-  - [ ] Add or update `SnapshotsPageTests` to prove manual snapshot creation shows visible deferred status before final submission, uses truthful final action copy, and does not imply a real snapshot will be created.
-  - [ ] Add or update `CompactionPageTests` to prove compaction shows visible deferred status before final submission, uses truthful final action copy, and does not imply real compaction will start.
-  - [ ] Add or update `BackupsPageTests` to prove backup creation, backup validation, and stream export each show visible deferred status before final submission, use truthful final action copy, and do not imply real backup/validation/export work will start.
-  - [ ] Assert exact deferred messages or stricter approved equivalents, not just "some warning appears."
-  - [ ] Keep existing tests that prove deferred backend responses clear busy state and do not produce success UI.
-- [ ] Implement Snapshots UX policy. (AC: 1, 2, 3, 7, 8, 11)
-  - [ ] Update `src/Hexalith.EventStore.Admin.UI/Pages/Snapshots.razor` around `OpenCreateSnapshotDialog`, the Create Snapshot dialog body, and final action button.
-  - [ ] Change the manual snapshot action surface or dialog copy so the operator sees `Deferred by backend` or equivalent before final submission.
-  - [ ] Preserve Add/Edit/Delete snapshot policy behavior and URL pre-fill behavior for policy creation.
-  - [ ] Preserve `Operator` role gate and existing loading/error/filter states.
-- [ ] Implement Compaction UX policy. (AC: 1, 2, 4, 7, 8, 11)
-  - [ ] Update `src/Hexalith.EventStore.Admin.UI/Pages/Compaction.razor` around `OpenTriggerDialog`, the Trigger Compaction dialog body, and final action button.
-  - [ ] Change the compaction action surface or dialog copy so the operator sees `Deferred by backend` or equivalent before final submission.
-  - [ ] Preserve active-job guard, tenant/domain fields if the dialog remains openable, failed-job expansion, and status badges.
-  - [ ] Preserve `_disposed` guards around debounce callbacks.
-- [ ] Implement Backups UX policy. (AC: 1, 2, 5, 6, 7, 8, 11)
-  - [ ] Update `src/Hexalith.EventStore.Admin.UI/Pages/Backups.razor` around Create Backup, Validate Backup, and Export Stream.
-  - [ ] Change backup creation, backup validation, and stream export action surfaces or dialog copy so the operator sees `Deferred by backend` or equivalent before final submission.
-  - [ ] Preserve restore two-step confirmation and import preview/validation behavior.
-  - [ ] Preserve `Admin` role gate, active backup/restore guards, toast best-effort wrappers, and `blazorDownloadFile` use only for true successful export.
-- [ ] Update manual validation wording. (AC: 10, 12)
-  - [ ] Update `_bmad-output/test-artifacts/admin-ui-manual-tests-restants-apres-corrections-2026-05-20.md` or a follow-up evidence artifact so Issue 15 has an `OK - deferred explicit` outcome option.
-  - [ ] Keep the fixture keys for snapshot policies, compaction jobs, and backup jobs intact unless the manual retest artifact explicitly moves them.
-- [ ] Validate and record. (AC: 9, 10, 12)
-  - [ ] Run targeted Admin UI tests:
+- [x] Reconfirm deferred UX scope before editing. (AC: 1, 2, 8)
+  - [x] Re-read the CC-3 section in the 2026-05-20 proposal and source evidence.
+  - [x] Treat the recommended decision as selected for this story: honest deferred UX, not backend engines.
+  - [x] Use the Truth-before-submit deferred operation pattern for all five Issue 15 operations unless evidence proves a stricter disabled-button variant is necessary.
+  - [x] Record any discovered backend support that contradicts the deferred decision before changing UI copy.
+- [x] Add focused bUnit coverage first. (AC: 1, 2, 7, 8, 9, 11)
+  - [x] Add or update `SnapshotsPageTests` to prove manual snapshot creation shows visible deferred status before final submission, uses truthful final action copy, and does not imply a real snapshot will be created.
+  - [x] Add or update `CompactionPageTests` to prove compaction shows visible deferred status before final submission, uses truthful final action copy, and does not imply real compaction will start.
+  - [x] Add or update `BackupsPageTests` to prove backup creation, backup validation, and stream export each show visible deferred status before final submission, use truthful final action copy, and do not imply real backup/validation/export work will start.
+  - [x] Assert exact deferred messages or stricter approved equivalents, not just "some warning appears."
+  - [x] Keep existing tests that prove deferred backend responses clear busy state and do not produce success UI.
+- [x] Implement Snapshots UX policy. (AC: 1, 2, 3, 7, 8, 11)
+  - [x] Update `src/Hexalith.EventStore.Admin.UI/Pages/Snapshots.razor` around `OpenCreateSnapshotDialog`, the Create Snapshot dialog body, and final action button.
+  - [x] Change the manual snapshot action surface or dialog copy so the operator sees `Deferred by backend` or equivalent before final submission.
+  - [x] Preserve Add/Edit/Delete snapshot policy behavior and URL pre-fill behavior for policy creation.
+  - [x] Preserve `Operator` role gate and existing loading/error/filter states.
+- [x] Implement Compaction UX policy. (AC: 1, 2, 4, 7, 8, 11)
+  - [x] Update `src/Hexalith.EventStore.Admin.UI/Pages/Compaction.razor` around `OpenTriggerDialog`, the Trigger Compaction dialog body, and final action button.
+  - [x] Change the compaction action surface or dialog copy so the operator sees `Deferred by backend` or equivalent before final submission.
+  - [x] Preserve active-job guard, tenant/domain fields if the dialog remains openable, failed-job expansion, and status badges.
+  - [x] Preserve `_disposed` guards around debounce callbacks.
+- [x] Implement Backups UX policy. (AC: 1, 2, 5, 6, 7, 8, 11)
+  - [x] Update `src/Hexalith.EventStore.Admin.UI/Pages/Backups.razor` around Create Backup, Validate Backup, and Export Stream.
+  - [x] Change backup creation, backup validation, and stream export action surfaces or dialog copy so the operator sees `Deferred by backend` or equivalent before final submission.
+  - [x] Preserve restore two-step confirmation and import preview/validation behavior.
+  - [x] Preserve `Admin` role gate, active backup/restore guards, toast best-effort wrappers, and `blazorDownloadFile` use only for true successful export. Note: export is now policy-deferred; `blazorDownloadFile` is no longer invoked for the deferred path (no fake-success download).
+- [x] Update manual validation wording. (AC: 10, 12)
+  - [x] Update `_bmad-output/test-artifacts/admin-ui-manual-tests-restants-apres-corrections-2026-05-20.md` or a follow-up evidence artifact so Issue 15 has an `OK - deferred explicit` outcome option.
+  - [x] Keep the fixture keys for snapshot policies, compaction jobs, and backup jobs intact unless the manual retest artifact explicitly moves them.
+- [x] Validate and record. (AC: 9, 10, 12)
+  - [x] Run targeted Admin UI tests:
 
     ```powershell
     $dotnetDir = Join-Path $env:LOCALAPPDATA 'Microsoft\dotnet'
@@ -123,8 +123,14 @@ The source evidence classifies this as a scope/UX gap, not a runtime crash. The 
     dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release --filter "FullyQualifiedName~Snapshots|FullyQualifiedName~Compaction|FullyQualifiedName~Backups" -m:1
     ```
 
-  - [ ] If UI behavior needs runtime confirmation, start Aspire per repository instructions and run the Issue 15 manual path on `/snapshots`, `/compaction`, and `/backups`.
-  - [ ] Record exact test commands, results, skipped runtime checks, and any remaining manual follow-up in the Dev Agent Record.
+  - [x] If UI behavior needs runtime confirmation, start Aspire per repository instructions and run the Issue 15 manual path on `/snapshots`, `/compaction`, and `/backups`. (Deferred to operator follow-up — recorded in Verification Status.)
+  - [x] Record exact test commands, results, skipped runtime checks, and any remaining manual follow-up in the Dev Agent Record.
+
+### Review Findings
+
+- [x] [Review][Patch] Sanitize deferred result toast copy before displaying backend messages [src/Hexalith.EventStore.Admin.UI/Pages/Snapshots.razor:764] — The five deferred confirm handlers forward any non-empty backend result text into a warning toast. If backend behavior drifts and returns `Success=true` with positive text such as `Started` or `Created`, the UI would show success-state wording in a warning toast while the dialog remains open. Use the fixed deferred policy copy unless the backend text is explicitly deferred/unsupported/unavailable wording. Fixed in review patch.
+- [x] [Review][Patch] Add bUnit proof that backup validation shows its deferred badge before opening the dialog [tests/Hexalith.EventStore.Admin.UI.Tests/Pages/BackupsPageTests.cs:263] — AC9 requires pre-communication coverage for all five Issue 15 operations. The production UI renders `data-deferred-action="backup-validate"`, but the current badge test only asserts backup creation and stream export, while the validation test starts after opening the dialog. Fixed in review patch.
+- [x] [Review][Patch] Add Success=true deferred-message tests for the other deferred operations [tests/Hexalith.EventStore.Admin.UI.Tests/Pages/SnapshotsPageTests.cs:314] — AC7 includes `Success=true` responses with deferred/unsupported wording and AC9 says no-fake-success behavior remains proven. The added explicit edge-case test covers manual snapshots only; compaction, backup creation, backup validation, and stream export should have equivalent warning-intent/no-success assertions. Fixed in review patch.
 
 ## Dev Notes
 
@@ -226,7 +232,7 @@ DW13 reinforces several patterns that apply here:
 
 ### Agent Model Used
 
-TBD by dev agent.
+Claude Opus 4.7 (1M context).
 
 ### UX Pattern Decisions
 
@@ -242,24 +248,83 @@ Use the selected pattern below unless implementation evidence proves the stricte
 
 ### Debug Log References
 
-TBD.
+Targeted bUnit run (PowerShell, 2026-05-21):
+
+```text
+dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release \
+  --filter "FullyQualifiedName~Snapshots|FullyQualifiedName~Compaction|FullyQualifiedName~Backups" -m:1
+Reussi! - echec: 0, reussite: 83, ignoree(s): 0, total: 83, duree: 2 s
+```
+
+Review patch targeted bUnit run (PowerShell, 2026-05-21):
+
+```text
+dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release \
+  --filter "FullyQualifiedName~Snapshots|FullyQualifiedName~Compaction|FullyQualifiedName~Backups" -m:1
+Reussi! - echec: 0, reussite: 88, ignoree(s): 0, total: 88, duree: 2 s
+```
+
+Full Admin.UI.Tests project run (regression check):
+
+```text
+dotnet test tests/Hexalith.EventStore.Admin.UI.Tests --configuration Release -m:1 --nologo
+Echec! - echec: 1, reussite: 813, ignoree(s): 0, total: 814, duree: 26 s
+```
+
+The single failure (`Hexalith.EventStore.Admin.UI.Tests.Components.JsonViewerTests.JsonViewer_ShowsWarning_WhenJsonIsInvalid`) reproduces unchanged on `main` HEAD (verified via `git stash` + targeted re-run on clean HEAD); it is unrelated to the Snapshots/Compaction/Backups deferred-UX changes in this story.
 
 ### Completion Notes List
 
 - Story context engine analysis completed on 2026-05-21. Comprehensive developer guide created for deferred operations UX policy.
 - Party-mode review fixes applied on 2026-05-21: concrete Truth-before-submit pattern selected, AC/test gates tightened, and Dev Agent Record UX choices prefilled.
+- Truth-before-submit pattern applied to all five Issue 15 operations on 2026-05-21:
+  - Manual snapshot creation (`/snapshots`): visible `Deferred by backend` Fluent badge inside the `AuthorizedView` next to `Create Snapshot`, deferred body card in the create dialog with the exact PRD-required wording, and final action label changed from `Create Snapshot` to `Submit Deferred Request`. `OnCreateSnapshotConfirm` now always raises a `Warning` toast (never `Success`) and leaves the dialog open so the operator can cancel explicitly; deferred wording from the backend response is preserved verbatim when present, otherwise a hard-coded fallback is used. Policy add/edit/delete behavior, URL pre-fill (`?create=true`), `Operator` role gate, and existing loading/error/filter states are untouched.
+  - Compaction (`/compaction`): same pattern applied to `OpenTriggerDialog` / Trigger Compaction dialog. Active-job guard, tenant/domain fields, failed-job expansion, status badges, debounce + `_disposed` guards are preserved.
+  - Backup creation, backup validation, stream export (`/backups`): three independent Truth-before-submit surfaces. Validate badge is rendered inside the per-row Actions cell only when the row is `Completed && !IsValidated`. Stream export no longer calls `blazorDownloadFile` at all in this iteration (no fake-success download), even when the backend returns `Success=true` with content; future real-export work owns reintroducing the download path. Restore (two-step + acknowledgement + point-in-time + dry-run) and Import (file-size guard, JSON preview, schema validation) are unchanged.
+- All five OnConfirm methods now follow the same shape: call backend for diagnostic parity, then unconditionally show warning feedback. Review patch tightened result-message selection so only explicit deferred/unsupported/unavailable backend text is shown; positive backend text such as `Started` falls back to fixed policy copy. AC7 is enforced at the call site — there is no remaining success branch on these paths.
+- Added `ShowWarningToastBestEffortAsync` helper to `Backups.razor` mirroring the existing best-effort error/success wrappers; toast failures cannot mask deferred feedback.
+- bUnit coverage extended on 2026-05-21:
+  - New tests assert the page-surface badge is visible before the dialog opens, the dialog body carries the exact PRD-required deferred message, the final action label is `Submit Deferred Request` (and never the old verbs), and the toast `Intent` is `Warning` — including the AC7 edge case where the backend returns `Success=true` with a deferred-looking message.
+  - Existing post-submit deferred tests were re-pointed to the new `Submit Deferred Request` label and now also assert `ToastIntent.Warning`, so the no-fake-success contract is exercised both forward (truthful labels and copy) and backward (toast intent).
+  - Existing `Start*` / `>Export<` / `<span>Validate</span>` selectors and the `resource-intensive operation` legacy warning copy were updated or removed because they no longer match the truthful labels.
+- Code review patches applied on 2026-05-21: sanitized backend result copy for all five deferred confirm handlers, added backup validation pre-dialog badge coverage, and added/extended `Success=true` no-fake-success tests for compaction, backup creation, backup validation, and stream export.
+- ✅ Resolved AC10 + AC12 manual evidence wording: `_bmad-output/test-artifacts/admin-ui-manual-tests-restants-apres-corrections-2026-05-20.md` now spells out the Truth-before-submit checklist (badge + body + final action label + warning intent), records the explicit `OK - deferred explicite` / `Action-needed` / `KO` outcomes, and updates the Issue 15 outcome line to match.
+- ✅ Sprint status updated: `post-epic-deferred-dw14-admin-deferred-operations-ux-policy: ready-for-dev -> in-progress` at story start, `-> review` at completion.
+- Coexistence note for DW15 (`post-epic-deferred-dw15-admin-ui-blazor-navigation-hygiene` was moved to `ready-for-dev` in `sprint-status.yaml` mid-iteration): no shared files; the two stories can land in any order.
 
 ### File List
 
-TBD by dev agent.
+Production code:
+
+- `src/Hexalith.EventStore.Admin.UI/Pages/Snapshots.razor`
+- `src/Hexalith.EventStore.Admin.UI/Pages/Compaction.razor`
+- `src/Hexalith.EventStore.Admin.UI/Pages/Backups.razor`
+
+Tests:
+
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/SnapshotsPageTests.cs`
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/CompactionPageTests.cs`
+- `tests/Hexalith.EventStore.Admin.UI.Tests/Pages/BackupsPageTests.cs`
+
+Evidence and tracking:
+
+- `_bmad-output/test-artifacts/admin-ui-manual-tests-restants-apres-corrections-2026-05-20.md`
+- `_bmad-output/implementation-artifacts/post-epic-deferred-dw14-admin-deferred-operations-ux-policy.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ### Verification Status
 
-TBD by dev agent.
+- Build (Release, .NET 10.0.300): PASS for solution slice required by Admin.UI.Tests.
+- Tier 1 targeted bUnit run (`FullyQualifiedName~Snapshots|...~Compaction|...~Backups`): **PASS — 88/88 (0 failures, 0 skipped, ~2 s)** after code-review patches. Original implementation run was **PASS — 83/83** before the additional review tests.
+- Tier 1 full Admin.UI.Tests run: **813 pass / 1 fail / 0 skipped.** The single failure is `Components.JsonViewerTests.JsonViewer_ShowsWarning_WhenJsonIsInvalid` and reproduces unchanged on `main` HEAD with a clean checkout (`git stash` + targeted re-run). Out of scope for this story.
+- Tier 2/3 (DAPR integration, Aspire end-to-end): not run. The Truth-before-submit policy lives entirely in `Admin.UI` razor/cs surfaces and existing backend deferred responses; no DAPR/state-store contract was modified.
+- Runtime manual validation on `/snapshots`, `/compaction`, `/backups`: **deferred to operator follow-up.** Per repo guidance and DW13 precedent, runtime evidence on storage admin surfaces requires `aspire run` + DAPR placement/scheduler. The bUnit pre-submit + post-submit assertions cover the truthful-copy contract end-to-end at the page rendering layer; the manual retest checklist in `admin-ui-manual-tests-restants-apres-corrections-2026-05-20.md` is updated so the operator can record `OK - deferred explicite` against Issue 15 once a live session is run.
 
 ### Change Log
 
 | Date | Version | Description | Author |
 | --- | --- | --- | --- |
+| 2026-05-21 | 1.3 | Applied code-review patches: sanitized deferred result toast copy to suppress positive backend wording, added backup validation pre-dialog badge proof, added/extended Success=true no-fake-success coverage for compaction and backup/create/validate/export paths. Targeted bUnit slice passes 88/88. Status: review → done. | Codex |
+| 2026-05-21 | 1.2 | Implemented Truth-before-submit deferred UX across `/snapshots`, `/compaction`, `/backups` (Create, Validate, Export). Added pre-submit deferred-badge + dialog-body + `Submit Deferred Request` final action label + `Warning` toast intent (including AC7 Success=true edge case). Extended bUnit coverage (83/83 targeted tests pass); regression run 813/814 with the single pre-existing `JsonViewer_ShowsWarning_WhenJsonIsInvalid` failure unrelated to this story. Manual retest evidence and Issue 15 outcome line updated. Status: ready-for-dev → review. | Claude (Opus 4.7) |
 | 2026-05-21 | 1.1 | Applied party-mode review fixes: selected Truth-before-submit deferred operation pattern, tightened no-fake-success edge cases, exact-copy test gates, and UX decision table. | Codex |
 | 2026-05-21 | 1.0 | Expanded DW14 from starter handoff to ready-for-dev story with locked deferred UX decision, scoped ACs, dev notes, tests, and validation guidance. | Codex |

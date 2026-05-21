@@ -18,11 +18,17 @@
     <h1 style="margin: 0;">Compaction</h1>
     <div style="display: flex; gap: 8px;">
         <AuthorizedView MinimumRole="AdminRole.Operator">
-            <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
-                          OnClick="OpenTriggerDialog"
-                          aria-label="Trigger compaction">
-                Trigger Compaction
-            </FluentButton>
+            <div style="display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px;"
+                 data-deferred-action="compaction">
+                <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
+                              OnClick="OpenTriggerDialog"
+                              aria-label="Trigger compaction (currently deferred by backend)">
+                    Trigger Compaction
+                </FluentButton>
+                <FluentBadge Appearance="BadgeAppearance.Ghost"
+                             aria-label="Compaction deferred by backend"
+                             Content="Deferred by backend" />
+            </div>
         </AuthorizedView>
         <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                       OnClick="OnManualRefresh"
@@ -154,13 +160,19 @@
 @if (_showTriggerDialog)
 {
     <FluentDialog @ref="_triggerDialog" Modal="true"
-                  aria-label="Trigger Compaction"
+                  aria-label="Trigger Compaction (deferred)"
                   Style="min-width: 400px; max-width: 500px;">
         <FluentDialogBody>
             <TitleTemplate>
                 <h3 style="margin: 0;">Trigger Compaction</h3>
             </TitleTemplate>
             <ChildContent>
+                <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 12px;"
+                            aria-label="Deferred operation notice">
+                    <p style="margin: 0; font-size: 13px; color: var(--colorNeutralForeground2);">
+                        @CompactionDeferredMessage
+                    </p>
+                </FluentCard>
                 <FluentTextInput @bind-Value="_triggerTenantId"
                                  Label="Tenant ID" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
@@ -175,24 +187,12 @@
                                  Label="Domain (optional)"
                                  Style="width: 100%; margin-bottom: 12px;"
                                  aria-label="Domain" />
-                @if (!string.IsNullOrWhiteSpace(_triggerTenantId))
-                {
-                    <p style="margin: 0 0 12px; font-size: 14px;">
-                        This will compact event streams for tenant <strong>@_triggerTenantId</strong>@if (!string.IsNullOrWhiteSpace(_triggerDomain))
-                        {<text>, domain <strong>@_triggerDomain</strong></text>}.
-                    </p>
-                }
-                <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 8px;">
-                    <p style="margin: 0; font-size: 13px; color: var(--colorNeutralForeground3);">
-                        Compaction is a resource-intensive operation that runs asynchronously.
-                        It may temporarily increase CPU and I/O usage. Consider running during low-traffic periods.
-                    </p>
-                </FluentCard>
             </ChildContent>
             <ActionTemplate>
                 <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseTriggerDialogAsync">Cancel</FluentButton>
                 <FluentButton Appearance="ButtonAppearance.Primary"
                               OnClick="OnTriggerConfirm"
+                              aria-label="Submit deferred compaction request"
                               Disabled="@(!CanTrigger || _isOperating)">
                     @if (_isOperating)
                     {
@@ -200,7 +200,7 @@
                     }
                     else
                     {
-                        <span>Start Compaction</span>
+                        <span>Submit Deferred Request</span>
                     }
                 </FluentButton>
             </ActionTemplate>
@@ -214,6 +214,7 @@
     private bool _isLoading = true;
     private bool _apiUnavailable;
     private bool _disposed;
+    private const string CompactionDeferredMessage = "Compaction is deferred. EventStore write-once event keys require an approved non-destructive compaction model before this operation can run.";
     private string _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
     private string? _tenantFilter;
     private string? _tenantFilterInput;
@@ -470,21 +471,10 @@
                 string.IsNullOrWhiteSpace(_triggerDomain) ? null : _triggerDomain.Trim(),
                 _triggerCts.Token);
 
-            if (result?.Success == true)
-            {
-                await ToastService.ShowSuccessAsync($"Compaction started for {_triggerTenantId}. Refresh to check status.");
-                if (_triggerDialog is not null)
-                {
-                    await _triggerDialog.HideAsync().ConfigureAwait(false);
-                }
-
-                _showTriggerDialog = false;
-                await LoadDataAsync();
-            }
-            else
-            {
-                await ToastService.ShowErrorAsync(result?.Message ?? "Failed to trigger compaction.");
-            }
+            // Compaction is policy-deferred for this iteration. Never surface success,
+            // even on backend Success=true with deferred-looking messages. Keep dialog open.
+            string deferredBody = SelectDeferredResultMessage(result?.Message, CompactionDeferredMessage);
+            await ToastService.ShowWarningAsync(deferredBody);
         }
         catch (ServiceUnavailableException)
         {
@@ -512,6 +502,15 @@
             StateHasChanged();
         }
     }
+
+    private static string SelectDeferredResultMessage(string? message, string fallback) =>
+        IsDeferredOperationMessage(message) ? message!.Trim() : fallback;
+
+    private static bool IsDeferredOperationMessage(string? message) =>
+        !string.IsNullOrWhiteSpace(message)
+        && (message.Contains("deferred", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("unsupported", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("unavailable", StringComparison.OrdinalIgnoreCase));
 
     public async ValueTask DisposeAsync()
     {

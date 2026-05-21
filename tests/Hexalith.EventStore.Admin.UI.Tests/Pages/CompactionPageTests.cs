@@ -179,21 +179,26 @@ public class CompactionPageTests : AdminUITestContext {
         IRenderedComponent<FluentButton> triggerBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Trigger Compaction"));
         await triggerBtn.InvokeAsync(triggerBtn.Instance.OnClick.InvokeAsync);
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Compaction"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Submit Deferred Request"), TimeSpan.FromSeconds(5));
 
         // Fill in tenant ID via the dialog's text field
         IReadOnlyList<IRenderedComponent<FluentTextInput>> textFields = cut.FindComponents<FluentTextInput>();
         IRenderedComponent<FluentTextInput> tenantField = textFields.First(f => f.Markup.Contains("Tenant ID"));
         await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("test-tenant"));
 
-        // Click Start Compaction
+        // Click Submit Deferred Request
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("Start Compaction"));
+            .First(b => b.Markup.Contains("Submit Deferred Request"));
         await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — API invoked
         _ = await _mockCompactionApi.Received(1).TriggerCompactionAsync(
             "test-tenant", Arg.Any<string?>(), Arg.Any<CancellationToken>());
+
+        TestToastService toastService = Services.GetRequiredService<TestToastService>();
+        ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
+        toastOptions.Body.ShouldBe("Compaction is deferred. EventStore write-once event keys require an approved non-destructive compaction model before this operation can run.");
+        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
     }
 
     [Fact]
@@ -211,16 +216,16 @@ public class CompactionPageTests : AdminUITestContext {
         IRenderedComponent<FluentButton> triggerBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Trigger Compaction"));
         await triggerBtn.InvokeAsync(triggerBtn.Instance.OnClick.InvokeAsync);
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Compaction"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Submit Deferred Request"), TimeSpan.FromSeconds(5));
 
         // Fill in tenant ID
         IReadOnlyList<IRenderedComponent<FluentTextInput>> textFields = cut.FindComponents<FluentTextInput>();
         IRenderedComponent<FluentTextInput> tenantField = textFields.First(f => f.Markup.Contains("Tenant ID"));
         await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("test-tenant"));
 
-        // Click Start Compaction
+        // Click Submit Deferred Request
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("Start Compaction"));
+            .First(b => b.Markup.Contains("Submit Deferred Request"));
         await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — API was called
@@ -231,7 +236,7 @@ public class CompactionPageTests : AdminUITestContext {
     [Fact]
     public async Task CompactionPage_TriggerDialog_ShowsDeferredToastAndClearsBusyState() {
         SetupJobs([]);
-        const string deferredMessage = "Compaction is deferred.";
+        const string deferredMessage = "Compaction is deferred. EventStore write-once event keys require an approved non-destructive compaction model before this operation can run.";
         _ = _mockCompactionApi.TriggerCompactionAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
@@ -246,21 +251,87 @@ public class CompactionPageTests : AdminUITestContext {
         IRenderedComponent<FluentButton> triggerBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Trigger Compaction"));
         await triggerBtn.InvokeAsync(triggerBtn.Instance.OnClick.InvokeAsync);
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Compaction"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Submit Deferred Request"), TimeSpan.FromSeconds(5));
 
         IRenderedComponent<FluentTextInput> tenantField = cut.FindComponents<FluentTextInput>()
             .First(f => f.Markup.Contains("Tenant ID"));
         await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("test-tenant"));
 
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("Start Compaction"));
+            .First(b => b.Markup.Contains("Submit Deferred Request"));
         await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
         toastOptions.Body.ShouldBe(deferredMessage);
-        cut.Markup.ShouldContain("Start Compaction");
+        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
+        cut.Markup.ShouldContain("Trigger Compaction");
         startBtn.Instance.Disabled.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task CompactionPage_TriggerDialog_ShowsWarningToast_WhenBackendReportsSuccessTrueWithDeferredMessage() {
+        SetupJobs([]);
+        const string deferredMessage = "Compaction is deferred.";
+        _ = _mockCompactionApi.TriggerCompactionAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
+                true,
+                "deferred-success-true",
+                deferredMessage,
+                null)));
+
+        IRenderedComponent<Compaction> cut = Render<Compaction>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Trigger Compaction"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> triggerBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Trigger Compaction"));
+        await triggerBtn.InvokeAsync(triggerBtn.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Submit Deferred Request"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentTextInput> tenantField = cut.FindComponents<FluentTextInput>()
+            .First(f => f.Markup.Contains("Tenant ID"));
+        await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("test-tenant"));
+
+        IRenderedComponent<FluentButton> submitBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Submit Deferred Request"));
+        await submitBtn.InvokeAsync(submitBtn.Instance.OnClick.InvokeAsync);
+
+        TestToastService toastService = Services.GetRequiredService<TestToastService>();
+        ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
+        toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Intent.ShouldNotBe(ToastIntent.Success);
+        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
+    }
+
+    [Fact]
+    public void CompactionPage_TriggerButton_ShowsDeferredBadgeBeforeDialog() {
+        // AC1, AC2, AC8: visible deferred status near the trigger action, before opening the dialog.
+        SetupJobs([]);
+
+        IRenderedComponent<Compaction> cut = Render<Compaction>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Trigger Compaction"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("Deferred by backend");
+        cut.Markup.ShouldContain("data-deferred-action=\"compaction\"");
+    }
+
+    [Fact]
+    public async Task CompactionPage_TriggerDialog_PreCommunicatesDeferredBeforeSubmit() {
+        // AC1, AC2, AC8, AC9: dialog body states deferred state, truthful final action label.
+        SetupJobs([]);
+
+        IRenderedComponent<Compaction> cut = Render<Compaction>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Trigger Compaction"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> triggerBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Trigger Compaction"));
+        await triggerBtn.InvokeAsync(triggerBtn.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Submit Deferred Request"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("Compaction is deferred. EventStore write-once event keys require an approved non-destructive compaction model before this operation can run.");
+        cut.Markup.ShouldContain("<span>Submit Deferred Request</span>");
+        cut.Markup.ShouldNotContain("<span>Start Compaction</span>");
     }
 
     [Fact]
@@ -314,7 +385,7 @@ public class CompactionPageTests : AdminUITestContext {
     }
 
     [Fact]
-    public async Task CompactionPage_TriggerDialog_RendersFormFieldsAndWarning() {
+    public async Task CompactionPage_TriggerDialog_RendersFormFieldsAndDeferredCopy() {
         // Arrange
         SetupJobs([]);
 
@@ -326,14 +397,14 @@ public class CompactionPageTests : AdminUITestContext {
             .First(b => b.Markup.Contains("Trigger Compaction"));
         await triggerBtn.InvokeAsync(triggerBtn.Instance.OnClick.InvokeAsync);
 
-        // Assert — dialog shows form fields and warning
+        // Assert — dialog shows form fields and deferred body copy
         cut.Markup.ShouldContain("Tenant ID");
         cut.Markup.ShouldContain("Domain");
-        cut.Markup.ShouldContain("resource-intensive operation");
+        cut.Markup.ShouldContain("Compaction is deferred. EventStore write-once event keys require an approved non-destructive compaction model before this operation can run.");
     }
 
     [Fact]
-    public async Task CompactionPage_TriggerDialog_StartDisabledWhenTenantEmpty() {
+    public async Task CompactionPage_TriggerDialog_SubmitDisabledWhenTenantEmpty() {
         // Arrange
         SetupJobs([]);
 
@@ -345,9 +416,9 @@ public class CompactionPageTests : AdminUITestContext {
             .First(b => b.Markup.Contains("Trigger Compaction"));
         await triggerBtn.InvokeAsync(triggerBtn.Instance.OnClick.InvokeAsync);
 
-        // Assert — Start Compaction button is disabled (tenant ID is empty)
+        // Assert — Submit Deferred Request button is disabled (tenant ID is empty)
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("Start Compaction"));
+            .First(b => b.Markup.Contains("Submit Deferred Request"));
         startBtn.Instance.Disabled.ShouldBe(true);
     }
 
@@ -436,7 +507,7 @@ public class CompactionPageTests : AdminUITestContext {
         IRenderedComponent<FluentButton> triggerBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Trigger Compaction"));
         await triggerBtn.InvokeAsync(triggerBtn.Instance.OnClick.InvokeAsync);
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Compaction"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Submit Deferred Request"), TimeSpan.FromSeconds(5));
 
         // Assert — v5 dialog body element is present, no v4 header/footer elements
         cut.Markup.ShouldContain("fluent-dialog-body");
@@ -445,8 +516,8 @@ public class CompactionPageTests : AdminUITestContext {
 
         // Assert — TitleTemplate-rendered title is present
         cut.Markup.ShouldContain("Trigger Compaction");
-        // Assert — ActionTemplate-rendered footer button is present
-        cut.Markup.ShouldContain("Start Compaction");
+        // Assert — ActionTemplate-rendered footer truthful action label is present
+        cut.Markup.ShouldContain("Submit Deferred Request");
     }
 
     // ===== Helpers =====

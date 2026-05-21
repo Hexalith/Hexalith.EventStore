@@ -239,7 +239,7 @@ public class SnapshotsPageTests : AdminUITestContext {
     [Fact]
     public async Task SnapshotsPage_CreateSnapshotDialog_ShowsDeferredToastAndClearsBusyState() {
         SetupPolicies([]);
-        const string deferredMessage = "Manual snapshot creation is deferred.";
+        const string deferredMessage = "Manual snapshot creation is deferred. EventStore does not yet have an approved snapshot job model for operator-triggered snapshots.";
         _ = _mockSnapshotApi.CreateSnapshotAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
@@ -265,14 +265,88 @@ public class SnapshotsPageTests : AdminUITestContext {
             () => fields.First(f => f.Markup.Contains("Aggregate ID")).Instance.ValueChanged.InvokeAsync("counter-1"));
 
         IRenderedComponent<FluentButton> submitButton = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("<span>Create Snapshot</span>"));
+            .First(b => b.Markup.Contains("<span>Submit Deferred Request</span>"));
         await submitButton.InvokeAsync(submitButton.Instance.OnClick.InvokeAsync);
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
         toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
         cut.Markup.ShouldContain("Create Snapshot");
         submitButton.Instance.Disabled.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void SnapshotsPage_CreateSnapshotButton_ShowsDeferredBadgeBeforeDialog() {
+        // AC1, AC2, AC8: visible deferred status before operator opens the dialog.
+        SetupPolicies([]);
+
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Snapshot"), TimeSpan.FromSeconds(5));
+
+        // Assert — deferred badge is visible on the page surface, before any dialog opens.
+        cut.Markup.ShouldContain("Deferred by backend");
+        cut.Markup.ShouldContain("data-deferred-action=\"manual-snapshot\"");
+    }
+
+    [Fact]
+    public async Task SnapshotsPage_CreateSnapshotDialog_PreCommunicatesDeferredBeforeSubmit() {
+        // AC1, AC2, AC8, AC9: opened dialog states deferred state and uses truthful final action label.
+        SetupPolicies([]);
+
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Snapshot"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> openButton = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Create Snapshot"));
+        await openButton.InvokeAsync(openButton.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Aggregate ID"), TimeSpan.FromSeconds(5));
+
+        // Assert — dialog body carries the exact deferred message.
+        cut.Markup.ShouldContain("Manual snapshot creation is deferred. EventStore does not yet have an approved snapshot job model for operator-triggered snapshots.");
+
+        // Assert — final action label is truthful, never "Create Snapshot" as a verb.
+        cut.Markup.ShouldContain("<span>Submit Deferred Request</span>");
+        cut.Markup.ShouldNotContain("<span>Create Snapshot</span>");
+    }
+
+    [Fact]
+    public async Task SnapshotsPage_CreateSnapshotDialog_ShowsWarningToast_WhenBackendReportsSuccessTrueWithDeferredMessage() {
+        // AC7: no fake-success toast even when backend returns Success=true with deferred-looking message.
+        SetupPolicies([]);
+        const string deferredMessage = "Manual snapshot creation is deferred.";
+        _ = _mockSnapshotApi.CreateSnapshotAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
+                true,
+                "deferred-success-true",
+                deferredMessage,
+                null)));
+
+        IRenderedComponent<Snapshots> cut = Render<Snapshots>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Snapshot"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> openButton = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Create Snapshot"));
+        await openButton.InvokeAsync(openButton.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Aggregate ID"), TimeSpan.FromSeconds(5));
+
+        IReadOnlyList<IRenderedComponent<FluentTextInput>> fields = cut.FindComponents<FluentTextInput>();
+        await fields.First(f => f.Markup.Contains("Tenant ID")).InvokeAsync(
+            () => fields.First(f => f.Markup.Contains("Tenant ID")).Instance.ValueChanged.InvokeAsync("tenant-a"));
+        await fields.First(f => f.Markup.Contains("Domain")).InvokeAsync(
+            () => fields.First(f => f.Markup.Contains("Domain")).Instance.ValueChanged.InvokeAsync("Counter"));
+        await fields.First(f => f.Markup.Contains("Aggregate ID")).InvokeAsync(
+            () => fields.First(f => f.Markup.Contains("Aggregate ID")).Instance.ValueChanged.InvokeAsync("counter-1"));
+
+        IRenderedComponent<FluentButton> submitButton = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("<span>Submit Deferred Request</span>"));
+        await submitButton.InvokeAsync(submitButton.Instance.OnClick.InvokeAsync);
+
+        TestToastService toastService = Services.GetRequiredService<TestToastService>();
+        ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
+        toastOptions.Intent.ShouldNotBe(ToastIntent.Success);
+        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
     }
 
     [Fact]
