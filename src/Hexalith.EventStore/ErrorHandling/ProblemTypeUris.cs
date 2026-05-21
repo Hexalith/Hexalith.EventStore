@@ -13,6 +13,7 @@ public static class ProblemTypeUris {
     public const string NotFound = "https://hexalith.io/problems/not-found";
     public const string NotImplemented = "https://hexalith.io/problems/not-implemented";
     public const string UnsupportedApiVersion = "https://hexalith.io/problems/unsupported-api-version";
+    public const string DomainRejection = "https://hexalith.io/problems/domain-rejections";
     public const string ConcurrencyConflict = "https://hexalith.io/problems/concurrency-conflict";
     public const string RateLimitExceeded = "https://hexalith.io/problems/rate-limit-exceeded";
     public const string BackpressureExceeded = "https://hexalith.io/problems/backpressure-exceeded";

@@ -33,4 +33,22 @@ public static class GatewayProblemDetailsExtensions {
     /// Extension name carrying retry guidance when the caller may try again later.
     /// </summary>
     public const string RetryAfter = "retryAfter";
+
+    /// <summary>
+    /// Extension name carrying the originating domain rejection event type for typed
+    /// domain rejection ProblemDetails responses.
+    /// </summary>
+    public const string RejectionType = "rejectionType";
+
+    /// <summary>
+    /// Extension name carrying bounded, human-readable corrective action guidance for
+    /// the caller in response to a domain rejection or recoverable failure.
+    /// </summary>
+    public const string CorrectiveAction = "correctiveAction";
+
+    /// <summary>
+    /// Extension name carrying a stable degradation classification when an internal
+    /// component returns a bounded failure ProblemDetails to the caller.
+    /// </summary>
+    public const string Degradation = "degradation";
 }

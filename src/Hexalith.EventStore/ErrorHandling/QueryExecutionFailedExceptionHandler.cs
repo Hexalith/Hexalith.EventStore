@@ -53,6 +53,14 @@ public class QueryExecutionFailedExceptionHandler(ILogger<QueryExecutionFailedEx
             },
         };
 
+        if (queryFailure.StatusCode == StatusCodes.Status500InternalServerError) {
+            problemDetails.Extensions[GatewayProblemDetailsExtensions.RetryAfter] = "30";
+            problemDetails.Extensions[GatewayProblemDetailsExtensions.Degradation] = "projection-query-unavailable";
+            problemDetails.Extensions[GatewayProblemDetailsExtensions.Reason] =
+                "Projection query could not be completed safely. Retry after the advised interval.";
+            httpContext.Response.Headers.RetryAfter = "30";
+        }
+
         if (queryFailure.StatusCode == StatusCodes.Status403Forbidden) {
             problemDetails.Extensions[GatewayProblemDetailsExtensions.TenantId] = queryFailure.Tenant;
         }
