@@ -40,6 +40,7 @@ if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true)) {
 
 app.MapControllers();
 app.MapErrorReferences();
+app.MapApiVersionFallback();
 app.MapSubscribeHandler();
 app.MapActorsHandlers();
 
