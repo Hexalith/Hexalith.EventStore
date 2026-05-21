@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Claims;
 
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Authorization;
@@ -108,6 +109,67 @@ public class AdminTenantsControllerTests {
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+    }
+
+    [Fact]
+    public async Task EnableTenant_ReturnsGatewayTimeout_WhenCommandServiceClassifiesTimeout() {
+        _ = _commandService.EnableTenantAsync("manual-test-tenant-a", Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(
+                false,
+                "01JAXYZ1234567890ABCDEFGH",
+                "Enable request timed out. The operation may still be processing. Operation ID: 01JAXYZ1234567890ABCDEFGH.",
+                "timeout"));
+
+        IActionResult result = await _sut.EnableTenant("manual-test-tenant-a");
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status504GatewayTimeout);
+        ProblemDetails problem = objectResult.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Title.ShouldBe("Operation Timed Out");
+        problem.Detail.ShouldNotBeNull().ShouldContain("may still be processing");
+        problem.Extensions["operationId"].ShouldBe("01JAXYZ1234567890ABCDEFGH");
+        problem.Extensions["errorCode"].ShouldBe("timeout");
+    }
+
+    [Fact]
+    public async Task EnableTenant_ReturnsServiceUnavailable_WhenCommandServiceClassifiesUpstreamForbidden() {
+        _ = _commandService.EnableTenantAsync("manual-test-tenant-a", Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(
+                false,
+                "01JAXYZ1234567890ABCDEFGH",
+                "Command rejected (403). See server logs with correlation ID 01JAXYZ1234567890ABCDEFGH.",
+                "403"));
+
+        IActionResult result = await _sut.EnableTenant("manual-test-tenant-a");
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+    }
+
+    [Fact]
+    public async Task EnableTenant_ReturnsInternalServerError_WhenCommandServiceClassifiesUnexpected() {
+        _ = _commandService.EnableTenantAsync("manual-test-tenant-a", Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(
+                false,
+                "01JAXYZ1234567890ABCDEFGH",
+                "Unexpected tenant command failure. Operation ID: 01JAXYZ1234567890ABCDEFGH.",
+                "unexpected"));
+
+        IActionResult result = await _sut.EnableTenant("manual-test-tenant-a");
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status500InternalServerError);
+    }
+
+    [Fact]
+    public async Task AddUserToTenant_ReturnsBadRequest_WhenCommandServiceClassifiesInvalidRequest() {
+        _ = _commandService.AddUserToTenantAsync("tenant-a", "user-a", "invalid", Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(false, "error-no-operation", "Invalid role 'invalid'.", "invalid-request"));
+
+        IActionResult result = await _sut.AddUserToTenant("tenant-a", new AddTenantUserRequest("user-a", "invalid"));
+
+        ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
     }
 
     private static ClaimsPrincipal CreatePrincipal(string adminRole) {

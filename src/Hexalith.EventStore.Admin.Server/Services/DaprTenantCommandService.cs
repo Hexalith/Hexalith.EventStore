@@ -5,6 +5,7 @@ using System.Text.Json;
 
 using Dapr.Client;
 
+using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.Abstractions.Services;
@@ -136,32 +137,12 @@ public sealed class DaprTenantCommandService : ITenantCommandService {
             new RemoveUserFromTenant(tenantId, userId),
             ct).ConfigureAwait(false);
 
-    private static string GetErrorCode(Exception exception) {
-        Exception current = exception;
-        while (true) {
-            if (current is HttpRequestException httpRequestException && httpRequestException.StatusCode is HttpStatusCode statusCode) {
-                return ((int)statusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
-            }
-
-            object? reflectedStatus = current.GetType().GetProperty("StatusCode")?.GetValue(current);
-            if (reflectedStatus is not null) {
-                return reflectedStatus.ToString() ?? current.GetType().Name;
-            }
-
-            if (current.InnerException is null) {
-                return current.GetType().Name;
-            }
-
-            current = current.InnerException;
-        }
-    }
-
     private static AdminOperationResult InvalidRoleResult(string? role)
         => new(
             false,
             ErrorNoOperation,
             $"Invalid role '{role}'. Valid values: {string.Join(", ", _tenantRoleNames)}",
-            "INVALID_ROLE");
+            "invalid-request");
 
     private static bool TryParseTenantRole(string? role, out TenantRole tenantRole) {
         string? normalizedRole = role?.Trim();
@@ -187,15 +168,17 @@ public sealed class DaprTenantCommandService : ITenantCommandService {
         string commandType,
         TPayload payload,
         CancellationToken ct) {
+        string? operationId = null;
         try {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
 
-            string correlationId = Guid.NewGuid().ToString();
+            string correlationId = UniqueIdHelper.GenerateSortableUniqueStringId();
+            operationId = correlationId;
             JsonElement payloadElement = JsonSerializer.SerializeToElement(payload);
 
             object commandBody = new {
-                messageId = Guid.NewGuid().ToString(),
+                messageId = UniqueIdHelper.GenerateSortableUniqueStringId(),
                 tenant = TenantIdentity.DefaultTenantId,
                 domain = TenantIdentity.Domain,
                 aggregateId,
@@ -257,14 +240,16 @@ public sealed class DaprTenantCommandService : ITenantCommandService {
                         // Get class name after last '.'
                         int lastDot = typeName.LastIndexOf('.');
                         string className = lastDot >= 0 ? typeName[(lastDot + 1)..] : typeName;
-                        // Remove "Rejection" suffix and insert spaces before uppercase letters
-                        className = className.Replace("Rejection", string.Empty, StringComparison.Ordinal);
-                        userMessage = System.Text.RegularExpressions.Regex
-                            .Replace(className, "(?<=.)([A-Z])", " $1")
-                            .Trim();
-                        // Lowercase all except first letter
-                        if (userMessage.Length > 1) {
-                            userMessage = char.ToUpperInvariant(userMessage[0]) + userMessage[1..].ToLowerInvariant();
+                        if (className.EndsWith("Rejection", StringComparison.Ordinal)) {
+                            // Remove "Rejection" suffix and insert spaces before uppercase letters
+                            className = className.Replace("Rejection", string.Empty, StringComparison.Ordinal);
+                            userMessage = System.Text.RegularExpressions.Regex
+                                .Replace(className, "(?<=.)([A-Z])", " $1")
+                                .Trim();
+                            // Lowercase all except first letter
+                            if (userMessage.Length > 1) {
+                                userMessage = char.ToUpperInvariant(userMessage[0]) + userMessage[1..].ToLowerInvariant();
+                            }
                         }
                     }
                 }
@@ -273,22 +258,68 @@ public sealed class DaprTenantCommandService : ITenantCommandService {
                 // Fall through to default message
             }
 
+            string errorCode = ClassifyHttpFailure(httpResponse.StatusCode, userMessage);
+
             return new AdminOperationResult(
                 false,
                 correlationId,
                 userMessage ?? $"Command rejected ({(int)httpResponse.StatusCode}). See server logs with correlation ID {correlationId}.",
-                ((int)httpResponse.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture));
+                errorCode);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
             _logger.LogWarning("Command {CommandType} for aggregate {AggregateId} timed out.", commandType, aggregateId);
-            return new AdminOperationResult(false, ErrorNoOperation, "Service invocation timed out", "TIMEOUT");
+            string id = operationId ?? ErrorNoOperation;
+            return new AdminOperationResult(
+                false,
+                id,
+                $"{commandType} request timed out. The operation may still be processing. Operation ID: {id}.",
+                "timeout");
         }
         catch (OperationCanceledException) {
             throw;
         }
         catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to submit command {CommandType} for aggregate {AggregateId}.", commandType, aggregateId);
-            return new AdminOperationResult(false, ErrorNoOperation, "EventStore service is unavailable", GetErrorCode(ex));
+            string id = operationId ?? ErrorNoOperation;
+            return new AdminOperationResult(
+                false,
+                id,
+                IsUnavailable(ex)
+                    ? $"EventStore service is unavailable. Operation ID: {id}."
+                    : $"Unexpected tenant command failure. Operation ID: {id}.",
+                IsUnavailable(ex) ? "unavailable" : "unexpected");
         }
     }
+
+    private static string ClassifyHttpFailure(HttpStatusCode statusCode, string? rejectionMessage) {
+        if (statusCode == HttpStatusCode.BadRequest) {
+            return "invalid-request";
+        }
+
+        if (statusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.GatewayTimeout) {
+            return "timeout";
+        }
+
+        if (statusCode is HttpStatusCode.Unauthorized
+            or HttpStatusCode.Forbidden
+            or HttpStatusCode.NotFound
+            or HttpStatusCode.TooManyRequests
+            or HttpStatusCode.BadGateway
+            or HttpStatusCode.ServiceUnavailable) {
+            return "unavailable";
+        }
+
+        if (rejectionMessage is not null) {
+            return "rejected";
+        }
+
+        return statusCode >= HttpStatusCode.InternalServerError
+            ? "unexpected"
+            : ((int)statusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static bool IsUnavailable(Exception exception)
+        => exception is HttpRequestException { StatusCode: null or HttpStatusCode.RequestTimeout or HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout }
+            || exception is TimeoutException
+            || exception.InnerException is not null && IsUnavailable(exception.InnerException);
 }
