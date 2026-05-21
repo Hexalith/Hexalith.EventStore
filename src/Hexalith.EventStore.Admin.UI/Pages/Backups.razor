@@ -19,16 +19,28 @@
     <h1 style="margin: 0;">Backups</h1>
     <div style="display: flex; gap: 8px;">
         <AuthorizedView MinimumRole="AdminRole.Admin">
-            <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
-                          OnClick="OpenCreateBackupDialog"
-                          aria-label="Create backup">
-                Create Backup
-            </FluentButton>
-            <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
-                          OnClick="OpenExportDialog"
-                          aria-label="Export stream">
-                Export Stream
-            </FluentButton>
+            <div style="display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px;"
+                 data-deferred-action="backup-create">
+                <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small"
+                              OnClick="OpenCreateBackupDialog"
+                              aria-label="Create backup (currently deferred by backend)">
+                    Create Backup
+                </FluentButton>
+                <FluentBadge Appearance="BadgeAppearance.Ghost"
+                             aria-label="Backup creation deferred by backend"
+                             Content="Deferred by backend" />
+            </div>
+            <div style="display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px;"
+                 data-deferred-action="stream-export">
+                <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                              OnClick="OpenExportDialog"
+                              aria-label="Export stream (currently deferred by backend)">
+                    Export Stream
+                </FluentButton>
+                <FluentBadge Appearance="BadgeAppearance.Ghost"
+                             aria-label="Stream export deferred by backend"
+                             Content="Deferred by backend" />
+            </div>
             <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
                           OnClick="OpenImportDialog"
                           aria-label="Import stream">
@@ -171,11 +183,17 @@
                     <AuthorizedView MinimumRole="AdminRole.Admin">
                         @if (context.Status == BackupJobStatus.Completed && !context.IsValidated)
                         {
-                            <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
-                                          OnClick="@(() => OpenValidateDialog(context))"
-                                          aria-label="Validate backup">
-                                Validate
-                            </FluentButton>
+                            <div style="display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px;"
+                                 data-deferred-action="backup-validate">
+                                <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                                              OnClick="@(() => OpenValidateDialog(context))"
+                                              aria-label="Validate backup (currently deferred by backend)">
+                                    Validate
+                                </FluentButton>
+                                <FluentBadge Appearance="BadgeAppearance.Ghost"
+                                             aria-label="Backup validation deferred by backend"
+                                             Content="Deferred by backend" />
+                            </div>
                         }
                         @if (context.Status == BackupJobStatus.Completed && context.IsValidated)
                         {
@@ -204,13 +222,19 @@
 @if (_showCreateDialog)
 {
     <FluentDialog @ref="_createDialog" Modal="true"
-                  aria-label="Create Backup"
+                  aria-label="Create Backup (deferred)"
                   Style="min-width: 400px; max-width: 500px;">
         <FluentDialogBody>
             <TitleTemplate>
                 <h3 style="margin: 0;">Create Backup</h3>
             </TitleTemplate>
             <ChildContent>
+                <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 12px;"
+                            aria-label="Deferred operation notice">
+                    <p style="margin: 0; font-size: 13px; color: var(--colorNeutralForeground2);">
+                        @BackupCreationDeferredMessage
+                    </p>
+                </FluentCard>
                 <FluentTextInput @bind-Value="_createTenantId"
                                  Label="Tenant ID" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
@@ -234,23 +258,12 @@
                         Restore in progress for this tenant. Wait for completion before creating a new backup.
                     </p>
                 }
-                @if (!string.IsNullOrWhiteSpace(_createTenantId))
-                {
-                    <p style="margin: 0 0 12px; font-size: 14px;">
-                        This will back up all event streams for tenant <strong>@_createTenantId</strong>.
-                    </p>
-                }
-                <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 8px;">
-                    <p style="margin: 0; font-size: 13px; color: var(--colorNeutralForeground3);">
-                        Backup is a resource-intensive operation that runs asynchronously.
-                        It may temporarily increase I/O usage and state store read load.
-                    </p>
-                </FluentCard>
             </ChildContent>
             <ActionTemplate>
                 <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseCreateDialogAsync">Cancel</FluentButton>
                 <FluentButton Appearance="ButtonAppearance.Primary"
                               OnClick="OnCreateBackupConfirm"
+                              aria-label="Submit deferred backup creation request"
                               Disabled="@(!CanCreateBackup || _isOperating)">
                     @if (_isOperating)
                     {
@@ -258,7 +271,7 @@
                     }
                     else
                     {
-                        <span>Start Backup</span>
+                        <span>Submit Deferred Request</span>
                     }
                 </FluentButton>
             </ActionTemplate>
@@ -270,22 +283,25 @@
 @if (_showValidateDialog && _validateTarget is not null)
 {
     <FluentDialog @ref="_validateDialog" Modal="true"
-                  aria-label="Validate Backup"
+                  aria-label="Validate Backup (deferred)"
                   Style="min-width: 400px; max-width: 500px;">
         <FluentDialogBody>
             <TitleTemplate>
                 <h3 style="margin: 0;">Validate Backup @TruncateId(_validateTarget.BackupId)?</h3>
             </TitleTemplate>
             <ChildContent>
-                <p>
-                    This will verify event sequence integrity, snapshot consistency, and metadata completeness.
-                    Validation runs asynchronously.
-                </p>
+                <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 12px;"
+                            aria-label="Deferred operation notice">
+                    <p style="margin: 0; font-size: 13px; color: var(--colorNeutralForeground2);">
+                        @BackupValidationDeferredMessage
+                    </p>
+                </FluentCard>
             </ChildContent>
             <ActionTemplate>
                 <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseValidateDialogAsync">Cancel</FluentButton>
                 <FluentButton Appearance="ButtonAppearance.Primary"
                               OnClick="OnValidateConfirm"
+                              aria-label="Submit deferred backup validation request"
                               Disabled="@_isOperating">
                     @if (_isOperating)
                     {
@@ -293,7 +309,7 @@
                     }
                     else
                     {
-                        <span>Validate</span>
+                        <span>Submit Deferred Request</span>
                     }
                 </FluentButton>
             </ActionTemplate>
@@ -404,13 +420,19 @@
 @if (_showExportDialog)
 {
     <FluentDialog @ref="_exportDialog" Modal="true"
-                  aria-label="Export Stream"
+                  aria-label="Export Stream (deferred)"
                   Style="min-width: 400px; max-width: 500px;">
         <FluentDialogBody>
             <TitleTemplate>
                 <h3 style="margin: 0;">Export Stream</h3>
             </TitleTemplate>
             <ChildContent>
+                <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 12px;"
+                            aria-label="Deferred operation notice">
+                    <p style="margin: 0; font-size: 13px; color: var(--colorNeutralForeground2);">
+                        @StreamExportDeferredMessage
+                    </p>
+                </FluentCard>
                 <FluentTextInput @bind-Value="_exportTenantId"
                                  Label="Tenant ID" Required="true"
                                  Style="width: 100%; margin-bottom: 12px;"
@@ -430,17 +452,12 @@
                     <FluentOption TValue="string" Value="@("JSON")">JSON</FluentOption>
                     <FluentOption TValue="string" Value="@("CloudEvents")">CloudEvents</FluentOption>
                 </FluentSelect>
-                <FluentCard Style="background-color: var(--colorNeutralBackground2); padding: 12px; margin-bottom: 8px;">
-                    <p style="margin: 0; font-size: 13px; color: var(--colorNeutralForeground3);">
-                        Export is limited to the most recent 50,000 events per stream.
-                        If the stream exceeds this limit, older events will be truncated.
-                    </p>
-                </FluentCard>
             </ChildContent>
             <ActionTemplate>
                 <FluentButton Appearance="ButtonAppearance.Outline" OnClick="CloseExportDialogAsync">Cancel</FluentButton>
                 <FluentButton Appearance="ButtonAppearance.Primary"
                               OnClick="OnExportConfirm"
+                              aria-label="Submit deferred stream export request"
                               Disabled="@(!CanExport || _isOperating)">
                     @if (_isOperating)
                     {
@@ -448,7 +465,7 @@
                     }
                     else
                     {
-                        <span>Export</span>
+                        <span>Submit Deferred Request</span>
                     }
                 </FluentButton>
             </ActionTemplate>
@@ -516,6 +533,9 @@
     private bool _isLoading = true;
     private bool _apiUnavailable;
     private bool _disposed;
+    private const string BackupCreationDeferredMessage = "Backup creation is deferred. EventStore does not yet have an approved backup engine and manifest model.";
+    private const string BackupValidationDeferredMessage = "Backup validation is deferred. EventStore does not yet have an approved backup manifest and validation model.";
+    private const string StreamExportDeferredMessage = "Stream export is deferred. EventStore needs an approved bounded export contract, format, and event limit before this operation can run.";
     private string _apiErrorMessage = "The admin backend service may be unavailable. Check DAPR sidecar connectivity.";
     private string? _tenantFilter;
     private string? _tenantFilterInput;
@@ -887,17 +907,10 @@
                 _createIncludeSnapshots,
                 _operationCts.Token);
 
-            if (result?.Success == true)
-            {
-                await ShowSuccessToastBestEffortAsync($"Backup started for {_createTenantId}. Refresh to check status.");
-                if (_createDialog is not null) { await _createDialog.HideAsync().ConfigureAwait(false); }
-                _showCreateDialog = false;
-                await LoadDataAsync();
-            }
-            else
-            {
-                await ShowErrorToastBestEffortAsync(result?.Message ?? "Failed to trigger backup.");
-            }
+            // Backup creation is policy-deferred for this iteration. Never surface success,
+            // even on backend Success=true with deferred-looking messages. Keep dialog open.
+            string deferredBody = SelectDeferredResultMessage(result?.Message, BackupCreationDeferredMessage);
+            await ShowWarningToastBestEffortAsync(deferredBody);
         }
         catch (ServiceUnavailableException)
         {
@@ -956,17 +969,9 @@
                 _validateTarget.BackupId,
                 _operationCts.Token);
 
-            if (result?.Success == true)
-            {
-                await ShowSuccessToastBestEffortAsync($"Validation started for backup {TruncateId(_validateTarget.BackupId)}.");
-                if (_validateDialog is not null) { await _validateDialog.HideAsync().ConfigureAwait(false); }
-                _showValidateDialog = false;
-                await LoadDataAsync();
-            }
-            else
-            {
-                await ShowErrorToastBestEffortAsync(result?.Message ?? "Failed to start validation.");
-            }
+            // Backup validation is policy-deferred for this iteration. Never surface success.
+            string deferredBody = SelectDeferredResultMessage(result?.Message, BackupValidationDeferredMessage);
+            await ShowWarningToastBestEffortAsync(deferredBody);
         }
         catch (ServiceUnavailableException)
         {
@@ -1111,17 +1116,10 @@
                     _exportFormat),
                 _operationCts.Token);
 
-            if (result?.Success == true && result.Content is not null && result.FileName is not null)
-            {
-                await JSRuntime.InvokeVoidAsync("blazorDownloadFile", result.FileName, result.Content);
-                await ShowSuccessToastBestEffortAsync($"Exported {result.EventCount} events.");
-                if (_exportDialog is not null) { await _exportDialog.HideAsync().ConfigureAwait(false); }
-                _showExportDialog = false;
-            }
-            else
-            {
-                await ShowErrorToastBestEffortAsync(result?.ErrorMessage ?? "Failed to export stream.");
-            }
+            // Stream export is policy-deferred for this iteration. Never download or show success,
+            // even if backend returns Success=true with deferred-looking ErrorMessage.
+            string deferredBody = SelectDeferredResultMessage(result?.ErrorMessage, StreamExportDeferredMessage);
+            await ShowWarningToastBestEffortAsync(deferredBody);
         }
         catch (ServiceUnavailableException)
         {
@@ -1268,6 +1266,27 @@
             // Toast failures must not mask operation failures on error paths.
         }
     }
+
+    private async Task ShowWarningToastBestEffortAsync(string? message)
+    {
+        try
+        {
+            await ToastService.ShowWarningAsync(message).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Toast failures must not mask deferred-operation feedback.
+        }
+    }
+
+    private static string SelectDeferredResultMessage(string? message, string fallback) =>
+        IsDeferredOperationMessage(message) ? message!.Trim() : fallback;
+
+    private static bool IsDeferredOperationMessage(string? message) =>
+        !string.IsNullOrWhiteSpace(message)
+        && (message.Contains("deferred", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("unsupported", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("unavailable", StringComparison.OrdinalIgnoreCase));
 
     public async ValueTask DisposeAsync()
     {

@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-05-21T11:56:37+02:00 - Story post-epic-deferred-dw13-tenant-lifecycle-actor-timeout-investigation moved review -> done after code-review patches and targeted verification.
+# last_updated: 2026-05-21 - Story post-epic-deferred-dw14-admin-deferred-operations-ux-policy moved review -> done after code-review patches; targeted Admin UI bUnit slice passes 88/88. Story post-epic-deferred-dw15-admin-ui-blazor-navigation-hygiene remains ready-for-dev.
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -415,5 +415,5 @@ development_status:
   post-epic-deferred-dw11-admin-action-binding-and-projection-detail-contracts: done
   post-epic-deferred-dw12-consistency-actor-state-contract-and-dispatcher-fix: done
   post-epic-deferred-dw13-tenant-lifecycle-actor-timeout-investigation: done
-  post-epic-deferred-dw14-admin-deferred-operations-ux-policy: ready-for-dev
-  post-epic-deferred-dw15-admin-ui-blazor-navigation-hygiene: backlog
+  post-epic-deferred-dw14-admin-deferred-operations-ux-policy: done
+  post-epic-deferred-dw15-admin-ui-blazor-navigation-hygiene: ready-for-dev

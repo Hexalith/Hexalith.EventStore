@@ -465,6 +465,28 @@ Resultat attendu:
 - Une operation non supportee est affichee explicitement comme differee,
   bloquee, unsupported, ou erreur recuperable.
 - Aucun faux succes pour une operation backend absente.
+- Truth-before-submit (DW14): chaque action concernee (Create Snapshot,
+  Trigger Compaction, Create Backup, Validate, Export Stream) affiche un
+  badge `Deferred by backend` visible avant l'ouverture de la dialog, la
+  dialog repete le message de deferred dans son corps, et le bouton primaire
+  final s'appelle `Submit Deferred Request` (pas `Start`, `Create`,
+  `Validate`, ni `Export`). Le toast de retour est en intent `warning`,
+  jamais `success`, meme si le backend renvoie `Success=true` avec un
+  message contenant `deferred`.
+
+Outcome a noter pour Issue 15 (post-DW14):
+
+- `OK - deferred explicite`: l'UI affiche le badge `Deferred by backend`
+  avant la soumission, la dialog porte le message exact, le bouton final est
+  `Submit Deferred Request`, le toast est `warning`, et aucun
+  faux succes n'apparait. Conforme a la story
+  `post-epic-deferred-dw14-admin-deferred-operations-ux-policy`.
+- `Action-needed`: l'AC exige un backend reel; lever une story d'engine
+  backend dedie (snapshot job model, compaction non-destructif, backup
+  manifest/engine, validation backup, export borne).
+- `KO`: l'UI affiche un toast `success` pour une operation differee, ou
+  manque l'un des elements du pattern Truth-before-submit. Bloquant
+  jusqu'a correction.
 
 ### Issue 16 - Consistency subtitles
 
@@ -723,11 +745,18 @@ Analyse:
   - ou creer des stories backend separees pour snapshot job model, compaction model,
     backup manifest/engine, validation et export borne.
 
-Recommendation test:
+Recommendation test (post-DW14):
 
-- Marquer Issue 15 comme `OK - deferred explicite` si le but est seulement de
-  verifier que l'UI n'echoue pas silencieusement.
-- Marquer `Action-needed` si l'acceptance criteria exige une operation reelle.
+- Marquer Issue 15 comme `OK - deferred explicite` quand le pattern
+  Truth-before-submit est respecte: badge `Deferred by backend` visible
+  avant la dialog, message exact dans le corps de la dialog, bouton final
+  `Submit Deferred Request`, toast `warning` (jamais `success`).
+- Marquer `Action-needed` si l'acceptance criteria exige une operation reelle
+  (necessite alors une story backend separee pour snapshot job model,
+  compaction non-destructif, backup manifest/engine, validation backup ou
+  export borne).
+- Marquer `KO` si un toast `success` apparait sur reponse deferree ou si l'un
+  des elements Truth-before-submit manque.
 
 ### CC-4 / Issues 16 et 17 - Consistency check produit de faux positifs
 
@@ -907,7 +936,7 @@ Issue 13: OK / KO
 Issue 9: OK
 Issue 11: OK
 Issue 12: OK / KO / non teste
-Issue 15: OK / KO / non teste
+Issue 15: OK - deferred explicite / Action-needed / KO / non teste
 Issue 16: OK (2026-05-20, DW12 retest)
 Issue 17: OK (2026-05-20, DW12 retest)
 Issue 18: OK / KO / non teste

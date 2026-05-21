@@ -174,21 +174,26 @@ public class BackupsPageTests : AdminUITestContext {
         IRenderedComponent<FluentButton> createBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Create Backup"));
         await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Backup"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Submit Deferred Request"), TimeSpan.FromSeconds(5));
 
         // Fill in tenant ID
         IReadOnlyList<IRenderedComponent<FluentTextInput>> textFields = cut.FindComponents<FluentTextInput>();
         IRenderedComponent<FluentTextInput> tenantField = textFields.First(f => f.Markup.Contains("Tenant ID"));
         await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("test-tenant"));
 
-        // Click Start Backup
+        // Click Submit Deferred Request
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("Start Backup"));
+            .First(b => b.Markup.Contains("Submit Deferred Request"));
         await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — API invoked
         _ = await _mockBackupApi.Received(1).TriggerBackupAsync(
             "test-tenant", Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
+
+        TestToastService toastService = Services.GetRequiredService<TestToastService>();
+        ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
+        toastOptions.Body.ShouldBe("Backup creation is deferred. EventStore does not yet have an approved backup engine and manifest model.");
+        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
     }
 
     [Fact]
@@ -206,16 +211,16 @@ public class BackupsPageTests : AdminUITestContext {
         IRenderedComponent<FluentButton> createBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Create Backup"));
         await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Backup"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Submit Deferred Request"), TimeSpan.FromSeconds(5));
 
         // Fill in tenant ID
         IReadOnlyList<IRenderedComponent<FluentTextInput>> textFields = cut.FindComponents<FluentTextInput>();
         IRenderedComponent<FluentTextInput> tenantField = textFields.First(f => f.Markup.Contains("Tenant ID"));
         await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("test-tenant"));
 
-        // Click Start Backup
+        // Click Submit Deferred Request
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("Start Backup"));
+            .First(b => b.Markup.Contains("Submit Deferred Request"));
         await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — API was called (failure toast is handled by toast service)
@@ -226,7 +231,7 @@ public class BackupsPageTests : AdminUITestContext {
     [Fact]
     public async Task BackupsPage_CreateDialog_ShowsDeferredToastAndClearsBusyState() {
         SetupJobs([]);
-        const string deferredMessage = "Backup creation is deferred.";
+        const string deferredMessage = "Backup creation is deferred. EventStore does not yet have an approved backup engine and manifest model.";
         _ = _mockBackupApi.TriggerBackupAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
@@ -241,21 +246,140 @@ public class BackupsPageTests : AdminUITestContext {
         IRenderedComponent<FluentButton> createBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Create Backup"));
         await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Backup"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Submit Deferred Request"), TimeSpan.FromSeconds(5));
 
         IRenderedComponent<FluentTextInput> tenantField = cut.FindComponents<FluentTextInput>()
             .First(f => f.Markup.Contains("Tenant ID"));
         await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("test-tenant"));
 
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("Start Backup"));
+            .First(b => b.Markup.Contains("Submit Deferred Request"));
         await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
         toastOptions.Body.ShouldBe(deferredMessage);
-        cut.Markup.ShouldContain("Start Backup");
+        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
+        cut.Markup.ShouldContain("Create Backup");
         startBtn.Instance.Disabled.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task BackupsPage_CreateDialog_ShowsWarningToast_WhenBackendReportsSuccessTrueWithDeferredMessage() {
+        SetupJobs([]);
+        const string deferredMessage = "Backup creation is deferred.";
+        _ = _mockBackupApi.TriggerBackupAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
+                true,
+                "deferred-success-true",
+                deferredMessage,
+                null)));
+
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Backup"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> createBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Create Backup"));
+        await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Submit Deferred Request"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentTextInput> tenantField = cut.FindComponents<FluentTextInput>()
+            .First(f => f.Markup.Contains("Tenant ID"));
+        await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("test-tenant"));
+
+        IRenderedComponent<FluentButton> submitBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Submit Deferred Request"));
+        await submitBtn.InvokeAsync(submitBtn.Instance.OnClick.InvokeAsync);
+
+        TestToastService toastService = Services.GetRequiredService<TestToastService>();
+        ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
+        toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Intent.ShouldNotBe(ToastIntent.Success);
+        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
+    }
+
+    [Fact]
+    public void BackupsPage_CreateButton_ShowsDeferredBadgeBeforeDialog() {
+        // AC1, AC2, AC5, AC8: deferred badges visible before any dialog opens.
+        SetupJobs([]);
+
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Backup"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("Deferred by backend");
+        cut.Markup.ShouldContain("data-deferred-action=\"backup-create\"");
+        cut.Markup.ShouldContain("data-deferred-action=\"stream-export\"");
+    }
+
+    [Fact]
+    public void BackupsPage_ValidateButton_ShowsDeferredBadgeBeforeDialog() {
+        // AC5, AC9: validation pre-communicates deferred state before the dialog opens.
+        SetupJobs([
+            CreateJob("bk-1", "tenant-a", BackupJobStatus.Completed, isValidated: false, sizeBytes: 1000, eventCount: 100),
+        ]);
+
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Validate"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("Deferred by backend");
+        cut.Markup.ShouldContain("data-deferred-action=\"backup-validate\"");
+    }
+
+    [Fact]
+    public async Task BackupsPage_CreateDialog_PreCommunicatesDeferredBeforeSubmit() {
+        // AC5, AC8, AC9.
+        SetupJobs([]);
+
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Create Backup"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> createBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Create Backup"));
+        await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Submit Deferred Request"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("Backup creation is deferred. EventStore does not yet have an approved backup engine and manifest model.");
+        cut.Markup.ShouldContain("<span>Submit Deferred Request</span>");
+        cut.Markup.ShouldNotContain("<span>Start Backup</span>");
+    }
+
+    [Fact]
+    public async Task BackupsPage_ExportDialog_PreCommunicatesDeferredBeforeSubmit() {
+        // AC5, AC8, AC9 for Export.
+        SetupJobs([]);
+
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Export Stream"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> exportBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Export Stream"));
+        await exportBtn.InvokeAsync(exportBtn.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Tenant ID"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("Stream export is deferred. EventStore needs an approved bounded export contract, format, and event limit before this operation can run.");
+        cut.Markup.ShouldContain("<span>Submit Deferred Request</span>");
+        cut.Markup.ShouldNotContain(">Export<");
+    }
+
+    [Fact]
+    public async Task BackupsPage_ValidateDialog_PreCommunicatesDeferredBeforeSubmit() {
+        // AC5, AC8, AC9 for Validate.
+        SetupJobs([
+            CreateJob("bk-1", "tenant-a", BackupJobStatus.Completed, isValidated: false, sizeBytes: 1000, eventCount: 100),
+        ]);
+
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Validate"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> validateButton = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Validate"));
+        await validateButton.InvokeAsync(validateButton.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Validate Backup"), TimeSpan.FromSeconds(5));
+
+        cut.Markup.ShouldContain("Backup validation is deferred. EventStore does not yet have an approved backup manifest and validation model.");
+        cut.Markup.ShouldContain("<span>Submit Deferred Request</span>");
+        cut.Markup.ShouldNotContain("<span>Validate</span>");
     }
 
     [Fact]
@@ -317,7 +441,7 @@ public class BackupsPageTests : AdminUITestContext {
         SetupJobs([
             CreateJob("bk-1", "tenant-a", BackupJobStatus.Completed, isValidated: false, sizeBytes: 1000, eventCount: 100),
         ]);
-        const string deferredMessage = "Backup validation is deferred.";
+        const string deferredMessage = "Backup validation is deferred. EventStore does not yet have an approved backup manifest and validation model.";
         _ = _mockBackupApi.ValidateBackupAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
                 false,
@@ -334,14 +458,47 @@ public class BackupsPageTests : AdminUITestContext {
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Validate Backup"), TimeSpan.FromSeconds(5));
 
         IRenderedComponent<FluentButton> confirmButton = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("<span>Validate</span>"));
+            .First(b => b.Markup.Contains("<span>Submit Deferred Request</span>"));
         await confirmButton.InvokeAsync(confirmButton.Instance.OnClick.InvokeAsync);
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
         toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
         cut.Markup.ShouldContain("Validate Backup");
         confirmButton.Instance.Disabled.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task BackupsPage_ValidateDialog_ShowsWarningToast_WhenBackendReportsSuccessTrueWithDeferredMessage() {
+        SetupJobs([
+            CreateJob("bk-1", "tenant-a", BackupJobStatus.Completed, isValidated: false, sizeBytes: 1000, eventCount: 100),
+        ]);
+        const string deferredMessage = "Backup validation is deferred.";
+        _ = _mockBackupApi.ValidateBackupAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<AdminOperationResult?>(new AdminOperationResult(
+                true,
+                "deferred-success-true",
+                deferredMessage,
+                null)));
+
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Validate"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> validateButton = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Validate"));
+        await validateButton.InvokeAsync(validateButton.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Validate Backup"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> submitButton = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("<span>Submit Deferred Request</span>"));
+        await submitButton.InvokeAsync(submitButton.Instance.OnClick.InvokeAsync);
+
+        TestToastService toastService = Services.GetRequiredService<TestToastService>();
+        ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
+        toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Intent.ShouldNotBe(ToastIntent.Success);
+        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
     }
 
     [Fact]
@@ -405,7 +562,7 @@ public class BackupsPageTests : AdminUITestContext {
     }
 
     [Fact]
-    public async Task BackupsPage_CreateDialog_RendersFormFieldsAndWarning() {
+    public async Task BackupsPage_CreateDialog_RendersFormFieldsAndDeferredCopy() {
         // Arrange
         SetupJobs([]);
 
@@ -417,14 +574,14 @@ public class BackupsPageTests : AdminUITestContext {
             .First(b => b.Markup.Contains("Create Backup"));
         await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
 
-        // Assert — dialog shows form fields and warning
+        // Assert — dialog shows form fields and deferred body copy
         cut.Markup.ShouldContain("Tenant ID");
         cut.Markup.ShouldContain("Description");
-        cut.Markup.ShouldContain("resource-intensive operation");
+        cut.Markup.ShouldContain("Backup creation is deferred. EventStore does not yet have an approved backup engine and manifest model.");
     }
 
     [Fact]
-    public async Task BackupsPage_CreateDialog_StartDisabledWhenTenantEmpty() {
+    public async Task BackupsPage_CreateDialog_SubmitDisabledWhenTenantEmpty() {
         // Arrange
         SetupJobs([]);
 
@@ -436,9 +593,9 @@ public class BackupsPageTests : AdminUITestContext {
             .First(b => b.Markup.Contains("Create Backup"));
         await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
 
-        // Assert — Start Backup button is disabled (tenant ID is empty)
+        // Assert — Submit Deferred Request button is disabled (tenant ID is empty)
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("Start Backup"));
+            .First(b => b.Markup.Contains("Submit Deferred Request"));
         startBtn.Instance.Disabled.ShouldBe(true);
     }
 
@@ -535,17 +692,17 @@ public class BackupsPageTests : AdminUITestContext {
         IRenderedComponent<FluentButton> createBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("Create Backup"));
         await createBtn.InvokeAsync(createBtn.Instance.OnClick.InvokeAsync);
-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Backup"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Submit Deferred Request"), TimeSpan.FromSeconds(5));
 
         // Enter the same tenant
         IRenderedComponent<FluentTextInput> tenantField = cut.FindComponents<FluentTextInput>()
             .First(f => f.Markup.Contains("Tenant ID"));
         await tenantField.InvokeAsync(() => tenantField.Instance.ValueChanged.InvokeAsync("tenant-a"));
 
-        // Assert — Start Backup button should be disabled and warning shown
+        // Assert — Submit button should be disabled and warning shown
         cut.Markup.ShouldContain("Backup already in progress for this tenant");
         IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains("Start Backup"));
+            .First(b => b.Markup.Contains("Submit Deferred Request"));
         startBtn.Instance.Disabled.ShouldBe(true);
     }
 
@@ -576,20 +733,25 @@ public class BackupsPageTests : AdminUITestContext {
         await fields.First(f => f.Markup.Contains("Aggregate ID")).InvokeAsync(
             () => fields.First(f => f.Markup.Contains("Aggregate ID")).Instance.ValueChanged.InvokeAsync("a1"));
 
-        // Click Export
+        // Click Submit Deferred Request
         IRenderedComponent<FluentButton> submitBtn = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains(">Export<"));
+            .First(b => b.Markup.Contains("<span>Submit Deferred Request</span>"));
         await submitBtn.InvokeAsync(submitBtn.Instance.OnClick.InvokeAsync);
 
         // Assert — API invoked
         _ = await _mockBackupApi.Received(1).ExportStreamAsync(
             Arg.Any<StreamExportRequest>(), Arg.Any<CancellationToken>());
+
+        TestToastService toastService = Services.GetRequiredService<TestToastService>();
+        ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
+        toastOptions.Body.ShouldBe("Stream export is deferred. EventStore needs an approved bounded export contract, format, and event limit before this operation can run.");
+        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
     }
 
     [Fact]
     public async Task BackupsPage_ExportDialog_ShowsDeferredToastAndClearsBusyState() {
         SetupJobs([]);
-        const string deferredMessage = "Stream export is deferred.";
+        const string deferredMessage = "Stream export is deferred. EventStore needs an approved bounded export contract, format, and event limit before this operation can run.";
         _ = _mockBackupApi.ExportStreamAsync(Arg.Any<StreamExportRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<StreamExportResult?>(new StreamExportResult(
                 false,
@@ -618,14 +780,57 @@ public class BackupsPageTests : AdminUITestContext {
             () => fields.First(f => f.Markup.Contains("Aggregate ID")).Instance.ValueChanged.InvokeAsync("counter-1"));
 
         IRenderedComponent<FluentButton> submitBtn = cut.FindComponents<FluentButton>()
-            .First(b => b.Markup.Contains(">Export<"));
+            .First(b => b.Markup.Contains("<span>Submit Deferred Request</span>"));
         await submitBtn.InvokeAsync(submitBtn.Instance.OnClick.InvokeAsync);
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
         toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
         cut.Markup.ShouldContain("Export Stream");
         submitBtn.Instance.Disabled.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task BackupsPage_ExportDialog_ShowsWarningToast_WhenBackendReportsSuccessTrueWithDeferredMessage() {
+        SetupJobs([]);
+        const string deferredMessage = "Stream export is deferred.";
+        _ = _mockBackupApi.ExportStreamAsync(Arg.Any<StreamExportRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<StreamExportResult?>(new StreamExportResult(
+                true,
+                "tenant-a",
+                "Counter",
+                "counter-1",
+                0,
+                "{}",
+                "export.json",
+                deferredMessage)));
+
+        IRenderedComponent<Backups> cut = Render<Backups>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Export Stream"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> exportBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Export Stream"));
+        await exportBtn.InvokeAsync(exportBtn.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Tenant ID"), TimeSpan.FromSeconds(5));
+
+        IReadOnlyList<IRenderedComponent<FluentTextInput>> fields = cut.FindComponents<FluentTextInput>();
+        await fields.First(f => f.Markup.Contains("Tenant ID")).InvokeAsync(
+            () => fields.First(f => f.Markup.Contains("Tenant ID")).Instance.ValueChanged.InvokeAsync("tenant-a"));
+        await fields.First(f => f.Markup.Contains("Domain")).InvokeAsync(
+            () => fields.First(f => f.Markup.Contains("Domain")).Instance.ValueChanged.InvokeAsync("Counter"));
+        await fields.First(f => f.Markup.Contains("Aggregate ID")).InvokeAsync(
+            () => fields.First(f => f.Markup.Contains("Aggregate ID")).Instance.ValueChanged.InvokeAsync("counter-1"));
+
+        IRenderedComponent<FluentButton> submitBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("<span>Submit Deferred Request</span>"));
+        await submitBtn.InvokeAsync(submitBtn.Instance.OnClick.InvokeAsync);
+
+        TestToastService toastService = Services.GetRequiredService<TestToastService>();
+        ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
+        toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Intent.ShouldNotBe(ToastIntent.Success);
+        toastOptions.Intent.ShouldBe(ToastIntent.Warning);
     }
 
     [Fact]
