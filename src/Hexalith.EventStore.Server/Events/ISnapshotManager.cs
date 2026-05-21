@@ -31,8 +31,16 @@ public interface ISnapshotManager {
     /// <param name="stateManager">The actor state manager for staging the snapshot write.</param>
     /// <param name="correlationId">The correlation ID for structured logging (rule #9). Optional.</param>
     /// <param name="cancellationToken">The caller's cancellation token. Forwarded to the snapshot protection hook.</param>
+    /// <param name="throwOnFailure">When true, snapshot failures are rethrown instead of handled as advisory warnings.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    Task CreateSnapshotAsync(AggregateIdentity identity, long sequenceNumber, object state, IActorStateManager stateManager, string? correlationId = null, CancellationToken cancellationToken = default);
+    Task CreateSnapshotAsync(
+        AggregateIdentity identity,
+        long sequenceNumber,
+        object state,
+        IActorStateManager stateManager,
+        string? correlationId = null,
+        CancellationToken cancellationToken = default,
+        bool throwOnFailure = false);
 
     /// <summary>
     /// Loads an existing snapshot for an aggregate.
@@ -45,4 +53,28 @@ public interface ISnapshotManager {
     /// <param name="cancellationToken">The caller's cancellation token. Forwarded to the snapshot protection hook.</param>
     /// <returns>The snapshot record, or null if no valid snapshot exists.</returns>
     Task<SnapshotRecord?> LoadSnapshotAsync(AggregateIdentity identity, IActorStateManager stateManager, string? correlationId = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Inspects the snapshot key with a distinguishable load outcome suitable for fail-closed
+    /// callers such as the DW16 manual snapshot overwrite path.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Unlike <see cref="LoadSnapshotAsync"/>, this method does NOT delete corrupt snapshots and
+    /// does NOT collapse unreadable protected/provider-opaque snapshots into <c>null</c>. The
+    /// caller can decide to fail closed (and refuse to overwrite) on
+    /// <see cref="SnapshotLoadOutcome.UnreadableProtected"/>, <see cref="SnapshotLoadOutcome.ProviderOpaque"/>,
+    /// or <see cref="SnapshotLoadOutcome.Corrupt"/>.
+    /// </para>
+    /// </remarks>
+    /// <param name="identity">The aggregate identity providing key derivation.</param>
+    /// <param name="stateManager">The actor state manager.</param>
+    /// <param name="correlationId">Optional correlation id for structured logging.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A typed load outcome with the snapshot (when Readable) or a safe reason code (otherwise).</returns>
+    Task<SnapshotLoadResult> InspectSnapshotForManualOverwriteAsync(
+        AggregateIdentity identity,
+        IActorStateManager stateManager,
+        string? correlationId = null,
+        CancellationToken cancellationToken = default);
 }

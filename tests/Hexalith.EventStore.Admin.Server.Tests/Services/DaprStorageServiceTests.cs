@@ -210,15 +210,20 @@ public class DaprStorageServiceTests {
     }
 
     [Fact]
-    public async Task CreateSnapshotAsync_ReturnsDeferred_WithoutCallingEventStore() {
+    public async Task CreateSnapshotAsync_InvokesEventStoreAndReturnsTypedResult() {
         (DaprStorageCommandService service, TestHttpMessageHandler handler) = CreateCommandService();
+        handler.SetupJsonResponse(new AdminOperationResult(true, "manual-snapshot-abc", "Manual snapshot created.", null));
 
         AdminOperationResult result = await service.CreateSnapshotAsync("tenant1", "orders", "order-1");
 
-        result.Success.ShouldBeFalse();
-        result.ErrorCode.ShouldBe("Deferred");
-        result.Message!.ShouldContain("Manual snapshot creation is deferred");
-        handler.RequestCount.ShouldBe(0);
+        result.Success.ShouldBeTrue();
+        result.OperationId.ShouldBe("manual-snapshot-abc");
+        result.ErrorCode.ShouldBeNull();
+        handler.RequestCount.ShouldBe(1);
+        string body = handler.LastRequestBody.ShouldNotBeNull();
+        body.ShouldContain("\"tenantId\":\"tenant1\"");
+        body.ShouldContain("\"domain\":\"orders\"");
+        body.ShouldContain("\"aggregateId\":\"order-1\"");
     }
 
     [Fact]

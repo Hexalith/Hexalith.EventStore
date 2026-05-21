@@ -66,7 +66,14 @@ public sealed class FakeSnapshotManager : ISnapshotManager {
     }
 
     /// <inheritdoc/>
-    public Task CreateSnapshotAsync(AggregateIdentity identity, long sequenceNumber, object state, IActorStateManager stateManager, string? correlationId = null, CancellationToken cancellationToken = default) {
+    public Task CreateSnapshotAsync(
+        AggregateIdentity identity,
+        long sequenceNumber,
+        object state,
+        IActorStateManager stateManager,
+        string? correlationId = null,
+        CancellationToken cancellationToken = default,
+        bool throwOnFailure = false) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(stateManager);
@@ -98,5 +105,21 @@ public sealed class FakeSnapshotManager : ISnapshotManager {
             : null;
 
         return Task.FromResult(result);
+    }
+
+    /// <inheritdoc/>
+    public Task<SnapshotLoadResult> InspectSnapshotForManualOverwriteAsync(
+        AggregateIdentity identity,
+        IActorStateManager stateManager,
+        string? correlationId = null,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(stateManager);
+
+        _loadCalls.Add(identity);
+        return Task.FromResult(
+            _snapshots.TryGetValue(identity.SnapshotKey, out SnapshotRecord? snapshot)
+                ? SnapshotLoadResult.Readable(snapshot)
+                : SnapshotLoadResult.Absent());
     }
 }
