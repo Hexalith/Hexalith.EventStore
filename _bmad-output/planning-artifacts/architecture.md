@@ -158,6 +158,7 @@ Three preliminary decisions emerging from the analysis. These are **provisional*
 - **Rationale:** One DAPR sidecar, one auth configuration, one deployment unit for the API+UI. CLI and MCP are lightweight, independently versionable clients. State store key access reuses identical key derivation from Contracts (`AggregateIdentity`), requiring `InternalsVisibleTo` on Server project for `CommandStatusConstants` and `CommandArchiveConstants`.
 - **Alternatives Rejected:** (a) Three independent DAPR-connected services — tripled operational surface, duplicated auth. (b) GraphQL gateway — added complexity without clear benefit at current scale; can be layered later. (c) Direct DAPR access from CLI/MCP — would require DAPR sidecar per client, impractical for developer laptops and AI agent environments.
 - **Constraints:** Admin.Server gets read-only access to the event store state store. Write operations (replay, projection reset) are delegated to EventStore via `DaprClient.InvokeMethodAsync`. This ensures the command pipeline's security and validation layers are never bypassed.
+- **Update (2026-05-25, see D13):** As built, the Blazor Web UI was split into its own `Hexalith.EventStore.Admin.UI` project rather than co-hosted in Admin.Server. That split originally communicated over plain HTTP (the "ADR-P4 deviation"). **D13 resolves the deviation**: Admin.UI now invokes Admin.Server via DAPR service invocation, consistent with the DAPR-native norm and D7. The three-interface architecture (Web UI / CLI / MCP) decided here is unchanged; only the UI→Server transport changed.
 
 #### ADR-P5: Admin Web UI — Observability Deep-Link Strategy Over Embedded Dashboards
 
@@ -405,6 +406,8 @@ Hexalith.EventStore/
 | D10 | CI/CD Pipeline                      | GitHub Actions                                                             | --                                                                               |
 | D11 | E2E Security Testing Infrastructure | Keycloak in Aspire with realm-as-code                                      | Story 5.1 Task 7, AC #5/#6, runtime security verification for all Epic 5 stories |
 | D12 | ULID Everywhere                     | `Hexalith.Commons.UniqueIds` for all ID generation                         | Story 1.7, D13 message type prefix extraction                                    |
+| D13 | Admin.UI → Admin.Server Transport   | DAPR service invocation (`dapr-app-id` header routing via the UI sidecar)  | Removes the ADR-P4 HTTP deviation; aligns the split-out Admin.UI with D7. User JWT is forwarded by DAPR, preserving Admin.Server RBAC/tenant enforcement. ACL grant: `accesscontrol.eventstore-admin.yaml` allows caller `eventstore-admin-ui`. |
+| D14 | Sample BlazorUI → EventStore Transport | DAPR service invocation (`dapr-app-id: eventstore` header routing via the UI sidecar) | Replaces Aspire service discovery on the sample query path (fixed an opaque `TaskCanceledException`); aligns the sample UI with D7/D13. Bearer JWT is forwarded by DAPR, preserving EventStore RBAC/tenant enforcement. ACL grant: `accesscontrol.yaml` allows caller `sample-blazor-ui`. SignalR hub stays on the resolved endpoint URL (bypasses `HttpClientFactory`). |
 
 **Decisions Already Made (PRD + Starter Template):**
 
