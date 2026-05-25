@@ -4,7 +4,8 @@
 # Date: 2026-05-20T17:19:39.778Z
 
 test_artifacts: "{project-root}/_bmad-output/test-artifacts"
-tea_use_playwright_utils: true
+# JS/TS playwright-utils npm lib — not applicable to this project's Microsoft.Playwright (.NET) wrapper.
+tea_use_playwright_utils: false
 tea_use_pactjs_utils: true
 tea_pact_mcp: mcp
 tea_browser_automation: auto

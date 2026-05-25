@@ -5,7 +5,11 @@
          1. EventStore as a submodule inside the Hexalith.Tenants repository.
          2. EventStore as a root-level submodule beside a root-level Hexalith.Tenants submodule.
          3. EventStore as the root repository with its own nested Hexalith.Tenants submodule. -->
-        <HexalithTenantsBasePath Condition="Exists('$(MSBuildThisFileDirectory)../src/Hexalith.Tenants.Contracts/')">$(MSBuildThisFileDirectory)../src</HexalithTenantsBasePath>
+        <!-- 3 takes precedence: when EventStore is the root repo with its own nested
+             Hexalith.Tenants submodule, prefer it over any sibling/standalone clone that may
+             also exist on a developer machine. -->
+        <HexalithTenantsBasePath Condition="Exists('$(MSBuildThisFileDirectory)Hexalith.Tenants/src/Hexalith.Tenants.Contracts/')">$(MSBuildThisFileDirectory)Hexalith.Tenants/src</HexalithTenantsBasePath>
+        <HexalithTenantsBasePath Condition="'$(HexalithTenantsBasePath)' == '' and Exists('$(MSBuildThisFileDirectory)../src/Hexalith.Tenants.Contracts/')">$(MSBuildThisFileDirectory)../src</HexalithTenantsBasePath>
         <HexalithTenantsBasePath Condition="'$(HexalithTenantsBasePath)' == '' and Exists('$(MSBuildThisFileDirectory)../Hexalith.Tenants/src/Hexalith.Tenants.Contracts/')">$(MSBuildThisFileDirectory)../Hexalith.Tenants/src</HexalithTenantsBasePath>
         <HexalithTenantsBasePath Condition="'$(HexalithTenantsBasePath)' == ''">$(MSBuildThisFileDirectory)Hexalith.Tenants/src</HexalithTenantsBasePath>
         <NoWarn>$(NoWarn);IDE0028</NoWarn>
