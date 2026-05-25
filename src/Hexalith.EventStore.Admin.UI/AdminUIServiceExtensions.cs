@@ -79,13 +79,60 @@ public static class AdminUIServiceExtensions {
         _ = builder.Services.AddSingleton(new EventStoreSignalRClientOptions { HubUrl = signalRHubUrl });
         _ = builder.Services.AddSingleton<EventStoreSignalRClient>();
 
-        // HttpClient for querying Admin.Server via Aspire service discovery
+        // HttpClient for invoking Admin.Server via DAPR service invocation (D13,
+        // supersedes the ADR-P4 HTTP deviation). The BaseAddress targets THIS app's
+        // DAPR sidecar; DaprAppIdHandler tags the request with the target app-id so
+        // DAPR routes it to eventstore-admin. A literal localhost base address keeps
+        // the global AddServiceDiscovery() default a no-op (no handler-ordering
+        // conflict). DAPR forwards the Authorization bearer header unchanged, so
+        // Admin.Server JWT/RBAC/tenant enforcement is preserved.
+        string daprHttpEndpoint = builder.Configuration["DAPR_HTTP_ENDPOINT"]
+            ?? $"http://localhost:{builder.Configuration["DAPR_HTTP_PORT"] ?? "3500"}";
+        string? daprApiToken = builder.Configuration["DAPR_API_TOKEN"];
         _ = builder.Services.AddHttpClient("AdminApi", client => {
-            client.BaseAddress = new Uri(builder.Configuration["EventStore:AdminServer:BaseUrl"]
-                ?? "https://eventstore-admin");
+            client.BaseAddress = new Uri(daprHttpEndpoint);
             client.Timeout = TimeSpan.FromSeconds(30);
         })
-            .AddHttpMessageHandler<AdminApiAuthorizationHandler>();
+            .AddHttpMessageHandler<AdminApiAuthorizationHandler>()
+            .AddHttpMessageHandler(() => new DaprAppIdHandler("eventstore-admin", daprApiToken));
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Fails fast at startup when no DAPR sidecar is reachable. Admin.UI invokes Admin.Server
+    /// exclusively through its sidecar (D13); without one, every API call would otherwise
+    /// surface as an opaque request timeout during page interactions — the exact symptom that
+    /// motivated this guard. Call this from the real entry point (<c>Program.cs</c>) only:
+    /// test and Playwright E2E hosts build the UI via <see cref="AddAdminUI"/> without a sidecar
+    /// and intentionally bypass this check.
+    /// </summary>
+    /// <param name="builder">The web application builder.</param>
+    /// <returns>The same <paramref name="builder"/> for chaining.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when no DAPR sidecar is detected.</exception>
+    public static WebApplicationBuilder RequireDaprSidecar(this WebApplicationBuilder builder) {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        // The sidecar (CommunityToolkit under `aspire run`, or the DAPR K8s injector) sets these
+        // env vars on the app process. Presence of any one means a sidecar is wired. This mirrors
+        // the DAPR_HTTP_PORT discovery already used by EventStore.Server's actor registration.
+        bool sidecarConfigured =
+            !string.IsNullOrWhiteSpace(builder.Configuration["DAPR_HTTP_ENDPOINT"])
+            || !string.IsNullOrWhiteSpace(builder.Configuration["DAPR_GRPC_ENDPOINT"])
+            || !string.IsNullOrWhiteSpace(builder.Configuration["DAPR_HTTP_PORT"])
+            || !string.IsNullOrWhiteSpace(builder.Configuration["DAPR_GRPC_PORT"]);
+
+        if (!sidecarConfigured) {
+            throw new InvalidOperationException(
+                "Admin.UI requires a DAPR sidecar to reach Admin.Server (D13: service invocation "
+                + "to app-id 'eventstore-admin'), but none was detected — DAPR_HTTP_ENDPOINT, "
+                + "DAPR_GRPC_ENDPOINT, DAPR_HTTP_PORT and DAPR_GRPC_PORT are all unset. "
+                + "Launch the full topology through the Aspire AppHost:" + Environment.NewLine
+                + "    aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj"
+                + Environment.NewLine
+                + "Running this project directly with `dotnet run` is unsupported: there is no sidecar "
+                + "and no Admin.Server to invoke.");
+        }
 
         return builder;
     }

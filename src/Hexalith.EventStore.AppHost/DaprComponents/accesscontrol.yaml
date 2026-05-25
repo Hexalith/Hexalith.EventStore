@@ -6,6 +6,8 @@
 # Allowed callers in the local topology:
 #   - eventstore-admin (port 8090): Admin REST API host. Needs GET/POST/PUT to delegate
 #     admin reads and writes to EventStore (ADR-P4).
+#   - sample-blazor-ui: sample query UI. Invokes EventStore /api/v1/queries (GET/POST)
+#     via DAPR service invocation (mirrors the Admin.UI D13 pattern).
 #
 # Security Posture (D4, FR34, NFR15):
 #   defaultAction: allow (self-hosted mode without mTLS).
@@ -38,4 +40,13 @@ spec:
         operations:
           - name: /**
             httpVerb: ['GET', 'POST', 'PUT', 'DELETE']
+            action: allow
+      # sample-blazor-ui: sample query UI -- invokes eventstore /api/v1/queries
+      - appId: sample-blazor-ui
+        defaultAction: deny
+        trustDomain: "public"
+        namespace: "default"
+        operations:
+          - name: /**
+            httpVerb: ['GET', 'POST']
             action: allow

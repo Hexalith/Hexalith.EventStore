@@ -109,15 +109,24 @@ IResourceBuilder<ProjectResource> sample = builder.AddProject<Projects.Hexalith_
             ResourcesPaths = ImmutableHashSet.Create(emptyDaprResourcesPath),
         }));
 
-// Add Blazor UI sample — consumes EventStore via Aspire service discovery (Story 18-6).
+// Add Blazor UI sample — invokes EventStore via DAPR service invocation (mirrors Admin.UI D13).
 // Enables SignalR on EventStore so the hub is active when the Blazor UI is running.
 _ = eventStore.WithEnvironment("EventStore__SignalR__Enabled", "true");
 EndpointReference eventStoreHttps = eventStore.GetEndpoint("https");
 EndpointReference adminServerHttps = adminServer.GetEndpoint("https");
+
+// The BlazorUI sidecar references no state store / pub/sub component — service invocation
+// only, so it has zero direct infrastructure access (same isolation rationale as the sample
+// and admin-ui sidecars). DaprAppIdHandler tags outbound query calls with
+// `dapr-app-id: eventstore`. WaitFor(eventStore) is retained so the UI starts after its target.
 IResourceBuilder<ProjectResource> blazorUi = builder.AddProject<Projects.Hexalith_EventStore_Sample_BlazorUI>("sample-blazor-ui")
     .WithReference(eventStore)
     .WaitFor(eventStore)
     .WithExternalHttpEndpoints()
+    .WithDaprSidecar(sidecar => sidecar
+        .WithOptions(new DaprSidecarOptions {
+            AppId = "sample-blazor-ui",
+        }))
     // SignalR HubConnectionBuilder bypasses Aspire service discovery (it doesn't use HttpClientFactory),
     // so we must pass the resolved eventstore endpoint URL explicitly.
     .WithEnvironment("EventStore__SignalR__HubUrl", ReferenceExpression.Create($"{eventStoreHttps}/hubs/projection-changes"));

@@ -3,9 +3,17 @@
 # This Configuration CRD is loaded ONLY by the eventstore-admin sidecar and therefore
 # governs which CALLERS may invoke Admin.Server through Dapr service invocation.
 #
-# In the current topology no other service should directly invoke eventstore-admin.
-# Admin.Server is an HTTP-facing host that delegates to EventStore, not a Dapr
-# service target for peer workloads.
+# Allowed callers in the local topology:
+#   - eventstore-admin-ui: Admin Blazor UI. Invokes the Admin REST API via Dapr
+#     service invocation (D13, supersedes the ADR-P4 HTTP deviation). The UI forwards
+#     the user JWT in the Authorization header; Admin.Server enforces RBAC/tenant scope.
+#
+# Security Posture (D4, FR34, NFR15):
+#   defaultAction: allow (self-hosted mode without mTLS). Dapr policy matching needs
+#   mTLS to extract caller identity from TLS certs; without it, deny-by-default would
+#   block ALL invocations. For PRODUCTION (Kubernetes with mTLS + Sentry): set
+#   defaultAction to "deny", set trustDomain to your SPIFFE domain, and update each
+#   policy trustDomain + namespace to match the caller's K8s identity.
 apiVersion: dapr.io/v1alpha1
 kind: Configuration
 metadata:
@@ -14,4 +22,13 @@ spec:
   accessControl:
     defaultAction: allow  # Allow-by-default in self-hosted mode; change to deny with mTLS
     trustDomain: "public"
-    policies: []
+    policies:
+      # eventstore-admin-ui: Admin Blazor UI -- invokes the Admin REST API (D13).
+      - appId: eventstore-admin-ui
+        defaultAction: deny
+        trustDomain: "public"
+        namespace: "default"
+        operations:
+          - name: /**
+            httpVerb: ['GET', 'POST', 'PUT', 'DELETE']
+            action: allow

@@ -155,14 +155,21 @@ public static class HexalithEventStoreExtensions {
             _ = adminServer.WithEnvironment("AdminServer__ResiliencyConfigPath", resiliencyConfigPath);
         }
 
-        // Wire Admin.UI with Admin.Server reference for HTTP API calls.
-        // Admin.UI does not use DAPR directly — it communicates exclusively via
-        // HTTP REST API to Admin.Server (ADR-P4 deviation).
+        // Wire Admin.UI. It invokes Admin.Server via DAPR service invocation
+        // (D13, supersedes the ADR-P4 HTTP deviation): the Admin.UI sidecar tags
+        // outbound calls with `dapr-app-id: eventstore-admin`. The sidecar references
+        // no state store / pub/sub component — service invocation only, so it has zero
+        // direct infrastructure access (same isolation rationale as the sample sidecar).
+        // WaitFor(adminServer) is retained so the UI starts after its invocation target.
         if (adminUI is not null) {
             _ = adminUI
                 .WithReference(adminServer)
                 .WaitFor(adminServer)
-                .WithExternalHttpEndpoints();
+                .WithExternalHttpEndpoints()
+                .WithDaprSidecar(sidecar => sidecar
+                    .WithOptions(new DaprSidecarOptions {
+                        AppId = "eventstore-admin-ui",
+                    }));
         }
 
         return new HexalithEventStoreResources(stateStore, pubSub, eventStore, adminServer, adminUI);
