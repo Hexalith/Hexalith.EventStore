@@ -32,6 +32,8 @@ $ aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHo
 ```
 
 > **Note:** The first run takes longer than usual because .NET restores NuGet packages and Docker pulls container images for Redis, Keycloak, and the DAPR sidecar.
+>
+> **Tip (experimental):** For a faster inner loop, set `KeycloakPersistent=true` to reuse the Keycloak container across restarts (cold-start is then paid only once). This pins Keycloak to fixed host ports `8180`/`8543`, which must be free — if they collide, relocate them with `KeycloakHttpPort`/`KeycloakManagementPort`. After editing the realm file, remove the container so it re-imports. See [Troubleshooting → Keycloak Slow Startup](../guides/troubleshooting.md#keycloak-slow-startup-dev-fast-start).
 
 Once the application starts, the terminal output includes the Aspire dashboard URL. Open it in your browser — the dashboard shows all running services and their endpoints.
 

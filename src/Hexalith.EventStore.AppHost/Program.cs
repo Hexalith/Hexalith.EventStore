@@ -58,10 +58,48 @@ ForwardEventStoreEnvironment("EventStore:Drain:MaxDrainPeriod", "EventStore__Dra
 IResourceBuilder<KeycloakResource>? keycloak = null;
 ReferenceExpression? realmUrl = null;
 if (!string.Equals(builder.Configuration["EnableKeycloak"], FalseLiteral, StringComparison.OrdinalIgnoreCase)) {
+    // Dev fast-start (opt-in, default OFF). Set KeycloakPersistent=true to reuse the Keycloak
+    // container across `aspire run` restarts so the cold-start + realm import is paid once
+    // instead of every restart. Default OFF honors the project's "prefer non-persistent
+    // resources" rule. NOTE: a reused container does NOT re-import the realm — after editing
+    // KeycloakRealms/hexalith-realm.json, remove the container (`docker rm -f`) so it re-imports
+    // on the next start.
+    bool keycloakPersistent = bool.TryParse(builder.Configuration["KeycloakPersistent"]?.Trim(), out bool persistentParsed)
+        && persistentParsed;
+
+    // When persistent, resolve the fixed proxyless host ports up front so the AddKeycloak host-port
+    // arg and the endpoint pins agree (and the client-facing realm URL, derived from GetEndpoint,
+    // tracks them automatically). KeycloakHttpPort/KeycloakManagementPort override the 8180/8543
+    // defaults and are validated fail-fast (integer 1..65535, distinct, not the EventStore 8080).
+    // The values are read ONLY in the persistent path, so the default (dynamic, proxied) topology
+    // is byte-for-byte unchanged and the override knobs are ignored unless reuse is opted into.
+    int keycloakHttpPort = KeycloakFastStartPorts.DefaultHttpPort;
+    int keycloakManagementPort = KeycloakFastStartPorts.DefaultManagementPort;
+    if (keycloakPersistent) {
+        (keycloakHttpPort, keycloakManagementPort) = KeycloakFastStartPorts.Resolve(
+            builder.Configuration[KeycloakFastStartPorts.HttpPortKey],
+            builder.Configuration[KeycloakFastStartPorts.ManagementPortKey]);
+    }
+
     // Realm-as-code: hexalith-realm.json auto-imported on container start.
-    // Port 8180 avoids conflict with eventstore on 8080.
-    keycloak = builder.AddKeycloak("keycloak", 8180)
+    // The host port (default 8180) avoids conflict with eventstore on 8080.
+    keycloak = builder.AddKeycloak("keycloak", keycloakHttpPort)
         .WithRealmImport("./KeycloakRealms");
+
+    if (keycloakPersistent) {
+        // DCP only REUSES a persistent container when its lifecycle-key (a hash of the
+        // container's docker create spec) is byte-stable across runs. By default Aspire
+        // assigns RANDOM host ports to Keycloak's endpoints on every run, which churns that
+        // hash and forces a delete+recreate (full cold-start + realm re-import) — defeating
+        // the fast-start. Pin the endpoints to fixed, proxyless host ports so the docker
+        // bindings are deterministic and reuse can actually engage. The ports are configurable
+        // via KeycloakHttpPort/KeycloakManagementPort to relocate them off a host collision.
+        // EXPERIMENTAL: see the dw19 warm-reattach smoke evidence.
+        _ = keycloak
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithEndpoint("http", e => { e.Port = keycloakHttpPort; e.IsProxied = false; })
+            .WithEndpoint("management", e => { e.Port = keycloakManagementPort; e.IsProxied = false; });
+    }
 
     // Wire Keycloak OIDC auth (D11, Story 5.1 Task 8).
     // The existing ConfigureJwtBearerOptions.cs OIDC discovery path handles everything

@@ -16,9 +16,10 @@ namespace Hexalith.EventStore.IntegrationTests.Security;
 /// <see cref="App"/>, and <see cref="GetTokenAsync"/>.
 /// </summary>
 public class AspireTopologyFixture : IAsyncLifetime {
+    private readonly Dictionary<string, string?> _envSnapshot = new(StringComparer.Ordinal);
+
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
-    private string? _previousEnableKeycloak;
     private HttpClient? _eventStoreClient;
     private string? _keycloakBaseUrl;
 
@@ -47,88 +48,144 @@ public class AspireTopologyFixture : IAsyncLifetime {
         // Ensure E2E tests always start Keycloak regardless of developer-local settings.
         // Program.cs allows disabling Keycloak via EnableKeycloak=false for standalone runs,
         // but this test suite depends on Keycloak being available.
-        _previousEnableKeycloak = Environment.GetEnvironmentVariable("EnableKeycloak");
-        Environment.SetEnvironmentVariable("EnableKeycloak", "true");
+        SnapshotAndSet("EnableKeycloak", "true");
 
-        // 5-minute timeout for full Aspire topology startup including container pulls,
-        // Keycloak realm import, and service readiness. Prevents indefinite hangs in CI.
-        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+        // Opt-in container reuse for faster LOCAL test iteration (default OFF so CI stays
+        // cold/clean). Set KEYCLOAK_TEST_REUSE=true to keep the Keycloak container warm
+        // between `dotnet test` runs — only the first run pays the cold-start.
+        if (bool.TryParse(Environment.GetEnvironmentVariable("KEYCLOAK_TEST_REUSE")?.Trim(), out bool reuseKeycloak)
+            && reuseKeycloak) {
+            SnapshotAndSet("KeycloakPersistent", "true");
+        }
 
-        _builder = await DistributedApplicationTestingBuilder
-            .CreateAsync<Projects.Hexalith_EventStore_AppHost>()
-            .ConfigureAwait(false);
+        try {
+            // 5-minute timeout for full Aspire topology startup including container pulls,
+            // Keycloak realm import, and service readiness. Prevents indefinite hangs in CI.
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
 
-        _app = await _builder.BuildAsync().ConfigureAwait(false);
-        await _app.StartAsync(cts.Token).ConfigureAwait(false);
+            _builder = await DistributedApplicationTestingBuilder
+                .CreateAsync<Projects.Hexalith_EventStore_AppHost>()
+                .ConfigureAwait(false);
 
-        // Create HTTP client for EventStore
-        _eventStoreClient = _app.CreateHttpClient("eventstore");
-        _eventStoreClient.Timeout = TimeSpan.FromSeconds(60);
+            _app = await _builder.BuildAsync().ConfigureAwait(false);
+            await _app.StartAsync(cts.Token).ConfigureAwait(false);
 
-        // Get the Keycloak base URL for token acquisition
-        Uri keycloakEndpoint = _app.GetEndpoint("keycloak", "http");
-        _keycloakBaseUrl = keycloakEndpoint.ToString().TrimEnd('/');
+            // Create HTTP client for EventStore
+            _eventStoreClient = _app.CreateHttpClient("eventstore");
+            _eventStoreClient.Timeout = TimeSpan.FromSeconds(60);
 
-        // Wait for infrastructure readiness to avoid startup race conditions in E2E tests.
-        await WaitForEndpointAsync(
-            _eventStoreClient,
-            "/api/v1/commands",
-            expectedStatusCodes: [HttpStatusCode.Unauthorized, HttpStatusCode.MethodNotAllowed, HttpStatusCode.NotFound],
-            timeout: TimeSpan.FromMinutes(5),
-            pollInterval: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+            // Get the Keycloak base URL for token acquisition
+            Uri keycloakEndpoint = _app.GetEndpoint("keycloak", "http");
+            _keycloakBaseUrl = keycloakEndpoint.ToString().TrimEnd('/');
 
-        using var keycloakProbeClient = new HttpClient {
-            Timeout = TimeSpan.FromSeconds(15),
-        };
+            // Wait for infrastructure readiness to avoid startup race conditions in E2E tests.
+            await WaitForEndpointAsync(
+                _eventStoreClient,
+                "/api/v1/commands",
+                expectedStatusCodes: [HttpStatusCode.Unauthorized, HttpStatusCode.MethodNotAllowed, HttpStatusCode.NotFound],
+                timeout: TimeSpan.FromMinutes(5),
+                pollInterval: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
 
-        await WaitForEndpointAsync(
-            keycloakProbeClient,
-            $"{_keycloakBaseUrl}/realms/hexalith/.well-known/openid-configuration",
-            expectedStatusCodes: [HttpStatusCode.OK],
-            timeout: TimeSpan.FromMinutes(5),
-            pollInterval: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+            using var keycloakProbeClient = new HttpClient {
+                Timeout = TimeSpan.FromSeconds(15),
+            };
 
-        // Wait for Keycloak to fully complete realm import (users, clients).
-        // The OIDC discovery endpoint can return 200 before user/client data is committed,
-        // causing token acquisition to fail with 500 unknown_error.
-        await WaitForTokenAcquisitionAsync(
-            timeout: TimeSpan.FromMinutes(2),
-            pollInterval: TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+            await WaitForEndpointAsync(
+                keycloakProbeClient,
+                $"{_keycloakBaseUrl}/realms/hexalith/.well-known/openid-configuration",
+                expectedStatusCodes: [HttpStatusCode.OK],
+                timeout: TimeSpan.FromMinutes(5),
+                pollInterval: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
 
-        // Wait for EventStore health endpoint (includes Dapr sidecar, state store, pub/sub checks).
-        // Without this, actor invocations fail because the Dapr sidecar/placement service isn't ready.
-        await WaitForEndpointAsync(
-            _eventStoreClient,
-            "/health",
-            expectedStatusCodes: [HttpStatusCode.OK],
-            timeout: TimeSpan.FromMinutes(3),
-            pollInterval: TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+            // Wait for Keycloak to fully complete realm import (users, clients).
+            // The OIDC discovery endpoint can return 200 before user/client data is committed,
+            // causing token acquisition to fail with 500 unknown_error.
+            await WaitForTokenAcquisitionAsync(
+                timeout: TimeSpan.FromMinutes(2),
+                pollInterval: TimeSpan.FromSeconds(3)).ConfigureAwait(false);
 
-        // Wait for the sample domain service to be ready. The EventStore's actor pipeline
-        // invokes the sample service via Dapr service invocation. Without this check,
-        // the first command submission hangs until the sample sidecar becomes available.
-        using HttpClient sampleProbeClient = _app.CreateHttpClient("sample");
-        sampleProbeClient.Timeout = TimeSpan.FromSeconds(15);
-        await WaitForEndpointAsync(
-            sampleProbeClient,
-            "/health",
-            expectedStatusCodes: [HttpStatusCode.OK],
-            timeout: TimeSpan.FromMinutes(3),
-            pollInterval: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+            // Wait for EventStore health endpoint (includes Dapr sidecar, state store, pub/sub checks).
+            // Without this, actor invocations fail because the Dapr sidecar/placement service isn't ready.
+            await WaitForEndpointAsync(
+                _eventStoreClient,
+                "/health",
+                expectedStatusCodes: [HttpStatusCode.OK],
+                timeout: TimeSpan.FromMinutes(3),
+                pollInterval: TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+
+            // Wait for the sample domain service to be ready. The EventStore's actor pipeline
+            // invokes the sample service via Dapr service invocation. Without this check,
+            // the first command submission hangs until the sample sidecar becomes available.
+            using HttpClient sampleProbeClient = _app.CreateHttpClient("sample");
+            sampleProbeClient.Timeout = TimeSpan.FromSeconds(15);
+            await WaitForEndpointAsync(
+                sampleProbeClient,
+                "/health",
+                expectedStatusCodes: [HttpStatusCode.OK],
+                timeout: TimeSpan.FromMinutes(3),
+                pollInterval: TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+        }
+        catch {
+            // xUnit does not invoke DisposeAsync when InitializeAsync throws (e.g. the 5-min topology
+            // timeout), so restore the env-var snapshot here to keep this fixture's process-wide
+            // mutations from leaking into the next serially-run collection.
+            await SafeShutdownAsync().ConfigureAwait(false);
+            RestoreEnvironmentSnapshot();
+            throw;
+        }
     }
 
     public async ValueTask DisposeAsync() {
+        try {
+            await SafeShutdownAsync().ConfigureAwait(false);
+        }
+        finally {
+            // Restore prior process settings to avoid leaking fixture state across test runs.
+            RestoreEnvironmentSnapshot();
+        }
+    }
+
+    private async Task SafeShutdownAsync() {
         _eventStoreClient?.Dispose();
+        _eventStoreClient = null;
+
         if (_app is not null) {
-            await _app.DisposeAsync().ConfigureAwait(false);
+            try {
+                await _app.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception) {
+                // Ignore shutdown faults so the env-var restore in DisposeAsync still runs.
+            }
+
+            _app = null;
         }
 
         if (_builder is not null) {
-            await _builder.DisposeAsync().ConfigureAwait(false);
+            try {
+                await _builder.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception) {
+                // Ignore shutdown faults so the env-var restore in DisposeAsync still runs.
+            }
+
+            _builder = null;
+        }
+    }
+
+    private void SnapshotAndSet(string name, string? newValue) {
+        if (!_envSnapshot.ContainsKey(name)) {
+            _envSnapshot[name] = Environment.GetEnvironmentVariable(name);
         }
 
-        // Restore prior process setting to avoid leaking fixture state across test runs.
-        Environment.SetEnvironmentVariable("EnableKeycloak", _previousEnableKeycloak);
+        Environment.SetEnvironmentVariable(name, newValue);
+    }
+
+    private void RestoreEnvironmentSnapshot() {
+        foreach (KeyValuePair<string, string?> entry in _envSnapshot) {
+            Environment.SetEnvironmentVariable(entry.Key, entry.Value);
+        }
+
+        _envSnapshot.Clear();
     }
 
     /// <summary>

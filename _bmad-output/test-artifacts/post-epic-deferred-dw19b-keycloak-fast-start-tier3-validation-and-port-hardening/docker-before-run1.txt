@@ -1,0 +1,3 @@
+=== before-run1 captured 2026-05-25T18:18:54.1775750+02:00 ===
+docker ps -a (keycloak): ID|CreatedAt|Status|Names
+(no keycloak container present — persistent container did NOT survive the test process)

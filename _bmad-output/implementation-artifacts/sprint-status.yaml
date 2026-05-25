@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-05-21 - DW18 stream export backend moved review -> done after code review patches.
+# last_updated: 2026-05-25 - dw19b code-reviewed (3-layer adversarial) and moved to done: all 8 ACs satisfied, runtime evidence verified, 1 doc-comment patch applied (KeycloakFastStartPorts Resolve no longer claims a "free" port check that contradicts the no-probe guardrail; AppHost Release build 0/0), 2 pre-existing/pattern-wide fixture-hardening items deferred (aspire-fixture-env-restore-hardening), 13 findings dismissed incl. the https://localhost:8180 false-positive (PortBindings prove 8180->container 8443/tcp HTTPS). dw19b implemented and moved to review; dw19 → done (finished+validated by dw19b). Tier 3 fixture reuse PROVEN across two `dotnet test` runs (byte-identical container ID/CreatedAt/lifecycle-key, warm run ~26% faster; DistributedApplicationTestingBuilder/DisposeAsync does NOT tear down the persistent container). Fixed ports made configurable (KeycloakHttpPort/KeycloakManagementPort) + fail-fast validated (no free-port probe; 23/23 AppHost unit tests). Fixture env-restore leak fixed. AppHost+IntegrationTests Release build 0/0. Caveat: 5 authorized Tier 3 command-submission E2E tests return a PRE-EXISTING 500 (actor/command pipeline), identical on cold/warm/default-no-reuse — unrelated to reuse/dw19b; tracked as deferred-work dw19b-tier3-e2e-command-submission-500.
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -428,3 +428,32 @@ development_status:
   post-epic-deferred-dw16-manual-snapshot-creation-backend: done
   post-epic-deferred-dw17-snapshot-policy-crud-backend: done
   post-epic-deferred-dw18-stream-export-backend: done
+
+  # Keycloak dev fast-start (sprint-change-proposal-2026-05-25-keycloak-dev-fast-start.md)
+  # Opt-in container reuse to remove repeated Keycloak cold-starts: KeycloakPersistent flag in
+  # AppHost (default OFF, honors the "prefer non-persistent resources" rule) + KEYCLOAK_TEST_REUSE
+  # opt-in in Tier 3 fixtures (default OFF so CI stays cold/clean). NOTE: a WaitForStart relaxation
+  # was rejected — all services must WaitFor(keycloak) healthy (incl. tests) to avoid OIDC races.
+  # No PRD/architecture/MVP impact.
+  # Code applied + AppHost/IntegrationTests build green. Runtime warm-reattach smoke (2026-05-25):
+  # §5.5 build PASS. §5.1 originally FAILED — bare WithLifetime(Persistent) recreated the container
+  # on every `aspire run` (3 runs -> 3 distinct containers) because Aspire assigns Keycloak's
+  # http/management endpoints random host ports each run, churning DCP's lifecycle-key. Spike fix
+  # (proxyless fixed ports http->8180, management->8543, gated on KeycloakPersistent) stabilizes the
+  # lifecycle-key: 2 consecutive `aspire run` REUSE the same container; OIDC discovery returns 200.
+  # Landed EXPERIMENTAL — proxyless fixed ports are fragile (first pick 9180 collided with Logitech
+  # G Hub; concurrent topologies conflict on 8180/8543). See proposal section "Runtime Warm-Reattach
+  # Smoke + Spike (2026-05-25)". DONE: finished + validated by dw19b (2026-05-25) — Tier 3 fixture
+  # reuse proven across two `dotnet test` runs (byte-identical container ID/CreatedAt/lifecycle-key,
+  # warm run ~26% faster; DistributedApplicationTestingBuilder/DisposeAsync does NOT tear down the
+  # persistent container). Fixed ports made configurable + validated; fixture env-restore leak fixed.
+  post-epic-deferred-dw19-keycloak-dev-fast-start: done
+  # dw19b finishes dw19. Tier 3 reuse runtime-validated POSITIVE (see EVIDENCE.md): AC1 reuse across
+  # two `dotnet test` runs proven by container end-state (R2-A6), AC3 within-run cross-collection
+  # reuse held, AC4/AC7 default path unchanged (control run leaves no persistent container).
+  # Hardening: KeycloakHttpPort/KeycloakManagementPort configurable + fail-fast validated (no free-port
+  # probe; unit-tested). AC6 fixture env-restore leak fixed (snapshot/try-catch/finally). AC2 caveat:
+  # 5 authorized command-submission E2E tests return a PRE-EXISTING 500 (actor/command pipeline),
+  # identical on cold/warm/default-no-reuse — unrelated to reuse or dw19b; tracked as deferred-work
+  # item dw19b-tier3-e2e-command-submission-500.
+  post-epic-deferred-dw19b-keycloak-fast-start-tier3-validation-and-port-hardening: done

@@ -542,6 +542,39 @@ IDX20803: Unable to obtain configuration from: 'http://keycloak:8180/realms/hexa
     $ EnableKeycloak=false dotnet run --project src/Hexalith.EventStore.AppHost
     ```
 
+### Keycloak Slow Startup (Dev Fast-Start)
+
+**Symptom:** Every `aspire run` (and every Tier 3 test run) waits ~20–30s for a fresh Keycloak container to boot and re-import the realm.
+
+**Probable Cause:** By default the Keycloak container is non-persistent, so it cold-starts on each run. Aspire already runs it in `start-dev` mode, so there is no Quarkus build to optimize — the cost is the repeated cold-start itself. All services `WaitFor(keycloak)` to be healthy before starting (required to avoid OIDC-discovery races), so this boot is on the critical path.
+
+**Resolution (experimental):** Set `KeycloakPersistent=true` to reuse the Keycloak container across restarts so the boot + realm import is paid once:
+
+```bash
+$ KeycloakPersistent=true aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+```
+
+For Tier 3 integration tests, set `KEYCLOAK_TEST_REUSE=true` to keep the container warm between `dotnet test` runs.
+
+**How it works:** `ContainerLifetime.Persistent` alone is **not** enough. Aspire assigns Keycloak's `http`/`management` endpoints *random* host ports on every run, which churns DCP's container-reuse hash (`lifecycle-key`) and forces a delete + recreate — i.e. a full cold-start every time. So `KeycloakPersistent=true` *also* pins those endpoints **proxyless to fixed host ports** (`http`→`8180`, `management`→`8543`) so the reuse hash stays stable and the warm container is genuinely reattached. (Verified: two consecutive `aspire run` reuse the same container; OIDC discovery returns 200 through `https://localhost:8180/realms/hexalith`.)
+
+> **Relocating the fixed ports:** The two pinned ports are configurable. If `8180` or `8543` collides with other host software, set `KeycloakHttpPort` and/or `KeycloakManagementPort` to free ports instead of editing source:
+>
+> ```bash
+> $ KeycloakPersistent=true KeycloakHttpPort=8280 KeycloakManagementPort=8643 \
+>     aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+> ```
+>
+> The realm/authority URL the services use is derived from the resolved `http` port, so it tracks the override automatically. Both values are validated at AppHost build: each must be an integer in `1..65535`, the two must differ, and neither may equal the EventStore app port `8080`. An invalid value fails fast with an actionable message (naming the key and bad value) instead of letting Keycloak wedge in `Created`. These knobs are read **only** when `KeycloakPersistent=true`; the default (non-persistent, dynamic-port) topology ignores them.
+
+> **Realm edits:** A reused container does **not** re-import the realm. After editing `KeycloakRealms/hexalith-realm.json`, remove the container so it re-imports on the next start:
+>
+> ```bash
+> $ docker rm -f $(docker ps -aqf "name=keycloak")
+> ```
+
+> **Fixed-port fragility:** In fast-start mode Keycloak binds host ports `8180` and `8543` **directly** (proxyless). If either is already taken — by an unrelated host process (a desktop app can own a port; e.g. `9180` is used by Logitech G Hub on some machines), a second AppHost, or a concurrent `KEYCLOAK_TEST_REUSE=true dotnet test` — Keycloak cannot bind and the container hangs in `Created`, stalling the whole topology. If Keycloak is stuck in `Created`, confirm which ports are taken with `Get-NetTCPConnection -LocalPort 8180,8543` (PowerShell), then either free them or relocate Keycloak with `KeycloakHttpPort`/`KeycloakManagementPort` (see "Relocating the fixed ports" above), and `docker rm -f` the wedged container. Do not run two fast-start topologies at once. The default (non-persistent) mode uses dynamic ports and never has this problem.
+
 ## Kubernetes Deployment Issues
 
 These issues occur when deploying to a Kubernetes cluster with the DAPR operator. See the [Kubernetes Deployment Guide](deployment-kubernetes.md) for full setup instructions.
