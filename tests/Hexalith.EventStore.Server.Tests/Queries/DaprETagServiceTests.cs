@@ -185,6 +185,38 @@ public class DaprETagServiceTests {
         projectionType.ShouldBe("counter");
     }
 
+    [Fact]
+    public async Task GetCurrentETagAsync_InvokesActorThroughRemotingInterface() {
+        // REGRESSION DOC (2026-05-25): the cancellation-token change invoked the actor through the
+        // weakly-typed, *non-remoting* ActorProxy.InvokeMethodAsync<string?>(method, ct) after
+        // casting a proxy built by the *remoting* CreateActorProxy<IETagActor> overload. A
+        // remoting-built proxy has a null non-remoting interactor, so that call threw
+        // NullReferenceException inside Dapr.Actors.Client.ActorProxy.InvokeMethodAsync, which the
+        // fail-open catch silently converted to a null ETag on every production fetch.
+        //
+        // NOTE on coverage limits: a mocked IETagActor is NOT a real Dapr ActorProxy, so neither the
+        // old nor the fixed code can be distinguished by a pure unit test — both reach the remoting
+        // interface here. That is precisely why the bug shipped green. The durable guard is
+        // structural: the service no longer branches on `proxy is ActorProxy` / non-remoting
+        // invocation at all (see DaprETagService.GetCurrentETagAsync). This test pins the surviving
+        // contract — the service awaits IETagActor.GetCurrentETagAsync() and returns its value.
+        string selfRoutingETag = SelfRoutingETag.GenerateNew("counter");
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IETagActor actor = Substitute.For<IETagActor>();
+        _ = actor.GetCurrentETagAsync().Returns(selfRoutingETag);
+        _ = factory.CreateActorProxy<IETagActor>(
+            Arg.Any<ActorId>(),
+            ETagActor.ETagActorTypeName,
+            Arg.Any<ActorProxyOptions>()).Returns(actor);
+
+        var service = new DaprETagService(factory, NullLogger<DaprETagService>.Instance);
+
+        string? result = await service.GetCurrentETagAsync("counter", "tenant1");
+
+        result.ShouldBe(selfRoutingETag);
+        _ = await actor.Received(1).GetCurrentETagAsync();
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

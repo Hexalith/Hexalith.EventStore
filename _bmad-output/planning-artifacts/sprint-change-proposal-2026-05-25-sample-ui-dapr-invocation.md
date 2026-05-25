@@ -1,3 +1,13 @@
+> **⚠️ CORRECTION (2026-05-25, post-implementation):** This proposal's *root-cause analysis was wrong.*
+> The migration below was implemented in full (AppHost sidecar, `DaprAppIdHandler`, DI re-point, ACL) and the
+> `TaskCanceledException` **persisted**. Live tracing proved the real cause was a **DAPR actor placement
+> outage** in the local environment (sidecar log: `error reading server preface: EOF`), which made *every*
+> actor invocation hang to its timeout — not a UI sidecar/service-discovery problem. `docker restart
+> dapr_placement dapr_scheduler` took the same query from 20.3 s → 0.2 s. The transport migration is
+> **retained** (reasonable consistency with the rest of the topology) but it did **not** fix the trigger.
+> See `sprint-change-proposal-2026-05-25-dapr-placement-actor-outage.md` for the verified root cause and the
+> server-side placement health-check guardrail added to prevent silent recurrence.
+
 # Sprint Change Proposal — Migrate Sample BlazorUI → EventStore to DAPR Service Invocation
 
 - **Date:** 2026-05-25

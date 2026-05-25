@@ -28,34 +28,31 @@ public partial class DaprETagService(
 
         string actorId = $"{projectionType}:{tenantId}";
         try {
+            // Invoke through the strongly-typed IETagActor (remoting) interface. We must NOT cast
+            // to the base ActorProxy and call the weakly-typed InvokeMethodAsync<T>(method, ct):
+            // that is the *non-remoting* invocation path, and on a proxy built by the remoting
+            // CreateActorProxy<IETagActor> overload its non-remoting interactor is null, so the
+            // call throws NullReferenceException inside Dapr.Actors.Client.ActorProxy.InvokeMethodAsync
+            // (which the fail-open catch below then silently turned into a null ETag on every fetch).
+            // Cancellation is honoured by the pre-checks plus the 3 s RequestTimeout in _proxyOptions;
+            // the remoting interface intentionally exposes no per-call CancellationToken.
+            // See sprint-change-proposal-2026-05-25-etag-actor-proxy-nre.md.
             IETagActor proxy = actorProxyFactory.CreateActorProxy<IETagActor>(
                 new ActorId(actorId), ETagActor.ETagActorTypeName, _proxyOptions);
-            return await InvokeETagActorAsync(proxy, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            return await proxy.GetCurrentETagAsync().ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
             // Bare OperationCanceledException is rethrown so cancellation remains distinguishable from
             // adapter-edge failures (AC9). DAPR can wrap OCE inside ActorMethodInvocationException or
             // RpcException; those wrapped cases fall through to the generic catch below and the
-            // documented fail-open path (return null). See Dapr.Actors docs on actor invocation
-            // exception propagation; revisit if production telemetry shows wrapping in this lane.
+            // documented fail-open path (return null).
             throw;
         }
         catch (Exception ex) {
             Log.ETagFetchFailed(logger, actorId, ex.GetType().Name);
             return null;
         }
-    }
-
-    private static Task<string?> InvokeETagActorAsync(IETagActor proxy, CancellationToken cancellationToken) {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (proxy is ActorProxy actorProxy) {
-            return actorProxy.InvokeMethodAsync<string?>(
-                nameof(IETagActor.GetCurrentETagAsync),
-                cancellationToken);
-        }
-
-        return proxy.GetCurrentETagAsync();
     }
 
     private static partial class Log {
