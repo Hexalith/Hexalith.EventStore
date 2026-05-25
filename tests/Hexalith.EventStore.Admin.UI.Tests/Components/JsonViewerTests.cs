@@ -58,7 +58,9 @@ public class JsonViewerTests : AdminUITestContext {
         // Assert
         string markup = cut.Markup;
         markup.ShouldContain("Invalid JSON");
-        markup.ShouldContain(invalidJson);
+        // Security: invalid/untrusted content must NOT be echoed back (Story 22.7d-2 redaction).
+        markup.ShouldContain("could not be rendered safely");
+        markup.ShouldNotContain(invalidJson);
     }
 
     [Fact]

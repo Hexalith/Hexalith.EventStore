@@ -136,6 +136,13 @@ ipch/
 # Visual Studio Trace Files
 *.e2e
 
+# Re-include the Admin.UI E2E test project: its directory name ends in ".E2E", which
+# the *.e2e trace-file pattern above matches by coincidence (case-insensitive on
+# Windows). Keep the project source tracked while still ignoring its build output.
+!tests/Hexalith.EventStore.Admin.UI.E2E/
+tests/Hexalith.EventStore.Admin.UI.E2E/[Bb]in/
+tests/Hexalith.EventStore.Admin.UI.E2E/[Oo]bj/
+
 # TFS 2012 Local Workspace
 $tf/
 

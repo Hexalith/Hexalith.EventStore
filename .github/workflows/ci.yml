@@ -350,6 +350,66 @@ jobs:
           path: '**/coverage.cobertura.xml'
           retention-days: 30
 
+  e2e-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build-and-test
+    # Browser E2E suite has not previously run on a Linux runner. Start as a
+    # non-blocking signal (mirrors the Tier 3 aspire-tests stance); flip to a hard
+    # gate once it is proven stable in CI.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+
+      - name: Cache NuGet packages
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('Directory.Packages.props') }}
+          restore-keys: nuget-
+
+      - name: Restore
+        run: dotnet restore tests/Hexalith.EventStore.Admin.UI.E2E/
+
+      - name: Build Admin.UI E2E
+        run: dotnet build tests/Hexalith.EventStore.Admin.UI.E2E/ --no-restore --configuration Release
+
+      - name: Install Playwright browsers
+        # Generated into the build output by the Microsoft.Playwright package.
+        # --with-deps installs the OS libraries headless Chromium needs on Linux.
+        run: pwsh tests/Hexalith.EventStore.Admin.UI.E2E/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      - name: Admin.UI E2E Tests
+        # Run the whole project (not --filter Category=E2E): the HTTP SmokeTests carry
+        # no Category trait, so a filter would silently skip them. The browser suite
+        # builds an in-process Kestrel host and needs no Dapr/Aspire infrastructure.
+        run: >
+          dotnet test
+          tests/Hexalith.EventStore.Admin.UI.E2E/
+          --no-build --configuration Release
+          --logger "trx;LogFileName=e2e-results.trx"
+
+      - name: Test Summary
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          echo "## Admin.UI E2E Tests" >> $GITHUB_STEP_SUMMARY
+          echo "Status: $JOB_STATUS" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-test-results
+          path: "**/e2e-results.trx"
+          retention-days: 30
+
   aspire-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10

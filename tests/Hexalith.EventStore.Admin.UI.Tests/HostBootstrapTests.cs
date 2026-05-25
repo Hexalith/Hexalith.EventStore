@@ -13,8 +13,12 @@ public class HostBootstrapTests : IClassFixture<WebApplicationFactory<Program>> 
 
     [Fact]
     public async Task BlazorServerHost_BootstrapsWithoutErrors() {
-        // Arrange
-        HttpClient client = _factory.CreateClient();
+        // Arrange — Admin.UI requires a DAPR sidecar (D13), enforced by RequireDaprSidecar
+        // in Program.cs. Simulate the sidecar's presence so the startup guard passes; the
+        // home page renders even though the sidecar isn't actually reachable here.
+        WebApplicationFactory<Program> factory = _factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("DAPR_HTTP_PORT", "3500"));
+        HttpClient client = factory.CreateClient();
 
         // Act
         HttpResponseMessage response = await client.GetAsync("/");
