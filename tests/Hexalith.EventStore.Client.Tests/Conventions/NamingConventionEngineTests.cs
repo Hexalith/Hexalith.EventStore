@@ -246,6 +246,13 @@ public class NamingConventionEngineTests : IDisposable {
         Assert.Equal("acme.order.events", result);
     }
 
+    [Fact]
+    public void GetPubSubTopic_SystemTenant_ReturnsDomainTopic() {
+        string result = NamingConventionEngine.GetPubSubTopic("system", "tenants");
+
+        Assert.Equal("tenants.events", result);
+    }
+
     [Theory]
     [InlineData("", "order")]
     [InlineData("  ", "order")]

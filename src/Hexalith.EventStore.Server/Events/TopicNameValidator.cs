@@ -68,7 +68,7 @@ public class TopicNameValidator(
 
         if (!IsValidTopicName(topicName)) {
             throw new ArgumentException(
-                $"Derived topic name '{topicName}' is invalid. Expected D6 pattern: {{tenant}}.{{domain}}.events with lowercase alphanumeric + hyphens, max {MaxTopicLength} chars.",
+                $"Derived topic name '{topicName}' is invalid. Expected D6 pattern: {{domain}}.events for platform tenant 'system' or {{tenant}}.{{domain}}.events with lowercase alphanumeric + hyphens, max {MaxTopicLength} chars.",
                 nameof(identity));
         }
 

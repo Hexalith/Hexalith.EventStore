@@ -58,6 +58,13 @@ public class AggregateIdentityTests {
     }
 
     [Fact]
+    public void PubSubTopic_ForSystemTenant_ReturnsDomainTopic() {
+        var identity = new AggregateIdentity("system", "tenants", "global-administrators");
+
+        identity.PubSubTopic.ShouldBe("tenants.events");
+    }
+
+    [Fact]
     public void QueueSession_ReturnsColonSeparatedForm() {
         var identity = new AggregateIdentity("acme", "payments", "order-123");
 

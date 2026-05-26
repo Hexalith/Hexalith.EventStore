@@ -31,12 +31,12 @@ public record EventPublisherOptions {
 
     /// <summary>
     /// Gets the dead-letter topic name for a specific aggregate identity.
-    /// Format: {DeadLetterTopicPrefix}.{tenantId}.{domain}.events
+    /// Format: {DeadLetterTopicPrefix}.{AggregateIdentity.PubSubTopic}
     /// </summary>
     /// <param name="identity">The aggregate identity to derive the dead-letter topic from.</param>
     /// <returns>The fully-qualified dead-letter topic name.</returns>
     public string GetDeadLetterTopic(AggregateIdentity identity) {
         ArgumentNullException.ThrowIfNull(identity);
-        return $"{DeadLetterTopicPrefix}.{identity.TenantId}.{identity.Domain}.events";
+        return $"{DeadLetterTopicPrefix}.{identity.PubSubTopic}";
     }
 }

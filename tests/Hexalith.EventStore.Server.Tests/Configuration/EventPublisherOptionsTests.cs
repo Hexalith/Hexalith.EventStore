@@ -7,7 +7,7 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Configuration;
 /// <summary>
 /// Story 4.3 Task 10: EventPublisherOptions dead-letter topic configuration tests.
-/// Verifies dead-letter topic naming convention: {prefix}.{tenantId}.{domain}.events
+/// Verifies dead-letter topic naming convention: {prefix}.{pubSubTopic}
 /// </summary>
 public class EventPublisherOptionsTests {
     // --- Task 10.2: Default dead-letter prefix ---
@@ -32,8 +32,21 @@ public class EventPublisherOptionsTests {
         // Act
         string deadLetterTopic = options.GetDeadLetterTopic(identity);
 
-        // Assert -- format: deadletter.{tenantId}.{domain}.events
+        // Assert -- format: deadletter.{tenantId}.{domain}.events for tenant-scoped identities
         deadLetterTopic.ShouldBe("deadletter.acme.orders.events");
+    }
+
+    [Fact]
+    public void GetDeadLetterTopic_SystemTenant_ReturnsDomainTopic() {
+        // Arrange
+        var options = new EventPublisherOptions();
+        var identity = new AggregateIdentity("system", "tenants", "global-administrators");
+
+        // Act
+        string deadLetterTopic = options.GetDeadLetterTopic(identity);
+
+        // Assert
+        deadLetterTopic.ShouldBe("deadletter.tenants.events");
     }
 
     // --- Task 10.4: Different tenants = different dead-letter topics ---

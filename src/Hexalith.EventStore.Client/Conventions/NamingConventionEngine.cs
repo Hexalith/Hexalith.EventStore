@@ -85,11 +85,13 @@ public static class NamingConventionEngine {
     /// </summary>
     /// <param name="tenantId">The tenant identifier.</param>
     /// <param name="domain">The validated domain name.</param>
-    /// <returns>The pub/sub topic in the format "{tenantId}.{domain}.events".</returns>
+    /// <returns>The pub/sub topic in the format "{domain}.events" for platform tenant "system"; otherwise "{tenantId}.{domain}.events".</returns>
     public static string GetPubSubTopic(string tenantId, string domain) {
         ValidateKebabCase(tenantId, nameof(tenantId));
         ValidateKebabCase(domain, nameof(domain));
-        return $"{tenantId}.{domain}.events";
+        return tenantId == "system"
+            ? $"{domain}.events"
+            : $"{tenantId}.{domain}.events";
     }
 
     /// <summary>

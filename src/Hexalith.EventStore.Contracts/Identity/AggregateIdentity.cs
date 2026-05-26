@@ -85,8 +85,13 @@ public record AggregateIdentity {
     /// </summary>
     public string PipelineKeyPrefix => $"{TenantId}:{Domain}:{AggregateId}:pipeline:";
 
-    /// <summary>Gets the pub/sub topic in dot-separated form.</summary>
-    public string PubSubTopic => $"{TenantId}.{Domain}.events";
+    /// <summary>
+    /// Gets the pub/sub topic in dot-separated form.
+    /// Platform-level commands use the domain topic; tenant-scoped commands keep the tenant prefix.
+    /// </summary>
+    public string PubSubTopic => TenantId == "system"
+        ? $"{Domain}.events"
+        : $"{TenantId}.{Domain}.events";
 
     /// <summary>Gets the queue session identifier (same as ActorId).</summary>
     public string QueueSession => $"{TenantId}:{Domain}:{AggregateId}";
