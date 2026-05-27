@@ -1,7 +1,13 @@
 
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
 
+using Dapr;
 using Dapr.Actors.Client;
+
+using Google.Protobuf;
+
+using Grpc.Core;
 
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Pipeline.Queries;
@@ -105,12 +111,16 @@ public partial class QueryRouter : IQueryRouter {
                 return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.SerializationFailure);
             }
         }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) when (ContainsCancellationException(ex)) {
+            ThrowFirstCancellationException(ex);
+            throw;
+        }
         catch (Dapr.Actors.ActorMethodInvocationException ex) when (IsProjectionActorNotFound(ex)) {
             Log.ProjectionActorNotFound(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, actorId);
             return new QueryRouterResult(Success: false, Payload: null, NotFound: true);
-        }
-        catch (OperationCanceledException) {
-            throw;
         }
         catch (Exception ex) when (IsProjectionActorNotFound(ex)) {
             Log.ProjectionActorNotFound(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, actorId);
@@ -129,16 +139,161 @@ public partial class QueryRouter : IQueryRouter {
     private static bool IsProjectionActorNotFound(Exception exception) {
         ArgumentNullException.ThrowIfNull(exception);
 
-        return ContainsNotFoundMarker(exception.Message)
-            || ContainsNotFoundMarker(exception.InnerException?.Message);
+        bool hasActorMissingDaprErrorCode = false;
+        bool hasContradictoryDaprErrorCode = false;
+        bool hasLegacyMarker = false;
 
-        static bool ContainsNotFoundMarker(string? message)
+        foreach (Exception current in EnumerateExceptionTree(exception)) {
+            foreach (string errorCode in EnumerateDaprErrorCodes(current)) {
+                if (IsDaprActorMissingErrorCode(errorCode)) {
+                    hasActorMissingDaprErrorCode = true;
+                } else if (HasSpecificDaprErrorCode(errorCode)) {
+                    hasContradictoryDaprErrorCode = true;
+                }
+            }
+
+            hasLegacyMarker |= ContainsLegacyActorNotFoundMarker(current.Message);
+        }
+
+        if (hasContradictoryDaprErrorCode) {
+            return false;
+        }
+
+        if (hasActorMissingDaprErrorCode) {
+            return true;
+        }
+
+        return hasLegacyMarker;
+
+        static bool IsDaprActorMissingErrorCode(string? errorCode)
+            => string.Equals(errorCode, "ERR_ACTOR_INSTANCE_MISSING", StringComparison.Ordinal)
+                || string.Equals(errorCode, "ERR_ACTOR_RUNTIME_NOT_FOUND", StringComparison.Ordinal)
+                || string.Equals(errorCode, "ERR_ACTOR_NO_ADDRESS", StringComparison.Ordinal);
+
+        static bool HasSpecificDaprErrorCode(string? errorCode)
+            => !string.IsNullOrWhiteSpace(errorCode)
+                && !string.Equals(errorCode, "UNKNOWN", StringComparison.Ordinal);
+
+        // Compatibility fallback for older DAPR/runtime shapes that exposed only English messages.
+        static bool ContainsLegacyActorNotFoundMarker(string? message)
             => !string.IsNullOrWhiteSpace(message)
                 && (message.Contains("actor type not registered", StringComparison.OrdinalIgnoreCase)
                     || message.Contains("did not find address for actor", StringComparison.OrdinalIgnoreCase)
                     || message.Contains("could not find address for actor", StringComparison.OrdinalIgnoreCase)
                     || message.Contains("no address found for actor", StringComparison.OrdinalIgnoreCase)
                     || message.Contains("actor not found", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static IEnumerable<string> EnumerateDaprErrorCodes(Exception exception) {
+        if (exception is DaprApiException daprException and not Dapr.Actors.ActorMethodInvocationException
+            && !string.IsNullOrWhiteSpace(daprException.ErrorCode)) {
+            yield return daprException.ErrorCode;
+        }
+
+        if (exception is not RpcException rpcException) {
+            yield break;
+        }
+
+        foreach (Metadata.Entry entry in rpcException.Trailers) {
+            if (IsDaprErrorCodeMetadataKey(entry.Key) && !string.IsNullOrWhiteSpace(entry.Value)) {
+                yield return entry.Value;
+                continue;
+            }
+
+            if (!string.Equals(entry.Key, "grpc-status-details-bin", StringComparison.OrdinalIgnoreCase)) {
+                continue;
+            }
+
+            Google.Rpc.Status? status = TryParseGrpcStatusDetails(entry.ValueBytes);
+            if (status is null) {
+                continue;
+            }
+
+            foreach (Google.Protobuf.WellKnownTypes.Any detail in status.Details) {
+                if (!detail.Is(Google.Rpc.ErrorInfo.Descriptor)) {
+                    continue;
+                }
+
+                Google.Rpc.ErrorInfo errorInfo = detail.Unpack<Google.Rpc.ErrorInfo>();
+                if (!string.IsNullOrWhiteSpace(errorInfo.Reason)) {
+                    yield return errorInfo.Reason;
+                }
+
+                foreach (KeyValuePair<string, string> metadata in errorInfo.Metadata) {
+                    if (IsDaprErrorCodeMetadataKey(metadata.Key)
+                        && !string.IsNullOrWhiteSpace(metadata.Value)) {
+                        yield return metadata.Value;
+                    }
+                }
+            }
+        }
+
+        static bool IsDaprErrorCodeMetadataKey(string key)
+            => string.Equals(key, "error-code", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, "error_code", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, "errorcode", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, "dapr-error-code", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, "dapr_error_code", StringComparison.OrdinalIgnoreCase);
+
+        static Google.Rpc.Status? TryParseGrpcStatusDetails(byte[] valueBytes) {
+            try {
+                return Google.Rpc.Status.Parser.ParseFrom(valueBytes);
+            }
+            catch (InvalidProtocolBufferException) {
+                return null;
+            }
+        }
+    }
+
+    private static bool ContainsCancellationException(Exception exception) {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        foreach (Exception current in EnumerateExceptionTree(exception)) {
+            if (current is OperationCanceledException) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void ThrowFirstCancellationException(Exception exception) {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        foreach (Exception current in EnumerateExceptionTree(exception)) {
+            if (current is OperationCanceledException cancellationException) {
+                ExceptionDispatchInfo.Capture(cancellationException).Throw();
+            }
+        }
+    }
+
+    private static IEnumerable<Exception> EnumerateExceptionTree(Exception exception) {
+        const int MaxExceptionsToInspect = 32;
+
+        var stack = new Stack<Exception>();
+        var seen = new HashSet<Exception>();
+        stack.Push(exception);
+
+        int inspected = 0;
+        while (stack.Count > 0 && inspected < MaxExceptionsToInspect) {
+            Exception current = stack.Pop();
+            if (!seen.Add(current)) {
+                continue;
+            }
+
+            inspected++;
+            yield return current;
+
+            if (current is AggregateException aggregateException) {
+                for (int i = aggregateException.InnerExceptions.Count - 1; i >= 0; i--) {
+                    stack.Push(aggregateException.InnerExceptions[i]);
+                }
+            }
+
+            if (current.InnerException is not null) {
+                stack.Push(current.InnerException);
+            }
+        }
     }
 
     private static partial class Log {

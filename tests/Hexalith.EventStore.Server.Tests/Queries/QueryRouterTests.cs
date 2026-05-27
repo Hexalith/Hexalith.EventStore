@@ -1,8 +1,14 @@
 
+using System.Net;
 using System.Text.Json;
 
+using Dapr;
 using Dapr.Actors;
 using Dapr.Actors.Client;
+
+using Google.Protobuf;
+
+using Grpc.Core;
 
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Pipeline.Queries;
@@ -51,6 +57,25 @@ public class QueryRouterTests {
         return (invoker, router);
     }
 
+    private static RpcException CreateRpcExceptionWithDaprErrorInfo(
+        string errorCode,
+        StatusCode statusCode = StatusCode.NotFound) {
+        var statusDetails = new Google.Rpc.Status {
+            Code = (int)statusCode,
+            Message = "DAPR actor invocation failed.",
+        };
+        statusDetails.Details.Add(Google.Protobuf.WellKnownTypes.Any.Pack(new Google.Rpc.ErrorInfo {
+            Reason = errorCode,
+            Domain = "dapr.io",
+        }));
+
+        return new RpcException(
+            new Status(statusCode, "DAPR actor invocation failed."),
+            new Metadata {
+                { "grpc-status-details-bin", statusDetails.ToByteArray() },
+            });
+    }
+
     [Fact]
     public async Task RouteQueryAsync_SuccessfulQuery_ReturnsResultWithPayload() {
         JsonElement resultPayload = JsonDocument.Parse("{\"status\":\"shipped\"}").RootElement;
@@ -94,7 +119,7 @@ public class QueryRouterTests {
     }
 
     [Fact]
-    public async Task RouteQueryAsync_GenericExceptionWithActorNotFoundPattern_ReturnsNotFound() {
+    public async Task RouteQueryAsync_LegacyAddressMarkerFallback_ReturnsNotFound() {
         IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
         _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("did not find address for actor 'ProjectionActor/GetOrderStatus:test-tenant'"));
@@ -106,6 +131,240 @@ public class QueryRouterTests {
         result.Success.ShouldBeFalse();
         result.NotFound.ShouldBeTrue();
         result.Payload.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_ActorMissingDaprErrorCodeWithoutLegacyMessage_ReturnsNotFoundAndLogsProjectionActorNotFound() {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ActorMethodInvocationException(
+                "actor invocation failed",
+                new DaprApiException("adresse de projection absente", "ERR_ACTOR_NO_ADDRESS", false),
+                false));
+        ILogger<QueryRouter> logger = Substitute.For<ILogger<QueryRouter>>();
+        _ = logger.IsEnabled(LogLevel.Warning).Returns(true);
+        var router = new QueryRouter(invoker, logger);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeTrue();
+        result.Payload.ShouldBeNull();
+        logger.ReceivedCalls()
+            .Any(call => call.GetMethodInfo().Name == nameof(ILogger.Log)
+                && call.GetArguments()[0] is LogLevel.Warning
+                && call.GetArguments()[1] is EventId { Id: 1203 })
+            .ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_DirectRuntimeMissingDaprErrorCode_ReturnsNotFound() {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new DaprApiException("runtime projection indisponible", "ERR_ACTOR_RUNTIME_NOT_FOUND", false));
+
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeTrue();
+        result.Payload.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_GrpcRichDaprActorMissingErrorInfo_ReturnsNotFound() {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ActorMethodInvocationException(
+                "actor invocation failed",
+                CreateRpcExceptionWithDaprErrorInfo("ERR_ACTOR_INSTANCE_MISSING"),
+                false));
+
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeTrue();
+        result.Payload.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_PlainGrpcNotFoundStatusWithoutDaprErrorCode_ReturnsActorExceptionCategory() {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ActorMethodInvocationException(
+                "actor invocation failed",
+                new RpcException(new Status(StatusCode.NotFound, "projection absente")),
+                false));
+
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Payload.ShouldBeNull();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_NonNotFoundDaprActorErrorCode_ReturnsActorExceptionCategory() {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ActorMethodInvocationException(
+                "actor invocation failed",
+                new DaprApiException("projection method failed", "ERR_ACTOR_INVOKE_METHOD", false),
+                false));
+
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Payload.ShouldBeNull();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_PlacementDaprActorErrorCode_ReturnsActorExceptionCategory() {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ActorMethodInvocationException(
+                "actor placement unavailable",
+                new DaprApiException("placement service unavailable", "ERR_ACTOR_NO_PLACEMENT", true),
+                true));
+
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Payload.ShouldBeNull();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_DaprErrorCodeContradictsNotFoundStatus_ReturnsActorExceptionCategory() {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        RpcException statusException = CreateRpcExceptionWithDaprErrorInfo("ERR_ACTOR_NO_ADDRESS");
+        _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ActorMethodInvocationException(
+                "actor invocation failed",
+                new DaprApiException("method failed", statusException, "ERR_ACTOR_INVOKE_METHOD", false),
+                false));
+
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Payload.ShouldBeNull();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_LocalizedMessageWithoutTypedSignal_ReturnsActorExceptionCategory() {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ActorMethodInvocationException(
+                "acteur de projection introuvable",
+                new InvalidOperationException("aucune adresse pour cet acteur"),
+                false));
+
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Payload.ShouldBeNull();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_NonDaprNotFoundLookingMessageWithoutLegacyMarker_ReturnsActorExceptionCategory() {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("projection actor was not found in the local registry"));
+
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Payload.ShouldBeNull();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+    }
+
+    [Theory]
+    [InlineData(StatusCode.Unavailable)]
+    [InlineData(StatusCode.DeadlineExceeded)]
+    [InlineData(StatusCode.Internal)]
+    [InlineData(StatusCode.PermissionDenied)]
+    public async Task RouteQueryAsync_NonNotFoundGrpcStatus_ReturnsActorExceptionCategory(StatusCode statusCode) {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ActorMethodInvocationException(
+                "actor invocation failed",
+                new RpcException(new Status(statusCode, "typed status failure")),
+                false));
+
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Payload.ShouldBeNull();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_HttpNotFoundStatusWithoutDaprErrorCode_ReturnsActorExceptionCategory() {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ActorMethodInvocationException(
+                "actor invocation failed",
+                new HttpRequestException("projection absente", null, HttpStatusCode.NotFound),
+                false));
+
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Payload.ShouldBeNull();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    [InlineData(HttpStatusCode.GatewayTimeout)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task RouteQueryAsync_NonNotFoundHttpStatus_ReturnsActorExceptionCategory(HttpStatusCode statusCode) {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ActorMethodInvocationException(
+                "actor invocation failed",
+                new HttpRequestException("typed status failure", null, statusCode),
+                false));
+
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Payload.ShouldBeNull();
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
     }
 
     [Fact]
@@ -474,6 +733,21 @@ public class QueryRouterTests {
         IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
         _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new OperationCanceledException("did not find address for actor before cancellation completed"));
+
+        var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => router.RouteQueryAsync(CreateTestQuery()));
+    }
+
+    [Fact]
+    public async Task RouteQueryAsync_WrappedOperationCanceledExceptionWithNotFoundMessage_PropagatesCancellation() {
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ActorMethodInvocationException(
+                "actor type not registered",
+                new OperationCanceledException("did not find address for actor before cancellation completed"),
+                false));
 
         var router = new QueryRouter(invoker, NullLogger<QueryRouter>.Instance);
 
