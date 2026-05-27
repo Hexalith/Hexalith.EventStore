@@ -59,11 +59,13 @@ The key architecture decisions that affect component configuration:
 
 The state store is the persistence backbone of Hexalith.EventStore. It stores actor state (aggregate state reconstructed from events), event snapshots (periodic state captures for fast rehydration), and command status entries (24-hour TTL tracking). All state store backends must set `actorStateStore: true` to enable the Actors building block.
 
-Component scoping restricts access to `eventstore` only (D4). Domain services have zero state store access.
+Component scoping restricts direct access to `eventstore`, `eventstore-admin`, and `tenants` only (D4). Other domain services have zero state store access.
 
 ### Redis (Local Development)
 
-Source: `src/Hexalith.EventStore.AppHost/DaprComponents/statestore.yaml`
+Authoritative local source: `src/Hexalith.EventStore.AppHost/DaprComponents/statestore.yaml`
+
+The Aspire AppHost copies this YAML into an isolated generated resources folder and loads that copy through `DaprComponentOptions.LocalPath`; `HexalithEventStoreExtensions.cs` must not duplicate or override the semantic metadata for `statestore`. The `keyPrefix=none` setting is deliberate: `eventstore-admin` reads EventStore-owned state through its own sidecar, and `tenants` shares EventStore infrastructure for aggregate/projection state, so the DAPR runtime must not add different app-id prefixes to the same state keys. Domain-service isolation depends on DAPR component references/scopes and access-control policies, not Redis key prefixing.
 
 ```yaml
 apiVersion: dapr.io/v1alpha1
@@ -75,9 +77,9 @@ spec:
     version: v1
     metadata:
         - name: redisHost
-          # Redis server address. Default: localhost:6379 for local development.
-          # The |localhost:6379 syntax provides a fallback if REDIS_HOST is not set.
-          value: "{env:REDIS_HOST|localhost:6379}"
+          # Redis server address. Default: 127.0.0.1:6379 for local Aspire development.
+          # The |127.0.0.1:6379 syntax provides a fallback if REDIS_HOST is not set.
+          value: "{env:REDIS_HOST|127.0.0.1:6379}"
         - name: redisPassword
           # Redis password. Leave empty for local development without auth.
           # Set via environment variable for any environment requiring authentication.
@@ -86,11 +88,18 @@ spec:
           # REQUIRED: Enables this state store for DAPR Actors building block.
           # Without this, actor activation fails with "no actor state store" error.
           value: "true"
-# Component scoping: only eventstore can access this state store (D4).
-# Actors run in-process under the eventstore app-id.
+        - name: keyPrefix
+          # REQUIRED for local EventStore/Admin.Server shared reads.
+          value: "none"
+# Component scoping: only eventstore, eventstore-admin, and tenants can access this state store (D4).
+# Actors run in-process under the eventstore app-id. Admin.Server performs direct
+# admin reads and health probes through the eventstore-admin app-id. Tenants shares
+# EventStore infrastructure for its aggregate/projection state.
 # Domain services (sample) have zero state store access.
 scopes:
     - eventstore
+    - eventstore-admin
+    - tenants
 ```
 
 Persistence guarantees: Redis stores data in-memory by default. Data survives process restarts only if AOF (Append Only File) or RDB (Redis Database) persistence is enabled in your Redis server configuration. For local development, data loss on restart is acceptable. ETag-based optimistic concurrency is supported via Redis `SET NX` semantics. Multi-key transactions use Redis `MULTI/EXEC`.
@@ -209,7 +218,7 @@ spec:
     metadata:
         - name: redisHost
           # Redis server address for pub/sub. Same Redis instance as state store in local dev.
-          value: "{env:REDIS_HOST|localhost:6379}"
+          value: "{env:REDIS_HOST|127.0.0.1:6379}"
         - name: redisPassword
           # Redis password for pub/sub connection.
           # Leave empty for local development without authentication.
@@ -754,7 +763,7 @@ spec:
         - name: redisHost
           # Redis server address for configuration store.
           # Can share the same Redis instance as state store and pub/sub in local dev.
-          value: "{env:REDIS_HOST|localhost:6379}"
+          value: "{env:REDIS_HOST|127.0.0.1:6379}"
         - name: redisPassword
           # Redis password for configuration-store connection.
           # Leave empty for local development without authentication.
@@ -892,7 +901,7 @@ spec:
                     action: allow
 ```
 
-`accesscontrol.eventstore-admin.yaml` sets `defaultAction: deny` with an empty `policies: []` list because no peer workload should invoke Admin.Server over DAPR.
+`accesscontrol.eventstore-admin.yaml` allows the `eventstore-admin-ui` caller to invoke Admin.Server over DAPR in the local topology. For production with mTLS, keep deny-by-default semantics and explicitly grant only approved Admin.Server callers.
 
 `accesscontrol.sample.yaml` retains the POST-only `eventstore` caller policy for domain-service invocation.
 
@@ -982,7 +991,7 @@ All backends use `{env:VAR_NAME}` substitution in DAPR component YAML. Set these
 
 | Variable                     | Backend         | Example Value                                                                             |
 | ---------------------------- | --------------- | ----------------------------------------------------------------------------------------- |
-| `REDIS_HOST`                 | Redis           | `localhost:6379`                                                                          |
+| `REDIS_HOST`                 | Redis           | `127.0.0.1:6379` for local Aspire; `redis:6379` inside Docker Compose                    |
 | `REDIS_PASSWORD`             | Redis           | (empty for local dev)                                                                     |
 | `POSTGRES_CONNECTION_STRING` | PostgreSQL      | `host=mydb;port=5432;username=dapr;password=<secret>;database=eventstore;sslmode=require` |
 | `COSMOSDB_URL`               | Azure Cosmos DB | `https://myaccount.documents.azure.com:443/`                                              |

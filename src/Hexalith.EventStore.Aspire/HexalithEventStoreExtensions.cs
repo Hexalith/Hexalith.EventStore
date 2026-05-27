@@ -59,6 +59,45 @@ public static class HexalithEventStoreExtensions {
         string? eventStoreDaprConfigPath = null,
         string? adminServerDaprConfigPath = null,
         string? resiliencyConfigPath = null,
+        int eventStoreDaprHttpPort = 3501)
+        => AddHexalithEventStore(
+            builder,
+            eventStore,
+            adminServer,
+            adminUI,
+            eventStoreDaprConfigPath,
+            adminServerDaprConfigPath,
+            resiliencyConfigPath,
+            stateStoreComponentPath: null,
+            eventStoreDaprHttpPort: eventStoreDaprHttpPort);
+
+    /// <summary>
+    /// Adds the Hexalith EventStore topology to the distributed application builder.
+    /// This overload allows the AppHost to provide an isolated DAPR component YAML for
+    /// the local state store while preserving the original public overload for consumers.
+    /// </summary>
+    /// <param name="builder">The distributed application builder.</param>
+    /// <param name="eventStore">The EventStore project resource builder.</param>
+    /// <param name="adminServer">The Admin.Server.Host project resource builder.</param>
+    /// <param name="adminUI">Optional Admin.UI project resource builder.</param>
+    /// <param name="eventStoreDaprConfigPath">Path to the Dapr access control configuration file loaded by the EventStore sidecar.</param>
+    /// <param name="adminServerDaprConfigPath">Path to the Dapr access control configuration file loaded by the Admin.Server sidecar.</param>
+    /// <param name="resiliencyConfigPath">Absolute path to the DAPR resiliency YAML file.</param>
+    /// <param name="stateStoreComponentPath">
+    /// Absolute path to an isolated DAPR state-store component YAML. When provided, this file is the
+    /// source of truth for the local state-store metadata loaded by the DAPR sidecars.
+    /// </param>
+    /// <param name="eventStoreDaprHttpPort">DAPR HTTP port for the EventStore sidecar. Defaults to 3501.</param>
+    /// <returns>A <see cref="HexalithEventStoreResources"/> containing the resource builders for further customization.</returns>
+    public static HexalithEventStoreResources AddHexalithEventStore(
+        this IDistributedApplicationBuilder builder,
+        IResourceBuilder<ProjectResource> eventStore,
+        IResourceBuilder<ProjectResource> adminServer,
+        IResourceBuilder<ProjectResource>? adminUI,
+        string? eventStoreDaprConfigPath,
+        string? adminServerDaprConfigPath,
+        string? resiliencyConfigPath,
+        string? stateStoreComponentPath,
         int eventStoreDaprHttpPort = 3501) {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(eventStore);
@@ -69,19 +108,28 @@ public static class HexalithEventStoreExtensions {
         const string LocalDaprRedisHost = "127.0.0.1:6379";
 
         // Redis is provided by `dapr init` at 127.0.0.1:6379, not managed by Aspire.
-        // The dapr init container runs independently of the Aspire lifecycle, so state
-        // survives AppHost restarts naturally. DAPR component YAMLs default to
-        // 127.0.0.1:6379 via {env:REDIS_HOST|127.0.0.1:6379}.
+        // The checked-in statestore.yaml is the preferred local source of truth. The
+        // fallback below exists for external consumers that use this hosting extension
+        // without an AppHost-owned DAPR components directory.
+        string? resolvedStateStoreComponentPath = string.IsNullOrWhiteSpace(stateStoreComponentPath)
+            ? null
+            : Path.GetFullPath(stateStoreComponentPath);
+        if (resolvedStateStoreComponentPath is not null && !File.Exists(resolvedStateStoreComponentPath)) {
+            throw new FileNotFoundException(
+                "DAPR state-store component YAML not found.",
+                resolvedStateStoreComponentPath);
+        }
 
-        // Use AddDaprComponent instead of AddDaprStateStore so that WithMetadata
-        // actually propagates into the generated YAML. AddDaprStateStore spawns a
-        // separate in-memory provider process whose lifecycle hook ignores metadata.
-        // actorStateStore is required for Dapr actor state management.
-        IResourceBuilder<IDaprComponentResource> stateStore = builder
-            .AddDaprComponent("statestore", "state.redis")
-            .WithMetadata("actorStateStore", "true")
-            .WithMetadata("redisHost", LocalDaprRedisHost)
-            .WithMetadata("keyPrefix", "none");
+        IResourceBuilder<IDaprComponentResource> stateStore = string.IsNullOrWhiteSpace(stateStoreComponentPath)
+            ? builder
+                .AddDaprComponent("statestore", "state.redis")
+                .WithMetadata("actorStateStore", "true")
+                .WithMetadata("redisHost", LocalDaprRedisHost)
+                .WithMetadata("keyPrefix", "none")
+            : builder.AddDaprComponent(
+                "statestore",
+                "state.redis",
+                new DaprComponentOptions { LocalPath = resolvedStateStoreComponentPath });
         IResourceBuilder<IDaprComponentResource> pubSub = builder
             .AddDaprPubSub("pubsub")
             .WithMetadata("redisHost", LocalDaprRedisHost);

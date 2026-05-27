@@ -19,6 +19,8 @@ string adminServerAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol
 string sampleAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.sample.yaml");
 string tenantsAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.tenants.yaml");
 string emptyDaprResourcesPath = ResolveEmptyDaprResourcesPath();
+string stateStoreComponentPath = ResolveDaprConfigPath("statestore.yaml");
+string isolatedStateStoreComponentPath = ResolveIsolatedDaprComponentPath(stateStoreComponentPath);
 
 // Resolve the DAPR resiliency YAML path so the Admin.Server can render /dapr/resiliency
 // without requiring an appsettings.json edit. The AppHost is the only component that knows
@@ -43,7 +45,8 @@ HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(
     adminUI,
     eventStoreAccessControlConfigPath,
     adminServerAccessControlConfigPath,
-    resiliencyConfigPath);
+    resiliencyConfigPath,
+    stateStoreComponentPath: isolatedStateStoreComponentPath);
 
 ForwardEventStoreEnvironment("EventStore:Publisher:TestPublishFaultFilePath", "EventStore__Publisher__TestPublishFaultFilePath");
 ForwardEventStoreEnvironment("EventStore:Publisher:TestPublishFaultCorrelationIdPrefix", "EventStore__Publisher__TestPublishFaultCorrelationIdPrefix");
@@ -270,6 +273,25 @@ static string ResolveEmptyDaprResourcesPath() {
     string path = Path.Combine(Path.GetTempPath(), "hexalith-eventstore-empty-dapr-resources");
     _ = Directory.CreateDirectory(path);
     return path;
+}
+
+static string ResolveIsolatedDaprComponentPath(string sourcePath) {
+    string sourceFullPath = Path.GetFullPath(sourcePath);
+    if (!File.Exists(sourceFullPath)) {
+        throw new FileNotFoundException(
+            "DAPR state-store component source not found.",
+            sourceFullPath);
+    }
+
+    string targetDirectory = Path.Combine(Path.GetTempPath(), "hexalith-eventstore-dapr-components", "statestore");
+    _ = Directory.CreateDirectory(targetDirectory);
+    foreach (string existingYaml in Directory.GetFiles(targetDirectory, "*.yaml")) {
+        File.Delete(existingYaml);
+    }
+
+    string targetPath = Path.Combine(targetDirectory, Path.GetFileName(sourceFullPath));
+    File.Copy(sourceFullPath, targetPath, overwrite: true);
+    return targetPath;
 }
 
 void ForwardEventStoreEnvironment(string configurationKey, string environmentKey) {

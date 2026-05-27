@@ -148,7 +148,7 @@ Configuration section: `EventStore:CommandStatus`
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `TtlSeconds` | int | `86400` | Time-to-live for status entries in seconds (default: 24 hours) |
-| `StateStoreName` | string | `"eventstore"` | DAPR state store component name for status persistence |
+| `StateStoreName` | string | `"statestore"` | DAPR state store component name for status persistence |
 
 ```json
 {
@@ -407,7 +407,7 @@ Environment variables configure infrastructure connections and operational behav
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `REDIS_HOST` | `"localhost:6379"` | Redis host and port for DAPR components (local development) |
+| `REDIS_HOST` | `"127.0.0.1:6379"` | Redis host and port for local Aspire DAPR components; use `"redis:6379"` inside Docker Compose |
 | `REDIS_PASSWORD` | (empty) | Redis password. Leave empty for local development without auth |
 | `EVENTSTORE_SIGNALR_REDIS` | (empty) | Optional SignalR Redis backplane connection string. Used as the fallback for `EventStore:SignalR:BackplaneRedisConnectionString` only when that option is `null` (see [SignalR Redis Backplane](#signalr-redis-backplane) for the full resolution order). Use `channelPrefix=...` here only for approved shared-Redis SignalR backplane exceptions; prefer a dedicated Redis per isolation boundary. |
 | `POSTGRES_CONNECTION_STRING` | (N/A) | PostgreSQL connection string for production state store |
@@ -566,7 +566,7 @@ This table lists every configurable setting for quick scanning, including explic
 | `EventStore:Snapshots:DefaultInterval` | int | `100` | Integer `>= 10` | Application |
 | `EventStore:Snapshots:DomainIntervals:{name}` | int | — | Integer `>= 10` | Application |
 | `EventStore:CommandStatus:TtlSeconds` | int | `86400` | Integer `> 0` | Application |
-| `EventStore:CommandStatus:StateStoreName` | string | `"eventstore"` | Non-empty string | Application |
+| `EventStore:CommandStatus:StateStoreName` | string | `"statestore"` | Non-empty string | Application |
 | `EventStore:DomainServices:ConfigStoreName` | string | `"configstore"` | Non-empty string | Application |
 | `EventStore:DomainServices:InvocationTimeoutSeconds` | int | `5` | Integer `> 0` | Application |
 | `EventStore:DomainServices:MaxEventsPerResult` | int | `1000` | Integer `> 0` | Application |
@@ -591,7 +591,7 @@ This table lists every configurable setting for quick scanning, including explic
 | `DAPR_HTTP_PORT` | int | (auto) | Integer `1-65535` | Environment |
 | `DAPR_TRUST_DOMAIN` | string | `"hexalith.io"` | DNS-like trust domain string | Environment |
 | `DAPR_NAMESPACE` | string | `"hexalith"` | Valid Kubernetes namespace string | Environment |
-| `REDIS_HOST` | string | `"localhost:6379"` | `<host>:<port>` | Environment |
+| `REDIS_HOST` | string | `"127.0.0.1:6379"` | `<host>:<port>` | Environment |
 | `REDIS_PASSWORD` | string | (empty) | Empty string or secret value | Environment |
 | `EVENTSTORE_SIGNALR_REDIS` | string | (empty) | Empty or StackExchange.Redis connection string, optionally with `channelPrefix=...` | Environment |
 | `POSTGRES_CONNECTION_STRING` | string | (N/A) | Valid PostgreSQL connection string | Environment |
