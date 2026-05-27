@@ -86,8 +86,8 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\JeromePiquot\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "/mnt/c/Users/JeromePiquot/.nuget/packages/": {},
+    "/mnt/c/Program Files (x86)/Microsoft Visual Studio/Shared/NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
@@ -95,12 +95,12 @@
       "projectUniqueName": "D:\\Hexalith.EventStore\\src\\Hexalith.EventStore.Contracts\\Hexalith.EventStore.Contracts.csproj",
       "projectName": "Hexalith.EventStore.Contracts",
       "projectPath": "D:\\Hexalith.EventStore\\src\\Hexalith.EventStore.Contracts\\Hexalith.EventStore.Contracts.csproj",
-      "packagesPath": "C:\\Users\\JeromePiquot\\.nuget\\packages\\",
+      "packagesPath": "/mnt/c/Users/JeromePiquot/.nuget/packages/",
       "outputPath": "D:\\Hexalith.EventStore\\src\\Hexalith.EventStore.Contracts\\.artifacts\\ui-test-obj\\",
       "projectStyle": "PackageReference",
       "centralPackageVersionsManagementEnabled": true,
       "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        "/mnt/c/Program Files (x86)/Microsoft Visual Studio/Shared/NuGetPackages"
       ],
       "configFilePaths": [
         "D:\\Hexalith.EventStore\\NuGet.Config",
