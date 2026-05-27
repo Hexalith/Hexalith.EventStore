@@ -24,6 +24,10 @@ public class DaprComponentValidationTests {
     private static readonly string AdminServerAccessControlPath = Path.Combine(DaprComponentsDir, "accesscontrol.eventstore-admin.yaml");
     private static readonly string SampleAccessControlPath = Path.Combine(DaprComponentsDir, "accesscontrol.sample.yaml");
     private static readonly string SubscriptionPath = Path.Combine(DaprComponentsDir, "subscription-sample-counter.yaml");
+    private static readonly string ConfigurationReferencePath = Path.Combine(ProjectRoot, "docs", "guides", "configuration-reference.md");
+    private static readonly string DaprComponentReferencePath = Path.Combine(ProjectRoot, "docs", "guides", "dapr-component-reference.md");
+    private static readonly string EventVersioningPath = Path.Combine(ProjectRoot, "docs", "concepts", "event-versioning.md");
+    private static readonly string DomainServiceOptionsApiReferencePath = Path.Combine(ProjectRoot, "docs", "reference", "api", "Hexalith.EventStore.Server", "Hexalith.EventStore.Server.DomainServices.DomainServiceOptions.md");
 
     // --- Task 5.2: StateStoreComponent_HasActorStateStoreEnabled ---
 
@@ -314,6 +318,53 @@ public class DaprComponentValidationTests {
         joined.ShouldContain("`eventstore` / `eventstore-admin` / `tenants` state-store scopes");
     }
 
+    [Fact]
+    public void DomainServiceDocumentation_ConfigStoreNameIsOptInAndNotDefaultConfigstore() {
+        string configurationReference = File.ReadAllText(ConfigurationReferencePath);
+        string daprReference = File.ReadAllText(DaprComponentReferencePath);
+        string eventVersioning = File.ReadAllText(EventVersioningPath);
+        string apiReference = File.ReadAllText(DomainServiceOptionsApiReferencePath);
+        string joined = string.Join(Environment.NewLine, configurationReference, daprReference, eventVersioning, apiReference);
+
+        configurationReference.ShouldContain("| `ConfigStoreName` | string? | `null` |");
+        configurationReference.ShouldContain("| `EventStore:DomainServices:ConfigStoreName` | string? | `null` |");
+        apiReference.ShouldContain("Default: null");
+        apiReference.ShouldContain("public string? ConfigStoreName");
+        joined.ShouldContain("config-store routing is opt-in");
+        joined.ShouldContain("Optional domain service registration and dynamic config");
+        joined.ShouldContain("Optional Configuration Store");
+        joined.ShouldContain("No `configstore` component is registered out of the box");
+        joined.ShouldNotContain("| `ConfigStoreName` | string | `\"configstore\"` |");
+        joined.ShouldNotContain("| `EventStore:DomainServices:ConfigStoreName` | string | `\"configstore\"` |");
+        joined.ShouldNotContain("Default: \"configstore\"");
+    }
+
+    [Fact]
+    public void DomainServiceDocumentation_PublishesSupportedRegistrationKeyFormats() {
+        string configurationReference = File.ReadAllText(ConfigurationReferencePath);
+        string eventVersioning = File.ReadAllText(EventVersioningPath);
+        string joined = string.Join(Environment.NewLine, configurationReference, eventVersioning);
+
+        joined.ShouldContain("`tenant|domain|version`");
+        joined.ShouldContain("`tenant:domain:version`");
+        joined.ShouldContain("`*|domain|version`");
+        joined.ShouldContain("`wildcard_{domain}_{version}`");
+        joined.ShouldContain("pipe wildcard");
+        joined.ShouldContain("sanitized wildcard");
+        joined.ShouldContain("not portable environment-variable name characters");
+        joined.ShouldContain("`*|party|v1`");
+        joined.ShouldContain("`wildcard_party_v1`");
+    }
+
+    [Fact]
+    public void DomainServiceDocumentation_PublishesMatchingResolverPrecedenceOrder() {
+        string configurationReference = File.ReadAllText(ConfigurationReferencePath);
+        string eventVersioning = File.ReadAllText(EventVersioningPath);
+
+        AssertDomainServicePrecedenceOrder(configurationReference);
+        AssertDomainServicePrecedenceOrder(eventVersioning);
+    }
+
     private static string GetBlock(string content, string startMarker, string endMarker) {
         int start = content.IndexOf(startMarker, StringComparison.Ordinal);
         start.ShouldBeGreaterThanOrEqualTo(0, $"Expected to find marker '{startMarker}'");
@@ -322,6 +373,25 @@ public class DaprComponentValidationTests {
         end.ShouldBeGreaterThan(start, $"Expected to find marker '{endMarker}' after '{startMarker}'");
 
         return content[start..end];
+    }
+
+    private static void AssertDomainServicePrecedenceOrder(string content) {
+        string[] orderedMarkers =
+        [
+            "1. exact static registration keyed by `tenant:domain:version`",
+            "2. exact static registration keyed by `tenant|domain|version`",
+            "3. pipe wildcard static registration keyed by `*|domain|version`",
+            "4. sanitized wildcard static registration keyed by `wildcard_{domain}_{version}`",
+            "5. opt-in DAPR config-store lookup",
+            "6. convention fallback: `AppId = domain`, `MethodName = \"process\"`",
+        ];
+
+        int previousIndex = -1;
+        foreach (string marker in orderedMarkers) {
+            int index = content.IndexOf(marker, StringComparison.Ordinal);
+            index.ShouldBeGreaterThan(previousIndex, $"Expected domain-service precedence marker '{marker}' in order");
+            previousIndex = index;
+        }
     }
 
 }
