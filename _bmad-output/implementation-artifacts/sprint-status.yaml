@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-05-27 - post-epic-22-es2-pipeline-state-result-payload-privacy-posture code review complete and moved to done; prior ES1 done/code-reviewed state preserved.
+# last_updated: 2026-05-27 - post-epic-22-es3-result-payload-drop-observability code review complete and moved to done; prior ES1/ES2 done state preserved.
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -464,7 +464,7 @@ development_status:
   # ES-10 is gated on a user decision — its target spike doc does not exist in the repo.
   post-epic-22-es1-result-payload-parse-dos-guard: done
   post-epic-22-es2-pipeline-state-result-payload-privacy-posture: done
-  post-epic-22-es3-result-payload-drop-observability: backlog
+  post-epic-22-es3-result-payload-drop-observability: done
   post-epic-22-es4-domain-service-wire-result-backcompat-test: backlog
   post-epic-22-es5-async-derived-domain-result-test-coverage: backlog
   post-epic-22-es6-projection-actor-not-found-typed-check: backlog

@@ -78,11 +78,13 @@ public partial class SubmitCommandHandler(
 
         // Read final status once for both activity trackers (advisory, rule #12)
         CommandStatusRecord? finalStatus = null;
+        bool statusReadSucceeded = false;
         if (activityTracker is not null || streamActivityTracker is not null || processingResult.ResultPayload is not null) {
             try {
                 finalStatus = await statusStore
                     .ReadStatusAsync(request.Tenant, request.CorrelationId, cancellationToken)
                     .ConfigureAwait(false);
+                statusReadSucceeded = true;
             }
             catch (OperationCanceledException) {
                 throw;
@@ -164,12 +166,25 @@ public partial class SubmitCommandHandler(
 
         Log.CommandRouted(logger, request.CorrelationId);
 
+        string? resultPayload = null;
+        if (processingResult.Accepted && processingResult.ResultPayload is not null) {
+            if (finalStatus?.Status == CommandStatus.Completed) {
+                resultPayload = processingResult.ResultPayload;
+            }
+            else {
+                Log.ResultPayloadDropped(
+                    logger,
+                    request.CorrelationId,
+                    request.Tenant,
+                    request.AggregateId,
+                    request.CommandType,
+                    finalStatus?.Status.ToString() ?? "Unavailable",
+                    statusReadSucceeded);
+            }
+        }
+
         return result with {
-            ResultPayload = processingResult.Accepted
-                && processingResult.ResultPayload is not null
-                && finalStatus?.Status == CommandStatus.Completed
-                    ? processingResult.ResultPayload
-                    : null,
+            ResultPayload = resultPayload,
         };
     }
 
@@ -245,5 +260,18 @@ public partial class SubmitCommandHandler(
             Exception ex,
             string correlationId,
             string tenantId);
+
+        [LoggerMessage(
+            EventId = 1107,
+            Level = LogLevel.Warning,
+            Message = "Result payload dropped because final command status was not Completed: CorrelationId={CorrelationId}, TenantId={TenantId}, AggregateId={AggregateId}, CommandType={CommandType}, FinalStatus={FinalStatus}, StatusReadSucceeded={StatusReadSucceeded}. Stage=ResultPayloadDropped")]
+        public static partial void ResultPayloadDropped(
+            ILogger logger,
+            string correlationId,
+            string tenantId,
+            string aggregateId,
+            string commandType,
+            string finalStatus,
+            bool statusReadSucceeded);
     }
 }
