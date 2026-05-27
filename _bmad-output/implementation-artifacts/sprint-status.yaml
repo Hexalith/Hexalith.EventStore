@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-05-27 - post-epic-22-es4-domain-service-wire-result-backcompat-test code review complete and moved to done.
+# last_updated: 2026-05-27 - post-epic-22-es5-async-derived-domain-result-test-coverage code review complete and moved to done.
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -466,7 +466,7 @@ development_status:
   post-epic-22-es2-pipeline-state-result-payload-privacy-posture: done
   post-epic-22-es3-result-payload-drop-observability: done
   post-epic-22-es4-domain-service-wire-result-backcompat-test: done
-  post-epic-22-es5-async-derived-domain-result-test-coverage: backlog
+  post-epic-22-es5-async-derived-domain-result-test-coverage: done
   post-epic-22-es6-projection-actor-not-found-typed-check: backlog
   post-epic-22-es7-statestore-yaml-source-of-truth-decision: backlog
   post-epic-22-es8-domain-service-resolver-separator-and-fallback-docs: backlog
