@@ -425,8 +425,7 @@ public partial class AggregateActor(
                             command.CommandType,
                             pipelineState.StartedAt,
                             EventCount: domainResult.Events.Count,
-                            RejectionEventType: rejectionEventType,
-                            ResultPayload: domainResult.ResultPayload);
+                            RejectionEventType: rejectionEventType);
                         await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsStoredState).ConfigureAwait(false);
 
                         // Atomic commit: events + snapshot + EventsStored checkpoint (AC #9)
@@ -471,8 +470,7 @@ public partial class AggregateActor(
                         command.CommandType,
                         pipelineState.StartedAt,
                         EventCount: domainResult.Events.Count,
-                        RejectionEventType: domainResult.IsRejection ? GetEventTypeName(domainResult.Events[0]) : null,
-                        ResultPayload: domainResult.ResultPayload);
+                        RejectionEventType: domainResult.IsRejection ? GetEventTypeName(domainResult.Events[0]) : null);
                     await stateMachine.CheckpointAsync(pipelineKeyPrefix, eventsPublishedState).ConfigureAwait(false);
 
                     LogStageTransition(CommandStatus.EventsPublished, command, causationId, startTicks);
@@ -506,8 +504,7 @@ public partial class AggregateActor(
                         command.CommandType,
                         pipelineState.StartedAt,
                         EventCount: domainResult.Events.Count,
-                        RejectionEventType: rejectionEventType,
-                        ResultPayload: domainResult.ResultPayload);
+                        RejectionEventType: rejectionEventType);
                     await stateMachine.CheckpointAsync(pipelineKeyPrefix, publishFailedState).ConfigureAwait(false);
 
                     // Cleanup pipeline and commit atomically
@@ -518,8 +515,7 @@ public partial class AggregateActor(
                         command.CorrelationId,
                         domainResult.Events.Count,
                         publishResult.FailureReason,
-                        rejectionEventType,
-                        domainResult.ResultPayload);
+                        rejectionEventType);
 
                     await idempotencyChecker.RecordAsync(causationId, failResult).ConfigureAwait(false);
 
@@ -1511,8 +1507,7 @@ public partial class AggregateActor(
             errorMessage,
             processActivity,
             startTicks,
-            rejectionEventType: existingPipeline.RejectionEventType,
-            resultPayload: existingPipeline.ResultPayload).ConfigureAwait(false);
+            rejectionEventType: existingPipeline.RejectionEventType).ConfigureAwait(false);
 
         logger.LogInformation(
             "Resume completed: Actor {ActorId}, CorrelationId={CorrelationId}, Tenant={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}",
@@ -1600,8 +1595,7 @@ public partial class AggregateActor(
             command.CommandType,
             existingPipeline.StartedAt,
             EventCount: existingPipeline.EventCount,
-            RejectionEventType: existingPipeline.RejectionEventType,
-            ResultPayload: existingPipeline.ResultPayload);
+            RejectionEventType: existingPipeline.RejectionEventType);
         await stateMachine.CheckpointAsync(pipelineKeyPrefix, publishFailedState).ConfigureAwait(false);
 
         await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
@@ -1611,8 +1605,7 @@ public partial class AggregateActor(
             command.CorrelationId,
             existingPipeline.EventCount ?? 0,
             failureReason,
-            existingPipeline.RejectionEventType,
-            existingPipeline.ResultPayload);
+            existingPipeline.RejectionEventType);
 
         await idempotencyChecker.RecordAsync(causationId, failResult).ConfigureAwait(false);
 

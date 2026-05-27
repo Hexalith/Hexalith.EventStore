@@ -3,6 +3,7 @@ using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
@@ -121,6 +122,35 @@ public class StateMachineIntegrationTests {
 
         // 4 SaveStateAsync calls: Processing (with pending count), EventsStored+events, terminal, pending-count decrement
         await stateManager.Received(4).SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommand_Success_WithResultPayload_PreservesTerminalPayloadButScrubsCheckpoints() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, _) = CreateActor();
+        const string resultPayload = "{\"result\":{\"applied\":[\"Updated person details\"]},\"party\":{\"id\":\"agg-001\"}}";
+        var successResult = new PayloadDomainResult([new TestEvent()], resultPayload);
+        var checkpointedStates = new List<PipelineState>();
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = stateManager.SetStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<PipelineState>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask)
+            .AndDoes(callInfo => checkpointedStates.Add(callInfo.ArgAt<PipelineState>(1)));
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        result.Accepted.ShouldBeTrue();
+        result.EventCount.ShouldBe(1);
+        result.ResultPayload.ShouldBe(resultPayload);
+        checkpointedStates.ShouldContain(state => state.CurrentStage == CommandStatus.Processing);
+        checkpointedStates.ShouldContain(state => state.CurrentStage == CommandStatus.EventsStored);
+        checkpointedStates.ShouldContain(state => state.CurrentStage == CommandStatus.EventsPublished);
+        checkpointedStates.ShouldAllBe(state => state.ResultPayload == null);
     }
 
     // --- Task 8.2: Rejection path ---
@@ -297,8 +327,8 @@ public class StateMachineIntegrationTests {
     }
 
     [Fact]
-    public async Task ProcessCommand_CrashAtEventsStored_Resume_PreservesResultPayload() {
-        // Arrange -- resume must preserve enriched payloads for composite command responses
+    public async Task ProcessCommand_CrashAtEventsStored_Resume_DropsLegacyResultPayload() {
+        // Arrange -- legacy payloads may exist in old checkpoints, but resume must not propagate them.
         (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, IEventPublisher eventPublisher) = CreateActor();
 
         const string resultPayload = "{\"result\":{\"applied\":[\"Updated person details\"]},\"party\":{\"id\":\"agg-001\"}}";
@@ -375,13 +405,55 @@ public class StateMachineIntegrationTests {
 
         // Assert
         result.Accepted.ShouldBeTrue();
-        result.ResultPayload.ShouldBe(resultPayload);
+        result.EventCount.ShouldBe(2);
+        result.ResultPayload.ShouldBeNull();
         _ = await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
         _ = await eventPublisher.Received(1).PublishEventsAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
             Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 2),
             "corr-sm-test",
             Arg.Any<CancellationToken>());
+        await stateManager.DidNotReceive().SetStateAsync(
+            Arg.Is<string>(s => s.Contains(":events:")),
+            Arg.Any<EventEnvelope>(),
+            Arg.Any<CancellationToken>());
+        _ = await stateManager.Received().TryRemoveStateAsync(
+            Arg.Is<string>(s => s.Contains(":pipeline:")),
+            Arg.Any<CancellationToken>());
+        await stateManager.Received().SetStateAsync(PendingCommandCountKey, 0, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommand_PublishFailed_WithResultPayload_ScrubsCheckpointAndTerminalResult() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, IDomainServiceInvoker invoker, _, _, IEventPublisher eventPublisher) = CreateActor();
+        const string resultPayload = "{\"result\":{\"applied\":[\"Updated person details\"]},\"party\":{\"id\":\"agg-001\"}}";
+        var successResult = new PayloadDomainResult([new TestEvent()], resultPayload);
+        var checkpointedStates = new List<PipelineState>();
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new EventPublishResult(false, 0, "Broker down"));
+        _ = stateManager.SetStateAsync(
+            Arg.Any<string>(),
+            Arg.Any<PipelineState>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask)
+            .AndDoes(callInfo => checkpointedStates.Add(callInfo.ArgAt<PipelineState>(1)));
+        CommandEnvelope envelope = CreateTestEnvelope();
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        result.Accepted.ShouldBeTrue();
+        result.EventCount.ShouldBe(1);
+        result.ResultPayload.ShouldBeNull();
+        checkpointedStates.ShouldContain(state => state.CurrentStage == CommandStatus.PublishFailed);
+        checkpointedStates.ShouldAllBe(state => state.ResultPayload == null);
     }
 
     // --- Task 8.5: Crash recovery from Processing ---
@@ -493,4 +565,8 @@ public class StateMachineIntegrationTests {
     private sealed record TestEvent : Hexalith.EventStore.Contracts.Events.IEventPayload;
 
     private sealed record TestRejectionEvent : Hexalith.EventStore.Contracts.Events.IRejectionEvent;
+
+    private sealed record PayloadDomainResult(IReadOnlyList<IEventPayload> Events, string Payload) : DomainResult(Events) {
+        public override string? ResultPayload => Payload;
+    }
 }

@@ -24,6 +24,16 @@ namespace Hexalith.EventStore.Controllers;
 public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer extensionSanitizer, ILogger<CommandsController> logger) : ControllerBase {
     private const string GlobalAdminExtensionKey = "actor:globalAdmin";
 
+    // ES-1 DoS guard for the optional domain-service result payload.
+    // The length cap is the real protection: the result string comes from the domain-service
+    // round-trip (SubmitCommandResult.ResultPayload), NOT the inbound HTTP body, so the
+    // [RequestSizeLimit(1_048_576)] on Submit does not bound it. The cap matches the
+    // DaprInfrastructureQueryService 64 KiB precedent. MaxDepth = 64 surfaces JsonDocument's
+    // implicit default depth in source (mirroring AdminStreamQueryController._payloadParseOptions);
+    // over-depth input still throws JsonException and is handled by the existing catch below.
+    private const int MaxResultPayloadCharacters = 64 * 1024;
+    private static readonly JsonDocumentOptions _payloadParseOptions = new() { MaxDepth = 64 };
+
     /// <summary>
     /// Submits a command for asynchronous processing.
     /// </summary>
@@ -125,8 +135,22 @@ public class CommandsController(IMediator mediator, ExtensionMetadataSanitizer e
             return null;
         }
 
+        // DoS guard: reject oversized result payloads before parsing so a hostile or buggy
+        // domain service cannot stall the request thread / consume large memory in JsonDocument.Parse.
+        // resultPayload.Length is a cheap O(1) UTF-16 char count; since UTF-8 byte length is always
+        // >= the UTF-16 char count, this cap also bounds the byte size. Lengths are logged as numbers
+        // only -- never the payload content (Rule 5 / NFR12).
+        if (resultPayload.Length > MaxResultPayloadCharacters) {
+            logger.LogWarning(
+                "Result payload from domain service for correlation '{CorrelationId}' exceeds the {MaxLength}-character parse cap (observed {ObservedLength}); returning no resultPayload.",
+                correlationId,
+                MaxResultPayloadCharacters,
+                resultPayload.Length);
+            return null;
+        }
+
         try {
-            using var document = JsonDocument.Parse(resultPayload);
+            using var document = JsonDocument.Parse(resultPayload, _payloadParseOptions);
             JsonElement element = document.RootElement.Clone();
             return element.ValueKind == JsonValueKind.Undefined ? null : element;
         }

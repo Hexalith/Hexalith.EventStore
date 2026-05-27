@@ -1,5 +1,5 @@
 # generated: 2026-03-15
-# last_updated: 2026-05-25 - dw19b code-reviewed (3-layer adversarial) and moved to done: all 8 ACs satisfied, runtime evidence verified, 1 doc-comment patch applied (KeycloakFastStartPorts Resolve no longer claims a "free" port check that contradicts the no-probe guardrail; AppHost Release build 0/0), 2 pre-existing/pattern-wide fixture-hardening items deferred (aspire-fixture-env-restore-hardening), 13 findings dismissed incl. the https://localhost:8180 false-positive (PortBindings prove 8180->container 8443/tcp HTTPS). dw19b implemented and moved to review; dw19 → done (finished+validated by dw19b). Tier 3 fixture reuse PROVEN across two `dotnet test` runs (byte-identical container ID/CreatedAt/lifecycle-key, warm run ~26% faster; DistributedApplicationTestingBuilder/DisposeAsync does NOT tear down the persistent container). Fixed ports made configurable (KeycloakHttpPort/KeycloakManagementPort) + fail-fast validated (no free-port probe; 23/23 AppHost unit tests). Fixture env-restore leak fixed. AppHost+IntegrationTests Release build 0/0. Caveat: 5 authorized Tier 3 command-submission E2E tests return a PRE-EXISTING 500 (actor/command pipeline), identical on cold/warm/default-no-reuse — unrelated to reuse/dw19b; tracked as deferred-work dw19b-tier3-e2e-command-submission-500.
+# last_updated: 2026-05-27 - post-epic-22-es2-pipeline-state-result-payload-privacy-posture implemented and moved to review; prior ES1 done/code-reviewed state preserved.
 # project: Hexalith.EventStore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -457,3 +457,18 @@ development_status:
   # identical on cold/warm/default-no-reuse — unrelated to reuse or dw19b; tracked as deferred-work
   # item dw19b-tier3-e2e-command-submission-500.
   post-epic-deferred-dw19b-keycloak-fast-start-tier3-validation-and-port-hardening: done
+
+  # Post-Epic-22 EventStore↔Parties Review Residuals (sprint-change-proposal-2026-05-27-eventstore-parties-review-residuals.md)
+  # 10 review findings (ES-1…ES-10) re-scoped to verified residual after checking current main.
+  # ES-1 logging half and ES-5 implementation are verification-only (code already complies).
+  # ES-10 is gated on a user decision — its target spike doc does not exist in the repo.
+  post-epic-22-es1-result-payload-parse-dos-guard: done
+  post-epic-22-es2-pipeline-state-result-payload-privacy-posture: review
+  post-epic-22-es3-result-payload-drop-observability: backlog
+  post-epic-22-es4-domain-service-wire-result-backcompat-test: backlog
+  post-epic-22-es5-async-derived-domain-result-test-coverage: backlog
+  post-epic-22-es6-projection-actor-not-found-typed-check: backlog
+  post-epic-22-es7-statestore-yaml-source-of-truth-decision: backlog
+  post-epic-22-es8-domain-service-resolver-separator-and-fallback-docs: backlog
+  post-epic-22-es9-contracts-dapr-decoupling: backlog
+  # post-epic-22-es10-parties-actor-invocation-spike-doc: backlog  # add only if doc is restored/repath'd
