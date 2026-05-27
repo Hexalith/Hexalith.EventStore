@@ -108,7 +108,7 @@ This story only adds observability for that final drop. It must not return paylo
   - [x] Non-completed final status case: return `CommandStatus.PublishFailed` or `Rejected`, assert payload null and one `ResultPayloadDropped` warning with exact `Stage`, exact allowed metadata fields, `FinalStatus`, and `StatusReadSucceeded=true`.
   - [x] Status-read failure case: make `ReadStatusAsync` throw, assert existing `StatusReadForTrackingFailed` and new `ResultPayloadDropped` warnings are both present, `FinalStatus=Unavailable`, `StatusReadSucceeded=false`, and result payload null.
   - [x] Null actor payload case: router returns accepted result with null payload, assert no extra read solely for payload and no drop warning, even if a non-completed final status is otherwise present in the test fixture.
-  - [x] Payload leak case: use a sentinel like `SECRET-RESULT-PAYLOAD-DO-NOT-LOG` and assert it is absent from captured log messages, structured log state, and exception text.
+  - [x] Payload leak case: use a sentinel like `RESULT-PAYLOAD-SENTINEL-DO-NOT-LOG` and assert it is absent from captured log messages, structured log state, and exception text.
   - [x] Assert the new log's event id/stage and structured fields where the local test logger supports it; avoid depending only on a full formatted message string.
   - [x] Assert the warning carries no extra structured properties beyond the closed allowlist when the local test logger exposes property bags.
 

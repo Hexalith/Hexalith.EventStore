@@ -18,7 +18,7 @@ public class SubmitCommandHandlerResultPayloadTests {
     private const int ResultPayloadDroppedEventId = 1107;
     private const int StatusReadForTrackingFailedEventId = 1106;
     private const string ResultPayloadDroppedStage = "ResultPayloadDropped";
-    private const string SensitiveResultPayload = "{\"value\":\"SECRET-RESULT-PAYLOAD-DO-NOT-LOG\"}";
+    private const string SensitiveResultPayload = "{\"value\":\"RESULT-PAYLOAD-SENTINEL-DO-NOT-LOG\"}";
 
     [Fact]
     public async Task Handle_CompletedFinalStatus_ReturnsResultPayloadAndDoesNotWarn() {
@@ -211,16 +211,16 @@ public class SubmitCommandHandlerResultPayloadTests {
 
     private static void AssertSensitiveResultPayloadNotLogged(IEnumerable<CapturedLogEntry> logs) {
         foreach (CapturedLogEntry entry in logs) {
-            entry.Message.ShouldNotContain("SECRET-RESULT-PAYLOAD-DO-NOT-LOG");
+            entry.Message.ShouldNotContain("RESULT-PAYLOAD-SENTINEL-DO-NOT-LOG");
             if (entry.ExceptionText is not null) {
-                entry.ExceptionText.ShouldNotContain("SECRET-RESULT-PAYLOAD-DO-NOT-LOG");
+                entry.ExceptionText.ShouldNotContain("RESULT-PAYLOAD-SENTINEL-DO-NOT-LOG");
             }
 
             foreach (KeyValuePair<string, object?> property in entry.Properties) {
-                property.Key.ShouldNotContain("SECRET-RESULT-PAYLOAD-DO-NOT-LOG");
+                property.Key.ShouldNotContain("RESULT-PAYLOAD-SENTINEL-DO-NOT-LOG");
                 string? propertyValue = property.Value?.ToString();
                 if (propertyValue is not null) {
-                    propertyValue.ShouldNotContain("SECRET-RESULT-PAYLOAD-DO-NOT-LOG");
+                    propertyValue.ShouldNotContain("RESULT-PAYLOAD-SENTINEL-DO-NOT-LOG");
                 }
             }
         }
