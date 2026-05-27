@@ -113,7 +113,9 @@ public partial class DaprDomainServiceInvoker(
         ArgumentNullException.ThrowIfNull(wireResult);
 
         if (wireResult.Events.Count == 0) {
-            return DomainResult.NoOp();
+            return string.IsNullOrWhiteSpace(wireResult.ResultPayload)
+                ? DomainResult.NoOp()
+                : new PayloadDomainResult(Array.Empty<IEventPayload>(), wireResult.ResultPayload);
         }
 
         var events = new IEventPayload[wireResult.Events.Count];

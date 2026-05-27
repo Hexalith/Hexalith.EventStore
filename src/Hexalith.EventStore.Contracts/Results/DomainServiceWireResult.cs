@@ -30,7 +30,7 @@ public sealed record DomainServiceWireResult(
             events.Add(new DomainServiceWireEvent(eventTypeName, payloadBytes, "json"));
         }
 
-        string? resultPayload = result.IsSuccess ? result.ResultPayload : null;
+        string? resultPayload = result.IsSuccess || result.IsNoOp ? result.ResultPayload : null;
         return new DomainServiceWireResult(result.IsRejection, events, resultPayload);
     }
 }
