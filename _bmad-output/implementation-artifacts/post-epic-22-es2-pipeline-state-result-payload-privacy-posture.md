@@ -1,6 +1,6 @@
 # Post-Epic 22 ES-2: PipelineState Result-Payload Privacy Posture
 
-Status: review
+Status: done
 
 Context created: 2026-05-27
 Story key: `post-epic-22-es2-pipeline-state-result-payload-privacy-posture`
@@ -109,6 +109,10 @@ Important boundaries:
   - [x] Run `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~AggregateActor"` if the first command is green.
   - [x] Run `dotnet build Hexalith.EventStore.slnx --configuration Release` unless a pre-existing workspace issue blocks it; classify any unrelated failure explicitly.
   - [x] Update the Dev Agent Record, File List, Verification Status, and Change Log before moving the story to `review`.
+
+### Review Findings
+
+- [x] [Review][Patch] ES-2 story completion footer contradicts the review status [_bmad-output/implementation-artifacts/post-epic-22-es2-pipeline-state-result-payload-privacy-posture.md:252]
 
 ## Dev Notes
 
@@ -233,7 +237,7 @@ GPT-5 Codex
 
 ## Verification Status
 
-Implemented and ready for review.
+Implemented, reviewed, and complete.
 
 - PASS: `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~StateMachineIntegrationTests|FullyQualifiedName~IdempotencyRecordTests"` (16 passed).
 - PASS: `dotnet test tests/Hexalith.EventStore.Server.Tests --filter "FullyQualifiedName~AggregateActor"` (72 passed).
@@ -246,7 +250,8 @@ Implemented and ready for review.
 | --- | ---: | --- | --- |
 | 2026-05-27 | 0.1 | Created ready-for-dev post-Epic-22 ES-2 story: scrub `ResultPayload` from persisted actor `PipelineState` checkpoints while preserving normal no-crash terminal response payloads. | Codex |
 | 2026-05-27 | 1.0 | Implemented checkpoint payload scrubbing, legacy resume payload dropping, publish-failed payload safety, and Tier 1 regression coverage. | GPT-5 Codex |
+| 2026-05-27 | 1.1 | Completed code review patch for stale story completion footer and marked story done. | GPT-5 Codex |
 
 ## Story Completion Status
 
-Ultimate context engine analysis completed - comprehensive developer guide created.
+Code review complete. ES-2 implementation is done.
