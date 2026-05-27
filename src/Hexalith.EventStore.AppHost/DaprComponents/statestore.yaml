@@ -32,10 +32,16 @@ spec:
       value: "{env:REDIS_PASSWORD}"
     - name: actorStateStore
       value: "true"
-# Component-level scoping: eventstore and eventstore-admin can access this state store.
+    - name: keyPrefix
+      # Required so eventstore-admin reads the same EventStore state keys as the
+      # eventstore app-id in local Aspire and copied Docker Compose deployments.
+      value: "none"
+# Component-level scoping: eventstore, eventstore-admin, and tenants can access this state store.
 # Actors run in-process under the eventstore app-id. Admin.Server performs read-only
-# admin queries and health probes. Domain services (sample) have zero state store
+# admin queries and health probes. Tenants shares EventStore infrastructure for its
+# aggregate/projection state. Other domain services (sample) have zero state store
 # access -- no read, no write. This enforces the zero-trust posture (D4).
 scopes:
   - eventstore
   - eventstore-admin
+  - tenants

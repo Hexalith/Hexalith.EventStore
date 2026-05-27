@@ -313,7 +313,7 @@ spec:
                     action: allow
 ```
 
-`accesscontrol.eventstore-admin.yaml` sets `defaultAction: deny` with `policies: []`, because no peer workload should invoke Admin.Server over DAPR.
+`accesscontrol.eventstore-admin.yaml` allows the `eventstore-admin-ui` caller to invoke Admin.Server over DAPR in the local topology. For production with mTLS, keep deny-by-default semantics and explicitly grant only approved Admin.Server callers.
 
 `accesscontrol.sample.yaml` contains the POST-only `eventstore` caller policy that allows EventStore to invoke the sample domain service.
 

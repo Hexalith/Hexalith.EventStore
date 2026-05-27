@@ -340,7 +340,7 @@ spec:
     type: state.redis
     metadata:
         - name: redisHost
-          value: "{env:REDIS_HOST|localhost:6379}"
+          value: "{env:REDIS_HOST|127.0.0.1:6379}"
 ```
 
 The PostgreSQL alternative at `deploy/dapr/statestore-postgresql.yaml` replaces the type and connection metadata:

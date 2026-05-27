@@ -145,6 +145,13 @@ Three preliminary decisions emerging from the analysis. These are **provisional*
 - **Rationale:** Prevents event loss if pub/sub is unavailable. State store is the source of truth; pub/sub is a distribution mechanism.
 - **Open Question:** How to handle the case where persistence succeeds but publish fails repeatedly. DAPR retry policies handle transient failures, but what about permanent pub/sub failure?
 
+#### ADR-P2A: Local DAPR State-Store Source Of Truth
+
+- **Context:** The local Aspire topology creates DAPR component resources and also keeps checked-in DAPR YAML files for local/deployment reuse. ES-7 found drift between `HexalithEventStoreExtensions.cs` metadata and `src/Hexalith.EventStore.AppHost/DaprComponents/statestore.yaml`.
+- **Decision:** `YAML authoritative` for local DAPR `statestore` metadata. The Aspire AppHost copies the checked-in `statestore.yaml` into an isolated generated resources folder and passes that copy to the CommunityToolkit DAPR component through `DaprComponentOptions.LocalPath`; the C# extension keeps generated metadata only as a fallback for consumers that do not provide a component file.
+- **Rationale:** FR43/NFR29 require backend/environment swaps through DAPR component configuration, not hidden application-code metadata. Keeping the YAML authoritative lets operators, tests, Docker Compose handoff, and downstream validators inspect the same artifact the local Aspire sidecars load.
+- **Constraints:** The component name remains `statestore`, local type remains `state.redis`, `actorStateStore` remains `"true"`, `keyPrefix` remains `"none"` so `eventstore-admin` and `tenants` read the same keys through their sidecars, and only `eventstore` / `eventstore-admin` / `tenants` are scoped in the local state-store YAML. Other domain-service isolation depends on AppHost references, DAPR component scopes, and access-control policy, not Redis key prefixing.
+
 #### ADR-P3: Domain Service Contract -- Result Object Over Exceptions
 
 - **Context:** FR21 defines `(Command, CurrentState?) -> DomainResult` but the error/rejection path is undefined (GAP-2).
@@ -396,6 +403,7 @@ Hexalith.EventStore/
 | --- | ----------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | D1  | Event Storage Strategy              | Single-key-per-event with actor-level ACID writes                          | ADR-P1, GAP-3                                                                    |
 | D2  | Command Status Storage              | Dedicated state store key `{tenant}:{correlationId}:status`                | GAP-1                                                                            |
+| D2A | Local state-store source of truth   | `statestore.yaml` loaded by Aspire through `DaprComponentOptions.LocalPath` | FR43/NFR29 backend portability; prevents AppHost/YAML metadata drift             |
 | D3  | Domain Service Error Contract       | Domain errors as events; only infrastructure errors are exceptions         | ADR-P3, GAP-2                                                                    |
 | D4  | DAPR Access Control Granularity     | Per-app-id allow list                                                      | --                                                                               |
 | D5  | API Error Response Format           | RFC 7807 Problem Details + extensions (correlationId, tenantId)            | --                                                                               |

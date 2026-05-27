@@ -189,7 +189,7 @@ $ cp src/Hexalith.EventStore.AppHost/DaprComponents/subscription-sample-counter.
 
 > For production backends (PostgreSQL, RabbitMQ, etc.), copy from `deploy/dapr/` instead. See [Configure DAPR Components](#configure-dapr-components).
 >
-> **Important:** The local development DAPR component files use `{env:REDIS_HOST|localhost:6379}` for the Redis host. This environment variable substitution syntax is **not reliably resolved** by all DAPR runtime versions when running inside Docker Compose. After copying the component files, update `redisHost` values to use the Docker service name directly:
+> **Important:** The local development DAPR component files are the authoritative local Aspire source for state-store metadata and use `{env:REDIS_HOST|127.0.0.1:6379}` for the Redis host. This environment variable substitution syntax is **not reliably resolved** by all DAPR runtime versions when running inside Docker Compose. After copying the component files, update `redisHost` values to use the Docker service name directly:
 >
 > ```yaml
 > - name: redisHost
@@ -197,6 +197,8 @@ $ cp src/Hexalith.EventStore.AppHost/DaprComponents/subscription-sample-counter.
 > ```
 >
 > Apply this change to every component file in your `dapr-components/` directory (at minimum `statestore.yaml` and `pubsub.yaml`; also any optional `configstore.yaml` you add for dynamic domain service configuration — see [DAPR Component Reference: Configuration Store](dapr-component-reference.md#configuration-store)).
+
+> Keep `actorStateStore: "true"`, `keyPrefix: "none"`, and the `eventstore` / `eventstore-admin` / `tenants` state-store scopes intact when rewriting only the Docker Redis host.
 
 ### Step 2: Add DAPR Sidecar Containers
 
