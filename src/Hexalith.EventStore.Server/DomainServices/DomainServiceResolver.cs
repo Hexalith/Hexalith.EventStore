@@ -1,5 +1,6 @@
 
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 using Dapr.Client;
 
@@ -23,16 +24,23 @@ namespace Hexalith.EventStore.Server.DomainServices;
 /// <para><b>BLOCKING:</b> Story 5.1 (DAPR ACLs) is required before production multi-tenant deployments.
 /// Without DAPR app-level access policies, any sidecar-accessible service can invoke any other service.</para>
 /// </remarks>
-public class DomainServiceResolver(
+public partial class DomainServiceResolver(
     DaprClient daprClient,
     IOptions<DomainServiceOptions> options,
     ILogger<DomainServiceResolver> logger) : IDomainServiceResolver {
+    private const int MaxDomainNameLength = 64;
+
+    [GeneratedRegex(@"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")]
+    private static partial Regex DomainNameRegex();
+
     /// <inheritdoc/>
     public async Task<DomainServiceRegistration?> ResolveAsync(
         string tenantId, string domain, string version = "v1", CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
         ArgumentException.ThrowIfNullOrWhiteSpace(version);
+
+        ValidateDomainName(domain);
 
         // Normalize and validate version format (ADR-4)
         version = version.ToLowerInvariant();
@@ -80,7 +88,7 @@ public class DomainServiceResolver(
         // form. The mapping is a 1:1 textual substitution ("*|" → "wildcard_", "|" → "_") so the
         // semantic remains wildcard-tenant-for-this-domain-and-version. Exact and pipe-form
         // registrations still win over the sanitized form per lookup order above.
-        string sanitizedWildcardKey = $"wildcard_{domain}_{version}";
+        string sanitizedWildcardKey = CreateSanitizedWildcardKey(domain, version);
         if (options.Value.Registrations.TryGetValue(sanitizedWildcardKey, out DomainServiceRegistration? sanitizedWildcardRegistration)) {
             logger.LogDebug(
                 "Resolved domain service from sanitized wildcard registration: AppId={AppId}, Method={MethodName}, SanitizedKey={SanitizedKey}, TenantId={TenantId}",
@@ -163,5 +171,25 @@ public class DomainServiceResolver(
             TenantId: tenantId,
             Domain: domain,
             Version: version);
+    }
+
+    internal static string CreateSanitizedWildcardKey(string domain, string version) {
+        ValidateDomainName(domain);
+        DaprDomainServiceInvoker.ValidateVersionFormat(version);
+        return $"wildcard_{domain}_{version}";
+    }
+
+    private static void ValidateDomainName(string domain) {
+        if (domain.Length > MaxDomainNameLength) {
+            throw new ArgumentException(
+                $"Invalid domain service domain '{domain}'. Domain cannot exceed {MaxDomainNameLength} characters.",
+                nameof(domain));
+        }
+
+        if (!DomainNameRegex().IsMatch(domain)) {
+            throw new ArgumentException(
+                $"Invalid domain service domain '{domain}'. Domain must match pattern '^[a-z0-9]([a-z0-9-]*[a-z0-9])?$' (lowercase alphanumeric plus hyphens, no underscores).",
+                nameof(domain));
+        }
     }
 }

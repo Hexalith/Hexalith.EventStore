@@ -25,10 +25,10 @@ Implements [System\.IEquatable&lt;](https://learn.microsoft.com/en-us/dotnet/api
 
 ## DomainServiceOptions\.ConfigStoreName Property
 
-The DAPR config store name\. Default: "configstore"\.
+The DAPR config store name for domain service registration overrides\. Default: null \(convention\-based routing only \-\- AppId = domain name, MethodName = "process"\)\. Set to a config store name \(e\.g\., "configstore"\) to enable config store lookups that override convention\-based routing for complex scenarios \(e\.g\., per\-tenant routing\)\.
 
 ```csharp
-public string ConfigStoreName { get; init; }
+public string? ConfigStoreName { get; init; }
 ```
 
 #### Property Value

@@ -163,17 +163,33 @@ Configuration section: `EventStore:CommandStatus`
 
 ### Domain Services
 
-Domain services are the aggregate processors that handle commands and produce events. They can be registered statically in configuration or discovered dynamically via DAPR configuration store. The version field in registrations enables running multiple versions of the same domain service simultaneously — see [Event Versioning — Domain Service Version Routing](../concepts/event-versioning.md#domain-service-version-routing) for deployment patterns and rollback strategy.
+Domain services are the aggregate processors that handle commands and produce events. They are resolved by static registrations first, then by an opt-in DAPR configuration store, and finally by convention. The version field in registrations enables running multiple versions of the same domain service simultaneously - see [Event Versioning - Domain Service Version Routing](../concepts/event-versioning.md#domain-service-version-routing) for deployment patterns and rollback strategy.
 
 Configuration section: `EventStore:DomainServices`
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `ConfigStoreName` | string | `"configstore"` | DAPR configuration store component name |
+| `ConfigStoreName` | string? | `null` | Optional DAPR configuration store component name. Config-store routing is opt-in; omit or set `null` to skip DAPR configuration lookup. |
 | `InvocationTimeoutSeconds` | int | `5` | Timeout in seconds for DAPR sidecar service invocation calls |
 | `MaxEventsPerResult` | int | `1000` | Maximum number of events a single domain operation can produce |
 | `MaxEventSizeBytes` | int | `1048576` | Maximum size of a single event in bytes (default: 1 MB) |
-| `Registrations:{key}` | object | — | Static domain service registrations keyed by `"{tenant}\|{domain}\|{version}"` |
+| `Registrations:{key}` | object | - | Static domain service registrations keyed by one of the supported exact or wildcard formats below |
+
+Resolver precedence is a documented runtime contract:
+
+1. exact static registration keyed by `tenant:domain:version`
+2. exact static registration keyed by `tenant|domain|version`
+3. pipe wildcard static registration keyed by `*|domain|version`
+4. sanitized wildcard static registration keyed by `wildcard_{domain}_{version}`
+5. opt-in DAPR config-store lookup when `ConfigStoreName` is non-empty
+6. convention fallback: `AppId = domain`, `MethodName = "process"`
+
+Supported static registration key formats:
+
+- Canonical exact: `tenant:domain:version`. This is the resolver's canonical key, but `:` is a hierarchy separator in .NET configuration sources, so it is not recommended for JSON or environment-variable configuration.
+- Config-friendly exact: `tenant|domain|version`. This is the recommended exact-registration key for JSON, in-memory, and dictionary-backed configuration sources where colons split sections.
+- Pipe wildcard: `*|domain|version`. This registers one service for every tenant of a domain/version. Use it in JSON, in-memory, or dictionary-backed configuration sources; `*` and `|` are not portable environment-variable name characters. Example: `*|party|v1`.
+- Sanitized wildcard: `wildcard_{domain}_{version}`. This Kubernetes ConfigMap data-key-friendly wildcard form is safe while domains exclude `_` and versions match `^v[0-9]+$`. It is portable as an environment variable name only when the domain itself contains no hyphen. Example: `wildcard_party_v1`.
 
 Each registration entry has:
 
@@ -189,7 +205,6 @@ Each registration entry has:
 {
   "EventStore": {
     "DomainServices": {
-      "ConfigStoreName": "configstore",
       "InvocationTimeoutSeconds": 10,
       "MaxEventsPerResult": 500,
       "MaxEventSizeBytes": 524288,
@@ -206,6 +221,8 @@ Each registration entry has:
   }
 }
 ```
+
+To enable dynamic config-store routing, add `ConfigStoreName` explicitly and deploy a matching DAPR configuration component. If the component is absent or unavailable, the resolver falls through to convention routing only after static registrations miss.
 
 ### OpenAPI
 
@@ -368,7 +385,7 @@ Hexalith.EventStore uses five DAPR building blocks to abstract infrastructure co
 | State Store | Actor state, event snapshots, command status tracking | `state.redis`, `state.postgresql`, `state.azure.cosmosdb` |
 | Pub/Sub | Event distribution with per-tenant-per-domain topics | `pubsub.redis`, `pubsub.rabbitmq`, `pubsub.kafka`, `pubsub.azure.servicebus.topics` |
 | Actors | Aggregate lifecycle management (turn-based concurrency) | Enabled via `actorStateStore: "true"` on the state store |
-| Configuration | Domain service registration and dynamic config | `configuration.redis` |
+| Configuration | Optional domain service registration and dynamic config | `configuration.redis` |
 | Resiliency | Retry, timeout, and circuit breaker policies | `Resiliency` resource |
 
 > **Note:** DAPR component YAML is documented in full in the [DAPR Component Configuration Reference](dapr-component-reference.md). This section provides an overview — refer to that page for complete, copy-pasteable YAML examples per backend.
@@ -377,9 +394,9 @@ Hexalith.EventStore uses five DAPR building blocks to abstract infrastructure co
 
 | Environment | State Store | Pub/Sub | Configuration |
 |-------------|-------------|---------|---------------|
-| Local development | Redis | Redis | Redis |
-| On-premise production | PostgreSQL | RabbitMQ or Kafka | Redis |
-| Azure cloud | Cosmos DB | Azure Service Bus | Redis |
+| Local development | Redis | Redis | Optional Redis |
+| On-premise production | PostgreSQL | RabbitMQ or Kafka | Optional Redis |
+| Azure cloud | Cosmos DB | Azure Service Bus | Optional Redis |
 
 To swap backends, you change the DAPR component YAML files and (optionally) set environment variables for connection strings. No application code changes are needed. See the [Deployment Progression Guide](deployment-progression.md) for a detailed walkthrough.
 
@@ -489,7 +506,7 @@ PUBLISH_TARGET=k8s dotnet run --project src/Hexalith.EventStore.AppHost -- publi
 The Aspire AppHost also configures:
 
 - **DAPR sidecar injection** for all services (auto-provisioned)
-- **Redis** as the default state store, pub/sub, and configuration store for local development
+- **Redis** as the default state store and pub/sub backend for local development; the DAPR configuration store is opt-in
 - **Keycloak** as the OIDC provider (when enabled)
 - **OpenTelemetry** collection through the Aspire dashboard
 
@@ -567,11 +584,11 @@ This table lists every configurable setting for quick scanning, including explic
 | `EventStore:Snapshots:DomainIntervals:{name}` | int | — | Integer `>= 10` | Application |
 | `EventStore:CommandStatus:TtlSeconds` | int | `86400` | Integer `> 0` | Application |
 | `EventStore:CommandStatus:StateStoreName` | string | `"statestore"` | Non-empty string | Application |
-| `EventStore:DomainServices:ConfigStoreName` | string | `"configstore"` | Non-empty string | Application |
+| `EventStore:DomainServices:ConfigStoreName` | string? | `null` | `null` or non-empty string | Application |
 | `EventStore:DomainServices:InvocationTimeoutSeconds` | int | `5` | Integer `> 0` | Application |
 | `EventStore:DomainServices:MaxEventsPerResult` | int | `1000` | Integer `> 0` | Application |
 | `EventStore:DomainServices:MaxEventSizeBytes` | int | `1048576` | Integer `> 0` | Application |
-| `EventStore:DomainServices:Registrations:{key}` | object | — | Object keyed by `tenant\|domain\|version` or `tenant:domain:version` | Application |
+| `EventStore:DomainServices:Registrations:{key}` | object | - | Object keyed by `tenant|domain|version`, `tenant:domain:version`, `*|domain|version`, or `wildcard_{domain}_{version}` | Application |
 | `EventStore:OpenApi:Enabled` | bool | `true` | `true` or `false` | Application |
 | `Authentication:JwtBearer:Authority` | string | `""` | Empty string or absolute OIDC URL | Authentication |
 | `Authentication:JwtBearer:Audience` | string | `""` | Non-empty string | Authentication |

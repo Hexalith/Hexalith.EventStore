@@ -3,8 +3,10 @@ using System.Text.Json;
 
 using Dapr.Client;
 
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.DomainServices;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -67,6 +69,27 @@ public class DomainServiceResolverTests {
         _ = await resolver.ResolveAsync("tenant-a", "orders");
 
         // Assert — DaprClient.GetConfiguration should never be called
+        _ = await _daprClient.DidNotReceive().GetConfiguration(
+            Arg.Any<string>(),
+            Arg.Any<IReadOnlyList<string>>(),
+            Arg.Any<IReadOnlyDictionary<string, string>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task ResolveAsync_ConfigStoreNameMissingOrWhitespace_SkipsDaprConfigStore(string? configStoreName) {
+        // Arrange
+        DomainServiceResolver resolver = CreateResolver(new DomainServiceOptions { ConfigStoreName = configStoreName });
+
+        // Act
+        DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "orders");
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.AppId.ShouldBe("orders");
         _ = await _daprClient.DidNotReceive().GetConfiguration(
             Arg.Any<string>(),
             Arg.Any<IReadOnlyList<string>>(),
@@ -164,6 +187,55 @@ public class DomainServiceResolverTests {
         b.AppId.ShouldBe("sample");
         b.MethodName.ShouldBe("process");
         b.TenantId.ShouldBe("tenant-b");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ColonExactRegistration_TakesPrecedenceOverEveryFallback() {
+        // Arrange
+        var configRegistration = new DomainServiceRegistration("config-svc", "process", "tenant-a", "party", "v1");
+        ConfigureConfigStore("tenant-a:party:v1", JsonSerializer.Serialize(configRegistration));
+        var opts = new DomainServiceOptions {
+            ConfigStoreName = "configstore",
+            Registrations = new Dictionary<string, DomainServiceRegistration> {
+                ["tenant-a:party:v1"] = new("colon-exact-svc", "process", "tenant-a", "party", "v1"),
+                ["tenant-a|party|v1"] = new("pipe-exact-svc", "process", "tenant-a", "party", "v1"),
+                ["*|party|v1"] = new("pipe-wildcard-svc", "process", "*", "party", "v1"),
+                ["wildcard_party_v1"] = new("sanitized-wildcard-svc", "process", "*", "party", "v1"),
+            },
+        };
+        DomainServiceResolver resolver = CreateResolver(opts);
+
+        // Act
+        DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "party");
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.AppId.ShouldBe("colon-exact-svc");
+        _ = await _daprClient.DidNotReceive().GetConfiguration(
+            Arg.Any<string>(),
+            Arg.Any<IReadOnlyList<string>>(),
+            Arg.Any<IReadOnlyDictionary<string, string>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ResolveAsync_PipeExactRegistration_TakesPrecedenceOverWildcard() {
+        // Arrange
+        var opts = new DomainServiceOptions {
+            Registrations = new Dictionary<string, DomainServiceRegistration> {
+                ["tenant-a|party|v1"] = new("pipe-exact-svc", "process", "tenant-a", "party", "v1"),
+                ["*|party|v1"] = new("pipe-wildcard-svc", "process", "*", "party", "v1"),
+                ["wildcard_party_v1"] = new("sanitized-wildcard-svc", "process", "*", "party", "v1"),
+            },
+        };
+        DomainServiceResolver resolver = CreateResolver(opts);
+
+        // Act
+        DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "party");
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.AppId.ShouldBe("pipe-exact-svc");
     }
 
     [Fact]
@@ -273,6 +345,61 @@ public class DomainServiceResolverTests {
         // Assert — pipe wildcard wins because it is checked first.
         _ = result.ShouldNotBeNull();
         result.AppId.ShouldBe("legacy-svc");
+    }
+
+    [Fact]
+    public async Task ResolveAsync_StaticRegistrationTakesPrecedenceOverConfigStore() {
+        // Arrange
+        var configRegistration = new DomainServiceRegistration("config-party-svc", "process", "tenant-a", "party", "v1");
+        ConfigureConfigStore("tenant-a:party:v1", JsonSerializer.Serialize(configRegistration));
+        var opts = new DomainServiceOptions {
+            ConfigStoreName = "configstore",
+            Registrations = new Dictionary<string, DomainServiceRegistration> {
+                ["*|party|v1"] = new("static-party-svc", "process", "*", "party", "v1"),
+            },
+        };
+        DomainServiceResolver resolver = CreateResolver(opts);
+
+        // Act
+        DomainServiceRegistration? result = await resolver.ResolveAsync("tenant-a", "party");
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.AppId.ShouldBe("static-party-svc");
+        _ = await _daprClient.DidNotReceive().GetConfiguration(
+            Arg.Any<string>(),
+            Arg.Any<IReadOnlyList<string>>(),
+            Arg.Any<IReadOnlyDictionary<string, string>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void DomainServiceOptions_BindsPipeAndSanitizedWildcardRegistrationsFromConfiguration() {
+        // Arrange
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> {
+                ["EventStore:DomainServices:Registrations:*|party|v1:AppId"] = "parties",
+                ["EventStore:DomainServices:Registrations:*|party|v1:MethodName"] = "process",
+                ["EventStore:DomainServices:Registrations:*|party|v1:TenantId"] = "*",
+                ["EventStore:DomainServices:Registrations:*|party|v1:Domain"] = "party",
+                ["EventStore:DomainServices:Registrations:*|party|v1:Version"] = "v1",
+                ["EventStore:DomainServices:Registrations:wildcard_counter_v1:AppId"] = "sample",
+                ["EventStore:DomainServices:Registrations:wildcard_counter_v1:MethodName"] = "process",
+                ["EventStore:DomainServices:Registrations:wildcard_counter_v1:TenantId"] = "*",
+                ["EventStore:DomainServices:Registrations:wildcard_counter_v1:Domain"] = "counter",
+                ["EventStore:DomainServices:Registrations:wildcard_counter_v1:Version"] = "v1",
+            })
+            .Build();
+        var options = new DomainServiceOptions();
+
+        // Act
+        configuration.GetSection("EventStore:DomainServices").Bind(options);
+
+        // Assert
+        options.Registrations.Keys.ShouldContain("*|party|v1");
+        options.Registrations.Keys.ShouldContain("wildcard_counter_v1");
+        options.Registrations["*|party|v1"].AppId.ShouldBe("parties");
+        options.Registrations["wildcard_counter_v1"].AppId.ShouldBe("sample");
     }
 
     // --- Config store routing (opt-in via ConfigStoreName) ---
@@ -536,12 +663,56 @@ public class DomainServiceResolverTests {
     [InlineData("v1:evil")]
     [InlineData("v")]
     [InlineData("1")]
+    [InlineData("v1_2")]
+    [InlineData("v01x")]
     public async Task ResolveAsync_InvalidVersionFormat_ThrowsArgumentException(string invalidVersion) {
         // Arrange
         DomainServiceResolver resolver = CreateResolver();
 
         // Act & Assert
         _ = await Should.ThrowAsync<ArgumentException>(() => resolver.ResolveAsync("tenant", "domain", invalidVersion));
+    }
+
+    [Fact]
+    public async Task ResolveAsync_DomainWithUnderscore_CannotReachSanitizedWildcardLookup() {
+        // Arrange
+        var opts = new DomainServiceOptions {
+            Registrations = new Dictionary<string, DomainServiceRegistration> {
+                ["wildcard_domain_with_underscore_v1"] = new("unsafe-svc", "process", "*", "domain_with_underscore", "v1"),
+            },
+        };
+        DomainServiceResolver resolver = CreateResolver(opts);
+
+        // Act & Assert
+        _ = await Should.ThrowAsync<ArgumentException>(() => resolver.ResolveAsync("tenant", "domain_with_underscore"));
+    }
+
+    [Fact]
+    public async Task ResolveAsync_DomainLongerThanAggregateIdentityLimit_ThrowsArgumentException() {
+        // Arrange
+        DomainServiceResolver resolver = CreateResolver();
+        string tooLongDomain = new('a', 65);
+
+        // Act & Assert
+        _ = await Should.ThrowAsync<ArgumentException>(() => resolver.ResolveAsync("tenant", tooLongDomain));
+    }
+
+    [Theory]
+    [InlineData("domain-with-hyphen")]
+    [InlineData("counter")]
+    [InlineData("party")]
+    public void AggregateIdentity_DomainValidationDocumentsSanitizedWildcardInvariant(string domain) {
+        // Arrange / Act
+        var identity = new AggregateIdentity("tenant-a", domain, "aggregate-1");
+
+        // Assert
+        identity.Domain.ShouldBe(domain);
+    }
+
+    [Fact]
+    public void AggregateIdentity_DomainValidationRejectsUnderscoreForSanitizedWildcardSafety() {
+        // Act & Assert
+        _ = Should.Throw<ArgumentException>(() => new AggregateIdentity("tenant-a", "domain_with_underscore", "aggregate-1"));
     }
 
     [Fact]

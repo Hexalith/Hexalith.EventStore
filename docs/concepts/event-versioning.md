@@ -210,27 +210,44 @@ For integration subscribers where eventual consistency is acceptable, you can be
 
 The `domainServiceVersion` metadata field enables running multiple versions of the same domain service simultaneously. This is how you deploy a new version of your domain logic without downtime and with instant rollback capability.
 
-Version-based service resolution uses the DAPR configuration store:
+Version-based service resolution is convention-first and only uses the DAPR configuration store when config-store routing is opt-in through `EventStore:DomainServices:ConfigStoreName`:
 
-- **Resolution key:** `{tenantId}:{domain}:{version}` (or `{tenantId}|{domain}|{version}` for config-friendly format)
 - **Version format:** `v{number}` (regex: `^v[0-9]+$`, default: `v1`)
 - **Version source:** extracted from the command envelope's `domain-service-version` extension key
+- **Canonical exact key:** `tenant:domain:version`
+- **Config-friendly exact key:** `tenant|domain|version`
+- **Pipe wildcard key:** `*|domain|version`
+- **Sanitized wildcard key:** `wildcard_{domain}_{version}`; safe while domains exclude `_` and versions match `^v[0-9]+$`
 
-The `DomainServiceResolver` checks static registrations first (for local dev and testing), then falls back to the DAPR config store for dynamic resolution.
+Resolver precedence is a documented runtime contract:
+
+1. exact static registration keyed by `tenant:domain:version`
+2. exact static registration keyed by `tenant|domain|version`
+3. pipe wildcard static registration keyed by `*|domain|version`
+4. sanitized wildcard static registration keyed by `wildcard_{domain}_{version}`
+5. opt-in DAPR config-store lookup when `ConfigStoreName` is non-empty
+6. convention fallback: `AppId = domain`, `MethodName = "process"`
+
+The pipe exact form is recommended for JSON and environment-variable configuration because `:` is a hierarchy separator in .NET configuration sources. The pipe wildcard form, for example `*|party|v1`, and the sanitized wildcard form, for example `wildcard_party_v1`, both register one domain/version for all tenants; pipe wildcard wins if both are present. Static registrations beat DAPR config-store entries. If the config store is absent or unavailable, the resolver falls through to convention routing only after static registrations miss.
 
 ### Deployment Checklist
 
-1. **Deploy new service version** — deploy the v2 domain service alongside v1 (both running simultaneously)
-2. **Update DAPR config store mapping** — set `{tenantId}:{domain}:v2` to point to the new service's app-id
-3. **Verify routing with test command** — send a command with the `domain-service-version: v2` extension to confirm routing
-4. **Monitor for `UnknownEventException` errors** — these indicate the new service cannot read events produced by the old version
-5. **Rollback if needed** — update the config store mapping back to v1 (no redeployment required)
+1. **Deploy new service version** - deploy the v2 domain service alongside v1 (both running simultaneously).
+2. **Choose the routing layer** - prefer static registration for local/dev/test or zero-config convention when the app-id is the domain; enable `ConfigStoreName` only when dynamic config-store routing is required.
+3. **Update the selected mapping** - for an opt-in config store, set `tenant-a:counter:v2` to point to the new service app-id; for appsettings, use `tenant-a|counter|v2` unless the source safely supports colons.
+4. **Verify routing with test command** - send a command with the `domain-service-version: v2` extension to confirm routing.
+5. **Monitor for `UnknownEventException` errors** - these indicate the new service cannot read events produced by the old version.
+6. **Rollback if needed** - update the selected static or config-store mapping back to v1, or remove the explicit mapping to return to convention routing.
 
 ### Common Mistakes
 
-- **Deploying v2 but forgetting to update config store mapping:** Commands still route to v1. The new service sits idle.
-- **Config store eventual consistency:** During propagation, some instances may route to v1 and others to v2. Design your domain services for this window — both versions must be backward-compatible with all existing events.
-- **Static fallback registration:** For critical domain services, configure a static registration in `appsettings.json` as a safety net when the config store is temporarily unavailable. See [Configuration Reference — Domain Services](../guides/configuration-reference.md) for the registration format.
+- **Deploying v2 but forgetting to update routing:** Commands still route to v1 or convention. The new service sits idle.
+- **Assuming config store is the default:** `ConfigStoreName` defaults to `null`; config-store routing is opt-in and the Aspire AppHost does not wire `configstore` by default.
+- **Treating static registrations as config-store fallback:** Static registrations are checked before the opt-in config store, not after it.
+- **Config store eventual consistency:** During propagation, some instances may route to v1 and others to v2. Design your domain services for this window - both versions must be backward-compatible with all existing events.
+- **Using colon keys in JSON/env configuration:** `tenant:domain:version` is canonical for the resolver, but `tenant|domain|version` is safer for configuration sources that treat `:` as hierarchy.
+
+See [Configuration Reference - Domain Services](../guides/configuration-reference.md#domain-services) for the same precedence order and registration key formats.
 
 ## Counter Domain Versioning Example
 
@@ -353,7 +370,7 @@ The following features are planned for v3 but **do not exist today**. This secti
 **What exists today:**
 
 - The three versioning metadata fields (`domainServiceVersion`, `eventTypeName`, `serializationFormat`)
-- Version-based domain service routing via DAPR config store
+- Version-based domain service routing via static registrations, opt-in DAPR config store, and convention fallback
 - The error-first contract (`UnknownEventException`)
 - Manual upcasting via domain service state rehydration logic
 

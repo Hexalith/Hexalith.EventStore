@@ -15,7 +15,7 @@ Hexalith.EventStore uses five DAPR building blocks to abstract infrastructure co
 | State Store    | Actor state, event snapshots, command status tracking   | `state.redis`, `state.postgresql`, `state.azure.cosmosdb`                           |
 | Pub/Sub        | Event distribution with per-tenant-per-domain topics    | `pubsub.redis`, `pubsub.rabbitmq`, `pubsub.kafka`, `pubsub.azure.servicebus.topics` |
 | Actors         | Aggregate lifecycle management (turn-based concurrency) | Enabled via `actorStateStore: true` on state store                                  |
-| Configuration  | Domain service registration and dynamic config          | `configuration.redis`                                                               |
+| Configuration  | Optional domain service registration and dynamic config | `configuration.redis`                                                               |
 | Resiliency     | Retry, timeout, and circuit breaker policies            | `Resiliency` resource (not a component)                                             |
 
 ```mermaid
@@ -25,7 +25,7 @@ flowchart TB
     Sidecar["DAPR Sidecar"]
     SS["State Store\n(Redis / PostgreSQL / Cosmos DB)"]
     PS["Pub/Sub\n(Redis / RabbitMQ / Kafka / Service Bus)"]
-    CS["Configuration Store\n(Redis)"]
+    CS["Optional Configuration Store\n(Redis)"]
     DS["Domain Service\n(e.g., sample)"]
     Sub["External Subscriber"]
 
@@ -33,7 +33,7 @@ flowchart TB
     API -->|"DAPR SDK"| Sidecar
     Sidecar -->|"Actor State\nSnapshots\nCommand Status"| SS
     Sidecar -->|"Publish Events\nCloudEvents 1.0"| PS
-    Sidecar -->|"Service Registry\nDynamic Config"| CS
+    Sidecar -.->|"Opt-in Service Registry\nDynamic Config"| CS
     Sidecar -->|"Service Invocation"| DS
     PS -->|"Subscribe"| Sub
 ```
@@ -41,7 +41,7 @@ flowchart TB
 <details>
 <summary>Architecture diagram text description</summary>
 
-The diagram shows the data flow through Hexalith.EventStore DAPR components. A client application sends HTTP/gRPC requests to the CommandAPI (app-id: eventstore). The CommandAPI communicates with its DAPR sidecar via the DAPR SDK. The sidecar connects to three infrastructure components: (1) the State Store (Redis, PostgreSQL, or Cosmos DB) for actor state, snapshots, and command status; (2) the Pub/Sub broker (Redis, RabbitMQ, Kafka, or Service Bus) for publishing CloudEvents 1.0 events; and (3) the Configuration Store (Redis) for service registry and dynamic configuration. The sidecar also invokes domain services directly. External subscribers receive events from the pub/sub broker.
+The diagram shows the data flow through Hexalith.EventStore DAPR components. A client application sends HTTP/gRPC requests to the CommandAPI (app-id: eventstore). The CommandAPI communicates with its DAPR sidecar via the DAPR SDK. The sidecar connects to the State Store (Redis, PostgreSQL, or Cosmos DB) for actor state, snapshots, and command status, and to the Pub/Sub broker (Redis, RabbitMQ, Kafka, or Service Bus) for publishing CloudEvents 1.0 events. The Configuration Store (Redis) is optional and is used only when `EventStore:DomainServices:ConfigStoreName` is explicitly configured for service registry or dynamic configuration. The sidecar also invokes domain services directly. External subscribers receive events from the pub/sub broker.
 
 </details>
 
@@ -745,7 +745,7 @@ These settings are configured in your application code (via `ActorRuntimeOptions
 
 ## Configuration Store
 
-A DAPR configuration store component named `configstore` can optionally provide dynamic key-value configuration for domain service registration, mapping tenant + domain + version combinations to service endpoint information so the CommandAPI can discover and invoke domain services at runtime.
+A DAPR configuration store component named `configstore` can optionally provide dynamic key-value configuration for domain service registration, mapping tenant + domain + version combinations to service endpoint information so the CommandAPI can discover and invoke domain services at runtime. Config-store routing is opt-in: `EventStore:DomainServices:ConfigStoreName` defaults to `null`, and the resolver only calls the DAPR Configuration API when that option is explicitly non-empty.
 
 **Status under Aspire orchestration:** the Aspire AppHost (`HexalithEventStoreExtensions.AddHexalithEventStore`) wires only the `statestore` and `pubsub` components into the EventStore sidecar. No `configstore` component is registered out of the box, and the bundled `dapr-configstore` health check is therefore `Degraded` by design — see [Story 14.3 deployment notes](../../_bmad-output/implementation-artifacts/14-3-azure-container-apps-deployment-guide-and-configuration.md) and [post-Epic-3 R3A7 follow-up notes](../../_bmad-output/implementation-artifacts/post-epic-3-r3a7-live-command-surface-verification.md). Code paths that consume the config store (`DaprRateLimitConfigSync`, `DomainServiceResolver`) fall back gracefully when the component is absent.
 
