@@ -40,7 +40,7 @@ graph TD
 <details>
 <summary>Text description of the dependency graph</summary>
 
-- **Contracts** is the root Hexalith package. It has no dependency on any other Hexalith.EventStore package, but it does depend on `Hexalith.Commons.UniqueIds` for ULID generation and `Dapr.Actors` for the public projection actor interface.
+- **Contracts** is the root Hexalith package. It has no dependency on any other Hexalith.EventStore package, and its only intentional external package dependency is `Hexalith.Commons.UniqueIds` for ULID generation. It owns the implementation-neutral projection query contract and wire DTOs without referencing DAPR, gRPC, or protobuf packages.
 - **Client** depends on Contracts.
 - **Server** depends on both Client and Contracts.
 - **SignalR** depends on Contracts and adds a lightweight helper over `Microsoft.AspNetCore.SignalR.Client`.
@@ -90,11 +90,11 @@ Do not reference `Hexalith.EventStore` or `Hexalith.EventStore.Server` just to c
 
 ### Serving projection queries
 
-Install **Contracts** in the project that hosts a downstream projection query actor.
+Install **Contracts** in the project that exposes a downstream projection query method contract. DAPR actor hosting projects add DAPR actor packages themselves; pure gateway, Contracts, and Parties-style downstream client projects do not need DAPR packages to consume Contracts or gateway DTOs.
 
-Contracts contains the public generic query actor boundary:
+Contracts contains the public generic query boundary:
 
-- `IProjectionActor` - the DAPR actor interface EventStore routes to.
+- `IProjectionActor` - the implementation-neutral projection query method contract EventStore invokes by method name.
 - `QueryEnvelope` - the actor wire envelope with tenant, domain, aggregate, query type, payload bytes, correlation, user, and optional entity ID.
 - `QueryResult` - the actor response with success flag, UTF-8 JSON payload bytes, error message, and optional projection type metadata.
 - `QueryAdapterFailureReason` - coarse adapter-edge categories such as `missing-payload`, `serialization-failure`, and `actor-response-mismatch`.
@@ -106,6 +106,10 @@ $ dotnet add package Hexalith.EventStore.Contracts
 Do not reference `Hexalith.EventStore.Server` just to implement query serving. Server contains runtime implementations such as `CachingProjectionActor`, `EventReplayProjectionActor`, `QueryRouter`, and `QueryActorIdHelper`; those are EventStore internals or optional host-side helpers, not the downstream public adapter requirement.
 
 Existing source that imported `QueryEnvelope`, `QueryResult`, or `IProjectionActor` from `Hexalith.EventStore.Server.Actors` should migrate to `Hexalith.EventStore.Contracts.Queries`. The data contract member names and order are preserved; the namespace move makes the public package boundary explicit.
+
+Before ES9, documentation described projection query contracts as DAPR actor contracts. After ES9, `Hexalith.EventStore.Contracts` defines runtime-neutral query contracts and wire DTOs. DAPR actor packages are referenced only by hosting/adapter projects that execute those contracts through DAPR. Existing DAPR actor implementers should mirror the neutral `QueryAsync(QueryEnvelope)` method on their runtime-owned DAPR actor interface, because DAPR actor interface hierarchies must ultimately derive from `Dapr.Actors.IActor`. Removing `Dapr.Actors.IActor` inheritance from the public Contracts interface is source-compatible for consumers that only call or implement `QueryAsync(QueryEnvelope)`, but source/binary breaking for consumers that rely on `IProjectionActor` being assignable to `IActor`; release as a major-version change unless pre-1.0 compatibility rules explicitly apply.
+
+Parties follow-up: after consuming an EventStore build with ES9, relax the Parties `ClientArchitecturalFitnessTests` leaked-set pin that expected the previous Contracts DAPR dependency.
 
 ### Testing your domain service or gateway caller
 
@@ -168,7 +172,7 @@ Install packages across your projects based on their role:
 
 ### Hexalith.EventStore.Contracts
 
-Pure domain types plus stable public gateway wire contracts. This package contains `CommandEnvelope`, `EventEnvelope`, `DomainResult`, identity types, command/query gateway DTOs, validation DTOs, and stable ProblemDetails extension-name constants. It has no dependency on any other Hexalith.EventStore package and has a single external dependency for ULID generation.
+Pure domain types plus stable public gateway wire contracts. This package contains `CommandEnvelope`, `EventEnvelope`, `DomainResult`, identity types, command/query gateway DTOs, validation DTOs, the implementation-neutral projection query contract, projection query wire DTOs, and stable ProblemDetails extension-name constants. It has no dependency on any other Hexalith.EventStore package and has a single external dependency for ULID generation.
 
 **Key namespaces and types:**
 
@@ -183,7 +187,6 @@ Pure domain types plus stable public gateway wire contracts. This package contai
 
 | Package                    | Version |
 | -------------------------- | ------- |
-| Dapr.Actors                | 1.17.9  |
 | Hexalith.Commons.UniqueIds | see `Directory.Packages.props` |
 
 ```bash

@@ -13,13 +13,13 @@ namespace Hexalith.EventStore.Server.Actors;
 /// Caching is automatic — no DAPR state store persistence for cache data.
 /// </summary>
 /// <remarks>
-/// Optional: developers may implement <see cref="IProjectionActor"/> directly for non-cached projections.
+/// Optional: DAPR hosting projects may implement <see cref="IDaprProjectionActor"/> directly for non-cached projections.
 /// </remarks>
 public abstract partial class CachingProjectionActor(
     ActorHost host,
     IETagService eTagService,
     ILogger logger)
-    : Actor(host), IProjectionActor {
+    : Actor(host), IDaprProjectionActor {
     // The actor instance is shared across QueryTypes for the same (projectionType, tenantId, entityId)
     // — see QueryActorIdHelper.DeriveActorId. The cache MUST therefore be keyed by (QueryType, Payload,
     // UserId) too, otherwise the first query to populate the cache poisons the response of every other

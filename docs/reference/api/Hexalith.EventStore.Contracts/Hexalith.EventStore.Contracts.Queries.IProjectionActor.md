@@ -4,20 +4,21 @@
 
 ## IProjectionActor Interface
 
-Public DAPR actor interface for generic projection query serving\.
+Implementation\-neutral projection query method contract for generic query serving\.
 
 ```csharp
-public interface IProjectionActor : Dapr.Actors.IActor
+public interface IProjectionActor
 ```
 
-Implements [Dapr\.Actors\.IActor](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.iactor 'Dapr\.Actors\.IActor')
-
 ### Remarks
-EventStore routes `POST /api/v1/queries` to actors implementing this
-contract\. The actor ID follows the documented three\-tier model:
-`{QueryType}:{TenantId}:{EntityId}` for entity\-scoped queries,
-`{QueryType}:{TenantId}:{Checksum}` for payload\-scoped searches, and
-`{QueryType}:{TenantId}` for tenant\-wide lists\.
+EventStore routes `POST /api/v1/queries` to runtime adapters exposing this
+method contract\. DAPR actor hosts should mirror this method on their runtime\-owned
+actor interface in the hosting project; test fakes and adapter shims can implement
+this interface without importing any DAPR package\. The actor ID uses a three\-tier
+model where the first segment is `projectionType` when supplied by the caller,
+otherwise `queryType`: `{first}:{TenantId}:{EntityId}` for entity\-scoped queries,
+`{first}:{TenantId}:{Checksum}` for payload\-scoped searches, and
+`{first}:{TenantId}` for tenant\-wide lists\.
 ### Methods
 
 <a name='Hexalith.EventStore.Contracts.Queries.IProjectionActor.QueryAsync(Hexalith.EventStore.Contracts.Queries.QueryEnvelope)'></a>

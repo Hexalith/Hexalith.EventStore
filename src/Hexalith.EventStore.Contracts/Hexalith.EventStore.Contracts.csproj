@@ -6,7 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapr.Actors" PrivateAssets="all" />
     <PackageReference Include="Hexalith.Commons.UniqueIds" />
   </ItemGroup>
 

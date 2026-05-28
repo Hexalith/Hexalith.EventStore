@@ -15,6 +15,6 @@
 
 | Interfaces | |
 | :--- | :--- |
-| [IProjectionActor](Hexalith.EventStore.Contracts.Queries.IProjectionActor.md 'Hexalith\.EventStore\.Contracts\.Queries\.IProjectionActor') | Public DAPR actor interface for generic projection query serving\. |
+| [IProjectionActor](Hexalith.EventStore.Contracts.Queries.IProjectionActor.md 'Hexalith\.EventStore\.Contracts\.Queries\.IProjectionActor') | Implementation\-neutral projection query method contract for generic query serving\. |
 | [IQueryContract](Hexalith.EventStore.Contracts.Queries.IQueryContract.md 'Hexalith\.EventStore\.Contracts\.Queries\.IQueryContract') | Defines mandatory query metadata as typed static members\. Implement this interface on query contract classes to get compile\-time safety for query routing metadata \(FR57\)\. |
 | [IQueryResponse&lt;T&gt;](Hexalith.EventStore.Contracts.Queries.IQueryResponse_T_.md 'Hexalith\.EventStore\.Contracts\.Queries\.IQueryResponse\<T\>') | Defines the response contract for query projections with mandatory projection type metadata\. Implement this interface on query response types to enforce compile\-time safety for projection type identification \(FR62\)\. |

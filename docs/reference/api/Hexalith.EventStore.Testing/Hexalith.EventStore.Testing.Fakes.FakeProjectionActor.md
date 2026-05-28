@@ -8,12 +8,12 @@ Test double for IProjectionActor\. Records invocations and returns
 configurable results or throws configurable exceptions\.
 
 ```csharp
-public class FakeProjectionActor : Hexalith.EventStore.Server.Actors.IProjectionActor, Dapr.Actors.IActor
+public class FakeProjectionActor : Hexalith.EventStore.Contracts.Queries.IProjectionActor
 ```
 
 Inheritance [System\.Object](https://learn.microsoft.com/en-us/dotnet/api/system.object 'System\.Object') &#129106; FakeProjectionActor
 
-Implements [Hexalith\.EventStore\.Server\.Actors\.IProjectionActor](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.actors.iprojectionactor 'Hexalith\.EventStore\.Server\.Actors\.IProjectionActor'), [Dapr\.Actors\.IActor](https://learn.microsoft.com/en-us/dotnet/api/dapr.actors.iactor 'Dapr\.Actors\.IActor')
+Implements [Hexalith\.EventStore\.Contracts\.Queries\.IProjectionActor](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.queries.iprojectionactor 'Hexalith\.EventStore\.Contracts\.Queries\.IProjectionActor')
 ### Properties
 
 <a name='Hexalith.EventStore.Testing.Fakes.FakeProjectionActor.ConfiguredException'></a>
@@ -36,11 +36,11 @@ public System.Exception? ConfiguredException { get; set; }
 Gets or sets the result to return from QueryAsync\.
 
 ```csharp
-public Hexalith.EventStore.Server.Actors.QueryResult? ConfiguredResult { get; set; }
+public Hexalith.EventStore.Contracts.Queries.QueryResult? ConfiguredResult { get; set; }
 ```
 
 #### Property Value
-[Hexalith\.EventStore\.Server\.Actors\.QueryResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.actors.queryresult 'Hexalith\.EventStore\.Server\.Actors\.QueryResult')
+[Hexalith\.EventStore\.Contracts\.Queries\.QueryResult](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.queries.queryresult 'Hexalith\.EventStore\.Contracts\.Queries\.QueryResult')
 
 <a name='Hexalith.EventStore.Testing.Fakes.FakeProjectionActor.QueryCount'></a>
 
@@ -62,8 +62,8 @@ public int QueryCount { get; }
 Gets the list of received envelopes for assertion\.
 
 ```csharp
-public System.Collections.Generic.IReadOnlyCollection<Hexalith.EventStore.Server.Actors.QueryEnvelope> ReceivedEnvelopes { get; }
+public System.Collections.Generic.IReadOnlyCollection<Hexalith.EventStore.Contracts.Queries.QueryEnvelope> ReceivedEnvelopes { get; }
 ```
 
 #### Property Value
-[System\.Collections\.Generic\.IReadOnlyCollection&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlycollection-1 'System\.Collections\.Generic\.IReadOnlyCollection\`1')[Hexalith\.EventStore\.Server\.Actors\.QueryEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.server.actors.queryenvelope 'Hexalith\.EventStore\.Server\.Actors\.QueryEnvelope')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlycollection-1 'System\.Collections\.Generic\.IReadOnlyCollection\`1')
+[System\.Collections\.Generic\.IReadOnlyCollection&lt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlycollection-1 'System\.Collections\.Generic\.IReadOnlyCollection\`1')[Hexalith\.EventStore\.Contracts\.Queries\.QueryEnvelope](https://learn.microsoft.com/en-us/dotnet/api/hexalith.eventstore.contracts.queries.queryenvelope 'Hexalith\.EventStore\.Contracts\.Queries\.QueryEnvelope')[&gt;](https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlycollection-1 'System\.Collections\.Generic\.IReadOnlyCollection\`1')
