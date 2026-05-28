@@ -313,30 +313,8 @@ Validation/
  System.Xml.XPath.XDocument.dll
  WindowsBase.dll
 <NUGET>/
- byteaether.ulid/1.3.5/lib/net10.0/ByteAether.Ulid.dll
- dapr.actors/1.17.9/lib/net10.0/Dapr.Actors.dll
- dapr.client/1.17.9/lib/net10.0/Dapr.Client.dll
- dapr.common/1.17.9/lib/net10.0/Dapr.Common.dll
- dapr.protos/1.17.9/lib/net10.0/Dapr.Protos.dll
- google.api.commonprotos/2.17.0/lib/netstandard2.0/Google.Api.CommonProtos.dll
- google.protobuf/3.34.0/lib/net5.0/Google.Protobuf.dll
- grpc.core.api/2.76.0/lib/netstandard2.1/Grpc.Core.Api.dll
- grpc.net.client/2.76.0/lib/net10.0/Grpc.Net.Client.dll
- grpc.net.common/2.76.0/lib/net10.0/Grpc.Net.Common.dll
- hexalith.commons.uniqueids/2.13.0/lib/net10.0/Hexalith.Commons.UniqueIds.dll
- microsoft.extensions.configuration.abstractions/10.0.3/lib/net10.0/Microsoft.Extensions.Configuration.Abstractions.dll
- microsoft.extensions.configuration.binder/10.0.3/lib/net10.0/Microsoft.Extensions.Configuration.Binder.dll
- microsoft.extensions.configuration/10.0.3/lib/net10.0/Microsoft.Extensions.Configuration.dll
- microsoft.extensions.dependencyinjection.abstractions/10.0.3/lib/net10.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll
- microsoft.extensions.dependencyinjection/10.0.3/lib/net10.0/Microsoft.Extensions.DependencyInjection.dll
- microsoft.extensions.diagnostics.abstractions/10.0.3/lib/net10.0/Microsoft.Extensions.Diagnostics.Abstractions.dll
- microsoft.extensions.diagnostics/10.0.3/lib/net10.0/Microsoft.Extensions.Diagnostics.dll
- microsoft.extensions.http/10.0.3/lib/net10.0/Microsoft.Extensions.Http.dll
- microsoft.extensions.logging.abstractions/10.0.3/lib/net10.0/Microsoft.Extensions.Logging.Abstractions.dll
- microsoft.extensions.logging/10.0.3/lib/net10.0/Microsoft.Extensions.Logging.dll
- microsoft.extensions.options.configurationextensions/10.0.3/lib/net10.0/Microsoft.Extensions.Options.ConfigurationExtensions.dll
- microsoft.extensions.options/10.0.3/lib/net10.0/Microsoft.Extensions.Options.dll
- microsoft.extensions.primitives/10.0.3/lib/net10.0/Microsoft.Extensions.Primitives.dll
+ byteaether.ulid/1.3.7/lib/net10.0/ByteAether.Ulid.dll
+ hexalith.commons.uniqueids/2.16.0/lib/net10.0/Hexalith.Commons.UniqueIds.dll
 
 [analyzerReferences]
 <DOTNET>/packs/Microsoft.NETCore.App.Ref/10.0.8/analyzers/dotnet/cs/

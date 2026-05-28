@@ -11,6 +11,7 @@ using Google.Protobuf;
 using Grpc.Core;
 
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
 
@@ -827,10 +828,10 @@ public class QueryRouterTests {
     public async Task QueryRouter_ConstructedFromIActorProxyFactory_DoesNotCreateTypedDispatchProxyOnRoute() {
         // Regression-sensitive guard for the original NRE bug: the public DI constructor
         // accepts IActorProxyFactory, but the production path must NEVER call
-        // CreateActorProxy<IProjectionActor>(...) on it (that returned the typed dispatch
+        // CreateActorProxy<IDaprProjectionActor>(...) on it (that returned the typed dispatch
         // proxy whose weak-state was not initialized, producing the runtime NRE).
         // This test would fail against the old implementation, where the first query called
-        // CreateActorProxy<IProjectionActor>(...) before trying the weak invocation path.
+        // CreateActorProxy<IDaprProjectionActor>(...) before trying the weak invocation path.
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
         var router = new QueryRouter(factory, NullLogger<QueryRouter>.Instance);
 
@@ -841,10 +842,10 @@ public class QueryRouterTests {
             Arg.Is<ActorId>(id => id.ToString() == "GetOrderStatus:test-tenant"),
             QueryRouter.ProjectionActorTypeName,
             Arg.Any<ActorProxyOptions?>());
-        _ = factory.DidNotReceive().CreateActorProxy<IProjectionActor>(
+        _ = factory.DidNotReceive().CreateActorProxy<IDaprProjectionActor>(
             Arg.Any<ActorId>(),
             Arg.Any<string>());
-        _ = factory.DidNotReceive().CreateActorProxy<IProjectionActor>(
+        _ = factory.DidNotReceive().CreateActorProxy<IDaprProjectionActor>(
             Arg.Any<ActorId>(),
             Arg.Any<string>(),
             Arg.Any<ActorProxyOptions?>());

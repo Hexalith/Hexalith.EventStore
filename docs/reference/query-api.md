@@ -38,7 +38,7 @@ $ Invoke-RestMethod -Method Post -Uri "http://localhost:8180/realms/hexalith/pro
 
 Downstream .NET callers should build query gateway requests with `Hexalith.EventStore.Contracts.Queries.SubmitQueryRequest` and read envelopes as `Hexalith.EventStore.Contracts.Queries.SubmitQueryResponse`. Use `Hexalith.EventStore.Client.Gateway.IEventStoreGatewayClient` when you want the package to post the request, normalize ETags, map `304 Not Modified`, deserialize typed payloads, and expose ProblemDetails as `EventStoreGatewayException`.
 
-Projection query actors should implement `Hexalith.EventStore.Contracts.Queries.IProjectionActor` and exchange `QueryEnvelope` and `QueryResult` from Contracts. Do not reference `Hexalith.EventStore` or `Hexalith.EventStore.Server` for gateway DTOs, query adapter DTOs, or the public projection actor interface. Public gateway and projection adapter contracts live in Contracts, the HTTP convenience client lives in Client, and deterministic public adapter doubles live in Testing. See [NuGet Packages Guide](nuget-packages.md#serving-projection-queries).
+Pure or non-DAPR projection query adapters can implement `Hexalith.EventStore.Contracts.Queries.IProjectionActor` directly and exchange `QueryEnvelope` and `QueryResult` from Contracts. DAPR actor hosts add DAPR packages in their hosting project and expose a runtime-owned actor interface derived from `Dapr.Actors.IActor` that mirrors the same `QueryAsync(QueryEnvelope)` method. Do not reference `Hexalith.EventStore` or `Hexalith.EventStore.Server` for gateway DTOs, query adapter DTOs, or the public projection query method contract. Public gateway and projection adapter contracts live in Contracts, the HTTP convenience client lives in Client, and deterministic public adapter doubles live in Testing. See [NuGet Packages Guide](nuget-packages.md#serving-projection-queries).
 
 ## POST /api/v1/queries
 
@@ -175,10 +175,15 @@ Non-auth query ProblemDetails use these stable `reasonCode` values:
 
 ## Projection Query Actor Contract
 
-Domain services that serve EventStore queries implement `Hexalith.EventStore.Contracts.Queries.IProjectionActor`:
+Domain services that serve EventStore queries expose the implementation-neutral `QueryAsync(QueryEnvelope)` method from `Hexalith.EventStore.Contracts.Queries.IProjectionActor`. Pure adapters and test fakes can implement the neutral Contracts interface directly. DAPR actor hosts should mirror that method on a local actor interface:
 
 ```csharp
-public sealed class PartyProjectionActor : Actor, IProjectionActor
+public interface IPartyProjectionActor : Dapr.Actors.IActor
+{
+    Task<QueryResult> QueryAsync(QueryEnvelope envelope);
+}
+
+public sealed class PartyProjectionActor : Actor, IPartyProjectionActor
 {
     public Task<QueryResult> QueryAsync(QueryEnvelope envelope)
     {
@@ -188,7 +193,9 @@ public sealed class PartyProjectionActor : Actor, IProjectionActor
 }
 ```
 
-`QueryEnvelope` is the DAPR actor wire envelope. Its fields are `TenantId`, `Domain`, `AggregateId`, `QueryType`, UTF-8 JSON `Payload` bytes, `CorrelationId`, `UserId`, and optional `EntityId`. `ToString()` redacts payload bytes and should be used instead of logging raw query payloads.
+`PartyProjectionActor` is a DAPR actor because the hosting project chooses to inherit from `Actor` and expose a runtime-owned interface derived from `Dapr.Actors.IActor`. The Contracts interface itself does not inherit `Dapr.Actors.IActor` and does not require a DAPR package reference. Non-DAPR adapters and test fakes can implement the neutral `IProjectionActor` interface directly.
+
+`QueryEnvelope` is the projection query wire envelope. Its fields are `TenantId`, `Domain`, `AggregateId`, `QueryType`, UTF-8 JSON `Payload` bytes, `CorrelationId`, `UserId`, and optional `EntityId`. `ToString()` redacts payload bytes and should be used instead of logging raw query payloads.
 
 `QueryResult` is the actor response. Successful results carry UTF-8 JSON `PayloadBytes` and optional `ProjectionType`; failures set `Success = false` and a coarse adapter-edge `ErrorMessage`. Use the public `QueryAdapterFailureReason` constants for stable adapter-edge categories:
 

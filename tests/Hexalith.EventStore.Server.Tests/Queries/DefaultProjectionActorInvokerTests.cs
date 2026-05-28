@@ -3,6 +3,7 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Queries;
 
 using NSubstitute;
@@ -35,6 +36,20 @@ public class DefaultProjectionActorInvokerTests {
             "user-1",
             entityId);
 
+    private static string FindRepositoryRoot() {
+        DirectoryInfo? directory = new(Directory.GetCurrentDirectory());
+        while (directory is not null) {
+            if (File.Exists(Path.Combine(directory.FullName, "Directory.Packages.props"))
+                && Directory.Exists(Path.Combine(directory.FullName, "src", "Hexalith.EventStore.Server"))) {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate repository root from the test working directory.");
+    }
+
     [Fact]
     public async Task InvokeAsync_CallsIActorProxyFactoryCreate_NotCreateActorProxyGeneric() {
         IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
@@ -59,13 +74,45 @@ public class DefaultProjectionActorInvokerTests {
             "TenantsProjectionActor",
             Arg.Any<ActorProxyOptions?>());
 
-        _ = factory.DidNotReceive().CreateActorProxy<IProjectionActor>(
+        _ = factory.DidNotReceive().CreateActorProxy<IDaprProjectionActor>(
             Arg.Any<ActorId>(),
             Arg.Any<string>());
-        _ = factory.DidNotReceive().CreateActorProxy<IProjectionActor>(
+        _ = factory.DidNotReceive().CreateActorProxy<IDaprProjectionActor>(
             Arg.Any<ActorId>(),
             Arg.Any<string>(),
             Arg.Any<ActorProxyOptions?>());
+    }
+
+    [Fact]
+    public void IDaprProjectionActor_QueryAsync_MirrorsPublicProjectionContractSignature() {
+        System.Reflection.MethodInfo publicMethod = typeof(IProjectionActor)
+            .GetMethod(nameof(IProjectionActor.QueryAsync), [typeof(QueryEnvelope)])
+            .ShouldNotBeNull();
+        System.Reflection.MethodInfo daprMethod = typeof(IDaprProjectionActor)
+            .GetMethod(nameof(IDaprProjectionActor.QueryAsync), [typeof(QueryEnvelope)])
+            .ShouldNotBeNull();
+
+        daprMethod.Name.ShouldBe(publicMethod.Name);
+        daprMethod.ReturnType.ShouldBe(publicMethod.ReturnType);
+        daprMethod.GetParameters()
+            .Select(p => p.ParameterType)
+            .ShouldBe(publicMethod.GetParameters().Select(p => p.ParameterType));
+    }
+
+    [Fact]
+    public void InvokeAsync_SourceUsesWeakQueryAsyncInvocationWithPublicContractName() {
+        string sourcePath = Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "Hexalith.EventStore.Server",
+            "Queries",
+            "DefaultProjectionActorInvoker.cs");
+        string source = File.ReadAllText(sourcePath);
+
+        source.ShouldContain("_actorProxyFactory.Create(new ActorId(actorId), actorTypeName)");
+        source.ShouldContain("proxy.InvokeMethodAsync<QueryEnvelope, QueryResult>(");
+        source.ShouldContain("nameof(IProjectionActor.QueryAsync)");
+        source.ShouldNotContain("CreateActorProxy<IDaprProjectionActor>");
     }
 
     [Fact]
