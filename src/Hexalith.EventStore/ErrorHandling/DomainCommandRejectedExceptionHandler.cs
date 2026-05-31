@@ -21,7 +21,7 @@ public class DomainCommandRejectedExceptionHandler(ILogger<DomainCommandRejected
 
         string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? rejection.CorrelationId;
 
-        logger.LogWarning(
+        logger.LogInformation(
             "Domain rejection returned to caller: CorrelationId={CorrelationId}, TenantId={TenantId}, RejectionType={RejectionType}",
             correlationId,
             rejection.TenantId,
@@ -33,7 +33,7 @@ public class DomainCommandRejectedExceptionHandler(ILogger<DomainCommandRejected
             Status = problem.StatusCode,
             Title = problem.Title,
             Type = problem.TypeUri,
-            Detail = AuthorizationExceptionHandler.SanitizeForbiddenTerms(rejection.Detail),
+            Detail = problem.Explanation,
             Instance = httpContext.Request.Path,
             Extensions = {
                 [GatewayProblemDetailsExtensions.CorrelationId] = correlationId,

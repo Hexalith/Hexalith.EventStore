@@ -286,11 +286,11 @@ public class CommandLifecycleTests {
         // Act
         using HttpResponseMessage response = await _fixture.EventStoreClient.SendAsync(request);
 
-        // Assert — domain rejection is returned synchronously as 422 with the rejection
-        // event type as the ProblemDetails "type" field.
+        // Assert — domain rejection is returned synchronously as 422 with the stable
+        // domain-rejection reason code in the ProblemDetails "type" URI.
         response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("type").GetString()!.ShouldContain("CounterCannotGoNegative");
+        body.GetProperty("type").GetString()!.ShouldContain("counter-cannot-go-negative");
     }
 
     // ------------------------------------------------------------------
