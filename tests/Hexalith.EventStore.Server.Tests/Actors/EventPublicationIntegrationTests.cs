@@ -16,10 +16,15 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
 using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
+using FakeEventPublisher = Hexalith.EventStore.Testing.Fakes.FakeEventPublisher;
+using FakeSnapshotManager = Hexalith.EventStore.Testing.Fakes.FakeSnapshotManager;
+using InMemoryCommandStatusStore = Hexalith.EventStore.Testing.Fakes.InMemoryCommandStatusStore;
+using InMemoryStateManager = Hexalith.EventStore.Testing.Fakes.InMemoryStateManager;
 
 namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>
@@ -80,6 +85,36 @@ public class EventPublicationIntegrationTests {
             .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
 
         return (actor, stateManager, invoker, eventPublisher, statusStore);
+    }
+
+    private static (AggregateActor Actor, InMemoryStateManager StateManager, IDomainServiceInvoker Invoker, FakeEventPublisher EventPublisher, ICommandStatusStore StatusStore, ILogger<AggregateActor> Logger) CreateInMemoryActor(
+        ICommandStatusStore? statusStore = null) {
+        var stateManager = new InMemoryStateManager();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        var eventPublisher = new FakeEventPublisher();
+        ICommandStatusStore commandStatusStore = statusStore ?? new InMemoryCommandStatusStore();
+        var host = ActorHost.CreateForTest<AggregateActor>(
+            new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
+        var actor = new AggregateActor(
+            host,
+            logger,
+            invoker,
+            new FakeSnapshotManager(),
+            new NoOpEventPayloadProtectionService(),
+            commandStatusStore,
+            eventPublisher,
+            Options.Create(new EventDrainOptions()),
+            Options.Create(new BackpressureOptions()),
+            Substitute.For<IDeadLetterPublisher>());
+
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
+
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+            .Returns(DomainResult.NoOp());
+
+        return (actor, stateManager, invoker, eventPublisher, commandStatusStore, logger);
     }
 
     // --- Task 7.1: Happy path transitions ---
@@ -148,6 +183,126 @@ public class EventPublicationIntegrationTests {
             Arg.Any<string>(),
             Arg.Is<PipelineState>(ps => ps.CurrentStage == CommandStatus.PublishFailed),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommand_PublishFails_PersistsEventAndRecordsAdvisoryPublishFailedStatus() {
+        // Arrange
+        (AggregateActor actor, _, IDomainServiceInvoker invoker, FakeEventPublisher eventPublisher, ICommandStatusStore statusStore, _) = CreateInMemoryActor();
+        var successResult = DomainResult.Success(new IEventPayload[] { new TestEvent() });
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+        eventPublisher.SetupFailure("Pub/sub unavailable");
+        CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-persist-publish-failed");
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+        EventEnvelope[] persisted = await actor.GetEventsAsync(0);
+        IReadOnlyList<CommandStatusRecord> history = ((InMemoryCommandStatusStore)statusStore)
+            .GetStatusHistory(envelope.TenantId, envelope.CorrelationId);
+
+        // Assert
+        result.Accepted.ShouldBeTrue("pub/sub failure after event storage must not reject a successful domain command");
+        result.EventCount.ShouldBe(1);
+        result.ErrorMessage.ShouldBeNull();
+
+        persisted.Length.ShouldBe(1);
+        persisted[0].SequenceNumber.ShouldBe(1);
+        persisted[0].AggregateId.ShouldBe(envelope.AggregateId);
+        persisted[0].TenantId.ShouldBe(envelope.TenantId);
+        persisted[0].Domain.ShouldBe(envelope.Domain);
+        persisted[0].EventTypeName.ShouldBe(typeof(TestEvent).FullName);
+        persisted[0].CorrelationId.ShouldBe(envelope.CorrelationId);
+
+        history.Select(s => s.Status).ShouldContain(CommandStatus.EventsStored);
+        CommandStatusRecord publishFailed = history.Last(s => s.Status == CommandStatus.PublishFailed);
+        publishFailed.EventCount.ShouldBe(1);
+        publishFailed.FailureReason.ShouldBe("Pub/sub unavailable");
+        eventPublisher.GetEventsForTopic(envelope.AggregateIdentity.PubSubTopic).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ProcessCommand_StatusWriteFailsDuringPublishFailure_StillReturnsAcceptedAndPersistsEvent() {
+        // Arrange
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        _ = statusStore.WriteStatusAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CommandStatusRecord>(),
+            Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("status store unavailable with payload [1,2,3]"));
+
+        (AggregateActor actor, _, IDomainServiceInvoker invoker, FakeEventPublisher eventPublisher, _, ILogger<AggregateActor> logger) = CreateInMemoryActor(statusStore);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+            .Returns(DomainResult.Success(new IEventPayload[] { new TestEvent() }));
+        eventPublisher.SetupFailure("Pub/sub unavailable");
+        CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-status-advisory-fails");
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+        EventEnvelope[] persisted = await actor.GetEventsAsync(0);
+
+        // Assert
+        result.Accepted.ShouldBeTrue();
+        result.EventCount.ShouldBe(1);
+        result.ErrorMessage.ShouldBeNull();
+        persisted.Length.ShouldBe(1);
+        persisted[0].CorrelationId.ShouldBe(envelope.CorrelationId);
+
+        logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(state =>
+                state.ToString()!.Contains(envelope.CorrelationId, StringComparison.Ordinal)
+                && state.ToString()!.Contains(nameof(CommandStatus.PublishFailed), StringComparison.Ordinal)
+                && !state.ToString()!.Contains("[1,2,3]", StringComparison.Ordinal)
+                && !state.ToString()!.Contains(" at ", StringComparison.Ordinal)),
+            Arg.Is<Exception>(ex => ex is InvalidOperationException),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task ProcessCommand_StatusWriteCancellation_PropagatesOperationCanceledException() {
+        // Arrange
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        _ = statusStore.WriteStatusAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<CommandStatusRecord>(),
+            Arg.Any<CancellationToken>())
+            .ThrowsAsync(new OperationCanceledException());
+
+        (AggregateActor actor, _, IDomainServiceInvoker invoker, _, _, _) = CreateInMemoryActor(statusStore);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+            .Returns(DomainResult.Success(new IEventPayload[] { new TestEvent() }));
+        CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-status-cancelled");
+
+        // Act / Assert
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => actor.ProcessCommandAsync(envelope));
+    }
+
+    [Fact]
+    public async Task ProcessCommand_DomainRejection_DoesNotLogInfrastructurePublicationFailure() {
+        // Arrange
+        (AggregateActor actor, _, IDomainServiceInvoker invoker, _, ICommandStatusStore statusStore, ILogger<AggregateActor> logger) = CreateInMemoryActor();
+        var rejectionResult = DomainResult.Rejection(new IRejectionEvent[] { new TestRejectionEvent() });
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(rejectionResult);
+        CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-domain-rejection");
+
+        // Act
+        CommandProcessingResult result = await actor.ProcessCommandAsync(envelope);
+        IReadOnlyList<CommandStatusRecord> history = ((InMemoryCommandStatusStore)statusStore)
+            .GetStatusHistory(envelope.TenantId, envelope.CorrelationId);
+
+        // Assert
+        result.Accepted.ShouldBeFalse();
+        history.Select(s => s.Status).ShouldContain(CommandStatus.Rejected);
+        history.Select(s => s.Status).ShouldNotContain(CommandStatus.PublishFailed);
+        logger.DidNotReceive().Log(
+            LogLevel.Error,
+            Arg.Any<EventId>(),
+            Arg.Any<object>(),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
     }
 
     // --- Task 7.3: No-op skips publication ---
