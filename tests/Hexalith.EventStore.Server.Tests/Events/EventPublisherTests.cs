@@ -207,6 +207,41 @@ public class EventPublisherTests {
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task PublishEventsAsync_WithDomainTopicOverride_PublishesToConfiguredTopicAndPreservesEnvelopeDomain() {
+        // Arrange
+        (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher(new EventPublisherOptions {
+            PubSubName = "pubsub",
+            TopicOverrides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
+                ["global-administrators"] = "tenants.events",
+            },
+        });
+        var identity = new AggregateIdentity("system", "global-administrators", "global-administrators");
+        EventEnvelope envelope = new(
+            "msg-1", "global-administrators", "global-administrators", "system", "global-administrators", 1, 0, DateTimeOffset.UtcNow,
+            "corr-1", "cause-1", "admin-1", "1.0.0", "GlobalAdministratorSet", 1, "json", [1], null);
+
+        // Act
+        EventPublishResult result = await publisher.PublishEventsAsync(identity, [envelope], "corr-1");
+
+        // Assert
+        result.Success.ShouldBeTrue();
+        await daprClient.Received(1).PublishEventAsync(
+            "pubsub",
+            "tenants.events",
+            Arg.Is<EventEnvelope>(e =>
+                e.TenantId == "system"
+                && e.Domain == "global-administrators"
+                && e.AggregateId == "global-administrators"
+                && e.EventTypeName == "GlobalAdministratorSet"),
+            Arg.Is<Dictionary<string, string>>(m =>
+                m["cloudevent.type"] == "GlobalAdministratorSet"
+                && m["cloudevent.source"] == "hexalith-eventstore/system/global-administrators"
+                && m["cloudevent.id"] == "corr-1:1"
+                && !m.ContainsKey("rawPayload")),
+            Arg.Any<CancellationToken>());
+    }
+
     // --- Task 6.4: CloudEvents type ---
 
     [Fact]

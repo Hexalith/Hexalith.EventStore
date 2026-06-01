@@ -10,6 +10,11 @@ public record EventPublisherOptions {
     /// <summary>Gets the DAPR pub/sub component name.</summary>
     public string PubSubName { get; init; } = "pubsub";
 
+    /// <summary>
+    /// Gets domain-specific topic overrides. Keys are aggregate domains and values are DAPR pub/sub topics.
+    /// </summary>
+    public IDictionary<string, string> TopicOverrides { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Gets the prefix for dead-letter topic names used by per-subscription dead-letter routing.</summary>
     public string DeadLetterTopicPrefix { get; init; } = "deadletter";
 
@@ -30,13 +35,25 @@ public record EventPublisherOptions {
     public string? TestPublishFaultCorrelationIdPrefix { get; init; }
 
     /// <summary>
+    /// Gets the pub/sub topic for a specific aggregate identity, applying configured domain overrides first.
+    /// </summary>
+    /// <param name="identity">The aggregate identity to derive the topic from.</param>
+    /// <returns>The configured topic override or the identity convention topic.</returns>
+    public string GetPubSubTopic(AggregateIdentity identity) {
+        ArgumentNullException.ThrowIfNull(identity);
+        return TopicOverrides.TryGetValue(identity.Domain, out string? topic) && !string.IsNullOrWhiteSpace(topic)
+            ? topic
+            : identity.PubSubTopic;
+    }
+
+    /// <summary>
     /// Gets the dead-letter topic name for a specific aggregate identity.
-    /// Format: {DeadLetterTopicPrefix}.{AggregateIdentity.PubSubTopic}
+    /// Format: {DeadLetterTopicPrefix}.{GetPubSubTopic(AggregateIdentity)}
     /// </summary>
     /// <param name="identity">The aggregate identity to derive the dead-letter topic from.</param>
     /// <returns>The fully-qualified dead-letter topic name.</returns>
     public string GetDeadLetterTopic(AggregateIdentity identity) {
         ArgumentNullException.ThrowIfNull(identity);
-        return $"{DeadLetterTopicPrefix}.{identity.PubSubTopic}";
+        return $"{DeadLetterTopicPrefix}.{GetPubSubTopic(identity)}";
     }
 }

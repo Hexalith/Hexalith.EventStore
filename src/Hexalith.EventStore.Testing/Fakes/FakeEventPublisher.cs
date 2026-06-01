@@ -17,6 +17,9 @@ public sealed class FakeEventPublisher : IEventPublisher {
     private string? _failureMessage;
     private int _publishedEventCount;
 
+    /// <summary>Gets domain-specific topic overrides used by tests that mirror configured publisher behavior.</summary>
+    public IDictionary<string, string> TopicOverrides { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Gets the list of all publish calls for test assertions.</summary>
     public IReadOnlyList<PublishCall> PublishCalls => [.. _publishCalls];
 
@@ -105,7 +108,9 @@ public sealed class FakeEventPublisher : IEventPublisher {
         ArgumentNullException.ThrowIfNull(events);
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
 
-        string topic = identity.PubSubTopic;
+        string topic = TopicOverrides.TryGetValue(identity.Domain, out string? configuredTopic) && !string.IsNullOrWhiteSpace(configuredTopic)
+            ? configuredTopic
+            : identity.PubSubTopic;
         _publishCalls.Add(new PublishCall(identity, events, correlationId, topic));
 
         int publishedCount = events.Count;

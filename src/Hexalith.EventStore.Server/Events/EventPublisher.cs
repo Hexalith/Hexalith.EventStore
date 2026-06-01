@@ -42,9 +42,9 @@ public partial class EventPublisher(
             return new EventPublishResult(true, 0, null);
         }
 
-        string pubSubName = options.Value.PubSubName;
-        string topic = identity.PubSubTopic;
         EventPublisherOptions publisherOptions = options.Value;
+        string pubSubName = publisherOptions.PubSubName;
+        string topic = publisherOptions.GetPubSubTopic(identity);
 
         if (topicNameValidator is not null && !topicNameValidator.IsValidTopicName(topic)) {
             logger.LogError(

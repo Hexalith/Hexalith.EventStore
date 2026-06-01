@@ -49,6 +49,41 @@ public class EventPublisherOptionsTests {
         deadLetterTopic.ShouldBe("deadletter.tenants.events");
     }
 
+    [Fact]
+    public void GetPubSubTopic_WithDomainOverride_ReturnsConfiguredTopic() {
+        // Arrange
+        var options = new EventPublisherOptions {
+            TopicOverrides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
+                ["global-administrators"] = "tenants.events",
+            },
+        };
+        var identity = new AggregateIdentity("system", "global-administrators", "global-administrators");
+
+        // Act
+        string topic = options.GetPubSubTopic(identity);
+
+        // Assert
+        topic.ShouldBe("tenants.events");
+        identity.PubSubTopic.ShouldBe("global-administrators.events");
+    }
+
+    [Fact]
+    public void GetDeadLetterTopic_WithDomainOverride_UsesConfiguredTopic() {
+        // Arrange
+        var options = new EventPublisherOptions {
+            TopicOverrides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
+                ["global-administrators"] = "tenants.events",
+            },
+        };
+        var identity = new AggregateIdentity("system", "global-administrators", "global-administrators");
+
+        // Act
+        string deadLetterTopic = options.GetDeadLetterTopic(identity);
+
+        // Assert
+        deadLetterTopic.ShouldBe("deadletter.tenants.events");
+    }
+
     // --- Task 10.4: Different tenants = different dead-letter topics ---
 
     [Fact]
