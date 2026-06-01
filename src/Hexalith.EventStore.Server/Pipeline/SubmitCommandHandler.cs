@@ -161,6 +161,15 @@ public partial class SubmitCommandHandler(
                     processingResult.ErrorMessage ?? $"Domain rejection: {status.RejectionEventType}");
             }
 
+            if (string.Equals(status?.FailureReason, "ConcurrencyConflict", StringComparison.Ordinal)
+                || string.Equals(processingResult.ErrorMessage, "ConcurrencyConflict", StringComparison.Ordinal)) {
+                throw new ConcurrencyConflictException(
+                    request.CorrelationId,
+                    request.AggregateId,
+                    request.Tenant,
+                    conflictSource: "StateStore");
+            }
+
             throw new InvalidOperationException(processingResult.ErrorMessage ?? "Command processing was rejected.");
         }
 

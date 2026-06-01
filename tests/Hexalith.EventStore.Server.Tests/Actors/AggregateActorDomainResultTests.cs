@@ -5,6 +5,7 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Testing.Fakes;
@@ -418,10 +419,9 @@ public class AggregateActorDomainResultTests {
     }
 
     [Fact]
-    public async Task ProcessCommandAsync_SaveStateAsyncThrows_ThrowsConcurrencyConflictException() {
-        // Arrange -- AC #6: concurrency exception handling
-        // Story 3.11: allow Processing checkpoint SaveStateAsync to succeed,
-        // then throw on the EventsStored batch commit
+    public async Task ProcessCommandAsync_SaveStateAsyncThrows_RetriesAgainstFreshState() {
+        // Arrange -- Story 3.8: allow Processing checkpoint SaveStateAsync to succeed,
+        // then throw once on the EventsStored batch commit and retry from rehydration.
         ActorTestContext ctx = CreateActor();
         ConfigureNoDuplicate(ctx.StateManager);
         var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
@@ -436,17 +436,67 @@ public class AggregateActorDomainResultTests {
                     return Task.CompletedTask;
                 }
 
-                // Second call: EventsStored batch (throws -- simulating concurrency conflict)
-                return Task.FromException(new InvalidOperationException("ETag mismatch"));
+                // Second call: EventsStored batch (throws -- simulating concurrency conflict).
+                // Later calls are the retried EventsStored batch, terminal completion, and pending-count decrement.
+                return saveCallCount == 2
+                    ? Task.FromException(new InvalidOperationException("ETag mismatch"))
+                    : Task.CompletedTask;
             });
 
         CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-conflict");
 
-        // Act & Assert
-        ConcurrencyConflictException ex = await Should.ThrowAsync<Server.Commands.ConcurrencyConflictException>(
-            () => ctx.Actor.ProcessCommandAsync(envelope));
-        ex.CorrelationId.ShouldBe("corr-conflict");
-        ex.AggregateId.ShouldBe("agg-001");
+        // Act
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        result.Accepted.ShouldBeTrue();
+        _ = await ctx.Invoker.Received(2).InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        await ctx.StateManager.Received(1).ClearCacheAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessCommandAsync_SaveStateAsyncConflictRetryExhausted_ReturnsRejectedConcurrencyResult() {
+        // Arrange -- zero configured retries means the first EventsStored commit conflict is terminal.
+        ActorTestContext ctx = CreateActor(
+            concurrencyOptions: new CommandConcurrencyOptions { MaxPersistenceConflictRetries = 0 });
+        ConfigureNoDuplicate(ctx.StateManager);
+        var successResult = DomainResult.Success(new Hexalith.EventStore.Contracts.Events.IEventPayload[] { new TestEvent() });
+        _ = ctx.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(successResult);
+
+        int saveCallCount = 0;
+        _ = ctx.StateManager.SaveStateAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => {
+                saveCallCount++;
+                return saveCallCount == 2
+                    ? Task.FromException(new InvalidOperationException("ETag mismatch"))
+                    : Task.CompletedTask;
+            });
+
+        CommandEnvelope envelope = CreateTestEnvelope(correlationId: "corr-conflict-terminal", causationId: "cause-conflict-terminal");
+
+        // Act
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(envelope);
+
+        // Assert
+        result.Accepted.ShouldBeFalse();
+        result.ErrorMessage.ShouldBe("ConcurrencyConflict");
+        await ctx.StateManager.Received(1).SetStateAsync(
+            "idempotency:cause-conflict-terminal",
+            Arg.Is<IdempotencyRecord>(record => record.Accepted == false && record.ErrorMessage == "ConcurrencyConflict"),
+            Arg.Any<CancellationToken>());
+        await ctx.StatusStore.Received(1).WriteStatusAsync(
+            envelope.TenantId,
+            envelope.CorrelationId,
+            Arg.Is<CommandStatusRecord>(record =>
+                record.Status == CommandStatus.Rejected
+                && record.FailureReason == "ConcurrencyConflict"
+                && record.RejectionEventType == null),
+            Arg.Any<CancellationToken>());
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
     }
 
     // === Code Review Fix: D3 -- Rejection events persisted ===

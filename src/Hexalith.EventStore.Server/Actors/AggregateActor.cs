@@ -53,11 +53,18 @@ public partial class AggregateActor(
     IOptions<BackpressureOptions> backpressureOptions,
     IDeadLetterPublisher deadLetterPublisher,
     IServiceProvider? serviceProvider = null,
-    ICommandAggregateTypeResolver? commandAggregateTypeResolver = null)
+    ICommandAggregateTypeResolver? commandAggregateTypeResolver = null,
+    IOptions<CommandConcurrencyOptions>? concurrencyOptions = null)
     : Actor(host), IAggregateActor, IRemindable {
     private const string TraceParentExtensionKey = "traceparent";
     private const string TraceStateExtensionKey = "tracestate";
     private const string PendingCommandCountKey = "pending_command_count";
+
+    private int MaxPersistenceConflictRetries
+        => Math.Max(
+            0,
+            concurrencyOptions?.Value.MaxPersistenceConflictRetries
+            ?? CommandConcurrencyOptions.DefaultMaxPersistenceConflictRetries);
     /// <inheritdoc/>
     public Task<CommandProcessingResult> ProcessCommandAsync(CommandEnvelope command)
         => ProcessCommandAsync(command, CancellationToken.None);
@@ -267,6 +274,10 @@ public partial class AggregateActor(
                 LogStageTransition(CommandStatus.Processing, command, causationId, startTicks);
                 await WriteAdvisoryStatusAsync(command, CommandStatus.Processing).ConfigureAwait(false);
 
+                int persistenceConflictRetryCount = 0;
+                int maxPersistenceConflictRetries = MaxPersistenceConflictRetries;
+
+RetryAfterPersistenceConflict:
                 // Step 3: State rehydration (Story 3.10 -- snapshot-first flow)
                 // Dead-letter routing handles infrastructure exceptions.
                 SnapshotRecord? existingSnapshot;
@@ -433,12 +444,40 @@ public partial class AggregateActor(
                             await StateManager.SaveStateAsync().ConfigureAwait(false);
                         }
                         catch (InvalidOperationException ex) {
-                            throw new ConcurrencyConflictException(
+                            var conflict = new ConcurrencyConflictException(
                                 command.CorrelationId,
                                 command.AggregateId,
                                 command.TenantId,
                                 conflictSource: "StateStore",
                                 innerException: ex);
+
+                            if (persistenceConflictRetryCount < maxPersistenceConflictRetries) {
+                                persistenceConflictRetryCount++;
+                                Log.PersistenceConflictRetry(
+                                    logger,
+                                    command.CorrelationId,
+                                    causationId,
+                                    command.TenantId,
+                                    command.Domain,
+                                    command.AggregateId,
+                                    command.CommandType,
+                                    persistenceConflictRetryCount,
+                                    maxPersistenceConflictRetries);
+
+                                await StateManager.ClearCacheAsync(cancellationToken).ConfigureAwait(false);
+                                goto RetryAfterPersistenceConflict;
+                            }
+
+                            return await CompleteConcurrencyConflictAsync(
+                                command,
+                                causationId,
+                                conflict,
+                                idempotencyChecker,
+                                stateMachine,
+                                pipelineKeyPrefix,
+                                processActivity,
+                                startTicks,
+                                maxPersistenceConflictRetries).ConfigureAwait(false);
                         }
 
                         LogStageTransition(CommandStatus.EventsStored, command, causationId, startTicks);
@@ -1922,6 +1961,62 @@ public partial class AggregateActor(
     /// <summary>
     /// Completes terminal state: records idempotency, cleans up pipeline, commits, writes advisory status.
     /// </summary>
+    private async Task<CommandProcessingResult> CompleteConcurrencyConflictAsync(
+        CommandEnvelope command,
+        string causationId,
+        ConcurrencyConflictException conflict,
+        IdempotencyChecker idempotencyChecker,
+        ActorStateMachine stateMachine,
+        string pipelineKeyPrefix,
+        Activity? processActivity,
+        long startTicks,
+        int maxPersistenceConflictRetries) {
+        await StateManager.ClearCacheAsync().ConfigureAwait(false);
+
+        var result = new CommandProcessingResult(
+            Accepted: false,
+            ErrorMessage: "ConcurrencyConflict",
+            CorrelationId: command.CorrelationId,
+            EventCount: 0);
+
+        await idempotencyChecker.RecordAsync(causationId, result).ConfigureAwait(false);
+        await stateMachine.CleanupPipelineAsync(pipelineKeyPrefix, command.CorrelationId)
+            .ConfigureAwait(false);
+
+        try {
+            await StateManager.SaveStateAsync().ConfigureAwait(false);
+        }
+        catch (InvalidOperationException ex) {
+            throw new ConcurrencyConflictException(
+                command.CorrelationId,
+                command.AggregateId,
+                command.TenantId,
+                conflictSource: "StateStore",
+                innerException: ex);
+        }
+
+        await WriteAdvisoryStatusAsync(
+            command,
+            CommandStatus.Rejected,
+            failureReason: "ConcurrencyConflict").ConfigureAwait(false);
+
+        Log.PersistenceConflictExhausted(
+            logger,
+            command.CorrelationId,
+            causationId,
+            command.TenantId,
+            command.Domain,
+            command.AggregateId,
+            command.CommandType,
+            maxPersistenceConflictRetries,
+            conflict.ConflictSource ?? "StateStore");
+
+        LogStageTransition(CommandStatus.Rejected, command, causationId, startTicks);
+        LogCommandCompletedSummary(command, causationId, CommandStatus.Rejected, startTicks);
+        _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "ConcurrencyConflict"));
+        return result;
+    }
+
     private async Task<CommandProcessingResult> CompleteTerminalAsync(
         CommandEnvelope command,
         string causationId,
@@ -2129,5 +2224,35 @@ public partial class AggregateActor(
             string commandType,
             string status,
             double durationMs);
+
+        [LoggerMessage(
+            EventId = 2006,
+            Level = LogLevel.Warning,
+            Message = "Persistence conflict retry: CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, Attempt={Attempt}, MaxRetries={MaxRetries}, Stage=PersistenceConflictRetry")]
+        public static partial void PersistenceConflictRetry(
+            ILogger logger,
+            string correlationId,
+            string causationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string commandType,
+            int attempt,
+            int maxRetries);
+
+        [LoggerMessage(
+            EventId = 2007,
+            Level = LogLevel.Warning,
+            Message = "Persistence conflict retries exhausted: CorrelationId={CorrelationId}, CausationId={CausationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, CommandType={CommandType}, MaxRetries={MaxRetries}, ConflictSource={ConflictSource}, Stage=PersistenceConflictExhausted")]
+        public static partial void PersistenceConflictExhausted(
+            ILogger logger,
+            string correlationId,
+            string causationId,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string commandType,
+            int maxRetries,
+            string conflictSource);
     }
 }

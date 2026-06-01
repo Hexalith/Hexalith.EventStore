@@ -138,4 +138,48 @@ public class SubmitCommandHandlerTests {
         _ = await statusStore.DidNotReceive().ReadStatusAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Handle_ConcurrencyConflictProcessingResult_ThrowsConcurrencyConflictException() {
+        // Arrange
+        string correlationId = Guid.NewGuid().ToString();
+        var statusStore = new InMemoryCommandStatusStore();
+        var archiveStore = new InMemoryCommandArchiveStore();
+        ICommandRouter router = Substitute.For<ICommandRouter>();
+        _ = router.RouteCommandAsync(Arg.Any<SubmitCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new CommandProcessingResult(
+                Accepted: false,
+                ErrorMessage: "ConcurrencyConflict",
+                CorrelationId: correlationId));
+
+        var command = new SubmitCommand(
+            MessageId: "msg-conflict-1",
+            Tenant: "test-tenant",
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            CommandType: "CreateOrder",
+            Payload: [1],
+            CorrelationId: correlationId,
+            UserId: "test-user");
+        var handler = new SubmitCommandHandler(statusStore, archiveStore, router, NullLogger<SubmitCommandHandler>.Instance);
+
+        await statusStore.WriteStatusAsync(
+            command.Tenant,
+            command.CorrelationId,
+            new CommandStatusRecord(
+                CommandStatus.Rejected,
+                DateTimeOffset.UtcNow,
+                command.AggregateId,
+                EventCount: null,
+                RejectionEventType: null,
+                FailureReason: "ConcurrencyConflict",
+                TimeoutDuration: null),
+            CancellationToken.None);
+
+        // Act & Assert
+        ConcurrencyConflictException ex = await Should.ThrowAsync<ConcurrencyConflictException>(
+            () => handler.Handle(command, CancellationToken.None));
+        ex.CorrelationId.ShouldBe(correlationId);
+        ex.AggregateId.ShouldBe(command.AggregateId);
+    }
 }

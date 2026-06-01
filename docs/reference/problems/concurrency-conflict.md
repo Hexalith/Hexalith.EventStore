@@ -7,13 +7,21 @@
 
 ## What Happened
 
-Another command targeting the same resource was processed just before yours. This is a transient condition -- your command is still valid, but it needs to be retried.
+Another command targeting the same resource was processed just before yours. EventStore automatically retries state-store optimistic concurrency conflicts that occur before the `EventsStored` checkpoint is committed, rehydrating the latest aggregate state before each retry. This response means the configured retry limit was exhausted and the caller must decide whether to resubmit.
 
 ## Common Causes
 
 - Two clients submitted commands for the same resource at nearly the same time
 - A retry arrived while the original command was still being processed
 - High-frequency updates to a single resource from multiple consumers
+
+## EventStore Behavior
+
+- Retry limit: `EventStore:CommandConcurrency:MaxPersistenceConflictRetries`, default `1`.
+- Retryable source: actor state-store optimistic concurrency conflicts before a successful `EventsStored` checkpoint.
+- Non-retryable source: any conflict after `EventsStored`, because events are already committed and must not be persisted again.
+- Terminal mapping: command status `Rejected` with `failureReason` set to `ConcurrencyConflict`, HTTP `409`, and `Retry-After: 1`.
+- Idempotency: duplicate causation IDs return cached terminal results and do not append duplicate events.
 
 ## Example
 

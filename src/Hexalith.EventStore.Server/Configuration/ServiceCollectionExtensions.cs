@@ -66,6 +66,10 @@ public static class EventStoreServerServiceCollectionExtensions {
         _ = services.AddOptions<BackpressureOptions>()
             .Bind(configuration.GetSection("EventStore:Backpressure"))
             .ValidateOnStart();
+        services.TryAddSingleton<IValidateOptions<CommandConcurrencyOptions>, ValidateCommandConcurrencyOptions>();
+        _ = services.AddOptions<CommandConcurrencyOptions>()
+            .Bind(configuration.GetSection("EventStore:CommandConcurrency"))
+            .ValidateOnStart();
         _ = services.AddOptions<SnapshotOptions>()
             .Bind(configuration.GetSection("EventStore:Snapshots"))
             .Validate(o => { o.Validate(); return true; }, "Snapshot configuration is invalid. All intervals must be >= 10.")

@@ -151,6 +151,58 @@ public class EventPersistenceIntegrationTests {
     }
 
     /// <summary>
+    /// Story 3.8: same-aggregate concurrent submissions should serialize through the DAPR actor
+    /// and leave a gapless persisted event stream in Redis actor state.
+    /// </summary>
+    [Fact]
+    public async Task RedisActorStateStore_ConcurrentSameAggregateCommands_PersistsGaplessEventStream() {
+        // Arrange
+        var actorProxyFactory = new ActorProxyFactory(new ActorProxyOptions {
+            HttpEndpoint = _fixture.DaprHttpEndpoint,
+        });
+
+        string aggregateId = $"redis-concurrent-{Guid.NewGuid():N}";
+        var identity = new AggregateIdentity("tenant-a", "counter", aggregateId);
+        IAggregateActor proxy = actorProxyFactory.CreateActorProxy<IAggregateActor>(
+            new ActorId(identity.ActorId),
+            nameof(AggregateActor));
+
+        _fixture.ThrowIfHostStopped();
+
+        CommandEnvelope[] commands = [
+            .. Enumerable.Range(0, 8).Select(_ => new CommandEnvelopeBuilder()
+                .WithTenantId("tenant-a")
+                .WithDomain("counter")
+                .WithAggregateId(aggregateId)
+                .WithCommandType("IncrementCounter")
+                .Build()),
+        ];
+
+        // Act
+        CommandProcessingResult[] results = await Task.WhenAll(
+            commands.Select(command => proxy.ProcessCommandAsync(command))).ConfigureAwait(true);
+
+        // Assert
+        results.ShouldAllBe(result => result.Accepted);
+        (await GetCurrentSequenceAsync(identity.MetadataKey).ConfigureAwait(true)).ShouldBe(commands.Length);
+
+        for (int sequence = 1; sequence <= commands.Length; sequence++) {
+            EventEnvelope persisted = await GetStateAsync<EventEnvelope>($"{identity.EventStreamKeyPrefix}{sequence}")
+                .ConfigureAwait(true);
+
+            persisted.SequenceNumber.ShouldBe(sequence);
+            persisted.AggregateId.ShouldBe(aggregateId);
+            persisted.AggregateType.ShouldBe("counter");
+            persisted.TenantId.ShouldBe("tenant-a");
+            persisted.Domain.ShouldBe("counter");
+        }
+
+        string expectedTopic = "tenant-a.counter.events";
+        _fixture.EventPublisher.GetPublishedTopics().ShouldContain(expectedTopic);
+        _fixture.EventPublisher.GetEventsForTopic(expectedTopic).Count.ShouldBeGreaterThanOrEqualTo(commands.Length);
+    }
+
+    /// <summary>
     /// Task 2.5: Test snapshot creation at configured intervals (Rule #15).
     /// Fixture configures counter domain snapshot interval to 15 events.
     /// After 15+ events the system should create a snapshot; subsequent commands

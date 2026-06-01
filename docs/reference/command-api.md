@@ -182,6 +182,14 @@ Content-Type: application/json
 | 500 Internal Server Error  | Unhandled server exception (rare)                                                                        | RFC 7807 ProblemDetails                           |
 | 503 Service Unavailable    | Processing pipeline is temporarily unavailable (DAPR sidecar or downstream dependency down)              | RFC 7807 ProblemDetails                           |
 
+### Optimistic Concurrency Retry
+
+EventStore retries state-store optimistic concurrency conflicts that occur before the `EventsStored` checkpoint is successfully committed. The retry limit is configured by `EventStore:CommandConcurrency:MaxPersistenceConflictRetries`; the default is `1`, meaning one automatic retry after the first conflicting commit attempt.
+
+On each retry, the aggregate actor clears uncommitted state-manager changes, rehydrates the latest aggregate state, and invokes the domain service again. This lets domain logic observe the winning command's events before deciding whether the retried command should succeed, return `NoOp`, persist a domain rejection event, or still fail with a terminal concurrency conflict. EventStore does not retry conflicts after `EventsStored`, because the event sequence has already been committed and publication/terminal-status recovery must not re-persist events.
+
+When the retry limit is exhausted, command status is recorded as `Rejected` with `failureReason: "ConcurrencyConflict"`, and the HTTP boundary returns `409 Conflict` with `Retry-After: 1`. Idempotency records are written only for terminal outcomes; duplicate causation IDs return the cached terminal result and do not produce duplicate events.
+
 **Example 400 — validation error:**
 
 ```json
