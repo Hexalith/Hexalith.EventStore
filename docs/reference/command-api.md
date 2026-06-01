@@ -63,7 +63,9 @@ All request and response JSON properties use **camelCase** (e.g., `aggregateId`,
 
 ### Idempotency
 
-The API does not provide idempotency guarantees for command submission. Submitting the same command twice produces two independent processing results. Use the `X-Correlation-ID` header to track specific requests.
+`messageId` is the command idempotency key. The gateway maps it to the command envelope's `causationId`, and the aggregate actor records terminal outcomes by that key. Resubmitting the same `messageId` returns the cached terminal result and does not append duplicate events.
+
+Use a fresh `messageId` for every new intended command. Use `correlationId` or the `X-Correlation-ID` header for tracing; correlation IDs do not make two different commands idempotent.
 
 ### API Versioning
 

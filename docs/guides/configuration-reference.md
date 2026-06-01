@@ -161,6 +161,28 @@ Configuration section: `EventStore:CommandStatus`
 }
 ```
 
+### Command Concurrency
+
+EventStore retries optimistic concurrency conflicts that occur while committing actor state before the `EventsStored` checkpoint. Each retry rehydrates the latest aggregate state and invokes the domain service again. Conflicts after `EventsStored` are not retried because events are already committed and must not be persisted again.
+
+Configuration section: `EventStore:CommandConcurrency`
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `MaxPersistenceConflictRetries` | int | `1` | Number of automatic retries after a state-store persistence conflict before the command is rejected with `ConcurrencyConflict` |
+
+```json
+{
+  "EventStore": {
+    "CommandConcurrency": {
+      "MaxPersistenceConflictRetries": 2
+    }
+  }
+}
+```
+
+> **Warning:** Values must be between `0` and `10`. A value of `0` disables automatic persistence-conflict retries and surfaces the first conflict as HTTP `409`.
+
 ### Domain Services
 
 Domain services are the aggregate processors that handle commands and produce events. They are resolved by static registrations first, then by an opt-in DAPR configuration store, and finally by convention. The version field in registrations enables running multiple versions of the same domain service simultaneously - see [Event Versioning - Domain Service Version Routing](../concepts/event-versioning.md#domain-service-version-routing) for deployment patterns and rollback strategy.
@@ -584,6 +606,7 @@ This table lists every configurable setting for quick scanning, including explic
 | `EventStore:Snapshots:DomainIntervals:{name}` | int | — | Integer `>= 10` | Application |
 | `EventStore:CommandStatus:TtlSeconds` | int | `86400` | Integer `> 0` | Application |
 | `EventStore:CommandStatus:StateStoreName` | string | `"statestore"` | Non-empty string | Application |
+| `EventStore:CommandConcurrency:MaxPersistenceConflictRetries` | int | `1` | Integer `0`-`10` | Application |
 | `EventStore:DomainServices:ConfigStoreName` | string? | `null` | `null` or non-empty string | Application |
 | `EventStore:DomainServices:InvocationTimeoutSeconds` | int | `5` | Integer `> 0` | Application |
 | `EventStore:DomainServices:MaxEventsPerResult` | int | `1000` | Integer `> 0` | Application |
