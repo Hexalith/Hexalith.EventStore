@@ -1,0 +1,37 @@
+{
+  "repository_type": "monorepo",
+  "project_type_id": "backend",
+  "primary_language": "csharp",
+  "framework": "net10.0",
+  "solution_file": "Hexalith.EventStore.slnx",
+  "parts": [
+    { "part_id": "eventstore", "name": "Command/Query API Gateway", "root_path": "src/Hexalith.EventStore", "type": "backend", "container": "registry.hexalith.com/eventstore", "deployable": true },
+    { "part_id": "server", "name": "Server Domain Processing (DAPR actors)", "root_path": "src/Hexalith.EventStore.Server", "type": "backend", "deployable": false },
+    { "part_id": "contracts", "name": "Contracts", "root_path": "src/Hexalith.EventStore.Contracts", "type": "library", "nuget": true },
+    { "part_id": "client", "name": "Client (aggregate model)", "root_path": "src/Hexalith.EventStore.Client", "type": "library", "nuget": true },
+    { "part_id": "signalr", "name": "SignalR client/hub", "root_path": "src/Hexalith.EventStore.SignalR", "type": "library", "nuget": true },
+    { "part_id": "testing", "name": "Testing utilities", "root_path": "src/Hexalith.EventStore.Testing", "type": "library", "nuget": true },
+    { "part_id": "aspire", "name": "Aspire hosting extensions", "root_path": "src/Hexalith.EventStore.Aspire", "type": "library", "nuget": true },
+    { "part_id": "apphost", "name": "Aspire AppHost (local topology)", "root_path": "src/Hexalith.EventStore.AppHost", "type": "infra" },
+    { "part_id": "servicedefaults", "name": "ServiceDefaults (OTel/health)", "root_path": "src/Hexalith.EventStore.ServiceDefaults", "type": "library" },
+    { "part_id": "admin-abstractions", "name": "Admin Abstractions", "root_path": "src/Hexalith.EventStore.Admin.Abstractions", "type": "library", "nuget": true },
+    { "part_id": "admin-server", "name": "Admin REST API", "root_path": "src/Hexalith.EventStore.Admin.Server.Host", "type": "backend", "container": "registry.hexalith.com/eventstore-admin", "deployable": true },
+    { "part_id": "admin-ui", "name": "Admin Blazor UI", "root_path": "src/Hexalith.EventStore.Admin.UI", "type": "web", "container": "registry.hexalith.com/eventstore-admin-ui", "deployable": true },
+    { "part_id": "admin-cli", "name": "Admin CLI tool", "root_path": "src/Hexalith.EventStore.Admin.Cli", "type": "cli", "nuget_tool": "eventstore-admin" },
+    { "part_id": "admin-mcp", "name": "Admin MCP server", "root_path": "src/Hexalith.EventStore.Admin.Mcp", "type": "cli", "deployable": true },
+    { "part_id": "sample", "name": "Counter sample domain", "root_path": "samples/Hexalith.EventStore.Sample", "type": "backend", "container": "registry.hexalith.com/sample" },
+    { "part_id": "sample-blazor-ui", "name": "Sample Blazor UI", "root_path": "samples/Hexalith.EventStore.Sample.BlazorUI", "type": "web", "container": "registry.hexalith.com/sample-blazor-ui" },
+    { "part_id": "tenants", "name": "Tenants domain (submodule)", "root_path": "Hexalith.Tenants/src/Hexalith.Tenants", "type": "backend", "container": "registry.hexalith.com/tenants", "submodule": true }
+  ],
+  "integration_points": [
+    { "from": "sample-blazor-ui", "to": "eventstore", "type": "DAPR service invocation" },
+    { "from": "eventstore", "to": "sample/tenants/custom domain services", "type": "DAPR service invocation" },
+    { "from": "eventstore", "to": "state store", "type": "DAPR state (actor-scoped)" },
+    { "from": "eventstore", "to": "pub/sub", "type": "DAPR pub/sub (CloudEvents 1.0)" },
+    { "from": "pub/sub", "to": "eventstore /projections/changed", "type": "DAPR subscription *.*.projection-changed" },
+    { "from": "eventstore", "to": "clients", "type": "SignalR (ProjectionChangedHub, Redis backplane)" },
+    { "from": "admin-server", "to": "eventstore", "type": "DAPR service invocation (write delegation) + state reads" },
+    { "from": "admin-ui/admin-cli/admin-mcp", "to": "admin-server", "type": "REST (JWT)" },
+    { "from": "all services", "to": "keycloak", "type": "OIDC (or symmetric-key fallback)" }
+  ]
+}

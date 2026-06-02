@@ -1,0 +1,35 @@
+{
+  "workflow_version": "1.2.0",
+  "timestamps": { "started": "2026-06-02", "last_updated": "2026-06-02", "completed": "2026-06-02" },
+  "mode": "full_rescan",
+  "scan_level": "deep",
+  "project_root": "/home/administrator/projects/hexalith/eventstore",
+  "project_knowledge": "docs/brownfield",
+  "repository_type": "monorepo",
+  "project_types": [{ "part_id": "root", "project_type_id": "backend", "display_name": "Backend (event-sourcing server, multi-part monorepo)" }],
+  "current_step": "completed",
+  "completed_steps": [
+    { "step": "step_1", "status": "completed", "summary": "Classified as monorepo/multi-part backend; 35 solution projects + 5 submodule projects" },
+    { "step": "step_2_3", "status": "completed", "summary": "Inventoried existing hand-authored docs; built tech-stack table from Directory.Packages.props" },
+    { "step": "step_4_5", "status": "completed", "summary": "Deep scan via 6 parallel Explore agents (Contracts, Server, Gateway, Client/SignalR/Testing, Admin suite, AppHost/Aspire/deploy/tests); built source tree" },
+    { "step": "step_6_7", "status": "completed", "summary": "Extracted dev/build/test/run, deployment (containers + DAPR), and multi-part integration architecture" },
+    { "step": "step_8_10", "status": "completed", "summary": "Generated 9 docs + project-parts.json + master index into docs/brownfield/" },
+    { "step": "step_11_12", "status": "completed", "summary": "Validated docs, recorded scan caveats, wrote state file" }
+  ],
+  "outputs_generated": [
+    "index.md",
+    "project-overview.md",
+    "architecture.md",
+    "source-tree-analysis.md",
+    "api-contracts.md",
+    "data-models.md",
+    "component-inventory.md",
+    "development-guide.md",
+    "deployment-guide.md",
+    "integration-architecture.md",
+    "project-parts.json",
+    "project-scan-report.json"
+  ],
+  "notes": "Output written to docs/brownfield/ (not docs/) to preserve the hand-authored docs/index.md. Caveats: no .github/workflows in checkout; no root CHANGELOG.md; Server.Tests has pre-existing CA2007 build failure.",
+  "resume_instructions": "Workflow complete. To regenerate, re-run /bmad-document-project and choose full scan."
+}

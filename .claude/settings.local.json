@@ -133,5 +133,10 @@
       "mcp__aspire__execute_resource_command",
       "Bash(python3 \"D:\\\\Hexalith.EventStore\\\\_bmad\\\\scripts\\\\resolve_customization.py\" --skill \"D:\\\\Hexalith.EventStore\\\\.claude\\\\skills\\\\bmad-code-review\" --key workflow)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "aspire",
+    "fluent-ui-blazor",
+    "microsoft-learn"
+  ]
 }
