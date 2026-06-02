@@ -237,10 +237,23 @@ Goal: a domain module needs **only** a reference to the SDK + its domain code + 
     With A7a + A7b complete, Tenants drops the 672-LOC actor host. **The entire domain side of the seam
     (A7a + A7b-1) is now done and tested; only the gateway side (A7b-2/3) remains — core + locally
     unverifiable.**
-- **A8 — Generic persisted read-model store.** A platform abstraction for persisted, incrementally-updated
-  read models with optimistic-concurrency merge-on-write and multi-key/index support — generalizing Tenants'
-  `DaprTenantProjectionStateStore` + `TenantProjectionWritePolicy`. (The default `EventReplayProjectionActor`
-  only stores a single full-replay read model per actor.)
+- **A8 — Generic persisted read-model store. ✅ DONE (2026-06-02).** A platform abstraction for persisted,
+  incrementally-updated read models with optimistic-concurrency merge-on-write and multi-key/index support —
+  generalizing Tenants' `DaprTenantProjectionStateStore` + `TenantProjectionWritePolicy`. (The default
+  `EventReplayProjectionActor` only stores a single full-replay read model per actor.) Delivered in
+  `Hexalith.EventStore.Client` (the published library both the SDK and domain code consume — this is a
+  domain-service-side concern, not a gateway one): `IReadModelStore` + `ReadModelEntry<T>` (thin ETag-aware
+  DAPR wrapper, generalizing `ITenantProjectionStateStore`/`ProjectionStateRead<T>`), `DaprReadModelStore`
+  (first-write-wins), and `ReadModelWritePolicy` — the optimistic-concurrency reload-and-merge retry loop
+  generalizing both Tenants write methods into one `UpdateAsync<T>(store, key, Func<T?,T> update, …)`
+  primitive plus `ApplyEventsAsync` (event-replay) and `MergeAsync` (cross-aggregate index/singleton)
+  convenience overloads. Tenant-specific telemetry/diagnostics replaced by a lightweight optional
+  `ReadModelWriteContext` + generic `LoggerMessage`s. DI: `AddEventStoreReadModelStore()`. Multi-key/index is
+  served by addressing different keys (a fixed key merged on every write is the index pattern). For B7,
+  `InMemoryReadModelStore` (realistic ETag/first-write-wins + conflict-injection hook) added to
+  `Hexalith.EventStore.Testing`. **11 new tests** (Client.Tests now 411/411; Testing.Tests 144/144); whole
+  graph builds clean (0 warnings under warnings-as-errors). DAPR round-trip is CI/integration only (no DAPR
+  locally).
 - **A9 — Generic pagination cursor codec.** A reusable Data-Protection-backed, scope-validated cursor
   utility generalizing `TenantQueryCursorCodec`; domains supply only the scope fields.
 - **A3 (revised):** Generalize the projection-BUILD side — the `/project` endpoint dispatch (Model a) and the
@@ -353,10 +366,16 @@ only (no DAPR locally).
 A domain can now author queries as plain handlers, advertise them, and the gateway routes to them — **no
 per-domain projection/query actor required.**
 
-**Remaining Epic A (revised, ordered by Epic-B need):** **A8** (persisted read-model store) → **A9** (cursor
-codec) → A3 (generalize `/project` build-side + projection-consumer) → A4 (Aspire `AddEventStoreDomainModule`)
-→ A5 (convention telemetry/health) → A6 (publish SDK; release-affecting, PM/Architect). A8/A9 still gate
-Epic B (Tenants' read-model store + cursor codec); A4/A5 are best sequenced with Epic B.
+**Also delivered — A8 (generic persisted read-model store) (2026-06-02):** `IReadModelStore` +
+`ReadModelEntry<T>`, `DaprReadModelStore`, and `ReadModelWritePolicy` (optimistic-concurrency reload-and-merge:
+`UpdateAsync`/`ApplyEventsAsync`/`MergeAsync`) in `Hexalith.EventStore.Client`; `AddEventStoreReadModelStore()`
+DI; `InMemoryReadModelStore` test fake in `Hexalith.EventStore.Testing` (for B7). 11 new tests (Client.Tests
+411/411, Testing.Tests 144/144); whole-graph Release build clean. See §4.1 A8 for the full surface.
+
+**Remaining Epic A (revised, ordered by Epic-B need):** **A9** (cursor codec) → A3 (generalize `/project`
+build-side + projection-consumer) → A4 (Aspire `AddEventStoreDomainModule`) → A5 (convention telemetry/health)
+→ A6 (publish SDK; release-affecting, PM/Architect). A9 still gates Epic B (Tenants' cursor codec; A8's
+read-model store is now available); A4/A5 are best sequenced with Epic B.
 
 ## 7. Approval
 
