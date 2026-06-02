@@ -535,6 +535,45 @@ by 5 `IDomainQueryHandler`s over the platform A7/A8/A9 seams, dispatched in-proc
 Slices 3–6 (host/cursor/telemetry/health collapse to the 2-line SDK form; project deletions + slnx/deploy;
 client/testing reduction; final build/test) are unstarted.
 
+**Slices 3–6 — COMPLETE & GREEN (continued 2026-06-02), with a B4 direction change:**
+
+- **B4 OVERRIDDEN by the Administrator:** the original B4 ("domain modules don't ship their own AppHost;
+  dev orchestration runs through the EventStore AppHost") was rejected mid-execution. **Corrected
+  principle:** the tenant service is hosted by its **own** Aspire AppHost; only the reusable *boilerplate*
+  moves into the EventStore client/Aspire libraries. So `Hexalith.Tenants.AppHost` is **kept** (rewired to
+  consume the platform `AddHexalithEventStore` + `AddEventStoreDomainModule`, A4); `Hexalith.Tenants.Aspire`
+  (the per-domain DAPR-wiring re-implementation) and `Hexalith.Tenants.ServiceDefaults` are **deleted**.
+
+- **Slice 3 (host SDK collapse) — done:** telemetry rehomed onto the platform convention
+  (`EventStoreDomainDiagnostics`/`AddEventStoreDomainTelemetry("tenants")`) keeping the bounded query/projection
+  duration histograms + cardinality sanitization as `Telemetry/TenantTelemetry` (instance, no self-declared
+  source/meter); DAPR state-store health check → `AddEventStoreDomainStateStoreHealthCheck("tenants")`;
+  `DomainServiceRequestHandler` + host `AdminOperationalIndexMetadata` dropped in favour of the SDK
+  `/process` + `/replay-state` + `/query` + `/admin/operational-index-metadata` (`MapEventStoreDomainService`);
+  bespoke `/project` stays Tenants-mapped (SDK yields). Host references platform ServiceDefaults via the SDK.
+  Telemetry tests rehomed (`TenantTelemetryTests`); command-telemetry tests removed with the dropped handler.
+
+- **Slice 4 (revised) — done:** deleted `Hexalith.Tenants.Aspire` (a **published package** — also reconciled
+  `release.config.cjs`, `scripts/pack-release-packages.py`, `validate-nuget-packages.py`,
+  `validate-consumer-package-references.py`, `validate-coverage.py`, and the package/CI governance tests →
+  4 published packages) and `Hexalith.Tenants.ServiceDefaults`; **kept** `Hexalith.Tenants.AppHost` rewired to
+  the platform extensions; `Hexalith.Tenants.slnx`, `SolutionStructureTests`, `PackageGovernanceTests`,
+  `CiQualityGateScriptTests`, `EventPublicationConfigurationTests`, and the IntegrationTests project references
+  reconciled. `deploy/dapr/accesscontrol.tenants.yaml` now allows the SDK endpoints `/query`, `/replay-state`,
+  `/admin/operational-index-metadata` (in addition to `/process`, `/project`).
+
+- **Verification (SDK 10.0.300):** host + AppHost + Sample build clean (0 warnings under warnings-as-errors);
+  **Contracts.Tests 103/103, Client.Tests 92/92, Testing.Tests 181/181, Sample.Tests 31/31, Server.Tests 681
+  pass** with the 9 **pre-existing** cross-repo doc/config-drift failures excluded (`EventStoreHostAppsettings`
+  + `Documentation.*` read the uninitialized nested `Hexalith.EventStore` submodule path). IntegrationTests
+  (Tier 3) is not locally buildable (nested submodule absent) and its DAPR-fixture migration
+  (`TenantsDaprTestFixture` still references types removed in Slices 1–2) remains CI-gated.
+
+- **Remaining:** Slice 5 (further reduce `Hexalith.Tenants.Client`/`Testing` onto the platform A3 generics) is
+  optional polish — those tiers are already green. Epic C2 (rewrite `docs/demo.md` /
+  `sample-consuming-service-walkthrough.md` / `cross-aggregate-timing.md` and the 9 doc-drift tests to the
+  domain-centric narrative) is a documentation deliverable. IntegrationTests DAPR-fixture migration is CI-gated.
+
 ## 7. Approval
 
 - [x] Approved for implementation — 2026-06-02
