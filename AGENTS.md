@@ -1,12 +1,20 @@
-# Copilot instructions
+# Agent instructions - Hexalith.EventStore
 
-This repository is set up to use Aspire. Aspire is an orchestrator for the entire application and will take care of configuring dependencies, building, and running the application. The resources that make up the application are defined in `apphost.cs` including application code and external dependencies.
+## Project overview
+
+DAPR-native event sourcing server for .NET. Built on CQRS, DDD, and event sourcing patterns with .NET Aspire orchestration.
+
+This repository is set up to use Aspire. Aspire is an orchestrator for the entire application and will take care of configuring dependencies, building, and running the application. The resources that make up the application are defined in the AppHost project under `src/Hexalith.EventStore.AppHost`.
+
+## Solution file
+
+Use `Hexalith.EventStore.slnx` only. Never use `.sln` files; the project uses the modern XML solution format exclusively.
 
 ## General recommendations for working with Aspire
-1. Before making any changes always run the apphost using `aspire run` and inspect the state of resources to make sure you are building from a known state.
-1. Changes to the _apphost.cs_ file will require a restart of the application to take effect.
-2. Make changes incrementally and run the aspire application using the `aspire run` command to validate changes.
-3. Use the Aspire MCP tools to check the status of resources and debug issues.
+1. Before making any changes always run the AppHost using `aspire run` and inspect the state of resources to make sure you are building from a known state.
+2. Changes to the AppHost project will require a restart of the application to take effect.
+3. Make changes incrementally and run the Aspire application using the `aspire run` command to validate changes.
+4. Use the Aspire MCP tools to check the status of resources and debug issues.
 
 ## Running the application
 To run the application run the following command:
@@ -19,7 +27,12 @@ If there is already an instance of the application running it will prompt to sto
 
 ## Git submodules
 
-IMPORTANT! Only initialize and update submodules defined at the root repository level. Do not initialize nested submodules. If nested submodules are initialized accidentally, deinitialize them before continuing.
+IMPORTANT! Only initialize and update submodules defined at the root repository level.
+
+- Initialize root-level submodules only, using the submodule paths declared in the root `.gitmodules` file.
+- Do not initialize, update, or recurse into nested submodules inside those root-level submodules.
+- Avoid recursive submodule commands unless they are explicitly scoped so that nested submodules are not initialized.
+- If nested submodules are initialized accidentally, deinitialize them before continuing.
 
 ## Checking resources
 To check the status of resources defined in the app model use the _list resources_ tool. This will show you the current state of each resource and if there are any issues. If a resource is not running as expected you can use the _execute resource command_ tool to restart it or perform other actions.
@@ -83,7 +96,14 @@ The VM environment provides: .NET 10 SDK, Docker, Aspire CLI (`aspire`), Dapr CL
 
 ### Testing
 
-- **Unit tests**: `dotnet test tests/Hexalith.EventStore.Client.Tests tests/Hexalith.EventStore.Contracts.Tests tests/Hexalith.EventStore.Sample.Tests tests/Hexalith.EventStore.Testing.Tests` (run individually, not in a single `dotnet test` call).
+- **Unit tests**: run test projects individually, not in a single `dotnet test` call or a solution-level `dotnet test`.
+  ```
+  dotnet test tests/Hexalith.EventStore.Client.Tests/
+  dotnet test tests/Hexalith.EventStore.Contracts.Tests/
+  dotnet test tests/Hexalith.EventStore.Sample.Tests/
+  dotnet test tests/Hexalith.EventStore.SignalR.Tests/
+  dotnet test tests/Hexalith.EventStore.Testing.Tests/
+  ```
 - **Pre-existing build failure**: `Hexalith.EventStore.Server.Tests` does not build due to CA2007 warnings treated as errors (pre-existing in the repo).
 - **Integration tests** (`tests/Hexalith.EventStore.IntegrationTests`) require Docker and a running Aspire environment.
 
