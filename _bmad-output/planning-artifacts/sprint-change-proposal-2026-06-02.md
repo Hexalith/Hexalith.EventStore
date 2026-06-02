@@ -389,11 +389,39 @@ generalization of `TenantQueryCursorCodec` + `TenantQueryCursorScopes` (same pay
 reasons, escaping, instant formatting). 21 new tests (Client.Tests 432/432); whole-graph Release build
 clean. See §4.1 A9.
 
-**Remaining Epic A (revised, ordered by Epic-B need):** A3 (generalize `/project` build-side +
-projection-consumer) → A4 (Aspire `AddEventStoreDomainModule`) → A5 (convention telemetry/health) → A6
-(publish SDK; release-affecting, PM/Architect). **A7, A8, and A9 are now all delivered — the query-side
-platform last-mile that gated Epic B is complete, so Epic B (Tenants refactor) is unblocked.** A4/A5 are
-best sequenced with Epic B.
+**Also delivered — A3 (`/project` dispatch side), A4, A5, C1, C2 (2026-06-02):**
+
+- **A3 — `/project` endpoint dispatch (done):** `IDomainProjectionHandler { string Domain; ProjectionResponse Project(ProjectionRequest); }`
+  + `DomainProjectionDispatcher` + assembly discovery (singleton registration) + a `/project` map in
+  `MapEventStoreDomainService` — mirroring the A7 query-handler seam. The SDK skips `/project` when the app
+  already mapped its own (so a domain with bespoke projection wire behavior, e.g. the Sample's Tier-3 fault
+  injector, takes precedence; a duplicate route would make the matcher ambiguous). 3 new SDK tests. **The
+  event-subscription / projection-consumer plumbing half of A3 (Tenants' `TenantEventProcessor` / marker-dedup)
+  is deferred to Epic B — it has no consumer in this repo (per §6 guidance, build it with Tenants in view).**
+- **A4 — Aspire `AddEventStoreDomainModule` (done):** `project.AddEventStoreDomainModule(eventStoreResources, appId, daprConfigPath?, isolatedDaprResourcesPath?)`
+  in `Hexalith.EventStore.Aspire` attaches the DAPR sidecar — shared state-store + pub/sub references by default,
+  or zero-infra isolation when an empty resources path is supplied. **Adopted in the EventStore AppHost** for
+  both `tenants` (shared) and `sample` (isolated), de-boilerplating the hand-rolled sidecar blocks.
+- **A5 — convention telemetry + DAPR state-store health check (done):** `EventStoreDomainTelemetry`
+  (domain → `Hexalith.EventStore.Domain.{domain}` ActivitySource/Meter names + `dapr-statestore-{domain}` health
+  name), `EventStoreDomainDiagnostics` + `AddEventStoreDomainTelemetry(domain)`, and a generic
+  `DaprStateStoreHealthCheck` + `AddEventStoreDomainStateStoreHealthCheck(domain, …)` — all in the SDK.
+  Generalizes Tenants' `Telemetry/*` + `Health/DaprStateStoreHealthCheck`. 8 new SDK tests. **Consumer arrives
+  with Epic B** (the Sample has zero infra access, so it does not wire the state-store health check).
+- **C1 — Sample shrink (done):** the Sample's real `/project` mapping is removed (now SDK-provided via the
+  discovered `CounterProjection : IDomainProjectionHandler`); the malformed-fault Tier-3 path is retained,
+  mapped before `UseEventStoreDomainService` so the SDK yields the route.
+- **C2 — authoring rule (done):** added a "Domain-Module Authoring (domain-centric)" section to root
+  `CLAUDE.md` codifying the SDK host shape, the query/projection/read-model/cursor seams, the Aspire module
+  extension, and the no-own-`AppHost`/`Aspire`/`ServiceDefaults` rule.
+
+**Verification:** whole-graph `Hexalith.EventStore.slnx` Release build clean (0 warnings under
+warnings-as-errors); DomainService.Tests **19/19**, Sample.Tests (tests/) 74/74, Sample.Tests (samples/) 4/4,
+Client.Tests 432/432. DAPR round-trips and the Aspire topology remain CI/integration-only (no DAPR locally).
+
+**Remaining Epic A:** A3 projection-consumer/event-subscription half (with Epic B) → A6 (publish SDK;
+release-affecting, PM/Architect). **A7, A8, A9 and the A3 `/project` dispatch, A4, A5 platform last-mile are
+delivered — Epic B (Tenants refactor) is unblocked.** Epic C3 (optional guardrail analyzer) not done.
 
 ## 7. Approval
 

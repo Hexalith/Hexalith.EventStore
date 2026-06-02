@@ -3,8 +3,6 @@ using CommunityToolkit.Aspire.Hosting.Dapr;
 using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.Aspire;
 
-using System.Collections.Immutable;
-
 const string FalseLiteral = "false";
 
 PrerequisiteValidator.Validate();
@@ -122,33 +120,18 @@ if (!string.Equals(builder.Configuration["EnableKeycloak"], FalseLiteral, String
         .WithEnvironment("Authentication__JwtBearer__SigningKey", "");
 }
 
-// Add Tenants domain service with DAPR sidecar.
-// Tenants shares the same state store and pub/sub as EventStore.
+// Add Tenants domain service with DAPR sidecar via the platform domain-module extension (A4).
+// Tenants shares the same state store and pub/sub as EventStore (no isolated resources path).
 IResourceBuilder<ProjectResource> tenants = builder.AddProject<Projects.Hexalith_Tenants>("tenants")
-    .WithDaprSidecar(sidecar => sidecar
-        .WithOptions(new DaprSidecarOptions {
-            AppId = "tenants",
-            Config = tenantsAccessControlConfigPath,
-        })
-        .WithReference(eventStoreResources.StateStore)
-        .WithReference(eventStoreResources.PubSub))
+    .AddEventStoreDomainModule(eventStoreResources, "tenants", tenantsAccessControlConfigPath)
     .WithEnvironment("Tenants__BootstrapGlobalAdminUserId", "admin-user");
 
-// Add sample domain service with DAPR sidecar.
-// NOTE: sample does NOT reference StateStore or PubSub components.
-// Domain services have zero infrastructure access (D4, AC #13).
-// Not wiring these references means the sample sidecar doesn't load
-// these component definitions at all -- stronger isolation than scoping alone.
+// Add sample domain service with DAPR sidecar via the platform domain-module extension (A4).
+// Passing the empty resources path makes the sample fully isolated: its sidecar does NOT reference
+// Redis, StateStore, or PubSub. Domain services have zero infrastructure access (D4, AC #13) —
+// not loading these component definitions is stronger isolation than scoping alone.
 IResourceBuilder<ProjectResource> sample = builder.AddProject<Projects.Hexalith_EventStore_Sample>("sample")
-    // NOTE: sample does NOT reference Redis, StateStore, or PubSub.
-    // Domain services have zero infrastructure access (D4, AC #13).
-    // Direct Redis access would bypass DAPR component scoping entirely.
-    .WithDaprSidecar(sidecar => sidecar
-        .WithOptions(new DaprSidecarOptions {
-            AppId = "sample",
-            Config = sampleAccessControlConfigPath,
-            ResourcesPaths = ImmutableHashSet.Create(emptyDaprResourcesPath),
-        }));
+    .AddEventStoreDomainModule(eventStoreResources, "sample", sampleAccessControlConfigPath, isolatedDaprResourcesPath: emptyDaprResourcesPath);
 
 // Add Blazor UI sample — invokes EventStore via DAPR service invocation (mirrors Admin.UI D13).
 // Enables SignalR on EventStore so the hub is active when the Blazor UI is running.

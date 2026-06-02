@@ -5,12 +5,14 @@ using Hexalith.EventStore.Client.Configuration;
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.ServiceDefaults;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Hexalith.EventStore.DomainService;
@@ -118,6 +120,7 @@ public static class EventStoreDomainServiceExtensions {
     /// <item><description><c>POST /process</c> — routes a command to the keyed domain processor.</description></item>
     /// <item><description><c>POST /replay-state</c> — reconstructs aggregate state through the Apply convention.</description></item>
     /// <item><description><c>POST /query</c> — dispatches a query to the matching <see cref="IDomainQueryHandler"/>.</description></item>
+    /// <item><description><c>POST /project</c> — dispatches a full-replay projection to the matching <see cref="IDomainProjectionHandler"/> (skipped when the app already mapped its own <c>/project</c>).</description></item>
     /// <item><description><c>POST /admin/operational-index-metadata</c> — returns the domain's command/event/projection catalog.</description></item>
     /// </list>
     /// </summary>
@@ -143,6 +146,19 @@ public static class EventStoreDomainServiceExtensions {
             "/query",
             async (QueryEnvelope query, IServiceProvider serviceProvider)
                 => Results.Ok(await DomainQueryDispatcher.ExecuteAsync(serviceProvider, query).ConfigureAwait(false)));
+
+        // /project — the stateless full-replay projection endpoint (Model a). Dispatches to the matching
+        // IDomainProjectionHandler. Skipped when the app already mapped its own /project so a domain with
+        // bespoke projection wire behavior (e.g. a Tier-3 fault injector) takes precedence — registering the
+        // SDK route on top of an existing one would make the request matcher ambiguous.
+        if (!IsRouteMapped(app, "/project")) {
+            _ = app.MapPost(
+                "/project",
+                (ProjectionRequest request, IServiceProvider serviceProvider) => {
+                    ProjectionResponse? response = DomainProjectionDispatcher.Project(serviceProvider, request);
+                    return response is null ? Results.NotFound() : Results.Ok(response);
+                });
+        }
 
         _ = app.MapPost(
             "/admin/operational-index-metadata",
@@ -175,6 +191,9 @@ public static class EventStoreDomainServiceExtensions {
         // Discover and register IDomainQueryHandler implementations for the /query endpoint.
         AddDomainQueryHandlers(builder.Services, domainAssemblies);
 
+        // Discover and register IDomainProjectionHandler implementations for the /project endpoint.
+        AddDomainProjectionHandlers(builder.Services, domainAssemblies);
+
         return builder;
     }
 
@@ -191,6 +210,36 @@ public static class EventStoreDomainServiceExtensions {
                 }
             }
         }
+    }
+
+    private static void AddDomainProjectionHandlers(IServiceCollection services, Assembly[] domainAssemblies) {
+        // Idempotent: skip if projection handlers are already registered (e.g. a second call on the same services).
+        if (services.Any(static s => s.ServiceType == typeof(IDomainProjectionHandler))) {
+            return;
+        }
+
+        foreach (Assembly assembly in domainAssemblies) {
+            foreach (Type type in GetLoadableTypes(assembly)) {
+                if (type is { IsClass: true, IsAbstract: false } && typeof(IDomainProjectionHandler).IsAssignableFrom(type)) {
+                    // Full-replay projection handlers are stateless (Model a) — registered as singletons so the
+                    // /project endpoint can resolve them without a request scope.
+                    _ = services.AddSingleton(typeof(IDomainProjectionHandler), type);
+                }
+            }
+        }
+    }
+
+    private static bool IsRouteMapped(IEndpointRouteBuilder endpoints, string route) {
+        foreach (EndpointDataSource dataSource in endpoints.DataSources) {
+            foreach (Endpoint endpoint in dataSource.Endpoints) {
+                if (endpoint is RouteEndpoint routeEndpoint
+                    && string.Equals(routeEndpoint.RoutePattern.RawText, route, StringComparison.OrdinalIgnoreCase)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private static IEnumerable<Type> GetLoadableTypes(Assembly assembly) {

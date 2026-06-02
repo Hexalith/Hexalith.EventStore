@@ -155,6 +155,22 @@ Versioning: semantic-release (Conventional Commits, automated on merge to main).
 - **Multi-Tenancy:** Built-in at contract level (Domain + AggregateId + TenantId)
 - **Aspire Orchestration:** Full local topology via `aspire run` on the AppHost
 
+## Domain-Module Authoring (domain-centric)
+
+Domain modules built on Hexalith.EventStore (e.g. the Counter sample, the `Hexalith.Tenants` submodule) **must be domain-centric**: they contain only aggregates, commands, events, projections, query handlers, validators, and contracts. All boilerplate required to run on the platform is supplied by the EventStore client libraries — the **domain-service SDK** (`src/Hexalith.EventStore.DomainService`). A new domain costs its domain code plus a ~2-line host.
+
+**Rules:**
+
+- A domain module **must not** ship its own `*.AppHost`, `*.Aspire`, or `*.ServiceDefaults` project, and **must not** re-implement a projection/query actor, DAPR wiring, telemetry sources, health checks, or event-subscription plumbing. If a capability is missing, add it to the platform (SDK / Client / Aspire / ServiceDefaults), not the domain.
+- **Host shape** — `Program.cs` is two lines: `builder.AddEventStoreDomainService();` then `app.UseEventStoreDomainService();`. The SDK provides convention discovery/registration and the canonical DAPR endpoints `/process`, `/replay-state`, `/query`, `/project`, and `/admin/operational-index-metadata`.
+- **Queries** — implement `IDomainQueryHandler` (one per query type); the SDK discovers, registers, and routes them. Do not subclass a projection actor.
+- **Projections (full-replay, Model a)** — implement `IDomainProjectionHandler`; the SDK maps `/project` and dispatches to it (a domain that needs bespoke `/project` wire behavior may map its own route and the SDK yields).
+- **Persisted read models** — use `IReadModelStore` + `ReadModelWritePolicy` (Client); **pagination cursors** — use `IQueryCursorCodec` / `QueryCursorScope` (Client). Do not hand-roll a state store or cursor codec.
+- **Aspire** — the EventStore AppHost adds the module via `project.AddEventStoreDomainModule(eventStoreResources, appId, …)`; domains don't orchestrate themselves.
+- **Telemetry / health** — use `AddEventStoreDomainTelemetry(domain)` and `AddEventStoreDomainStateStoreHealthCheck(domain)`; do not declare per-domain `ActivitySource`/`Meter`/health-check classes.
+
+`samples/Hexalith.EventStore.Sample` is the reference domain module. See `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-02.md` for the rationale.
+
 ## Code Style & Conventions
 
 Defined in `.editorconfig`:

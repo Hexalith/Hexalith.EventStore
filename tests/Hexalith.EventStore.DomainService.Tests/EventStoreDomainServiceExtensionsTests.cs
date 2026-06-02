@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.DomainService.Tests.Fixtures;
@@ -161,4 +162,63 @@ public sealed class EventStoreDomainServiceExtensionsTests {
 
         result.Success.ShouldBeFalse();
     }
+
+    /// <summary>
+    /// Proves <c>IDomainProjectionHandler</c> implementations in the domain assembly are discovered and
+    /// registered as singletons so the SDK's <c>/project</c> endpoint can resolve them (Epic A3).
+    /// </summary>
+    [Fact]
+    public void AddEventStoreDomainService_RegistersDiscoveredProjectionHandlers() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        using ServiceProvider provider = builder.Services.BuildServiceProvider();
+
+        // Resolved from the root provider (not a scope) — proves singleton registration.
+        IEnumerable<IDomainProjectionHandler> handlers = provider.GetServices<IDomainProjectionHandler>();
+        handlers.ShouldContain(h => h.Domain == "widget");
+    }
+
+    /// <summary>
+    /// Proves the <c>/project</c> dispatch path routes to the handler matching the request's domain.
+    /// </summary>
+    [Fact]
+    public void DomainProjectionDispatcher_Project_RoutesToMatchingHandler() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        using ServiceProvider provider = builder.Services.BuildServiceProvider();
+
+        ProjectionRequest request = new("test-tenant", "widget", "widget-1", [CreateProjectionEvent(), CreateProjectionEvent()]);
+
+        ProjectionResponse? response = DomainProjectionDispatcher.Project(provider, request);
+
+        response.ShouldNotBeNull();
+        response.ProjectionType.ShouldBe("widget");
+        response.State.GetProperty("count").GetInt32().ShouldBe(2);
+    }
+
+    /// <summary>
+    /// Proves the dispatcher returns <c>null</c> (mapped to <c>404</c> by the endpoint) when no handler matches
+    /// the request's domain.
+    /// </summary>
+    [Fact]
+    public void DomainProjectionDispatcher_Project_ReturnsNull_WhenNoHandlerMatches() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        using ServiceProvider provider = builder.Services.BuildServiceProvider();
+
+        ProjectionRequest request = new("test-tenant", "unknown-domain", "x-1", []);
+
+        ProjectionResponse? response = DomainProjectionDispatcher.Project(provider, request);
+
+        response.ShouldBeNull();
+    }
+
+    private static ProjectionEventDto CreateProjectionEvent()
+        => new(
+            EventTypeName: "WidgetCreated",
+            Payload: System.Text.Encoding.UTF8.GetBytes("{}"),
+            SerializationFormat: "json",
+            SequenceNumber: 1,
+            Timestamp: DateTimeOffset.UnixEpoch,
+            CorrelationId: "test-corr");
 }

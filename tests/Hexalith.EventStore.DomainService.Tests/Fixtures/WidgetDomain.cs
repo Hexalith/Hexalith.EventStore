@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Contracts.Events;
+using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Contracts.Results;
 
@@ -52,5 +53,22 @@ public sealed class WidgetQueryHandler : IDomainQueryHandler {
         ArgumentNullException.ThrowIfNull(query);
         JsonElement payload = JsonSerializer.SerializeToElement(new { domain = query.Domain, aggregateId = query.AggregateId });
         return Task.FromResult(QueryResult.FromPayload(payload, projectionType: "widget"));
+    }
+}
+
+/// <summary>
+/// A minimal full-replay projection handler in the test assembly, used to verify discovery, registration, and
+/// dispatch of <see cref="IDomainProjectionHandler"/> by the SDK (Epic A3). It counts the events in the
+/// request and returns the total as the projection state.
+/// </summary>
+public sealed class WidgetProjection : IDomainProjectionHandler {
+    /// <inheritdoc/>
+    public string Domain => "widget";
+
+    /// <inheritdoc/>
+    public ProjectionResponse Project(ProjectionRequest request) {
+        ArgumentNullException.ThrowIfNull(request);
+        JsonElement state = JsonSerializer.SerializeToElement(new { count = request.Events?.Length ?? 0 });
+        return new ProjectionResponse("widget", state);
     }
 }

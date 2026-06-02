@@ -1,13 +1,12 @@
-using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.DomainService;
-using Hexalith.EventStore.Sample.Counter.Projections;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // The domain-service SDK provides all hosting boilerplate: service defaults, convention discovery and
-// registration of the Counter/Greeting aggregates and projections, runtime activation, and the canonical
-// /process, /replay-state, and /admin/operational-index-metadata endpoints. This project writes only its
-// domain code plus this two-line host.
+// registration of the Counter/Greeting aggregates, projections, and query handlers, runtime activation, and
+// the canonical /process, /replay-state, /query, /project, and /admin/operational-index-metadata endpoints.
+// This project writes only its domain code plus this host. The /project endpoint dispatches to the discovered
+// CounterProjection handler (Epic A3) — the domain no longer hand-maps it.
 builder.AddEventStoreDomainService();
 
 bool malformedProjectionResponse = builder.Configuration
@@ -15,13 +14,13 @@ bool malformedProjectionResponse = builder.Configuration
 
 WebApplication app = builder.Build();
 
-int malformedProjectionResponseHitCount = 0;
-
-app.UseEventStoreDomainService();
-
-// Domain-specific projection endpoint. Epic A3 will generalize /project into the SDK; until then each
-// domain maps its own projection handler.
+// Tier-3 fault injector (opt-in via EventStore:SampleFaults:MalformedProjectResponse). Mapping /project here —
+// before UseEventStoreDomainService — makes the SDK yield the route to this bespoke handler, which returns a
+// malformed projection response to exercise the gateway's projection fail-open path. In normal operation the
+// SDK maps /project and dispatches to the discovered CounterProjection handler.
 if (malformedProjectionResponse) {
+    int malformedProjectionResponseHitCount = 0;
+
     _ = app.MapPost("/project", () => {
         _ = Interlocked.Increment(ref malformedProjectionResponseHitCount);
 
@@ -33,11 +32,7 @@ if (malformedProjectionResponse) {
         Count = Volatile.Read(ref malformedProjectionResponseHitCount),
     }));
 }
-else {
-    // Real /project endpoint: replays events into counter projection state.
-    // DaprClient.InvokeMethodAsync round-trips ProjectionRequest/Response as JSON.
-    _ = app.MapPost("/project", (ProjectionRequest request)
-        => Results.Ok(CounterProjectionHandler.Project(request)));
-}
+
+app.UseEventStoreDomainService();
 
 app.Run();
