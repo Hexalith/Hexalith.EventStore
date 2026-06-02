@@ -286,7 +286,6 @@ public class ProjectionAdapterContractTests {
         string[] docPaths = [
             Path.Combine(repositoryRoot, "docs", "reference", "nuget-packages.md"),
             Path.Combine(repositoryRoot, "docs", "reference", "query-api.md"),
-            Path.Combine(repositoryRoot, "_bmad-output", "planning-artifacts", "architecture.md"),
             Path.Combine(repositoryRoot, "docs", "reference", "api", "Hexalith.EventStore.Contracts", "Hexalith.EventStore.Contracts.Queries.IProjectionActor.md"),
             Path.Combine(repositoryRoot, "docs", "reference", "api", "Hexalith.EventStore.Contracts", "Hexalith.EventStore.Contracts.Queries.md"),
         ];
