@@ -423,6 +423,118 @@ Client.Tests 432/432. DAPR round-trips and the Aspire topology remain CI/integra
 release-affecting, PM/Architect). **A7, A8, A9 and the A3 `/project` dispatch, A4, A5 platform last-mile are
 delivered — Epic B (Tenants refactor) is unblocked.** Epic C3 (optional guardrail analyzer) not done.
 
+**Also delivered — A3 event-subscription/consumer half (2026-06-02):** the generic domain-event consumer
+plumbing that B6 needs, generalizing Tenants' `TenantEventProcessor` / `TenantEventEnvelope` /
+`ITenantEventHandler` / `TenantServiceCollectionExtensions` (marker-dedup) / `TenantEventSubscriptionEndpoints`.
+Delivered in `Hexalith.EventStore.Client/Subscriptions` (ASP.NET-free): `EventStoreDomainEventEnvelope`,
+`EventStoreDomainEventContext`, `EventStoreDomainEventProcessingResult`, `IEventStoreDomainEventHandler<TEvent>`,
+the deduplicating `EventStoreDomainEventProcessor` (optional payload/aggregate integrity check via
+`PayloadAggregateIdPropertyName`), `EventStoreDomainEventsOptions` (+ `ForDomain`), and DI
+`AddEventStoreDomainEvents(assembly, configure)` / `AddEventStoreDomainEventHandler<TEvent, THandler>()`. The
+subscription **endpoint** (`MapEventStoreDomainEvents`, with `.WithTopic`) lives in the
+`Hexalith.EventStore.DomainService` SDK (ASP.NET host concern; added a `Dapr.AspNetCore` reference). **7 new
+tests** (Client.Tests now 439/439); whole DomainService graph builds clean (0 warnings under
+warnings-as-errors). **Epic A is now complete except A6 (publish SDK — PM/Architect).**
+
+**Epic B status (2026-06-02):** B1 spike done; A7/A8/A9/A3 platform last-mile done, so Epic B is unblocked and
+the host-side migration mappings are fixed (`DaprTenantProjectionStateStore`→`IReadModelStore`/
+`DaprReadModelStore`; `TenantProjectionWritePolicy.SaveWithOptimisticConcurrencyAsync`→
+`ReadModelWritePolicy.ApplyEventsAsync` and `SaveMergedWithOptimisticConcurrencyAsync`→`MergeAsync`;
+`TenantQueryCursorCodec`/`TenantQueryCursorScopes`→`QueryCursorCodec`/`QueryCursorScope`;
+`TenantsProjectionActor` query `switch`→5 `IDomainQueryHandler`s dispatched in-process by the
+`TenantsQueryController` via `DomainQueryDispatcher`; `Telemetry/*`+`Health/*`→`AddEventStoreDomainTelemetry`+
+`AddEventStoreDomainStateStoreHealthCheck`; the bespoke multi-read-model `/project` stays Tenants-mapped and
+the SDK yields; `DomainServiceRequestHandler`+`AdminOperationalIndexMetadata` drop in favor of the SDK's
+`/process`+`/admin/operational-index-metadata`). **Confirmed blast radius:** ~20 test files across
+`Hexalith.Tenants.Server.Tests` + `IntegrationTests` reference the removed/changed types, and the `Telemetry/*`
++ actor removals cascade into 5 telemetry test files + the actor test files — i.e. Epic B is the B2–B8
+multi-story sequence and must be executed as build-verified slices to keep the unit tiers green (it is a
+separate PR in the submodule repo).
+
+## 6b. Epic B execution log (staged green slices, started 2026-06-02)
+
+Execution chosen: build-verified slices in the `Hexalith.Tenants` submodule (separate PR), keeping the
+submodule green between slices. The submodule resolves `HexalithEventStoreRoot` to the parent EventStore
+checkout, so it builds against the platform source modified above.
+
+**Slice 1 — projection BUILD side onto A8 (`IReadModelStore` + `ReadModelWritePolicy`):**
+
+- **Source (done, host builds clean, 0 warnings):**
+  - `Projections/TenantProjectionHandler.cs` — now takes `IReadModelStore`; the three writes use
+    `ReadModelWritePolicy.ApplyEventsAsync` (tenant read-model, index) and `MergeAsync` (audit), preserving the
+    audit-validate-first ordering, the persisted-wins merge/dedup, and the per-aggregate/index/audit keys.
+  - `Projections/GlobalAdministratorProjectionHandler.cs` — `IReadModelStore.SaveAsync` (last-write-wins,
+    unchanged semantics).
+  - `Projections/ProjectionDispatcher.cs` — constructs handlers from `IReadModelStore`; retry-exhaustion
+    detection updated to the platform message (`"optimistic-concurrency retry limit"`). Telemetry kept (Slice 3
+    removes it).
+  - `Program.cs` — `AddEventStoreReadModelStore()` registered; `/project` map injects `IReadModelStore`.
+  - **Deleted:** `Projections/DaprTenantProjectionStateStore.cs`, `ITenantProjectionStateStore.cs`,
+    `TenantProjectionWritePolicy.cs`, `ProjectionWriteDiagnosticsContext.cs`.
+- **Tests repointed to `IReadModelStore` (done):** `GlobalAdministratorProjectionHandlerTests`,
+  `ProjectionDispatcherTests` (NSubstitute `IReadModelStore`), `TenantProjectionHandlerTests` (scripted fake
+  now implements `IReadModelStore`; dropped `StateOptions.Concurrency` assertions; retry-exhaustion message
+  asserts now match the key).
+- **REMAINING for Slice 1 green (resume point):**
+  - `ProjectionWriteConformanceFixture.cs` — its `ScriptedTenantProjectionStateStore` still implements the
+    deleted `ITenantProjectionStateStore`; convert to `IReadModelStore` (drop `StateOptions`, `ProjectionStateRead`
+    → `ReadModelEntry`). Mechanical.
+  - `ProjectionWriteConformanceTests.cs` (1,135 lines) — asserts `TenantProjectionWritePolicy` diagnostics that
+    **A8 intentionally removed**: `EventId 100101/100102` → `200101/200102`; `Reason` `"guarded-save-conflict"`/
+    `"retry-exhausted"` → `"optimistic-concurrency-conflict"`/`"retry-exhausted"`; structured fields
+    `StateKeyCategory`/`TenantId`/`Domain`/`AggregateId`/`CausationIdStatus`/`OperationContext` →
+    platform set `StateStoreName`/`StateKey`/`Category`/`ProjectionType`/`AttemptCount`/`MaxAttempts`/`Reason`/
+    `CorrelationId`; **delete the bounded `MessageIds`/`EventTypes` tests** (platform logs neither — secret-leak
+    is structurally impossible, so the R-007 gate still passes); `TenantProjectionWritePolicy.MaxAttempts` →
+    `ReadModelWritePolicy.DefaultMaxAttempts`; exception-message asserts → key-based + `"3 attempts"`. Behavioral
+    coverage (R-001 index no-data-loss, attempt counts, idempotency, persisted-wins) is preserved verbatim.
+  - **Delete** `Telemetry/TenantProjectionWritePolicyMetricsTests.cs` (tests the removed policy's per-domain
+    conflict metric — A8 drops it). Adapt `Telemetry/ProjectionDispatcherTelemetryTests.cs` (replace the
+    `TenantProjectionWritePolicy.MaxAttempts` reference; dispatcher telemetry itself is unchanged this slice).
+  - Then build `Hexalith.Tenants.slnx` (Release) + run `Hexalith.Tenants.Server.Tests`.
+- **Slice 1 COMPLETE & GREEN (2026-06-02).** Conformance fixture/tests adapted to the platform diagnostics:
+  EventId `200101/200102`; `Category`/`StateKey`/`Reason` (`optimistic-concurrency-conflict`/`retry-exhausted`)
+  fields; `ReadModelWritePolicy.DefaultMaxAttempts`; exception asserts → key + `"3 attempts"`; the two bounded
+  `MessageIds`/`EventTypes` tests deleted and `TenantProjectionWritePolicyMetricsTests` deleted (platform logs
+  no payload/message/event data, so the R-007 secret-leak gate is structurally satisfied and retained). The
+  audit write enriches its `ReadModelWriteContext` via `WithEventDiagnostics` (MergeAsync doesn't auto-enrich)
+  so conflict diagnostics keep a correlation id. `ProjectionDispatcherTelemetryTests` repointed to
+  `IReadModelStore` (dispatcher telemetry unchanged this slice; the removed `tenants.projection.write.conflicts`
+  metric assertion dropped). **`Server.Tests`: 719 passing, 0 new failures, 0 warnings.** The 10 failing tests
+  (`Documentation.*`, `EventPublicationConfiguration`, `ServiceDefaultsTelemetryRegistration`) are
+  **pre-existing** — they fail identically on the untouched baseline (cross-repo doc/config drift vs. the parent
+  EventStore checkout), unrelated to Epic B.
+
+**Slice 2 — COMPLETE & GREEN (2026-06-02).** The 671-LOC `TenantsProjectionActor` query model was replaced
+by 5 `IDomainQueryHandler`s over the platform A7/A8/A9 seams, dispatched in-process by the controller:
+
+- **Source (host builds clean, 0 warnings):** new `Queries/Handlers/` — `TenantQueryHandlerBase` (shared
+  RBAC visibility, pagination, protected-cursor, read-model access + the missing-user/telemetry wrapper)
+  plus `GetTenant`/`GetTenantUsers`/`GetUserTenants`/`ListTenants`/`GetTenantAudit` handlers. Reads go
+  through `IReadModelStore` (A8); cursors through `IQueryCursorCodec` (A9). `Queries/TenantQueryCursorScopes`
+  reimplemented on the A9 `QueryCursorScope` builder (byte-identical scope strings — proven by the retained
+  scope tests). `TenantsQueryController` now builds a `QueryEnvelope` and calls `DomainQueryDispatcher`
+  in-process, mapping `QueryResult`→HTTP by replicating the platform `SubmitQueryHandler` rules
+  (Forbidden→403, "not found"→404, unsupported/unknown→501, else→500) + the up-front cursor 400. Program.cs
+  registers the 5 handlers + `AddEventStoreQueryCursorCodec("Hexalith.Tenants.QueryCursor.v1")`; actor
+  hosting (`AddActors`/`MapActorsHandlers`/`IETagService`) removed. **Deleted:**
+  `Actors/TenantsProjectionActor.cs`, `Queries/TenantQueryCursorCodec.cs`. Host references the
+  `Hexalith.EventStore.DomainService` SDK.
+- **Tests repointed (green):** a `TenantQueryTestHarness` + `TenantQueryDispatch` mirror the runtime
+  dispatcher (route envelope→handler over a mocked `IReadModelStore`/`IQueryCursorCodec`), so the ~3,000-LOC
+  `TenantsProjectionActorTests` bodies stay intact — `daprClient.GetStateAsync`→`store.GetAsync`+`ReadModelEntry`,
+  `ITenantQueryCursorCodec`→platform `QueryCursorCodec`. `StatelessHostStateTests` re-anchored to
+  `TenantQueryHandlerBase`; `TenantsProjectionActorTelemetryTests` repointed (the unknown-query metric test
+  dropped — that path now has no handler and emits no Tenants telemetry); `TenantQueryCursorCodecTests`
+  repointed to the platform codec (scope-string drop-in tests retained). Two behavioral notes preserved via
+  the harness: pre-cancellation precedence (OCE before the missing-user guard, no span/metric) and orphan-log
+  dedup (handlers reused per dispatch instance). **`Server.Tests`: 718 passing, 0 query/handler regressions.**
+  The 10 failing tests (`Documentation.*`, `EventPublicationConfiguration`, `ServiceDefaultsTelemetryRegistration`)
+  are the same **pre-existing** cross-repo doc/config drift failures recorded for Slice 1.
+
+Slices 3–6 (host/cursor/telemetry/health collapse to the 2-line SDK form; project deletions + slnx/deploy;
+client/testing reduction; final build/test) are unstarted.
+
 ## 7. Approval
 
 - [x] Approved for implementation — 2026-06-02
