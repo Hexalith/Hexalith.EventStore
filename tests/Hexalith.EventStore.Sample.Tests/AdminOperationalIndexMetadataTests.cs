@@ -1,4 +1,5 @@
 using Hexalith.EventStore.Client.Discovery;
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Sample.Counter;
 using Hexalith.EventStore.Sample.Counter.Events;
 using Hexalith.EventStore.Sample.Greeting;

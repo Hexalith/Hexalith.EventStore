@@ -73,16 +73,18 @@ Stdio JSON-RPC 2.0. Env: `EVENTSTORE_ADMIN_URL`, `EVENTSTORE_ADMIN_TOKEN`. Tools
 - **Session context:** `session-set-context`, `session-get-context`, `session-clear-context`
   (`InvestigationSession` singleton keeps agent investigation scope across calls).
 
-## Domain-service host surface (`src/Hexalith.EventStore.Client`)
+## Domain-service host surface (`src/Hexalith.EventStore.DomainService`)
 
-The client library is the **domain-service SDK** a domain module hosts itself with. Today:
+The **domain-service SDK** a domain module hosts itself with. It builds on the client libraries —
 `AddEventStore()` (convention discovery + keyed `IDomainProcessor` registration via `AssemblyScanner` /
-`NamingConventionEngine`), `UseEventStore()` (5-layer per-domain config cascade), plus `AddServiceDefaults()`
-/ `MapDefaultEndpoints()` from `Hexalith.EventStore.ServiceDefaults`. A domain author maps `/process`,
-`/replay-state`, `/project` and references only Client + ServiceDefaults — no `*.AppHost`/`*.Aspire`/own
-`*.ServiceDefaults`. The planned `AddEventStoreDomainService()` / `UseEventStoreDomainService()` /
-`MapEventStoreDomainService()` extensions reduce the host to ~2 lines (see
-`_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-02.md`, Epic A).
+`NamingConventionEngine`), `UseEventStore()` (5-layer per-domain config cascade), and `AddServiceDefaults()`
+/ `MapDefaultEndpoints()` from `Hexalith.EventStore.ServiceDefaults` — and wraps them in
+`AddEventStoreDomainService()` / `UseEventStoreDomainService()` / `MapEventStoreDomainService()`, which
+reduce the host to ~2 lines and map `/`, `/process`, `/replay-state`, `/admin/operational-index-metadata`.
+A domain module references **only** this SDK (Client/ServiceDefaults/Contracts flow transitively) and maps
+its own `/project` until that is generalized (Epic A3). The SDK is not yet NuGet-published (it depends on
+the unpackaged ServiceDefaults; see the Epic A6 packaging decision in
+`_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-02.md`).
 
 ## Testing components (`src/Hexalith.EventStore.Testing`)
 

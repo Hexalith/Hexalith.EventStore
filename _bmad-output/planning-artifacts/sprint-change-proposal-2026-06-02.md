@@ -104,14 +104,31 @@ None existing. New stories are scoped under the proposed epics.
   `samples/dapr-components` may need updating. Container image list (CLAUDE.md) unaffected for EventStore;
   Tenants images governed by the submodule.
 
-### Key risk / unknown (must be de-risked first)
+### Key risk / unknown — RESOLVED by the B1 spike (2026-06-02)
 
-`TenantsProjectionActor` (672 LOC) is **not purely boilerplate** — it carries domain-specific query
-handling: 5 query types, audit filtering, and a Data-Protection-backed **pagination cursor codec**
-(`Queries/TenantQueryCursorCodec.cs`). Before deleting it we must confirm the platform query pipeline
-(`EventReplayProjectionActor` + `QueriesController` + keyed projection routing) supports, as domain-author
-extension points: (a) multiple query types per domain, (b) pagination/continuation tokens, (c) per-query
-authorization/audit filtering. **Epic B story 1 is a spike to validate this seam** before any deletion.
+**Verdict: NO-GO on wholesale deletion of `TenantsProjectionActor`; GO on a capability-driven refactor.**
+
+The platform offers two query models: **(a)** domain provides a stateless `/project`
+(`ProjectionRequest`→`ProjectionResponse`) handler and the platform's `EventReplayProjectionActor`
+(DAPR type `"ProjectionActor"`) stores/serves a single replayed read model; **(b)** domain hosts its own
+actor inheriting `CachingProjectionActor` and routes to it via `SubmitQueryRequest.ProjectionActorType`.
+Tenants uses **(b)** for real reasons the platform does not cover:
+
+1. **Persisted multi-read-model state with merge-on-write** — `TenantReadModel` + a cross-aggregate
+   `TenantIndexReadModel` + `TenantAuditReadModel`, via `DaprTenantProjectionStateStore` +
+   `TenantProjectionWritePolicy` (optimistic concurrency). The platform stores only one replayed read model
+   per actor; it has no persisted multi-key/merge read-model store.
+2. **Encrypted, scope-validated cursor pagination** — `TenantQueryCursorCodec` (Data Protection).
+3. **A query-handler seam** — a 672-LOC actor with a `switch` over 5 query types, each doing genuine
+   domain logic (RBAC-scoped visibility, audit semantics, the index shape).
+
+Split: ~⅓ of the actor is domain logic that must stay; ~⅔ is hand-rolled infra (the actor host + DAPR
+registration, the query-type dispatch, the cursor codec, the read-model store) that the platform should
+provide. So Epic B becomes: **add 3 platform capabilities, then collapse the actor to ~200–300 LOC of
+domain query handlers** (no DAPR actor host, no cursor codec, no state-store plumbing). These 3 capabilities
+are added to Epic A as **A7–A9** (§4.1); they — not the speculative `/project`-only generalization — are the
+platform last-mile that Epic B needs. (Note: the platform already shares `CachingProjectionActor` as the
+ETag/caching base for both models, so that infra is not re-implemented by Tenants.)
 
 ---
 
@@ -151,8 +168,12 @@ authorization/audit filtering. **Epic B story 1 is a spike to validate this seam
 
 Goal: a domain module needs **only** a reference to the SDK + its domain code + ≤2 hosting lines.
 
-- **A1 (spike + API):** Add host extensions to `Hexalith.EventStore.Client` (new
-  `src/Hexalith.EventStore.Client/Registration/EventStoreDomainServiceHostExtensions.cs`):
+- **A1 (spike + API):** ✅ **DONE (2026-06-02).** Spike outcome corrected the home: these extensions
+  need `WebApplicationBuilder`/endpoint routing + `AddServiceDefaults`, which `Hexalith.EventStore.Client`
+  cannot take (it is a published, ASP.NET-free NuGet library, and `ServiceDefaults` is `IsPackable=false`).
+  They live in a **new `src/Hexalith.EventStore.DomainService`** SDK project (`IsPackable=false` for now;
+  see A6) referencing Client + ServiceDefaults. API delivered in
+  `src/Hexalith.EventStore.DomainService/EventStoreDomainServiceExtensions.cs`:
   ```csharp
   public static WebApplicationBuilder AddEventStoreDomainService(
       this WebApplicationBuilder builder, Action<EventStoreOptions>? configure = null);
@@ -167,8 +188,9 @@ Goal: a domain module needs **only** a reference to the SDK + its domain code + 
   app.UseEventStoreDomainService();
   app.Run();
   ```
-- **A2:** Move the Sample's `DomainServiceRequestRouter` and `AdminOperationalIndexMetadata` into the library
-  (generalized) so they are no longer hand-written per domain.
+- **A2:** ✅ **DONE (2026-06-02).** Moved the Sample's `DomainServiceRequestRouter` and
+  `AdminOperationalIndexMetadata` into the SDK and deleted the Sample copies; the SDK's
+  `MapEventStoreDomainService` now maps `/`, `/process`, `/replay-state`, `/admin/operational-index-metadata`.
 - **A3:** Generic event-subscription / projection-consumer in `Hexalith.EventStore.Client` (or new
   `Hexalith.EventStore.Client.Subscriptions`): generalize Tenants' `TenantEventProcessor`,
   `TenantServiceCollectionExtensions` (marker-dedup), and subscription endpoints into
@@ -178,21 +200,70 @@ Goal: a domain module needs **only** a reference to the SDK + its domain code + 
   (replaces `Hexalith.Tenants.Aspire`).
 - **A5:** Convention-driven telemetry + DAPR state-store health check provided by the platform (domain name →
   ActivitySource/Meter/health names), removing per-domain `Telemetry/*` and `Health/*`.
-- **A6 (optional):** `dotnet new hexalith-domain` template and/or a `Hexalith.EventStore.DomainService`
-  meta-package (references Client + ServiceDefaults + Dapr.AspNetCore).
+- **A6 (optional):** `dotnet new hexalith-domain` template and/or NuGet-publish the
+  `Hexalith.EventStore.DomainService` SDK (+ make ServiceDefaults packable) — raises the published-package
+  count; release-affecting, PM/Architect decision.
+
+**Platform capabilities surfaced by the B1 spike (the real query-side last-mile — these gate Epic B):**
+
+- **A7 — Query-handler seam (no per-domain actor).** Let a domain serve queries as **plain domain code**
+  (one `IDomainQueryHandler` per query type) instead of subclassing `CachingProjectionActor` + hand-writing a
+  string `switch`. Split into two increments:
+  - **A7a — domain-side seam: ✅ DONE (2026-06-02).** In the `DomainService` SDK:
+    `IDomainQueryHandler { string Domain; string QueryType; Task<QueryResult> ExecuteAsync(QueryEnvelope, CancellationToken); }`,
+    `DomainQueryDispatcher` (matches by domain + query type), discovery/registration in
+    `AddEventStoreDomainService`, and a `/query` endpoint in `MapEventStoreDomainService` (returns
+    `QueryResult`, wire-symmetric with `/process`). Zero core changes; 3 new SDK tests.
+  - **A7b — gateway-side dispatch (capability-declared routing chosen).** Split:
+    - **A7b-1 — capability reporting: ✅ DONE (2026-06-02).** The SDK declares each domain's handler-served
+      query types in the operational-index metadata (`AdminOperationalIndexMetadata.DomainMetadata.QueryTypes`,
+      populated from the DI-registered `IDomainQueryHandler`s via the `/admin/operational-index-metadata`
+      endpoint). Additive/backward-compatible — the gateway ignores the new JSON field until A7b-2. SDK tests 8/8.
+    - **A7b-2 — gateway capture + invoker: ✅ DONE (2026-06-02).** Added `QueryTypes` (optional, backward
+      compatible) to the gateway's `AdminOperationalIndexDomainMetadata` DTO + `MergeDomainMetadata`;
+      `AdminOperationalIndexHostedService` now materializes `QueryTypesByDomain` (`BuildSnapshot`) and writes
+      `admin:query-types:{domain}` at startup. New `IDomainQueryHandlerRegistry` /
+      `DaprDomainQueryHandlerRegistry` (cached, fail-safe to "no handler") and `IDomainQueryInvoker` /
+      `DaprDomainQueryInvoker` (DAPR `/query`, mirrors `DaprDomainServiceInvoker`). `BuildSnapshot`
+      query-types covered by a unit test (Client.Tests 400/400). DAPR adapters: CI-verified.
+    - **A7b-3 — routing: ✅ DONE (2026-06-02).** `HandlerAwareQueryRouter` decorates `IQueryRouter`
+      (registered after `AddEventStoreServer` via `AddEventStoreDomainQueryRouting`): handler-based
+      `(domain, queryType)` → invoke `/query` via the invoker; else delegate to the projection-actor router.
+      Handler-based queries bypass projection ETag (ProjectionType left null → no controller change needed).
+      3 decorator unit tests (NSubstitute) in the new `Hexalith.EventStore.QueryRouting.Tests`. The
+      gateway→domain `/query` round-trip is CI/integration-only (no DAPR locally). **All A7b code lives in the
+      gateway — Server untouched.**
+
+    With A7a + A7b complete, Tenants drops the 672-LOC actor host. **The entire domain side of the seam
+    (A7a + A7b-1) is now done and tested; only the gateway side (A7b-2/3) remains — core + locally
+    unverifiable.**
+- **A8 — Generic persisted read-model store.** A platform abstraction for persisted, incrementally-updated
+  read models with optimistic-concurrency merge-on-write and multi-key/index support — generalizing Tenants'
+  `DaprTenantProjectionStateStore` + `TenantProjectionWritePolicy`. (The default `EventReplayProjectionActor`
+  only stores a single full-replay read model per actor.)
+- **A9 — Generic pagination cursor codec.** A reusable Data-Protection-backed, scope-validated cursor
+  utility generalizing `TenantQueryCursorCodec`; domains supply only the scope fields.
+- **A3 (revised):** Generalize the projection-BUILD side — the `/project` endpoint dispatch (Model a) and the
+  downstream event-subscription/projection-consumer plumbing (Tenants' `TenantEventProcessor` /
+  marker-dedup registration) — paired with A8. Distinct from the query-READ seam (A7).
 
 #### Epic B — Refactor Hexalith.Tenants to domain-centric (submodule)
 
-- **B1 (spike):** Validate the platform query seam covers Tenants' 5 query types + pagination cursor + audit
-  filtering (see Section 2 risk). Output: a go/no-go and the domain-author query extension pattern.
+- **B1 (spike):** ✅ **DONE (2026-06-02).** Verdict: **NO-GO on wholesale actor deletion; GO on a
+  capability-driven refactor** (see §2). Tenants needs platform capabilities A7 (query-handler seam), A8
+  (persisted read-model store), A9 (cursor codec). Once those exist, the actor collapses to domain query
+  handlers; until then it stays.
 - **B2:** Delete `Hexalith.Tenants.ServiceDefaults`; reference `Hexalith.EventStore.ServiceDefaults`.
 - **B3:** Delete `Hexalith.Tenants.Aspire`; orchestrate via `AddEventStoreDomainModule` (A4).
 - **B4:** Remove/relocate `Hexalith.Tenants.AppHost` — domain modules don't ship their own AppHost; dev
   orchestration runs through the EventStore AppHost (or a shared dev AppHost).
-- **B5:** Collapse the `Hexalith.Tenants` host: remove `Actors/TenantsProjectionActor.cs`,
-  `Projections/ProjectionDispatcher.cs`, `Projections/DaprTenantProjectionStateStore.cs`, `Telemetry/*`,
-  `Health/*`, string query routing; Program.cs becomes the 2-line SDK form. Keep domain query handlers as
-  domain code registered by convention.
+- **B5 (revised per B1):** Collapse the `Hexalith.Tenants` host **once A7–A9 exist**: replace
+  `Actors/TenantsProjectionActor.cs` + `Projections/ProjectionDispatcher.cs` with ~5 domain query handlers
+  (`IDomainQueryHandler`, A7); drop `Projections/DaprTenantProjectionStateStore.cs` (use A8) and
+  `Queries/TenantQueryCursorCodec.cs` (use A9); remove `Telemetry/*` / `Health/*` (A5); Program.cs becomes
+  the 2-line SDK form. **Keep** the domain logic: RBAC-scoped visibility rules, audit semantics, read-model
+  shapes, projection handlers, and pagination-policy/scope choices (~200–300 LOC). Net: the 672-LOC actor
+  becomes domain query handlers; no DAPR actor host, no hand-rolled cursor codec or state store.
 - **B6:** Reduce `Hexalith.Tenants.Client` to domain-specific consumer handlers
   (`Handlers/TenantProjectionEventHandler.cs`, `ITenantEventHandler.cs`); generic plumbing comes from A3.
 - **B7:** Reduce `Hexalith.Tenants.Testing` to domain helpers; generic in-memory stores from platform Testing.
@@ -232,7 +303,62 @@ Goal: a domain module needs **only** a reference to the SDK + its domain code + 
 
 ---
 
-## 6. Approval
+## 6. Implementation status — Epic A (started 2026-06-02)
+
+**Delivered (A1 + A2):**
+
+- New SDK project `src/Hexalith.EventStore.DomainService` (`IsPackable=false`; `FrameworkReference`
+  `Microsoft.AspNetCore.App`; references Client + ServiceDefaults). Added to `Hexalith.EventStore.slnx`.
+  - `EventStoreDomainServiceExtensions` — `AddEventStoreDomainService` (calling-assembly + explicit-assembly
+    overloads, each with/without options), `UseEventStoreDomainService`, `MapEventStoreDomainService`.
+    The calling-assembly overloads use `GetCallingAssembly` + `[MethodImpl(NoInlining)]` and forward the
+    captured **domain** assembly to `AddEventStore(assemblies)` — so discovery never targets the SDK assembly.
+  - `DomainServiceRequestRouter` + `AdminOperationalIndexMetadata` moved in from the Sample (verbatim logic).
+- Sample converted to the target shape: `Program.cs` is now a 2-line host
+  (`AddEventStoreDomainService()` / `UseEventStoreDomainService()`), and `Hexalith.EventStore.Sample.csproj`
+  references **only** the SDK (Client/ServiceDefaults/Contracts flow transitively). The Sample's
+  `DomainServiceRequestRouter.cs` and `AdminOperationalIndexMetadata.cs` were deleted.
+- New test project `tests/Hexalith.EventStore.DomainService.Tests` (4 tests), including the no-arg
+  calling-assembly discovery contract. Coupled Sample tests repointed off the moved router.
+
+**Verification (SDK 10.0.300 via `~/.dotnet`):** build clean (0 warnings under `TreatWarningsAsErrors`);
+DomainService.Tests 4/4, Sample.Tests (tests/) 74/74, Sample.Tests (samples/) 4/4, Client.Tests 399/399.
+
+**Also done — B1 query-seam spike (2026-06-02):** two-codebase investigation (platform query pipeline +
+Tenants query implementation). Verdict recorded in §2 and Epic B/B5: **NO-GO on deleting
+`TenantsProjectionActor` wholesale; GO on a capability-driven refactor.** Surfaced the real query-side
+platform last-mile as **A7** (query-handler seam), **A8** (persisted read-model store), **A9** (cursor
+codec) — see §4.1. This also confirmed A4/A5 (and the revised A3) have **no current consumer in the Sample**
+and should be built with Epic B's Tenants needs in view, not speculatively from the Sample alone.
+
+**Also delivered — A7a (query-handler seam, domain side) (2026-06-02):** `IDomainQueryHandler` +
+`DomainQueryDispatcher` + discovery/registration + `/query` endpoint in the `DomainService` SDK. Build clean;
+SDK tests now **7/7** (added registration, dispatch-match, dispatch-no-match); Sample.Tests still 74/74. Zero
+core changes. Proven on the SDK test project's `widget` domain (the Sample's counter query is already served
+by Model (a), so a Sample handler would be artificial).
+
+**Also delivered — A7 COMPLETE (query-handler seam, both sides) (2026-06-02):**
+- Domain side (SDK): `IDomainQueryHandler`, `DomainQueryDispatcher`, `/query` endpoint, operational-index
+  `QueryTypes` reporting. SDK tests **8/8**.
+- Gateway side (`Hexalith.EventStore`, Server untouched): `IDomainQueryHandlerRegistry` /
+  `DaprDomainQueryHandlerRegistry`, `IDomainQueryInvoker` / `DaprDomainQueryInvoker`, `HandlerAwareQueryRouter`
+  decorator (`AddEventStoreDomainQueryRouting`), and `admin:query-types:{domain}` materialization/store.
+  Decorator unit tests **3/3** (`Hexalith.EventStore.QueryRouting.Tests`); `BuildSnapshot` query-types in
+  Client.Tests **400/400**.
+
+**Verification:** gateway + IntegrationTests build clean across the whole graph (incl. Tenants/Sample/AppHost,
+0 warnings under warnings-as-errors). DAPR adapters + the gateway→domain `/query` round-trip are CI/integration
+only (no DAPR locally).
+
+A domain can now author queries as plain handlers, advertise them, and the gateway routes to them — **no
+per-domain projection/query actor required.**
+
+**Remaining Epic A (revised, ordered by Epic-B need):** **A8** (persisted read-model store) → **A9** (cursor
+codec) → A3 (generalize `/project` build-side + projection-consumer) → A4 (Aspire `AddEventStoreDomainModule`)
+→ A5 (convention telemetry/health) → A6 (publish SDK; release-affecting, PM/Architect). A8/A9 still gate
+Epic B (Tenants' read-model store + cursor codec); A4/A5 are best sequenced with Epic B.
+
+## 7. Approval
 
 - [x] Approved for implementation — 2026-06-02
 - [ ] Approved with changes (noted below)

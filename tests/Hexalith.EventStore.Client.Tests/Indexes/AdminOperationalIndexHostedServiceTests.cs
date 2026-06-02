@@ -35,6 +35,28 @@ public class AdminOperationalIndexHostedServiceTests {
     }
 
     [Fact]
+    public void BuildSnapshot_MaterializesHandlerQueryTypesByDomain() {
+        var metadata = new AdminOperationalIndexDomainMetadata(
+            "tenants",
+            ["Hexalith.Tenants.Contracts.Events.TenantCreated"],
+            [],
+            ["Hexalith.Tenants.Contracts.Commands.CreateTenant"],
+            ["Hexalith.Tenants.TenantAggregate"],
+            ["tenants"],
+            ["list-tenants", "get-tenant"]);
+        var registration = new DomainServiceRegistration("tenants", "process", "*", "tenants", "v1");
+
+        AdminOperationalIndexSnapshot snapshot = AdminOperationalIndexHostedService.BuildSnapshot(
+            [metadata],
+            [registration],
+            new ProjectionOptions());
+
+        _ = snapshot.QueryTypesByDomain.ShouldNotBeNull();
+        // Materialized de-duplicated and ordered (get-tenant < list-tenants).
+        snapshot.QueryTypesByDomain!["tenants"].ShouldBe(["get-tenant", "list-tenants"]);
+    }
+
+    [Fact]
     public void BuildSnapshot_DoesNotInventProjection_WhenMetadataMissing() {
         var registration = new DomainServiceRegistration("sample", "process", "tenant-a", "orders", "v1");
 

@@ -37,6 +37,7 @@ public sealed partial class AdminOperationalIndexHostedService(
             projectionOptions.Value);
         await WriteProjectionIndexAsync(snapshot, cancellationToken).ConfigureAwait(false);
         await WriteTypeCatalogIndexesAsync(snapshot, cancellationToken).ConfigureAwait(false);
+        await WriteQueryTypeIndexAsync(snapshot, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -172,7 +173,12 @@ public sealed partial class AdminOperationalIndexHostedService(
                 .ToList(),
             StringComparer.OrdinalIgnoreCase);
 
-        return new AdminOperationalIndexSnapshot(all, normalizedByTenant, events, commands, aggregates);
+        Dictionary<string, IReadOnlyList<string>> queryTypesByDomain = metadata.ToDictionary(
+            m => m.Domain,
+            m => (IReadOnlyList<string>)[.. (m.QueryTypes ?? []).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
+            StringComparer.OrdinalIgnoreCase);
+
+        return new AdminOperationalIndexSnapshot(all, normalizedByTenant, events, commands, aggregates, queryTypesByDomain);
     }
 
     private async Task WriteProjectionIndexAsync(AdminOperationalIndexSnapshot snapshot, CancellationToken ct) {
@@ -198,6 +204,20 @@ public sealed partial class AdminOperationalIndexHostedService(
                 snapshot.CommandTypes.Where(c => c.Domain.Equals(domain, StringComparison.OrdinalIgnoreCase)).ToList(),
                 snapshot.AggregateTypes.Where(a => a.Domain.Equals(domain, StringComparison.OrdinalIgnoreCase)).ToList(),
                 ct).ConfigureAwait(false);
+        }
+    }
+
+    private async Task WriteQueryTypeIndexAsync(AdminOperationalIndexSnapshot snapshot, CancellationToken ct) {
+        if (snapshot.QueryTypesByDomain is null) {
+            return;
+        }
+
+        foreach ((string domain, IReadOnlyList<string> queryTypes) in snapshot.QueryTypesByDomain) {
+            await daprClient.SaveStateAsync(
+                _stateStoreName,
+                $"admin:query-types:{domain}",
+                queryTypes.ToList(),
+                cancellationToken: ct).ConfigureAwait(false);
         }
     }
 
@@ -236,7 +256,8 @@ public sealed partial class AdminOperationalIndexHostedService(
             [.. items.SelectMany(i => i.RejectionEventTypes).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
             [.. items.SelectMany(i => i.CommandTypes).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
             [.. items.SelectMany(i => i.AggregateTypes).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
-            [.. items.SelectMany(i => i.ProjectionNames).Where(static p => !IsProjectionActorStateKey(p)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)]);
+            [.. items.SelectMany(i => i.ProjectionNames).Where(static p => !IsProjectionActorStateKey(p)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
+            [.. items.SelectMany(i => i.QueryTypes ?? []).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)]);
 
     private static string ToPascalCase(string value)
         => string.IsNullOrWhiteSpace(value)
@@ -277,7 +298,8 @@ public sealed record AdminOperationalIndexDomainMetadata(
     IReadOnlyList<string> RejectionEventTypes,
     IReadOnlyList<string> CommandTypes,
     IReadOnlyList<string> AggregateTypes,
-    IReadOnlyList<string> ProjectionNames);
+    IReadOnlyList<string> ProjectionNames,
+    IReadOnlyList<string>? QueryTypes = null);
 
 /// <summary>Materialized admin operational index payloads ready for state-store writes.</summary>
 public sealed record AdminOperationalIndexSnapshot(
@@ -285,4 +307,5 @@ public sealed record AdminOperationalIndexSnapshot(
     IReadOnlyDictionary<string, List<ProjectionStatus>> TenantProjections,
     IReadOnlyList<EventTypeInfo> EventTypes,
     IReadOnlyList<CommandTypeInfo> CommandTypes,
-    IReadOnlyList<AggregateTypeInfo> AggregateTypes);
+    IReadOnlyList<AggregateTypeInfo> AggregateTypes,
+    IReadOnlyDictionary<string, IReadOnlyList<string>>? QueryTypesByDomain = null);

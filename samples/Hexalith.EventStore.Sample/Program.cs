@@ -1,15 +1,14 @@
-using Hexalith.EventStore.Client.Registration;
-using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Projections;
-using Hexalith.EventStore.Contracts.Replay;
-using Hexalith.EventStore.Sample;
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Sample.Counter.Projections;
-using Hexalith.EventStore.ServiceDefaults;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-builder.AddServiceDefaults();
-builder.Services.AddEventStore();
+// The domain-service SDK provides all hosting boilerplate: service defaults, convention discovery and
+// registration of the Counter/Greeting aggregates and projections, runtime activation, and the canonical
+// /process, /replay-state, and /admin/operational-index-metadata endpoints. This project writes only its
+// domain code plus this two-line host.
+builder.AddEventStoreDomainService();
 
 bool malformedProjectionResponse = builder.Configuration
     .GetValue<bool>("EventStore:SampleFaults:MalformedProjectResponse");
@@ -18,19 +17,10 @@ WebApplication app = builder.Build();
 
 int malformedProjectionResponseHitCount = 0;
 
-app.UseEventStore();
+app.UseEventStoreDomainService();
 
-app.MapDefaultEndpoints();
-app.MapGet("/", () => "Hexalith EventStore Sample Domain Service");
-
-app.MapPost("/process", async (DomainServiceRequest request, IServiceProvider serviceProvider) => Results.Ok(await Hexalith.EventStore.Sample.DomainServiceRequestRouter.ProcessAsync(serviceProvider, request).ConfigureAwait(false)));
-
-app.MapPost("/replay-state", (AggregateReconstructionRequest request, IServiceProvider serviceProvider)
-    => Results.Ok(Hexalith.EventStore.Sample.DomainServiceRequestRouter.Replay(serviceProvider, request)));
-
-app.MapPost("/admin/operational-index-metadata", (AdminOperationalIndexMetadata.Request request, Hexalith.EventStore.Client.Discovery.DiscoveryResult discovery)
-    => Results.Ok(AdminOperationalIndexMetadata.Create(discovery, request.Domains)));
-
+// Domain-specific projection endpoint. Epic A3 will generalize /project into the SDK; until then each
+// domain maps its own projection handler.
 if (malformedProjectionResponse) {
     _ = app.MapPost("/project", () => {
         _ = Interlocked.Increment(ref malformedProjectionResponseHitCount);

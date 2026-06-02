@@ -16,6 +16,7 @@ builder.Services.AddHealthChecks()
     .AddEventStoreDaprHealthChecks();
 builder.Services.AddEventStore();
 builder.Services.AddEventStoreServer(builder.Configuration);
+builder.Services.AddEventStoreDomainQueryRouting();
 builder.Services.AddEventStoreSignalR(builder.Configuration);
 
 WebApplication app = builder.Build();

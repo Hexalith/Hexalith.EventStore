@@ -55,9 +55,11 @@ flowchart LR
 
 Domain services (`sample`, `tenants`, and any custom domain) own **only domain logic** — aggregates,
 commands, events, projections, validators, queries, contracts. Everything needed to run on Hexalith.EventStore
-is supplied by the **EventStore client libraries** (the domain-service SDK): hosting, the `/process`,
-`/replay-state`, and `/project` endpoints, convention discovery/registration, DAPR wiring, ServiceDefaults,
-telemetry, health checks, and event-subscription/projection-consumer plumbing.
+is supplied by the **`Hexalith.EventStore.DomainService` SDK** (which builds on the client libraries):
+hosting, the DAPR-invoked domain-service endpoints (`/process`, `/replay-state`,
+`/admin/operational-index-metadata` today; `/project` generalization is Epic A3), convention
+discovery/registration, ServiceDefaults, and — as the platform last-mile lands — telemetry, health checks,
+and event-subscription/projection-consumer plumbing.
 
 A conforming domain module therefore does **not** ship its own `*.AppHost`, `*.Aspire`, or `*.ServiceDefaults`
 projects, and does **not** re-implement projection/query actors or DAPR sidecar wiring. The reference shape is

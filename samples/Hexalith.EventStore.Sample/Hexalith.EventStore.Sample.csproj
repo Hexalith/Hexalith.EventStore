@@ -8,8 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" />
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" />
+    <!-- A domain module references only the domain-service SDK; Client, ServiceDefaults, and Contracts
+         flow in transitively. All hosting boilerplate lives in the SDK. -->
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.DomainService\Hexalith.EventStore.DomainService.csproj" />
   </ItemGroup>
 
   <ItemGroup>

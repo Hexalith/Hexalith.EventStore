@@ -81,7 +81,8 @@ The seam is convention discovery (`AssemblyScanner` + `NamingConventionEngine`) 
 `IDomainProcessor` / `EventStoreAggregate<TState>` base classes: a domain author inherits the base class and
 the platform discovers, registers (keyed by kebab-case domain name), hosts, routes, persists, and publishes.
 A conforming domain service is ≈ domain code + a 2-line host (`AddEventStoreDomainService()` /
-`UseEventStoreDomainService()`; see `Hexalith.EventStore.Client`). The `Sample` is the reference shape.
+`UseEventStoreDomainService()`), provided by the `Hexalith.EventStore.DomainService` SDK (references the
+client libraries; not yet NuGet-published). The `Sample` is the reference shape.
 
 ## 5. Command Processing Pipeline
 

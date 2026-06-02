@@ -4,7 +4,9 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Replay;
 using Hexalith.EventStore.Contracts.Results;
 
-namespace Hexalith.EventStore.Sample;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Hexalith.EventStore.DomainService;
 
 /// <summary>
 /// Routes domain service requests to the keyed processor matching the command domain.

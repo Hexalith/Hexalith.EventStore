@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Domain-service host SDK for the Hexalith event store. A domain module references this package and writes only its domain code plus a two-line host (AddEventStoreDomainService / UseEventStoreDomainService) — all hosting, DAPR-endpoint, observability, and discovery boilerplate is provided here.</Description>
+    <!--
+      Not published to NuGet yet: this SDK references Hexalith.EventStore.ServiceDefaults, which is
+      IsPackable=false. The Sample and the Hexalith.Tenants submodule consume it via project references
+      (the repository and its submodules build from source). Publishing this SDK (and making ServiceDefaults
+      packable) is the Epic A6 packaging decision — see
+      _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-02.md.
+    -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" />
+    <ProjectReference Include="..\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+</Project>

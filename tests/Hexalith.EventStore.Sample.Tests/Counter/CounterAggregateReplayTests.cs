@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Replay;
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Sample.Counter.Events;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +22,9 @@ namespace Hexalith.EventStore.Sample.Tests.Counter;
 public class CounterAggregateReplayTests {
     private static IServiceProvider BuildServiceProvider() {
         ServiceCollection services = new();
-        _ = services.AddEventStore(typeof(CounterAggregateReplayTests).Assembly, typeof(DomainServiceRequestRouter).Assembly);
+        // Scan the Sample domain assembly (where the Counter aggregate lives). CounterIncremented is a
+        // domain type in that assembly; the router now lives in the SDK assembly, so use a domain marker.
+        _ = services.AddEventStore(typeof(CounterIncremented).Assembly);
         return services.BuildServiceProvider();
     }
 

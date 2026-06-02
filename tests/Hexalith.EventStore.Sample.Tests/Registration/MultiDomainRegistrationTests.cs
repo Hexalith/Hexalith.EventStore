@@ -5,6 +5,7 @@ using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Sample.Counter;
 using Hexalith.EventStore.Sample.Counter.Commands;
 using Hexalith.EventStore.Sample.Counter.Events;

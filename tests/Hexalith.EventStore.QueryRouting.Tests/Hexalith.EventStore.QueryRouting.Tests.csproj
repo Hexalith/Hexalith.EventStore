@@ -1,9 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\samples\Hexalith.EventStore.Sample\Hexalith.EventStore.Sample.csproj" />
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.DomainService\Hexalith.EventStore.DomainService.csproj" />
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.Testing\Hexalith.EventStore.Testing.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.EventStore\Hexalith.EventStore.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -12,9 +10,10 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="Shouldly" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="Shouldly" />
   </ItemGroup>
 
   <ItemGroup>
