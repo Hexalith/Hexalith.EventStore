@@ -112,9 +112,14 @@ public sealed class CounterState
 }
 ```
 
-Register with two lines — `AddEventStore()` scans the assembly (reflection discovery of `Handle`/`Apply`),
-`UseEventStore()` activates domains with convention-derived kebab-case names. Override the name with
-`[EventStoreDomain("...")]`. See `samples/Hexalith.EventStore.Sample/Counter/`.
+Host with the domain-service SDK's two lines — `builder.AddEventStoreDomainService()` scans the calling
+assembly (reflection discovery of `Handle`/`Apply`, plus `IDomainQueryHandler`/`IDomainProjectionHandler`),
+and `app.UseEventStoreDomainService()` activates domains with convention-derived kebab-case names and maps the
+canonical DAPR endpoints (`/process`, `/replay-state`, `/query`, `/project`,
+`/admin/operational-index-metadata`). Override the name with `[EventStoreDomain("...")]`. A domain module
+references only the `Hexalith.EventStore.DomainService` SDK — all hosting boilerplate lives there (these two
+calls wrap the lower-level `AddEventStore()`/`UseEventStore()` primitives). See
+`samples/Hexalith.EventStore.Sample/` (`Program.cs` + `Counter/`).
 
 ## Commits & branches
 

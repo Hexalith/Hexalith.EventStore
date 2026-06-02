@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <IsPackable>false</IsPackable>
+    <Description>Shared service configuration for Hexalith.EventStore domain services — OpenTelemetry observability, health checks, HTTP resilience, and service discovery defaults. Consumed transitively by the Hexalith.EventStore.DomainService SDK (Epic A6).</Description>
     <IsAspireSharedProject>true</IsAspireSharedProject>
   </PropertyGroup>
 

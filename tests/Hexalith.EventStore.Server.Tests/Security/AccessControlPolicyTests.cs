@@ -322,8 +322,12 @@ public class AccessControlPolicyTests {
             LoadYaml(ProductionPubSubKafkaPath),
             "production Kafka pub/sub");
 
-        // All state store configs must restrict scopes to eventstore and eventstore-admin.
-        VerifyStateStoreScopes(LoadYaml(LocalStateStorePath), "local state store");
+        // State store scopes: the local self-hosted profile additionally scopes the tenants domain module,
+        // which shares EventStore's state store (A4 shared-infrastructure module). Production configs remain
+        // restricted to eventstore and eventstore-admin. NOTE: whether tenants should ALSO share the production
+        // state store is an open topology decision — the deploy/dapr/statestore-*.yaml files were not updated to
+        // add tenants, so this guard intentionally encodes the current local/production divergence.
+        VerifyLocalStateStoreScopes(LoadYaml(LocalStateStorePath), "local state store");
         VerifyStateStoreScopes(LoadYaml(ProductionStateStorePostgresPath), "production PostgreSQL state store");
         VerifyStateStoreScopes(LoadYaml(ProductionStateStoreCosmosPath), "production Cosmos DB state store");
     }
@@ -601,6 +605,21 @@ public class AccessControlPolicyTests {
 
         scopes.Select(scope => scope?.ToString()).ShouldBe(["eventstore", "eventstore-admin"], ignoreOrder: true,
             customMessage: $"{componentName} scopes must contain ONLY eventstore and eventstore-admin");
+    }
+
+    /// <summary>
+    /// Verifies that the local self-hosted state-store scopes contain eventstore, eventstore-admin, and the
+    /// tenants domain module (which shares EventStore's state store in the local profile, A4). Distinct from
+    /// <see cref="VerifyStateStoreScopes"/>, which enforces the stricter eventstore/eventstore-admin-only set
+    /// used for the production deploy configs.
+    /// </summary>
+    private static void VerifyLocalStateStoreScopes(Dictionary<string, object> doc, string componentName) {
+        List<object>? scopes = doc.TryGetValue("scopes", out object? scopesObj) ? scopesObj as List<object> : null;
+        _ = scopes.ShouldNotBeNull($"{componentName} must have a scopes section");
+        scopes.ShouldNotBeEmpty($"{componentName} scopes section must have at least one entry");
+
+        scopes.Select(scope => scope?.ToString()).ShouldBe(["eventstore", "eventstore-admin", "tenants"], ignoreOrder: true,
+            customMessage: $"{componentName} scopes must contain eventstore, eventstore-admin, and the tenants domain module");
     }
 
     /// <summary>

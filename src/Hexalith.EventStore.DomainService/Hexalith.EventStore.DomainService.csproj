@@ -3,13 +3,11 @@
   <PropertyGroup>
     <Description>Domain-service host SDK for the Hexalith event store. A domain module references this package and writes only its domain code plus a two-line host (AddEventStoreDomainService / UseEventStoreDomainService) — all hosting, DAPR-endpoint, observability, and discovery boilerplate is provided here.</Description>
     <!--
-      Not published to NuGet yet: this SDK references Hexalith.EventStore.ServiceDefaults, which is
-      IsPackable=false. The Sample and the Hexalith.Tenants submodule consume it via project references
-      (the repository and its submodules build from source). Publishing this SDK (and making ServiceDefaults
-      packable) is the Epic A6 packaging decision — see
-      _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-02.md.
+      Publishable as the domain-service SDK (Epic A6). It references Hexalith.EventStore.ServiceDefaults, which
+      is now also packable, so the produced package has a valid dependency graph. The Sample and the
+      Hexalith.Tenants submodule still consume it via project references (the repository and its submodules
+      build from source); external domains consume the NuGet package once the release pipeline includes it.
     -->
-    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

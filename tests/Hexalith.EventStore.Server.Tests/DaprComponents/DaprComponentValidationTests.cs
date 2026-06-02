@@ -94,14 +94,27 @@ public class DaprComponentValidationTests {
     public void DomainServiceSidecars_DoNotReferenceStateStoreOrPubSubComponents() {
         string appHost = File.ReadAllText(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.AppHost", "Program.cs"));
 
+        // A4: the per-sidecar wiring now lives in the AddEventStoreDomainModule extension, so the AppHost
+        // expresses isolation vs. sharing through the isolatedDaprResourcesPath opt-in argument. Sample passes
+        // it (zero infrastructure access); tenants omits it (shared state-store / pub/sub).
         string sampleBlock = GetBlock(appHost, "IResourceBuilder<ProjectResource> sample =", "IResourceBuilder<ProjectResource> blazorUi =");
-        sampleBlock.ShouldNotContain("eventStoreResources.StateStore");
-        sampleBlock.ShouldNotContain("eventStoreResources.PubSub");
-        sampleBlock.ShouldContain("ResourcesPaths = ImmutableHashSet.Create(emptyDaprResourcesPath)");
+        sampleBlock.ShouldContain("AddEventStoreDomainModule");
+        sampleBlock.ShouldContain("isolatedDaprResourcesPath: emptyDaprResourcesPath");
 
         string tenantsBlock = GetBlock(appHost, "IResourceBuilder<ProjectResource> tenants =", "IResourceBuilder<ProjectResource> sample =");
-        tenantsBlock.ShouldContain("eventStoreResources.StateStore");
-        tenantsBlock.ShouldContain("eventStoreResources.PubSub");
+        tenantsBlock.ShouldContain("AddEventStoreDomainModule");
+        tenantsBlock.ShouldNotContain("isolatedDaprResourcesPath");
+
+        // Verify the isolation mechanism itself in the A4 extension: the isolated branch binds only the empty
+        // resources path and never references the shared state-store / pub/sub; the shared branch references both.
+        string moduleExtension = File.ReadAllText(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.Aspire", "HexalithEventStoreDomainModuleExtensions.cs"));
+        string isolatedBranch = GetBlock(moduleExtension, "if (isolated) {", "else {");
+        isolatedBranch.ShouldContain("ResourcesPaths = ImmutableHashSet.Create(isolatedDaprResourcesPath");
+        isolatedBranch.ShouldNotContain("WithReference(eventStore.StateStore");
+        isolatedBranch.ShouldNotContain("WithReference(eventStore.PubSub");
+        string sharedBranch = GetBlock(moduleExtension, "else {", "});");
+        sharedBranch.ShouldContain("WithReference(eventStore.StateStore)");
+        sharedBranch.ShouldContain("WithReference(eventStore.PubSub)");
 
         string sampleBlazorBlock = GetBlock(appHost, "IResourceBuilder<ProjectResource> blazorUi =", "if (keycloak is not null");
         sampleBlazorBlock.ShouldNotContain("eventStoreResources.StateStore");

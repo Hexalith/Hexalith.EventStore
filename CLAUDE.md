@@ -139,9 +139,11 @@ samples/
   Hexalith.EventStore.Sample         # Counter domain example
 ```
 
-## NuGet Packages (6 published)
+## NuGet Packages (8 published)
 
-Hexalith.EventStore.Contracts, Client, Server, SignalR, Testing, Aspire
+Hexalith.EventStore.Contracts, Client, Server, SignalR, Testing, Aspire, ServiceDefaults, DomainService
+
+`ServiceDefaults` and `DomainService` are the domain-service SDK packages (Epic A6): a domain module references only `DomainService` (which pulls in `Client` + `ServiceDefaults` transitively) and writes its domain code plus a two-line host. Both are packable; the active publish list is governed by the release pipeline.
 
 Versioning: semantic-release (Conventional Commits, automated on merge to main). Centralized package management via `Directory.Packages.props`.
 

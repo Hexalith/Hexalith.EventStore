@@ -2,7 +2,7 @@
 
 # NuGet Packages Guide
 
-Guide to the 6 published Hexalith.EventStore NuGet packages — their purposes, dependency relationships, and which ones to install for your use case. This page is for .NET developers integrating Hexalith.EventStore into their projects.
+Guide to the 8 published Hexalith.EventStore NuGet packages — their purposes, dependency relationships, and which ones to install for your use case. This page is for .NET developers integrating Hexalith.EventStore into their projects.
 
 > **Prerequisites:** [Architecture Overview](../concepts/architecture-overview.md) — you should understand the system topology before choosing packages.
 
@@ -16,6 +16,8 @@ Guide to the 6 published Hexalith.EventStore NuGet packages — their purposes, 
 | Hexalith.EventStore.SignalR   | SignalR client helper for projection change notifications                       | React to read-model invalidation signals in web or desktop clients            | In UI or integration clients that need live projection refresh    |
 | Hexalith.EventStore.Testing   | In-memory fakes, gateway doubles, builders, and test helpers                    | Build deterministic tests for command/event and public gateway flows          | In your test projects                                             |
 | Hexalith.EventStore.Aspire    | .NET Aspire hosting extensions for DAPR topology orchestration                  | Compose the local distributed topology in an Aspire AppHost                   | In your AppHost project for local development orchestration       |
+| Hexalith.EventStore.ServiceDefaults | Shared OpenTelemetry, health-check, HTTP-resilience, and service-discovery defaults | Apply the platform's observability/resilience defaults to a domain service | Transitively, via the DomainService SDK (rarely referenced directly) |
+| Hexalith.EventStore.DomainService | Domain-service host SDK — convention discovery, DAPR endpoints, query/projection seams, telemetry, health | Author a domain module with only domain code plus a two-line host | The single platform reference a new domain module needs           |
 
 ## Dependency Graph
 
@@ -27,6 +29,8 @@ graph TD
     SignalR[Hexalith.EventStore.SignalR]
     Testing[Hexalith.EventStore.Testing]
     Aspire[Hexalith.EventStore.Aspire]
+    ServiceDefaults[Hexalith.EventStore.ServiceDefaults]
+    DomainService[Hexalith.EventStore.DomainService]
 
     Client --> Contracts
     Server --> Client
@@ -35,6 +39,8 @@ graph TD
     Testing --> Client
     Testing --> Contracts
     Testing --> Server
+    DomainService --> Client
+    DomainService --> ServiceDefaults
 ```
 
 <details>
@@ -46,10 +52,12 @@ graph TD
 - **SignalR** depends on Contracts and adds a lightweight helper over `Microsoft.AspNetCore.SignalR.Client`.
 - **Testing** depends on Client, Contracts, and Server (it provides gateway doubles plus fake implementations of server-side components for integration testing).
 - **Aspire** is fully independent — it has no dependency on any other Hexalith.EventStore package. It only depends on Aspire hosting libraries.
+- **ServiceDefaults** is a shared service-configuration package (OpenTelemetry, health checks, HTTP resilience, service discovery). It is consumed transitively by the DomainService SDK.
+- **DomainService** is the domain-service host SDK. It depends on Client and ServiceDefaults and bundles all hosting/DAPR-endpoint/discovery boilerplate so a domain module references only this one package.
 
 </details>
 
-> **Note:** All 6 packages always ship at the same semantic version. Install matching versions to avoid compatibility issues.
+> **Note:** All 8 packages always ship at the same semantic version. Install matching versions to avoid compatibility issues.
 
 ## Which Packages Do I Need?
 
@@ -317,9 +325,38 @@ $ dotnet add package Hexalith.EventStore.Testing
 $ dotnet add package Hexalith.EventStore.Aspire
 ```
 
+### Hexalith.EventStore.ServiceDefaults
+
+Shared service configuration for domain services — OpenTelemetry observability, health checks, HTTP resilience, and service discovery defaults. Normally consumed transitively through the DomainService SDK rather than referenced directly.
+
+**Key namespace and types:**
+
+- `Microsoft.Extensions.Hosting` — `AddServiceDefaults`, `MapDefaultEndpoints`
+
+**External dependencies:** OpenTelemetry (exporter/hosting/instrumentation), `Microsoft.Extensions.Http.Resilience`, `Microsoft.Extensions.ServiceDiscovery`.
+
+```bash
+$ dotnet add package Hexalith.EventStore.ServiceDefaults
+```
+
+### Hexalith.EventStore.DomainService
+
+Domain-service host SDK. A domain module references only this package, writes its domain code (aggregates, commands, events, projections, query handlers, validators, contracts) and a two-line host, and gets all hosting, DAPR-endpoint, observability, discovery, and read-model/cursor seams from the platform. Depends on Client and ServiceDefaults.
+
+**Key namespace and types:**
+
+- `Microsoft.AspNetCore.Builder` — `AddEventStoreDomainService`, `UseEventStoreDomainService`, `MapEventStoreDomainService`
+- `Hexalith.EventStore.DomainService` — `IDomainQueryHandler`, `IDomainProjectionHandler`, `EventStoreDomainTelemetry`, `DaprStateStoreHealthCheck`
+
+**External dependencies:** `Dapr.AspNetCore`, `Microsoft.AspNetCore.App` (framework reference).
+
+```bash
+$ dotnet add package Hexalith.EventStore.DomainService
+```
+
 ## Versioning
 
-All 6 packages use automated semantic versioning via semantic-release. Release versions are derived from Conventional Commit history on `main`, then published under `v`-prefixed Git tags (for example, release `1.2.0` is tagged as `v1.2.0`).
+All 8 packages use automated semantic versioning via semantic-release. Release versions are derived from Conventional Commit history on `main`, then published under `v`-prefixed Git tags (for example, release `1.2.0` is tagged as `v1.2.0`).
 
 All package versions are centralized in `Directory.Packages.props` at the repository root. Every package always ships at the same version — there is no mix-and-match between package versions.
 
