@@ -254,8 +254,17 @@ Goal: a domain module needs **only** a reference to the SDK + its domain code + 
   `Hexalith.EventStore.Testing`. **11 new tests** (Client.Tests now 411/411; Testing.Tests 144/144); whole
   graph builds clean (0 warnings under warnings-as-errors). DAPR round-trip is CI/integration only (no DAPR
   locally).
-- **A9 — Generic pagination cursor codec.** A reusable Data-Protection-backed, scope-validated cursor
-  utility generalizing `TenantQueryCursorCodec`; domains supply only the scope fields.
+- **A9 — Generic pagination cursor codec. ✅ DONE (2026-06-02).** A reusable Data-Protection-backed,
+  scope-validated cursor utility generalizing `TenantQueryCursorCodec`; domains supply only the scope
+  fields. Delivered in `Hexalith.EventStore.Client` (`Queries/`): `IQueryCursorCodec` +
+  `QueryCursorCodec` (caller-supplied Data Protection **purpose** for per-domain cryptographic isolation;
+  preserves the v1 payload, 4 KB length cap, and all failure reason codes — `wrong-query-type`,
+  `wrong-scope`, `wrong-version`, `empty-position`, `too-large`, `tamper-or-key-rotation`, `malformed`),
+  a fluent `QueryCursorScope` builder that reproduces Tenants' scope strings exactly (same `|`/`:`
+  separators, value escaping, and round-trip-UTC instant formatting — proving B5 drop-in), and
+  `AddEventStoreQueryCursorCodec(purpose)` DI. New dependency: `Microsoft.AspNetCore.DataProtection.Abstractions`
+  (netstandard, keeps Client ASP.NET-free). **21 new tests** (Client.Tests now 432/432); whole-graph
+  Release build clean (0 warnings under warnings-as-errors).
 - **A3 (revised):** Generalize the projection-BUILD side — the `/project` endpoint dispatch (Model a) and the
   downstream event-subscription/projection-consumer plumbing (Tenants' `TenantEventProcessor` /
   marker-dedup registration) — paired with A8. Distinct from the query-READ seam (A7).
@@ -372,10 +381,19 @@ per-domain projection/query actor required.**
 DI; `InMemoryReadModelStore` test fake in `Hexalith.EventStore.Testing` (for B7). 11 new tests (Client.Tests
 411/411, Testing.Tests 144/144); whole-graph Release build clean. See §4.1 A8 for the full surface.
 
-**Remaining Epic A (revised, ordered by Epic-B need):** **A9** (cursor codec) → A3 (generalize `/project`
-build-side + projection-consumer) → A4 (Aspire `AddEventStoreDomainModule`) → A5 (convention telemetry/health)
-→ A6 (publish SDK; release-affecting, PM/Architect). A9 still gates Epic B (Tenants' cursor codec; A8's
-read-model store is now available); A4/A5 are best sequenced with Epic B.
+**Also delivered — A9 (generic pagination cursor codec) (2026-06-02):** `IQueryCursorCodec` +
+`QueryCursorCodec` (Data-Protection-backed, caller-supplied purpose for per-domain isolation),
+`QueryCursorScope` fluent builder (reproduces Tenants' scope strings verbatim), and
+`AddEventStoreQueryCursorCodec(purpose)` DI — all in `Hexalith.EventStore.Client/Queries`. Faithful
+generalization of `TenantQueryCursorCodec` + `TenantQueryCursorScopes` (same payload/v1, 4 KB cap, failure
+reasons, escaping, instant formatting). 21 new tests (Client.Tests 432/432); whole-graph Release build
+clean. See §4.1 A9.
+
+**Remaining Epic A (revised, ordered by Epic-B need):** A3 (generalize `/project` build-side +
+projection-consumer) → A4 (Aspire `AddEventStoreDomainModule`) → A5 (convention telemetry/health) → A6
+(publish SDK; release-affecting, PM/Architect). **A7, A8, and A9 are now all delivered — the query-side
+platform last-mile that gated Epic B is complete, so Epic B (Tenants refactor) is unblocked.** A4/A5 are
+best sequenced with Epic B.
 
 ## 7. Approval
 
