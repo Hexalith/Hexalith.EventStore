@@ -1,4 +1,0 @@
-version
-3
-data
-[{"eventCount":3,"sizeBytes":null,"hasSnapshot":false,"snapshotAge":null,"tenantId":"tenant-a","domain":"counter","aggregateId":"counter-1","aggregateType":"CounterAggregate"}]

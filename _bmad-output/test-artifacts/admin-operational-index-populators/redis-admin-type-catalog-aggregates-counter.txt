@@ -1,4 +1,0 @@
-version
-1
-data
-[{"eventCount":5,"commandCount":4,"hasProjections":true,"typeName":"Hexalith.EventStore.Sample.Counter.CounterAggregate","domain":"counter"}]

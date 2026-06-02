@@ -1,4 +1,0 @@
-version
-4
-data
-[{"lastEventSequence":3,"lastActivityUtc":"2026-05-10T09:58:53.8719854+00:00","eventCount":3,"hasSnapshot":false,"streamStatus":0,"tenantId":"tenant-a","domain":"counter","aggregateId":"counter-1"},{"lastEventSequence":1,"lastActivityUtc":"2026-05-10T09:58:33.6891928+00:00","eventCount":1,"hasSnapshot":false,"streamStatus":0,"tenantId":"system","domain":"global-administrators","aggregateId":"global-administrators"}]
