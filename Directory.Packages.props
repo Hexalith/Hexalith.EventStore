@@ -9,14 +9,14 @@
     <PackageVersion Include="Dapr.Actors.AspNetCore" Version="1.17.9" />
   </ItemGroup>
   <ItemGroup Label="Aspire">
-    <PackageVersion Include="Aspire.Hosting" Version="13.3.5" />
-    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.3.5" />
-    <PackageVersion Include="Aspire.Hosting.Docker" Version="13.3.5" />
-    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.3.5-preview.1.26270.6" />
-    <PackageVersion Include="Aspire.Hosting.Kubernetes" Version="13.3.5-preview.1.26270.6" />
-    <PackageVersion Include="Aspire.Hosting.Redis" Version="13.3.5" />
-    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.3.5" />
-    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Dapr" Version="13.3.0-preview.1.260514-0647" />
+    <PackageVersion Include="Aspire.Hosting" Version="13.4.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.4.0" />
+    <PackageVersion Include="Aspire.Hosting.Docker" Version="13.4.0" />
+    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.4.0-preview.1.26281.18" />
+    <PackageVersion Include="Aspire.Hosting.Kubernetes" Version="13.4.0-preview.1.26281.18" />
+    <PackageVersion Include="Aspire.Hosting.Redis" Version="13.4.0" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.4.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Dapr" Version="13.4.0-preview.1.260602-0230" />
   </ItemGroup>
   <ItemGroup Label="Aspire ServiceDefaults">
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.6.0" />
@@ -46,7 +46,7 @@
     <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.14.2" />
   </ItemGroup>
   <ItemGroup Label="Hexalith">
-    <PackageVersion Include="Hexalith.Commons.UniqueIds" Version="2.16.0" />
+    <PackageVersion Include="Hexalith.Commons.UniqueIds" Version="2.18.0" />
   </ItemGroup>
   <ItemGroup Label="CLI">
     <PackageVersion Include="System.CommandLine" Version="2.0.8" />
@@ -58,24 +58,24 @@
     <PackageVersion Include="MediatR" Version="14.1.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
-    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.7" />
+    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.2.1" />
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
   </ItemGroup>
   <ItemGroup Label="LoadTesting">
     <PackageVersion Include="NBomber" Version="6.4.1" />
     <PackageVersion Include="NBomber.Http" Version="6.2.0" />
-    <PackageVersion Include="Microsoft.IdentityModel.Tokens" Version="8.18.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Tokens" Version="8.19.0" />
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.18.0" />
   </ItemGroup>
   <ItemGroup Label="Testing">
-    <PackageVersion Include="StackExchange.Redis" Version="2.13.1" />
+    <PackageVersion Include="StackExchange.Redis" Version="2.13.17" />
     <PackageVersion Include="bunit" Version="2.7.2" />
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.8" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.6.0" />
-    <PackageVersion Include="Microsoft.Playwright" Version="1.52.0" />
+    <PackageVersion Include="Microsoft.Playwright" Version="1.60.0" />
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
     <PackageVersion Include="xunit.v3.assert" Version="3.2.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
