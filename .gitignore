@@ -464,3 +464,5 @@ _bmad-output/implementation-artifacts/*-pass*-review.diff
 _bmad-output/implementation-artifacts/*-pass*-review.patch
 _bmad-output/implementation-artifacts/*-current-review.diff
 _bmad-output/implementation-artifacts/*-fresh-review.diff
+
+.fake
