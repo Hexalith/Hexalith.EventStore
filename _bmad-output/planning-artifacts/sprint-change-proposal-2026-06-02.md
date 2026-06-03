@@ -574,6 +574,52 @@ client/testing reduction; final build/test) are unstarted.
   `sample-consuming-service-walkthrough.md` / `cross-aggregate-timing.md` and the 9 doc-drift tests to the
   domain-centric narrative) is a documentation deliverable. IntegrationTests DAPR-fixture migration is CI-gated.
 
+## 6c. Final closeout — A6, Slice 5, C2 (2026-06-02)
+
+**A6 (SDK publish) — DONE/verified.** `Hexalith.EventStore.DomainService` and `Hexalith.EventStore.ServiceDefaults`
+both inherit `IsPackable=true` (no `EnableContainer`, no explicit `false`) and are in `Hexalith.EventStore.slnx`;
+the release pipeline (`.releaserc.json`) runs `dotnet pack` over the solution, so both ship automatically. Verified:
+each packs cleanly (`9.9.9` smoke), and a full-solution pack emits both nupkgs. CLAUDE.md already lists the 8
+packages incl. these two. (Out-of-scope findings flagged, not fixed: `Hexalith.EventStore.Aspire` fails `dotnet pack`
+under warnings-as-errors with `NU5104` — stable release with the prerelease `CommunityToolkit.Aspire.Hosting.Dapr`
+dep — which would break the whole solution-level pack; and the solution pack also emits `Admin.*` and
+`Hexalith.Tenants.*` packages beyond the documented 8.)
+
+**Slice 5 (Tenants.Client/Sample → platform A3 generics) — DONE & GREEN (submodule).** Deleted the per-domain
+subscription plumbing (`TenantEventEnvelope`/`TenantEventProcessor`/`TenantEventProcessingResult`/
+`TenantEventSubscriptionEndpoints`/`ITenantEventHandler`/`TenantEventContext`/`HexalithTenantsOptions`/
+`ValidateHexalithTenantsOptions`/`AddTenantEventHandler`) and re-pointed onto the platform A3 generics
+(`EventStoreDomainEvent{Envelope,Processor,ProcessingResult,Context}`, `IEventStoreDomainEventHandler<T>`,
+`EventStoreDomainEventsOptions`, `AddEventStoreDomainEvents` + `AddEventStoreDomainEventHandler`,
+`MapEventStoreDomainEvents`). `TenantProjectionEventHandler` now implements the platform handler interface and keys
+local state by `context.AggregateId` (the managed tenant ID; envelope `TenantId` is the publisher scope "system").
+Kept domain-specific: the projection handler, `TenantLocalState`, `TenantProjectionEventMetadata`, and the consumer
+local `ITenantProjectionStore`/`InMemoryTenantProjectionStore`. `AddHexalithTenants` is now a thin composition root
+over the platform generics (sets topic `tenants.events`, route `/tenants/events`, `PayloadAggregateIdPropertyName =
+"TenantId"`; projection handler registered as a shared singleton to preserve per-tenant write locks).
+`Hexalith.Tenants.Client.csproj` references the platform Client; the Sample references the DomainService SDK and uses
+`AddEventStoreDomainEventHandler` + `MapEventStoreDomainEvents`. The two redundant Tenants processor/endpoint test
+files were deleted (platform owns that coverage); the registration test was rewritten onto the new composition; the
+handler/sample tests repointed to the platform context. **Verified green:** Client.Tests 47/47, Sample.Tests 31/31,
+Contracts.Tests 103/103, Testing.Tests 181/181, Server.Tests 640/640 (excluding the 5 CI-gated nested-submodule
+classes). `IntegrationTests` remains the known CI-gated project (nested submodule absent + Slice 1–2 fixture types).
+
+**C2 (domain-centric docs + doc-drift tests) — DONE.** Migrated five docs off the removed types onto the platform A3
+narrative — `cross-aggregate-timing.md`, `demo.md`, `sample-consuming-service-walkthrough.md`,
+`idempotent-event-processing.md`, `event-contract-reference.md` (the timing guide's deleted source-path citation now
+points at `Registration/TenantServiceCollectionExtensions.cs`; the idempotency code samples use the platform context
+and key by `AggregateId`). Updated the doc-drift tests in lockstep: `CrossAggregateTimingDocumentationTests`,
+`SampleConsumingServiceWalkthroughDocumentationTests`, `AhaMomentDemoDocumentationTests`, and the
+`EventPublicationConfigurationTests` idempotency assertion. **Verified:** the locally-runnable doc tests pass
+(AhaMomentDemo + SampleConsumingServiceWalkthrough + EventContractReference, 21/21; the walkthrough snippet matches
+the real Sample `Program.cs` line-for-line); the two CI-gated classes (`CrossAggregateTiming`,
+`EventPublicationConfiguration`) had every asserted string confirmed present in the docs and the cited file confirmed
+to exist (they read the nested `Hexalith.EventStore/` submodule for the rest, so they run only in CI).
+
+**Net:** Epic A complete (incl. A6); Epic B complete through Slice 5; Epic C complete (C1 prior; C2 here; C3 guardrail
+already present as `DomainModuleAuthoringGuardrailTests`). Remaining strictly CI-gated: the Tenants
+`IntegrationTests` DAPR-fixture migration and the 5 nested-submodule doc tests.
+
 ## 7. Approval
 
 - [x] Approved for implementation — 2026-06-02
