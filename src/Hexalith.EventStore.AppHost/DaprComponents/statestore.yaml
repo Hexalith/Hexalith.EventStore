@@ -26,10 +26,16 @@ spec:
   type: state.redis
   version: v1
   metadata:
+    # Local development host. DAPR does NOT support the `{env:VAR|default}` template
+    # form (only {uuid}/{podName}/{namespace}/{appID} are interpolated), so an unset
+    # REDIS_HOST left the literal string as the hostname and daprd failed with
+    # "no such host". `dapr init` provisions Redis at localhost:6379 with no password,
+    # which is what the local Aspire topology targets. Production deployments use the
+    # secret-backed templates under deploy/dapr/ instead of this file.
     - name: redisHost
-      value: "{env:REDIS_HOST|127.0.0.1:6379}"
+      value: "localhost:6379"
     - name: redisPassword
-      value: "{env:REDIS_PASSWORD}"
+      value: ""
     - name: actorStateStore
       value: "true"
     - name: keyPrefix
