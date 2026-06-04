@@ -5,7 +5,12 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!-- Reference Hexalith.Commons by project when its source is co-located (see HexalithCommonsRoot
+       in Directory.Build.props); otherwise fall back to the published NuGet package. -->
+  <ItemGroup Condition="'$(HexalithCommonsRoot)' != ''">
+    <ProjectReference Include="$(HexalithCommonsRoot)\src\libraries\Hexalith.Commons.UniqueIds\Hexalith.Commons.UniqueIds.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(HexalithCommonsRoot)' == ''">
     <PackageReference Include="Hexalith.Commons.UniqueIds" />
   </ItemGroup>
 

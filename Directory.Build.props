@@ -12,6 +12,14 @@
         <HexalithTenantsBasePath Condition="'$(HexalithTenantsBasePath)' == '' and Exists('$(MSBuildThisFileDirectory)../src/Hexalith.Tenants.Contracts/')">$(MSBuildThisFileDirectory)../src</HexalithTenantsBasePath>
         <HexalithTenantsBasePath Condition="'$(HexalithTenantsBasePath)' == '' and Exists('$(MSBuildThisFileDirectory)../Hexalith.Tenants/src/Hexalith.Tenants.Contracts/')">$(MSBuildThisFileDirectory)../Hexalith.Tenants/src</HexalithTenantsBasePath>
         <HexalithTenantsBasePath Condition="'$(HexalithTenantsBasePath)' == ''">$(MSBuildThisFileDirectory)Hexalith.Tenants/src</HexalithTenantsBasePath>
+
+        <!-- Resolve Hexalith.Commons source path for co-located submodule layouts:
+             1. Commons as a sibling submodule beside EventStore (e.g. inside a consuming app repo).
+             2. Commons as a nested submodule inside EventStore (EventStore standalone).
+             When Commons source is present, projects reference it by project; otherwise they fall
+             back to the NuGet package (HexalithCommonsRoot stays empty — there is no fallback path). -->
+        <HexalithCommonsRoot Condition="'$(HexalithCommonsRoot)' == '' and Exists('$(MSBuildThisFileDirectory)../Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/')">$(MSBuildThisFileDirectory)../Hexalith.Commons</HexalithCommonsRoot>
+        <HexalithCommonsRoot Condition="'$(HexalithCommonsRoot)' == '' and Exists('$(MSBuildThisFileDirectory)Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/')">$(MSBuildThisFileDirectory)Hexalith.Commons</HexalithCommonsRoot>
         <NoWarn>$(NoWarn);IDE0028</NoWarn>
     </PropertyGroup>
 
