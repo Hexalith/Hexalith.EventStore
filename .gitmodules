@@ -7,3 +7,6 @@
 [submodule "Hexalith.Commons"]
 	path = Hexalith.Commons
 	url = https://github.com/Hexalith/Hexalith.Commons.git
+[submodule "Hexalith.Builds"]
+	path = Hexalith.Builds
+	url = https://github.com/Hexalith/Hexalith.Builds.git
