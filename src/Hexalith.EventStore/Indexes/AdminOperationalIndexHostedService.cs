@@ -1,3 +1,5 @@
+using System.Net;
+
 using Dapr.Client;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Projections;
@@ -66,6 +68,16 @@ public sealed partial class AdminOperationalIndexHostedService(
                 using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(appId, MetadataMethodName, request);
                 HttpClient httpClient = httpClientFactory.CreateClient();
                 using HttpResponseMessage response = await httpClient.SendAsync(httpRequest, ct).ConfigureAwait(false);
+
+                // A 404 means the target app does not expose /admin/operational-index-metadata: it is a
+                // pub/sub consumer, not a metadata-bearing domain service. Skip it WITHOUT marking a failure
+                // so the indexes for domains that DID respond are still written — a single endpoint-less
+                // consumer must not suppress the entire operational index.
+                if (response.StatusCode == HttpStatusCode.NotFound) {
+                    Log.MetadataEndpointAbsent(logger, appId);
+                    continue;
+                }
+
                 _ = response.EnsureSuccessStatusCode();
 
                 AdminOperationalIndexMetadataResponse? responseMetadata = await response.Content
@@ -276,6 +288,12 @@ public sealed partial class AdminOperationalIndexHostedService(
             Level = LogLevel.Warning,
             Message = "Skipping admin operational index writes because one or more domain metadata sources failed. Existing indexes are preserved.")]
         public static partial void MetadataWriteSkipped(ILogger logger);
+
+        [LoggerMessage(
+            EventId = 6102,
+            Level = LogLevel.Information,
+            Message = "Domain service AppId={AppId} does not expose the operational-index metadata endpoint (404); it is treated as a consumer and skipped without failing the index build.")]
+        public static partial void MetadataEndpointAbsent(ILogger logger, string appId);
     }
 }
 

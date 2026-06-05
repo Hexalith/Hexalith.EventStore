@@ -73,10 +73,26 @@ public static class AdminUIServiceExtensions {
         // Topology cache for sidebar tree
         _ = builder.Services.AddScoped<TopologyCacheService>();
 
-        // SignalR client for real-time projection change signals
+        // SignalR client for real-time projection change signals.
+        // The projection-changes hub is [Authorize]'d under the same JWT bearer scheme as the Admin.Server
+        // REST API, so the connection must present a bearer token; without one the negotiate request is
+        // rejected with 401 and the client silently degrades to polling. Reuse AdminApiAccessTokenProvider —
+        // the identical token source already used for Admin.Server calls (validated against the same
+        // issuer/audience). It is registered scoped, but this Func is invoked by the singleton SignalR client
+        // outside any request scope (on connect/reconnect/refresh), so resolve it through a short-lived scope.
         string signalRHubUrl = builder.Configuration["EventStore:SignalR:HubUrl"]
             ?? "https+http://eventstore/hubs/projection-changes";
-        _ = builder.Services.AddSingleton(new EventStoreSignalRClientOptions { HubUrl = signalRHubUrl });
+        _ = builder.Services.AddSingleton(sp => {
+            IServiceScopeFactory scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+            return new EventStoreSignalRClientOptions {
+                HubUrl = signalRHubUrl,
+                AccessTokenProvider = async () => {
+                    using IServiceScope scope = scopeFactory.CreateScope();
+                    AdminApiAccessTokenProvider tokenProvider = scope.ServiceProvider.GetRequiredService<AdminApiAccessTokenProvider>();
+                    return await tokenProvider.GetAccessTokenAsync().ConfigureAwait(false);
+                },
+            };
+        });
         _ = builder.Services.AddSingleton<EventStoreSignalRClient>();
 
         // HttpClient for invoking Admin.Server via DAPR service invocation (D13,
