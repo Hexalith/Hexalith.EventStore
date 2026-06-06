@@ -30,6 +30,42 @@ public class TopicNameValidatorTests {
         validator.IsValidTopicName("acme.orders.events").ShouldBeTrue();
     }
 
+    // --- Platform/system-tenant two-segment form {domain}.events ---
+
+    [Fact]
+    public void IsValidTopicName_PlatformDomainOnlyPattern_ReturnsTrue() {
+        // Arrange - system-tenant topics are emitted as {domain}.events (AggregateIdentity.PubSubTopic)
+        TopicNameValidator validator = CreateValidator();
+
+        // Act & Assert
+        validator.IsValidTopicName("tenants.events").ShouldBeTrue();
+        validator.IsValidTopicName("global-administrators.events").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void DeriveTopicName_SystemTenantIdentity_ReturnsDomainOnlyTopic() {
+        // Arrange - a system-tenant aggregate derives the two-segment {domain}.events topic
+        TopicNameValidator validator = CreateValidator();
+        var identity = new AggregateIdentity("system", "global-administrators", "ga-1");
+
+        // Act
+        string derivedTopic = validator.DeriveTopicName(identity);
+
+        // Assert
+        derivedTopic.ShouldBe(identity.PubSubTopic);
+        derivedTopic.ShouldBe("global-administrators.events");
+    }
+
+    [Fact]
+    public void IsValidTopicName_SuffixOnly_ReturnsFalse() {
+        // Arrange - the literal suffix with no domain segment must remain invalid
+        TopicNameValidator validator = CreateValidator();
+
+        // Act & Assert
+        validator.IsValidTopicName("events").ShouldBeFalse();
+        validator.IsValidTopicName(".events").ShouldBeFalse();
+    }
+
     // --- Task 4.3: AC #5 ---
 
     [Fact]

@@ -24,8 +24,12 @@ public class TopicNameValidator(
     /// </summary>
     internal const int WarningLengthThreshold = 200;
 
+    // Accepts both the tenant-scoped form `{tenant}.{domain}.events` and the platform/system-tenant
+    // form `{domain}.events` (see AggregateIdentity.PubSubTopic, which emits `{domain}.events` when
+    // TenantId == "system"). The middle segment is optional so both shapes validate; any other
+    // segment count, uppercase, or illegal character is rejected.
     private static readonly Regex _topicPattern = new(
-        @"^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.[a-z0-9]([a-z0-9-]*[a-z0-9])?\.events$",
+        @"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)?\.events$",
         RegexOptions.Compiled);
 
     /// <inheritdoc/>
