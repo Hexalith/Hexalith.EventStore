@@ -1,4 +1,16 @@
 <Solution>
+  <Folder Name="/Hexalith.Commons/src/libraries/">
+    <Project Path="Hexalith.Commons/src/libraries/Hexalith.Commons/Hexalith.Commons.csproj" />
+    <Project Path="Hexalith.Commons/src/libraries/Hexalith.Commons.Configurations/Hexalith.Commons.Configurations.csproj" />
+    <Project Path="Hexalith.Commons/src/libraries/Hexalith.Commons.Http/Hexalith.Commons.Http.csproj" />
+    <Project Path="Hexalith.Commons/src/libraries/Hexalith.Commons.Metadatas/Hexalith.Commons.Metadatas.csproj" />
+    <Project Path="Hexalith.Commons/src/libraries/Hexalith.Commons.StringEncoders/Hexalith.Commons.StringEncoders.csproj" />
+    <Project Path="Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj" />
+  </Folder>
+  <Folder Name="/Hexalith.Commons/test/">
+    <Project Path="Hexalith.Commons/test/Hexalith.Commons.Tests/Hexalith.Commons.Tests.csproj" />
+    <Project Path="Hexalith.Commons/test/Hexalith.Commons.Http.Tests/Hexalith.Commons.Http.Tests.csproj" />
+  </Folder>
   <Folder Name="/Hexalith.Tenants/">
     <Project Path="Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj" />
     <Project Path="Hexalith.Tenants/src/Hexalith.Tenants.Server/Hexalith.Tenants.Server.csproj" />

@@ -205,8 +205,7 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
                 Domain: domain,
                 AggregateId: aggregateId,
                 QueryType: queryType,
-                Payload: payload is not null ? JsonSerializer.SerializeToElement(payload) : null,
-                ProjectionActorType: TenantProjectionRouting.ActorTypeName));
+                Payload: payload is not null ? JsonSerializer.SerializeToElement(payload) : null));
 
             HttpClient httpClient = _httpClientFactory.CreateClient(_serverOptions.EventStoreAppId);
             HttpResponseMessage httpResponse = await httpClient.SendAsync(request, ct).ConfigureAwait(false);
