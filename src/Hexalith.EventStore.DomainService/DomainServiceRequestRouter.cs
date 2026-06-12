@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 using Hexalith.EventStore.Client.Aggregates;
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
@@ -17,15 +19,74 @@ public static class DomainServiceRequestRouter {
     /// </summary>
     /// <param name="serviceProvider">The scoped request service provider.</param>
     /// <param name="request">The domain service request to process.</param>
+    /// <param name="cancellationToken">The request cancellation token.</param>
     /// <returns>A wire-safe representation of the domain result.</returns>
-    public static async Task<DomainServiceWireResult> ProcessAsync(IServiceProvider serviceProvider, DomainServiceRequest request) {
+    public static async Task<DomainServiceWireResult> ProcessAsync(
+        IServiceProvider serviceProvider,
+        DomainServiceRequest request,
+        CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentNullException.ThrowIfNull(request);
+
+        DomainServiceAdmissionContext? admissionContext = null;
+        EventStoreDomainDiagnostics? diagnostics = null;
+        foreach (IDomainServiceAdmissionStage stage in serviceProvider.GetServices<IDomainServiceAdmissionStage>()) {
+            admissionContext ??= new DomainServiceAdmissionContext(request);
+            diagnostics ??= serviceProvider.GetService<EventStoreDomainDiagnostics>();
+            DomainServiceAdmissionResult admissionResult = await EvaluateAdmissionStageAsync(
+                stage,
+                admissionContext,
+                diagnostics,
+                cancellationToken).ConfigureAwait(false);
+
+            if (admissionResult.IsRejected) {
+                DomainResult rejection = DomainResult.Rejection(admissionResult.RejectionEvents);
+                return DomainServiceWireResult.FromDomainResult(rejection);
+            }
+        }
 
         IDomainProcessor processor = serviceProvider.GetRequiredKeyedService<IDomainProcessor>(request.Command.Domain);
         DomainResult result = await processor.ProcessAsync(request.Command, request.CurrentState).ConfigureAwait(false);
 
         return DomainServiceWireResult.FromDomainResult(result);
+    }
+
+    private static async Task<DomainServiceAdmissionResult> EvaluateAdmissionStageAsync(
+        IDomainServiceAdmissionStage stage,
+        DomainServiceAdmissionContext context,
+        EventStoreDomainDiagnostics? diagnostics,
+        CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(stage);
+        ArgumentNullException.ThrowIfNull(context);
+
+        string stageName = string.IsNullOrWhiteSpace(stage.Name) ? stage.GetType().Name : stage.Name.Trim();
+        using Activity? activity = diagnostics?.ActivitySource.StartActivity("eventstore.domain.admission.stage");
+        SetAdmissionTags(activity, context, stageName);
+
+        long start = Stopwatch.GetTimestamp();
+        try {
+            DomainServiceAdmissionResult result = await stage.EvaluateAsync(context, cancellationToken).ConfigureAwait(false);
+            ArgumentNullException.ThrowIfNull(result);
+            TimeSpan duration = Stopwatch.GetElapsedTime(start);
+            activity?.SetTag("eventstore.admission.accepted", result.IsAccepted);
+            activity?.SetTag("eventstore.admission.duration_ms", duration.TotalMilliseconds);
+            diagnostics?.RecordAdmissionStage(context.Command.CommandType, stageName, result.IsAccepted, duration);
+            return result;
+        }
+        catch {
+            activity?.SetStatus(ActivityStatusCode.Error);
+            throw;
+        }
+    }
+
+    private static void SetAdmissionTags(Activity? activity, DomainServiceAdmissionContext context, string stageName) {
+        if (activity is null) {
+            return;
+        }
+
+        activity.SetTag("eventstore.domain", context.Command.Domain);
+        activity.SetTag("eventstore.command.type", context.Command.CommandType);
+        activity.SetTag("eventstore.admission.stage", stageName);
     }
 
     /// <summary>

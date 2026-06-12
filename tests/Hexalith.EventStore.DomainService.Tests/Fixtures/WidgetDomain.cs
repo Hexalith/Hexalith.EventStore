@@ -1,6 +1,8 @@
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Aggregates;
+using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Queries;
@@ -13,6 +15,9 @@ public sealed record CreateWidget;
 
 /// <summary>A minimal event used to exercise the domain-service SDK in this test assembly.</summary>
 public sealed record WidgetCreated : IEventPayload;
+
+/// <summary>A minimal rejection event used to exercise the domain-service admission hook.</summary>
+public sealed record WidgetRejected(string Reason) : IRejectionEvent;
 
 /// <summary>Minimal aggregate state for the local <c>widget</c> test domain.</summary>
 public sealed class WidgetState {
@@ -70,5 +75,99 @@ public sealed class WidgetProjection : IDomainProjectionHandler {
         ArgumentNullException.ThrowIfNull(request);
         JsonElement state = JsonSerializer.SerializeToElement(new { count = request.Events?.Length ?? 0 });
         return new ProjectionResponse("widget", state);
+    }
+}
+
+/// <summary>A test processor that records invocation order for admission-hook tests.</summary>
+public sealed class RecordingWidgetProcessor(IList<string> calls) : IDomainProcessor {
+    private readonly IList<string> _calls = calls;
+
+    /// <summary>Gets the number of processor invocations.</summary>
+    public int InvocationCount { get; private set; }
+
+    /// <inheritdoc/>
+    public Task<DomainResult> ProcessAsync(CommandEnvelope command, object? currentState) {
+        ArgumentNullException.ThrowIfNull(command);
+        InvocationCount++;
+        _calls.Add("processor");
+        return Task.FromResult(DomainResult.Success(new IEventPayload[] { new WidgetCreated() }));
+    }
+}
+
+/// <summary>A test admission stage with configurable accept/reject behavior.</summary>
+public sealed class RecordingAdmissionStage(
+    string name,
+    IList<string> calls,
+    bool accept = true) : IDomainServiceAdmissionStage {
+    private readonly bool _accept = accept;
+    private readonly IList<string> _calls = calls;
+
+    /// <inheritdoc/>
+    public string Name { get; } = name;
+
+    /// <inheritdoc/>
+    public Task<DomainServiceAdmissionResult> EvaluateAsync(
+        DomainServiceAdmissionContext context,
+        CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(context);
+        _calls.Add(Name);
+        DomainServiceAdmissionResult result = _accept
+            ? DomainServiceAdmissionResult.Accepted()
+            : DomainServiceAdmissionResult.Rejected([new WidgetRejected("blocked")]);
+        return Task.FromResult(result);
+    }
+}
+
+/// <summary>A first scoped admission stage used to prove generic DI registration order.</summary>
+public sealed class FirstRegisteredAdmissionStage(IList<string> calls) : IDomainServiceAdmissionStage {
+    private readonly IList<string> _calls = calls;
+
+    /// <inheritdoc/>
+    public string Name => "first";
+
+    /// <inheritdoc/>
+    public Task<DomainServiceAdmissionResult> EvaluateAsync(
+        DomainServiceAdmissionContext context,
+        CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(context);
+        _calls.Add(Name);
+        return Task.FromResult(DomainServiceAdmissionResult.Accepted());
+    }
+}
+
+/// <summary>A second scoped admission stage used to prove generic DI registration order.</summary>
+public sealed class SecondRegisteredAdmissionStage(IList<string> calls) : IDomainServiceAdmissionStage {
+    private readonly IList<string> _calls = calls;
+
+    /// <inheritdoc/>
+    public string Name => "second";
+
+    /// <inheritdoc/>
+    public Task<DomainServiceAdmissionResult> EvaluateAsync(
+        DomainServiceAdmissionContext context,
+        CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(context);
+        _calls.Add(Name);
+        return Task.FromResult(DomainServiceAdmissionResult.Accepted());
+    }
+}
+
+/// <summary>A test admission stage that honors cancellation before accepting a command.</summary>
+public sealed class CancellationAwareAdmissionStage(
+    string name,
+    IList<string> calls) : IDomainServiceAdmissionStage {
+    private readonly IList<string> _calls = calls;
+
+    /// <inheritdoc/>
+    public string Name { get; } = name;
+
+    /// <inheritdoc/>
+    public Task<DomainServiceAdmissionResult> EvaluateAsync(
+        DomainServiceAdmissionContext context,
+        CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(context);
+        _calls.Add(Name);
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(DomainServiceAdmissionResult.Accepted());
     }
 }

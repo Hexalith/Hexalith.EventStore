@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Discovery;
+using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Queries;
@@ -8,6 +10,7 @@ using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.DomainService.Tests.Fixtures;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
@@ -78,6 +81,168 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         result.IsRejection.ShouldBeFalse();
         DomainServiceWireEvent @event = result.Events.ShouldHaveSingleItem();
         @event.EventTypeName.ShouldBe(typeof(WidgetCreated).FullName);
+    }
+
+    /// <summary>
+    /// Proves the no-hook path keeps the existing direct processor dispatch behavior without requiring any
+    /// admission-chain registration.
+    /// </summary>
+    [Fact]
+    public async Task DomainServiceRequestRouter_Process_WithoutAdmissionStages_DispatchesDirectlyToProcessor() {
+        var calls = new List<string>();
+        var processor = new RecordingWidgetProcessor(calls);
+        ServiceProvider provider = BuildAdmissionTestProvider(processor);
+
+        DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(provider, CreateProcessRequest());
+
+        result.IsRejection.ShouldBeFalse();
+        result.Events.ShouldHaveSingleItem().EventTypeName.ShouldBe(typeof(WidgetCreated).FullName);
+        processor.InvocationCount.ShouldBe(1);
+        calls.ShouldBe(["processor"]);
+    }
+
+    /// <summary>
+    /// Proves an accepting admission stage runs before the keyed processor and lets the processor result flow
+    /// through unchanged.
+    /// </summary>
+    [Fact]
+    public async Task DomainServiceRequestRouter_Process_AcceptingAdmissionStage_RunsBeforeProcessor() {
+        var calls = new List<string>();
+        var processor = new RecordingWidgetProcessor(calls);
+        ServiceProvider provider = BuildAdmissionTestProvider(
+            processor,
+            services => services.AddEventStoreDomainAdmissionStage(
+                _ => new RecordingAdmissionStage("auth", calls)));
+
+        DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(provider, CreateProcessRequest());
+
+        result.IsRejection.ShouldBeFalse();
+        result.Events.ShouldHaveSingleItem().EventTypeName.ShouldBe(typeof(WidgetCreated).FullName);
+        processor.InvocationCount.ShouldBe(1);
+        calls.ShouldBe(["auth", "processor"]);
+    }
+
+    /// <summary>
+    /// Proves the builder-level generic registration API wires scoped admission stages in registration order.
+    /// </summary>
+    [Fact]
+    public async Task AddEventStoreDomainAdmissionStage_BuilderGenericOverload_RegistersStagesInOrder() {
+        var calls = new List<string>();
+        var processor = new RecordingWidgetProcessor(calls);
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.Services.AddSingleton<IList<string>>(calls);
+        _ = builder.Services.AddKeyedSingleton<IDomainProcessor>("widget", processor);
+
+        _ = builder.AddEventStoreDomainAdmissionStage<FirstRegisteredAdmissionStage>();
+        _ = builder.AddEventStoreDomainAdmissionStage<SecondRegisteredAdmissionStage>();
+
+        using ServiceProvider provider = builder.Services.BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+
+        DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(scope.ServiceProvider, CreateProcessRequest());
+
+        result.IsRejection.ShouldBeFalse();
+        processor.InvocationCount.ShouldBe(1);
+        calls.ShouldBe(["first", "second", "processor"]);
+    }
+
+    /// <summary>
+    /// Proves an admission rejection is returned as a typed domain rejection and the keyed processor is never
+    /// invoked after the rejection.
+    /// </summary>
+    [Fact]
+    public async Task DomainServiceRequestRouter_Process_RejectingAdmissionStage_ReturnsTypedRejectionWithoutProcessor() {
+        var calls = new List<string>();
+        var processor = new RecordingWidgetProcessor(calls);
+        ServiceProvider provider = BuildAdmissionTestProvider(
+            processor,
+            services => services.AddEventStoreDomainAdmissionStage(
+                _ => new RecordingAdmissionStage("approval-gate", calls, accept: false)));
+
+        DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(provider, CreateProcessRequest());
+
+        result.IsRejection.ShouldBeTrue();
+        DomainServiceWireEvent @event = result.Events.ShouldHaveSingleItem();
+        @event.EventTypeName.ShouldBe(typeof(WidgetRejected).FullName);
+        @event.SerializationFormat.ShouldBe("json");
+        JsonSerializer.Deserialize<WidgetRejected>(@event.Payload)!.Reason.ShouldBe("blocked");
+        processor.InvocationCount.ShouldBe(0);
+        calls.ShouldBe(["approval-gate"]);
+    }
+
+    /// <summary>
+    /// Proves multiple admission stages execute in DI registration order and stop after the first rejection.
+    /// </summary>
+    [Fact]
+    public async Task DomainServiceRequestRouter_Process_MultipleAdmissionStages_StopAfterFirstRejection() {
+        var calls = new List<string>();
+        var processor = new RecordingWidgetProcessor(calls);
+        ServiceProvider provider = BuildAdmissionTestProvider(
+            processor,
+            services => {
+                _ = services.AddEventStoreDomainAdmissionStage(_ => new RecordingAdmissionStage("auth", calls));
+                _ = services.AddEventStoreDomainAdmissionStage(_ => new RecordingAdmissionStage("approval-gate", calls, accept: false));
+                _ = services.AddEventStoreDomainAdmissionStage(_ => new RecordingAdmissionStage("pre-commit-audit", calls));
+            });
+
+        DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(provider, CreateProcessRequest());
+
+        result.IsRejection.ShouldBeTrue();
+        processor.InvocationCount.ShouldBe(0);
+        calls.ShouldBe(["auth", "approval-gate"]);
+    }
+
+    /// <summary>
+    /// Proves request cancellation reaches the admission stage and prevents processor dispatch.
+    /// </summary>
+    [Fact]
+    public async Task DomainServiceRequestRouter_Process_CanceledAdmissionStage_PropagatesCancellationWithoutProcessor() {
+        var calls = new List<string>();
+        var processor = new RecordingWidgetProcessor(calls);
+        ServiceProvider provider = BuildAdmissionTestProvider(
+            processor,
+            services => services.AddEventStoreDomainAdmissionStage(
+                _ => new CancellationAwareAdmissionStage("auth", calls)));
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => DomainServiceRequestRouter.ProcessAsync(provider, CreateProcessRequest(), cancellation.Token));
+
+        processor.InvocationCount.ShouldBe(0);
+        calls.ShouldBe(["auth"]);
+    }
+
+    /// <summary>
+    /// Proves admission telemetry remains optional and uses the convention-named domain diagnostics when present.
+    /// </summary>
+    [Fact]
+    public async Task DomainServiceRequestRouter_Process_AdmissionTelemetry_UsesDomainDiagnosticsWhenRegistered() {
+        var calls = new List<string>();
+        var processor = new RecordingWidgetProcessor(calls);
+        using var listener = new ActivityListener();
+        var activities = new List<Activity>();
+        listener.ShouldListenTo = source => source.Name == EventStoreDomainTelemetry.ActivitySourceName("widget");
+        listener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
+        listener.ActivityStopped = activity => activities.Add(activity);
+        ActivitySource.AddActivityListener(listener);
+
+        ServiceProvider provider = BuildAdmissionTestProvider(
+            processor,
+            services => {
+                _ = services.AddSingleton(new EventStoreDomainDiagnostics("widget"));
+                _ = services.AddEventStoreDomainAdmissionStage(_ => new RecordingAdmissionStage("auth", calls));
+            });
+
+        DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(provider, CreateProcessRequest());
+
+        result.IsRejection.ShouldBeFalse();
+        Activity activity = activities.ShouldHaveSingleItem();
+        activity.OperationName.ShouldBe("eventstore.domain.admission.stage");
+        activity.GetTagItem("eventstore.domain").ShouldBe("widget");
+        activity.GetTagItem("eventstore.command.type").ShouldBe(nameof(CreateWidget));
+        activity.GetTagItem("eventstore.admission.stage").ShouldBe("auth");
+        activity.GetTagItem("eventstore.admission.accepted").ShouldBe(true);
     }
 
     /// <summary>
@@ -213,6 +378,35 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         response.ShouldBeNull();
     }
 
+    /// <summary>
+    /// Proves the canonical domain-service endpoint set stays unchanged when the admission hook is added.
+    /// </summary>
+    [Fact]
+    public void MapEventStoreDomainService_MapsCanonicalEndpointsUnchanged() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.Services.AddSingleton(new DiscoveryResult([], []));
+        WebApplication app = builder.Build();
+
+        _ = app.MapEventStoreDomainService();
+
+        string[] routes = ((IEndpointRouteBuilder)app).DataSources
+            .SelectMany(static source => source.Endpoints)
+            .OfType<RouteEndpoint>()
+            .Select(static endpoint => endpoint.RoutePattern.RawText)
+            .Where(static route => route is not null)
+            .Select(static route => route!)
+            .OrderBy(static route => route, StringComparer.Ordinal)
+            .ToArray();
+
+        routes.ShouldBe([
+            "/",
+            "/admin/operational-index-metadata",
+            "/process",
+            "/project",
+            "/query",
+            "/replay-state"]);
+    }
+
     private static ProjectionEventDto CreateProjectionEvent()
         => new(
             EventTypeName: "WidgetCreated",
@@ -221,4 +415,28 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             SequenceNumber: 1,
             Timestamp: DateTimeOffset.UnixEpoch,
             CorrelationId: "test-corr");
+
+    private static DomainServiceRequest CreateProcessRequest()
+        => new(
+            new CommandEnvelope(
+                MessageId: Guid.NewGuid().ToString(),
+                TenantId: "test-tenant",
+                Domain: "widget",
+                AggregateId: "widget-1",
+                CommandType: nameof(CreateWidget),
+                Payload: JsonSerializer.SerializeToUtf8Bytes(new CreateWidget()),
+                CorrelationId: "corr-1",
+                CausationId: null,
+                UserId: "test-user",
+                Extensions: null),
+            CurrentState: null);
+
+    private static ServiceProvider BuildAdmissionTestProvider(
+        IDomainProcessor processor,
+        Action<IServiceCollection>? configureServices = null) {
+        var services = new ServiceCollection();
+        _ = services.AddKeyedSingleton("widget", processor);
+        configureServices?.Invoke(services);
+        return services.BuildServiceProvider();
+    }
 }

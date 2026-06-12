@@ -134,8 +134,8 @@ public static class EventStoreDomainServiceExtensions {
 
         _ = app.MapPost(
             "/process",
-            async (DomainServiceRequest request, IServiceProvider serviceProvider)
-                => Results.Ok(await DomainServiceRequestRouter.ProcessAsync(serviceProvider, request).ConfigureAwait(false)));
+            async (DomainServiceRequest request, IServiceProvider serviceProvider, CancellationToken cancellationToken)
+                => Results.Ok(await DomainServiceRequestRouter.ProcessAsync(serviceProvider, request, cancellationToken).ConfigureAwait(false)));
 
         _ = app.MapPost(
             "/replay-state",
