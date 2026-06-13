@@ -1,13 +1,12 @@
 <Project>
 
-  <!-- Import root Directory.Build.props -->
-  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+    <!-- Import root Directory.Build.props -->
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
-  <PropertyGroup>
-    <IsPackable>false</IsPackable>
-    <IsPublishable>false</IsPublishable>
-    <IsTestProject>true</IsTestProject>
-    <NoWarn>$(NoWarn);CA2007;xUnit1051;CS0618</NoWarn>
-  </PropertyGroup>
-
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+        <IsPublishable>false</IsPublishable>
+        <IsTestProject>true</IsTestProject>
+        <NoWarn>$(NoWarn);CA2007;xUnit1051;CS0618;CS8602;CS8604;CS8600;</NoWarn>
+    </PropertyGroup>
 </Project>
