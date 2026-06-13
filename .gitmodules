@@ -13,3 +13,6 @@
 [submodule "Hexalith.FrontComposer"]
 	path = Hexalith.FrontComposer
 	url = https://github.com/Hexalith/Hexalith.FrontComposer.git
+[submodule "Hexalith.PolymorphicSerializations"]
+	path = Hexalith.PolymorphicSerializations
+	url = https://github.com/Hexalith/Hexalith.PolymorphicSerializations.git
