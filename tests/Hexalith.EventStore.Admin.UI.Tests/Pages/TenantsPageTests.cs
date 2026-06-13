@@ -246,7 +246,7 @@ public class TenantsPageTests : AdminUITestContext {
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnCreateTenantConfirm"));
 
         cut.WaitForAssertion(() => _ = _mockTenantApi.Received(1).CreateTenantAsync(
-                Arg.Is<CreateTenantRequest>(request => request.TenantId == "acme-corp"
+                Arg.Is<CreateTenantRequest>(request => request != null && request.TenantId == "acme-corp"
                     && request.Name == "Acme Corp"
                     && request.Description == "Primary tenant"),
                 Arg.Any<CancellationToken>()), TimeSpan.FromSeconds(2));
@@ -281,7 +281,7 @@ public class TenantsPageTests : AdminUITestContext {
         cut.WaitForAssertion(() => {
             cut.Markup.ShouldContain("Tenant ID");
             _ = _mockTenantApi.Received(1).CreateTenantAsync(
-                Arg.Is<CreateTenantRequest>(request => request.TenantId == "acme-corp"
+                Arg.Is<CreateTenantRequest>(request => request != null && request.TenantId == "acme-corp"
                     && request.Name == "Acme Corp"
                     && request.Description == null),
                 Arg.Any<CancellationToken>());

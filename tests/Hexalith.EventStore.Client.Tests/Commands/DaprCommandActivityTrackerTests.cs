@@ -49,7 +49,7 @@ public class DaprCommandActivityTrackerTests {
         _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
-            Arg.Is<List<CommandSummary>>(items => items.Count == 1 && items[0].TenantId == "tenant-a"),
+            Arg.Is<List<CommandSummary>>(items => items != null && items.Count == 1 && items[0].TenantId == "tenant-a"),
             "etag-1",
             stateOptions: Arg.Any<StateOptions?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
@@ -107,7 +107,7 @@ public class DaprCommandActivityTrackerTests {
         _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
-            Arg.Is<List<CommandSummary>>(items => items.Count == 2 && items.Any(x => x.TenantId == "tenant-a") && items.Any(x => x.TenantId == "tenant-b")),
+            Arg.Is<List<CommandSummary>>(items => items != null && items.Count == 2 && items.Any(x => x.TenantId == "tenant-a") && items.Any(x => x.TenantId == "tenant-b")),
             "etag-1",
             stateOptions: Arg.Any<StateOptions?>(),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),

@@ -33,7 +33,7 @@ public class DaprStreamActivityTrackerTests {
         _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
-            Arg.Is<List<StreamSummary>>(items =>
+            Arg.Is<List<StreamSummary>>(items => items != null &&
                 items.Count == 1
                 && items[0].TenantId == "tenant-a"
                 && items[0].Domain == "Counter"
@@ -63,7 +63,7 @@ public class DaprStreamActivityTrackerTests {
         _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
-            Arg.Is<List<StreamSummary>>(items =>
+            Arg.Is<List<StreamSummary>>(items => items != null &&
                 items.Count == 1
                 && items[0].EventCount == 5
                 && items[0].LastEventSequence == 5
@@ -103,7 +103,7 @@ public class DaprStreamActivityTrackerTests {
         _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
-            Arg.Is<List<StreamSummary>>(items =>
+            Arg.Is<List<StreamSummary>>(items => items != null &&
                 items.Count == 2
                 && items.Any(s => s.AggregateId == "agg-1")
                 && items.Any(s => s.AggregateId == "agg-2")),
@@ -128,7 +128,7 @@ public class DaprStreamActivityTrackerTests {
         _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
-            Arg.Is<List<StreamSummary>>(items =>
+            Arg.Is<List<StreamSummary>>(items => items != null &&
                 items.Count == 2
                 && items.Any(s => s.TenantId == "tenant-a")
                 && items.Any(s => s.TenantId == "tenant-b")),
@@ -185,7 +185,7 @@ public class DaprStreamActivityTrackerTests {
         _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             "admin:storage-overview:all",
-            Arg.Is<StorageOverview>(overview =>
+            Arg.Is<StorageOverview>(overview => overview != null &&
                 overview.TotalEventCount == 3
                 && overview.TotalStreamCount == 1
                 && overview.TotalSizeBytes == null
@@ -199,7 +199,7 @@ public class DaprStreamActivityTrackerTests {
         _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             "admin:storage-hot-streams:tenant-a",
-            Arg.Is<List<StreamStorageInfo>>(streams =>
+            Arg.Is<List<StreamStorageInfo>>(streams => streams != null &&
                 streams.Count == 1
                 && streams[0].TenantId == "tenant-a"
                 && streams[0].Domain == "counter"
@@ -260,7 +260,7 @@ public class DaprStreamActivityTrackerTests {
         _ = await _daprClient.Received(1).TrySaveStateAsync(
             "statestore",
             ActivityIndexKey,
-            Arg.Is<List<StreamSummary>>(items =>
+            Arg.Is<List<StreamSummary>>(items => items != null &&
                 items.Count == 1000
                 && items[0].AggregateId == "agg-new"
                 && !items.Any(s => s.AggregateId == "agg-999")),
