@@ -208,6 +208,16 @@ public sealed class InMemoryStateManager : IActorStateManager {
         return Task.FromResult(true);
     }
 
+    /// <inheritdoc/>
+    public Task UnloadStateAsync(string stateName, UnloadStateOptions? options = null, CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(stateName);
+
+        // Unloading evicts the cached (pending) copy of the state; committed/persisted state is retained.
+        _ = _pendingState.Remove(stateName);
+        _ = _pendingRemovals.Remove(stateName);
+        return Task.CompletedTask;
+    }
+
     private bool TryGetPendingOrCommitted<T>(string stateName, out T value) {
         if (_pendingRemovals.Contains(stateName)) {
             value = default!;
