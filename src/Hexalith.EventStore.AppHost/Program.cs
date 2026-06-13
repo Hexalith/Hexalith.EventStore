@@ -195,23 +195,8 @@ else {
     _ = adminUI.WithEnvironment("EventStore__AdminServer__SwaggerUrl", ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"));
 }
 
-// --- Publisher environments (only activate during `aspire publish`) ---
-// Aspire requires exactly one compute environment per resource at publish time.
-// Set PUBLISH_TARGET to select the target publisher:
-//   PUBLISH_TARGET=docker  -> Docker Compose (docker-compose.yaml + .env)
-//   PUBLISH_TARGET=k8s     -> Kubernetes (Helm charts / K8s YAML manifests)
-//   PUBLISH_TARGET=aca     -> Azure Container Apps (Bicep modules)
-// Example: PUBLISH_TARGET=docker aspire publish -o ./publish-output/docker
-string? publishTarget = builder.Configuration["PUBLISH_TARGET"];
-if (string.Equals(publishTarget, "docker", StringComparison.OrdinalIgnoreCase)) {
-    _ = builder.AddDockerComposeEnvironment("docker");
-}
-else if (string.Equals(publishTarget, "k8s", StringComparison.OrdinalIgnoreCase)) {
-    _ = builder.AddKubernetesEnvironment("k8s");
-}
-else if (string.Equals(publishTarget, "aca", StringComparison.OrdinalIgnoreCase)) {
-    _ = builder.AddAzureContainerAppEnvironment("aca");
-}
+// Publisher environments (only activate during `aspire publish`).
+ConfigurePublishEnvironment(builder);
 
 // EnablePubSubTestSubscriber accepts any value parseable as bool (true/false/1/0, case-insensitive,
 // trimmed). The eventstore-test-subscriber app-id grants in DaprComponents/pubsub.yaml are documented
@@ -233,7 +218,7 @@ if (testSubscriberEnabled) {
         .WithEnvironment("EVENTSTORE_TEST_SUBSCRIBER_AUTH_SECRET", testSubscriberAuthSecret);
 }
 
-builder.Build().Run();
+await builder.Build().RunAsync().ConfigureAwait(false);
 
 static string ResolveDaprConfigPath(string fileName) {
     string configPath = Path.Combine(Directory.GetCurrentDirectory(), "DaprComponents", fileName);
@@ -250,6 +235,25 @@ static string ResolveDaprConfigPath(string fileName) {
     }
 
     return configPath;
+}
+
+// Aspire requires exactly one compute environment per resource at publish time.
+// Set PUBLISH_TARGET to select the target publisher:
+//   PUBLISH_TARGET=docker  -> Docker Compose (docker-compose.yaml + .env)
+//   PUBLISH_TARGET=k8s     -> Kubernetes (Helm charts / K8s YAML manifests)
+//   PUBLISH_TARGET=aca     -> Azure Container Apps (Bicep modules)
+// Example: PUBLISH_TARGET=docker aspire publish -o ./publish-output/docker
+static void ConfigurePublishEnvironment(IDistributedApplicationBuilder builder) {
+    string? publishTarget = builder.Configuration["PUBLISH_TARGET"];
+    if (string.Equals(publishTarget, "docker", StringComparison.OrdinalIgnoreCase)) {
+        _ = builder.AddDockerComposeEnvironment("docker");
+    }
+    else if (string.Equals(publishTarget, "k8s", StringComparison.OrdinalIgnoreCase)) {
+        _ = builder.AddKubernetesEnvironment("k8s");
+    }
+    else if (string.Equals(publishTarget, "aca", StringComparison.OrdinalIgnoreCase)) {
+        _ = builder.AddAzureContainerAppEnvironment("aca");
+    }
 }
 
 static string ResolveEmptyDaprResourcesPath() {
