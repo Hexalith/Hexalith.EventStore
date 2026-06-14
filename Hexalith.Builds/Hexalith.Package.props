@@ -1,0 +1,37 @@
+<Project>
+  <PropertyGroup>
+    <Authors>Jérôme Piquot</Authors>
+    <Company>ITANEO</Company>
+    <Product>Hexalith</Product>
+    <PackageTags>
+      Hexalith;.NET;DDD;CLEAN;Distributed;Event Driven;Microservice;Event
+      Sourcing;Blazor;Fluent UI;ASP Net Core;
+    </PackageTags>
+    <Description>
+      Hexalith is a set of libraries to build an application with micro-service
+      architecture.
+    </Description>
+    <RepositoryUrl>https://github.com/Hexalith/Hexalith</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IsPackable Condition="'$(IDEBuild)' != 'true'">true</IsPackable>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' != 'Release'">
+    <VersionSuffix Condition="'$(GITHUB_RUN_NUMBER)' != ''">preview-$(GITHUB_RUN_NUMBER)</VersionSuffix>
+    <VersionSuffix Condition="'$(GITHUB_RUN_NUMBER)' == ''">$(Date:yyyyMMddHHmmss)</VersionSuffix>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)icon.png" Pack="true" PackagePath="">
+      <Link>icon.png</Link>
+    </None>
+    <None Include="$(ProjectRoot)/README.md" Pack="true" PackagePath="\">
+      <Link>README.md</Link>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <GlobalAnalyzerConfigFiles Include="Hexalith.globalconfig" />
+  </ItemGroup>
+</Project>
