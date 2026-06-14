@@ -27,196 +27,13 @@ public class AdminTenantsController(
     // ---- Read endpoints (ReadOnly policy) ----
 
     /// <summary>
-    /// Lists all tenants.
-    /// </summary>
-    [HttpGet]
-    [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
-    [ProducesResponseType(typeof(IReadOnlyList<TenantSummary>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> ListTenants(CancellationToken ct = default) {
-        try {
-            IReadOnlyList<TenantSummary> result = await tenantQueryService
-                .ListTenantsAsync(ct)
-                .ConfigureAwait(false);
-            return Ok(result);
-        }
-        catch (HttpRequestException ex) {
-            return QueryFailure(nameof(ListTenants), ex);
-        }
-        catch (TenantQueryFailedException ex) {
-            return UpstreamQueryFailure(nameof(ListTenants), ex);
-        }
-        catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(ListTenants), ex);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(ListTenants), ex);
-        }
-    }
-
-    /// <summary>
-    /// Gets detailed tenant information.
-    /// </summary>
-    [HttpGet("{tenantId}")]
-    [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
-    [ProducesResponseType(typeof(TenantDetail), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetTenantDetail(
-        string tenantId,
-        CancellationToken ct = default) {
-        try {
-            TenantDetail? result = await tenantQueryService
-                .GetTenantDetailAsync(tenantId, ct)
-                .ConfigureAwait(false);
-            return result is null
-                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", $"Tenant '{tenantId}' not found.")
-                : Ok(result);
-        }
-        catch (HttpRequestException ex) {
-            return QueryFailure(nameof(GetTenantDetail), ex, tenantId);
-        }
-        catch (TenantQueryFailedException ex) {
-            return UpstreamQueryFailure(nameof(GetTenantDetail), ex);
-        }
-        catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(GetTenantDetail), ex);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(GetTenantDetail), ex);
-        }
-    }
-
-    /// <summary>
-    /// Gets users assigned to a tenant.
-    /// </summary>
-    [HttpGet("{tenantId}/users")]
-    [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
-    [ProducesResponseType(typeof(IReadOnlyList<TenantUser>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetTenantUsers(
-        string tenantId,
-        CancellationToken ct = default) {
-        try {
-            IReadOnlyList<TenantUser> result = await tenantQueryService
-                .GetTenantUsersAsync(tenantId, ct)
-                .ConfigureAwait(false);
-            return Ok(result);
-        }
-        catch (HttpRequestException ex) {
-            return QueryFailure(nameof(GetTenantUsers), ex, tenantId);
-        }
-        catch (TenantQueryFailedException ex) {
-            return UpstreamQueryFailure(nameof(GetTenantUsers), ex);
-        }
-        catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(GetTenantUsers), ex);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(GetTenantUsers), ex);
-        }
-    }
-
-    // ---- Write endpoints (Admin policy) ----
-
-    /// <summary>
-    /// Creates a new tenant.
-    /// </summary>
-    [HttpPost]
-    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
-    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> CreateTenant(
-        [FromBody] CreateTenantRequest request,
-        CancellationToken ct = default) {
-        ArgumentNullException.ThrowIfNull(request);
-
-        try {
-            AdminOperationResult result = await tenantCommandService
-                .CreateTenantAsync(request, ct)
-                .ConfigureAwait(false);
-            return result.Success
-                ? Accepted(result)
-                : CommandFailureResult(result);
-        }
-        catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(CreateTenant), ex);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(CreateTenant), ex);
-        }
-    }
-
-    /// <summary>
-    /// Disables an active tenant.
-    /// </summary>
-    [HttpPost("{tenantId}/disable")]
-    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
-    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> DisableTenant(
-        string tenantId,
-        CancellationToken ct = default) {
-        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        try {
-            AdminOperationResult result = await tenantCommandService
-                .DisableTenantAsync(tenantId, ct)
-                .ConfigureAwait(false);
-            return result.Success
-                ? Accepted(result)
-                : CommandFailureResult(result);
-        }
-        catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(DisableTenant), ex);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(DisableTenant), ex);
-        }
-    }
-
-    /// <summary>
-    /// Enables a disabled tenant.
-    /// </summary>
-    [HttpPost("{tenantId}/enable")]
-    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
-    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> EnableTenant(
-        string tenantId,
-        CancellationToken ct = default) {
-        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        try {
-            AdminOperationResult result = await tenantCommandService
-                .EnableTenantAsync(tenantId, ct)
-                .ConfigureAwait(false);
-            return result.Success
-                ? Accepted(result)
-                : CommandFailureResult(result);
-        }
-        catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(EnableTenant), ex);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(EnableTenant), ex);
-        }
-    }
-
-    /// <summary>
     /// Adds a user to a tenant.
     /// </summary>
     [HttpPost("{tenantId}/users")]
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> AddUserToTenant(
+    public async Task<IActionResult> AddUserToTenantAsync(
         string tenantId,
         [FromBody] AddTenantUserRequest request,
         CancellationToken ct = default) {
@@ -232,40 +49,10 @@ public class AdminTenantsController(
                 : CommandFailureResult(result);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(AddUserToTenant), ex);
+            return ServiceUnavailable(nameof(AddUserToTenantAsync), ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(AddUserToTenant), ex);
-        }
-    }
-
-    /// <summary>
-    /// Removes a user from a tenant.
-    /// </summary>
-    [HttpPost("{tenantId}/remove-user")]
-    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
-    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> RemoveUserFromTenant(
-        string tenantId,
-        [FromBody] RemoveTenantUserRequest request,
-        CancellationToken ct = default) {
-        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        ArgumentNullException.ThrowIfNull(request);
-
-        try {
-            AdminOperationResult result = await tenantCommandService
-                .RemoveUserFromTenantAsync(tenantId, request.UserId, ct)
-                .ConfigureAwait(false);
-            return result.Success
-                ? Accepted(result)
-                : CommandFailureResult(result);
-        }
-        catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(RemoveUserFromTenant), ex);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(RemoveUserFromTenant), ex);
+            return UnexpectedError(nameof(AddUserToTenantAsync), ex);
         }
     }
 
@@ -276,7 +63,7 @@ public class AdminTenantsController(
     [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
     [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> ChangeUserRole(
+    public async Task<IActionResult> ChangeUserRoleAsync(
         string tenantId,
         [FromBody] ChangeTenantUserRoleRequest request,
         CancellationToken ct = default) {
@@ -292,17 +79,238 @@ public class AdminTenantsController(
                 : CommandFailureResult(result);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(ChangeUserRole), ex);
+            return ServiceUnavailable(nameof(ChangeUserRoleAsync), ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(ChangeUserRole), ex);
+            return UnexpectedError(nameof(ChangeUserRoleAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Creates a new tenant.
+    /// </summary>
+    [HttpPost("CreateTenant")]
+    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> CreateTenantAsync(
+        [FromBody] CreateTenantRequest request,
+        CancellationToken ct = default) {
+        ArgumentNullException.ThrowIfNull(request);
+
+        try {
+            AdminOperationResult result = await tenantCommandService
+                .CreateTenantAsync(request, ct)
+                .ConfigureAwait(false);
+            return result.Success
+                ? Accepted(result)
+                : CommandFailureResult(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(CreateTenantAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(CreateTenantAsync), ex);
+        }
+    }
+
+    // ---- Write endpoints (Admin policy) ----
+    /// <summary>
+    /// Disables an active tenant.
+    /// </summary>
+    [HttpPost("{tenantId}/disable")]
+    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> DisableTenantAsync(
+        string tenantId,
+        CancellationToken ct = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        try {
+            AdminOperationResult result = await tenantCommandService
+                .DisableTenantAsync(tenantId, ct)
+                .ConfigureAwait(false);
+            return result.Success
+                ? Accepted(result)
+                : CommandFailureResult(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(DisableTenantAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(DisableTenantAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Enables a disabled tenant.
+    /// </summary>
+    [HttpPost("{tenantId}/enable")]
+    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> EnableTenantAsync(
+        string tenantId,
+        CancellationToken ct = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        try {
+            AdminOperationResult result = await tenantCommandService
+                .EnableTenantAsync(tenantId, ct)
+                .ConfigureAwait(false);
+            return result.Success
+                ? Accepted(result)
+                : CommandFailureResult(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(EnableTenantAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(EnableTenantAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Gets detailed tenant information.
+    /// </summary>
+    [HttpGet("{tenantId}")]
+    [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
+    [ProducesResponseType(typeof(TenantDetail), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetTenantDetailAsync(
+        string tenantId,
+        CancellationToken ct = default) {
+        try {
+            TenantDetail? result = await tenantQueryService
+                .GetTenantDetailAsync(tenantId, ct)
+                .ConfigureAwait(false);
+            return result is null
+                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", $"Tenant '{tenantId}' not found.")
+                : Ok(result);
+        }
+        catch (HttpRequestException ex) {
+            return QueryFailure(nameof(GetTenantDetailAsync), ex, tenantId);
+        }
+        catch (TenantQueryFailedException ex) {
+            return UpstreamQueryFailure(nameof(GetTenantDetailAsync), ex);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(GetTenantDetailAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(GetTenantDetailAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Gets users assigned to a tenant.
+    /// </summary>
+    [HttpGet("{tenantId}/users")]
+    [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
+    [ProducesResponseType(typeof(IReadOnlyList<TenantUser>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetTenantUsersAsync(
+        string tenantId,
+        CancellationToken ct = default) {
+        try {
+            IReadOnlyList<TenantUser> result = await tenantQueryService
+                .GetTenantUsersAsync(tenantId, ct)
+                .ConfigureAwait(false);
+            return Ok(result);
+        }
+        catch (HttpRequestException ex) {
+            return QueryFailure(nameof(GetTenantUsersAsync), ex, tenantId);
+        }
+        catch (TenantQueryFailedException ex) {
+            return UpstreamQueryFailure(nameof(GetTenantUsersAsync), ex);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(GetTenantUsersAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(GetTenantUsersAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Lists all tenants.
+    /// </summary>
+    [HttpGet("ListTenants")]
+    [Authorize(Policy = AdminAuthorizationPolicies.ReadOnly)]
+    [ProducesResponseType(typeof(IReadOnlyList<TenantSummary>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> ListTenantsAsync(CancellationToken ct = default) {
+        try {
+            IReadOnlyList<TenantSummary> result = await tenantQueryService
+                .ListTenantsAsync(ct)
+                .ConfigureAwait(false);
+            return Ok(result);
+        }
+        catch (HttpRequestException ex) {
+            return QueryFailure(nameof(ListTenantsAsync), ex);
+        }
+        catch (TenantQueryFailedException ex) {
+            return UpstreamQueryFailure(nameof(ListTenantsAsync), ex);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(ListTenantsAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(ListTenantsAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Removes a user from a tenant.
+    /// </summary>
+    [HttpPost("{tenantId}/remove-user")]
+    [Authorize(Policy = AdminAuthorizationPolicies.Admin)]
+    [ProducesResponseType(typeof(AdminOperationResult), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> RemoveUserFromTenantAsync(
+        string tenantId,
+        [FromBody] RemoveTenantUserRequest request,
+        CancellationToken ct = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        ArgumentNullException.ThrowIfNull(request);
+
+        try {
+            AdminOperationResult result = await tenantCommandService
+                .RemoveUserFromTenantAsync(tenantId, request.UserId, ct)
+                .ConfigureAwait(false);
+            return result.Success
+                ? Accepted(result)
+                : CommandFailureResult(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(RemoveUserFromTenantAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(RemoveUserFromTenantAsync), ex);
         }
     }
 
     // ---- Shared helpers ----
 
+    private static int GetCommandFailureStatus(string? errorCode)
+        => errorCode?.Trim().ToLowerInvariant() switch {
+            "invalid-request" or "400" => StatusCodes.Status400BadRequest,
+            "timeout" or "408" or "504" => StatusCodes.Status504GatewayTimeout,
+            "unavailable" or "401" or "403" or "404" or "429" or "502" or "503" => StatusCodes.Status503ServiceUnavailable,
+            "unexpected" or "unexpected_status" or "unexpected-status" or "500" => StatusCodes.Status500InternalServerError,
+            _ => StatusCodes.Status422UnprocessableEntity,
+        };
+
     private static bool IsServiceUnavailable(Exception ex)
-        => ex is TimeoutException
+            => ex is TimeoutException
             || (ex is HttpRequestException httpRequestException
             && (httpRequestException.StatusCode is null
                 or HttpStatusCode.RequestTimeout
@@ -314,6 +322,53 @@ public class AdminTenantsController(
                 Grpc.Core.StatusCode.DeadlineExceeded or
                 Grpc.Core.StatusCode.Aborted or
                 Grpc.Core.StatusCode.ResourceExhausted);
+
+    private ObjectResult CommandFailureResult(AdminOperationResult result) {
+        int statusCode = GetCommandFailureStatus(result.ErrorCode);
+        string title = statusCode switch {
+            StatusCodes.Status400BadRequest => "Bad Request",
+            StatusCodes.Status503ServiceUnavailable => "Service Unavailable",
+            StatusCodes.Status504GatewayTimeout => "Operation Timed Out",
+            StatusCodes.Status500InternalServerError => "Internal Server Error",
+            _ => "Operation Failed",
+        };
+
+        return CreateProblemResult(
+            statusCode,
+            title,
+            result.Message ?? "The tenant operation failed.",
+            result.OperationId,
+            result.ErrorCode);
+    }
+
+    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null) => CreateProblemResult(statusCode, title, detail, operationId: null, errorCode: null);
+
+    private ObjectResult CreateProblemResult(
+        int statusCode,
+        string title,
+        string? detail,
+        string? operationId,
+        string? errorCode) {
+        string correlationId = HttpContext.Items["CorrelationId"]?.ToString()
+            ?? Guid.NewGuid().ToString();
+        var problem = new ProblemDetails {
+            Status = statusCode,
+            Title = title,
+            Detail = detail,
+            Instance = HttpContext.Request.Path,
+            Extensions = { ["correlationId"] = correlationId },
+        };
+
+        if (!string.IsNullOrWhiteSpace(operationId)) {
+            problem.Extensions["operationId"] = operationId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(errorCode)) {
+            problem.Extensions["errorCode"] = errorCode;
+        }
+
+        return new ObjectResult(problem) { StatusCode = statusCode };
+    }
 
     private IActionResult QueryFailure(string method, HttpRequestException exception, string? tenantId = null) {
         if (IsServiceUnavailable(exception)) {
@@ -347,14 +402,6 @@ public class AdminTenantsController(
         };
     }
 
-    private ObjectResult UpstreamQueryFailure(string method, TenantQueryFailedException ex) {
-        logger.LogError(ex, "Tenant query upstream contract failure: {Method}", method);
-        return CreateProblemResult(
-            StatusCodes.Status502BadGateway,
-            "Bad Gateway",
-            "The tenant query pipeline returned a failure that the admin server cannot classify.");
-    }
-
     private ObjectResult ServiceUnavailable(string method, Exception ex) {
         logger.LogError(ex, "Admin service unavailable: {Method}", method);
         return CreateProblemResult(
@@ -371,59 +418,11 @@ public class AdminTenantsController(
             "An unexpected error occurred.");
     }
 
-    private ObjectResult CommandFailureResult(AdminOperationResult result) {
-        int statusCode = GetCommandFailureStatus(result.ErrorCode);
-        string title = statusCode switch {
-            StatusCodes.Status400BadRequest => "Bad Request",
-            StatusCodes.Status503ServiceUnavailable => "Service Unavailable",
-            StatusCodes.Status504GatewayTimeout => "Operation Timed Out",
-            StatusCodes.Status500InternalServerError => "Internal Server Error",
-            _ => "Operation Failed",
-        };
-
+    private ObjectResult UpstreamQueryFailure(string method, TenantQueryFailedException ex) {
+        logger.LogError(ex, "Tenant query upstream contract failure: {Method}", method);
         return CreateProblemResult(
-            statusCode,
-            title,
-            result.Message ?? "The tenant operation failed.",
-            result.OperationId,
-            result.ErrorCode);
-    }
-
-    private static int GetCommandFailureStatus(string? errorCode)
-        => errorCode?.Trim().ToLowerInvariant() switch {
-            "invalid-request" or "400" => StatusCodes.Status400BadRequest,
-            "timeout" or "408" or "504" => StatusCodes.Status504GatewayTimeout,
-            "unavailable" or "401" or "403" or "404" or "429" or "502" or "503" => StatusCodes.Status503ServiceUnavailable,
-            "unexpected" or "unexpected_status" or "unexpected-status" or "500" => StatusCodes.Status500InternalServerError,
-            _ => StatusCodes.Status422UnprocessableEntity,
-        };
-
-    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null) => CreateProblemResult(statusCode, title, detail, operationId: null, errorCode: null);
-
-    private ObjectResult CreateProblemResult(
-        int statusCode,
-        string title,
-        string? detail,
-        string? operationId,
-        string? errorCode) {
-        string correlationId = HttpContext.Items["CorrelationId"]?.ToString()
-            ?? Guid.NewGuid().ToString();
-        var problem = new ProblemDetails {
-            Status = statusCode,
-            Title = title,
-            Detail = detail,
-            Instance = HttpContext.Request.Path,
-            Extensions = { ["correlationId"] = correlationId },
-        };
-
-        if (!string.IsNullOrWhiteSpace(operationId)) {
-            problem.Extensions["operationId"] = operationId;
-        }
-
-        if (!string.IsNullOrWhiteSpace(errorCode)) {
-            problem.Extensions["errorCode"] = errorCode;
-        }
-
-        return new ObjectResult(problem) { StatusCode = statusCode };
+            StatusCodes.Status502BadGateway,
+            "Bad Gateway",
+            "The tenant query pipeline returned a failure that the admin server cannot classify.");
     }
 }

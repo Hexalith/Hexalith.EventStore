@@ -22,232 +22,6 @@ namespace Hexalith.EventStore.Admin.Server.Controllers;
 public class AdminStreamsController(
     IStreamQueryService streamQueryService,
     ILogger<AdminStreamsController> logger) : ControllerBase {
-    /// <summary>
-    /// Gets recently active streams, optionally filtered by tenant and domain.
-    /// </summary>
-    [HttpGet]
-    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
-    [ProducesResponseType(typeof(PagedResult<StreamSummary>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetRecentlyActiveStreams(
-        [FromQuery] string? tenantId,
-        [FromQuery] string? domain,
-        [FromQuery] int count = 1000,
-        CancellationToken ct = default) {
-        try {
-            string? effectiveTenantId = ResolveTenantScope(tenantId);
-            PagedResult<StreamSummary> result = await streamQueryService
-                .GetRecentlyActiveStreamsAsync(effectiveTenantId, domain, count, ct)
-                .ConfigureAwait(false);
-            return Ok(result);
-        }
-        catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(GetRecentlyActiveStreams), ex);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(GetRecentlyActiveStreams), ex);
-        }
-    }
-
-    /// <summary>
-    /// Gets recent commands across all streams, optionally filtered by tenant, status, and command type.
-    /// </summary>
-    [HttpGet("commands")]
-    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
-    [ProducesResponseType(typeof(PagedResult<CommandSummary>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetRecentCommands(
-        [FromQuery] string? tenantId,
-        [FromQuery] string? status,
-        [FromQuery] string? commandType,
-        [FromQuery] int count = 1000,
-        CancellationToken ct = default) {
-        try {
-            string? effectiveTenantId = ResolveTenantScope(tenantId);
-            PagedResult<CommandSummary> result = await streamQueryService
-                .GetRecentCommandsAsync(effectiveTenantId, status, commandType, count, ct)
-                .ConfigureAwait(false);
-            return Ok(result);
-        }
-        catch (AdminUpstreamProblemException ex) {
-            return UpstreamProblem(ex);
-        }
-        catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(GetRecentCommands), ex);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(GetRecentCommands), ex);
-        }
-    }
-
-    /// <summary>
-    /// Gets the timeline of commands, events, and queries for a specific stream.
-    /// </summary>
-    [HttpGet("{tenantId}/{domain}/{aggregateId}/timeline")]
-    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
-    [ProducesResponseType(typeof(PagedResult<TimelineEntry>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetStreamTimeline(
-        string tenantId,
-        string domain,
-        string aggregateId,
-        [FromQuery] long? fromSequence,
-        [FromQuery] long? toSequence,
-        [FromQuery] int count = 100,
-        CancellationToken ct = default) {
-        try {
-            PagedResult<TimelineEntry> result = await streamQueryService
-                .GetStreamTimelineAsync(tenantId, domain, aggregateId, fromSequence, toSequence, count, ct)
-                .ConfigureAwait(false);
-            return Ok(result);
-        }
-        catch (AdminUpstreamProblemException ex) {
-            return UpstreamProblem(ex);
-        }
-        catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(GetStreamTimeline), ex);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(GetStreamTimeline), ex);
-        }
-    }
-
-    /// <summary>
-    /// Gets the aggregate state at a specific sequence position.
-    /// </summary>
-    [HttpGet("{tenantId}/{domain}/{aggregateId}/state")]
-    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
-    [ProducesResponseType(typeof(AggregateStateSnapshot), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetAggregateState(
-        string tenantId,
-        string domain,
-        string aggregateId,
-        [FromQuery] long sequenceNumber,
-        CancellationToken ct = default) {
-        try {
-            AggregateStateSnapshot result = await streamQueryService
-                .GetAggregateStateAtPositionAsync(tenantId, domain, aggregateId, sequenceNumber, ct)
-                .ConfigureAwait(false);
-            return result is null
-                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Aggregate state not found at the specified position.")
-                : Ok(result);
-        }
-        catch (KeyNotFoundException) {
-            return CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Aggregate state not found at the specified position.");
-        }
-        catch (ArgumentException ex) {
-            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
-        }
-        catch (AdminUpstreamProblemException ex) {
-            return UpstreamProblem(ex);
-        }
-        catch (HttpRequestException ex) when (TryMapUpstreamStatus(ex, out IActionResult? mapped)) {
-            return mapped!;
-        }
-        catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(GetAggregateState), ex);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(GetAggregateState), ex);
-        }
-    }
-
-    /// <summary>
-    /// Diffs aggregate state between two sequence positions.
-    /// </summary>
-    [HttpGet("{tenantId}/{domain}/{aggregateId}/diff")]
-    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
-    [ProducesResponseType(typeof(AggregateStateDiff), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> DiffAggregateState(
-        string tenantId,
-        string domain,
-        string aggregateId,
-        [FromQuery] long fromSequence,
-        [FromQuery] long toSequence,
-        CancellationToken ct = default) {
-        try {
-            AggregateStateDiff result = await streamQueryService
-                .DiffAggregateStateAsync(tenantId, domain, aggregateId, fromSequence, toSequence, ct)
-                .ConfigureAwait(false);
-            return result is null
-                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Aggregate state not found for the specified range.")
-                : Ok(result);
-        }
-        catch (KeyNotFoundException) {
-            return CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Aggregate state diff not found for the specified range.");
-        }
-        catch (ArgumentException ex) {
-            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
-        }
-        catch (AdminUpstreamProblemException ex) {
-            return UpstreamProblem(ex);
-        }
-        catch (HttpRequestException ex) when (TryMapUpstreamStatus(ex, out IActionResult? mapped)) {
-            return mapped!;
-        }
-        catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(DiffAggregateState), ex);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(DiffAggregateState), ex);
-        }
-    }
-
-    /// <summary>
-    /// Gets per-field blame (provenance) for an aggregate's state.
-    /// </summary>
-    [HttpGet("{tenantId}/{domain}/{aggregateId}/blame")]
-    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
-    [ProducesResponseType(typeof(AggregateBlameView), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetAggregateBlame(
-        string tenantId,
-        string domain,
-        string aggregateId,
-        [FromQuery] long? at,
-        CancellationToken ct = default) {
-        if (at.HasValue && at.Value < 1) {
-            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", "Parameter 'at' must be >= 1 when provided.");
-        }
-
-        try {
-            AggregateBlameView result = await streamQueryService
-                .GetAggregateBlameAsync(tenantId, domain, aggregateId, at, ct)
-                .ConfigureAwait(false);
-            return result is null
-                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Stream not found.")
-                : Ok(result);
-        }
-        catch (AdminUpstreamProblemException ex) {
-            return UpstreamProblem(ex);
-        }
-        catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(GetAggregateBlame), ex);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(GetAggregateBlame), ex);
-        }
-    }
 
     /// <summary>
     /// Performs a binary search through event history to find the exact event where aggregate state diverged.
@@ -260,7 +34,7 @@ public class AdminStreamsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> BisectAggregateState(
+    public async Task<IActionResult> BisectAggregateStateAsync(
         string tenantId,
         string domain,
         string aggregateId,
@@ -299,42 +73,41 @@ public class AdminStreamsController(
             return UpstreamProblem(ex);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(BisectAggregateState), ex);
+            return ServiceUnavailable(nameof(BisectAggregateStateAsync), ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(BisectAggregateState), ex);
+            return UnexpectedError(nameof(BisectAggregateStateAsync), ex);
         }
     }
 
     /// <summary>
-    /// Gets a single step-through debugging frame combining event metadata, aggregate state,
-    /// and field changes at the specified sequence position.
+    /// Diffs aggregate state between two sequence positions.
     /// </summary>
-    [HttpGet("{tenantId}/{domain}/{aggregateId}/step")]
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/diff")]
     [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
-    [ProducesResponseType(typeof(EventStepFrame), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AggregateStateDiff), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetEventStepFrame(
+    public async Task<IActionResult> DiffAggregateStateAsync(
         string tenantId,
         string domain,
         string aggregateId,
-        [FromQuery] long at,
+        [FromQuery] long fromSequence,
+        [FromQuery] long toSequence,
         CancellationToken ct = default) {
-        if (at < 1) {
-            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", "Parameter 'at' must be >= 1.");
-        }
-
         try {
-            EventStepFrame result = await streamQueryService
-                .GetEventStepFrameAsync(tenantId, domain, aggregateId, at, ct)
+            AggregateStateDiff result = await streamQueryService
+                .DiffAggregateStateAsync(tenantId, domain, aggregateId, fromSequence, toSequence, ct)
                 .ConfigureAwait(false);
             return result is null
-                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Stream not found.")
+                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Aggregate state not found for the specified range.")
                 : Ok(result);
+        }
+        catch (KeyNotFoundException) {
+            return CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Aggregate state diff not found for the specified range.");
         }
         catch (ArgumentException ex) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
@@ -342,11 +115,99 @@ public class AdminStreamsController(
         catch (AdminUpstreamProblemException ex) {
             return UpstreamProblem(ex);
         }
+        catch (HttpRequestException ex) when (TryMapUpstreamStatus(ex, out IActionResult? mapped)) {
+            return mapped!;
+        }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(GetEventStepFrame), ex);
+            return ServiceUnavailable(nameof(DiffAggregateStateAsync), ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(GetEventStepFrame), ex);
+            return UnexpectedError(nameof(DiffAggregateStateAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Gets per-field blame (provenance) for an aggregate's state.
+    /// </summary>
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/blame")]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [ProducesResponseType(typeof(AggregateBlameView), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetAggregateBlameAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromQuery] long? at,
+        CancellationToken ct = default) {
+        if (at.HasValue && at.Value < 1) {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", "Parameter 'at' must be >= 1 when provided.");
+        }
+
+        try {
+            AggregateBlameView result = await streamQueryService
+                .GetAggregateBlameAsync(tenantId, domain, aggregateId, at, ct)
+                .ConfigureAwait(false);
+            return result is null
+                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Stream not found.")
+                : Ok(result);
+        }
+        catch (AdminUpstreamProblemException ex) {
+            return UpstreamProblem(ex);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(GetAggregateBlameAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(GetAggregateBlameAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Gets the aggregate state at a specific sequence position.
+    /// </summary>
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/state")]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [ProducesResponseType(typeof(AggregateStateSnapshot), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetAggregateStateAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromQuery] long sequenceNumber,
+        CancellationToken ct = default) {
+        try {
+            AggregateStateSnapshot result = await streamQueryService
+                .GetAggregateStateAtPositionAsync(tenantId, domain, aggregateId, sequenceNumber, ct)
+                .ConfigureAwait(false);
+            return result is null
+                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Aggregate state not found at the specified position.")
+                : Ok(result);
+        }
+        catch (KeyNotFoundException) {
+            return CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Aggregate state not found at the specified position.");
+        }
+        catch (ArgumentException ex) {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
+        }
+        catch (AdminUpstreamProblemException ex) {
+            return UpstreamProblem(ex);
+        }
+        catch (HttpRequestException ex) when (TryMapUpstreamStatus(ex, out IActionResult? mapped)) {
+            return mapped!;
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(GetAggregateStateAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(GetAggregateStateAsync), ex);
         }
     }
 
@@ -361,7 +222,7 @@ public class AdminStreamsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetEventDetail(
+    public async Task<IActionResult> GetEventDetailAsync(
         string tenantId,
         string domain,
         string aggregateId,
@@ -392,40 +253,42 @@ public class AdminStreamsController(
             return UpstreamProblem(ex);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(GetEventDetail), ex);
+            return ServiceUnavailable(nameof(GetEventDetailAsync), ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(GetEventDetail), ex);
+            return UnexpectedError(nameof(GetEventDetailAsync), ex);
         }
     }
 
     /// <summary>
-    /// Traces the causation chain starting from a specific event.
+    /// Gets a single step-through debugging frame combining event metadata, aggregate state,
+    /// and field changes at the specified sequence position.
     /// </summary>
-    [HttpGet("{tenantId}/{domain}/{aggregateId}/causation")]
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/step")]
     [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
-    [ProducesResponseType(typeof(CausationChain), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(EventStepFrame), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> TraceCausationChain(
+    public async Task<IActionResult> GetEventStepFrameAsync(
         string tenantId,
         string domain,
         string aggregateId,
-        [FromQuery] long sequenceNumber,
+        [FromQuery] long at,
         CancellationToken ct = default) {
+        if (at < 1) {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", "Parameter 'at' must be >= 1.");
+        }
+
         try {
-            CausationChain result = await streamQueryService
-                .TraceCausationChainAsync(tenantId, domain, aggregateId, sequenceNumber, ct)
+            EventStepFrame result = await streamQueryService
+                .GetEventStepFrameAsync(tenantId, domain, aggregateId, at, ct)
                 .ConfigureAwait(false);
             return result is null
-                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Causation chain not found.")
+                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Stream not found.")
                 : Ok(result);
-        }
-        catch (KeyNotFoundException) {
-            return CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Causation chain not found.");
         }
         catch (ArgumentException ex) {
             return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
@@ -433,14 +296,107 @@ public class AdminStreamsController(
         catch (AdminUpstreamProblemException ex) {
             return UpstreamProblem(ex);
         }
-        catch (HttpRequestException ex) when (TryMapUpstreamStatus(ex, out IActionResult? mapped)) {
-            return mapped!;
-        }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(TraceCausationChain), ex);
+            return ServiceUnavailable(nameof(GetEventStepFrameAsync), ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(TraceCausationChain), ex);
+            return UnexpectedError(nameof(GetEventStepFrameAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Gets recent commands across all streams, optionally filtered by tenant, status, and command type.
+    /// </summary>
+    [HttpGet("commands")]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [ProducesResponseType(typeof(PagedResult<CommandSummary>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetRecentCommandsAsync(
+        [FromQuery] string? tenantId,
+        [FromQuery] string? status,
+        [FromQuery] string? commandType,
+        [FromQuery] int count = 1000,
+        CancellationToken ct = default) {
+        try {
+            string? effectiveTenantId = ResolveTenantScope(tenantId);
+            PagedResult<CommandSummary> result = await streamQueryService
+                .GetRecentCommandsAsync(effectiveTenantId, status, commandType, count, ct)
+                .ConfigureAwait(false);
+            return Ok(result);
+        }
+        catch (AdminUpstreamProblemException ex) {
+            return UpstreamProblem(ex);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(GetRecentCommandsAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(GetRecentCommandsAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Gets recently active streams, optionally filtered by tenant and domain.
+    /// </summary>
+    [HttpGet("GetRecentlyActiveStreams")]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [ProducesResponseType(typeof(PagedResult<StreamSummary>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetRecentlyActiveStreamsAsync(
+        [FromQuery] string? tenantId,
+        [FromQuery] string? domain,
+        [FromQuery] int count = 1000,
+        CancellationToken ct = default) {
+        try {
+            string? effectiveTenantId = ResolveTenantScope(tenantId);
+            PagedResult<StreamSummary> result = await streamQueryService
+                .GetRecentlyActiveStreamsAsync(effectiveTenantId, domain, count, ct)
+                .ConfigureAwait(false);
+            return Ok(result);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(GetRecentlyActiveStreamsAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(GetRecentlyActiveStreamsAsync), ex);
+        }
+    }
+
+    /// <summary>
+    /// Gets the timeline of commands, events, and queries for a specific stream.
+    /// </summary>
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/timeline")]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [ProducesResponseType(typeof(PagedResult<TimelineEntry>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetStreamTimelineAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromQuery] long? fromSequence,
+        [FromQuery] long? toSequence,
+        [FromQuery] int count = 100,
+        CancellationToken ct = default) {
+        try {
+            PagedResult<TimelineEntry> result = await streamQueryService
+                .GetStreamTimelineAsync(tenantId, domain, aggregateId, fromSequence, toSequence, count, ct)
+                .ConfigureAwait(false);
+            return Ok(result);
+        }
+        catch (AdminUpstreamProblemException ex) {
+            return UpstreamProblem(ex);
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(GetStreamTimelineAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(GetStreamTimelineAsync), ex);
         }
     }
 
@@ -454,7 +410,7 @@ public class AdminStreamsController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> SandboxCommand(
+    public async Task<IActionResult> SandboxCommandAsync(
         string tenantId,
         string domain,
         string aggregateId,
@@ -483,28 +439,59 @@ public class AdminStreamsController(
                 : Ok(result);
         }
         catch (Exception ex) when (IsServiceUnavailable(ex)) {
-            return ServiceUnavailable(nameof(SandboxCommand), ex);
+            return ServiceUnavailable(nameof(SandboxCommandAsync), ex);
         }
         catch (AdminUpstreamProblemException ex) {
             return UpstreamProblem(ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
-            return UnexpectedError(nameof(SandboxCommand), ex);
+            return UnexpectedError(nameof(SandboxCommandAsync), ex);
         }
     }
 
-    private string? ResolveTenantScope(string? requestedTenantId) {
-        if (requestedTenantId is not null) {
-            return requestedTenantId;
+    /// <summary>
+    /// Traces the causation chain starting from a specific event.
+    /// </summary>
+    [HttpGet("{tenantId}/{domain}/{aggregateId}/causation")]
+    [ServiceFilter(typeof(AdminTenantAuthorizationFilter))]
+    [ProducesResponseType(typeof(CausationChain), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> TraceCausationChainAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        [FromQuery] long sequenceNumber,
+        CancellationToken ct = default) {
+        try {
+            CausationChain result = await streamQueryService
+                .TraceCausationChainAsync(tenantId, domain, aggregateId, sequenceNumber, ct)
+                .ConfigureAwait(false);
+            return result is null
+                ? CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Causation chain not found.")
+                : Ok(result);
         }
-
-        // Admin users can see all tenants
-        if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin))) {
-            return null;
+        catch (KeyNotFoundException) {
+            return CreateProblemResult(StatusCodes.Status404NotFound, "Not Found", "Causation chain not found.");
         }
-
-        // Non-admin: scope to first authorized tenant
-        return User.FindFirst(AdminClaimTypes.Tenant)?.Value;
+        catch (ArgumentException ex) {
+            return CreateProblemResult(StatusCodes.Status400BadRequest, "Bad Request", ex.Message);
+        }
+        catch (AdminUpstreamProblemException ex) {
+            return UpstreamProblem(ex);
+        }
+        catch (HttpRequestException ex) when (TryMapUpstreamStatus(ex, out IActionResult? mapped)) {
+            return mapped!;
+        }
+        catch (Exception ex) when (IsServiceUnavailable(ex)) {
+            return ServiceUnavailable(nameof(TraceCausationChainAsync), ex);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            return UnexpectedError(nameof(TraceCausationChainAsync), ex);
+        }
     }
 
     private static bool IsServiceUnavailable(Exception ex)
@@ -522,22 +509,30 @@ public class AdminStreamsController(
     private static bool IsTransportFailure(HttpRequestException ex)
         => ex.StatusCode is null or System.Net.HttpStatusCode.ServiceUnavailable;
 
-    private bool TryMapUpstreamStatus(HttpRequestException ex, out IActionResult? mapped) {
-        switch (ex.StatusCode) {
-            case System.Net.HttpStatusCode.Unauthorized:
-                mapped = CreateProblemResult(StatusCodes.Status401Unauthorized, "Unauthorized", "Authentication is required.");
-                return true;
-            case System.Net.HttpStatusCode.Forbidden:
-                mapped = CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", "Access to the requested resource is denied.");
-                return true;
-            case System.Net.HttpStatusCode.InternalServerError:
-                logger.LogError(ex, "Upstream EventStore returned 500.");
-                mapped = CreateProblemResult(StatusCodes.Status502BadGateway, "Bad Gateway", "Upstream EventStore service failed to compute the response.");
-                return true;
-            default:
-                mapped = null;
-                return false;
+    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null) {
+        string correlationId = HttpContext.Items["CorrelationId"]?.ToString()
+            ?? Guid.NewGuid().ToString();
+        return new ObjectResult(new ProblemDetails {
+            Status = statusCode,
+            Title = title,
+            Detail = detail,
+            Instance = HttpContext.Request.Path,
+            Extensions = { ["correlationId"] = correlationId },
+        }) { StatusCode = statusCode };
+    }
+
+    private string? ResolveTenantScope(string? requestedTenantId) {
+        if (requestedTenantId is not null) {
+            return requestedTenantId;
         }
+
+        // Admin users can see all tenants
+        if (User.HasClaim(AdminClaimTypes.AdminRole, nameof(Abstractions.Models.Common.AdminRole.Admin))) {
+            return null;
+        }
+
+        // Non-admin: scope to first authorized tenant
+        return User.FindFirst(AdminClaimTypes.Tenant)?.Value;
     }
 
     private ObjectResult ServiceUnavailable(string method, Exception ex) {
@@ -546,6 +541,27 @@ public class AdminStreamsController(
             StatusCodes.Status503ServiceUnavailable,
             "Service Unavailable",
             "The admin backend service is temporarily unavailable. Retry shortly.");
+    }
+
+    private bool TryMapUpstreamStatus(HttpRequestException ex, out IActionResult? mapped) {
+        switch (ex.StatusCode) {
+            case System.Net.HttpStatusCode.Unauthorized:
+                mapped = CreateProblemResult(StatusCodes.Status401Unauthorized, "Unauthorized", "Authentication is required.");
+                return true;
+
+            case System.Net.HttpStatusCode.Forbidden:
+                mapped = CreateProblemResult(StatusCodes.Status403Forbidden, "Forbidden", "Access to the requested resource is denied.");
+                return true;
+
+            case System.Net.HttpStatusCode.InternalServerError:
+                logger.LogError(ex, "Upstream EventStore returned 500.");
+                mapped = CreateProblemResult(StatusCodes.Status502BadGateway, "Bad Gateway", "Upstream EventStore service failed to compute the response.");
+                return true;
+
+            default:
+                mapped = null;
+                return false;
+        }
     }
 
     private ObjectResult UnexpectedError(string method, Exception ex) {
@@ -566,17 +582,5 @@ public class AdminStreamsController(
         return new ObjectResult(ex.ProblemDetails) {
             StatusCode = (int)ex.StatusCode
         };
-    }
-
-    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null) {
-        string correlationId = HttpContext.Items["CorrelationId"]?.ToString()
-            ?? Guid.NewGuid().ToString();
-        return new ObjectResult(new ProblemDetails {
-            Status = statusCode,
-            Title = title,
-            Detail = detail,
-            Instance = HttpContext.Request.Path,
-            Extensions = { ["correlationId"] = correlationId },
-        }) { StatusCode = statusCode };
     }
 }
