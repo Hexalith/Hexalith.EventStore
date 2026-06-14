@@ -12,7 +12,6 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Common;
 using Hexalith.EventStore.Admin.Abstractions.Models.Storage;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
-using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Contracts.Streams;
 
@@ -603,7 +602,7 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
 
     private static object ReadPayload(StreamReadEvent streamEvent) {
         if (IsJsonPayload(streamEvent)) {
-            using JsonDocument document = JsonDocument.Parse(streamEvent.Payload);
+            using var document = JsonDocument.Parse(streamEvent.Payload);
             return document.RootElement.Clone();
         }
 
@@ -622,7 +621,7 @@ public sealed class DaprBackupCommandService : IBackupCommandService {
     private static string SanitizeFileNamePart(string value) {
         var builder = new StringBuilder(value.Length);
         foreach (char c in value) {
-            builder.Append(char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.' ? c : '_');
+            _ = builder.Append(char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.' ? c : '_');
         }
 
         return builder.Length == 0 ? "stream" : builder.ToString();

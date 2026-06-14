@@ -147,7 +147,8 @@ public partial class QueryRouter : IQueryRouter {
             foreach (string errorCode in EnumerateDaprErrorCodes(current)) {
                 if (IsDaprActorMissingErrorCode(errorCode)) {
                     hasActorMissingDaprErrorCode = true;
-                } else if (HasSpecificDaprErrorCode(errorCode)) {
+                }
+                else if (HasSpecificDaprErrorCode(errorCode)) {
                     hasContradictoryDaprErrorCode = true;
                 }
             }

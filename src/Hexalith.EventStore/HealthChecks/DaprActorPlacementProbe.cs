@@ -1,8 +1,6 @@
 
 using System.Text.Json;
 
-using Microsoft.Extensions.Configuration;
-
 namespace Hexalith.EventStore.HealthChecks;
 
 /// <summary>
@@ -46,7 +44,7 @@ public sealed class DaprActorPlacementProbe : IDaprActorPlacementProbe {
         string json = await response.Content
             .ReadAsStringAsync(cancellationToken)
             .ConfigureAwait(false);
-        using JsonDocument document = JsonDocument.Parse(json);
+        using var document = JsonDocument.Parse(json);
 
         if (!document.RootElement.TryGetProperty("actorRuntime", out JsonElement actorRuntime)
             || actorRuntime.ValueKind != JsonValueKind.Object) {

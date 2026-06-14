@@ -40,7 +40,7 @@ public static class DomainServiceRequestRouter {
                 cancellationToken).ConfigureAwait(false);
 
             if (admissionResult.IsRejected) {
-                DomainResult rejection = DomainResult.Rejection(admissionResult.RejectionEvents);
+                var rejection = DomainResult.Rejection(admissionResult.RejectionEvents);
                 return DomainServiceWireResult.FromDomainResult(rejection);
             }
         }
@@ -68,13 +68,13 @@ public static class DomainServiceRequestRouter {
             DomainServiceAdmissionResult result = await stage.EvaluateAsync(context, cancellationToken).ConfigureAwait(false);
             ArgumentNullException.ThrowIfNull(result);
             TimeSpan duration = Stopwatch.GetElapsedTime(start);
-            activity?.SetTag("eventstore.admission.accepted", result.IsAccepted);
-            activity?.SetTag("eventstore.admission.duration_ms", duration.TotalMilliseconds);
+            _ = (activity?.SetTag("eventstore.admission.accepted", result.IsAccepted));
+            _ = (activity?.SetTag("eventstore.admission.duration_ms", duration.TotalMilliseconds));
             diagnostics?.RecordAdmissionStage(context.Command.CommandType, stageName, result.IsAccepted, duration);
             return result;
         }
         catch {
-            activity?.SetStatus(ActivityStatusCode.Error);
+            _ = (activity?.SetStatus(ActivityStatusCode.Error));
             throw;
         }
     }
@@ -84,9 +84,9 @@ public static class DomainServiceRequestRouter {
             return;
         }
 
-        activity.SetTag("eventstore.domain", context.Command.Domain);
-        activity.SetTag("eventstore.command.type", context.Command.CommandType);
-        activity.SetTag("eventstore.admission.stage", stageName);
+        _ = activity.SetTag("eventstore.domain", context.Command.Domain);
+        _ = activity.SetTag("eventstore.command.type", context.Command.CommandType);
+        _ = activity.SetTag("eventstore.admission.stage", stageName);
     }
 
     /// <summary>

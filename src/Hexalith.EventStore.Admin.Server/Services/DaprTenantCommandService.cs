@@ -24,8 +24,8 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// All write methods route through EventStore's command pipeline (POST /api/v1/commands).
 /// </summary>
 public sealed class DaprTenantCommandService : ITenantCommandService {
-    private const string CommandEndpoint = "api/v1/commands";
-    private const string ErrorNoOperation = "error-no-operation";
+    private const string _commandEndpoint = "api/v1/commands";
+    private const string _errorNoOperation = "error-no-operation";
     private static readonly string[] _tenantRoleNames = Enum.GetNames<TenantRole>();
 
     private readonly IAdminAuthContext _authContext;
@@ -137,12 +137,44 @@ public sealed class DaprTenantCommandService : ITenantCommandService {
             new RemoveUserFromTenant(tenantId, userId),
             ct).ConfigureAwait(false);
 
+    private static string ClassifyHttpFailure(HttpStatusCode statusCode, string? rejectionMessage) {
+        if (statusCode == HttpStatusCode.BadRequest) {
+            return "invalid-request";
+        }
+
+        if (statusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.GatewayTimeout) {
+            return "timeout";
+        }
+
+        if (statusCode is HttpStatusCode.Unauthorized
+            or HttpStatusCode.Forbidden
+            or HttpStatusCode.NotFound
+            or HttpStatusCode.TooManyRequests
+            or HttpStatusCode.BadGateway
+            or HttpStatusCode.ServiceUnavailable) {
+            return "unavailable";
+        }
+
+        if (rejectionMessage is not null) {
+            return "rejected";
+        }
+
+        return statusCode >= HttpStatusCode.InternalServerError
+            ? "unexpected"
+            : ((int)statusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
     private static AdminOperationResult InvalidRoleResult(string? role)
-        => new(
+            => new(
             false,
-            ErrorNoOperation,
+            _errorNoOperation,
             $"Invalid role '{role}'. Valid values: {string.Join(", ", _tenantRoleNames)}",
             "invalid-request");
+
+    private static bool IsUnavailable(Exception exception)
+        => exception is HttpRequestException { StatusCode: null or HttpStatusCode.RequestTimeout or HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout }
+            || exception is TimeoutException
+            || (exception.InnerException is not null && IsUnavailable(exception.InnerException));
 
     private static bool TryParseTenantRole(string? role, out TenantRole tenantRole) {
         string? normalizedRole = role?.Trim();
@@ -191,8 +223,8 @@ public sealed class DaprTenantCommandService : ITenantCommandService {
             using HttpRequestMessage httpRequest = _daprClient.CreateInvokeMethodRequest(
                 HttpMethod.Post,
                 _options.EventStoreAppId,
-                CommandEndpoint)
-                ?? new HttpRequestMessage(HttpMethod.Post, CommandEndpoint);
+                _commandEndpoint)
+                ?? new HttpRequestMessage(HttpMethod.Post, _commandEndpoint);
             httpRequest.Content = JsonContent.Create(commandBody);
 
             string? token = _authContext.GetToken();
@@ -268,7 +300,7 @@ public sealed class DaprTenantCommandService : ITenantCommandService {
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
             _logger.LogWarning("Command {CommandType} for aggregate {AggregateId} timed out.", commandType, aggregateId);
-            string id = operationId ?? ErrorNoOperation;
+            string id = operationId ?? _errorNoOperation;
             return new AdminOperationResult(
                 false,
                 id,
@@ -280,7 +312,7 @@ public sealed class DaprTenantCommandService : ITenantCommandService {
         }
         catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to submit command {CommandType} for aggregate {AggregateId}.", commandType, aggregateId);
-            string id = operationId ?? ErrorNoOperation;
+            string id = operationId ?? _errorNoOperation;
             return new AdminOperationResult(
                 false,
                 id,
@@ -290,36 +322,4 @@ public sealed class DaprTenantCommandService : ITenantCommandService {
                 IsUnavailable(ex) ? "unavailable" : "unexpected");
         }
     }
-
-    private static string ClassifyHttpFailure(HttpStatusCode statusCode, string? rejectionMessage) {
-        if (statusCode == HttpStatusCode.BadRequest) {
-            return "invalid-request";
-        }
-
-        if (statusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.GatewayTimeout) {
-            return "timeout";
-        }
-
-        if (statusCode is HttpStatusCode.Unauthorized
-            or HttpStatusCode.Forbidden
-            or HttpStatusCode.NotFound
-            or HttpStatusCode.TooManyRequests
-            or HttpStatusCode.BadGateway
-            or HttpStatusCode.ServiceUnavailable) {
-            return "unavailable";
-        }
-
-        if (rejectionMessage is not null) {
-            return "rejected";
-        }
-
-        return statusCode >= HttpStatusCode.InternalServerError
-            ? "unexpected"
-            : ((int)statusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
-    }
-
-    private static bool IsUnavailable(Exception exception)
-        => exception is HttpRequestException { StatusCode: null or HttpStatusCode.RequestTimeout or HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout }
-            || exception is TimeoutException
-            || exception.InnerException is not null && IsUnavailable(exception.InnerException);
 }

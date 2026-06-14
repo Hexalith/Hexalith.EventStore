@@ -4,7 +4,6 @@ using Dapr.Client;
 
 using Hexalith.EventStore.Server.Commands;
 
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Queries;

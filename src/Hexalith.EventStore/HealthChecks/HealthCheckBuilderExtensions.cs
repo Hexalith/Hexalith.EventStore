@@ -1,7 +1,6 @@
 
 using Dapr.Client;
 
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Hexalith.EventStore.HealthChecks;

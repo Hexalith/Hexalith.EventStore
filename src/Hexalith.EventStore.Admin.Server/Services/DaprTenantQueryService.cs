@@ -9,8 +9,6 @@ using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
 using Hexalith.EventStore.Admin.Abstractions.Services;
 using Hexalith.EventStore.Admin.Server.Configuration;
 using Hexalith.EventStore.Contracts.Queries;
-
-using Hexalith.Tenants.Contracts;
 using Hexalith.Tenants.Contracts.Enums;
 
 using Microsoft.Extensions.Logging;

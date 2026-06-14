@@ -1,11 +1,7 @@
-using System.Net.Http.Json;
-
 using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.DomainServices;
-
-using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.Queries;
 

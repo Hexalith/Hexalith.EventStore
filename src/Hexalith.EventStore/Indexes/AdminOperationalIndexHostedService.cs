@@ -185,7 +185,7 @@ public sealed partial class AdminOperationalIndexHostedService(
                 .ToList(),
             StringComparer.OrdinalIgnoreCase);
 
-        Dictionary<string, IReadOnlyList<string>> queryTypesByDomain = metadata.ToDictionary(
+        var queryTypesByDomain = metadata.ToDictionary(
             m => m.Domain,
             m => (IReadOnlyList<string>)[.. (m.QueryTypes ?? []).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
             StringComparer.OrdinalIgnoreCase);

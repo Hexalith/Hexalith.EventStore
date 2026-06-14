@@ -696,8 +696,7 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
         StreamSummary stream,
         long expectedMax,
         string description,
-        string category) {
-        AddAnomalyWithinCap(anomalies, new ConsistencyAnomaly(
+        string category) => AddAnomalyWithinCap(anomalies, new ConsistencyAnomaly(
             UniqueIdHelper.GenerateSortableUniqueStringId(),
             ConsistencyCheckType.SequenceContinuity,
             category is "AuthorizationFailure" ? AnomalySeverity.Error : AnomalySeverity.Warning,
@@ -708,7 +707,6 @@ public sealed class DaprConsistencyCommandService : IConsistencyCommandService {
             $"Category: {category}. Raw DAPR state-store keys are not used as a fallback.",
             ExpectedSequence: expectedMax,
             ActualSequence: null));
-    }
 
     private static string GetTimelineReadFailureCategory(Exception exception)
         => exception switch {

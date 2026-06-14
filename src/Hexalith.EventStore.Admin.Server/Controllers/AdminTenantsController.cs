@@ -398,9 +398,7 @@ public class AdminTenantsController(
             _ => StatusCodes.Status422UnprocessableEntity,
         };
 
-    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null) {
-        return CreateProblemResult(statusCode, title, detail, operationId: null, errorCode: null);
-    }
+    private ObjectResult CreateProblemResult(int statusCode, string title, string? detail = null) => CreateProblemResult(statusCode, title, detail, operationId: null, errorCode: null);
 
     private ObjectResult CreateProblemResult(
         int statusCode,

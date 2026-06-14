@@ -36,9 +36,7 @@ internal sealed class DaprStateStoreHealthCheck : IHealthCheck {
                 .ConfigureAwait(false);
             return HealthCheckResult.Healthy();
         }
-#pragma warning disable CA1031 // A health-check probe must treat any failure (sidecar down, network, store error) as Unhealthy.
         catch (Exception) {
-#pragma warning restore CA1031
             return HealthCheckResult.Unhealthy($"DAPR state store '{_stateStoreName}' is unreachable");
         }
     }

@@ -4,8 +4,6 @@ using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.Pipeline.Queries;
 using Hexalith.EventStore.Server.Queries;
 
-using Microsoft.Extensions.Logging;
-
 namespace Hexalith.EventStore.Queries;
 
 /// <summary>

@@ -1,9 +1,7 @@
 using Hexalith.EventStore.Queries;
 using Hexalith.EventStore.Server.Queries;
 
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
 
 namespace Hexalith.EventStore.Extensions;
 

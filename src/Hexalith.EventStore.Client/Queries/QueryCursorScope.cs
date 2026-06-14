@@ -62,10 +62,10 @@ public sealed class QueryCursorScope {
     private void AppendSegment(string key, string value) {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         if (_hasSegment) {
-            _builder.Append('|');
+            _ = _builder.Append('|');
         }
 
-        _builder.Append(key).Append(':').Append(value);
+        _ = _builder.Append(key).Append(':').Append(value);
         _hasSegment = true;
     }
 

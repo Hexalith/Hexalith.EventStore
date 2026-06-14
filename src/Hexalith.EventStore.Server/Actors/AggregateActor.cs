@@ -277,7 +277,7 @@ public partial class AggregateActor(
                 int persistenceConflictRetryCount = 0;
                 int maxPersistenceConflictRetries = MaxPersistenceConflictRetries;
 
-RetryAfterPersistenceConflict:
+                RetryAfterPersistenceConflict:
                 // Step 3: State rehydration (Story 3.10 -- snapshot-first flow)
                 // Dead-letter routing handles infrastructure exceptions.
                 SnapshotRecord? existingSnapshot;
@@ -908,8 +908,7 @@ RetryAfterPersistenceConflict:
         long currentSequence,
         string? correlationId,
         CancellationToken cancellationToken) {
-        IAggregateStateReconstructor? reconstructor = serviceProvider?.GetService(typeof(IAggregateStateReconstructor)) as IAggregateStateReconstructor;
-        if (reconstructor is null) {
+        if (serviceProvider?.GetService(typeof(IAggregateStateReconstructor)) is not IAggregateStateReconstructor reconstructor) {
             logger.LogWarning(
                 "Manual snapshot state reconstruction service is unavailable: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}",
                 correlationId,
@@ -932,7 +931,7 @@ RetryAfterPersistenceConflict:
             cancellationToken).ConfigureAwait(false);
 
         string aggregateType = readableEvents[^1].AggregateType;
-        var reconstruction = await reconstructor
+        AggregateReconstructionResult reconstruction = await reconstructor
             .ReconstructAsync(
                 identity,
                 aggregateType,
