@@ -15,7 +15,7 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 /// Reads backup job metadata from admin index keys in the state store.
 /// </summary>
 public sealed class DaprBackupQueryService : IBackupQueryService {
-    private const string BackupJobsIndexPrefix = "admin:backup-jobs:";
+    private const string _backupJobsIndexPrefix = "admin:backup-jobs:";
 
     private readonly DaprClient _daprClient;
     private readonly ILogger<DaprBackupQueryService> _logger;
@@ -44,7 +44,7 @@ public sealed class DaprBackupQueryService : IBackupQueryService {
         string? tenantId,
         CancellationToken ct = default) {
         string scope = tenantId ?? "all";
-        string indexKey = $"{BackupJobsIndexPrefix}{scope}";
+        string indexKey = $"{_backupJobsIndexPrefix}{scope}";
         IReadOnlyList<BackupJob>? result = await _daprClient
             .GetStateAsync<IReadOnlyList<BackupJob>>(_options.StateStoreName, indexKey, cancellationToken: ct)
             .ConfigureAwait(false);
@@ -58,21 +58,6 @@ public sealed class DaprBackupQueryService : IBackupQueryService {
     }
 
     /// <inheritdoc/>
-    public async Task<RestoredBackupAdmissionResult?> GetRestoreAdmissionAsync(
-        string tenantId,
-        string admissionId,
-        CancellationToken ct = default) {
-        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(admissionId);
-        return await _daprClient
-            .GetStateAsync<RestoredBackupAdmissionResult>(
-                _options.StateStoreName,
-                DaprBackupCommandService.AdmissionKey(tenantId, admissionId),
-                cancellationToken: ct)
-            .ConfigureAwait(false);
-    }
-
-    /// <inheritdoc/>
     public async Task<CryptoShreddingWorkflowDecision?> GetCryptoShreddingWorkflowAsync(
         string tenantId,
         string workflowId,
@@ -83,6 +68,21 @@ public sealed class DaprBackupQueryService : IBackupQueryService {
             .GetStateAsync<CryptoShreddingWorkflowDecision>(
                 _options.StateStoreName,
                 DaprBackupCommandService.WorkflowIdKey(tenantId, workflowId),
+                cancellationToken: ct)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task<RestoredBackupAdmissionResult?> GetRestoreAdmissionAsync(
+        string tenantId,
+        string admissionId,
+        CancellationToken ct = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(admissionId);
+        return await _daprClient
+            .GetStateAsync<RestoredBackupAdmissionResult>(
+                _options.StateStoreName,
+                DaprBackupCommandService.AdmissionKey(tenantId, admissionId),
                 cancellationToken: ct)
             .ConfigureAwait(false);
     }
