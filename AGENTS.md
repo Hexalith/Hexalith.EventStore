@@ -35,14 +35,15 @@ Use the Aspire CLI to run the local topology. Before code changes, run the AppHo
 aspire run
 ```
 
-Use Aspire MCP tools to inspect resources and debug runtime issues:
+The standalone Aspire MCP server is obsolete — use the **Aspire agents** integration instead. Run `aspire agent init` once to install the Aspire skills/tools, then drive the running app through the Aspire CLI:
 
-- `list resources` for resource state, endpoints, health, environment, and relationships; `execute resource command` to restart a resource or perform other actions when it is not behaving as expected.
-- `list structured logs`, `list console logs`, `list traces`, and `list trace structured logs` before changing code for runtime failures.
-- `select apphost` and `list apphosts` when multiple AppHosts are running.
-- Use the Playwright MCP server for functional investigations; get navigable endpoints from `list resources`.
+- `aspire describe` for resource state, endpoints, health, environment, and relationships.
+- `aspire otel logs` for structured logs, console logs, and traces before changing code for runtime failures.
+- `aspire start` / `aspire stop` to run the topology in the background; `aspire wait` to block until resources are healthy.
+- Restart a misbehaving resource from the Aspire dashboard (or restart the app).
+- Use the Playwright MCP server for functional investigations; get navigable endpoints from `aspire describe`.
 
-When adding a resource to the app model, first list Aspire integrations, choose a version aligned with `Aspire.AppHost.Sdk`, and use `get integration docs` to read the latest integration docs before editing the AppHost.
+When adding a resource to the app model, use `aspire add`, choose a version aligned with `Aspire.AppHost.Sdk`, and read the latest integration docs (`aspire docs search`) before editing the AppHost.
 
 To update the AppHost, run `aspire update` (it updates the AppHost and the Aspire-specific packages in referenced projects; other packages may still need manual updates — `dotnet-outdated`, installed via `dotnet tool install --global dotnet-outdated-tool`, can help).
 
