@@ -1,5 +1,11 @@
 # CLAUDE.md — Hexalith.EventStore
 
+## AI assistant instructions
+
+Before working in this repository, read
+[`hexalith-llm-instructions.md`](./Hexalith.AI.Tools/hexalith-llm-instructions.md)
+(in the `Hexalith.AI.Tools` submodule) and follow it.
+
 ## Project Overview
 
 DAPR-native event sourcing server for .NET. Built on CQRS, DDD, and event sourcing patterns with .NET Aspire orchestration.
