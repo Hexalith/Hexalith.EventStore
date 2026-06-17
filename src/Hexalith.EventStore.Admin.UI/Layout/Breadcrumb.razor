@@ -21,9 +21,10 @@
                     }
                     @if (segment.IsTruncationButton)
                     {
-                        <button class="breadcrumb-truncation-btn"
-                                aria-label="Show full breadcrumb path"
-                                @onclick="ToggleFullPath">...</button>
+                        <FluentButton Appearance="ButtonAppearance.Transparent"
+                                      Class="breadcrumb-truncation-btn"
+                                      aria-label="Show full breadcrumb path"
+                                      OnClick="ToggleFullPath">...</FluentButton>
                     }
                     else if (i < visibleSegments.Count - 1)
                     {
@@ -36,12 +37,13 @@
                 }
             }
         </div>
-        <button class="breadcrumb-copy-btn"
-                aria-label="Copy page URL to clipboard"
-                title="Copy link"
-                @onclick="CopyUrlAsync">
+        <FluentButton Appearance="ButtonAppearance.Transparent"
+                      Class="breadcrumb-copy-btn"
+                      aria-label="Copy page URL to clipboard"
+                      title="Copy link"
+                      OnClick="CopyUrlAsync">
             <FluentIcon Value="@(new Icons.Regular.Size16.Copy())" />
-        </button>
+        </FluentButton>
     </nav>
 }
 

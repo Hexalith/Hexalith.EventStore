@@ -37,12 +37,14 @@ aspire run
 
 Use Aspire MCP tools to inspect resources and debug runtime issues:
 
-- `list resources` for resource state, endpoints, health, environment, and relationships.
+- `list resources` for resource state, endpoints, health, environment, and relationships; `execute resource command` to restart a resource or perform other actions when it is not behaving as expected.
 - `list structured logs`, `list console logs`, `list traces`, and `list trace structured logs` before changing code for runtime failures.
 - `select apphost` and `list apphosts` when multiple AppHosts are running.
 - Use the Playwright MCP server for functional investigations; get navigable endpoints from `list resources`.
 
-When adding a resource to the app model, first list Aspire integrations, choose a version aligned with `Aspire.AppHost.Sdk`, and read the integration docs before editing the AppHost.
+When adding a resource to the app model, first list Aspire integrations, choose a version aligned with `Aspire.AppHost.Sdk`, and use `get integration docs` to read the latest integration docs before editing the AppHost.
+
+To update the AppHost, run `aspire update` (it updates the AppHost and the Aspire-specific packages in referenced projects; other packages may still need manual updates — `dotnet-outdated`, installed via `dotnet tool install --global dotnet-outdated-tool`, can help).
 
 Avoid persistent containers early during development. Never install or use the obsolete Aspire workload. Prefer official documentation from `https://aspire.dev`, `https://learn.microsoft.com/dotnet/aspire`, and NuGet package pages.
 
@@ -58,7 +60,7 @@ $HOME/.dapr/bin/scheduler --port 50006 --etcd-data-dir /tmp/dapr-scheduler-data 
 EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
 ```
 
-With `EnableKeycloak=false`, auth falls back to symmetric key JWT. The CommandAPI listens on `http://localhost:8080`; the Aspire dashboard is at `https://localhost:17017`.
+With `EnableKeycloak=false`, auth falls back to symmetric key JWT: tokens are validated against the symmetric key `DevOnlySigningKey-AtLeast32Chars!` (in `appsettings.Development.json`) and must include `iss=hexalith-dev`, `aud=hexalith-eventstore`, plus `tenants` (JSON array) and `permissions` (e.g. `["commands:*"]`) claims for authorization. The CommandAPI listens on `http://localhost:8080`; the Aspire dashboard is at `https://localhost:17017`.
 
 Known VM gotchas:
 

@@ -137,7 +137,10 @@ public class BreadcrumbTests : AdminUITestContext {
         cut.WaitForAssertion(() => {
             AngleSharp.Dom.IElement truncBtn = cut.Find("[aria-label='Show full breadcrumb path']");
             _ = truncBtn.ShouldNotBeNull();
-            truncBtn.TextContent.ShouldBe("...");
+            // The truncation control is now a <FluentButton> (Fluent v5 conformance); FluentButton's
+            // template surrounds the "..." child content with layout whitespace, so trim before the
+            // exact-text assertion. Behaviour is unchanged — the control still renders the ellipsis.
+            truncBtn.TextContent.Trim().ShouldBe("...");
         });
     }
 

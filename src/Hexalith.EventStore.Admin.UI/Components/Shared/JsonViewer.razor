@@ -24,9 +24,9 @@
         <pre class="json-viewer__code"><code>@((MarkupString)_highlightedLines)</code></pre>
         @if (!_showFull)
         {
-            <button class="json-viewer__show-all" @onclick="ShowFullPayload">
+            <FluentButton Appearance="ButtonAppearance.Transparent" Class="json-viewer__show-all" OnClick="ShowFullPayload">
                 Show full payload (@(_totalLines) lines)
-            </button>
+            </FluentButton>
         }
     }
     else
