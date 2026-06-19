@@ -50,6 +50,14 @@ public static class HexalithEventStoreExtensions {
     /// by a prior daprd process or another DAPR app). Diagnostic: on Windows, run
     /// <c>netstat -ano | findstr :3501</c> before <c>aspire run</c>.
     /// </param>
+    /// <param name="daprPlacementHostAddress">
+    /// Optional DAPR placement service address, formatted as <c>host</c> or <c>host:port</c>.
+    /// Leave <c>null</c> to use the DAPR CLI default.
+    /// </param>
+    /// <param name="daprSchedulerHostAddress">
+    /// Optional DAPR scheduler service address, formatted as <c>host</c> or <c>host:port</c>.
+    /// Leave <c>null</c> to use the DAPR CLI default.
+    /// </param>
     /// <returns>A <see cref="HexalithEventStoreResources"/> containing the resource builders for further customization.</returns>
     public static HexalithEventStoreResources AddHexalithEventStore(
         this IDistributedApplicationBuilder builder,
@@ -59,7 +67,9 @@ public static class HexalithEventStoreExtensions {
         string? eventStoreDaprConfigPath = null,
         string? adminServerDaprConfigPath = null,
         string? resiliencyConfigPath = null,
-        int eventStoreDaprHttpPort = 3501)
+        int eventStoreDaprHttpPort = 3501,
+        string? daprPlacementHostAddress = null,
+        string? daprSchedulerHostAddress = null)
         => AddHexalithEventStore(
             builder,
             eventStore,
@@ -69,7 +79,9 @@ public static class HexalithEventStoreExtensions {
             adminServerDaprConfigPath,
             resiliencyConfigPath,
             stateStoreComponentPath: null,
-            eventStoreDaprHttpPort: eventStoreDaprHttpPort);
+            eventStoreDaprHttpPort: eventStoreDaprHttpPort,
+            daprPlacementHostAddress: daprPlacementHostAddress,
+            daprSchedulerHostAddress: daprSchedulerHostAddress);
 
     /// <summary>
     /// Adds the Hexalith EventStore topology to the distributed application builder.
@@ -88,6 +100,14 @@ public static class HexalithEventStoreExtensions {
     /// source of truth for the local state-store metadata loaded by the DAPR sidecars.
     /// </param>
     /// <param name="eventStoreDaprHttpPort">DAPR HTTP port for the EventStore sidecar. Defaults to 3501.</param>
+    /// <param name="daprPlacementHostAddress">
+    /// Optional DAPR placement service address, formatted as <c>host</c> or <c>host:port</c>.
+    /// Leave <c>null</c> to use the DAPR CLI default.
+    /// </param>
+    /// <param name="daprSchedulerHostAddress">
+    /// Optional DAPR scheduler service address, formatted as <c>host</c> or <c>host:port</c>.
+    /// Leave <c>null</c> to use the DAPR CLI default.
+    /// </param>
     /// <returns>A <see cref="HexalithEventStoreResources"/> containing the resource builders for further customization.</returns>
     public static HexalithEventStoreResources AddHexalithEventStore(
         this IDistributedApplicationBuilder builder,
@@ -98,7 +118,9 @@ public static class HexalithEventStoreExtensions {
         string? adminServerDaprConfigPath,
         string? resiliencyConfigPath,
         string? stateStoreComponentPath,
-        int eventStoreDaprHttpPort = 3501) {
+        int eventStoreDaprHttpPort = 3501,
+        string? daprPlacementHostAddress = null,
+        string? daprSchedulerHostAddress = null) {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(eventStore);
         ArgumentNullException.ThrowIfNull(adminServer);
@@ -148,6 +170,8 @@ public static class HexalithEventStoreExtensions {
                     AppId = "eventstore",
                     DaprHttpPort = eventStoreDaprHttpPort,
                     Config = eventStoreDaprConfigPath,
+                    PlacementHostAddress = daprPlacementHostAddress,
+                    SchedulerHostAddress = daprSchedulerHostAddress,
                 })
                 .WithReference(stateStore)
                 .WithReference(pubSub));
@@ -186,6 +210,8 @@ public static class HexalithEventStoreExtensions {
             .WithOptions(new DaprSidecarOptions {
                 AppId = "eventstore-admin",
                 Config = adminServerDaprConfigPath,
+                PlacementHostAddress = daprPlacementHostAddress,
+                SchedulerHostAddress = daprSchedulerHostAddress,
             })
             .WithReference(stateStore));
 
@@ -217,6 +243,8 @@ public static class HexalithEventStoreExtensions {
                 .WithDaprSidecar(sidecar => sidecar
                     .WithOptions(new DaprSidecarOptions {
                         AppId = "eventstore-admin-ui",
+                        PlacementHostAddress = daprPlacementHostAddress,
+                        SchedulerHostAddress = daprSchedulerHostAddress,
                     }));
         }
 

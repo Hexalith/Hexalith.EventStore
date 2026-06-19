@@ -37,6 +37,14 @@ public static class HexalithEventStoreDomainModuleExtensions {
     /// EventStore state-store and pub/sub components (used by domains that persist read models / subscribe to
     /// events, like Tenants).
     /// </param>
+    /// <param name="daprPlacementHostAddress">
+    /// Optional DAPR placement service address, formatted as <c>host</c> or <c>host:port</c>.
+    /// Leave <c>null</c> to use the DAPR CLI default.
+    /// </param>
+    /// <param name="daprSchedulerHostAddress">
+    /// Optional DAPR scheduler service address, formatted as <c>host</c> or <c>host:port</c>.
+    /// Leave <c>null</c> to use the DAPR CLI default.
+    /// </param>
     /// <returns>The same domain-module resource builder for chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="domainModule"/> or <paramref name="eventStore"/> is <c>null</c>.</exception>
     /// <exception cref="ArgumentException">Thrown when <paramref name="appId"/> is <c>null</c> or whitespace.</exception>
@@ -45,7 +53,9 @@ public static class HexalithEventStoreDomainModuleExtensions {
         HexalithEventStoreResources eventStore,
         string appId,
         string? daprConfigPath = null,
-        string? isolatedDaprResourcesPath = null) {
+        string? isolatedDaprResourcesPath = null,
+        string? daprPlacementHostAddress = null,
+        string? daprSchedulerHostAddress = null) {
         ArgumentNullException.ThrowIfNull(domainModule);
         ArgumentNullException.ThrowIfNull(eventStore);
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
@@ -62,6 +72,8 @@ public static class HexalithEventStoreDomainModuleExtensions {
                     AppId = appId,
                     Config = daprConfigPath,
                     ResourcesPaths = ImmutableHashSet.Create(isolatedDaprResourcesPath!),
+                    PlacementHostAddress = daprPlacementHostAddress,
+                    SchedulerHostAddress = daprSchedulerHostAddress,
                 });
             }
             else {
@@ -71,6 +83,8 @@ public static class HexalithEventStoreDomainModuleExtensions {
                     .WithOptions(new DaprSidecarOptions {
                         AppId = appId,
                         Config = daprConfigPath,
+                        PlacementHostAddress = daprPlacementHostAddress,
+                        SchedulerHostAddress = daprSchedulerHostAddress,
                     })
                     .WithReference(eventStore.StateStore)
                     .WithReference(eventStore.PubSub);
