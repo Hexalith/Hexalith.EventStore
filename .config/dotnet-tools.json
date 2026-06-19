@@ -3,14 +3,14 @@
   "isRoot": true,
   "tools": {
     "defaultdocumentation.console": {
-      "version": "1.2.3",
+      "version": "1.2.5",
       "commands": [
         "defaultdocumentation"
       ],
       "rollForward": false
     },
     "hexalith.eventstore.admin.cli": {
-      "version": "1.0.0",
+      "version": "3.15.1",
       "commands": [
         "eventstore-admin"
       ],
