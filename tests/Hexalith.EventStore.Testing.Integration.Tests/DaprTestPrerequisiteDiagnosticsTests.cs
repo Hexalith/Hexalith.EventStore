@@ -21,21 +21,24 @@ public class DaprTestPrerequisiteDiagnosticsTests {
 
     [Fact]
     public void FixturePrerequisiteFailureMessage_NamesDependencyCategoryAndPortOnly() {
-        string message = DaprDiagnostics.BuildPrerequisiteFailureMessage(
+        int placementPort = DaprLocalEndpoints.PlacementPort;
+        int schedulerPort = DaprLocalEndpoints.SchedulerPort;
+
+        string message = DaprDomainServiceTestFixtureBase.BuildPrerequisiteFailureMessage(
             [
-                $"Redis is not responding to PING on localhost:{DaprDiagnostics.DefaultRedisPort}",
-                $"Dapr placement service is not reachable on localhost:{DaprLocalEndpoints.PlacementPort}",
-                $"Dapr scheduler service is not reachable on localhost:{DaprLocalEndpoints.SchedulerPort}",
+                "Redis is not responding to PING on localhost:6379",
+                $"Dapr placement service is not reachable on localhost:{placementPort}",
+                $"Dapr scheduler service is not reachable on localhost:{schedulerPort}",
             ]);
 
         message.ShouldContain("Dapr infrastructure pre-flight check failed");
         message.ShouldContain("dapr init");
         message.ShouldContain("Redis");
-        message.ShouldContain($"localhost:{DaprDiagnostics.DefaultRedisPort}");
+        message.ShouldContain("localhost:6379");
         message.ShouldContain("placement");
-        message.ShouldContain($"localhost:{DaprLocalEndpoints.PlacementPort}");
+        message.ShouldContain($"localhost:{placementPort}");
         message.ShouldContain("scheduler");
-        message.ShouldContain($"localhost:{DaprLocalEndpoints.SchedulerPort}");
+        message.ShouldContain($"localhost:{schedulerPort}");
         AssertSupportSafe(message);
     }
 
@@ -45,7 +48,7 @@ public class DaprTestPrerequisiteDiagnosticsTests {
     [InlineData("component initialization failed for state.redis.")]
     [InlineData("statestore init timeout while loading actor state store.")]
     public void InfrastructureStartupClassifier_SkipsNarrowDaprStartupFailures(string message) {
-        bool result = DaprDiagnostics.IsDaprInfrastructureStartupFailure(new InvalidOperationException(message));
+        bool result = DaprDomainServiceTestFixtureBase.IsDaprInfrastructureStartupFailure(new InvalidOperationException(message));
 
         result.ShouldBeTrue();
     }
@@ -56,14 +59,14 @@ public class DaprTestPrerequisiteDiagnosticsTests {
     [InlineData("Service invocation to /process returned a product error.")]
     [InlineData("Tenant aggregate rejected duplicate command input.")]
     public void InfrastructureStartupClassifier_DoesNotSkipProductFailures(string message) {
-        bool result = DaprDiagnostics.IsDaprInfrastructureStartupFailure(new InvalidOperationException(message));
+        bool result = DaprDomainServiceTestFixtureBase.IsDaprInfrastructureStartupFailure(new InvalidOperationException(message));
 
         result.ShouldBeFalse();
     }
 
     [Fact]
     public void SupportSafeDiagnostic_RedactsSecretsTokensAndPrivateAddresses() {
-        string diagnostic = DaprDiagnostics.ToSupportSafeDiagnostic(
+        string diagnostic = DaprDomainServiceTestFixtureBase.ToSupportSafeDiagnostic(
             "Bearer abcdefghijklmnopqrstuvwxyz12345 eyJheader.payload.signature Password=s3cr3t AccountKey=abc123 redis://cache.local:6379 10.1.2.3 "
             + "issuer=https://identity.internal.example/realms/hexalith tenantId='tenant-prod-001' userId=\"real-user\" email=real-user@example.com");
 
@@ -93,13 +96,16 @@ public class DaprTestPrerequisiteDiagnosticsTests {
 
     [Fact]
     public void DependencyDiagnosticCategories_AreSupportSafeWhenRecordedAsEvidence() {
+        int placementPort = DaprLocalEndpoints.PlacementPort;
+        int schedulerPort = DaprLocalEndpoints.SchedulerPort;
+
         string[] categories =
         [
             "DAPR state store",
             "DAPR sidecar",
-            $"Redis localhost:{DaprDiagnostics.DefaultRedisPort}",
-            $"placement localhost:{DaprLocalEndpoints.PlacementPort}",
-            $"scheduler localhost:{DaprLocalEndpoints.SchedulerPort}",
+            "Redis localhost:6379",
+            $"placement localhost:{placementPort}",
+            $"scheduler localhost:{schedulerPort}",
             "EventStore command gateway",
             "Tenants query route",
             "service invocation boundary",

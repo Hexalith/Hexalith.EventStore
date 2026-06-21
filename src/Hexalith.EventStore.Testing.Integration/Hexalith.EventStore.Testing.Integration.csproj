@@ -1,34 +1,31 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Integration-test harness for DAPR-backed Hexalith domain modules — local daprd sidecar bootstrap, placement/scheduler endpoint resolution, Aspire topology fixtures, and support-safe diagnostics for .NET event sourcing. Domain modules subclass the supplied fixtures and provide only their domain specifics instead of hand-writing this technical harness.</Description>
-    <PackageTags>eventsourcing;dapr;aspire;testing;integration-tests;eventstore;dotnet</PackageTags>
+    <Description>Integration-test harness for DAPR-backed Hexalith domain modules — local daprd
+      sidecar bootstrap, placement/scheduler endpoint resolution, Aspire topology fixtures, and
+      support-safe diagnostics for .NET event sourcing. Domain modules supply only their AppHost
+      type, resource names, and domain-service registration; the generic machinery is reused.</Description>
+    <!-- This is test-support code (references xunit.v3 + Aspire.Hosting.Testing). xUnit1051 wants a
+         TestContext cancellation token on framework calls; the harness probes/HTTP-polls with its
+         own internal timeouts and runs outside a live test context during fixture startup. -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!--
-      References the platform's stable runtime packages (Server brings Client + Contracts +
-      Dapr.Actors.AspNetCore; DomainService brings the canonical /process router used by domain
-      subclasses). It deliberately does NOT reference Hexalith.EventStore.Testing: that package carries
-      a prerelease NSubstitute dependency which would make this stable, published package fail NU5104,
-      and the harness base classes do not consume any Testing type. Domain test projects that need the
-      in-memory fakes keep their own direct Hexalith.EventStore.Testing reference.
-    -->
+    <ProjectReference Include="..\Hexalith.EventStore.Testing\Hexalith.EventStore.Testing.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.Server\Hexalith.EventStore.Server.csproj" />
     <ProjectReference Include="..\Hexalith.EventStore.DomainService\Hexalith.EventStore.DomainService.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Dapr.Actors.AspNetCore" />
     <PackageReference Include="Aspire.Hosting" />
     <PackageReference Include="Aspire.Hosting.Testing" />
-    <!-- FactAttribute / BeforeAfterTestAttribute / IXunitTest / IAsyncLifetime (transitive xunit.v3.common). -->
+    <!-- Library that defines custom xUnit attributes/fixtures: use the extensibility core (not the
+         full xunit.v3 metapackage, which requires an executable test project). Assert flows in
+         transitively via the Hexalith.EventStore.Testing project reference. -->
     <PackageReference Include="xunit.v3.extensibility.core" />
-    <!-- Assert.Skip used by the prerequisite-gated fixtures. -->
     <PackageReference Include="xunit.v3.assert" />
   </ItemGroup>
 

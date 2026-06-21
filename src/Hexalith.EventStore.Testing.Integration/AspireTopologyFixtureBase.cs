@@ -1,38 +1,33 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Net;
+using System.Net.Sockets;
+using System.Text;
 
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
-
-using Microsoft.Extensions.DependencyInjection;
 
 using Xunit;
 
 namespace Hexalith.EventStore.Testing.Integration;
 
 /// <summary>
-/// Base xUnit fixture that boots the full Aspire AppHost topology (with DAPR sidecars) for a domain
-/// module and creates HTTP clients for smoke tests. Implements <see cref="IAsyncLifetime"/> for
-/// xUnit lifecycle management.
+/// Reusable xUnit fixture base that boots a full Aspire AppHost topology (with DAPR sidecars) and
+/// creates HTTP clients for smoke tests. A concrete fixture supplies the AppHost project type via
+/// <typeparamref name="TAppHost"/> and the resources to wait on via <see cref="Resources"/>.
 /// </summary>
-/// <typeparam name="TAppHost">The Aspire AppHost project type to boot.</typeparam>
+/// <typeparam name="TAppHost">The Aspire AppHost project marker type (e.g. <c>Projects.X_AppHost</c>).</typeparam>
 /// <remarks>
 /// <para>
-/// This fixture verifies <strong>process liveness</strong>, not full readiness. It waits for
-/// resources to reach <c>Running</c> state and for the <c>/alive</c> endpoint to return
-/// HTTP 200 — that proves the host is responding to HTTP, not that every dependency
-/// (database connections, Dapr sidecars, downstream services) is ready to serve traffic.
+/// This fixture verifies <strong>process liveness</strong>, not full readiness. It waits for resources
+/// to reach <c>Running</c> state and (for resources flagged <see cref="AspireResource.WaitForAliveness"/>)
+/// for the aliveness endpoint to return HTTP 200 — that proves the host is responding to HTTP, not that
+/// every dependency is ready to serve traffic.
 /// </para>
 /// <para>
-/// Full Dapr readiness (placement registration, sidecar handshake, state-store availability)
-/// is covered by Dapr-specific integration tests that exercise the actor/state pipeline
-/// end-to-end, not by this liveness smoke check.
-/// </para>
-/// <para>
-/// A domain module subclasses this base and supplies its <see cref="ResourceNames"/>,
-/// <see cref="AlivenessResourceNames"/>, and any <see cref="ExtraAppArgs"/>, then exposes typed
-/// client accessors over <see cref="Client(string)"/>.
+/// Full Dapr readiness (placement registration, sidecar handshake, state-store availability) is covered
+/// by Dapr-specific integration tests, not by this liveness smoke check.
 /// </para>
 /// </remarks>
 public abstract class AspireTopologyFixtureBase<TAppHost> : IAsyncLifetime
@@ -41,45 +36,48 @@ public abstract class AspireTopologyFixtureBase<TAppHost> : IAsyncLifetime
     private static readonly int SchedulerPort = DaprLocalEndpoints.SchedulerPort;
 
     // The Redis prerequisite targets the `dapr init`-managed Redis (which DAPR sidecars use as their
-    // state-store and pub-sub backend). dapr init defaults to localhost:6379, but developers can run
-    // dapr init on a non-default port; the port can be overridden without editing the fixture. This
-    // probe does NOT target an Aspire-managed Redis: the AppHost does not currently manage its own
-    // Redis resource. If the AppHost ever takes over Redis management, switch this probe to read the
-    // dynamically allocated port from the Aspire resource configuration instead.
-    private readonly int _redisPort = DaprDiagnostics.ResolveRedisPort();
+    // state-store and pub-sub backend). dapr init defaults to localhost:6379, but developers can run it
+    // on a non-default port; HEXALITH_EVENTSTORE_TEST_REDIS_PORT lets them override the probe port.
+    private static readonly int RedisPort = ResolveRedisPort();
+    private const int DefaultRedisPort = 6379;
     private static readonly TimeSpan DockerProbeTimeout = TimeSpan.FromSeconds(5);
 
     private DistributedApplication? _app;
     private IDistributedApplicationTestingBuilder? _builder;
-    private readonly Dictionary<string, HttpClient> _clients = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, (HttpStatusCode? Status, string? Error)> _healthDiagnostics = new(StringComparer.Ordinal);
     private FileStream? _daprFixtureLock;
     private readonly Stopwatch _startupStopwatch = new();
+    private readonly Dictionary<string, HttpClient> _clients = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (HttpStatusCode? Status, string? Error)> _diagnostics = new(StringComparer.Ordinal);
 
-    /// <summary>Gets the timeout for the full topology build/start phase.</summary>
+    /// <summary>Describes an Aspire resource the fixture waits on and creates an HTTP client for.</summary>
+    /// <param name="Name">The Aspire resource name.</param>
+    /// <param name="EndpointName">The endpoint name to resolve (typically <c>http</c>).</param>
+    /// <param name="ClientTimeout">The <see cref="HttpClient.Timeout"/> for the created client.</param>
+    /// <param name="ReadinessTimeout">The maximum time to wait for the resource to reach Running with the endpoint published.</param>
+    /// <param name="WaitForAliveness">Whether to additionally poll the aliveness endpoint for HTTP 200.</param>
+    /// <param name="AlivenessTimeout">The maximum time to wait for the aliveness endpoint.</param>
+    protected sealed record AspireResource(
+        string Name,
+        string EndpointName,
+        TimeSpan ClientTimeout,
+        TimeSpan ReadinessTimeout,
+        bool WaitForAliveness,
+        TimeSpan AlivenessTimeout);
+
+    /// <summary>Gets the resources to start, wait on, and create clients for.</summary>
+    protected abstract IReadOnlyList<AspireResource> Resources { get; }
+
+    /// <summary>Gets extra AppHost command-line arguments (placement/scheduler are added automatically).</summary>
+    protected virtual IReadOnlyList<string> ExtraAppArgs => [];
+
+    /// <summary>Gets the overall startup timeout for build + graph evaluation + start.</summary>
     protected virtual TimeSpan StartupTimeout => TimeSpan.FromMinutes(6);
 
-    /// <summary>Gets the per-resource readiness/aliveness timeout.</summary>
-    protected virtual TimeSpan ResourceReadinessTimeout => TimeSpan.FromMinutes(4);
+    /// <summary>Gets the aliveness endpoint path probed for resources flagged for liveness.</summary>
+    protected virtual string AlivenessEndpointPath => "/alive";
 
-    /// <summary>
-    /// Gets the per-request <see cref="HttpClient"/> timeout for the created resource clients. The
-    /// heaviest end-to-end tests budget several minutes of wall-clock for a flow; keeping this aligned
-    /// with those budgets prevents a single slow cold request (first actor activation + DAPR
-    /// placement-table dissemination) from failing an otherwise-passing flow.
-    /// </summary>
-    protected virtual TimeSpan RequestTimeout => TimeSpan.FromMinutes(3);
-
-    private const string AlivenessEndpointPath = "/alive";
-
-    /// <summary>Gets the Aspire resource names to start and create clients for.</summary>
-    protected abstract IReadOnlyList<string> ResourceNames { get; }
-
-    /// <summary>Gets the subset of <see cref="ResourceNames"/> that must pass the <c>/alive</c> check.</summary>
-    protected abstract IReadOnlyList<string> AlivenessResourceNames { get; }
-
-    /// <summary>Gets any extra AppHost arguments (e.g. <c>--EnableKeycloak=false</c>).</summary>
-    protected virtual IReadOnlyList<string> ExtraAppArgs => [];
+    /// <summary>Gets the name of the cross-process lock file that serializes DAPR fixtures.</summary>
+    protected virtual string FixtureLockName => "hexalith-dapr-test-fixture.lock";
 
     /// <summary>
     /// Gets a value indicating whether local DAPR prerequisites were available during fixture startup.
@@ -91,18 +89,16 @@ public abstract class AspireTopologyFixtureBase<TAppHost> : IAsyncLifetime
     /// </summary>
     public string? SkipReason { get; private set; }
 
-    /// <summary>
-    /// Gets the HTTP client for the named Aspire resource. Available after
-    /// <see cref="InitializeAsync"/> completes.
-    /// </summary>
-    /// <param name="resourceName">The Aspire resource name (must be one of <see cref="ResourceNames"/>).</param>
-    public HttpClient Client(string resourceName) {
+    /// <summary>Gets the HTTP client created for the named resource, skipping the test if unavailable.</summary>
+    /// <param name="resourceName">The Aspire resource name.</param>
+    /// <returns>The HTTP client for the resource.</returns>
+    protected HttpClient Client(string resourceName) {
         ArgumentException.ThrowIfNullOrWhiteSpace(resourceName);
         SkipIfUnavailable();
         return _clients.TryGetValue(resourceName, out HttpClient? client)
             ? client
             : throw new InvalidOperationException(
-                $"No HTTP client was created for resource '{resourceName}'. Ensure it is listed in {nameof(ResourceNames)} and InitializeAsync has completed.");
+                $"No HTTP client was created for resource '{resourceName}'. Ensure InitializeAsync has completed and the resource is declared in {nameof(Resources)}.");
     }
 
     /// <inheritdoc/>
@@ -125,7 +121,7 @@ public abstract class AspireTopologyFixtureBase<TAppHost> : IAsyncLifetime
             // prerequisite probe found reachable. Without this the sidecars fall back to the daprd default
             // (localhost:50005/:50006); under a containerized `dapr init` (host ports 6050/6060) the actor
             // runtime can never reach placement, so the host blocks during startup and never serves /alive.
-            string[] appArgs =
+            string[] args =
             [
                 .. ExtraAppArgs,
                 $"--Dapr:PlacementHostAddress=localhost:{PlacementPort}",
@@ -133,7 +129,7 @@ public abstract class AspireTopologyFixtureBase<TAppHost> : IAsyncLifetime
             ];
 
             _builder = await DistributedApplicationTestingBuilder
-                .CreateAsync<TAppHost>(appArgs, startupCts.Token)
+                .CreateAsync<TAppHost>(args, startupCts.Token)
                 .ConfigureAwait(false);
 
             // Honor StartupTimeout during the build/graph-evaluation phase as well; MSBuild hangs during
@@ -142,21 +138,20 @@ public abstract class AspireTopologyFixtureBase<TAppHost> : IAsyncLifetime
 
             await _app.StartAsync(startupCts.Token).ConfigureAwait(false);
 
-            StartResourceLogCaptureIfRequested();
-
-            // Create HTTP clients for all resources. Clients are built through Aspire's
-            // _app.CreateHttpClient(resourceName, endpointName) so service-discovery and the
-            // DelegatingHandler chain remain attached, and HttpClient Timeout is configured
-            // inline at construction time rather than mutated after first use.
-            foreach (string resourceName in ResourceNames) {
-                _clients[resourceName] = await WaitForResourceAndCreateClientAsync(
-                    resourceName, "http", RequestTimeout, ResourceReadinessTimeout, startupCts.Token).ConfigureAwait(false);
+            // Create HTTP clients for all resources through Aspire's CreateHttpClient so service-discovery
+            // and the DelegatingHandler chain remain attached.
+            foreach (AspireResource resource in Resources) {
+                HttpClient client = await WaitForResourceAndCreateClientAsync(
+                    resource, startupCts.Token).ConfigureAwait(false);
+                _clients[resource.Name] = client;
             }
 
             // Wait for process liveness. Full Dapr readiness is covered by Dapr-specific integration tests.
-            foreach (string resourceName in AlivenessResourceNames) {
-                await WaitForEndpointAsync(
-                    _clients[resourceName], resourceName, AlivenessEndpointPath, ResourceReadinessTimeout, CancellationToken.None).ConfigureAwait(false);
+            foreach (AspireResource resource in Resources) {
+                if (resource.WaitForAliveness) {
+                    await WaitForEndpointAsync(
+                        _clients[resource.Name], resource.Name, AlivenessEndpointPath, resource.AlivenessTimeout, CancellationToken.None).ConfigureAwait(false);
+                }
             }
         }
         catch (OperationCanceledException) when (startupCts.IsCancellationRequested) {
@@ -205,35 +200,8 @@ public abstract class AspireTopologyFixtureBase<TAppHost> : IAsyncLifetime
         GC.SuppressFinalize(this);
     }
 
-    // Temporary diagnostic: when HEXALITH_EVENTSTORE_TEST_DUMP_LOGS=1, stream every resource's console
-    // output to /tmp/aspire-logs-<resource>.log so a hanging command flow can be root-caused.
-    private void StartResourceLogCaptureIfRequested() {
-        if (_app is null
-            || DaprTestEnvironment.GetVariable("HEXALITH_EVENTSTORE_TEST_DUMP_LOGS", "HEXALITH_TENANTS_TEST_DUMP_LOGS") != "1") {
-            return;
-        }
-
-        ResourceLoggerService loggerService = _app.Services.GetRequiredService<ResourceLoggerService>();
-        DistributedApplicationModel model = _app.Services.GetRequiredService<DistributedApplicationModel>();
-
-        foreach (IResource resource in model.Resources) {
-            string name = resource.Name;
-            string path = Path.Combine(Path.GetTempPath(), $"aspire-logs-{name}.log");
-            _ = Task.Run(async () => {
-                try {
-                    await foreach (IReadOnlyList<LogLine> batch in loggerService.WatchAsync(resource).ConfigureAwait(false)) {
-                        await File.AppendAllLinesAsync(path, batch.Select(line => line.Content)).ConfigureAwait(false);
-                    }
-                }
-                catch {
-                    // Best-effort diagnostic capture.
-                }
-            });
-        }
-    }
-
     private void AcquireDaprFixtureLock() {
-        string lockPath = Path.Combine(Path.GetTempPath(), "hexalith-eventstore-dapr-fixture.lock");
+        string lockPath = Path.Combine(Path.GetTempPath(), FixtureLockName);
         while (true) {
             try {
                 _daprFixtureLock = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
@@ -285,52 +253,45 @@ public abstract class AspireTopologyFixtureBase<TAppHost> : IAsyncLifetime
     }
 
     private async Task<HttpClient> WaitForResourceAndCreateClientAsync(
-        string resourceName,
-        string endpointName,
-        TimeSpan clientTimeout,
-        TimeSpan readinessTimeout,
+        AspireResource resource,
         CancellationToken cancellationToken) {
         if (_app is null) {
             throw new InvalidOperationException("Aspire application has not been built.");
         }
 
         using var probeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        probeCts.CancelAfter(readinessTimeout);
+        probeCts.CancelAfter(resource.ReadinessTimeout);
 
         try {
             await _app.ResourceNotifications
-                .WaitForResourceAsync(resourceName, KnownResourceStates.Running, probeCts.Token)
+                .WaitForResourceAsync(resource.Name, KnownResourceStates.Running, probeCts.Token)
                 .ConfigureAwait(false);
 
-            // WaitForResourceAsync(Running) returns before endpoint URLs are guaranteed to be
-            // published. Poll Snapshot.Urls until the named endpoint appears (or the readiness
-            // timeout fires) — this avoids the misleading "did not expose endpoint" error that
-            // the previous one-shot snapshot check raised on a URL-publication race.
+            // WaitForResourceAsync(Running) returns before endpoint URLs are guaranteed to be published.
+            // Poll Snapshot.Urls until the named endpoint appears (or the readiness timeout fires) — this
+            // avoids the misleading "did not expose endpoint" error on a URL-publication race.
             UrlSnapshot endpoint = await WaitForEndpointPublishedAsync(
-                resourceName, endpointName, probeCts.Token).ConfigureAwait(false);
+                resource.Name, resource.EndpointName, probeCts.Token).ConfigureAwait(false);
 
-            // UrlSnapshot.Url can be null; throw a descriptive error rather than letting
-            // new Uri(null!) surface a generic ArgumentNullException.
+            // UrlSnapshot.Url can be null; throw a descriptive error rather than letting new Uri(null!)
+            // surface a generic ArgumentNullException.
             if (string.IsNullOrWhiteSpace(endpoint.Url)) {
                 throw new InvalidOperationException(
-                    $"Resource '{resourceName}' published endpoint '{endpointName}' but its URL value is null or whitespace.");
+                    $"Resource '{resource.Name}' published endpoint '{resource.EndpointName}' but its URL value is null or whitespace.");
             }
 
-            // Use Aspire's CreateHttpClient so service-discovery handlers, retry policies, and
-            // tracing DelegatingHandlers stay attached; set Timeout in the same statement so it
-            // is in effect before the first request is issued.
-            HttpClient client = _app.CreateHttpClient(resourceName, endpointName);
+            HttpClient client = _app.CreateHttpClient(resource.Name, resource.EndpointName);
             client.BaseAddress ??= new Uri(endpoint.Url);
-            client.Timeout = clientTimeout;
+            client.Timeout = resource.ClientTimeout;
             return client;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            string state = _app.ResourceNotifications.TryGetCurrentState(resourceName, out ResourceEvent? current)
+            string state = _app.ResourceNotifications.TryGetCurrentState(resource.Name, out ResourceEvent? current)
                 ? current.Snapshot.State?.Text ?? "n/a"
                 : "n/a";
 
             throw new TimeoutException(
-                $"Resource '{resourceName}' did not reach Running with endpoint '{endpointName}' published within {readinessTimeout}. Last state: {state}.");
+                $"Resource '{resource.Name}' did not reach Running with endpoint '{resource.EndpointName}' published within {resource.ReadinessTimeout}. Last state: {state}.");
         }
     }
 
@@ -352,31 +313,26 @@ public abstract class AspireTopologyFixtureBase<TAppHost> : IAsyncLifetime
                 }
             }
 
-            try {
-                await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) {
-                throw;
-            }
+            await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private async Task<IReadOnlyList<string>> GetPrerequisiteFailuresAsync() {
+    private static async Task<IReadOnlyList<string>> GetPrerequisiteFailuresAsync() {
         var failures = new List<string>();
 
         if (!IsDockerHealthy()) {
             failures.Add("Docker is not running or is not healthy enough for Aspire container orchestration");
         }
 
-        if (!await DaprDiagnostics.IsRedisResponsiveAsync(_redisPort).ConfigureAwait(false)) {
-            failures.Add($"Redis is not responding to PING on localhost:{_redisPort}");
+        if (!await IsRedisResponsiveAsync().ConfigureAwait(false)) {
+            failures.Add($"Redis is not responding to PING on localhost:{RedisPort}");
         }
 
-        if (!await DaprDiagnostics.IsPortReachableAsync("localhost", PlacementPort).ConfigureAwait(false)) {
+        if (!await IsPortReachableAsync("localhost", PlacementPort).ConfigureAwait(false)) {
             failures.Add($"Dapr placement service is not reachable on localhost:{PlacementPort}");
         }
 
-        if (!await DaprDiagnostics.IsPortReachableAsync("localhost", SchedulerPort).ConfigureAwait(false)) {
+        if (!await IsPortReachableAsync("localhost", SchedulerPort).ConfigureAwait(false)) {
             failures.Add($"Dapr scheduler service is not reachable on localhost:{SchedulerPort}");
         }
 
@@ -420,11 +376,63 @@ public abstract class AspireTopologyFixtureBase<TAppHost> : IAsyncLifetime
         }
     }
 
+    private static async Task<bool> IsPortReachableAsync(string host, int port) {
+        try {
+            using var client = new TcpClient();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await client.ConnectAsync(host, port, cts.Token).ConfigureAwait(false);
+            return true;
+        }
+        catch {
+            return false;
+        }
+    }
+
+    private static int ResolveRedisPort() {
+        string? overrideValue = Environment.GetEnvironmentVariable("HEXALITH_EVENTSTORE_TEST_REDIS_PORT");
+        if (!string.IsNullOrWhiteSpace(overrideValue)
+            && int.TryParse(overrideValue, CultureInfo.InvariantCulture, out int parsed)
+            && parsed is > 0 and < 65536) {
+            return parsed;
+        }
+
+        return DefaultRedisPort;
+    }
+
+    private static async Task<bool> IsRedisResponsiveAsync() {
+        try {
+            using var client = new TcpClient();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await client.ConnectAsync("localhost", RedisPort, cts.Token).ConfigureAwait(false);
+            NetworkStream stream = client.GetStream();
+            await using (stream.ConfigureAwait(false)) {
+                byte[] ping = Encoding.ASCII.GetBytes("*1\r\n$4\r\nPING\r\n");
+                await stream.WriteAsync(ping, cts.Token).ConfigureAwait(false);
+
+                byte[] buffer = new byte[16];
+                int total = 0;
+                while (total < 5) {
+                    int chunk = await stream.ReadAsync(buffer.AsMemory(total), cts.Token).ConfigureAwait(false);
+                    if (chunk <= 0) {
+                        break;
+                    }
+
+                    total += chunk;
+                }
+
+                return total >= 5 && Encoding.ASCII.GetString(buffer, 0, total).StartsWith("+PONG", StringComparison.Ordinal);
+            }
+        }
+        catch {
+            return false;
+        }
+    }
+
     private void SetHealthDiagnostics(string resourceName, HttpStatusCode? status, string? error)
-        => _healthDiagnostics[resourceName] = (status, error);
+        => _diagnostics[resourceName] = (status, error);
 
     private string GetHealthDiagnostic(string resourceName)
-        => _healthDiagnostics.TryGetValue(resourceName, out (HttpStatusCode? Status, string? Error) diagnostic)
+        => _diagnostics.TryGetValue(resourceName, out (HttpStatusCode? Status, string? Error) diagnostic)
             ? $"Last status: {diagnostic.Status?.ToString() ?? "n/a"}, Last error: {diagnostic.Error ?? "n/a"}"
             : "Last status: n/a, Last error: n/a";
 
@@ -434,9 +442,14 @@ public abstract class AspireTopologyFixtureBase<TAppHost> : IAsyncLifetime
                 return "Application did not start (builder or build phase failed).";
             }
 
-            string resources = string.Join(", ", ResourceNames);
-            string perResource = string.Join(" ", ResourceNames.Select(name => $"{name} => {GetHealthDiagnostic(name)}."));
-            return $"Resources expected: {resources}. Startup duration: {_startupStopwatch.Elapsed}. {perResource}";
+            var builder = new StringBuilder();
+            _ = builder.Append(CultureInfo.InvariantCulture, $"Resources expected: {string.Join(", ", Resources.Select(r => r.Name))}. ");
+            _ = builder.Append(CultureInfo.InvariantCulture, $"Startup duration: {_startupStopwatch.Elapsed}. ");
+            foreach (AspireResource resource in Resources) {
+                _ = builder.Append(CultureInfo.InvariantCulture, $"{resource.Name} => {GetHealthDiagnostic(resource.Name)}. ");
+            }
+
+            return builder.ToString();
         }
         catch (Exception ex) {
             return $"Failed to capture diagnostics: {ex.Message}";

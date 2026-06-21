@@ -24,10 +24,11 @@ namespace Hexalith.EventStore.Testing.Integration;
 /// </para>
 /// </remarks>
 public static class DaprLocalEndpoints {
-    private const string PlacementPortVariable = "HEXALITH_EVENTSTORE_TEST_PLACEMENT_PORT";
-    private const string LegacyPlacementPortVariable = "HEXALITH_TENANTS_TEST_PLACEMENT_PORT";
-    private const string SchedulerPortVariable = "HEXALITH_EVENTSTORE_TEST_SCHEDULER_PORT";
-    private const string LegacySchedulerPortVariable = "HEXALITH_TENANTS_TEST_SCHEDULER_PORT";
+    /// <summary>Environment variable that overrides the resolved placement host port.</summary>
+    public const string PlacementPortVariable = "HEXALITH_EVENTSTORE_TEST_PLACEMENT_PORT";
+
+    /// <summary>Environment variable that overrides the resolved scheduler host port.</summary>
+    public const string SchedulerPortVariable = "HEXALITH_EVENTSTORE_TEST_SCHEDULER_PORT";
 
     // Candidate host ports in preference order: containerized `dapr init` (6050/6060) first, then the
     // legacy slim-mode native ports (50005/50006).
@@ -35,8 +36,8 @@ public static class DaprLocalEndpoints {
     private static readonly int[] SchedulerCandidatePorts = [6060, 50006];
     private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(3);
 
-    private static readonly Lazy<int> s_placementPort = new(() => ResolvePort(PlacementPortVariable, LegacyPlacementPortVariable, PlacementCandidatePorts));
-    private static readonly Lazy<int> s_schedulerPort = new(() => ResolvePort(SchedulerPortVariable, LegacySchedulerPortVariable, SchedulerCandidatePorts));
+    private static readonly Lazy<int> s_placementPort = new(() => ResolvePort(PlacementPortVariable, PlacementCandidatePorts));
+    private static readonly Lazy<int> s_schedulerPort = new(() => ResolvePort(SchedulerPortVariable, SchedulerCandidatePorts));
 
     /// <summary>
     /// Gets the resolved host port of the local DAPR placement service.
@@ -48,8 +49,8 @@ public static class DaprLocalEndpoints {
     /// </summary>
     public static int SchedulerPort => s_schedulerPort.Value;
 
-    private static int ResolvePort(string overrideVariable, string legacyOverrideVariable, int[] candidatePorts) {
-        string? overrideValue = DaprTestEnvironment.GetVariable(overrideVariable, legacyOverrideVariable);
+    private static int ResolvePort(string overrideVariable, int[] candidatePorts) {
+        string? overrideValue = Environment.GetEnvironmentVariable(overrideVariable);
         if (!string.IsNullOrWhiteSpace(overrideValue)
             && int.TryParse(overrideValue, CultureInfo.InvariantCulture, out int parsed)
             && parsed is > 0 and < 65536) {

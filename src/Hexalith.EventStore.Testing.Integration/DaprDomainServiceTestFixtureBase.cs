@@ -2,41 +2,40 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
+
+using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.DomainService;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using Xunit;
 
 namespace Hexalith.EventStore.Testing.Integration;
 
 /// <summary>
-/// Base integration-test fixture that starts a domain-service CommandApi host with a local
-/// <c>daprd</c> sidecar, reusing the DAPR infrastructure (Redis, placement, scheduler) from
-/// <c>dapr init</c>. It exercises the full command pipeline:
-/// Actor → Domain Service Invocation → <c>/process</c> → Aggregate → Events.
+/// Reusable integration-test fixture base that starts a domain-service command host with a local
+/// <c>daprd</c> sidecar, reusing the DAPR infrastructure (Redis, placement, scheduler) provided by
+/// <c>dapr init</c>. It exercises the full command pipeline: Actor → Domain Service Invocation →
+/// <c>/process</c> → Aggregate → Events.
 /// </summary>
 /// <remarks>
-/// <para>
-/// This base owns every domain-agnostic concern: the cross-fixture lock, orphan-sidecar cleanup,
-/// local port allocation, prerequisite probing, DAPR component-file generation, the generic host
-/// scaffold (Kestrel, actor handlers, health endpoint), the <c>daprd</c> launch, the health wait, and
-/// support-safe diagnostics. A domain module subclasses it and supplies only its domain specifics
-/// through <see cref="ConfigureDomainConfiguration"/>, <see cref="ConfigureDomainServices"/>, and
-/// <see cref="MapDomainEndpoints"/>.
-/// </para>
+/// All DAPR/Aspire plumbing — placement/scheduler endpoint resolution, sidecar lifecycle, port
+/// allocation, health probing, orphan-process cleanup, support-safe diagnostics — is generic and lives
+/// here. A concrete domain fixture supplies only the domain-specific host registration via
+/// <see cref="ConfigureDomain"/> and its <see cref="AppId"/>.
 /// </remarks>
 public abstract class DaprDomainServiceTestFixtureBase : IAsyncLifetime {
-    private const int HealthTimeoutSeconds = 60;
-
     private static readonly int PlacementPort = DaprLocalEndpoints.PlacementPort;
     private static readonly int SchedulerPort = DaprLocalEndpoints.SchedulerPort;
-    private readonly int _redisPort = DaprDiagnostics.ResolveRedisPort();
+    private const int HealthTimeoutSeconds = 60;
 
     private Process? _daprProcess;
     private WebApplication? _testHost;
@@ -55,14 +54,26 @@ public abstract class DaprDomainServiceTestFixtureBase : IAsyncLifetime {
     private readonly StringBuilder _daprStderr = new();
     private bool _disposed;
 
-    /// <summary>Gets the DAPR application id (sidecar <c>--app-id</c>) for this fixture's host.</summary>
+    /// <summary>Gets the DAPR application id used by the sidecar and component scopes.</summary>
     protected abstract string AppId { get; }
 
-    /// <summary>Gets the DAPR pub/sub component name used by the generated component files.</summary>
-    protected virtual string PubSubName => "pubsub";
+    /// <summary>Gets the Redis host port used by the generated state-store and pub/sub components.</summary>
+    protected virtual int RedisPort => 6379;
 
     /// <summary>Gets the dead-letter topic configured on the generated pub/sub component.</summary>
     protected virtual string DeadLetterTopic => $"deadletter.{AppId}.events";
+
+    /// <summary>Gets the name of the cross-process lock file that serializes DAPR fixtures.</summary>
+    protected virtual string FixtureLockName => "hexalith-dapr-test-fixture.lock";
+
+    /// <summary>
+    /// Registers the domain-specific command host: configuration (domain-service registrations,
+    /// pub/sub, topic overrides), publisher/store fakes, the EventStore server, the domain processor
+    /// assembly, data protection, and the query-cursor codec. The generic DAPR port configuration and
+    /// Kestrel binding are already applied to <paramref name="builder"/> before this is called.
+    /// </summary>
+    /// <param name="builder">The web-application builder for the test command host.</param>
+    protected abstract void ConfigureDomain(WebApplicationBuilder builder);
 
     /// <summary>Gets the Dapr HTTP endpoint for actor proxy clients.</summary>
     public string DaprHttpEndpoint {
@@ -80,10 +91,10 @@ public abstract class DaprDomainServiceTestFixtureBase : IAsyncLifetime {
         }
     }
 
-    /// <summary>Gets the last exception thrown by the <c>/process</c> endpoint, for test diagnostics.</summary>
+    /// <summary>Gets the last exception thrown by the /process endpoint, for test diagnostics.</summary>
     public Exception? LastProcessException { get; private set; }
 
-    /// <summary>Gets a support-safe description of the last <c>/process</c> endpoint failure.</summary>
+    /// <summary>Gets a support-safe description of the last /process endpoint failure.</summary>
     public string? LastProcessDiagnostic { get; private set; }
 
     /// <summary>
@@ -129,7 +140,7 @@ public abstract class DaprDomainServiceTestFixtureBase : IAsyncLifetime {
         IReadOnlyList<string> prerequisiteFailures = await GetPrerequisiteFailuresAsync().ConfigureAwait(false);
         if (prerequisiteFailures.Count > 0) {
             PrerequisitesAvailable = false;
-            SkipReason = DaprDiagnostics.BuildPrerequisiteFailureMessage(prerequisiteFailures);
+            SkipReason = BuildPrerequisiteFailureMessage(prerequisiteFailures);
             return;
         }
 
@@ -144,11 +155,11 @@ public abstract class DaprDomainServiceTestFixtureBase : IAsyncLifetime {
 
             await WaitForDaprHealthAsync().ConfigureAwait(false);
         }
-        catch (InvalidOperationException ex) when (DaprDiagnostics.IsDaprInfrastructureStartupFailure(ex)) {
+        catch (InvalidOperationException ex) when (IsDaprInfrastructureStartupFailure(ex)) {
             PrerequisitesAvailable = false;
             SkipReason = "Dapr sidecar infrastructure startup failed. Ensure Redis, placement, and scheduler are healthy before running these tests."
                 + Environment.NewLine
-                + DaprDiagnostics.ToSupportSafeDiagnostic(ex.Message);
+                + ToSupportSafeDiagnostic(ex.Message);
             await DisposeAsync().ConfigureAwait(false);
             return;
         }
@@ -205,44 +216,8 @@ public abstract class DaprDomainServiceTestFixtureBase : IAsyncLifetime {
         GC.SuppressFinalize(this);
     }
 
-    /// <summary>
-    /// Applies domain-specific configuration to the test host (domain-service registrations, topic
-    /// overrides, drain timings, and any other configuration keys the domain needs).
-    /// </summary>
-    /// <param name="configuration">The host configuration manager.</param>
-    protected abstract void ConfigureDomainConfiguration(ConfigurationManager configuration);
-
-    /// <summary>
-    /// Registers domain-specific services on the test host. Implementations own the full registration
-    /// order, including registering publisher/store fakes <em>before</em> the EventStore server
-    /// registration, adding the DAPR client and EventStore server, registering the domain aggregates,
-    /// and registering the query-cursor codec.
-    /// </summary>
-    /// <param name="services">The host service collection.</param>
-    /// <param name="configuration">The host configuration.</param>
-    protected abstract void ConfigureDomainServices(IServiceCollection services, IConfiguration configuration);
-
-    /// <summary>
-    /// Maps the domain-specific endpoints on the test host (notably the <c>/process</c> domain-service
-    /// router endpoint). Implementations should call <see cref="RecordProcessFailure"/> when the
-    /// <c>/process</c> handler catches an exception so test diagnostics stay support-safe.
-    /// </summary>
-    /// <param name="app">The built web application.</param>
-    protected abstract void MapDomainEndpoints(WebApplication app);
-
-    /// <summary>
-    /// Records the last <c>/process</c> endpoint failure for test diagnostics. The diagnostic must be
-    /// support-safe (a command-category description, never a raw exception or payload).
-    /// </summary>
-    /// <param name="exception">The exception caught by the domain <c>/process</c> handler.</param>
-    /// <param name="diagnostic">A support-safe description of the failure.</param>
-    protected void RecordProcessFailure(Exception exception, string diagnostic) {
-        LastProcessException = exception;
-        LastProcessDiagnostic = diagnostic;
-    }
-
     private void AcquireDaprFixtureLock() {
-        string lockPath = Path.Combine(Path.GetTempPath(), "hexalith-eventstore-dapr-fixture.lock");
+        string lockPath = Path.Combine(Path.GetTempPath(), FixtureLockName);
         while (true) {
             try {
                 _daprFixtureLock = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
@@ -257,46 +232,171 @@ public abstract class DaprDomainServiceTestFixtureBase : IAsyncLifetime {
     private async Task<IReadOnlyList<string>> GetPrerequisiteFailuresAsync() {
         var failures = new List<string>();
 
-        if (!await DaprDiagnostics.IsRedisResponsiveAsync(_redisPort).ConfigureAwait(false)) {
-            failures.Add($"Redis is not responding to PING on localhost:{_redisPort}");
+        if (!await IsRedisResponsiveAsync().ConfigureAwait(false)) {
+            failures.Add($"Redis is not responding to PING on localhost:{RedisPort}");
         }
 
-        if (!await DaprDiagnostics.IsPortReachableAsync("localhost", PlacementPort).ConfigureAwait(false)) {
+        if (!await IsPortReachableAsync("localhost", PlacementPort).ConfigureAwait(false)) {
             failures.Add($"Dapr placement service is not reachable on localhost:{PlacementPort}");
         }
 
-        if (!await DaprDiagnostics.IsPortReachableAsync("localhost", SchedulerPort).ConfigureAwait(false)) {
+        if (!await IsPortReachableAsync("localhost", SchedulerPort).ConfigureAwait(false)) {
             failures.Add($"Dapr scheduler service is not reachable on localhost:{SchedulerPort}");
         }
 
         return failures;
     }
 
+    /// <summary>
+    /// Builds the support-safe pre-flight failure message that names each unreachable dependency
+    /// category and port without leaking secrets.
+    /// </summary>
+    /// <param name="failures">The individual dependency failure descriptions.</param>
+    /// <returns>A combined, support-safe failure message.</returns>
+    public static string BuildPrerequisiteFailureMessage(IReadOnlyList<string> failures) {
+        ArgumentNullException.ThrowIfNull(failures);
+        return "Dapr infrastructure pre-flight check failed. Have you run 'dapr init'?" + Environment.NewLine
+            + string.Join(Environment.NewLine, failures.Select(f => $"  - {f}"));
+    }
+
+    private static async Task<bool> IsPortReachableAsync(string host, int port) {
+        try {
+            using var client = new TcpClient();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await client.ConnectAsync(host, port, cts.Token).ConfigureAwait(false);
+            return true;
+        }
+        catch {
+            return false;
+        }
+    }
+
+    private async Task<bool> IsRedisResponsiveAsync() {
+        try {
+            using var client = new TcpClient();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await client.ConnectAsync("localhost", RedisPort, cts.Token).ConfigureAwait(false);
+            NetworkStream stream = client.GetStream();
+            await using (stream.ConfigureAwait(false)) {
+                byte[] ping = Encoding.ASCII.GetBytes("*1\r\n$4\r\nPING\r\n");
+                await stream.WriteAsync(ping, cts.Token).ConfigureAwait(false);
+
+                byte[] buffer = new byte[16];
+                int total = 0;
+                while (total < 5) {
+                    int chunk = await stream.ReadAsync(buffer.AsMemory(total), cts.Token).ConfigureAwait(false);
+                    if (chunk <= 0) {
+                        break;
+                    }
+
+                    total += chunk;
+                }
+
+                return total >= 5 && Encoding.ASCII.GetString(buffer, 0, total).StartsWith("+PONG", StringComparison.Ordinal);
+            }
+        }
+        catch {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Classifies whether an <see cref="InvalidOperationException"/> represents a narrow DAPR
+    /// infrastructure-startup failure (which should skip the test) rather than a product failure.
+    /// </summary>
+    /// <param name="exception">The exception to classify.</param>
+    /// <returns><see langword="true"/> when the failure is a DAPR infrastructure-startup signature.</returns>
+    public static bool IsDaprInfrastructureStartupFailure(InvalidOperationException exception) {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        // Match infrastructure-startup signatures specifically — broad substrings like
+        // "statestore" alone over-match and would silently turn unrelated test failures
+        // into prerequisite skips.
+        string message = exception.Message;
+        return message.Contains("daprd exited", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("Dapr sidecar did not become healthy", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("state.redis", StringComparison.OrdinalIgnoreCase)
+            || (message.Contains("statestore", StringComparison.OrdinalIgnoreCase)
+                && message.Contains("init timeout", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Redacts secrets, tokens, connection strings, private addresses, URLs, e-mails, and concrete
+    /// tenant/user identifiers from a diagnostic string so it is safe to surface in test output.
+    /// </summary>
+    /// <param name="value">The raw diagnostic text.</param>
+    /// <returns>The support-safe diagnostic text.</returns>
+    public static string ToSupportSafeDiagnostic(string value) {
+        ArgumentNullException.ThrowIfNull(value);
+
+        string result = value;
+        result = Regex.Replace(
+            result,
+            @"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+",
+            "[redacted-jwt]");
+        result = Regex.Replace(
+            result,
+            @"Bearer\s+[A-Za-z0-9._~+/=-]{20,}",
+            "Bearer [redacted-token]",
+            RegexOptions.IgnoreCase);
+        result = Regex.Replace(
+            result,
+            @"(?:AccountKey|SharedAccessKey|Password)\s*=\s*[^;\s\r\n]+",
+            "[redacted-secret]",
+            RegexOptions.IgnoreCase);
+        result = Regex.Replace(
+            result,
+            @"(redisPassword[^\r\n:=]*[:=]\s*)([^{}\s\r\n]+)",
+            "$1{redacted-secret}",
+            RegexOptions.IgnoreCase);
+        result = Regex.Replace(
+            result,
+            @"(redis://|amqp://|Endpoint=sb://)[^\s\r\n]+",
+            "[redacted-connection]",
+            RegexOptions.IgnoreCase);
+        result = Regex.Replace(
+            result,
+            @"(?<!localhost:)(?<!127\.0\.0\.1:)\b(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})\b",
+            "[redacted-private-address]");
+        result = Regex.Replace(
+            result,
+            @"https?://(?!(?:localhost|127\.0\.0\.1)(?::|/|\b))[^\s\r\n]+",
+            "[redacted-url]",
+            RegexOptions.IgnoreCase);
+        result = Regex.Replace(
+            result,
+            @"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
+            "[redacted-email]",
+            RegexOptions.IgnoreCase);
+        result = Regex.Replace(
+            result,
+            @"\b(tenantId|tenant|userId|user|sub|subject)\s*[:=]\s*['""]?[A-Za-z0-9._@%+-]{3,}['""]?",
+            "$1=[redacted-id]",
+            RegexOptions.IgnoreCase);
+        return result;
+    }
+
     private async Task StartTestHostAsync() {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions());
 
-        // Configure DAPR ports for actor runtime (generic — domain-agnostic).
+        // Configure DAPR ports for actor runtime (generic; relies on the allocated sidecar ports).
         builder.Configuration["DAPR_HTTP_PORT"] = _daprHttpPort.ToString();
         builder.Configuration["DAPR_GRPC_PORT"] = _daprGrpcPort.ToString();
         builder.Configuration["Dapr:HttpPort"] = _daprHttpPort.ToString();
         builder.Configuration["Dapr:GrpcPort"] = _daprGrpcPort.ToString();
 
-        // Domain-specific configuration: domain-service registrations, topic overrides, drain timings.
-        ConfigureDomainConfiguration(builder.Configuration);
-
         _ = builder.WebHost.ConfigureKestrel(serverOptions =>
             serverOptions.ListenLocalhost(_appPort, listenOptions =>
                 listenOptions.Protocols = HttpProtocols.Http1));
 
-        // Domain-specific services: fakes (before EventStore server), DAPR client, EventStore server,
-        // domain aggregates, data protection, and the query-cursor codec.
-        ConfigureDomainServices(builder.Services, builder.Configuration);
+        // Domain host registration (publisher fakes, EventStore server, domain processors, codec).
+        ConfigureDomain(builder);
 
         _testHost = builder.Build();
 
-        // Map endpoints — generic actor handlers and health, then domain-specific routes (/process).
+        // Map endpoints (generic SDK surface).
         _ = _testHost.MapActorsHandlers();
-        MapDomainEndpoints(_testHost);
+        MapProcessEndpoint(_testHost);
         _ = _testHost.MapGet("/healthz", () => Microsoft.AspNetCore.Http.Results.Ok("healthy"));
 
         await _testHost.StartAsync().ConfigureAwait(false);
@@ -307,6 +407,27 @@ public abstract class DaprDomainServiceTestFixtureBase : IAsyncLifetime {
             throw new InvalidOperationException(
                 $"Kestrel did not bind to any addresses. Expected port {_appPort}.");
         }
+    }
+
+    private void MapProcessEndpoint(WebApplication app) {
+        _ = app.MapPost("/process", async (
+            DomainServiceRequest request,
+            IServiceProvider serviceProvider,
+            ILogger<DaprDomainServiceTestFixtureBase> logger) => {
+                try {
+                    DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(serviceProvider, request).ConfigureAwait(false);
+                    return Microsoft.AspNetCore.Http.Results.Ok(result);
+                }
+                catch (Exception ex) {
+                    LastProcessException = ex;
+                    LastProcessDiagnostic = $"Domain processing failed for command type {request.Command.CommandType}.";
+                    Console.Error.WriteLine($"[DAPR-TEST] /process 500. {LastProcessDiagnostic}");
+                    logger.LogError("Domain processing failed for command type {CommandType}.", request.Command.CommandType);
+                    return Microsoft.AspNetCore.Http.Results.Problem(
+                        detail: LastProcessDiagnostic,
+                        statusCode: 500);
+                }
+            });
     }
 
     private void StartDaprSidecar() {
@@ -377,7 +498,7 @@ public abstract class DaprDomainServiceTestFixtureBase : IAsyncLifetime {
               version: v1
               metadata:
                 - name: redisHost
-                  value: "localhost:{{_redisPort}}"
+                  value: "localhost:{{RedisPort}}"
                 - name: redisPassword
                   value: ""
                 - name: actorStateStore
@@ -390,13 +511,13 @@ public abstract class DaprDomainServiceTestFixtureBase : IAsyncLifetime {
             apiVersion: dapr.io/v1alpha1
             kind: Component
             metadata:
-              name: {{PubSubName}}
+              name: pubsub
             spec:
               type: pubsub.redis
               version: v1
               metadata:
                 - name: redisHost
-                  value: "localhost:{{_redisPort}}"
+                  value: "localhost:{{RedisPort}}"
                 - name: redisPassword
                   value: ""
                 - name: enableDeadLetter
@@ -408,14 +529,14 @@ public abstract class DaprDomainServiceTestFixtureBase : IAsyncLifetime {
             """;
 
         File.WriteAllText(Path.Combine(tempDir, "statestore.yaml"), stateStoreYaml);
-        File.WriteAllText(Path.Combine(tempDir, $"{PubSubName}.yaml"), pubSubYaml);
+        File.WriteAllText(Path.Combine(tempDir, "pubsub.yaml"), pubSubYaml);
 
         return tempDir;
     }
 
     private async Task WaitForDaprHealthAsync() {
         using var httpClient = new HttpClient();
-        string healthUrl = $"http://localhost:{_daprHttpPort}/v1.0/healthz/outbound";
+        string healthUrl = $"{DaprHttpEndpoint}/v1.0/healthz/outbound";
 
         HttpStatusCode lastStatus = default;
         string? lastError = null;

@@ -58,6 +58,12 @@ public static class HexalithEventStoreExtensions {
     /// Optional DAPR scheduler service address, formatted as <c>host</c> or <c>host:port</c>.
     /// Leave <c>null</c> to use the DAPR CLI default.
     /// </param>
+    /// <param name="pubSubComponentPath">
+    /// Optional absolute path to a DAPR pub/sub component YAML. When provided, the <c>pubsub</c> component
+    /// is sourced from this file (via <c>LocalPath</c>) instead of being generated, which avoids a
+    /// duplicate <c>pubsub</c> definition when the same file is also present in a loaded DAPR resources
+    /// directory. <c>null</c> generates a default Redis pub/sub component.
+    /// </param>
     /// <returns>A <see cref="HexalithEventStoreResources"/> containing the resource builders for further customization.</returns>
     public static HexalithEventStoreResources AddHexalithEventStore(
         this IDistributedApplicationBuilder builder,
@@ -69,7 +75,8 @@ public static class HexalithEventStoreExtensions {
         string? resiliencyConfigPath = null,
         int eventStoreDaprHttpPort = 3501,
         string? daprPlacementHostAddress = null,
-        string? daprSchedulerHostAddress = null)
+        string? daprSchedulerHostAddress = null,
+        string? pubSubComponentPath = null)
         => AddHexalithEventStore(
             builder,
             eventStore,
@@ -81,7 +88,8 @@ public static class HexalithEventStoreExtensions {
             stateStoreComponentPath: null,
             eventStoreDaprHttpPort: eventStoreDaprHttpPort,
             daprPlacementHostAddress: daprPlacementHostAddress,
-            daprSchedulerHostAddress: daprSchedulerHostAddress);
+            daprSchedulerHostAddress: daprSchedulerHostAddress,
+            pubSubComponentPath: pubSubComponentPath);
 
     /// <summary>
     /// Adds the Hexalith EventStore topology to the distributed application builder.
@@ -108,6 +116,12 @@ public static class HexalithEventStoreExtensions {
     /// Optional DAPR scheduler service address, formatted as <c>host</c> or <c>host:port</c>.
     /// Leave <c>null</c> to use the DAPR CLI default.
     /// </param>
+    /// <param name="pubSubComponentPath">
+    /// Optional absolute path to a DAPR pub/sub component YAML. When provided, the <c>pubsub</c> component
+    /// is sourced from this file (via <c>LocalPath</c>) instead of being generated, which avoids a
+    /// duplicate <c>pubsub</c> definition when the same file is also present in a loaded DAPR resources
+    /// directory. <c>null</c> generates a default Redis pub/sub component.
+    /// </param>
     /// <returns>A <see cref="HexalithEventStoreResources"/> containing the resource builders for further customization.</returns>
     public static HexalithEventStoreResources AddHexalithEventStore(
         this IDistributedApplicationBuilder builder,
@@ -120,7 +134,8 @@ public static class HexalithEventStoreExtensions {
         string? stateStoreComponentPath,
         int eventStoreDaprHttpPort = 3501,
         string? daprPlacementHostAddress = null,
-        string? daprSchedulerHostAddress = null) {
+        string? daprSchedulerHostAddress = null,
+        string? pubSubComponentPath = null) {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(eventStore);
         ArgumentNullException.ThrowIfNull(adminServer);
@@ -142,6 +157,19 @@ public static class HexalithEventStoreExtensions {
                 resolvedStateStoreComponentPath);
         }
 
+        // When a pub/sub component YAML is supplied, source the "pubsub" component from that file via
+        // LocalPath instead of generating one. Generating a second "pubsub" while the same-named file is
+        // also loaded from the DAPR resources directory makes daprd fail component validation with a
+        // "duplicate definition of Component name pubsub" error and the sidecar never starts.
+        string? resolvedPubSubComponentPath = string.IsNullOrWhiteSpace(pubSubComponentPath)
+            ? null
+            : Path.GetFullPath(pubSubComponentPath);
+        if (resolvedPubSubComponentPath is not null && !File.Exists(resolvedPubSubComponentPath)) {
+            throw new FileNotFoundException(
+                "DAPR pub/sub component YAML not found.",
+                resolvedPubSubComponentPath);
+        }
+
         IResourceBuilder<IDaprComponentResource> stateStore = string.IsNullOrWhiteSpace(stateStoreComponentPath)
             ? builder
                 .AddDaprComponent("statestore", "state.redis")
@@ -152,9 +180,14 @@ public static class HexalithEventStoreExtensions {
                 "statestore",
                 "state.redis",
                 new DaprComponentOptions { LocalPath = resolvedStateStoreComponentPath });
-        IResourceBuilder<IDaprComponentResource> pubSub = builder
-            .AddDaprPubSub("pubsub")
-            .WithMetadata("redisHost", LocalDaprRedisHost);
+        IResourceBuilder<IDaprComponentResource> pubSub = string.IsNullOrWhiteSpace(pubSubComponentPath)
+            ? builder
+                .AddDaprPubSub("pubsub")
+                .WithMetadata("redisHost", LocalDaprRedisHost)
+            : builder.AddDaprComponent(
+                "pubsub",
+                "pubsub.redis",
+                new DaprComponentOptions { LocalPath = resolvedPubSubComponentPath });
 
         // Wire up EventStore with DAPR sidecar and component references.
         // AppPort is intentionally omitted so the CommunityToolkit auto-detects
