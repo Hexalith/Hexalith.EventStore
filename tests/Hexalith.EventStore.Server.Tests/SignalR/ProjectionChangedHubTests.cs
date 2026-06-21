@@ -254,6 +254,105 @@ public class ProjectionChangedHubTests {
         await groups.Received(1).AddToGroupAsync("conn-recovery", "invoice-list:allowed", Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task JoinGroupScoped_ValidInput_AddsConnectionToScopedGroup() {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-scoped-join", groups, maxGroupsPerConnection: 5, user: CreateUser("acme"));
+
+        await sut.JoinGroupScoped("order-list", "acme", "conv-1");
+
+        await groups.Received(1).AddToGroupAsync("conn-scoped-join", "order-list:acme:conv-1", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task JoinGroupScoped_NullScope_FallsBackToTenantWideGroup() {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-scoped-null", groups, maxGroupsPerConnection: 5, user: CreateUser("acme"));
+
+        await sut.JoinGroupScoped("order-list", "acme", null);
+
+        await groups.Received(1).AddToGroupAsync("conn-scoped-null", "order-list:acme", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task JoinGroupScoped_WhitespaceScope_FallsBackToTenantWideGroup() {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-scoped-ws", groups, maxGroupsPerConnection: 5, user: CreateUser("acme"));
+
+        await sut.JoinGroupScoped("order-list", "acme", "   ");
+
+        await groups.Received(1).AddToGroupAsync("conn-scoped-ws", "order-list:acme", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task JoinGroupScoped_ScopeContainsColon_ThrowsHubException() {
+        ProjectionChangedHub sut = CreateHub("conn-scoped-colon", Substitute.For<IGroupManager>(), user: CreateUser("acme"));
+
+        HubException ex = await Should.ThrowAsync<HubException>(() =>
+            sut.JoinGroupScoped("order-list", "acme", "conv:1"));
+
+        ex.Message.ShouldContain("scope must not contain colons");
+    }
+
+    [Fact]
+    public async Task JoinGroupScoped_ScopeContainsColon_RejectsBeforeAuthorization() {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ITenantValidator tenantValidator = Substitute.For<ITenantValidator>();
+        ProjectionChangedHub sut = CreateHub(
+            "conn-scoped-colon-before-auth",
+            groups,
+            maxGroupsPerConnection: 1,
+            user: CreateUser("acme"),
+            tenantValidator: tenantValidator);
+
+        _ = await Should.ThrowAsync<HubException>(() =>
+            sut.JoinGroupScoped("order-list", "acme", "conv:1"));
+
+        _ = await tenantValidator.DidNotReceive().ValidateAsync(
+            Arg.Any<ClaimsPrincipal>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<string?>());
+        await groups.DidNotReceive().AddToGroupAsync(
+            "conn-scoped-colon-before-auth", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task JoinGroupScoped_WrongTenant_ThrowsWithoutAddingScopedGroup() {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-scoped-wrong", groups, maxGroupsPerConnection: 1, user: CreateUser("other"));
+
+        HubException ex = await Should.ThrowAsync<HubException>(() =>
+            sut.JoinGroupScoped("order-list", "acme", "conv-1"));
+
+        ex.Message.ShouldBe("Tenant authorization failed.");
+        await groups.DidNotReceive().AddToGroupAsync("conn-scoped-wrong", "order-list:acme:conv-1", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LeaveGroupScoped_ValidInput_RemovesScopedGroup() {
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-scoped-leave", groups, maxGroupsPerConnection: 5, user: CreateUser("acme"));
+        await sut.JoinGroupScoped("order-list", "acme", "conv-1");
+
+        await sut.LeaveGroupScoped("order-list", "acme", "conv-1");
+
+        await groups.Received(1).RemoveFromGroupAsync("conn-scoped-leave", "order-list:acme:conv-1", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task JoinGroupScoped_CountsAgainstPerConnectionQuota() {
+        // Scoped groups count against the per-connection cap (proposal §4.3).
+        IGroupManager groups = Substitute.For<IGroupManager>();
+        ProjectionChangedHub sut = CreateHub("conn-scoped-quota", groups, maxGroupsPerConnection: 1, user: CreateUser("acme"));
+
+        await sut.JoinGroupScoped("order-list", "acme", "conv-1");
+
+        HubException ex = await Should.ThrowAsync<HubException>(() =>
+            sut.JoinGroup("order-list", "acme"));
+        ex.Message.ShouldContain("Maximum groups per connection");
+    }
+
     private static ProjectionChangedHub CreateHub(
         string connectionId,
         IGroupManager groups,

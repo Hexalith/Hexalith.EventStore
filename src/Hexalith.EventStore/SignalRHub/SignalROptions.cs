@@ -25,6 +25,21 @@ public class SignalROptions {
     /// Prevents resource exhaustion from flooding. Default: 50.
     /// </summary>
     public int MaxGroupsPerConnection { get; init; } = 50;
+
+    /// <summary>
+    /// Gets the maximum number of key/value entries carried in a metadata-rich
+    /// projection-changed detail broadcast. Entries beyond this cap are clipped (the
+    /// broadcast still fires). Keeps the channel metadata-only and bounded. Default: 16.
+    /// </summary>
+    public int MaxDetailMetadataEntries { get; init; } = 16;
+
+    /// <summary>
+    /// Gets the maximum total UTF-8 byte size (sum of all keys and values) carried in a
+    /// metadata-rich projection-changed detail broadcast. Entries that would exceed this cap
+    /// are clipped (the broadcast still fires). Keeps the channel metadata-only and bounded.
+    /// Default: 2048.
+    /// </summary>
+    public int MaxDetailMetadataBytes { get; init; } = 2048;
 }
 
 /// <summary>
@@ -37,6 +52,14 @@ public sealed class ValidateSignalROptions : IValidateOptions<SignalROptions> {
 
         if (options.MaxGroupsPerConnection <= 0) {
             return ValidateOptionsResult.Fail("SignalR MaxGroupsPerConnection must be greater than zero.");
+        }
+
+        if (options.MaxDetailMetadataEntries <= 0) {
+            return ValidateOptionsResult.Fail("SignalR MaxDetailMetadataEntries must be greater than zero.");
+        }
+
+        if (options.MaxDetailMetadataBytes <= 0) {
+            return ValidateOptionsResult.Fail("SignalR MaxDetailMetadataBytes must be greater than zero.");
         }
 
         if (options.BackplaneRedisConnectionString is not null

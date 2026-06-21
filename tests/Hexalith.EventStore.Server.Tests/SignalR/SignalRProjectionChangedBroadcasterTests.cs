@@ -2,12 +2,14 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Server.Telemetry;
 using Hexalith.EventStore.Server.Tests.TestUtilities;
 using Hexalith.EventStore.SignalRHub;
 
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using NSubstitute;
 
@@ -244,6 +246,149 @@ public class SignalRProjectionChangedBroadcasterTests {
         completionTrace.Groups["id"].Value.ShouldBe(startTrace.Groups["id"].Value, "broadcast start and completion logs must share the same trace id");
         Regex.IsMatch(start.Message, @"SpanId: [0-9a-f]{16}").ShouldBeTrue("start log should contain a 16-char span id when an Activity is sampled");
         Regex.IsMatch(completion.Message, @"SpanId: [0-9a-f]{16}").ShouldBeTrue("completion log should contain a 16-char span id when an Activity is sampled");
+    }
+
+    [Fact]
+    public async Task BroadcastChangedAsync_Detail_Scoped_ForwardsToScopedGroupOnly() {
+        IProjectionChangedClient scopedClient = Substitute.For<IProjectionChangedClient>();
+        IProjectionChangedClient tenantWideClient = Substitute.For<IProjectionChangedClient>();
+        IHubClients<IProjectionChangedClient> clients = Substitute.For<IHubClients<IProjectionChangedClient>>();
+        _ = clients.Group("order-list:acme:conv-1").Returns(scopedClient);
+        _ = clients.Group("order-list:acme").Returns(tenantWideClient);
+
+        IHubContext<ProjectionChangedHub, IProjectionChangedClient> hubContext = Substitute.For<IHubContext<ProjectionChangedHub, IProjectionChangedClient>>();
+        _ = hubContext.Clients.Returns(clients);
+
+        var sut = new SignalRProjectionChangedBroadcaster(hubContext, Substitute.For<ILogger<SignalRProjectionChangedBroadcaster>>());
+        var metadata = new Dictionary<string, string> { ["sequence"] = "7", ["state"] = "running" };
+
+        await sut.BroadcastChangedAsync(new ProjectionChangedDetail("order-list", "acme", "conv-1", metadata));
+
+        await scopedClient.Received(1).ProjectionChangedDetail(
+            "order-list", "acme", "conv-1",
+            Arg.Is<IReadOnlyDictionary<string, string>>(d => d.Count == 2 && d["sequence"] == "7" && d["state"] == "running"));
+        await tenantWideClient.DidNotReceive().ProjectionChangedDetail(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, string>>());
+    }
+
+    [Fact]
+    public async Task BroadcastChangedAsync_Detail_NullScope_ForwardsToTenantWideGroup() {
+        IProjectionChangedClient tenantWideClient = Substitute.For<IProjectionChangedClient>();
+        IHubClients<IProjectionChangedClient> clients = Substitute.For<IHubClients<IProjectionChangedClient>>();
+        _ = clients.Group("order-list:acme").Returns(tenantWideClient);
+
+        IHubContext<ProjectionChangedHub, IProjectionChangedClient> hubContext = Substitute.For<IHubContext<ProjectionChangedHub, IProjectionChangedClient>>();
+        _ = hubContext.Clients.Returns(clients);
+
+        var sut = new SignalRProjectionChangedBroadcaster(hubContext, Substitute.For<ILogger<SignalRProjectionChangedBroadcaster>>());
+
+        await sut.BroadcastChangedAsync(new ProjectionChangedDetail("order-list", "acme", null, new Dictionary<string, string>()));
+
+        await tenantWideClient.Received(1).ProjectionChangedDetail(
+            "order-list", "acme", null, Arg.Any<IReadOnlyDictionary<string, string>>());
+    }
+
+    [Fact]
+    public async Task BroadcastChangedAsync_Detail_MetadataExceedsEntryCap_ClipsEntriesAndLogsWarning() {
+        IProjectionChangedClient scopedClient = Substitute.For<IProjectionChangedClient>();
+        IHubClients<IProjectionChangedClient> clients = Substitute.For<IHubClients<IProjectionChangedClient>>();
+        _ = clients.Group("order-list:acme:conv-1").Returns(scopedClient);
+
+        IHubContext<ProjectionChangedHub, IProjectionChangedClient> hubContext = Substitute.For<IHubContext<ProjectionChangedHub, IProjectionChangedClient>>();
+        _ = hubContext.Clients.Returns(clients);
+
+        var logEntries = new List<LogEntry>();
+        var options = Options.Create(new SignalROptions { MaxDetailMetadataEntries = 2, MaxDetailMetadataBytes = 100_000 });
+        var sut = new SignalRProjectionChangedBroadcaster(hubContext, options, new TestLogger<SignalRProjectionChangedBroadcaster>(logEntries));
+
+        var metadata = new Dictionary<string, string>();
+        for (int i = 0; i < 20; i++) {
+            metadata[$"k{i:D2}"] = $"v{i}";
+        }
+
+        await sut.BroadcastChangedAsync(new ProjectionChangedDetail("order-list", "acme", "conv-1", metadata));
+
+        await scopedClient.Received(1).ProjectionChangedDetail(
+            "order-list", "acme", "conv-1",
+            Arg.Is<IReadOnlyDictionary<string, string>>(d => d.Count == 2));
+        LogEntry clip = logEntries.Single(e => e.EventId.Id == 1096);
+        clip.Level.ShouldBe(LogLevel.Warning);
+        clip.Message.ShouldContain("OriginalCount");
+    }
+
+    [Fact]
+    public async Task BroadcastChangedAsync_Detail_MetadataExceedsByteCap_ClipsByBytes() {
+        IProjectionChangedClient scopedClient = Substitute.For<IProjectionChangedClient>();
+        IHubClients<IProjectionChangedClient> clients = Substitute.For<IHubClients<IProjectionChangedClient>>();
+        _ = clients.Group("order-list:acme:conv-1").Returns(scopedClient);
+
+        IHubContext<ProjectionChangedHub, IProjectionChangedClient> hubContext = Substitute.For<IHubContext<ProjectionChangedHub, IProjectionChangedClient>>();
+        _ = hubContext.Clients.Returns(clients);
+
+        // Cap allows the first entry (key "a" 1 byte + 50-byte value = 51 <= 60) but not a second
+        // identical-shaped entry (would total 102 > 60).
+        var options = Options.Create(new SignalROptions { MaxDetailMetadataEntries = 16, MaxDetailMetadataBytes = 60 });
+        var sut = new SignalRProjectionChangedBroadcaster(hubContext, options, Substitute.For<ILogger<SignalRProjectionChangedBroadcaster>>());
+
+        var metadata = new Dictionary<string, string> {
+            ["a"] = new string('x', 50),
+            ["b"] = new string('y', 50),
+        };
+
+        await sut.BroadcastChangedAsync(new ProjectionChangedDetail("order-list", "acme", "conv-1", metadata));
+
+        await scopedClient.Received(1).ProjectionChangedDetail(
+            "order-list", "acme", "conv-1",
+            Arg.Is<IReadOnlyDictionary<string, string>>(d => d.Count == 1 && d.ContainsKey("a")));
+    }
+
+    [Fact]
+    public async Task BroadcastChangedAsync_Detail_DoesNotLogMetadataValuesAboveDebug() {
+        const string secretValue = "SUPER_SECRET_METADATA_VALUE";
+        IProjectionChangedClient scopedClient = Substitute.For<IProjectionChangedClient>();
+        IHubClients<IProjectionChangedClient> clients = Substitute.For<IHubClients<IProjectionChangedClient>>();
+        _ = clients.Group("order-list:acme:conv-1").Returns(scopedClient);
+
+        IHubContext<ProjectionChangedHub, IProjectionChangedClient> hubContext = Substitute.For<IHubContext<ProjectionChangedHub, IProjectionChangedClient>>();
+        _ = hubContext.Clients.Returns(clients);
+
+        var logEntries = new List<LogEntry>();
+        var sut = new SignalRProjectionChangedBroadcaster(hubContext, new TestLogger<SignalRProjectionChangedBroadcaster>(logEntries));
+        var metadata = new Dictionary<string, string> { ["payload"] = secretValue };
+
+        await sut.BroadcastChangedAsync(new ProjectionChangedDetail("order-list", "acme", "conv-1", metadata));
+
+        logEntries
+            .Where(e => e.Level >= LogLevel.Information)
+            .ShouldNotBeEmpty();
+        logEntries
+            .Where(e => e.Level >= LogLevel.Information)
+            .ShouldAllBe(e => !e.Message.Contains(secretValue));
+    }
+
+    [Fact]
+    public async Task BroadcastChangedAsync_Detail_ClientFailure_DoesNotThrowAndLogsFailOpen() {
+        IProjectionChangedClient scopedClient = Substitute.For<IProjectionChangedClient>();
+        _ = scopedClient
+            .ProjectionChangedDetail("order-list", "acme", "conv-1", Arg.Any<IReadOnlyDictionary<string, string>>())
+            .Returns(_ => throw new InvalidOperationException("SignalR down"));
+
+        IHubClients<IProjectionChangedClient> clients = Substitute.For<IHubClients<IProjectionChangedClient>>();
+        _ = clients.Group("order-list:acme:conv-1").Returns(scopedClient);
+
+        IHubContext<ProjectionChangedHub, IProjectionChangedClient> hubContext = Substitute.For<IHubContext<ProjectionChangedHub, IProjectionChangedClient>>();
+        _ = hubContext.Clients.Returns(clients);
+
+        var logEntries = new List<LogEntry>();
+        var sut = new SignalRProjectionChangedBroadcaster(hubContext, new TestLogger<SignalRProjectionChangedBroadcaster>(logEntries));
+
+        await Should.NotThrowAsync(() =>
+            sut.BroadcastChangedAsync(new ProjectionChangedDetail("order-list", "acme", "conv-1", new Dictionary<string, string>())));
+
+        LogEntry failure = logEntries.Single(e => e.EventId.Id == 1095);
+        failure.Level.ShouldBe(LogLevel.Warning);
+        failure.Message.ShouldContain("InvalidOperationException");
+        failure.Message.ShouldContain("FailOpenFailure");
     }
 
     private static int[] GetLoggerMessageEventIds(Type owner) {

@@ -13,4 +13,10 @@ public class NoOpProjectionChangedBroadcaster : IProjectionChangedBroadcaster {
         string tenantId,
         CancellationToken cancellationToken = default)
         => Task.CompletedTask;
+
+    /// <inheritdoc/>
+    public Task BroadcastChangedAsync(
+        ProjectionChangedDetail detail,
+        CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
 }
