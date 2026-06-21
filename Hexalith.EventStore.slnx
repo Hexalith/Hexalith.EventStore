@@ -53,6 +53,7 @@
     <Project Path="src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj" />
     <Project Path="src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj" />
     <Project Path="src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj" />
+    <Project Path="src/Hexalith.EventStore.Testing.Integration/Hexalith.EventStore.Testing.Integration.csproj" />
     <Project Path="src/Hexalith.EventStore/Hexalith.EventStore.csproj" />
   </Folder>
   <Folder Name="/tests/">
@@ -76,5 +77,6 @@
     <Project Path="tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.SignalR.Tests/Hexalith.EventStore.SignalR.Tests.csproj" />
     <Project Path="tests/Hexalith.EventStore.Testing.Tests/Hexalith.EventStore.Testing.Tests.csproj" />
+    <Project Path="tests/Hexalith.EventStore.Testing.Integration.Tests/Hexalith.EventStore.Testing.Integration.Tests.csproj" />
   </Folder>
 </Solution>
