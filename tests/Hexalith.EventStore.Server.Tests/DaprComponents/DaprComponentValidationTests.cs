@@ -45,7 +45,7 @@ public class DaprComponentValidationTests {
         Nav(doc, "metadata", "name")?.ToString().ShouldBe("statestore");
         Nav(doc, "spec", "type")?.ToString().ShouldBe("state.redis");
         GetComponentMetadataValue(doc, "redisHost")
-            .ShouldBe("{env:REDIS_HOST|127.0.0.1:6379}", "Local statestore must keep the YAML-owned Redis host fallback");
+            .ShouldBe("localhost:6379", "Local statestore pins the literal dapr-init Redis host -- DAPR does not interpolate the {env:VAR|default} template for redisHost, so the template form left the literal string as the hostname and daprd failed with 'no such host'");
         GetComponentMetadataValue(doc, "keyPrefix")
             .ShouldBe("none", "Admin.Server reads EventStore-owned keys through a separate DAPR app-id");
     }

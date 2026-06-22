@@ -257,6 +257,29 @@ public class DaprConsistencyCommandServiceTests {
     private const string DaprEventsKeyFragment = ":events:";
     private const string DaprMetadataKeyFragment = ":metadata";
 
+    // Asserts the consistency service never reads a forbidden raw DAPR actor-state key (DW12: AC2/AC6).
+    // Inspects every recorded GetStateAsync invocation regardless of its generic <T> instantiation. This
+    // is stronger than per-overload DidNotReceive() and avoids NSubstitute re-invoking a configured
+    // GetStateAsync<T> handler with a mismatched return type during verification (InvalidCastException).
+    private static void AssertNoGetStateKeyMatches(
+        DaprClient daprClient,
+        Func<string, bool> keyMatches,
+        string description) {
+        IEnumerable<string> offendingKeys = daprClient.ReceivedCalls()
+            .Where(call => call.GetMethodInfo().Name == nameof(DaprClient.GetStateAsync))
+            .Select(call => call.GetArguments())
+            // GetStateAsync signature: (storeName, key, consistencyMode, metadata, cancellationToken)
+            .Where(args => args.Length >= 2
+                && args[0] is string storeName && storeName == StateStoreName
+                && args[1] is string)
+            .Select(args => (string)args[1]!)
+            .Where(keyMatches)
+            .ToList();
+
+        offendingKeys.ShouldBeEmpty(
+            $"Consistency service must not read {description} keys directly. Offending: {string.Join(", ", offendingKeys)}");
+    }
+
     private static StreamSummary CreateStream(
         string tenantId = "tenant-a",
         string domain = "counter",
@@ -356,21 +379,17 @@ public class DaprConsistencyCommandServiceTests {
             [ConsistencyCheckType.SequenceContinuity, ConsistencyCheckType.MetadataConsistency],
             CancellationToken.None);
 
-        // Verify no raw event keys were read.
-        await daprClient.DidNotReceive().GetStateAsync<string>(
-            StateStoreName,
-            Arg.Is<string>(k => k.Contains(DaprEventsKeyFragment, StringComparison.Ordinal)),
-            cancellationToken: Arg.Any<CancellationToken>());
-        await daprClient.DidNotReceive().GetStateAsync<object>(
-            StateStoreName,
-            Arg.Is<string>(k => k.Contains(DaprEventsKeyFragment, StringComparison.Ordinal)),
-            cancellationToken: Arg.Any<CancellationToken>());
+        // Verify no raw event keys were read (across every GetStateAsync<T> instantiation).
+        AssertNoGetStateKeyMatches(
+            daprClient,
+            k => k.Contains(DaprEventsKeyFragment, StringComparison.Ordinal),
+            "raw event-state");
 
         // Verify no raw metadata keys were read.
-        await daprClient.DidNotReceive().GetStateAsync<object>(
-            StateStoreName,
-            Arg.Is<string>(k => k.EndsWith(DaprMetadataKeyFragment, StringComparison.Ordinal)),
-            cancellationToken: Arg.Any<CancellationToken>());
+        AssertNoGetStateKeyMatches(
+            daprClient,
+            k => k.EndsWith(DaprMetadataKeyFragment, StringComparison.Ordinal),
+            "raw metadata-state");
     }
 
     [Fact]
@@ -755,10 +774,10 @@ public class DaprConsistencyCommandServiceTests {
             [ConsistencyCheckType.MetadataConsistency],
             CancellationToken.None);
 
-        await daprClient.DidNotReceive().GetStateAsync<object>(
-            StateStoreName,
-            Arg.Is<string>(k => k.EndsWith(DaprMetadataKeyFragment, StringComparison.Ordinal)),
-            cancellationToken: Arg.Any<CancellationToken>());
+        AssertNoGetStateKeyMatches(
+            daprClient,
+            k => k.EndsWith(DaprMetadataKeyFragment, StringComparison.Ordinal),
+            "raw metadata-state");
     }
 
     [Fact]

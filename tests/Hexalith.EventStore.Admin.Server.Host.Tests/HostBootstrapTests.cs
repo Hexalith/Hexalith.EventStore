@@ -120,7 +120,9 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
         // If controllers are not discovered, any endpoint returns 404.
         // A valid admin controller route should NOT return 404.
         // (It will return 401 because no auth token is sent — but not 404.)
-        HttpResponseMessage response = await client.GetAsync("/api/v1/admin/streams");
+        // Route renamed in 48d5126e: the stream list endpoint is now
+        // /api/v1/admin/streams/GetRecentlyActiveStreams (was bare /api/v1/admin/streams).
+        HttpResponseMessage response = await client.GetAsync("/api/v1/admin/streams/GetRecentlyActiveStreams");
         response.StatusCode.ShouldNotBe(HttpStatusCode.NotFound);
     }
 
@@ -131,7 +133,7 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
             new Claim("sub", "admin-user"),
             new Claim("global_admin", "true")));
 
-        HttpResponseMessage response = await client.GetAsync("/api/v1/admin/streams?tenantId=test-tenant");
+        HttpResponseMessage response = await client.GetAsync("/api/v1/admin/streams/GetRecentlyActiveStreams?tenantId=test-tenant");
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
@@ -147,7 +149,7 @@ public class HostBootstrapTests : IClassFixture<HostBootstrapTests.AdminServerHo
             new Claim("sub", "readonly-user"),
             new Claim(AdminClaimTypes.Tenant, "allowed-tenant")));
 
-        HttpResponseMessage response = await client.GetAsync("/api/v1/admin/streams?tenantId=blocked-tenant");
+        HttpResponseMessage response = await client.GetAsync("/api/v1/admin/streams/GetRecentlyActiveStreams?tenantId=blocked-tenant");
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }

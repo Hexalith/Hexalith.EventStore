@@ -39,7 +39,7 @@ public class AdminStreamsControllerStateDiffCausationTests {
         _ = _service.GetAggregateStateAtPositionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Throws(new KeyNotFoundException("upstream-not-found"));
 
-        IActionResult result = await _sut.GetAggregateState("tenant-a", "counter", "agg-1", 5L);
+        IActionResult result = await _sut.GetAggregateStateAsync("tenant-a", "counter", "agg-1", 5L);
 
         ObjectResult obj = result.ShouldBeOfType<ObjectResult>();
         obj.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
@@ -52,7 +52,7 @@ public class AdminStreamsControllerStateDiffCausationTests {
         _ = _service.GetAggregateStateAtPositionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Throws(new ArgumentException("invalid-sequence"));
 
-        IActionResult result = await _sut.GetAggregateState("tenant-a", "counter", "agg-1", -3L);
+        IActionResult result = await _sut.GetAggregateStateAsync("tenant-a", "counter", "agg-1", -3L);
 
         ObjectResult obj = result.ShouldBeOfType<ObjectResult>();
         obj.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
@@ -66,7 +66,7 @@ public class AdminStreamsControllerStateDiffCausationTests {
         _ = _service.GetAggregateStateAtPositionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Throws(new HttpRequestException("backend down"));
 
-        IActionResult result = await _sut.GetAggregateState("tenant-a", "counter", "agg-1", 1L);
+        IActionResult result = await _sut.GetAggregateStateAsync("tenant-a", "counter", "agg-1", 1L);
 
         ObjectResult obj = result.ShouldBeOfType<ObjectResult>();
         obj.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
@@ -78,7 +78,7 @@ public class AdminStreamsControllerStateDiffCausationTests {
         _ = _service.GetAggregateStateAtPositionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(expected);
 
-        IActionResult result = await _sut.GetAggregateState("tenant-a", "counter", "agg-1", 5L);
+        IActionResult result = await _sut.GetAggregateStateAsync("tenant-a", "counter", "agg-1", 5L);
 
         OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
         ok.Value.ShouldBe(expected);
@@ -91,7 +91,7 @@ public class AdminStreamsControllerStateDiffCausationTests {
         _ = _service.DiffAggregateStateAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Throws(new KeyNotFoundException("missing diff"));
 
-        IActionResult result = await _sut.DiffAggregateState("tenant-a", "counter", "agg-1", 1L, 2L);
+        IActionResult result = await _sut.DiffAggregateStateAsync("tenant-a", "counter", "agg-1", 1L, 2L);
 
         ObjectResult obj = result.ShouldBeOfType<ObjectResult>();
         obj.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
@@ -102,7 +102,7 @@ public class AdminStreamsControllerStateDiffCausationTests {
         _ = _service.DiffAggregateStateAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Throws(new ArgumentException("from must be < to"));
 
-        IActionResult result = await _sut.DiffAggregateState("tenant-a", "counter", "agg-1", 5L, 5L);
+        IActionResult result = await _sut.DiffAggregateStateAsync("tenant-a", "counter", "agg-1", 5L, 5L);
 
         ObjectResult obj = result.ShouldBeOfType<ObjectResult>();
         obj.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
@@ -114,7 +114,7 @@ public class AdminStreamsControllerStateDiffCausationTests {
         _ = _service.DiffAggregateStateAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(expected);
 
-        IActionResult result = await _sut.DiffAggregateState("tenant-a", "counter", "agg-1", 1L, 2L);
+        IActionResult result = await _sut.DiffAggregateStateAsync("tenant-a", "counter", "agg-1", 1L, 2L);
 
         OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
         AggregateStateDiff diff = ok.Value.ShouldBeOfType<AggregateStateDiff>();
@@ -128,7 +128,7 @@ public class AdminStreamsControllerStateDiffCausationTests {
         _ = _service.TraceCausationChainAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Throws(new KeyNotFoundException("not found"));
 
-        IActionResult result = await _sut.TraceCausationChain("tenant-a", "counter", "agg-1", 1L);
+        IActionResult result = await _sut.TraceCausationChainAsync("tenant-a", "counter", "agg-1", 1L);
 
         ObjectResult obj = result.ShouldBeOfType<ObjectResult>();
         obj.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
@@ -139,7 +139,7 @@ public class AdminStreamsControllerStateDiffCausationTests {
         _ = _service.TraceCausationChainAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Throws(new ArgumentException("at must be >= 1"));
 
-        IActionResult result = await _sut.TraceCausationChain("tenant-a", "counter", "agg-1", 0L);
+        IActionResult result = await _sut.TraceCausationChainAsync("tenant-a", "counter", "agg-1", 0L);
 
         ObjectResult obj = result.ShouldBeOfType<ObjectResult>();
         obj.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);

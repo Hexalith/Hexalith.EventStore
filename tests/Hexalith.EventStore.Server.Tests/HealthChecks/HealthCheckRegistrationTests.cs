@@ -32,12 +32,14 @@ public class HealthCheckRegistrationTests {
     }
 
     [Fact]
-    public void AddEventStoreDaprHealthChecks_RegistersAllFourChecks() {
+    public void AddEventStoreDaprHealthChecks_RegistersAllDaprChecks() {
         HealthCheckServiceOptions options = GetHealthCheckOptions();
 
-        // 4 DAPR checks + 1 "self" check = 5 total
-        options.Registrations.Count.ShouldBe(5);
+        // 5 DAPR checks (sidecar, actor-placement, statestore, pubsub, configstore) + 1 "self" = 6 total.
+        // dapr-actor-placement was added in commit 2c37ae2c (actor placement readiness probe).
+        options.Registrations.Count.ShouldBe(6);
         options.Registrations.ShouldContain(r => r.Name == "dapr-sidecar");
+        options.Registrations.ShouldContain(r => r.Name == "dapr-actor-placement");
         options.Registrations.ShouldContain(r => r.Name == "dapr-statestore");
         options.Registrations.ShouldContain(r => r.Name == "dapr-pubsub");
         options.Registrations.ShouldContain(r => r.Name == "dapr-configstore");
@@ -64,7 +66,7 @@ public class HealthCheckRegistrationTests {
         HealthCheckServiceOptions options = GetHealthCheckOptions();
 
         IEnumerable<HealthCheckRegistration> daprChecks = options.Registrations.Where(r => r.Name.StartsWith("dapr-"));
-        daprChecks.Count().ShouldBe(4);
+        daprChecks.Count().ShouldBe(5);
         foreach (HealthCheckRegistration? check in daprChecks) {
             check.Tags.ShouldContain("ready");
         }

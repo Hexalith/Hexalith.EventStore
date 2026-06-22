@@ -36,7 +36,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(expected);
 
-        IActionResult result = await _sut.GetRecentlyActiveStreams("tenant-a", null, 100);
+        IActionResult result = await _sut.GetRecentlyActiveStreamsAsync("tenant-a", null, 100);
 
         OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         okResult.Value.ShouldBe(expected);
@@ -48,7 +48,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetRecentCommandsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(expected);
 
-        IActionResult result = await _sut.GetRecentCommands("tenant-a", "Processing", "Create", 100);
+        IActionResult result = await _sut.GetRecentCommandsAsync("tenant-a", "Processing", "Create", 100);
 
         OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         okResult.Value.ShouldBe(expected);
@@ -59,7 +59,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetAggregateStateAtPositionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns((AggregateStateSnapshot)null!);
 
-        IActionResult result = await _sut.GetAggregateState("t", "d", "a", 1);
+        IActionResult result = await _sut.GetAggregateStateAsync("t", "d", "a", 1);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
@@ -70,7 +70,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Throws(new Grpc.Core.RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.Unavailable, "test")));
 
-        IActionResult result = await _sut.GetRecentlyActiveStreams("tenant-a", null, 100);
+        IActionResult result = await _sut.GetRecentlyActiveStreamsAsync("tenant-a", null, 100);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
@@ -81,7 +81,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetRecentCommandsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Throws(new HttpRequestException("unavailable"));
 
-        IActionResult result = await _sut.GetRecentCommands("tenant-a", "Processing", "Create", 100);
+        IActionResult result = await _sut.GetRecentCommandsAsync("tenant-a", "Processing", "Create", 100);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
@@ -94,7 +94,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), cts.Token)
             .Returns(expected);
 
-        _ = await _sut.GetRecentlyActiveStreams("tenant-a", null, 100, cts.Token);
+        _ = await _sut.GetRecentlyActiveStreamsAsync("tenant-a", null, 100, cts.Token);
 
         _ = await _service.Received(1).GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), cts.Token);
     }
@@ -104,7 +104,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetAggregateStateAtPositionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns((AggregateStateSnapshot)null!);
 
-        IActionResult result = await _sut.GetAggregateState("t", "d", "a", 1);
+        IActionResult result = await _sut.GetAggregateStateAsync("t", "d", "a", 1);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
@@ -117,7 +117,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Throws(new Grpc.Core.RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.Unavailable, "test")));
 
-        IActionResult result = await _sut.GetRecentlyActiveStreams("tenant-a", null, 100);
+        IActionResult result = await _sut.GetRecentlyActiveStreamsAsync("tenant-a", null, 100);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         ProblemDetails problemDetails = objectResult.Value.ShouldBeOfType<ProblemDetails>();
@@ -129,7 +129,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetRecentlyActiveStreamsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Throws(new InvalidOperationException("unexpected"));
 
-        IActionResult result = await _sut.GetRecentlyActiveStreams("tenant-a", null, 100);
+        IActionResult result = await _sut.GetRecentlyActiveStreamsAsync("tenant-a", null, 100);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status500InternalServerError);
@@ -147,7 +147,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetAggregateBlameAsync("t", "d", "a", 5L, Arg.Any<CancellationToken>())
             .Returns(expected);
 
-        IActionResult result = await _sut.GetAggregateBlame("t", "d", "a", 5);
+        IActionResult result = await _sut.GetAggregateBlameAsync("t", "d", "a", 5);
 
         OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         okResult.Value.ShouldBe(expected);
@@ -155,7 +155,7 @@ public class AdminStreamsControllerTests {
 
     [Fact]
     public async Task GetAggregateBlame_InvalidAtParam_Returns400() {
-        IActionResult result = await _sut.GetAggregateBlame("t", "d", "a", 0);
+        IActionResult result = await _sut.GetAggregateBlameAsync("t", "d", "a", 0);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
@@ -166,7 +166,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetAggregateBlameAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
             .Throws(new Grpc.Core.RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.Unavailable, "test")));
 
-        IActionResult result = await _sut.GetAggregateBlame("t", "d", "a", null);
+        IActionResult result = await _sut.GetAggregateBlameAsync("t", "d", "a", null);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
@@ -183,7 +183,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetEventStepFrameAsync("t", "d", "a", 3L, Arg.Any<CancellationToken>())
             .Returns(expected);
 
-        IActionResult result = await _sut.GetEventStepFrame("t", "d", "a", 3);
+        IActionResult result = await _sut.GetEventStepFrameAsync("t", "d", "a", 3);
 
         OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         okResult.Value.ShouldBe(expected);
@@ -191,7 +191,7 @@ public class AdminStreamsControllerTests {
 
     [Fact]
     public async Task GetEventStepFrame_InvalidAtParam_Returns400() {
-        IActionResult result = await _sut.GetEventStepFrame("t", "d", "a", 0);
+        IActionResult result = await _sut.GetEventStepFrameAsync("t", "d", "a", 0);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
@@ -199,7 +199,7 @@ public class AdminStreamsControllerTests {
 
     [Fact]
     public async Task GetEventStepFrame_NegativeAtParam_Returns400() {
-        IActionResult result = await _sut.GetEventStepFrame("t", "d", "a", -1);
+        IActionResult result = await _sut.GetEventStepFrameAsync("t", "d", "a", -1);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
@@ -210,7 +210,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetEventStepFrameAsync("t", "d", "a", 999L, Arg.Any<CancellationToken>())
             .Throws(new ArgumentException("Sequence beyond stream"));
 
-        IActionResult result = await _sut.GetEventStepFrame("t", "d", "a", 999);
+        IActionResult result = await _sut.GetEventStepFrameAsync("t", "d", "a", 999);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
@@ -221,7 +221,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetEventStepFrameAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Throws(new Grpc.Core.RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.Unavailable, "test")));
 
-        IActionResult result = await _sut.GetEventStepFrame("t", "d", "a", 1);
+        IActionResult result = await _sut.GetEventStepFrameAsync("t", "d", "a", 1);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
@@ -240,7 +240,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetEventStepFrameAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Throws(new AdminUpstreamProblemException(problem, System.Net.HttpStatusCode.ServiceUnavailable));
 
-        IActionResult result = await _sut.GetEventStepFrame("t", "d", "a", 1);
+        IActionResult result = await _sut.GetEventStepFrameAsync("t", "d", "a", 1);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
@@ -252,7 +252,7 @@ public class AdminStreamsControllerTests {
 
     [Fact]
     public async Task GetEventDetail_InvalidSequence_Returns400AndDoesNotCallService() {
-        IActionResult result = await _sut.GetEventDetail("t", "d", "a", 0);
+        IActionResult result = await _sut.GetEventDetailAsync("t", "d", "a", 0);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
@@ -265,7 +265,7 @@ public class AdminStreamsControllerTests {
 
     [Fact]
     public async Task GetEventDetail_NegativeSequence_Returns400AndDoesNotCallService() {
-        IActionResult result = await _sut.GetEventDetail("t", "d", "a", -5);
+        IActionResult result = await _sut.GetEventDetailAsync("t", "d", "a", -5);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
@@ -278,7 +278,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetEventDetailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Throws(new KeyNotFoundException("Event not found."));
 
-        IActionResult result = await _sut.GetEventDetail("t", "d", "a", 5);
+        IActionResult result = await _sut.GetEventDetailAsync("t", "d", "a", 5);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
@@ -291,7 +291,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetEventDetailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Throws(new ArgumentException("Parameter 'sequenceNumber' must be >= 1."));
 
-        IActionResult result = await _sut.GetEventDetail("t", "d", "a", 5);
+        IActionResult result = await _sut.GetEventDetailAsync("t", "d", "a", 5);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
@@ -302,7 +302,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetEventDetailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Throws(new HttpRequestException("downstream 502"));
 
-        IActionResult result = await _sut.GetEventDetail("t", "d", "a", 5);
+        IActionResult result = await _sut.GetEventDetailAsync("t", "d", "a", 5);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
@@ -315,7 +315,7 @@ public class AdminStreamsControllerTests {
         _ = _service.GetEventDetailAsync("t", "d", "a", 5L, Arg.Any<CancellationToken>())
             .Returns(expected);
 
-        IActionResult result = await _sut.GetEventDetail("t", "d", "a", 5);
+        IActionResult result = await _sut.GetEventDetailAsync("t", "d", "a", 5);
 
         OkObjectResult ok = result.ShouldBeOfType<OkObjectResult>();
         ok.Value.ShouldBe(expected);

@@ -35,7 +35,7 @@ public class AdminStreamsControllerSandboxTests {
     public async Task SandboxCommand_WithEmptyCommandType_Returns400() {
         var request = new SandboxCommandRequest(string.Empty, "{}", null, null, null);
 
-        IActionResult result = await _sut.SandboxCommand("tenant1", "orders", "order-1", request);
+        IActionResult result = await _sut.SandboxCommandAsync("tenant1", "orders", "order-1", request);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
@@ -64,7 +64,7 @@ public class AdminStreamsControllerSandboxTests {
             "tenant1", "orders", "order-1", request, Arg.Any<CancellationToken>())
             .Returns(expected);
 
-        IActionResult result = await _sut.SandboxCommand("tenant1", "orders", "order-1", request);
+        IActionResult result = await _sut.SandboxCommandAsync("tenant1", "orders", "order-1", request);
 
         OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         okResult.Value.ShouldBe(expected);
@@ -78,7 +78,7 @@ public class AdminStreamsControllerSandboxTests {
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<SandboxCommandRequest>(), Arg.Any<CancellationToken>())
             .Returns((SandboxResult?)null);
 
-        IActionResult result = await _sut.SandboxCommand("tenant1", "orders", "order-1", request);
+        IActionResult result = await _sut.SandboxCommandAsync("tenant1", "orders", "order-1", request);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
@@ -94,7 +94,7 @@ public class AdminStreamsControllerSandboxTests {
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<SandboxCommandRequest>(), Arg.Any<CancellationToken>())
             .Throws(new HttpRequestException("Connection refused"));
 
-        IActionResult result = await _sut.SandboxCommand("tenant1", "orders", "order-1", request);
+        IActionResult result = await _sut.SandboxCommandAsync("tenant1", "orders", "order-1", request);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
@@ -110,7 +110,7 @@ public class AdminStreamsControllerSandboxTests {
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<SandboxCommandRequest>(), Arg.Any<CancellationToken>())
             .Throws(new InvalidOperationException("Something broke"));
 
-        IActionResult result = await _sut.SandboxCommand("tenant1", "orders", "order-1", request);
+        IActionResult result = await _sut.SandboxCommandAsync("tenant1", "orders", "order-1", request);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status500InternalServerError);
@@ -121,7 +121,7 @@ public class AdminStreamsControllerSandboxTests {
 
     [Fact]
     public async Task SandboxCommand_WithNullRequestBody_Returns400() {
-        IActionResult result = await _sut.SandboxCommand("tenant1", "orders", "order-1", null!);
+        IActionResult result = await _sut.SandboxCommandAsync("tenant1", "orders", "order-1", null!);
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
@@ -150,7 +150,7 @@ public class AdminStreamsControllerSandboxTests {
             "tenant1", "orders", "order-1", request, Arg.Any<CancellationToken>())
             .Returns(expected);
 
-        IActionResult result = await _sut.SandboxCommand("tenant1", "orders", "order-1", request);
+        IActionResult result = await _sut.SandboxCommandAsync("tenant1", "orders", "order-1", request);
 
         OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         SandboxResult sandboxResult = okResult.Value.ShouldBeOfType<SandboxResult>();

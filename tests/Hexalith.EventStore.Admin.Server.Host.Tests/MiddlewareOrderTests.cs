@@ -31,8 +31,10 @@ public class MiddlewareOrderTests : IClassFixture<MiddlewareOrderTests.AuthTestF
 
     [Fact]
     public async Task Unauthenticated_Request_Returns401() {
-        // No auth header → 401
-        HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/streams");
+        // No auth header → 401.
+        // Route renamed in 48d5126e: the stream list endpoint is now
+        // /api/v1/admin/streams/GetRecentlyActiveStreams (was bare /api/v1/admin/streams).
+        HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/streams/GetRecentlyActiveStreams");
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         response.Headers.Contains(CorrelationIdMiddleware.HeaderName).ShouldBeTrue();
@@ -45,7 +47,7 @@ public class MiddlewareOrderTests : IClassFixture<MiddlewareOrderTests.AuthTestF
             new Claim("sub", "admin-user"),
             new Claim("global_admin", "true")));
 
-        HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/streams");
+        HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/streams/GetRecentlyActiveStreams");
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
     }

@@ -17,8 +17,10 @@ public class AdminAuthorizationIntegrationTests : IDisposable {
 
     [Fact]
     public async Task NoAuth_Returns401() {
-        // No claims header → auth handler returns Fail → 401
-        HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/streams");
+        // No claims header → auth handler returns Fail → 401.
+        // Route renamed in 48d5126e: the stream list endpoint is now
+        // /api/v1/admin/streams/GetRecentlyActiveStreams (was bare /api/v1/admin/streams).
+        HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/streams/GetRecentlyActiveStreams");
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
@@ -29,7 +31,7 @@ public class AdminAuthorizationIntegrationTests : IDisposable {
             new Claim(AdminClaimTypes.AdminRole, "ReadOnly"),
             new Claim(AdminClaimTypes.Tenant, "tenant-a"));
 
-        HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/streams");
+        HttpResponseMessage response = await _client.GetAsync("/api/v1/admin/streams/GetRecentlyActiveStreams");
 
         // Authorization should pass (mock service returns null → 200/204, not 401/403)
         response.StatusCode.ShouldNotBe(HttpStatusCode.Unauthorized);

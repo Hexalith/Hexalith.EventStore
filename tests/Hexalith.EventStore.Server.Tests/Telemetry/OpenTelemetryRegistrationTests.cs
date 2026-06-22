@@ -22,10 +22,13 @@ public class OpenTelemetryRegistrationTests {
 
         File.Exists(extensionsPath).ShouldBeTrue($"Expected ServiceDefaults file at '{extensionsPath}'");
 
+        // ServiceDefaults now delegates OpenTelemetry wiring to Hexalith.Commons (refactor 667db888):
+        // activity sources are contributed through HexalithServiceDefaultsOptions.ActivitySourceNames
+        // instead of a direct .AddSource(...) call, but the same three sources must still be registered.
         string source = File.ReadAllText(extensionsPath);
-        source.ShouldContain(".AddSource(\"Hexalith.EventStore\")");
-        source.ShouldContain(".AddSource(\"Microsoft.AspNetCore.SignalR.Server\")");
-        source.ShouldContain(".AddSource(\"Microsoft.AspNetCore.SignalR.Client\")");
+        source.ShouldContain("ActivitySourceNames.Add(\"Hexalith.EventStore\")");
+        source.ShouldContain("ActivitySourceNames.Add(\"Microsoft.AspNetCore.SignalR.Server\")");
+        source.ShouldContain("ActivitySourceNames.Add(\"Microsoft.AspNetCore.SignalR.Client\")");
     }
 
     [Fact]

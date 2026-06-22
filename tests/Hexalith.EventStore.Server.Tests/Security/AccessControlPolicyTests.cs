@@ -155,7 +155,10 @@ public class AccessControlPolicyTests {
     // --- Task 5.5: Sample domain service denied ---
 
     [Fact]
-    public void LocalAdminServerAccessControlYaml_HasNoInboundPolicies() {
+    public void LocalAdminServerAccessControlYaml_AllowsAdminUiInboundOnly() {
+        // Feature b53a60d2 routes the Admin.UI to Admin.Server via Dapr service invocation, so the
+        // Admin.Server sidecar config now carries exactly one inbound caller policy (eventstore-admin-ui).
+        // No other peer Dapr caller may invoke Admin.Server in the local topology.
         Dictionary<string, object> doc = LoadYaml(LocalAdminServerAccessControlPath);
 
         Nav(doc, "spec", "accessControl", "defaultAction")?.ToString().ShouldBe("allow",
@@ -163,7 +166,11 @@ public class AccessControlPolicyTests {
 
         List<object>? policies = NavList(doc, "spec", "accessControl", "policies");
         _ = policies.ShouldNotBeNull("Admin.Server access control must contain a policies list");
-        policies.ShouldBeEmpty("Admin.Server should not allow any peer Dapr caller policies in the local topology");
+        policies.Count.ShouldBe(1, "Admin.Server should only allow the Admin.UI caller in the local topology");
+
+        Dictionary<object, object> adminUiPolicy = policies.Cast<Dictionary<object, object>>().Single();
+        GetString(adminUiPolicy, "appId").ShouldBe("eventstore-admin-ui",
+            "The only inbound Admin.Server caller must be the Admin.UI (eventstore-admin-ui)");
     }
 
     [Fact]

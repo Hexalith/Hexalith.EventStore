@@ -95,7 +95,9 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
         JsonElement doc = await GetOpenApiDocumentAsync();
         JsonElement paths = doc.GetProperty("paths");
 
-        OperationHasTag(paths, "/api/v1/admin/streams", "get", "Admin - Streams").ShouldBeTrue();
+        // Route renamed in 48d5126e: the stream list endpoint is now
+        // /api/v1/admin/streams/GetRecentlyActiveStreams (was bare /api/v1/admin/streams).
+        OperationHasTag(paths, "/api/v1/admin/streams/GetRecentlyActiveStreams", "get", "Admin - Streams").ShouldBeTrue();
     }
 
     [Fact]
@@ -236,12 +238,15 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
         JsonElement doc = await GetOpenApiDocumentAsync();
         JsonElement paths = doc.GetProperty("paths");
 
-        // List endpoint should have 200
-        paths.TryGetProperty("/api/v1/admin/streams", out JsonElement streamsPath)
+        // List endpoint should have 200.
+        // Route renamed in 48d5126e: the stream list endpoint is now
+        // /api/v1/admin/streams/GetRecentlyActiveStreams (was bare /api/v1/admin/streams).
+        const string streamsListPath = "/api/v1/admin/streams/GetRecentlyActiveStreams";
+        paths.TryGetProperty(streamsListPath, out JsonElement streamsPath)
             .ShouldBeTrue("Should have streams list path");
         streamsPath.TryGetProperty("get", out JsonElement listOp).ShouldBeTrue();
         listOp.GetProperty("responses").TryGetProperty("200", out _)
-            .ShouldBeTrue("GET /api/v1/admin/streams should have 200 response");
+            .ShouldBeTrue($"GET {streamsListPath} should have 200 response");
 
         // Detail endpoints (containing path parameters) should have 404
         bool foundDetailWith404 = false;
@@ -266,7 +271,9 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
         JsonElement doc = await GetOpenApiDocumentAsync();
         JsonElement paths = doc.GetProperty("paths");
 
-        paths.TryGetProperty("/api/v1/admin/streams", out JsonElement streamsPath)
+        // Route renamed in 48d5126e: the stream list endpoint is now
+        // /api/v1/admin/streams/GetRecentlyActiveStreams (was bare /api/v1/admin/streams).
+        paths.TryGetProperty("/api/v1/admin/streams/GetRecentlyActiveStreams", out JsonElement streamsPath)
             .ShouldBeTrue("Should have streams path");
         streamsPath.TryGetProperty("get", out JsonElement getOp).ShouldBeTrue();
         getOp.TryGetProperty("responses", out JsonElement responses).ShouldBeTrue();
@@ -274,7 +281,7 @@ public class AdminOpenApiDocumentTests : IClassFixture<AdminOpenApiWebApplicatio
 
         // Verify the 200 response has content with a schema (not untyped object)
         ok.TryGetProperty("content", out _).ShouldBeTrue(
-            "GET /api/v1/admin/streams 200 response should have content (typed schema). " +
+            "GET /api/v1/admin/streams/GetRecentlyActiveStreams 200 response should have content (typed schema). " +
             "If missing, controllers may be using IActionResult instead of ActionResult<T>.");
     }
 

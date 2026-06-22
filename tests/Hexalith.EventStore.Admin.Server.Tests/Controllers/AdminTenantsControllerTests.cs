@@ -35,7 +35,7 @@ public class AdminTenantsControllerTests {
         _ = _service.ListTenantsAsync(Arg.Any<CancellationToken>())
             .Returns(expected);
 
-        IActionResult result = await _sut.ListTenants();
+        IActionResult result = await _sut.ListTenantsAsync();
 
         OkObjectResult okResult = result.ShouldBeOfType<OkObjectResult>();
         okResult.Value.ShouldBe(expected);
@@ -46,7 +46,7 @@ public class AdminTenantsControllerTests {
         _ = _service.GetTenantDetailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<TenantDetail?>(new HttpRequestException("Forbidden", null, HttpStatusCode.Forbidden)));
 
-        IActionResult result = await _sut.GetTenantDetail("tenant-a");
+        IActionResult result = await _sut.GetTenantDetailAsync("tenant-a");
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
@@ -57,7 +57,7 @@ public class AdminTenantsControllerTests {
         _ = _service.GetTenantUsersAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<IReadOnlyList<TenantUser>>(new HttpRequestException("Not Found", null, HttpStatusCode.NotFound)));
 
-        IActionResult result = await _sut.GetTenantUsers("tenant-a");
+        IActionResult result = await _sut.GetTenantUsersAsync("tenant-a");
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status404NotFound);
@@ -70,7 +70,7 @@ public class AdminTenantsControllerTests {
         _ = _service.ListTenantsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<IReadOnlyList<TenantSummary>>(new TenantQueryFailedException("Catastrophic upstream failure")));
 
-        IActionResult result = await _sut.ListTenants();
+        IActionResult result = await _sut.ListTenantsAsync();
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status502BadGateway);
@@ -81,7 +81,7 @@ public class AdminTenantsControllerTests {
         _ = _service.GetTenantDetailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<TenantDetail?>(new TenantQueryFailedException("Pipeline misbehaved")));
 
-        IActionResult result = await _sut.GetTenantDetail("tenant-a");
+        IActionResult result = await _sut.GetTenantDetailAsync("tenant-a");
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status502BadGateway);
@@ -92,7 +92,7 @@ public class AdminTenantsControllerTests {
         _ = _service.GetTenantUsersAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<IReadOnlyList<TenantUser>>(new TenantQueryFailedException("Pipeline misbehaved")));
 
-        IActionResult result = await _sut.GetTenantUsers("tenant-a");
+        IActionResult result = await _sut.GetTenantUsersAsync("tenant-a");
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status502BadGateway);
@@ -105,7 +105,7 @@ public class AdminTenantsControllerTests {
         _ = _service.GetTenantDetailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromException<TenantDetail?>(new HttpRequestException("Bad Gateway", null, HttpStatusCode.BadGateway)));
 
-        IActionResult result = await _sut.GetTenantDetail("tenant-a");
+        IActionResult result = await _sut.GetTenantDetailAsync("tenant-a");
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
@@ -120,7 +120,7 @@ public class AdminTenantsControllerTests {
                 "Enable request timed out. The operation may still be processing. Operation ID: 01JAXYZ1234567890ABCDEFGH.",
                 "timeout"));
 
-        IActionResult result = await _sut.EnableTenant("manual-test-tenant-a");
+        IActionResult result = await _sut.EnableTenantAsync("manual-test-tenant-a");
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status504GatewayTimeout);
@@ -140,7 +140,7 @@ public class AdminTenantsControllerTests {
                 "Command rejected (403). See server logs with correlation ID 01JAXYZ1234567890ABCDEFGH.",
                 "403"));
 
-        IActionResult result = await _sut.EnableTenant("manual-test-tenant-a");
+        IActionResult result = await _sut.EnableTenantAsync("manual-test-tenant-a");
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
@@ -155,7 +155,7 @@ public class AdminTenantsControllerTests {
                 "Unexpected tenant command failure. Operation ID: 01JAXYZ1234567890ABCDEFGH.",
                 "unexpected"));
 
-        IActionResult result = await _sut.EnableTenant("manual-test-tenant-a");
+        IActionResult result = await _sut.EnableTenantAsync("manual-test-tenant-a");
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status500InternalServerError);
@@ -166,7 +166,7 @@ public class AdminTenantsControllerTests {
         _ = _commandService.AddUserToTenantAsync("tenant-a", "user-a", "invalid", Arg.Any<CancellationToken>())
             .Returns(new AdminOperationResult(false, "error-no-operation", "Invalid role 'invalid'.", "invalid-request"));
 
-        IActionResult result = await _sut.AddUserToTenant("tenant-a", new AddTenantUserRequest("user-a", "invalid"));
+        IActionResult result = await _sut.AddUserToTenantAsync("tenant-a", new AddTenantUserRequest("user-a", "invalid"));
 
         ObjectResult objectResult = result.ShouldBeOfType<ObjectResult>();
         objectResult.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);

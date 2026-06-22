@@ -27,14 +27,16 @@ public class ReadinessEndpointTests {
 
     [Fact]
     public void ReadyTagPredicate_MatchesDaprChecks() {
-        // Verify that a "ready" tag predicate matches exactly the 4 DAPR checks
+        // Verify that a "ready" tag predicate matches exactly the 5 DAPR checks
+        // (dapr-actor-placement added in commit 2c37ae2c).
         HealthCheckServiceOptions options = GetHealthCheckOptions();
         static bool predicate(HealthCheckRegistration r) => r.Tags.Contains("ready");
 
         var readyChecks = options.Registrations.Where(predicate).ToList();
 
-        readyChecks.Count.ShouldBe(4);
+        readyChecks.Count.ShouldBe(5);
         readyChecks.ShouldContain(r => r.Name == "dapr-sidecar");
+        readyChecks.ShouldContain(r => r.Name == "dapr-actor-placement");
         readyChecks.ShouldContain(r => r.Name == "dapr-statestore");
         readyChecks.ShouldContain(r => r.Name == "dapr-pubsub");
         readyChecks.ShouldContain(r => r.Name == "dapr-configstore");
@@ -150,14 +152,14 @@ public class ReadinessEndpointTests {
         // Verify the three-endpoint strategy: /health (all), /alive (live), /ready (ready)
         HealthCheckServiceOptions options = GetHealthCheckOptions();
 
-        // All checks (for /health - no filter)
-        options.Registrations.Count.ShouldBe(5);
+        // All checks (for /health - no filter): 5 DAPR + 1 self.
+        options.Registrations.Count.ShouldBe(6);
 
         // Live-only checks (for /alive)
         options.Registrations.Where(r => r.Tags.Contains("live")).Count().ShouldBe(1);
 
-        // Ready-only checks (for /ready)
-        options.Registrations.Where(r => r.Tags.Contains("ready")).Count().ShouldBe(4);
+        // Ready-only checks (for /ready): 5 DAPR checks (dapr-actor-placement added in 2c37ae2c).
+        options.Registrations.Where(r => r.Tags.Contains("ready")).Count().ShouldBe(5);
 
         // No check has both tags
         options.Registrations.Where(r => r.Tags.Contains("live") && r.Tags.Contains("ready")).ShouldBeEmpty();
