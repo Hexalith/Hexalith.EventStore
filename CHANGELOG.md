@@ -1,3 +1,10 @@
+# [3.17.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.16.1...v3.17.0) (2026-06-22)
+
+
+### Features
+
+* add IsGlobalAdmin flag to QueryEnvelope and related classes for enhanced authorization ([ef457c8](https://github.com/Hexalith/Hexalith.EventStore/commit/ef457c86937cbddc54865776e78f8da64cff6896))
+
 ## [3.16.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.16.0...v3.16.1) (2026-06-22)
 
 
