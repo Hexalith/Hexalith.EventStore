@@ -2,6 +2,11 @@
 
   <PropertyGroup>
     <Description>.NET Aspire hosting extensions for the Hexalith event store — DAPR topology orchestration for distributed event sourcing development</Description>
+    <!-- NU5104: this package depends on CommunityToolkit.Aspire.Hosting.Dapr, which ships only as a
+         prerelease aligned with Aspire 13.4 (DAPR-on-Aspire is preview upstream). There is no stable
+         version to pin to, so a stable release of this package necessarily carries that prerelease
+         dependency. Suppress NU5104 here only (not globally). -->
+    <NoWarn>$(NoWarn);NU5104</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

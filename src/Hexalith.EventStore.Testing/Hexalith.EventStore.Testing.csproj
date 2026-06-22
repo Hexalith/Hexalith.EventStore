@@ -18,7 +18,10 @@
 
   <ItemGroup>
     <PackageReference Include="Shouldly" />
-    <PackageReference Include="NSubstitute" />
+    <!-- NSubstitute is not used by this package's source and must not flow as a package dependency:
+         it is pinned to a prerelease (6.0.0-rc.1) centrally, and a stable package may not carry a
+         prerelease dependency (NU5104). PrivateAssets keeps it out of the published nuspec. -->
+    <PackageReference Include="NSubstitute" PrivateAssets="all" />
     <PackageReference Include="xunit.v3.assert" />
   </ItemGroup>
 
