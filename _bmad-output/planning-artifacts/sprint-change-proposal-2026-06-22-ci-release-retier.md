@@ -113,6 +113,26 @@ harden the integration suite so it is reliable on its own lane.
   (`WarmUpTimeoutSeconds = 45`) so placement dissemination, activation, and the Redis round-trip are
   hot before any live-sidecar test asserts. Hardens the whole suite, not just the ETag test.
 
+### Release packaging (follow-on, discovered after merge)
+
+**CP-6 — `.releaserc.json`: scope the release pack to EventStore's own packages**
+- Merging CP-1…CP-5 turned the release **test gate green**, which exposed a **separate, pre-existing**
+  failure in semantic-release's `prepareCmd`: it ran a **whole-solution** `dotnet build` + `dotnet
+  pack`, dragging in **submodule** projects that fail under EventStore's root rules — `IDE0065`
+  (build) in `Hexalith.PolymorphicSerializations` and `NU5118` (duplicate README at pack) in
+  `Hexalith.Commons.*` — and would have **published submodule packages to NuGet under EventStore's
+  version**.
+- Root cause: submodule projects import EventStore's root `Directory.Build.props` *and* the shared
+  `Hexalith.Builds` props; building/packing the whole solution applies EventStore's analyzer/pack
+  rules to code that isn't written to them. EventStore's own test gate never hit this (it builds
+  individual projects and references `PolymorphicSerializations` as a *package*, not source).
+- Fix: `prepareCmd` now builds + packs **only the 12 EventStore packable projects** (loop over
+  `Contracts, Client, Server, SignalR, Testing, Testing.Integration, Aspire, ServiceDefaults,
+  DomainService, Admin.Abstractions, Admin.Cli, Admin.Server`) instead of the whole solution.
+  `PolymorphicSerializations` is never built from source; Commons libs are referenced as package
+  dependencies, not packed. Validated locally: **12 nupkgs produced, 0 submodule errors, 0 submodule
+  packages**.
+
 ### Production (published package)
 
 **CP-5 — `DaprETagService` actor `RequestTimeout` overridable (default 3 s preserved)**
