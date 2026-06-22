@@ -130,8 +130,25 @@ harden the integration suite so it is reliable on its own lane.
   `Contracts, Client, Server, SignalR, Testing, Testing.Integration, Aspire, ServiceDefaults,
   DomainService, Admin.Abstractions, Admin.Cli, Admin.Server`) instead of the whole solution.
   `PolymorphicSerializations` is never built from source; Commons libs are referenced as package
-  dependencies, not packed. Validated locally: **12 nupkgs produced, 0 submodule errors, 0 submodule
-  packages**.
+  dependencies, not packed.
+
+**CP-7 — proper packaging-dependency fixes (after CI surfaced more pre-existing defects)**
+- The scoped pack (CP-6) then exposed two more **pre-existing** issues in real CI, both fixed
+  properly (root-cause, not blanket suppression):
+  - **Submodule auto-pack leak:** in CI the submodule projects are `IsPackable=true` *and*
+    `GeneratePackageOnBuild=true` (via shared `Hexalith.Builds`), so building EventStore projects
+    auto-emitted `Hexalith.Commons.*.nupkg`. Fixed by `-p:GeneratePackageOnBuild=false` on the pack
+    loop (explicit `dotnet pack` still produces each EventStore package) + scoping `publishCmd` to
+    `Hexalith.EventStore.*.nupkg`.
+  - **NU5104 (stable package with prerelease dependency):**
+    - `Hexalith.EventStore.Testing` carried an **unused** `NSubstitute` (prerelease `6.0.0-rc.1`)
+      package reference → marked `PrivateAssets="all"` (not in the public API; must not flow).
+      `IntegrationTests` relied on that transitive ref, so it now declares `NSubstitute` directly.
+    - `Hexalith.EventStore.Aspire` depends on `CommunityToolkit.Aspire.Hosting.Dapr`, which is
+      **preview-only upstream** (DAPR-on-Aspire) with no stable version to pin → scoped, documented
+      `NoWarn NU5104` in `Aspire.csproj` only.
+- Validated locally (SDK 10.0.301, faithful with `GeneratePackageOnBuild=false`): **all 12 EventStore
+  packages pack clean, 0 submodule packages, all `Testing`-consumer test projects compile.**
 
 ### Production (published package)
 

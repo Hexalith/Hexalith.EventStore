@@ -19,6 +19,9 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+    <!-- Declared directly: this project uses NSubstitute and no longer receives it transitively
+         from Hexalith.EventStore.Testing (now PrivateAssets to avoid NU5104 on the stable package). -->
+    <PackageReference Include="NSubstitute" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="StackExchange.Redis" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
