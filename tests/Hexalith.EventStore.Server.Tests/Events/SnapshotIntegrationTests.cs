@@ -19,6 +19,7 @@ namespace Hexalith.EventStore.Server.Tests.Events;
 /// Validates snapshot creation and rehydration with real Redis state store.
 /// </summary>
 [Collection("DaprTestContainer")]
+[Trait("Category", "LiveSidecar")]
 public class SnapshotIntegrationTests {
     private readonly DaprTestContainerFixture _fixture;
 

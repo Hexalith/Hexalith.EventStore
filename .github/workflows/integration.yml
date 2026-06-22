@@ -1,0 +1,69 @@
+name: Integration Tests
+
+# Dedicated live-`daprd` integration suite. These tests (Category=LiveSidecar) need a real DAPR
+# sidecar + Redis (via `dapr init`) and are intentionally OFF the per-push release path: they run
+# here so flaky infrastructure never blocks semantic-release, while still giving signal on the
+# adapter edge (actor/state-store round-trips). See
+# sprint-change-proposal-2026-06-22-ci-release-retier.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DAPR_VERSION: '1.16.0'
+  # Bypass NU1902 transitive CVE warnings on OpenTelemetry packages — mirrors the local
+  # `-p:NuGetAudit=false` flag documented in CLAUDE.md § Build & Test Commands.
+  NuGetAudit: 'false'
+
+jobs:
+  live-sidecar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: true
+
+      - uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+
+      - name: Cache NuGet packages
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('Directory.Packages.props') }}
+          restore-keys: nuget-
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Install Dapr CLI
+        uses: dapr/setup-dapr@8d980918fd43a2765c143ce7f687665b2d46a6b9 # v2
+        with:
+          version: ${{ env.DAPR_VERSION }}
+
+      - name: Initialize Dapr
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 15
+          command: dapr init
+
+      - name: Run Live-Sidecar Integration Tests (Tier 2)
+        run: |
+          dotnet test tests/Hexalith.EventStore.Server.Tests/ --configuration Release --filter "Category=LiveSidecar" --logger "trx;LogFileName=live-sidecar-results.trx"
+
+      - name: Run Integration Tests (Tier 3)
+        run: |
+          dotnet test tests/Hexalith.EventStore.IntegrationTests/ --configuration Release --logger "trx;LogFileName=integration-results.trx"

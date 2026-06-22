@@ -29,6 +29,7 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <c>ITerminatable</c> gate is the code path under test rather than a static stub.
 /// </summary>
 [Collection("DaprTestContainer")]
+[Trait("Category", "LiveSidecar")]
 public class TombstoningLifecycleTests : IDisposable {
     private static readonly CounterAggregate _aggregate = new();
 

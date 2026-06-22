@@ -4,8 +4,12 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
+using Dapr.Actors;
+using Dapr.Actors.Client;
+
 using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Commands;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.DomainServices;
@@ -32,6 +36,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
     private static readonly int SchedulerPort = OperatingSystem.IsWindows() ? 6060 : 50006;
     private const int RedisPort = 6379;
     private const int HealthTimeoutSeconds = 60;
+    private const int WarmUpTimeoutSeconds = 45;
 
     private Process? _daprProcess;
     private WebApplication? _testHost;
@@ -105,12 +110,58 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime {
             await Task.Delay(2000).ConfigureAwait(false);
 
             await VerifyAppListeningAsync().ConfigureAwait(false);
+
+            // Warm the actor runtime (placement dissemination + activation + Redis round-trip)
+            // before any live-sidecar test asserts, so cold-start latency on CI runners does not
+            // make the first real actor call fail open. See
+            // sprint-change-proposal-2026-06-22-ci-release-retier.md.
+            await WarmUpActorRuntimeAsync().ConfigureAwait(false);
         }
         catch {
             await DisposeTestResourcesAsync().ConfigureAwait(false);
             RestoreDaprPortEnvironment();
             throw;
         }
+    }
+
+    /// <summary>
+    /// Performs a throwaway ETag actor round-trip with bounded retry so placement dissemination,
+    /// actor activation, and the Redis state round-trip are all hot before any live-sidecar test
+    /// asserts. This absorbs the cold-start latency that otherwise makes the first real actor call
+    /// fail open (return null) on slower CI runners.
+    /// </summary>
+    private async Task WarmUpActorRuntimeAsync() {
+        var factory = new ActorProxyFactory(new ActorProxyOptions {
+            HttpEndpoint = DaprHttpEndpoint,
+            RequestTimeout = TimeSpan.FromSeconds(15),
+        });
+
+        string actorId = $"warmup:{Guid.NewGuid():N}";
+        IETagActor proxy = factory.CreateActorProxy<IETagActor>(
+            new ActorId(actorId), ETagActor.ETagActorTypeName);
+
+        var stopwatch = Stopwatch.StartNew();
+        Exception? lastError = null;
+        while (stopwatch.Elapsed < TimeSpan.FromSeconds(WarmUpTimeoutSeconds)) {
+            try {
+                string seeded = await proxy.RegenerateAsync().ConfigureAwait(false);
+                string? readBack = await proxy.GetCurrentETagAsync().ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(readBack) && string.Equals(readBack, seeded, StringComparison.Ordinal)) {
+                    return;
+                }
+            }
+            catch (Exception ex) {
+                lastError = ex;
+            }
+
+            await Task.Delay(1000).ConfigureAwait(false);
+        }
+
+        throw new InvalidOperationException(
+            $"Dapr actor runtime did not warm up within {WarmUpTimeoutSeconds}s.\n" +
+            $"Last error: {lastError?.Message ?? "(round-trip returned an inconsistent ETag)"}\n" +
+            $"--- daprd stdout (last 2000 chars) ---\n{TailString(GetCapturedStdout(), 2000)}\n" +
+            $"--- daprd stderr (last 2000 chars) ---\n{TailString(GetCapturedStderr(), 2000)}");
     }
 
     /// <summary>

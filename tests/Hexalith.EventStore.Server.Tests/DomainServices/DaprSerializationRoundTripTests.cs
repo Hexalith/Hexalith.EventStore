@@ -28,6 +28,7 @@ namespace Hexalith.EventStore.Server.Tests.DomainServices;
 /// service invocation.
 /// </summary>
 [Collection("DaprTestContainer")]
+[Trait("Category", "LiveSidecar")]
 public class DaprSerializationRoundTripTests {
     private readonly DaprTestContainerFixture _fixture;
 

@@ -21,6 +21,7 @@ namespace Hexalith.EventStore.Server.Tests.Events;
 /// Validates event persistence atomicity and Redis state store behavior.
 /// </summary>
 [Collection("DaprTestContainer")]
+[Trait("Category", "LiveSidecar")]
 public class EventPersistenceIntegrationTests {
     private static readonly JsonSerializerOptions JsonOptions = new() {
         PropertyNameCaseInsensitive = true,

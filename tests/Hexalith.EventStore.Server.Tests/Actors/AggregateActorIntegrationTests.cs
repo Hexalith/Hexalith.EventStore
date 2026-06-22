@@ -19,6 +19,7 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 /// Validates the full pipeline with real Dapr sidecar and Redis state store.
 /// </summary>
 [Collection("DaprTestContainer")]
+[Trait("Category", "LiveSidecar")]
 public class AggregateActorIntegrationTests {
     private readonly DaprTestContainerFixture _fixture;
 

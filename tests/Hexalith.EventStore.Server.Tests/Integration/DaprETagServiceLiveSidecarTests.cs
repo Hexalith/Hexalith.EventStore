@@ -33,6 +33,7 @@ namespace Hexalith.EventStore.Server.Tests.Integration;
 /// </para>
 /// </summary>
 [Collection("DaprTestContainer")]
+[Trait("Category", "LiveSidecar")]
 public class DaprETagServiceLiveSidecarTests {
     private readonly DaprTestContainerFixture _fixture;
 
@@ -61,7 +62,8 @@ public class DaprETagServiceLiveSidecarTests {
 
         // Exercise the production service: real remoting proxy creation + remoting invocation over
         // the live sidecar. This is the exact code path that NRE'd before the fix.
-        var service = new DaprETagService(actorProxyFactory, NullLogger<DaprETagService>.Instance);
+        var service = new DaprETagService(
+            actorProxyFactory, NullLogger<DaprETagService>.Instance, requestTimeout: TimeSpan.FromSeconds(30));
         string? actual = await service.GetCurrentETagAsync(projectionType, tenantId);
 
         // End-state assertion (R2-A6): the service returns the ETag the actor actually persisted,
@@ -84,7 +86,8 @@ public class DaprETagServiceLiveSidecarTests {
         // A never-regenerated actor: a clean cold start must yield null via the real remoting path —
         // distinguishing a genuine "no ETag yet" null from the pre-fix fail-open null caused by the NRE.
         string tenantId = $"etag-cold-{Guid.NewGuid():N}";
-        var service = new DaprETagService(actorProxyFactory, NullLogger<DaprETagService>.Instance);
+        var service = new DaprETagService(
+            actorProxyFactory, NullLogger<DaprETagService>.Instance, requestTimeout: TimeSpan.FromSeconds(30));
 
         string? actual = await service.GetCurrentETagAsync("counter", tenantId);
 

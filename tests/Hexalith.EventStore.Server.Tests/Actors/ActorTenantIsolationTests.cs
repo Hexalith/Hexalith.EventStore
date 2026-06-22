@@ -17,6 +17,7 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 /// SEC-2: Tenant validation occurs BEFORE state rehydration.
 /// </summary>
 [Collection("DaprTestContainer")]
+[Trait("Category", "LiveSidecar")]
 public class ActorTenantIsolationTests {
     private readonly DaprTestContainerFixture _fixture;
 
