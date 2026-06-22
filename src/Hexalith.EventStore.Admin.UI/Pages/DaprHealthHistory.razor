@@ -142,8 +142,11 @@
         @* Component rows *@
         @foreach (var component in _componentNames)
         {
-            <div role="row" style="background: var(--colorNeutralBackground2); padding: 4px 8px; cursor: pointer; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+            <div role="row" tabindex="0"
+                 aria-label="@($"Select component {component}")"
+                 style="background: var(--colorNeutralBackground2); padding: 4px 8px; cursor: pointer; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
                  @onclick="() => SelectComponent(component)"
+                 @onkeydown="@(e => HandleSelectComponentKeydown(e, component))"
                  title="@component">
                 @component
             </div>
@@ -269,7 +272,11 @@
                             IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Descending" />
             <TemplateColumn Title="Component" Sortable="true"
                             SortBy="@(GridSort<StatusTransition>.ByAscending(t => t.ComponentName))">
-                <span style="cursor: pointer; text-decoration: underline;" @onclick="() => SelectComponent(context.ComponentName)">
+                <span role="button" tabindex="0"
+                      aria-label="@($"Select component {context.ComponentName}")"
+                      style="cursor: pointer; text-decoration: underline;"
+                      @onclick="() => SelectComponent(context.ComponentName)"
+                      @onkeydown="@(e => HandleSelectComponentKeydown(e, context.ComponentName))">
                     @context.ComponentName
                 </span>
             </TemplateColumn>
@@ -388,6 +395,16 @@
     {
         _selectedComponent = component;
         StateHasChanged();
+    }
+
+    // Keyboard activation parity for the role="button" / focusable-row component selectors:
+    // Enter and Space activate the selection, matching native button semantics.
+    private void HandleSelectComponentKeydown(KeyboardEventArgs e, string component)
+    {
+        if (e.Key is "Enter" or " " or "Spacebar")
+        {
+            SelectComponent(component);
+        }
     }
 
     private void ClearComponentSelection()

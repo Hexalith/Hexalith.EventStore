@@ -25,17 +25,21 @@
         int maxCount = Buckets.Max(b => b.StreamCount);
         int totalActive = Buckets.Sum(b => b.StreamCount);
         IReadOnlyList<ActivityBucket> displayBuckets = GetDisplayBuckets();
-        <div class="activity-chart-bars" role="img" aria-label="Bar chart showing stream activity over the last 24 hours">
+        @* The bars are interactive (each navigates to its hour). A role="img" container would
+           collapse the whole chart into a single image and hide the nested buttons from assistive
+           technology, so the container is a labelled group/toolbar of buttons instead. The non-visual
+           text alternative for the data is the sr-only table below. *@
+        <div class="activity-chart-bars" role="group" aria-label="Stream activity over the last 24 hours, by hour. Select an hour to view its streams.">
             @foreach (ActivityBucket bucket in displayBuckets)
             {
                 double heightPct = maxCount > 0 ? (double)bucket.StreamCount / maxCount * 100 : 0;
                 string timeRange = $"{bucket.Start:HH:mm}-{bucket.End:HH:mm}";
                 string ariaLabel = $"{timeRange}: {bucket.StreamCount} active streams";
-                <button class="activity-chart-bar-wrapper"
+                <button class="activity-chart-bar-wrapper" type="button"
                         title="@($"{timeRange}: {bucket.StreamCount} streams")"
                         aria-label="@ariaLabel"
                         @onclick="() => OnBarClick(bucket)">
-                    <div class="activity-chart-bar" style="height: @($"{heightPct:F0}%")"></div>
+                    <div class="activity-chart-bar" style="height: @($"{heightPct:F0}%")" aria-hidden="true"></div>
                 </button>
             }
         </div>

@@ -47,6 +47,38 @@ public class StorageTreemapTests : AdminUITestContext {
     }
 
     [Fact]
+    public void StorageTreemap_InteractiveCells_HaveButtonSemanticsAndKeyboardAccess() {
+        // Accessibility remediation (audit DV-1 / H-ES-4): the clickable treemap groups had no native
+        // focus/role/keyboard affordance. They must now expose role="button", be focusable (tabindex=0),
+        // carry an accessible name, and reflect selection state via aria-pressed.
+        IReadOnlyList<StreamStorageInfo> data = CreateSampleData();
+
+        IRenderedComponent<StorageTreemap> cut = Render<StorageTreemap>(parameters => parameters
+            .Add(p => p.Data, data));
+
+        AngleSharp.Dom.IElement cell = cut.Find("g.treemap-rect");
+        cell.GetAttribute("role").ShouldBe("button");
+        cell.GetAttribute("tabindex").ShouldBe("0");
+        cell.GetAttribute("aria-label").ShouldNotBeNullOrWhiteSpace();
+        cell.GetAttribute("aria-pressed").ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void StorageTreemap_InteractiveCell_FiresSelection_OnEnterKey() {
+        // Keyboard activation parity: pressing Enter on a focusable treemap cell selects it.
+        string? selectedType = null;
+        IReadOnlyList<StreamStorageInfo> data = CreateSampleData();
+
+        IRenderedComponent<StorageTreemap> cut = Render<StorageTreemap>(parameters => parameters
+            .Add(p => p.Data, data)
+            .Add(p => p.OnAggregateTypeSelected, EventCallback.Factory.Create<string>(this, val => selectedType = val)));
+
+        cut.Find("g.treemap-rect").KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+
+        _ = selectedType.ShouldNotBeNull();
+    }
+
+    [Fact]
     public void StorageTreemap_RendersHiddenScreenReaderTable() {
         // Arrange
         IReadOnlyList<StreamStorageInfo> data = CreateSampleData();

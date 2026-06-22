@@ -51,6 +51,43 @@ public class IndexPageTests : AdminUITestContext {
     }
 
     [Fact]
+    public void LandingPage_StatCardNavigationWrappers_AreKeyboardAccessible() {
+        // Accessibility remediation (audit NS-1): the StatCard navigation affordances must be real
+        // interactive elements (role="button" + tabindex + accessible name + keyboard activation),
+        // not a bare clickable <div style="cursor:pointer">.
+        SystemHealthReport health = CreateHealthReport(0, 42.5, 0.05);
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SystemHealthReport?>(health));
+
+        IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Index> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Index>();
+
+        IReadOnlyList<AngleSharp.Dom.IElement> navWrappers = cut.FindAll(".stat-card-link");
+        navWrappers.Count.ShouldBe(2);
+        foreach (AngleSharp.Dom.IElement wrapper in navWrappers) {
+            wrapper.GetAttribute("role").ShouldBe("button");
+            wrapper.GetAttribute("tabindex").ShouldBe("0");
+            wrapper.GetAttribute("aria-label").ShouldNotBeNullOrWhiteSpace();
+        }
+    }
+
+    [Fact]
+    public void LandingPage_StatCardWrapper_NavigatesOnEnterKey() {
+        // Keyboard activation parity: pressing Enter on the focusable StatCard wrapper navigates.
+        SystemHealthReport health = CreateHealthReport(0, 42.5, 0.05);
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SystemHealthReport?>(health));
+
+        IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Index> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Index>();
+        Microsoft.AspNetCore.Components.NavigationManager nav =
+            Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
+
+        AngleSharp.Dom.IElement wrapper = cut.FindAll(".stat-card-link")[0];
+        wrapper.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+
+        nav.Uri.ShouldContain("/streams");
+    }
+
+    [Fact]
     public void LandingPage_WhenLoading_ShowsSkeletonCards() {
         // Arrange — API never returns (simulates loading)
         TaskCompletionSource<SystemHealthReport?> tcs = new();

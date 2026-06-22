@@ -62,7 +62,9 @@
         <div style="margin-bottom: 16px;">
             <span style="font-size: 13px; color: var(--colorNeutralForeground3);">Target Aggregate:</span>
             <span role="link" tabindex="0"
+                  aria-label="@($"Navigate to aggregate type {SelectedCommand.TargetAggregateType}")"
                   @onclick="@(() => OnNavigateToAggregate.InvokeAsync(SelectedCommand.TargetAggregateType))"
+                  @onkeydown="@(e => { if (e.Key == "Enter") OnNavigateToAggregate.InvokeAsync(SelectedCommand.TargetAggregateType); })"
                   style="font-family: var(--fontFamilyMonospace, 'Cascadia Code', 'Consolas', monospace); font-size: 0.85em; cursor: pointer; color: var(--colorBrandForegroundLink); text-decoration: underline; margin-left: 8px;">
                 @SelectedCommand.TargetAggregateType
             </span>

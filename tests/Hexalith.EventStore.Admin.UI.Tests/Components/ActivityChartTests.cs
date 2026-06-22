@@ -3,6 +3,8 @@ using Bunit;
 using Hexalith.EventStore.Admin.UI.Components;
 using Hexalith.EventStore.Admin.UI.Models;
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Hexalith.EventStore.Admin.UI.Tests.Components;
 
 /// <summary>
@@ -62,6 +64,45 @@ public class ActivityChartTests : AdminUITestContext {
 
         // Assert
         cut.Markup.ShouldContain("title=\"10:00-11:00: 3 streams\"");
+    }
+
+    [Fact]
+    public void ActivityChart_InteractiveBars_AreExposedAsButtonsInLabelledGroup_NotImageRole() {
+        // Accessibility remediation (audit C3 / H-ES-3): the interactive bars must not be nested inside
+        // a role="img" container (which would collapse the chart into a single image and hide the
+        // buttons from assistive technology). They live in a labelled role="group" of real buttons; the
+        // sr-only table remains the non-visual data alternative.
+        DateTimeOffset now = new(2026, 3, 23, 14, 0, 0, TimeSpan.Zero);
+        List<ActivityBucket> buckets = [new(now, now.AddHours(1), 5)];
+
+        IRenderedComponent<ActivityChart> cut = Render<ActivityChart>(
+            p => p.Add(c => c.Buckets, buckets));
+
+        AngleSharp.Dom.IElement bars = cut.Find(".activity-chart-bars");
+        bars.GetAttribute("role").ShouldBe("group");
+        bars.GetAttribute("aria-label").ShouldNotBeNullOrWhiteSpace();
+        cut.Markup.ShouldNotContain("role=\"img\"");
+
+        // Each bar is a real <button> (keyboard-focusable / activatable natively).
+        cut.FindAll(".activity-chart-bar-wrapper").Count.ShouldBe(1);
+        cut.Find(".activity-chart-bar-wrapper").NodeName.ShouldBe("BUTTON");
+        // The sr-only data table text alternative is still present.
+        cut.Markup.ShouldContain("Stream activity data for the last 24 hours");
+    }
+
+    [Fact]
+    public void ActivityChart_BarClick_NavigatesToStreamsForHour() {
+        DateTimeOffset now = new(2026, 3, 23, 14, 0, 0, TimeSpan.Zero);
+        List<ActivityBucket> buckets = [new(now, now.AddHours(1), 5)];
+
+        IRenderedComponent<ActivityChart> cut = Render<ActivityChart>(
+            p => p.Add(c => c.Buckets, buckets));
+        Microsoft.AspNetCore.Components.NavigationManager nav =
+            Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
+
+        cut.Find(".activity-chart-bar-wrapper").Click();
+
+        nav.Uri.ShouldContain("/streams?start=");
     }
 
     [Fact]

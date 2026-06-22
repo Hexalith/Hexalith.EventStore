@@ -23,7 +23,10 @@
              OnAction="LoadDataAsync" />
 
 <div class="stat-card-grid" aria-live="polite" style="@(_isStale ? "opacity: 0.5;" : "")">
-    <div style="cursor: pointer;" @onclick='() => NavigationManager.NavigateTo("/streams?status=active")'>
+    <div class="stat-card-link" role="button" tabindex="0"
+         aria-label="View active streams"
+         @onclick='() => NavigateTo("/streams?status=active")'
+         @onkeydown='e => HandleStatCardKeydown(e, "/streams?status=active")'>
         <StatCard Label="@(_isStale ? "Active Streams (stale)" : "Active Streams")"
                   Value="@(_isLoading ? "\u2014" : FormatActiveStreams())"
                   Severity="@(_isStale ? "neutral" : "success")"
@@ -37,7 +40,10 @@
               Value="@(_isLoading ? "\u2014" : FormatEventsPerSecond())"
               Severity="@(_isStale ? "neutral" : "success")"
               IsLoading="_isLoading" />
-    <div style="cursor: pointer;" @onclick='() => NavigationManager.NavigateTo("/health")'>
+    <div class="stat-card-link" role="button" tabindex="0"
+         aria-label="View health and error rate details"
+         @onclick='() => NavigateTo("/health")'
+         @onkeydown='e => HandleStatCardKeydown(e, "/health")'>
         <StatCard Label="@(_isStale ? "Error Rate (stale)" : "Error Rate")"
                   Value="@(_isLoading ? "\u2014" : FormatErrorRate())"
                   Severity="@(_isStale ? "neutral" : GetErrorRateSeverity())"
@@ -310,6 +316,18 @@
         else
         {
             _apiUnavailable = true;
+        }
+    }
+
+    private void NavigateTo(string url) => NavigationManager.NavigateTo(url);
+
+    // Keyboard activation parity for the role="button" StatCard navigation wrappers: Enter and Space
+    // activate the navigation, matching native button semantics for keyboard and screen-reader users.
+    private void HandleStatCardKeydown(KeyboardEventArgs e, string url)
+    {
+        if (e.Key is "Enter" or " " or "Spacebar")
+        {
+            NavigateTo(url);
         }
     }
 

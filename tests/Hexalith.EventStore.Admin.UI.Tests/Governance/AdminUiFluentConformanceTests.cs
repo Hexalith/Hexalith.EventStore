@@ -31,7 +31,10 @@ public class AdminUiFluentConformanceTests {
 
         // Documented carve-outs (FrontComposer architecture.md §4.1): custom-styled, fully-accessible
         // interactive elements where a FluentButton would cause visual regression —
-        //   - ActivityChart.razor: a clickable bar-chart bar (a height-scaled <div>); FluentButton destroys the bar.
+        //   - ActivityChart.razor: clickable bar-chart bars (each a raw <button> wrapping a height-scaled
+        //     <div>); FluentButton destroys the bar geometry. The bars live in a labelled role="group"
+        //     (not role="img") so assistive technology exposes them as buttons, each carries an
+        //     aria-label, and an sr-only data table is the non-visual text alternative (audit C3 fix).
         //   - Streams.razor: an inline monospace click-to-copy aggregate-ID grid cell; FluentButton breaks the cell.
         // Both carry aria-label/data-testid, so they are not the unstyled-control defect this rule targets.
         string[] carveOuts = ["ActivityChart.razor", "Streams.razor"];

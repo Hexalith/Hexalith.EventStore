@@ -95,12 +95,10 @@ else
                 <PropertyColumn Property="@(c => c.TenantId)" Title="Tenant" Class="monospace" />
                 <PropertyColumn Property="@(c => c.Domain)" Title="Domain" Class="monospace" />
                 <TemplateColumn Title="Aggregate ID" Class="streams-col-aggid">
-                    <span class="monospace grid-cell-truncate" title="@context.AggregateId"
-                          style="cursor: pointer;">@context.AggregateId</span>
+                    <span class="monospace grid-cell-truncate" title="@context.AggregateId">@context.AggregateId</span>
                 </TemplateColumn>
                 <TemplateColumn Title="Correlation ID">
-                    <span class="monospace grid-cell-truncate" title="@context.CorrelationId"
-                          style="cursor: pointer;">@context.CorrelationId</span>
+                    <span class="monospace grid-cell-truncate" title="@context.CorrelationId">@context.CorrelationId</span>
                 </TemplateColumn>
                 <TemplateColumn Title="Timestamp" Class="monospace"
                                 SortBy="@(GridSort<CommandSummary>.ByDescending(c => c.Timestamp))"

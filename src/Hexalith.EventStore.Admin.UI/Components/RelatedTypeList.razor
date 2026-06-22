@@ -4,10 +4,12 @@
     @foreach (string item in DisplayedItems)
     {
         <li>
-            <FluentBadge Appearance="BadgeAppearance.Ghost"
-                         Style="font-family: var(--fontFamilyMonospace, 'Cascadia Code', 'Consolas', monospace); font-size: 0.8em; cursor: pointer;"
-                         @onclick="@(() => OnItemClick.InvokeAsync(item))"
-                         Content="@item" />
+            <FluentButton Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Small"
+                          Style="font-family: var(--fontFamilyMonospace, 'Cascadia Code', 'Consolas', monospace); font-size: 0.8em;"
+                          aria-label="@($"Filter by {item}")"
+                          OnClick="@(() => OnItemClick.InvokeAsync(item))">
+                @item
+            </FluentButton>
         </li>
     }
 </ul>

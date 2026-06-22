@@ -147,6 +147,19 @@ body {
     gap: 16px;
 }
 
+/* Keyboard-accessible StatCard navigation wrapper (role="button" tabindex="0").
+   Provides the pointer affordance plus a visible focus indicator the bare clickable
+   <div> previously lacked. */
+.stat-card-link {
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+.stat-card-link:focus-visible {
+    outline: 2px solid var(--colorStrokeFocus2, var(--colorBrandStroke1));
+    outline-offset: 2px;
+}
+
 /* Breadcrumb styling */
 .admin-breadcrumb {
     display: flex;

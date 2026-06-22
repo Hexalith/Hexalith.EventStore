@@ -62,12 +62,16 @@
             @foreach (TreemapDisplayRect rect in ComputeTreemapRects())
             {
                 bool isSelected = string.Equals(rect.AggregateType, SelectedAggregateType, StringComparison.OrdinalIgnoreCase);
-                <g class="treemap-rect" @onclick="@(() => OnRectClick(rect.AggregateType))" style="cursor: pointer;">
+                <g class="treemap-rect" role="button" tabindex="0"
+                   aria-label="@($"{rect.Label}: {rect.Value:N0} events. Filter by this aggregate type.")"
+                   aria-pressed="@(isSelected ? "true" : "false")"
+                   @onclick="@(() => OnRectClick(rect.AggregateType))"
+                   @onkeydown="@(e => OnRectKeydown(e, rect.AggregateType))"
+                   style="cursor: pointer;">
                     <rect x="@rect.X" y="@rect.Y" width="@rect.Width" height="@rect.Height"
                           fill="@rect.Color"
                           stroke="@(isSelected ? "white" : "rgba(255,255,255,0.5)")"
-                          stroke-width="@(isSelected ? "3" : "1")"
-                          aria-label="@($"{rect.Label}: {rect.Value:N0} events")">
+                          stroke-width="@(isSelected ? "3" : "1")">
                         <title>@rect.Tooltip</title>
                     </rect>
                     @if (rect.Width > 60 && rect.Height > 20)
@@ -142,6 +146,17 @@
         if (OnAggregateTypeSelected.HasDelegate)
         {
             _ = OnAggregateTypeSelected.InvokeAsync(aggregateType);
+        }
+    }
+
+    // Keyboard activation for the focusable role="button" treemap cells: Enter and Space select the
+    // aggregate type, matching native button semantics for keyboard and screen-reader users. The
+    // sr-only data table below remains the non-visual text alternative for the chart as a whole.
+    private void OnRectKeydown(KeyboardEventArgs e, string aggregateType)
+    {
+        if (e.Key is "Enter" or " " or "Spacebar")
+        {
+            OnRectClick(aggregateType);
         }
     }
 
