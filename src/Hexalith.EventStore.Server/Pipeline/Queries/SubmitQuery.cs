@@ -17,7 +17,8 @@ public record SubmitQuery(
     string UserId,
     string? EntityId = null,
     string? ProjectionType = null,
-    string? ProjectionActorType = null) : IRequest<SubmitQueryResult>;
+    string? ProjectionActorType = null,
+    bool IsGlobalAdmin = false) : IRequest<SubmitQueryResult>;
 
 /// <summary>
 /// Result of processing a <see cref="SubmitQuery"/>.

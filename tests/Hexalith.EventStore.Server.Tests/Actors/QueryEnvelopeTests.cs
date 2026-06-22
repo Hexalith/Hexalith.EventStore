@@ -19,8 +19,9 @@ public class QueryEnvelopeTests {
         byte[]? payload = null,
         string correlationId = "corr-1",
         string userId = "user-1",
-        string? entityId = null) =>
-        new(tenantId, domain, aggregateId, queryType, payload ?? [], correlationId, userId, entityId);
+        string? entityId = null,
+        bool isGlobalAdmin = false) =>
+        new(tenantId, domain, aggregateId, queryType, payload ?? [], correlationId, userId, entityId, isGlobalAdmin);
 
     [Fact]
     public void Constructor_ValidFields_SetsAllProperties() {
@@ -186,5 +187,76 @@ public class QueryEnvelopeTests {
         _ = deserialized.ShouldNotBeNull();
         deserialized.EntityId.ShouldBeNull();
         deserialized.TenantId.ShouldBe(original.TenantId);
+    }
+
+    [Fact]
+    public void Constructor_DefaultsIsGlobalAdminToFalse() {
+        QueryEnvelope sut = CreateValid();
+        sut.IsGlobalAdmin.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ToString_WithGlobalAdmin_IncludesFlag() {
+        QueryEnvelope sut = CreateValid(isGlobalAdmin: true);
+        string result = sut.ToString();
+
+        result.ShouldContain("IsGlobalAdmin = True");
+    }
+
+    [Fact]
+    public void ToString_WithoutGlobalAdmin_OmitsFlag() {
+        QueryEnvelope sut = CreateValid(isGlobalAdmin: false);
+        string result = sut.ToString();
+
+        result.ShouldNotContain("IsGlobalAdmin");
+    }
+
+    [Fact]
+    public void JsonRoundTrip_PreservesIsGlobalAdmin() {
+        QueryEnvelope original = CreateValid(isGlobalAdmin: true);
+
+        string json = JsonSerializer.Serialize(original);
+        QueryEnvelope? deserialized = JsonSerializer.Deserialize<QueryEnvelope>(json);
+
+        _ = deserialized.ShouldNotBeNull();
+        deserialized.IsGlobalAdmin.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void DataContractSerializer_PreservesIsGlobalAdmin_AcrossActorBoundary() {
+        // The flag is minted server-side then crosses the DAPR actor invocation as a DataContract
+        // member; if it did not round-trip, the whole authorization-by-claim path would silently fail.
+        QueryEnvelope original = CreateValid(isGlobalAdmin: true);
+        var serializer = new DataContractSerializer(typeof(QueryEnvelope));
+        using var ms = new MemoryStream();
+        serializer.WriteObject(ms, original);
+        ms.Position = 0;
+        var deserialized = (QueryEnvelope?)serializer.ReadObject(ms);
+
+        _ = deserialized.ShouldNotBeNull();
+        deserialized.IsGlobalAdmin.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void DataContractSerializer_OldFormatWithoutIsGlobalAdmin_DeserializesAsFalse() {
+        // An in-flight envelope serialized before the flag existed must fail safe to non-admin.
+        QueryEnvelope original = CreateValid(isGlobalAdmin: true);
+        var serializer = new DataContractSerializer(typeof(QueryEnvelope));
+        using var ms = new MemoryStream();
+        serializer.WriteObject(ms, original);
+
+        ms.Position = 0;
+        string xml = new StreamReader(ms).ReadToEnd();
+        var document = XDocument.Parse(xml);
+        document.Descendants().Where(e => e.Name.LocalName == "IsGlobalAdmin").Remove();
+        string oldFormatXml = document.ToString(SaveOptions.DisableFormatting);
+
+        oldFormatXml.ShouldNotContain("IsGlobalAdmin");
+
+        using var ms2 = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(oldFormatXml));
+        var deserialized = (QueryEnvelope?)serializer.ReadObject(ms2);
+
+        _ = deserialized.ShouldNotBeNull();
+        deserialized.IsGlobalAdmin.ShouldBeFalse();
     }
 }

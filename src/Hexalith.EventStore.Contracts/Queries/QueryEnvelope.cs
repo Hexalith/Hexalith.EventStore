@@ -27,6 +27,7 @@ public record QueryEnvelope {
     /// <param name="correlationId">The correlation identifier propagated from the gateway request.</param>
     /// <param name="userId">The authenticated user identifier, normally the <c>sub</c> claim.</param>
     /// <param name="entityId">Optional entity identifier for entity-scoped routing.</param>
+    /// <param name="isGlobalAdmin">Trusted server-populated flag indicating the authenticated user has global administrator privileges.</param>
     public QueryEnvelope(
         string tenantId,
         string domain,
@@ -35,7 +36,8 @@ public record QueryEnvelope {
         byte[] payload,
         string correlationId,
         string userId,
-        string? entityId = null) {
+        string? entityId = null,
+        bool isGlobalAdmin = false) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
         ArgumentException.ThrowIfNullOrWhiteSpace(aggregateId);
@@ -52,6 +54,7 @@ public record QueryEnvelope {
         CorrelationId = correlationId;
         UserId = userId;
         EntityId = entityId;
+        IsGlobalAdmin = isGlobalAdmin;
     }
 
     /// <summary>
@@ -103,6 +106,12 @@ public record QueryEnvelope {
     public string? EntityId { get; init; }
 
     /// <summary>
+    /// Gets a trusted server-populated value indicating the authenticated user has global administrator privileges.
+    /// </summary>
+    [DataMember]
+    public bool IsGlobalAdmin { get; init; }
+
+    /// <summary>
     /// Gets the aggregate identity represented by the tenant, domain, and aggregate ID.
     /// </summary>
     public AggregateIdentity AggregateIdentity
@@ -113,5 +122,5 @@ public record QueryEnvelope {
     /// </summary>
     /// <returns>A redacted diagnostic representation.</returns>
     public override string ToString()
-        => $"QueryEnvelope {{ TenantId = {TenantId}, Domain = {Domain}, AggregateId = {AggregateId}, QueryType = {QueryType}, CorrelationId = {CorrelationId}, UserId = {UserId}{(EntityId is not null ? $", EntityId = {EntityId}" : "")}, Payload = [REDACTED {Payload.Length} bytes] }}";
+        => $"QueryEnvelope {{ TenantId = {TenantId}, Domain = {Domain}, AggregateId = {AggregateId}, QueryType = {QueryType}, CorrelationId = {CorrelationId}, UserId = {UserId}{(EntityId is not null ? $", EntityId = {EntityId}" : "")}{(IsGlobalAdmin ? ", IsGlobalAdmin = True" : "")}, Payload = [REDACTED {Payload.Length} bytes] }}";
 }

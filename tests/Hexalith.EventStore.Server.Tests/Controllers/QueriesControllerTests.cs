@@ -164,6 +164,48 @@ public class QueriesControllerTests {
     }
 
     [Fact]
+    public async Task Submit_GlobalAdministratorPrincipal_SetsSubmitQueryIsGlobalAdminTrue() {
+        // Arrange — the IsGlobalAdmin flag is minted here from the JWT, never from client request input.
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", "admin-user"), new Claim(ClaimTypes.Role, "GlobalAdministrator")], "test"));
+        QueriesController controller = CreateController(mediator, principal: principal);
+
+        // Act
+        _ = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
+
+        // Assert
+        _ = await mediator.Received(1).Send(
+            Arg.Is<SubmitQuery>(q => q.IsGlobalAdmin),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Submit_NonAdministratorPrincipal_SetsSubmitQueryIsGlobalAdminFalse() {
+        // Arrange
+        JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new SubmitQueryResult("corr-1", resultPayload));
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", "plain-user")], "test"));
+        QueriesController controller = CreateController(mediator, principal: principal);
+
+        // Act
+        _ = await controller.Submit(CreateTestRequest(), null, CancellationToken.None);
+
+        // Assert
+        _ = await mediator.Received(1).Send(
+            Arg.Is<SubmitQuery>(q => !q.IsGlobalAdmin),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Submit_MissingSubClaim_ReturnsUnauthorizedAndDoesNotCallMediator() {
         // Arrange
         IMediator mediator = Substitute.For<IMediator>();

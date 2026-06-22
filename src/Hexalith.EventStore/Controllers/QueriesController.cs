@@ -141,7 +141,8 @@ public partial class QueriesController(
             ProjectionType: string.IsNullOrWhiteSpace(request.ProjectionType)
                 ? request.Domain
                 : request.ProjectionType,
-            ProjectionActorType: request.ProjectionActorType);
+            ProjectionActorType: request.ProjectionActorType,
+            IsGlobalAdmin: GlobalAdministratorHelper.IsGlobalAdministrator(User));
 
         SubmitQueryResult result = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
 
