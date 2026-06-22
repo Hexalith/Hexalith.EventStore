@@ -90,9 +90,13 @@ harden the integration suite so it is reliable on its own lane.
 
 **CP-2 — new `.github/workflows/integration.yml` (dedicated live-sidecar job)**
 - Triggers: push to `main`, PRs to `main`, and `workflow_dispatch`; separate concurrency group.
-- Provisions DAPR (`dapr init`, retried) and runs `Server.Tests --filter "Category=LiveSidecar"`
-  plus the Tier-3 `IntegrationTests` project.
+- Provisions DAPR (`dapr init`, retried) and runs `Server.Tests --filter "Category=LiveSidecar"`.
 - **Not** a dependency of the `release` job → never gates a release.
+- **Tier-3 deferred:** the `IntegrationTests` project starts a full Aspire `DistributedApplication`
+  (`Projects.Hexalith_EventStore_AppHost`) which `dapr init` alone does not satisfy — it ran for
+  10+ minutes in the first PR CI run. Running it reliably needs a dedicated Aspire-in-CI setup; it
+  is **not** included here (the original release pipeline never ran it either) and is tracked as a
+  follow-up.
 
 ### Tests
 
@@ -127,6 +131,7 @@ harden the integration suite so it is reliable on its own lane.
 | Integration  | `Category=LiveSidecar`  | **28 passed, 0 failed** |
 | Partition check | — | 2193 + 28 = 2221 = original total ✓ |
 | Workflow YAML | — | `release.yml` + `integration.yml` parse OK |
+| **CI (PR #271)** | `Integration Tests` → live-sidecar | **✓ passed in real CI** — the 28 live-sidecar tests (incl. the previously-failing one) green in the exact environment that was failing |
 
 ---
 
@@ -146,3 +151,6 @@ harden the integration suite so it is reliable on its own lane.
 - **Follow-ups (non-blocking, separate change):**
   - Reconcile CLAUDE.md (Server.Tests now builds; document the `LiveSidecar` trait and two-lane CI).
   - Optional: bind `DaprETagService` timeout to `IOptions`/appsettings if runtime tuning is desired.
+  - **Aspire-in-CI for Tier-3:** stand up a dedicated workflow that can host the full Aspire
+    topology (`DistributedApplicationTestingBuilder`) so `IntegrationTests` can run in CI without
+    making the integration lane slow/flaky.
