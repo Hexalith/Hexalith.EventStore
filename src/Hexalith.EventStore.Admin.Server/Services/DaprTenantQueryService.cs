@@ -29,7 +29,16 @@ public sealed class DaprTenantQueryService : ITenantQueryService {
 
     private static readonly JsonSerializerOptions _options = new() {
         PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter() },
+        // Tenant query actors serialize TenantStatus/TenantRole by name, but legacy clients may emit
+        // numeric values that predate the Unknown=0 sentinel. These typed converters accept both wire
+        // formats and MUST precede the JsonStringEnumConverter factory (first-match-wins) so they
+        // override the factory (and the enums' own type-level [JsonConverter] attributes — an
+        // options-level converter takes precedence over the attribute in System.Text.Json).
+        Converters = {
+            new LegacyNumericTenantEnumConverter<TenantStatus>(),
+            new LegacyNumericTenantEnumConverter<TenantRole>(),
+            new JsonStringEnumConverter(),
+        },
     };
 
     private readonly IAdminAuthContext _authContext;
