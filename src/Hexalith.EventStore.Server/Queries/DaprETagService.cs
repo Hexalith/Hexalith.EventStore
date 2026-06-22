@@ -14,9 +14,14 @@ namespace Hexalith.EventStore.Server.Queries;
 /// </summary>
 public partial class DaprETagService(
     IActorProxyFactory actorProxyFactory,
-    ILogger<DaprETagService> logger) : IETagService {
-    private static readonly ActorProxyOptions _proxyOptions = new() {
-        RequestTimeout = TimeSpan.FromSeconds(3),
+    ILogger<DaprETagService> logger,
+    TimeSpan? requestTimeout = null) : IETagService {
+    // Reads fail open after this window so a slow or unreachable actor never blocks the projection
+    // read path. Overridable (production default 3s, supplied by DI for the unregistered optional
+    // parameter) so live-sidecar integration tests can tolerate cold-start actor activation latency
+    // on CI runners without changing production behavior.
+    private readonly ActorProxyOptions _proxyOptions = new() {
+        RequestTimeout = requestTimeout ?? TimeSpan.FromSeconds(3),
     };
 
     /// <inheritdoc/>

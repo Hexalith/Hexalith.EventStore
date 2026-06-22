@@ -12,7 +12,6 @@ permissions:
   contents: write # For tag creation and GitHub Release
 
 env:
-  DAPR_VERSION: '1.16.0'
   # Bypass NU1902 transitive CVE warnings on OpenTelemetry packages — mirrors the local
   # `-p:NuGetAudit=false` flag documented in CLAUDE.md § Build & Test Commands.
   NuGetAudit: 'false'
@@ -45,20 +44,11 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      - name: Install Dapr CLI
-        uses: dapr/setup-dapr@8d980918fd43a2765c143ce7f687665b2d46a6b9 # v2
-        with:
-          version: ${{ env.DAPR_VERSION }}
-
-      - name: Initialize Dapr
-        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
-        with:
-          timeout_minutes: 5
-          max_attempts: 3
-          retry_wait_seconds: 15
-          command: dapr init
-
-      - name: Run All Tests (Tier 1 + 2)
+      # The release gate runs only deterministic Tier 1 + in-process Tier 2 tests. Live-`daprd`
+      # integration tests (Category=LiveSidecar) are excluded here and run in the dedicated
+      # integration.yml workflow, which provisions a real DAPR sidecar. This keeps the per-push
+      # release path green and fast — see sprint-change-proposal-2026-06-22-ci-release-retier.md.
+      - name: Run Unit & In-Process Tests (release gate)
         run: |
           dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --configuration Release --logger "trx;LogFileName=contracts-results.trx"
           dotnet test tests/Hexalith.EventStore.Client.Tests/ --configuration Release --logger "trx;LogFileName=client-results.trx"
@@ -71,7 +61,7 @@ jobs:
           dotnet test tests/Hexalith.EventStore.Admin.Server.Tests/ --configuration Release --logger "trx;LogFileName=admin-server-results.trx"
           dotnet test tests/Hexalith.EventStore.Admin.Server.Host.Tests/ --configuration Release --logger "trx;LogFileName=admin-server-host-results.trx"
           dotnet test tests/Hexalith.EventStore.Admin.UI.Tests/ --configuration Release --logger "trx;LogFileName=admin-ui-results.trx"
-          dotnet test tests/Hexalith.EventStore.Server.Tests/ --configuration Release --logger "trx;LogFileName=server-results.trx"
+          dotnet test tests/Hexalith.EventStore.Server.Tests/ --configuration Release --filter "Category!=LiveSidecar" --logger "trx;LogFileName=server-results.trx"
 
       - name: Install semantic-release
         run: npm ci

@@ -15,6 +15,7 @@ namespace Hexalith.EventStore.Server.Tests.Commands;
 /// Validates command routing to correct aggregate actors via Dapr.
 /// </summary>
 [Collection("DaprTestContainer")]
+[Trait("Category", "LiveSidecar")]
 public class CommandRoutingIntegrationTests {
     private readonly DaprTestContainerFixture _fixture;
 

@@ -20,6 +20,7 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 /// Validates ETag-based concurrency conflict detection on aggregate metadata key.
 /// </summary>
 [Collection("DaprTestContainer")]
+[Trait("Category", "LiveSidecar")]
 public class ActorConcurrencyConflictTests {
     private readonly DaprTestContainerFixture _fixture;
 
