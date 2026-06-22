@@ -1,3 +1,10 @@
+## [3.16.1](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.16.0...v3.16.1) (2026-06-22)
+
+
+### Bug Fixes
+
+* update subproject commit reference for Hexalith.Tenants ([17db9a5](https://github.com/Hexalith/Hexalith.EventStore/commit/17db9a5bf52ed225d6faeefac320520034cc094c))
+
 # [3.16.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.15.1...v3.16.0) (2026-06-22)
 
 
