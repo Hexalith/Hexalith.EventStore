@@ -142,9 +142,12 @@ public static class HexalithEventStoreExtensions {
         ArgumentOutOfRangeException.ThrowIfLessThan(eventStoreDaprHttpPort, 1024);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(eventStoreDaprHttpPort, 65535);
 
-        const string LocalDaprRedisHost = "127.0.0.1:6379";
+        // Must match the authoritative statestore.yaml redisHost value (DaprComponentValidationTests
+        // .StateStoreFallbackMetadata_MatchesAuthoritativeYaml enforces this). DAPR does not interpolate
+        // the {env:VAR|default} template for redisHost, so the YAML pins the literal dapr-init host.
+        const string LocalDaprRedisHost = "localhost:6379";
 
-        // Redis is provided by `dapr init` at 127.0.0.1:6379, not managed by Aspire.
+        // Redis is provided by `dapr init` at localhost:6379, not managed by Aspire.
         // The checked-in statestore.yaml is the preferred local source of truth. The
         // fallback below exists for external consumers that use this hosting extension
         // without an AppHost-owned DAPR components directory.
