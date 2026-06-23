@@ -70,4 +70,31 @@ public static class HexalithEventStorePlatformExtensions {
 
         return new HexalithEventStorePlatformProjects(eventStore, adminServer, adminUI);
     }
+
+    /// <summary>
+    /// Adds <b>only</b> the Hexalith.EventStore command-gateway project (no Admin.Server / Admin.UI) to the
+    /// distributed application, resolving the project file cross-repo from the consuming repository's
+    /// <c>Hexalith.EventStore</c> submodule.
+    /// </summary>
+    /// <remarks>
+    /// Use this for a <i>gateway-only</i> composition: a domain-module AppHost that hosts the EventStore command
+    /// gateway without the admin surface. Pass the returned builder as the <c>eventStore</c> argument to
+    /// <see cref="HexalithEventStoreExtensions.AddHexalithEventStore(IDistributedApplicationBuilder, IResourceBuilder{ProjectResource}, IResourceBuilder{ProjectResource}, IResourceBuilder{ProjectResource}?, string?, string?, string?, int, string?, string?, string?)"/>
+    /// with <c>adminServer: null</c> (and <c>adminUI: null</c>) — the helper then wires the gateway sidecar and
+    /// shared state-store / pub/sub components and adds no <c>eventstore-admin</c> / <c>eventstore-admin-ui</c>
+    /// resources. Unlike <see cref="AddHexalithEventStorePlatformProjects"/>, this never adds the admin projects.
+    /// </remarks>
+    /// <param name="builder">The distributed application builder.</param>
+    /// <param name="eventStoreName">The Aspire resource name for the EventStore command gateway. Defaults to <c>"eventstore"</c>.</param>
+    /// <returns>The EventStore command-gateway project resource builder for further customization and topology wiring.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="builder"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="eventStoreName"/> is <see langword="null"/> or whitespace.</exception>
+    public static IResourceBuilder<ProjectResource> AddHexalithEventStoreGatewayProject(
+        this IDistributedApplicationBuilder builder,
+        string eventStoreName = "eventstore") {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventStoreName);
+
+        return builder.AddProject<EventStoreProjectMetadata>(eventStoreName);
+    }
 }

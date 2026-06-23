@@ -18,7 +18,10 @@ public static class HexalithEventStoreExtensions {
     /// </summary>
     /// <param name="builder">The distributed application builder.</param>
     /// <param name="eventStore">The EventStore project resource builder.</param>
-    /// <param name="adminServer">The Admin.Server.Host project resource builder.</param>
+    /// <param name="adminServer">
+    /// The Admin.Server.Host project resource builder, or <see langword="null"/> to compose the EventStore
+    /// command gateway only (no admin server / admin UI resources are added or wired).
+    /// </param>
     /// <param name="adminUI">Optional Admin.UI project resource builder.</param>
     /// <param name="eventStoreDaprConfigPath">
     /// Path to the Dapr access control configuration file loaded by the EventStore sidecar.
@@ -68,7 +71,7 @@ public static class HexalithEventStoreExtensions {
     public static HexalithEventStoreResources AddHexalithEventStore(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<ProjectResource> eventStore,
-        IResourceBuilder<ProjectResource> adminServer,
+        IResourceBuilder<ProjectResource>? adminServer,
         IResourceBuilder<ProjectResource>? adminUI = null,
         string? eventStoreDaprConfigPath = null,
         string? adminServerDaprConfigPath = null,
@@ -98,7 +101,10 @@ public static class HexalithEventStoreExtensions {
     /// </summary>
     /// <param name="builder">The distributed application builder.</param>
     /// <param name="eventStore">The EventStore project resource builder.</param>
-    /// <param name="adminServer">The Admin.Server.Host project resource builder.</param>
+    /// <param name="adminServer">
+    /// The Admin.Server.Host project resource builder, or <see langword="null"/> to compose the EventStore
+    /// command gateway only (no admin server / admin UI resources are added or wired).
+    /// </param>
     /// <param name="adminUI">Optional Admin.UI project resource builder.</param>
     /// <param name="eventStoreDaprConfigPath">Path to the Dapr access control configuration file loaded by the EventStore sidecar.</param>
     /// <param name="adminServerDaprConfigPath">Path to the Dapr access control configuration file loaded by the Admin.Server sidecar.</param>
@@ -126,7 +132,7 @@ public static class HexalithEventStoreExtensions {
     public static HexalithEventStoreResources AddHexalithEventStore(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<ProjectResource> eventStore,
-        IResourceBuilder<ProjectResource> adminServer,
+        IResourceBuilder<ProjectResource>? adminServer,
         IResourceBuilder<ProjectResource>? adminUI,
         string? eventStoreDaprConfigPath,
         string? adminServerDaprConfigPath,
@@ -138,7 +144,10 @@ public static class HexalithEventStoreExtensions {
         string? pubSubComponentPath = null) {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(eventStore);
-        ArgumentNullException.ThrowIfNull(adminServer);
+
+        // adminServer (and adminUI) may be null for a gateway-only composition — the EventStore command
+        // gateway is added without the admin server / admin UI surface. All admin wiring below is guarded
+        // behind an `adminServer is not null` check, so passing null simply skips it.
         ArgumentOutOfRangeException.ThrowIfLessThan(eventStoreDaprHttpPort, 1024);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(eventStoreDaprHttpPort, 65535);
 
@@ -212,76 +221,81 @@ public static class HexalithEventStoreExtensions {
                 .WithReference(stateStore)
                 .WithReference(pubSub));
 
-        // Wire Admin.Server with DAPR sidecar.
-        // Admin.Server needs state store for direct reads (health, admin indexes,
-        // tenant projections written by the tenants service).
-        // All services use keyPrefix:none so keys are shared across appIds.
-        // It does not publish or subscribe directly, so it intentionally does not
-        // reference the pub/sub component.
-        _ = adminServer.WithReference(eventStore);
+        // Admin server / admin UI are optional (gateway-only composition passes null). All admin wiring is
+        // gated here so a null adminServer simply yields a command-gateway-only topology with no
+        // eventstore-admin / eventstore-admin-ui resources.
+        if (adminServer is not null) {
+            // Wire Admin.Server with DAPR sidecar.
+            // Admin.Server needs state store for direct reads (health, admin indexes,
+            // tenant projections written by the tenants service).
+            // All services use keyPrefix:none so keys are shared across appIds.
+            // It does not publish or subscribe directly, so it intentionally does not
+            // reference the pub/sub component.
+            _ = adminServer.WithReference(eventStore);
 
-        // Aspire-orchestration-only env vars. These resolve to localhost-based endpoints
-        // and the Aspire dashboard, which are valid under `dotnet aspire run` but NOT in
-        // publish mode (aspirate-generated K8s manifests, Aspire publishers, etc.). In
-        // publish mode the operator is responsible for wiring the equivalent values via
-        // their own appsettings / Helm values / kustomize overlay, pointing at the
-        // cluster-resolved endpoints and their actual observability stack (Grafana,
-        // Datadog, Application Insights, etc.). Without this gate, aspirate captures
-        // these dev-mode values and bakes them into production ConfigMaps where they
-        // resolve nowhere -- breaking byte-determinism (host paths) and silently
-        // misrouting observability links (localhost:17017 dashboard URLs).
-        // The Aspire dashboard default port is 17017; override these env vars if you run
-        // the dashboard on a different port.
-        if (!builder.ExecutionContext.IsPublishMode) {
-            const string AspireDashboardBaseUrl = "https://localhost:17017";
-            string eventStoreEndpointUrl = "http://localhost:" + eventStoreDaprHttpPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            _ = adminServer
-                .WithEnvironment("AdminServer__EventStoreDaprHttpEndpoint", eventStoreEndpointUrl)
-                .WithEnvironment("AdminServer__TraceUrl", AspireDashboardBaseUrl + "/traces")
-                .WithEnvironment("AdminServer__MetricsUrl", AspireDashboardBaseUrl + "/metrics")
-                .WithEnvironment("AdminServer__LogsUrl", AspireDashboardBaseUrl + "/structuredlogs");
-        }
+            // Aspire-orchestration-only env vars. These resolve to localhost-based endpoints
+            // and the Aspire dashboard, which are valid under `dotnet aspire run` but NOT in
+            // publish mode (aspirate-generated K8s manifests, Aspire publishers, etc.). In
+            // publish mode the operator is responsible for wiring the equivalent values via
+            // their own appsettings / Helm values / kustomize overlay, pointing at the
+            // cluster-resolved endpoints and their actual observability stack (Grafana,
+            // Datadog, Application Insights, etc.). Without this gate, aspirate captures
+            // these dev-mode values and bakes them into production ConfigMaps where they
+            // resolve nowhere -- breaking byte-determinism (host paths) and silently
+            // misrouting observability links (localhost:17017 dashboard URLs).
+            // The Aspire dashboard default port is 17017; override these env vars if you run
+            // the dashboard on a different port.
+            if (!builder.ExecutionContext.IsPublishMode) {
+                const string AspireDashboardBaseUrl = "https://localhost:17017";
+                string eventStoreEndpointUrl = "http://localhost:" + eventStoreDaprHttpPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                _ = adminServer
+                    .WithEnvironment("AdminServer__EventStoreDaprHttpEndpoint", eventStoreEndpointUrl)
+                    .WithEnvironment("AdminServer__TraceUrl", AspireDashboardBaseUrl + "/traces")
+                    .WithEnvironment("AdminServer__MetricsUrl", AspireDashboardBaseUrl + "/metrics")
+                    .WithEnvironment("AdminServer__LogsUrl", AspireDashboardBaseUrl + "/structuredlogs");
+            }
 
-        _ = adminServer.WithDaprSidecar(sidecar => sidecar
-            .WithOptions(new DaprSidecarOptions {
-                AppId = "eventstore-admin",
-                Config = adminServerDaprConfigPath,
-                PlacementHostAddress = daprPlacementHostAddress,
-                SchedulerHostAddress = daprSchedulerHostAddress,
-            })
-            .WithReference(stateStore));
+            _ = adminServer.WithDaprSidecar(sidecar => sidecar
+                .WithOptions(new DaprSidecarOptions {
+                    AppId = "eventstore-admin",
+                    Config = adminServerDaprConfigPath,
+                    PlacementHostAddress = daprPlacementHostAddress,
+                    SchedulerHostAddress = daprSchedulerHostAddress,
+                })
+                .WithReference(stateStore));
 
-        // Auto-inject the resiliency YAML path so /dapr/resiliency works out of the box under
-        // Aspire orchestration. The AppHost owns this path because it knows the absolute on-disk
-        // location of the DAPR resources directory; pushing it through an env var avoids
-        // forcing operators to maintain a duplicated entry in Admin.Server.Host/appsettings.json
-        // and avoids working-directory fragility (the resiliency.yaml lives in the AppHost
-        // project, not the Admin.Server.Host project).
-        // Aspire-orchestration-only: in publish mode the resolved absolute path is the
-        // AppHost machine's home directory, not a container-internal path. Operators
-        // running in K8s mount the resiliency YAML via Volume + ConfigMap and set this
-        // env var in their kustomize overlay or Helm values.
-        if (!builder.ExecutionContext.IsPublishMode && !string.IsNullOrWhiteSpace(resiliencyConfigPath)) {
-            _ = adminServer.WithEnvironment("AdminServer__ResiliencyConfigPath", resiliencyConfigPath);
-        }
+            // Auto-inject the resiliency YAML path so /dapr/resiliency works out of the box under
+            // Aspire orchestration. The AppHost owns this path because it knows the absolute on-disk
+            // location of the DAPR resources directory; pushing it through an env var avoids
+            // forcing operators to maintain a duplicated entry in Admin.Server.Host/appsettings.json
+            // and avoids working-directory fragility (the resiliency.yaml lives in the AppHost
+            // project, not the Admin.Server.Host project).
+            // Aspire-orchestration-only: in publish mode the resolved absolute path is the
+            // AppHost machine's home directory, not a container-internal path. Operators
+            // running in K8s mount the resiliency YAML via Volume + ConfigMap and set this
+            // env var in their kustomize overlay or Helm values.
+            if (!builder.ExecutionContext.IsPublishMode && !string.IsNullOrWhiteSpace(resiliencyConfigPath)) {
+                _ = adminServer.WithEnvironment("AdminServer__ResiliencyConfigPath", resiliencyConfigPath);
+            }
 
-        // Wire Admin.UI. It invokes Admin.Server via DAPR service invocation
-        // (D13, supersedes the ADR-P4 HTTP deviation): the Admin.UI sidecar tags
-        // outbound calls with `dapr-app-id: eventstore-admin`. The sidecar references
-        // no state store / pub/sub component — service invocation only, so it has zero
-        // direct infrastructure access (same isolation rationale as the sample sidecar).
-        // WaitFor(adminServer) is retained so the UI starts after its invocation target.
-        if (adminUI is not null) {
-            _ = adminUI
-                .WithReference(adminServer)
-                .WaitFor(adminServer)
-                .WithExternalHttpEndpoints()
-                .WithDaprSidecar(sidecar => sidecar
-                    .WithOptions(new DaprSidecarOptions {
-                        AppId = "eventstore-admin-ui",
-                        PlacementHostAddress = daprPlacementHostAddress,
-                        SchedulerHostAddress = daprSchedulerHostAddress,
-                    }));
+            // Wire Admin.UI. It invokes Admin.Server via DAPR service invocation
+            // (D13, supersedes the ADR-P4 HTTP deviation): the Admin.UI sidecar tags
+            // outbound calls with `dapr-app-id: eventstore-admin`. The sidecar references
+            // no state store / pub/sub component — service invocation only, so it has zero
+            // direct infrastructure access (same isolation rationale as the sample sidecar).
+            // WaitFor(adminServer) is retained so the UI starts after its invocation target.
+            if (adminUI is not null) {
+                _ = adminUI
+                    .WithReference(adminServer)
+                    .WaitFor(adminServer)
+                    .WithExternalHttpEndpoints()
+                    .WithDaprSidecar(sidecar => sidecar
+                        .WithOptions(new DaprSidecarOptions {
+                            AppId = "eventstore-admin-ui",
+                            PlacementHostAddress = daprPlacementHostAddress,
+                            SchedulerHostAddress = daprSchedulerHostAddress,
+                        }));
+            }
         }
 
         return new HexalithEventStoreResources(stateStore, pubSub, eventStore, adminServer, adminUI);
