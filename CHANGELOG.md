@@ -1,3 +1,10 @@
+# [3.18.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.17.0...v3.18.0) (2026-06-23)
+
+
+### Features
+
+* enhance documentation for admin server and add gateway-only project support ([79fb952](https://github.com/Hexalith/Hexalith.EventStore/commit/79fb952b7c73efc1c3b9fc7be260bf3104393865))
+
 # [3.17.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.16.1...v3.17.0) (2026-06-22)
 
 
