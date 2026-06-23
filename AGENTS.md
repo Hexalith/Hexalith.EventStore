@@ -6,6 +6,10 @@ Before working in this repository, read
 [`hexalith-llm-instructions.md`](./Hexalith.AI.Tools/hexalith-llm-instructions.md)
 (in the `Hexalith.AI.Tools` submodule) and follow it.
 
+Before working on any module user interface or UX, also read
+[`Hexalith.AI.Tools/hexalith-ux-instructions.md`](./Hexalith.AI.Tools/hexalith-ux-instructions.md)
+and follow it.
+
 ## Project Overview
 
 DAPR-native event sourcing server for .NET. Built on CQRS, DDD, and event sourcing patterns with .NET Aspire orchestration.
