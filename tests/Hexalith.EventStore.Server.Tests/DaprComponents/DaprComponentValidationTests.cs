@@ -105,16 +105,14 @@ public class DaprComponentValidationTests {
         tenantsBlock.ShouldContain("AddEventStoreDomainModule");
         tenantsBlock.ShouldNotContain("isolatedDaprResourcesPath");
 
-        // Verify the isolation mechanism itself in the A4 extension: the isolated branch binds only the empty
-        // resources path and never references the shared state-store / pub/sub; the shared branch references both.
+        // Verify the isolation mechanism itself in the A4 extension: the public EventStore facade now delegates
+        // to the shared Commons helper while still selecting isolated mode with only the empty resources path and
+        // shared mode with the EventStore state-store / pub-sub references.
         string moduleExtension = File.ReadAllText(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.Aspire", "HexalithEventStoreDomainModuleExtensions.cs"));
-        string isolatedBranch = GetBlock(moduleExtension, "if (isolated) {", "else {");
-        isolatedBranch.ShouldContain("ResourcesPaths = ImmutableHashSet.Create(isolatedDaprResourcesPath");
-        isolatedBranch.ShouldNotContain("WithReference(eventStore.StateStore");
-        isolatedBranch.ShouldNotContain("WithReference(eventStore.PubSub");
-        string sharedBranch = GetBlock(moduleExtension, "else {", "});");
-        sharedBranch.ShouldContain("WithReference(eventStore.StateStore)");
-        sharedBranch.ShouldContain("WithReference(eventStore.PubSub)");
+        moduleExtension.ShouldContain("AddAspireDaprDomainModule");
+        moduleExtension.ShouldContain("isolated ? AspireDaprInfrastructureMode.Isolated : AspireDaprInfrastructureMode.Shared");
+        moduleExtension.ShouldContain("ResourcesPaths = isolated ? [isolatedDaprResourcesPath!] : []");
+        moduleExtension.ShouldContain("SharedComponents = isolated ? null : new AspireDaprSharedComponents(eventStore.StateStore, eventStore.PubSub)");
 
         string sampleBlazorBlock = GetBlock(appHost, "IResourceBuilder<ProjectResource> blazorUi =", "if (keycloak is not null");
         sampleBlazorBlock.ShouldNotContain("eventStoreResources.StateStore");

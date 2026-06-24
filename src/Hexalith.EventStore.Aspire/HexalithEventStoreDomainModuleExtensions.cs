@@ -1,9 +1,7 @@
-using System.Collections.Immutable;
-
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 
-using CommunityToolkit.Aspire.Hosting.Dapr;
+using Hexalith.Commons.Aspire;
 
 namespace Hexalith.EventStore.Aspire;
 
@@ -62,33 +60,14 @@ public static class HexalithEventStoreDomainModuleExtensions {
 
         bool isolated = !string.IsNullOrWhiteSpace(isolatedDaprResourcesPath);
 
-        return domainModule.WithDaprSidecar(sidecar => {
-            if (isolated) {
-                // Zero infrastructure access: load only the empty resources directory so the sidecar does not
-                // bind the EventStore state-store / pub/sub components at all. Stronger than scoping alone —
-                // direct component access is impossible. AppPort is intentionally omitted so the CommunityToolkit
-                // auto-detects the module's port (hardcoding it breaks Aspire Testing's randomized ports).
-                _ = sidecar.WithOptions(new DaprSidecarOptions {
-                    AppId = appId,
-                    Config = daprConfigPath,
-                    ResourcesPaths = ImmutableHashSet.Create(isolatedDaprResourcesPath!),
-                    PlacementHostAddress = daprPlacementHostAddress,
-                    SchedulerHostAddress = daprSchedulerHostAddress,
-                });
-            }
-            else {
-                // Shared infrastructure: the module reads/writes the same state store and publishes/subscribes
-                // on the same pub/sub as EventStore (keyPrefix:none shares keys across app-ids).
-                _ = sidecar
-                    .WithOptions(new DaprSidecarOptions {
-                        AppId = appId,
-                        Config = daprConfigPath,
-                        PlacementHostAddress = daprPlacementHostAddress,
-                        SchedulerHostAddress = daprSchedulerHostAddress,
-                    })
-                    .WithReference(eventStore.StateStore)
-                    .WithReference(eventStore.PubSub);
-            }
-        });
+        return domainModule.AddAspireDaprDomainModule(new AspireDaprDomainModuleOptions(
+            appId,
+            isolated ? AspireDaprInfrastructureMode.Isolated : AspireDaprInfrastructureMode.Shared) {
+            Config = daprConfigPath,
+            ResourcesPaths = isolated ? [isolatedDaprResourcesPath!] : [],
+            SharedComponents = isolated ? null : new AspireDaprSharedComponents(eventStore.StateStore, eventStore.PubSub),
+            PlacementHostAddress = daprPlacementHostAddress,
+            SchedulerHostAddress = daprSchedulerHostAddress,
+        }).Project;
     }
 }
