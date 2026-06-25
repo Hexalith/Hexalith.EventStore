@@ -36,6 +36,7 @@
                 string timeRange = $"{bucket.Start:HH:mm}-{bucket.End:HH:mm}";
                 string ariaLabel = $"{timeRange}: {bucket.StreamCount} active streams";
                 <button class="activity-chart-bar-wrapper" type="button"
+                        data-testid="activity-chart-bar"
                         title="@($"{timeRange}: {bucket.StreamCount} streams")"
                         aria-label="@ariaLabel"
                         @onclick="() => OnBarClick(bucket)">

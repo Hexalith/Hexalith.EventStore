@@ -83,9 +83,12 @@ public class ActivityChartTests : AdminUITestContext {
         bars.GetAttribute("aria-label").ShouldNotBeNullOrWhiteSpace();
         cut.Markup.ShouldNotContain("role=\"img\"");
 
-        // Each bar is a real <button> (keyboard-focusable / activatable natively).
+        // Each bar is a real <button> (keyboard-focusable / activatable natively) carrying a
+        // data-testid — backing the AdminUiFluentConformanceTests carve-out (aria-label + data-testid).
         cut.FindAll(".activity-chart-bar-wrapper").Count.ShouldBe(1);
-        cut.Find(".activity-chart-bar-wrapper").NodeName.ShouldBe("BUTTON");
+        AngleSharp.Dom.IElement bar = cut.Find(".activity-chart-bar-wrapper");
+        bar.NodeName.ShouldBe("BUTTON");
+        bar.GetAttribute("data-testid").ShouldBe("activity-chart-bar");
         // The sr-only data table text alternative is still present.
         cut.Markup.ShouldContain("Stream activity data for the last 24 hours");
     }

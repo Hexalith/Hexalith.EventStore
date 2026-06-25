@@ -304,6 +304,71 @@ public class DaprHealthHistoryPageTests : AdminUITestContext {
         cut.Markup.ShouldNotContain("@slot.End.ToString");
     }
 
+    [Fact]
+    public void HealthHistoryPage_Heatmap_IsRovingTabindexGrid_SingleTabStop() {
+        // a11y remediation (roving-tabindex ARIA grid): the heatmap is a single Tab stop — exactly one
+        // interactive cell carries tabindex=0; the rest are -1 and reached via the arrow keys.
+        SetupSuccessfulResponse();
+
+        IRenderedComponent<DaprHealthHistory> cut = Render<DaprHealthHistory>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Timeline Heatmap"), TimeSpan.FromSeconds(5));
+
+        AngleSharp.Dom.IElement grid = cut.Find(".health-heatmap");
+        grid.GetAttribute("role").ShouldBe("grid");
+        grid.HasAttribute("data-roving-grid").ShouldBeTrue();
+
+        IReadOnlyList<AngleSharp.Dom.IElement> cells = cut.FindAll(".health-heatmap [data-row]");
+        cells.Count.ShouldBeGreaterThan(1);
+        cells.Count(c => c.GetAttribute("tabindex") == "0").ShouldBe(1);
+    }
+
+    [Fact]
+    public void HealthHistoryPage_Heatmap_ArrowRight_MovesTheSingleTabStop() {
+        // Roving tabindex: ArrowRight moves the single tab stop from (row 0, col 0) to (row 0, col 1).
+        SetupSuccessfulResponse();
+
+        IRenderedComponent<DaprHealthHistory> cut = Render<DaprHealthHistory>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Timeline Heatmap"), TimeSpan.FromSeconds(5));
+
+        AngleSharp.Dom.IElement active = cut.Find(".health-heatmap [data-row=\"0\"][data-col=\"0\"]");
+        active.GetAttribute("tabindex").ShouldBe("0");
+
+        active.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "ArrowRight" });
+
+        cut.Find(".health-heatmap [data-row=\"0\"][data-col=\"1\"]").GetAttribute("tabindex").ShouldBe("0");
+        cut.Find(".health-heatmap [data-row=\"0\"][data-col=\"0\"]").GetAttribute("tabindex").ShouldBe("-1");
+    }
+
+    [Fact]
+    public void HealthHistoryPage_HeatmapDataCell_FiltersTransitionLog_OnEnterKey() {
+        // a11y remediation: the heatmap data cells (previously mouse-only) are keyboard-activatable —
+        // pressing Enter on a gridcell filters the transition log to that component+slot.
+        SetupSuccessfulResponse();
+
+        IRenderedComponent<DaprHealthHistory> cut = Render<DaprHealthHistory>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Timeline Heatmap"), TimeSpan.FromSeconds(5));
+
+        AngleSharp.Dom.IElement cell = cut.Find(".health-heatmap [role=\"gridcell\"][data-row=\"0\"][data-col=\"1\"]");
+        cell.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Filtered:"), TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public void HealthHistoryPage_HeatmapRowHeader_SelectsComponent_OnSpaceKey() {
+        // a11y remediation: the heatmap row header selects the component on Space (opens the drill-down
+        // panel); the page-scroll default is suppressed by the interop.js [data-activate-button] listener.
+        SetupSuccessfulResponse();
+
+        IRenderedComponent<DaprHealthHistory> cut = Render<DaprHealthHistory>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Timeline Heatmap"), TimeSpan.FromSeconds(5));
+
+        AngleSharp.Dom.IElement rowHeader = cut.Find(".health-heatmap [role=\"rowheader\"][data-row=\"0\"]");
+        rowHeader.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = " " });
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("View Component"), TimeSpan.FromSeconds(5));
+    }
+
     // ===== Helper methods =====
 
     private void SetupSuccessfulResponse() {

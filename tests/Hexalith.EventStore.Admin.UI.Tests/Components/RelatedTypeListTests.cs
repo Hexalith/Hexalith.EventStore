@@ -65,4 +65,23 @@ public class RelatedTypeListTests : AdminUITestContext {
             clickedItem.ShouldBe("CounterIncremented");
         }
     }
+
+    [Fact]
+    public void RelatedTypeList_RendersFluentButton_WithFilterAriaLabel_AndInvokesOnClick() {
+        // a11y remediation: each entry is a real FluentButton (keyboard-activatable natively) carrying
+        // an accessible "Filter by {item}" name — not a click-only badge. This asserts the concrete
+        // <fluent-button> + aria-label and that activation fires OnItemClick (the prior test was
+        // conditionally tolerant and could pass without exercising the click).
+        IReadOnlyList<string> items = ["CounterIncremented"];
+        string? clickedItem = null;
+
+        IRenderedComponent<RelatedTypeList> cut = Render<RelatedTypeList>(p => p
+            .Add(c => c.Items, items)
+            .Add(c => c.OnItemClick, item => clickedItem = item));
+
+        AngleSharp.Dom.IElement button = cut.Find("fluent-button[aria-label='Filter by CounterIncremented']");
+        button.Click();
+
+        clickedItem.ShouldBe("CounterIncremented");
+    }
 }

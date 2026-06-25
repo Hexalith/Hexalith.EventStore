@@ -136,4 +136,55 @@ window.hexalithAdmin = {
         document.documentElement.removeAttribute('data-theme');
         document.documentElement.style.removeProperty('color-scheme');
     },
+
+    // Accessibility: keyboard activation/navigation default-action suppression.
+    // The activation/navigation LOGIC lives in the Blazor @onkeydown handlers; this single
+    // delegated listener only cancels the browser default that would otherwise fire alongside it:
+    //   - Space (or legacy "Spacebar") on a custom role="button" element ([data-activate-button])
+    //     scrolls the page one viewport — suppress it. A blanket Razor @onkeydown:preventDefault
+    //     cannot be used because it would also cancel Tab (trapping focus); gating by key here is
+    //     the correct, focus-safe equivalent.
+    //   - Arrow / Home / End inside a roving-tabindex grid ([data-roving-grid]) scroll the page —
+    //     suppress them so arrow-key cell navigation does not also move the viewport. Tab is left
+    //     untouched so focus can always leave the grid.
+    _a11yKeydownRegistered: false,
+
+    registerA11yKeyboard: function () {
+        if (this._a11yKeydownRegistered) {
+            return;
+        }
+        this._a11yKeydownRegistered = true;
+        document.addEventListener("keydown", function (e) {
+            const target = e.target;
+            if (!target || typeof target.closest !== "function") {
+                return;
+            }
+            if ((e.key === " " || e.key === "Spacebar") && target.closest("[data-activate-button]")) {
+                e.preventDefault();
+                return;
+            }
+            if ((e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "ArrowLeft"
+                    || e.key === "ArrowRight" || e.key === "Home" || e.key === "End")
+                && target.closest("[data-roving-grid]")) {
+                e.preventDefault();
+            }
+        });
+    },
+
+    // Move DOM focus to the roving-tabindex grid cell at (row, col), addressed by data attributes.
+    // No-op when the grid or cell is absent (e.g. under bUnit's loose JS interop, where this is mocked).
+    focusGridCell: function (gridSelector, row, col) {
+        const grid = document.querySelector(gridSelector);
+        if (!grid) {
+            return;
+        }
+        const cell = grid.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        if (cell && typeof cell.focus === "function") {
+            cell.focus();
+        }
+    },
 };
+
+// Register the accessibility keydown listener once at script load. The listener is delegated on
+// document and uses event.target.closest(...), so it covers elements added later by Blazor renders.
+window.hexalithAdmin.registerA11yKeyboard();

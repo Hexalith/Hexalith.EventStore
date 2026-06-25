@@ -120,6 +120,46 @@ public class TypeDetailPanelTests : AdminUITestContext {
     }
 
     [Fact]
+    public void TypeDetailPanel_TargetAggregateLink_NavigatesOnEnterKey() {
+        // a11y remediation: the Target-Aggregate link (role="link") is keyboard-activatable —
+        // pressing Enter fires navigation, matching native link semantics.
+        CommandTypeInfo selectedCommand = new("CreateOrder", "ordering", "OrderAggregate");
+        string? navigatedTo = null;
+
+        IRenderedComponent<TypeDetailPanel> cut = Render<TypeDetailPanel>(parameters => parameters
+            .Add(p => p.SelectedCommand, selectedCommand)
+            .Add(p => p.AllEvents, Array.Empty<EventTypeInfo>())
+            .Add(p => p.AllCommands, Array.Empty<CommandTypeInfo>())
+            .Add(p => p.AllAggregates, Array.Empty<AggregateTypeInfo>())
+            .Add(p => p.OnNavigateToAggregate, name => navigatedTo = name));
+
+        AngleSharp.Dom.IElement link = cut.Find("span[role='link']");
+        link.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+
+        navigatedTo.ShouldBe("OrderAggregate");
+    }
+
+    [Fact]
+    public void TypeDetailPanel_TargetAggregateLink_DoesNotNavigateOnSpaceKey() {
+        // role="link" activates on Enter only (not Space) — the intentional, ARIA-correct difference
+        // from the role="button" selectors elsewhere in Admin.UI. This guards the distinction.
+        CommandTypeInfo selectedCommand = new("CreateOrder", "ordering", "OrderAggregate");
+        string? navigatedTo = null;
+
+        IRenderedComponent<TypeDetailPanel> cut = Render<TypeDetailPanel>(parameters => parameters
+            .Add(p => p.SelectedCommand, selectedCommand)
+            .Add(p => p.AllEvents, Array.Empty<EventTypeInfo>())
+            .Add(p => p.AllCommands, Array.Empty<CommandTypeInfo>())
+            .Add(p => p.AllAggregates, Array.Empty<AggregateTypeInfo>())
+            .Add(p => p.OnNavigateToAggregate, name => navigatedTo = name));
+
+        AngleSharp.Dom.IElement link = cut.Find("span[role='link']");
+        link.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = " " });
+
+        navigatedTo.ShouldBeNull();
+    }
+
+    [Fact]
     public void TypeDetailPanel_HasCloseButton() {
         // Arrange
         EventTypeInfo selectedEvent = new("OrderCreated", "ordering", false, 1);

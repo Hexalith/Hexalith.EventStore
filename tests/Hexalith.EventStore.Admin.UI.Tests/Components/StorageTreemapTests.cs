@@ -50,7 +50,7 @@ public class StorageTreemapTests : AdminUITestContext {
     public void StorageTreemap_InteractiveCells_HaveButtonSemanticsAndKeyboardAccess() {
         // Accessibility remediation (audit DV-1 / H-ES-4): the clickable treemap groups had no native
         // focus/role/keyboard affordance. They must now expose role="button", be focusable (tabindex=0),
-        // carry an accessible name, and reflect selection state via aria-pressed.
+        // and carry an accessible name.
         IReadOnlyList<StreamStorageInfo> data = CreateSampleData();
 
         IRenderedComponent<StorageTreemap> cut = Render<StorageTreemap>(parameters => parameters
@@ -60,7 +60,21 @@ public class StorageTreemapTests : AdminUITestContext {
         cell.GetAttribute("role").ShouldBe("button");
         cell.GetAttribute("tabindex").ShouldBe("0");
         cell.GetAttribute("aria-label").ShouldNotBeNullOrWhiteSpace();
-        cell.GetAttribute("aria-pressed").ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void StorageTreemap_SelectedCell_ExposesAriaCurrent_NotAriaPressed() {
+        // Selection is single-select, not a toggle: the selected aggregate-type cell carries
+        // aria-current="true"; unselected cells omit it; no cell uses the toggle-style aria-pressed.
+        IReadOnlyList<StreamStorageInfo> data = CreateSampleData();
+
+        IRenderedComponent<StorageTreemap> cut = Render<StorageTreemap>(parameters => parameters
+            .Add(p => p.Data, data)
+            .Add(p => p.SelectedAggregateType, "Order"));
+
+        IReadOnlyList<AngleSharp.Dom.IElement> cells = cut.FindAll("g.treemap-rect");
+        cells.Count(c => c.GetAttribute("aria-current") == "true").ShouldBe(1);
+        cut.Markup.ShouldNotContain("aria-pressed");
     }
 
     [Fact]
@@ -74,6 +88,22 @@ public class StorageTreemapTests : AdminUITestContext {
             .Add(p => p.OnAggregateTypeSelected, EventCallback.Factory.Create<string>(this, val => selectedType = val)));
 
         cut.Find("g.treemap-rect").KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+
+        _ = selectedType.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void StorageTreemap_InteractiveCell_FiresSelection_OnSpaceKey() {
+        // Keyboard activation parity: pressing Space on a focusable treemap cell selects it (the
+        // page-scroll default is suppressed by the interop.js [data-activate-button] listener).
+        string? selectedType = null;
+        IReadOnlyList<StreamStorageInfo> data = CreateSampleData();
+
+        IRenderedComponent<StorageTreemap> cut = Render<StorageTreemap>(parameters => parameters
+            .Add(p => p.Data, data)
+            .Add(p => p.OnAggregateTypeSelected, EventCallback.Factory.Create<string>(this, val => selectedType = val)));
+
+        cut.Find("g.treemap-rect").KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = " " });
 
         _ = selectedType.ShouldNotBeNull();
     }

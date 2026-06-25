@@ -23,7 +23,7 @@
              OnAction="LoadDataAsync" />
 
 <div class="stat-card-grid" aria-live="polite" style="@(_isStale ? "opacity: 0.5;" : "")">
-    <div class="stat-card-link" role="button" tabindex="0"
+    <div class="stat-card-link" role="button" tabindex="0" data-activate-button
          aria-label="View active streams"
          @onclick='() => NavigateTo("/streams?status=active")'
          @onkeydown='e => HandleStatCardKeydown(e, "/streams?status=active")'>
@@ -40,7 +40,7 @@
               Value="@(_isLoading ? "\u2014" : FormatEventsPerSecond())"
               Severity="@(_isStale ? "neutral" : "success")"
               IsLoading="_isLoading" />
-    <div class="stat-card-link" role="button" tabindex="0"
+    <div class="stat-card-link" role="button" tabindex="0" data-activate-button
          aria-label="View health and error rate details"
          @onclick='() => NavigateTo("/health")'
          @onkeydown='e => HandleStatCardKeydown(e, "/health")'>
@@ -323,9 +323,11 @@
 
     // Keyboard activation parity for the role="button" StatCard navigation wrappers: Enter and Space
     // activate the navigation, matching native button semantics for keyboard and screen-reader users.
+    // The Space page-scroll default is suppressed by the [data-activate-button] keydown listener
+    // registered in interop.js.
     private void HandleStatCardKeydown(KeyboardEventArgs e, string url)
     {
-        if (e.Key is "Enter" or " " or "Spacebar")
+        if (e.IsActivationKey())
         {
             NavigateTo(url);
         }

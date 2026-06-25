@@ -62,9 +62,9 @@
             @foreach (TreemapDisplayRect rect in ComputeTreemapRects())
             {
                 bool isSelected = string.Equals(rect.AggregateType, SelectedAggregateType, StringComparison.OrdinalIgnoreCase);
-                <g class="treemap-rect" role="button" tabindex="0"
-                   aria-label="@($"{rect.Label}: {rect.Value:N0} events. Filter by this aggregate type.")"
-                   aria-pressed="@(isSelected ? "true" : "false")"
+                <g class="treemap-rect" role="button" tabindex="0" data-activate-button
+                   aria-label="@($"{rect.Label}: {rect.Value:N0} events")"
+                   aria-current="@(isSelected ? "true" : null)"
                    @onclick="@(() => OnRectClick(rect.AggregateType))"
                    @onkeydown="@(e => OnRectKeydown(e, rect.AggregateType))"
                    style="cursor: pointer;">
@@ -152,9 +152,11 @@
     // Keyboard activation for the focusable role="button" treemap cells: Enter and Space select the
     // aggregate type, matching native button semantics for keyboard and screen-reader users. The
     // sr-only data table below remains the non-visual text alternative for the chart as a whole.
+    // The Space page-scroll default is suppressed by the [data-activate-button] keydown listener
+    // registered in interop.js.
     private void OnRectKeydown(KeyboardEventArgs e, string aggregateType)
     {
-        if (e.Key is "Enter" or " " or "Spacebar")
+        if (e.IsActivationKey())
         {
             OnRectClick(aggregateType);
         }

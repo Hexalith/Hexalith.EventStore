@@ -67,6 +67,8 @@ public class IndexPageTests : AdminUITestContext {
             wrapper.GetAttribute("role").ShouldBe("button");
             wrapper.GetAttribute("tabindex").ShouldBe("0");
             wrapper.GetAttribute("aria-label").ShouldNotBeNullOrWhiteSpace();
+            // data-activate-button opts the wrapper into the interop.js Space page-scroll suppression.
+            wrapper.HasAttribute("data-activate-button").ShouldBeTrue();
         }
     }
 
@@ -83,6 +85,24 @@ public class IndexPageTests : AdminUITestContext {
 
         AngleSharp.Dom.IElement wrapper = cut.FindAll(".stat-card-link")[0];
         wrapper.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+
+        nav.Uri.ShouldContain("/streams");
+    }
+
+    [Fact]
+    public void LandingPage_StatCardWrapper_NavigatesOnSpaceKey() {
+        // Keyboard activation parity: Space activates the focusable StatCard wrapper too (the
+        // page-scroll default is suppressed by the interop.js [data-activate-button] listener).
+        SystemHealthReport health = CreateHealthReport(0, 42.5, 0.05);
+        _ = _mockApiClient.GetSystemHealthAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<SystemHealthReport?>(health));
+
+        IRenderedComponent<Hexalith.EventStore.Admin.UI.Pages.Index> cut = Render<Hexalith.EventStore.Admin.UI.Pages.Index>();
+        Microsoft.AspNetCore.Components.NavigationManager nav =
+            Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
+
+        AngleSharp.Dom.IElement wrapper = cut.FindAll(".stat-card-link")[0];
+        wrapper.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = " " });
 
         nav.Uri.ShouldContain("/streams");
     }
