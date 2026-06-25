@@ -15,8 +15,10 @@ namespace Hexalith.EventStore.DomainService;
 /// The key ring backs the opaque query pagination cursor codec (<c>IQueryCursorCodec</c>). Persisting it
 /// to a shared DAPR state store means a cursor sealed by one replica can be unprotected by another, and the
 /// ring survives pod restarts and rolling deploys — closing the multi-replica/rollout cursor-invalidation
-/// gap. The backing infrastructure is selected by the DAPR state-store component YAML, so the domain takes
-/// no dependency on a concrete infrastructure SDK (see <c>deploy/dapr</c>).
+/// gap. The selected DAPR state-store component must support ETag / first-write concurrency because key
+/// updates are merged through compare-and-swap writes. The backing infrastructure is selected by the DAPR
+/// state-store component YAML, so the domain takes no dependency on a concrete infrastructure SDK (see
+/// <c>deploy/dapr</c>).
 /// </remarks>
 public static class EventStoreDataProtectionServiceCollectionExtensions {
     /// <summary>The configuration section bound to <see cref="EventStoreDataProtectionOptions"/>.</summary>
@@ -32,9 +34,9 @@ public static class EventStoreDataProtectionServiceCollectionExtensions {
     /// <list type="bullet">
     /// <item>
     /// <description>
-    /// <c>PersistToStateStore = false</c> (default, local/dev): keeps the framework's default
-    /// ephemeral/per-host key ring. No DAPR dependency is taken at runtime, so the host still starts
-    /// without a state store available. This degrades safely — single-replica dev cursors keep working.
+    /// <c>PersistToStateStore = false</c> (default, local/dev): uses an explicit ephemeral/per-host key
+    /// ring. No DAPR dependency is taken at runtime, so the host still starts without a state store
+    /// available. This degrades safely — single-replica dev cursors keep working.
     /// </description>
     /// </item>
     /// <item>
@@ -67,23 +69,45 @@ public static class EventStoreDataProtectionServiceCollectionExtensions {
             .GetSection(ConfigurationSectionName)
             .Get<EventStoreDataProtectionOptions>() ?? new EventStoreDataProtectionOptions();
 
-        _ = services.AddDataProtection().SetApplicationName(applicationName);
+        IDataProtectionBuilder dataProtection = services.AddDataProtection().SetApplicationName(applicationName);
 
-        if (options.PersistToStateStore) {
-            // Persist the key ring through DaprClient only. The actual backing store (Redis, a cloud
-            // key/value service, …) lives entirely in the DAPR state-store component YAML, so no
-            // infrastructure SDK leaks into the domain assembly.
-            ArgumentException.ThrowIfNullOrWhiteSpace(options.StateStoreName);
-            ArgumentException.ThrowIfNullOrWhiteSpace(options.StateKey);
-
-            services.AddSingleton<IConfigureOptions<KeyManagementOptions>>(sp =>
-                new ConfigureOptions<KeyManagementOptions>(keyManagement =>
-                    keyManagement.XmlRepository = new DaprXmlRepository(
-                        sp.GetRequiredService<DaprClient>(),
-                        options.StateStoreName,
-                        options.StateKey)));
+        if (!options.PersistToStateStore) {
+            _ = dataProtection.UseEphemeralDataProtectionProvider();
+            return services;
         }
+
+        // Persist the key ring through DaprClient only. The actual backing store (Redis, a cloud
+        // key/value service, …) lives entirely in the DAPR state-store component YAML, so no
+        // infrastructure SDK leaks into the domain assembly.
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.StateStoreName);
+        string stateStoreName = options.StateStoreName.Trim();
+        string stateKey = ResolveStateKey(options.StateKey, applicationName);
+        TimeSpan operationTimeout = ResolveOperationTimeout(options.OperationTimeout);
+
+        services.AddSingleton<IConfigureOptions<KeyManagementOptions>>(sp =>
+            new ConfigureOptions<KeyManagementOptions>(keyManagement =>
+                keyManagement.XmlRepository = new DaprXmlRepository(
+                    sp.GetRequiredService<DaprClient>(),
+                    stateStoreName,
+                    stateKey,
+                    operationTimeout)));
 
         return services;
     }
+
+    private static TimeSpan ResolveOperationTimeout(TimeSpan operationTimeout) {
+        if (operationTimeout <= TimeSpan.Zero) {
+            throw new ArgumentOutOfRangeException(
+                nameof(operationTimeout),
+                operationTimeout,
+                "The Data Protection state-store operation timeout must be positive.");
+        }
+
+        return operationTimeout;
+    }
+
+    private static string ResolveStateKey(string configuredStateKey, string applicationName) =>
+        string.IsNullOrWhiteSpace(configuredStateKey)
+            ? $"dataprotection-keys-{applicationName}"
+            : configuredStateKey.Trim();
 }

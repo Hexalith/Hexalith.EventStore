@@ -1,8 +1,10 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Xml.Linq;
 
 using Dapr.Client;
 
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.DataProtection.Repositories;
 using Microsoft.Extensions.Configuration;
@@ -20,8 +22,11 @@ namespace Hexalith.EventStore.DomainService.Tests;
 /// <c>IXmlRepository</c> and the <c>AddEventStoreDataProtection</c> registration extension.
 /// </summary>
 public sealed class EventStoreDataProtectionTests {
+    private const string ApplicationName = "Hexalith.Tenants";
+    private const string ProtectedPayload = "cursor-page-2";
     private const string StoreName = "statestore";
-    private const string StateKey = "dataprotection-keys";
+    private const string StateKey = "hexalith-tenants-dataprotection-keys";
+    private static readonly TimeSpan OperationTimeout = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// A cursor sealed by one replica must be readable by another. Both replicas read the same key-ring
@@ -32,13 +37,13 @@ public sealed class EventStoreDataProtectionTests {
     public void StoredElement_is_visible_through_a_second_repository_over_the_same_store() {
         InMemoryStateStore store = new();
         DaprClient client = store.CreateClient();
-        IXmlRepository writer = new DaprXmlRepository(client, StoreName, StateKey);
+        IXmlRepository writer = new DaprXmlRepository(client, StoreName, StateKey, OperationTimeout);
         XElement element = new("key", new XAttribute("id", "abc-123"), "secret-material");
 
         writer.StoreElement(element, "abc-123");
 
         // Second instance == a different replica / a fresh host after restart reading the same store.
-        IXmlRepository reader = new DaprXmlRepository(client, StoreName, StateKey);
+        IXmlRepository reader = new DaprXmlRepository(client, StoreName, StateKey, OperationTimeout);
         IReadOnlyCollection<XElement> reloaded = reader.GetAllElements();
 
         reloaded.Count.ShouldBe(1);
@@ -52,7 +57,7 @@ public sealed class EventStoreDataProtectionTests {
     [Fact]
     public void StoreElement_appends_rather_than_replaces() {
         InMemoryStateStore store = new();
-        IXmlRepository repository = new DaprXmlRepository(store.CreateClient(), StoreName, StateKey);
+        IXmlRepository repository = new DaprXmlRepository(store.CreateClient(), StoreName, StateKey, OperationTimeout);
 
         repository.StoreElement(new XElement("key", new XAttribute("id", "one")), "one");
         repository.StoreElement(new XElement("key", new XAttribute("id", "two")), "two");
@@ -68,7 +73,7 @@ public sealed class EventStoreDataProtectionTests {
     [Fact]
     public void GetAllElements_on_empty_store_returns_empty() {
         InMemoryStateStore store = new();
-        IXmlRepository repository = new DaprXmlRepository(store.CreateClient(), StoreName, StateKey);
+        IXmlRepository repository = new DaprXmlRepository(store.CreateClient(), StoreName, StateKey, OperationTimeout);
 
         repository.GetAllElements().ShouldBeEmpty();
     }
@@ -81,7 +86,7 @@ public sealed class EventStoreDataProtectionTests {
     [Fact]
     public void StoreElement_retries_on_concurrent_write_and_preserves_both_elements() {
         InMemoryStateStore store = new();
-        IXmlRepository repository = new DaprXmlRepository(store.CreateClient(), StoreName, StateKey);
+        IXmlRepository repository = new DaprXmlRepository(store.CreateClient(), StoreName, StateKey, OperationTimeout);
 
         // A different replica commits a key after our read but before our CAS, on the very next save.
         store.InjectConcurrentWriteBeforeNextSave = () =>
@@ -110,7 +115,7 @@ public sealed class EventStoreDataProtectionTests {
             })
             .Build();
 
-        services.AddEventStoreDataProtection(configuration, "Hexalith.Tenants");
+        services.AddEventStoreDataProtection(configuration, ApplicationName);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         KeyManagementOptions keyManagement = provider
@@ -120,21 +125,72 @@ public sealed class EventStoreDataProtectionTests {
     }
 
     /// <summary>
-    /// Local/dev wiring (persistence disabled — the default) leaves the framework's ephemeral key ring in
-    /// place: no custom <c>IXmlRepository</c> is installed, so the host starts without a state store.
+    /// A cursor sealed by one provider must be readable by a second provider created later over the same
+    /// persisted key ring. This proves the actual Data Protection stack, not only the raw repository.
     /// </summary>
     [Fact]
-    public void AddEventStoreDataProtection_without_persistence_does_not_register_xml_repository() {
+    public void Persisted_key_ring_allows_second_data_protection_provider_to_unprotect_payload() {
+        InMemoryStateStore store = new();
+        string protectedValue;
+
+        using (ServiceProvider writer = CreatePersistentProvider(store)) {
+            protectedValue = writer.GetRequiredService<IDataProtectionProvider>()
+                .CreateProtector("Hexalith.Tenants.QueryCursor.v1")
+                .Protect(ProtectedPayload);
+        }
+
+        using ServiceProvider reader = CreatePersistentProvider(store);
+        string unprotected = reader.GetRequiredService<IDataProtectionProvider>()
+            .CreateProtector("Hexalith.Tenants.QueryCursor.v1")
+            .Unprotect(protectedValue);
+
+        unprotected.ShouldBe(ProtectedPayload);
+    }
+
+    /// <summary>
+    /// Local/dev wiring (persistence disabled — the default) uses a truly ephemeral key ring, so a fresh
+    /// provider cannot unprotect a payload from a previous provider and no state store is required.
+    /// </summary>
+    [Fact]
+    public void AddEventStoreDataProtection_without_persistence_uses_ephemeral_provider() {
+        string protectedValue;
+
+        using (ServiceProvider writer = CreateNonPersistentProvider()) {
+            protectedValue = writer.GetRequiredService<IDataProtectionProvider>()
+                .CreateProtector("Hexalith.Tenants.QueryCursor.v1")
+                .Protect(ProtectedPayload);
+        }
+
+        using ServiceProvider reader = CreateNonPersistentProvider();
+        Should.Throw<CryptographicException>(() =>
+            reader.GetRequiredService<IDataProtectionProvider>()
+                .CreateProtector("Hexalith.Tenants.QueryCursor.v1")
+                .Unprotect(protectedValue));
+    }
+
+    private static ServiceProvider CreateNonPersistentProvider() {
         ServiceCollection services = new();
         IConfiguration configuration = new ConfigurationBuilder().Build();
 
-        services.AddEventStoreDataProtection(configuration, "Hexalith.Tenants");
+        services.AddEventStoreDataProtection(configuration, ApplicationName);
 
-        using ServiceProvider provider = services.BuildServiceProvider();
-        KeyManagementOptions keyManagement = provider
-            .GetRequiredService<IOptions<KeyManagementOptions>>().Value;
+        return services.BuildServiceProvider();
+    }
 
-        keyManagement.XmlRepository.ShouldBeNull();
+    private static ServiceProvider CreatePersistentProvider(InMemoryStateStore store) {
+        ServiceCollection services = new();
+        services.AddSingleton(store.CreateClient());
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> {
+                ["EventStore:DataProtection:PersistToStateStore"] = "true",
+                ["EventStore:DataProtection:StateStoreName"] = StoreName,
+                ["EventStore:DataProtection:StateKey"] = StateKey,
+            })
+            .Build();
+
+        services.AddEventStoreDataProtection(configuration, ApplicationName);
+
+        return services.BuildServiceProvider();
     }
 
     /// <summary>

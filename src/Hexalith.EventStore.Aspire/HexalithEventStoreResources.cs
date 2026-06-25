@@ -5,7 +5,7 @@ using CommunityToolkit.Aspire.Hosting.Dapr;
 namespace Hexalith.EventStore.Aspire;
 
 /// <summary>
-/// Contains the resource builders created by <see cref="HexalithEventStoreExtensions.AddHexalithEventStore"/>
+/// Contains the resource builders created by the EventStore Aspire topology extension
 /// for further customization by the consumer.
 /// </summary>
 /// <param name="StateStore">The DAPR state store component resource builder.</param>

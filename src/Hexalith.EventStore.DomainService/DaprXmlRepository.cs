@@ -33,9 +33,12 @@ namespace Hexalith.EventStore.DomainService;
 /// </para>
 /// </remarks>
 internal sealed class DaprXmlRepository : IXmlRepository {
-    private const int MaxStoreAttempts = 5;
+    private const int InitialStoreRetryDelayMilliseconds = 25;
+    private const int MaxStoreAttempts = 8;
+    private const int MaxStoreRetryDelayMilliseconds = 500;
 
     private readonly DaprClient _daprClient;
+    private readonly TimeSpan _operationTimeout;
     private readonly string _stateStoreName;
     private readonly string _stateKey;
 
@@ -43,13 +46,19 @@ internal sealed class DaprXmlRepository : IXmlRepository {
     /// <param name="daprClient">The DAPR client used to read and write the key ring.</param>
     /// <param name="stateStoreName">The DAPR state-store component name that persists the key ring.</param>
     /// <param name="stateKey">The state key under which the key-ring elements are stored.</param>
-    public DaprXmlRepository(DaprClient daprClient, string stateStoreName, string stateKey) {
+    /// <param name="operationTimeout">The maximum duration allowed for each synchronous store operation.</param>
+    public DaprXmlRepository(DaprClient daprClient, string stateStoreName, string stateKey, TimeSpan operationTimeout) {
         ArgumentNullException.ThrowIfNull(daprClient);
         ArgumentException.ThrowIfNullOrWhiteSpace(stateStoreName);
         ArgumentException.ThrowIfNullOrWhiteSpace(stateKey);
+        if (operationTimeout <= TimeSpan.Zero) {
+            throw new ArgumentOutOfRangeException(nameof(operationTimeout), operationTimeout, "The operation timeout must be positive.");
+        }
+
         _daprClient = daprClient;
         _stateStoreName = stateStoreName;
         _stateKey = stateKey;
+        _operationTimeout = operationTimeout;
     }
 
     /// <inheritdoc/>
@@ -57,7 +66,8 @@ internal sealed class DaprXmlRepository : IXmlRepository {
         // The IXmlRepository contract is synchronous and called off the request hot path (Data Protection
         // reads the ring at start-up and on its periodic refresh, then caches it). Bridging to the async
         // DaprClient here is therefore safe and avoids leaking async into the Data Protection surface.
-        List<string> elements = GetStoredElementsAsync(CancellationToken.None)
+        using CancellationTokenSource cancellation = new(_operationTimeout);
+        List<string> elements = GetStoredElementsAsync(cancellation.Token)
             .ConfigureAwait(false)
             .GetAwaiter()
             .GetResult()
@@ -73,7 +83,8 @@ internal sealed class DaprXmlRepository : IXmlRepository {
     public void StoreElement(XElement element, string friendlyName) {
         ArgumentNullException.ThrowIfNull(element);
 
-        StoreElementAsync(element, CancellationToken.None)
+        using CancellationTokenSource cancellation = new(_operationTimeout);
+        StoreElementAsync(element, cancellation.Token)
             .ConfigureAwait(false)
             .GetAwaiter()
             .GetResult();
@@ -104,6 +115,11 @@ internal sealed class DaprXmlRepository : IXmlRepository {
             if (saved) {
                 return;
             }
+
+            if (attempt < MaxStoreAttempts - 1) {
+                await Task.Delay(GetStoreRetryDelay(attempt), cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
 
         throw new InvalidOperationException(
@@ -116,5 +132,11 @@ internal sealed class DaprXmlRepository : IXmlRepository {
             .ConfigureAwait(false);
 
         return (elements ?? [], etag);
+    }
+
+    private static TimeSpan GetStoreRetryDelay(int attempt) {
+        int multiplier = 1 << Math.Min(attempt, 4);
+        return TimeSpan.FromMilliseconds(
+            Math.Min(MaxStoreRetryDelayMilliseconds, InitialStoreRetryDelayMilliseconds * multiplier));
     }
 }

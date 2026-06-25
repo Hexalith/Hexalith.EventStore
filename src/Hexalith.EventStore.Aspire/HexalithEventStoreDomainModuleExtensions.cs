@@ -18,8 +18,7 @@ public static class HexalithEventStoreDomainModuleExtensions {
     /// </summary>
     /// <param name="domainModule">The domain-module project resource builder (from <c>builder.AddProject&lt;T&gt;(name)</c>).</param>
     /// <param name="eventStore">
-    /// The EventStore topology resources returned by
-    /// <see cref="HexalithEventStoreExtensions.AddHexalithEventStore(IDistributedApplicationBuilder, IResourceBuilder{ProjectResource}, IResourceBuilder{ProjectResource}, IResourceBuilder{ProjectResource}?, string?, string?, string?, int)"/>.
+    /// The EventStore topology resources returned by <c>AddHexalithEventStore</c>.
     /// Its state-store and pub/sub components are referenced when the module is not isolated.
     /// </param>
     /// <param name="appId">The DAPR application id for the module's sidecar (e.g. <c>"tenants"</c>, <c>"sample"</c>).</param>
