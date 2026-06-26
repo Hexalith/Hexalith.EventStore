@@ -45,7 +45,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **DAPR abstracts state/pubsub/config** via sidecars; access-control in `DaprComponents/accesscontrol.yaml` is **deny-by-default** (slim-mode without mTLS yields 403 on service-to-service calls)
 - **Multi-tenancy is at the contract level:** identity = Domain + AggregateId + TenantId
 - **AppHost changes require restarting `aspire run`** — the app model is built at startup
-- `Hexalith.Tenants` source path is resolved by 3-layout logic in root `Directory.Build.props` — don't hardcode it
+- `Hexalith.Tenants` source path is resolved by root `Directory.Build.props`; EventStore's own submodule path is `references/Hexalith.Tenants` — don't hardcode old root-level paths
 
 ### Identity Rules (ULID, not GUID)
 
@@ -66,7 +66,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **`.slnx` only** — never create or use `.sln` files
 - `.editorconfig` sets `CA1062`/`CA1822`/`CA2007` to **warning** at solution level, but `TreatWarningsAsErrors=true` promotes them to build-breakers; `CA1014` is disabled
 - Containers via **.NET SDK container support — no Dockerfiles.** Opt in per project with `<EnableContainer>true</EnableContainer>` + `<ContainerRepository>`; defaults (alpine base, `registry.hexalith.com`, non-root `app`, port 8080, OCI labels) live in `Directory.Build.targets`
-- **Submodules: root-level only** (`Hexalith.Tenants`, `Hexalith.AI.Tools`, `Hexalith.Commons`). Never recurse into / initialize nested submodules; deinit if accidentally pulled
+- **Submodules: root-declared only under `references/`** (`references/Hexalith.Tenants`, `references/Hexalith.AI.Tools`, `references/Hexalith.Commons`, etc.). Never recurse into / initialize nested submodules; deinit if accidentally pulled
 - **Never modify submodule files without explicit approval** — they're shared across Hexalith repos
 
 ### Development Workflow Rules

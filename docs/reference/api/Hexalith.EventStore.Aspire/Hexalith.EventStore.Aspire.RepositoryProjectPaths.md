@@ -6,8 +6,8 @@
 ## RepositoryProjectPaths Class
 
 Resolves on\-disk paths to project files within a Hexalith mono\-repo working tree, where the platform
-modules \(`Hexalith.EventStore`, `Hexalith.Memories`, …\) are checked out as Git submodules at the
-consuming repository root\.
+modules \(`Hexalith.EventStore`, `Hexalith.Memories`, …\) are checked out as Git submodules under
+the consuming repository's `references` folder\.
 
 ```csharp
 public static class RepositoryProjectPaths

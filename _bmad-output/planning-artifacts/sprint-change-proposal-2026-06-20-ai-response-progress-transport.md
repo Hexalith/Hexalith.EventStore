@@ -7,7 +7,7 @@
 - **Scope classification:** **Moderate** (additive framework contract change; back-compatible)
 - **Release order:** **1 of 3** — EventStore must publish first. FrontComposer (proposal 2) then ChatBot (proposal 3) depend on this package version.
 - **Companion proposals:**
-  - `Hexalith.FrontComposer/_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-20-ai-response-progress-transport.md`
+  - `references/Hexalith.FrontComposer/_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-20-ai-response-progress-transport.md`
   - `<chatbot>/_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-20-ai-response-progress-transport.md`
 
 ---

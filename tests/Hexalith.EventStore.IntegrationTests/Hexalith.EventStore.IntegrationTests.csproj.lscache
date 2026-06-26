@@ -137,7 +137,7 @@ Serialization/CommandEnvelopeSerializationTests.cs
 
 [metadataReferences]
 ../../
- Hexalith.Tenants/src/Hexalith.Tenants.Aspire/obj/Debug/net10.0/ref/Hexalith.Tenants.Aspire.dll
+ references/Hexalith.Tenants/src/Hexalith.Tenants.Aspire/obj/Debug/net10.0/ref/Hexalith.Tenants.Aspire.dll
  samples/Hexalith.EventStore.Sample/obj/Debug/net10.0/ref/Hexalith.EventStore.Sample.dll
  src/
   Hexalith.EventStore.Admin.Abstractions/obj/Debug/net10.0/ref/Hexalith.EventStore.Admin.Abstractions.dll

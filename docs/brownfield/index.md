@@ -47,7 +47,7 @@
 | Admin MCP server | `src/Hexalith.EventStore.Admin.Mcp` | exe |
 | Sample domain | `samples/Hexalith.EventStore.Sample` | `sample` |
 | Sample Blazor UI | `samples/Hexalith.EventStore.Sample.BlazorUI` | `sample-blazor-ui` |
-| Tenants domain (submodule) | `Hexalith.Tenants/src/Hexalith.Tenants` | `tenants` |
+| Tenants domain (submodule) | `references/Hexalith.Tenants/src/Hexalith.Tenants` | `tenants` |
 
 ## Existing Documentation (hand-authored, complementary)
 
@@ -62,7 +62,7 @@
 1. Read [Project Overview](./project-overview.md) and [Architecture](./architecture.md).
 2. Use [Source Tree Analysis](./source-tree-analysis.md) to locate code; entry point is `src/Hexalith.EventStore/Program.cs`.
 3. For a new domain, follow the aggregate pattern in [Development Guide](./development-guide.md) and `samples/Hexalith.EventStore.Sample/Counter/`.
-4. Respect the rules in `CLAUDE.md` (ULID-only IDs, payload redaction, no custom DAPR retry, `.slnx` only, root-level submodules only).
+4. Respect the rules in `CLAUDE.md` (ULID-only IDs, payload redaction, no custom DAPR retry, `.slnx` only, root-declared submodules under `references/` only).
 
 ## ⚠ Scan caveats (verify before relying on)
 

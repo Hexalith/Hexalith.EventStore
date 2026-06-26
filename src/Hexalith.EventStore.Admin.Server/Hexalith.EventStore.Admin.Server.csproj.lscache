@@ -115,7 +115,7 @@ Services/
 
 [metadataReferences]
 ../
- ../Hexalith.Tenants/src/Hexalith.Tenants.Contracts/obj/Debug/net10.0/ref/Hexalith.Tenants.Contracts.dll
+ ../references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/obj/Debug/net10.0/ref/Hexalith.Tenants.Contracts.dll
  Hexalith.EventStore.Admin.Abstractions/obj/Debug/net10.0/ref/Hexalith.EventStore.Admin.Abstractions.dll
  Hexalith.EventStore.Contracts/obj/Debug/net10.0/ref/Hexalith.EventStore.Contracts.dll
 <DOTNET>/packs/Microsoft.AspNetCore.App.Ref/10.0.8/ref/net10.0/

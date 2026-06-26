@@ -37,7 +37,7 @@ refactor. It is the logical next increment: Epic A removed hosting/dispatch boil
 
 **A. Hand-written per-domain REST facades exist and repeat.**
 
-- `Hexalith.Tenants/src/Hexalith.Tenants/Controllers/TenantsQueryController.cs` — 6 hand-written GET actions
+- `references/Hexalith.Tenants/src/Hexalith.Tenants/Controllers/TenantsQueryController.cs` — 6 hand-written GET actions
   (`GetTenant`, `GetTenantAudit`, `GetTenantUsers`, `GetUserTenants`, `GetGlobalAdministrators`, `ListTenants`),
   each manually building a `QueryEnvelope` and dispatching via `DomainQueryDispatcher`.
 - `samples/Hexalith.EventStore.Sample.BlazorUI/Services/CounterQueryService.cs` — a hand-written typed wrapper
@@ -47,17 +47,17 @@ refactor. It is the logical next increment: Epic A removed hosting/dispatch boil
 
 - Queries implement `IQueryContract` with `static abstract QueryType / Domain / ProjectionType`
   (`src/Hexalith.EventStore.Contracts/Queries/IQueryContract.cs`) — example
-  `Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Queries/GetTenantQuery.cs`.
+  `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Queries/GetTenantQuery.cs`.
 - **Commands have no marker interface** — they are bare `public record CreateTenant(...)`
-  (`Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Commands/CreateTenant.cs`), identified only by folder/name
+  (`references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Commands/CreateTenant.cs`), identified only by folder/name
   convention. This gap must be closed for reliable command discovery.
 
 **C. The generator pattern already exists in-house — build-vs-reuse resolves to "reuse the pattern".**
 
-- `Hexalith.PolymorphicSerializations/src/libraries/Hexalith.PolymorphicSerializations.CodeGenerators/SerializationMapperSourceGenerator.cs`
+- `references/Hexalith.PolymorphicSerializations/src/libraries/Hexalith.PolymorphicSerializations.CodeGenerators/SerializationMapperSourceGenerator.cs`
   — a production `IIncrementalGenerator` (netstandard2.0, `IsRoslynComponent`, packaged as
   `analyzers/dotnet/cs`, keyed off `[PolymorphicSerialization]`). The exact template.
-- `Hexalith.FrontComposer/src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs` — a second
+- `references/Hexalith.FrontComposer/src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs` — a second
   `IIncrementalGenerator` that already discovers a `[Command]` attribute and emits registration code. Precedent
   for attribute-driven message discovery + emission.
 
@@ -97,7 +97,7 @@ Three REST layers exist today; only one is hand-written boilerplate:
 | `src/Hexalith.EventStore.Contracts` | No command marker; no REST routing metadata | Add `ICommandContract`, `[RestRoute]`, `[RestApi]` (Epic D1) |
 | `Directory.Packages.props` | No Roslyn analyzer deps | Add `Microsoft.CodeAnalysis.CSharp` / `.Analyzers` (D2) |
 | `Hexalith.EventStore.slnx` | New analyzer + test projects | Add `RestApi.Generators` (+ `.Tests`) (D2/D4) |
-| `Hexalith.Tenants/src/Hexalith.Tenants/Controllers/TenantsQueryController.cs` | Hand-written; relocating to UI host | Delete; generate into `Hexalith.Tenants.UI` (D7, submodule PR) |
+| `references/Hexalith.Tenants/src/Hexalith.Tenants/Controllers/TenantsQueryController.cs` | Hand-written; relocating to UI host | Delete; generate into `Hexalith.Tenants.UI` (D7, submodule PR) |
 | `samples/Hexalith.EventStore.Sample.BlazorUI/Services/CounterQueryService.cs` | Hand-written wrapper | Replace with generated controller (D5) |
 | `CLAUDE.md` | Package count (8→9); no controller-generation authoring rule | Patch (D8) |
 | `docs/brownfield/architecture.md`, `integration-architecture.md` | Omit the generator + generated-REST principle | Patch (D8) |

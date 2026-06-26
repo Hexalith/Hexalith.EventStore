@@ -2,8 +2,8 @@ namespace Hexalith.EventStore.Aspire;
 
 /// <summary>
 /// Resolves on-disk paths to project files within a Hexalith mono-repo working tree, where the platform
-/// modules (<c>Hexalith.EventStore</c>, <c>Hexalith.Memories</c>, …) are checked out as Git submodules at the
-/// consuming repository root.
+/// modules (<c>Hexalith.EventStore</c>, <c>Hexalith.Memories</c>, …) are checked out as Git submodules under
+/// the consuming repository's <c>references</c> folder.
 /// </summary>
 /// <remarks>
 /// <para>

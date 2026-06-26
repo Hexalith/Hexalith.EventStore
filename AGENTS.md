@@ -3,11 +3,11 @@
 ## AI assistant instructions
 
 Before working in this repository, read
-[`hexalith-llm-instructions.md`](./Hexalith.AI.Tools/hexalith-llm-instructions.md)
-(in the `Hexalith.AI.Tools` submodule) and follow it.
+[`hexalith-llm-instructions.md`](./references/Hexalith.AI.Tools/hexalith-llm-instructions.md)
+(in the `references/Hexalith.AI.Tools` submodule) and follow it.
 
 Before working on any module user interface or UX, also read
-[`Hexalith.AI.Tools/hexalith-ux-instructions.md`](./Hexalith.AI.Tools/hexalith-ux-instructions.md)
+[`references/Hexalith.AI.Tools/hexalith-ux-instructions.md`](./references/Hexalith.AI.Tools/hexalith-ux-instructions.md)
 and follow it.
 
 ## Project Overview
@@ -24,10 +24,10 @@ DAPR-native event sourcing server for .NET. Built on CQRS, DDD, and event sourci
 
 ## Git Submodules
 
-IMPORTANT! Only initialize and update submodules defined at the root repository level.
+IMPORTANT! Only initialize and update submodules declared in the root repository `.gitmodules` file.
 
-- Initialize root-level submodules only, using the submodule paths declared in the root `.gitmodules` file.
-- Do not initialize, update, or recurse into nested submodules inside those root-level submodules.
+- Initialize root-declared submodules only, using the `references/...` paths declared in the root `.gitmodules` file.
+- Do not initialize, update, or recurse into nested submodules inside those root-declared submodules.
 - Avoid recursive submodule commands unless they are explicitly scoped so that nested submodules are not initialized.
 - If nested submodules are initialized accidentally, deinitialize them before continuing.
 
@@ -123,7 +123,7 @@ Services currently containerized (6 images):
 | `src/Hexalith.EventStore.Admin.UI` | `registry.hexalith.com/eventstore-admin-ui` |
 | `samples/Hexalith.EventStore.Sample` | `registry.hexalith.com/sample` |
 | `samples/Hexalith.EventStore.Sample.BlazorUI` | `registry.hexalith.com/sample-blazor-ui` |
-| `Hexalith.Tenants/src/Hexalith.Tenants` (submodule) | `registry.hexalith.com/tenants` |
+| `references/Hexalith.Tenants/src/Hexalith.Tenants` (submodule) | `registry.hexalith.com/tenants` |
 
 ## Project Structure
 

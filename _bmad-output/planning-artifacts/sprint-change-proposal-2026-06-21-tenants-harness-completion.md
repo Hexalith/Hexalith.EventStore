@@ -6,8 +6,8 @@
 - **Mode:** Batch
 - **Change classification:** **Minor** (verification + one-line-per-method consuming-side build fix; the platform feature itself was already implemented and committed)
 - **Status:** Implemented / verified
-- **Trigger:** "Implement any needed EventStore features required by the Hexalith.Tenants change proposals. Read all proposals in `Hexalith.Tenants/_bmad-output/planning-artifacts`."
-- **Source proposal:** `Hexalith.Tenants/_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-20-eventstore-test-harness-extraction.md` (APPROVED 2026-06-20)
+- **Trigger:** "Implement any needed EventStore features required by the Hexalith.Tenants change proposals. Read all proposals in `references/Hexalith.Tenants/_bmad-output/planning-artifacts`."
+- **Source proposal:** `references/Hexalith.Tenants/_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-20-eventstore-test-harness-extraction.md` (APPROVED 2026-06-20)
 
 ---
 
@@ -96,7 +96,7 @@ The 12 Tenants `AspireTopology*` failures are **not** caused by the harness extr
 
 ```
 Aspire.Hosting.DistributedApplicationException : Project file
-'…/Hexalith.Tenants/Hexalith.EventStore/src/Hexalith.EventStore/Hexalith.EventStore.csproj' was not found.
+'…/references/Hexalith.Tenants/Hexalith.EventStore/src/Hexalith.EventStore/Hexalith.EventStore.csproj' was not found.
 ```
 
 The AppHost's cross-repo `IProjectMetadata` resolves EventStore at a path that assumes EventStore is nested

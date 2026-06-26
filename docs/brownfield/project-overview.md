@@ -36,7 +36,7 @@ state.Apply(Event)                          // fold events back into state
 | Source files | ~900 C# files across `src/` alone |
 | Package management | **Centralized** via `Directory.Packages.props` (`ManagePackageVersionsCentrally=true`) |
 | Build conventions | `TreatWarningsAsErrors=true`, Allman braces, file-scoped namespaces, `_camelCase` fields |
-| Submodules | `Hexalith.Tenants`, `Hexalith.Commons`, `Hexalith.AI.Tools` (root-level only) |
+| Submodules | `references/Hexalith.Tenants`, `references/Hexalith.Commons`, `references/Hexalith.AI.Tools`, `references/Hexalith.Builds`, `references/Hexalith.FrontComposer`, `references/Hexalith.Memories`, `references/Hexalith.PolymorphicSerializations` (root-declared only) |
 
 ## Tech Stack Summary
 

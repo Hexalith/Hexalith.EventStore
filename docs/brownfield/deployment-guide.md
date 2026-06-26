@@ -19,7 +19,7 @@ non-root user `app`, port `8080`, OCI labels (source/licenses/vendor), tag `stag
 | `src/Hexalith.EventStore.Admin.UI` | `registry.hexalith.com/eventstore-admin-ui` |
 | `samples/Hexalith.EventStore.Sample` | `registry.hexalith.com/sample` |
 | `samples/Hexalith.EventStore.Sample.BlazorUI` | `registry.hexalith.com/sample-blazor-ui` |
-| `Hexalith.Tenants/src/Hexalith.Tenants` (submodule) | `registry.hexalith.com/tenants` |
+| `references/Hexalith.Tenants/src/Hexalith.Tenants` (submodule) | `registry.hexalith.com/tenants` |
 
 ```bash
 # Publish one image to a local tar (no registry push)

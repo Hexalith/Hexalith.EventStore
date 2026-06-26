@@ -1,30 +1,30 @@
 <Solution>
-  <Folder Name="/Hexalith.Commons/" />
-  <Folder Name="/Hexalith.Commons/src/" />
-  <Folder Name="/Hexalith.Commons/src/libraries/">
-    <Project Path="Hexalith.Commons/src/libraries/Hexalith.Commons.Configurations/Hexalith.Commons.Configurations.csproj" />
-    <Project Path="Hexalith.Commons/src/libraries/Hexalith.Commons.Http/Hexalith.Commons.Http.csproj" />
-    <Project Path="Hexalith.Commons/src/libraries/Hexalith.Commons.Metadatas/Hexalith.Commons.Metadatas.csproj" />
-    <Project Path="Hexalith.Commons/src/libraries/Hexalith.Commons.StringEncoders/Hexalith.Commons.StringEncoders.csproj" />
-    <Project Path="Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj" />
-    <Project Path="Hexalith.Commons/src/libraries/Hexalith.Commons/Hexalith.Commons.csproj" />
+  <Folder Name="/references/Hexalith.Commons/" />
+  <Folder Name="/references/Hexalith.Commons/src/" />
+  <Folder Name="/references/Hexalith.Commons/src/libraries/">
+    <Project Path="references/Hexalith.Commons/src/libraries/Hexalith.Commons.Configurations/Hexalith.Commons.Configurations.csproj" />
+    <Project Path="references/Hexalith.Commons/src/libraries/Hexalith.Commons.Http/Hexalith.Commons.Http.csproj" />
+    <Project Path="references/Hexalith.Commons/src/libraries/Hexalith.Commons.Metadatas/Hexalith.Commons.Metadatas.csproj" />
+    <Project Path="references/Hexalith.Commons/src/libraries/Hexalith.Commons.StringEncoders/Hexalith.Commons.StringEncoders.csproj" />
+    <Project Path="references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj" />
+    <Project Path="references/Hexalith.Commons/src/libraries/Hexalith.Commons/Hexalith.Commons.csproj" />
   </Folder>
-  <Folder Name="/Hexalith.Commons/test/">
-    <Project Path="Hexalith.Commons/test/Hexalith.Commons.Http.Tests/Hexalith.Commons.Http.Tests.csproj" />
-    <Project Path="Hexalith.Commons/test/Hexalith.Commons.Tests/Hexalith.Commons.Tests.csproj" />
+  <Folder Name="/references/Hexalith.Commons/test/">
+    <Project Path="references/Hexalith.Commons/test/Hexalith.Commons.Http.Tests/Hexalith.Commons.Http.Tests.csproj" />
+    <Project Path="references/Hexalith.Commons/test/Hexalith.Commons.Tests/Hexalith.Commons.Tests.csproj" />
   </Folder>
-  <Folder Name="/Hexalith.Tenants/">
-    <Project Path="Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj" />
-    <Project Path="Hexalith.Tenants/src/Hexalith.Tenants.Server/Hexalith.Tenants.Server.csproj" />
-    <Project Path="Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj" />
+  <Folder Name="/references/Hexalith.Tenants/">
+    <Project Path="references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj" />
+    <Project Path="references/Hexalith.Tenants/src/Hexalith.Tenants.Server/Hexalith.Tenants.Server.csproj" />
+    <Project Path="references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj" />
   </Folder>
-  <Folder Name="/Hexxalith.Builds/">
-    <File Path="Hexalith.Builds/Hexalith.Build.props" />
-    <File Path="Hexalith.Builds/Hexalith.Package.props" />
+  <Folder Name="/references/Hexalith.Builds/">
+    <File Path="references/Hexalith.Builds/Hexalith.Build.props" />
+    <File Path="references/Hexalith.Builds/Hexalith.Package.props" />
   </Folder>
-  <Folder Name="/Hexxalith.Builds/Props/">
-    <File Path="Hexalith.Builds/Props/Directory.Packages.props" />
-    <File Path="Hexalith.Builds/Props/Environment.Build.props" />
+  <Folder Name="/references/Hexalith.Builds/Props/">
+    <File Path="references/Hexalith.Builds/Props/Directory.Packages.props" />
+    <File Path="references/Hexalith.Builds/Props/Environment.Build.props" />
   </Folder>
   <Folder Name="/perf/">
     <Project Path="perf/Hexalith.EventStore.LoadTests/Hexalith.EventStore.LoadTests.csproj" />

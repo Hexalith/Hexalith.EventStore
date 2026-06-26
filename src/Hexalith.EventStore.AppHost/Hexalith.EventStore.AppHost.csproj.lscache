@@ -72,7 +72,7 @@ Program.cs
 
 [metadataReferences]
 ../
- ../Hexalith.Tenants/src/Hexalith.Tenants.Aspire/obj/Debug/net10.0/ref/Hexalith.Tenants.Aspire.dll
+ ../references/Hexalith.Tenants/src/Hexalith.Tenants.Aspire/obj/Debug/net10.0/ref/Hexalith.Tenants.Aspire.dll
  Hexalith.EventStore.Aspire/obj/Debug/net10.0/ref/Hexalith.EventStore.Aspire.dll
 <DOTNET>/packs/Microsoft.AspNetCore.App.Ref/10.0.8/ref/net10.0/
  Microsoft.AspNetCore.Antiforgery.dll

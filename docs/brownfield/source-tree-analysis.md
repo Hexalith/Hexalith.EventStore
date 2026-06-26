@@ -9,7 +9,7 @@ eventstore/
 ├── Hexalith.EventStore.slnx        # THE solution file (XML format; never use .sln)
 ├── global.json                     # Pins SDK 10.0.300 (rollForward latestPatch)
 ├── Directory.Build.props           # Shared build settings: net10.0, Nullable, TreatWarningsAsErrors,
-│                                   #   NuGet metadata, Hexalith.Tenants path resolution (3 layouts)
+│                                   #   NuGet metadata, references/Hexalith.Tenants path resolution
 ├── Directory.Build.targets         # Container image defaults (.NET SDK container support, opt-in)
 ├── Directory.Packages.props        # Centralized package versions (ManagePackageVersionsCentrally)
 ├── nuget.config / package.json     # NuGet feeds; semantic-release devDependencies
@@ -26,12 +26,17 @@ eventstore/
 ├── docs/       # Hand-authored documentation site (+ docs/brownfield/ = THIS generated set)
 ├── scripts/    # Tooling scripts
 │
-├── Hexalith.Tenants/   # Submodule: multi-tenant domain service (5 projects in slnx)
-├── Hexalith.Commons/   # Submodule: shared utilities (ValueOrError, ULIDs, etc.)
-└── Hexalith.AI.Tools/  # Submodule: AI tooling
+├── references/
+│   ├── Hexalith.Tenants/   # Submodule: multi-tenant domain service (5 projects in slnx)
+│   ├── Hexalith.Commons/   # Submodule: shared utilities (ValueOrError, ULIDs, etc.)
+│   ├── Hexalith.AI.Tools/  # Submodule: AI tooling
+│   ├── Hexalith.Builds/    # Submodule: shared build assets
+│   ├── Hexalith.FrontComposer/ # Submodule: UI composition framework
+│   ├── Hexalith.Memories/  # Submodule: memories/search domain
+│   └── Hexalith.PolymorphicSerializations/ # Submodule: polymorphic serialization library
 ```
 
-> **Submodule rule (CLAUDE.md):** initialize/update **root-level submodules only**; never recurse into
+> **Submodule rule (CLAUDE.md):** initialize/update only root-declared submodules under `references/`; never recurse into
 > nested submodules. Do not modify `Hexalith.Builds`/submodule files without explicit approval.
 
 ## `src/` — Core Framework

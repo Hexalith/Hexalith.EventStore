@@ -21,7 +21,7 @@
     { "part_id": "admin-mcp", "name": "Admin MCP server", "root_path": "src/Hexalith.EventStore.Admin.Mcp", "type": "cli", "deployable": true },
     { "part_id": "sample", "name": "Counter sample domain", "root_path": "samples/Hexalith.EventStore.Sample", "type": "backend", "container": "registry.hexalith.com/sample" },
     { "part_id": "sample-blazor-ui", "name": "Sample Blazor UI", "root_path": "samples/Hexalith.EventStore.Sample.BlazorUI", "type": "web", "container": "registry.hexalith.com/sample-blazor-ui" },
-    { "part_id": "tenants", "name": "Tenants domain (submodule)", "root_path": "Hexalith.Tenants/src/Hexalith.Tenants", "type": "backend", "container": "registry.hexalith.com/tenants", "submodule": true }
+    { "part_id": "tenants", "name": "Tenants domain (submodule)", "root_path": "references/Hexalith.Tenants/src/Hexalith.Tenants", "type": "backend", "container": "registry.hexalith.com/tenants", "submodule": true }
   ],
   "integration_points": [
     { "from": "sample-blazor-ui", "to": "eventstore", "type": "DAPR service invocation" },

@@ -18,6 +18,19 @@ public class RepositoryProjectPathsTests {
     }
 
     [Fact]
+    public void EventStoreProjectMetadata_ProjectPath_UsesReferencesSubmoduleLayout() {
+        string path = new EventStoreProjectMetadata().ProjectPath;
+
+        path.ShouldBe(Path.Combine(
+            RepositoryProjectPaths.GetRepositoryRoot(),
+            "references",
+            "Hexalith.EventStore",
+            "src",
+            "Hexalith.EventStore",
+            "Hexalith.EventStore.csproj"));
+    }
+
+    [Fact]
     public void GetProjectPath_WhenNoSegments_ThrowsArgumentException() {
         ArgumentException exception = Should.Throw<ArgumentException>(
             static () => RepositoryProjectPaths.GetProjectPath());
