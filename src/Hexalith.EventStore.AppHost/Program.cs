@@ -1,5 +1,6 @@
 using CommunityToolkit.Aspire.Hosting.Dapr;
 
+using Hexalith.Commons.Aspire;
 using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.Aspire;
 
@@ -8,6 +9,13 @@ const string FalseLiteral = "false";
 PrerequisiteValidator.Validate();
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
+
+// The local DAPR runtime can expose placement/scheduler on either the containerized host ports
+// (6050/6060) or the native/slim ports (50005/50006). Resolve the actual ports up front and pass
+// them to every Aspire-managed sidecar so actor routing does not depend on daprd's default guess.
+(string? daprPlacementHostAddress, string? daprSchedulerHostAddress) = AspireDaprLocalServiceEndpoints.Resolve(
+    builder.Configuration[AspireDaprLocalServiceEndpoints.PlacementHostAddressKey],
+    builder.Configuration[AspireDaprLocalServiceEndpoints.SchedulerHostAddressKey]);
 
 // Resolve DAPR access control configuration paths (D4, FR34).
 // Each receiving service now has its own Configuration CRD so policies apply only
@@ -44,7 +52,9 @@ HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(
     eventStoreAccessControlConfigPath,
     adminServerAccessControlConfigPath,
     resiliencyConfigPath,
-    stateStoreComponentPath: isolatedStateStoreComponentPath);
+    stateStoreComponentPath: isolatedStateStoreComponentPath,
+    daprPlacementHostAddress: daprPlacementHostAddress,
+    daprSchedulerHostAddress: daprSchedulerHostAddress);
 
 ForwardEventStoreEnvironment("EventStore:Publisher:TestPublishFaultFilePath", "EventStore__Publisher__TestPublishFaultFilePath");
 ForwardEventStoreEnvironment("EventStore:Publisher:TestPublishFaultCorrelationIdPrefix", "EventStore__Publisher__TestPublishFaultCorrelationIdPrefix");
@@ -123,7 +133,12 @@ if (!string.Equals(builder.Configuration["EnableKeycloak"], FalseLiteral, String
 // Add Tenants domain service with DAPR sidecar via the platform domain-module extension (A4).
 // Tenants shares the same state store and pub/sub as EventStore (no isolated resources path).
 IResourceBuilder<ProjectResource> tenants = builder.AddProject<Projects.Hexalith_Tenants>("tenants")
-    .AddEventStoreDomainModule(eventStoreResources, "tenants", tenantsAccessControlConfigPath)
+    .AddEventStoreDomainModule(
+        eventStoreResources,
+        "tenants",
+        tenantsAccessControlConfigPath,
+        daprPlacementHostAddress: daprPlacementHostAddress,
+        daprSchedulerHostAddress: daprSchedulerHostAddress)
     .WithEnvironment("Tenants__BootstrapGlobalAdminUserId", "admin-user");
 
 // Add sample domain service with DAPR sidecar via the platform domain-module extension (A4).
@@ -131,7 +146,13 @@ IResourceBuilder<ProjectResource> tenants = builder.AddProject<Projects.Hexalith
 // Redis, StateStore, or PubSub. Domain services have zero infrastructure access (D4, AC #13) —
 // not loading these component definitions is stronger isolation than scoping alone.
 IResourceBuilder<ProjectResource> sample = builder.AddProject<Projects.Hexalith_EventStore_Sample>("sample")
-    .AddEventStoreDomainModule(eventStoreResources, "sample", sampleAccessControlConfigPath, isolatedDaprResourcesPath: emptyDaprResourcesPath);
+    .AddEventStoreDomainModule(
+        eventStoreResources,
+        "sample",
+        sampleAccessControlConfigPath,
+        isolatedDaprResourcesPath: emptyDaprResourcesPath,
+        daprPlacementHostAddress: daprPlacementHostAddress,
+        daprSchedulerHostAddress: daprSchedulerHostAddress);
 
 // Add Blazor UI sample — invokes EventStore via DAPR service invocation (mirrors Admin.UI D13).
 // Enables SignalR on EventStore so the hub is active when the Blazor UI is running.
@@ -150,6 +171,8 @@ IResourceBuilder<ProjectResource> blazorUi = builder.AddProject<Projects.Hexalit
     .WithDaprSidecar(sidecar => sidecar
         .WithOptions(new DaprSidecarOptions {
             AppId = "sample-blazor-ui",
+            PlacementHostAddress = daprPlacementHostAddress,
+            SchedulerHostAddress = daprSchedulerHostAddress,
         }))
     // SignalR HubConnectionBuilder bypasses Aspire service discovery (it doesn't use HttpClientFactory),
     // so we must pass the resolved eventstore endpoint URL explicitly.
@@ -209,6 +232,8 @@ if (testSubscriberEnabled) {
         .WithDaprSidecar(sidecar => sidecar
             .WithOptions(new DaprSidecarOptions {
                 AppId = "eventstore-test-subscriber",
+                PlacementHostAddress = daprPlacementHostAddress,
+                SchedulerHostAddress = daprSchedulerHostAddress,
             })
             .WithReference(eventStoreResources.PubSub))
         .WaitFor(eventStore);
