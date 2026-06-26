@@ -1,3 +1,11 @@
+# [3.19.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.18.0...v3.19.0) (2026-06-26)
+
+
+### Features
+
+* add command and event contract metadata resolvers ([1ac1993](https://github.com/Hexalith/Hexalith.EventStore/commit/1ac19936afdf7b2b4f639546be5a131fc0c31995))
+* enhance accessibility and keyboard navigation across UI components ([d9d3ee0](https://github.com/Hexalith/Hexalith.EventStore/commit/d9d3ee0f8eb39a43c25a728d31fc4b19e6d85a0d))
+
 # [3.18.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.17.0...v3.18.0) (2026-06-23)
 
 
