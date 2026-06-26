@@ -16,6 +16,8 @@ namespace Hexalith.EventStore.IntegrationTests.Security;
 /// <see cref="App"/>, and <see cref="GetTokenAsync"/>.
 /// </summary>
 public class AspireTopologyFixture : IAsyncLifetime {
+    private const string SecurityResourceName = "security";
+
     private readonly Dictionary<string, string?> _envSnapshot = new(StringComparer.Ordinal);
 
     private DistributedApplication? _app;
@@ -75,7 +77,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
             _eventStoreClient.Timeout = TimeSpan.FromSeconds(60);
 
             // Get the Keycloak base URL for token acquisition
-            Uri keycloakEndpoint = _app.GetEndpoint("keycloak", "http");
+            Uri keycloakEndpoint = _app.GetEndpoint(SecurityResourceName, "http");
             _keycloakBaseUrl = keycloakEndpoint.ToString().TrimEnd('/');
 
             // Wait for infrastructure readiness to avoid startup race conditions in E2E tests.
@@ -215,7 +217,7 @@ public class AspireTopologyFixture : IAsyncLifetime {
         }
 
         // Capture Keycloak container logs to diagnose the 500 error.
-        string keycloakLogs = await CaptureContainerLogsAsync("keycloak").ConfigureAwait(false);
+        string keycloakLogs = await CaptureContainerLogsAsync(SecurityResourceName).ConfigureAwait(false);
 
         throw new TimeoutException(
             $"Keycloak token acquisition did not become ready within {timeout}. "

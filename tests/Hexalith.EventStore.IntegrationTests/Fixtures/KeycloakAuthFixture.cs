@@ -12,6 +12,8 @@ namespace Hexalith.EventStore.IntegrationTests.Fixtures;
 /// instead of synthetic symmetric JWTs.
 /// </summary>
 public class KeycloakAuthFixture : IAsyncLifetime {
+    private const string SecurityResourceName = "security";
+
     private readonly Dictionary<string, string?> _envSnapshot = new(StringComparer.Ordinal);
 
     private DistributedApplication? _app;
@@ -74,7 +76,7 @@ public class KeycloakAuthFixture : IAsyncLifetime {
 
             // Wait for Keycloak to be healthy (realm import must complete).
             _ = await _app.ResourceNotifications
-                .WaitForResourceHealthyAsync("keycloak", cts.Token)
+                .WaitForResourceHealthyAsync(SecurityResourceName, cts.Token)
                 .WaitAsync(TimeSpan.FromMinutes(4), cts.Token)
                 .ConfigureAwait(false);
 
@@ -94,7 +96,7 @@ public class KeycloakAuthFixture : IAsyncLifetime {
             _eventStoreClient.Timeout = TimeSpan.FromSeconds(60);
 
             // Resolve Keycloak token endpoint from the running container.
-            HttpClient keycloakClient = _app.CreateHttpClient("keycloak");
+            HttpClient keycloakClient = _app.CreateHttpClient(SecurityResourceName);
             KeycloakTokenEndpoint = $"{keycloakClient.BaseAddress}realms/hexalith/protocol/openid-connect/token";
         }
         catch {
