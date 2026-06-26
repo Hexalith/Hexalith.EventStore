@@ -1,6 +1,7 @@
 namespace Hexalith.EventStore.AppHost.Tests.Configuration;
 
 using global::Aspire.Hosting;
+using Hexalith.EventStore.Aspire;
 
 public class KeycloakFastStartPortsTests {
     [Fact]

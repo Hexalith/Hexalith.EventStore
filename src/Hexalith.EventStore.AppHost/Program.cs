@@ -4,9 +4,6 @@ using Hexalith.Commons.Aspire;
 using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.Aspire;
 
-const string FalseLiteral = "false";
-const string SecurityResourceName = "security";
-
 PrerequisiteValidator.Validate();
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
@@ -67,11 +64,10 @@ ForwardEventStoreEnvironment("EventStore:Drain:MaxDrainPeriod", "EventStore__Dra
 // Enabled by default for local development with real OIDC token testing.
 // Set EnableKeycloak=false in environment or appsettings to run without Keycloak
 // (falls back to symmetric key auth via Authentication:JwtBearer:SigningKey).
-(IResourceBuilder<KeycloakResource>? keycloak, ReferenceExpression? realmUrl) = ConfigureKeycloakSecurity(
-    builder,
-    eventStore,
-    FalseLiteral,
-    SecurityResourceName);
+HexalithEventStoreSecurityResources? security = builder.AddHexalithEventStoreSecurity();
+if (security is not null) {
+    _ = eventStore.WithJwtBearerSecurity(security);
+}
 
 // Add Tenants domain service with DAPR sidecar via the platform domain-module extension (A4).
 // Tenants shares the same state store and pub/sub as EventStore (no isolated resources path).
@@ -121,41 +117,16 @@ IResourceBuilder<ProjectResource> blazorUi = builder.AddProject<Projects.Hexalit
     // so we must pass the resolved eventstore endpoint URL explicitly.
     .WithEnvironment("EventStore__SignalR__HubUrl", ReferenceExpression.Create($"{eventStoreHttps}/hubs/projection-changes"));
 
-if (keycloak is not null && realmUrl is not null) {
-    _ = tenants
-        .WithReference(keycloak)
-        .WaitFor(keycloak)
-        .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
-        .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl)
-        .WithEnvironment("Authentication__JwtBearer__Audience", "hexalith-eventstore")
-        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", FalseLiteral)
-        .WithEnvironment("Authentication__JwtBearer__SigningKey", "");
+if (security is not null) {
+    _ = tenants.WithJwtBearerSecurity(security);
 
-    _ = adminServer
-        .WithReference(keycloak)
-        .WaitFor(keycloak)
-        .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
-        .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl)
-        .WithEnvironment("Authentication__JwtBearer__Audience", "hexalith-eventstore")
-        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", FalseLiteral)
-        .WithEnvironment("Authentication__JwtBearer__SigningKey", "");
+    _ = adminServer.WithJwtBearerSecurity(security);
 
-    _ = blazorUi
-        .WithReference(keycloak)
-        .WaitFor(keycloak)
-        .WithEnvironment("EventStore__Authentication__Authority", realmUrl)
-        .WithEnvironment("EventStore__Authentication__ClientId", "hexalith-eventstore")
-        .WithEnvironment("EventStore__Authentication__Username", "admin-user")
-        .WithEnvironment("EventStore__Authentication__Password", "admin-pass");
+    _ = blazorUi.WithEventStoreClientCredentials(security);
 
     _ = adminUI
-        .WithReference(keycloak)
-        .WaitFor(keycloak)
-        .WithEnvironment("EventStore__AdminServer__SwaggerUrl", ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"))
-        .WithEnvironment("EventStore__Authentication__Authority", realmUrl)
-        .WithEnvironment("EventStore__Authentication__ClientId", "hexalith-eventstore")
-        .WithEnvironment("EventStore__Authentication__Username", "admin-user")
-        .WithEnvironment("EventStore__Authentication__Password", "admin-pass");
+        .WithEventStoreClientCredentials(security)
+        .WithEnvironment("EventStore__AdminServer__SwaggerUrl", ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"));
 }
 else {
     _ = adminUI.WithEnvironment("EventStore__AdminServer__SwaggerUrl", ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"));
@@ -187,78 +158,6 @@ if (testSubscriberEnabled) {
 }
 
 await builder.Build().RunAsync().ConfigureAwait(false);
-
-static (IResourceBuilder<KeycloakResource>? Keycloak, ReferenceExpression? RealmUrl) ConfigureKeycloakSecurity(
-    IDistributedApplicationBuilder builder,
-    IResourceBuilder<ProjectResource> eventStore,
-    string falseLiteral,
-    string securityResourceName) {
-    if (string.Equals(builder.Configuration["EnableKeycloak"], falseLiteral, StringComparison.OrdinalIgnoreCase)) {
-        return (null, null);
-    }
-
-    // Dev fast-start (opt-in, default OFF). Set KeycloakPersistent=true to reuse the Keycloak
-    // container across `aspire run` restarts so the cold-start + realm import is paid once
-    // instead of every restart. Default OFF honors the project's "prefer non-persistent
-    // resources" rule. NOTE: a reused container does NOT re-import the realm — after editing
-    // KeycloakRealms/hexalith-realm.json, remove the container (`docker rm -f`) so it re-imports
-    // on the next start.
-    bool keycloakPersistent = bool.TryParse(builder.Configuration["KeycloakPersistent"]?.Trim(), out bool persistentParsed)
-        && persistentParsed;
-
-    // When persistent, resolve the fixed proxyless host ports up front so the AddKeycloak host-port
-    // arg and the endpoint pins agree (and the client-facing realm URL, derived from GetEndpoint,
-    // tracks them automatically). KeycloakHttpPort/KeycloakManagementPort override the 8180/8543
-    // defaults and are validated fail-fast (integer 1..65535, distinct, not the EventStore 8080).
-    // The values are read ONLY in the persistent path, so the default (dynamic, proxied) topology
-    // is byte-for-byte unchanged and the override knobs are ignored unless reuse is opted into.
-    int keycloakHttpPort = KeycloakFastStartPorts.DefaultHttpPort;
-    int keycloakManagementPort = KeycloakFastStartPorts.DefaultManagementPort;
-    if (keycloakPersistent) {
-        (keycloakHttpPort, keycloakManagementPort) = KeycloakFastStartPorts.Resolve(
-            builder.Configuration[KeycloakFastStartPorts.HttpPortKey],
-            builder.Configuration[KeycloakFastStartPorts.ManagementPortKey]);
-    }
-
-    // Realm-as-code: hexalith-realm.json auto-imported on container start.
-    // The host port (default 8180) avoids conflict with eventstore on 8080.
-    IResourceBuilder<KeycloakResource> keycloak = builder.AddKeycloak(securityResourceName, keycloakHttpPort)
-        .WithRealmImport("./KeycloakRealms");
-
-    if (keycloakPersistent) {
-        // DCP only REUSES a persistent container when its lifecycle-key (a hash of the
-        // container's docker create spec) is byte-stable across runs. By default Aspire
-        // assigns RANDOM host ports to Keycloak's endpoints on every run, which churns that
-        // hash and forces a delete+recreate (full cold-start + realm re-import) — defeating
-        // the fast-start. Pin the endpoints to fixed, proxyless host ports so the docker
-        // bindings are deterministic and reuse can actually engage. The ports are configurable
-        // via KeycloakHttpPort/KeycloakManagementPort to relocate them off a host collision.
-        // EXPERIMENTAL: see the dw19 warm-reattach smoke evidence.
-        _ = keycloak
-            .WithLifetime(ContainerLifetime.Persistent)
-            .WithEndpoint("http", e => { e.Port = keycloakHttpPort; e.IsProxied = false; })
-            .WithEndpoint("management", e => { e.Port = keycloakManagementPort; e.IsProxied = false; });
-    }
-
-    // Wire Keycloak OIDC auth (D11, Story 5.1 Task 8).
-    // The existing ConfigureJwtBearerOptions.cs OIDC discovery path handles everything
-    // when Authentication:JwtBearer:Authority is set to the Keycloak realm URL.
-    EndpointReference keycloakEndpoint = keycloak.GetEndpoint("http");
-    ReferenceExpression realmUrl = ReferenceExpression.Create($"{keycloakEndpoint}/realms/hexalith");
-    _ = eventStore
-        .WithReference(keycloak)
-        .WaitFor(keycloak)
-        .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
-        .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl)
-        .WithEnvironment("Authentication__JwtBearer__Audience", "hexalith-eventstore")
-        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", falseLiteral)
-        // Explicitly clear SigningKey to prevent dual-mode auth conflict.
-        // If SigningKey exists in appsettings/secrets, clearing it ensures
-        // ConfigureJwtBearerOptions.cs uses OIDC discovery (Authority) mode only.
-        .WithEnvironment("Authentication__JwtBearer__SigningKey", "");
-
-    return (keycloak, realmUrl);
-}
 
 static string ResolveDaprConfigPath(string fileName) {
     string configPath = Path.Combine(Directory.GetCurrentDirectory(), "DaprComponents", fileName);
