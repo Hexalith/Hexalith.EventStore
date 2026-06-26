@@ -16,3 +16,6 @@
 [submodule "Hexalith.PolymorphicSerializations"]
 	path = Hexalith.PolymorphicSerializations
 	url = https://github.com/Hexalith/Hexalith.PolymorphicSerializations.git
+[submodule "Hexalith.Memories"]
+	path = Hexalith.Memories
+	url = https://github.com/Hexalith/Hexalith.Memories.git
