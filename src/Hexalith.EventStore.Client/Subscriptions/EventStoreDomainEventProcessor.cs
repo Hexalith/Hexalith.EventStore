@@ -112,12 +112,21 @@ public class EventStoreDomainEventProcessor {
             if (_payloadAggregateIdPropertyName is not null
                 && (!TryGetPayloadId(@event, _payloadAggregateIdPropertyName, out string? payloadId)
                     || !string.Equals(payloadId, envelope.AggregateId, StringComparison.Ordinal))) {
-                _logger.LogWarning(
-                    "Rejected event {MessageId} because payload '{PropertyName}' does not match aggregate ID",
+                // The payload's identity property does not match the stream the event was delivered on.
+                // This is expected when a single pub/sub topic carries events from multiple aggregate types
+                // whose identity conventions differ (e.g. a tenants topic carrying both tenant-aggregate
+                // events, where payload TenantId == AggregateId, and global-administrators events, where it
+                // does not). Treat it as a terminal skip — the event is not addressed to this projection —
+                // and mark it completed so it is acknowledged and not redelivered. Logged at Information
+                // rather than Warning because on a shared topic this is routine; a genuine integrity
+                // violation is also skipped here (never dispatched), so it cannot corrupt downstream state.
+                _logger.LogInformation(
+                    "Skipping event {MessageId}: payload '{PropertyName}' does not match aggregate ID '{AggregateId}'",
                     envelope.MessageId,
-                    _payloadAggregateIdPropertyName);
-                _ = _processedMessageIds.TryRemove(envelope.MessageId, out _);
-                return EventStoreDomainEventProcessingResult.FailedInvalidPayload;
+                    _payloadAggregateIdPropertyName,
+                    envelope.AggregateId);
+                _processedMessageIds[envelope.MessageId] = ProcessingState.Completed;
+                return EventStoreDomainEventProcessingResult.SkippedAggregateMismatch;
             }
 
             var context = new EventStoreDomainEventContext(

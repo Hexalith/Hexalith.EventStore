@@ -122,14 +122,16 @@ public class EventStoreDomainEventProcessorTests {
     }
 
     [Fact]
-    public async Task ProcessAsync_PayloadIdCheckEnabled_MismatchRejected() {
+    public async Task ProcessAsync_PayloadIdCheckEnabled_MismatchSkipped() {
         (EventStoreDomainEventProcessor processor, CapturingHandler handler) = Build(payloadIdProperty: "TenantId");
 
-        // Envelope aggregate id "t1" but payload TenantId "other" — integrity check rejects.
+        // Envelope aggregate id "t1" but payload TenantId "other" — the event belongs to a different
+        // aggregate (e.g. another aggregate type sharing the topic). It is skipped and acknowledged, not
+        // dispatched and not retried.
         EventStoreDomainEventProcessingResult result = await processor
             .ProcessAsync(Envelope("m1", "t1", PayloadFor("other", 1)));
 
-        result.ShouldBe(EventStoreDomainEventProcessingResult.FailedInvalidPayload);
+        result.ShouldBe(EventStoreDomainEventProcessingResult.SkippedAggregateMismatch);
         handler.Handled.ShouldBeEmpty();
     }
 
