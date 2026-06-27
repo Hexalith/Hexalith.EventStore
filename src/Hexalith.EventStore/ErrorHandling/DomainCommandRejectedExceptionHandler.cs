@@ -21,6 +21,19 @@ public class DomainCommandRejectedExceptionHandler(ILogger<DomainCommandRejected
 
         string correlationId = httpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? rejection.CorrelationId;
 
+        // A domain rejection is an expected outcome. If the caller already disconnected (or the response
+        // has already started), writing the ProblemDetails throws — and an OperationCanceledException
+        // escaping this handler is surfaced by the framework as a misleading "unhandled exception" plus a
+        // failed-error-handler log. Treat those cases as already handled instead of cascading.
+        if (httpContext.RequestAborted.IsCancellationRequested || httpContext.Response.HasStarted) {
+            logger.LogInformation(
+                "Domain rejection not written; caller already disconnected: CorrelationId={CorrelationId}, TenantId={TenantId}, RejectionType={RejectionType}",
+                correlationId,
+                rejection.TenantId,
+                rejection.RejectionType);
+            return true;
+        }
+
         logger.LogInformation(
             "Domain rejection returned to caller: CorrelationId={CorrelationId}, TenantId={TenantId}, RejectionType={RejectionType}",
             correlationId,
@@ -45,7 +58,13 @@ public class DomainCommandRejectedExceptionHandler(ILogger<DomainCommandRejected
         };
 
         httpContext.Response.StatusCode = problem.StatusCode;
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, (JsonSerializerOptions?)null, _problemJsonContentType, cancellationToken).ConfigureAwait(false);
+        try {
+            await httpContext.Response.WriteAsJsonAsync(problemDetails, (JsonSerializerOptions?)null, _problemJsonContentType, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            // Caller disconnected mid-write; the rejection is still considered handled.
+        }
+
         return true;
     }
 }

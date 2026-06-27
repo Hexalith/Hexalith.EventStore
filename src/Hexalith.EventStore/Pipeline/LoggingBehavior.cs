@@ -70,6 +70,17 @@ public partial class LoggingBehavior<TRequest, TResponse>(
 
             return response;
         }
+        catch (DomainCommandRejectedException rejection) {
+            // A domain rejection is an expected business outcome (e.g. an idempotent bootstrap that has
+            // already run), not a server fault. Log it at Warning with the rejection type and rethrow so
+            // the gateway still surfaces the RFC 7807 rejection response. Logging at Error here is what
+            // turns a normal rejection into dashboard noise.
+            TimeSpan elapsed = Stopwatch.GetElapsedTime(startTimestamp);
+            _ = (activity?.SetStatus(ActivityStatusCode.Ok));
+            Log.PipelineRejection(logger, correlationId, causationId, commandType, tenant, domain, aggregateId, rejection.RejectionType, elapsed.TotalMilliseconds);
+
+            throw;
+        }
         catch (OperationCanceledException) {
             throw;
         }
@@ -140,6 +151,21 @@ public partial class LoggingBehavior<TRequest, TResponse>(
             string? aggregateId,
             string exceptionType,
             string safeDiagnostic,
+            double durationMs);
+
+        [LoggerMessage(
+            EventId = 1003,
+            Level = LogLevel.Warning,
+            Message = "MediatR pipeline rejection: CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, Tenant={Tenant}, Domain={Domain}, AggregateId={AggregateId}, RejectionType={RejectionType}, DurationMs={DurationMs}, Stage=PipelineRejection")]
+        public static partial void PipelineRejection(
+            ILogger logger,
+            string correlationId,
+            string causationId,
+            string commandType,
+            string? tenant,
+            string? domain,
+            string? aggregateId,
+            string rejectionType,
             double durationMs);
     }
 }
