@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Hexalith.EventStore.ErrorHandling;
 
 public class DomainCommandRejectedExceptionHandler(ILogger<DomainCommandRejectedExceptionHandler> logger) : IExceptionHandler {
-    private const string ProblemJsonContentType = "application/problem+json";
+    private const string _problemJsonContentType = "application/problem+json";
 
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(httpContext);
@@ -45,7 +45,7 @@ public class DomainCommandRejectedExceptionHandler(ILogger<DomainCommandRejected
         };
 
         httpContext.Response.StatusCode = problem.StatusCode;
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, (JsonSerializerOptions?)null, ProblemJsonContentType, cancellationToken).ConfigureAwait(false);
+        await httpContext.Response.WriteAsJsonAsync(problemDetails, (JsonSerializerOptions?)null, _problemJsonContentType, cancellationToken).ConfigureAwait(false);
         return true;
     }
 }

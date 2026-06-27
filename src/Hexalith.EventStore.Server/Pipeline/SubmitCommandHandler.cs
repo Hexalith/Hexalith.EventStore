@@ -22,6 +22,7 @@ public partial class SubmitCommandHandler(
     ICommandActivityTracker? activityTracker,
     IStreamActivityTracker? streamActivityTracker,
     ILogger<SubmitCommandHandler> logger) : IRequestHandler<SubmitCommand, SubmitCommandResult> {
+
     public SubmitCommandHandler(
         ICommandStatusStore statusStore,
         ICommandArchiveStore archiveStore,
@@ -198,25 +199,12 @@ public partial class SubmitCommandHandler(
     }
 
     private static partial class Log {
-        [LoggerMessage(
-            EventId = 1100,
-            Level = LogLevel.Information,
-            Message = "Command received: MessageId={MessageId}, CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=CommandReceived")]
-        public static partial void CommandReceived(
-            ILogger logger,
-            string messageId,
-            string correlationId,
-            string causationId,
-            string commandType,
-            string tenantId,
-            string domain,
-            string aggregateId);
 
         [LoggerMessage(
-            EventId = 1101,
+            EventId = 1104,
             Level = LogLevel.Warning,
-            Message = "Failed to write command status: CorrelationId={CorrelationId}, TenantId={TenantId}. Status tracking may be incomplete. Command processing continues. Stage=StatusWriteFailed")]
-        public static partial void StatusWriteFailed(
+            Message = "Failed to track command activity: CorrelationId={CorrelationId}, TenantId={TenantId}. Admin command list may be stale. Stage=ActivityTrackingFailed")]
+        public static partial void ActivityTrackingFailed(
             ILogger logger,
             Exception ex,
             string correlationId,
@@ -233,6 +221,20 @@ public partial class SubmitCommandHandler(
             string tenantId);
 
         [LoggerMessage(
+                            EventId = 1100,
+            Level = LogLevel.Information,
+            Message = "Command received: MessageId={MessageId}, CorrelationId={CorrelationId}, CausationId={CausationId}, CommandType={CommandType}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=CommandReceived")]
+        public static partial void CommandReceived(
+            ILogger logger,
+            string messageId,
+            string correlationId,
+            string causationId,
+            string commandType,
+            string tenantId,
+            string domain,
+            string aggregateId);
+
+        [LoggerMessage(
             EventId = 1103,
             Level = LogLevel.Debug,
             Message = "Command routed to actor: CorrelationId={CorrelationId}, Stage=CommandRouted")]
@@ -241,10 +243,33 @@ public partial class SubmitCommandHandler(
             string correlationId);
 
         [LoggerMessage(
-            EventId = 1104,
+            EventId = 1107,
             Level = LogLevel.Warning,
-            Message = "Failed to track command activity: CorrelationId={CorrelationId}, TenantId={TenantId}. Admin command list may be stale. Stage=ActivityTrackingFailed")]
-        public static partial void ActivityTrackingFailed(
+            Message = "Result payload dropped because final command status was not Completed: CorrelationId={CorrelationId}, TenantId={TenantId}, AggregateId={AggregateId}, CommandType={CommandType}, FinalStatus={FinalStatus}, StatusReadSucceeded={StatusReadSucceeded}. Stage=ResultPayloadDropped")]
+        public static partial void ResultPayloadDropped(
+            ILogger logger,
+            string correlationId,
+            string tenantId,
+            string aggregateId,
+            string commandType,
+            string finalStatus,
+            bool statusReadSucceeded);
+
+        [LoggerMessage(
+            EventId = 1106,
+            Level = LogLevel.Warning,
+            Message = "Failed to read final status for activity tracking: CorrelationId={CorrelationId}, TenantId={TenantId}. Activity tracking skipped. Stage=StatusReadForTrackingFailed")]
+        public static partial void StatusReadForTrackingFailed(
+            ILogger logger,
+            Exception ex,
+            string correlationId,
+            string tenantId);
+
+        [LoggerMessage(
+                                    EventId = 1101,
+            Level = LogLevel.Warning,
+            Message = "Failed to write command status: CorrelationId={CorrelationId}, TenantId={TenantId}. Status tracking may be incomplete. Command processing continues. Stage=StatusWriteFailed")]
+        public static partial void StatusWriteFailed(
             ILogger logger,
             Exception ex,
             string correlationId,
@@ -259,28 +284,5 @@ public partial class SubmitCommandHandler(
             Exception ex,
             string correlationId,
             string tenantId);
-
-        [LoggerMessage(
-            EventId = 1106,
-            Level = LogLevel.Warning,
-            Message = "Failed to read final status for activity tracking: CorrelationId={CorrelationId}, TenantId={TenantId}. Activity tracking skipped. Stage=StatusReadForTrackingFailed")]
-        public static partial void StatusReadForTrackingFailed(
-            ILogger logger,
-            Exception ex,
-            string correlationId,
-            string tenantId);
-
-        [LoggerMessage(
-            EventId = 1107,
-            Level = LogLevel.Warning,
-            Message = "Result payload dropped because final command status was not Completed: CorrelationId={CorrelationId}, TenantId={TenantId}, AggregateId={AggregateId}, CommandType={CommandType}, FinalStatus={FinalStatus}, StatusReadSucceeded={StatusReadSucceeded}. Stage=ResultPayloadDropped")]
-        public static partial void ResultPayloadDropped(
-            ILogger logger,
-            string correlationId,
-            string tenantId,
-            string aggregateId,
-            string commandType,
-            string finalStatus,
-            bool statusReadSucceeded);
     }
 }

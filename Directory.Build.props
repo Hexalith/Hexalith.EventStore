@@ -2,7 +2,8 @@
 
     <PropertyGroup>
         <!-- Resolve Hexalith.Tenants source path for supported layouts:
-         1. EventStore as a submodule inside the Hexalith.Tenants repository.
+         1. EventStore as a submodule inside the Hexalith.Tenants repository (beside src/).
+         1b. EventStore as a submodule under the Hexalith.Tenants repository's references/ folder.
          2. EventStore as a submodule beside a Hexalith.Tenants submodule in the same references/ folder.
          3. EventStore as the root repository with its own Hexalith.Tenants submodule under references/.
          4. EventStore as a root-level submodule while Hexalith.Tenants is under the parent references/ folder.
@@ -12,6 +13,9 @@
              also exist on a developer machine. -->
         <HexalithTenantsBasePath Condition="Exists('$(MSBuildThisFileDirectory)references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/')">$(MSBuildThisFileDirectory)references/Hexalith.Tenants/src</HexalithTenantsBasePath>
         <HexalithTenantsBasePath Condition="'$(HexalithTenantsBasePath)' == '' and Exists('$(MSBuildThisFileDirectory)../src/Hexalith.Tenants.Contracts/')">$(MSBuildThisFileDirectory)../src</HexalithTenantsBasePath>
+        <!-- 1b: EventStore lives at references/Hexalith.EventStore/ inside the Hexalith.Tenants root repo,
+             so Tenants source is two levels up at <root>/src (the references/ layout). -->
+        <HexalithTenantsBasePath Condition="'$(HexalithTenantsBasePath)' == '' and Exists('$(MSBuildThisFileDirectory)../../src/Hexalith.Tenants.Contracts/')">$(MSBuildThisFileDirectory)../../src</HexalithTenantsBasePath>
         <HexalithTenantsBasePath Condition="'$(HexalithTenantsBasePath)' == '' and Exists('$(MSBuildThisFileDirectory)../Hexalith.Tenants/src/Hexalith.Tenants.Contracts/')">$(MSBuildThisFileDirectory)../Hexalith.Tenants/src</HexalithTenantsBasePath>
         <HexalithTenantsBasePath Condition="'$(HexalithTenantsBasePath)' == '' and Exists('$(MSBuildThisFileDirectory)../references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/')">$(MSBuildThisFileDirectory)../references/Hexalith.Tenants/src</HexalithTenantsBasePath>
         <HexalithTenantsBasePath Condition="'$(HexalithTenantsBasePath)' == ''">$(MSBuildThisFileDirectory)references/Hexalith.Tenants/src</HexalithTenantsBasePath>
