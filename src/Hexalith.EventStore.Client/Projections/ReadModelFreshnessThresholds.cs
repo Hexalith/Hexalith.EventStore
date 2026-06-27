@@ -34,4 +34,9 @@ public readonly record struct ReadModelFreshnessThresholds(TimeSpan Aging, TimeS
         ArgumentOutOfRangeException.ThrowIfLessThan(stale, aging);
         return new ReadModelFreshnessThresholds(aging, stale);
     }
+
+    internal void ThrowIfInvalid() {
+        ArgumentOutOfRangeException.ThrowIfLessThan(Aging, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfLessThan(Stale, Aging);
+    }
 }

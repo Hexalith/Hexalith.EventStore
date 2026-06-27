@@ -112,6 +112,22 @@ public class ReadModelFreshnessTests {
     }
 
     [Fact]
+    public void Classify_DirectConstructedNegativeAgingThreshold_Throws() {
+        var thresholds = new ReadModelFreshnessThresholds(TimeSpan.FromMinutes(-1), TimeSpan.FromMinutes(5));
+
+        Should.Throw<ArgumentOutOfRangeException>(() =>
+            ReadModelFreshness.Classify(Now, thresholds, Now));
+    }
+
+    [Fact]
+    public void Classify_DirectConstructedStaleBeforeAgingThreshold_Throws() {
+        var thresholds = new ReadModelFreshnessThresholds(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(1));
+
+        Should.Throw<ArgumentOutOfRangeException>(() =>
+            ReadModelFreshness.Classify(Now, thresholds, Now));
+    }
+
+    [Fact]
     public async Task GetWithFreshnessAsync_AbsentKey_IsUnknown() {
         var store = new InMemoryReadModelStore();
 

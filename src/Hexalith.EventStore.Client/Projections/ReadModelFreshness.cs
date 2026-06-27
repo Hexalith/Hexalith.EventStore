@@ -31,6 +31,8 @@ public static class ReadModelFreshness {
         DateTimeOffset? projectedAt,
         ReadModelFreshnessThresholds thresholds,
         DateTimeOffset now) {
+        thresholds.ThrowIfInvalid();
+
         if (projectedAt is not { } at) {
             return ReadModelFreshnessState.Unknown;
         }
