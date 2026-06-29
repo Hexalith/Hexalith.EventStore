@@ -5,15 +5,17 @@ namespace Hexalith.EventStore.Aspire;
 
 /// <summary>
 /// Cross-repo project metadata for the Hexalith.EventStore command-gateway service, resolved from the
-/// consuming repository's <c>references/Hexalith.EventStore</c> submodule. <see cref="SuppressBuild"/> is
-/// <see langword="true"/>: the EventStore platform is built independently of the domain-module AppHost
-/// (Aspire runs children with <c>--no-build</c>), so the AppHost build never compiles it and the two repos'
-/// package graphs stay isolated.
+/// consuming repository's <c>Hexalith.EventStore</c> checkout via
+/// <see cref="RepositoryProjectPaths.GetReferencedModuleProjectPath"/>, which tolerates every layout (the
+/// dependency under this repo's <c>references/</c>, a sibling under a parent's <c>references/</c>, or this repo
+/// nested inside the EventStore repo). <see cref="SuppressBuild"/> stays <see langword="true"/> so Aspire
+/// launches the server fast with <c>--no-build</c>; the consuming AppHost forces a fresh Debug compile via a
+/// build-only <c>&lt;ProjectReference&gt;</c> (so <c>aspire run</c> never serves a stale binary), while Release
+/// builds keep the per-repo package graphs isolated.
 /// </summary>
 internal sealed class EventStoreProjectMetadata : IProjectMetadata {
     /// <inheritdoc/>
-    public string ProjectPath => RepositoryProjectPaths.GetProjectPath(
-        "references",
+    public string ProjectPath => RepositoryProjectPaths.GetReferencedModuleProjectPath(
         "Hexalith.EventStore",
         "src",
         "Hexalith.EventStore",
@@ -30,8 +32,7 @@ internal sealed class EventStoreProjectMetadata : IProjectMetadata {
 /// </summary>
 internal sealed class EventStoreAdminServerHostProjectMetadata : IProjectMetadata {
     /// <inheritdoc/>
-    public string ProjectPath => RepositoryProjectPaths.GetProjectPath(
-        "references",
+    public string ProjectPath => RepositoryProjectPaths.GetReferencedModuleProjectPath(
         "Hexalith.EventStore",
         "src",
         "Hexalith.EventStore.Admin.Server.Host",
@@ -48,8 +49,7 @@ internal sealed class EventStoreAdminServerHostProjectMetadata : IProjectMetadat
 /// </summary>
 internal sealed class EventStoreAdminUIProjectMetadata : IProjectMetadata {
     /// <inheritdoc/>
-    public string ProjectPath => RepositoryProjectPaths.GetProjectPath(
-        "references",
+    public string ProjectPath => RepositoryProjectPaths.GetReferencedModuleProjectPath(
         "Hexalith.EventStore",
         "src",
         "Hexalith.EventStore.Admin.UI",

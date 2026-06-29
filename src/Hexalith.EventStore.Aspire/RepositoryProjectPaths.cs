@@ -41,6 +41,56 @@ public static class RepositoryProjectPaths {
     }
 
     /// <summary>
+    /// Resolves the on-disk path to a project file inside a sibling Hexalith platform module
+    /// (e.g. <c>Hexalith.EventStore</c>, <c>Hexalith.Memories</c>), probing every checkout layout in the same
+    /// order as the <c>$(Hexalith*Root)</c> auto-detection in <c>Directory.Build.props</c>. This keeps the
+    /// launched project path (resolved here at runtime) identical to the build-time <c>&lt;ProjectReference&gt;</c>
+    /// the AppHost uses to force a Debug build of the same project — so the AppHost never compiles one csproj and
+    /// launches another. Returns the first candidate that exists; if none do, returns the standalone
+    /// <c>&lt;root&gt;/references/&lt;module&gt;/…</c> path so the error names a diagnosable location.
+    /// </summary>
+    /// <param name="moduleDirectory">The dependency module's directory name (e.g. <c>Hexalith.EventStore</c>).</param>
+    /// <param name="moduleRelativePath">Path segments inside the module, ending in the target project file.</param>
+    /// <returns>The absolute path to the resolved project file.</returns>
+    public static string GetReferencedModuleProjectPath(string moduleDirectory, params string[] moduleRelativePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(moduleDirectory);
+        if (moduleRelativePath is null || moduleRelativePath.Length == 0)
+        {
+            throw new ArgumentException("At least one module-relative path segment is required.", nameof(moduleRelativePath));
+        }
+
+        string root = GetRepositoryRoot();
+        string relative = Path.Combine(moduleRelativePath);
+
+        // Candidate module locations, mirroring Directory.Build.props $(Hexalith*Root) precedence:
+        //   1. this repo nested directly inside the dependency repo   (module src one level up)
+        //   2. this repo nested two levels inside the dependency repo
+        //   3. dependency under this repo's references/               (standalone dev — the common case)
+        //   4. dependency is a sibling of this repo                   (e.g. both under a parent's references/)
+        //   5. dependency under the parent's references/
+        string standalone = Path.GetFullPath(Path.Combine(root, "references", moduleDirectory, relative));
+        string[] candidates =
+        [
+            Path.GetFullPath(Path.Combine(root, "..", relative)),
+            Path.GetFullPath(Path.Combine(root, "..", "..", relative)),
+            standalone,
+            Path.GetFullPath(Path.Combine(root, "..", moduleDirectory, relative)),
+            Path.GetFullPath(Path.Combine(root, "..", "references", moduleDirectory, relative)),
+        ];
+
+        foreach (string candidate in candidates)
+        {
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return standalone;
+    }
+
+    /// <summary>
     /// Resolves the consuming repository root from the AppHost output directory, assuming the standard
     /// <c>&lt;repo-root&gt;/src/&lt;Module&gt;.AppHost/bin/&lt;config&gt;/&lt;tfm&gt;/</c> layout.
     /// </summary>
