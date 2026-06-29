@@ -2,7 +2,7 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
-    <HexalithCommonsUniqueIdsVersion>2.18.0</HexalithCommonsUniqueIdsVersion>
+    <HexalithCommonsUniqueIdsVersion>2.23.0</HexalithCommonsUniqueIdsVersion>
     <HexalithTenantsVersion>3.15.1</HexalithTenantsVersion>
   </PropertyGroup>
   <ItemGroup Label="Dapr">
