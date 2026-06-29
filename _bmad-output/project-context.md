@@ -1,10 +1,10 @@
 ---
 project_name: 'Hexalith.EventStore'
 user_name: 'Administrator'
-date: '2026-06-02'
+date: '2026-06-29'
 sections_completed: ['technology_stack', 'language_rules', 'framework_rules', 'identity_rules', 'testing_rules', 'code_quality', 'workflow_rules', 'critical_rules']
 status: 'complete'
-rule_count: 52
+rule_count: 54
 optimized_for_llm: true
 ---
 
@@ -46,6 +46,8 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Multi-tenancy is at the contract level:** identity = Domain + AggregateId + TenantId
 - **AppHost changes require restarting `aspire run`** — the app model is built at startup
 - `Hexalith.Tenants` source path is resolved by root `Directory.Build.props`; EventStore's own submodule path is `references/Hexalith.Tenants` — don't hardcode old root-level paths
+- **Cross-repo Hexalith libraries are Debug-source / Release-package** — Debug uses `ProjectReference` when root-declared submodule source is present; Release uses `PackageReference` pinned in `Directory.Packages.props`. Use `-p:UseHexalithProjectReferences=true` only for intentional source-debug sessions, never for package publication
+- **Rerun restore after switching dependency modes** — `--no-restore` can reuse stale project-reference assets from a previous Debug/source restore
 
 ### Identity Rules (ULID, not GUID)
 
@@ -85,6 +87,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Never** reorder the MediatR behavior pipeline (Auth → Log → Validate)
 - **Never** add copyright headers (this repo doesn't use them)
 - **Never** recurse into nested submodules or modify submodule files unsolicited
+- **Never** publish packages with `UseHexalithProjectReferences=true`
 - **Always** `ConfigureAwait(false)` on awaits
 - **Always** assert persisted state in Tier 2/3 tests, not just status codes
 - **Always** keep aggregates pure — events in, state rebuilt, no in-place mutation

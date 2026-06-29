@@ -94,6 +94,17 @@ dotnet test tests/Hexalith.EventStore.Testing.Tests/
 dotnet test tests/Hexalith.EventStore.IntegrationTests/
 ```
 
+## Hexalith Dependency Mode
+
+Cross-repo Hexalith library dependencies are configuration-keyed:
+
+- **Debug** uses `ProjectReference` when the root-declared submodule source is present.
+- **Release** uses `PackageReference` pinned in `Directory.Packages.props`.
+
+Use `-p:UseHexalithProjectReferences=true` only for an intentional source-debug session; do not use it for package publication. Same-repository `Hexalith.EventStore.*` references remain project references because they are built and versioned together. Host application projects that are not NuGet libraries remain source-only AppHost resources.
+
+Always rerun `dotnet restore` after switching between Debug/source mode and Release/package mode. Do not reuse `--no-restore` assets across dependency modes.
+
 ## Container Images
 
 Container images are produced via the **.NET SDK container support** (no Dockerfiles). Opt-in is centralized in `Directory.Build.targets` and enabled per-project via `<EnableContainer>true</EnableContainer>` + `<ContainerRepository>image-name</ContainerRepository>`.

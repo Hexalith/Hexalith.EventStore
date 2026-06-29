@@ -17,7 +17,8 @@
   <ItemGroup>
     <ProjectReference Include="../Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj" />
     <ProjectReference Include="../Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj" />
-    <ProjectReference Include="$(HexalithTenantsBasePath)/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj" />
+    <ProjectReference Include="$(HexalithTenantsBasePath)/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj" Condition="'$(HexalithTenantsFromSource)' == 'true'" />
+    <PackageReference Include="Hexalith.Tenants.Contracts" Condition="'$(HexalithTenantsFromSource)' != 'true'" />
   </ItemGroup>
 
   <ItemGroup>

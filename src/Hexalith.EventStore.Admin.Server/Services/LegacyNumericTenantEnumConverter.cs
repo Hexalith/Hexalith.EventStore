@@ -10,22 +10,27 @@ namespace Hexalith.EventStore.Admin.Server.Services;
 ///   <item>string by member name (the canonical format, e.g. <c>"Active"</c> / <c>"TenantOwner"</c>);</item>
 ///   <item>legacy numeric values that predate the <c>Unknown = 0</c> sentinel inserted at ordinal 0.</item>
 /// </list>
-/// Legacy numeric payloads were zero-based over the business members only (no <c>Unknown</c>), so a wire
-/// number <c>N</c> maps to the N-th business member (the defined members excluding <c>Unknown</c>): for
+/// Legacy numeric payloads were zero-based over the business members only, so a wire
+/// number <c>N</c> maps to the N-th business member (the defined members excluding a member named
+/// <c>Unknown</c>, when present): for
 /// <c>TenantStatus</c> <c>0 -&gt; Active</c>, <c>1 -&gt; Disabled</c>; for <c>TenantRole</c>
 /// <c>0 -&gt; TenantOwner</c>, <c>1 -&gt; TenantContributor</c>, <c>2 -&gt; TenantReader</c>. Unparseable
-/// strings, raw numeric <c>0</c>-as-sentinel collisions, and out-of-range numbers fail closed to the
-/// enum's default (ordinal 0, the <c>Unknown</c> sentinel) rather than to a privileged/active value.
+/// strings and out-of-range numbers fail closed to <c>Unknown</c> when the enum defines it, otherwise
+/// to the enum's default value.
 /// </summary>
 /// <typeparam name="TEnum">The tenant-domain enum type whose ordinal 0 member is the <c>Unknown</c> sentinel.</typeparam>
 internal sealed class LegacyNumericTenantEnumConverter<TEnum> : JsonConverter<TEnum>
     where TEnum : struct, Enum {
-    // Business members in declaration order, excluding the ordinal-0 Unknown sentinel.
+    // Business members in declaration order, excluding Unknown by name instead of ordinal.
+    // Published Tenants packages may still define Active/TenantOwner at ordinal 0.
     // Index in this array == the legacy zero-based numeric wire value.
     private static readonly TEnum[] _businessMembers =
-        [.. Enum.GetValues<TEnum>().Where(static v => Convert.ToInt64(v, System.Globalization.CultureInfo.InvariantCulture) != 0L)];
+        [.. Enum.GetValues<TEnum>().Where(static v => !string.Equals(Enum.GetName(v), "Unknown", StringComparison.Ordinal))];
 
-    private static readonly TEnum _default = default;
+    private static readonly TEnum _default =
+        Enum.TryParse("Unknown", ignoreCase: false, out TEnum unknown) && Enum.IsDefined(unknown)
+            ? unknown
+            : default;
 
     public override TEnum Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) {
         switch (reader.TokenType) {

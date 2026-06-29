@@ -19,8 +19,4 @@
     <InternalsVisibleTo Include="Hexalith.EventStore.AppHost.Tests" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(HexalithCommonsRoot)' != ''">
-    <ProjectReference Include="$(HexalithCommonsRoot)\src\libraries\Hexalith.Commons.Aspire\Hexalith.Commons.Aspire.csproj" />
-  </ItemGroup>
-
 </Project>

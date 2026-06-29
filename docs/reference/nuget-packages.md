@@ -59,6 +59,17 @@ graph TD
 
 > **Note:** All 8 packages always ship at the same semantic version. Install matching versions to avoid compatibility issues.
 
+## Source vs Package Dependencies
+
+Inside this repository, cross-repo Hexalith library dependencies are configuration-keyed:
+
+- Debug builds use `ProjectReference` when the root-declared submodule source is present.
+- Release builds and package publication use `PackageReference` versions pinned in `Directory.Packages.props`.
+
+Use `-p:UseHexalithProjectReferences=true` only for intentional source-debug sessions. Published
+`Hexalith.EventStore.*` packages must describe external Hexalith libraries as NuGet package dependencies, not
+as source project edges.
+
 ## Which Packages Do I Need?
 
 ### Building a domain service

@@ -1,6 +1,5 @@
 using CommunityToolkit.Aspire.Hosting.Dapr;
 
-using Hexalith.Commons.Aspire;
 using Hexalith.EventStore.AppHost;
 using Hexalith.EventStore.Aspire;
 
@@ -21,7 +20,9 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 string eventStoreAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.yaml");
 string adminServerAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.eventstore-admin.yaml");
 string sampleAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.sample.yaml");
+#if HEXALITH_TENANTS_SOURCE
 string tenantsAccessControlConfigPath = ResolveDaprConfigPath("accesscontrol.tenants.yaml");
+#endif
 string emptyDaprResourcesPath = ResolveEmptyDaprResourcesPath();
 string stateStoreComponentPath = ResolveDaprConfigPath("statestore.yaml");
 string isolatedStateStoreComponentPath = ResolveIsolatedDaprComponentPath(stateStoreComponentPath);
@@ -71,6 +72,9 @@ if (security is not null) {
 
 // Add Tenants domain service with DAPR sidecar via the platform domain-module extension (A4).
 // Tenants shares the same state store and pub/sub as EventStore (no isolated resources path).
+// The external Tenants host project is included only in source-debug mode. Release/package mode
+// must not compile cross-repo Hexalith source just because a submodule is checked out.
+#if HEXALITH_TENANTS_SOURCE
 IResourceBuilder<ProjectResource> tenants = builder.AddProject<Projects.Hexalith_Tenants>("tenants")
     .AddEventStoreDomainModule(
         eventStoreResources,
@@ -79,6 +83,7 @@ IResourceBuilder<ProjectResource> tenants = builder.AddProject<Projects.Hexalith
         daprPlacementHostAddress: daprPlacementHostAddress,
         daprSchedulerHostAddress: daprSchedulerHostAddress)
     .WithEnvironment("Tenants__BootstrapGlobalAdminUserId", "admin-user");
+#endif
 
 // Add sample domain service with DAPR sidecar via the platform domain-module extension (A4).
 // Passing the empty resources path makes the sample fully isolated: its sidecar does NOT reference
@@ -118,7 +123,9 @@ IResourceBuilder<ProjectResource> blazorUi = builder.AddProject<Projects.Hexalit
     .WithEnvironment("EventStore__SignalR__HubUrl", ReferenceExpression.Create($"{eventStoreHttps}/hubs/projection-changes"));
 
 if (security is not null) {
+#if HEXALITH_TENANTS_SOURCE
     _ = tenants.WithJwtBearerSecurity(security);
+#endif
 
     _ = adminServer.WithJwtBearerSecurity(security);
 

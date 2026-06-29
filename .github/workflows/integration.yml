@@ -25,6 +25,7 @@ env:
   # Bypass NU1902 transitive CVE warnings on OpenTelemetry packages — mirrors the local
   # `-p:NuGetAudit=false` flag documented in CLAUDE.md § Build & Test Commands.
   NuGetAudit: 'false'
+  UseHexalithProjectReferences: 'false'
 
 jobs:
   live-sidecar:
@@ -45,7 +46,7 @@ jobs:
           restore-keys: nuget-
 
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore Hexalith.EventStore.slnx -p:Configuration=Release -p:UseHexalithProjectReferences=false
 
       - name: Install Dapr CLI
         uses: dapr/setup-dapr@8d980918fd43a2765c143ce7f687665b2d46a6b9 # v2
@@ -62,7 +63,7 @@ jobs:
 
       - name: Run Live-Sidecar Integration Tests (Tier 2)
         run: |
-          dotnet test tests/Hexalith.EventStore.Server.Tests/ --configuration Release --filter "Category=LiveSidecar" --logger "trx;LogFileName=live-sidecar-results.trx"
+          dotnet test tests/Hexalith.EventStore.Server.Tests/ --configuration Release -p:UseHexalithProjectReferences=false --filter "Category=LiveSidecar" --logger "trx;LogFileName=live-sidecar-results.trx"
 
       # NOTE: the Tier-3 `IntegrationTests` project spins up a full Aspire DistributedApplication
       # (Projects.Hexalith_EventStore_AppHost) which `dapr init` alone does not satisfy. Running it

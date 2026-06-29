@@ -24,6 +24,15 @@ Build settings (enforced repo-wide via `Directory.Build.props`): `net10.0`, `Nul
 file-scoped namespaces, Allman braces, `_camelCase` private fields, `Async` suffix, `I` interface
 prefix, 4-space indent, CRLF, UTF-8.
 
+Cross-repo Hexalith library dependencies use package mode for Release and source mode for Debug:
+
+- Debug builds use `ProjectReference` when the root-declared submodule source is present.
+- Release builds use `PackageReference` versions pinned in `Directory.Packages.props`.
+- Use `-p:UseHexalithProjectReferences=true` only when intentionally debugging external Hexalith source in a Release build. Do not use it for package publication.
+
+Rerun `dotnet restore` when switching between these modes. Build assets restored in source mode can keep stale
+project-reference edges if reused with `--no-restore` in package mode.
+
 ## Test (run projects individually — not solution-level `dotnet test`)
 
 ### Tiered test matrix
@@ -129,10 +138,8 @@ calls wrap the lower-level `AddEventStore()`/`UseEventStore()` primitives). See
 - Branches: `feat/…`, `fix/…`, `docs/…`. No direct commits to `main`; PRs only.
 - Always `dotnet build && dotnet test` (relevant tiers) before committing.
 
-## CI/CD note (discrepancy to be aware of)
+## CI/CD note
 
-`CLAUDE.md` and README badges reference **GitHub Actions** workflows (`ci.yml`, `docs-validation.yml`)
-and a semantic-release pipeline, but **no `.github/workflows/` directory exists in this repository
-checkout**. Likewise there is **no root `CHANGELOG.md`** despite README linking to it. The
-semantic-release config (`.releaserc.json`, `package.json` devDeps, `commitlint.config.mjs`) is
-present. Confirm whether CI lives in a parent/automation repo before assuming pushes trigger builds.
+GitHub Actions restore `Hexalith.EventStore.slnx` and force `UseHexalithProjectReferences=false` in Release
+lanes. Semantic-release packs with the same property so published `Hexalith.EventStore.*` packages depend on
+published external Hexalith packages instead of checked-out submodule source.

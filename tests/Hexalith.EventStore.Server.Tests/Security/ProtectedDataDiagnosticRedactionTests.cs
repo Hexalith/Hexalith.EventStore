@@ -12,6 +12,7 @@ using Hexalith.EventStore.Server.Diagnostics;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Pipeline.Commands;
 using Hexalith.EventStore.Server.Projections;
+using Hexalith.EventStore.Server.Telemetry;
 using Hexalith.EventStore.Testing.Security;
 
 using Microsoft.AspNetCore.Http;
@@ -107,14 +108,25 @@ public class ProtectedDataDiagnosticRedactionTests : IDisposable {
             CreateEnvelope(),
             CommandStatus.Rejected,
             new InvalidOperationException($"provider failed {ProtectedDataLeakSentinel.ProtectedProviderExceptionText}"));
+        Activity? capturedActivity = null;
+        using ActivityListener listener = new() {
+            ShouldListenTo = static source => source.Name == EventStoreActivitySource.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => {
+                if (activity.OperationName == EventStoreActivitySource.EventsPublishDeadLetter
+                    && Equals(activity.GetTagItem(EventStoreActivitySource.TagCorrelationId), message.CorrelationId)) {
+                    capturedActivity = activity;
+                }
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
 
         bool published = await publisher.PublishDeadLetterAsync(TestIdentity, message);
 
         published.ShouldBeFalse();
         CapturedLogEntry failed = logs.Single(e => e.EventId.Id == 3201);
         ProtectedDataLeakSentinel.AssertNoLeak([failed.Message, failed.ExceptionText, .. failed.Properties.Select(static p => p.Value?.ToString())]);
-        Activity activity = _activities.Single(a => a.OperationName == "EventStore.Events.PublishDeadLetter"
-            && Equals(a.GetTagItem("eventstore.correlation_id"), message.CorrelationId));
+        Activity activity = capturedActivity.ShouldNotBeNull();
         activity.Status.ShouldBe(ActivityStatusCode.Error);
         ProtectedDataLeakSentinel.AssertNoLeak(CaptureActivityDiagnostics(activity));
     }

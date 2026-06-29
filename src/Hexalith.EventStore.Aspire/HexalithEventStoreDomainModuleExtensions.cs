@@ -1,8 +1,6 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 
-using Hexalith.Commons.Aspire;
-
 namespace Hexalith.EventStore.Aspire;
 
 /// <summary>

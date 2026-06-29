@@ -106,7 +106,7 @@ public class DaprComponentValidationTests {
         tenantsBlock.ShouldNotContain("isolatedDaprResourcesPath");
 
         // Verify the isolation mechanism itself in the A4 extension: the public EventStore facade now delegates
-        // to the shared Commons helper while still selecting isolated mode with only the empty resources path and
+        // to the shared Aspire helper while still selecting isolated mode with only the empty resources path and
         // shared mode with the EventStore state-store / pub-sub references.
         string moduleExtension = File.ReadAllText(Path.Combine(ProjectRoot, "src", "Hexalith.EventStore.Aspire", "HexalithEventStoreDomainModuleExtensions.cs"));
         moduleExtension.ShouldContain("AddAspireDaprDomainModule");
@@ -114,7 +114,7 @@ public class DaprComponentValidationTests {
         moduleExtension.ShouldContain("ResourcesPaths = isolated ? [isolatedDaprResourcesPath!] : []");
         moduleExtension.ShouldContain("SharedComponents = isolated ? null : new AspireDaprSharedComponents(eventStore.StateStore, eventStore.PubSub)");
 
-        string sampleBlazorBlock = GetBlock(appHost, "IResourceBuilder<ProjectResource> blazorUi =", "if (keycloak is not null");
+        string sampleBlazorBlock = GetBlock(appHost, "IResourceBuilder<ProjectResource> blazorUi =", "if (security is not null");
         sampleBlazorBlock.ShouldNotContain("eventStoreResources.StateStore");
         sampleBlazorBlock.ShouldNotContain("eventStoreResources.PubSub");
 
