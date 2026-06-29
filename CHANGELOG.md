@@ -1,3 +1,18 @@
+# [3.20.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.19.0...v3.20.0) (2026-06-29)
+
+
+### Bug Fixes
+
+* **client:** drop unprocessable consumed events instead of retrying forever ([#274](https://github.com/Hexalith/Hexalith.EventStore/issues/274)) ([8159992](https://github.com/Hexalith/Hexalith.EventStore/commit/81599921029bbb64261d425629e87b58574ce6cd))
+* **gateway:** log domain rejections at warning and tolerate aborted rejection responses ([7b55949](https://github.com/Hexalith/Hexalith.EventStore/commit/7b559490502c55fe283b0b34b6ea9e409df46a72))
+* **projections:** add validation for ReadModelFreshnessThresholds and update classification method ([87c1ec6](https://github.com/Hexalith/Hexalith.EventStore/commit/87c1ec602bbe45770890829c02f17e549cf4c0df))
+
+
+### Features
+
+* **paths:** add GetReferencedModuleProjectPath method for flexible project path resolution ([a03f364](https://github.com/Hexalith/Hexalith.EventStore/commit/a03f364c90e91c69382be1e3a5b0c8a369f74e2a))
+* **security:** implement Keycloak-backed security resources and configuration options ([5f3d58d](https://github.com/Hexalith/Hexalith.EventStore/commit/5f3d58d0ce644c7205b0a9130f824059e3f7b532))
+
 # [3.19.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.18.0...v3.19.0) (2026-06-26)
 
 
