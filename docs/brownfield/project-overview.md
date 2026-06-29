@@ -56,7 +56,7 @@ state.Apply(Event)                          // fold events back into state
 | AI integration | `ModelContextProtocol` | `1.3.0` | Admin MCP server (AI-callable tools) |
 | Observability | OpenTelemetry (OTLP exporter + ASP.NET/HTTP/runtime instrumentation) | `1.15.x` | Traces, metrics, structured logs |
 | Resilience | `Microsoft.Extensions.Http.Resilience`, `ServiceDiscovery` | `10.6.0` | HTTP resilience + service discovery |
-| Identifiers | `Hexalith.Commons.UniqueIds` | `2.18.0` | ULID generation |
+| Identifiers | `Hexalith.Commons.UniqueIds` | `2.23.0` | ULID generation |
 | Testing | xUnit v3 `3.2.2`, Shouldly `4.3.0`, NSubstitute `5.3.0`, bunit `2.7.2`, Playwright `1.60.0`, Testcontainers `4.10.0`, coverlet `10.0.1` | — | Unit → integration → E2E |
 | Load testing | NBomber + NBomber.Http | `6.4.1` / `6.2.0` | Throughput/latency perf tests |
 | Release | semantic-release (Conventional Commits) | npm `^24.2.3` | Automated versioning + NuGet publish |
