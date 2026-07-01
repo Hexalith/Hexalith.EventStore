@@ -14,7 +14,7 @@ public class ToastServiceExtensionsTests {
 
         _ = captured.ShouldNotBeNull();
         captured.Intent.ShouldBe(ToastIntent.Success);
-        captured.Body.ShouldBe("hello");
+        captured.Message.ShouldBe("hello");
         captured.Title.ShouldBe(string.Empty);
     }
 
@@ -24,7 +24,7 @@ public class ToastServiceExtensionsTests {
 
         _ = captured.ShouldNotBeNull();
         captured.Intent.ShouldBe(ToastIntent.Error);
-        captured.Body.ShouldBe("boom");
+        captured.Message.ShouldBe("boom");
         captured.Title.ShouldBe(string.Empty);
     }
 
@@ -34,7 +34,7 @@ public class ToastServiceExtensionsTests {
 
         _ = captured.ShouldNotBeNull();
         captured.Intent.ShouldBe(ToastIntent.Warning);
-        captured.Body.ShouldBe("careful");
+        captured.Message.ShouldBe("careful");
         captured.Title.ShouldBe(string.Empty);
     }
 
@@ -44,7 +44,7 @@ public class ToastServiceExtensionsTests {
 
         _ = captured.ShouldNotBeNull();
         captured.Intent.ShouldBe(ToastIntent.Info);
-        captured.Body.ShouldBe("fyi");
+        captured.Message.ShouldBe("fyi");
         captured.Title.ShouldBe(string.Empty);
     }
 
@@ -54,19 +54,19 @@ public class ToastServiceExtensionsTests {
 
         _ = captured.ShouldNotBeNull();
         captured.Intent.ShouldBe(ToastIntent.Success);
-        captured.Body.ShouldBeNull();
+        captured.Message.ShouldBeNull();
     }
 
     [Fact]
     public async Task ShowSuccessAsync_WhenShowToastAsyncThrows_PropagatesException() {
         TestToastService fake = new();
-        fake.SetupShowToast(_ => Task.FromException<ToastCloseReason>(new InvalidOperationException("provider not registered")));
+        fake.SetupShowToast(_ => Task.FromException<ToastResult>(new InvalidOperationException("provider not registered")));
 
         _ = await Should.ThrowAsync<InvalidOperationException>(() => fake.ShowSuccessAsync("x"));
     }
 
     private static async Task<ToastOptions?> CaptureOptionsAsync(
-        Func<IToastService, string?, Task> act,
+        Func<INotificationService, string?, Task> act,
         string? message) {
         TestToastService fake = new();
 

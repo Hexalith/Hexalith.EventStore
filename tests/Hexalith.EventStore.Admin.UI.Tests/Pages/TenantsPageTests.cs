@@ -358,7 +358,7 @@ public class TenantsPageTests : AdminUITestContext {
 
         // Assert
         cut.WaitForAssertion(() => {
-            string body = toastService.LastOptions?.Body?.ToString() ?? string.Empty;
+            string body = toastService.LastOptions?.Message?.ToString() ?? string.Empty;
             body.ShouldContain("Enable request accepted");
             body.ShouldContain("status is unknown");
             body.ShouldContain("01JAXYZ1234567890ABCDEFGH");
@@ -384,7 +384,7 @@ public class TenantsPageTests : AdminUITestContext {
         await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnEnableConfirm"));
 
         cut.WaitForAssertion(() => {
-            string body = toastService.LastOptions?.Body?.ToString() ?? string.Empty;
+            string body = toastService.LastOptions?.Message?.ToString() ?? string.Empty;
             body.ShouldContain("Enable request accepted");
             body.ShouldContain("01JAXYZ1234567890ABCDEFGH");
             cut.Markup.ShouldContain("Unable to load tenant data");

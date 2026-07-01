@@ -4,7 +4,7 @@ baseline_commit: 9cee4d3db5fe6f12524ac22a357116582444fedd
 
 # Story D.2: Generator Skeleton + Spike
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -120,12 +120,12 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06
   - [x] Ensure generated code compiles under nullable enabled.
   - [x] Ensure generated output contains no timestamps, absolute paths, or machine-specific values.
 
-- [ ] **Task 5: Verify build and smoke execution** (AC: 8)
+- [x] **Task 5: Verify build and smoke execution** (AC: 8)
   - [x] Run restore.
   - [x] Build the generator project in Release.
   - [x] Build the full solution in Release package mode.
   - [x] Run a throwaway smoke consumer build from `/tmp` or another untracked path using `EmitCompilerGeneratedFiles=true`; confirm the manifest file exists and records the expected command/query counts.
-  - [ ] Confirm `git status --short` contains only intended source/story/sprint-status changes and no generated `bin/`, `obj/`, or temp files.
+  - [x] Confirm `git status --short` contains only intended source/story/sprint-status changes and no generated `bin/`, `obj/`, or temp files.
 
 ## Dev Notes
 
@@ -328,6 +328,10 @@ GPT-5 Codex
 - 2026-07-01: Smoke manifest emitted at `/tmp/hexalith-eventstore-restapi-smoke.y8ReGT/generated/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.RestApiGenerator/HexalithEventStoreRestApiGeneratorManifest.g.cs`; evidence showed `CommandCount = 1`, `QueryCount = 1`, `RouteOverrideCount = 2`, `Smoke.CreateCounterCommand`, and `Smoke.CounterStatusQuery`.
 - 2026-07-01: `git status --short` showed no generated `bin/`, `obj/`, or temp files, but also showed unrelated pre-existing changes outside this story (`D-1-contract-seam.md`, planning artifact deletion, submodule pointers, RestApi/RestRoute attributes, ContractsPackageDependencyTests, and deferred/spec artifacts), so Task 5 remains incomplete.
 - 2026-07-01: User requested fixing the transitive restore error; added `Microsoft.OpenApi` `2.9.0` to `references/Hexalith.Tenants/Directory.Packages.props` and reran `dotnet restore Hexalith.EventStore.slnx`, which succeeded.
+- 2026-07-01: Rechecked `git status --short --untracked-files=all` before story completion; output was empty, confirming no generated `bin/`, `obj/`, or temp files were present in the worktree.
+- 2026-07-01: Reran D2 validation: `dotnet restore Hexalith.EventStore.slnx`, generator Release build, package-mode solution Release build, and smoke build at `/tmp/hexalith-eventstore-restapi-smoke.0Tznfy/Smoke/Smoke.csproj`; all succeeded with 0 warnings and 0 errors.
+- 2026-07-01: Smoke manifest emitted at `/tmp/hexalith-eventstore-restapi-smoke.0Tznfy/generated/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.RestApiGenerator/HexalithEventStoreRestApiGeneratorManifest.g.cs`; evidence showed `RestApiAttributeFound = true`, `CommandCount = 1`, `QueryCount = 1`, `RouteOverrideCount = 2`, `Smoke.CreateCounterCommand`, and `Smoke.CounterStatusQuery`.
+- 2026-07-01: Regression tests passed for Contracts, Client, Sample, SignalR, Testing, QueryRouting, DomainService, Admin.Abstractions, Admin.Cli, Admin.Mcp, Admin.Server.Host, Admin.Server, Admin.UI, AppHost, Server, and sample package tests. DeferredWorkGovernance and OperationalEvidence.Validator ATDD suites are pre-existing red-phase scaffolds outside D2 scope; failures were due missing DW4/DW6 entrypoint/story artifacts with a clean worktree before story completion edits.
 
 ### Implementation Plan
 
@@ -341,7 +345,8 @@ GPT-5 Codex
 - Task 1 completed: Roslyn package versions were added centrally and no `.csproj` package versions were introduced.
 - Task 2 completed: Analyzer project scaffold was added under `src/`, configured as a `netstandard2.0` Roslyn component, and included in `Hexalith.EventStore.slnx`.
 - Tasks 3 and 4 completed: Incremental generator discovery uses metadata-name constants and Roslyn symbols only, parses assembly/route attributes into pure descriptors, and emits only the deterministic manifest source.
-- Task 5 partially completed: restore, generator build, package-mode solution build, and smoke manifest execution passed; git status still contains unrelated pre-existing changes, so the final status-only subtask remains unchecked.
+- Task 5 completed: restore, generator Release build, package-mode solution Release build, smoke manifest execution, scope guard, and final git-status hygiene all passed.
+- D2 is ready for review; no controller emission, runtime gateway dependency, release-pipeline package registration, sample adoption, or submodule adoption was added in this story.
 
 ### File List
 
@@ -371,3 +376,4 @@ GPT-5 Codex
 | 2026-07-01 | Implemented incremental discovery and manifest-only emission. |
 | 2026-07-01 | Ran verification; left Task 5 incomplete due external restore blocker and unrelated pre-existing git status entries. |
 | 2026-07-01 | Fixed Tenants transitive `Microsoft.OpenApi` restore blocker and reran restore successfully. |
+| 2026-07-01 | Completed final D2 verification, confirmed clean worktree hygiene, and moved story to review. |

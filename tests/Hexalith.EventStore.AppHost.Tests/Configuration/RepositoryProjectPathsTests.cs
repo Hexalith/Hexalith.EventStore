@@ -18,16 +18,31 @@ public class RepositoryProjectPathsTests {
     }
 
     [Fact]
-    public void EventStoreProjectMetadata_ProjectPath_UsesReferencesSubmoduleLayout() {
+    public void EventStoreProjectMetadata_ProjectPath_UsesCurrentRepositoryLayoutWhenPresent() {
         string path = new EventStoreProjectMetadata().ProjectPath;
 
         path.ShouldBe(Path.Combine(
             RepositoryProjectPaths.GetRepositoryRoot(),
-            "references",
-            "Hexalith.EventStore",
             "src",
             "Hexalith.EventStore",
             "Hexalith.EventStore.csproj"));
+    }
+
+    [Fact]
+    public void GetReferencedModuleProjectPath_WhenModuleMissing_ReturnsReferencesFallback() {
+        string path = RepositoryProjectPaths.GetReferencedModuleProjectPath(
+            "Hexalith.DoesNotExist",
+            "src",
+            "Hexalith.DoesNotExist",
+            "Hexalith.DoesNotExist.csproj");
+
+        path.ShouldBe(Path.Combine(
+            RepositoryProjectPaths.GetRepositoryRoot(),
+            "references",
+            "Hexalith.DoesNotExist",
+            "src",
+            "Hexalith.DoesNotExist",
+            "Hexalith.DoesNotExist.csproj"));
     }
 
     [Fact]

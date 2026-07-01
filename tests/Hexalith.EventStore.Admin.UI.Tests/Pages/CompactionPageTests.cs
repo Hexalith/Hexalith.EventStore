@@ -197,7 +197,7 @@ public class CompactionPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe("Compaction is deferred. EventStore write-once event keys require an approved non-destructive compaction model before this operation can run.");
+        toastOptions.Message.ShouldBe("Compaction is deferred. EventStore write-once event keys require an approved non-destructive compaction model before this operation can run.");
         toastOptions.Intent.ShouldBe(ToastIntent.Warning);
     }
 
@@ -263,7 +263,7 @@ public class CompactionPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Message.ShouldBe(deferredMessage);
         toastOptions.Intent.ShouldBe(ToastIntent.Warning);
         cut.Markup.ShouldContain("Trigger Compaction");
         startBtn.Instance.Disabled.ShouldBeFalse();
@@ -299,7 +299,7 @@ public class CompactionPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Message.ShouldBe(deferredMessage);
         toastOptions.Intent.ShouldNotBe(ToastIntent.Success);
         toastOptions.Intent.ShouldBe(ToastIntent.Warning);
     }

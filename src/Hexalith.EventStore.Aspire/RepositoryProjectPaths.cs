@@ -2,8 +2,8 @@ namespace Hexalith.EventStore.Aspire;
 
 /// <summary>
 /// Resolves on-disk paths to project files within a Hexalith mono-repo working tree, where the platform
-/// modules (<c>Hexalith.EventStore</c>, <c>Hexalith.Memories</c>, …) are checked out as Git submodules under
-/// the consuming repository's <c>references</c> folder.
+/// modules (<c>Hexalith.EventStore</c>, <c>Hexalith.Memories</c>, …) may be the current repository or checked
+/// out as Git submodules under the consuming repository's <c>references</c> folder.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -64,14 +64,16 @@ public static class RepositoryProjectPaths {
         string relative = Path.Combine(moduleRelativePath);
 
         // Candidate module locations, mirroring Directory.Build.props $(Hexalith*Root) precedence:
-        //   1. this repo nested directly inside the dependency repo   (module src one level up)
-        //   2. this repo nested two levels inside the dependency repo
-        //   3. dependency under this repo's references/               (standalone dev — the common case)
-        //   4. dependency is a sibling of this repo                   (e.g. both under a parent's references/)
-        //   5. dependency under the parent's references/
+        //   1. dependency is the current repository                   (module src under this root)
+        //   2. this repo nested directly inside the dependency repo   (module src one level up)
+        //   3. this repo nested two levels inside the dependency repo
+        //   4. dependency under this repo's references/               (standalone dev — the common case)
+        //   5. dependency is a sibling of this repo                   (e.g. both under a parent's references/)
+        //   6. dependency under the parent's references/
         string standalone = Path.GetFullPath(Path.Combine(root, "references", moduleDirectory, relative));
         string[] candidates =
         [
+            Path.GetFullPath(Path.Combine(root, relative)),
             Path.GetFullPath(Path.Combine(root, "..", relative)),
             Path.GetFullPath(Path.Combine(root, "..", "..", relative)),
             standalone,

@@ -231,7 +231,7 @@ public class SnapshotsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(failureMessage);
+        toastOptions.Message.ShouldBe(failureMessage);
         cut.Markup.ShouldContain("Create Snapshot Policy");
         createBtn.Instance.Disabled.ShouldBeFalse();
     }
@@ -270,7 +270,7 @@ public class SnapshotsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(failureMessage);
+        toastOptions.Message.ShouldBe(failureMessage);
         toastOptions.Intent.ShouldBe(ToastIntent.Warning);
         cut.Markup.ShouldContain("Create Snapshot");
         submitButton.Instance.Disabled.ShouldBeFalse();
@@ -344,7 +344,7 @@ public class SnapshotsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(successMessage);
+        toastOptions.Message.ShouldBe(successMessage);
         toastOptions.Intent.ShouldBe(ToastIntent.Success);
         cut.Markup.ShouldNotContain("Aggregate ID");
     }
@@ -404,7 +404,7 @@ public class SnapshotsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(failureMessage);
+        toastOptions.Message.ShouldBe(failureMessage);
         cut.Markup.ShouldContain("Delete Snapshot Policy");
         confirmBtn.Instance.Disabled.ShouldBeFalse();
     }

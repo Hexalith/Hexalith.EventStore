@@ -192,7 +192,7 @@ public class BackupsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe("Backup creation is deferred. EventStore does not yet have an approved backup engine and manifest model.");
+        toastOptions.Message.ShouldBe("Backup creation is deferred. EventStore does not yet have an approved backup engine and manifest model.");
         toastOptions.Intent.ShouldBe(ToastIntent.Warning);
     }
 
@@ -258,7 +258,7 @@ public class BackupsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Message.ShouldBe(deferredMessage);
         toastOptions.Intent.ShouldBe(ToastIntent.Warning);
         cut.Markup.ShouldContain("Create Backup");
         startBtn.Instance.Disabled.ShouldBeFalse();
@@ -294,7 +294,7 @@ public class BackupsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Message.ShouldBe(deferredMessage);
         toastOptions.Intent.ShouldNotBe(ToastIntent.Success);
         toastOptions.Intent.ShouldBe(ToastIntent.Warning);
     }
@@ -463,7 +463,7 @@ public class BackupsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Message.ShouldBe(deferredMessage);
         toastOptions.Intent.ShouldBe(ToastIntent.Warning);
         cut.Markup.ShouldContain("Validate Backup");
         confirmButton.Instance.Disabled.ShouldBeFalse();
@@ -496,7 +496,7 @@ public class BackupsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Message.ShouldBe(deferredMessage);
         toastOptions.Intent.ShouldNotBe(ToastIntent.Success);
         toastOptions.Intent.ShouldBe(ToastIntent.Warning);
     }
@@ -537,7 +537,7 @@ public class BackupsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Message.ShouldBe(deferredMessage);
         cut.Markup.ShouldContain("Restore from Backup");
         startButton.Instance.Disabled.ShouldBeFalse();
     }
@@ -744,7 +744,7 @@ public class BackupsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe("Exported 100 events.");
+        toastOptions.Message.ShouldBe("Exported 100 events.");
         toastOptions.Intent.ShouldBe(ToastIntent.Success);
         _ = JSInterop.VerifyInvoke("blazorDownloadFile");
     }
@@ -787,7 +787,7 @@ public class BackupsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(failureMessage);
+        toastOptions.Message.ShouldBe(failureMessage);
         toastOptions.Intent.ShouldBe(ToastIntent.Error);
         cut.Markup.ShouldContain("Export Stream");
         submitBtn.Instance.Disabled.ShouldBeFalse();
@@ -829,7 +829,7 @@ public class BackupsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe("Exported 0 events.");
+        toastOptions.Message.ShouldBe("Exported 0 events.");
         toastOptions.Intent.ShouldBe(ToastIntent.Success);
         _ = JSInterop.VerifyInvoke("blazorDownloadFile");
     }
@@ -864,7 +864,7 @@ public class BackupsPageTests : AdminUITestContext {
 
         TestToastService toastService = Services.GetRequiredService<TestToastService>();
         ToastOptions toastOptions = toastService.LastOptions.ShouldNotBeNull();
-        toastOptions.Body.ShouldBe(deferredMessage);
+        toastOptions.Message.ShouldBe(deferredMessage);
         cut.Markup.ShouldContain("Import Stream");
         IRenderedComponent<FluentButton> submitBtn = cut.FindComponents<FluentButton>()
             .First(b => b.Markup.Contains("<span>Import</span>"));

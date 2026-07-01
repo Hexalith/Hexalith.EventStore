@@ -7,7 +7,7 @@ using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace Hexalith.EventStore.Admin.UI.Services;
 /// <summary>
-/// Provides legacy-compatible shortcut extensions for <see cref="IToastService"/> that target
+/// Provides legacy-compatible shortcut extensions for <see cref="INotificationService"/> that target
 /// the Fluent UI Blazor v5 <c>ShowToastAsync</c> pipeline. Mirrors the ergonomics of the v4
 /// <c>Show*</c> helpers with body-only messages and the v5 default timeout.
 /// </summary>
@@ -16,12 +16,12 @@ public static class ToastServiceExtensions {
     /// <param name="toastService">The toast service instance.</param>
     /// <param name="message">The message rendered in the toast body. Can be null.</param>
     /// <returns>A task that completes when the toast has been shown.</returns>
-    public static Task ShowSuccessAsync(this IToastService toastService, string? message) {
+    public static Task ShowSuccessAsync(this INotificationService toastService, string? message) {
         ArgumentNullException.ThrowIfNull(toastService);
         return toastService.ShowToastAsync(options => {
             options.Intent = ToastIntent.Success;
             options.Title = string.Empty;
-            options.Body = message;
+            options.Message = message;
         });
     }
 
@@ -29,12 +29,12 @@ public static class ToastServiceExtensions {
     /// <param name="toastService">The toast service instance.</param>
     /// <param name="message">The message rendered in the toast body. Can be null.</param>
     /// <returns>A task that completes when the toast has been shown.</returns>
-    public static Task ShowErrorAsync(this IToastService toastService, string? message) {
+    public static Task ShowErrorAsync(this INotificationService toastService, string? message) {
         ArgumentNullException.ThrowIfNull(toastService);
         return toastService.ShowToastAsync(options => {
             options.Intent = ToastIntent.Error;
             options.Title = string.Empty;
-            options.Body = message;
+            options.Message = message;
         });
     }
 
@@ -42,12 +42,12 @@ public static class ToastServiceExtensions {
     /// <param name="toastService">The toast service instance.</param>
     /// <param name="message">The message rendered in the toast body. Can be null.</param>
     /// <returns>A task that completes when the toast has been shown.</returns>
-    public static Task ShowWarningAsync(this IToastService toastService, string? message) {
+    public static Task ShowWarningAsync(this INotificationService toastService, string? message) {
         ArgumentNullException.ThrowIfNull(toastService);
         return toastService.ShowToastAsync(options => {
             options.Intent = ToastIntent.Warning;
             options.Title = string.Empty;
-            options.Body = message;
+            options.Message = message;
         });
     }
 
@@ -55,12 +55,12 @@ public static class ToastServiceExtensions {
     /// <param name="toastService">The toast service instance.</param>
     /// <param name="message">The message rendered in the toast body. Can be null.</param>
     /// <returns>A task that completes when the toast has been shown.</returns>
-    public static Task ShowInfoAsync(this IToastService toastService, string? message) {
+    public static Task ShowInfoAsync(this INotificationService toastService, string? message) {
         ArgumentNullException.ThrowIfNull(toastService);
         return toastService.ShowToastAsync(options => {
             options.Intent = ToastIntent.Info;
             options.Title = string.Empty;
-            options.Body = message;
+            options.Message = message;
         });
     }
 }
