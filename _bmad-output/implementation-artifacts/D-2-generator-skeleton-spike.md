@@ -4,7 +4,7 @@ baseline_commit: 9cee4d3db5fe6f12524ac22a357116582444fedd
 
 # Story D.2: Generator Skeleton + Spike
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -126,6 +126,10 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06
   - [x] Build the full solution in Release package mode.
   - [x] Run a throwaway smoke consumer build from `/tmp` or another untracked path using `EmitCompilerGeneratedFiles=true`; confirm the manifest file exists and records the expected command/query counts.
   - [x] Confirm `git status --short` contains only intended source/story/sprint-status changes and no generated `bin/`, `obj/`, or temp files.
+
+### Review Findings
+
+- [x] [Review][Patch] Partial declarations can duplicate manifest entries [src/Hexalith.EventStore.RestApi.Generators/RestApiGenerator.cs:26]
 
 ## Dev Notes
 

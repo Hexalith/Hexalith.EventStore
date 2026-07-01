@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -5,6 +7,9 @@ namespace Hexalith.EventStore.RestApi.Generators;
 
 internal static class RestApiMessageParser
 {
+    private static readonly SymbolDisplayFormat TypeDisplayFormat = SymbolDisplayFormat.FullyQualifiedFormat
+        .WithMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+
     public static bool IsCandidate(SyntaxNode node, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -39,7 +44,15 @@ internal static class RestApiMessageParser
             ? null
             : ParseRoute(typeSymbol, routeAttribute);
 
-        return new RestApiMessageDescriptor(GetTypeName(typeSymbol), isCommand, isQuery, route);
+        return new RestApiMessageDescriptor(
+            GetTypeName(typeSymbol),
+            typeSymbol.ToDisplayString(TypeDisplayFormat),
+            GetNamespace(typeSymbol),
+            typeSymbol.Name,
+            isCommand,
+            isQuery,
+            route,
+            GetPublicProperties(typeSymbol));
     }
 
     private static bool Implements(INamedTypeSymbol typeSymbol, INamedTypeSymbol interfaceSymbol)
@@ -79,4 +92,31 @@ internal static class RestApiMessageParser
 
     private static string GetTypeName(INamedTypeSymbol typeSymbol)
         => typeSymbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+
+    private static string GetNamespace(INamedTypeSymbol typeSymbol)
+        => typeSymbol.ContainingNamespace.IsGlobalNamespace
+            ? string.Empty
+            : typeSymbol.ContainingNamespace.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+
+    private static ImmutableArray<RestApiBindablePropertyDescriptor> GetPublicProperties(INamedTypeSymbol typeSymbol)
+    {
+        var properties = ImmutableArray.CreateBuilder<RestApiBindablePropertyDescriptor>();
+        foreach (IPropertySymbol property in typeSymbol.GetMembers().OfType<IPropertySymbol>())
+        {
+            if (property.DeclaredAccessibility != Accessibility.Public
+                || property.IsStatic
+                || property.IsIndexer
+                || property.GetMethod is null)
+            {
+                continue;
+            }
+
+            properties.Add(new RestApiBindablePropertyDescriptor(
+                property.Name,
+                property.Type.ToDisplayString(TypeDisplayFormat)));
+        }
+
+        properties.Sort(static (left, right) => string.Compare(left.Name, right.Name, StringComparison.Ordinal));
+        return properties.ToImmutable();
+    }
 }

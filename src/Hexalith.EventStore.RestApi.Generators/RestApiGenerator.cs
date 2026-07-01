@@ -23,22 +23,43 @@ public sealed class RestApiGenerator : IIncrementalGenerator
             .Select(static (compilation, cancellationToken) => RestApiAttributeParser.Parse(compilation, cancellationToken))
             .WithTrackingName("RestApiOptions");
 
-        IncrementalValueProvider<ImmutableArray<RestApiMessageDescriptor>> collectedMessages = messages.Collect();
+        IncrementalValueProvider<string> controllerNamespace = context.CompilationProvider
+            .Combine(context.AnalyzerConfigOptionsProvider)
+            .Select(static (source, _) => RestApiNamespaceResolver.Resolve(source.Left, source.Right))
+            .WithTrackingName("RestApiControllerNamespace");
+
+        IncrementalValueProvider<ImmutableArray<RestApiMessageDescriptor>> collectedMessages = messages
+            .Collect()
+            .Select(static (descriptors, _) => descriptors.Distinct().ToImmutableArray())
+            .WithTrackingName("RestApiMessageDeduplication");
 
         context.RegisterSourceOutput(
-            restApiOptions.Combine(collectedMessages),
+            restApiOptions.Combine(collectedMessages).Combine(controllerNamespace),
             static (sourceProductionContext, source) =>
             {
-                RestApiOptions options = source.Left;
+                RestApiOptions options = source.Left.Left;
                 if (!options.Found)
                 {
                     return;
                 }
 
-                string manifest = RestApiManifestEmitter.Emit(options, source.Right);
+                ImmutableArray<RestApiMessageDescriptor> sourceMessages = source.Left.Right;
+                string manifest = RestApiManifestEmitter.Emit(options, sourceMessages);
                 sourceProductionContext.AddSource(
                     RestApiManifestEmitter.HintName,
                     SourceText.From(manifest, Encoding.UTF8));
+
+                RestApiGeneratedSource? controller = RestApiControllerEmitter.Emit(
+                    options,
+                    source.Right,
+                    sourceMessages,
+                    diagnostic => sourceProductionContext.ReportDiagnostic(diagnostic));
+                if (controller.HasValue)
+                {
+                    sourceProductionContext.AddSource(
+                        controller.Value.HintName,
+                        SourceText.From(controller.Value.Source, Encoding.UTF8));
+                }
             });
     }
 }

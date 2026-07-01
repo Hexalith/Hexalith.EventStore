@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace Hexalith.EventStore.RestApi.Generators;
 
 internal readonly struct RestApiRouteDescriptor : IEquatable<RestApiRouteDescriptor>
@@ -6,15 +8,23 @@ internal readonly struct RestApiRouteDescriptor : IEquatable<RestApiRouteDescrip
     {
         Verb = verb;
         Template = template;
+        IsAbsolute = template.StartsWith("~/", StringComparison.Ordinal);
+        Parameters = RestApiRouteTemplateParser.ParseParameters(template);
     }
 
     public string Verb { get; }
 
     public string Template { get; }
 
+    public bool IsAbsolute { get; }
+
+    public ImmutableArray<RestApiRouteParameterDescriptor> Parameters { get; }
+
     public bool Equals(RestApiRouteDescriptor other)
         => string.Equals(Verb, other.Verb, StringComparison.Ordinal)
-            && string.Equals(Template, other.Template, StringComparison.Ordinal);
+            && string.Equals(Template, other.Template, StringComparison.Ordinal)
+            && IsAbsolute == other.IsAbsolute
+            && Parameters.SequenceEqual(other.Parameters);
 
     public override bool Equals(object? obj) => obj is RestApiRouteDescriptor other && Equals(other);
 
@@ -22,8 +32,15 @@ internal readonly struct RestApiRouteDescriptor : IEquatable<RestApiRouteDescrip
     {
         unchecked
         {
-            return (StringComparer.Ordinal.GetHashCode(Verb) * 397)
+            int hash = (StringComparer.Ordinal.GetHashCode(Verb) * 397)
                 ^ StringComparer.Ordinal.GetHashCode(Template);
+            hash = (hash * 397) ^ IsAbsolute.GetHashCode();
+            foreach (RestApiRouteParameterDescriptor parameter in Parameters)
+            {
+                hash = (hash * 397) ^ parameter.GetHashCode();
+            }
+
+            return hash;
         }
     }
 }

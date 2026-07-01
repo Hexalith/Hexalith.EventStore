@@ -1,11 +1,12 @@
 ---
 created: 2026-07-01
 source_story_key: D-3-controller-emission
+baseline_commit: 16f6a7cd9f522538280fa883712c9af7958f2fdb
 ---
 
 # Story D.3: Controller Emission
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -124,47 +125,47 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Preflight D2 baseline** (AC: 1, 8)
-  - [ ] Confirm D2 discovery/manifest files are present and build in Release.
-  - [ ] If D2 is incomplete, finish D2 first and record that in D2's Dev Agent Record before changing D3 behavior.
-  - [ ] Confirm no D2 work is reverted: package pins, `.slnx` entry, manifest emission, and metadata-name discovery remain intact.
+- [x] **Task 1: Preflight D2 baseline** (AC: 1, 8)
+  - [x] Confirm D2 discovery/manifest files are present and build in Release.
+  - [x] If D2 is incomplete, finish D2 first and record that in D2's Dev Agent Record before changing D3 behavior.
+  - [x] Confirm no D2 work is reverted: package pins, `.slnx` entry, manifest emission, and metadata-name discovery remain intact.
 
-- [ ] **Task 2: Extend discovery models for controller emission** (AC: 2, 3, 5, 8)
-  - [ ] Add/extend pure descriptor records for namespace, simple type name, fully qualified type name, message kind, route override, public bindable properties, route parameters, and diagnostics.
-  - [ ] Use `AnalyzerConfigOptionsProvider` to read `build_property.RootNamespace`.
-  - [ ] Parse route templates deterministically, including relative, absolute `~/`, and empty templates.
-  - [ ] Add diagnostics for unsupported ambiguous query route shapes and missing route tenant parameter when `RestTenantSource.Route` is selected.
+- [x] **Task 2: Extend discovery models for controller emission** (AC: 2, 3, 5, 8)
+  - [x] Add/extend pure descriptor records for namespace, simple type name, fully qualified type name, message kind, route override, public bindable properties, route parameters, and diagnostics.
+  - [x] Use `AnalyzerConfigOptionsProvider` to read `build_property.RootNamespace`.
+  - [x] Parse route templates deterministically, including relative, absolute `~/`, and empty templates.
+  - [x] Add diagnostics for unsupported ambiguous query route shapes and missing route tenant parameter when `RestTenantSource.Route` is selected.
 
-- [ ] **Task 3: Add controller emitter** (AC: 2, 3, 8)
-  - [ ] Create a controller emitter file rather than folding large string generation into `RestApiGenerator`.
-  - [ ] Generate `public sealed partial` ASP.NET Core controllers with stable names and namespaces.
-  - [ ] Preserve the D2 manifest emitter.
-  - [ ] Ensure generated code compiles without requiring generated code from any other generator.
+- [x] **Task 3: Add controller emitter** (AC: 2, 3, 8)
+  - [x] Create a controller emitter file rather than folding large string generation into `RestApiGenerator`.
+  - [x] Generate `public sealed partial` ASP.NET Core controllers with stable names and namespaces.
+  - [x] Preserve the D2 manifest emitter.
+  - [x] Ensure generated code compiles without requiring generated code from any other generator.
 
-- [ ] **Task 4: Generate command actions and helpers** (AC: 4, 6, 7)
-  - [ ] Emit action method parameters for route values, `[FromBody]` command body, and `CancellationToken`.
-  - [ ] Emit command `SubmitCommandRequest` construction using static command metadata and `body.AggregateId`.
-  - [ ] Emit ULID message id generation via `UniqueIdHelper.GenerateSortableUniqueStringId()`.
-  - [ ] Emit route/body mismatch checks where the route maps deterministically to body values.
-  - [ ] Emit command success mapping to 202, `Location`, and `Retry-After`.
+- [x] **Task 4: Generate command actions and helpers** (AC: 4, 6, 7)
+  - [x] Emit action method parameters for route values, `[FromBody]` command body, and `CancellationToken`.
+  - [x] Emit command `SubmitCommandRequest` construction using static command metadata and `body.AggregateId`.
+  - [x] Emit ULID message id generation via `UniqueIdHelper.GenerateSortableUniqueStringId()`.
+  - [x] Emit route/body mismatch checks where the route maps deterministically to body values.
+  - [x] Emit command success mapping to 202, `Location`, and `Retry-After`.
 
-- [ ] **Task 5: Generate query actions and helpers** (AC: 5, 6, 7)
-  - [ ] Emit action method parameters for route values, supported `[FromQuery]` values, `If-None-Match`, and `CancellationToken`.
-  - [ ] Emit query `SubmitQueryRequest` construction using static query metadata.
-  - [ ] Emit deterministic `AggregateId`/`EntityId` route mapping and diagnostics for ambiguous cases.
-  - [ ] Emit 304/200 + strong ETag response mapping and raw payload return.
+- [x] **Task 5: Generate query actions and helpers** (AC: 5, 6, 7)
+  - [x] Emit action method parameters for route values, supported `[FromQuery]` values, `If-None-Match`, and `CancellationToken`.
+  - [x] Emit query `SubmitQueryRequest` construction using static query metadata.
+  - [x] Emit deterministic `AggregateId`/`EntityId` route mapping and diagnostics for ambiguous cases.
+  - [x] Emit 304/200 + strong ETag response mapping and raw payload return.
 
-- [ ] **Task 6: Gateway exception/problem mapping** (AC: 7)
-  - [ ] Generate private helper(s) that map `EventStoreGatewayException` to `ProblemDetails`.
-  - [ ] Preserve gateway status code, retry guidance, and machine-readable extensions without exposing unsafe internals.
-  - [ ] Ensure local validation failures also return `application/problem+json`.
+- [x] **Task 6: Gateway exception/problem mapping** (AC: 7)
+  - [x] Generate private helper(s) that map `EventStoreGatewayException` to `ProblemDetails`.
+  - [x] Preserve gateway status code, retry guidance, and machine-readable extensions without exposing unsafe internals.
+  - [x] Ensure local validation failures also return `application/problem+json`.
 
-- [ ] **Task 7: Smoke verify generated controllers** (AC: 10)
-  - [ ] Build the generator project.
-  - [ ] Build the full solution in Release package mode.
-  - [ ] Create a throwaway smoke consumer outside the repo or under an ignored temp path.
-  - [ ] Build with `EmitCompilerGeneratedFiles=true` and capture the generated controller path/evidence in the Dev Agent Record.
-  - [ ] Confirm `git status --short` contains only intended source/story/sprint-status changes and no generated outputs.
+- [x] **Task 7: Smoke verify generated controllers** (AC: 10)
+  - [x] Build the generator project.
+  - [x] Build the full solution in Release package mode.
+  - [x] Create a throwaway smoke consumer outside the repo or under an ignored temp path.
+  - [x] Build with `EmitCompilerGeneratedFiles=true` and capture the generated controller path/evidence in the Dev Agent Record.
+  - [x] Confirm `git status --short` contains only intended source/story/sprint-status changes and no generated outputs.
 
 ## Dev Notes
 
@@ -368,14 +369,60 @@ Current dirty worktree context observed while creating this story:
 
 ### Debug Log References
 
+- 2026-07-01: Ran `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`; `aspire describe` reported EventStore, admin, sample, UI, and DAPR sidecars running healthy; stopped the AppHost before source edits.
+- 2026-07-01: Ran `dotnet build src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj --configuration Release`; passed with 0 warnings and 0 errors for D2 preflight.
+- 2026-07-01: Red smoke check in `/tmp/hexalith-eventstore-d3-smoke/SmokeHost` built with the D2 manifest only; `rg` for `ApiController|IEventStoreGatewayClient|SubmitCommandAsync|SubmitQueryAsync|ConfigureAwait(false)` returned no generated controller matches before D3 emission.
+- 2026-07-01: Ran `dotnet build src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj --configuration Release`; passed with 0 warnings and 0 errors after controller emission.
+- 2026-07-01: Ran positive smoke build `dotnet build /tmp/hexalith-eventstore-d3-smoke/SmokeHost/SmokeHost.csproj --configuration Release`; passed with generated controller at `/tmp/hexalith-eventstore-d3-smoke/SmokeHost/Generated/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.RestApiGenerator/Hexalith.EventStore.RestApi.SmokeHost.Generated.CounterRestController.Controller.g.cs`.
+- 2026-07-01: Smoke evidence confirmed generated source contains `[ApiController]`, `[Authorize]`, `[Route("api/counter")]`, `[Tags("counter")]`, `IEventStoreGatewayClient`, `SubmitCommandAsync`, `SubmitQueryAsync`, `ConfigureAwait(false)`, `Retry-After`, `Location`, and `ETag`; `Type.GetType` / reflection dispatch was absent.
+- 2026-07-01: Ran negative smoke build `dotnet build /tmp/hexalith-eventstore-d3-diagnostics/DiagnosticsHost/DiagnosticsHost.csproj --configuration Release`; failed as expected with `HESREST001` missing route tenant and `HESREST002` ambiguous query route diagnostics.
+- 2026-07-01: Ran `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false`; passed with 0 warnings and 0 errors.
+- 2026-07-01: Ran Tier 1 tests individually in Release/no-build mode: Contracts 549 passed, Client 480 passed, Sample 74 passed, SignalR 35 passed, Testing 144 passed.
+- 2026-07-01: Ran additional non-integration unit/governance tests in Release/no-build mode. Passed: Admin.Abstractions 423, Admin.Cli 338, Admin.Mcp 320 passed/8 skipped, Admin.Server.Host 15, Admin.Server 717 passed/18 skipped, Admin.UI 839, AppHost 32, DomainService 37, QueryRouting 3, samples Sample.Tests 4. Out-of-scope red scaffolds failed: DeferredWorkGovernance.Tests needs DW6 story/entrypoint artifacts; OperationalEvidence.Validator.Tests needs DW4 validator entrypoint artifacts.
+- 2026-07-01: Final `git status --short` contains D3 source/story/sprint-status changes plus pre-existing unrelated `_bmad-output/implementation-artifacts/D-2-generator-skeleton-spike.md` and `_bmad-output/implementation-artifacts/D-5-proof-sample-blazorui-queries.md`; no D3 generated smoke outputs are present in the repo.
+
+### Implementation Plan
+
+- Preserve the D2 incremental discovery and manifest pipeline, then add controller emission as an additional generated artifact fed by pure descriptor records.
+- Keep analyzer code runtime-assembly-free; generated source may reference ASP.NET Core, EventStore Contracts, and EventStore Client types in the consuming compilation.
+- Prove D3 by building the analyzer, building the full solution in Release package mode, and compiling a throwaway opted-in smoke consumer with compiler-generated files enabled.
+
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
+- D2 preflight completed before D3 source edits: story D2 is done, D2 generator files are present, manifest emission and metadata-name discovery remain intact, `.slnx` includes the generator project, and the generator Release build passed with zero warnings.
+- Extended generator descriptors to carry deterministic controller namespace, full type names, public bindable properties, parsed route parameters, and route diagnostics without storing Roslyn symbols in incremental cache models.
+- Added controller emission alongside the preserved D2 manifest. Generated controllers are `public sealed partial` ASP.NET Core controllers with `[ApiController]`, `[Authorize]`, route/tag/consume metadata, and constructor injection limited to `IEventStoreGatewayClient`.
+- Generated command actions now submit `SubmitCommandRequest` through the gateway, generate ULID message ids, fail closed on null bodies and route/body mismatches, and return 202 with `Retry-After` plus command status `Location`.
+- Generated query actions now submit `SubmitQueryRequest` through the gateway, derive aggregate/entity ids from route parameters, build query payloads from non-route query parameters, and return 304/200 with strong ETag propagation and raw payload bodies.
+- Generated tenant resolution supports `System`, `Route`, and normalized `eventstore:tenant` claims, and generated problem mapping preserves gateway status/detail/correlation/tenant/reason/errors/extensions without exposing unsafe internals.
+- Roslyn release tracking files were added for the new source-generator diagnostics required by `EnforceExtendedAnalyzerRules`.
+- D3 verification passed for generator build, full Release package-mode solution build, positive smoke controller compilation/evidence, negative diagnostic smoke, and the configured Tier 1 test projects. Additional unrelated DW4/DW6 red-scaffold test projects remain failing because their required governance/validator artifacts are absent.
 
 ### File List
+
+- `_bmad-output/implementation-artifacts/D-3-controller-emission.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `src/Hexalith.EventStore.RestApi.Generators/AnalyzerReleases.Shipped.md`
+- `src/Hexalith.EventStore.RestApi.Generators/AnalyzerReleases.Unshipped.md`
+- `src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiBindablePropertyDescriptor.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiDiagnosticDescriptors.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiGeneratedSource.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiGenerator.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiMessageDescriptor.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiMessageParser.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiNameSanitizer.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiNamespaceResolver.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiRouteDescriptor.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiRouteParameterDescriptor.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiRouteTemplateParser.cs`
 
 ## Change Log
 
 | Date | Change |
 |---|---|
 | 2026-07-01 | Story D3 created with controller-emission scope, D2 dependency guardrails, generated HTTP mapping rules, and smoke-verification guidance. Status ready-for-dev. |
+| 2026-07-01 | Started D3 implementation, recorded baseline commit, marked sprint status in-progress, and completed D2 preflight verification. |
+| 2026-07-01 | Implemented REST controller source emission, gateway-backed command/query actions, tenant/problem helpers, source-generator diagnostics, release tracking, and smoke verification. Status review. |
