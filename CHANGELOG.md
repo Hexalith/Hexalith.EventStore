@@ -1,3 +1,16 @@
+# [3.21.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.20.0...v3.21.0) (2026-07-01)
+
+
+### Bug Fixes
+
+* **dependencies:** update HexalithCommonsUniqueIdsVersion to 2.23.0 ([9fcc068](https://github.com/Hexalith/Hexalith.EventStore/commit/9fcc0687d7fad922f7e4901d0989f992cda14f48))
+* **StorageTreemap:** add comment regarding browser compatibility for focusable SVG elements ([fef539f](https://github.com/Hexalith/Hexalith.EventStore/commit/fef539fbe7d70e6905a63543ec8465a75bf1661b))
+
+
+### Features
+
+* Implement D3 controller emission for Hexalith.EventStore ([294aab4](https://github.com/Hexalith/Hexalith.EventStore/commit/294aab403e0ae73965bc402db2b85340088308dc))
+
 # [3.20.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.19.0...v3.20.0) (2026-06-29)
 
 
