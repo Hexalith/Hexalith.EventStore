@@ -4,7 +4,7 @@ baseline_commit: 1d1e61f3fde973832ea845aadb719a9d9ffc18b4
 
 # Story D.1: Contract Seam — ICommandContract + REST routing attributes
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -90,6 +90,11 @@ This is **story D1 of Epic D — REST Controller Source Generator** (foundation 
   - [x] `dotnet build src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj -c Release` — clean (Build succeeded, no warnings/errors).
   - [x] `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` — all pass (541 passed, 0 failed).
   - [x] `git status` shows only the 3 new src files + 3 new test files (plus this story file). No submodule / props / slnx churn.
+
+### Review Findings
+
+- [x] [Review][Patch] REST attributes use classic constructors instead of the specified primary constructors [src/Hexalith.EventStore.Contracts/Rest/RestRouteAttribute.cs:38; src/Hexalith.EventStore.Contracts/Rest/RestApiAttribute.cs:27]
+- [x] [Review][Patch] Commit includes unrelated Tenants harness planning artifact outside D1 scope [_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-21-tenants-harness-completion.md:1]
 
 ## Dev Notes
 

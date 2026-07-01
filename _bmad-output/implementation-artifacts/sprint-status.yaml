@@ -1,5 +1,5 @@
 # generated: 2026-07-01T14:20:23+02:00
-# last_updated: 2026-07-01T14:20:23+02:00
+# last_updated: 2026-07-01T15:47:26+02:00
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-01T14:20:23+02:00
-last_updated: 2026-07-01T14:20:23+02:00
+last_updated: 2026-07-01T15:47:26+02:00
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -49,9 +49,9 @@ story_location: /home/administrator/projects/hexalith/eventstore/_bmad-output/im
 
 development_status:
   epic-D: in-progress
-  D-1-contract-seam: review
-  D-2-generator-skeleton-spike: backlog
-  D-3-controller-emission: backlog
+  D-1-contract-seam: done
+  D-2-generator-skeleton-spike: in-progress
+  D-3-controller-emission: ready-for-dev
   D-4-generator-tests: backlog
   D-5-proof-sample-blazorui-queries: backlog
   D-6-proof-counter-commands: backlog

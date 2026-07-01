@@ -30,6 +30,7 @@
     <Project Path="src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj" />
     <Project Path="src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj" />
     <Project Path="src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj" />
+    <Project Path="src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj" />
     <Project Path="src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj" />
     <Project Path="src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj" />
     <Project Path="src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj" />
