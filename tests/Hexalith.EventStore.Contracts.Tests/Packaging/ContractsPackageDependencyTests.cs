@@ -24,7 +24,7 @@ public sealed class ContractsPackageDependencyTests
             .ShouldNotBeNull()
             .Value;
 
-        uniqueIdsVersion.ShouldBe("2.23.0");
+        uniqueIdsVersion.ShouldBe("2.24.0");
         packageVersionReference.ShouldBe("$(HexalithCommonsUniqueIdsVersion)");
     }
 
