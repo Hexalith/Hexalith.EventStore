@@ -62,6 +62,12 @@
             @foreach (TreemapDisplayRect rect in ComputeTreemapRects())
             {
                 bool isSelected = string.Equals(rect.AggregateType, SelectedAggregateType, StringComparison.OrdinalIgnoreCase);
+                @* Browser-matrix caveat (deferred follow-up): these cells are focusable via tabindex="0" on an
+                   SVG <g> group. Chromium/Edge/Firefox include tabindex'd SVG container elements in the tab order,
+                   but Safari/older WebKit historically do NOT — there the role="button" cells and their keyboard
+                   activation would be unreachable by Tab. Low risk for this Chromium/Edge-targeted internal Admin.UI;
+                   if WebKit must be supported, make the focusable element an SVG <a> or wrap an HTML control in a
+                   <foreignObject>. The bUnit test only asserts the attribute is present, not that the browser focuses it. *@
                 <g class="treemap-rect" role="button" tabindex="0" data-activate-button
                    aria-label="@($"{rect.Label}: {rect.Value:N0} events")"
                    aria-current="@(isSelected ? "true" : null)"
