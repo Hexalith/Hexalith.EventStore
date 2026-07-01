@@ -1,3 +1,10 @@
+# [3.22.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.21.0...v3.22.0) (2026-07-01)
+
+
+### Features
+
+* Add REST API generator with route handling and diagnostics ([b19b1dc](https://github.com/Hexalith/Hexalith.EventStore/commit/b19b1dc7674136ebe483b10ecb6be31b37bfe73b))
+
 # [3.21.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.20.0...v3.21.0) (2026-07-01)
 
 
