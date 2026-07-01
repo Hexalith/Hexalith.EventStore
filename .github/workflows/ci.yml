@@ -1,27 +1,26 @@
-name: Release
+name: CI
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 concurrency:
-  group: release
-  cancel-in-progress: false
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 jobs:
-  release-gate:
-    name: release-gate
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    env:
-      NuGetAudit: 'false'
-      UseHexalithProjectReferences: 'false'
-      RELEASE_TEST_PROJECTS: |
+  ci:
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main
+    with:
+      solution: Hexalith.EventStore.slnx -p:NuGetAudit=false -p:UseHexalithProjectReferences=false
+      dapr-version: '1.18.0'
+      build-timeout-minutes: 25
+      unit-test-projects: |
         tests/Hexalith.EventStore.Contracts.Tests
         tests/Hexalith.EventStore.Client.Tests
         tests/Hexalith.EventStore.Testing.Tests
@@ -37,6 +36,14 @@ jobs:
         tests/Hexalith.EventStore.QueryRouting.Tests
         tests/Hexalith.EventStore.Sample.Tests
         tests/Hexalith.EventStore.Testing.Integration.Tests
+
+  server-inprocess-tests:
+    name: server-inprocess-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NuGetAudit: 'false'
+      UseHexalithProjectReferences: 'false'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -63,19 +70,6 @@ jobs:
       - name: Build solution
         run: dotnet build Hexalith.EventStore.slnx --configuration Release --no-restore -warnaserror -p:UseHexalithProjectReferences=false -p:NuGetAudit=false
 
-      - name: Run release test projects
-        shell: bash
-        run: |
-          set -euo pipefail
-          while IFS= read -r proj; do
-            [ -z "$proj" ] && continue
-            name=$(basename "$proj")
-            dotnet test "$proj" --no-build --configuration Release \
-              --logger "trx;LogFileName=${name}.trx" \
-              --results-directory "TestResults/${name}" \
-              --collect:"XPlat Code Coverage"
-          done <<< "$RELEASE_TEST_PROJECTS"
-
       - name: Run Server.Tests without live sidecar tests
         run: >
           dotnet test tests/Hexalith.EventStore.Server.Tests/
@@ -85,11 +79,13 @@ jobs:
           --results-directory TestResults/server-inprocess
           --collect:"XPlat Code Coverage"
 
-  release:
-    needs: release-gate
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main
-    with:
-      solution: Hexalith.EventStore.slnx -p:NuGetAudit=false -p:UseHexalithProjectReferences=false
-      timeout-minutes: 30
-    secrets:
-      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+      - name: Upload server test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: server-inprocess-test-results
+          path: |
+            TestResults/**/*.trx
+            TestResults/**/coverage.cobertura.xml
+          if-no-files-found: error
+          retention-days: 7
