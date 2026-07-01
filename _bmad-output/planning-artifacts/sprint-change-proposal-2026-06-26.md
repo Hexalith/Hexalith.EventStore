@@ -99,3 +99,11 @@ Verification completed:
 - `aspire describe --format Json`
 
 Note: `aspire describe` confirmed the resource display name and `OTEL_SERVICE_NAME` are now `security`. The Keycloak health check still reported the same TLS readiness-probe failure pattern observed before the rename; that is outside the scope of this naming correction.
+
+## 6. Approval
+
+- [x] Approved / ratified — 2026-07-01
+- [ ] Approved with changes (noted below)
+- [ ] Rejected / revise
+
+Notes: Approved by Administrator. The direct Developer implementation and verification evidence in §5 are accepted.

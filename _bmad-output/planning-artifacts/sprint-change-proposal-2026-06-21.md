@@ -5,7 +5,7 @@
 - **Project:** Hexalith.EventStore
 - **Mode:** Incremental
 - **Change classification:** **Major** (new epic; new contract seam; new published analyzer package; cross-repo incl. submodule)
-- **Status:** Awaiting approval
+- **Status:** Approved for implementation
 - **Builds on:** `sprint-change-proposal-2026-06-02.md` (Domain-Centric Modules / Zero-Boilerplate Platform — Epics A–C, complete)
 
 ---

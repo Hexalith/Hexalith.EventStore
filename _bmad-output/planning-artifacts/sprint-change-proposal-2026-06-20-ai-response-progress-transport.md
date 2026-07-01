@@ -5,6 +5,7 @@
 - **Repo / submodule:** `Hexalith.EventStore`
 - **Driving change:** ChatBot Epic 10, Story 10.6b — "Streaming AI response + Stop/Cancel" AC1 progress transport
 - **Scope classification:** **Moderate** (additive framework contract change; back-compatible)
+- **Status:** Approved for implementation
 - **Release order:** **1 of 3** — EventStore must publish first. FrontComposer (proposal 2) then ChatBot (proposal 3) depend on this package version.
 - **Companion proposals:**
   - `references/Hexalith.FrontComposer/_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-20-ai-response-progress-transport.md`
@@ -154,3 +155,11 @@ NEW:  record ProjectionChangedNotification(string ProjectionType, string TenantI
   3. New version published and pinned so FrontComposer (proposal 2) can consume it.
   4. No metadata **value** appears in logs above `Debug`; map bounds enforced.
 - **Do NOT:** carry response text/chunks/prompts/content in `Metadata`; break the signal-only method or group naming; change `[Authorize]`/tenant-validation ordering.
+
+## Section 6 — Approval
+
+- [x] Approved for implementation — 2026-07-01
+- [ ] Approved with changes (noted below)
+- [ ] Rejected / revise
+
+Notes: Approved by Administrator. Route remains EventStore DEV, with Architect sign-off on the additive Client surface and version bump before dependent FrontComposer and ChatBot proposals consume the package.

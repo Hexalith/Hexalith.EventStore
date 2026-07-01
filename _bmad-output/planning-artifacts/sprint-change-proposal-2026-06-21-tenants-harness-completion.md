@@ -5,7 +5,7 @@
 - **Project:** Hexalith.EventStore
 - **Mode:** Batch
 - **Change classification:** **Minor** (verification + one-line-per-method consuming-side build fix; the platform feature itself was already implemented and committed)
-- **Status:** Implemented / verified
+- **Status:** Approved / implemented / verified
 - **Trigger:** "Implement any needed EventStore features required by the Hexalith.Tenants change proposals. Read all proposals in `references/Hexalith.Tenants/_bmad-output/planning-artifacts`."
 - **Source proposal:** `references/Hexalith.Tenants/_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-20-eventstore-test-harness-extraction.md` (APPROVED 2026-06-20)
 
@@ -130,4 +130,11 @@ platform change is **deferred** and recorded here as a handoff:
   Commits, e.g. `fix(test): null-guard domain-service fixture overrides for CA1062`) and bump the EventStore
   submodule pointer to a commit that includes `1b321f1a`. The pre-existing AppHost layout issue (§4) is a
   separate item.
-```
+
+## 7. Approval
+
+- [x] Approved / ratified — 2026-07-01
+- [ ] Approved with changes (noted below)
+- [ ] Rejected / revise
+
+Notes: Approved by Administrator. The EventStore harness reconciliation remains closed for platform work; the deferred D6 freshness handoff remains recorded in §5.

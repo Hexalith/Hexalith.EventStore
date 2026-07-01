@@ -16,7 +16,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 ## Technology Stack & Versions
 
-- **.NET 10** — SDK pinned `10.0.300` (`rollForward: latestPatch`) in `global.json`; all projects target `net10.0`, `Nullable`+`ImplicitUsings` enabled, **`TreatWarningsAsErrors=true`**
+- **.NET 10** — SDK pinned `10.0.301` (`rollForward: latestPatch`) in `global.json`; all projects target `net10.0`, `Nullable`+`ImplicitUsings` enabled, **`TreatWarningsAsErrors=true`**
 - **DAPR SDK 1.17.9** — `Dapr.Client`, `Dapr.AspNetCore`, `Dapr.Actors(.AspNetCore)` (state store, pub/sub, actors)
 - **.NET Aspire 13.4.0** — Hosting, Redis, Docker, Azure AppContainers, K8s, Testing; Keycloak/K8s are **preview** builds; DAPR orchestration via `CommunityToolkit.Aspire.Hosting.Dapr` (preview)
 - **MediatR 14.1.0** (CQRS), **FluentValidation 12.1.1**, JWT Bearer auth, OpenAPI/Swashbuckle

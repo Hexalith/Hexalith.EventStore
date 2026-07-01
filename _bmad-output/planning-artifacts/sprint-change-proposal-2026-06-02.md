@@ -5,7 +5,7 @@
 - **Project:** Hexalith.EventStore
 - **Mode:** Batch
 - **Change classification:** **Major** (architectural-direction correction; new epics required)
-- **Status:** Awaiting approval
+- **Status:** Approved for implementation
 
 ---
 

@@ -5,7 +5,7 @@
 - **Project:** Hexalith.EventStore
 - **Mode:** Incremental
 - **Change classification:** **Minor** (CI/CD reliability remediation; direct Developer implementation, no epic/story restructuring)
-- **Status:** Implemented locally — awaiting final approval to commit/push
+- **Status:** Approved for commit/push
 - **Builds on:** `sprint-change-proposal-2026-06-21.md` (Epic D — REST Controller Source Generator, in progress)
 
 ---
@@ -191,3 +191,11 @@ harden the integration suite so it is reliable on its own lane.
   - **Aspire-in-CI for Tier-3:** stand up a dedicated workflow that can host the full Aspire
     topology (`DistributedApplicationTestingBuilder`) so `IntegrationTests` can run in CI without
     making the integration lane slow/flaky.
+
+## 6. Approval
+
+- [x] Approved for commit/push — 2026-07-01
+- [ ] Approved with changes (noted below)
+- [ ] Rejected / revise
+
+Notes: Approved by Administrator. Remaining route is direct Developer implementation: commit on a `fix/` branch and push for the Release and Integration Tests workflows to validate.
