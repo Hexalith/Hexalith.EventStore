@@ -15,8 +15,6 @@ permissions:
 
 jobs:
   ci:
-    # Keep checkout local: the shared workflow uses submodules:true, which trips
-    # actions/checkout recursive cleanup on nested submodules inside root submodules.
     name: ci / build-and-test
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -37,28 +35,34 @@ jobs:
         tests/Hexalith.EventStore.AppHost.Tests
         tests/Hexalith.EventStore.DomainService.Tests
         tests/Hexalith.EventStore.QueryRouting.Tests
+        tests/Hexalith.EventStore.RestApi.Generators.Tests
         tests/Hexalith.EventStore.Sample.Tests
         tests/Hexalith.EventStore.Testing.Integration.Tests
+      NON_BLOCKING_TEST_PROJECTS: |
+        tests/Hexalith.EventStore.Admin.UI.E2E
+        tests/Hexalith.EventStore.DeferredWorkGovernance.Tests
+        tests/Hexalith.EventStore.IntegrationTests
+        tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests
+        tests/Hexalith.EventStore.Server.Tests
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          fetch-depth: 0
           submodules: false
 
-      - name: Initialize build submodules
-        uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
+      - name: Initialize Hexalith.Builds submodule
+        run: git -c submodule.recurse=false submodule update --init references/Hexalith.Builds
 
       - name: Initialize .NET
-        uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
+        uses: ./references/Hexalith.Builds/Github/initialize-dotnet
         with:
           global-json-file: global.json
 
       - name: Cache NuGet packages
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props') }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('global.json', 'nuget.config', 'Directory.Packages.props', 'references/Hexalith.Builds/Props/Directory.Packages.props', '**/*.csproj') }}
           restore-keys: |
             nuget-${{ runner.os }}-
 
@@ -67,6 +71,29 @@ jobs:
 
       - name: Build
         run: dotnet build Hexalith.EventStore.slnx --no-restore --configuration Release -warnaserror -p:UseHexalithProjectReferences=false -p:NuGetAudit=false
+
+      - name: Validate test project manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t discovered < <(
+            find tests -mindepth 2 -maxdepth 2 -name '*.csproj' -printf '%h\n' |
+              sed 's#^\./##' |
+              grep -v '^tests/Hexalith.EventStore.TestSubscriber$' |
+              sort -u
+          )
+          mapfile -t expected < <(
+            {
+              printf '%s\n' "$UNIT_TEST_PROJECTS"
+              printf '%s\n' "$NON_BLOCKING_TEST_PROJECTS"
+            } |
+              sed '/^[[:space:]]*$/d' |
+              sort -u
+          )
+          if ! diff -u <(printf '%s\n' "${expected[@]}") <(printf '%s\n' "${discovered[@]}"); then
+            echo "CI test manifest is missing or over-declaring test projects." >&2
+            exit 1
+          fi
 
       - name: Unit tests (Tier 1)
         shell: bash
@@ -83,7 +110,7 @@ jobs:
 
       - name: Upload test and coverage evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: blocking-test-results
           path: |
@@ -101,23 +128,23 @@ jobs:
       UseHexalithProjectReferences: 'false'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           submodules: false
 
-      - name: Initialize build submodules
-        uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
+      - name: Initialize Hexalith.Builds submodule
+        run: git -c submodule.recurse=false submodule update --init references/Hexalith.Builds
 
       - name: Initialize .NET
-        uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
+        uses: ./references/Hexalith.Builds/Github/initialize-dotnet
         with:
           global-json-file: global.json
 
       - name: Cache NuGet packages
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props') }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('global.json', 'nuget.config', 'Directory.Packages.props', 'references/Hexalith.Builds/Props/Directory.Packages.props', '**/*.csproj') }}
           restore-keys: |
             nuget-${{ runner.os }}-
 
@@ -138,7 +165,7 @@ jobs:
 
       - name: Upload server test results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: server-inprocess-test-results
           path: |

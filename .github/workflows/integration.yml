@@ -33,23 +33,23 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           submodules: false
 
-      - name: Initialize build submodules
-        uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
+      - name: Initialize Hexalith.Builds submodule
+        run: git -c submodule.recurse=false submodule update --init references/Hexalith.Builds
 
       - name: Initialize .NET
-        uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
+        uses: ./references/Hexalith.Builds/Github/initialize-dotnet
         with:
           global-json-file: global.json
 
       - name: Cache NuGet packages
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props') }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('global.json', 'nuget.config', 'Directory.Packages.props', 'references/Hexalith.Builds/Props/Directory.Packages.props', '**/*.csproj') }}
           restore-keys: |
             nuget-${{ runner.os }}-
 
@@ -57,13 +57,24 @@ jobs:
         run: dotnet restore Hexalith.EventStore.slnx -p:Configuration=Release -p:UseHexalithProjectReferences=false -p:NuGetAudit=false
 
       - name: Initialize Dapr
-        uses: Hexalith/Hexalith.Builds/Github/dapr-init@main
+        uses: ./references/Hexalith.Builds/Github/dapr-init
         with:
           version: ${{ env.DAPR_VERSION }}
 
       - name: Run Live-Sidecar Integration Tests (Tier 2)
         run: |
-          dotnet test tests/Hexalith.EventStore.Server.Tests/ --configuration Release -p:UseHexalithProjectReferences=false -p:NuGetAudit=false --filter "Category=LiveSidecar" --logger "trx;LogFileName=live-sidecar-results.trx"
+          dotnet test tests/Hexalith.EventStore.Server.Tests/ --configuration Release --no-restore -p:UseHexalithProjectReferences=false -p:NuGetAudit=false --filter "Category=LiveSidecar" --logger "trx;LogFileName=live-sidecar-results.trx" --results-directory TestResults/live-sidecar --collect:"XPlat Code Coverage"
+
+      - name: Upload live-sidecar test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: live-sidecar-test-results
+          path: |
+            TestResults/**/*.trx
+            TestResults/**/coverage.cobertura.xml
+          if-no-files-found: error
+          retention-days: 7
 
       # NOTE: the Tier-3 `IntegrationTests` project spins up a full Aspire DistributedApplication
       # (Projects.Hexalith_EventStore_AppHost) which `dapr init` alone does not satisfy. Running it

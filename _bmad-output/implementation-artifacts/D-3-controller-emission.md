@@ -178,6 +178,17 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06
 - [x] [Review][Patch] Duplicate generated HTTP routes are not diagnosed before runtime action ambiguity [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:57]
 - [x] [Review][Patch] Unsupported query property types are emitted as query-string bindings instead of diagnostics [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:341]
 - [x] [Review][Patch] D3 diff still contains out-of-scope submodule pointer changes; tracked D5 story/status drift was restored [_bmad-output/implementation-artifacts/D-5-proof-sample-blazorui-queries.md:1]
+- [ ] [Review][Decision] Review scope includes non-D3 work — The confirmed full diff from `16f6a7cd9f522538280fa883712c9af7958f2fdb..HEAD` includes D4 generator tests, CPM/package-management changes, workflow/release/changelog rewrites, D5 story/status drift, and root submodule gitlink moves. Decide whether D3 should be blocked on that scope bleed, or whether this run is intentionally a multi-story full-diff review.
+- [ ] [Review][Decision] UI-host referenced-contract discovery remains unresolved — D5 AC2 requires generated controllers in a UI host from query contracts in referenced domain assemblies, but D3 still discovers message contracts through syntax in the current compilation. Decide whether D3/D4 must add referenced-assembly discovery now, or whether D5/sprint state should be corrected to establish a different supported contract-source model.
+- [ ] [Review][Patch] Generated actions can still emit duplicate parameter names [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:11]
+- [ ] [Review][Patch] Query payload dictionaries preserve C# property casing instead of JSON contract names [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:474]
+- [ ] [Review][Patch] REST API generator tests are omitted from CI and release test loops [.github/workflows/ci.yml:26]
+- [ ] [Review][Patch] Controller-level Consumes applies JSON content constraints to bodyless query actions [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:146]
+- [ ] [Review][Patch] Duplicate-route diagnostics miss absolute and relative route equivalents [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:604]
+- [ ] [Review][Patch] Unsupported generic, non-public, or abstract contract shapes are emitted instead of diagnosed [src/Hexalith.EventStore.RestApi.Generators/RestApiMessageParser.cs:25]
+- [ ] [Review][Patch] Inherited public contract properties are omitted from generated route and query binding [src/Hexalith.EventStore.RestApi.Generators/RestApiMessageParser.cs:101]
+- [ ] [Review][Patch] Extra command route parameters can be ignored instead of diagnosed [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:439]
+- [ ] [Review][Patch] Undefined RestVerb values silently fall back to POST [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:692]
 
 ## Dev Notes
 

@@ -1,167 +1,93 @@
 # CI/CD Pipeline
 
-This page describes the GitHub Actions workflows that gate every change to `main` and the supporting build/release infrastructure.
+This page documents the EventStore-specific GitHub Actions wiring. Shared
+Hexalith CI/CD standards and reusable workflow guidance live in
+[`references/Hexalith.Builds/.github/workflows/ci-cd-standards.md`](../references/Hexalith.Builds/.github/workflows/ci-cd-standards.md).
 
 ## Workflows
 
 | Workflow | File | Triggers | Purpose |
 |----------|------|----------|---------|
-| **CI** | `.github/workflows/ci.yml` | `push` & `pull_request` to `main` | Conventional Commit lint, gitleaks secret scan, build, Tier 1 + Tier 2 tests, coverage, container-image build validation, CLI tool smoke test, plus Tier 3 Aspire E2E (`continue-on-error: true`, non-blocking) |
-| **Release** | `.github/workflows/release.yml` | `push` to `main` | Re-runs all tests, then `semantic-release` publishes 6 NuGet packages and creates a GitHub Release |
-| **Deploy Staging** | `.github/workflows/deploy-staging.yml` | `workflow_run: ["CI"]` success on `main` | Builds and pushes 6 container images to `registry.hexalith.com`, then triggers `kubectl rollout restart` over SSH |
-| **Documentation Validation** | `.github/workflows/docs-validation.yml` | `push` & `pull_request` to `main` | `markdownlint-cli2` + `lychee` link check + cross-platform sample build matrix (ubuntu, windows, macos) |
-| **API Reference Docs** | `.github/workflows/docs-api-reference.yml` | `push` of tags `v*` | Generates Markdown reference docs from XML doc comments via `DefaultDocumentation`, opens a PR |
-| **Perf Lab** | `.github/workflows/perf-lab.yml` | `workflow_dispatch` (manual) | Boots `Hexalith.EventStore.AppHost`, runs NBomber load scenarios, uploads reports |
+| **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` | Restore/build `Hexalith.EventStore.slnx`, run deterministic fast tests, run `Server.Tests` excluding `LiveSidecar`, upload TRX/coverage evidence. |
+| **Integration Tests** | `.github/workflows/integration.yml` | `push`, `pull_request` to `main`, manual dispatch | Run the `Category=LiveSidecar` DAPR-backed server integration tests in a dedicated lane. |
+| **Release** | `.github/workflows/release.yml` | successful `CI` workflow completion for a `push` to `main` | Run `semantic-release` for versioning, changelog, NuGet publish, and GitHub Release creation. |
 
-## Tiered Test Strategy
+## Shared CI/CD Boundary
 
-The test suite is divided into three tiers with different external dependencies and execution costs:
+Reusable CI/CD logic belongs in `Hexalith.Builds`:
 
-| Tier | Where | Dependencies | Runs in CI |
-|------|-------|--------------|-----------|
-| **Tier 1 — Unit** | `tests/Hexalith.EventStore.{Contracts,Client,Testing,Sample,SignalR,Admin.*}.Tests/` | None | Every PR + push (job: `build-and-test`) |
-| **Tier 2 — Integration** | `tests/Hexalith.EventStore.Server.Tests/` | DAPR sidecar + Docker | Every PR + push (same job, after `dapr init`) |
-| **Tier 3 — Aspire E2E** | `tests/Hexalith.EventStore.IntegrationTests/` | Full Aspire AppHost + DAPR + Docker | Every PR + push (separate job: `aspire-tests`, `continue-on-error: true`) |
+- Composite actions such as `Github/initialize-dotnet` and `Github/dapr-init`.
+- Reusable workflow templates and shared standards.
+- Action pinning policy, submodule initialization policy, artifact conventions, and release-gate guidance.
 
-Tier 3 is wired with `continue-on-error: true` so an Aspire failure annotates the run but does not block PR merges. This is intentional — Aspire/DAPR boot races are still being stabilized.
+EventStore keeps only module-specific wiring here:
 
-## Job Topology — `ci.yml`
+- `Hexalith.EventStore.slnx`.
+- EventStore test project manifests and tier exclusions.
+- EventStore release/package behavior in `.releaserc.json`.
+- EventStore-specific integration constraints, such as the deferred full Aspire topology lane.
 
-```text
-┌──────────────┐      ┌─────────────┐
-│  commitlint  │      │ secret-scan │   (parallel; intended PR gates — see Branch Protection for observed enforcement)
-└──────────────┘      └─────────────┘
-         │
-         └────────────────────────────┐
-                                      ▼
-                          ┌────────────────────────┐
-                          │     build-and-test     │
-                          │  • restore + build     │
-                          │  • Tier 1 (×11 suites) │
-                          │  • container build val │
-                          │  • CLI tool smoke      │
-                          │  • dapr init + Tier 2  │
-                          │  • coverage summary    │
-                          └────────────────────────┘
-                                      │
-                                      ▼
-                          ┌────────────────────────┐
-                          │     aspire-tests       │
-                          │  • Tier 3 (Aspire E2E) │
-                          │  (continue-on-error)   │
-                          └────────────────────────┘
-```
+## Test Tiers
 
-`commitlint` and `secret-scan` run independently; `build-and-test` runs unconditionally; `aspire-tests` `needs: build-and-test`.
+| Tier | Projects | Workflow behavior |
+|------|----------|-------------------|
+| Fast deterministic tests | Contracts, Client, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, and RestApi.Generators tests | Blocking in `ci / build-and-test`. |
+| Server in-process tests | `tests/Hexalith.EventStore.Server.Tests` with `Category!=LiveSidecar` | Blocking in `server-inprocess-tests`. |
+| Live-sidecar tests | `tests/Hexalith.EventStore.Server.Tests` with `Category=LiveSidecar` | Dedicated `Integration Tests` workflow. Not part of release. |
+| Browser E2E | `tests/Hexalith.EventStore.Admin.UI.E2E` | Not currently automated in the three-workflow baseline; the CI manifest marks it as known non-blocking so it cannot be forgotten silently. |
+| ATDD validator scaffolds | `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests`, `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests` | Known non-blocking until their expected entrypoint files and generated artifacts exist. |
+| Full Aspire E2E | `tests/Hexalith.EventStore.IntegrationTests` | Deferred until a reliable Aspire-in-CI topology exists. |
 
-## Configuration
+`ci.yml` contains a manifest check that compares discovered test projects under
+`tests/` against the blocking and known non-blocking lists. Adding a new test
+project requires assigning it to a tier.
 
-### Centralized environment
+## Release Flow
 
-| Variable | Value | Defined in | Used by |
-|----------|-------|------------|---------|
-| `DAPR_VERSION` | `1.16.0` | top-level `env:` of `ci.yml`, `release.yml`, `perf-lab.yml` | `dapr/setup-dapr` invocations |
+The release workflow no longer repeats the CI gate. It starts only after the
+`CI` workflow completes successfully for a push to `main`, then checks out the
+exact CI head SHA, attaches it to a local `main` branch, and runs
+`npx semantic-release`.
 
-To upgrade DAPR, change the value in three workflow files.
+Semantic-release still owns versioned artifact production through
+[`.releaserc.json`](../.releaserc.json): package packing and NuGet publishing
+run only when the commit history warrants a release.
 
-### Caching
+## Submodules
 
-NuGet packages are cached using `actions/cache` with key `nuget-${{ hashFiles('Directory.Packages.props') }}` and restore-keys `nuget-`. The cache is reused across all workflows that restore.
+The workflows initialize only `references/Hexalith.Builds`, because Release
+builds use published Hexalith package references via
+`UseHexalithProjectReferences=false`. They do not use recursive submodule
+checkout or recursive submodule update.
 
-### Retry
+## Caching And Artifacts
 
-`dapr init` is wrapped in `nick-fields/retry@v4` (5-minute timeout, 3 attempts, 15-second wait between attempts) to absorb transient Docker pull failures.
+NuGet caching hashes dependency-defining inputs:
 
-### Artifact retention
+- `global.json`
+- `nuget.config`
+- `Directory.Packages.props`
+- `references/Hexalith.Builds/Props/Directory.Packages.props`
+- project files
 
-| Artifact | Retention | Uploaded on |
-|----------|-----------|-------------|
-| `test-results` (TRX) | 30 days | failure |
-| `coverage-reports` (Cobertura XML) | 30 days | always |
-| `aspire-test-results` (TRX) | 30 days | failure |
-| `nbomber-reports` (HTML) | 30 days | always |
-| `apphost-log` | 14 days | always |
-
-### Action pinning
-
-All third-party actions are pinned to a full commit SHA with the version recorded in a trailing comment, e.g.:
-
-```yaml
-- uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-```
-
-To upgrade an action, look up the new SHA from the upstream release and update both the SHA and the comment.
-
-## Branch Protection
-
-Observed repository settings on 2026-05-04:
-
-- Classic branch protection for `main` was not configured.
-- Repository ruleset `Protect` was active and blocked branch deletion and non-fast-forward updates.
-- No required status checks, pull request review requirement, signed commit requirement, or linear-history
-  requirement was observed in the available branch protection/ruleset evidence.
-
-Intended required status checks from repository policy are:
-
-- `commitlint` (PRs only)
-- `secret-scan`
-- `build-and-test`
-
-`aspire-tests` is **not** intended to be required because it uses `continue-on-error`. `Documentation Validation`
-is recommended but was not observed as an enforced branch rule in the 2026-05-04 governance evidence.
-
-## Secrets
-
-See [`ci-secrets-checklist.md`](ci-secrets-checklist.md) for the full inventory and onboarding instructions.
+Blocking test jobs upload TRX and Cobertura coverage artifacts with
+`if: always()` and short retention.
 
 ## Local CI Mirror
 
-Run the Tier 1 + Tier 2 sequence locally before pushing:
+Use the solution only for restore/build:
 
 ```bash
-./scripts/ci-local.sh
+dotnet restore Hexalith.EventStore.slnx
+dotnet build Hexalith.EventStore.slnx --configuration Release
 ```
 
-The script mirrors the CI test order and surfaces failures with the same TRX layout.
-
-## Troubleshooting
-
-### "leaks found" (gitleaks)
-
-The repository ships a `.gitleaks.toml` at the root with allowlists for:
-
-- `_bmad/.*` (BMAD skill knowledge fragments — non-deployable docs)
-- `tests/Hexalith.EventStore.IntegrationTests/.*JwtAuthenticationIntegrationTests\.cs` (intentional invalid/expired token test fixtures)
-
-If you hit a false positive in *new* code:
-
-1. Rename the variable from `*Token`/`*Key`/`*Secret` to something unambiguous (e.g. `dummyHeaderValue`).
-2. If renaming isn't possible, extend `.gitleaks.toml` with a narrow path or commit-level allowlist and call out the rationale in the commit message.
-
-### Tier 2 fails locally but passes in CI (or vice versa)
-
-`dapr init` initial state matters. Reset it:
-
-```bash
-dapr uninstall --all && dapr init
-docker ps   # verify dapr_placement and dapr_redis are healthy
-```
-
-### Tier 3 fails
-
-Aspire AppHost startup is sensitive to port collisions. Confirm nothing else is bound to the EventStore default port (`5170`). If running locally, `lsof -i :5170` or `netstat -ano | findstr :5170`.
-
-### `actions/upload-artifact` fails with "duplicate name"
-
-Since `upload-artifact@v4`, artifact names must be unique within a job run. If you see this, two upload steps are using the same `name:`. Pick distinct names per shard or per upload step.
-
-### Container image build fails in CI but works locally
-
-The workflow uses the .NET SDK container support (`-t:PublishContainer`) — no Dockerfiles. Verify your `Directory.Build.targets` opts the project in via `<EnableContainer>true</EnableContainer>` and `<ContainerRepository>...</ContainerRepository>`.
+Run test projects individually, matching the workflow lists. Do not use
+solution-level `dotnet test`.
 
 ## Related
 
-- [`scripts/validate-docs.sh`](../scripts/validate-docs.sh) — local docs lint
-- [`commitlint.config.mjs`](../commitlint.config.mjs) — Conventional Commits configuration
-- [`.releaserc.json`](../.releaserc.json) — semantic-release configuration
-- [`.gitleaks.toml`](../.gitleaks.toml) — secret-scan allowlist
+- [Hexalith.Builds CI/CD standards](../references/Hexalith.Builds/.github/workflows/ci-cd-standards.md)
+- [`ci-secrets-checklist.md`](ci-secrets-checklist.md)
+- [`.releaserc.json`](../.releaserc.json)
+- [`commitlint.config.mjs`](../commitlint.config.mjs)
