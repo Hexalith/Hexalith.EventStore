@@ -1,3 +1,11 @@
+# [3.28.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.27.0...v3.28.0) (2026-07-02)
+
+
+### Features
+
+* Introduce external REST API host and contracts library ([6db716e](https://github.com/Hexalith/Hexalith.EventStore/commit/6db716e4f555a2a7c344757bf599f4e3e61d1dd8))
+* Update D5 proof status to review, enhance launch settings, and add tests for Sample.Api ([5db0bfd](https://github.com/Hexalith/Hexalith.EventStore/commit/5db0bfd9c4c846d059710133ea017a13e82a9c07))
+
 # [3.27.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.26.0...v3.27.0) (2026-07-02)
 
 
