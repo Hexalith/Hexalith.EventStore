@@ -217,7 +217,7 @@ aspire publish --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.App
 ```yaml
 services:
     eventstore-dapr:
-        image: "daprio/daprd:1.16.1"
+        image: "daprio/daprd:1.18.0"
         network_mode: "service:eventstore"
         volumes:
             - ./dapr-components:/components
@@ -235,7 +235,7 @@ services:
                 "/config/accesscontrol.yaml",
             ]
     eventstore-admin-dapr:
-        image: "daprio/daprd:1.16.1"
+        image: "daprio/daprd:1.18.0"
         network_mode: "service:eventstore-admin"
         volumes:
             - ./dapr-components:/components
@@ -253,7 +253,7 @@ services:
                 "/config/accesscontrol.eventstore-admin.yaml",
             ]
     sample-dapr:
-        image: "daprio/daprd:1.16.1"
+        image: "daprio/daprd:1.18.0"
         network_mode: "service:sample"
         volumes:
             - ./dapr-components:/components
@@ -272,7 +272,7 @@ services:
             ]
 ```
 
-Pin the DAPR sidecar image to a specific version (e.g., `1.16.1`) — avoid mutable tags like `latest` (see [CI/CD Image Tagging](#cicd-image-tagging)).
+Pin the DAPR sidecar image to a specific version (e.g., `1.18.0`) — avoid mutable tags like `latest` (see [CI/CD Image Tagging](#cicd-image-tagging)).
 
 ### Kubernetes Publisher
 

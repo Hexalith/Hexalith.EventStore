@@ -22,9 +22,6 @@ permissions:
 
 env:
   DAPR_VERSION: '1.18.0'
-  # Bypass NU1902 transitive CVE warnings on OpenTelemetry packages — mirrors the local
-  # `-p:NuGetAudit=false` flag documented in CLAUDE.md § Build & Test Commands.
-  NuGetAudit: 'false'
   UseHexalithProjectReferences: 'false'
 
 jobs:
@@ -54,8 +51,7 @@ jobs:
             nuget-${{ runner.os }}-
 
       - name: Restore
-        run: dotnet restore Hexalith.EventStore.slnx -p:Configuration=Release -p:UseHexalithProjectReferences=false -p:NuGetAudit=false
-
+        run: dotnet restore Hexalith.EventStore.slnx -p:Configuration=Release -p:UseHexalithProjectReferences=false
       - name: Initialize Dapr
         uses: ./references/Hexalith.Builds/Github/dapr-init
         with:
@@ -63,7 +59,7 @@ jobs:
 
       - name: Run Live-Sidecar Integration Tests (Tier 2)
         run: |
-          dotnet test tests/Hexalith.EventStore.Server.Tests/ --configuration Release --no-restore -p:UseHexalithProjectReferences=false -p:NuGetAudit=false --filter "Category=LiveSidecar" --logger "trx;LogFileName=live-sidecar-results.trx" --results-directory TestResults/live-sidecar --collect:"XPlat Code Coverage"
+          dotnet test tests/Hexalith.EventStore.Server.Tests/ --configuration Release --no-restore -p:UseHexalithProjectReferences=false --filter "Category=LiveSidecar" --logger "trx;LogFileName=live-sidecar-results.trx" --results-directory TestResults/live-sidecar --collect:"XPlat Code Coverage"
 
       - name: Upload live-sidecar test results
         if: always()

@@ -49,6 +49,20 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
+        <!-- NuGet vulnerability auditing. Keep the audit ENABLED for direct and transitive
+             packages so newly published CVEs surface in build logs (and are picked up by
+             Dependabot for remediation). This replaces the previous blanket
+             `-p:NuGetAudit=false`, which silenced the scanner across the whole pipeline.
+             Advisory codes (NU1901-NU1904) are reported as warnings but excluded from
+             TreatWarningsAsErrors so a transitive advisory we cannot immediately upgrade
+             (e.g. the OpenTelemetry NU1902 chain) does not block CI. Escalate an individual
+             advisory to a hard error by removing it here, or acknowledge/waive a specific one
+             with <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-..." />. -->
+        <NuGetAudit>true</NuGetAudit>
+        <NuGetAuditMode>all</NuGetAuditMode>
+        <NuGetAuditLevel>low</NuGetAuditLevel>
+        <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+
         <!-- NuGet Package Defaults (overridden by host/test projects) -->
         <IsPackable>true</IsPackable>
         <IsPublishable>false</IsPublishable>

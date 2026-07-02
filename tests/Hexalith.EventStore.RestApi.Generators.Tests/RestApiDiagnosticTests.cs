@@ -97,8 +97,13 @@ public sealed class RestApiDiagnosticTests
         GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(EquivalentRouteShapeSource);
 
         Diagnostic diagnostic = ShouldContainError(result, "HESREST003");
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(result, ".Controller.g.cs");
 
         diagnostic.GetMessage().ShouldContain("api/counter/{}");
+        source.ShouldContain("CounterByIdQueryAsync");
+        source.ShouldContain("global::Smoke.CounterById");
+        source.ShouldNotContain("CounterByNameQueryAsync");
+        source.ShouldNotContain("global::Smoke.CounterByName");
     }
 
     [Fact]
@@ -138,10 +143,15 @@ public sealed class RestApiDiagnosticTests
     private static Diagnostic ShouldContainError(GeneratorDriverRunResult result, string id)
     {
         ImmutableArray<Diagnostic> diagnostics = RestApiGeneratorTestHarness.GetDiagnostics(result);
-        diagnostics.Select(static diagnostic => diagnostic.Id).ShouldContain(id);
-        Diagnostic diagnostic = diagnostics.Single(diagnostic => string.Equals(diagnostic.Id, id, StringComparison.Ordinal));
-        diagnostic.Severity.ShouldBe(DiagnosticSeverity.Error);
-        return diagnostic;
+        Diagnostic[] errors = diagnostics
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ToArray();
+
+        errors
+            .Select(static diagnostic => diagnostic.Id)
+            .ShouldBe(new[] { id }, string.Join(Environment.NewLine, diagnostics.Select(static diagnostic => diagnostic.ToString())));
+
+        return errors.Single();
     }
 
     private const string RouteTenantWithoutTenantParameterSource = """

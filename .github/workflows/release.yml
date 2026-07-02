@@ -24,7 +24,6 @@ jobs:
       issues: write
       pull-requests: write
     env:
-      NuGetAudit: 'false'
       UseHexalithProjectReferences: 'false'
     steps:
       - name: Checkout repository

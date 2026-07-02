@@ -34,16 +34,20 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("UniqueIdHelper.GenerateSortableUniqueStringId()");
         source.ShouldContain("[HttpPost(\"{counterId}/increment\")]");
         source.ShouldContain("[HttpPost(\"~/api/counter/{counterId}/reset\")]");
+        source.ShouldContain("[HttpGet(\"{counterId}\")]");
         source.ShouldContain("[HttpGet(\"{counterId}/history\")]");
         source.ShouldContain("[HttpGet(\"\")]");
+        source.ShouldContain("GetCounterStatusQueryAsync");
         source.ShouldContain("[FromRoute(Name = \"counterId\")] string counterId");
         source.ShouldContain("[FromBody] global::Smoke.IncrementCounter? body");
         source.ShouldContain("CancellationToken cancellationToken");
+        source.ShouldContain("CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"Request body is required.\")");
         source.ShouldContain("Request body is required.");
+        source.ShouldContain("CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"Route value 'counterId' does not match the command body.\")");
         source.ShouldContain("Route value 'counterId' does not match the command body.");
         source.ShouldContain("new SubmitCommandRequest(");
         source.ShouldContain("Response.Headers[\"Retry-After\"] = \"1\";");
-        source.ShouldContain("Response.Headers[\"Location\"] = \"/api/v1/commands/status/\"");
+        source.ShouldContain("Response.Headers[\"Location\"] = \"/api/v1/commands/status/\" + Uri.EscapeDataString(__hexalithResponse.CorrelationId);");
         source.ShouldContain("[FromQuery(Name = \"Page\")]");
         source.ShouldContain(" page,");
         source.ShouldContain("[\"page\"] = page,");
@@ -69,7 +73,15 @@ public sealed class RestApiControllerGenerationTests
     [Fact]
     public void Run_CommandWithoutRestRoute_DefaultsToPostAtPrefixRoot()
     {
-        GeneratorDriverRunResult runResult = RestApiGeneratorTestHarness.Run(ConventionCommandSource);
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(ConventionCommandSource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            compilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
 
         string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
 
@@ -120,7 +132,15 @@ public sealed class RestApiControllerGenerationTests
     [Fact]
     public void Run_ClaimsTenantSource_UsesClaimsWithoutParsingBearerTokens()
     {
-        GeneratorDriverRunResult runResult = RestApiGeneratorTestHarness.Run(ClaimsTenantSource);
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(ClaimsTenantSource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            compilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
 
         string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
 

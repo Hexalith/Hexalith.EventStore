@@ -148,6 +148,16 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06
   - [x] Build `Hexalith.EventStore.slnx` in Release package mode.
   - [x] Confirm `git status --short` contains only intended source/story/sprint-status changes and no generated outputs.
 
+### Review Findings
+
+- [x] [Review][Patch] Compile-check convention command and claims tenant controller branches [tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs:70]
+- [x] [Review][Patch] Assert duplicate-route diagnostics suppress the invalid duplicate action [tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiDiagnosticTests.cs:95]
+- [x] [Review][Patch] Reject unexpected diagnostics in positive manifest and no-opt-in tests [tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiManifestGenerationTests.cs:8]
+- [x] [Review][Patch] Reject unexpected extra errors in diagnostic tests [tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiDiagnosticTests.cs:138]
+- [x] [Review][Patch] Assert the required `{counterId}` query route/action from the happy-path fixture [tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs:246]
+- [x] [Review][Patch] Prove command 400 responses and command-status Location include the required status/correlation behavior [tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs:42]
+- [x] [Review][Patch] Extend deterministic-output guard to cover absolute paths and actual random ID values [tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiManifestGenerationTests.cs:93]
+
 ## Dev Notes
 
 ### Top Guardrails

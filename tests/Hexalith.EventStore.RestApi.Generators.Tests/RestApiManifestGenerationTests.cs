@@ -1,14 +1,18 @@
+using System.Collections.Immutable;
+using System.Text.RegularExpressions;
+
 using Microsoft.CodeAnalysis;
 
 namespace Hexalith.EventStore.RestApi.Generators.Tests;
 
-public sealed class RestApiManifestGenerationTests
+public sealed partial class RestApiManifestGenerationTests
 {
     [Fact]
     public void Run_NoRestApiAttribute_EmitsNoSources()
     {
         GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(CommandSourceWithoutRestApiAttribute);
 
+        ShouldHaveNoGeneratorDiagnostics(result);
         result.GeneratedTrees.Length.ShouldBe(0);
         RestApiGeneratorTestHarness.ContainsGeneratedSource(
             result,
@@ -20,6 +24,7 @@ public sealed class RestApiManifestGenerationTests
     {
         GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(MixedCommandAndQuerySource);
 
+        ShouldHaveNoGeneratorDiagnostics(result);
         string manifest = RestApiGeneratorTestHarness.GetGeneratedSource(
             result,
             "HexalithEventStoreRestApiGeneratorManifest.g.cs");
@@ -42,6 +47,7 @@ public sealed class RestApiManifestGenerationTests
     {
         GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(NonMarkerRouteSource);
 
+        ShouldHaveNoGeneratorDiagnostics(result);
         string manifest = RestApiGeneratorTestHarness.GetGeneratedSource(
             result,
             "HexalithEventStoreRestApiGeneratorManifest.g.cs");
@@ -64,6 +70,7 @@ public sealed class RestApiManifestGenerationTests
     {
         GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(source);
 
+        ShouldHaveNoGeneratorDiagnostics(result);
         string manifest = RestApiGeneratorTestHarness.GetGeneratedSource(
             result,
             "HexalithEventStoreRestApiGeneratorManifest.g.cs");
@@ -81,6 +88,7 @@ public sealed class RestApiManifestGenerationTests
 
         GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(source);
 
+        ShouldHaveNoGeneratorDiagnostics(result);
         string manifest = RestApiGeneratorTestHarness.GetGeneratedSource(
             result,
             "HexalithEventStoreRestApiGeneratorManifest.g.cs");
@@ -100,21 +108,44 @@ public sealed class RestApiManifestGenerationTests
         foreach (string source in first)
         {
             source.ShouldNotContain(DateTime.UtcNow.Year.ToString());
+            source.ShouldNotContain(AppContext.BaseDirectory);
+            source.ShouldNotContain(Path.GetFullPath(Environment.CurrentDirectory));
             source.ShouldNotContain(Path.GetTempPath());
             source.ShouldNotContain(Environment.MachineName);
             source.ShouldNotContain("Test0.cs");
+            ContainsGuidLiteral(source).ShouldBeFalse("Generated output should not include random GUID values.");
+            ContainsUlidLiteral(source).ShouldBeFalse("Generated output should not include random ULID values.");
         }
     }
 
     private static string[] GetGeneratedSources(string source)
     {
         GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(source);
+        ShouldHaveNoGeneratorDiagnostics(result);
         return result.Results
             .SelectMany(static generator => generator.GeneratedSources)
             .Select(static generated => generated.SourceText.ToString())
             .OrderBy(static generated => generated, StringComparer.Ordinal)
             .ToArray();
     }
+
+    private static void ShouldHaveNoGeneratorDiagnostics(GeneratorDriverRunResult result)
+    {
+        ImmutableArray<Diagnostic> diagnostics = RestApiGeneratorTestHarness.GetDiagnostics(result);
+        diagnostics.ShouldBeEmpty(string.Join(Environment.NewLine, diagnostics.Select(static diagnostic => diagnostic.ToString())));
+    }
+
+    private static bool ContainsGuidLiteral(string source)
+        => GuidPattern().IsMatch(source);
+
+    private static bool ContainsUlidLiteral(string source)
+        => UlidPattern().IsMatch(source);
+
+    [GeneratedRegex(@"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}\b")]
+    private static partial Regex GuidPattern();
+
+    [GeneratedRegex(@"\b[0-9A-HJKMNP-TV-Z]{26}\b")]
+    private static partial Regex UlidPattern();
 
     private const string CommandSourceWithoutRestApiAttribute = """
         using Hexalith.EventStore.Contracts.Commands;

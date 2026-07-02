@@ -1,0 +1,53 @@
+# Dependabot keeps dependencies patched across the three ecosystems this repo ships.
+# NuGet uses Central Package Management (Directory.Packages.props); Dependabot understands it.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      dotnet-and-aspire:
+        patterns:
+          - "Microsoft.*"
+          - "System.*"
+          - "Aspire.*"
+      dapr:
+        patterns:
+          - "Dapr.*"
+      opentelemetry:
+        patterns:
+          - "OpenTelemetry*"
+      test-stack:
+        patterns:
+          - "xunit*"
+          - "Shouldly"
+          - "NSubstitute"
+          - "coverlet.*"
+
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      semantic-release:
+        patterns:
+          - "semantic-release"
+          - "@semantic-release/*"
+      commitlint:
+        patterns:
+          - "@commitlint/*"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci(deps)"

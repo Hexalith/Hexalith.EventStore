@@ -47,7 +47,7 @@ For detailed installation instructions for each tool, see the [Prerequisites](do
 
 - **.NET 10 SDK** (10.0.300 or later patch in the same feature band)
 - **Docker Desktop** (for local DAPR infrastructure)
-- **DAPR CLI** (1.16.x or later)
+- **DAPR CLI** (1.18.x or later)
 
 ### Build and Test
 
