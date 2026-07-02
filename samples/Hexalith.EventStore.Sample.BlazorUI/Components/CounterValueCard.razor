@@ -8,6 +8,12 @@
 
 <FluentCard Style="padding: 24px;">
     <h3>Current Count</h3>
+    @if (_error is not null)
+    {
+        <FluentMessageBar Title="Error" Intent="MessageBarIntent.Error" Style="margin-bottom: 12px;">
+            @_error
+        </FluentMessageBar>
+    }
     @if (_isLoading)
     {
         <FluentProgressBar />
@@ -18,12 +24,6 @@
         <p style="color: var(--neutral-foreground-hint); font-size: 12px;">
             Last refreshed: @_lastRefreshed?.ToString("HH:mm:ss")
         </p>
-    }
-    else if (_error is not null)
-    {
-        <FluentMessageBar Title="Error" Intent="MessageBarIntent.Error">
-            @_error
-        </FluentMessageBar>
     }
 </FluentCard>
 

@@ -113,7 +113,7 @@ public class EventPublisherTests {
             Arg.Is<Dictionary<string, string>>(m =>
                 m["cloudevent.type"] == "OrderCreated" &&
                 m["cloudevent.source"] == "hexalith-eventstore/test-tenant/test-domain" &&
-                m["cloudevent.id"] == "corr-001:1"),
+                m["cloudevent.id"] == envelope.MessageId),
             Arg.Any<CancellationToken>());
     }
 
@@ -149,7 +149,7 @@ public class EventPublisherTests {
 
         _ = publishedMetadata.ShouldNotBeNull();
         publishedMetadata.Keys.ShouldBe(["cloudevent.type", "cloudevent.source", "cloudevent.id"], ignoreOrder: true);
-        publishedMetadata["cloudevent.id"].ShouldBe("corr-001:7");
+        publishedMetadata["cloudevent.id"].ShouldBe("msg-7");
         publishedMetadata.Keys.ShouldNotContain(x => string.Equals(x, "rawPayload", StringComparison.OrdinalIgnoreCase));
         publishedMetadata.Keys.ShouldNotContain(x => string.Equals(x, "partitionKey", StringComparison.OrdinalIgnoreCase));
         publishedMetadata.Keys.ShouldNotContain(x => string.Equals(x, "__key", StringComparison.OrdinalIgnoreCase));
@@ -237,7 +237,7 @@ public class EventPublisherTests {
             Arg.Is<Dictionary<string, string>>(m =>
                 m["cloudevent.type"] == "GlobalAdministratorSet"
                 && m["cloudevent.source"] == "hexalith-eventstore/system/global-administrators"
-                && m["cloudevent.id"] == "corr-1:1"
+                && m["cloudevent.id"] == "msg-1"
                 && !m.ContainsKey("rawPayload")),
             Arg.Any<CancellationToken>());
     }
@@ -281,7 +281,7 @@ public class EventPublisherTests {
     // --- Task 6.6: CloudEvents id ---
 
     [Fact]
-    public async Task PublishEventsAsync_CloudEventsId_CombinesCorrelationIdAndSequence() {
+    public async Task PublishEventsAsync_CloudEventsId_UsesPersistedMessageId() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient, _) = CreatePublisher();
         EventEnvelope envelope = CreateTestEnvelope(sequenceNumber: 42);
@@ -292,7 +292,7 @@ public class EventPublisherTests {
         // Assert
         await daprClient.Received(1).PublishEventAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<EventEnvelope>(),
-            Arg.Is<Dictionary<string, string>>(m => m["cloudevent.id"] == "corr-xyz:42"),
+            Arg.Is<Dictionary<string, string>>(m => m["cloudevent.id"] == "msg-42"),
             Arg.Any<CancellationToken>());
     }
 

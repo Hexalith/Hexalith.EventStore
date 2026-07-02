@@ -195,7 +195,7 @@ public partial class EventPublisher(
                 var metadata = new Dictionary<string, string> {
                     ["cloudevent.type"] = eventEnvelope.EventTypeName,
                     ["cloudevent.source"] = $"hexalith-eventstore/{identity.TenantId}/{identity.Domain}",
-                    ["cloudevent.id"] = $"{correlationId}:{eventEnvelope.SequenceNumber}",
+                    ["cloudevent.id"] = eventEnvelope.MessageId,
                 };
 
                 await daprClient.PublishEventAsync(

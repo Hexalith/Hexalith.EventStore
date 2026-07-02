@@ -40,6 +40,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddTransient<IAggregateStateReconstructor, DaprAggregateStateReconstructor>();
         _ = services.AddHttpClient();
         services.TryAddSingleton<IEventPayloadProtectionService, NoOpEventPayloadProtectionService>();
+        services.TryAddSingleton<IGlobalPositionAllocator, DaprGlobalPositionAllocator>();
         services.TryAddSingleton<ISnapshotManager, SnapshotManager>();
         services.TryAddSingleton<ITopicNameValidator, TopicNameValidator>();
         services.TryAddTransient<IProjectionUpdateOrchestrator, ProjectionUpdateOrchestrator>();
@@ -117,6 +118,7 @@ public static class EventStoreServerServiceCollectionExtensions {
 
             options.Actors.RegisterActor<AggregateActor>();
             options.Actors.RegisterActor<ETagActor>();
+            options.Actors.RegisterActor<GlobalPositionActor>(GlobalPositionActor.ActorTypeName);
             options.Actors.RegisterActor<EventReplayProjectionActor>(QueryRouter.ProjectionActorTypeName);
         });
 

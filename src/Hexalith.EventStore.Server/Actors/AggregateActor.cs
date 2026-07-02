@@ -54,7 +54,8 @@ public partial class AggregateActor(
     IDeadLetterPublisher deadLetterPublisher,
     IServiceProvider? serviceProvider = null,
     ICommandAggregateTypeResolver? commandAggregateTypeResolver = null,
-    IOptions<CommandConcurrencyOptions>? concurrencyOptions = null)
+    IOptions<CommandConcurrencyOptions>? concurrencyOptions = null,
+    IGlobalPositionAllocator? globalPositionAllocator = null)
     : Actor(host), IAggregateActor, IRemindable {
     private const string TraceParentExtensionKey = "traceparent";
     private const string TraceStateExtensionKey = "tracestate";
@@ -399,7 +400,8 @@ public partial class AggregateActor(
                         var eventPersister = new EventPersister(
                             StateManager,
                             Host.LoggerFactory.CreateLogger<EventPersister>(),
-                            payloadProtectionService);
+                            payloadProtectionService,
+                            globalPositionAllocator);
 
                         string aggregateType = await ResolveAggregateTypeAsync(command, cancellationToken).ConfigureAwait(false);
 

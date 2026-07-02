@@ -6,7 +6,7 @@ baseline_commit: 4d1a207138baf70f5460ba755e2389cd7a52c22b
 
 # Story D.5: Proof - Sample BlazorUI Queries
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -224,6 +224,38 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06
   - [x] Run Aspire smoke validation if feasible; otherwise record the exact blocker.
   - [x] Confirm `git status --short` contains only intended source/story/sprint-status changes and no generated files.
 
+### Review Findings
+
+_Adversarial code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor), 2026-07-02. 3 decision-needed, 2 patch, 6 deferred, 3 dismissed as noise._
+
+_Resolution (2026-07-02): user chose **A1** (correct the wiring), **C1** (apply both patches), **B3** (defer Finding 3). Both patches applied and build-verified (Release build clean, 76/76 Sample tests pass). **A1 could not be completed** — a direct `ProjectReference` to the Sample host fails to build (`CS0436`: the UI host `Program` collides with Sample's `Program`, both `Sdk.Web` top-level-statement apps). A clean rewiring needs a contracts-only assembly, which AC2 gates behind story correction. The `<Compile Link>` was restored; **Finding 1 remains open and needs re-decision** (contracts project via correct-course, or accept the deviation). Story → `in-progress`._
+
+**Decision-needed**
+
+- [ ] [Review][Decision] Query contract type is duplicated in the UI host via `<Compile Link>` — the csproj compile-links `GetCounterStatusQuery.cs` into `Sample.BlazorUI.dll` (no `ProjectReference` to the Sample domain project), so the contract is compiled as a second identity in the UI host. AC2 explicitly prohibits this ("Do not copy `GetCounterStatusQuery` into the Blazor UI project as a second type") and Guardrail #2 forbids duplicating query contracts in the UI host. The generator's referenced-assembly discovery (`ParseReferenced`, AC2 option a) is implemented and unit-tested but is NOT what actually wires the sample. **[STILL OPEN]** A1 (direct `ProjectReference` to Sample) was attempted and reverted — it fails with `CS0436` (`Program` collision between two `Sdk.Web` hosts). A clean fix requires a contracts-only assembly (per AC2, needs story correction / correct-course) OR accepting the compile-link deviation. [samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj:13]
+- [ ] [Review][Decision] Generated query endpoint is not consumed by the UI — all four components call the generic `EventStoreProjectionQueryClient` directly against the gateway; the generated `GET /api/{tenant}/counter/{entityId}` controller is exercised only by the AC9 curl smoke, not by the app. The Dev-Notes table permits "a platform-generic client path", so this is not a hard AC violation, but it weakens the story's core "generated endpoint replaces the wrapper" proof and couples to the duplication decision above. **[STILL OPEN — coupled to Finding 1]** [samples/Hexalith.EventStore.Sample.BlazorUI/Services/EventStoreProjectionQueryClient.cs:14]
+- [x] [Review][Decision→Defer] `CounterHistoryGrid` records a duplicate history row on every HTTP 304 (no change) — ambiguous intent (value-change log vs. polling/ETag-activity log). **Deferred per user decision B3.** [samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterHistoryGrid.razor:79]
+
+**Patch**
+
+- [x] [Review][Patch] Refresh errors are invisible — after a successful first load, a failed refresh sets `_error` but leaves `_result`/`_lastRefreshed` unchanged, and the render was `@if (_result is not null) … else if (_error is not null)`, so the error banner never showed and the stale count/timestamp remained. **APPLIED** — error banner now renders unconditionally (above the value) in `CounterValueCard`, `NotificationPattern`, `SilentReloadPattern`. [samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterValueCard.razor:82]
+- [x] [Review][Patch] `CounterHistoryGrid` 404 branch bypassed the 20-entry cap — the success path trimmed `_history` to 20 but the 404 branch only inserted, growing `_history` unbounded for a persistently-absent projection. **APPLIED** — the same trim now runs on the 404 branch. [samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterHistoryGrid.razor:94]
+
+**Deferred**
+
+- [x] [Review][Defer] Malformed projection payload throws in `ParseCountFromPayload` (`Convert.FromBase64String` / `JsonDocument.Parse` / `GetInt32`) — pre-existing behavior carried over from the deleted `CounterQueryService`; combined with the patch above it becomes invisible. [samples/Hexalith.EventStore.Sample.BlazorUI/Services/CounterStatusResult.cs:46] — deferred, pre-existing
+- [x] [Review][Defer] Concurrent/re-entrant refresh race + in-flight request not cancelled on dispose (post-dispose `StateHasChanged`) — no in-flight guard; `GetAsync`'s `CancellationToken` is never wired; `SilentReloadPattern` partially mitigates via debounce. Demo-UI hardening. [samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterValueCard.razor:46] — deferred, pre-existing pattern
+- [x] [Review][Defer] Generator silently drops a `record struct` carrying `[RestRoute]` (kind check returns null with no diagnostic) — every other unsupported shape emits a HESREST diagnostic; this one is a silent no-op. Generator hardening. [src/Hexalith.EventStore.RestApi.Generators/RestApiMessageParser.cs:79] — deferred, generator scope
+- [x] [Review][Defer] Referenced-message discovery runs off `CompilationProvider` producing a reference-equality `ImmutableArray`, adding heavier per-compilation work / weakening IDE incrementality — consistent with the generator's pre-existing CompilationProvider pattern; perf-only. [src/Hexalith.EventStore.RestApi.Generators/RestApiGenerator.cs:36] — deferred, pre-existing pattern
+- [x] [Review][Defer] "No projection" empty-state is only handled for HTTP 404; a gateway `Success==false` semantic failure (StatusCode 200) falls through to the generic catch — divergence is minor and matches the old code's 404-only behavior in practice. [samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterValueCard.razor:76] — deferred, matches prior behavior
+- [x] [Review][Defer] AC8 scope hygiene — generator command-route mapping was changed and a command diagnostic test added in a query-only story (defensible as generator enablement), and the broader branch/working-tree carries CI/CD + `tools/release-*` + `.releaserc.json` + submodule-pointer changes (D7/D8 scope) that are absent from the scoped D5 diff and should be split out. [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:871] — deferred, split into D7/D8
+
+**Dismissed (noise / false positive)**
+
+- Generated controllers unauthenticated → tenant confusion/IDOR — false positive: the emitter emits `[Authorize]` (asserted by `RestApiControllerGenerationTests`), and route-tenant authorization is delegated to the EventStore gateway by design (AC5).
+- Named `"EventStoreApi"` HttpClient is dead config — false positive: still consumed by `CounterCommandForm.razor:62` (command submission, D6 scope).
+- Rendering `ex.Message` in catch blocks is support-unsafe — Message-only (no stack trace, tokens, or JWT payload) and pre-existing; AC7 support-safe requirement is met.
+
 ## Dev Notes
 
 ### Top Guardrails
@@ -427,3 +459,4 @@ Codex GPT-5
 |---|---|
 | 2026-07-01 | Story D5 created with Sample Blazor UI query proof scope, D3/D4 preflight gates, referenced-contract discovery warning, Counter route semantics, wrapper-removal guardrails, and verification requirements. Status ready-for-dev. |
 | 2026-07-02 | Implemented D5 Sample BlazorUI query proof: generator referenced-contract support, Counter query REST annotation, generated controller wiring, wrapper removal, proof tests, generated evidence, Release build, and Aspire smoke validation. Status review. |
+| 2026-07-02 | Adversarial code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor). Applied 2 patches (refresh-error visibility in 3 components; 404 history-cap trim) — Release build clean, 76/76 Sample tests pass. Attempted AC2 rewiring via `ProjectReference` to Sample; reverted (`CS0436` `Program` collision). Finding 1 (contract duplicated in UI host via `<Compile Link>`) + coupled Finding 2 remain open pending re-decision (contracts project vs. accept deviation); Finding 3 deferred. 6 items added to deferred-work.md. Status → in-progress. |

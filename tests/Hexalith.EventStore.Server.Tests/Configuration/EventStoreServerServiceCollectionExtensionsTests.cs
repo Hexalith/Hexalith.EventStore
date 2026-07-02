@@ -1,6 +1,7 @@
 using Dapr.Client;
 
 using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
 
 using Microsoft.Extensions.Configuration;
@@ -30,6 +31,15 @@ public class EventStoreServerServiceCollectionExtensionsTests {
         IHostedService[] hostedServices = [.. provider.GetServices<IHostedService>()];
 
         hostedServices.ShouldContain(service => service is ActiveRebuildIndexCleanupService);
+    }
+
+    [Fact]
+    public void AddEventStoreServerRegistersGlobalPositionAllocator() {
+        using ServiceProvider provider = BuildProvider(registerDaprClient: false);
+
+        IGlobalPositionAllocator? allocator = provider.GetService<IGlobalPositionAllocator>();
+
+        allocator.ShouldNotBeNull();
     }
 
     private static ServiceProvider BuildProvider(bool registerDaprClient) {

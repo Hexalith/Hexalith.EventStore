@@ -34,7 +34,17 @@ public class IdempotencyCheckerTests {
     [Fact]
     public async Task CheckAsync_ExistingRecord_ReturnsCachedResult() {
         // Arrange
-        var record = new IdempotencyRecord("cause-123", "corr-456", true, null, DateTimeOffset.UtcNow);
+        var record = new IdempotencyRecord(
+            "cause-123",
+            "corr-456",
+            true,
+            null,
+            DateTimeOffset.UtcNow,
+            EventCount: 2,
+            ResultPayload: """{"status":"ok"}""",
+            BackpressureExceeded: true,
+            BackpressurePendingCount: 9,
+            BackpressureThreshold: 8);
         _ = _stateManager.TryGetStateAsync<IdempotencyRecord>("idempotency:cause-123", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
         IdempotencyChecker checker = CreateChecker();
@@ -46,13 +56,22 @@ public class IdempotencyCheckerTests {
         _ = result.ShouldNotBeNull();
         result.Accepted.ShouldBeTrue();
         result.CorrelationId.ShouldBe("corr-456");
+        result.EventCount.ShouldBe(2);
+        result.ResultPayload.ShouldBe("""{"status":"ok"}""");
+        result.BackpressureExceeded.ShouldBeTrue();
+        result.BackpressurePendingCount.ShouldBe(9);
+        result.BackpressureThreshold.ShouldBe(8);
     }
 
     [Fact]
     public async Task RecordAsync_StoresIdempotencyRecord() {
         // Arrange
         IdempotencyChecker checker = CreateChecker();
-        var processingResult = new CommandProcessingResult(Accepted: true, CorrelationId: "corr-789");
+        var processingResult = new CommandProcessingResult(
+            Accepted: true,
+            CorrelationId: "corr-789",
+            EventCount: 3,
+            ResultPayload: """{"events":3}""");
 
         // Act
         await checker.RecordAsync("cause-abc", processingResult);
@@ -63,7 +82,9 @@ public class IdempotencyCheckerTests {
             Arg.Is<IdempotencyRecord>(r =>
                 r.CausationId == "cause-abc" &&
                 r.CorrelationId == "corr-789" &&
-                r.Accepted),
+                r.Accepted &&
+                r.EventCount == 3 &&
+                r.ResultPayload == """{"events":3}"""),
             Arg.Any<CancellationToken>());
     }
 

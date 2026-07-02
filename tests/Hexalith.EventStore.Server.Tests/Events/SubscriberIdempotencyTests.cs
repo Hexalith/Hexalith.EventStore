@@ -16,16 +16,20 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Events;
 /// <summary>
 /// Story 4.3 Task 8: Subscriber idempotency contract tests.
-/// Verifies that CloudEvents id = "{correlationId}:{sequenceNumber}" is globally unique
-/// and deterministic, enabling subscriber deduplication for at-least-once delivery.
+/// Verifies that CloudEvents id is the persisted event message id, enabling deterministic
+/// subscriber deduplication without aggregate-local sequence collisions.
 /// </summary>
 public class SubscriberIdempotencyTests {
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
-    private static EventEnvelope CreateTestEnvelope(long sequenceNumber = 1, string correlationId = "corr-001") =>
+    private static EventEnvelope CreateTestEnvelope(
+        long sequenceNumber = 1,
+        string correlationId = "corr-001",
+        string? messageId = null,
+        string aggregateId = "agg-001") =>
         new(
-            MessageId: $"msg-{sequenceNumber}",
-            AggregateId: "agg-001",
+            MessageId: messageId ?? $"msg-{sequenceNumber}",
+            AggregateId: aggregateId,
             AggregateType: "test-aggregate",
             TenantId: "test-tenant",
             Domain: "test-domain",
@@ -53,7 +57,7 @@ public class SubscriberIdempotencyTests {
     // --- Task 8.2: CloudEvents id unique per event ---
 
     [Fact]
-    public async Task CloudEventsId_UniquePerEvent_CorrelationIdPlusSequence() {
+    public async Task CloudEventsId_UniquePerEvent_UsesMessageId() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient) = CreatePublisher();
         var capturedMetadata = new List<Dictionary<string, string>>();
@@ -78,10 +82,7 @@ public class SubscriberIdempotencyTests {
         ids.Count.ShouldBe(3);
         ids.Distinct().Count().ShouldBe(3, "CloudEvents ids must be globally unique per event");
 
-        // Format: {correlationId}:{sequenceNumber}
-        ids[0].ShouldBe("corr-001:1");
-        ids[1].ShouldBe("corr-001:2");
-        ids[2].ShouldBe("corr-001:3");
+        ids.ShouldBe(["msg-1", "msg-2", "msg-3"]);
     }
 
     // --- Task 8.3: Same event published twice produces same id ---
@@ -107,7 +108,7 @@ public class SubscriberIdempotencyTests {
         capturedIds.Count.ShouldBe(2);
         capturedIds[0].ShouldBe(capturedIds[1],
             "Re-publishing the same event must produce the same CloudEvents id for subscriber dedup");
-        capturedIds[0].ShouldBe("corr-dedup:5");
+        capturedIds[0].ShouldBe("msg-5");
     }
 
     // --- Task 8.4: Different events same correlation = different ids ---
@@ -136,14 +137,14 @@ public class SubscriberIdempotencyTests {
         // Assert
         capturedIds[0].ShouldNotBe(capturedIds[1],
             "Events with same correlation but different sequences must have different ids");
-        capturedIds[0].ShouldBe("same-corr:1");
-        capturedIds[1].ShouldBe("same-corr:2");
+        capturedIds[0].ShouldBe("msg-1");
+        capturedIds[1].ShouldBe("msg-2");
     }
 
-    // --- Task 8.5: Different correlations same sequence = different ids ---
+    // --- Task 8.5: Different events same sequence = different ids ---
 
     [Fact]
-    public async Task CloudEventsId_DifferentCorrelations_SameSequence_DifferentIds() {
+    public async Task CloudEventsId_DifferentAggregatesSameCorrelationAndSequence_DifferentIds() {
         // Arrange
         (EventPublisher publisher, DaprClient daprClient) = CreatePublisher();
         var capturedIds = new List<string>();
@@ -153,17 +154,17 @@ public class SubscriberIdempotencyTests {
             .Returns(Task.CompletedTask)
             .AndDoes(ci => capturedIds.Add(ci.ArgAt<Dictionary<string, string>>(3)["cloudevent.id"]));
 
-        EventEnvelope envelope1 = CreateTestEnvelope(sequenceNumber: 1, correlationId: "corr-A");
-        EventEnvelope envelope2 = CreateTestEnvelope(sequenceNumber: 1, correlationId: "corr-B");
+        EventEnvelope envelope1 = CreateTestEnvelope(sequenceNumber: 1, correlationId: "same-corr", messageId: "msg-A", aggregateId: "agg-A");
+        EventEnvelope envelope2 = CreateTestEnvelope(sequenceNumber: 1, correlationId: "same-corr", messageId: "msg-B", aggregateId: "agg-B");
 
         // Act
-        _ = await publisher.PublishEventsAsync(TestIdentity, [envelope1], "corr-A");
-        _ = await publisher.PublishEventsAsync(TestIdentity, [envelope2], "corr-B");
+        _ = await publisher.PublishEventsAsync(new AggregateIdentity("test-tenant", "test-domain", "agg-A"), [envelope1], "same-corr");
+        _ = await publisher.PublishEventsAsync(new AggregateIdentity("test-tenant", "test-domain", "agg-B"), [envelope2], "same-corr");
 
         // Assert
         capturedIds[0].ShouldNotBe(capturedIds[1],
-            "Events with different correlations but same sequence must have different ids");
-        capturedIds[0].ShouldBe("corr-A:1");
-        capturedIds[1].ShouldBe("corr-B:1");
+            "Events with the same correlation and sequence but different persisted message ids must have different CloudEvents ids");
+        capturedIds[0].ShouldBe("msg-A");
+        capturedIds[1].ShouldBe("msg-B");
     }
 }

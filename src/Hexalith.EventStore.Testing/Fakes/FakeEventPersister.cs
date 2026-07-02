@@ -15,6 +15,7 @@ public sealed class FakeEventPersister : IEventPersister {
     private readonly List<EventEnvelope> _persistedEvents = [];
     private readonly Dictionary<string, long> _sequenceByAggregate = [];
     private Exception? _exceptionToThrow;
+    private long _nextGlobalPosition = 1;
 
     /// <summary>Gets the list of all persisted event envelopes for test assertions.</summary>
     public IReadOnlyList<EventEnvelope> PersistedEvents => _persistedEvents;
@@ -70,7 +71,7 @@ public sealed class FakeEventPersister : IEventPersister {
                 TenantId: identity.TenantId,
                 Domain: identity.Domain,
                 SequenceNumber: currentSequence,
-                GlobalPosition: 0,
+                GlobalPosition: _nextGlobalPosition++,
                 Timestamp: timestamp,
                 CorrelationId: command.CorrelationId,
                 CausationId: causationId,

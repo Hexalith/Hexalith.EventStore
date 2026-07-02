@@ -37,6 +37,12 @@
 
 <FluentCard Style="max-width: 400px; padding: 24px;">
     <h2>Counter Value</h2>
+    @if (_error is not null)
+    {
+        <FluentMessageBar Title="Error" Intent="MessageBarIntent.Error" Style="margin-bottom: 12px;">
+            @_error
+        </FluentMessageBar>
+    }
     @if (_result is not null)
     {
         <p style="font-size: 48px; font-weight: bold; margin: 16px 0;">@_result.Count</p>
@@ -50,13 +56,7 @@
             </p>
         }
     }
-    else if (_error is not null)
-    {
-        <FluentMessageBar Title="Error" Intent="MessageBarIntent.Error">
-            @_error
-        </FluentMessageBar>
-    }
-    else
+    else if (_error is null)
     {
         <p>Loading...</p>
     }

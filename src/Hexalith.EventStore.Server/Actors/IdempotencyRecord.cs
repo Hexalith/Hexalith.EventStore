@@ -9,12 +9,22 @@ namespace Hexalith.EventStore.Server.Actors;
 /// <param name="Accepted">Whether the command was accepted.</param>
 /// <param name="ErrorMessage">Optional error message if rejected.</param>
 /// <param name="ProcessedAt">When the command was processed.</param>
+/// <param name="EventCount">The number of events persisted by the original command.</param>
+/// <param name="ResultPayload">Optional serialized result payload from the original command.</param>
+/// <param name="BackpressureExceeded">Whether the original result was rejected by backpressure.</param>
+/// <param name="BackpressurePendingCount">The original observed pending command count.</param>
+/// <param name="BackpressureThreshold">The original configured backpressure threshold.</param>
 public record IdempotencyRecord(
     string CausationId,
     string? CorrelationId,
     bool Accepted,
     string? ErrorMessage,
-    DateTimeOffset ProcessedAt) {
+    DateTimeOffset ProcessedAt,
+    int EventCount = 0,
+    string? ResultPayload = null,
+    bool BackpressureExceeded = false,
+    int? BackpressurePendingCount = null,
+    int? BackpressureThreshold = null) {
     /// <summary>
     /// Creates an <see cref="IdempotencyRecord"/> from a <see cref="CommandProcessingResult"/>.
     /// </summary>
@@ -30,7 +40,12 @@ public record IdempotencyRecord(
             result.CorrelationId,
             result.Accepted,
             result.ErrorMessage,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            result.EventCount,
+            result.ResultPayload,
+            result.BackpressureExceeded,
+            result.BackpressurePendingCount,
+            result.BackpressureThreshold);
     }
 
     /// <summary>
@@ -38,5 +53,13 @@ public record IdempotencyRecord(
     /// </summary>
     /// <returns>The reconstructed command processing result.</returns>
     public CommandProcessingResult ToResult()
-        => new(Accepted, ErrorMessage, CorrelationId);
+        => new(
+            Accepted,
+            ErrorMessage,
+            CorrelationId,
+            EventCount,
+            ResultPayload,
+            BackpressureExceeded,
+            BackpressurePendingCount,
+            BackpressureThreshold);
 }

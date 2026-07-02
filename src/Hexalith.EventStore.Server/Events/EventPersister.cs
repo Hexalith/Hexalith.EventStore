@@ -26,7 +26,10 @@ namespace Hexalith.EventStore.Server.Events;
 public partial class EventPersister(
     IActorStateManager stateManager,
     ILogger<EventPersister> logger,
-    IEventPayloadProtectionService payloadProtectionService) : IEventPersister {
+    IEventPayloadProtectionService payloadProtectionService,
+    IGlobalPositionAllocator? globalPositionAllocator = null) : IEventPersister {
+    private readonly IGlobalPositionAllocator _globalPositionAllocator = globalPositionAllocator ?? NoOpGlobalPositionAllocator.Instance;
+
     /// <inheritdoc/>
     public async Task<EventPersistResult> PersistEventsAsync(
         AggregateIdentity identity,
@@ -55,12 +58,11 @@ public partial class EventPersister(
         string causationId = command.CausationId ?? command.CorrelationId;
         DateTimeOffset timestamp = DateTimeOffset.UtcNow;
         _ = currentSequence + 1;
+        var preparedEvents = new List<(string EventTypeName, PayloadProtectionResult ProtectionResult, IDictionary<string, string> Extensions)>(domainResult.Events.Count);
         var envelopes = new List<EventEnvelope>(domainResult.Events.Count);
 
         for (int i = 0; i < domainResult.Events.Count; i++) {
             IEventPayload eventPayload = domainResult.Events[i];
-            long sequenceNumber = currentSequence + 1 + i;
-
             string eventTypeName = eventPayload is ISerializedEventPayload serializedPayload
                 ? serializedPayload.EventTypeName
                 : eventPayload.GetType().FullName ?? eventPayload.GetType().Name;
@@ -85,6 +87,20 @@ public partial class EventPersister(
                 extensions: (IDictionary<string, string>?)null,
                 metadata: protectionResult.Metadata);
 
+            preparedEvents.Add((eventTypeName, protectionResult, extensions));
+        }
+
+        long firstGlobalPosition = await _globalPositionAllocator
+            .AllocateAsync(domainResult.Events.Count, cancellationToken)
+            .ConfigureAwait(false);
+
+        for (int i = 0; i < preparedEvents.Count; i++) {
+            (string eventTypeName, PayloadProtectionResult protectionResult, IDictionary<string, string> extensions) = preparedEvents[i];
+            long sequenceNumber = currentSequence + 1 + i;
+            long globalPosition = firstGlobalPosition > 0
+                ? checked(firstGlobalPosition + i)
+                : 0;
+
             var envelope = new EventEnvelope(
                 MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
                 AggregateId: identity.AggregateId,
@@ -92,7 +108,7 @@ public partial class EventPersister(
                 TenantId: identity.TenantId,
                 Domain: identity.Domain,
                 SequenceNumber: sequenceNumber,
-                GlobalPosition: 0,
+                GlobalPosition: globalPosition,
                 Timestamp: timestamp,
                 CorrelationId: command.CorrelationId,
                 CausationId: causationId,

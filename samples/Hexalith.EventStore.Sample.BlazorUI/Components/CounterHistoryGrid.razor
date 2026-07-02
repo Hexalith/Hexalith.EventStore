@@ -93,6 +93,12 @@
             _lastResult = CounterStatusResult.Empty;
             _history.Insert(0, new CounterHistoryEntry(DateTime.Now, 0, "n/a"));
             _error = null;
+
+            // Keep last 20 entries to prevent unbounded growth
+            if (_history.Count > 20)
+            {
+                _history.RemoveAt(_history.Count - 1);
+            }
         }
         catch (Exception ex)
         {

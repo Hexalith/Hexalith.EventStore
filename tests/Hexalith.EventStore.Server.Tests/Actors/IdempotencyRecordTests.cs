@@ -11,7 +11,12 @@ public class IdempotencyRecordTests {
     [Fact]
     public void FromResult_MapsAllFields() {
         // Arrange
-        var result = new CommandProcessingResult(Accepted: true, ErrorMessage: null, CorrelationId: "corr-123");
+        var result = new CommandProcessingResult(
+            Accepted: true,
+            ErrorMessage: null,
+            CorrelationId: "corr-123",
+            EventCount: 4,
+            ResultPayload: """{"ok":true}""");
         DateTimeOffset before = DateTimeOffset.UtcNow;
 
         // Act
@@ -23,6 +28,8 @@ public class IdempotencyRecordTests {
         record.CorrelationId.ShouldBe("corr-123");
         record.Accepted.ShouldBeTrue();
         record.ErrorMessage.ShouldBeNull();
+        record.EventCount.ShouldBe(4);
+        record.ResultPayload.ShouldBe("""{"ok":true}""");
         record.ProcessedAt.ShouldBeGreaterThanOrEqualTo(before);
         record.ProcessedAt.ShouldBeLessThanOrEqualTo(after);
     }
@@ -56,7 +63,7 @@ public class IdempotencyRecordTests {
     }
 
     [Fact]
-    public void ToResult_DoesNotPreserve_EventCountAndResultPayload() {
+    public void ToResult_Preserves_EventCountAndResultPayload() {
         // Arrange — original result has non-default EventCount and ResultPayload
         var original = new CommandProcessingResult(
             Accepted: true,
@@ -69,14 +76,12 @@ public class IdempotencyRecordTests {
         // Act
         CommandProcessingResult roundtripped = record.ToResult();
 
-        // Assert — EventCount and ResultPayload are NOT preserved (by design)
-        roundtripped.EventCount.ShouldBe(0);
-        roundtripped.ResultPayload.ShouldBeNull();
-
-        // But Accepted, ErrorMessage, CorrelationId ARE preserved
+        // Assert
         roundtripped.Accepted.ShouldBeTrue();
         roundtripped.CorrelationId.ShouldBe("corr-1");
         roundtripped.ErrorMessage.ShouldBeNull();
+        roundtripped.EventCount.ShouldBe(5);
+        roundtripped.ResultPayload.ShouldBe("{\"key\":\"value\"}");
     }
 
     [Fact]
@@ -87,7 +92,12 @@ public class IdempotencyRecordTests {
             "corr-xyz",
             true,
             null,
-            new DateTimeOffset(2026, 2, 14, 12, 0, 0, TimeSpan.Zero));
+            new DateTimeOffset(2026, 2, 14, 12, 0, 0, TimeSpan.Zero),
+            EventCount: 7,
+            ResultPayload: """{"result":"cached"}""",
+            BackpressureExceeded: true,
+            BackpressurePendingCount: 10,
+            BackpressureThreshold: 9);
 
         // Act
         string json = JsonSerializer.Serialize(original);
@@ -100,5 +110,10 @@ public class IdempotencyRecordTests {
         deserialized.Accepted.ShouldBe(original.Accepted);
         deserialized.ErrorMessage.ShouldBe(original.ErrorMessage);
         deserialized.ProcessedAt.ShouldBe(original.ProcessedAt);
+        deserialized.EventCount.ShouldBe(original.EventCount);
+        deserialized.ResultPayload.ShouldBe(original.ResultPayload);
+        deserialized.BackpressureExceeded.ShouldBe(original.BackpressureExceeded);
+        deserialized.BackpressurePendingCount.ShouldBe(original.BackpressurePendingCount);
+        deserialized.BackpressureThreshold.ShouldBe(original.BackpressureThreshold);
     }
 }

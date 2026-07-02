@@ -24,6 +24,22 @@ public class EventPersisterTests {
 
     private sealed record TestRejectionEvent(string Reason = "rejected") : IRejectionEvent;
 
+    private sealed class FakeGlobalPositionAllocator(long nextPosition = 1) : IGlobalPositionAllocator {
+        private long _nextPosition = nextPosition;
+
+        public int CallCount { get; private set; }
+
+        public Task<long> AllocateAsync(int count, CancellationToken cancellationToken = default) {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            CallCount++;
+            long first = _nextPosition;
+            _nextPosition = checked(_nextPosition + count);
+            return Task.FromResult(first);
+        }
+    }
+
     private static CommandEnvelope CreateTestCommand(
         string? correlationId = null,
         string? causationId = null,
@@ -40,9 +56,15 @@ public class EventPersisterTests {
         Extensions: null);
 
     private static (EventPersister Persister, IActorStateManager StateManager) CreatePersister() {
+        (EventPersister persister, IActorStateManager stateManager, _) = CreatePersisterWithAllocator();
+        return (persister, stateManager);
+    }
+
+    private static (EventPersister Persister, IActorStateManager StateManager, FakeGlobalPositionAllocator Allocator) CreatePersisterWithAllocator(long nextGlobalPosition = 1) {
         IActorStateManager stateManager = Substitute.For<IActorStateManager>();
         ILogger<EventPersister> logger = Substitute.For<ILogger<EventPersister>>();
-        return (new EventPersister(stateManager, logger, new NoOpEventPayloadProtectionService()), stateManager);
+        var allocator = new FakeGlobalPositionAllocator(nextGlobalPosition);
+        return (new EventPersister(stateManager, logger, new NoOpEventPayloadProtectionService(), allocator), stateManager, allocator);
     }
 
     private static void ConfigureNoMetadata(IActorStateManager stateManager) => stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
@@ -166,7 +188,7 @@ public class EventPersisterTests {
         envelope.TenantId.ShouldBe("test-tenant");               // 4. TenantId
         envelope.Domain.ShouldBe("test-domain");                 // 5. Domain
         envelope.SequenceNumber.ShouldBe(1);                     // 6. SequenceNumber
-        envelope.GlobalPosition.ShouldBe(0);                     // 7. GlobalPosition (v1 hardcoded)
+        envelope.GlobalPosition.ShouldBe(1);                     // 7. GlobalPosition
         envelope.Timestamp.ShouldBeGreaterThan(DateTimeOffset.MinValue); // 8. Timestamp
         envelope.CorrelationId.ShouldBe("corr-abc");             // 9. CorrelationId
         envelope.CausationId.ShouldBe("cause-xyz");              // 10. CausationId
@@ -197,6 +219,28 @@ public class EventPersisterTests {
     }
 
     // === 6.5: Event payload serialized to JSON bytes ===
+
+    [Fact]
+    public async Task PersistEventsAsync_MultipleEvents_AssignsContiguousGlobalPositions() {
+        // Arrange
+        (EventPersister persister, IActorStateManager stateManager, FakeGlobalPositionAllocator allocator) = CreatePersisterWithAllocator(nextGlobalPosition: 50);
+        ConfigureExistingMetadata(stateManager, 10);
+        CommandEnvelope command = CreateTestCommand();
+        var domainResult = DomainResult.Success(new IEventPayload[]
+        {
+            new TestEvent("first"),
+            new TestEvent("second"),
+            new TestEvent("third"),
+        });
+
+        // Act
+        EventPersistResult result = await persister.PersistEventsAsync(TestIdentity, aggregateType: "test-domain", command, domainResult, domainServiceVersion: "v1");
+
+        // Assert
+        allocator.CallCount.ShouldBe(1);
+        result.PersistedEnvelopes.Select(e => e.SequenceNumber).ShouldBe([11, 12, 13]);
+        result.PersistedEnvelopes.Select(e => e.GlobalPosition).ShouldBe([50, 51, 52]);
+    }
 
     [Fact]
     public async Task PersistEventsAsync_PayloadSerializedToJsonBytes() {
