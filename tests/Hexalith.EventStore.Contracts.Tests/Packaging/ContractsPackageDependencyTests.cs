@@ -9,12 +9,17 @@ public sealed class ContractsPackageDependencyTests
     {
         string root = FindRepositoryRoot();
         XDocument packageVersions = XDocument.Load(Path.Combine(root, "Directory.Packages.props"));
+        XDocument sharedPackageVersions = LoadSharedPackageVersions(root, packageVersions);
 
-        string uniqueIdsVersion = packageVersions
-            .Descendants("HexalithCommonsUniqueIdsVersion")
-            .Single()
-            .Value;
-        string packageVersionReference = packageVersions
+        packageVersions
+            .Descendants("PackageVersion")
+            .Where(element => string.Equals(
+                element.Attribute("Include")?.Value,
+                "Hexalith.Commons.UniqueIds",
+                StringComparison.Ordinal))
+            .ShouldBeEmpty();
+
+        string packageVersionReference = sharedPackageVersions
             .Descendants("PackageVersion")
             .Single(element => string.Equals(
                 element.Attribute("Include")?.Value,
@@ -24,8 +29,7 @@ public sealed class ContractsPackageDependencyTests
             .ShouldNotBeNull()
             .Value;
 
-        uniqueIdsVersion.ShouldBe("2.24.2");
-        packageVersionReference.ShouldBe("$(HexalithCommonsUniqueIdsVersion)");
+        packageVersionReference.ShouldBe("2.24.2");
     }
 
     [Fact]
@@ -64,5 +68,16 @@ public sealed class ContractsPackageDependencyTests
         }
 
         throw new DirectoryNotFoundException("Could not locate repository root from the test working directory.");
+    }
+
+    private static XDocument LoadSharedPackageVersions(string root, XDocument packageVersions)
+    {
+        string importPath = packageVersions
+            .Descendants("Hexalith1BuildPackageProps")
+            .Single()
+            .Value
+            .Replace("$(MSBuildThisFileDirectory)", root + Path.DirectorySeparatorChar, StringComparison.Ordinal);
+
+        return XDocument.Load(importPath);
     }
 }

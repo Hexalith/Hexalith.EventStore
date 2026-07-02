@@ -1,11 +1,12 @@
 ---
 created: 2026-07-01
 source_story_key: D-4-generator-tests
+baseline_commit: 0fdadce70b76e68753bfd4db7a8041a6407e3359
 ---
 
 # Story D.4: Generator Tests
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -111,41 +112,41 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Preflight D3 and generator state** (AC: 5, 6, 7, 8)
-  - [ ] Inspect `src/Hexalith.EventStore.RestApi.Generators/` for controller emitter, action descriptors, route parser, and diagnostic descriptors.
-  - [ ] If only manifest emission exists, stop and correct/finish D3 before claiming D4 can complete.
-  - [ ] Record the inspected files and conclusion in the Dev Agent Record.
+- [x] **Task 1: Preflight D3 and generator state** (AC: 5, 6, 7, 8)
+  - [x] Inspect `src/Hexalith.EventStore.RestApi.Generators/` for controller emitter, action descriptors, route parser, and diagnostic descriptors.
+  - [x] If only manifest emission exists, stop and correct/finish D3 before claiming D4 can complete.
+  - [x] Record the inspected files and conclusion in the Dev Agent Record.
 
-- [ ] **Task 2: Add the persistent generator test project** (AC: 1)
-  - [ ] Create `tests/Hexalith.EventStore.RestApi.Generators.Tests/Hexalith.EventStore.RestApi.Generators.Tests.csproj`.
-  - [ ] Add required project/package references with central package versions only.
-  - [ ] Add `Microsoft.AspNetCore.App` framework reference for generated controller compile tests if needed.
-  - [ ] Add the project to `Hexalith.EventStore.slnx` under `/tests/`.
+- [x] **Task 2: Add the persistent generator test project** (AC: 1)
+  - [x] Create `tests/Hexalith.EventStore.RestApi.Generators.Tests/Hexalith.EventStore.RestApi.Generators.Tests.csproj`.
+  - [x] Add required project/package references with central package versions only.
+  - [x] Add `Microsoft.AspNetCore.App` framework reference for generated controller compile tests if needed.
+  - [x] Add the project to `Hexalith.EventStore.slnx` under `/tests/`.
 
-- [ ] **Task 3: Build the Roslyn test harness** (AC: 2)
-  - [ ] Add a compilation helper with metadata references for Contracts, Client, ASP.NET Core, System.Text.Json, and UniqueIds as needed.
-  - [ ] Add helpers to run `RestApiGenerator`, fetch generated sources, fetch diagnostics, and compile generated output.
-  - [ ] Keep helper APIs minimal and deterministic.
+- [x] **Task 3: Build the Roslyn test harness** (AC: 2)
+  - [x] Add a compilation helper with metadata references for Contracts, Client, ASP.NET Core, System.Text.Json, and UniqueIds as needed.
+  - [x] Add helpers to run `RestApiGenerator`, fetch generated sources, fetch diagnostics, and compile generated output.
+  - [x] Keep helper APIs minimal and deterministic.
 
-- [ ] **Task 4: Add D2 manifest/discovery regression tests** (AC: 3, 4)
-  - [ ] Cover no opt-in, command-only, query-only, mixed command/query, route overrides, non-marker ignored, empty/whitespace template acceptance, deterministic output, and incremental tracking.
+- [x] **Task 4: Add D2 manifest/discovery regression tests** (AC: 3, 4)
+  - [x] Cover no opt-in, command-only, query-only, mixed command/query, route overrides, non-marker ignored, empty/whitespace template acceptance, deterministic output, and incremental tracking.
 
-- [ ] **Task 5: Add D3 controller compile and source-shape tests** (AC: 5, 6)
-  - [ ] Cover command and query generated controllers with relative, absolute, empty, and convention fallback routes.
-  - [ ] Add generated syntax trees back to the compilation and assert no compiler errors.
-  - [ ] Assert gateway delegation and forbidden-bypass strings.
+- [x] **Task 5: Add D3 controller compile and source-shape tests** (AC: 5, 6)
+  - [x] Cover command and query generated controllers with relative, absolute, empty, and convention fallback routes.
+  - [x] Add generated syntax trees back to the compilation and assert no compiler errors.
+  - [x] Assert gateway delegation and forbidden-bypass strings.
 
-- [ ] **Task 6: Add misuse diagnostic tests** (AC: 7)
-  - [ ] Cover ambiguous query route shapes.
-  - [ ] Cover route-tenant mode without tenant route parameter.
-  - [ ] Cover any unsupported body/query shape D3 reports.
-  - [ ] Assert stable diagnostic IDs and no broken action emission for invalid shapes.
+- [x] **Task 6: Add misuse diagnostic tests** (AC: 7)
+  - [x] Cover ambiguous query route shapes.
+  - [x] Cover route-tenant mode without tenant route parameter.
+  - [x] Cover any unsupported body/query shape D3 reports.
+  - [x] Assert stable diagnostic IDs and no broken action emission for invalid shapes.
 
-- [ ] **Task 7: Verify and clean the worktree** (AC: 8, 9)
-  - [ ] Build the generator project in Release.
-  - [ ] Run the new generator test project individually.
-  - [ ] Build `Hexalith.EventStore.slnx` in Release package mode.
-  - [ ] Confirm `git status --short` contains only intended source/story/sprint-status changes and no generated outputs.
+- [x] **Task 7: Verify and clean the worktree** (AC: 8, 9)
+  - [x] Build the generator project in Release.
+  - [x] Run the new generator test project individually.
+  - [x] Build `Hexalith.EventStore.slnx` in Release package mode.
+  - [x] Confirm `git status --short` contains only intended source/story/sprint-status changes and no generated outputs.
 
 ## Dev Notes
 
@@ -322,18 +323,49 @@ Actionable implications:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+GPT-5 Codex
 
 ### Debug Log References
+
+- 2026-07-02: Task 1 preflight inspected `RestApiGenerator.cs`, `RestApiControllerEmitter.cs`, `RestApiRouteTemplateParser.cs`, `RestApiDiagnosticDescriptors.cs`, `RestApiMessageParser.cs`, and `RestApiManifestEmitter.cs`. D3 controller emission is present, gateway-backed, and includes route parsing plus stable diagnostics `HESREST001`-`HESREST005`; D4 can proceed as a test story.
+- 2026-07-02: Added `Hexalith.EventStore.RestApi.Generators.Tests` with Roslyn generator harness and 21 tests covering manifest discovery, incremental tracking, controller compile/source shape, tenant modes, and misuse diagnostics. `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/` passed.
+- 2026-07-02: Aspire preflight ran with `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`; `aspire describe` reported EventStore, Admin, Admin UI, Sample, Sample Blazor UI, and sidecars running healthy; AppHost was stopped before code edits continued.
+- 2026-07-02: Required D4 validation passed: `dotnet build src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj --configuration Release`, `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/`, and `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false`.
+- 2026-07-02: Regression validation passed for documented Tier 1 tests plus additional unit projects: Contracts, Client, Sample, SignalR, Testing, Admin.Abstractions, Admin.Cli, Admin.Mcp, Admin.Server, Admin.Server.Host, Admin.UI, AppHost, DomainService, QueryRouting, and Testing.Integration. Non-baseline ATDD/governance projects `DeferredWorkGovernance.Tests` and `OperationalEvidence.Validator.Tests` failed due missing unrelated DW4/DW6 artifacts/entrypoints; D4 files do not touch those areas.
+- 2026-07-02: `git status --short --untracked-files=all` showed D4-owned files plus pre-existing unrelated changes in `.github/workflows/*`, `D-3-controller-emission.md`, and `ContractsPackageDependencyTests.cs`; no generated `bin`, `obj`, or `TestResults` outputs are tracked.
+
+### Implementation Plan
+
+- Add a persistent xUnit v3 generator test project with versionless central package references and a `/tests/` solution entry.
+- Exercise `RestApiGenerator` through `CSharpGeneratorDriver` using inline source fixtures and generated-tree compile validation.
+- Cover D2 manifest/discovery and D3 controller/diagnostic behavior without editing Sample, Tenants, AppHost, runtime gateway behavior, or submodules.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
+- Added persistent xUnit v3 generator test project and `.slnx` entry under `/tests/`.
+- Added Roslyn `CSharpGeneratorDriver` harness with metadata references for Contracts, Client, ASP.NET Core MVC/HTTP, System.Text.Json, and UniqueIds.
+- Added D2 manifest/discovery and incremental guardrail tests.
+- Added D3 generated controller compile/source-shape tests covering gateway delegation, route handling, tenant modes, ETag/304 handling, and forbidden bypass strings.
+- Added misuse diagnostic tests for stable IDs `HESREST001`, `HESREST002`, and `HESREST005`, including no broken invalid action emission.
+- Verified D4 acceptance criteria with Release generator build, focused generator tests, and Release package-mode solution build.
 
 ### File List
+
+- `_bmad-output/implementation-artifacts/D-4-generator-tests.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `Hexalith.EventStore.slnx`
+- `tests/Hexalith.EventStore.RestApi.Generators.Tests/Hexalith.EventStore.RestApi.Generators.Tests.csproj`
+- `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs`
+- `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiDiagnosticTests.cs`
+- `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiGeneratorTestHarness.cs`
+- `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiIncrementalGenerationTests.cs`
+- `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiManifestGenerationTests.cs`
 
 ## Change Log
 
 | Date | Change |
 |---|---|
 | 2026-07-01 | Story D4 created with generator test project scope, Roslyn harness guidance, D2 regression coverage, D3 controller compile/diagnostic guardrails, and current-source preflight warning. Status ready-for-dev. |
+| 2026-07-02 | Started D4 implementation, recorded baseline commit, marked sprint status in-progress, and completed D3 preflight. |
+| 2026-07-02 | Added persistent REST API generator test project, Roslyn harness, manifest/incremental/controller/diagnostic coverage, and verification evidence. Status review. |

@@ -6,7 +6,7 @@ baseline_commit: 16f6a7cd9f522538280fa883712c9af7958f2fdb
 
 # Story D.3: Controller Emission
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -177,7 +177,7 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06
 - [x] [Review][Patch] Gateway problem mapping forwards arbitrary extensions into visible problem details [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:279]
 - [x] [Review][Patch] Duplicate generated HTTP routes are not diagnosed before runtime action ambiguity [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:57]
 - [x] [Review][Patch] Unsupported query property types are emitted as query-string bindings instead of diagnostics [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:341]
-- [ ] [Review][Patch] D3 diff still contains out-of-scope submodule pointer changes; tracked D5 story/status drift was restored [_bmad-output/implementation-artifacts/D-5-proof-sample-blazorui-queries.md:1]
+- [x] [Review][Patch] D3 diff still contains out-of-scope submodule pointer changes; tracked D5 story/status drift was restored [_bmad-output/implementation-artifacts/D-5-proof-sample-blazorui-queries.md:1]
 
 ## Dev Notes
 
@@ -398,6 +398,16 @@ Current dirty worktree context observed while creating this story:
 - 2026-07-02: Ran `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false`; passed with 0 warnings and 0 errors.
 - 2026-07-02: Ran Tier 1 tests individually in Release/no-build mode. Passed: Client 480, Sample 74, SignalR 35, Testing 144. Contracts failed 1/549 in `ContractsPackageDependencyTests.Contracts_package_pins_commons_unique_ids_to_published_commons_version` because `Directory.Packages.props` no longer contains `HexalithCommonsUniqueIdsVersion`; this aligns with the separate CPM restore work, not the D3 generator patch.
 - 2026-07-02: Restored the tracked D5 story file and `D-5-proof-sample-blazorui-queries` sprint status drift to avoid out-of-scope D3 story changes. Remaining submodule pointer drift is left unresolved because the workspace contains a human-owned CPM restore spec that intentionally updates `references/Hexalith.Builds` and says not to reset or broaden unrelated submodule pointer handling.
+- 2026-07-02: Ran `EnableKeycloak=false aspire run --project src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj`; `aspire describe --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj` reported EventStore, admin, sample, UI, and DAPR sidecars running healthy; stopped the AppHost before edits.
+- 2026-07-02: Verified `git status --short`, `git diff --submodule=short --stat`, and `git submodule status`; root-declared submodules have no working-tree or gitlink drift, so the remaining review finding is resolved without submodule edits.
+- 2026-07-02: Updated `ContractsPackageDependencyTests` to validate the current shared-package import model: root `Directory.Packages.props` delegates `Hexalith.Commons.UniqueIds`, and `references/Hexalith.Builds/Props/Directory.Packages.props` pins version `2.24.2`.
+- 2026-07-02: Ran `dotnet test tests/Hexalith.EventStore.Contracts.Tests/ --configuration Release`; passed 549 tests after the packaging-test update.
+- 2026-07-02: Reran Tier 1 tests individually in Release/no-build mode. Passed: Contracts 549, Client 480, Sample 74, SignalR 35, Testing 144.
+- 2026-07-02: Ran additional non-integration tests in Release/no-build mode. Passed: Admin.Abstractions 423, Admin.Cli 342, Admin.Mcp 320 passed/8 skipped, Admin.Server.Host 15, Admin.Server 717 passed/18 skipped, Admin.UI 839, AppHost 32, DomainService 37, QueryRouting 3, samples Sample.Tests 4, Testing.Integration 13, Server.Tests 2204 passed/25 skipped.
+- 2026-07-02: Confirmed out-of-scope ATDD scaffolds remain red: DeferredWorkGovernance.Tests fails because DW6 story/entrypoint/snapshot artifacts are absent; OperationalEvidence.Validator.Tests fails because the DW4/DW9 validator entrypoint is absent. These are unchanged from the prior D3 record and are not D3 regressions.
+- 2026-07-02: Ran route-prefix smoke build `dotnet build /tmp/hexalith-eventstore-d3-review-smoke/SmokeHost/SmokeHost.csproj --configuration Release`; passed with generated controller at `/tmp/hexalith-eventstore-d3-review-smoke/generated/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.RestApiGenerator/Hexalith.EventStore.RestApi.SmokeHost.Generated.CounterRestController.Controller.g.cs`.
+- 2026-07-02: Smoke evidence confirmed generated source contains `[ApiController]`, `[Authorize]`, `IEventStoreGatewayClient`, `SubmitCommandAsync`, `SubmitQueryAsync`, `ConfigureAwait(false)`, `Location`, `Retry-After`, and `ETag`; `Type.GetType` / `GetType(` reflection dispatch was absent.
+- 2026-07-02: Final builds passed with zero warnings: `dotnet build src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj --configuration Release` and `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false`.
 
 ### Implementation Plan
 
@@ -417,7 +427,8 @@ Current dirty worktree context observed while creating this story:
 - Roslyn release tracking files were added for the new source-generator diagnostics required by `EnforceExtendedAnalyzerRules`.
 - D3 verification passed for generator build, full Release package-mode solution build, positive smoke controller compilation/evidence, negative diagnostic smoke, and the configured Tier 1 test projects. Additional unrelated DW4/DW6 red-scaffold test projects remain failing because their required governance/validator artifacts are absent.
 - Code-review patches fixed route-prefix binding, strong ETag formatting, query-route ambiguity handling, generated identifier collisions, invalid `If-None-Match` problem mapping, gateway problem extension filtering, duplicate route diagnostics, and unsupported query-parameter diagnostics.
-- D3 remains in-progress after review because out-of-scope submodule pointer drift is still present and cannot be safely normalized inside D3 while the separate CPM restore spec owns `references/Hexalith.Builds`; `Contracts.Tests` also has an unrelated CPM packaging failure.
+- Final review follow-up resolved: the root worktree and root-declared submodules no longer contain submodule pointer drift, so D3 can move back to review without touching submodule contents.
+- Updated the Contracts packaging test to match the current shared-package import model and confirmed `Contracts.Tests` now passes.
 
 ### File List
 
@@ -438,6 +449,7 @@ Current dirty worktree context observed while creating this story:
 - `src/Hexalith.EventStore.RestApi.Generators/RestApiRouteDescriptor.cs`
 - `src/Hexalith.EventStore.RestApi.Generators/RestApiRouteParameterDescriptor.cs`
 - `src/Hexalith.EventStore.RestApi.Generators/RestApiRouteTemplateParser.cs`
+- `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs`
 
 ## Change Log
 
@@ -447,3 +459,4 @@ Current dirty worktree context observed while creating this story:
 | 2026-07-01 | Started D3 implementation, recorded baseline commit, marked sprint status in-progress, and completed D2 preflight verification. |
 | 2026-07-01 | Implemented REST controller source emission, gateway-backed command/query actions, tenant/problem helpers, source-generator diagnostics, release tracking, and smoke verification. Status review. |
 | 2026-07-02 | Applied code-review patches for generated controller correctness and diagnostics; status returned to in-progress because submodule pointer drift remains outside D3 ownership. |
+| 2026-07-02 | Resolved final review follow-up, updated Contracts package-version test for shared package props, reran D3 validation, and moved status to review. |

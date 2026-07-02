@@ -40,6 +40,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          submodules: false
 
       - name: Initialize build submodules
         uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
@@ -87,9 +89,53 @@ jobs:
 
   release:
     needs: release-gate
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main
-    with:
-      solution: Hexalith.EventStore.slnx -p:NuGetAudit=false -p:UseHexalithProjectReferences=false
-      timeout-minutes: 30
-    secrets:
-      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+    # Keep checkout local: the shared workflow uses submodules:true, which trips
+    # actions/checkout recursive cleanup on nested submodules inside root submodules.
+    name: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NuGetAudit: 'false'
+      UseHexalithProjectReferences: 'false'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+
+      - name: Initialize build submodules
+        uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
+
+      - name: Initialize .NET
+        uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@main
+        with:
+          node-version: lts/*
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Restore
+        run: dotnet restore Hexalith.EventStore.slnx -p:Configuration=Release -p:UseHexalithProjectReferences=false -p:NuGetAudit=false
+
+      - name: Build
+        run: dotnet build Hexalith.EventStore.slnx --no-restore --configuration Release -warnaserror -p:UseHexalithProjectReferences=false -p:NuGetAudit=false
+
+      - name: Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: npx semantic-release

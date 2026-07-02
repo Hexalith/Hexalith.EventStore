@@ -34,6 +34,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          submodules: false
 
       - name: Initialize build submodules
         uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
