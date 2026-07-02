@@ -1,3 +1,10 @@
+# [3.24.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.23.0...v3.24.0) (2026-07-02)
+
+
+### Features
+
+* Enhance REST API diagnostics and validation ([3c91009](https://github.com/Hexalith/Hexalith.EventStore/commit/3c9100993692a7255d0bf82792ff375e4b0e1704))
+
 # [3.23.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.22.0...v3.23.0) (2026-07-02)
 
 
