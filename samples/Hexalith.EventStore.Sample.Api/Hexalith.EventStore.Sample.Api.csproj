@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>true</IsPublishable>
+    <EnableContainer>true</EnableContainer>
+    <ContainerRepository>sample-api</ContainerRepository>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Contracts library supplies the [RestRoute]-annotated query/command contracts; the generator
+         discovers them via referenced-assembly metadata (RestApiMessageParser.ParseReferenced) and emits
+         the typed controllers into this external-facing API host. -->
+    <ProjectReference Include="..\Hexalith.EventStore.Sample.Contracts\Hexalith.EventStore.Sample.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.RestApi.Generators\Hexalith.EventStore.RestApi.Generators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
+</Project>

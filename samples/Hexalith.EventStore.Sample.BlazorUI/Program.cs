@@ -1,13 +1,9 @@
-using System.Text;
-
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Sample.BlazorUI.Services;
 using Hexalith.EventStore.ServiceDefaults;
 using Hexalith.EventStore.SignalR;
 
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.FluentUI.AspNetCore.Components;
-using Microsoft.IdentityModel.Tokens;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -17,39 +13,14 @@ builder.AddServiceDefaults();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddControllers();
-
 // Fluent UI v4 components
 builder.Services.AddFluentUIComponents();
 
-// EventStore API authentication for protected EventStore/query endpoints.
+// Outbound bearer-token acquisition + attachment for calls to the protected EventStore gateway.
+// The UI host consumes EventStore through the platform gateway client; it exposes no REST endpoints
+// of its own, so no inbound authentication scheme is registered.
 builder.Services.AddSingleton<EventStoreApiAccessTokenProvider>();
 builder.Services.AddTransient<EventStoreApiAuthorizationHandler>();
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options => {
-        options.MapInboundClaims = false;
-        options.TokenValidationParameters = new TokenValidationParameters {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateIssuerSigningKey = true,
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(1),
-            ValidIssuer = builder.Configuration["EventStore:Authentication:Issuer"] ?? "hexalith-dev",
-            ValidAudience = builder.Configuration["EventStore:Authentication:Audience"] ?? "hexalith-eventstore",
-        };
-
-        string? authority = builder.Configuration["EventStore:Authentication:Authority"];
-        if (!string.IsNullOrWhiteSpace(authority)) {
-            options.Authority = authority;
-            options.RequireHttpsMetadata = builder.Configuration.GetValue("EventStore:Authentication:RequireHttpsMetadata", true);
-        }
-        else {
-            string signingKey = builder.Configuration["EventStore:Authentication:SigningKey"]
-                ?? throw new InvalidOperationException("EventStore:Authentication:SigningKey is required when Authority is not configured.");
-            options.TokenValidationParameters.IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
-        }
-    });
-builder.Services.AddAuthorization();
 
 // EventStore SignalR client — receives real-time "changed" signals
 builder.Services.AddSingleton(sp => new EventStoreSignalRClientOptions {
@@ -107,11 +78,8 @@ if (!app.Environment.IsDevelopment()) {
 
 app.UseHttpsRedirection();
 app.UseAntiforgery();
-app.UseAuthentication();
-app.UseAuthorization();
 
 app.MapStaticAssets();
-app.MapControllers();
 app.MapRazorComponents<Hexalith.EventStore.Sample.BlazorUI.Components.App>()
     .AddInteractiveServerRenderMode();
 

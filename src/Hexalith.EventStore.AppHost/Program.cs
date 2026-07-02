@@ -122,6 +122,21 @@ IResourceBuilder<ProjectResource> blazorUi = builder.AddProject<Projects.Hexalit
     // so we must pass the resolved eventstore endpoint URL explicitly.
     .WithEnvironment("EventStore__SignalR__HubUrl", ReferenceExpression.Create($"{eventStoreHttps}/hubs/projection-changes"));
 
+// Add the external-facing REST API sample host. It hosts the source-generated typed controllers for
+// third-party callers and reaches EventStore via DAPR service invocation (dapr-app-id: eventstore),
+// forwarding the caller's validated bearer. Like the Blazor UI / admin-ui sidecars it references no
+// state store or pub/sub component — service invocation only, so it has zero direct infrastructure access.
+IResourceBuilder<ProjectResource> sampleApi = builder.AddProject<Projects.Hexalith_EventStore_Sample_Api>("sample-api")
+    .WithReference(eventStore)
+    .WaitFor(eventStore)
+    .WithExternalHttpEndpoints()
+    .WithDaprSidecar(sidecar => sidecar
+        .WithOptions(new DaprSidecarOptions {
+            AppId = "sample-api",
+            PlacementHostAddress = daprPlacementHostAddress,
+            SchedulerHostAddress = daprSchedulerHostAddress,
+        }));
+
 if (security is not null) {
 #if HEXALITH_TENANTS_SOURCE
     _ = tenants.WithJwtBearerSecurity(security);
@@ -130,6 +145,11 @@ if (security is not null) {
     _ = adminServer.WithJwtBearerSecurity(security);
 
     _ = blazorUi.WithEventStoreClientCredentials(security);
+
+    // sample-api validates inbound callers against the same realm; WithEventStoreClientCredentials wires
+    // EventStore:Authentication:Authority so JWT validation uses OIDC discovery (Keycloak). With
+    // EnableKeycloak=false it falls back to the symmetric signing key from appsettings.Development.json.
+    _ = sampleApi.WithEventStoreClientCredentials(security);
 
     _ = adminUI
         .WithEventStoreClientCredentials(security)

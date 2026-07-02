@@ -10,12 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Hexalith.EventStore.Sample\Counter\Queries\GetCounterStatusQuery.cs"
-             Link="Counter\Queries\GetCounterStatusQuery.cs" />
+    <!-- References the domain's contracts library for the query metadata (Domain/QueryType/ProjectionType).
+         The interactive UI host reaches EventStore through the platform gateway client — it hosts no
+         generated REST controllers (those live in the external Hexalith.EventStore.Sample.Api host). -->
+    <ProjectReference Include="..\Hexalith.EventStore.Sample.Contracts\Hexalith.EventStore.Sample.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore.Client\Hexalith.EventStore.Client.csproj" />
-    <ProjectReference Include="..\..\src\Hexalith.EventStore.RestApi.Generators\Hexalith.EventStore.RestApi.Generators.csproj"
-                      OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore.SignalR\Hexalith.EventStore.SignalR.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" />
   </ItemGroup>
@@ -23,7 +22,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
   </ItemGroup>
 
