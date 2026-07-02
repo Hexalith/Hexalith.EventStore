@@ -48,20 +48,18 @@ public static class HexalithEventStoreSecurityExtensions
             out bool persistentParsed)
             && persistentParsed;
 
-        // When persistent, resolve the fixed proxyless host ports up front so the AddKeycloak host-port
-        // arg and the endpoint pins agree (and the client-facing realm URL, derived from GetEndpoint,
-        // tracks them automatically). KeycloakHttpPort/KeycloakManagementPort override the 8180/8543
-        // defaults and are validated fail-fast (integer 1..65535, distinct, not the EventStore 8080).
-        // The values are read ONLY in the persistent path, so the default (dynamic, proxied) topology
-        // is byte-for-byte unchanged and the override knobs are ignored unless reuse is opted into.
-        int keycloakHttpPort = KeycloakFastStartPorts.DefaultHttpPort;
-        int keycloakManagementPort = KeycloakFastStartPorts.DefaultManagementPort;
-        if (keycloakPersistent)
-        {
-            (keycloakHttpPort, keycloakManagementPort) = KeycloakFastStartPorts.Resolve(
+        // Keycloak must be addressed through a direct host endpoint for browser OIDC/PAR redirect_uri
+        // validation. The default remains non-persistent and dynamic: choose free direct host ports for
+        // each run, preferring 8180/8543 and moving forward when either port is busy. When persistence is
+        // enabled, resolve fixed proxyless host ports up front so the AddKeycloak host-port arg and endpoint
+        // pins agree (and the client-facing realm URL, derived from GetEndpoint, tracks them automatically).
+        // KeycloakHttpPort/KeycloakManagementPort override the 8180/8543 defaults and are validated fail-fast
+        // only in the persistent path.
+        (int keycloakHttpPort, int keycloakManagementPort) = keycloakPersistent
+            ? KeycloakFastStartPorts.Resolve(
                 builder.Configuration[options.HttpPortConfigurationKey],
-                builder.Configuration[options.ManagementPortConfigurationKey]);
-        }
+                builder.Configuration[options.ManagementPortConfigurationKey])
+            : KeycloakFastStartPorts.ResolveDynamic();
 
         IResourceBuilder<KeycloakResource> keycloak = builder.AddKeycloak(options.ResourceName, keycloakHttpPort)
             .WithRealmImport(options.RealmImportPath);
@@ -77,6 +75,12 @@ public static class HexalithEventStoreSecurityExtensions
             // via KeycloakHttpPort/KeycloakManagementPort to relocate them off a host collision.
             _ = keycloak
                 .WithLifetime(ContainerLifetime.Persistent)
+                .WithEndpoint("http", e => { e.Port = keycloakHttpPort; e.IsProxied = false; })
+                .WithEndpoint("management", e => { e.Port = keycloakManagementPort; e.IsProxied = false; });
+        }
+        else
+        {
+            _ = keycloak
                 .WithEndpoint("http", e => { e.Port = keycloakHttpPort; e.IsProxied = false; })
                 .WithEndpoint("management", e => { e.Port = keycloakManagementPort; e.IsProxied = false; });
         }

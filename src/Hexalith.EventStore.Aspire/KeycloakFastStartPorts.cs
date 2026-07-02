@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Net;
+using System.Net.Sockets;
 
 using Aspire.Hosting;
 
@@ -63,6 +65,18 @@ internal static class KeycloakFastStartPorts
         return (httpPort, managementPort);
     }
 
+    /// <summary>
+    /// Resolves the http/management host ports to currently free local ports.
+    /// </summary>
+    /// <returns>The available http and management host ports.</returns>
+    internal static (int HttpPort, int ManagementPort) ResolveDynamic()
+    {
+        int httpPort = FindAvailablePort(DefaultHttpPort, []);
+        int managementPort = FindAvailablePort(DefaultManagementPort, [httpPort]);
+
+        return (httpPort, managementPort);
+    }
+
     private static int ParsePort(string key, string? raw, int defaultPort)
     {
         string trimmed = raw?.Trim() ?? string.Empty;
@@ -80,6 +94,47 @@ internal static class KeycloakFastStartPorts
         }
 
         return port;
+    }
+
+    private static int FindAvailablePort(int preferredPort, IReadOnlyCollection<int> reservedPorts)
+    {
+        for (int port = preferredPort; port <= 65535; port++)
+        {
+            if (IsUsable(port, reservedPorts))
+            {
+                return port;
+            }
+        }
+
+        for (int port = 1; port < preferredPort; port++)
+        {
+            if (IsUsable(port, reservedPorts))
+            {
+                return port;
+            }
+        }
+
+        throw Invalid($"No free local TCP port could be found starting from {preferredPort}.");
+    }
+
+    private static bool IsUsable(int port, IReadOnlyCollection<int> reservedPorts)
+        => port != ReservedEventStoreAppPort
+            && !reservedPorts.Contains(port)
+            && IsAvailable(port);
+
+    private static bool IsAvailable(int port)
+    {
+        try
+        {
+            TcpListener listener = new(IPAddress.Loopback, port);
+            listener.Start();
+            listener.Stop();
+            return true;
+        }
+        catch (SocketException)
+        {
+            return false;
+        }
     }
 
     private static DistributedApplicationException Invalid(string detail)
