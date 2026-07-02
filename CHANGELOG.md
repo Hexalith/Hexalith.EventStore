@@ -1,3 +1,15 @@
+# [3.23.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.22.0...v3.23.0) (2026-07-02)
+
+
+### Bug Fixes
+
+* update sprint status and development status ([0fdadce](https://github.com/Hexalith/Hexalith.EventStore/commit/0fdadce70b76e68753bfd4db7a8041a6407e3359))
+
+
+### Features
+
+* Update sprint status and improve test coverage for REST API generators ([d44d430](https://github.com/Hexalith/Hexalith.EventStore/commit/d44d4300788e34420fedb520078043a256b8fad5))
+
 # [3.22.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.21.0...v3.22.0) (2026-07-01)
 
 
