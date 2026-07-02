@@ -40,6 +40,17 @@ public sealed class RestApiDiagnosticTests
     }
 
     [Fact]
+    public void Run_DuplicateJsonPropertyNames_ReportsStableDiagnosticAndNoController()
+    {
+        GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(DuplicateJsonPropertyNamesSource);
+
+        Diagnostic diagnostic = ShouldContainError(result, "HESREST010");
+
+        diagnostic.GetMessage().ShouldContain("JSON name 'cursor'");
+        RestApiGeneratorTestHarness.ContainsGeneratedSource(result, ".Controller.g.cs").ShouldBeFalse();
+    }
+
+    [Fact]
     public void Run_InvalidShapeAlongsideValidShape_EmitsOnlyValidAction()
     {
         GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(ValidCommandAndInvalidQuerySource);
@@ -79,7 +90,10 @@ public sealed class RestApiDiagnosticTests
 
     [Theory]
     [InlineData(LeadingSlashRouteSource)]
+    [InlineData(TildeWithoutSlashRouteSource)]
     [InlineData(UnclosedRouteTemplateSource)]
+    [InlineData(UnescapedBraceRouteTemplateSource)]
+    [InlineData(CatchAllRouteParameterNotFinalSource)]
     [InlineData(DuplicateRouteParameterSource)]
     public void Run_InvalidRouteTemplate_ReportsStableDiagnosticAndNoController(string source)
     {
@@ -125,6 +139,17 @@ public sealed class RestApiDiagnosticTests
         Diagnostic diagnostic = ShouldContainError(result, "HESREST009");
 
         diagnostic.GetMessage().ShouldContain("route parameter 'region'");
+        RestApiGeneratorTestHarness.ContainsGeneratedSource(result, ".Controller.g.cs").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Run_NonScalarCommandRouteParameter_ReportsStableDiagnosticAndNoController()
+    {
+        GeneratorDriverRunResult result = RestApiGeneratorTestHarness.Run(NonScalarCommandRouteParameterSource);
+
+        Diagnostic diagnostic = ShouldContainError(result, "HESREST009");
+
+        diagnostic.GetMessage().ShouldContain("route parameter 'filters'");
         RestApiGeneratorTestHarness.ContainsGeneratedSource(result, ".Controller.g.cs").ShouldBeFalse();
     }
 
@@ -197,6 +222,26 @@ public sealed class RestApiDiagnosticTests
         namespace Smoke;
 
         public sealed record SearchCounters(string[] Tags) : IQueryContract
+        {
+            public static string QueryType => "search-counters";
+            public static string Domain => "counter";
+            public static string ProjectionType => "counter";
+        }
+        """;
+
+    private const string DuplicateJsonPropertyNamesSource = """
+        using System.Text.Json.Serialization;
+
+        using Hexalith.EventStore.Contracts.Queries;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+        namespace Smoke;
+
+        public sealed record SearchCounters(
+            [property: JsonPropertyName("cursor")] string? Cursor,
+            [property: JsonPropertyName("cursor")] string? NextCursor) : IQueryContract
         {
             public static string QueryType => "search-counters";
             public static string Domain => "counter";
@@ -312,6 +357,23 @@ public sealed class RestApiDiagnosticTests
         }
         """;
 
+    private const string TildeWithoutSlashRouteSource = """
+        using Hexalith.EventStore.Contracts.Queries;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+        namespace Smoke;
+
+        [RestRoute(RestVerb.Get, "~absolute")]
+        public sealed record TildeCounterQuery() : IQueryContract
+        {
+            public static string QueryType => "tilde-counter-query";
+            public static string Domain => "counter";
+            public static string ProjectionType => "counter";
+        }
+        """;
+
     private const string UnclosedRouteTemplateSource = """
         using Hexalith.EventStore.Contracts.Queries;
         using Hexalith.EventStore.Contracts.Rest;
@@ -322,6 +384,40 @@ public sealed class RestApiDiagnosticTests
 
         [RestRoute(RestVerb.Get, "{counterId")]
         public sealed record BrokenCounterQuery(string CounterId) : IQueryContract
+        {
+            public static string QueryType => "broken-counter-query";
+            public static string Domain => "counter";
+            public static string ProjectionType => "counter";
+        }
+        """;
+
+    private const string UnescapedBraceRouteTemplateSource = """
+        using Hexalith.EventStore.Contracts.Queries;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+        namespace Smoke;
+
+        [RestRoute(RestVerb.Get, "{counter{Id}}")]
+        public sealed record BrokenCounterQuery(string CounterId) : IQueryContract
+        {
+            public static string QueryType => "broken-counter-query";
+            public static string Domain => "counter";
+            public static string ProjectionType => "counter";
+        }
+        """;
+
+    private const string CatchAllRouteParameterNotFinalSource = """
+        using Hexalith.EventStore.Contracts.Queries;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+        namespace Smoke;
+
+        [RestRoute(RestVerb.Get, "{*path}/tail")]
+        public sealed record BrokenCounterQuery(string Path) : IQueryContract
         {
             public static string QueryType => "broken-counter-query";
             public static string Domain => "counter";
@@ -401,6 +497,23 @@ public sealed class RestApiDiagnosticTests
         {
             public static string Domain => "counter";
             public static string CommandType => "increment-counter";
+            public string AggregateId => CounterId;
+        }
+        """;
+
+    private const string NonScalarCommandRouteParameterSource = """
+        using Hexalith.EventStore.Contracts.Commands;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+        namespace Smoke;
+
+        [RestRoute(RestVerb.Post, "{filters}/update")]
+        public sealed record UpdateCounterFilters(string CounterId, string[] Filters) : ICommandContract
+        {
+            public static string Domain => "counter";
+            public static string CommandType => "update-counter-filters";
             public string AggregateId => CounterId;
         }
         """;

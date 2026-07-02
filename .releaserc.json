@@ -8,7 +8,7 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "for p in Contracts Client Server SignalR Testing Testing.Integration Aspire ServiceDefaults DomainService Admin.Abstractions Admin.Cli Admin.Server; do dotnet pack \"src/Hexalith.EventStore.$p/Hexalith.EventStore.$p.csproj\" --configuration Release --output ./nupkgs -p:Version=${nextRelease.version} -p:GeneratePackageOnBuild=false -p:UseHexalithProjectReferences=false || exit 1; done",
+        "prepareCmd": "python3 tools/pack-release-packages.py ./nupkgs ${nextRelease.version} && python3 tools/validate-release-packages.py ./nupkgs ${nextRelease.version}",
         "publishCmd": "dotnet nuget push \"./nupkgs/Hexalith.EventStore.*.nupkg\" --source https://api.nuget.org/v3/index.json --api-key $NUGET_API_KEY --skip-duplicate"
       }
     ],

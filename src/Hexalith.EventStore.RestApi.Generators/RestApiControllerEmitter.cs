@@ -92,6 +92,13 @@ internal static class RestApiControllerEmitter
                 continue;
             }
 
+            if (message.IsQuery
+                && TryFindDuplicateJsonName(message, out string duplicateJsonName))
+            {
+                reportDiagnostic(RestApiDiagnosticDescriptors.CreateDuplicateJsonName(message, duplicateJsonName));
+                continue;
+            }
+
             if (message.IsQuery && IsAmbiguousQueryRoute(effectiveRouteParameters))
             {
                 reportDiagnostic(RestApiDiagnosticDescriptors.CreateAmbiguousQueryRoute(message));
@@ -445,7 +452,7 @@ internal static class RestApiControllerEmitter
         {
             RestApiBindablePropertyDescriptor parameter = queryParameters[i];
             string identifier = RestApiNameSanitizer.ToIdentifier(parameter.Name, parameter.Name, camelCase: true);
-            builder.Append("        [FromQuery(Name = ").Append(Literal(parameter.Name)).Append(")] ")
+            builder.Append("        [FromQuery(Name = ").Append(Literal(parameter.JsonName)).Append(")] ")
                 .Append(parameter.TypeName).Append(' ').Append(identifier).AppendLine(",");
             hasEarlierParameter = true;
         }
@@ -754,6 +761,13 @@ internal static class RestApiControllerEmitter
             }
 
             builder.Append(value.Substring(index, open - index));
+            if (open + 1 < value.Length && value[open + 1] == '{')
+            {
+                builder.Append("{{");
+                index = open + 2;
+                continue;
+            }
+
             int close = value.IndexOf('}', open + 1);
             if (close < 0)
             {
@@ -838,22 +852,47 @@ internal static class RestApiControllerEmitter
         return false;
     }
 
+    private static bool TryFindDuplicateJsonName(RestApiMessageDescriptor message, out string duplicateJsonName)
+    {
+        var jsonNames = new HashSet<string>(StringComparer.Ordinal);
+        foreach (RestApiBindablePropertyDescriptor property in message.Properties)
+        {
+            if (!jsonNames.Add(property.JsonName))
+            {
+                duplicateJsonName = property.JsonName;
+                return true;
+            }
+        }
+
+        duplicateJsonName = string.Empty;
+        return false;
+    }
+
     private static bool TryFindUnmappedCommandRouteParameter(
         RestApiMessageDescriptor message,
         ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,
         out RestApiRouteParameterDescriptor unmappedParameter)
     {
         ImmutableArray<RestApiRouteParameterDescriptor> nonTenantParameters = GetNonTenantParameters(routeParameters);
-        if (nonTenantParameters.Length <= 1)
-        {
-            unmappedParameter = default;
-            return false;
-        }
-
         foreach (RestApiRouteParameterDescriptor parameter in nonTenantParameters)
         {
-            if (string.Equals(parameter.Name, "aggregateId", StringComparison.OrdinalIgnoreCase)
-                || TryFindProperty(message, parameter.Name, out _))
+            if (string.Equals(parameter.Name, "aggregateId", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (TryFindProperty(message, parameter.Name, out RestApiBindablePropertyDescriptor property))
+            {
+                if (property.CanBindFromQuery)
+                {
+                    continue;
+                }
+
+                unmappedParameter = parameter;
+                return true;
+            }
+
+            if (nonTenantParameters.Length <= 1)
             {
                 continue;
             }
@@ -975,7 +1014,7 @@ internal static class RestApiControllerEmitter
         ImmutableArray<RestApiRouteParameterDescriptor> routeParameters)
         => message.Properties
             .Where(property => !routeParameters.Any(routeParameter =>
-                string.Equals(routeParameter.Name, property.Name, StringComparison.OrdinalIgnoreCase)))
+                RouteParameterMatchesProperty(routeParameter.Name, property)))
             .ToImmutableArray();
 
     private static bool TryFindProperty(
@@ -985,7 +1024,7 @@ internal static class RestApiControllerEmitter
     {
         foreach (RestApiBindablePropertyDescriptor candidate in message.Properties)
         {
-            if (string.Equals(candidate.Name, routeParameterName, StringComparison.OrdinalIgnoreCase))
+            if (RouteParameterMatchesProperty(routeParameterName, candidate))
             {
                 property = candidate;
                 return true;
@@ -995,6 +1034,10 @@ internal static class RestApiControllerEmitter
         property = default;
         return false;
     }
+
+    private static bool RouteParameterMatchesProperty(string routeParameterName, RestApiBindablePropertyDescriptor property)
+        => string.Equals(property.Name, routeParameterName, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(property.JsonName, routeParameterName, StringComparison.Ordinal);
 
     private static string? FindRouteParameterIdentifier(
         ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,

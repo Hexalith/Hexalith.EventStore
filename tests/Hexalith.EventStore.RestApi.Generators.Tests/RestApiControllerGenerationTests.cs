@@ -48,7 +48,7 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("new SubmitCommandRequest(");
         source.ShouldContain("Response.Headers[\"Retry-After\"] = \"1\";");
         source.ShouldContain("Response.Headers[\"Location\"] = \"/api/v1/commands/status/\" + Uri.EscapeDataString(__hexalithResponse.CorrelationId);");
-        source.ShouldContain("[FromQuery(Name = \"Page\")]");
+        source.ShouldContain("[FromQuery(Name = \"page\")]");
         source.ShouldContain(" page,");
         source.ShouldContain("[\"page\"] = page,");
         source.ShouldContain("[FromHeader(Name = \"If-None-Match\")] string? ifNoneMatch");
@@ -167,9 +167,33 @@ public sealed class RestApiControllerGenerationTests
 
         string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
 
-        source.ShouldContain("[FromQuery(Name = \"CursorToken\")]");
+        source.ShouldContain("[FromQuery(Name = \"cursor_token\")]");
+        source.ShouldContain("[FromQuery(Name = \"pageSize\")]");
         source.ShouldContain("[\"cursor_token\"] = cursorToken,");
         source.ShouldContain("[\"pageSize\"] = pageSize,");
+    }
+
+    [Fact]
+    public void Run_JsonNamedRouteParameter_BindsRouteAndOmitsRoutePropertyFromQueryPayload()
+    {
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(JsonNamedRouteQuerySource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            compilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
+
+        source.ShouldContain("[FromRoute(Name = \"counter_id\")] string counter_id");
+        source.ShouldContain("string __hexalithAggregateId = Convert.ToString(counter_id, CultureInfo.InvariantCulture)");
+        source.ShouldContain("[FromQuery(Name = \"page_size\")]");
+        source.ShouldContain("[\"page_size\"] = pageSize,");
+        source.ShouldNotContain("[FromQuery(Name = \"counter_id\")]");
+        source.ShouldNotContain("[\"counter_id\"] = counterId,");
     }
 
     [Fact]
@@ -188,7 +212,7 @@ public sealed class RestApiControllerGenerationTests
         string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
 
         source.ShouldContain("body.CounterId");
-        source.ShouldContain("[FromQuery(Name = \"PageSize\")]");
+        source.ShouldContain("[FromQuery(Name = \"pageSize\")]");
         source.ShouldContain("[\"pageSize\"] = pageSize,");
     }
 
@@ -368,6 +392,27 @@ public sealed class RestApiControllerGenerationTests
             public static string QueryType => "search-counters";
             public static string Domain => "counter";
             public static string ProjectionType => "counter-search";
+        }
+        """;
+
+    private const string JsonNamedRouteQuerySource = """
+        using System.Text.Json.Serialization;
+
+        using Hexalith.EventStore.Contracts.Queries;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+        namespace Smoke;
+
+        [RestRoute(RestVerb.Get, "{counter_id}/history")]
+        public sealed record GetCounterHistory(
+            [property: JsonPropertyName("counter_id")] string CounterId,
+            [property: JsonPropertyName("page_size")] int PageSize) : IQueryContract
+        {
+            public static string QueryType => "get-counter-history";
+            public static string Domain => "counter";
+            public static string ProjectionType => "counter-history";
         }
         """;
 

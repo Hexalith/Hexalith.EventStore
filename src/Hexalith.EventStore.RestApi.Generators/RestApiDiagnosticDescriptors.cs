@@ -76,6 +76,14 @@ internal static class RestApiDiagnosticDescriptors
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    public static readonly DiagnosticDescriptor DuplicateJsonName = new(
+        "HESREST010",
+        "Query payload JSON name is duplicated",
+        "Query contract '{0}' has multiple properties that resolve to JSON name '{1}'",
+        "Hexalith.EventStore.RestApi",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     public static Diagnostic CreateMissingRouteTenant(RestApiMessageDescriptor message)
         => Diagnostic.Create(MissingRouteTenant, Location.None, message.TypeName);
 
@@ -102,5 +110,8 @@ internal static class RestApiDiagnosticDescriptors
 
     public static Diagnostic CreateUnmappedRouteParameter(RestApiMessageDescriptor message, RestApiRouteParameterDescriptor parameter)
         => Diagnostic.Create(UnmappedRouteParameter, Location.None, message.TypeName, parameter.Name);
+
+    public static Diagnostic CreateDuplicateJsonName(RestApiMessageDescriptor message, string jsonName)
+        => Diagnostic.Create(DuplicateJsonName, Location.None, message.TypeName, jsonName);
 
 }

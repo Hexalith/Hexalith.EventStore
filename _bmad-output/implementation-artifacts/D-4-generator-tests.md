@@ -6,7 +6,7 @@ baseline_commit: 0fdadce70b76e68753bfd4db7a8041a6407e3359
 
 # Story D.4: Generator Tests
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -157,6 +157,10 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06
 - [x] [Review][Patch] Assert the required `{counterId}` query route/action from the happy-path fixture [tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs:246]
 - [x] [Review][Patch] Prove command 400 responses and command-status Location include the required status/correlation behavior [tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs:42]
 - [x] [Review][Patch] Extend deterministic-output guard to cover absolute paths and actual random ID values [tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiManifestGenerationTests.cs:93]
+- [x] [Review][Patch] JSON contract names are not used for generated query and route binding [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:448]
+- [x] [Review][Patch] Duplicate JSON query payload keys are not diagnosed before generated actions run [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:535]
+- [x] [Review][Patch] Route-template validation misses MVC-invalid templates [src/Hexalith.EventStore.RestApi.Generators/RestApiRouteTemplateParser.cs:14]
+- [x] [Review][Patch] Command route parameters can bind to non-scalar body properties [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:841]
 
 ## Dev Notes
 
@@ -343,6 +347,7 @@ GPT-5 Codex
 - 2026-07-02: Required D4 validation passed: `dotnet build src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj --configuration Release`, `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/`, and `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false`.
 - 2026-07-02: Regression validation passed for documented Tier 1 tests plus additional unit projects: Contracts, Client, Sample, SignalR, Testing, Admin.Abstractions, Admin.Cli, Admin.Mcp, Admin.Server, Admin.Server.Host, Admin.UI, AppHost, DomainService, QueryRouting, and Testing.Integration. Non-baseline ATDD/governance projects `DeferredWorkGovernance.Tests` and `OperationalEvidence.Validator.Tests` failed due missing unrelated DW4/DW6 artifacts/entrypoints; D4 files do not touch those areas.
 - 2026-07-02: `git status --short --untracked-files=all` showed D4-owned files plus pre-existing unrelated changes in `.github/workflows/*`, `D-3-controller-emission.md`, and `ContractsPackageDependencyTests.cs`; no generated `bin`, `obj`, or `TestResults` outputs are tracked.
+- 2026-07-02: Code review patch validation passed after applying four generator fixes: `dotnet build src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj --configuration Release`, `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/`, and `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false`.
 
 ### Implementation Plan
 
@@ -379,3 +384,4 @@ GPT-5 Codex
 | 2026-07-01 | Story D4 created with generator test project scope, Roslyn harness guidance, D2 regression coverage, D3 controller compile/diagnostic guardrails, and current-source preflight warning. Status ready-for-dev. |
 | 2026-07-02 | Started D4 implementation, recorded baseline commit, marked sprint status in-progress, and completed D3 preflight. |
 | 2026-07-02 | Added persistent REST API generator test project, Roslyn harness, manifest/incremental/controller/diagnostic coverage, and verification evidence. Status review. |
+| 2026-07-02 | Applied code review patches for JSON-name binding, duplicate JSON payload diagnostics, route-template validation, and non-scalar command route guards. Status done. |

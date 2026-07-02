@@ -16,6 +16,12 @@ internal static class RestApiRouteTemplateParser
             return "Route template must be relative or start with '~/' for an absolute route.";
         }
 
+        if (template.StartsWith("~", StringComparison.Ordinal)
+            && !template.StartsWith("~/", StringComparison.Ordinal))
+        {
+            return "Route template cannot start with '~' unless it starts with '~/'.";
+        }
+
         var seen = new HashSet<string>(StringComparer.Ordinal);
         int index = 0;
         while (index < template.Length)
@@ -35,10 +41,21 @@ internal static class RestApiRouteTemplateParser
                     return "Route template has an unclosed route parameter.";
                 }
 
-                string name = CleanParameterName(template.Substring(index + 1, close - index - 1));
+                string rawParameter = template.Substring(index + 1, close - index - 1);
+                if (rawParameter.IndexOf('{') >= 0)
+                {
+                    return "Route template has an unescaped brace inside a route parameter.";
+                }
+
+                string name = CleanParameterName(rawParameter);
                 if (name.Length == 0)
                 {
                     return "Route template has an empty route parameter.";
+                }
+
+                if (IsCatchAllParameter(rawParameter) && close != template.Length - 1)
+                {
+                    return "Route template catch-all parameter must be the final route segment.";
                 }
 
                 if (!seen.Add(name))
@@ -127,4 +144,7 @@ internal static class RestApiRouteTemplateParser
 
         return name.Trim();
     }
+
+    private static bool IsCatchAllParameter(string value)
+        => value.TrimStart().StartsWith("*", StringComparison.Ordinal);
 }

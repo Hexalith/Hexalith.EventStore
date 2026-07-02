@@ -10,6 +10,9 @@ Hexalith CI/CD standards and reusable workflow guidance live in
 |----------|------|----------|---------|
 | **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` | Restore/build `Hexalith.EventStore.slnx`, run deterministic fast tests, run `Server.Tests` excluding `LiveSidecar`, upload TRX/coverage evidence. |
 | **Integration Tests** | `.github/workflows/integration.yml` | `push`, `pull_request` to `main`, manual dispatch | Run the `Category=LiveSidecar` DAPR-backed server integration tests in a dedicated lane. |
+| **CodeQL** | `.github/workflows/codeql.yml` | `push`, `pull_request` to `main`, weekly schedule | Thin caller to the shared `Hexalith.Builds` CodeQL reusable workflow using `@main`. |
+| **Dependency Review** | `.github/workflows/dependency-review.yml` | `pull_request` to `main` | Thin caller to the shared dependency-review gate using `@main`. |
+| **Commitlint** | `.github/workflows/commitlint.yml` | `pull_request` to `main` | Thin caller to the shared Conventional Commits gate using `@main`. |
 | **Release** | `.github/workflows/release.yml` | successful `CI` workflow completion for a `push` to `main` | Run `semantic-release` for versioning, changelog, NuGet publish, and GitHub Release creation. |
 
 ## Shared CI/CD Boundary
@@ -24,8 +27,12 @@ EventStore keeps only module-specific wiring here:
 
 - `Hexalith.EventStore.slnx`.
 - EventStore test project manifests and tier exclusions.
-- EventStore release/package behavior in `.releaserc.json`.
+- EventStore release/package behavior in `.releaserc.json` and
+  `tools/release-packages.json`.
 - EventStore-specific integration constraints, such as the deferred full Aspire topology lane.
+- Workflow triggers and permissions for the thin security-gate callers.
+- Hexalith.Builds action and reusable workflow references use `@main` by
+  Hexalith policy; third-party actions remain SHA-pinned in shared workflows.
 
 ## Test Tiers
 
@@ -52,6 +59,19 @@ exact CI head SHA, attaches it to a local `main` branch, and runs
 Semantic-release still owns versioned artifact production through
 [`.releaserc.json`](../.releaserc.json): package packing and NuGet publishing
 run only when the commit history warrants a release.
+
+The NuGet publish scope is declared in
+[`tools/release-packages.json`](../tools/release-packages.json). The release
+prepare step runs:
+
+```bash
+python3 tools/pack-release-packages.py ./nupkgs <version>
+python3 tools/validate-release-packages.py ./nupkgs <version>
+```
+
+This keeps package scope reviewable without editing semantic-release command
+strings. Add or remove packages by changing the manifest and validating the
+generated `.nupkg` set.
 
 ## Submodules
 

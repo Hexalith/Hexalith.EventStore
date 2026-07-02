@@ -1,11 +1,12 @@
 ---
 created: 2026-07-01
 source_story_key: D-5-proof-sample-blazorui-queries
+baseline_commit: 4d1a207138baf70f5460ba755e2389cd7a52c22b
 ---
 
 # Story D.5: Proof - Sample BlazorUI Queries
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

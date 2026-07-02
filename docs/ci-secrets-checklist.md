@@ -32,6 +32,8 @@ URL: `https://github.com/Hexalith/Hexalith.EventStore/settings/secrets/actions`
 
 - `GITHUB_TOKEN` — tag creation, GitHub Release upload
 - `NUGET_API_KEY` — `dotnet nuget push` via semantic-release
+- No npm registry token is needed. `npm ci` installs the committed release
+  tooling lockfile before semantic-release runs.
 
 ### `deploy-staging.yml`
 
@@ -84,3 +86,16 @@ gh secret list --repo Hexalith/Hexalith.EventStore
 ```
 
 Compare the output against the **Inventory** table above. Any unexpected secret should be investigated and removed if not in use.
+
+## Hardening backlog
+
+`NUGET_API_KEY` remains required until NuGet.org Trusted Publishing is configured
+for this repository and release workflow. Once the NuGet trusted publishing
+policy exists, replace the long-lived secret with OIDC-based package publishing
+and remove `NUGET_API_KEY` from this inventory.
+
+`npm audit signatures` is intentionally not a release gate yet. Local validation
+on 2026-07-02 failed because the semantic-release dependency chain includes
+`tunnel@0.0.6`, whose npm registry signing key expired on 2025-01-29. Enable the
+gate only after the release-tool dependency chain or npm registry signature state
+allows it to pass reproducibly.
