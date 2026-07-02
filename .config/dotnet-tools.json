@@ -10,7 +10,7 @@
       "rollForward": false
     },
     "hexalith.eventstore.admin.cli": {
-      "version": "3.15.1",
+      "version": "3.24.0",
       "commands": [
         "eventstore-admin"
       ],
