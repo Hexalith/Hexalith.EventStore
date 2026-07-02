@@ -1,3 +1,10 @@
+# [3.26.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.25.0...v3.26.0) (2026-07-02)
+
+
+### Features
+
+* Implement Dapr subscription endpoint and corresponding test ([f04aeb3](https://github.com/Hexalith/Hexalith.EventStore/commit/f04aeb3e565c67a71c8fda562414d7b62be34980))
+
 # [3.25.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.24.0...v3.25.0) (2026-07-02)
 
 
