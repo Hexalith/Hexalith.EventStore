@@ -11,6 +11,8 @@ namespace Hexalith.EventStore.Admin.UI;
 /// Extracted from Program.cs for testability with Playwright E2E fixtures.
 /// </summary>
 public static class AdminUIServiceExtensions {
+    private const string DaprSubscribePath = "/dapr/subscribe";
+
     /// <summary>
     /// Registers all Admin.UI services (Blazor, FluentUI, authentication, API clients, SignalR).
     /// Call <see cref="Hexalith.EventStore.ServiceDefaults.Extensions.AddServiceDefaults{TBuilder}"/>
@@ -164,7 +166,14 @@ public static class AdminUIServiceExtensions {
             _ = app.UseHsts();
         }
 
-        _ = app.UseHttpsRedirection();
+        _ = app.MapGet(DaprSubscribePath, static () => Results.Json(Array.Empty<object>()))
+            .ExcludeFromDescription();
+
+        _ = app.UseWhen(
+            static context => !IsDaprSubscribeRequest(context),
+            static branch => {
+                _ = branch.UseHttpsRedirection();
+            });
         _ = app.UseAntiforgery();
 
         _ = app.MapStaticAssets();
@@ -177,6 +186,10 @@ public static class AdminUIServiceExtensions {
 
         return app;
     }
+
+    private static bool IsDaprSubscribeRequest(HttpContext context)
+        => HttpMethods.IsGet(context.Request.Method)
+            && string.Equals(context.Request.Path.Value, DaprSubscribePath, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Starts the SignalR connection gracefully. Polling handles data refresh if SignalR is unavailable.

@@ -26,4 +26,20 @@ public class HostBootstrapTests : IClassFixture<WebApplicationFactory<Program>> 
         // Assert — 200 OK means the host bootstrapped and the page rendered
         response.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task DaprSubscribeProbe_ReturnsEmptySubscriptionListWithoutHttpsRedirect() {
+        WebApplicationFactory<Program> factory = _factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("DAPR_HTTP_PORT", "3500"));
+        HttpClient client = factory.CreateClient(new WebApplicationFactoryClientOptions {
+            AllowAutoRedirect = false,
+        });
+
+        HttpResponseMessage response = await client.GetAsync("/dapr/subscribe");
+
+        response.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK);
+        response.Content.Headers.ContentType?.MediaType.ShouldBe("application/json");
+        string content = await response.Content.ReadAsStringAsync();
+        content.ShouldBe("[]");
+    }
 }
