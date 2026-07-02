@@ -8,6 +8,19 @@ namespace Hexalith.EventStore.RestApi.Generators;
 
 internal static class RestApiControllerEmitter
 {
+    private static readonly string[] ReservedActionIdentifiers =
+    [
+        "__hexalithAggregateId",
+        "__hexalithEntityId",
+        "__hexalithPayload",
+        "__hexalithPayloadValues",
+        "__hexalithRequest",
+        "__hexalithResponse",
+        "__hexalithResult",
+        "__hexalithTenant",
+        "__hexalithTenantResult",
+    ];
+
     public static RestApiGeneratedSource? Emit(
         RestApiOptions options,
         string controllerNamespace,
@@ -24,18 +37,46 @@ internal static class RestApiControllerEmitter
         }
 
         var emittedMessages = ImmutableArray.CreateBuilder<RestApiMessageDescriptor>();
+        var actionMethodNames = new HashSet<string>(StringComparer.Ordinal);
+        var actionRoutes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (RestApiMessageDescriptor message in orderedMessages)
         {
             RestApiRouteDescriptor route = GetRoute(message);
-            if (RequiresRouteTenant(options) && !HasTenantRouteParameter(route))
+            ImmutableArray<RestApiRouteParameterDescriptor> effectiveRouteParameters = GetEffectiveRouteParameters(options, route);
+            if (RequiresRouteTenant(options) && !HasTenantRouteParameter(effectiveRouteParameters))
             {
                 reportDiagnostic(RestApiDiagnosticDescriptors.CreateMissingRouteTenant(message));
                 continue;
             }
 
-            if (message.IsQuery && IsAmbiguousQueryRoute(route))
+            if (TryFindDuplicateParameterIdentifier(message, effectiveRouteParameters, out string? duplicateRouteParameter))
+            {
+                reportDiagnostic(RestApiDiagnosticDescriptors.CreateDuplicateParameter(message, duplicateRouteParameter));
+                continue;
+            }
+
+            if (message.IsQuery
+                && TryFindUnsupportedQueryParameter(message, effectiveRouteParameters, out RestApiBindablePropertyDescriptor unsupportedProperty))
+            {
+                reportDiagnostic(RestApiDiagnosticDescriptors.CreateUnsupportedQueryParameter(message, unsupportedProperty));
+                continue;
+            }
+
+            if (message.IsQuery && IsAmbiguousQueryRoute(effectiveRouteParameters))
             {
                 reportDiagnostic(RestApiDiagnosticDescriptors.CreateAmbiguousQueryRoute(message));
+                continue;
+            }
+
+            if (!TryReserveActionMethodNames(message, actionMethodNames, out string duplicateMethodName))
+            {
+                reportDiagnostic(RestApiDiagnosticDescriptors.CreateDuplicateParameter(message, duplicateMethodName));
+                continue;
+            }
+
+            if (!TryReserveActionRoutes(options, message, route, actionRoutes, out string duplicateActionRoute))
+            {
+                reportDiagnostic(RestApiDiagnosticDescriptors.CreateDuplicateRoute(message, duplicateActionRoute));
                 continue;
             }
 
@@ -120,8 +161,8 @@ internal static class RestApiControllerEmitter
     private static void AppendCommandAction(StringBuilder builder, RestApiOptions options, RestApiMessageDescriptor message)
     {
         RestApiRouteDescriptor route = GetRoute(message);
-        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters = route.Parameters;
-        string methodName = RestApiNameSanitizer.ToIdentifier(message.SimpleTypeName + "Command", "Command", camelCase: false) + "Async";
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters = GetEffectiveRouteParameters(options, route);
+        string methodName = GetCommandMethodName(message);
 
         builder.AppendLine();
         AppendHttpAttribute(builder, route);
@@ -135,12 +176,12 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("        {");
         builder.AppendLine("            return CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"Request body is required.\");");
         builder.AppendLine("        }");
-        AppendTenantResolution(builder, options, route);
-        AppendCommandRouteMismatchChecks(builder, message, route);
+        AppendTenantResolution(builder, options, routeParameters);
+        AppendCommandRouteMismatchChecks(builder, message, routeParameters);
         builder.AppendLine();
-        builder.AppendLine("        var request = new SubmitCommandRequest(");
+        builder.AppendLine("        var __hexalithRequest = new SubmitCommandRequest(");
         builder.AppendLine("            UniqueIdHelper.GenerateSortableUniqueStringId(),");
-        builder.AppendLine("            tenant,");
+        builder.AppendLine("            __hexalithTenant,");
         builder.Append("            ").Append(message.FullyQualifiedTypeName).AppendLine(".Domain,");
         builder.AppendLine("            body.AggregateId,");
         builder.Append("            ").Append(message.FullyQualifiedTypeName).AppendLine(".CommandType,");
@@ -148,13 +189,13 @@ internal static class RestApiControllerEmitter
         builder.AppendLine();
         builder.AppendLine("        try");
         builder.AppendLine("        {");
-        builder.AppendLine("            SubmitCommandResponse response = await gateway");
-        builder.AppendLine("                .SubmitCommandAsync(request, cancellationToken)");
+        builder.AppendLine("            SubmitCommandResponse __hexalithResponse = await gateway");
+        builder.AppendLine("                .SubmitCommandAsync(__hexalithRequest, cancellationToken)");
         builder.AppendLine("                .ConfigureAwait(false);");
         builder.AppendLine();
         builder.AppendLine("            Response.Headers[\"Retry-After\"] = \"1\";");
-        builder.AppendLine("            Response.Headers[\"Location\"] = \"/api/v1/commands/status/\" + Uri.EscapeDataString(response.CorrelationId);");
-        builder.AppendLine("            return Accepted(response);");
+        builder.AppendLine("            Response.Headers[\"Location\"] = \"/api/v1/commands/status/\" + Uri.EscapeDataString(__hexalithResponse.CorrelationId);");
+        builder.AppendLine("            return Accepted(__hexalithResponse);");
         builder.AppendLine("        }");
         builder.AppendLine("        catch (EventStoreGatewayException ex)");
         builder.AppendLine("        {");
@@ -166,9 +207,9 @@ internal static class RestApiControllerEmitter
     private static void AppendQueryAction(StringBuilder builder, RestApiOptions options, RestApiMessageDescriptor message)
     {
         RestApiRouteDescriptor route = GetRoute(message);
-        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters = route.Parameters;
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters = GetEffectiveRouteParameters(options, route);
         ImmutableArray<RestApiBindablePropertyDescriptor> queryParameters = GetQueryStringProperties(message, routeParameters);
-        string methodName = RestApiNameSanitizer.ToIdentifier(message.SimpleTypeName + "Query", "Query", camelCase: false) + "Async";
+        string methodName = GetQueryMethodName(message);
 
         builder.AppendLine();
         AppendHttpAttribute(builder, route);
@@ -180,40 +221,44 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("        [FromHeader(Name = \"If-None-Match\")] string? ifNoneMatch,");
         builder.AppendLine("        CancellationToken cancellationToken)");
         builder.AppendLine("    {");
-        AppendTenantResolution(builder, options, route);
+        AppendTenantResolution(builder, options, routeParameters);
         AppendQueryPayload(builder, queryParameters);
-        AppendQueryRouteValues(builder, route);
+        AppendQueryRouteValues(builder, routeParameters);
         builder.AppendLine();
-        builder.AppendLine("        var request = new SubmitQueryRequest(");
-        builder.AppendLine("            tenant,");
+        builder.AppendLine("        var __hexalithRequest = new SubmitQueryRequest(");
+        builder.AppendLine("            __hexalithTenant,");
         builder.Append("            ").Append(message.FullyQualifiedTypeName).AppendLine(".Domain,");
-        builder.AppendLine("            aggregateId,");
+        builder.AppendLine("            __hexalithAggregateId,");
         builder.Append("            ").Append(message.FullyQualifiedTypeName).AppendLine(".QueryType,");
         builder.Append("            ").Append(message.FullyQualifiedTypeName).AppendLine(".ProjectionType,");
-        builder.AppendLine("            payload,");
-        builder.AppendLine("            entityId);");
+        builder.AppendLine("            __hexalithPayload,");
+        builder.AppendLine("            __hexalithEntityId);");
         builder.AppendLine();
         builder.AppendLine("        try");
         builder.AppendLine("        {");
-        builder.AppendLine("            EventStoreQueryResult result = await gateway");
-        builder.AppendLine("                .SubmitQueryAsync(request, ifNoneMatch, cancellationToken)");
+        builder.AppendLine("            EventStoreQueryResult __hexalithResult = await gateway");
+        builder.AppendLine("                .SubmitQueryAsync(__hexalithRequest, ifNoneMatch, cancellationToken)");
         builder.AppendLine("                .ConfigureAwait(false);");
         builder.AppendLine();
-        builder.AppendLine("            if (!string.IsNullOrWhiteSpace(result.ETag))");
+        builder.AppendLine("            if (!string.IsNullOrWhiteSpace(__hexalithResult.ETag))");
         builder.AppendLine("            {");
-        builder.AppendLine("                Response.Headers[\"ETag\"] = result.ETag;");
+        builder.AppendLine("                Response.Headers[\"ETag\"] = FormatStrongETag(__hexalithResult.ETag);");
         builder.AppendLine("            }");
         builder.AppendLine();
-        builder.AppendLine("            if (result.IsNotModified)");
+        builder.AppendLine("            if (__hexalithResult.IsNotModified)");
         builder.AppendLine("            {");
         builder.AppendLine("                return StatusCode(StatusCodes.Status304NotModified);");
         builder.AppendLine("            }");
         builder.AppendLine();
-        builder.AppendLine("            return Ok(result.Payload);");
+        builder.AppendLine("            return Ok(__hexalithResult.Payload);");
         builder.AppendLine("        }");
         builder.AppendLine("        catch (EventStoreGatewayException ex)");
         builder.AppendLine("        {");
         builder.AppendLine("            return MapGatewayException(ex);");
+        builder.AppendLine("        }");
+        builder.AppendLine("        catch (ArgumentException ex)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", ex.Message);");
         builder.AppendLine("        }");
         builder.AppendLine("    }");
     }
@@ -276,14 +321,6 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("            problem.Extensions[\"errors\"] = exception.Errors;");
         builder.AppendLine("        }");
         builder.AppendLine();
-        builder.AppendLine("        foreach (KeyValuePair<string, JsonElement> extension in exception.Extensions)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            if (!problem.Extensions.ContainsKey(extension.Key))");
-        builder.AppendLine("            {");
-        builder.AppendLine("                problem.Extensions[extension.Key] = extension.Value;");
-        builder.AppendLine("            }");
-        builder.AppendLine("        }");
-        builder.AppendLine();
         builder.AppendLine("        return new ObjectResult(problem)");
         builder.AppendLine("        {");
         builder.AppendLine("            StatusCode = exception.StatusCode,");
@@ -315,6 +352,14 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("            problem.Extensions[key] = value;");
         builder.AppendLine("        }");
         builder.AppendLine("    }");
+        builder.AppendLine();
+        builder.AppendLine("    private static string FormatStrongETag(string etag)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        string value = etag.Trim();");
+        builder.AppendLine("        return value.Length >= 2 && value[0] == '\"' && value[value.Length - 1] == '\"'");
+        builder.AppendLine("            ? value");
+        builder.AppendLine("            : \"\\\"\" + value.Trim('\"') + \"\\\"\";");
+        builder.AppendLine("    }");
     }
 
     private static bool AppendRouteParameters(
@@ -326,12 +371,9 @@ internal static class RestApiControllerEmitter
         for (int i = 0; i < routeParameters.Length; i++)
         {
             RestApiRouteParameterDescriptor parameter = routeParameters[i];
-            string parameterType = TryFindProperty(message, parameter.Name, out RestApiBindablePropertyDescriptor property)
-                ? property.TypeName
-                : "string";
             bool appendComma = trailingComma || i < routeParameters.Length - 1;
             builder.Append("        [FromRoute(Name = ").Append(Literal(parameter.Name)).Append(")] ")
-                .Append(parameterType).Append(' ').Append(parameter.Identifier);
+                .Append("string ").Append(parameter.Identifier);
             builder.AppendLine(appendComma ? "," : string.Empty);
         }
 
@@ -353,27 +395,33 @@ internal static class RestApiControllerEmitter
         }
     }
 
-    private static void AppendTenantResolution(StringBuilder builder, RestApiOptions options, RestApiRouteDescriptor route)
+    private static void AppendTenantResolution(
+        StringBuilder builder,
+        RestApiOptions options,
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters)
     {
-        string tenantArgument = FindRouteParameterIdentifier(route, "tenant") ?? "null";
-        string tenantIdArgument = FindRouteParameterIdentifier(route, "tenantId") ?? "null";
+        string tenantArgument = FindRouteParameterIdentifier(routeParameters, "tenant") ?? "null";
+        string tenantIdArgument = FindRouteParameterIdentifier(routeParameters, "tenantId") ?? "null";
         builder.AppendLine();
-        builder.Append("        ActionResult<string> tenantResult = ResolveTenant(")
+        builder.Append("        ActionResult<string> __hexalithTenantResult = ResolveTenant(")
             .Append(RequiresRouteTenant(options) ? tenantArgument : "null")
             .Append(", ")
             .Append(RequiresRouteTenant(options) ? tenantIdArgument : "null")
             .AppendLine(");");
-        builder.AppendLine("        if (tenantResult.Result is not null)");
+        builder.AppendLine("        if (__hexalithTenantResult.Result is not null)");
         builder.AppendLine("        {");
-        builder.AppendLine("            return tenantResult.Result;");
+        builder.AppendLine("            return __hexalithTenantResult.Result;");
         builder.AppendLine("        }");
         builder.AppendLine();
-        builder.AppendLine("        string tenant = tenantResult.Value!;");
+        builder.AppendLine("        string __hexalithTenant = __hexalithTenantResult.Value!;");
     }
 
-    private static void AppendCommandRouteMismatchChecks(StringBuilder builder, RestApiMessageDescriptor message, RestApiRouteDescriptor route)
+    private static void AppendCommandRouteMismatchChecks(
+        StringBuilder builder,
+        RestApiMessageDescriptor message,
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters)
     {
-        ImmutableArray<RestApiRouteParameterDescriptor> nonTenantParameters = GetNonTenantParameters(route);
+        ImmutableArray<RestApiRouteParameterDescriptor> nonTenantParameters = GetNonTenantParameters(routeParameters);
         foreach (RestApiRouteParameterDescriptor parameter in nonTenantParameters)
         {
             string routeValue = "Convert.ToString(" + parameter.Identifier + ", CultureInfo.InvariantCulture)";
@@ -417,13 +465,13 @@ internal static class RestApiControllerEmitter
     private static void AppendQueryPayload(StringBuilder builder, ImmutableArray<RestApiBindablePropertyDescriptor> queryParameters)
     {
         builder.AppendLine();
-        builder.AppendLine("        JsonElement? payload = null;");
+        builder.AppendLine("        JsonElement? __hexalithPayload = null;");
         if (queryParameters.Length == 0)
         {
             return;
         }
 
-        builder.AppendLine("        var payloadValues = new Dictionary<string, object?>(StringComparer.Ordinal)");
+        builder.AppendLine("        var __hexalithPayloadValues = new Dictionary<string, object?>(StringComparer.Ordinal)");
         builder.AppendLine("        {");
         foreach (RestApiBindablePropertyDescriptor parameter in queryParameters)
         {
@@ -432,12 +480,14 @@ internal static class RestApiControllerEmitter
         }
 
         builder.AppendLine("        };");
-        builder.AppendLine("        payload = JsonSerializer.SerializeToElement(payloadValues, JsonOptions);");
+        builder.AppendLine("        __hexalithPayload = JsonSerializer.SerializeToElement(__hexalithPayloadValues, JsonOptions);");
     }
 
-    private static void AppendQueryRouteValues(StringBuilder builder, RestApiRouteDescriptor route)
+    private static void AppendQueryRouteValues(
+        StringBuilder builder,
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters)
     {
-        ImmutableArray<RestApiRouteParameterDescriptor> nonTenantParameters = GetNonTenantParameters(route);
+        ImmutableArray<RestApiRouteParameterDescriptor> nonTenantParameters = GetNonTenantParameters(routeParameters);
         RestApiRouteParameterDescriptor? aggregateParameter = GetAggregateParameter(nonTenantParameters);
         RestApiRouteParameterDescriptor? entityParameter = GetEntityParameter(nonTenantParameters, aggregateParameter);
         string aggregateExpression = aggregateParameter.HasValue
@@ -448,8 +498,8 @@ internal static class RestApiControllerEmitter
             : "null";
 
         builder.AppendLine();
-        builder.Append("        string aggregateId = ").Append(aggregateExpression).AppendLine(";");
-        builder.Append("        string? entityId = ").Append(entityExpression).AppendLine(";");
+        builder.Append("        string __hexalithAggregateId = ").Append(aggregateExpression).AppendLine(";");
+        builder.Append("        string? __hexalithEntityId = ").Append(entityExpression).AppendLine(";");
     }
 
     private static void AppendHttpAttribute(StringBuilder builder, RestApiRouteDescriptor route)
@@ -466,6 +516,164 @@ internal static class RestApiControllerEmitter
         }
 
         return new RestApiRouteDescriptor(message.IsCommand ? "Post" : "Get", string.Empty);
+    }
+
+    private static ImmutableArray<RestApiRouteParameterDescriptor> GetEffectiveRouteParameters(
+        RestApiOptions options,
+        RestApiRouteDescriptor route)
+    {
+        if (route.IsAbsolute)
+        {
+            return route.Parameters;
+        }
+
+        ImmutableArray<RestApiRouteParameterDescriptor> prefixParameters =
+            RestApiRouteTemplateParser.ParseParameters(options.RoutePrefix);
+        if (prefixParameters.Length == 0)
+        {
+            return route.Parameters;
+        }
+
+        if (route.Parameters.Length == 0)
+        {
+            return prefixParameters;
+        }
+
+        return prefixParameters.AddRange(route.Parameters);
+    }
+
+    private static bool TryReserveActionMethodNames(
+        RestApiMessageDescriptor message,
+        HashSet<string> actionMethodNames,
+        out string duplicateMethodName)
+    {
+        if (message.IsCommand)
+        {
+            string methodName = GetCommandMethodName(message);
+            if (!actionMethodNames.Add(methodName))
+            {
+                duplicateMethodName = methodName;
+                return false;
+            }
+        }
+
+        if (message.IsQuery)
+        {
+            string methodName = GetQueryMethodName(message);
+            if (!actionMethodNames.Add(methodName))
+            {
+                duplicateMethodName = methodName;
+                return false;
+            }
+        }
+
+        duplicateMethodName = string.Empty;
+        return true;
+    }
+
+    private static bool TryReserveActionRoutes(
+        RestApiOptions options,
+        RestApiMessageDescriptor message,
+        RestApiRouteDescriptor route,
+        HashSet<string> actionRoutes,
+        out string duplicateActionRoute)
+    {
+        string actionRoute = GetActionRouteKey(options, route);
+        if (message.IsCommand && !actionRoutes.Add(actionRoute))
+        {
+            duplicateActionRoute = actionRoute;
+            return false;
+        }
+
+        if (message.IsQuery && !actionRoutes.Add(actionRoute))
+        {
+            duplicateActionRoute = actionRoute;
+            return false;
+        }
+
+        duplicateActionRoute = string.Empty;
+        return true;
+    }
+
+    private static string GetCommandMethodName(RestApiMessageDescriptor message)
+        => RestApiNameSanitizer.ToIdentifier(message.SimpleTypeName + "Command", "Command", camelCase: false) + "Async";
+
+    private static string GetQueryMethodName(RestApiMessageDescriptor message)
+        => RestApiNameSanitizer.ToIdentifier(message.SimpleTypeName + "Query", "Query", camelCase: false) + "Async";
+
+    private static string GetActionRouteKey(RestApiOptions options, RestApiRouteDescriptor route)
+        => route.Verb + "|" + GetEffectiveRouteTemplate(options, route);
+
+    private static string GetEffectiveRouteTemplate(RestApiOptions options, RestApiRouteDescriptor route)
+    {
+        if (route.IsAbsolute)
+        {
+            return route.Template;
+        }
+
+        string prefix = options.RoutePrefix.TrimEnd('/');
+        string template = route.Template.TrimStart('/');
+        if (prefix.Length == 0)
+        {
+            return template;
+        }
+
+        return template.Length == 0 ? prefix : prefix + "/" + template;
+    }
+
+    private static bool TryFindDuplicateParameterIdentifier(
+        RestApiMessageDescriptor message,
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,
+        out string duplicateParameter)
+    {
+        var identifiers = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string reserved in ReservedActionIdentifiers)
+        {
+            _ = identifiers.Add(reserved);
+        }
+
+        foreach (RestApiRouteParameterDescriptor parameter in routeParameters)
+        {
+            if (!identifiers.Add(parameter.Identifier))
+            {
+                duplicateParameter = parameter.Identifier;
+                return true;
+            }
+        }
+
+        if (message.IsQuery)
+        {
+            foreach (RestApiBindablePropertyDescriptor property in GetQueryStringProperties(message, routeParameters))
+            {
+                string identifier = RestApiNameSanitizer.ToIdentifier(property.Name, property.Name, camelCase: true);
+                if (!identifiers.Add(identifier))
+                {
+                    duplicateParameter = identifier;
+                    return true;
+                }
+            }
+        }
+
+        duplicateParameter = string.Empty;
+        return false;
+    }
+
+    private static bool TryFindUnsupportedQueryParameter(
+        RestApiMessageDescriptor message,
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,
+        out RestApiBindablePropertyDescriptor unsupportedProperty)
+    {
+        foreach (RestApiBindablePropertyDescriptor property in GetQueryStringProperties(message, routeParameters))
+        {
+            if (!property.CanBindFromQuery)
+            {
+                unsupportedProperty = property;
+                return true;
+            }
+        }
+
+        unsupportedProperty = default;
+        return false;
     }
 
     private static string GetControllerName(RestApiOptions options)
@@ -499,8 +707,9 @@ internal static class RestApiControllerEmitter
         }
     }
 
-    private static ImmutableArray<RestApiRouteParameterDescriptor> GetNonTenantParameters(RestApiRouteDescriptor route)
-        => route.Parameters
+    private static ImmutableArray<RestApiRouteParameterDescriptor> GetNonTenantParameters(
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters)
+        => routeParameters
             .Where(static parameter => !IsTenantParameter(parameter))
             .ToImmutableArray();
 
@@ -540,19 +749,25 @@ internal static class RestApiControllerEmitter
         return null;
     }
 
-    private static bool IsAmbiguousQueryRoute(RestApiRouteDescriptor route)
+    private static bool IsAmbiguousQueryRoute(ImmutableArray<RestApiRouteParameterDescriptor> routeParameters)
     {
-        ImmutableArray<RestApiRouteParameterDescriptor> nonTenantParameters = GetNonTenantParameters(route);
-        bool hasAggregateId = nonTenantParameters.Any(static parameter =>
-            string.Equals(parameter.Name, "aggregateId", StringComparison.OrdinalIgnoreCase));
-        bool hasEntityId = nonTenantParameters.Any(static parameter =>
-            string.Equals(parameter.Name, "entityId", StringComparison.OrdinalIgnoreCase));
-        if (hasAggregateId)
+        ImmutableArray<RestApiRouteParameterDescriptor> nonTenantParameters = GetNonTenantParameters(routeParameters);
+        if (nonTenantParameters.Length <= 1)
         {
             return false;
         }
 
-        return hasEntityId ? nonTenantParameters.Length > 2 : nonTenantParameters.Length > 1;
+        bool hasAggregateId = nonTenantParameters.Any(static parameter =>
+            string.Equals(parameter.Name, "aggregateId", StringComparison.OrdinalIgnoreCase));
+        bool hasEntityId = nonTenantParameters.Any(static parameter =>
+            string.Equals(parameter.Name, "entityId", StringComparison.OrdinalIgnoreCase));
+        if (!hasAggregateId)
+        {
+            return true;
+        }
+
+        int extraParameters = nonTenantParameters.Length - 1 - (hasEntityId ? 1 : 0);
+        return hasEntityId ? extraParameters > 0 : extraParameters > 1;
     }
 
     private static ImmutableArray<RestApiBindablePropertyDescriptor> GetQueryStringProperties(
@@ -581,9 +796,11 @@ internal static class RestApiControllerEmitter
         return false;
     }
 
-    private static string? FindRouteParameterIdentifier(RestApiRouteDescriptor route, string name)
+    private static string? FindRouteParameterIdentifier(
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,
+        string name)
     {
-        foreach (RestApiRouteParameterDescriptor parameter in route.Parameters)
+        foreach (RestApiRouteParameterDescriptor parameter in routeParameters)
         {
             if (string.Equals(parameter.Name, name, StringComparison.OrdinalIgnoreCase))
             {
@@ -594,8 +811,8 @@ internal static class RestApiControllerEmitter
         return null;
     }
 
-    private static bool HasTenantRouteParameter(RestApiRouteDescriptor route)
-        => route.Parameters.Any(static parameter => IsTenantParameter(parameter));
+    private static bool HasTenantRouteParameter(ImmutableArray<RestApiRouteParameterDescriptor> routeParameters)
+        => routeParameters.Any(static parameter => IsTenantParameter(parameter));
 
     private static bool IsTenantParameter(RestApiRouteParameterDescriptor parameter)
         => string.Equals(parameter.Name, "tenant", StringComparison.OrdinalIgnoreCase)

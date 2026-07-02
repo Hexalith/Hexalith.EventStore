@@ -1,5 +1,7 @@
 using System.Text;
 
+using Microsoft.CodeAnalysis.CSharp;
+
 namespace Hexalith.EventStore.RestApi.Generators;
 
 internal static class RestApiNameSanitizer
@@ -12,7 +14,7 @@ internal static class RestApiNameSanitizer
             return identifier;
         }
 
-        return char.ToLowerInvariant(identifier[0]) + identifier.Substring(1);
+        return EscapeKeyword(char.ToLowerInvariant(identifier[0]) + identifier.Substring(1));
     }
 
     public static string ToTypeName(string value, string fallback)
@@ -78,4 +80,10 @@ internal static class RestApiNameSanitizer
         string identifier = builder.ToString();
         return identifier.Length == 0 ? fallback : identifier;
     }
+
+    private static string EscapeKeyword(string identifier)
+        => SyntaxFacts.GetKeywordKind(identifier) != SyntaxKind.None
+            || SyntaxFacts.GetContextualKeywordKind(identifier) != SyntaxKind.None
+                ? "@" + identifier
+                : identifier;
 }

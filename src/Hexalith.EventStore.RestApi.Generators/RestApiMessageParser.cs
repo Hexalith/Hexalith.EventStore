@@ -113,10 +113,54 @@ internal static class RestApiMessageParser
 
             properties.Add(new RestApiBindablePropertyDescriptor(
                 property.Name,
-                property.Type.ToDisplayString(TypeDisplayFormat)));
+                property.Type.ToDisplayString(TypeDisplayFormat),
+                IsSupportedFromQueryType(property.Type)));
         }
 
         properties.Sort(static (left, right) => string.Compare(left.Name, right.Name, StringComparison.Ordinal));
         return properties.ToImmutable();
+    }
+
+    private static bool IsSupportedFromQueryType(ITypeSymbol type)
+    {
+        ITypeSymbol effectiveType = GetNullableUnderlyingType(type) ?? type;
+        if (effectiveType.TypeKind == TypeKind.Enum)
+        {
+            return true;
+        }
+
+        if (effectiveType.SpecialType is
+            SpecialType.System_Boolean or
+            SpecialType.System_Byte or
+            SpecialType.System_Char or
+            SpecialType.System_DateTime or
+            SpecialType.System_Decimal or
+            SpecialType.System_Double or
+            SpecialType.System_Int16 or
+            SpecialType.System_Int32 or
+            SpecialType.System_Int64 or
+            SpecialType.System_SByte or
+            SpecialType.System_Single or
+            SpecialType.System_String or
+            SpecialType.System_UInt16 or
+            SpecialType.System_UInt32 or
+            SpecialType.System_UInt64)
+        {
+            return true;
+        }
+
+        return string.Equals(effectiveType.ToDisplayString(TypeDisplayFormat), "global::System.Guid", StringComparison.Ordinal)
+            || string.Equals(effectiveType.ToDisplayString(TypeDisplayFormat), "global::System.DateTimeOffset", StringComparison.Ordinal);
+    }
+
+    private static ITypeSymbol? GetNullableUnderlyingType(ITypeSymbol type)
+    {
+        if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } namedType
+            && namedType.TypeArguments.Length == 1)
+        {
+            return namedType.TypeArguments[0];
+        }
+
+        return null;
     }
 }
