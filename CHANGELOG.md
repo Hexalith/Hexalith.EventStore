@@ -1,3 +1,11 @@
+# [3.27.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.26.0...v3.27.0) (2026-07-02)
+
+
+### Features
+
+* Enhance Keycloak endpoint handling with dynamic port resolution and add corresponding tests ([3050664](https://github.com/Hexalith/Hexalith.EventStore/commit/30506647a8af2595342bf14f9b8107aeea84061d))
+* Implement DAPR Global Event Ordering with monotonic position allocation ([3ccb105](https://github.com/Hexalith/Hexalith.EventStore/commit/3ccb1054eba45ca171b51aa040fc8b02d62f7e06))
+
 # [3.26.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.25.0...v3.26.0) (2026-07-02)
 
 
