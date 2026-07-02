@@ -44,6 +44,38 @@ internal static class RestApiDiagnosticDescriptors
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    public static readonly DiagnosticDescriptor UnsupportedContractShape = new(
+        "HESREST006",
+        "REST contract shape is not supported",
+        "REST contract '{0}' cannot be emitted because {1}",
+        "Hexalith.EventStore.RestApi",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor InvalidRouteTemplate = new(
+        "HESREST007",
+        "REST route template is invalid",
+        "REST contract '{0}' has invalid route template '{1}': {2}",
+        "Hexalith.EventStore.RestApi",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor UnsupportedRestVerb = new(
+        "HESREST008",
+        "REST route verb is not supported",
+        "REST contract '{0}' has unsupported route verb '{1}'",
+        "Hexalith.EventStore.RestApi",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor UnmappedRouteParameter = new(
+        "HESREST009",
+        "Command route parameter cannot be mapped",
+        "Command contract '{0}' has route parameter '{1}' that cannot be mapped to AggregateId or a public command property",
+        "Hexalith.EventStore.RestApi",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     public static Diagnostic CreateMissingRouteTenant(RestApiMessageDescriptor message)
         => Diagnostic.Create(MissingRouteTenant, Location.None, message.TypeName);
 
@@ -58,5 +90,17 @@ internal static class RestApiDiagnosticDescriptors
 
     public static Diagnostic CreateUnsupportedQueryParameter(RestApiMessageDescriptor message, RestApiBindablePropertyDescriptor property)
         => Diagnostic.Create(UnsupportedQueryParameter, Location.None, message.TypeName, property.Name, property.TypeName);
+
+    public static Diagnostic CreateUnsupportedContractShape(RestApiMessageDescriptor message)
+        => Diagnostic.Create(UnsupportedContractShape, Location.None, message.TypeName, message.UnsupportedReason ?? "its shape is unsupported");
+
+    public static Diagnostic CreateInvalidRouteTemplate(RestApiMessageDescriptor message, string template, string reason)
+        => Diagnostic.Create(InvalidRouteTemplate, Location.None, message.TypeName, template, reason);
+
+    public static Diagnostic CreateUnsupportedRestVerb(RestApiMessageDescriptor message, string verb)
+        => Diagnostic.Create(UnsupportedRestVerb, Location.None, message.TypeName, verb);
+
+    public static Diagnostic CreateUnmappedRouteParameter(RestApiMessageDescriptor message, RestApiRouteParameterDescriptor parameter)
+        => Diagnostic.Create(UnmappedRouteParameter, Location.None, message.TypeName, parameter.Name);
 
 }

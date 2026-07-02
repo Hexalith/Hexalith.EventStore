@@ -19,6 +19,11 @@ internal static class RestApiControllerEmitter
         "__hexalithResult",
         "__hexalithTenant",
         "__hexalithTenantResult",
+        "body",
+        "cancellationToken",
+        "ex",
+        "gateway",
+        "ifNoneMatch",
     ];
 
     public static RestApiGeneratedSource? Emit(
@@ -42,6 +47,24 @@ internal static class RestApiControllerEmitter
         foreach (RestApiMessageDescriptor message in orderedMessages)
         {
             RestApiRouteDescriptor route = GetRoute(message);
+            if (message.UnsupportedReason is not null)
+            {
+                reportDiagnostic(RestApiDiagnosticDescriptors.CreateUnsupportedContractShape(message));
+                continue;
+            }
+
+            if (TryFindRouteTemplateError(options, route, out string invalidRouteTemplate, out string routeTemplateError))
+            {
+                reportDiagnostic(RestApiDiagnosticDescriptors.CreateInvalidRouteTemplate(message, invalidRouteTemplate, routeTemplateError));
+                continue;
+            }
+
+            if (!IsSupportedRestVerb(route.Verb))
+            {
+                reportDiagnostic(RestApiDiagnosticDescriptors.CreateUnsupportedRestVerb(message, route.Verb));
+                continue;
+            }
+
             ImmutableArray<RestApiRouteParameterDescriptor> effectiveRouteParameters = GetEffectiveRouteParameters(options, route);
             if (RequiresRouteTenant(options) && !HasTenantRouteParameter(effectiveRouteParameters))
             {
@@ -52,6 +75,13 @@ internal static class RestApiControllerEmitter
             if (TryFindDuplicateParameterIdentifier(message, effectiveRouteParameters, out string? duplicateRouteParameter))
             {
                 reportDiagnostic(RestApiDiagnosticDescriptors.CreateDuplicateParameter(message, duplicateRouteParameter));
+                continue;
+            }
+
+            if (message.IsCommand
+                && TryFindUnmappedCommandRouteParameter(message, effectiveRouteParameters, out RestApiRouteParameterDescriptor unmappedParameter))
+            {
+                reportDiagnostic(RestApiDiagnosticDescriptors.CreateUnmappedRouteParameter(message, unmappedParameter));
                 continue;
             }
 
@@ -68,16 +98,28 @@ internal static class RestApiControllerEmitter
                 continue;
             }
 
-            if (!TryReserveActionMethodNames(message, actionMethodNames, out string duplicateMethodName))
+            ImmutableArray<string> methodNames = GetActionMethodNames(message);
+            if (TryFindDuplicateActionMethodName(methodNames, actionMethodNames, out string duplicateMethodName))
             {
                 reportDiagnostic(RestApiDiagnosticDescriptors.CreateDuplicateParameter(message, duplicateMethodName));
                 continue;
             }
 
-            if (!TryReserveActionRoutes(options, message, route, actionRoutes, out string duplicateActionRoute))
+            ImmutableArray<string> routeKeys = GetActionRouteKeys(options, message, route);
+            if (TryFindDuplicateActionRoute(routeKeys, actionRoutes, out string duplicateActionRoute))
             {
                 reportDiagnostic(RestApiDiagnosticDescriptors.CreateDuplicateRoute(message, duplicateActionRoute));
                 continue;
+            }
+
+            foreach (string methodName in methodNames)
+            {
+                _ = actionMethodNames.Add(methodName);
+            }
+
+            foreach (string routeKey in routeKeys)
+            {
+                _ = actionRoutes.Add(routeKey);
             }
 
             emittedMessages.Add(message);
@@ -147,7 +189,6 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("[Authorize]");
         builder.Append("[Route(").Append(Literal(options.RoutePrefix)).AppendLine(")]");
         builder.Append("[Tags(").Append(Literal(GetTag(options))).AppendLine(")]");
-        builder.AppendLine("[Consumes(\"application/json\")]");
         builder.Append("public sealed partial class ").Append(controllerName)
             .AppendLine("(IEventStoreGatewayClient gateway) : ControllerBase");
         builder.AppendLine("{");
@@ -166,6 +207,7 @@ internal static class RestApiControllerEmitter
 
         builder.AppendLine();
         AppendHttpAttribute(builder, route);
+        builder.AppendLine("    [Consumes(\"application/json\")]");
         builder.AppendLine("    [ProducesResponseType(typeof(SubmitCommandResponse), StatusCodes.Status202Accepted)]");
         builder.Append("    public async Task<IActionResult> ").Append(methodName).AppendLine("(");
         AppendRouteParameters(builder, message, routeParameters, trailingComma: true);
@@ -276,7 +318,16 @@ internal static class RestApiControllerEmitter
         builder.AppendLine();
         builder.AppendLine("        if (string.Equals(tenantSource, \"Route\", StringComparison.Ordinal))");
         builder.AppendLine("        {");
-        builder.AppendLine("            string? resolvedTenant = !string.IsNullOrWhiteSpace(tenant) ? tenant : tenantId;");
+        builder.AppendLine("            string? normalizedTenant = string.IsNullOrWhiteSpace(tenant) ? null : tenant;");
+        builder.AppendLine("            string? normalizedTenantId = string.IsNullOrWhiteSpace(tenantId) ? null : tenantId;");
+        builder.AppendLine("            if (normalizedTenant is not null");
+        builder.AppendLine("                && normalizedTenantId is not null");
+        builder.AppendLine("                && !string.Equals(normalizedTenant, normalizedTenantId, StringComparison.Ordinal))");
+        builder.AppendLine("            {");
+        builder.AppendLine("                return CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"Tenant route values differ.\");");
+        builder.AppendLine("            }");
+        builder.AppendLine();
+        builder.AppendLine("            string? resolvedTenant = normalizedTenant ?? normalizedTenantId;");
         builder.AppendLine("            return string.IsNullOrWhiteSpace(resolvedTenant)");
         builder.AppendLine("                ? CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", \"Tenant route value is required.\")");
         builder.AppendLine("                : resolvedTenant;");
@@ -356,6 +407,11 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("    private static string FormatStrongETag(string etag)");
         builder.AppendLine("    {");
         builder.AppendLine("        string value = etag.Trim();");
+        builder.AppendLine("        if (value.StartsWith(\"W/\", StringComparison.Ordinal))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            value = value.Substring(2).Trim();");
+        builder.AppendLine("        }");
+        builder.AppendLine();
         builder.AppendLine("        return value.Length >= 2 && value[0] == '\"' && value[value.Length - 1] == '\"'");
         builder.AppendLine("            ? value");
         builder.AppendLine("            : \"\\\"\" + value.Trim('\"') + \"\\\"\";");
@@ -440,7 +496,7 @@ internal static class RestApiControllerEmitter
             {
                 builder.AppendLine();
                 builder.Append("        if (!string.Equals(").Append(routeValue)
-                    .Append(", Convert.ToString(body.").Append(property.Name)
+                    .Append(", Convert.ToString(body.").Append(RestApiNameSanitizer.EscapeIdentifier(property.Name))
                     .AppendLine(", CultureInfo.InvariantCulture), StringComparison.Ordinal))");
                 builder.AppendLine("        {");
                 builder.Append("            return CreateProblem(StatusCodes.Status400BadRequest, \"Bad Request\", ")
@@ -476,7 +532,7 @@ internal static class RestApiControllerEmitter
         foreach (RestApiBindablePropertyDescriptor parameter in queryParameters)
         {
             string identifier = RestApiNameSanitizer.ToIdentifier(parameter.Name, parameter.Name, camelCase: true);
-            builder.Append("            [").Append(Literal(parameter.Name)).Append("] = ").Append(identifier).AppendLine(",");
+            builder.Append("            [").Append(Literal(parameter.JsonName)).Append("] = ").Append(identifier).AppendLine(",");
         }
 
         builder.AppendLine("        };");
@@ -504,7 +560,12 @@ internal static class RestApiControllerEmitter
 
     private static void AppendHttpAttribute(StringBuilder builder, RestApiRouteDescriptor route)
     {
-        builder.Append("    [").Append(ToHttpAttributeName(route.Verb)).Append('(')
+        if (!TryGetHttpAttributeName(route.Verb, out string httpAttributeName))
+        {
+            throw new InvalidOperationException("Unsupported REST verb '" + route.Verb + "'.");
+        }
+
+        builder.Append("    [").Append(httpAttributeName).Append('(')
             .Append(Literal(route.Template)).AppendLine(")]");
     }
 
@@ -542,57 +603,103 @@ internal static class RestApiControllerEmitter
         return prefixParameters.AddRange(route.Parameters);
     }
 
-    private static bool TryReserveActionMethodNames(
-        RestApiMessageDescriptor message,
-        HashSet<string> actionMethodNames,
-        out string duplicateMethodName)
+    private static bool TryFindRouteTemplateError(
+        RestApiOptions options,
+        RestApiRouteDescriptor route,
+        out string template,
+        out string reason)
     {
+        if (route.TemplateError is not null)
+        {
+            template = route.Template;
+            reason = route.TemplateError;
+            return true;
+        }
+
+        string? prefixError = RestApiRouteTemplateParser.GetTemplateError(options.RoutePrefix);
+        if (prefixError is not null)
+        {
+            template = options.RoutePrefix;
+            reason = prefixError;
+            return true;
+        }
+
+        template = string.Empty;
+        reason = string.Empty;
+        return false;
+    }
+
+    private static ImmutableArray<string> GetActionMethodNames(RestApiMessageDescriptor message)
+    {
+        var methodNames = ImmutableArray.CreateBuilder<string>(2);
         if (message.IsCommand)
         {
-            string methodName = GetCommandMethodName(message);
-            if (!actionMethodNames.Add(methodName))
-            {
-                duplicateMethodName = methodName;
-                return false;
-            }
+            methodNames.Add(GetCommandMethodName(message));
         }
 
         if (message.IsQuery)
         {
-            string methodName = GetQueryMethodName(message);
-            if (!actionMethodNames.Add(methodName))
+            methodNames.Add(GetQueryMethodName(message));
+        }
+
+        return methodNames.ToImmutable();
+    }
+
+    private static bool TryFindDuplicateActionMethodName(
+        ImmutableArray<string> methodNames,
+        HashSet<string> existingMethodNames,
+        out string duplicateMethodName)
+    {
+        var candidateMethodNames = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string methodName in methodNames)
+        {
+            if (!candidateMethodNames.Add(methodName) || existingMethodNames.Contains(methodName))
             {
                 duplicateMethodName = methodName;
-                return false;
+                return true;
             }
         }
 
         duplicateMethodName = string.Empty;
-        return true;
+        return false;
     }
 
-    private static bool TryReserveActionRoutes(
+    private static ImmutableArray<string> GetActionRouteKeys(
         RestApiOptions options,
         RestApiMessageDescriptor message,
-        RestApiRouteDescriptor route,
-        HashSet<string> actionRoutes,
-        out string duplicateActionRoute)
+        RestApiRouteDescriptor route)
     {
-        string actionRoute = GetActionRouteKey(options, route);
-        if (message.IsCommand && !actionRoutes.Add(actionRoute))
+        var routeKeys = ImmutableArray.CreateBuilder<string>(2);
+        if (message.IsCommand)
         {
-            duplicateActionRoute = actionRoute;
-            return false;
+            routeKeys.Add(GetActionRouteKey(options, route));
         }
 
-        if (message.IsQuery && !actionRoutes.Add(actionRoute))
+        if (message.IsQuery)
         {
-            duplicateActionRoute = actionRoute;
-            return false;
+            routeKeys.Add(GetActionRouteKey(options, route));
+        }
+
+        return routeKeys.ToImmutable();
+    }
+
+    private static bool TryFindDuplicateActionRoute(
+        ImmutableArray<string> routeKeys,
+        HashSet<string> existingRoutes,
+        out string duplicateActionRoute)
+    {
+        var candidateRoutes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string routeKey in routeKeys)
+        {
+            if (!candidateRoutes.Add(routeKey) || existingRoutes.Contains(routeKey))
+            {
+                duplicateActionRoute = routeKey;
+                return true;
+            }
         }
 
         duplicateActionRoute = string.Empty;
-        return true;
+        return false;
     }
 
     private static string GetCommandMethodName(RestApiMessageDescriptor message)
@@ -602,7 +709,7 @@ internal static class RestApiControllerEmitter
         => RestApiNameSanitizer.ToIdentifier(message.SimpleTypeName + "Query", "Query", camelCase: false) + "Async";
 
     private static string GetActionRouteKey(RestApiOptions options, RestApiRouteDescriptor route)
-        => route.Verb + "|" + GetEffectiveRouteTemplate(options, route);
+        => route.Verb + "|" + NormalizeRouteTemplateForKey(GetEffectiveRouteTemplate(options, route));
 
     private static string GetEffectiveRouteTemplate(RestApiOptions options, RestApiRouteDescriptor route)
     {
@@ -619,6 +726,61 @@ internal static class RestApiControllerEmitter
         }
 
         return template.Length == 0 ? prefix : prefix + "/" + template;
+    }
+
+    private static string NormalizeRouteTemplateForKey(string template)
+    {
+        string value = template.Trim();
+        if (value.StartsWith("~/", StringComparison.Ordinal))
+        {
+            value = value.Substring(2);
+        }
+
+        value = value.Trim('/');
+        if (value.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        var builder = new StringBuilder(value.Length);
+        int index = 0;
+        while (index < value.Length)
+        {
+            int open = value.IndexOf('{', index);
+            if (open < 0)
+            {
+                builder.Append(value.Substring(index));
+                break;
+            }
+
+            builder.Append(value.Substring(index, open - index));
+            int close = value.IndexOf('}', open + 1);
+            if (close < 0)
+            {
+                builder.Append(value.Substring(open));
+                break;
+            }
+
+            builder.Append(NormalizeRouteParameterForKey(value.Substring(open + 1, close - open - 1)));
+            index = close + 1;
+        }
+
+        return builder.ToString();
+    }
+
+    private static string NormalizeRouteParameterForKey(string parameter)
+    {
+        string value = parameter.Trim();
+        bool catchAll = false;
+        while (value.StartsWith("*", StringComparison.Ordinal))
+        {
+            catchAll = true;
+            value = value.Substring(1);
+        }
+
+        int terminator = value.IndexOfAny(new[] { ':', '=', '?' });
+        string suffix = terminator >= 0 ? value.Substring(terminator) : string.Empty;
+        return catchAll ? "{*" + suffix + "}" : "{" + suffix + "}";
     }
 
     private static bool TryFindDuplicateParameterIdentifier(
@@ -676,6 +838,34 @@ internal static class RestApiControllerEmitter
         return false;
     }
 
+    private static bool TryFindUnmappedCommandRouteParameter(
+        RestApiMessageDescriptor message,
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,
+        out RestApiRouteParameterDescriptor unmappedParameter)
+    {
+        ImmutableArray<RestApiRouteParameterDescriptor> nonTenantParameters = GetNonTenantParameters(routeParameters);
+        if (nonTenantParameters.Length <= 1)
+        {
+            unmappedParameter = default;
+            return false;
+        }
+
+        foreach (RestApiRouteParameterDescriptor parameter in nonTenantParameters)
+        {
+            if (string.Equals(parameter.Name, "aggregateId", StringComparison.OrdinalIgnoreCase)
+                || TryFindProperty(message, parameter.Name, out _))
+            {
+                continue;
+            }
+
+            unmappedParameter = parameter;
+            return true;
+        }
+
+        unmappedParameter = default;
+        return false;
+    }
+
     private static string GetControllerName(RestApiOptions options)
     {
         string source = !string.IsNullOrWhiteSpace(options.Tag)
@@ -689,21 +879,31 @@ internal static class RestApiControllerEmitter
             ? options.Tag
             : RestApiNameSanitizer.ToTypeName(options.RoutePrefix, "RestApi");
 
-    private static string ToHttpAttributeName(string verb)
+    private static bool IsSupportedRestVerb(string verb)
+        => TryGetHttpAttributeName(verb, out _);
+
+    private static bool TryGetHttpAttributeName(string verb, out string httpAttributeName)
     {
         switch (verb)
         {
             case "Delete":
-                return "HttpDelete";
+                httpAttributeName = "HttpDelete";
+                return true;
             case "Get":
-                return "HttpGet";
+                httpAttributeName = "HttpGet";
+                return true;
             case "Patch":
-                return "HttpPatch";
+                httpAttributeName = "HttpPatch";
+                return true;
             case "Put":
-                return "HttpPut";
+                httpAttributeName = "HttpPut";
+                return true;
             case "Post":
+                httpAttributeName = "HttpPost";
+                return true;
             default:
-                return "HttpPost";
+                httpAttributeName = string.Empty;
+                return false;
         }
     }
 

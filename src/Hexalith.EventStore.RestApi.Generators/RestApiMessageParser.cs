@@ -39,7 +39,9 @@ internal static class RestApiMessageParser
             return null;
         }
 
+        string? unsupportedReason = GetUnsupportedContractReason(typeSymbol);
         INamedTypeSymbol? routeAttribute = compilation.GetTypeByMetadataName(RestApiMetadataNames.RestRouteAttribute);
+        INamedTypeSymbol? jsonPropertyNameAttribute = compilation.GetTypeByMetadataName(RestApiMetadataNames.JsonPropertyNameAttribute);
         RestApiRouteDescriptor? route = routeAttribute is null
             ? null
             : ParseRoute(typeSymbol, routeAttribute);
@@ -52,7 +54,10 @@ internal static class RestApiMessageParser
             isCommand,
             isQuery,
             route,
-            GetPublicProperties(typeSymbol));
+            unsupportedReason is null
+                ? GetPublicProperties(typeSymbol, jsonPropertyNameAttribute)
+                : ImmutableArray<RestApiBindablePropertyDescriptor>.Empty,
+            unsupportedReason);
     }
 
     private static bool Implements(INamedTypeSymbol typeSymbol, INamedTypeSymbol interfaceSymbol)
@@ -98,27 +103,109 @@ internal static class RestApiMessageParser
             ? string.Empty
             : typeSymbol.ContainingNamespace.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
 
-    private static ImmutableArray<RestApiBindablePropertyDescriptor> GetPublicProperties(INamedTypeSymbol typeSymbol)
+    private static string? GetUnsupportedContractReason(INamedTypeSymbol typeSymbol)
+    {
+        if (typeSymbol.IsAbstract)
+        {
+            return "it is abstract";
+        }
+
+        if (typeSymbol.Arity != 0)
+        {
+            return "it is generic";
+        }
+
+        for (INamedTypeSymbol? current = typeSymbol.ContainingType; current is not null; current = current.ContainingType)
+        {
+            if (current.Arity != 0)
+            {
+                return "it is nested in a generic type";
+            }
+        }
+
+        for (INamedTypeSymbol? current = typeSymbol; current is not null; current = current.ContainingType)
+        {
+            if (current.DeclaredAccessibility != Accessibility.Public)
+            {
+                return "it is not publicly accessible";
+            }
+        }
+
+        return null;
+    }
+
+    private static ImmutableArray<RestApiBindablePropertyDescriptor> GetPublicProperties(
+        INamedTypeSymbol typeSymbol,
+        INamedTypeSymbol? jsonPropertyNameAttribute)
     {
         var properties = ImmutableArray.CreateBuilder<RestApiBindablePropertyDescriptor>();
-        foreach (IPropertySymbol property in typeSymbol.GetMembers().OfType<IPropertySymbol>())
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (INamedTypeSymbol? current = typeSymbol; current is not null; current = current.BaseType)
         {
-            if (property.DeclaredAccessibility != Accessibility.Public
-                || property.IsStatic
-                || property.IsIndexer
-                || property.GetMethod is null)
+            foreach (IPropertySymbol property in current.GetMembers().OfType<IPropertySymbol>())
             {
-                continue;
-            }
+                if (property.DeclaredAccessibility != Accessibility.Public
+                    || property.IsStatic
+                    || property.IsIndexer
+                    || property.GetMethod is null
+                    || !seen.Add(property.Name))
+                {
+                    continue;
+                }
 
-            properties.Add(new RestApiBindablePropertyDescriptor(
-                property.Name,
-                property.Type.ToDisplayString(TypeDisplayFormat),
-                IsSupportedFromQueryType(property.Type)));
+                properties.Add(new RestApiBindablePropertyDescriptor(
+                    property.Name,
+                    GetJsonPropertyName(property, jsonPropertyNameAttribute),
+                    property.Type.ToDisplayString(TypeDisplayFormat),
+                    IsSupportedFromQueryType(property.Type)));
+            }
         }
 
         properties.Sort(static (left, right) => string.Compare(left.Name, right.Name, StringComparison.Ordinal));
         return properties.ToImmutable();
+    }
+
+    private static string GetJsonPropertyName(IPropertySymbol property, INamedTypeSymbol? jsonPropertyNameAttribute)
+    {
+        if (jsonPropertyNameAttribute is not null)
+        {
+            foreach (AttributeData attribute in property.GetAttributes())
+            {
+                if (RoslynAttributeValueReader.IsAttribute(attribute, jsonPropertyNameAttribute)
+                    && attribute.ConstructorArguments.Length > 0)
+                {
+                    string name = RoslynAttributeValueReader.GetString(attribute.ConstructorArguments[0]);
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        return name;
+                    }
+                }
+            }
+        }
+
+        return ToJsonCamelCase(property.Name);
+    }
+
+    private static string ToJsonCamelCase(string name)
+    {
+        if (string.IsNullOrEmpty(name) || !char.IsUpper(name[0]))
+        {
+            return name;
+        }
+
+        char[] chars = name.ToCharArray();
+        for (int i = 0; i < chars.Length; i++)
+        {
+            bool hasNext = i + 1 < chars.Length;
+            if (i > 0 && hasNext && !char.IsUpper(chars[i + 1]))
+            {
+                break;
+            }
+
+            chars[i] = char.ToLowerInvariant(chars[i]);
+        }
+
+        return new string(chars);
     }
 
     private static bool IsSupportedFromQueryType(ITypeSymbol type)

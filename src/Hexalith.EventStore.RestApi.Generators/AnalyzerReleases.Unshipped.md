@@ -7,3 +7,7 @@ HESREST002 | Hexalith.EventStore.RestApi | Error | Query route parameters are am
 HESREST003 | Hexalith.EventStore.RestApi | Error | Generated REST route is duplicated.
 HESREST004 | Hexalith.EventStore.RestApi | Error | Generated action parameters are duplicated.
 HESREST005 | Hexalith.EventStore.RestApi | Error | Query parameter type is not supported for query-string binding.
+HESREST006 | Hexalith.EventStore.RestApi | Error | REST contract shape is not supported for generated controller emission.
+HESREST007 | Hexalith.EventStore.RestApi | Error | REST route template is invalid for generated controller emission.
+HESREST008 | Hexalith.EventStore.RestApi | Error | REST route verb is not supported.
+HESREST009 | Hexalith.EventStore.RestApi | Error | Command route parameter cannot be mapped deterministically.

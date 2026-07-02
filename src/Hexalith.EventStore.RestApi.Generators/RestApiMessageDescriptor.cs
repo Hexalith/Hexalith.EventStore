@@ -12,7 +12,8 @@ internal readonly struct RestApiMessageDescriptor : IEquatable<RestApiMessageDes
         bool isCommand,
         bool isQuery,
         RestApiRouteDescriptor? route,
-        ImmutableArray<RestApiBindablePropertyDescriptor> properties)
+        ImmutableArray<RestApiBindablePropertyDescriptor> properties,
+        string? unsupportedReason = null)
     {
         TypeName = typeName;
         FullyQualifiedTypeName = fullyQualifiedTypeName;
@@ -22,6 +23,7 @@ internal readonly struct RestApiMessageDescriptor : IEquatable<RestApiMessageDes
         IsQuery = isQuery;
         Route = route;
         Properties = properties.IsDefault ? ImmutableArray<RestApiBindablePropertyDescriptor>.Empty : properties;
+        UnsupportedReason = unsupportedReason;
     }
 
     public string TypeName { get; }
@@ -40,6 +42,8 @@ internal readonly struct RestApiMessageDescriptor : IEquatable<RestApiMessageDes
 
     public ImmutableArray<RestApiBindablePropertyDescriptor> Properties { get; }
 
+    public string? UnsupportedReason { get; }
+
     public bool Equals(RestApiMessageDescriptor other)
         => string.Equals(TypeName, other.TypeName, StringComparison.Ordinal)
             && string.Equals(FullyQualifiedTypeName, other.FullyQualifiedTypeName, StringComparison.Ordinal)
@@ -48,7 +52,8 @@ internal readonly struct RestApiMessageDescriptor : IEquatable<RestApiMessageDes
             && IsCommand == other.IsCommand
             && IsQuery == other.IsQuery
             && Nullable.Equals(Route, other.Route)
-            && Properties.SequenceEqual(other.Properties);
+            && Properties.SequenceEqual(other.Properties)
+            && string.Equals(UnsupportedReason, other.UnsupportedReason, StringComparison.Ordinal);
 
     public override bool Equals(object? obj) => obj is RestApiMessageDescriptor other && Equals(other);
 
@@ -63,6 +68,9 @@ internal readonly struct RestApiMessageDescriptor : IEquatable<RestApiMessageDes
             hash = (hash * 397) ^ IsCommand.GetHashCode();
             hash = (hash * 397) ^ IsQuery.GetHashCode();
             hash = (hash * 397) ^ Route.GetHashCode();
+            hash = (hash * 397) ^ (UnsupportedReason is null
+                ? 0
+                : StringComparer.Ordinal.GetHashCode(UnsupportedReason));
             foreach (RestApiBindablePropertyDescriptor property in Properties)
             {
                 hash = (hash * 397) ^ property.GetHashCode();

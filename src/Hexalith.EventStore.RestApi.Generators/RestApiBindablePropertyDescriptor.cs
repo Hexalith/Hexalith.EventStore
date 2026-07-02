@@ -2,14 +2,17 @@ namespace Hexalith.EventStore.RestApi.Generators;
 
 internal readonly struct RestApiBindablePropertyDescriptor : IEquatable<RestApiBindablePropertyDescriptor>
 {
-    public RestApiBindablePropertyDescriptor(string name, string typeName, bool canBindFromQuery)
+    public RestApiBindablePropertyDescriptor(string name, string jsonName, string typeName, bool canBindFromQuery)
     {
         Name = name;
+        JsonName = jsonName;
         TypeName = typeName;
         CanBindFromQuery = canBindFromQuery;
     }
 
     public string Name { get; }
+
+    public string JsonName { get; }
 
     public string TypeName { get; }
 
@@ -17,6 +20,7 @@ internal readonly struct RestApiBindablePropertyDescriptor : IEquatable<RestApiB
 
     public bool Equals(RestApiBindablePropertyDescriptor other)
         => string.Equals(Name, other.Name, StringComparison.Ordinal)
+            && string.Equals(JsonName, other.JsonName, StringComparison.Ordinal)
             && string.Equals(TypeName, other.TypeName, StringComparison.Ordinal)
             && CanBindFromQuery == other.CanBindFromQuery;
 
@@ -27,6 +31,7 @@ internal readonly struct RestApiBindablePropertyDescriptor : IEquatable<RestApiB
         unchecked
         {
             return (StringComparer.Ordinal.GetHashCode(Name) * 397)
+                ^ StringComparer.Ordinal.GetHashCode(JsonName)
                 ^ StringComparer.Ordinal.GetHashCode(TypeName)
                 ^ CanBindFromQuery.GetHashCode();
         }

@@ -6,7 +6,7 @@ baseline_commit: 16f6a7cd9f522538280fa883712c9af7958f2fdb
 
 # Story D.3: Controller Emission
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -178,17 +178,26 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06
 - [x] [Review][Patch] Duplicate generated HTTP routes are not diagnosed before runtime action ambiguity [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:57]
 - [x] [Review][Patch] Unsupported query property types are emitted as query-string bindings instead of diagnostics [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:341]
 - [x] [Review][Patch] D3 diff still contains out-of-scope submodule pointer changes; tracked D5 story/status drift was restored [_bmad-output/implementation-artifacts/D-5-proof-sample-blazorui-queries.md:1]
-- [ ] [Review][Decision] Review scope includes non-D3 work — The confirmed full diff from `16f6a7cd9f522538280fa883712c9af7958f2fdb..HEAD` includes D4 generator tests, CPM/package-management changes, workflow/release/changelog rewrites, D5 story/status drift, and root submodule gitlink moves. Decide whether D3 should be blocked on that scope bleed, or whether this run is intentionally a multi-story full-diff review.
-- [ ] [Review][Decision] UI-host referenced-contract discovery remains unresolved — D5 AC2 requires generated controllers in a UI host from query contracts in referenced domain assemblies, but D3 still discovers message contracts through syntax in the current compilation. Decide whether D3/D4 must add referenced-assembly discovery now, or whether D5/sprint state should be corrected to establish a different supported contract-source model.
-- [ ] [Review][Patch] Generated actions can still emit duplicate parameter names [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:11]
-- [ ] [Review][Patch] Query payload dictionaries preserve C# property casing instead of JSON contract names [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:474]
-- [ ] [Review][Patch] REST API generator tests are omitted from CI and release test loops [.github/workflows/ci.yml:26]
-- [ ] [Review][Patch] Controller-level Consumes applies JSON content constraints to bodyless query actions [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:146]
-- [ ] [Review][Patch] Duplicate-route diagnostics miss absolute and relative route equivalents [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:604]
-- [ ] [Review][Patch] Unsupported generic, non-public, or abstract contract shapes are emitted instead of diagnosed [src/Hexalith.EventStore.RestApi.Generators/RestApiMessageParser.cs:25]
-- [ ] [Review][Patch] Inherited public contract properties are omitted from generated route and query binding [src/Hexalith.EventStore.RestApi.Generators/RestApiMessageParser.cs:101]
-- [ ] [Review][Patch] Extra command route parameters can be ignored instead of diagnosed [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:439]
-- [ ] [Review][Patch] Undefined RestVerb values silently fall back to POST [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:692]
+- [x] [Review][Decision] Review scope includes non-D3 work — resolved by user selection: the review was rerun against `src/Hexalith.EventStore.RestApi.Generators` only, and out-of-scope D4, package-management, workflow/release, D5, and submodule findings were excluded from the scoped triage.
+- [x] [Review][Decision] UI-host referenced-contract discovery remains unresolved — resolved for this D3-owned review as outside the narrowed scope; referenced-assembly discovery remains a D5/source-model decision if that story continues to require UI-host generation from referenced domain assemblies.
+- [x] [Review][Patch] REST API generator tests are omitted from CI and release test loops [.github/workflows/ci.yml:26] — excluded from the D3-owned rerun scope.
+
+#### D3-Owned Rerun (2026-07-02)
+
+- [x] [Review][Patch] Generated actions can still emit duplicate parameter names [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:11]
+- [x] [Review][Patch] Query payload dictionaries preserve C# property casing instead of JSON contract names [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:474]
+- [x] [Review][Patch] Controller-level Consumes applies JSON content constraints to bodyless query actions [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:146]
+- [x] [Review][Patch] Leading-slash route templates are validated as relative but route as absolute at runtime [src/Hexalith.EventStore.RestApi.Generators/RestApiRouteDescriptor.cs:11]
+- [x] [Review][Patch] Duplicate-route diagnostics miss runtime-equivalent route templates [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:604]
+- [x] [Review][Patch] Unsupported generic, non-public, or abstract contract shapes are emitted instead of diagnosed [src/Hexalith.EventStore.RestApi.Generators/RestApiMessageParser.cs:25]
+- [x] [Review][Patch] Inherited public contract properties are omitted from generated route and query binding [src/Hexalith.EventStore.RestApi.Generators/RestApiMessageParser.cs:101]
+- [x] [Review][Patch] Extra command route parameters can be ignored instead of diagnosed [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:439]
+- [x] [Review][Patch] Command route/body checks access keyword-named body properties without escaping [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:439]
+- [x] [Review][Patch] Invalid route templates and duplicate route parameters can reach ASP.NET runtime instead of diagnostics [src/Hexalith.EventStore.RestApi.Generators/RestApiRouteTemplateParser.cs:53]
+- [x] [Review][Patch] Route tenant aliases can conflict without a fail-closed 400 [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:269]
+- [x] [Review][Patch] Weak ETag values can be reformatted into malformed strong ETag headers [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:356]
+- [x] [Review][Patch] Undefined RestVerb values silently fall back to POST [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:692]
+- [x] [Review][Patch] Failed method or route reservation attempts can pollute duplicate tracking for later endpoints [src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs:71]
 
 ## Dev Notes
 
@@ -419,6 +428,9 @@ Current dirty worktree context observed while creating this story:
 - 2026-07-02: Ran route-prefix smoke build `dotnet build /tmp/hexalith-eventstore-d3-review-smoke/SmokeHost/SmokeHost.csproj --configuration Release`; passed with generated controller at `/tmp/hexalith-eventstore-d3-review-smoke/generated/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.RestApiGenerator/Hexalith.EventStore.RestApi.SmokeHost.Generated.CounterRestController.Controller.g.cs`.
 - 2026-07-02: Smoke evidence confirmed generated source contains `[ApiController]`, `[Authorize]`, `IEventStoreGatewayClient`, `SubmitCommandAsync`, `SubmitQueryAsync`, `ConfigureAwait(false)`, `Location`, `Retry-After`, and `ETag`; `Type.GetType` / `GetType(` reflection dispatch was absent.
 - 2026-07-02: Final builds passed with zero warnings: `dotnet build src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj --configuration Release` and `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false`.
+- 2026-07-02: Applied D3-owned rerun review patches for action-parameter reservations, JSON query payload names, command-only `Consumes`, fail-closed route template/verb/contract diagnostics, inherited property discovery, unmapped command route diagnostics, keyword body member access, tenant alias conflicts, weak ETag normalization, and atomic duplicate tracking.
+- 2026-07-02: Ran `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/ --configuration Release`; passed 36 tests.
+- 2026-07-02: Ran `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false`; passed with 0 warnings and 0 errors after D3-owned rerun patches.
 
 ### Implementation Plan
 
@@ -440,6 +452,7 @@ Current dirty worktree context observed while creating this story:
 - Code-review patches fixed route-prefix binding, strong ETag formatting, query-route ambiguity handling, generated identifier collisions, invalid `If-None-Match` problem mapping, gateway problem extension filtering, duplicate route diagnostics, and unsupported query-parameter diagnostics.
 - Final review follow-up resolved: the root worktree and root-declared submodules no longer contain submodule pointer drift, so D3 can move back to review without touching submodule contents.
 - Updated the Contracts packaging test to match the current shared-package import model and confirmed `Contracts.Tests` now passes.
+- D3-owned rerun review patches were applied and verified with focused generator diagnostics/source-generation coverage plus the Release solution build; story status is done.
 
 ### File List
 
@@ -455,12 +468,15 @@ Current dirty worktree context observed while creating this story:
 - `src/Hexalith.EventStore.RestApi.Generators/RestApiGenerator.cs`
 - `src/Hexalith.EventStore.RestApi.Generators/RestApiMessageDescriptor.cs`
 - `src/Hexalith.EventStore.RestApi.Generators/RestApiMessageParser.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiMetadataNames.cs`
 - `src/Hexalith.EventStore.RestApi.Generators/RestApiNameSanitizer.cs`
 - `src/Hexalith.EventStore.RestApi.Generators/RestApiNamespaceResolver.cs`
 - `src/Hexalith.EventStore.RestApi.Generators/RestApiRouteDescriptor.cs`
 - `src/Hexalith.EventStore.RestApi.Generators/RestApiRouteParameterDescriptor.cs`
 - `src/Hexalith.EventStore.RestApi.Generators/RestApiRouteTemplateParser.cs`
 - `tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs`
+- `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs`
+- `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiDiagnosticTests.cs`
 
 ## Change Log
 
@@ -471,3 +487,4 @@ Current dirty worktree context observed while creating this story:
 | 2026-07-01 | Implemented REST controller source emission, gateway-backed command/query actions, tenant/problem helpers, source-generator diagnostics, release tracking, and smoke verification. Status review. |
 | 2026-07-02 | Applied code-review patches for generated controller correctness and diagnostics; status returned to in-progress because submodule pointer drift remains outside D3 ownership. |
 | 2026-07-02 | Resolved final review follow-up, updated Contracts package-version test for shared package props, reran D3 validation, and moved status to review. |
+| 2026-07-02 | Applied D3-owned rerun review patches, added focused generator regression tests, reran validation, and moved status to done. |

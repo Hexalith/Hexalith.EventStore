@@ -81,9 +81,11 @@ internal static class RestApiNameSanitizer
         return identifier.Length == 0 ? fallback : identifier;
     }
 
-    private static string EscapeKeyword(string identifier)
+    public static string EscapeIdentifier(string identifier)
         => SyntaxFacts.GetKeywordKind(identifier) != SyntaxKind.None
             || SyntaxFacts.GetContextualKeywordKind(identifier) != SyntaxKind.None
                 ? "@" + identifier
                 : identifier;
+
+    private static string EscapeKeyword(string identifier) => EscapeIdentifier(identifier);
 }

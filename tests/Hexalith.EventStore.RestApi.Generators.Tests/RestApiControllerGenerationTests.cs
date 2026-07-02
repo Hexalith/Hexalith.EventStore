@@ -26,6 +26,7 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("[Authorize]");
         source.ShouldContain("[Route(\"api/counter\")]");
         source.ShouldContain("[Tags(\"counter\")]");
+        source.ShouldContain("    [Consumes(\"application/json\")]");
         source.ShouldContain("IEventStoreGatewayClient");
         source.ShouldContain(".SubmitCommandAsync(__hexalithRequest, cancellationToken)");
         source.ShouldContain(".SubmitQueryAsync(__hexalithRequest, ifNoneMatch, cancellationToken)");
@@ -45,10 +46,13 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("Response.Headers[\"Location\"] = \"/api/v1/commands/status/\"");
         source.ShouldContain("[FromQuery(Name = \"Page\")]");
         source.ShouldContain(" page,");
+        source.ShouldContain("[\"page\"] = page,");
         source.ShouldContain("[FromHeader(Name = \"If-None-Match\")] string? ifNoneMatch");
         source.ShouldContain("new SubmitQueryRequest(");
         source.ShouldContain("StatusCodes.Status304NotModified");
         source.ShouldContain("Response.Headers[\"ETag\"] = FormatStrongETag(__hexalithResult.ETag);");
+        source.ShouldContain("value.StartsWith(\"W/\", StringComparison.Ordinal)");
+        source.ShouldContain("value = value.Substring(2).Trim();");
         source.ShouldContain("return Ok(__hexalithResult.Payload);");
 
         source.ShouldNotContain("Type.GetType");
@@ -121,10 +125,89 @@ public sealed class RestApiControllerGenerationTests
         string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
 
         source.ShouldContain("User.FindAll(\"eventstore:tenant\")");
+        source.ShouldNotContain("[Consumes(\"application/json\")]");
         source.ShouldNotContain("JwtSecurityToken");
         source.ShouldNotContain("ReadJwtToken");
         source.ShouldNotContain("Bearer");
         source.ShouldNotContain("Request.Headers[\"Authorization\"]");
+    }
+
+    [Fact]
+    public void Run_QueryPayload_UsesJsonContractNamesForPayloadKeys()
+    {
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(JsonNamedQuerySource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            compilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
+
+        source.ShouldContain("[FromQuery(Name = \"CursorToken\")]");
+        source.ShouldContain("[\"cursor_token\"] = cursorToken,");
+        source.ShouldContain("[\"pageSize\"] = pageSize,");
+    }
+
+    [Fact]
+    public void Run_InheritedPublicProperties_GenerateBindingsAndMismatchChecks()
+    {
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(InheritedPropertySource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            compilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
+
+        source.ShouldContain("body.CounterId");
+        source.ShouldContain("[FromQuery(Name = \"PageSize\")]");
+        source.ShouldContain("[\"pageSize\"] = pageSize,");
+    }
+
+    [Fact]
+    public void Run_CommandRouteKeywordProperty_EscapesGeneratedBodyMemberAccess()
+    {
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(KeywordPropertySource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            compilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
+
+        source.ShouldContain("[FromRoute(Name = \"event\")] string @event");
+        source.ShouldContain("body.@event");
+    }
+
+    [Fact]
+    public void Run_RouteTenantAliases_GenerateConflictCheck()
+    {
+        CSharpCompilation compilation = RestApiGeneratorTestHarness.CreateCompilation(RouteTenantAliasSource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            compilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
+
+        source.ShouldContain("ResolveTenant(tenant, tenantId);");
+        source.ShouldContain("Tenant route values differ.");
     }
 
     private static void ShouldHaveNoErrors(IEnumerable<Diagnostic> diagnostics)
@@ -247,6 +330,93 @@ public sealed class RestApiControllerGenerationTests
             public static string QueryType => "list-counters";
             public static string Domain => "counter";
             public static string ProjectionType => "counter-list";
+        }
+        """;
+
+    private const string JsonNamedQuerySource = """
+        using System.Text.Json.Serialization;
+
+        using Hexalith.EventStore.Contracts.Queries;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+        namespace Smoke;
+
+        public sealed record SearchCounters([property: JsonPropertyName("cursor_token")] string? CursorToken, int PageSize) : IQueryContract
+        {
+            public static string QueryType => "search-counters";
+            public static string Domain => "counter";
+            public static string ProjectionType => "counter-search";
+        }
+        """;
+
+    private const string InheritedPropertySource = """
+        using Hexalith.EventStore.Contracts.Commands;
+        using Hexalith.EventStore.Contracts.Queries;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+        namespace Smoke;
+
+        public abstract record CounterCommandBase
+        {
+            public string CounterId { get; init; } = "";
+        }
+
+        [RestRoute(RestVerb.Post, "{counterId}/rename")]
+        public sealed record RenameCounter(string Name) : CounterCommandBase, ICommandContract
+        {
+            public static string Domain => "counter";
+            public static string CommandType => "rename-counter";
+            public string AggregateId => CounterId;
+        }
+
+        public abstract record PagedQuery
+        {
+            public int PageSize { get; init; }
+        }
+
+        public sealed record ListCounters(string? Cursor) : PagedQuery, IQueryContract
+        {
+            public static string QueryType => "list-counters";
+            public static string Domain => "counter";
+            public static string ProjectionType => "counter-list";
+        }
+        """;
+
+    private const string KeywordPropertySource = """
+        using Hexalith.EventStore.Contracts.Commands;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/counter", "counter", RestTenantSource.System)]
+
+        namespace Smoke;
+
+        [RestRoute(RestVerb.Post, "{event}")]
+        public sealed record RecordCounterEvent(string CounterId, string @event) : ICommandContract
+        {
+            public static string Domain => "counter";
+            public static string CommandType => "record-counter-event";
+            public string AggregateId => CounterId;
+        }
+        """;
+
+    private const string RouteTenantAliasSource = """
+        using Hexalith.EventStore.Contracts.Commands;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/{tenant}/{tenantId}/counter", "counter", RestTenantSource.Route)]
+
+        namespace Smoke;
+
+        [RestRoute(RestVerb.Post, "{counterId}/increment")]
+        public sealed record IncrementCounter(string CounterId, int Amount) : ICommandContract
+        {
+            public static string Domain => "counter";
+            public static string CommandType => "increment-counter";
+            public string AggregateId => CounterId;
         }
         """;
 }

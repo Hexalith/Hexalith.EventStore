@@ -4,6 +4,69 @@ namespace Hexalith.EventStore.RestApi.Generators;
 
 internal static class RestApiRouteTemplateParser
 {
+    public static string? GetTemplateError(string template)
+    {
+        if (string.IsNullOrEmpty(template))
+        {
+            return null;
+        }
+
+        if (template.StartsWith("/", StringComparison.Ordinal))
+        {
+            return "Route template must be relative or start with '~/' for an absolute route.";
+        }
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        int index = 0;
+        while (index < template.Length)
+        {
+            char current = template[index];
+            if (current == '{')
+            {
+                if (index + 1 < template.Length && template[index + 1] == '{')
+                {
+                    index += 2;
+                    continue;
+                }
+
+                int close = template.IndexOf('}', index + 1);
+                if (close < 0)
+                {
+                    return "Route template has an unclosed route parameter.";
+                }
+
+                string name = CleanParameterName(template.Substring(index + 1, close - index - 1));
+                if (name.Length == 0)
+                {
+                    return "Route template has an empty route parameter.";
+                }
+
+                if (!seen.Add(name))
+                {
+                    return "Route template contains duplicate route parameter '" + name + "'.";
+                }
+
+                index = close + 1;
+                continue;
+            }
+
+            if (current == '}')
+            {
+                if (index + 1 < template.Length && template[index + 1] == '}')
+                {
+                    index += 2;
+                    continue;
+                }
+
+                return "Route template has an unopened route parameter.";
+            }
+
+            index++;
+        }
+
+        return null;
+    }
+
     public static ImmutableArray<RestApiRouteParameterDescriptor> ParseParameters(string template)
     {
         if (string.IsNullOrEmpty(template))

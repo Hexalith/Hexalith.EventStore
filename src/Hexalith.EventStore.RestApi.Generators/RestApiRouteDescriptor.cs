@@ -10,6 +10,7 @@ internal readonly struct RestApiRouteDescriptor : IEquatable<RestApiRouteDescrip
         Template = template;
         IsAbsolute = template.StartsWith("~/", StringComparison.Ordinal);
         Parameters = RestApiRouteTemplateParser.ParseParameters(template);
+        TemplateError = RestApiRouteTemplateParser.GetTemplateError(template);
     }
 
     public string Verb { get; }
@@ -20,11 +21,14 @@ internal readonly struct RestApiRouteDescriptor : IEquatable<RestApiRouteDescrip
 
     public ImmutableArray<RestApiRouteParameterDescriptor> Parameters { get; }
 
+    public string? TemplateError { get; }
+
     public bool Equals(RestApiRouteDescriptor other)
         => string.Equals(Verb, other.Verb, StringComparison.Ordinal)
             && string.Equals(Template, other.Template, StringComparison.Ordinal)
             && IsAbsolute == other.IsAbsolute
-            && Parameters.SequenceEqual(other.Parameters);
+            && Parameters.SequenceEqual(other.Parameters)
+            && string.Equals(TemplateError, other.TemplateError, StringComparison.Ordinal);
 
     public override bool Equals(object? obj) => obj is RestApiRouteDescriptor other && Equals(other);
 
@@ -35,6 +39,9 @@ internal readonly struct RestApiRouteDescriptor : IEquatable<RestApiRouteDescrip
             int hash = (StringComparer.Ordinal.GetHashCode(Verb) * 397)
                 ^ StringComparer.Ordinal.GetHashCode(Template);
             hash = (hash * 397) ^ IsAbsolute.GetHashCode();
+            hash = (hash * 397) ^ (TemplateError is null
+                ? 0
+                : StringComparer.Ordinal.GetHashCode(TemplateError));
             foreach (RestApiRouteParameterDescriptor parameter in Parameters)
             {
                 hash = (hash * 397) ^ parameter.GetHashCode();
