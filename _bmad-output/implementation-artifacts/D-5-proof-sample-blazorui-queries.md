@@ -6,7 +6,7 @@ baseline_commit: 4d1a207138baf70f5460ba755e2389cd7a52c22b
 
 # Story D.5: Proof - Sample BlazorUI Queries
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -428,6 +428,18 @@ Codex GPT-5
 - Generated source evidence included `[ApiController]`, `[Authorize]`, `[Route("api/{tenant}/counter")]`, `[HttpGet("{entityId}")]`, `IEventStoreGatewayClient`, `SubmitQueryAsync`, `If-None-Match`, `GetCounterStatusQuery.QueryType`, `GetCounterStatusQuery.ProjectionType`, `ConfigureAwait(false)`, null payload, and aggregate/entity values from `entityId`; forbidden bypass strings were absent.
 - Aspire smoke: `POST https://localhost:45941/api/v1/commands` accepted `IncrementCounter` for `tenant-a/counter-1` with 202; `GET https://localhost:41951/api/tenant-a/counter/counter-1` returned 200 `{"count":1}` with strong ETag; the same GET with `If-None-Match` returned 304 with the same ETag.
 - Final `aspire describe --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --format Json --non-interactive` reported no EventStore AppHost running after cleanup.
+- Initial final live-smoke retry found `sample-api` without an Aspire launch profile: no published URL, no DAPR `--app-port`, `ASPNETCORE_ENVIRONMENT=Production`, and startup failure because `EventStore:Authentication:SigningKey` was not loaded from development settings.
+- Added `samples/Hexalith.EventStore.Sample.Api/Properties/launchSettings.json`; after AppHost restart, `aspire describe sample-api` reported HTTP/HTTPS URLs, `ASPNETCORE_ENVIRONMENT=Development`, and the `sample-api-dapr-cli` command included `--app-port`.
+- Final generated controller evidence path: `/tmp/hexalith-eventstore-d5-generated/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.RestApiGenerator/Hexalith.EventStore.RestApi.Hexalith.EventStore.Sample.Api.Generated.CounterRestController.Controller.g.cs`.
+- Final generated source evidence included `[ApiController]`, `[Authorize]`, `[Route("api/{tenant}/counter")]`, `[HttpGet("{entityId}")]`, `IEventStoreGatewayClient`, `SubmitQueryAsync`, `If-None-Match`, `GetCounterStatusQuery.QueryType`, `GetCounterStatusQuery.ProjectionType`, and `ConfigureAwait(false)`; forbidden bypass strings `DomainQueryDispatcher`, `MediatR`, `DaprClient`, `ProjectionActor`, and `state store` were absent.
+- Final live smoke against `sample-api` used `POST /api/v1/commands` through EventStore and `GET /api/tenant-a/counter/counter-1` through the generated external API endpoint: pre-count `2`, post-count `3`, final 200 with strong ETag, and conditional GET returned 304 with empty body.
+- Redis end-state evidence after the final smoke showed event sequence `3` for `tenant-a:counter:counter-1`, projection state version `3` with decoded payload `{"count":3}`, completed command status for message `01KWHTQN02SMVYBD76XGA52MPG`, and persisted command metadata for tenant `tenant-a`, domain `counter`, aggregate `counter-1`.
+- `dotnet build samples/Hexalith.EventStore.Sample.Api/Hexalith.EventStore.Sample.Api.csproj --configuration Release --no-incremental -p:EmitCompilerGeneratedFiles=true -p:CompilerGeneratedFilesOutputPath=/tmp/hexalith-eventstore-d5-generated` passed with 0 warnings/errors.
+- `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false` passed with 0 warnings/errors.
+- Release test pass: `tests/Hexalith.EventStore.AppHost.Tests/` 35/35, `tests/Hexalith.EventStore.DomainService.Tests/` 37/37, `tests/Hexalith.EventStore.RestApi.Generators.Tests/` 43/43, `samples/Hexalith.EventStore.Sample.Tests/` 4/4, `tests/Hexalith.EventStore.Sample.Tests/` 76/76, `tests/Hexalith.EventStore.QueryRouting.Tests/` 3/3.
+- Release regression pass: `tests/Hexalith.EventStore.Contracts.Tests/` 549/549, `tests/Hexalith.EventStore.Client.Tests/` 480/480, `tests/Hexalith.EventStore.SignalR.Tests/` 35/35, `tests/Hexalith.EventStore.Testing.Tests/` 144/144, `tests/Hexalith.EventStore.Server.Tests/` 2209 passed / 25 skipped.
+- Release Admin pass: `tests/Hexalith.EventStore.Admin.Abstractions.Tests/` 423/423, `tests/Hexalith.EventStore.Admin.Cli.Tests/` 342/342, `tests/Hexalith.EventStore.Admin.Mcp.Tests/` 320 passed / 8 skipped, `tests/Hexalith.EventStore.Admin.Server.Host.Tests/` 15/15, `tests/Hexalith.EventStore.Admin.Server.Tests/` 717 passed / 18 skipped, `tests/Hexalith.EventStore.Admin.UI.Tests/` 840/840.
+- Out-of-scope red-phase governance suites attempted and still blocked by missing story-specific artifacts: `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/` failed on missing DW6 story/checker entrypoint artifacts; `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/` failed on missing operational-evidence validator entrypoint artifacts.
 
 ### Completion Notes List
 
@@ -438,12 +450,18 @@ Codex GPT-5
 - Wired Sample.BlazorUI for generated controllers with analyzer reference, REST assembly opt-in, controller service/endpoint mapping, JWT bearer validation, and typed `IEventStoreGatewayClient` using the existing DAPR app-id and bearer-token handlers.
 - Removed `CounterQueryService` and replaced consumer usage with a platform-generic projection query client plus `CounterStatusResult` state parsing; no renamed per-domain query wrapper was added.
 - Added proof tests for referenced contract discovery, generated request shape, route annotation, and guardrails preventing the hand-written query wrapper/path from returning.
+- Added a Sample.Api launch profile so Aspire publishes HTTP/HTTPS URLs, runs the host in `Development`, loads the local symmetric signing key, and supplies the DAPR sidecar app port.
+- Removed the Sample domain module's direct reference to `Hexalith.EventStore.Sample.Contracts`; the domain remains SDK-only and tests reference the contracts library directly where contract metadata is asserted.
+- Added an AppHost guard test for the Sample.Api launch profile to prevent regressing generated external API smokeability.
+- Closed the remaining AppHost/live-smoke gap with generated `Sample.Api` endpoint evidence and persisted Redis end-state evidence after a Counter increment.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/D-5-proof-sample-blazorui-queries.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `samples/Hexalith.EventStore.Sample/Counter/Queries/GetCounterStatusQuery.cs`
+- `samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj`
+- `samples/Hexalith.EventStore.Sample.Api/Properties/launchSettings.json`
 - `samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterHistoryGrid.razor`
 - `samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterValueCard.razor`
 - `samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj`
@@ -458,7 +476,9 @@ Codex GPT-5
 - `src/Hexalith.EventStore.RestApi.Generators/RestApiMessageParser.cs`
 - `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs`
 - `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiGeneratorTestHarness.cs`
+- `tests/Hexalith.EventStore.AppHost.Tests/Configuration/SampleApiLaunchSettingsTests.cs`
 - `tests/Hexalith.EventStore.Sample.Tests/BlazorUI/CounterQueryWrapperGuardTests.cs`
+- `tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj`
 - `tests/Hexalith.EventStore.Sample.Tests/Counter/Queries/GetCounterStatusQueryTests.cs`
 
 ## Change Log
@@ -469,3 +489,4 @@ Codex GPT-5
 | 2026-07-02 | Implemented D5 Sample BlazorUI query proof: generator referenced-contract support, Counter query REST annotation, generated controller wiring, wrapper removal, proof tests, generated evidence, Release build, and Aspire smoke validation. Status review. |
 | 2026-07-02 | Adversarial code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor). Applied 2 patches (refresh-error visibility in 3 components; 404 history-cap trim) — Release build clean, 76/76 Sample tests pass. Attempted AC2 rewiring via `ProjectReference` to Sample; reverted (`CS0436` `Program` collision). Finding 1 (contract duplicated in UI host via `<Compile Link>`) + coupled Finding 2 remain open pending re-decision (contracts project vs. accept deviation); Finding 3 deferred. 6 items added to deferred-work.md. Status → in-progress. |
 | 2026-07-02 | Correct-course (`sprint-change-proposal-2026-07-02-rest-api-external-host.md`): re-architected per owner directive "UI uses Client libraries; REST API is external." Added `Sample.Contracts` library (relocated `GetCounterStatusQuery`) + `Sample.Api` external host (owns the generated controller). Stripped generator wiring/`[RestApi]` opt-in/`<Compile Link>`/`AddControllers`/`MapControllers`/inbound-JWT from `Sample.BlazorUI`; UI now uses the gateway Client library for queries. Findings 1 & 2 resolved. Verified: `Sample.Api` generated-controller emission via referenced discovery, Release builds clean, 76/76 Sample tests, full slnx Release build 0/0. Remaining: AppHost wiring + live smoke + formal AC rewrite + D6/D7/D8. |
+| 2026-07-02 | Closed D5 AppHost/live-smoke gap: added `Sample.Api` launch profile, preserved Sample domain SDK-only references, added launch-profile guard test, verified generated external API endpoint with 200/ETag/304 and Redis persisted end-state after increment, refreshed generated source evidence, and completed Release build/test regression. Status review. |

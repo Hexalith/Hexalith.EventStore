@@ -11,9 +11,6 @@
     <!-- A domain module references only the domain-service SDK; Client, ServiceDefaults, and Contracts
          flow in transitively. All hosting boilerplate lives in the SDK. -->
     <ProjectReference Include="..\..\src\Hexalith.EventStore.DomainService\Hexalith.EventStore.DomainService.csproj" />
-    <!-- The domain's REST-annotated message contracts live in a contracts-only library shared with the
-         external API host and the UI host. -->
-    <ProjectReference Include="..\Hexalith.EventStore.Sample.Contracts\Hexalith.EventStore.Sample.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
