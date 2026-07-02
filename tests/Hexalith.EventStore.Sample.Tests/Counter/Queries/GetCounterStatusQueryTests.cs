@@ -1,20 +1,37 @@
 
+using System.Reflection;
+
+using Hexalith.EventStore.Contracts.Rest;
 using Hexalith.EventStore.Sample.Counter.Queries;
 
 using Shouldly;
 
 namespace Hexalith.EventStore.Sample.Tests.Counter.Queries;
 
-public class GetCounterStatusQueryTests {
+public sealed class GetCounterStatusQueryTests
+{
     [Fact]
-    public void StaticMembers_AreAccessible() {
+    public void StaticMembers_AreAccessible()
+    {
         GetCounterStatusQuery.QueryType.ShouldBe("get-counter-status");
         GetCounterStatusQuery.Domain.ShouldBe("counter");
         GetCounterStatusQuery.ProjectionType.ShouldBe("counter");
     }
 
     [Fact]
-    public void QueryType_IsKebabCase() {
+    public void RestRouteAttribute_UsesEntityIdGetRoute()
+    {
+        RestRouteAttribute? attribute = typeof(GetCounterStatusQuery)
+            .GetCustomAttribute<RestRouteAttribute>();
+
+        attribute.ShouldNotBeNull();
+        attribute.Verb.ShouldBe(RestVerb.Get);
+        attribute.Template.ShouldBe("{entityId}");
+    }
+
+    [Fact]
+    public void QueryType_IsKebabCase()
+    {
         string queryType = GetCounterStatusQuery.QueryType;
 
         queryType.ShouldNotContain(":");
@@ -23,7 +40,8 @@ public class GetCounterStatusQueryTests {
     }
 
     [Fact]
-    public void Domain_IsKebabCase() {
+    public void Domain_IsKebabCase()
+    {
         string domain = GetCounterStatusQuery.Domain;
 
         domain.ShouldNotContain(":");
@@ -31,7 +49,8 @@ public class GetCounterStatusQueryTests {
     }
 
     [Fact]
-    public void ProjectionType_IsKebabCase() {
+    public void ProjectionType_IsKebabCase()
+    {
         string projectionType = GetCounterStatusQuery.ProjectionType;
 
         projectionType.ShouldNotContain(":");

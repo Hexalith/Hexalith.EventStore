@@ -1,6 +1,9 @@
 @using Microsoft.FluentUI.AspNetCore.Components
+@using Hexalith.EventStore.Client.Gateway
+@using Hexalith.EventStore.Sample.Counter.Queries
+@using Hexalith.EventStore.Sample.BlazorUI.Services
 @inject EventStoreSignalRClient SignalRClient
-@inject CounterQueryService QueryService
+@inject EventStoreProjectionQueryClient QueryClient
 @implements IAsyncDisposable
 
 <FluentCard Style="padding: 24px; margin-top: 16px;">
@@ -34,6 +37,7 @@
     [Parameter] public string ProjectionType { get; set; } = "counter";
 
     private readonly List<CounterHistoryEntry> _history = [];
+    private CounterStatusResult? _lastResult;
     private bool _isLoading = true;
     private string? _error;
 
@@ -62,7 +66,16 @@
     {
         try
         {
-            CounterStatusResult result = await QueryService.GetCounterStatusAsync(TenantId);
+            EventStoreQueryResult queryResult = await QueryClient.GetAsync(
+                TenantId,
+                GetCounterStatusQuery.Domain,
+                "counter-1",
+                GetCounterStatusQuery.QueryType,
+                GetCounterStatusQuery.ProjectionType,
+                "counter-1",
+                _lastResult?.ETag);
+            CounterStatusResult result = CounterStatusResult.FromQueryResult(queryResult, _lastResult);
+            _lastResult = result;
             _history.Insert(0, new CounterHistoryEntry(
                 DateTime.Now,
                 result.Count,
@@ -74,6 +87,12 @@
             {
                 _history.RemoveAt(_history.Count - 1);
             }
+        }
+        catch (EventStoreGatewayException ex) when (ex.StatusCode == 404)
+        {
+            _lastResult = CounterStatusResult.Empty;
+            _history.Insert(0, new CounterHistoryEntry(DateTime.Now, 0, "n/a"));
+            _error = null;
         }
         catch (Exception ex)
         {

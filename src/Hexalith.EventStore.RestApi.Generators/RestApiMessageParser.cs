@@ -29,7 +29,58 @@ internal static class RestApiMessageParser
             return null;
         }
 
-        Compilation compilation = context.SemanticModel.Compilation;
+        return ParseSymbol(typeSymbol, context.SemanticModel.Compilation, cancellationToken);
+    }
+
+    public static ImmutableArray<RestApiMessageDescriptor> ParseReferenced(
+        Compilation compilation,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        INamedTypeSymbol? commandContract = compilation.GetTypeByMetadataName(RestApiMetadataNames.CommandContract);
+        INamedTypeSymbol? queryContract = compilation.GetTypeByMetadataName(RestApiMetadataNames.QueryContract);
+        INamedTypeSymbol? restRouteAttribute = compilation.GetTypeByMetadataName(RestApiMetadataNames.RestRouteAttribute);
+        IAssemblySymbol? contractAssembly = (queryContract ?? commandContract)?.ContainingAssembly;
+        if (restRouteAttribute is null || contractAssembly is null)
+        {
+            return ImmutableArray<RestApiMessageDescriptor>.Empty;
+        }
+
+        var descriptors = ImmutableArray.CreateBuilder<RestApiMessageDescriptor>();
+        var seenTypes = new HashSet<string>(StringComparer.Ordinal);
+        foreach (IAssemblySymbol assembly in compilation.SourceModule.ReferencedAssemblySymbols)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!ReferencesAssembly(assembly, contractAssembly))
+            {
+                continue;
+            }
+
+            CollectReferencedMessages(
+                assembly.GlobalNamespace,
+                compilation,
+                restRouteAttribute,
+                descriptors,
+                seenTypes,
+                cancellationToken);
+        }
+
+        return descriptors.ToImmutable();
+    }
+
+    private static RestApiMessageDescriptor? ParseSymbol(
+        INamedTypeSymbol typeSymbol,
+        Compilation compilation,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (typeSymbol.TypeKind != TypeKind.Class)
+        {
+            return null;
+        }
+
         INamedTypeSymbol? commandContract = compilation.GetTypeByMetadataName(RestApiMetadataNames.CommandContract);
         INamedTypeSymbol? queryContract = compilation.GetTypeByMetadataName(RestApiMetadataNames.QueryContract);
         bool isCommand = commandContract is not null && Implements(typeSymbol, commandContract);
@@ -58,6 +109,106 @@ internal static class RestApiMessageParser
                 ? GetPublicProperties(typeSymbol, jsonPropertyNameAttribute)
                 : ImmutableArray<RestApiBindablePropertyDescriptor>.Empty,
             unsupportedReason);
+    }
+
+    private static void CollectReferencedMessages(
+        INamespaceSymbol namespaceSymbol,
+        Compilation compilation,
+        INamedTypeSymbol restRouteAttribute,
+        ImmutableArray<RestApiMessageDescriptor>.Builder descriptors,
+        HashSet<string> seenTypes,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        foreach (INamespaceSymbol childNamespace in namespaceSymbol.GetNamespaceMembers())
+        {
+            CollectReferencedMessages(
+                childNamespace,
+                compilation,
+                restRouteAttribute,
+                descriptors,
+                seenTypes,
+                cancellationToken);
+        }
+
+        foreach (INamedTypeSymbol typeSymbol in namespaceSymbol.GetTypeMembers())
+        {
+            CollectReferencedType(
+                typeSymbol,
+                compilation,
+                restRouteAttribute,
+                descriptors,
+                seenTypes,
+                cancellationToken);
+        }
+    }
+
+    private static void CollectReferencedType(
+        INamedTypeSymbol typeSymbol,
+        Compilation compilation,
+        INamedTypeSymbol restRouteAttribute,
+        ImmutableArray<RestApiMessageDescriptor>.Builder descriptors,
+        HashSet<string> seenTypes,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (HasRestRoute(typeSymbol, restRouteAttribute))
+        {
+            RestApiMessageDescriptor? descriptor = ParseSymbol(typeSymbol, compilation, cancellationToken);
+            if (descriptor.HasValue
+                && descriptor.Value.Route.HasValue
+                && seenTypes.Add(descriptor.Value.FullyQualifiedTypeName))
+            {
+                descriptors.Add(descriptor.Value);
+            }
+        }
+
+        foreach (INamedTypeSymbol nestedType in typeSymbol.GetTypeMembers())
+        {
+            CollectReferencedType(
+                nestedType,
+                compilation,
+                restRouteAttribute,
+                descriptors,
+                seenTypes,
+                cancellationToken);
+        }
+    }
+
+    private static bool HasRestRoute(INamedTypeSymbol typeSymbol, INamedTypeSymbol restRouteAttribute)
+    {
+        foreach (AttributeData attribute in typeSymbol.GetAttributes())
+        {
+            if (RoslynAttributeValueReader.IsAttribute(attribute, restRouteAttribute))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ReferencesAssembly(IAssemblySymbol assembly, IAssemblySymbol targetAssembly)
+    {
+        if (SymbolEqualityComparer.Default.Equals(assembly, targetAssembly))
+        {
+            return true;
+        }
+
+        foreach (IModuleSymbol module in assembly.Modules)
+        {
+            foreach (IAssemblySymbol referencedAssembly in module.ReferencedAssemblySymbols)
+            {
+                if (SymbolEqualityComparer.Default.Equals(referencedAssembly, targetAssembly))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private static bool Implements(INamedTypeSymbol typeSymbol, INamedTypeSymbol interfaceSymbol)

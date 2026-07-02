@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
@@ -26,17 +27,37 @@ internal static class RestApiGeneratorTestHarness
         .WithLanguageVersion(LanguageVersion.Preview);
 
     internal static CSharpCompilation CreateCompilation(params string[] sources)
+        => CreateCompilation([], sources);
+
+    internal static CSharpCompilation CreateCompilation(
+        IReadOnlyCollection<MetadataReference> additionalReferences,
+        params string[] sources)
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         CSharpCompilationOptions options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
             .WithNullableContextOptions(NullableContextOptions.Enable)
             .WithOptimizationLevel(OptimizationLevel.Release);
 
+        IEnumerable<MetadataReference> references = CreateMetadataReferences()
+            .Concat(additionalReferences);
         return CSharpCompilation.Create(
             "Hexalith.EventStore.RestApi.Generators.Tests.Smoke",
             sources.Select((source, index) => CreateSyntaxTree(source, "Test" + index + ".cs", cancellationToken)),
-            CreateMetadataReferences(),
+            references,
             options);
+    }
+
+    internal static MetadataReference EmitToMetadataReference(CSharpCompilation compilation)
+    {
+        using var stream = new MemoryStream();
+        EmitResult result = compilation.Emit(stream, cancellationToken: TestContext.Current.CancellationToken);
+        if (!result.Success)
+        {
+            string diagnostics = string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => diagnostic.ToString()));
+            throw new InvalidOperationException("Referenced compilation failed:" + Environment.NewLine + diagnostics);
+        }
+
+        return MetadataReference.CreateFromImage(stream.ToArray());
     }
 
     internal static GeneratorDriverRunResult Run(params string[] sources)

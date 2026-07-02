@@ -33,8 +33,17 @@ public sealed class RestApiGenerator : IIncrementalGenerator
             .Select(static (descriptors, _) => descriptors.Distinct().ToImmutableArray())
             .WithTrackingName("RestApiMessageDeduplication");
 
+        IncrementalValueProvider<ImmutableArray<RestApiMessageDescriptor>> referencedMessages = context.CompilationProvider
+            .Select(static (compilation, cancellationToken) => RestApiMessageParser.ParseReferenced(compilation, cancellationToken))
+            .WithTrackingName("RestApiReferencedMessageDiscovery");
+
+        IncrementalValueProvider<ImmutableArray<RestApiMessageDescriptor>> allMessages = collectedMessages
+            .Combine(referencedMessages)
+            .Select(static (source, _) => source.Left.AddRange(source.Right).Distinct().ToImmutableArray())
+            .WithTrackingName("RestApiAllMessageDeduplication");
+
         context.RegisterSourceOutput(
-            restApiOptions.Combine(collectedMessages).Combine(controllerNamespace),
+            restApiOptions.Combine(allMessages).Combine(controllerNamespace),
             static (sourceProductionContext, source) =>
             {
                 RestApiOptions options = source.Left.Left;

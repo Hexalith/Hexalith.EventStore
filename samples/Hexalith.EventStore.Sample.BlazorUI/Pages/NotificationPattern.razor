@@ -1,7 +1,10 @@
 @page "/pattern-notification"
 @using Microsoft.FluentUI.AspNetCore.Components
+@using Hexalith.EventStore.Client.Gateway
+@using Hexalith.EventStore.Sample.Counter.Queries
+@using Hexalith.EventStore.Sample.BlazorUI.Services
 @inject EventStoreSignalRClient SignalRClient
-@inject CounterQueryService QueryService
+@inject EventStoreProjectionQueryClient QueryClient
 @inject IConfiguration Configuration
 @implements IAsyncDisposable
 
@@ -98,7 +101,21 @@
     {
         try
         {
-            _result = await QueryService.GetCounterStatusAsync(_tenantId);
+            EventStoreQueryResult queryResult = await QueryClient.GetAsync(
+                _tenantId,
+                GetCounterStatusQuery.Domain,
+                "counter-1",
+                GetCounterStatusQuery.QueryType,
+                GetCounterStatusQuery.ProjectionType,
+                "counter-1",
+                _result?.ETag);
+            _result = CounterStatusResult.FromQueryResult(queryResult, _result);
+            _lastRefreshed = DateTime.Now;
+            _error = null;
+        }
+        catch (EventStoreGatewayException ex) when (ex.StatusCode == 404)
+        {
+            _result = CounterStatusResult.Empty;
             _lastRefreshed = DateTime.Now;
             _error = null;
         }

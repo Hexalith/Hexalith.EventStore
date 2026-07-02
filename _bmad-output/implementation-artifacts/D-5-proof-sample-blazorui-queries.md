@@ -6,7 +6,7 @@ baseline_commit: 4d1a207138baf70f5460ba755e2389cd7a52c22b
 
 # Story D.5: Proof - Sample BlazorUI Queries
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -188,41 +188,41 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-06
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Preflight D3/D4 and generator discovery model** (AC: 1, 2)
-  - [ ] Inspect `src/Hexalith.EventStore.RestApi.Generators/` for controller emitter, route parser, diagnostic descriptors, and generated query action support.
-  - [ ] Verify `tests/Hexalith.EventStore.RestApi.Generators.Tests/` exists and passes.
-  - [ ] Verify the generator can emit controllers into `Sample.BlazorUI` from query contracts located outside the Blazor UI source tree.
-  - [ ] If still manifest-only or syntax-only for local source, stop and correct D3/D4 before continuing.
+- [x] **Task 1: Preflight D3/D4 and generator discovery model** (AC: 1, 2)
+  - [x] Inspect `src/Hexalith.EventStore.RestApi.Generators/` for controller emitter, route parser, diagnostic descriptors, and generated query action support.
+  - [x] Verify `tests/Hexalith.EventStore.RestApi.Generators.Tests/` exists and passes.
+  - [x] Verify the generator can emit controllers into `Sample.BlazorUI` from query contracts located outside the Blazor UI source tree.
+  - [x] If still manifest-only or syntax-only for local source, stop and correct D3/D4 before continuing.
 
-- [ ] **Task 2: Annotate and test `GetCounterStatusQuery`** (AC: 3, 6)
-  - [ ] Add `RestRouteAttribute` using a route parameter that preserves `EntityId = counter-1`.
-  - [ ] Keep existing static query metadata unchanged.
-  - [ ] Extend `GetCounterStatusQueryTests` to verify route verb/template and unchanged metadata.
+- [x] **Task 2: Annotate and test `GetCounterStatusQuery`** (AC: 3, 6)
+  - [x] Add `RestRouteAttribute` using a route parameter that preserves `EntityId = counter-1`.
+  - [x] Keep existing static query metadata unchanged.
+  - [x] Extend `GetCounterStatusQueryTests` to verify route verb/template and unchanged metadata.
 
-- [ ] **Task 3: Wire the generator and REST opt-in into Sample.BlazorUI** (AC: 4, 5)
-  - [ ] Add the analyzer project reference with `OutputItemType="Analyzer"` and `ReferenceOutputAssembly="false"`.
-  - [ ] Add required runtime references for generated controllers (`Client` and the supported query-contract reference).
-  - [ ] Add the `[assembly: RestApi(...)]` opt-in file with `RestTenantSource.Route`.
-  - [ ] Register `AddControllers()` and `MapControllers()`.
-  - [ ] Register `IEventStoreGatewayClient` using the existing DAPR/auth handler path.
+- [x] **Task 3: Wire the generator and REST opt-in into Sample.BlazorUI** (AC: 4, 5)
+  - [x] Add the analyzer project reference with `OutputItemType="Analyzer"` and `ReferenceOutputAssembly="false"`.
+  - [x] Add required runtime references for generated controllers (`Client` and the supported query-contract reference).
+  - [x] Add the `[assembly: RestApi(...)]` opt-in file with `RestTenantSource.Route`.
+  - [x] Register `AddControllers()` and `MapControllers()`.
+  - [x] Register `IEventStoreGatewayClient` using the existing DAPR/auth handler path.
 
-- [ ] **Task 4: Replace `CounterQueryService` usage** (AC: 7, 8)
-  - [ ] Delete `CounterQueryService.cs` and its DI registration.
-  - [ ] Update `CounterValueCard`, `CounterHistoryGrid`, `SilentReloadPattern`, and `NotificationPattern`.
-  - [ ] Preserve count-zero, ETag, refresh, and support-safe error behavior.
-  - [ ] Avoid adding a renamed per-domain query wrapper.
+- [x] **Task 4: Replace `CounterQueryService` usage** (AC: 7, 8)
+  - [x] Delete `CounterQueryService.cs` and its DI registration.
+  - [x] Update `CounterValueCard`, `CounterHistoryGrid`, `SilentReloadPattern`, and `NotificationPattern`.
+  - [x] Preserve count-zero, ETag, refresh, and support-safe error behavior.
+  - [x] Avoid adding a renamed per-domain query wrapper.
 
-- [ ] **Task 5: Add/extend proof tests** (AC: 2, 6, 7, 9)
-  - [ ] Add a D4 generator test that proves referenced query contract discovery for the Sample Blazor UI shape, if not already present.
-  - [ ] Assert the generated Sample query action builds the exact `SubmitQueryRequest` shape required by AC 6.
-  - [ ] Add or update a structural test to prevent `CounterQueryService` from returning under a different name if the D4/D8 guardrail suite already has a natural place for it.
+- [x] **Task 5: Add/extend proof tests** (AC: 2, 6, 7, 9)
+  - [x] Add a D4 generator test that proves referenced query contract discovery for the Sample Blazor UI shape, if not already present.
+  - [x] Assert the generated Sample query action builds the exact `SubmitQueryRequest` shape required by AC 6.
+  - [x] Add or update a structural test to prevent `CounterQueryService` from returning under a different name if the D4/D8 guardrail suite already has a natural place for it.
 
-- [ ] **Task 6: Verify and record generated evidence** (AC: 9)
-  - [ ] Build Sample.BlazorUI with `EmitCompilerGeneratedFiles=true` to `/tmp/hexalith-eventstore-d5-generated`.
-  - [ ] Record generated controller file path and key source-shape evidence.
-  - [ ] Run the generator tests, Sample tests, and Release package-mode solution build.
-  - [ ] Run Aspire smoke validation if feasible; otherwise record the exact blocker.
-  - [ ] Confirm `git status --short` contains only intended source/story/sprint-status changes and no generated files.
+- [x] **Task 6: Verify and record generated evidence** (AC: 9)
+  - [x] Build Sample.BlazorUI with `EmitCompilerGeneratedFiles=true` to `/tmp/hexalith-eventstore-d5-generated`.
+  - [x] Record generated controller file path and key source-shape evidence.
+  - [x] Run the generator tests, Sample tests, and Release package-mode solution build.
+  - [x] Run Aspire smoke validation if feasible; otherwise record the exact blocker.
+  - [x] Confirm `git status --short` contains only intended source/story/sprint-status changes and no generated files.
 
 ## Dev Notes
 
@@ -371,18 +371,59 @@ Actionable implications:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Codex GPT-5
 
 ### Debug Log References
+
+- `aspire run --isolated --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive` reached Running/Healthy resources for `eventstore`, `sample`, and `sample-blazor-ui`; final smoke session was stopped.
+- `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/` passed: 43 tests.
+- `dotnet test tests/Hexalith.EventStore.Sample.Tests/` passed: 76 tests.
+- `dotnet test tests/Hexalith.EventStore.Contracts.Tests/` passed: 549 tests.
+- `dotnet test tests/Hexalith.EventStore.Client.Tests/` passed: 480 tests.
+- `dotnet test tests/Hexalith.EventStore.SignalR.Tests/` passed: 35 tests.
+- `dotnet test tests/Hexalith.EventStore.Testing.Tests/` passed: 144 tests.
+- `dotnet build samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj --configuration Release -p:EmitCompilerGeneratedFiles=true -p:CompilerGeneratedFilesOutputPath=/tmp/hexalith-eventstore-d5-generated` passed.
+- `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false` passed.
+- Generated controller evidence path: `/tmp/hexalith-eventstore-d5-generated/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.RestApiGenerator/Hexalith.EventStore.RestApi.Hexalith.EventStore.Sample.BlazorUI.Generated.CounterRestController.Controller.g.cs`.
+- Generated source evidence included `[ApiController]`, `[Authorize]`, `[Route("api/{tenant}/counter")]`, `[HttpGet("{entityId}")]`, `IEventStoreGatewayClient`, `SubmitQueryAsync`, `If-None-Match`, `GetCounterStatusQuery.QueryType`, `GetCounterStatusQuery.ProjectionType`, `ConfigureAwait(false)`, null payload, and aggregate/entity values from `entityId`; forbidden bypass strings were absent.
+- Aspire smoke: `POST https://localhost:45941/api/v1/commands` accepted `IncrementCounter` for `tenant-a/counter-1` with 202; `GET https://localhost:41951/api/tenant-a/counter/counter-1` returned 200 `{"count":1}` with strong ETag; the same GET with `If-None-Match` returned 304 with the same ETag.
+- Final `aspire describe --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --format Json --non-interactive` reported no EventStore AppHost running after cleanup.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
+- Completed D3/D4 preflight: controller emission, route parsing, diagnostics, and generator tests are present and passing.
+- Added referenced-assembly contract discovery to the REST generator for explicitly `[RestRoute]`-annotated command/query contracts, preserving source syntax discovery and D2 manifest output.
+- Annotated `GetCounterStatusQuery` with `[RestRoute(RestVerb.Get, "{entityId}")]` and preserved `QueryType`, `Domain`, and `ProjectionType`.
+- Wired Sample.BlazorUI for generated controllers with analyzer reference, REST assembly opt-in, controller service/endpoint mapping, JWT bearer validation, and typed `IEventStoreGatewayClient` using the existing DAPR app-id and bearer-token handlers.
+- Removed `CounterQueryService` and replaced consumer usage with a platform-generic projection query client plus `CounterStatusResult` state parsing; no renamed per-domain query wrapper was added.
+- Added proof tests for referenced contract discovery, generated request shape, route annotation, and guardrails preventing the hand-written query wrapper/path from returning.
 
 ### File List
+
+- `_bmad-output/implementation-artifacts/D-5-proof-sample-blazorui-queries.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `samples/Hexalith.EventStore.Sample/Counter/Queries/GetCounterStatusQuery.cs`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterHistoryGrid.razor`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Components/CounterValueCard.razor`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/NotificationPattern.razor`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Pages/SilentReloadPattern.razor`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Program.cs`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/RestApiAssemblyInfo.cs`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Services/CounterQueryService.cs` (deleted)
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Services/CounterStatusResult.cs`
+- `samples/Hexalith.EventStore.Sample.BlazorUI/Services/EventStoreProjectionQueryClient.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiGenerator.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiMessageParser.cs`
+- `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs`
+- `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiGeneratorTestHarness.cs`
+- `tests/Hexalith.EventStore.Sample.Tests/BlazorUI/CounterQueryWrapperGuardTests.cs`
+- `tests/Hexalith.EventStore.Sample.Tests/Counter/Queries/GetCounterStatusQueryTests.cs`
 
 ## Change Log
 
 | Date | Change |
 |---|---|
 | 2026-07-01 | Story D5 created with Sample Blazor UI query proof scope, D3/D4 preflight gates, referenced-contract discovery warning, Counter route semantics, wrapper-removal guardrails, and verification requirements. Status ready-for-dev. |
+| 2026-07-02 | Implemented D5 Sample BlazorUI query proof: generator referenced-contract support, Counter query REST annotation, generated controller wiring, wrapper removal, proof tests, generated evidence, Release build, and Aspire smoke validation. Status review. |

@@ -1,5 +1,5 @@
-
 using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Contracts.Rest;
 
 namespace Hexalith.EventStore.Sample.Counter.Queries;
 
@@ -9,7 +9,9 @@ namespace Hexalith.EventStore.Sample.Counter.Queries;
 /// against a real domain type. Projection actor, wiring, and API endpoint
 /// are deferred to Story 11.5.
 /// </summary>
-public sealed record GetCounterStatusQuery : IQueryContract {
+[RestRoute(RestVerb.Get, "{entityId}")]
+public sealed record GetCounterStatusQuery : IQueryContract
+{
     /// <inheritdoc/>
     public static string QueryType => "get-counter-status";
 

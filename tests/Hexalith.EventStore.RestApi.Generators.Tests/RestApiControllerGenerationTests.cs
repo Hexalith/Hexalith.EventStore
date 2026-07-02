@@ -254,6 +254,49 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldContain("Tenant route values differ.");
     }
 
+    [Fact]
+    public void Run_ReferencedQueryContract_GeneratesRouteTenantControllerAction()
+    {
+        CSharpCompilation contractCompilation = RestApiGeneratorTestHarness.CreateCompilation(ReferencedCounterQuerySource);
+        MetadataReference contractReference = RestApiGeneratorTestHarness.EmitToMetadataReference(contractCompilation);
+        CSharpCompilation hostCompilation = RestApiGeneratorTestHarness.CreateCompilation(
+            [contractReference],
+            ReferencedContractHostSource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            hostCompilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
+
+        source.ShouldContain("[Route(\"api/{tenant}/counter\")]");
+        source.ShouldContain("[HttpGet(\"{entityId}\")]");
+        source.ShouldContain("[FromRoute(Name = \"tenant\")] string tenant");
+        source.ShouldContain("[FromRoute(Name = \"entityId\")] string entityId");
+        source.ShouldContain("ResolveTenant(tenant, null);");
+        source.ShouldContain("string __hexalithAggregateId = Convert.ToString(entityId, CultureInfo.InvariantCulture)");
+        source.ShouldContain("string? __hexalithEntityId = Convert.ToString(entityId, CultureInfo.InvariantCulture)");
+        source.ShouldContain("JsonElement? __hexalithPayload = null;");
+        source.ShouldContain("global::Hexalith.EventStore.Sample.Counter.Queries.GetCounterStatusQuery.Domain");
+        source.ShouldContain("global::Hexalith.EventStore.Sample.Counter.Queries.GetCounterStatusQuery.QueryType");
+        source.ShouldContain("global::Hexalith.EventStore.Sample.Counter.Queries.GetCounterStatusQuery.ProjectionType");
+        source.ShouldContain(".SubmitQueryAsync(__hexalithRequest, ifNoneMatch, cancellationToken)");
+        source.ShouldContain("StatusCodes.Status304NotModified");
+        source.ShouldContain("Response.Headers[\"ETag\"] = FormatStrongETag(__hexalithResult.ETag);");
+        source.ShouldContain("return Ok(__hexalithResult.Payload);");
+
+        source.ShouldNotContain("DomainQueryDispatcher");
+        source.ShouldNotContain("Dapr");
+        source.ShouldNotContain("ProjectionActor");
+        source.ShouldNotContain("StateStore");
+        source.ShouldNotContain("IMediator");
+        source.ShouldNotContain("MediatR");
+    }
+
     private static void ShouldHaveNoErrors(IEnumerable<Diagnostic> diagnostics)
     {
         Diagnostic[] errors = diagnostics
@@ -483,5 +526,30 @@ public sealed class RestApiControllerGenerationTests
             public static string CommandType => "increment-counter";
             public string AggregateId => CounterId;
         }
+        """;
+
+    private const string ReferencedCounterQuerySource = """
+        using Hexalith.EventStore.Contracts.Queries;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        namespace Hexalith.EventStore.Sample.Counter.Queries;
+
+        [RestRoute(RestVerb.Get, "{entityId}")]
+        public sealed record GetCounterStatusQuery : IQueryContract
+        {
+            public static string QueryType => "get-counter-status";
+            public static string Domain => "counter";
+            public static string ProjectionType => "counter";
+        }
+        """;
+
+    private const string ReferencedContractHostSource = """
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/{tenant}/counter", "counter", RestTenantSource.Route)]
+
+        namespace Smoke.Host;
+
+        public sealed class HostMarker;
         """;
 }
