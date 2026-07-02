@@ -1,3 +1,10 @@
+# [3.25.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.24.0...v3.25.0) (2026-07-02)
+
+
+### Features
+
+* Update sprint status and project references ([507e582](https://github.com/Hexalith/Hexalith.EventStore/commit/507e58218fef91a909c030ee5c751410a613bcbd))
+
 # [3.24.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.23.0...v3.24.0) (2026-07-02)
 
 
