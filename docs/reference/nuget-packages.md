@@ -20,6 +20,7 @@ Guide to the manifest-driven Hexalith.EventStore NuGet package set — their pur
 | Hexalith.EventStore.ServiceDefaults | Shared OpenTelemetry, health-check, HTTP-resilience, and service-discovery defaults | Apply the platform's observability/resilience defaults to a domain service or API host | Transitively via DomainService, or directly in dedicated API hosts |
 | Hexalith.EventStore.DomainService | Domain-service host SDK — convention discovery, DAPR endpoints, query/projection seams, telemetry, health | Author a domain module with only domain code plus a two-line host | The single platform reference a new domain module needs |
 | Hexalith.EventStore.RestApi.Generators | Roslyn source-generator/analyzer package distributed under `analyzers/dotnet/cs` | Generate typed REST controllers from `ICommandContract` and `IQueryContract` messages | As an analyzer reference in dedicated external API host projects |
+| Hexalith.EventStore.Gateway | Reusable command/query HTTP gateway components: MVC controllers, auth/RBAC, validation, middleware, health checks, OpenAPI helpers, and host registration extensions | Compose the EventStore command/query gateway surface in a host without referencing the container app project | In host applications that need to expose the EventStore gateway endpoints |
 | Hexalith.EventStore.Admin.Abstractions | Admin service DTOs and interfaces shared by admin clients and services | Build admin UI, CLI, MCP, or server integrations against the admin contract | In admin-facing clients or implementations |
 | Hexalith.EventStore.Admin.Cli | Packaged `eventstore-admin` .NET tool | Manage streams, projections, snapshots, backups, tenants, and health from the terminal | Install as a .NET tool for operators or CI/CD |
 | Hexalith.EventStore.Admin.Server | DAPR-backed admin service implementations | Host reusable admin backend services for UI, CLI, and MCP surfaces | In the admin server host |
@@ -38,6 +39,7 @@ graph TD
     DomainService[Hexalith.EventStore.DomainService]
     TestingIntegration[Hexalith.EventStore.Testing.Integration]
     RestApiGenerators[Hexalith.EventStore.RestApi.Generators]
+    Gateway[Hexalith.EventStore.Gateway]
     AdminAbstractions[Hexalith.EventStore.Admin.Abstractions]
     AdminCli[Hexalith.EventStore.Admin.Cli]
     AdminServer[Hexalith.EventStore.Admin.Server]
@@ -55,6 +57,10 @@ graph TD
     TestingIntegration --> DomainService
     DomainService --> Client
     DomainService --> ServiceDefaults
+    Gateway --> AdminAbstractions
+    Gateway --> Server
+    Gateway --> Contracts
+    Gateway --> ServiceDefaults
     AdminAbstractions --> Contracts
     AdminCli --> AdminAbstractions
     AdminServer --> AdminAbstractions
@@ -74,6 +80,7 @@ graph TD
 - **ServiceDefaults** is a shared service-configuration package (OpenTelemetry, health checks, HTTP resilience, service discovery). It is consumed transitively by the DomainService SDK.
 - **DomainService** is the domain-service host SDK. It depends on Client and ServiceDefaults and bundles all hosting/DAPR-endpoint/discovery boilerplate so a domain module references only this one package.
 - **RestApi.Generators** is an analyzer/source-generator package. It is consumed as an analyzer reference and does not expose runtime `lib/` assets.
+- **Gateway** is the reusable command/query HTTP gateway composition library. It owns the MVC controllers, authentication/authorization helpers, validation pipeline, exception handlers, middleware, health checks, OpenAPI helpers, SignalR hub wiring, and service-registration extensions previously compiled only by the container host project. It depends on Server, Contracts, ServiceDefaults, and Admin.Abstractions.
 - **Admin.Abstractions** depends on Contracts.
 - **Admin.Cli** depends on Admin.Abstractions and is packed as the `eventstore-admin` tool.
 - **Admin.Server** depends on Admin.Abstractions and Contracts and provides DAPR-backed admin service implementations.

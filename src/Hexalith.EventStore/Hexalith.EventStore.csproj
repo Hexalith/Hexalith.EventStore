@@ -9,15 +9,36 @@
     <ContainerRepository>eventstore</ContainerRepository>
   </PropertyGroup>
 
+  <Target Name="RemoveOpenApiSourceGenerator" AfterTargets="ResolveLockFileAnalyzers">
+    <ItemGroup>
+      <Analyzer Remove="@(Analyzer)" Condition="'%(Analyzer.NuGetPackageId)' == 'Microsoft.AspNetCore.OpenApi'" />
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
-    <InternalsVisibleTo Include="Hexalith.EventStore.Server.Tests" />
+    <Compile Remove="Authentication\**\*.cs" />
+    <Compile Remove="Authorization\**\*.cs" />
+    <Compile Remove="Commands\**\*.cs" />
+    <Compile Remove="Configuration\**\*.cs" />
+    <Compile Remove="Controllers\**\*.cs" />
+    <Compile Remove="ErrorHandling\**\*.cs" />
+    <Compile Remove="Extensions\**\*.cs" />
+    <Compile Remove="Filters\**\*.cs" />
+    <Compile Remove="HealthChecks\**\*.cs" />
+    <Compile Remove="Indexes\**\*.cs" />
+    <Compile Remove="Middleware\**\*.cs" />
+    <Compile Remove="Models\**\*.cs" />
+    <Compile Remove="OpenApi\**\*.cs" />
+    <Compile Remove="Pipeline\**\*.cs" />
+    <Compile Remove="Queries\**\*.cs" />
+    <Compile Remove="Services\**\*.cs" />
+    <Compile Remove="SignalRHub\**\*.cs" />
+    <Compile Remove="Telemetry\**\*.cs" />
+    <Compile Remove="Validation\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hexalith.EventStore.Admin.Abstractions\Hexalith.EventStore.Admin.Abstractions.csproj" />
-    <ProjectReference Include="..\Hexalith.EventStore.Server\Hexalith.EventStore.Server.csproj" />
-    <ProjectReference Include="..\Hexalith.EventStore.Contracts\Hexalith.EventStore.Contracts.csproj" />
-    <ProjectReference Include="..\Hexalith.EventStore.ServiceDefaults\Hexalith.EventStore.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Hexalith.EventStore.Gateway\Hexalith.EventStore.Gateway.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -25,7 +46,7 @@
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" ExcludeAssets="analyzers" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" />
   </ItemGroup>
