@@ -1,3 +1,10 @@
+# [3.30.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.29.0...v3.30.0) (2026-07-03)
+
+
+### Features
+
+* Update deferred work notes and enhance command contract diagnostics ([de2570c](https://github.com/Hexalith/Hexalith.EventStore/commit/de2570c6c849c51cf636867b30edef4494260e3b))
+
 # [3.29.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.28.0...v3.29.0) (2026-07-03)
 
 
