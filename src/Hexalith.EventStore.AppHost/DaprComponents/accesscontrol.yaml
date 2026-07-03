@@ -50,13 +50,14 @@ spec:
           - name: /**
             httpVerb: ['GET', 'POST']
             action: allow
-      # sample-api: external-facing REST API host -- its generated controllers invoke eventstore
-      # /api/v1/queries (and /api/v1/commands once D6 adds command controllers), forwarding the caller's bearer.
+      # sample-api: external-facing REST API host -- its generated query controller invokes eventstore
+      # POST /api/v1/queries, forwarding the caller's validated bearer. Scoped to the query path + POST
+      # (the command path /api/v1/commands is added in D6 when command controllers ship).
       - appId: sample-api
         defaultAction: deny
         trustDomain: "public"
         namespace: "default"
         operations:
-          - name: /**
-            httpVerb: ['GET', 'POST']
+          - name: /api/v1/queries
+            httpVerb: ['POST']
             action: allow

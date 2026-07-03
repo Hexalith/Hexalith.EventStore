@@ -22,24 +22,43 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options => {
         options.MapInboundClaims = false;
+
+        string? issuer = builder.Configuration["EventStore:Authentication:Issuer"];
+        string? audience = builder.Configuration["EventStore:Authentication:Audience"];
+
         options.TokenValidationParameters = new TokenValidationParameters {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateIssuerSigningKey = true,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1),
-            ValidIssuer = builder.Configuration["EventStore:Authentication:Issuer"] ?? "hexalith-dev",
-            ValidAudience = builder.Configuration["EventStore:Authentication:Audience"] ?? "hexalith-eventstore",
+            ValidAudience = string.IsNullOrWhiteSpace(audience) ? "hexalith-eventstore" : audience,
         };
 
         string? authority = builder.Configuration["EventStore:Authentication:Authority"];
         if (!string.IsNullOrWhiteSpace(authority)) {
+            // Authority (OIDC/Keycloak) mode: the discovered metadata issuer drives issuer validation.
+            // Only pin ValidIssuer when explicitly configured -- never fall back to the dev issuer here,
+            // otherwise a real realm-URL issuer is rejected while "hexalith-dev" stays permanently trusted.
             options.Authority = authority;
             options.RequireHttpsMetadata = builder.Configuration.GetValue("EventStore:Authentication:RequireHttpsMetadata", true);
+            if (!string.IsNullOrWhiteSpace(issuer)) {
+                options.TokenValidationParameters.ValidIssuer = issuer;
+            }
         }
         else {
-            string signingKey = builder.Configuration["EventStore:Authentication:SigningKey"]
-                ?? throw new InvalidOperationException("EventStore:Authentication:SigningKey is required when Authority is not configured.");
+            // Symmetric-key dev mode (EnableKeycloak=false): keep the dev issuer default so local tokens validate.
+            options.TokenValidationParameters.ValidIssuer = string.IsNullOrWhiteSpace(issuer) ? "hexalith-dev" : issuer;
+
+            string? signingKey = builder.Configuration["EventStore:Authentication:SigningKey"];
+            if (string.IsNullOrWhiteSpace(signingKey)) {
+                throw new InvalidOperationException("EventStore:Authentication:SigningKey is required when Authority is not configured.");
+            }
+
+            if (Encoding.UTF8.GetByteCount(signingKey) < 32) {
+                throw new InvalidOperationException("EventStore:Authentication:SigningKey must be at least 32 bytes (256 bits) for HS256 token validation.");
+            }
+
             options.TokenValidationParameters.IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
         }
     });
