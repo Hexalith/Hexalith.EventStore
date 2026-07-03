@@ -32,12 +32,10 @@
         <HexalithCommonsRoot Condition="'$(HexalithCommonsRoot)' == '' and Exists('$(MSBuildThisFileDirectory)../Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/')">$(MSBuildThisFileDirectory)../Hexalith.Commons</HexalithCommonsRoot>
         <HexalithCommonsRoot Condition="'$(HexalithCommonsRoot)' == '' and Exists('$(MSBuildThisFileDirectory)../references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/')">$(MSBuildThisFileDirectory)../references/Hexalith.Commons</HexalithCommonsRoot>
 
-        <!-- Cross-repo Hexalith dependencies use source by default only for Debug builds.
-             Release/package builds consume published NuGet packages so package metadata is reproducible
-             and independent of checked-out submodule state. Override explicitly with
+        <!-- Cross-repo Hexalith dependencies use published NuGet packages by default so restore/build
+             graphs stay consistent even when CI restores without an explicit configuration and then
+             builds Release without restoring again. Override explicitly with
              -p:UseHexalithProjectReferences=true for an intentional source-debug session. -->
-        <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == '' and '$(Configuration)' == ''">true</UseHexalithProjectReferences>
-        <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == '' and '$(Configuration)' == 'Debug'">true</UseHexalithProjectReferences>
         <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == ''">false</UseHexalithProjectReferences>
         <HexalithCommonsFromSource Condition="'$(UseHexalithProjectReferences)' == 'true' and Exists('$(HexalithCommonsRoot)\src\libraries\Hexalith.Commons.UniqueIds\Hexalith.Commons.UniqueIds.csproj')">true</HexalithCommonsFromSource>
         <HexalithTenantsFromSource Condition="'$(UseHexalithProjectReferences)' == 'true' and Exists('$(HexalithTenantsBasePath)\Hexalith.Tenants.Contracts\Hexalith.Tenants.Contracts.csproj')">true</HexalithTenantsFromSource>
