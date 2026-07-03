@@ -126,10 +126,45 @@ public abstract class EventStoreAggregate<TState> : IDomainProcessor, IAggregate
                     + "Declare exactly one Handle overload per command type.");
             }
 
-            methods[commandTypeName] = new HandleMethodInfo(method, commandType, isAsync, method.IsStatic, hasEnvelope);
+            var handleInfo = new HandleMethodInfo(method, commandType, isAsync, method.IsStatic, hasEnvelope);
+            methods[commandTypeName] = handleInfo;
+
+            // Also register the kebab-case ICommandContract.CommandType discriminator (e.g. "increment-counter")
+            // as an alias for the same Handle method. Generated REST command controllers submit envelopes keyed
+            // by ICommandContract.CommandType, whereas legacy submissions use the CLR short type name
+            // (e.g. "IncrementCounter"). Both must dispatch to the same Handle overload; legacy lookup is unchanged.
+            if (TryGetContractCommandType(commandType, out string? contractCommandType)
+                && !string.Equals(contractCommandType, commandTypeName, StringComparison.Ordinal)) {
+                if (methods.TryGetValue(contractCommandType!, out HandleMethodInfo? existing)
+                    && !ReferenceEquals(existing, handleInfo)) {
+                    throw new InvalidOperationException(
+                        $"Command contract type '{contractCommandType}' declared by '{commandTypeName}' collides with another "
+                        + $"Handle method on aggregate '{aggregateType.Name}'. ICommandContract.CommandType values must be unique per aggregate.");
+                }
+
+                methods[contractCommandType!] = handleInfo;
+            }
         }
 
         return methods;
+    }
+
+    /// <summary>
+    /// Attempts to read the kebab-case <see cref="ICommandContract.CommandType"/> discriminator declared by a
+    /// command type that implements <see cref="ICommandContract"/>. Returns <see langword="false"/> for commands
+    /// that do not implement the contract, so they keep their CLR short-name dispatch only.
+    /// </summary>
+    private static bool TryGetContractCommandType(Type commandType, out string? commandTypeValue) {
+        commandTypeValue = null;
+        if (!typeof(ICommandContract).IsAssignableFrom(commandType)) {
+            return false;
+        }
+
+        PropertyInfo? property = commandType.GetProperty(
+            nameof(ICommandContract.CommandType),
+            BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+        commandTypeValue = property?.GetValue(null) as string;
+        return !string.IsNullOrWhiteSpace(commandTypeValue);
     }
 
     private static TState? RehydrateState(object? currentState, AggregateMetadata metadata) =>

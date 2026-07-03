@@ -297,6 +297,50 @@ public sealed class RestApiControllerGenerationTests
         source.ShouldNotContain("MediatR");
     }
 
+    [Fact]
+    public void Run_ReferencedCommandContract_GeneratesRouteTenantPostAction()
+    {
+        CSharpCompilation contractCompilation = RestApiGeneratorTestHarness.CreateCompilation(ReferencedCounterCommandSource);
+        MetadataReference contractReference = RestApiGeneratorTestHarness.EmitToMetadataReference(contractCompilation);
+        CSharpCompilation hostCompilation = RestApiGeneratorTestHarness.CreateCompilation(
+            [contractReference],
+            ReferencedContractHostSource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            hostCompilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
+
+        source.ShouldContain("[Route(\"api/{tenant}/counter\")]");
+        source.ShouldContain("[HttpPost(\"{counterId}/increment\")]");
+        source.ShouldContain("[FromRoute(Name = \"tenant\")] string tenant");
+        source.ShouldContain("[FromRoute(Name = \"counterId\")] string counterId");
+        source.ShouldContain("[FromBody] global::Hexalith.EventStore.Sample.Counter.Commands.IncrementCounter? body");
+        source.ShouldContain("Route value 'counterId' does not match the command body.");
+        source.ShouldContain("new SubmitCommandRequest(");
+        source.ShouldContain("UniqueIdHelper.GenerateSortableUniqueStringId()");
+        source.ShouldContain("global::Hexalith.EventStore.Sample.Counter.Commands.IncrementCounter.Domain");
+        source.ShouldContain("global::Hexalith.EventStore.Sample.Counter.Commands.IncrementCounter.CommandType");
+        source.ShouldContain("body.AggregateId");
+        source.ShouldContain(".SubmitCommandAsync(__hexalithRequest, cancellationToken)");
+        source.ShouldContain("Response.Headers[\"Retry-After\"] = \"1\";");
+        source.ShouldContain("Response.Headers[\"Location\"]");
+        source.ShouldContain("StatusCodes.Status202Accepted");
+        source.ShouldContain("ConfigureAwait(false)");
+
+        source.ShouldNotContain("DomainQueryDispatcher");
+        source.ShouldNotContain("Dapr");
+        source.ShouldNotContain("ProjectionActor");
+        source.ShouldNotContain("StateStore");
+        source.ShouldNotContain("IMediator");
+        source.ShouldNotContain("MediatR");
+    }
+
     private static void ShouldHaveNoErrors(IEnumerable<Diagnostic> diagnostics)
     {
         Diagnostic[] errors = diagnostics
@@ -540,6 +584,21 @@ public sealed class RestApiControllerGenerationTests
             public static string QueryType => "get-counter-status";
             public static string Domain => "counter";
             public static string ProjectionType => "counter";
+        }
+        """;
+
+    private const string ReferencedCounterCommandSource = """
+        using Hexalith.EventStore.Contracts.Commands;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        namespace Hexalith.EventStore.Sample.Counter.Commands;
+
+        [RestRoute(RestVerb.Post, "{counterId}/increment")]
+        public sealed record IncrementCounter(string CounterId = "counter-1") : ICommandContract
+        {
+            public static string Domain => "counter";
+            public static string CommandType => "increment-counter";
+            public string AggregateId => CounterId;
         }
         """;
 

@@ -127,6 +127,22 @@ public class EventStoreAggregateTests : IDisposable {
         }
     }
 
+    // --- ICommandContract command + aggregate (proves kebab-case CommandType alias dispatch) ---
+    // Generated REST command controllers submit envelopes keyed by ICommandContract.CommandType
+    // (kebab-case, e.g. "contract-increment"); legacy callers use the CLR short name.
+    private sealed record ContractIncrement(string CounterId = "c-1") : ICommandContract {
+        public static string Domain => "test";
+
+        public static string CommandType => "contract-increment";
+
+        public string AggregateId => CounterId;
+    }
+
+    private sealed class ContractAggregate : EventStoreAggregate<CounterState> {
+        public static DomainResult Handle(ContractIncrement command, CounterState? state)
+            => DomainResult.Success(new IEventPayload[] { new CounterIncremented() });
+    }
+
     // --- Test Aggregate with async Handle methods ---
     private sealed class AsyncTestAggregate : EventStoreAggregate<TestState> {
         public static Task<DomainResult> Handle(AsyncAddItem command, TestState? state) =>
@@ -289,6 +305,19 @@ public class EventStoreAggregateTests : IDisposable {
             UserId: "user-1",
             Extensions: null);
 
+    private static CommandEnvelope CreateCommandWithType<T>(T payload, string commandType) where T : notnull =>
+        new(
+            MessageId: Guid.NewGuid().ToString(),
+            TenantId: "tenant-1",
+            Domain: "test",
+            AggregateId: "agg-1",
+            CommandType: commandType,
+            Payload: JsonSerializer.SerializeToUtf8Bytes(payload),
+            CorrelationId: "corr-1",
+            CausationId: null,
+            UserId: "user-1",
+            Extensions: null);
+
     private static EventEnvelope CreateHistoricalEnvelope<T>(T payload, long sequenceNumber)
         where T : IEventPayload {
         byte[] serialized = JsonSerializer.SerializeToUtf8Bytes(payload);
@@ -346,6 +375,48 @@ public class EventStoreAggregateTests : IDisposable {
 
         _ = await Assert.ThrowsAsync<InvalidOperationException>(
             () => aggregate.ProcessAsync(command, null));
+    }
+
+    // --- D6: kebab-case ICommandContract.CommandType alias dispatch ---
+
+    [Fact]
+    public async Task ProcessAsync_ContractCommandType_ResolvesViaKebabAlias() {
+        var aggregate = new ContractAggregate();
+        // A generated REST controller submits ICommandContract.CommandType ("contract-increment"),
+        // not the CLR short name — dispatch must still find the Handle(ContractIncrement, ...) overload.
+        CommandEnvelope command = CreateCommandWithType(new ContractIncrement(), ContractIncrement.CommandType);
+
+        DomainResult result = await aggregate.ProcessAsync(command, null);
+
+        Assert.True(result.IsSuccess);
+        _ = Assert.IsType<CounterIncremented>(result.Events[0]);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_ContractCommand_ClrShortName_StillResolves() {
+        var aggregate = new ContractAggregate();
+        // Legacy short-name dispatch is preserved for contract commands.
+        CommandEnvelope command = CreateCommandWithType(new ContractIncrement(), nameof(ContractIncrement));
+
+        DomainResult result = await aggregate.ProcessAsync(command, null);
+
+        Assert.True(result.IsSuccess);
+        _ = Assert.IsType<CounterIncremented>(result.Events[0]);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_ContractCommand_NamespaceQualifiedName_StillResolves() {
+        var aggregate = new ContractAggregate();
+        // Namespace/assembly-qualified command type strings continue to resolve via short-name extraction
+        // (legacy behavior preserved alongside the new kebab-case alias).
+        CommandEnvelope command = CreateCommandWithType(
+            new ContractIncrement(),
+            "Some.Namespace.ContractIncrement, SomeAssembly");
+
+        DomainResult result = await aggregate.ProcessAsync(command, null);
+
+        Assert.True(result.IsSuccess);
+        _ = Assert.IsType<CounterIncremented>(result.Events[0]);
     }
 
     // --- State rehydration tests ---
