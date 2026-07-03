@@ -1,3 +1,10 @@
+# [3.31.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.30.0...v3.31.0) (2026-07-03)
+
+
+### Features
+
+* Update deferred work notes and enhance generator hardening based on D-5 review findings ([d625741](https://github.com/Hexalith/Hexalith.EventStore/commit/d625741f955a322860f7dae28d7779818f954ed0))
+
 # [3.30.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.29.0...v3.30.0) (2026-07-03)
 
 
