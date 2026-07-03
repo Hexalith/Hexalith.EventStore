@@ -5,7 +5,7 @@ namespace Hexalith.EventStore.Sample.BlazorUI.Services;
 /// <c>dapr-app-id</c> header-based service invocation, mirroring the Admin.UI D13 pattern.
 /// </summary>
 /// <remarks>
-/// The named "EventStoreApi" client's <c>BaseAddress</c> points at this app's own DAPR
+/// The gateway client's <c>BaseAddress</c> points at this app's own DAPR
 /// sidecar (<c>http://localhost:{DAPR_HTTP_PORT}</c>), so the request path is preserved
 /// verbatim and DAPR forwards it to the target app named by <paramref name="appId"/>.
 /// Header-based routing is used instead of <c>Dapr.AspNetCore.InvocationHandler</c>

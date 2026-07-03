@@ -8,9 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- A domain module references only the domain-service SDK; Client, ServiceDefaults, and Contracts
-         flow in transitively. All hosting boilerplate lives in the SDK. -->
+    <!-- A domain module references only the domain-service SDK for hosting; Client, ServiceDefaults,
+         and platform Contracts flow in transitively. All hosting boilerplate lives in the SDK. -->
     <ProjectReference Include="..\..\src\Hexalith.EventStore.DomainService\Hexalith.EventStore.DomainService.csproj" />
+    <!-- The Counter command/query contracts live in the sample's own contracts library so a single
+         compiled identity is shared by the aggregate (Handle overloads), the interactive UI host, and
+         the external REST API host whose generator discovers them via referenced-assembly metadata. -->
+    <ProjectReference Include="..\Hexalith.EventStore.Sample.Contracts\Hexalith.EventStore.Sample.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

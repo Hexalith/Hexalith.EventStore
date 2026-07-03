@@ -50,20 +50,15 @@ builder.Services.AddSingleton(sp => new EventStoreSignalRClientOptions {
 builder.Services.AddSingleton<EventStoreSignalRClient>();
 builder.Services.AddHostedService<SignalRClientStartup>();
 
-// HttpClient for querying EventStore via DAPR service invocation (mirrors Admin.UI D13).
-// BaseAddress targets THIS app's DAPR sidecar; DaprAppIdHandler tags the request with the
-// target app-id so DAPR routes it to eventstore. A literal localhost base address keeps the
-// global AddServiceDiscovery() default a no-op. DAPR forwards the Authorization bearer header
-// unchanged, so EventStore JWT/RBAC/tenant enforcement is preserved.
+// Outbound path to the EventStore gateway via this app's DAPR sidecar (mirrors Admin.UI D13).
+// BaseAddress targets THIS app's DAPR sidecar; DaprAppIdHandler tags the request with the target
+// app-id so DAPR routes it to eventstore. A literal localhost base address keeps the global
+// AddServiceDiscovery() default a no-op. DAPR forwards the Authorization bearer header unchanged,
+// so EventStore JWT/RBAC/tenant enforcement is preserved. Both projection queries and command
+// submissions flow through this single typed gateway client — the UI hosts no generic command path.
 string daprHttpEndpoint = builder.Configuration["DAPR_HTTP_ENDPOINT"]
     ?? $"http://localhost:{builder.Configuration["DAPR_HTTP_PORT"] ?? "3500"}";
 string? daprApiToken = builder.Configuration["DAPR_API_TOKEN"];
-builder.Services.AddHttpClient("EventStoreApi", client => {
-    client.BaseAddress = new Uri(daprHttpEndpoint);
-    client.Timeout = TimeSpan.FromSeconds(30);
-})
-    .AddHttpMessageHandler<EventStoreApiAuthorizationHandler>()
-    .AddHttpMessageHandler(() => new DaprAppIdHandler("eventstore", daprApiToken));
 
 builder.Services.AddEventStoreGatewayClient(options => options.BaseAddress = new Uri(daprHttpEndpoint))
     .AddHttpMessageHandler<EventStoreApiAuthorizationHandler>()
