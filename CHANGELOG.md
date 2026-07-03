@@ -1,3 +1,12 @@
+# [3.29.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.28.0...v3.29.0) (2026-07-03)
+
+
+### Features
+
+* Enable UseHexalithProjectReferences by default for empty configurations ([d1b6739](https://github.com/Hexalith/Hexalith.EventStore/commit/d1b6739c9a2f6fd6aeb3d05efb1df25ac4419efa))
+* Enhance query binding support in REST API ([84712c4](https://github.com/Hexalith/Hexalith.EventStore/commit/84712c4957155b983f98072afc641a9eeab2f6e3))
+* **packaging:** publish REST API generator package ([8280f47](https://github.com/Hexalith/Hexalith.EventStore/commit/8280f4755f90f15694fe9ed549776cd1aeb24f81))
+
 # [3.28.0](https://github.com/Hexalith/Hexalith.EventStore/compare/v3.27.0...v3.28.0) (2026-07-02)
 
 
