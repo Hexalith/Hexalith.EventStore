@@ -12,6 +12,7 @@ internal readonly struct RestApiMessageDescriptor : IEquatable<RestApiMessageDes
         bool isCommand,
         bool isQuery,
         RestApiRouteDescriptor? route,
+        RestApiQueryBindingDescriptor? queryBinding,
         ImmutableArray<RestApiBindablePropertyDescriptor> properties,
         string? unsupportedReason = null)
     {
@@ -22,6 +23,7 @@ internal readonly struct RestApiMessageDescriptor : IEquatable<RestApiMessageDes
         IsCommand = isCommand;
         IsQuery = isQuery;
         Route = route;
+        QueryBinding = queryBinding;
         Properties = properties.IsDefault ? ImmutableArray<RestApiBindablePropertyDescriptor>.Empty : properties;
         UnsupportedReason = unsupportedReason;
     }
@@ -40,6 +42,8 @@ internal readonly struct RestApiMessageDescriptor : IEquatable<RestApiMessageDes
 
     public RestApiRouteDescriptor? Route { get; }
 
+    public RestApiQueryBindingDescriptor? QueryBinding { get; }
+
     public ImmutableArray<RestApiBindablePropertyDescriptor> Properties { get; }
 
     public string? UnsupportedReason { get; }
@@ -52,6 +56,7 @@ internal readonly struct RestApiMessageDescriptor : IEquatable<RestApiMessageDes
             && IsCommand == other.IsCommand
             && IsQuery == other.IsQuery
             && Nullable.Equals(Route, other.Route)
+            && Nullable.Equals(QueryBinding, other.QueryBinding)
             && Properties.SequenceEqual(other.Properties)
             && string.Equals(UnsupportedReason, other.UnsupportedReason, StringComparison.Ordinal);
 
@@ -68,6 +73,7 @@ internal readonly struct RestApiMessageDescriptor : IEquatable<RestApiMessageDes
             hash = (hash * 397) ^ IsCommand.GetHashCode();
             hash = (hash * 397) ^ IsQuery.GetHashCode();
             hash = (hash * 397) ^ Route.GetHashCode();
+            hash = (hash * 397) ^ QueryBinding.GetHashCode();
             hash = (hash * 397) ^ (UnsupportedReason is null
                 ? 0
                 : StringComparer.Ordinal.GetHashCode(UnsupportedReason));

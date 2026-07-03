@@ -92,10 +92,14 @@ internal static class RestApiMessageParser
 
         string? unsupportedReason = GetUnsupportedContractReason(typeSymbol);
         INamedTypeSymbol? routeAttribute = compilation.GetTypeByMetadataName(RestApiMetadataNames.RestRouteAttribute);
+        INamedTypeSymbol? queryBindingAttribute = compilation.GetTypeByMetadataName(RestApiMetadataNames.RestQueryBindingAttribute);
         INamedTypeSymbol? jsonPropertyNameAttribute = compilation.GetTypeByMetadataName(RestApiMetadataNames.JsonPropertyNameAttribute);
         RestApiRouteDescriptor? route = routeAttribute is null
             ? null
             : ParseRoute(typeSymbol, routeAttribute);
+        RestApiQueryBindingDescriptor? queryBinding = queryBindingAttribute is null
+            ? null
+            : ParseQueryBinding(typeSymbol, queryBindingAttribute);
 
         return new RestApiMessageDescriptor(
             GetTypeName(typeSymbol),
@@ -105,6 +109,7 @@ internal static class RestApiMessageParser
             isCommand,
             isQuery,
             route,
+            queryBinding,
             unsupportedReason is null
                 ? GetPublicProperties(typeSymbol, jsonPropertyNameAttribute)
                 : ImmutableArray<RestApiBindablePropertyDescriptor>.Empty,
@@ -241,6 +246,40 @@ internal static class RestApiMessageParser
                 : string.Empty;
 
             return new RestApiRouteDescriptor(verb, template);
+        }
+
+        return null;
+    }
+
+    private static RestApiQueryBindingDescriptor? ParseQueryBinding(
+        INamedTypeSymbol typeSymbol,
+        INamedTypeSymbol queryBindingAttribute)
+    {
+        foreach (AttributeData attribute in typeSymbol.GetAttributes())
+        {
+            if (!RoslynAttributeValueReader.IsAttribute(attribute, queryBindingAttribute))
+            {
+                continue;
+            }
+
+            string aggregateSource = attribute.ConstructorArguments.Length > 0
+                ? RoslynAttributeValueReader.GetEnumName(attribute.ConstructorArguments[0], string.Empty)
+                : string.Empty;
+            string aggregateValue = attribute.ConstructorArguments.Length > 1
+                ? RoslynAttributeValueReader.GetString(attribute.ConstructorArguments[1])
+                : string.Empty;
+            string entitySource = attribute.ConstructorArguments.Length > 2
+                ? RoslynAttributeValueReader.GetEnumName(attribute.ConstructorArguments[2], "None")
+                : "None";
+            string? entityValue = attribute.ConstructorArguments.Length > 3
+                ? RoslynAttributeValueReader.GetString(attribute.ConstructorArguments[3])
+                : null;
+
+            return new RestApiQueryBindingDescriptor(
+                aggregateSource,
+                aggregateValue,
+                entitySource,
+                entityValue);
         }
 
         return null;

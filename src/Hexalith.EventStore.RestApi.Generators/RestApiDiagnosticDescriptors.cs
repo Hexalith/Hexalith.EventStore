@@ -84,6 +84,14 @@ internal static class RestApiDiagnosticDescriptors
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    public static readonly DiagnosticDescriptor UnmappedQueryBindingRouteParameter = new(
+        "HESREST011",
+        "Query binding route parameter cannot be mapped",
+        "Query contract '{0}' has query binding route parameter '{1}' that is not present in the generated REST route",
+        "Hexalith.EventStore.RestApi",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     public static Diagnostic CreateMissingRouteTenant(RestApiMessageDescriptor message)
         => Diagnostic.Create(MissingRouteTenant, Location.None, message.TypeName);
 
@@ -114,4 +122,6 @@ internal static class RestApiDiagnosticDescriptors
     public static Diagnostic CreateDuplicateJsonName(RestApiMessageDescriptor message, string jsonName)
         => Diagnostic.Create(DuplicateJsonName, Location.None, message.TypeName, jsonName);
 
+    public static Diagnostic CreateUnmappedQueryBindingRouteParameter(RestApiMessageDescriptor message, string routeParameterName)
+        => Diagnostic.Create(UnmappedQueryBindingRouteParameter, Location.None, message.TypeName, routeParameterName);
 }

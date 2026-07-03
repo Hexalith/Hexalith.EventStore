@@ -12,3 +12,4 @@ HESREST007 | Hexalith.EventStore.RestApi | Error | REST route template is invali
 HESREST008 | Hexalith.EventStore.RestApi | Error | REST route verb is not supported.
 HESREST009 | Hexalith.EventStore.RestApi | Error | Command route parameter cannot be mapped deterministically.
 HESREST010 | Hexalith.EventStore.RestApi | Error | Query payload JSON name is duplicated.
+HESREST011 | Hexalith.EventStore.RestApi | Error | Query binding route parameter cannot be mapped deterministically.

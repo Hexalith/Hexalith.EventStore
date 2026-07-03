@@ -2,11 +2,12 @@
 created: 2026-07-02
 source_story_key: D-7-proof-tenants-ui-host-submodule
 supersedes_scope_note: sprint-change-proposal-2026-07-02-rest-api-external-host
+baseline_commit: 496395f27ab52b3b4372d4ca0cd5197d1a47eb19
 ---
 
 # Story D.7: Proof - Tenants External API Host and UI Client Split
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -164,54 +165,54 @@ Source of truth: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Preflight corrected scope and current code** (AC: 1, 4, 8, 10)
-  - [ ] Read the July 2 correction and D5/D6 stories before editing.
-  - [ ] Compare current `Sample.Api` host pattern with Tenants AppHost/UI/domain service.
-  - [ ] Confirm generator support gaps for Tenants aggregate/entity binding and freshness headers.
-  - [ ] Record current root and Tenants submodule git status before modifying files.
+- [x] **Task 1: Preflight corrected scope and current code** (AC: 1, 4, 8, 10)
+  - [x] Read the July 2 correction and D5/D6 stories before editing.
+  - [x] Compare current `Sample.Api` host pattern with Tenants AppHost/UI/domain service.
+  - [x] Confirm generator support gaps for Tenants aggregate/entity binding and freshness headers.
+  - [x] Record current root and Tenants submodule git status before modifying files.
 
-- [ ] **Task 2: Annotate Tenants commands** (AC: 2)
-  - [ ] Add `ICommandContract` metadata and aggregate IDs to public Tenants commands.
-  - [ ] Add `[RestRoute]` only for supported external commands.
-  - [ ] Keep `BootstrapGlobalAdmin` unrouted unless an explicit product/security decision approves external exposure.
-  - [ ] Add contract tests for command metadata and route/body parameter compatibility.
+- [x] **Task 2: Annotate Tenants commands** (AC: 2)
+  - [x] Add `ICommandContract` metadata and aggregate IDs to public Tenants commands.
+  - [x] Add `[RestRoute]` only for supported external commands.
+  - [x] Keep `BootstrapGlobalAdmin` unrouted unless an explicit product/security decision approves external exposure.
+  - [x] Add contract tests for command metadata and route/body parameter compatibility.
 
-- [ ] **Task 3: Annotate Tenants queries** (AC: 3, 4)
-  - [ ] Add `[RestRoute]` and bindable properties to the six query contract classes.
-  - [ ] Preserve existing query constants and cursor/page-size semantics.
-  - [ ] Add contract tests proving route templates, route parameters, query-string properties, and static metadata.
+- [x] **Task 3: Annotate Tenants queries** (AC: 3, 4)
+  - [x] Add `[RestRoute]` and bindable properties to the six query contract classes.
+  - [x] Preserve existing query constants and cursor/page-size semantics.
+  - [x] Add contract tests proving route templates, route parameters, query-string properties, and static metadata.
 
-- [ ] **Task 4: Patch generator only if Tenants requires it** (AC: 4, 9)
-  - [ ] Add reusable metadata or emitter behavior for constant aggregate/entity values and distinct entity binding.
-  - [ ] Add freshness header emission from `QueryResponseMetadata`.
-  - [ ] Add generator tests before relying on Tenants API host smoke tests.
-  - [ ] Preserve existing D3/D4 generator behavior and diagnostics.
+- [x] **Task 4: Patch generator only if Tenants requires it** (AC: 4, 9)
+  - [x] Add reusable metadata or emitter behavior for constant aggregate/entity values and distinct entity binding.
+  - [x] Add freshness header emission from `QueryResponseMetadata`.
+  - [x] Add generator tests before relying on Tenants API host smoke tests.
+  - [x] Preserve existing D3/D4 generator behavior and diagnostics.
 
-- [ ] **Task 5: Add external Tenants API host** (AC: 5, 6)
-  - [ ] Create `Hexalith.Tenants.Api` project and Program startup mirroring Sample external API.
-  - [ ] Add analyzer reference to `Hexalith.EventStore.RestApi.Generators`.
-  - [ ] Add `RestApiAssemblyInfo.cs`.
-  - [ ] Add project to `Hexalith.Tenants.slnx`.
-  - [ ] Wire `tenants-api` into Tenants AppHost and DAPR access control.
+- [x] **Task 5: Add external Tenants API host** (AC: 5, 6)
+  - [x] Create `Hexalith.Tenants.Api` project and Program startup mirroring Sample external API.
+  - [x] Add analyzer reference to `Hexalith.EventStore.RestApi.Generators`.
+  - [x] Add `RestApiAssemblyInfo.cs`.
+  - [x] Add project to `Hexalith.Tenants.slnx`.
+  - [x] Wire `tenants-api` into Tenants AppHost and DAPR access control.
 
-- [ ] **Task 6: Move Tenants UI queries to EventStore Client** (AC: 1, 7)
-  - [ ] Replace `TenantsQueryApiClient` usage with gateway-client submission.
-  - [ ] Remove `Tenants:BaseAddress` UI dependency.
-  - [ ] Preserve `ITenantQueryGateway` behavior, 304/freshness handling, cursor behavior, and search hydration.
-  - [ ] Update UI DI/tests for the new client path.
+- [x] **Task 6: Move Tenants UI queries to EventStore Client** (AC: 1, 7)
+  - [x] Replace `TenantsQueryApiClient` usage with gateway-client submission.
+  - [x] Remove `Tenants:BaseAddress` UI dependency.
+  - [x] Preserve `ITenantQueryGateway` behavior, 304/freshness handling, cursor behavior, and search hydration.
+  - [x] Update UI DI/tests for the new client path.
 
-- [ ] **Task 7: Retire the hand-written controller and stale tests** (AC: 8, 9)
-  - [ ] Delete `TenantsQueryController` only after replacement API tests exist.
-  - [ ] Remove stale query-controller-only services/tests.
-  - [ ] Retarget integration coverage to generated external API or gateway-client behavior.
-  - [ ] Keep domain service query/project endpoints and handlers.
+- [x] **Task 7: Retire the hand-written controller and stale tests** (AC: 8, 9)
+  - [x] Delete `TenantsQueryController` only after replacement API tests exist.
+  - [x] Remove stale query-controller-only services/tests.
+  - [x] Retarget integration coverage to generated external API or gateway-client behavior.
+  - [x] Keep domain service query/project endpoints and handlers.
 
-- [ ] **Task 8: Verify and record evidence** (AC: 9, 10)
-  - [ ] Emit generated source to `/tmp/hexalith-tenants-d7-generated`.
-  - [ ] Run required per-project Tenants tests/builds.
-  - [ ] Run required EventStore tests/builds if platform code changed.
-  - [ ] Run integration/Aspire smoke if feasible, recording exact commands and blockers.
-  - [ ] Confirm final root and submodule `git status --short` contain only intended D7 changes plus known unrelated files.
+- [x] **Task 8: Verify and record evidence** (AC: 9, 10)
+  - [x] Emit generated source to `/tmp/hexalith-tenants-d7-generated`.
+  - [x] Run required per-project Tenants tests/builds.
+  - [x] Run required EventStore tests/builds if platform code changed.
+  - [x] Run integration/Aspire smoke if feasible, recording exact commands and blockers.
+  - [x] Confirm final root and submodule `git status --short` contain only intended D7 changes plus known unrelated files.
 
 ## Dev Notes
 
@@ -360,18 +361,134 @@ Do not modify or remove those unrelated files while implementing D7 unless the u
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Codex GPT-5
 
 ### Debug Log References
+
+- Activation: loaded `bmad-dev-story`, resolved workflow customization, loaded `_bmad/bmm/config.yaml`, and loaded `_bmad-output/project-context.md`.
+- Preflight: read July 2 corrected architecture proposal plus D5 and D6 story records before code edits.
+- Preflight git status: root contained only D7 story/sprint tracking edits after status transition; `references/Hexalith.Tenants` was clean; no nested Tenants submodules were initialized.
+- Preflight Aspire baseline: `EnableKeycloak=false aspire run --apphost references/Hexalith.Tenants/src/Hexalith.Tenants.AppHost/Hexalith.Tenants.AppHost.csproj --non-interactive` ran in an interactive PTY; `aspire describe` reported `eventstore`, `tenants`, and `tenants-ui` running Healthy before shutdown.
+- Preflight topology finding: `tenants-ui` currently receives `Tenants__BaseAddress`, and no `tenants-api` resource exists yet.
+- Generator gap confirmed: current query emission infers aggregate/entity from route parameters and emits only `ETag`, so Tenants needs reusable binding metadata and freshness-header emission before generated controllers can replace the old controller.
+- Red: `dotnet test tests/Hexalith.Tenants.Contracts.Tests/` failed on `CommandContractRestMetadataTests` because Tenants commands did not implement `ICommandContract` or expose static metadata.
+- Green: `dotnet test tests/Hexalith.Tenants.Contracts.Tests/ --filter FullyQualifiedName~CommandContractRestMetadataTests` passed: 3/3.
+- Full contracts-suite note: `dotnet test tests/Hexalith.Tenants.Contracts.Tests/` currently has unrelated package-governance failures (`DAPR_VERSION: '1.17.` and package-version centralization assertions) after the command metadata tests pass; keep this as a verification blocker unless later scope explicitly addresses governance tests.
+- Red: `dotnet test tests/Hexalith.Tenants.Contracts.Tests/ --filter FullyQualifiedName~QueryRestMetadataTests` failed because the six query contracts had no `[RestRoute]` attributes.
+- Green: `dotnet test tests/Hexalith.Tenants.Contracts.Tests/ --filter "FullyQualifiedName~CommandContractRestMetadataTests|FullyQualifiedName~QueryRestMetadataTests"` passed: 5/5.
+- Red: `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/ --filter FullyQualifiedName~Run_ReferencedQueryContractWithExplicitBinding_GeneratesQueryEnvelopeAndFreshnessHeaders` failed because `RestQueryBindingAttribute` / `RestQueryBindingSource` did not exist.
+- Green: `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/ --filter FullyQualifiedName~Run_ReferencedQueryContractWithExplicitBinding_GeneratesQueryEnvelopeAndFreshnessHeaders` passed after adding reusable query binding metadata and freshness header emission.
+- Green: `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/` passed: 45/45, preserving existing generator behavior and diagnostics.
+- Green: `dotnet test tests/Hexalith.Tenants.Contracts.Tests/ --filter "FullyQualifiedName~CommandContractRestMetadataTests|FullyQualifiedName~QueryRestMetadataTests"` passed: 5/5 after adding explicit query binding assertions for ListTenants, GetUserTenants, and GetGlobalAdministrators.
+- Green: `dotnet build src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj --configuration Debug` passed, proving generated Tenants controllers compile in the new external API host.
+- Green: `dotnet test tests/Hexalith.Tenants.UI.Tests/ --filter FullyQualifiedName~TenantQueryGatewayTests` passed: 97/97 after migrating the UI query gateway to `IEventStoreGatewayClient`.
+- Green: `dotnet test tests/Hexalith.Tenants.IntegrationTests/ --filter FullyQualifiedName~TenantsApiGeneratedControllerTests` passed: 6/6, covering generated API auth, route-to-query request shape, freshness headers, ETag/304, and `If-None-Match` forwarding.
+- Green: `dotnet test tests/Hexalith.Tenants.UI.Tests/ --filter FullyQualifiedName~Global_administrators_read_contract_uses_fixed_platform_scope_without_tenant_substitute` passed: 1/1 after retargeting the stale old-controller composition assertion to generated API metadata.
+- Green: `dotnet test tests/Hexalith.Tenants.Server.Tests/ --filter "FullyQualifiedName~AppHost_DaprTopology_UsesPlatformDomainModuleExtensionAndStableResourceNames|FullyQualifiedName~LocalAccessControl_IsClearlyLocalOnlyAndProductionUsesReceiverSpecificFiles"` passed: 2/2 after adding `tenants-api` AppHost/access-control assertions.
+- Generated-source evidence: `dotnet build src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj --configuration Debug -p:EmitCompilerGeneratedFiles=true -p:CompilerGeneratedFilesOutputPath=/tmp/hexalith-tenants-d7-generated` passed. Inspected `/tmp/hexalith-tenants-d7-generated/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.RestApiGenerator/Hexalith.EventStore.RestApi.Hexalith.Tenants.Api.Generated.TenantsRestController.Controller.g.cs`.
+- Green: `dotnet test tests/Hexalith.Tenants.UI.Tests/` passed: 864/864.
+- Green: `dotnet test tests/Hexalith.Tenants.Server.Tests/` passed: 738/738 after documenting command/query adapter metadata and adding sibling-checkout path fallback for EventStore source references without initializing nested submodules.
+- Green: `dotnet test tests/Hexalith.Tenants.IntegrationTests/` passed: 128/129 with 1 skipped snapshot performance test. Note: an intermediate run failed when `tenants-api` was added to the shared Aspire fixture resource wait list because Aspire reported the resource `Running` but did not publish an `http` endpoint to the test fixture within 4 minutes; the fixture was restored to its existing smoke resources, while AppHost tests and generated API integration tests keep `tenants-api` coverage.
+- Green: `dotnet test tests/Hexalith.EventStore.RestApi.Generators.Tests/` passed: 45/45.
+- Green: `dotnet test tests/Hexalith.EventStore.Client.Tests/` passed: 483/483.
+- Green: `dotnet build Hexalith.EventStore.slnx --configuration Release -p:UseHexalithProjectReferences=false` passed with 0 warnings/errors.
+- Green: `dotnet build src/Hexalith.Tenants.AppHost/Hexalith.Tenants.AppHost.csproj --configuration Release -p:HexalithEventStoreFromSource=true -p:HexalithMemoriesFromSource=true` passed with 0 warnings/errors.
+- Green: `dotnet build src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj --configuration Release -p:HexalithEventStoreFromSource=true` passed with 0 warnings/errors.
+- Blocked-by-workspace-layout: `dotnet build Hexalith.Tenants.slnx --configuration Release` from the Tenants submodule failed with MSB3202 because the `.slnx` includes dependency projects under `references/Hexalith.Tenants/references/...`; this workspace intentionally keeps those dependencies as parent/sibling checkouts and repo instructions forbid initializing nested submodules.
+- Known remaining Contracts-suite blockers: `dotnet test tests/Hexalith.Tenants.Contracts.Tests/` now fails only on 4 pre-existing governance assertions after D7-specific classification/package-version fixes: CI DAPR version text, CI pack-release script text, Release DAPR version text, and broad package-version centralization import handling (44 remaining non-D7 violations).
+- Final stale-reference scan: `rg -n "TenantsQueryController|DomainQueryDispatcher|TenantsQueryApiClient|ITenantsQueryApiClient|TenantsQueryApiRequest|Tenants__BaseAddress|Tenants:BaseAddress" references/Hexalith.Tenants/src references/Hexalith.Tenants/tests -g '!test-summary.md'` found only negative assertions in tests.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
+- Completed D7 preflight against the corrected July 2 external-API-host architecture. Sample.Api is the reference host; Tenants currently routes UI queries through `TenantsQueryApiClient` and `Tenants__BaseAddress`; the old `TenantsQueryController` owns freshness headers and route/request semantics that generated external controllers must preserve.
+- Added `ICommandContract` metadata to Tenants command records with kebab-case command types and aggregate IDs. External command records have typed `[RestRoute]` attributes; `BootstrapGlobalAdmin` is metadata-addressable for dispatch consistency but intentionally has no REST route.
+- Annotated the six Tenants query contracts with REST route attributes and bindable route/query-string properties while preserving existing `QueryType`, `Domain`, and `ProjectionType` constants. Page-size omission still flows through existing server-side clamp/default behavior.
+- Added reusable `RestQueryBindingAttribute` metadata and generator support for constant aggregate/entity values and route-bound entity IDs. Generated query controllers now forward freshness headers from `QueryResponseMetadata` while preserving `ETag` and 304 behavior.
+- Added `Hexalith.Tenants.Api` as the dedicated external generated-controller host with EventStore gateway forwarding through DAPR app-id invocation. Tenants AppHost now includes `tenants-api`, and the UI no longer receives `Tenants__BaseAddress`.
+- Migrated `TenantQueryGateway` to submit `SubmitQueryRequest` through `IEventStoreGatewayClient`, removed the app-local Tenants query REST client, and updated focused UI tests to assert gateway request shape plus existing freshness/304 behavior.
+- Deleted the old hand-written `TenantsQueryController` and its controller integration tests after adding generated external API integration coverage. Kept the domain service `/query` and bespoke `/project` surfaces intact.
+- Updated AppHost/configuration coverage so `tenants-api` resource wiring and local DAPR access-control policy are pinned, while the UI is guarded against reintroducing `Tenants__BaseAddress`.
+- Updated Tenants documentation/test helpers for the new public command/query adapter metadata and for parent/sibling EventStore checkout resolution without nested submodule initialization.
+- Emitted and inspected generated controller source under `/tmp/hexalith-tenants-d7-generated`.
 
 ### File List
+
+- `_bmad-output/implementation-artifacts/D-7-proof-tenants-ui-host-submodule.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `references/Hexalith.Tenants/Directory.Packages.props`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Commands/AddUserToTenant.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Commands/BootstrapGlobalAdmin.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Commands/ChangeUserRole.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Commands/CreateTenant.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Commands/DisableTenant.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Commands/EnableTenant.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Commands/RemoveGlobalAdministrator.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Commands/RemoveTenantConfiguration.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Commands/RemoveUserFromTenant.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Commands/SetGlobalAdministrator.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Commands/SetTenantConfiguration.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Commands/UpdateTenant.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Queries/GetGlobalAdministratorsQuery.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Queries/GetTenantAuditQuery.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Queries/GetTenantQuery.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Queries/GetTenantUsersQuery.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Queries/GetUserTenantsQuery.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Queries/ListTenantsQuery.cs`
+- `references/Hexalith.Tenants/docs/event-contract-reference.md`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.Contracts.Tests/Commands/CommandContractRestMetadataTests.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.Contracts.Tests/PackageGovernanceTests.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.Contracts.Tests/Queries/QueryRestMetadataTests.cs`
+- `src/Hexalith.EventStore.Contracts/Rest/RestQueryBindingAttribute.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/AnalyzerReleases.Unshipped.md`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiControllerEmitter.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiDiagnosticDescriptors.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiMessageDescriptor.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiMessageParser.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiMetadataNames.cs`
+- `src/Hexalith.EventStore.RestApi.Generators/RestApiQueryBindingDescriptor.cs`
+- `tests/Hexalith.EventStore.RestApi.Generators.Tests/RestApiControllerGenerationTests.cs`
+- `references/Hexalith.Tenants/Hexalith.Tenants.slnx`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Program.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Api/RestApiAssemblyInfo.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Services/DaprAppIdHandler.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Services/InboundBearerForwardingHandler.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.AppHost/DaprComponents/accesscontrol.yaml`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.AppHost/Hexalith.Tenants.AppHost.csproj`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.AppHost/HexalithTenantsApi.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.AppHost/Program.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Program.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/ITenantsQueryApiClient.cs` (deleted)
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantQueryGateway.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantsQueryApiClient.cs` (deleted)
+- `references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Services/Gateways/TenantsQueryApiRequest.cs` (deleted)
+- `references/Hexalith.Tenants/src/Hexalith.Tenants/Controllers/TenantsQueryController.cs` (deleted)
+- `references/Hexalith.Tenants/src/Hexalith.Tenants/Program.cs`
+- `references/Hexalith.Tenants/src/Hexalith.Tenants/Queries/Handlers/TenantQueryHandlerBase.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/Hexalith.Tenants.IntegrationTests.csproj`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/TenantsApiGeneratedControllerTests.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.IntegrationTests/TenantsQueryControllerIntegrationTests.cs` (deleted)
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/Configuration/EventPublicationConfigurationTests.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/Documentation/CompensatingCommandsDocumentationTests.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/Documentation/CrossAggregateTimingDocumentationTests.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/Documentation/DeploymentReadinessDocumentationTests.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/Documentation/QuickstartDocumentationTests.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/Projections/TenantsProjectionActorTests.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.Server.Tests/Support/TenantQueryTestHarness.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Services/Gateways/TenantQueryGatewayTests.cs`
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/Services/Gateways/TenantsQueryApiClientTests.cs` (deleted)
+- `references/Hexalith.Tenants/tests/Hexalith.Tenants.UI.Tests/TenantsUiCompositionTests.cs`
 
 ## Change Log
 
 | Date | Change |
 |---|---|
 | 2026-07-02 | Story D7 created with corrected external API host scope, Tenants contract annotation requirements, generator binding/freshness gaps, UI client-library migration, old controller retirement guardrails, AppHost/DAPR topology requirements, and verification plan. Status ready-for-dev. |
+| 2026-07-03 | Started D7 implementation, captured baseline commit, moved sprint status to in-progress, and completed corrected-scope/current-code preflight. |
+| 2026-07-03 | Annotated Tenants command contracts with `ICommandContract` metadata, external REST routes, aggregate IDs, and tests; kept bootstrap unrouted. |
+| 2026-07-03 | Annotated six Tenants query contracts with REST routes and bindable properties plus contract metadata tests. |
+| 2026-07-03 | Extended REST generator with reusable query binding metadata and freshness header emission; updated Tenants query binding tests. |
+| 2026-07-03 | Added dedicated `Hexalith.Tenants.Api` generated-controller host, AppHost `tenants-api` resource, and DAPR access-control entry. |
+| 2026-07-03 | Migrated Tenants UI query gateway from app-local REST client to EventStore gateway client and removed `Tenants__BaseAddress` UI injection. |
+| 2026-07-03 | Retired the hand-written Tenants query controller, retargeted integration coverage to the generated API host, pinned AppHost topology tests, emitted generated-source evidence, completed validation, and moved story to review. |

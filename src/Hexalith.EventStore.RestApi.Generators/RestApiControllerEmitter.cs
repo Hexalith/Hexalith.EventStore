@@ -99,7 +99,14 @@ internal static class RestApiControllerEmitter
                 continue;
             }
 
-            if (message.IsQuery && IsAmbiguousQueryRoute(effectiveRouteParameters))
+            if (message.IsQuery
+                && TryFindUnmappedQueryBindingRouteParameter(message, effectiveRouteParameters, out string queryBindingRouteParameter))
+            {
+                reportDiagnostic(RestApiDiagnosticDescriptors.CreateUnmappedQueryBindingRouteParameter(message, queryBindingRouteParameter));
+                continue;
+            }
+
+            if (message.IsQuery && !message.QueryBinding.HasValue && IsAmbiguousQueryRoute(effectiveRouteParameters))
             {
                 reportDiagnostic(RestApiDiagnosticDescriptors.CreateAmbiguousQueryRoute(message));
                 continue;
@@ -272,7 +279,7 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("    {");
         AppendTenantResolution(builder, options, routeParameters);
         AppendQueryPayload(builder, queryParameters);
-        AppendQueryRouteValues(builder, routeParameters);
+        AppendQueryRouteValues(builder, message, routeParameters);
         builder.AppendLine();
         builder.AppendLine("        var __hexalithRequest = new SubmitQueryRequest(");
         builder.AppendLine("            __hexalithTenant,");
@@ -292,6 +299,25 @@ internal static class RestApiControllerEmitter
         builder.AppendLine("            if (!string.IsNullOrWhiteSpace(__hexalithResult.ETag))");
         builder.AppendLine("            {");
         builder.AppendLine("                Response.Headers[\"ETag\"] = FormatStrongETag(__hexalithResult.ETag);");
+        builder.AppendLine("            }");
+        builder.AppendLine();
+        builder.AppendLine("            QueryResponseMetadata? __hexalithMetadata = __hexalithResult.Metadata;");
+        builder.AppendLine("            string? __hexalithProjectionVersion = string.IsNullOrWhiteSpace(__hexalithMetadata?.ProjectionVersion)");
+        builder.AppendLine("                ? __hexalithResult.ETag");
+        builder.AppendLine("                : __hexalithMetadata.ProjectionVersion;");
+        builder.AppendLine("            if (!string.IsNullOrWhiteSpace(__hexalithProjectionVersion))");
+        builder.AppendLine("            {");
+        builder.AppendLine("                Response.Headers[\"X-Hexalith-Projection-Version\"] = __hexalithProjectionVersion;");
+        builder.AppendLine("            }");
+        builder.AppendLine();
+        builder.AppendLine("            if (__hexalithMetadata?.ServedAt is not null)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                Response.Headers[\"X-Hexalith-Served-At\"] = __hexalithMetadata.ServedAt.Value.ToString(\"O\", CultureInfo.InvariantCulture);");
+        builder.AppendLine("            }");
+        builder.AppendLine();
+        builder.AppendLine("            if (__hexalithMetadata?.IsStale is not null)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                Response.Headers[\"X-Hexalith-Is-Stale\"] = __hexalithMetadata.IsStale.Value ? \"true\" : \"false\";");
         builder.AppendLine("            }");
         builder.AppendLine();
         builder.AppendLine("            if (__hexalithResult.IsNotModified)");
@@ -548,17 +574,39 @@ internal static class RestApiControllerEmitter
 
     private static void AppendQueryRouteValues(
         StringBuilder builder,
+        RestApiMessageDescriptor message,
         ImmutableArray<RestApiRouteParameterDescriptor> routeParameters)
     {
-        ImmutableArray<RestApiRouteParameterDescriptor> nonTenantParameters = GetNonTenantParameters(routeParameters);
-        RestApiRouteParameterDescriptor? aggregateParameter = GetAggregateParameter(nonTenantParameters);
-        RestApiRouteParameterDescriptor? entityParameter = GetEntityParameter(nonTenantParameters, aggregateParameter);
-        string aggregateExpression = aggregateParameter.HasValue
-            ? ToStringExpression(aggregateParameter.Value.Identifier, Literal("index"))
-            : Literal("index");
-        string entityExpression = entityParameter.HasValue
-            ? ToStringExpression(entityParameter.Value.Identifier, "null")
-            : "null";
+        string aggregateExpression;
+        string entityExpression;
+        if (message.QueryBinding.HasValue)
+        {
+            RestApiQueryBindingDescriptor binding = message.QueryBinding.Value;
+            aggregateExpression = GetQueryBindingExpression(
+                binding.AggregateSource,
+                binding.AggregateValue,
+                routeParameters,
+                Literal("index"));
+            entityExpression = string.Equals(binding.EntitySource, "None", StringComparison.Ordinal)
+                ? "null"
+                : GetQueryBindingExpression(
+                    binding.EntitySource,
+                    binding.EntityValue ?? string.Empty,
+                    routeParameters,
+                    "null");
+        }
+        else
+        {
+            ImmutableArray<RestApiRouteParameterDescriptor> nonTenantParameters = GetNonTenantParameters(routeParameters);
+            RestApiRouteParameterDescriptor? aggregateParameter = GetAggregateParameter(nonTenantParameters);
+            RestApiRouteParameterDescriptor? entityParameter = GetEntityParameter(nonTenantParameters, aggregateParameter);
+            aggregateExpression = aggregateParameter.HasValue
+                ? ToStringExpression(aggregateParameter.Value.Identifier, Literal("index"))
+                : Literal("index");
+            entityExpression = entityParameter.HasValue
+                ? ToStringExpression(entityParameter.Value.Identifier, "null")
+                : "null";
+        }
 
         builder.AppendLine();
         builder.Append("        string __hexalithAggregateId = ").Append(aggregateExpression).AppendLine(";");
@@ -868,6 +916,36 @@ internal static class RestApiControllerEmitter
         return false;
     }
 
+    private static bool TryFindUnmappedQueryBindingRouteParameter(
+        RestApiMessageDescriptor message,
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,
+        out string routeParameterName)
+    {
+        if (!message.QueryBinding.HasValue)
+        {
+            routeParameterName = string.Empty;
+            return false;
+        }
+
+        RestApiQueryBindingDescriptor binding = message.QueryBinding.Value;
+        if (string.Equals(binding.AggregateSource, "Route", StringComparison.Ordinal)
+            && FindRouteParameter(routeParameters, binding.AggregateValue) is null)
+        {
+            routeParameterName = binding.AggregateValue;
+            return true;
+        }
+
+        if (string.Equals(binding.EntitySource, "Route", StringComparison.Ordinal)
+            && FindRouteParameter(routeParameters, binding.EntityValue ?? string.Empty) is null)
+        {
+            routeParameterName = binding.EntityValue ?? string.Empty;
+            return true;
+        }
+
+        routeParameterName = string.Empty;
+        return false;
+    }
+
     private static bool TryFindUnmappedCommandRouteParameter(
         RestApiMessageDescriptor message,
         ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,
@@ -1042,12 +1120,17 @@ internal static class RestApiControllerEmitter
     private static string? FindRouteParameterIdentifier(
         ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,
         string name)
+        => FindRouteParameter(routeParameters, name)?.Identifier;
+
+    private static RestApiRouteParameterDescriptor? FindRouteParameter(
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,
+        string name)
     {
         foreach (RestApiRouteParameterDescriptor parameter in routeParameters)
         {
             if (string.Equals(parameter.Name, name, StringComparison.OrdinalIgnoreCase))
             {
-                return parameter.Identifier;
+                return parameter;
             }
         }
 
@@ -1066,6 +1149,26 @@ internal static class RestApiControllerEmitter
 
     private static string ToStringExpression(string identifier, string fallbackExpression)
         => "Convert.ToString(" + identifier + ", CultureInfo.InvariantCulture) ?? " + fallbackExpression;
+
+    private static string GetQueryBindingExpression(
+        string source,
+        string value,
+        ImmutableArray<RestApiRouteParameterDescriptor> routeParameters,
+        string fallbackExpression)
+    {
+        if (string.Equals(source, "Constant", StringComparison.Ordinal))
+        {
+            return Literal(value);
+        }
+
+        if (string.Equals(source, "Route", StringComparison.Ordinal)
+            && FindRouteParameter(routeParameters, value) is { } routeParameter)
+        {
+            return ToStringExpression(routeParameter.Identifier, fallbackExpression);
+        }
+
+        return fallbackExpression;
+    }
 
     private static string Literal(string value) => SymbolDisplay.FormatLiteral(value, quote: true);
 }

@@ -298,6 +298,39 @@ public sealed class RestApiControllerGenerationTests
     }
 
     [Fact]
+    public void Run_ReferencedQueryContractWithExplicitBinding_GeneratesQueryEnvelopeAndFreshnessHeaders()
+    {
+        CSharpCompilation contractCompilation = RestApiGeneratorTestHarness.CreateCompilation(ReferencedBoundTenantsQuerySource);
+        MetadataReference contractReference = RestApiGeneratorTestHarness.EmitToMetadataReference(contractCompilation);
+        CSharpCompilation hostCompilation = RestApiGeneratorTestHarness.CreateCompilation(
+            [contractReference],
+            ReferencedTenantsContractHostSource);
+
+        CSharpCompilation outputCompilation = RestApiGeneratorTestHarness.RunAndUpdateCompilation(
+            hostCompilation,
+            out GeneratorDriverRunResult runResult,
+            out ImmutableArray<Diagnostic> updateDiagnostics);
+
+        ShouldHaveNoErrors(updateDiagnostics);
+        ShouldHaveNoErrors(outputCompilation.GetDiagnostics(TestContext.Current.CancellationToken));
+
+        string source = RestApiGeneratorTestHarness.GetGeneratedSource(runResult, ".Controller.g.cs");
+
+        source.ShouldContain("[HttpGet(\"~/api/global-administrators\")]");
+        source.ShouldContain("[HttpGet(\"~/api/users/{userId}/tenants\")]");
+        source.ShouldContain("[FromRoute(Name = \"userId\")] string userId");
+        source.ShouldContain("string __hexalithAggregateId = \"global-administrators\";");
+        source.ShouldContain("string? __hexalithEntityId = \"global-administrators\";");
+        source.ShouldContain("string __hexalithAggregateId = \"index\";");
+        source.ShouldContain("string? __hexalithEntityId = Convert.ToString(userId, CultureInfo.InvariantCulture)");
+        source.ShouldContain("Response.Headers[\"X-Hexalith-Projection-Version\"]");
+        source.ShouldContain("Response.Headers[\"X-Hexalith-Served-At\"]");
+        source.ShouldContain("Response.Headers[\"X-Hexalith-Is-Stale\"]");
+        source.ShouldContain("ToString(\"O\", CultureInfo.InvariantCulture)");
+        source.ShouldContain("StatusCodes.Status304NotModified");
+    }
+
+    [Fact]
     public void Run_ReferencedCommandContract_GeneratesRouteTenantPostAction()
     {
         CSharpCompilation contractCompilation = RestApiGeneratorTestHarness.CreateCompilation(ReferencedCounterCommandSource);
@@ -587,6 +620,31 @@ public sealed class RestApiControllerGenerationTests
         }
         """;
 
+    private const string ReferencedBoundTenantsQuerySource = """
+        using Hexalith.EventStore.Contracts.Queries;
+        using Hexalith.EventStore.Contracts.Rest;
+
+        namespace Hexalith.Tenants.Contracts.Queries;
+
+        [RestRoute(RestVerb.Get, "~/api/global-administrators")]
+        [RestQueryBinding(RestQueryBindingSource.Constant, "global-administrators", RestQueryBindingSource.Constant, "global-administrators")]
+        public sealed record GetGlobalAdministratorsQuery(string? Cursor, int PageSize) : IQueryContract
+        {
+            public static string QueryType => "get-global-administrators";
+            public static string Domain => "global-administrators";
+            public static string ProjectionType => "global-administrators";
+        }
+
+        [RestRoute(RestVerb.Get, "~/api/users/{userId}/tenants")]
+        [RestQueryBinding(RestQueryBindingSource.Constant, "index", RestQueryBindingSource.Route, "userId")]
+        public sealed record GetUserTenantsQuery(string UserId, string? Cursor, int PageSize) : IQueryContract
+        {
+            public static string QueryType => "get-user-tenants";
+            public static string Domain => "tenants";
+            public static string ProjectionType => "tenant";
+        }
+        """;
+
     private const string ReferencedCounterCommandSource = """
         using Hexalith.EventStore.Contracts.Commands;
         using Hexalith.EventStore.Contracts.Rest;
@@ -606,6 +664,16 @@ public sealed class RestApiControllerGenerationTests
         using Hexalith.EventStore.Contracts.Rest;
 
         [assembly: RestApi("api/{tenant}/counter", "counter", RestTenantSource.Route)]
+
+        namespace Smoke.Host;
+
+        public sealed class HostMarker;
+        """;
+
+    private const string ReferencedTenantsContractHostSource = """
+        using Hexalith.EventStore.Contracts.Rest;
+
+        [assembly: RestApi("api/tenants", "tenants", RestTenantSource.Claims)]
 
         namespace Smoke.Host;
 
