@@ -25,4 +25,10 @@
     <ContainerLabel Include="org.opencontainers.image.vendor" Value="Hexalith" />
   </ItemGroup>
 
+  <Target Name="RemoveOpenApiXmlCommentSourceGenerator" AfterTargets="ResolveLockFileAnalyzers">
+    <ItemGroup>
+      <Analyzer Remove="@(Analyzer)" Condition="'%(Analyzer.NuGetPackageId)' == 'Microsoft.AspNetCore.OpenApi'" />
+    </ItemGroup>
+  </Target>
+
 </Project>
